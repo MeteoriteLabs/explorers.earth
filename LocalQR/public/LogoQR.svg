@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="2104" height="741" viewBox="0 0 2104 741">
+  <!-- Black background rectangle -->
+  <rect width="2104" height="741" fill="#000000"/>
+  
+  <!-- White text: Explorers -->
+  <text 
+    x="1052" 
+    y="400" 
+    font-family="Arial, sans-serif" 
+    font-size="240" 
+    font-weight="900" 
+    fill="#FEFEFE" 
+    text-anchor="middle" 
+    dominant-baseline="central"
+    letter-spacing="15"
+  >
+    Explorers
+  </text>
+</svg>

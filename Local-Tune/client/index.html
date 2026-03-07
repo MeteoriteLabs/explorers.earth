@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <title>Local Tunes - Create and Share Live Playlists with Your Guests</title>
+    <meta name="description" content="Transform your venue with interactive music experiences. Let guests contribute to playlists in real-time, perfect for bars, restaurants, cafes, and events." />
+    <meta name="keywords" content="collaborative playlist, interactive music, venue music, live playlist, guest music, DJ alternative, karaoke system, silent party" />
+    
+    <!-- Microsoft Clarity Analytics - Dynamically loaded in main.tsx -->
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Local Tunes - Interactive Music Experiences for Venues" />
+    <meta property="og:description" content="Transform how guests engage with your space through collaborative music experiences. Perfect for bars, restaurants, events, and more." />
+    <meta property="og:url" content="https://localtunes.com" />
+    <meta property="og:image" content="/logo-social.png" />
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Local Tunes - Interactive Music Experiences" />
+    <meta name="twitter:description" content="Create shared music experiences with collaborative playlists your guests can contribute to in real-time." />
+    <meta name="twitter:image" content="/logo-social.png" />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://localtunes.com" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Local Tunes",
+        "url": "https://localtunes.com",
+        "description": "Interactive music platform that allows venues to create collaborative playlists where guests can contribute song requests in real-time.",
+        "applicationCategory": "Entertainment",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "operatingSystem": "Web browser",
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "4.8",
+          "ratingCount": "95"
+        }
+      }
+    </script>
+    
+    <!-- Organization Schema -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Local Tunes",
+        "url": "https://localtunes.com",
+        "logo": "https://localtunes.com/logo.svg",
+        "sameAs": [
+          "https://twitter.com/localtunes",
+          "https://facebook.com/localtunes",
+          "https://instagram.com/localtunes"
+        ]
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- LocalTunes SSO Detection -->
+    <script>
+      // LocalTunes SSO Detection
+      (function() {
+          console.log('🔧 LocalTunes SSO detection initialized');
+          
+          // Check for existing SSO authentication data
+          function checkForSSOAuth() {
+              const authToken = localStorage.getItem('auth_token');
+              const authUser = localStorage.getItem('auth_user');
+              const ssoTimestamp = localStorage.getItem('sso_timestamp');
+              
+              if (authToken && authUser && ssoTimestamp) {
+                  console.log('✅ Found existing SSO authentication data');
+                  
+                  // Check if SSO data is recent (within last 5 minutes)
+                  const now = Date.now();
+                  const timestamp = parseInt(ssoTimestamp);
+                  const fiveMinutesAgo = now - (5 * 60 * 1000);
+                  
+                  if (timestamp > fiveMinutesAgo) {
+                      console.log('🎉 SSO authentication is recent, user is logged in');
+                      
+                      // Set up authenticated state in your LocalTunes app
+                      setupAuthenticatedUser(authUser, authToken);
+                      
+                      return true;
+                  } else {
+                      console.log('⚠️ SSO authentication data is too old, clearing');
+                      clearSSOAuth();
+                  }
+              }
+              
+              return false;
+          }
+          
+          // Set up authenticated user (customize this for your LocalTunes app)
+          function setupAuthenticatedUser(username, token) {
+              console.log('🔐 Setting up authenticated user:', username);
+              
+              // Set user session
+              window.currentUser = {
+                  username: username,
+                  token: token,
+                  authenticated: true,
+                  ssoLogin: true
+              };
+              
+              // Update UI to show logged-in state
+              updateUIForAuthenticatedUser(username);
+              
+              // Trigger any necessary app initialization
+              if (window.onUserAuthenticated) {
+                  window.onUserAuthenticated(username, token);
+              }
+          }
+          
+          // Update UI for authenticated user (customize this for your LocalTunes app)
+          function updateUIForAuthenticatedUser(username) {
+              // Example implementation - customize for your LocalTunes app
+              // Only update UI if elements exist
+              try {
+                  const loginButton = document.querySelector('.login-button');
+                  const userInfo = document.querySelector('.user-info');
+                  
+                  if (loginButton) {
+                      loginButton.style.display = 'none';
+                  }
+                  
+                  if (userInfo) {
+                      userInfo.innerHTML = `Welcome, ${username}!`;
+                      userInfo.style.display = 'block';
+                  }
+                  
+                  // Add logout button only if container exists
+                  const container = document.querySelector('.user-info') || document.body;
+                  if (container) {
+                      const logoutButton = document.createElement('button');
+                      logoutButton.textContent = 'Logout';
+                      logoutButton.onclick = clearSSOAuth;
+                      logoutButton.className = 'logout-button';
+                      container.appendChild(logoutButton);
+                  }
+              } catch (error) {
+                  console.log('UI update skipped - elements not ready:', error.message);
+              }
+          }
+          
+          // Clear SSO authentication data
+          function clearSSOAuth() {
+              console.log('🧹 Clearing SSO authentication data');
+              
+              localStorage.removeItem('auth_token');
+              localStorage.removeItem('auth_user');
+              localStorage.removeItem('sso_timestamp');
+              
+              // Clear user session
+              window.currentUser = null;
+              
+              // Update UI to show logged-out state
+              updateUIForLoggedOutUser();
+              
+              // Trigger logout callback
+              if (window.onUserLoggedOut) {
+                  window.onUserLoggedOut();
+              }
+          }
+          
+          // Update UI for logged-out user (customize this for your LocalTunes app)
+          function updateUIForLoggedOutUser() {
+              // Example implementation - customize for your LocalTunes app
+              try {
+                  const loginButton = document.querySelector('.login-button');
+                  const userInfo = document.querySelector('.user-info');
+                  const logoutButton = document.querySelector('.logout-button');
+                  
+                  if (loginButton) {
+                      loginButton.style.display = 'block';
+                  }
+                  
+                  if (userInfo) {
+                      userInfo.style.display = 'none';
+                  }
+                  
+                  if (logoutButton) {
+                      logoutButton.remove();
+                  }
+              } catch (error) {
+                  console.log('UI update skipped - elements not ready:', error.message);
+              }
+          }
+          
+          // Listen for SSO success messages from the callback page
+          window.addEventListener('message', function(event) {
+              if (event.data.type === 'LOCALTUNES_SSO_SUCCESS') {
+                  console.log('🎉 SSO authentication successful!');
+                  
+                  const authData = event.data.authData;
+                  setupAuthenticatedUser(authData.auth_user, authData.auth_token);
+              }
+          });
+          
+          // Check for SSO authentication on page load
+          document.addEventListener('DOMContentLoaded', function() {
+              console.log('📄 LocalTunes page loaded, checking for SSO authentication');
+              checkForSSOAuth();
+          });
+          
+          // Also check immediately in case DOMContentLoaded already fired
+          if (document.readyState === 'loading') {
+              // Document is still loading, wait for DOMContentLoaded
+          } else {
+              // Document is already loaded, check immediately
+              checkForSSOAuth();
+          }
+          
+          // Expose functions globally for debugging
+          window.LocalTunesSSO = {
+              checkForSSOAuth: checkForSSOAuth,
+              clearSSOAuth: clearSSOAuth,
+              setupAuthenticatedUser: setupAuthenticatedUser
+          };
+          
+      })();
+    </script>
+  </body>
+</html>

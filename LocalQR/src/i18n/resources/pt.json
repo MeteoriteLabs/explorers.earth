@@ -1,0 +1,1801 @@
+﻿{
+    "header": {
+        "nav": {
+            "howItWorks": "Como Funciona",
+            "whoIsFor": "Para Quem É",
+            "faq": "Perguntas Frequentes",
+            "about": "Sobre",
+            "contact": "Contato"
+        },
+        "auth": {
+            "login": "Entrar",
+            "signUp": "Cadastrar"
+        }
+    },
+    "hero": {
+        "headline": "Todas as suas recomendações, compartilhadas através de um simples link ou QR",
+        "subtext": "De lugares a sons, rotas e histórias — compartilhe o que você sabe e ama.",
+        "inputLabel": "Reserve sua URL explorers:",
+        "inputPlaceholder": "seunome",
+        "ctaButton": "Reservar explorers",
+        "signupPrompt": "Cadastre-se agora para obter o seu"
+    },
+    "sections": {
+        "createCustomize": {
+            "headline": "Crie sua página Explorer em minutos",
+            "subtext": "Colete tudo que você normalmente compartilharia em mensagens, notas ou conversas — e reúna tudo em um só lugar.\n\nOrganize suas recomendações por cidade, viagem, tema ou momento, e atualize-as a qualquer momento conforme sua perspectiva evolui.",
+            "bulletPoints": {
+                "addSpots": {
+                    "title": "Adicione lugares, experiências, rotas, sons e notas",
+                    "description": ""
+                },
+                "organize": {
+                    "title": "Organize por localização ou interesse",
+                    "description": ""
+                },
+                "generate": {
+                    "title": "Edite a qualquer momento — seu link sempre permanece o mesmo",
+                    "description": ""
+                },
+                "share": {
+                    "title": "Compartilhe digitalmente ou através de um QR no mundo real",
+                    "description": ""
+                }
+            },
+            "mockup": {
+                "title": "Minhas Recomendações",
+                "addPlace": "Adicionar Lugar"
+            }
+        },
+        "shareAnywhere": {
+            "headline": "Um link. Muitas jornadas.",
+            "subtext": "Seu link Explorer se torna um guia vivo — algo que as pessoas podem salvar, revisitar e explorar no seu próprio ritmo.\n\nCompartilhe em um perfil, mensagem, mesa, parede ou cartão.\nOnde quer que vá, sua perspectiva vai com ele.",
+            "scanText": "Escaneie para recomendações locais",
+            "storefrontText": "Perfeito para vitrines de lojas",
+            "instagramTitle": "Adicione à sua bio do Instagram",
+            "instagramDesc": "Compartilhe com seus seguidores instantaneamente",
+            "menuTitle": "Imprima em cardápios",
+            "menuDesc": "Pontos de contato físicos simplificados",
+            "welcomeTitle": "Inclua em livros de boas-vindas",
+            "welcomeDesc": "Perfeito para anfitriões e guias",
+            "cafeMenu": "Cardápio do Café",
+            "tokyoFoodGuide": "Meu guia gastronômico de Tóquio explorers.earth/jane"
+        },
+        "analytics": {
+            "headline": "Rastreie cliques, referências e engajamento",
+            "subtext": "Veja o que funciona, quem escaneia, e quais lugares recebem mais amor — em tempo real.",
+            "workingTitle": "Veja o que funciona",
+            "workingDesc": "Rastreie a popularidade das suas recomendações",
+            "scanningTitle": "Quem escaneia",
+            "scanningDesc": "Monitore escaneamentos QR e atualizações",
+            "spotsTitle": "Melhores lugares",
+            "spotsDesc": "Insights baseados em dados para melhor curadoria",
+            "dashboardTitle": "Painel de Analytics",
+            "last30Days": "Últimos 30 dias",
+            "totalScans": "Total de Escaneamentos",
+            "engagement": "Engajamento",
+            "referrals": "Referências"
+        },
+        "localTunes": {
+            "mainHeading": "Tunes",
+            "title": "Ouça enquanto explora",
+            "body": "A exploração não é apenas visual. O som carrega memória, contexto e emoção.\n\nTunes permite coletar e compartilhar trilhas sonoras para lugares, viagens e humores — seja música descoberta na estrada ou sons que definem um lugar para você.\n\nPerfeitamente conectado ao seu perfil Explorer.",
+            "exploreButton": "Explorar Tunes",
+            "featuresHeading": "Recursos Poderosos",
+            "features": {
+                "realtimeCollaboration": {
+                    "title": "Colaboração em Tempo Real",
+                    "description": "Permita que os convidados adicionem músicas à sua playlist instantaneamente enquanto você mantém controle total sobre o que toca."
+                },
+                "qrCodeSharing": {
+                    "title": "Compartilhamento de Código QR",
+                    "description": "Compartilhe sua experiência musical com uma simples leitura de código QR - sem necessidade de aplicativos ou downloads."
+                },
+                "youtubeIntegration": {
+                    "title": "Integração com YouTube",
+                    "description": "Integre perfeitamente com o YouTube para acessar milhões de músicas e criar a atmosfera perfeita."
+                },
+                "voteLikeSystem": {
+                    "title": "Sistema de Votação e Curtidas",
+                    "description": "Os convidados podem votar em suas músicas favoritas para influenciar a fila da playlist em tempo real."
+                },
+                "silentParties": {
+                    "title": "Festas Silenciosas",
+                    "description": "Organize festas silenciosas únicas onde todos ouvem através de seus próprios fones de ouvido."
+                },
+                "karaokeReady": {
+                    "title": "Pronto para Karaokê",
+                    "description": "Perfeito para noites de karaokê com playlists colaborativas e pedidos de músicas em tempo real."
+                }
+            },
+            "venueHeading": "Perfeito para Qualquer Local",
+            "venues": {
+                "barsPubs": "Bares e Pubs",
+                "restaurants": "Restaurantes",
+                "coffeeShops": "Cafeterias",
+                "eventsWeddings": "Eventos e Casamentos",
+                "retailStores": "Lojas de Varejo",
+                "gymsFitness": "Academias e Fitness"
+            },
+            "closingStatement": "Tunes é \u003cstrong\u003egratuito\u003c/strong\u003e para explorar, e para recursos pagos você pode atualizar depois."
+        },
+        "referEarn": {
+            "headline": "Compartilhe, indique e ganhe",
+            "subtext": "Transforme suas recomendações em recompensas passivas — ganhe créditos quando outros usam seu QR.",
+            "comingSoon": "Programa de Recompensas por Indicação (Em Breve)",
+            "rewardsTitle": "Ganhe Recompensas",
+            "rewardsDesc": "Receba dinheiro quando pessoas usam suas recomendações",
+            "earnedThisMonth": "Ganho este mês",
+            "passiveTitle": "Transforme recomendações em recompensas passivas",
+            "networkTitle": "Construa sua rede e ganhe automaticamente"
+        },
+        "whoIsFor": {
+            "headline": "Para quem é o explorers.earth?",
+            "subtext": "explorers.earth é para qualquer pessoa que acredita que compartilhar é uma responsabilidade — não uma transmissão.",
+            "cards": {
+                "individuals": {
+                    "title": "Indivíduos",
+                    "oneLiner": "Compartilhe recomendações pessoais ou locais.",
+                    "items": {
+                        "traveler": {
+                            "label": "Viajante",
+                            "oneLiner": "Pessoas compartilhando locais de viagem"
+                        },
+                        "local": {
+                            "label": "Local",
+                            "oneLiner": "Locais compartilhando dicas do bairro"
+                        },
+                        "family": {
+                            "label": "Família",
+                            "oneLiner": "Famílias compartilhando lugares úteis"
+                        },
+                        "student": {
+                            "label": "Estudante",
+                            "oneLiner": "Estudantes compartilhando locais do campus/próximos"
+                        },
+                        "nomad": {
+                            "label": "Nômade",
+                            "oneLiner": "Nômades listando espaços amigáveis para trabalho"
+                        },
+                        "emergencySharer": {
+                            "label": "Compartilhador de Emergência",
+                            "oneLiner": "Compartilhadores de emergência publicando lugares essenciais"
+                        }
+                    }
+                },
+                "creators": {
+                    "title": "Criadores",
+                    "oneLiner": "Compartilhe listas curadas com seu público.",
+                    "items": {
+                        "influencer": {
+                            "label": "Influenciador",
+                            "oneLiner": "Influenciadores compartilhando melhores escolhas"
+                        },
+                        "blogger": {
+                            "label": "Blogueiro",
+                            "oneLiner": "Blogueiros curando guias escritos"
+                        },
+                        "vlogger": {
+                            "label": "Vlogueiro",
+                            "oneLiner": "Vlogueiros compartilhando jornadas visuais"
+                        },
+                        "reviewer": {
+                            "label": "Revisor",
+                            "oneLiner": "Revisores listando lugares melhor avaliados"
+                        },
+                        "photographer": {
+                            "label": "Fotógrafo",
+                            "oneLiner": "Fotógrafos compartilhando locais para fotos"
+                        },
+                        "educator": {
+                            "label": "Educador",
+                            "oneLiner": "Educadores compartilhando guias de aprendizado"
+                        },
+                        "communityLeader": {
+                            "label": "Líder Comunitário",
+                            "oneLiner": "Líderes comunitários curando listas úteis"
+                        }
+                    }
+                },
+                "hospitality": {
+                    "title": "Hospitalidade",
+                    "oneLiner": "Ofereça aos hóspedes insights locais curados.",
+                    "items": {
+                        "hotel": {
+                            "label": "Hotel",
+                            "oneLiner": "Hotéis oferecendo guias locais"
+                        },
+                        "airbnb": {
+                            "label": "Airbnb",
+                            "oneLiner": "Anfitriões compartilhando favoritos do bairro"
+                        },
+                        "hostel": {
+                            "label": "Albergue",
+                            "oneLiner": "Albergues compartilhando dicas para mochileiros"
+                        },
+                        "homestay": {
+                            "label": "Casa de Família",
+                            "oneLiner": "Casas de família oferecendo guias orientados à família"
+                        },
+                        "resort": {
+                            "label": "Resort",
+                            "oneLiner": "Resorts fornecendo listas de atividades"
+                        },
+                        "pgColiving": {
+                            "label": "PG/Coliving",
+                            "oneLiner": "PG/Coliving mostrando lugares importantes próximos"
+                        }
+                    }
+                },
+                "businesses": {
+                    "title": "Empresas",
+                    "oneLiner": "Oriente clientes com recomendações úteis.",
+                    "items": {
+                        "restaurant": {
+                            "label": "Restaurante",
+                            "oneLiner": "Restaurantes compartilhando pratos imperdíveis"
+                        },
+                        "cafe": {
+                            "label": "Café",
+                            "oneLiner": "Cafés destacando itens favoritos do menu"
+                        },
+                        "retailShop": {
+                            "label": "Loja de Varejo",
+                            "oneLiner": "Lojas compartilhando recomendações de produtos"
+                        },
+                        "gym": {
+                            "label": "Academia",
+                            "oneLiner": "Academias sugerindo locais locais de bem-estar"
+                        },
+                        "spa": {
+                            "label": "Spa",
+                            "oneLiner": "Spas listando opções de relaxamento próximas"
+                        },
+                        "salon": {
+                            "label": "Salão",
+                            "oneLiner": "Salões oferecendo guias de beleza"
+                        },
+                        "clinic": {
+                            "label": "Clínica",
+                            "oneLiner": "Clínicas compartilhando locais relacionados à saúde"
+                        },
+                        "boutique": {
+                            "label": "Boutique",
+                            "oneLiner": "Boutiques listando descobertas curadas"
+                        }
+                    }
+                },
+                "organizations": {
+                    "title": "Organizações",
+                    "oneLiner": "Forneça guias e recursos curados.",
+                    "items": {
+                        "airline": {
+                            "label": "Companhia Aérea",
+                            "oneLiner": "Companhias aéreas compartilhando guias de cidade"
+                        },
+                        "agency": {
+                            "label": "Agência",
+                            "oneLiner": "Agências de viagem listando lugares imperdíveis"
+                        },
+                        "university": {
+                            "label": "Universidade",
+                            "oneLiner": "Universidades compartilhando essenciais do campus"
+                        },
+                        "corporate": {
+                            "label": "Corporativo",
+                            "oneLiner": "Corporações listando recursos próximos"
+                        },
+                        "airport": {
+                            "label": "Aeroporto",
+                            "oneLiner": "Aeroportos oferecendo terminais + dicas da cidade"
+                        },
+                        "railway": {
+                            "label": "Ferrovia",
+                            "oneLiner": "Ferrovias compartilhando informações da plataforma"
+                        },
+                        "ngo": {
+                            "label": "ONG",
+                            "oneLiner": "ONGs compartilhando recursos comunitários"
+                        },
+                        "government": {
+                            "label": "Governo",
+                            "oneLiner": "Departamentos destacando serviços públicos"
+                        }
+                    }
+                }
+            },
+            "useCases": {
+                "travelers": "Viajantes",
+                "travelersDesc": "Compartilhe joias descobertas com outros exploradores",
+                "influencers": "Influenciadores",
+                "influencersDesc": "Monetize conhecimento local e construa comunidade",
+                "airbnbHosts": "Anfitriões Airbnb",
+                "airbnbHostsDesc": "Melhore a experiência dos hóspedes com insights locais",
+                "hotels": "Hotéis",
+                "hotelsDesc": "Ofereça recomendações locais curadas",
+                "restaurants": "Restaurantes",
+                "restaurantsDesc": "Faça cross-promoção com outros negócios locais",
+                "cafes": "Cafés",
+                "cafesDesc": "Compartilhe lugares favoritos do bairro com clientes",
+                "localGuides": "Guias Locais",
+                "localGuidesDesc": "Escale sua expertise além de tours pessoais",
+                "creators": "Criadores",
+                "creatorsDesc": "Adicione valor além do conteúdo com dicas acionáveis",
+                "tourOperators": "Operadores de Tours",
+                "tourOperatorsDesc": "Estenda experiências além de tours planejados",
+                "anyBusiness": "Qualquer Negócio",
+                "anyBusinessDesc": "Construa comunidade e fidelidade de clientes"
+            }
+        },
+        "testimonials": {
+            "headline": "Amado por viajantes, criadores e anfitriões",
+            "subtext": "Veja como pessoas ao redor do mundo usam explorers para compartilhar o que mais importa.",
+            "scrollLeft": "Role depoimentos para a esquerda",
+            "scrollRight": "Role depoimentos para a direita",
+            "items": [
+                {
+                    "id": "1",
+                    "name": "Priya Sharma",
+                    "role": "Blogueira de Viagem",
+                    "location": "Mumbai, Índia",
+                    "quote": "explorers transformou como compartilho meu conhecimento de viagem. Meus seguidores adoram ter acesso instantâneo às minhas recomendações curadas!"
+                },
+                {
+                    "id": "2",
+                    "name": "Raj Patel",
+                    "role": "Anfitrião Airbnb",
+                    "location": "Delhi, Índia",
+                    "quote": "Meus hóspedes adoram absolutamente o código QR personalizado em seu kit de boas-vindas. Tornou-se minha marca registrada!"
+                },
+                {
+                    "id": "3",
+                    "name": "Yuki Tanaka",
+                    "role": "Proprietário de Restaurante",
+                    "location": "Tóquio, Japão",
+                    "quote": "Compartilhamos nossos explorers com clientes para recomendar outros locais locais. Criou conexões incríveis na comunidade."
+                },
+                {
+                    "id": "4",
+                    "name": "Maria Silva",
+                    "role": "Guia de Turismo",
+                    "location": "São Paulo, Brasil",
+                    "quote": "explorers me ajuda a estender minha expertise além das horas de tour. Clientes podem acessar minhas recomendações a qualquer momento!"
+                },
+                {
+                    "id": "5",
+                    "name": "James Wilson",
+                    "role": "Influenciador de Viagem",
+                    "location": "Sydney, Austrália",
+                    "quote": "Como influenciador de viagem, explorers torna tão fácil compartilhar meus lugares favoritos com meu público. A funcionalidade de código QR é brilhante!"
+                },
+                {
+                    "id": "6",
+                    "name": "Sophie Martin",
+                    "role": "Guia Local",
+                    "location": "Paris, França",
+                    "quote": "Uso explorers para criar passeios a pé para meus clientes. Eles podem escanear o QR e explorar no seu próprio ritmo!"
+                }
+            ]
+        },
+        "faq": {
+            "headline": "Tem perguntas?",
+            "subtext": "Respondemos as coisas mais comuns que as pessoas perguntam antes de começar.",
+            "loading": "Carregando FAQs...",
+            "error": "Erro ao carregar FAQs. Tente novamente mais tarde."
+        },
+        "features": {
+            "title": "Construído para ficar fora do caminho",
+            "subtitle": "Recursos simples e reflexivos que deixam suas recomendações brilharem.",
+            "simpleLinks": {
+                "title": "Links simples e compartilhamento QR"
+            },
+            "livingGuides": {
+                "title": "Guias vivos e editáveis"
+            },
+            "locationAware": {
+                "title": "Recomendações conscientes da localização"
+            },
+            "soundPlaylists": {
+                "title": "Som e playlists opcionais"
+            },
+            "privacyFirst": {
+                "title": "Privacidade primeiro por design"
+            },
+            "communityDriven": {
+                "title": "Descoberta guiada pela comunidade"
+            }
+        },
+        "finalCTA": {
+            "headline": "Comece a compartilhar seu mundo hoje",
+            "subtext": "Reserve seu explorers gratuito e transforme seus insights locais em guias compartilháveis.",
+            "ctaButton": "Reservar explorers – Grátis Para Sempre",
+            "disclaimer": "Nenhum cartão de crédito necessário • Configuração em 2 minutos",
+            "creating": "Criando seu explorers..."
+        }
+    },
+    "contact": {
+        "title": "Vamos nos conectar.",
+        "subtitle": "Se você tem uma pergunta, ideia, ou só quer dizer oi — adoraríamos ouvir de você.",
+        "getInTouch": "Entre em Contato",
+        "email": "hello@explorers.earth",
+        "responseTime": "Respondemos em 24-48 horas",
+        "closingMessage": "Somos uma equipe pequena com uma grande visão — seus pensamentos importam para nós. Entre em contato e vamos construir algo local e global juntos.",
+        "seo": {
+            "title": "Contact explorers | Support, Help and Partnership enquiries.",
+            "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
+            "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+            "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
+            "keywords": [
+                "contact explorers",
+                "explorers support",
+                "get in touch explorers",
+                "customer service travel app",
+                "partnership inquiry explorers",
+                "help center local recommendations",
+                "technical support explorers",
+                "travel app customer service",
+                "feedback location sharing",
+                "account assistance explorers",
+                "business collaboration explorers",
+                "report problem explorers",
+                "share local recommendations support",
+                "find explorers contact",
+                "customer service",
+                "explorers team",
+                "help center",
+                "contact support",
+                "QR code support",
+                "local recommendations help",
+                "partnership inquiries"
+            ]
+        }
+    },
+    "about": {
+        "title": "Exploradores da Terra",
+        "subtitle": {
+            "line1": "Uma comunidade global de pessoas que exploram com cuidado — para pessoas, cultura e o planeta que compartilhamos.",
+            "line2": "Exploração, para nós, não é sobre quão longe vamos.",
+            "line3": "É sobre quão profundamente nos conectamos."
+        },
+        "section1": {
+            "title": "O QUE ACREDITAMOS",
+            "line1": "A exploração começa com consciência.",
+            "line2": "Com perceber o que outros passam despercebido.",
+            "line3": "Com escolher se mover com reflexão, não rapidamente.",
+            "line4": "Estamos vivendo brevemente em um planeta antigo —\nadicionando algumas marcas intencionais a uma história\nque começou muito antes de nós\ne continuará muito depois que partirmos."
+        },
+        "section2": {
+            "title": "COMO VEMOS A EXPLORAÇÃO",
+            "line1": "A exploração não é medida em milhas.",
+            "line2": "É medida em significado.",
+            "line3": "Vive em desacelerar, prestar atenção,\ne respeitar cada lugar em que entramos —\numa rua, uma trilha de montanha, uma mesa de café,\nou um momento compartilhado com alguém novo."
+        },
+        "section3": {
+            "title": "O QUE ESTAMOS CONSTRUINDO",
+            "line1": "explorers é um lugar para:",
+            "item1": "Guias moldados por experiência real",
+            "item2": "Lugares, viagens, sons e histórias que valem a pena lembrar",
+            "item3": "Comunidades construídas sobre pessoas — não métricas de popularidade",
+            "line2": "A tecnologia nos ajuda a nos conectar.",
+            "line3": "As pessoas dão a ela um propósito."
+        },
+        "section4": {
+            "title": "PERTENCIMENTO",
+            "line1": "Exploradores da Terra não é um clube.",
+            "line2": "Não é um rótulo.",
+            "line3": "É uma mentalidade compartilhada —\num entendimento silencioso de como nos movemos pelo mundo."
+        },
+        "closing": "Se você é curioso.\nSe você é reflexivo.\nSe você está disposto a desacelerar e olhar mais de perto —\nvocê já pertence aqui.",
+        "seo": {
+            "title": "Explorers of Earth | About Us",
+            "description": "A global community of people who explore with care — for people, culture, and the planet we share. Exploration isn't about distance, it's about depth.",
+            "keywords": [
+                "explorers of earth",
+                "about explorers",
+                "exploration community",
+                "thoughtful travel",
+                "sustainable exploration",
+                "local recommendations platform",
+                "travel app about",
+                "community-driven recommendations",
+                "authentic local experiences",
+                "explorers team",
+                "local discovery platform",
+                "share local places",
+                "travel technology",
+                "local recommendations app",
+                "explorers story",
+                "who we are explorers"
+            ]
+        }
+    },
+    "cookieConsent": {
+        "title": "🍪 Preferências de Cookies",
+        "description": "Usamos cookies para melhorar sua experiência de navegação, fornecer conteúdo personalizado e analisar o tráfego. Você pode gerenciar suas preferências a qualquer momento.",
+        "acceptAll": "✅ Aceitar Todos os Cookies",
+        "customize": "⚙️ Personalizar",
+        "rejectNonEssential": "❌ Rejeitar Não Essenciais",
+        "preferencesTitle": "Preferências de Cookies",
+        "essentialCookies": {
+            "title": "Cookies Essenciais",
+            "description": "Necessários para o funcionamento adequado do site",
+            "alwaysOn": "Sempre Ativados"
+        },
+        "analyticsCookies": {
+            "title": "Cookies de Análise",
+            "description": "Nos ajudam a entender como os visitantes interagem com nosso site"
+        },
+        "marketingCookies": {
+            "title": "Cookies de Marketing",
+            "description": "Usados para entregar anúncios personalizados"
+        },
+        "savePreferences": "Salvar Preferências",
+        "acceptAllButton": "Aceitar Todos",
+        "closeBanner": "Fechar banner",
+        "goBack": "Voltar"
+    },
+    "footer": {
+        "tagline": "Deixe suas recomendações viajarem pelo mundo.",
+        "email": "hello@explorers.earth",
+        "sections": {
+            "product": "Produto",
+            "contact": "Contato",
+            "legal": "Legal"
+        },
+        "links": {
+            "howItWorks": "Como Funciona",
+            "faq": "Perguntas Frequentes",
+            "contact": "Contato",
+            "about": "Sobre",
+            "terms": "Termos e Condições",
+            "privacy": "Política de Privacidade",
+            "cookies": "Política de Cookies"
+        },
+        "copyright": "© 2025 explorers. Todos os direitos reservados.",
+        "madeWithLove": "Feito com amor na terra"
+    },
+    "legal": {
+        "terms": {
+            "title": "Termos e Condições",
+            "loading": "Carregando termos e condições...",
+            "error": "Erro ao carregar termos e condições. Tente novamente mais tarde."
+        },
+        "privacy": {
+            "title": "Política de Privacidade",
+            "loading": "Carregando política de privacidade...",
+            "error": "Erro ao carregar política de privacidade. Tente novamente mais tarde."
+        },
+        "cookies": {
+            "title": "Política de Cookies",
+            "loading": "Carregando política de cookies...",
+            "error": "Erro ao carregar política de cookies. Tente novamente mais tarde."
+        }
+    },
+    "languageModal": {
+        "title": "Selecionar Idioma",
+        "searchPlaceholder": "Pesquisar idiomas...",
+        "close": "Fechar"
+    },
+    "auth": {
+        "signup": "Cadastrar",
+        "signupSubtitle": "Cadastre-se para aproveitar os recursos do explorers",
+        "username": "Nome de usuário",
+        "usernamePlaceholder": "Digite seu nome de usuário",
+        "email": "E-mail",
+        "emailPlaceholder": "Digite seu e-mail",
+        "password": "Senha",
+        "passwordPlaceholder": "Digite sua senha",
+        "confirmPassword": "Confirmar Senha",
+        "confirmPasswordPlaceholder": "Digite sua senha novamente",
+        "register": "Cadastrar",
+        "or": "ou",
+        "signUpWithGoogle": "Cadastrar com Google",
+        "alreadyHaveAccount": "Já tem uma conta?",
+        "login": "Entrar",
+        "loginTitle": "Entrar",
+        "loginSubtitle": "Faça login para continuar para sua conta",
+        "usernameOrEmail": "Nome de usuário ou e-mail",
+        "usernameOrEmailPlaceholder": "Digite seu nome de usuário ou e-mail",
+        "signInWithGoogle": "Entrar com Google",
+        "newToexplorers": "Novo no explorers?",
+        "forgotPassword": "Esqueceu a senha?",
+        "validations": {
+            "username": {
+                "required": "Nome de usuário é obrigatório",
+                "minLength": "Nome de usuário deve ter pelo menos 3 caracteres",
+                "maxLength": "Nome de usuário não pode exceder 30 caracteres",
+                "invalidChars": "Nome de usuário pode conter apenas letras minúsculas (a-z), números (0-9) e hífens (-)",
+                "mustStartWithLetter": "Nome de usuário deve começar com uma letra (a-z)",
+                "cannotStartEndHyphen": "Nome de usuário não pode começar ou terminar com hífen",
+                "noConsecutiveHyphens": "Nome de usuário não pode conter hífens consecutivos",
+                "cannotBeAllNumbers": "Nome de usuário não pode ser apenas números",
+                "reservedWords": "Este nome de usuário contém palavras reservadas e não pode ser usado",
+                "inappropriateContent": "Nome de usuário contém conteúdo inadequado",
+                "alreadyExists": "Nome de usuário já existe",
+                "suggestedAlternatives": "Alternativas sugeridas:",
+                "willBeConvertedLowercase": "Nome de usuário será convertido para minúsculas",
+                "checkingAvailability": "Verificando disponibilidade...",
+                "available": "Nome de usuário está disponível",
+                "willConvertToLowercase": "O nome de usuário será convertido para minúsculas"
+            },
+            "email": {
+                "required": "E-mail é obrigatório",
+                "invalidFormat": "Por favor, digite um endereço de e-mail válido",
+                "alreadyExists": "E-mail já existe",
+                "invalid": "E-mail inválido"
+            },
+            "password": {
+                "required": "Senha é obrigatória",
+                "minLength": "Senha deve ter pelo menos 6 caracteres",
+                "uppercaseRequired": "Senha deve conter pelo menos uma letra maiúscula (A-Z)",
+                "numberRequired": "Senha deve conter pelo menos um número (0-9)",
+                "specialCharRequired": "Senha deve conter pelo menos um caractere especial (!@#$%^&*().,?\":{}|\u003c\u003e)",
+                "strength": "Força da senha",
+                "weak": "Fraca",
+                "medium": "Média",
+                "strong": "Forte",
+                "maxLength": "A senha não deve exceder 32 caracteres",
+                "lowercaseRequired": "A senha deve conter pelo menos uma letra minúscula (a-z)",
+                "tooCommon": "Esta senha é muito comum. Por favor, escolha uma senha mais única",
+                "sameAsCurrent": "A nova senha não pode ser a mesma que sua senha atual",
+                "considerLonger": "Considere usar uma senha mais longa com mais variedade para melhor segurança",
+                "moreSecure": "Senhas com 10 ou mais caracteres são mais seguras",
+                "veryWeak": "Muito Fraca",
+                "fair": "Regular",
+                "good": "Boa",
+                "veryStrong": "Muito Forte"
+            },
+            "confirmPassword": {
+                "required": "Por favor, confirme sua senha",
+                "mustMatch": "As senhas não coincidem",
+                "confirmRequired": "Confirmação de senha é obrigatória",
+                "match": "As senhas coincidem"
+            },
+            "login": {
+                "usernameOrEmailRequired": "Nome de usuário ou e-mail é obrigatório",
+                "invalidCredentials": "Nome de usuário/e-mail ou senha inválidos",
+                "accountNotFound": "Conta não encontrada",
+                "tooManyAttempts": "Muitas tentativas falharam",
+                "incorrectPassword": "Senha incorreta"
+            },
+            "general": {
+                "fillRequiredFields": "Por favor, preencha todos os campos obrigatórios",
+                "somethingWentWrong": "Algo deu errado, por favor tente novamente"
+            },
+            "forgotPassword": {
+                "title": "Esqueceu a Senha?",
+                "description": "Digite seu endereço de e-mail e enviaremos um link de redefinição.",
+                "emailLabel": "Endereço de e-mail",
+                "emailPlaceholder": "Digite seu e-mail",
+                "sendResetLink": "Enviar Link de Redefinição",
+                "backToLogin": "Voltar ao Login",
+                "resetLinkSent": "Link de redefinição de senha enviado para seu e-mail!",
+                "failedToSend": "Falha ao enviar link de redefinição. Tente novamente mais tarde.",
+                "somethingWentWrong": "Algo deu errado!"
+            },
+            "accountName": {
+                "required": "Nome da conta é obrigatório",
+                "minLength": "Nome da conta deve ter pelo menos 2 caracteres",
+                "maxLength": "Nome da conta não deve exceder 50 caracteres",
+                "invalidChars": "Nome da conta pode conter apenas letras, espaços, apóstrofos, hífens e pontos",
+                "noNumbers": "Nome da conta não pode conter números"
+            },
+            "accountType": {
+                "required": "Tipo de conta é obrigatório",
+                "invalid": "Tipo de conta inválido"
+            },
+            "primaryAddress": {
+                "required": "Endereço principal é obrigatório"
+            },
+            "socialMedia": {
+                "instagram": "Por favor, insira uma URL de perfil do Instagram válida",
+                "whatsapp": "Insira um contato do WhatsApp válido: telefone (+1234567890) ou link wa.me/api.whatsapp.com",
+                "mobile": "Por favor, insira um número de telefone celular válido (ex., +1234567890)",
+                "youtube": "Por favor, insira uma URL de canal do YouTube válida (ex., youtube.com/@nomeusuario)",
+                "x": "Por favor, insira uma URL de perfil do X (Twitter) válida",
+                "spotify": "Por favor, insira uma URL do Spotify válida",
+                "website": "Por favor, insira uma URL de site válida",
+                "facebook": "Por favor, insira uma URL de perfil do Facebook válida",
+                "youtubeMusic": "Por favor, insira uma URL de canal do YouTube Music válida",
+                "email": "Por favor, insira um endereço de e-mail válido",
+                "linkedin": "Por favor, insira uma URL de perfil do LinkedIn válida",
+                "appleMusic": "Por favor, insira uma URL do Apple Music válida",
+                "tiktok": "Por favor, insira uma URL de perfil do TikTok válida",
+                "snapchat": "Por favor, insira um nome de usuário do Snapchat válido"
+            },
+            "onboarding": {
+                "displayNameRequired": "Nome de exibição é obrigatório",
+                "displayNameMinLength": "Nome de exibição deve ter pelo menos 2 caracteres",
+                "displayNameMaxLength": "Nome de exibição não deve exceder 50 caracteres",
+                "bioRequired": "Biografia é obrigatória",
+                "bioMaxLength": "Biografia não deve exceder 250 caracteres",
+                "mobileNumberRequired": "Número de celular é obrigatório",
+                "mobileNumberInvalid": "Por favor, digite um número de celular válido",
+                "mobileNumberLength": "Número de celular deve ter 10 dígitos",
+                "addressRequired": "Endereço é obrigatório",
+                "cityRequired": "Cidade é obrigatória",
+                "stateRequired": "Estado é obrigatório",
+                "countryRequired": "País é obrigatório",
+                "postalCodeRequired": "Código postal é obrigatório",
+                "primaryAddressRequired": "Endereço principal é obrigatório",
+                "emailAddressRequired": "Endereço de e-mail é obrigatório",
+                "resetLinkSentSuccess": "Link de redefinição enviado com sucesso!",
+                "invalidUsername": "Nome de usuário inválido",
+                "profileImageAlt": "Profile"
+            },
+            "resetPassword": {
+                "newPassword": "New Password",
+                "confirmPassword": "Confirm Password"
+            },
+            "resetLinkSent": {
+                "title": "E-mail enviado!",
+                "description": "Verifique sua caixa de entrada para o link de redefinição de senha.",
+                "resending": "Reenviando...",
+                "resendWithCooldown": "Reenviar e-mail ({{cooldown}}s)",
+                "resendMail": "Reenviar e-mail"
+            }
+        },
+        "onboarding": {
+            "accountDetails": {
+                "title": "Detalhes da Conta",
+                "description": "Conte-nos sobre você",
+                "displayName": "Nome de Exibição",
+                "displayNamePlaceholder": "Digite seu nome de exibição",
+                "username": "Nome de Usuário",
+                "usernamePlaceholder": "Digite seu nome de usuário",
+                "usernameDescription": "Seu nome de usuário faz parte do seu link de perfil público e códigos QR. Exemplo: explorers.earth/bhavya",
+                "bio": "Biografia",
+                "bioPlaceholder": "Conte-nos sobre você",
+                "accountType": "Tipo de Conta",
+                "personal": "Pessoal",
+                "creator": "Criador",
+                "business": "Negócios",
+                "next": "Próximo"
+            },
+            "contactDetails": {
+                "title": "Detalhes de Contato",
+                "description": "Adicione seu número de celular para verificação",
+                "mobileNumber": "Número de Celular",
+                "mobileNumberPlaceholder": "Digite seu número de celular",
+                "next": "Próximo",
+                "back": "Voltar"
+            },
+            "addressDetails": {
+                "title": "Detalhes do Endereço",
+                "description": "Onde você está localizado?",
+                "address": "Endereço",
+                "addressPlaceholder": "Digite seu endereço",
+                "streetName": "Nome da Rua",
+                "streetNamePlaceholder": "Digite o nome da rua",
+                "city": "Cidade",
+                "cityPlaceholder": "Digite a cidade",
+                "state": "Estado",
+                "statePlaceholder": "Digite o estado",
+                "country": "País",
+                "countryPlaceholder": "Digite o país",
+                "postalCode": "Código Postal",
+                "postalCodePlaceholder": "Digite o código postal",
+                "primaryAddress": "Endereço Principal",
+                "primaryAddressDescription": "exibido no perfil público (cidade e país)",
+                "primaryAddressPlaceholder": "Digite o endereço principal",
+                "sameAsAddress": "Igual ao Endereço",
+                "confirmDetails": "Confirmar Detalhes",
+                "back": "Voltar"
+            }
+        },
+        "resetPassword": {
+            "newPasswordPlaceholder": "Enter new password",
+            "confirmPasswordPlaceholder": "Confirm your password"
+        }
+    },
+    "common": {
+        "loading": "Carregando...",
+        "error": "Ocorreu um erro. Por favor, tente novamente mais tarde.",
+        "retry": "Tentar novamente",
+        "noResults": "Nenhum resultado encontrado",
+        "submit": "Enviar",
+        "hidePassword": "Ocultar senha",
+        "showPassword": "Mostrar senha",
+        "signInWithGoogle": "Entrar com Google",
+        "signUpWithGoogle": "Inscrever-se com Google",
+        "cancel": "Cancelar"
+    },
+    "dashboard": {
+        "home": {
+            "welcomeBack": "Bem-vindo de volta",
+            "profile": "Perfil",
+            "myRecommendations": "Minhas Recomendações",
+            "activePlaces": "lugares ativos",
+            "setupProfile": "Configurar Seu Perfil",
+            "draft": "Rascunho",
+            "startCurating": "Comece a organizar suas recomendações e compartilhe-as com o mundo!",
+            "addRecommendations": "Adicionar Recomendações"
+        },
+        "shareModal": {
+            "copyLink": "Copiar link",
+            "copied": "Copiado!",
+            "linkCopiedToast": "Link copiado!!"
+        },
+        "recommendations": {
+            "locationButton": "Localização",
+            "viewAll": "Ver tudo",
+            "recommendationsTab": "Recomendações",
+            "manageTab": "Gerenciar",
+            "manageHeading": "Gerenciar",
+            "deleteAction": "Excluir",
+            "editAction": "Editar",
+            "publishedStatus": "Publicado",
+            "draftStatus": "Rascunho",
+            "myRecommendationsHeading": "Minhas Recomendações",
+            "myQRHeading": "Meu QR",
+            "myRecommendationsQR": "Minhas Recomendações",
+            "travelLikeLocal": "Viaje como um local",
+            "shareLink": "Compartilhar Link",
+            "copyLink": "Copiar Link",
+            "downloadQR": "Baixar QR",
+            "emptyState": {
+                "title": "Nenhuma Recomendação Disponível",
+                "subtitle": "Comece adicionando seus lugares favoritos a esta lista"
+            },
+            "draftLabel": "Rascunho",
+            "recommendButton": "Recomendar",
+            "exploreSection": {
+                "heading": "Explore com explorers",
+                "addButton": "Adicionar"
+            },
+            "locationLabels": {
+                "currentLocation": "Localização Atual",
+                "selectedLocation": "Localização Selecionada"
+            },
+            "categories": {
+                "foodDrinks": "Comida e Bebidas",
+                "lodging": "Hospedagem",
+                "healthWellness": "Saúde e Bem-estar",
+                "shopping": "Compras",
+                "entertainment": "Entretenimento",
+                "transportation": "Transporte",
+                "services": "Serviços",
+                "tourism": "Turismo",
+                "naturalFeatures": "Características Naturais"
+            },
+            "locationForm": {
+                "labels": {
+                    "searchLocation": "Pesquisar localização",
+                    "recommendationSocialLink": "Link social de recomendação",
+                    "note": "Nota",
+                    "placeUrl": "URL do local"
+                },
+                "placeholders": {
+                    "searchLocation": "Digite cidade, estado ou país (Ex. Paris)",
+                    "recommendationSocialLink": "Digite URL (Youtube / Instagram)",
+                    "note": "Digite uma nota relacionada à sua recomendação",
+                    "placeUrl": "Digite o nome para criar um link compartilhável"
+                },
+                "buttons": {
+                    "addLocation": "Adicionar localização",
+                    "updateLocation": "Atualizar localização"
+                }
+            },
+            "toastMessages": {
+                "listCreated": "Lista de Recomendações Criada com Sucesso!!!",
+                "listPublished": "Lista de recomendações publicada com sucesso!",
+                "listUnpublished": "Lista de recomendações despublicada com sucesso!",
+                "listPublishError": "A lista deve ter pelo menos um local recomendado para ser publicada",
+                "listVisibilityError": "Falha ao atualizar a visibilidade da lista de recomendações.",
+                "qrDownloadSuccess": "Código QR baixado com sucesso!",
+                "qrDownloadError": "Falha ao baixar o código QR. Tente novamente.",
+                "linkCopied": "Link copiado para a área de transferência!",
+                "linkCopyError": "Falha ao copiar o link. Tente novamente.",
+                "qrNotReady": "Código QR não está pronto para download"
+            },
+            "placesModal": {
+                "placesCount": "{{visible}} de {{total}} lugares",
+                "scrollToLoadMore": "Role para carregar mais lugares"
+            },
+            "noRecommendationsYet": "Ainda não há recomendações!!",
+            "setupProfileBeforeRecommendations": "Configure seu perfil antes de criar recomendações!!",
+            "startAddingPlaces": "Comece a adicionar seus lugares favoritos e compartilhe-os com outros.",
+            "startRecommending": "Começar a Recomendar",
+            "addRecommendationForm": {
+                "searchField": {
+                    "label": "Pesquisar Recomendação com Google"
+                },
+                "mainInput": {
+                    "placeholder": "Digite sua Recomendação"
+                },
+                "taggableFields": {
+                    "title": "Título",
+                    "address": "Endereço",
+                    "category": "Categoria",
+                    "contactNumber": "Número de Contato",
+                    "socialLink": "Link Social",
+                    "personName": "Nome da pessoa"
+                },
+                "accordionSection": {
+                    "heading": "Detalhes da sua Recomendação",
+                    "recommendationLink": {
+                        "label": "Seu Link de Recomendação",
+                        "placeholder": "Você pode inserir um reel do Instagram, YouTube ou blog recomendando"
+                    },
+                    "whyRecommend": {
+                        "label": "Por que você recomendaria?",
+                        "placeholder": "Por que você recomendaria?"
+                    }
+                },
+                "fileUpload": {
+                    "text": "Anexar Imagem/Vídeo",
+                    "subtext": "opcional"
+                },
+                "actionButton": {
+                    "text": "Adicionar recomendação"
+                },
+                "taggableFieldsPlaceholders": {
+                    "title": "Digite o título",
+                    "address": "Digite o endereço do local",
+                    "category": "Digite uma categoria",
+                    "contactNumber": "Digite o número de contato",
+                    "socialLink": "Digite o link social (local)",
+                    "personName": "Digite o nome completo da pessoa"
+                },
+                "validationMessages": {
+                    "titleRequired": "Título é obrigatório",
+                    "addressRequired": "Endereço é obrigatório",
+                    "categoryRequired": "Categoria é obrigatória",
+                    "socialUrlRequired": "URL do Instagram ou LinkedIn é obrigatória para recomendações de pessoas",
+                    "socialUrlInvalid": "Por favor, insira uma URL válida do Instagram ou LinkedIn"
+                },
+                "mapModal": {
+                    "cancelButton": "Cancelar",
+                    "addRecommendationButton": "Adicionar recomendação",
+                    "updateRecommendationButton": "Atualizar recomendação",
+                    "setLocationButton": "Definir localização"
+                },
+                "deleteRecommendation": "Excluir recomendação",
+                "searchLocation": {
+                    "label": "Pesquisar uma localização",
+                    "searchPlace": "Pesquisar um lugar",
+                    "placeholder": "Digite e selecione um lugar"
+                },
+                "fetchingImages": "Buscando imagens…",
+                "recommendationType": {
+                    "place": "Local",
+                    "person": "Pessoa",
+                    "label": "Tipo de Recomendação"
+                },
+                "imagePreview": {
+                    "alt": "Visualização",
+                    "deleteTooltip": "Excluir",
+                    "setThumbnailTooltip": "Definir como miniatura",
+                    "confirmDeleteTitle": "Confirmar Exclusão",
+                    "confirmDeleteMessage": "Tem certeza de que deseja excluir esta imagem da coleção?",
+                    "cancel": "Cancelar",
+                    "confirm": "Confirmar"
+                },
+                "deleteRecommendationModal": {
+                    "title": "Confirmar exclusão",
+                    "message": "Tem certeza de que deseja excluir esta recomendação? Esta ação não pode ser desfeita.",
+                    "cancel": "Cancelar"
+                }
+            }
+        },
+        "profile": {
+            "tabs": {
+                "publicProfile": "Perfil Público",
+                "account": "Conta"
+            },
+            "publicProfile": {
+                "sections": {
+                    "profileInformation": "Bio",
+                    "socialMedia": "Links Sociais",
+                    "publicAddress": "Endereço Público",
+                    "howToReachUs": "Como Nos Alcançar",
+                    "howToReachUsDescription": "Use esta seção para compartilhar os detalhes da localização do seu negócio.",
+                    "feed": "Feed",
+                    "socialMediaSubtitle": "Links e informações de redes sociais"
+                },
+                "fields": {
+                    "accountType": "Tipo de Conta",
+                    "bio": "Bio",
+                    "socialMedia": "Redes Sociais",
+                    "instagram": "Instagram",
+                    "whatsapp": "Whatsapp",
+                    "mobile": "Celular",
+                    "youtube": "Youtube",
+                    "x": "X",
+                    "spotify": "Spotify",
+                    "website": "Site",
+                    "facebook": "Facebook",
+                    "youtubeMusic": "Youtube Music",
+                    "gmail": "Gmail",
+                    "linkedin": "Linkedin",
+                    "appleMusic": "Apple Music",
+                    "tiktok": "Tiktok",
+                    "snapchat": "Snapchat",
+                    "businessLocation": "Adicione sua localização. Elas aparecerão como localizações em destaque no seu perfil público",
+                    "primaryAddress": "Endereço Principal - Mostrado no perfil público (cidade e país)",
+                    "feed": "Envie imagens ou vídeos da sua localização, produtos, serviços ou experiências. Essas fotos serão exibidas na sua galeria no seu perfil público",
+                    "title": "Título",
+                    "contact": "Contato",
+                    "about": "Sobre",
+                    "addLocation": "Adicione sua localização",
+                    "addLocationInformation": "Adicionar Informações de Localização",
+                    "searchAddress": "Pesquisar seu endereço...",
+                    "sameAsAddress": "Igual ao endereço"
+                },
+                "accountTypes": {
+                    "personal": "Pessoal",
+                    "creator": "Criador",
+                    "business": "Negócio"
+                },
+                "businessLocation": {
+                    "title": "Título",
+                    "contact": "Contato",
+                    "website": "Site",
+                    "about": "Sobre"
+                }
+            },
+            "account": {
+                "sections": {
+                    "account": "Conta",
+                    "billingAddress": "Endereço de Cobrança"
+                },
+                "fields": {
+                    "username": "Nome de usuário",
+                    "accountName": "Nome da Conta",
+                    "address": "Endereço",
+                    "streetName": "Nome da Rua",
+                    "state": "Estado",
+                    "city": "Cidade",
+                    "country": "País",
+                    "postalCode": "Código Postal",
+                    "addressPlaceholder": "Digite seu endereço",
+                    "detectLocation": "Detectar minha localização atual"
+                }
+            },
+            "common": {
+                "visible": "Visível",
+                "hidden": "Oculto",
+                "mobileNumber": "Número de celular",
+                "mobileNumberPlaceholder": "Número de celular",
+                "whatsappNumber": "Número do WhatsApp",
+                "primaryAddress": "Endereço Principal",
+                "editImage": "Editar Imagem",
+                "confirm": "Confirmar",
+                "add": "Adicionar",
+                "video": "Vídeo",
+                "feedImage": "Imagem do feed",
+                "importedImage": "imagem importada",
+                "cover": "Capa",
+                "profile": "Perfil",
+                "saveAndPublish": "Salvar e Publicar",
+                "saveToFeed": "Salvar no Feed",
+                "savedAndPublishedSuccessfully": "Salvo e publicado com sucesso",
+                "saveAndPublishFailed": "Falha ao salvar e publicar. Tente novamente.",
+                "failedToSaveChanges": "Falha ao salvar alterações. Tente novamente.",
+                "networkError": "Erro de rede: Verifique sua conexão e tente novamente.",
+                "unexpectedError": "Ocorreu um erro inesperado. Tente novamente.",
+                "somethingWentWrong": "Algo deu errado. Tente novamente.",
+                "failedToUploadFiles": "Falha ao enviar arquivos. Tente novamente.",
+                "failedToUploadImages": "Falha ao enviar imagens. Tente novamente.",
+                "failedToSaveImagesToFeed": "Falha ao salvar imagens no feed",
+                "failedToUpdateProfile": "Falha ao atualizar perfil. Tente novamente.",
+                "fetching": "Buscando...",
+                "selectAll": "Selecionar tudo",
+                "clearSelection": "Limpar seleção",
+                "error": "Ocorreu um erro ao carregar seu perfil. Tente novamente mais tarde.",
+                "errors": {
+                    "noFileProvided": "Nenhum arquivo fornecido para upload",
+                    "failedToGetAccountId": "Falha ao obter ID da conta para upload",
+                    "uploadResponseMissingFileData": "Resposta de upload não contém dados do arquivo"
+                }
+            },
+            "accountSetup": {
+                "title": "Complete a Configuração da Sua Conta",
+                "progress": "Progresso",
+                "complete": "Completo",
+                "profileSetupCompleted": "Configuração de perfil concluída",
+                "profileSetupIncomplete": "Adicione foto de perfil, bio e links sociais",
+                "recommendationsSetupCompleted": "Configuração de recomendações concluída",
+                "recommendationsSetupIncomplete": "Adicione localizações, lugares e publique sua primeira lista",
+                "setupButton": "Configurar",
+                "footerMessage": "Complete ambas as etapas para desbloquear sua experiência completa do painel"
+            }
+        }
+    },
+    "toast": {
+        "success": {
+            "loginSuccessful": "Login realizado com sucesso!",
+            "registrationSuccessful": "Registro realizado com sucesso!",
+            "passwordResetSuccessful": "Redefinição de senha realizada com sucesso!",
+            "emailVerificationSent": "Verificação de e-mail enviada!",
+            "resetLinkSent": "Link de redefinição de senha enviado para seu e-mail!",
+            "resetLinkResent": "Link de redefinição reenviado!",
+            "profileImageUpdated": "Imagem do perfil atualizada com sucesso!",
+            "backgroundImageUpdated": "Imagem de fundo atualizada com sucesso!",
+            "recommendedListUpdated": "Lista Recomendada Atualizada com Sucesso!!!",
+            "accountCreated": "Conta criada com sucesso!",
+            "usernameUpdated": "Nome de usuário atualizado com sucesso!",
+            "profileUpdated": "Perfil atualizado com sucesso!",
+            "settingsSaved": "Configurações salvas com sucesso!",
+            "dataSaved": "Dados salvos com sucesso!",
+            "changesSaved": "Alterações salvas com sucesso!",
+            "fileUploaded": "Arquivo carregado com sucesso!",
+            "imageUploaded": "Imagem carregada com sucesso!",
+            "linkCopied": "Link copiado para a área de transferência!",
+            "emailSent": "E-mail enviado com sucesso!",
+            "notificationSent": "Notificação enviada com sucesso!",
+            "actionCompleted": "Ação concluída com sucesso!",
+            "formSubmitted": "Formulário enviado com sucesso!",
+            "onboardingCompleted": "Integração concluída com sucesso!",
+            "welcomeMessage": "Bem-vindo ao explorers!",
+            "accountActivated": "Conta ativada com sucesso!",
+            "emailVerified": "E-mail verificado com sucesso!",
+            "passwordChanged": "Senha alterada com sucesso!",
+            "usernameChanged": "Nome de usuário alterado com sucesso!",
+            "profileCompleted": "Perfil concluído com sucesso!",
+            "setupCompleted": "Configuração concluída com sucesso!",
+            "loggedOutSuccessfully": "Desconectado com sucesso!"
+        },
+        "error": {
+            "loginFailed": "Falha no login. Verifique suas credenciais.",
+            "registrationFailed": "Falha no registro. Tente novamente.",
+            "passwordResetFailed": "Falha na redefinição de senha. Tente novamente.",
+            "emailVerificationFailed": "Falha na verificação de e-mail. Tente novamente.",
+            "resetLinkFailed": "Falha ao enviar link de redefinição. Tente mais tarde.",
+            "resetLinkResendFailed": "Falha ao reenviar. Tente mais tarde.",
+            "profileImageUpdateFailed": "Falha ao carregar imagem do perfil. Tente novamente.",
+            "backgroundImageUpdateFailed": "Falha ao carregar imagem de fundo. Tente novamente.",
+            "recommendedListUpdateFailed": "Erro ao Atualizar Lista Recomendada!!!",
+            "accountCreationFailed": "Falha na criação da conta. Tente novamente.",
+            "usernameUpdateFailed": "Atualização do nome de usuário falhou. Tente novamente.",
+            "profileUpdateFailed": "Falha na atualização do perfil. Tente novamente.",
+            "settingsSaveFailed": "Falha ao salvar configurações. Tente novamente.",
+            "dataSaveFailed": "Falha ao salvar dados. Tente novamente.",
+            "changesSaveFailed": "Falha ao salvar alterações. Tente novamente.",
+            "fileUploadFailed": "Falha no carregamento do arquivo. Tente novamente.",
+            "imageUploadFailed": "Carregamento da imagem falhou. Tente novamente.",
+            "linkCopyFailed": "Falha ao copiar link. Tente novamente.",
+            "emailSendFailed": "Falha ao enviar e-mail. Tente novamente.",
+            "notificationSendFailed": "Falha ao enviar notificação. Tente novamente.",
+            "actionFailed": "Ação falhou. Tente novamente.",
+            "formSubmissionFailed": "Falha no envio do formulário. Tente novamente.",
+            "onboardingFailed": "Falha na integração. Tente novamente.",
+            "accountActivationFailed": "Falha na ativação da conta. Tente novamente.",
+            "passwordChangeFailed": "Falha na alteração da senha. Tente novamente.",
+            "usernameChangeFailed": "Falha na alteração do nome de usuário. Tente novamente.",
+            "profileCompletionFailed": "Falha na conclusão do perfil. Tente novamente.",
+            "setupFailed": "Falha na configuração. Tente novamente.",
+            "networkError": "Erro de rede. Verifique sua conexão.",
+            "serverError": "Erro do servidor. Tente mais tarde.",
+            "validationError": "Erro de validação. Verifique sua entrada.",
+            "permissionDenied": "Permissão negada. Entre em contato com o suporte.",
+            "sessionExpired": "Sessão expirada. Faça login novamente.",
+            "invalidCredentials": "Credenciais inválidas. Verifique sua entrada.",
+            "emailNotFound": "E-mail não encontrado. Tente novamente.",
+            "usernameAlreadyExists": "Nome de usuário já existe. Escolha outro.",
+            "emailAlreadyExists": "E-mail já existe. Use outro e-mail.",
+            "invalidEmailFormat": "Formato de e-mail inválido. Digite um e-mail válido.",
+            "passwordTooWeak": "Senha muito fraca. Escolha uma senha mais forte.",
+            "passwordsDoNotMatch": "As senhas não coincidem. Tente novamente.",
+            "requiredFieldMissing": "Campo obrigatório ausente. Preencha todos os campos obrigatórios.",
+            "invalidInput": "Entrada inválida. Verifique seus dados.",
+            "fileTooLarge": "Arquivo muito grande. Escolha um arquivo menor.",
+            "unsupportedFileType": "Tipo de arquivo não suportado. Escolha um arquivo diferente.",
+            "uploadLimitExceeded": "Limite de upload excedido. Tente novamente mais tarde.",
+            "operationTimeout": "Operação expirou. Tente novamente.",
+            "serviceUnavailable": "Serviço indisponível. Tente novamente mais tarde.",
+            "maintenanceMode": "Serviço em manutenção. Tente novamente mais tarde.",
+            "rateLimitExceeded": "Muitas solicitações. Tente mais tarde.",
+            "quotaExceeded": "Cota excedida. Tente novamente mais tarde.",
+            "accessDenied": "Acesso negado. Você não tem permissão para executar esta ação.",
+            "resourceNotFound": "Recurso não encontrado. Verifique sua solicitação.",
+            "conflictError": "Erro de conflito. O recurso já existe.",
+            "preconditionFailed": "Pré-condição falhou. Verifique sua solicitação.",
+            "tooManyAttempts": "Muitas tentativas. Tente mais tarde.",
+            "accountLocked": "Conta bloqueada. Entre em contato com o suporte.",
+            "accountSuspended": "Conta suspensa. Entre em contato com o suporte.",
+            "accountDeleted": "Conta excluída. Entre em contato com o suporte.",
+            "emailNotVerified": "E-mail não verificado. Verifique seu e-mail primeiro.",
+            "phoneNotVerified": "Número de telefone não verificado. Verifique seu telefone primeiro.",
+            "twoFactorRequired": "Autenticação de dois fatores é necessária.",
+            "twoFactorFailed": "Autenticação de dois fatores falhou. Tente novamente.",
+            "captchaFailed": "Verificação de captcha falhou. Tente novamente.",
+            "invalidToken": "Token inválido. Tente novamente.",
+            "expiredToken": "Token expirado. Tente novamente.",
+            "invalidCode": "Código inválido. Verifique sua entrada.",
+            "expiredCode": "Código expirado. Solicite um novo.",
+            "codeLimitExceeded": "Limite de código excedido. Tente novamente mais tarde.",
+            "invalidUsername": "Nome de usuário inválido. Verifique sua entrada.",
+            "usernameTooShort": "Nome de usuário muito curto. Escolha um nome de usuário mais longo.",
+            "usernameTooLong": "Nome de usuário muito longo. Escolha um nome de usuário mais curto.",
+            "usernameInvalidChars": "Nome de usuário contém caracteres inválidos. Use apenas letras, números e hífens.",
+            "usernameReserved": "Nome de usuário reservado. Escolha outro nome de usuário.",
+            "usernameProfanity": "Nome de usuário contém conteúdo inapropriado. Escolha outro nome de usuário.",
+            "primaryAddressRequired": "Endereço principal é obrigatório",
+            "addressRequired": "Endereço é obrigatório",
+            "cityRequired": "Cidade é obrigatória",
+            "stateRequired": "Estado é obrigatório",
+            "countryRequired": "País é obrigatório",
+            "postalCodeRequired": "Código postal é obrigatório",
+            "mobileNumberRequired": "Número de celular é obrigatório",
+            "mobileNumberInvalid": "Formato de número de celular inválido",
+            "mobileNumberTooShort": "Número de celular muito curto",
+            "mobileNumberTooLong": "Número de celular muito longo",
+            "bioRequired": "Biografia é obrigatória",
+            "bioTooLong": "Biografia muito longa. Mantenha abaixo de 250 caracteres",
+            "displayNameRequired": "Nome de exibição é obrigatório",
+            "displayNameTooShort": "Nome de exibição muito curto",
+            "displayNameTooLong": "Nome de exibição muito longo",
+            "accountTypeRequired": "Tipo de conta é obrigatório",
+            "invalidAccountType": "Tipo de conta inválido selecionado",
+            "imageRequired": "Imagem é obrigatória",
+            "imageTooLarge": "Imagem muito grande. Escolha uma imagem menor",
+            "unsupportedImageFormat": "Formato de imagem não suportado. Use JPG, PNG ou GIF",
+            "imageProcessingFailed": "Falha no processamento da imagem. Tente novamente",
+            "imageCorrupted": "Imagem corrompida. Escolha outra imagem",
+            "imageDimensionsInvalid": "Dimensões da imagem são inválidas. Escolha outra imagem",
+            "imageSizeInvalid": "Tamanho da imagem é inválido. Escolha outra imagem",
+            "imageFormatInvalid": "Formato da imagem é inválido. Escolha outra imagem",
+            "imageQualityTooLow": "Qualidade da imagem muito baixa. Escolha uma imagem de maior qualidade",
+            "imageTooSmall": "Imagem muito pequena. Escolha uma imagem maior",
+            "imageTooBig": "Imagem muito grande. Escolha uma imagem menor",
+            "imageAspectRatioInvalid": "Proporção da imagem é inválida. Escolha outra imagem",
+            "imageColorSpaceInvalid": "Espaço de cores da imagem é inválido. Escolha outra imagem",
+            "imageMetadataInvalid": "Metadados da imagem são inválidos. Escolha outra imagem",
+            "imageSecurityViolation": "Violação de segurança da imagem. Escolha outra imagem",
+            "imageVirusDetected": "Vírus detectado na imagem. Escolha outra imagem",
+            "imageMalwareDetected": "Malware detectado na imagem. Escolha outra imagem",
+            "imageSpamDetected": "Spam detectado na imagem. Escolha outra imagem",
+            "imageContentInappropriate": "Conteúdo da imagem é inapropriado. Escolha outra imagem",
+            "imageContentViolent": "Conteúdo da imagem é violento. Escolha outra imagem",
+            "imageContentSexual": "Conteúdo da imagem é sexual. Escolha outra imagem",
+            "imageContentHateful": "Conteúdo da imagem é odioso. Escolha outra imagem",
+            "imageContentDiscriminatory": "Conteúdo da imagem é discriminatório. Escolha outra imagem",
+            "imageContentOffensive": "Conteúdo da imagem é ofensivo. Escolha outra imagem",
+            "imageContentAbusive": "Conteúdo da imagem é abusivo. Escolha outra imagem",
+            "imageContentHarassing": "Conteúdo da imagem é assediador. Escolha outra imagem",
+            "imageContentThreatening": "Conteúdo da imagem é ameaçador. Escolha outra imagem",
+            "imageContentDangerous": "Conteúdo da imagem é perigoso. Escolha outra imagem",
+            "imageContentIllegal": "Conteúdo da imagem é ilegal. Escolha outra imagem",
+            "imageContentCopyright": "Conteúdo da imagem viola direitos autorais. Escolha outra imagem",
+            "imageContentTrademark": "Conteúdo da imagem viola marca registrada. Escolha outra imagem",
+            "imageContentPrivacy": "Conteúdo da imagem viola privacidade. Escolha outra imagem",
+            "imageContentConsent": "Conteúdo da imagem carece de consentimento. Escolha outra imagem",
+            "imageContentMinors": "Conteúdo da imagem envolve menores. Escolha outra imagem",
+            "imageContentAnimals": "Conteúdo da imagem envolve crueldade animal. Escolha outra imagem",
+            "imageContentEnvironment": "Conteúdo da imagem prejudica o meio ambiente. Escolha outra imagem",
+            "imageContentHealth": "Conteúdo da imagem prejudica a saúde. Escolha outra imagem",
+            "imageContentSafety": "Conteúdo da imagem prejudica a segurança. Escolha outra imagem",
+            "imageContentSecurity": "Conteúdo da imagem prejudica a segurança. Escolha outra imagem",
+            "imageContentIntegrity": "Conteúdo da imagem prejudica a integridade. Escolha outra imagem",
+            "imageContentReputation": "Conteúdo da imagem prejudica a reputação. Escolha outra imagem",
+            "imageContentBrand": "Conteúdo da imagem prejudica a marca. Escolha outra imagem",
+            "imageContentBusiness": "Conteúdo da imagem prejudica os negócios. Escolha outra imagem",
+            "imageContentPersonal": "Conteúdo da imagem prejudica interesses pessoais. Escolha outra imagem",
+            "imageContentProfessional": "Conteúdo da imagem prejudica interesses profissionais. Escolha outra imagem",
+            "imageContentAcademic": "Conteúdo da imagem prejudica interesses acadêmicos. Escolha outra imagem",
+            "imageContentCultural": "Conteúdo da imagem prejudica interesses culturais. Escolha outra imagem",
+            "imageContentReligious": "Conteúdo da imagem prejudica interesses religiosos. Escolha outra imagem",
+            "imageContentPolitical": "Conteúdo da imagem prejudica interesses políticos. Escolha outra imagem",
+            "imageContentSocial": "Conteúdo da imagem prejudica interesses sociais. Escolha outra imagem",
+            "imageContentEconomic": "Conteúdo da imagem prejudica interesses econômicos. Escolha outra imagem",
+            "imageContentLegal": "Conteúdo da imagem prejudica interesses legais. Escolha outra imagem",
+            "imageContentEthical": "Conteúdo da imagem prejudica interesses éticos. Escolha outra imagem",
+            "imageContentMoral": "Conteúdo da imagem prejudica interesses morais. Escolha outra imagem",
+            "imageContentSpiritual": "Conteúdo da imagem prejudica interesses espirituais. Escolha outra imagem",
+            "imageContentPhilosophical": "Conteúdo da imagem prejudica interesses filosóficos. Escolha outra imagem",
+            "imageContentScientific": "Conteúdo da imagem prejudica interesses científicos. Escolha outra imagem",
+            "imageContentTechnical": "Conteúdo da imagem prejudica interesses técnicos. Escolha outra imagem",
+            "imageContentArtistic": "Conteúdo da imagem prejudica interesses artísticos. Escolha outra imagem",
+            "imageContentCreative": "Conteúdo da imagem prejudica interesses criativos. Escolha outra imagem",
+            "imageContentIntellectual": "Conteúdo da imagem prejudica interesses intelectuais. Escolha outra imagem",
+            "imageContentEducational": "Conteúdo da imagem prejudica interesses educacionais. Escolha outra imagem",
+            "imageContentInformational": "Conteúdo da imagem prejudica interesses informacionais. Escolha outra imagem",
+            "imageContentNews": "Conteúdo da imagem prejudica interesses de notícias. Escolha outra imagem",
+            "imageContentMedia": "Conteúdo da imagem prejudica interesses de mídia. Escolha outra imagem",
+            "imageContentEntertainment": "Conteúdo da imagem prejudica interesses de entretenimento. Escolha outra imagem",
+            "imageContentSports": "Conteúdo da imagem prejudica interesses esportivos. Escolha outra imagem",
+            "imageContentRecreation": "Conteúdo da imagem prejudica interesses recreativos. Escolha outra imagem",
+            "imageContentLeisure": "Conteúdo da imagem prejudica interesses de lazer. Escolha outra imagem",
+            "imageContentHobby": "Conteúdo da imagem prejudica interesses de hobby. Escolha outra imagem",
+            "imageContentInterest": "Conteúdo da imagem prejudica interesses de interesse. Escolha outra imagem",
+            "imageContentPassion": "Conteúdo da imagem prejudica interesses de paixão. Escolha outra imagem",
+            "imageContentLove": "Conteúdo da imagem prejudica interesses de amor. Escolha outra imagem",
+            "imageContentHate": "Conteúdo da imagem prejudica interesses de ódio. Escolha outra imagem",
+            "imageContentAnger": "Conteúdo da imagem prejudica interesses de raiva. Escolha outra imagem",
+            "imageContentFear": "Conteúdo da imagem prejudica interesses de medo. Escolha outra imagem",
+            "imageContentSadness": "Conteúdo da imagem prejudica interesses de tristeza. Escolha outra imagem",
+            "imageContentJoy": "Conteúdo da imagem prejudica interesses de alegria. Escolha outra imagem",
+            "imageContentHappiness": "Conteúdo da imagem prejudica interesses de felicidade. Escolha outra imagem",
+            "imageContentExcitement": "Conteúdo da imagem prejudica interesses de excitação. Escolha outra imagem",
+            "imageContentSurprise": "Conteúdo da imagem prejudica interesses de surpresa. Escolha outra imagem",
+            "imageContentDisgust": "Conteúdo da imagem prejudica interesses de nojo. Escolha outra imagem",
+            "imageContentShame": "Conteúdo da imagem prejudica interesses de vergonha. Escolha outra imagem",
+            "imageContentGuilt": "Conteúdo da imagem prejudica interesses de culpa. Escolha outra imagem",
+            "imageContentPride": "Conteúdo da imagem prejudica interesses de orgulho. Escolha outra imagem",
+            "imageContentEnvy": "Conteúdo da imagem prejudica interesses de inveja. Escolha outra imagem",
+            "imageContentJealousy": "Conteúdo da imagem prejudica interesses de ciúme. Escolha outra imagem",
+            "imageContentGreed": "Conteúdo da imagem prejudica interesses de ganância. Escolha outra imagem",
+            "imageContentLust": "Conteúdo da imagem prejudica interesses de luxúria. Escolha outra imagem",
+            "imageContentGluttony": "Conteúdo da imagem prejudica interesses de gula. Escolha outra imagem",
+            "imageContentSloth": "Conteúdo da imagem prejudica interesses de preguiça. Escolha outra imagem",
+            "imageContentWrath": "Conteúdo da imagem prejudica interesses de ira. Escolha outra imagem"
+        },
+        "warning": {
+            "usernameCooldown": "Mudança de nome de usuário está temporariamente bloqueada devido ao período de espera",
+            "passwordWeak": "Senha fraca. Considere usar uma senha mais forte",
+            "emailNotVerified": "E-mail não verificado. Verifique seu e-mail",
+            "phoneNotVerified": "Número de telefone não verificado. Verifique seu telefone",
+            "profileIncomplete": "Perfil incompleto. Complete seu perfil",
+            "settingsNotSaved": "Configurações não salvas. Salve suas configurações",
+            "dataNotSaved": "Dados não salvos. Salve seus dados",
+            "changesNotSaved": "Alterações não salvas. Salve suas alterações",
+            "fileNotUploaded": "Arquivo não carregado. Carregue seu arquivo",
+            "imageNotUploaded": "Imagem não carregada. Carregue sua imagem",
+            "linkNotCopied": "Link não copiado. Copie seu link",
+            "emailNotSent": "E-mail não enviado. Envie seu e-mail",
+            "notificationNotSent": "Notificação não enviada. Envie sua notificação",
+            "actionNotCompleted": "Ação não concluída. Complete sua ação",
+            "formNotSubmitted": "Formulário não enviado. Envie seu formulário",
+            "onboardingNotCompleted": "Integração não concluída. Complete sua integração",
+            "accountNotActivated": "Conta não ativada. Ative sua conta",
+            "passwordNotChanged": "Senha não alterada. Altere sua senha",
+            "usernameNotChanged": "Nome de usuário não alterado. Altere seu nome de usuário",
+            "profileNotCompleted": "Perfil não concluído. Complete seu perfil",
+            "setupNotCompleted": "Configuração não concluída. Complete sua configuração",
+            "networkSlow": "Rede lenta. Verifique sua conexão",
+            "serverSlow": "Servidor lento. Tente novamente mais tarde",
+            "validationPending": "Validação pendente. Aguarde",
+            "permissionPending": "Permissão pendente. Aguarde",
+            "sessionExpiring": "Sessão expirando. Faça login novamente",
+            "credentialsExpiring": "Credenciais expirando. Atualize suas credenciais",
+            "emailExpiring": "E-mail expirando. Atualize seu e-mail",
+            "phoneExpiring": "Telefone expirando. Atualize seu telefone",
+            "profileExpiring": "Perfil expirando. Atualize seu perfil",
+            "settingsExpiring": "Configurações expirando. Atualize suas configurações",
+            "dataExpiring": "Dados expirando. Atualize seus dados",
+            "changesExpiring": "Alterações expirando. Atualize suas alterações",
+            "fileExpiring": "Arquivo expirando. Atualize seu arquivo",
+            "imageExpiring": "Imagem expirando. Atualize sua imagem",
+            "linkExpiring": "Link expirando. Atualize seu link",
+            "notificationExpiring": "Notificação expirando. Atualize sua notificação",
+            "actionExpiring": "Ação expirando. Atualize sua ação",
+            "formExpiring": "Formulário expirando. Atualize seu formulário",
+            "onboardingExpiring": "Integração expirando. Atualize sua integração",
+            "accountExpiring": "Conta expirando. Atualize sua conta",
+            "passwordExpiring": "Senha expirando. Atualize sua senha",
+            "usernameExpiring": "Nome de usuário expirando. Atualize seu nome de usuário",
+            "setupExpiring": "Configuração expirando. Atualize sua configuração"
+        },
+        "info": {
+            "loading": "Carregando...",
+            "processing": "Processando...",
+            "saving": "Salvando...",
+            "uploading": "Carregando...",
+            "downloading": "Baixando...",
+            "connecting": "Conectando...",
+            "disconnecting": "Desconectando...",
+            "sending": "Enviando...",
+            "receiving": "Recebendo...",
+            "updating": "Atualizando...",
+            "refreshing": "Atualizando...",
+            "synchronizing": "Sincronizando...",
+            "validating": "Validando...",
+            "verifying": "Verificando...",
+            "checking": "Verificando...",
+            "searching": "Pesquisando...",
+            "filtering": "Filtrando...",
+            "sorting": "Ordenando...",
+            "organizing": "Organizando...",
+            "arranging": "Organizando...",
+            "configuring": "Configurando...",
+            "setting": "Configurando...",
+            "adjusting": "Ajustando...",
+            "modifying": "Modificando...",
+            "changing": "Alterando...",
+            "switching": "Alternando...",
+            "toggling": "Alternando...",
+            "enabling": "Habilitando...",
+            "disabling": "Desabilitando...",
+            "activating": "Ativando...",
+            "deactivating": "Desativando...",
+            "starting": "Iniciando...",
+            "stopping": "Parando...",
+            "pausing": "Pausando...",
+            "resuming": "Retomando...",
+            "restarting": "Reiniciando...",
+            "resetting": "Redefinindo...",
+            "clearing": "Limpando...",
+            "deleting": "Excluindo...",
+            "removing": "Removendo...",
+            "adding": "Adicionando...",
+            "inserting": "Inserindo...",
+            "creating": "Criando...",
+            "building": "Construindo...",
+            "constructing": "Construindo...",
+            "generating": "Gerando...",
+            "producing": "Produzindo...",
+            "making": "Criando...",
+            "preparing": "Preparando...",
+            "readying": "Preparando...",
+            "initializing": "Inicializando...",
+            "launching": "Lançando...",
+            "opening": "Abrindo...",
+            "closing": "Fechando...",
+            "shutting": "Fechando...",
+            "ending": "Finalizando...",
+            "finishing": "Finalizando...",
+            "completing": "Concluindo...",
+            "finalizing": "Finalizando...",
+            "concluding": "Concluindo...",
+            "terminating": "Terminando...",
+            "canceling": "Cancelando...",
+            "aborting": "Abortando...",
+            "interrupting": "Interrompendo...",
+            "halting": "Parando...",
+            "freezing": "Congelando...",
+            "unfreezing": "Descongelando...",
+            "thawing": "Descongelando...",
+            "melting": "Derretendo...",
+            "cooling": "Esfriando...",
+            "heating": "Aquecendo...",
+            "warming": "Aquecendo...",
+            "chilling": "Esfriando...",
+            "renewing": "Renovando...",
+            "restoring": "Restaurando...",
+            "recovering": "Recuperando...",
+            "repairing": "Reparando...",
+            "fixing": "Reparando...",
+            "correcting": "Corrigindo...",
+            "tuning": "Ajustando...",
+            "optimizing": "Otimizando...",
+            "improving": "Melhorando...",
+            "enhancing": "Melhorando...",
+            "upgrading": "Atualizando...",
+            "modernizing": "Modernizando..."
+        }
+    },
+    "emailVerification": {
+        "title": "Verify Your Email",
+        "description": "We've sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
+        "checkEmail": "Check your email",
+        "emailSent": "Verification email sent!",
+        "resendEmail": "Resend Email",
+        "resendIn": "Resend in",
+        "seconds": "seconds",
+        "didntReceive": "Didn't receive the email?",
+        "checkSpam": "Please check your spam folder or try again.",
+        "backToLogin": "Back to Login",
+        "emailAddress": "Email Address",
+        "verificationSent": "Verification email sent to:",
+        "clickLink": "Click the link in the email to verify your account.",
+        "expiresIn": "This link expires in 24 hours.",
+        "needHelp": "Need help?",
+        "contactSupport": "Contact Support"
+    },
+    "settings": {
+        "title": "Configurações",
+        "account": {
+            "heading": "Conta",
+            "security": {
+                "title": "Conta e Segurança"
+            },
+            "changePassword": {
+                "text": "Alterar senha?",
+                "button": "Alterar Senha",
+                "modalTitle": "Alterar Senha",
+                "currentPassword": "Senha atual",
+                "newPassword": "Nova senha",
+                "confirmPassword": "Confirmar nova senha",
+                "updateButton": "Atualizar Senha",
+                "currentPasswordPlaceholder": "Digite sua senha atual",
+                "newPasswordPlaceholder": "Digite uma nova senha",
+                "confirmPasswordPlaceholder": "Digite novamente a nova senha",
+                "successMessage": "Senha atualizada com sucesso. Você será redirecionado para o login por segurança.",
+                "redirectMessage": "Redirecionando para o login por segurança...",
+                "description": "Atualize sua senha para manter sua conta segura"
+            },
+            "deactivateAccount": {
+                "text": "Desativar sua conta?",
+                "button": "Desativar Conta",
+                "modalTitle": "Desativar sua conta?",
+                "modalDescription": "Tem certeza de que deseja desativar sua conta?",
+                "enterUsername": "Digite seu nome de usuário",
+                "enterPassword": "Digite sua senha",
+                "usernamePlaceholder": "Digite seu nome de usuário",
+                "passwordPlaceholder": "Digite sua senha atual",
+                "confirmButton": "Desativar Minha Conta",
+                "deactivatedButton": "Desativada",
+                "successMessage": "Conta desativada com sucesso",
+                "activatedMessage": "Conta ativada com sucesso",
+                "description": "Desative temporariamente sua conta"
+            },
+            "deleteAccount": {
+                "text": "Excluir sua conta?",
+                "button": "Excluir Conta",
+                "step1": {
+                    "modalTitle": "Excluir sua conta?",
+                    "modalDescription": "Tem certeza de que deseja excluir sua conta? Esta ação não pode ser desfeita.",
+                    "modalDescription2": "Se quiser manter seus dados, você pode desativar sua conta em vez disso.",
+                    "deactivateInsteadButton": "Desativar conta em vez disso",
+                    "continueButton": "Continuar com exclusão"
+                },
+                "step2": {
+                    "modalTitle": "Digite seus dados",
+                    "enterUsername": "Digite seu nome de usuário",
+                    "enterPassword": "Digite sua senha",
+                    "confirmPassword": "Confirme sua senha",
+                    "usernamePlaceholder": "Digite seu nome de usuário",
+                    "passwordPlaceholder": "Digite sua senha",
+                    "confirmPasswordPlaceholder": "Confirme sua senha",
+                    "continueButton": "Continuar"
+                },
+                "step3": {
+                    "modalTitle": "Por que está saindo?",
+                    "reasonPlaceholder": "Por favor, nos diga o motivo para sair...",
+                    "continueButton": "Continuar"
+                },
+                "step4": {
+                    "modalTitle": "Confirmar exclusão",
+                    "confirmText": "Digite 'CONFIRM DELETE' para continuar",
+                    "confirmPlaceholder": "Digite 'CONFIRM DELETE' para confirmar",
+                    "confirmTextValue": "CONFIRM DELETE",
+                    "deleteButton": "Excluir Minha Conta",
+                    "confirmationRequired": "Por favor, digite 'CONFIRM DELETE' para confirmar.",
+                    "reasonRequired": "Por favor, forneça um motivo para sair.",
+                    "successMessage": "Conta excluída com sucesso."
+                },
+                "description": "Exclua permanentemente sua conta e todos os dados"
+            }
+        },
+        "languagePreference": {
+            "heading": "Preferência de Idioma",
+            "selectLanguage": "Selecione seu idioma",
+            "availableLanguages": "Escolha entre 47 idiomas disponíveis",
+            "currentLanguage": "Atual: {{flag}} {{name}}",
+            "languageChanged": "Idioma alterado para {{name}}",
+            "description": "Escolha seu idioma preferido para a interface. Isso mudará o idioma de todos os textos, botões e menus em toda a aplicação."
+        },
+        "subtitle": "Gerencie as configurações e preferências da sua conta"
+    },
+    "seo": {
+        "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+        "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+    },
+    "sidebar": {
+        "home": "Início",
+        "profile": "Perfil",
+        "recommendations": "Recomendações",
+        "analytics": "Análises",
+        "settings": "Configurações",
+        "logout": "Sair",
+        "loading": "Carregando...",
+        "clickToOpenMenu": "Clique para abrir o menu"
+    },
+    "modal": {
+        "unsavedChanges": {
+            "title": "Alterações não salvas",
+            "message": "Você tem alterações não salvas que serão perdidas se navegar para fora. O que você gostaria de fazer?",
+            "discard": "Descartar",
+            "cancel": "Cancelar",
+            "save": "Salvar"
+        },
+        "usernameChange": {
+            "title": "Confirmação de alteração de nome de usuário",
+            "description": "Seu nome de usuário é usado nos links do seu perfil e lista de recomendações:",
+            "profileLabel": "Perfil:",
+            "listLabel": "Lista:",
+            "warning": "Qualquer código QR ou link com seu nome de usuário antigo não funcionará mais — você precisará atualizá-los e compartilhá-los novamente.",
+            "cooldownPrefix": "Você poderá alterar seu nome de usuário novamente em",
+            "cooldownSuffix": "após esta atualização.",
+            "minute": "1 minuto",
+            "day": "1 dia",
+            "days": "dias",
+            "cancel": "Cancelar",
+            "confirm": "Alterar nome de usuário"
+        }
+    },
+    "analytics": {
+        "dashboard": {
+            "title": "Dashboard de Analytics",
+            "subtitle": "Rastreie o desempenho dos seus códigos QR e o engajamento dos usuários",
+            "timePeriod": "Período de Tempo:",
+            "timeFilter": {
+                "today": "Hoje",
+                "last7days": "Últimos 7 Dias",
+                "last30days": "Últimos 30 Dias",
+                "custom": "Intervalo Personalizado",
+                "selectPeriod": "Selecionar Período"
+            },
+            "dateRange": {
+                "from": "De:",
+                "to": "Até:"
+            },
+            "summaryCards": {
+                "totalViews": "Visualizações Totais",
+                "totalClicks": "Cliques Totais",
+                "totalQRViews": "Visualizações QR Totais",
+                "totalLinkViews": "Visualizações de Link Totais"
+            },
+            "loading": {
+                "loadingData": "Carregando dados de analytics...",
+                "resolvingCountry": "Resolvendo dados do país..."
+            },
+            "error": {
+                "title": "Erro ao Carregar Analytics",
+                "message": "Não foi possível buscar os dados de analytics. Tente novamente mais tarde.",
+                "errorLabel": "Erro:"
+            },
+            "comingSoon": {
+                "title": "Analytics em Breve",
+                "message": "Os analytics estarão disponíveis em \u003cstrong\u003e{{days}} dia{{daysPlural}}\u003c/strong\u003e após a criação da sua conta.",
+                "whyWait": {
+                    "title": "Por que esperar?",
+                    "reasons": {
+                        "accuracy": "• Garante precisão dos dados e previne spam",
+                        "interactions": "• Permite tempo para interações significativas dos usuários",
+                        "insights": "• Fornece insights de analytics confiáveis"
+                    }
+                },
+                "tip": "Enquanto isso, comece a compartilhar seus códigos QR para gerar dados para quando os analytics estiverem disponíveis!",
+                "filterTip": "\u003cstrong\u003eDica:\u003c/strong\u003e Assim que os analytics estiverem disponíveis, você poderá filtrar por períodos de tempo (hoje, últimos 7 dias, últimos 30 dias ou intervalo personalizado) para ver seus dados."
+            },
+            "emptyState": {
+                "title": "Sem Dados de Analytics",
+                "noDataMessage": "Nenhum dado de analytics encontrado para sua conta. Os analytics aparecerão aqui assim que as pessoas começarem a visualizar e interagir com seus códigos QR.",
+                "customRange": {
+                    "bothMissing": "Selecione as datas de início e fim para o intervalo personalizado para visualizar os dados de analytics.",
+                    "startMissing": "Selecione uma data de início para o intervalo personalizado para visualizar os dados de analytics.",
+                    "endMissing": "Selecione uma data de fim para o intervalo personalizado para visualizar os dados de analytics."
+                },
+                "noDataForPeriod": {
+                    "today": "Nenhum dado de analytics disponível para hoje. Selecione um intervalo de tempo diferente para ver seus dados.",
+                    "last7days": "Nenhum dado de analytics disponível para os últimos 7 dias. Selecione um intervalo de tempo diferente para ver seus dados.",
+                    "last30days": "Nenhum dado de analytics disponível para os últimos 30 dias. Selecione um intervalo de tempo diferente para ver seus dados.",
+                    "custom": "Nenhum dado de analytics disponível para o intervalo personalizado ({{startDate}} a {{endDate}}). Selecione um intervalo de tempo diferente para ver seus dados.",
+                    "default": "Nenhum dado de analytics disponível para o período de tempo selecionado. Selecione um intervalo de tempo diferente para ver seus dados."
+                },
+                "howToStart": {
+                    "title": "Para começar a ver analytics:",
+                    "shareQR": "• Compartilhe seus códigos QR nas redes sociais",
+                    "includeQR": "• Inclua códigos QR em seus materiais de marketing",
+                    "askFriends": "• Peça aos amigos para escanear seus códigos QR",
+                    "viewProfile": "• Visualize suas páginas de perfil público"
+                }
+            },
+            "charts": {
+                "topCountries": {
+                    "title": "Top 3 Países por Visualizações",
+                    "retryGeolocation": "Tentar Geolocalização Novamente",
+                    "geolocationIssue": "Problema de Geolocalização:",
+                    "countryDataUnavailable": "Dados do País Indisponíveis",
+                    "unableToResolve": "Não foi possível resolver endereços IP em países no momento. Isso pode ser devido a restrições de rede ou limitações do serviço.",
+                    "failedToResolve": "Falha ao resolver dados do país. Por favor, tente novamente mais tarde.",
+                    "analyticsSummary": "Resumo de Analytics:",
+                    "totalViewEvents": "• {{count}} eventos de visualização totais",
+                    "eventsWithCountry": "• {{count}} eventos com dados do país",
+                    "eventsPending": "• {{count}} eventos pendentes de geolocalização",
+                    "willAppear": "Os dados do país aparecerão automaticamente assim que os serviços de geolocalização IP estiverem disponíveis.",
+                    "tooltip": {
+                        "country": "País: {{country}}",
+                        "views": "Visualizações: {{count}}"
+                    },
+                    "legend": "Visualizações"
+                },
+                "worldMap": {
+                    "title": "Distribuição Global de Visualizações",
+                    "subtitle": "Mapa mundial interativo mostrando a distribuição de visualizações por países das páginas públicas",
+                    "noGeographicData": "Nenhum Dado Geográfico Disponível",
+                    "unableToResolve": "Não foi possível resolver endereços IP em países no momento. Isso pode ser devido a restrições de rede ou limitações do serviço.",
+                    "failedToResolve": "Falha ao resolver dados do país. Por favor, tente novamente mais tarde.",
+                    "analyticsSummary": "Resumo de Analytics:",
+                    "totalViewEvents": "• {{count}} eventos de visualização totais",
+                    "eventsWithCountry": "• {{count}} eventos com dados do país",
+                    "eventsPending": "• {{count}} eventos pendentes de geolocalização",
+                    "willAppear": "Os dados do país aparecerão automaticamente assim que os serviços de geolocalização IP estiverem disponíveis.",
+                    "tooltip": {
+                        "country": "{{country}}",
+                        "views": "{{views}} visualizações"
+                    },
+                    "countriesWithViews": "{{count}} países com visualizações",
+                    "legend": {
+                        "views": "Visualizações:",
+                        "low": "Baixo",
+                        "medium": "Médio",
+                        "high": "Alto",
+                        "highest": "Mais Alto"
+                    }
+                },
+                "trafficSource": {
+                    "title": "Fonte de Tráfego ao Longo do Tempo",
+                    "subtitle": "Rastreie como o tráfego de diferentes fontes varia ao longo do tempo",
+                    "selectSource": "Selecionar Fonte de Tráfego:",
+                    "allSources": "Todas as Fontes",
+                    "direct": "Direto",
+                    "qrCode": "Código QR",
+                    "instagram": "Instagram",
+                    "whatsapp": "WhatsApp",
+                    "twitter": "Twitter",
+                    "noTrafficData": "Nenhum Dado de Tráfego Disponível",
+                    "noViewEvents": "Nenhum evento de visualização encontrado com informações de fonte de tráfego.",
+                    "analyticsSummary": "Resumo de Analytics:",
+                    "totalViewEvents": "• {{count}} eventos de visualização totais",
+                    "eventsWithUTM": "• {{count}} eventos com fonte UTM",
+                    "directTraffic": "• {{count}} eventos de tráfego direto",
+                    "willAppear": "Os dados da fonte de tráfego aparecerão assim que os usuários visitarem suas páginas com parâmetros UTM.",
+                    "tooltip": {
+                        "sourceCount": "{{source}}: {{count}}"
+                    }
+                },
+                "locationEngagement": {
+                    "title": "Engajamento com Localização",
+                    "subtitle": "Rastreie visualizações de diferentes localizações ao longo do tempo",
+                    "selectLocation": "Selecionar Localização:",
+                    "allLocations": "Todas as Localizações",
+                    "selectLocationPlaceholder": "Selecionar Localização",
+                    "locationViews": "{{location}} ({{count}} visualizações)",
+                    "noLocationData": "Nenhum dado de visualização de localização disponível",
+                    "unknownLocation": "Localização Desconhecida",
+                    "location": "Localização",
+                    "tooltip": {
+                        "date": "Data: {{date}}",
+                        "locationViews": "{{location}}: {{value}} visualizações"
+                    },
+                    "stats": {
+                        "totalLocations": "Localizações Totais",
+                        "totalViews": "Visualizações Totais",
+                        "avgViews": "Média de Visualizações/Localização"
+                    }
+                },
+                "recommendedPlaces": {
+                    "title": "Engajamento com Lugares Recomendados",
+                    "subtitle": "Rastreie cliques em lugares recomendados por localização",
+                    "selectLocation": "Selecionar Localização:",
+                    "selectLocationPlaceholder": "Selecionar Localização",
+                    "locationPlaces": "{{location}} ({{count}} lugares)",
+                    "noRecommendationData": "Nenhum Dado de Recomendação",
+                    "noDataMessage": "Nenhum dado de clique em recomendação disponível para o período selecionado.",
+                    "analyticsSummary": "Resumo de Analytics:",
+                    "totalClickEvents": "• {{count}} eventos de clique totais",
+                    "recordsWithRecommendations": "• {{count}} registros com ID de Recomendação",
+                    "uniqueRecommendations": "• {{count}} recomendações únicas",
+                    "selectLocationPrompt": "Selecione uma localização para ver os dados de recomendação.",
+                    "noClicksMessage": "Nenhum clique em recomendação encontrado para a localização selecionada. Os dados de recomendação aparecerão assim que os usuários clicarem nos cartões de lugares nas suas páginas de localização.",
+                    "unknownPlace": "Lugar Desconhecido",
+                    "unknownCategory": "Categoria Desconhecida",
+                    "unknownLocation": "Localização Desconhecida",
+                    "tooltip": {
+                        "place": "{{place}}",
+                        "category": "Categoria: {{category}}",
+                        "clicks": "Cliques: {{count}}"
+                    },
+                    "stats": {
+                        "placesShown": "Lugares Mostrados",
+                        "totalClicks": "Cliques Totais",
+                        "avgClicks": "Média de Cliques/Lugar"
+                    }
+                },
+                "socialMedia": {
+                    "title": "Interação em Redes Sociais",
+                    "subtitle": "Rastreie cliques em links de redes sociais do seu perfil público em todas as plataformas",
+                    "noDataTitle": "Nenhum Dado de Interação em Redes Sociais",
+                    "noDataMessage": "Nenhum dado de clique em redes sociais disponível da sua página de perfil público.",
+                    "analyticsSummary": "Resumo de Analytics:",
+                    "totalSocialClicks": "• {{count}} cliques totais em redes sociais",
+                    "uniquePlatforms": "• {{count}} plataformas únicas",
+                    "trackingNote": "• Rastreando apenas cliques da página de perfil público",
+                    "willAppear": "Os dados de interação em redes sociais aparecerão assim que os usuários clicarem nos seus links de redes sociais.",
+                    "tooltip": {
+                        "platform": "{{platform}}",
+                        "clicks": "Cliques: {{count}}"
+                    },
+                    "stats": {
+                        "platforms": "Plataformas",
+                        "totalClicks": "Cliques Totais",
+                        "avgClicks": "Média de Cliques/Plataforma"
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,105 @@
+# explorers Robots.txt
+# Optimized for SEO while protecting user privacy
+
+User-agent: *
+
+# PUBLIC ROUTES - Allow crawling for SEO and discoverability
+Allow: /
+Allow: /contact
+Allow: /privacy
+Allow: /cookies
+Allow: /terms
+
+# AUTHENTICATION PAGES - Allow crawling for user access
+Allow: /login
+Allow: /register
+Allow: /forgot-password
+
+# PUBLIC USER PROFILES - Accessible via QR scans
+# Pattern: /{username}
+Allow: /*/
+
+# PUBLIC RECOMMENDATION PAGES - Shareable content
+# Pattern: /{username}/places
+# Pattern: /{username}/places/{placeSlug}
+Allow: /*/places/
+Allow: /*/places/*/
+
+# PUBLIC MAP VIEWS - Location-based content
+# Pattern: /{username}/places/map
+# Pattern: /{username}/places/{placeSlug}/map
+Allow: /*/places/map
+Allow: /*/places/*/map
+
+# PUBLIC COMMUNITY PAGES
+# Pattern: /{username}/community
+Allow: /*/community
+
+# PRIVATE ROUTES - Disallow crawling to protect user privacy
+
+# Authentication & Account Management (Private Routes Only)
+Disallow: /reset-password
+Disallow: /reset-link-sent
+Disallow: /email-verification
+Disallow: /email-confirmed
+Disallow: /onboarding
+
+# User Dashboard & Management (Protected Routes)
+Disallow: /home
+Disallow: /profile
+Disallow: /recommendations
+Disallow: /analytics
+Disallow: /settings
+
+# Dynamic Management Routes
+Disallow: /*/new
+Disallow: /*/edit
+
+# API & Authentication Callbacks
+Disallow: /api/
+Disallow: /api/connect/google/callback
+
+# System Routes
+Disallow: /404
+
+# Place-specific management routes that are private
+# Pattern: /{username}/places/{place}/placesmap (internal management)
+Disallow: /*/places/*/placesmap
+
+# Dashboard routes (if using /dashboard/ prefix)
+Disallow: /dashboard/
+
+# Crawl Delay - Be respectful to server resources
+Crawl-delay: 1
+
+# Sitemap Location
+Sitemap: https://explorers.earth/sitemap.xml
+
+# Additional Directives for Better SEO
+# Allow common assets and resources
+Allow: /assets/
+Allow: /images/
+Allow: /icons/
+Allow: /public/
+Allow: /*.css$
+Allow: /*.js$
+Allow: /*.svg$
+Allow: /*.png$
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.gif$
+Allow: /*.webp$
+Allow: /*.avif$
+
+# Block common unwanted paths
+Disallow: /admin/
+Disallow: /private/
+Disallow: /internal/
+Disallow: /_/
+Disallow: /tmp/
+Disallow: /temp/
+Disallow: /*.json$
+Disallow: /*?*utm_*
+Disallow: /*?*session*
+Disallow: /*?*token*
+Disallow: /*?*auth*

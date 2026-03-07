@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalTunes SSO Callback</title>
+</head>
+<body>
+    <script>
+        // LocalTunes SSO Callback Handler
+        // This page handles cross-domain SSO communication from LocalQR
+        
+        console.log('🔧 LocalTunes SSO callback page loaded');
+        
+        // Notify parent window that we're ready to receive SSO data
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage({
+                type: 'LOCALTUNES_SSO_READY',
+                timestamp: Date.now()
+            }, '*');
+            
+            console.log('📡 Notified parent window that SSO callback is ready');
+        }
+        
+        // Listen for SSO authentication data from LocalQR
+        window.addEventListener('message', function(event) {
+            // Security: Only accept messages from localhost:5173 (LocalQR)
+            if (event.origin !== 'http://localhost:5173' && event.origin !== 'https://localhost:5173') {
+                console.log('⚠️ Rejected message from unauthorized origin:', event.origin);
+                return;
+            }
+            
+            if (event.data.type === 'LOCALTUNES_SSO_AUTH') {
+                console.log('🔐 Received SSO authentication data from LocalQR');
+                
+                const authData = event.data.authData;
+                
+                // Store authentication data in LocalTunes cookies and localStorage (for fallback)
+                try {
+                    // Set the SSO cookie with proper attributes
+                    const cookieData = {
+                        auth_token: authData.auth_token,
+                        auth_user: authData.auth_user,
+                        timestamp: event.data.timestamp,
+                        expiresAt: event.data.timestamp + (7 * 24 * 60 * 60 * 1000), // 7 days from now
+                        domain: window.location.origin
+                    };
+                    
+                    // Set the SSO cookie
+                    const cookieString = `localtunes_cross_domain_auth=${encodeURIComponent(JSON.stringify(cookieData))}; path=/; max-age=${7 * 24 * 60 * 60}; samesite=lax`;
+                    document.cookie = cookieString;
+                    
+                    // Also store in localStorage as fallback
+                    localStorage.setItem('auth_token', authData.auth_token);
+                    localStorage.setItem('auth_user', authData.auth_user);
+                    localStorage.setItem('sso_timestamp', event.data.timestamp.toString());
+                    
+                    console.log('✅ SSO authentication data stored in LocalTunes cookies and localStorage');
+                    
+                    // Notify LocalTunes main application of successful SSO
+                    window.postMessage({
+                        type: 'LOCALTUNES_SSO_SUCCESS',
+                        authData: authData,
+                        timestamp: event.data.timestamp
+                    }, window.location.origin);
+                    
+                    // Close the iframe after successful authentication
+                    setTimeout(() => {
+                        if (window.parent && window.parent !== window) {
+                            window.parent.postMessage({
+                                type: 'LOCALTUNES_SSO_COMPLETE',
+                                success: true
+                            }, '*');
+                        }
+                    }, 1000);
+                    
+                } catch (error) {
+                    console.error('❌ Failed to store SSO authentication data:', error);
+                    
+                    // Notify of failure
+                    if (window.parent && window.parent !== window) {
+                        window.parent.postMessage({
+                            type: 'LOCALTUNES_SSO_COMPLETE',
+                            success: false,
+                            error: error.message
+                        }, '*');
+                    }
+                }
+            }
+        });
+        
+        // Handle page load completion
+        window.addEventListener('load', function() {
+            console.log('✅ LocalTunes SSO callback page fully loaded');
+        });
+        
+        // Handle errors
+        window.addEventListener('error', function(event) {
+            console.error('❌ SSO callback page error:', event.error);
+        });
+    </script>
+    
+    <div style="display: none;">
+        <!-- Hidden content for SSO callback -->
+        <p>LocalTunes SSO Callback Handler</p>
+        <p>This page handles cross-domain authentication from LocalQR.</p>
+    </div>
+</body>
+</html>

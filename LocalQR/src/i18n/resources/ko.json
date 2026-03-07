@@ -1,0 +1,1786 @@
+﻿{
+    "header": {
+        "nav": {
+            "howItWorks": "작동 방식",
+            "whoIsFor": "대상",
+            "faq": "자주 묻는 질문",
+            "about": "소개",
+            "contact": "연락처"
+        },
+        "auth": {
+            "login": "로그인",
+            "signUp": "가입"
+        }
+    },
+    "hero": {
+        "headline": "모든 추천을 하나의 QR과 간단한 링크로.",
+        "subtext": "장소에 대해 알고 있고 사랑하는 것을 공유하고 — 모든 사람이 어디서나 발견할 수 있도록 하세요",
+        "inputLabel": "explorers URL 예약:",
+        "inputPlaceholder": "당신의 이름",
+        "ctaButton": "explorers 예약",
+        "signupPrompt": "지금 가입하여 당신의 것을 받으세요"
+    },
+    "sections": {
+        "createCustomize": {
+            "headline": "몇 분 만에 explorers을 만들고 맞춤 설정",
+            "subtext": "좋아하는 장소를 추가하고, 도시나 테마별로 정리하고, QR을 즉시 생성하세요.",
+            "bulletPoints": {
+                "addSpots": {
+                    "title": "좋아하는 장소 추가",
+                    "description": "꼭 가봐야 할 장소로 목록 만들기"
+                },
+                "organize": {
+                    "title": "도시나 테마별로 정리",
+                    "description": "청중에게 의미 있는 카테고리 만들기"
+                },
+                "generate": {
+                    "title": "링크와 QR을 즉시 생성",
+                    "description": "개인화된 QR이 몇 초 만에 준비됨"
+                },
+                "share": {
+                    "title": "디지털로 또는 실제 세계에서 QR을 통해 공유",
+                    "description": ""
+                }
+            },
+            "mockup": {
+                "title": "내 추천",
+                "addPlace": "장소 추가"
+            }
+        },
+        "shareAnywhere": {
+            "headline": "소셜 미디어, 상점 창문, 또는 도시 벽에 공유",
+            "subtext": "Instagram bio에 추가하고, 메뉴에 인쇄하고, 또는 환영 책에 포함하세요 — 당신의 가이드, 항상 준비됨.",
+            "scanText": "로컬 추천을 스캔하세요",
+            "storefrontText": "상점 진열장에 완벽",
+            "instagramTitle": "Instagram bio에 추가",
+            "instagramDesc": "팔로워와 즉시 공유",
+            "menuTitle": "메뉴에 인쇄",
+            "menuDesc": "물리적 접점이 간단해짐",
+            "welcomeTitle": "환영 책에 포함",
+            "welcomeDesc": "호스트와 가이드에게 완벽",
+            "cafeMenu": "카페 메뉴",
+            "tokyoFoodGuide": "내 도쿄 음식 가이드 explorers.earth/jane"
+        },
+        "analytics": {
+            "headline": "클릭, 추천, 참여도 추적",
+            "subtext": "무엇이 작동하는지, 누가 스캔하는지, 어떤 장소가 가장 많은 사랑을 받는지 실시간으로 확인하세요.",
+            "workingTitle": "무엇이 작동하는지 확인",
+            "workingDesc": "추천의 인기도 추적",
+            "scanningTitle": "누가 스캔하는지",
+            "scanningDesc": "QR 스캔 및 업데이트 모니터링",
+            "spotsTitle": "최고의 장소",
+            "spotsDesc": "더 나은 큐레이션을 위한 데이터 기반 인사이트",
+            "dashboardTitle": "분석 대시보드",
+            "last30Days": "지난 30일",
+            "totalScans": "총 스캔 수",
+            "engagement": "참여도",
+            "referrals": "추천"
+        },
+        "referEarn": {
+            "headline": "공유, 추천, 수익 창출",
+            "subtext": "추천을 수동적 보상으로 전환 — 다른 사람이 당신의 QR을 사용할 때 크레딧을 얻으세요.",
+            "comingSoon": "추천 보상 프로그램 (곧 출시)",
+            "rewardsTitle": "보상 획득",
+            "rewardsDesc": "사람들이 당신의 추천을 사용할 때 돈을 받으세요",
+            "earnedThisMonth": "이번 달 수익",
+            "passiveTitle": "추천을 수동적 보상으로 전환",
+            "networkTitle": "네트워크를 구축하고 자동으로 수익 창출"
+        },
+        "localTunes": {
+            "mainHeading": "Tunes",
+            "title": "탐험하는 동안 듣기",
+            "body": "탐험은 시각적이기만 한 것이 아닙니다. 소리는 기억, 맥락, 감정을 담고 있습니다.\n\nTunes는 장소, 여행, 분위기를 위한 사운드트랙을 수집하고 공유할 수 있게 해줍니다 — 도로에서 발견한 음악이든, 당신에게 장소를 정의하는 소리든.\n\n당신의 Explorer 프로필과 완벽하게 연결됩니다.",
+            "exploreButton": "Tunes 탐험하기",
+            "featuresHeading": "강력한 기능",
+            "features": {
+                "realtimeCollaboration": {
+                    "title": "실시간 협업",
+                    "description": "게스트가 재생 목록에 즉시 노래를 추가할 수 있도록 하면서 재생되는 내용을 완전히 제어할 수 있습니다."
+                },
+                "qrCodeSharing": {
+                    "title": "QR 코드 공유",
+                    "description": "간단한 QR 코드 스캔으로 음악 경험을 공유하세요 — 앱이나 다운로드가 필요 없습니다."
+                },
+                "youtubeIntegration": {
+                    "title": "YouTube 통합",
+                    "description": "YouTube와 완벽하게 통합하여 수백만 곡에 액세스하고 완벽한 분위기를 만드세요."
+                },
+                "voteLikeSystem": {
+                    "title": "투표 및 좋아요 시스템",
+                    "description": "게스트가 좋아하는 노래에 투표하여 재생 목록 대기열을 실시간으로 영향을 줄 수 있습니다."
+                },
+                "silentParties": {
+                    "title": "사일런트 파티",
+                    "description": "모두가 자신의 헤드폰을 통해 듣는 독특한 사일런트 파티를 주최하세요."
+                },
+                "karaokeReady": {
+                    "title": "노래방 준비 완료",
+                    "description": "협업 재생 목록과 실시간 노래 요청으로 노래방 밤에 완벽합니다."
+                }
+            },
+            "venueHeading": "모든 장소에 완벽",
+            "venues": {
+                "barsPubs": "바 및 펍",
+                "restaurants": "레스토랑",
+                "coffeeShops": "커피숍",
+                "eventsWeddings": "이벤트 및 결혼식",
+                "retailStores": "소매점",
+                "gymsFitness": "체육관 및 피트니스"
+            },
+            "closingStatement": "Tunes는 \u003cstrong\u003e무료\u003c/strong\u003e로 탐험할 수 있으며, 유료 기능은 나중에 업그레이드할 수 있습니다."
+        },
+        "whoIsFor": {
+            "headline": "explorers.earth는 누구를 위한 것인가요?",
+            "subtext": "explorers.earth는 공유가 책임이라고 믿는 모든 사람을 위한 것입니다 — 방송이 아닙니다.",
+            "cards": {
+                "individuals": {
+                    "title": "개인",
+                    "oneLiner": "개인 또는 지역 추천을 공유하세요.",
+                    "items": {
+                        "traveler": {
+                            "label": "여행자",
+                            "oneLiner": "여행 장소를 공유하는 사람들"
+                        },
+                        "local": {
+                            "label": "현지인",
+                            "oneLiner": "동네 팁을 공유하는 현지인"
+                        },
+                        "family": {
+                            "label": "가족",
+                            "oneLiner": "유용한 장소를 공유하는 가족"
+                        },
+                        "student": {
+                            "label": "학생",
+                            "oneLiner": "캠퍼스/근처 장소를 공유하는 학생"
+                        },
+                        "nomad": {
+                            "label": "노마드",
+                            "oneLiner": "작업 친화적 공간을 나열하는 노마드"
+                        },
+                        "emergencySharer": {
+                            "label": "비상 공유자",
+                            "oneLiner": "필수 장소를 게시하는 비상 공유자"
+                        }
+                    }
+                },
+                "creators": {
+                    "title": "크리에이터",
+                    "oneLiner": "관객과 큐레이션된 목록을 공유하세요.",
+                    "items": {
+                        "influencer": {
+                            "label": "인플루언서",
+                            "oneLiner": "최고 선택을 공유하는 인플루언서"
+                        },
+                        "blogger": {
+                            "label": "블로거",
+                            "oneLiner": "작성된 가이드를 큐레이션하는 블로거"
+                        },
+                        "vlogger": {
+                            "label": "블로거",
+                            "oneLiner": "시각적 여행을 공유하는 블로거"
+                        },
+                        "reviewer": {
+                            "label": "리뷰어",
+                            "oneLiner": "최고 평점 장소를 나열하는 리뷰어"
+                        },
+                        "photographer": {
+                            "label": "사진작가",
+                            "oneLiner": "사진 장소를 공유하는 사진작가"
+                        },
+                        "educator": {
+                            "label": "교육자",
+                            "oneLiner": "학습 가이드를 공유하는 교육자"
+                        },
+                        "communityLeader": {
+                            "label": "커뮤니티 리더",
+                            "oneLiner": "유용한 목록을 큐레이션하는 커뮤니티 리더"
+                        }
+                    }
+                },
+                "hospitality": {
+                    "title": "환대",
+                    "oneLiner": "게스트에게 큐레이션된 지역 인사이트를 제공하세요.",
+                    "items": {
+                        "hotel": {
+                            "label": "호텔",
+                            "oneLiner": "지역 가이드북을 제공하는 호텔"
+                        },
+                        "airbnb": {
+                            "label": "Airbnb",
+                            "oneLiner": "동네 즐겨찾기를 공유하는 호스트"
+                        },
+                        "hostel": {
+                            "label": "호스텔",
+                            "oneLiner": "배낭여행자 팁을 공유하는 호스텔"
+                        },
+                        "homestay": {
+                            "label": "홈스테이",
+                            "oneLiner": "가족 중심 가이드를 제공하는 홈스테이"
+                        },
+                        "resort": {
+                            "label": "리조트",
+                            "oneLiner": "활동 목록을 제공하는 리조트"
+                        },
+                        "pgColiving": {
+                            "label": "PG/공동 거주",
+                            "oneLiner": "중요한 근처 장소를 보여주는 PG/공동 거주"
+                        }
+                    }
+                },
+                "businesses": {
+                    "title": "비즈니스",
+                    "oneLiner": "유용한 추천으로 고객을 안내하세요.",
+                    "items": {
+                        "restaurant": {
+                            "label": "레스토랑",
+                            "oneLiner": "시도해볼 요리를 공유하는 레스토랑"
+                        },
+                        "cafe": {
+                            "label": "카페",
+                            "oneLiner": "좋아하는 메뉴 항목을 강조하는 카페"
+                        },
+                        "retailShop": {
+                            "label": "소매점",
+                            "oneLiner": "제품 추천을 공유하는 상점"
+                        },
+                        "gym": {
+                            "label": "체육관",
+                            "oneLiner": "지역 웰니스 장소를 제안하는 체육관"
+                        },
+                        "spa": {
+                            "label": "스파",
+                            "oneLiner": "근처 휴식 옵션을 나열하는 스파"
+                        },
+                        "salon": {
+                            "label": "살롱",
+                            "oneLiner": "뷰티 가이드를 제공하는 살롱"
+                        },
+                        "clinic": {
+                            "label": "클리닉",
+                            "oneLiner": "건강 관련 장소를 공유하는 클리닉"
+                        },
+                        "boutique": {
+                            "label": "부티크",
+                            "oneLiner": "큐레이션된 발견을 나열하는 부티크"
+                        }
+                    }
+                },
+                "organizations": {
+                    "title": "조직",
+                    "oneLiner": "큐레이션된 가이드와 리소스를 제공하세요.",
+                    "items": {
+                        "airline": {
+                            "label": "항공사",
+                            "oneLiner": "도시 가이드를 공유하는 항공사"
+                        },
+                        "agency": {
+                            "label": "여행사",
+                            "oneLiner": "방문해야 할 장소를 나열하는 여행사"
+                        },
+                        "university": {
+                            "label": "대학교",
+                            "oneLiner": "캠퍼스 필수품을 공유하는 대학교"
+                        },
+                        "corporate": {
+                            "label": "기업",
+                            "oneLiner": "근처 리소스를 나열하는 기업"
+                        },
+                        "airport": {
+                            "label": "공항",
+                            "oneLiner": "터미널 + 도시 팁을 제공하는 공항"
+                        },
+                        "railway": {
+                            "label": "철도",
+                            "oneLiner": "플랫폼 정보를 공유하는 철도"
+                        },
+                        "ngo": {
+                            "label": "NGO",
+                            "oneLiner": "커뮤니티 리소스를 공유하는 NGO"
+                        },
+                        "government": {
+                            "label": "정부",
+                            "oneLiner": "공공 서비스를 강조하는 부서"
+                        }
+                    }
+                }
+            },
+            "useCases": {
+                "travelers": "여행자",
+                "travelersDesc": "발견한 보석을 다른 탐험가들과 공유",
+                "influencers": "인플루언서",
+                "influencersDesc": "현지 지식을 수익화하고 커뮤니티 구축",
+                "airbnbHosts": "Airbnb 호스트",
+                "airbnbHostsDesc": "현지 인사이트로 게스트 경험 향상",
+                "hotels": "호텔",
+                "hotelsDesc": "큐레이션된 현지 추천 제공",
+                "restaurants": "레스토랑",
+                "restaurantsDesc": "다른 현지 비즈니스와 크로스 프로모션",
+                "cafes": "카페",
+                "cafesDesc": "고객과 함께 동네 즐겨찾기 공유",
+                "localGuides": "현지 가이드",
+                "localGuidesDesc": "개인 투어를 넘어 전문성 확장",
+                "creators": "크리에이터",
+                "creatorsDesc": "실행 가능한 팁으로 콘텐츠를 넘어 가치 추가",
+                "tourOperators": "투어 운영자",
+                "tourOperatorsDesc": "예정된 투어를 넘어 경험 확장",
+                "anyBusiness": "모든 비즈니스",
+                "anyBusinessDesc": "커뮤니티와 고객 충성도 구축"
+            }
+        },
+        "testimonials": {
+            "headline": "여행자, 크리에이터, 호스트들이 사랑하는",
+            "subtext": "전 세계 사람들이 explorers을 사용하여 가장 중요한 것을 공유하는 방법을 보세요.",
+            "scrollLeft": "추천사를 왼쪽으로 스크롤",
+            "scrollRight": "추천사를 오른쪽으로 스크롤",
+            "items": [
+                {
+                    "id": "1",
+                    "name": "Marcus Chen",
+                    "role": "여행 블로거",
+                    "location": "샌프란시스코",
+                    "quote": "explorers은 제가 여행 지식을 공유하는 방식을 바꿨습니다. 제 팔로워들은 제가 큐레이션한 추천사항에 즉시 접근할 수 있는 것을 좋아합니다!"
+                },
+                {
+                    "id": "2",
+                    "name": "Sarah Johnson",
+                    "role": "Airbnb 호스트",
+                    "location": "바르셀로나",
+                    "quote": "제 게스트들은 환영 키트의 개인화된 QR 코드를 정말 좋아합니다. 제 시그니처 터치가 되었어요!"
+                },
+                {
+                    "id": "3",
+                    "name": "Alex Rodriguez",
+                    "role": "레스토랑 사장",
+                    "location": "멕시코시티",
+                    "quote": "고객들에게 다른 지역 장소를 추천하기 위해 explorers을 공유합니다. 놀라운 커뮤니티 연결을 만들었어요."
+                },
+                {
+                    "id": "4",
+                    "name": "Emma Thompson",
+                    "role": "투어 가이드",
+                    "location": "런던",
+                    "quote": "explorers은 제 전문성을 투어 시간을 넘어 확장하는 데 도움이 됩니다. 클라이언트는 언제든지 제 추천사항에 접근할 수 있습니다!"
+                }
+            ]
+        },
+        "faq": {
+            "headline": "질문이 있으신가요?",
+            "subtext": "사람들이 시작하기 전에 가장 자주 묻는 것들에 답했습니다.",
+            "loading": "FAQ 로딩 중...",
+            "error": "FAQ 로딩 중 오류가 발생했습니다. 나중에 다시 시도해 주세요."
+        },
+        "features": {
+            "title": "방해받지 않도록 설계됨",
+            "subtitle": "추천사항이 빛날 수 있도록 하는 간단하고 신중한 기능들.",
+            "simpleLinks": {
+                "title": "간단한 링크 및 QR 공유"
+            },
+            "livingGuides": {
+                "title": "라이브, 편집 가능한 가이드"
+            },
+            "locationAware": {
+                "title": "위치 인식 추천"
+            },
+            "soundPlaylists": {
+                "title": "선택적 사운드 및 재생 목록"
+            },
+            "privacyFirst": {
+                "title": "디자인에 의한 개인정보 보호 우선"
+            },
+            "communityDriven": {
+                "title": "커뮤니티 주도 발견"
+            }
+        },
+        "finalCTA": {
+            "headline": "오늘 당신의 세계를 공유하기 시작하세요",
+            "subtext": "무료 explorers을 예약하고 현지 인사이트를 공유 가능한 가이드로 변환하세요.",
+            "ctaButton": "explorers 예약 – 영원히 무료",
+            "disclaimer": "신용카드 불필요 • 2분 만에 설정",
+            "creating": "당신의 explorers을 생성 중..."
+        }
+    },
+    "contact": {
+        "title": "연결해요.",
+        "subtitle": "질문, 아이디어가 있거나 그냥 인사하고 싶다면 — 듣고 싶습니다.",
+        "getInTouch": "연락하기",
+        "email": "hello@explorers.earth",
+        "responseTime": "24-48시간 내에 답변드립니다",
+        "closingMessage": "우리는 큰 비전을 가진 작은 팀입니다 — 당신의 생각이 중요합니다. 연락주시고 함께 지역적이고 글로벌한 것을 만들어봅시다.",
+        "seo": {
+            "title": "Contact explorers | Support, Help and Partnership enquiries.",
+            "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
+            "loginTitle": "Login to explorers | Access Your Personalized Recommendations \u0026 Places",
+            "registerTitle": "Sign Up for explorers | Join the Community \u0026 Share Your Favorite Local Places",
+            "keywords": [
+                "contact explorers",
+                "explorers support",
+                "get in touch explorers",
+                "customer service travel app",
+                "partnership inquiry explorers",
+                "help center local recommendations",
+                "technical support explorers",
+                "travel app customer service",
+                "feedback location sharing",
+                "account assistance explorers",
+                "business collaboration explorers",
+                "report problem explorers",
+                "share local recommendations support",
+                "find explorers contact",
+                "customer service",
+                "explorers team",
+                "help center",
+                "contact support",
+                "QR code support",
+                "local recommendations help",
+                "partnership inquiries"
+            ]
+        }
+    },
+    "about": {
+        "title": "지구의 탐험가들",
+        "subtitle": {
+            "line1": "사람들, 문화, 그리고 우리가 공유하는 행성을 위해 신중하게 탐험하는 사람들의 글로벌 커뮤니티.",
+            "line2": "탐험은 우리에게 있어 얼마나 멀리 가는지에 관한 것이 아닙니다.",
+            "line3": "얼마나 깊이 연결하는지에 관한 것입니다."
+        },
+        "section1": {
+            "title": "우리가 믿는 것",
+            "line1": "탐험은 인식으로 시작됩니다.",
+            "line2": "다른 사람들이 지나치는 것을 알아차리는 것으로.",
+            "line3": "빠르게가 아닌 신중하게 움직이기를 선택하는 것으로.",
+            "line4": "우리는 고대 행성에서 짧게 살고 있습니다 —\n우리보다 훨씬 전에 시작된 이야기에\n몇 가지 의도적인 표시를 추가하고,\n우리가 떠난 후에도 오래 계속될 이야기에."
+        },
+        "section2": {
+            "title": "우리가 탐험을 보는 방식",
+            "line1": "탐험은 마일로 측정되지 않습니다.",
+            "line2": "의미로 측정됩니다.",
+            "line3": "느려지고, 주의를 기울이고,\n우리가 발을 디디는 모든 장소를 존중하는 데 있습니다 —\n거리, 산길, 카페 테이블,\n또는 새로운 사람과 공유하는 순간."
+        },
+        "section3": {
+            "title": "우리가 구축하는 것",
+            "line1": "explorers는 다음을 위한 장소입니다:",
+            "item1": "실제 경험으로 형성된 가이드",
+            "item2": "기억할 가치가 있는 장소, 여행, 소리, 이야기",
+            "item3": "인기 지표가 아닌 사람들 위에 구축된 커뮤니티",
+            "line2": "기술은 우리를 연결하는 데 도움이 됩니다.",
+            "line3": "사람들이 그것에 목적을 부여합니다."
+        },
+        "section4": {
+            "title": "소속감",
+            "line1": "지구의 탐험가들은 클럽이 아닙니다.",
+            "line2": "라벨이 아닙니다.",
+            "line3": "공유된 마인드셋입니다 —\n우리가 세상을 어떻게 이동하는지에 대한 조용한 이해."
+        },
+        "closing": "당신이 호기심이 많다면.\n당신이 사려 깊다면.\n당신이 느려지고 더 가까이 보기를 원한다면 —\n당신은 이미 여기에 속해 있습니다.",
+        "seo": {
+            "title": "Explorers of Earth | About Us",
+            "description": "A global community of people who explore with care — for people, culture, and the planet we share. Exploration isn\u0027t about distance, it\u0027s about depth.",
+            "keywords": [
+                "explorers of earth",
+                "about explorers",
+                "exploration community",
+                "thoughtful travel",
+                "sustainable exploration",
+                "local recommendations platform",
+                "travel app about",
+                "community-driven recommendations",
+                "authentic local experiences",
+                "explorers team",
+                "local discovery platform",
+                "share local places",
+                "travel technology",
+                "local recommendations app",
+                "explorers story",
+                "who we are explorers"
+            ]
+        }
+    },
+    "cookieConsent": {
+        "title": "🍪 쿠키 설정",
+        "description": "브라우징 경험을 향상시키고, 맞춤형 콘텐츠를 제공하며, 트래픽을 분석하기 위해 쿠키를 사용합니다. 언제든지 설정을 관리할 수 있습니다.",
+        "acceptAll": "✅ 모든 쿠키 수락",
+        "customize": "⚙️ 사용자 지정",
+        "rejectNonEssential": "❌ 필수 항목 거부",
+        "preferencesTitle": "쿠키 설정",
+        "essentialCookies": {
+            "title": "필수 쿠키",
+            "description": "웹사이트가 제대로 작동하는 데 필요",
+            "alwaysOn": "항상 켜짐"
+        },
+        "analyticsCookies": {
+            "title": "분석 쿠키",
+            "description": "방문자가 웹사이트와 상호작용하는 방식을 이해하는 데 도움이 됩니다"
+        },
+        "marketingCookies": {
+            "title": "마케팅 쿠키",
+            "description": "맞춤형 광고를 제공하는 데 사용됩니다"
+        },
+        "savePreferences": "설정 저장",
+        "acceptAllButton": "모두 수락",
+        "closeBanner": "배너 닫기",
+        "goBack": "돌아가기"
+    },
+    "footer": {
+        "tagline": "당신의 추천이 전 세계를 여행하게 하세요.",
+        "email": "hello@explorers.earth",
+        "sections": {
+            "product": "제품",
+            "contact": "연락처",
+            "legal": "법적"
+        },
+        "links": {
+            "howItWorks": "작동 방식",
+            "faq": "자주 묻는 질문",
+            "contact": "연락처",
+            "about": "소개",
+            "terms": "이용 약관",
+            "privacy": "개인정보 보호정책",
+            "cookies": "쿠키 정책"
+        },
+        "copyright": "© 2025 explorers. 모든 권리 보유.",
+        "madeWithLove": "지구에서 사랑으로 만들어짐"
+    },
+    "legal": {
+        "terms": {
+            "title": "이용 약관",
+            "loading": "이용 약관 로딩 중...",
+            "error": "이용 약관 로딩 중 오류가 발생했습니다. 나중에 다시 시도해 주세요."
+        },
+        "privacy": {
+            "title": "개인정보 보호정책",
+            "loading": "개인정보 보호정책 로딩 중...",
+            "error": "개인정보 보호정책 로딩 중 오류가 발생했습니다. 나중에 다시 시도해 주세요."
+        },
+        "cookies": {
+            "title": "쿠키 정책",
+            "loading": "쿠키 정책 로딩 중...",
+            "error": "쿠키 정책 로딩 중 오류가 발생했습니다. 나중에 다시 시도해 주세요."
+        }
+    },
+    "languageModal": {
+        "title": "언어 선택",
+        "searchPlaceholder": "언어 검색...",
+        "close": "닫기"
+    },
+    "auth": {
+        "signup": "가입",
+        "signupSubtitle": "explorers의 기능을 즐기려면 가입하세요",
+        "username": "사용자명",
+        "usernamePlaceholder": "사용자명을 입력하세요",
+        "email": "이메일",
+        "emailPlaceholder": "이메일을 입력하세요",
+        "password": "비밀번호",
+        "passwordPlaceholder": "비밀번호를 입력하세요",
+        "confirmPassword": "비밀번호 확인",
+        "confirmPasswordPlaceholder": "비밀번호를 다시 입력하세요",
+        "register": "가입",
+        "or": "또는",
+        "signUpWithGoogle": "Google로 가입",
+        "alreadyHaveAccount": "이미 계정이 있으신가요?",
+        "login": "로그인",
+        "loginTitle": "로그인",
+        "loginSubtitle": "계정에 계속하려면 로그인하세요",
+        "usernameOrEmail": "사용자명 또는 이메일",
+        "usernameOrEmailPlaceholder": "사용자명 또는 이메일을 입력하세요",
+        "signInWithGoogle": "Google로 로그인",
+        "newToexplorers": "explorers이 처음이신가요?",
+        "forgotPassword": "비밀번호를 잊으셨나요?",
+        "validations": {
+            "username": {
+                "required": "사용자명은 필수입니다",
+                "minLength": "사용자명은 최소 3자 이상이어야 합니다",
+                "maxLength": "사용자명은 30자를 초과할 수 없습니다",
+                "invalidChars": "사용자명은 소문자(a-z), 숫자(0-9), 하이픈(-)만 포함할 수 있습니다",
+                "mustStartWithLetter": "사용자명은 문자(a-z)로 시작해야 합니다",
+                "cannotStartEndHyphen": "사용자명은 하이픈으로 시작하거나 끝날 수 없습니다",
+                "noConsecutiveHyphens": "사용자명에 연속된 하이픈을 포함할 수 없습니다",
+                "cannotBeAllNumbers": "사용자명은 숫자만으로 구성될 수 없습니다",
+                "reservedWords": "이 사용자명에는 예약어가 포함되어 있어 사용할 수 없습니다",
+                "inappropriateContent": "사용자명에 부적절한 내용이 포함되어 있습니다",
+                "alreadyExists": "사용자명이 이미 존재합니다",
+                "suggestedAlternatives": "제안된 대안:",
+                "willBeConvertedLowercase": "사용자명이 소문자로 변환됩니다",
+                "checkingAvailability": "사용 가능 여부 확인 중...",
+                "available": "사용자 이름을 사용할 수 있습니다",
+                "willConvertToLowercase": "사용자 이름이 소문자로 변환됩니다"
+            },
+            "email": {
+                "required": "이메일은 필수입니다",
+                "invalidFormat": "유효한 이메일 주소를 입력해주세요",
+                "alreadyExists": "이메일이 이미 존재합니다",
+                "invalid": "유효하지 않은 이메일"
+            },
+            "password": {
+                "required": "비밀번호는 필수입니다",
+                "minLength": "비밀번호는 최소 6자 이상이어야 합니다",
+                "uppercaseRequired": "비밀번호는 최소 하나의 대문자(A-Z)를 포함해야 합니다",
+                "numberRequired": "비밀번호는 최소 하나의 숫자(0-9)를 포함해야 합니다",
+                "specialCharRequired": "비밀번호는 최소 하나의 특수문자(!@#$%^\u0026*().,?\": {}|\u003c\u003e)를 포함해야 합니다",
+                "strength": "비밀번호 강도",
+                "weak": "약함",
+                "medium": "보통",
+                "strong": "강함",
+                "maxLength": "비밀번호는 32자를 초과할 수 없습니다",
+                "lowercaseRequired": "비밀번호에는 최소 하나의 소문자(a-z)가 포함되어야 합니다",
+                "tooCommon": "이 비밀번호는 너무 일반적입니다. 더 고유한 비밀번호를 선택해주세요",
+                "sameAsCurrent": "새 비밀번호는 현재 비밀번호와 같을 수 없습니다",
+                "considerLonger": "더 나은 보안을 위해 더 다양한 긴 비밀번호 사용을 고려해보세요",
+                "moreSecure": "10자 이상의 비밀번호가 더 안전합니다",
+                "veryWeak": "매우 약함",
+                "fair": "보통",
+                "good": "좋음",
+                "veryStrong": "매우 강함"
+            },
+            "confirmPassword": {
+                "required": "비밀번호를 확인해주세요",
+                "mustMatch": "비밀번호가 일치하지 않습니다",
+                "confirmRequired": "비밀번호 확인은 필수입니다",
+                "match": "비밀번호가 일치합니다"
+            },
+            "login": {
+                "usernameOrEmailRequired": "사용자명 또는 이메일은 필수입니다",
+                "invalidCredentials": "유효하지 않은 사용자명/이메일 또는 비밀번호",
+                "accountNotFound": "계정을 찾을 수 없습니다",
+                "tooManyAttempts": "실패한 시도가 너무 많습니다",
+                "incorrectPassword": "비밀번호가 올바르지 않습니다"
+            },
+            "general": {
+                "fillRequiredFields": "모든 필수 필드를 입력해주세요",
+                "somethingWentWrong": "문제가 발생했습니다. 다시 시도해주세요"
+            },
+            "forgotPassword": {
+                "title": "비밀번호를 잊으셨나요?",
+                "description": "이메일 주소를 입력하면 재설정 링크를 보내드립니다.",
+                "emailLabel": "이메일 주소",
+                "emailPlaceholder": "이메일을 입력하세요",
+                "sendResetLink": "재설정 링크 보내기",
+                "backToLogin": "로그인으로 돌아가기",
+                "resetLinkSent": "비밀번호 재설정 링크를 이메일로 보냈습니다!",
+                "failedToSend": "재설정 링크 전송에 실패했습니다. 나중에 다시 시도해주세요.",
+                "somethingWentWrong": "문제가 발생했습니다!"
+            },
+            "accountName": {
+                "required": "계정 이름이 필요합니다",
+                "minLength": "계정 이름은 최소 2자 이상이어야 합니다",
+                "maxLength": "계정 이름은 50자를 초과할 수 없습니다",
+                "invalidChars": "계정 이름에는 문자, 공백, 아포스트로피, 하이픈, 마침표만 포함할 수 있습니다",
+                "noNumbers": "계정 이름에는 숫자를 포함할 수 없습니다"
+            },
+            "accountType": {
+                "required": "계정 유형이 필요합니다",
+                "invalid": "유효하지 않은 계정 유형"
+            },
+            "primaryAddress": {
+                "required": "주소는 필수입니다"
+            },
+            "socialMedia": {
+                "instagram": "유효한 Instagram 프로필 URL을 입력하세요",
+                "whatsapp": "유효한 WhatsApp 연락처를 입력하세요: 전화번호 (+1234567890) 또는 wa.me/api.whatsapp.com 링크",
+                "mobile": "유효한 휴대폰 번호를 입력하세요 (예: +1234567890)",
+                "youtube": "유효한 YouTube 채널 URL을 입력하세요 (예: youtube.com/@사용자명)",
+                "x": "유효한 X (Twitter) 프로필 URL을 입력하세요",
+                "spotify": "유효한 Spotify URL을 입력하세요",
+                "website": "유효한 웹사이트 URL을 입력하세요",
+                "facebook": "유효한 Facebook 프로필 URL을 입력하세요",
+                "youtubeMusic": "유효한 YouTube Music 채널 URL을 입력하세요",
+                "email": "유효한 이메일 주소를 입력하세요",
+                "linkedin": "유효한 LinkedIn 프로필 URL을 입력하세요",
+                "appleMusic": "유효한 Apple Music URL을 입력하세요",
+                "tiktok": "유효한 TikTok 프로필 URL을 입력하세요",
+                "snapchat": "유효한 Snapchat 사용자 이름을 입력하세요"
+            },
+            "onboarding": {
+                "displayNameRequired": "표시 이름이 필요합니다",
+                "displayNameMinLength": "표시 이름은 최소 2자 이상이어야 합니다",
+                "displayNameMaxLength": "표시 이름은 50자를 초과할 수 없습니다",
+                "bioRequired": "바이오가 필요합니다",
+                "bioMaxLength": "바이오는 250자를 초과할 수 없습니다",
+                "mobileNumberRequired": "휴대폰 번호가 필요합니다",
+                "mobileNumberInvalid": "유효한 휴대폰 번호를 입력하세요",
+                "mobileNumberLength": "휴대폰 번호는 10자리여야 합니다",
+                "addressRequired": "주소가 필요합니다",
+                "cityRequired": "도시가 필요합니다",
+                "stateRequired": "주/도가 필요합니다",
+                "countryRequired": "국가가 필요합니다",
+                "postalCodeRequired": "우편번호가 필요합니다",
+                "primaryAddressRequired": "주소가 필요합니다",
+                "emailAddressRequired": "이메일 주소가 필요합니다",
+                "resetLinkSentSuccess": "재설정 링크가 성공적으로 전송되었습니다!",
+                "invalidUsername": "잘못된 사용자 이름",
+                "profileImageAlt": "Profile"
+            },
+            "resetPassword": {
+                "newPassword": "New Password",
+                "confirmPassword": "Confirm Password"
+            },
+            "resetLinkSent": {
+                "title": "이메일이 전송되었습니다!",
+                "description": "비밀번호 재설정 링크를 위해 받은 편지함을 확인하세요.",
+                "resending": "재전송 중...",
+                "resendWithCooldown": "이메일 재전송 ({{cooldown}}초)",
+                "resendMail": "이메일 재전송"
+            }
+        },
+        "onboarding": {
+            "accountDetails": {
+                "title": "계정 세부정보",
+                "description": "자신에 대해 알려주세요",
+                "displayName": "표시 이름",
+                "displayNamePlaceholder": "표시 이름을 입력하세요",
+                "username": "사용자 이름",
+                "usernamePlaceholder": "사용자 이름을 입력하세요",
+                "usernameDescription": "사용자 이름은 공개 프로필 링크와 QR 코드의 일부입니다. 예: explorers.earth/bhavya",
+                "bio": "바이오",
+                "bioPlaceholder": "자신에 대해 알려주세요",
+                "accountType": "계정 유형",
+                "personal": "개인",
+                "creator": "크리에이터",
+                "business": "비즈니스",
+                "next": "다음"
+            },
+            "contactDetails": {
+                "title": "연락처 세부정보",
+                "description": "인증을 위해 휴대폰 번호를 추가하세요",
+                "mobileNumber": "휴대폰 번호",
+                "mobileNumberPlaceholder": "휴대폰 번호를 입력하세요",
+                "next": "다음",
+                "back": "뒤로"
+            },
+            "addressDetails": {
+                "title": "주소 세부정보",
+                "description": "어디에 계신가요?",
+                "address": "주소",
+                "addressPlaceholder": "주소를 입력하세요",
+                "streetName": "도로명",
+                "streetNamePlaceholder": "도로명을 입력하세요",
+                "city": "도시",
+                "cityPlaceholder": "도시를 입력하세요",
+                "state": "주/도",
+                "statePlaceholder": "주/도를 입력하세요",
+                "country": "국가",
+                "countryPlaceholder": "국가를 입력하세요",
+                "postalCode": "우편번호",
+                "postalCodePlaceholder": "우편번호를 입력하세요",
+                "primaryAddress": "주소",
+                "primaryAddressDescription": "공개 프로필에 표시 (도시 및 국가)",
+                "primaryAddressPlaceholder": "주소를 입력하세요",
+                "sameAsAddress": "주소와 동일",
+                "confirmDetails": "세부정보 확인",
+                "back": "뒤로"
+            }
+        },
+        "resetPassword": {
+            "newPasswordPlaceholder": "Enter new password",
+            "confirmPasswordPlaceholder": "Confirm your password"
+        }
+    },
+    "common": {
+        "loading": "로딩 중...",
+        "error": "오류가 발생했습니다. 나중에 다시 시도해주세요.",
+        "retry": "다시 시도",
+        "noResults": "결과를 찾을 수 없습니다",
+        "submit": "제출",
+        "signInWithGoogle": "Google로 로그인",
+        "signUpWithGoogle": "Google로 가입",
+        "hidePassword": "비밀번호 숨기기",
+        "showPassword": "비밀번호 표시",
+        "cancel": "취소"
+    },
+    "dashboard": {
+        "home": {
+            "welcomeBack": "돌아오신 것을 환영합니다",
+            "profile": "프로필",
+            "myRecommendations": "내 추천",
+            "activePlaces": "활성 장소",
+            "setupProfile": "프로필 설정",
+            "draft": "초안",
+            "startCurating": "추천을 큐레이션하고 세계와 공유하세요!",
+            "addRecommendations": "추천 추가"
+        },
+        "shareModal": {
+            "copyLink": "링크 복사",
+            "copied": "복사됨!",
+            "linkCopiedToast": "링크가 복사되었습니다!!"
+        },
+        "recommendations": {
+            "locationButton": "위치",
+            "viewAll": "모두 보기",
+            "recommendationsTab": "추천",
+            "manageTab": "관리",
+            "manageHeading": "관리",
+            "deleteAction": "삭제",
+            "editAction": "편집",
+            "publishedStatus": "게시됨",
+            "draftStatus": "초안",
+            "myRecommendationsHeading": "내 추천",
+            "myQRHeading": "내 QR",
+            "myRecommendationsQR": "내 추천",
+            "travelLikeLocal": "현지인처럼 여행하기",
+            "shareLink": "링크 공유",
+            "copyLink": "링크 복사",
+            "downloadQR": "QR 다운로드",
+            "emptyState": {
+                "title": "사용 가능한 추천 없음",
+                "subtitle": "이 목록에 좋아하는 장소를 추가하기 시작하세요"
+            },
+            "draftLabel": "초안",
+            "recommendButton": "추천",
+            "exploreSection": {
+                "heading": "explorers로 탐색",
+                "addButton": "추가"
+            },
+            "locationLabels": {
+                "currentLocation": "현재 위치",
+                "selectedLocation": "선택한 위치"
+            },
+            "categories": {
+                "foodDrinks": "음식 및 음료",
+                "lodging": "숙박",
+                "healthWellness": "건강 및 웰빙",
+                "shopping": "쇼핑",
+                "entertainment": "엔터테인먼트",
+                "transportation": "교통",
+                "services": "서비스",
+                "tourism": "관광",
+                "naturalFeatures": "자연 특징"
+            },
+            "locationForm": {
+                "labels": {
+                    "searchLocation": "위치 검색",
+                    "recommendationSocialLink": "추천 소셜 링크",
+                    "note": "메모",
+                    "placeUrl": "장소 URL"
+                },
+                "placeholders": {
+                    "searchLocation": "도시, 주 또는 국가 입력 (예: 파리)",
+                    "recommendationSocialLink": "URL 입력 (유튜브 / 인스타그램)",
+                    "note": "추천과 관련된 메모를 입력하세요",
+                    "placeUrl": "공유 가능한 링크를 만들 이름을 입력하세요"
+                },
+                "buttons": {
+                    "addLocation": "위치 추가",
+                    "updateLocation": "위치 업데이트"
+                }
+            },
+            "toastMessages": {
+                "listCreated": "추천 목록이 성공적으로 생성되었습니다!!!",
+                "listPublished": "추천 목록이 성공적으로 게시되었습니다!",
+                "listUnpublished": "추천 목록이 성공적으로 비공개되었습니다!",
+                "listPublishError": "게시하려면 목록에 최소 하나의 추천 장소가 있어야 합니다",
+                "listVisibilityError": "추천 목록 가시성 업데이트에 실패했습니다.",
+                "qrDownloadSuccess": "QR 코드가 성공적으로 다운로드되었습니다!",
+                "qrDownloadError": "QR 코드 다운로드에 실패했습니다. 다시 시도해 주세요.",
+                "linkCopied": "링크가 클립보드에 복사되었습니다!",
+                "linkCopyError": "링크 복사에 실패했습니다. 다시 시도해 주세요.",
+                "qrNotReady": "QR 코드가 다운로드 준비가 되지 않았습니다"
+            },
+            "placesModal": {
+                "placesCount": "{{total}}개 장소 중 {{visible}}개",
+                "scrollToLoadMore": "스크롤하여 더 많은 장소 로드"
+            },
+            "noRecommendationsYet": "아직 추천이 없습니다!!",
+            "setupProfileBeforeRecommendations": "추천을 만들기 전에 프로필을 설정하세요!!",
+            "startAddingPlaces": "좋아하는 장소를 추가하기 시작하고 다른 사람들과 공유하세요.",
+            "startRecommending": "추천 시작하기",
+            "addRecommendationForm": {
+                "searchField": {
+                    "label": "Google로 추천 검색"
+                },
+                "mainInput": {
+                    "placeholder": "추천을 입력하세요"
+                },
+                "taggableFields": {
+                    "title": "제목",
+                    "address": "주소",
+                    "category": "카테고리",
+                    "contactNumber": "연락처 번호",
+                    "socialLink": "소셜 링크",
+                    "personName": "사람 이름"
+                },
+                "accordionSection": {
+                    "heading": "추천 세부 정보",
+                    "recommendationLink": {
+                        "label": "추천 링크",
+                        "placeholder": "Instagram 릴, YouTube 또는 추천 블로그를 삽입할 수 있습니다"
+                    },
+                    "whyRecommend": {
+                        "label": "왜 추천하시나요?",
+                        "placeholder": "왜 추천하시나요?"
+                    }
+                },
+                "fileUpload": {
+                    "text": "이미지/비디오 첨부",
+                    "subtext": "선택사항"
+                },
+                "actionButton": {
+                    "text": "추천 추가"
+                },
+                "taggableFieldsPlaceholders": {
+                    "title": "제목을 입력하세요",
+                    "address": "장소의 주소를 입력하세요",
+                    "category": "카테고리를 입력하세요",
+                    "contactNumber": "연락처 번호를 입력하세요",
+                    "socialLink": "소셜 링크를 입력하세요 (장소)",
+                    "personName": "사람의 전체 이름을 입력하세요"
+                },
+                "validationMessages": {
+                    "titleRequired": "제목은 필수입니다",
+                    "addressRequired": "주소는 필수입니다",
+                    "categoryRequired": "카테고리는 필수입니다",
+                    "socialUrlRequired": "사람 추천에는 Instagram 또는 LinkedIn URL이 필요합니다",
+                    "socialUrlInvalid": "유효한 Instagram 또는 LinkedIn URL을 입력하세요"
+                },
+                "mapModal": {
+                    "cancelButton": "취소",
+                    "addRecommendationButton": "추천 추가",
+                    "updateRecommendationButton": "추천 업데이트",
+                    "setLocationButton": "위치 설정"
+                },
+                "deleteRecommendation": "추천 삭제",
+                "searchLocation": {
+                    "label": "위치 검색",
+                    "searchPlace": "장소 검색",
+                    "placeholder": "입력하고 장소 선택"
+                },
+                "fetchingImages": "이미지 가져오는 중…",
+                "recommendationType": {
+                    "place": "장소",
+                    "person": "사람",
+                    "label": "추천 유형"
+                },
+                "imagePreview": {
+                    "alt": "미리보기",
+                    "deleteTooltip": "삭제",
+                    "setThumbnailTooltip": "썸네일로 설정",
+                    "confirmDeleteTitle": "삭제 확인",
+                    "confirmDeleteMessage": "이 이미지를 컬렉션에서 삭제하시겠습니까?",
+                    "cancel": "취소",
+                    "confirm": "확인"
+                },
+                "deleteRecommendationModal": {
+                    "title": "삭제 확인",
+                    "message": "이 추천을 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
+                    "cancel": "취소"
+                }
+            }
+        },
+        "profile": {
+            "tabs": {
+                "publicProfile": "공개 프로필",
+                "account": "계정"
+            },
+            "publicProfile": {
+                "sections": {
+                    "profileInformation": "소개",
+                    "socialMedia": "소셜 링크",
+                    "publicAddress": "공개 주소",
+                    "howToReachUs": "연락처",
+                    "howToReachUsDescription": "이 섹션을 사용하여 비즈니스 위치 세부 정보를 공유하세요.",
+                    "feed": "피드",
+                    "socialMediaSubtitle": "소셜 미디어 링크 및 정보"
+                },
+                "fields": {
+                    "accountType": "계정 유형",
+                    "bio": "소개",
+                    "socialMedia": "소셜 미디어",
+                    "instagram": "Instagram",
+                    "whatsapp": "Whatsapp",
+                    "mobile": "모바일",
+                    "youtube": "Youtube",
+                    "x": "X",
+                    "spotify": "Spotify",
+                    "website": "웹사이트",
+                    "facebook": "Facebook",
+                    "youtubeMusic": "Youtube Music",
+                    "gmail": "Gmail",
+                    "linkedin": "Linkedin",
+                    "appleMusic": "Apple Music",
+                    "tiktok": "Tiktok",
+                    "snapchat": "Snapchat",
+                    "businessLocation": "위치를 추가하세요. 이것들은 공개 프로필의 추천 위치로 표시됩니다",
+                    "primaryAddress": "주소 - 공개 프로필에 표시됨 (도시 및 국가)",
+                    "feed": "위치, 제품, 서비스 또는 경험의 이미지나 동영상을 업로드하세요. 이 사진들은 공개 프로필의 갤러리에 표시됩니다",
+                    "title": "제목",
+                    "contact": "연락처",
+                    "about": "소개",
+                    "addLocation": "위치 추가",
+                    "addLocationInformation": "위치 정보 추가",
+                    "searchAddress": "주소 검색...",
+                    "sameAsAddress": "주소와 동일"
+                },
+                "accountTypes": {
+                    "personal": "개인",
+                    "creator": "크리에이터",
+                    "business": "비즈니스"
+                },
+                "businessLocation": {
+                    "title": "제목",
+                    "contact": "연락처",
+                    "website": "웹사이트",
+                    "about": "소개"
+                }
+            },
+            "account": {
+                "sections": {
+                    "account": "계정",
+                    "billingAddress": "청구 주소"
+                },
+                "fields": {
+                    "username": "사용자 이름",
+                    "accountName": "계정 이름",
+                    "address": "주소",
+                    "streetName": "도로명",
+                    "state": "주/도",
+                    "city": "시/군/구",
+                    "country": "국가",
+                    "postalCode": "우편번호",
+                    "addressPlaceholder": "주소를 입력하세요",
+                    "detectLocation": "현재 위치 감지"
+                }
+            },
+            "common": {
+                "visible": "표시",
+                "hidden": "숨김",
+                "mobileNumber": "휴대폰 번호",
+                "mobileNumberPlaceholder": "휴대폰 번호",
+                "whatsappNumber": "WhatsApp 번호",
+                "primaryAddress": "주소",
+                "editImage": "이미지 편집",
+                "confirm": "확인",
+                "add": "추가",
+                "video": "동영상",
+                "feedImage": "피드 이미지",
+                "importedImage": "가져온 이미지",
+                "cover": "커버",
+                "profile": "프로필",
+                "saveAndPublish": "저장 및 게시",
+                "saveToFeed": "피드에 저장",
+                "savedAndPublishedSuccessfully": "성공적으로 저장 및 게시됨",
+                "saveAndPublishFailed": "저장 및 게시 실패. 다시 시도하세요.",
+                "failedToSaveChanges": "변경 사항 저장 실패. 다시 시도하세요.",
+                "networkError": "네트워크 오류: 연결을 확인하고 다시 시도하세요.",
+                "unexpectedError": "예기치 않은 오류가 발생했습니다. 다시 시도하세요.",
+                "somethingWentWrong": "문제가 발생했습니다. 다시 시도하세요.",
+                "failedToUploadFiles": "파일 업로드 실패. 다시 시도하세요.",
+                "failedToUploadImages": "이미지 업로드 실패. 다시 시도하세요.",
+                "failedToSaveImagesToFeed": "이미지를 피드에 저장하지 못했습니다",
+                "failedToUpdateProfile": "프로필 업데이트 실패. 다시 시도하세요.",
+                "fetching": "가져오는 중...",
+                "selectAll": "모두 선택",
+                "clearSelection": "선택 취소",
+                "error": "프로필을 로드하는 중 오류가 발생했습니다. 나중에 다시 시도하세요.",
+                "errors": {
+                    "noFileProvided": "업로드할 파일이 제공되지 않았습니다",
+                    "failedToGetAccountId": "업로드용 계정 ID를 가져오지 못했습니다",
+                    "uploadResponseMissingFileData": "업로드 응답에 파일 데이터가 없습니다"
+                }
+            },
+            "accountSetup": {
+                "title": "계정 설정 완료",
+                "progress": "진행률",
+                "complete": "완료",
+                "profileSetupCompleted": "프로필 설정 완료",
+                "profileSetupIncomplete": "프로필 사진, 소개 및 소셜 링크 추가",
+                "recommendationsSetupCompleted": "추천 설정 완료",
+                "recommendationsSetupIncomplete": "위치, 장소 추가 및 첫 번째 목록 게시",
+                "setupButton": "설정",
+                "footerMessage": "두 단계를 모두 완료하여 전체 대시보드 경험 잠금 해제"
+            }
+        }
+    },
+    "toast": {
+        "success": {
+            "loginSuccessful": "로그인 성공!",
+            "registrationSuccessful": "등록 성공!",
+            "passwordResetSuccessful": "비밀번호 재설정 성공!",
+            "emailVerificationSent": "이메일 인증이 전송되었습니다!",
+            "resetLinkSent": "비밀번호 재설정 링크가 이메일로 전송되었습니다!",
+            "resetLinkResent": "재설정 링크가 재전송되었습니다!",
+            "profileImageUpdated": "프로필 이미지가 성공적으로 업데이트되었습니다!",
+            "backgroundImageUpdated": "배경 이미지가 성공적으로 업데이트되었습니다!",
+            "recommendedListUpdated": "추천 목록이 성공적으로 업데이트되었습니다!!!",
+            "accountCreated": "계정이 성공적으로 생성되었습니다!",
+            "usernameUpdated": "사용자 이름이 성공적으로 업데이트되었습니다!",
+            "profileUpdated": "프로필이 성공적으로 업데이트되었습니다!",
+            "settingsSaved": "설정이 성공적으로 저장되었습니다!",
+            "dataSaved": "데이터가 성공적으로 저장되었습니다!",
+            "changesSaved": "변경사항이 성공적으로 저장되었습니다!",
+            "fileUploaded": "파일이 성공적으로 업로드되었습니다!",
+            "imageUploaded": "이미지가 성공적으로 업로드되었습니다!",
+            "linkCopied": "링크가 클립보드에 복사되었습니다!",
+            "emailSent": "이메일이 성공적으로 전송되었습니다!",
+            "notificationSent": "알림이 성공적으로 전송되었습니다!",
+            "actionCompleted": "작업이 성공적으로 완료되었습니다!",
+            "formSubmitted": "양식이 성공적으로 제출되었습니다!",
+            "onboardingCompleted": "온보딩이 성공적으로 완료되었습니다!",
+            "welcomeMessage": "explorers에 오신 것을 환영합니다!",
+            "accountActivated": "계정이 성공적으로 활성화되었습니다!",
+            "emailVerified": "이메일 인증 성공!",
+            "passwordChanged": "비밀번호 변경 성공!",
+            "usernameChanged": "사용자명 변경 성공!",
+            "profileCompleted": "프로필 완성 성공!",
+            "setupCompleted": "설정 완료 성공!",
+            "loggedOutSuccessfully": "로그아웃 성공!"
+        },
+        "error": {
+            "loginFailed": "로그인에 실패했습니다. 자격 증명을 확인하세요.",
+            "registrationFailed": "등록에 실패했습니다. 다시 시도하세요.",
+            "passwordResetFailed": "비밀번호 재설정에 실패했습니다. 다시 시도하세요.",
+            "emailVerificationFailed": "이메일 인증에 실패했습니다. 다시 시도하세요.",
+            "resetLinkFailed": "재설정 링크 전송에 실패했습니다. 나중에 다시 시도하세요.",
+            "resetLinkResendFailed": "재전송에 실패했습니다. 나중에 다시 시도하세요.",
+            "profileImageUpdateFailed": "프로필 이미지 업로드에 실패했습니다. 다시 시도하세요.",
+            "backgroundImageUpdateFailed": "배경 이미지 업로드에 실패했습니다. 다시 시도하세요.",
+            "recommendedListUpdateFailed": "추천 목록 업데이트 중 오류가 발생했습니다!!!",
+            "accountCreationFailed": "계정 생성에 실패했습니다. 다시 시도하세요.",
+            "usernameUpdateFailed": "사용자 이름 업데이트에 실패했습니다. 다시 시도하세요.",
+            "profileUpdateFailed": "프로필 업데이트에 실패했습니다. 다시 시도하세요.",
+            "settingsSaveFailed": "설정 저장에 실패했습니다. 다시 시도하세요.",
+            "dataSaveFailed": "데이터 저장에 실패했습니다. 다시 시도하세요.",
+            "changesSaveFailed": "변경사항 저장에 실패했습니다. 다시 시도하세요.",
+            "fileUploadFailed": "파일 업로드에 실패했습니다. 다시 시도하세요.",
+            "imageUploadFailed": "이미지 업로드에 실패했습니다. 다시 시도하세요.",
+            "linkCopyFailed": "링크 복사에 실패했습니다. 다시 시도하세요.",
+            "emailSendFailed": "이메일 전송에 실패했습니다. 다시 시도하세요.",
+            "notificationSendFailed": "알림 전송에 실패했습니다. 다시 시도하세요.",
+            "actionFailed": "작업에 실패했습니다. 다시 시도하세요.",
+            "formSubmissionFailed": "양식 제출에 실패했습니다. 다시 시도하세요.",
+            "onboardingFailed": "온보딩에 실패했습니다. 다시 시도하세요.",
+            "accountActivationFailed": "계정 활성화에 실패했습니다. 다시 시도하세요.",
+            "passwordChangeFailed": "비밀번호 변경에 실패했습니다. 다시 시도하세요.",
+            "usernameChangeFailed": "사용자 이름 변경에 실패했습니다. 다시 시도하세요.",
+            "profileCompletionFailed": "프로필 완성에 실패했습니다. 다시 시도하세요.",
+            "setupFailed": "설정에 실패했습니다. 다시 시도하세요.",
+            "networkError": "네트워크 오류. 연결을 확인하세요.",
+            "serverError": "서버 오류. 나중에 다시 시도하세요.",
+            "validationError": "유효성 검사 오류. 입력을 확인하세요.",
+            "permissionDenied": "권한이 거부되었습니다. 지원팀에 문의하세요.",
+            "sessionExpired": "세션이 만료되었습니다. 다시 로그인하세요.",
+            "invalidCredentials": "유효하지 않은 자격 증명. 입력을 확인하세요.",
+            "emailNotFound": "이메일을 찾을 수 없습니다. 다시 시도하세요.",
+            "usernameAlreadyExists": "사용자 이름이 이미 존재합니다. 다른 것을 선택하세요.",
+            "emailAlreadyExists": "이메일이 이미 존재합니다. 다른 이메일을 사용하세요.",
+            "invalidEmailFormat": "유효하지 않은 이메일 형식. 유효한 이메일을 입력하세요.",
+            "passwordTooWeak": "비밀번호가 너무 약합니다. 더 강한 비밀번호를 선택하세요.",
+            "passwordsDoNotMatch": "비밀번호가 일치하지 않습니다. 다시 시도하세요.",
+            "requiredFieldMissing": "필수 필드가 누락되었습니다. 모든 필수 필드를 입력하세요.",
+            "invalidInput": "유효하지 않은 입력입니다. 데이터를 확인하세요.",
+            "fileTooLarge": "파일이 너무 큽니다. 더 작은 파일을 선택하세요.",
+            "unsupportedFileType": "지원되지 않는 파일 형식입니다. 다른 파일을 선택하세요.",
+            "uploadLimitExceeded": "업로드 제한을 초과했습니다. 나중에 다시 시도하세요.",
+            "operationTimeout": "작업 시간이 초과되었습니다. 다시 시도하세요.",
+            "serviceUnavailable": "서비스를 사용할 수 없습니다. 나중에 다시 시도하세요.",
+            "maintenanceMode": "서비스가 유지보수 중입니다. 나중에 다시 시도하세요.",
+            "rateLimitExceeded": "요청이 너무 많습니다. 나중에 다시 시도하세요.",
+            "quotaExceeded": "할당량을 초과했습니다. 나중에 다시 시도하세요.",
+            "accessDenied": "액세스가 거부되었습니다. 이 작업을 수행할 권한이 없습니다.",
+            "resourceNotFound": "리소스를 찾을 수 없습니다. 요청을 확인하세요.",
+            "conflictError": "충돌 오류입니다. 리소스가 이미 존재합니다.",
+            "preconditionFailed": "전제 조건이 실패했습니다. 요청을 확인하세요.",
+            "tooManyAttempts": "시도 횟수가 너무 많습니다. 나중에 다시 시도하세요.",
+            "accountLocked": "계정이 잠겼습니다. 지원팀에 문의하세요.",
+            "accountSuspended": "계정이 일시 중단되었습니다. 지원팀에 문의하세요.",
+            "accountDeleted": "계정이 삭제되었습니다. 지원팀에 문의하세요.",
+            "emailNotVerified": "이메일이 확인되지 않았습니다. 먼저 이메일을 확인하세요.",
+            "phoneNotVerified": "전화번호가 확인되지 않았습니다. 먼저 전화를 확인하세요.",
+            "twoFactorRequired": "이중 인증이 필요합니다.",
+            "twoFactorFailed": "이중 인증에 실패했습니다. 다시 시도하세요.",
+            "captchaFailed": "캡차 확인에 실패했습니다. 다시 시도하세요.",
+            "invalidToken": "유효하지 않은 토큰. 다시 시도하세요.",
+            "expiredToken": "토큰이 만료되었습니다. 다시 시도하세요.",
+            "invalidCode": "유효하지 않은 코드입니다. 입력을 확인하세요.",
+            "expiredCode": "코드가 만료되었습니다. 새 코드를 요청하세요.",
+            "codeLimitExceeded": "코드 제한을 초과했습니다. 나중에 다시 시도하세요.",
+            "invalidUsername": "유효하지 않은 사용자 이름입니다. 입력을 확인하세요.",
+            "usernameTooShort": "사용자 이름이 너무 짧습니다. 더 긴 사용자 이름을 선택하세요.",
+            "usernameTooLong": "사용자 이름이 너무 깁니다. 더 짧은 사용자 이름을 선택하세요.",
+            "usernameInvalidChars": "사용자 이름에 유효하지 않은 문자가 포함되어 있습니다. 문자, 숫자 및 하이픈만 사용하세요.",
+            "usernameReserved": "사용자 이름이 예약되어 있습니다. 다른 사용자 이름을 선택하세요.",
+            "usernameProfanity": "사용자 이름에 부적절한 내용이 포함되어 있습니다. 다른 사용자 이름을 선택하세요.",
+            "primaryAddressRequired": "주소가 필요합니다",
+            "addressRequired": "주소가 필요합니다",
+            "cityRequired": "도시가 필요합니다",
+            "stateRequired": "주/도가 필요합니다",
+            "countryRequired": "국가가 필요합니다",
+            "postalCodeRequired": "우편번호가 필요합니다",
+            "mobileNumberRequired": "휴대폰 번호가 필요합니다",
+            "mobileNumberInvalid": "유효하지 않은 휴대폰 번호 형식",
+            "mobileNumberTooShort": "휴대폰 번호가 너무 짧습니다",
+            "mobileNumberTooLong": "휴대폰 번호가 너무 깁니다",
+            "bioRequired": "자기소개가 필요합니다",
+            "bioTooLong": "자기소개가 너무 깁니다. 250자 이하로 유지하세요",
+            "displayNameRequired": "표시 이름이 필요합니다",
+            "displayNameTooShort": "표시 이름이 너무 짧습니다",
+            "displayNameTooLong": "표시 이름이 너무 깁니다",
+            "accountTypeRequired": "계정 유형이 필요합니다",
+            "invalidAccountType": "유효하지 않은 계정 유형이 선택되었습니다",
+            "imageRequired": "이미지가 필요합니다",
+            "imageTooLarge": "이미지가 너무 큽니다. 더 작은 이미지를 선택하세요",
+            "unsupportedImageFormat": "지원되지 않는 이미지 형식입니다. JPG, PNG 또는 GIF를 사용하세요",
+            "imageProcessingFailed": "이미지 처리에 실패했습니다. 다시 시도하세요",
+            "imageCorrupted": "이미지가 손상되었습니다. 다른 이미지를 선택하세요",
+            "imageDimensionsInvalid": "이미지 크기가 유효하지 않습니다. 다른 이미지를 선택하세요",
+            "imageSizeInvalid": "이미지 크기가 유효하지 않습니다. 다른 이미지를 선택하세요",
+            "imageFormatInvalid": "이미지 형식이 유효하지 않습니다. 다른 이미지를 선택하세요",
+            "imageQualityTooLow": "이미지 품질이 너무 낮습니다. 더 높은 품질의 이미지를 선택하세요",
+            "imageTooSmall": "이미지가 너무 작습니다. 더 큰 이미지를 선택하세요",
+            "imageTooBig": "이미지가 너무 큽니다. 더 작은 이미지를 선택하세요",
+            "imageAspectRatioInvalid": "이미지 종횡비가 유효하지 않습니다. 다른 이미지를 선택하세요",
+            "imageColorSpaceInvalid": "이미지 색 공간이 유효하지 않습니다. 다른 이미지를 선택하세요",
+            "imageMetadataInvalid": "이미지 메타데이터가 유효하지 않습니다. 다른 이미지를 선택하세요",
+            "imageSecurityViolation": "이미지 보안 위반입니다. 다른 이미지를 선택하세요",
+            "imageVirusDetected": "이미지에서 바이러스가 감지되었습니다. 다른 이미지를 선택하세요",
+            "imageMalwareDetected": "이미지에서 맬웨어가 감지되었습니다. 다른 이미지를 선택하세요",
+            "imageSpamDetected": "이미지에서 스팸이 감지되었습니다. 다른 이미지를 선택하세요",
+            "imageContentInappropriate": "이미지 내용이 부적절합니다. 다른 이미지를 선택하세요",
+            "imageContentViolent": "이미지 내용이 폭력적입니다. 다른 이미지를 선택하세요",
+            "imageContentSexual": "이미지 내용이 성적입니다. 다른 이미지를 선택하세요",
+            "imageContentHateful": "이미지 내용이 혐오적입니다. 다른 이미지를 선택하세요",
+            "imageContentDiscriminatory": "이미지 내용이 차별적입니다. 다른 이미지를 선택하세요",
+            "imageContentOffensive": "이미지 내용이 공격적입니다. 다른 이미지를 선택하세요",
+            "imageContentAbusive": "이미지 내용이 학대적입니다. 다른 이미지를 선택하세요",
+            "imageContentHarassing": "이미지 내용이 괴롭힘입니다. 다른 이미지를 선택하세요",
+            "imageContentThreatening": "이미지 내용이 위협적입니다. 다른 이미지를 선택하세요",
+            "imageContentDangerous": "이미지 내용이 위험합니다. 다른 이미지를 선택하세요",
+            "imageContentIllegal": "이미지 내용이 불법입니다. 다른 이미지를 선택하세요",
+            "imageContentCopyright": "이미지 내용이 저작권을 침해합니다. 다른 이미지를 선택하세요",
+            "imageContentTrademark": "이미지 내용이 상표를 침해합니다. 다른 이미지를 선택하세요",
+            "imageContentPrivacy": "이미지 내용이 개인정보를 침해합니다. 다른 이미지를 선택하세요",
+            "imageContentConsent": "이미지 내용에 동의가 없습니다. 다른 이미지를 선택하세요",
+            "imageContentMinors": "이미지 내용에 미성이 포함되어 있습니다. 다른 이미지를 선택하세요",
+            "imageContentAnimals": "이미지 내용에 동물 학대가 포함되어 있습니다. 다른 이미지를 선택하세요",
+            "imageContentEnvironment": "이미지 내용이 환경을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentHealth": "이미지 내용이 건강을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentSafety": "이미지 내용이 안전을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentSecurity": "이미지 내용이 보안을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentIntegrity": "이미지 내용이 무결성을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentReputation": "이미지 내용이 평판을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentBrand": "이미지 내용이 브랜드를 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentBusiness": "이미지 내용이 비즈니스를 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentPersonal": "이미지 내용이 개인적 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentProfessional": "이미지 내용이 전문적 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentAcademic": "이미지 내용이 학술적 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentCultural": "이미지 내용이 문화적 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentReligious": "이미지 내용이 종교적 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentPolitical": "이미지 내용이 정치적 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentSocial": "이미지 내용이 사회적 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentEconomic": "이미지 내용이 경제적 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentLegal": "이미지 내용이 법적 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentEthical": "이미지 내용이 윤리적 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentMoral": "이미지 내용이 도덕적 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentSpiritual": "이미지 내용이 정신적 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentPhilosophical": "이미지 내용이 철학적 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentScientific": "이미지 내용이 과학적 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentTechnical": "이미지 내용이 기술적 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentArtistic": "이미지 내용이 예술적 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentCreative": "이미지 내용이 창의적 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentIntellectual": "이미지 내용이 지적 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentEducational": "이미지 내용이 교육적 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentInformational": "이미지 내용이 정보적 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentNews": "이미지 내용이 뉴스 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentMedia": "이미지 내용이 미디어 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentEntertainment": "이미지 내용이 엔터테인먼트 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentSports": "이미지 내용이 스포츠 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentRecreation": "이미지 내용이 레크리에이션 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentLeisure": "이미지 내용이 여가 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentHobby": "이미지 내용이 취미 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentInterest": "이미지 내용이 관심 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentPassion": "이미지 내용이 열정 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentLove": "이미지 내용이 사랑 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentHate": "이미지 내용이 증오 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentAnger": "이미지 내용이 분노 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentFear": "이미지 내용이 두려움 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentSadness": "이미지 내용이 슬픔 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentJoy": "이미지 내용이 기쁨 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentHappiness": "이미지 내용이 행복 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentExcitement": "이미지 내용이 흥분 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentSurprise": "이미지 내용이 놀라움 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentDisgust": "이미지 내용이 혐오 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentShame": "이미지 내용이 수치심 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentGuilt": "이미지 내용이 죄책감 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentPride": "이미지 내용이 자부심 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentEnvy": "이미지 내용이 시기 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentJealousy": "이미지 내용이 질투 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentGreed": "이미지 내용이 탐욕 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentLust": "이미지 내용이 욕정 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentGluttony": "이미지 내용이 탐식 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentSloth": "이미지 내용이 나태 이익을 해칩니다. 다른 이미지를 선택하세요",
+            "imageContentWrath": "이미지 내용이 분노 이익을 해칩니다. 다른 이미지를 선택하세요"
+        },
+        "warning": {
+            "usernameCooldown": "쿨다운 기간으로 인해 사용자 이름 변경이 일시적으로 잠겨 있습니다",
+            "passwordWeak": "비밀번호가 약합니다. 더 강한 비밀번호 사용을 고려하세요",
+            "emailNotVerified": "이메일이 확인되지 않았습니다. 이메일을 확인하세요",
+            "phoneNotVerified": "전화번호가 확인되지 않았습니다. 전화를 확인하세요",
+            "profileIncomplete": "프로필이 불완전합니다. 프로필을 완성하세요",
+            "settingsNotSaved": "설정이 저장되지 않았습니다. 설정을 저장하세요",
+            "dataNotSaved": "데이터가 저장되지 않았습니다. 데이터를 저장하세요",
+            "changesNotSaved": "변경사항이 저장되지 않았습니다. 변경사항을 저장하세요",
+            "fileNotUploaded": "파일이 업로드되지 않았습니다. 파일을 업로드하세요",
+            "imageNotUploaded": "이미지가 업로드되지 않았습니다. 이미지를 업로드하세요",
+            "linkNotCopied": "링크가 복사되지 않았습니다. 링크를 복사하세요",
+            "emailNotSent": "이메일이 전송되지 않았습니다. 이메일을 전송하세요",
+            "notificationNotSent": "알림이 전송되지 않았습니다. 알림을 전송하세요",
+            "actionNotCompleted": "작업이 완료되지 않았습니다. 작업을 완료하세요",
+            "formNotSubmitted": "양식이 제출되지 않았습니다. 양식을 제출하세요",
+            "onboardingNotCompleted": "온보딩이 완료되지 않았습니다. 온보딩을 완료하세요",
+            "accountNotActivated": "계정이 활성화되지 않았습니다. 계정을 활성화하세요",
+            "passwordNotChanged": "비밀번호가 변경되지 않았습니다. 비밀번호를 변경하세요",
+            "usernameNotChanged": "사용자 이름이 변경되지 않았습니다. 사용자 이름을 변경하세요",
+            "profileNotCompleted": "프로필이 완성되지 않았습니다. 프로필을 완성하세요",
+            "setupNotCompleted": "설정이 완료되지 않았습니다. 설정을 완료하세요",
+            "networkSlow": "네트워크가 느립니다. 연결을 확인하세요",
+            "serverSlow": "서버가 느립니다. 나중에 다시 시도하세요",
+            "validationPending": "유효성 검사가 대기 중입니다. 기다려주세요",
+            "permissionPending": "권한이 대기 중입니다. 기다려주세요",
+            "sessionExpiring": "세션이 만료되고 있습니다. 다시 로그인하세요",
+            "credentialsExpiring": "자격 증명이 만료되고 있습니다. 자격 증명을 업데이트하세요",
+            "emailExpiring": "이메일이 만료되고 있습니다. 이메일을 업데이트하세요",
+            "phoneExpiring": "전화가 만료되고 있습니다. 전화를 업데이트하세요",
+            "profileExpiring": "프로필이 만료되고 있습니다. 프로필을 업데이트하세요",
+            "settingsExpiring": "설정이 만료되고 있습니다. 설정을 업데이트하세요",
+            "dataExpiring": "데이터가 만료되고 있습니다. 데이터를 업데이트하세요",
+            "changesExpiring": "변경사항이 만료되고 있습니다. 변경사항을 업데이트하세요",
+            "fileExpiring": "파일이 만료되고 있습니다. 파일을 업데이트하세요",
+            "imageExpiring": "이미지가 만료되고 있습니다. 이미지를 업데이트하세요",
+            "linkExpiring": "링크가 만료되고 있습니다. 링크를 업데이트하세요",
+            "notificationExpiring": "알림이 만료되고 있습니다. 알림을 업데이트하세요",
+            "actionExpiring": "작업이 만료되고 있습니다. 작업을 업데이트하세요",
+            "formExpiring": "양식이 만료되고 있습니다. 양식을 업데이트하세요",
+            "onboardingExpiring": "온보딩이 만료되고 있습니다. 온보딩을 업데이트하세요",
+            "accountExpiring": "계정이 만료되고 있습니다. 계정을 업데이트하세요",
+            "passwordExpiring": "비밀번호가 만료되고 있습니다. 비밀번호를 업데이트하세요",
+            "usernameExpiring": "사용자 이름이 만료되고 있습니다. 사용자 이름을 업데이트하세요",
+            "setupExpiring": "설정이 만료되고 있습니다. 설정을 업데이트하세요"
+        },
+        "info": {
+            "loading": "로딩 중...",
+            "processing": "처리 중...",
+            "saving": "저장 중...",
+            "uploading": "업로드 중...",
+            "downloading": "다운로드 중...",
+            "connecting": "연결 중...",
+            "disconnecting": "연결 해제 중...",
+            "sending": "전송 중...",
+            "receiving": "수신 중...",
+            "updating": "업데이트 중...",
+            "refreshing": "새로고침 중...",
+            "synchronizing": "동기화 중...",
+            "validating": "유효성 검사 중...",
+            "verifying": "확인 중...",
+            "checking": "확인 중...",
+            "searching": "검색 중...",
+            "filtering": "필터링 중...",
+            "sorting": "정렬 중...",
+            "organizing": "정리 중...",
+            "arranging": "정리 중...",
+            "configuring": "구성 중...",
+            "setting": "설정 중...",
+            "adjusting": "조정 중...",
+            "modifying": "수정 중...",
+            "changing": "변경 중...",
+            "switching": "전환 중...",
+            "toggling": "전환 중...",
+            "enabling": "활성화 중...",
+            "disabling": "비활성화 중...",
+            "activating": "활성화 중...",
+            "deactivating": "비활성화 중...",
+            "starting": "시작 중...",
+            "stopping": "중지 중...",
+            "pausing": "일시 중지 중...",
+            "resuming": "재개 중...",
+            "restarting": "다시 시작 중...",
+            "resetting": "재설정 중...",
+            "clearing": "지우기 중...",
+            "deleting": "삭제 중...",
+            "removing": "제거 중...",
+            "adding": "추가 중...",
+            "inserting": "삽입 중...",
+            "creating": "만들기 중...",
+            "building": "구축 중...",
+            "constructing": "구축 중...",
+            "generating": "생성 중...",
+            "producing": "생성 중...",
+            "making": "만들기 중...",
+            "preparing": "준비 중...",
+            "readying": "준비 중...",
+            "initializing": "초기화 중...",
+            "launching": "시작 중...",
+            "opening": "열기 중...",
+            "closing": "닫기 중...",
+            "shutting": "닫기 중...",
+            "ending": "종료 중...",
+            "finishing": "완료 중...",
+            "completing": "완료 중...",
+            "finalizing": "마무리 중...",
+            "concluding": "종료 중...",
+            "terminating": "종료 중...",
+            "canceling": "취소 중...",
+            "aborting": "중단 중...",
+            "interrupting": "중단 중...",
+            "halting": "중지 중...",
+            "freezing": "동결 중...",
+            "unfreezing": "해동 중...",
+            "thawing": "해동 중...",
+            "melting": "융해 중...",
+            "cooling": "냉각 중...",
+            "heating": "가열 중...",
+            "warming": "가열 중...",
+            "chilling": "냉각 중...",
+            "renewing": "갱신 중...",
+            "restoring": "복원 중...",
+            "recovering": "복구 중...",
+            "repairing": "수리 중...",
+            "fixing": "수정 중...",
+            "correcting": "수정 중...",
+            "tuning": "조정 중...",
+            "optimizing": "최적화 중...",
+            "improving": "개선 중...",
+            "enhancing": "향상 중...",
+            "upgrading": "업그레이드 중...",
+            "modernizing": "현대화 중..."
+        }
+    },
+    "emailVerification": {
+        "title": "Verify Your Email",
+        "description": "We\u0027ve sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
+        "checkEmail": "Check your email",
+        "emailSent": "Verification email sent!",
+        "resendEmail": "Resend Email",
+        "resendIn": "Resend in",
+        "seconds": "seconds",
+        "didntReceive": "Didn\u0027t receive the email?",
+        "checkSpam": "Please check your spam folder or try again.",
+        "backToLogin": "Back to Login",
+        "emailAddress": "Email Address",
+        "verificationSent": "Verification email sent to:",
+        "clickLink": "Click the link in the email to verify your account.",
+        "expiresIn": "This link expires in 24 hours.",
+        "needHelp": "Need help?",
+        "contactSupport": "Contact Support"
+    },
+    "settings": {
+        "title": "설정",
+        "account": {
+            "heading": "계정",
+            "security": {
+                "title": "계정 및 보안"
+            },
+            "changePassword": {
+                "text": "비밀번호를 변경하시겠습니까?",
+                "button": "비밀번호 변경",
+                "modalTitle": "비밀번호 변경",
+                "currentPassword": "현재 비밀번호",
+                "newPassword": "새 비밀번호",
+                "confirmPassword": "새 비밀번호 확인",
+                "updateButton": "비밀번호 업데이트",
+                "currentPasswordPlaceholder": "현재 비밀번호를 입력하세요",
+                "newPasswordPlaceholder": "새 비밀번호를 입력하세요",
+                "confirmPasswordPlaceholder": "새 비밀번호를 다시 입력하세요",
+                "successMessage": "비밀번호가 성공적으로 업데이트되었습니다. 보안을 위해 로그인 페이지로 이동합니다.",
+                "redirectMessage": "보안을 위해 로그인으로 이동 중...",
+                "description": "계정을 안전하게 유지하기 위해 비밀번호를 업데이트하세요"
+            },
+            "deactivateAccount": {
+                "text": "계정을 비활성화하시겠습니까?",
+                "button": "계정 비활성화",
+                "modalTitle": "계정을 비활성화하시겠습니까?",
+                "modalDescription": "정말로 계정을 비활성화하시겠습니까?",
+                "enterUsername": "사용자명을 입력하세요",
+                "enterPassword": "비밀번호를 입력하세요",
+                "usernamePlaceholder": "사용자명을 입력하세요",
+                "passwordPlaceholder": "현재 비밀번호를 입력하세요",
+                "confirmButton": "내 계정 비활성화",
+                "deactivatedButton": "비활성화됨",
+                "successMessage": "계정이 성공적으로 비활성화되었습니다",
+                "activatedMessage": "계정이 성공적으로 활성화되었습니다",
+                "description": "계정을 일시적으로 비활성화하세요"
+            },
+            "deleteAccount": {
+                "text": "계정을 삭제하시겠습니까?",
+                "button": "계정 삭제",
+                "step1": {
+                    "modalTitle": "계정을 삭제하시겠습니까?",
+                    "modalDescription": "정말로 계정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+                    "modalDescription2": "데이터를 보관하고 싶다면 대신 계정을 비활성화할 수 있습니다.",
+                    "deactivateInsteadButton": "대신 계정 비활성화",
+                    "continueButton": "삭제 계속"
+                },
+                "step2": {
+                    "modalTitle": "세부 정보 입력",
+                    "enterUsername": "사용자명을 입력하세요",
+                    "enterPassword": "비밀번호를 입력하세요",
+                    "confirmPassword": "비밀번호를 확인하세요",
+                    "usernamePlaceholder": "사용자명을 입력하세요",
+                    "passwordPlaceholder": "비밀번호를 입력하세요",
+                    "confirmPasswordPlaceholder": "비밀번호를 확인하세요",
+                    "continueButton": "계속"
+                },
+                "step3": {
+                    "modalTitle": "왜 떠나시나요?",
+                    "reasonPlaceholder": "떠나는 이유를 알려주세요...",
+                    "continueButton": "계속"
+                },
+                "step4": {
+                    "modalTitle": "삭제 확인",
+                    "confirmText": "계속하려면 \u0027CONFIRM DELETE\u0027를 입력하세요",
+                    "confirmPlaceholder": "확인하려면 \u0027CONFIRM DELETE\u0027를 입력하세요",
+                    "deleteButton": "내 계정 삭제",
+                    "confirmationRequired": "확인하려면 \u0027CONFIRM DELETE\u0027를 입력해주세요.",
+                    "reasonRequired": "떠나는 이유를 제공해주세요.",
+                    "successMessage": "계정이 성공적으로 삭제되었습니다."
+                },
+                "description": "계정과 모든 데이터를 영구적으로 삭제하세요"
+            }
+        },
+        "languagePreference": {
+            "heading": "언어 설정",
+            "selectLanguage": "언어를 선택하세요",
+            "availableLanguages": "47개 언어 중에서 선택하세요",
+            "currentLanguage": "현재: {{flag}} {{name}}",
+            "languageChanged": "언어가 {{name}}(으)로 변경되었습니다",
+            "description": "인터페이스에 선호하는 언어를 선택하세요. 이렇게 하면 애플리케이션 전체의 모든 텍스트, 버튼 및 메뉴의 언어가 변경됩니다."
+        },
+        "subtitle": "계정 설정 및 환경설정 관리"
+    },
+    "seo": {
+        "loginTitle": "Login to explorers | Access Your Personalized Recommendations \u0026 Places",
+        "registerTitle": "Sign Up for explorers | Join the Community \u0026 Share Your Favorite Local Places"
+    },
+    "sidebar": {
+        "home": "홈",
+        "profile": "프로필",
+        "recommendations": "추천",
+        "analytics": "분석",
+        "settings": "설정",
+        "logout": "로그아웃",
+        "loading": "로딩 중...",
+        "clickToOpenMenu": "메뉴를 열려면 클릭하세요"
+    },
+    "modal": {
+        "unsavedChanges": {
+            "title": "저장되지 않은 변경사항",
+            "message": "저장되지 않은 변경사항이 있습니다. 이동하면 손실됩니다. 어떻게 하시겠습니까?",
+            "discard": "취소",
+            "cancel": "취소",
+            "save": "저장"
+        },
+        "usernameChange": {
+            "title": "사용자 이름 변경 확인",
+            "description": "사용자 이름은 프로필 및 추천 목록 링크에 사용됩니다:",
+            "profileLabel": "프로필:",
+            "listLabel": "목록:",
+            "warning": "이전 사용자 이름이 있는 QR 코드나 링크는 더 이상 작동하지 않습니다 — 업데이트하고 다시 공유해야 합니다.",
+            "cooldownPrefix": "이 업데이트 후",
+            "cooldownSuffix": "에 사용자 이름을 다시 변경할 수 있습니다.",
+            "minute": "1분",
+            "day": "1일",
+            "days": "일",
+            "cancel": "취소",
+            "confirm": "사용자 이름 변경"
+        }
+    },
+    "analytics": {
+        "dashboard": {
+            "title": "분석 대시보드",
+            "subtitle": "QR 코드 성능 및 사용자 참여도 추적",
+            "timePeriod": "기간:",
+            "timeFilter": {
+                "today": "오늘",
+                "last7days": "지난 7일",
+                "last30days": "지난 30일",
+                "custom": "사용자 정의 범위",
+                "selectPeriod": "기간 선택"
+            },
+            "dateRange": {
+                "from": "시작:",
+                "to": "종료:"
+            },
+            "summaryCards": {
+                "totalViews": "총 조회수",
+                "totalClicks": "총 클릭수",
+                "totalQRViews": "총 QR 조회수",
+                "totalLinkViews": "총 링크 조회수"
+            },
+            "loading": {
+                "loadingData": "분석 데이터 로딩 중...",
+                "resolvingCountry": "국가 데이터 해결 중..."
+            },
+            "error": {
+                "title": "분석 로드 오류",
+                "message": "분석 데이터를 가져올 수 없습니다. 나중에 다시 시도해 주세요.",
+                "errorLabel": "오류:"
+            },
+            "comingSoon": {
+                "title": "분석 곧 제공 예정",
+                "message": "분석은 계정 생성 후 \u003cstrong\u003e{{days}}일{{daysPlural}}\u003c/strong\u003e 후에 사용할 수 있습니다.",
+                "whyWait": {
+                    "title": "왜 기다려야 하나요?",
+                    "reasons": {
+                        "accuracy": "• 데이터 정확성을 보장하고 스팸을 방지합니다",
+                        "interactions": "• 의미 있는 사용자 상호작용을 위한 시간을 제공합니다",
+                        "insights": "• 신뢰할 수 있는 분석 인사이트를 제공합니다"
+                    }
+                },
+                "tip": "그동안 QR 코드를 공유하여 분석이 사용 가능할 때 데이터를 생성하세요!",
+                "filterTip": "\u003cstrong\u003e팁:\u003c/strong\u003e 분석이 사용 가능해지면 시간 기간(오늘, 지난 7일, 지난 30일 또는 사용자 정의 범위)으로 필터링하여 데이터를 볼 수 있습니다."
+            },
+            "emptyState": {
+                "title": "분석 데이터 없음",
+                "noDataMessage": "계정에 대한 분석 데이터를 찾을 수 없습니다. 사람들이 QR 코드를 보기 시작하고 상호작용하면 여기에 분석이 표시됩니다.",
+                "customRange": {
+                    "bothMissing": "분석 데이터를 보려면 사용자 정의 범위의 시작일과 종료일을 모두 선택하세요.",
+                    "startMissing": "분석 데이터를 보려면 사용자 정의 범위의 시작일을 선택하세요.",
+                    "endMissing": "분석 데이터를 보려면 사용자 정의 범위의 종료일을 선택하세요."
+                },
+                "noDataForPeriod": {
+                    "today": "오늘 사용 가능한 분석 데이터가 없습니다. 다른 시간 범위를 선택하여 데이터를 보세요.",
+                    "last7days": "지난 7일 동안 사용 가능한 분석 데이터가 없습니다. 다른 시간 범위를 선택하여 데이터를 보세요.",
+                    "last30days": "지난 30일 동안 사용 가능한 분석 데이터가 없습니다. 다른 시간 범위를 선택하여 데이터를 보세요.",
+                    "custom": "사용자 정의 범위({{startDate}} ~ {{endDate}})에 사용 가능한 분석 데이터가 없습니다. 다른 시간 범위를 선택하여 데이터를 보세요.",
+                    "default": "선택한 시간 범위에 사용 가능한 분석 데이터가 없습니다. 다른 시간 범위를 선택하여 데이터를 보세요."
+                },
+                "howToStart": {
+                    "title": "분석을 보기 시작하려면:",
+                    "shareQR": "• 소셜 미디어에서 QR 코드 공유",
+                    "includeQR": "• 마케팅 자료에 QR 코드 포함",
+                    "askFriends": "• 친구들에게 QR 코드 스캔 요청",
+                    "viewProfile": "• 공개 프로필 페이지 보기"
+                }
+            },
+            "charts": {
+                "topCountries": {
+                    "title": "조회수 상위 3개 국가",
+                    "retryGeolocation": "위치 정보 재시도",
+                    "geolocationIssue": "위치 정보 문제:",
+                    "countryDataUnavailable": "국가 데이터 사용 불가",
+                    "unableToResolve": "현재 IP 주소를 국가로 확인할 수 없습니다. 네트워크 제한 또는 서비스 제한 때문일 수 있습니다.",
+                    "failedToResolve": "국가 데이터 확인에 실패했습니다. 나중에 다시 시도해 주세요.",
+                    "analyticsSummary": "분석 요약:",
+                    "totalViewEvents": "• {{count}}개의 총 조회 이벤트",
+                    "eventsWithCountry": "• {{count}}개의 국가 데이터가 있는 이벤트",
+                    "eventsPending": "• {{count}}개의 위치 정보 대기 중인 이벤트",
+                    "willAppear": "IP 위치 정보 서비스가 사용 가능해지면 국가 데이터가 자동으로 표시됩니다.",
+                    "tooltip": {
+                        "country": "국가: {{country}}",
+                        "views": "조회수: {{count}}"
+                    },
+                    "legend": "조회수"
+                },
+                "worldMap": {
+                    "title": "전역 조회수 분포",
+                    "subtitle": "공개 페이지에서 국가별 조회수 분포를 보여주는 인터랙티브 세계 지도",
+                    "noGeographicData": "지리적 데이터 사용 불가",
+                    "unableToResolve": "현재 IP 주소를 국가로 확인할 수 없습니다. 네트워크 제한 또는 서비스 제한 때문일 수 있습니다.",
+                    "failedToResolve": "국가 데이터 확인에 실패했습니다. 나중에 다시 시도해 주세요.",
+                    "analyticsSummary": "분석 요약:",
+                    "totalViewEvents": "• {{count}}개의 총 조회 이벤트",
+                    "eventsWithCountry": "• {{count}}개의 국가 데이터가 있는 이벤트",
+                    "eventsPending": "• {{count}}개의 위치 정보 대기 중인 이벤트",
+                    "willAppear": "IP 위치 정보 서비스가 사용 가능해지면 국가 데이터가 자동으로 표시됩니다.",
+                    "tooltip": {
+                        "country": "{{country}}",
+                        "views": "{{views}}회 조회"
+                    },
+                    "countriesWithViews": "{{count}}개 국가에 조회수 있음",
+                    "legend": {
+                        "views": "조회수:",
+                        "low": "낮음",
+                        "medium": "보통",
+                        "high": "높음",
+                        "highest": "가장 높음"
+                    }
+                },
+                "trafficSource": {
+                    "title": "시간 경과에 따른 트래픽 소스",
+                    "subtitle": "시간에 따라 다른 소스에서 오는 트래픽이 어떻게 변하는지 추적",
+                    "selectSource": "트래픽 소스 선택:",
+                    "allSources": "모든 소스",
+                    "direct": "직접",
+                    "qrCode": "QR 코드",
+                    "instagram": "Instagram",
+                    "whatsapp": "WhatsApp",
+                    "twitter": "Twitter",
+                    "noTrafficData": "트래픽 데이터 사용 불가",
+                    "noViewEvents": "트래픽 소스 정보가 있는 조회 이벤트를 찾을 수 없습니다.",
+                    "analyticsSummary": "분석 요약:",
+                    "totalViewEvents": "• {{count}}개의 총 조회 이벤트",
+                    "eventsWithUTM": "• {{count}}개의 UTM 소스가 있는 이벤트",
+                    "directTraffic": "• {{count}}개의 직접 트래픽 이벤트",
+                    "willAppear": "사용자가 UTM 매개변수로 페이지를 방문하면 트래픽 소스 데이터가 표시됩니다.",
+                    "tooltip": {
+                        "sourceCount": "{{source}}: {{count}}"
+                    }
+                },
+                "locationEngagement": {
+                    "title": "위치별 참여도",
+                    "subtitle": "시간에 따라 다른 위치에 대한 조회수를 추적",
+                    "selectLocation": "위치 선택:",
+                    "allLocations": "모든 위치",
+                    "selectLocationPlaceholder": "위치 선택",
+                    "locationViews": "{{location}} ({{count}}회 조회)",
+                    "noLocationData": "위치 조회 데이터 사용 불가",
+                    "unknownLocation": "알 수 없는 위치",
+                    "location": "위치",
+                    "tooltip": {
+                        "date": "날짜: {{date}}",
+                        "locationViews": "{{location}}: {{value}}회 조회"
+                    },
+                    "stats": {
+                        "totalLocations": "총 위치 수",
+                        "totalViews": "총 조회수",
+                        "avgViews": "평균 조회수/위치"
+                    }
+                },
+                "recommendedPlaces": {
+                    "title": "추천 장소 참여도",
+                    "subtitle": "위치별 추천 장소의 클릭수 추적",
+                    "selectLocation": "위치 선택:",
+                    "selectLocationPlaceholder": "위치 선택",
+                    "locationPlaces": "{{location}} ({{count}}개 장소)",
+                    "noRecommendationData": "추천 데이터 없음",
+                    "noDataMessage": "선택한 기간에 대한 추천 클릭 데이터가 없습니다.",
+                    "analyticsSummary": "분석 요약:",
+                    "totalClickEvents": "• {{count}}개의 총 클릭 이벤트",
+                    "recordsWithRecommendations": "• {{count}}개의 추천 ID가 있는 레코드",
+                    "uniqueRecommendations": "• {{count}}개의 고유 추천",
+                    "selectLocationPrompt": "추천 데이터를 보려면 위치를 선택하세요.",
+                    "noClicksMessage": "선택한 위치에 대한 추천 클릭을 찾을 수 없습니다. 사용자가 위치 페이지의 장소 카드를 클릭하면 추천 데이터가 표시됩니다.",
+                    "unknownPlace": "알 수 없는 장소",
+                    "unknownCategory": "알 수 없는 카테고리",
+                    "unknownLocation": "알 수 없는 위치",
+                    "tooltip": {
+                        "place": "{{place}}",
+                        "category": "카테고리: {{category}}",
+                        "clicks": "클릭수: {{count}}"
+                    },
+                    "stats": {
+                        "placesShown": "표시된 장소",
+                        "totalClicks": "총 클릭수",
+                        "avgClicks": "평균 클릭수/장소"
+                    }
+                },
+                "socialMedia": {
+                    "title": "소셜 미디어 상호작용",
+                    "subtitle": "모든 플랫폼의 공개 프로필에서 소셜 미디어 링크 클릭수 추적",
+                    "noDataTitle": "소셜 미디어 상호작용 데이터 없음",
+                    "noDataMessage": "공개 프로필 페이지에서 소셜 미디어 클릭 데이터를 사용할 수 없습니다.",
+                    "analyticsSummary": "분석 요약:",
+                    "totalSocialClicks": "• {{count}}개의 총 소셜 미디어 클릭",
+                    "uniquePlatforms": "• {{count}}개의 고유 플랫폼",
+                    "trackingNote": "• 공개 프로필 페이지의 클릭만 추적",
+                    "willAppear": "사용자가 소셜 미디어 링크를 클릭하면 소셜 미디어 상호작용 데이터가 표시됩니다.",
+                    "tooltip": {
+                        "platform": "{{platform}}",
+                        "clicks": "클릭수: {{count}}"
+                    },
+                    "stats": {
+                        "platforms": "플랫폼",
+                        "totalClicks": "총 클릭수",
+                        "avgClicks": "평균 클릭수/플랫폼"
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,1982 @@
+﻿{
+    "header": {
+        "nav": {
+            "howItWorks": "איך זה עובד",
+            "whoIsFor": "למי זה מיועד",
+            "faq": "שאלות נפוצות",
+            "about": "אודות",
+            "contact": "צור קשר"
+        },
+        "auth": {
+            "login": "התחבר",
+            "signUp": "הירשם"
+        }
+    },
+    "hero": {
+        "headline": "כל ההמלצות שלכם ב-QR אחד וקישור פשוט.",
+        "subtext": "שתפו את מה שאתם יודעים ואוהבים על מקום — והפכו את זה לנגיש לכולם, בכל מקום",
+        "inputLabel": "הזמינו את ה-URL של explorers שלכם:",
+        "inputPlaceholder": "השם שלכם",
+        "ctaButton": "הזמינו explorers",
+        "signupPrompt": "הירשמו עכשיו כדי לקבל את שלכם"
+    },
+    "sections": {
+        "createCustomize": {
+            "headline": "צרו והתאימו את ה-explorers שלכם תוך דקות",
+            "subtext": "הוסיפו את המקומות האהובים עליכם, סדרו לפי עיר או נושא, ויצרו את ה-QR שלכם מיידית.",
+            "bulletPoints": {
+                "addSpots": {
+                    "title": "הוסיפו את המקומות האהובים עליכם",
+                    "description": "צרו רשימה עם ה-must-visit שלכם"
+                },
+                "organize": {
+                    "title": "סדרו לפי עיר או נושא",
+                    "description": "צרו קטגוריות שמשמעותיות לקהל שלכם"
+                },
+                "generate": {
+                    "title": "יצרו את הקישור וה-QR שלכם מיידית",
+                    "description": "ה-QR המותאם אישית שלכם מוכן תוך שניות"
+                },
+                "share": {
+                    "title": "שתפו דיגיטלית או באמצעות QR בעולם האמיתי",
+                    "description": ""
+                }
+            },
+            "mockup": {
+                "title": "ההמלצות שלי",
+                "addPlace": "הוסף מקום"
+            }
+        },
+        "shareAnywhere": {
+            "headline": "שתפו ברשתות חברתיות, חלונות ראווה, או קירות עיר",
+            "subtext": "הוסיפו לביוגרפיה של Instagram שלכם, הדפיסו על תפריטים, או כללו בספרי ברכה — המדריך שלכם, תמיד מוכן.",
+            "scanText": "סרקו להמלצות מקומיות",
+            "storefrontText": "מושלם לתצוגת חלון ראווה",
+            "instagramTitle": "הוסיפו לביוגרפיה של Instagram שלכם",
+            "instagramDesc": "שתפו עם העוקבים שלכם מיידית",
+            "menuTitle": "הדפיסו על תפריטים",
+            "menuDesc": "נקודות מגע פיזיות שנעשו קלות",
+            "welcomeTitle": "כללו בספרי ברכה",
+            "welcomeDesc": "מושלם למארחים ומדריכים",
+            "cafeMenu": "תפריט קפה",
+            "tokyoFoodGuide": "המדריך הקולינרי שלי לטוקיו explorers.earth/jane"
+        },
+        "analytics": {
+            "headline": "עקבו אחר קליקים, הפניות ומעורבות",
+            "subtext": "ראו מה עובד, מי סורק, ואילו מקומות מקבלים הכי הרבה אהבה — בזמן אמת.",
+            "workingTitle": "ראו מה עובד",
+            "workingDesc": "עקבו אחר הפופולריות של ההמלצות שלכם",
+            "scanningTitle": "מי סורק",
+            "scanningDesc": "עקבו אחר סריקות QR ועדכונים",
+            "spotsTitle": "מקומות ביצועים מובילים",
+            "spotsDesc": "תובנות מבוססות נתונים לאוצרות טוב יותר",
+            "dashboardTitle": "לוח בקרה אנליטי",
+            "last30Days": "30 הימים האחרונים",
+            "totalScans": "סריקות כוללות",
+            "engagement": "מעורבות",
+            "referrals": "הפניות"
+        },
+        "referEarn": {
+            "headline": "שתפו, הפנו והרוויחו",
+            "subtext": "הפכו את ההמלצות שלכם לתגמולים פסיביים — קבלו קרדיט כשאחרים משתמשים ב-QR שלכם.",
+            "comingSoon": "תוכנית תגמולי הפניות (בקרוב)",
+            "rewardsTitle": "הרוויחו תגמולים",
+            "rewardsDesc": "קבלו כסף כשאנשים משתמשים בהמלצות שלכם",
+            "earnedThisMonth": "הורווח החודש",
+            "passiveTitle": "הפכו המלצות לתגמולים פסיביים",
+            "networkTitle": "בנו את הרשת שלכם והרוויחו אוטומטית"
+        },
+        "localTunes": {
+            "mainHeading": "Tunes",
+            "title": "האזינו תוך כדי גילוי",
+            "body": "גילוי אינו רק ויזואלי. צליל נושא זיכרון, הקשר ורגש.\n\nTunes מאפשר לכם לאסוף ולשתף פסקולים למקומות, מסעות ומצבי רוח — בין אם זה מוזיקה שהתגלתה בדרך או צלילים שמגדירים מקום עבורכם.\n\nמחובר בצורה חלקה לפרופיל Explorer שלכם.",
+            "exploreButton": "גלו Tunes",
+            "featuresHeading": "תכונות חזקות",
+            "features": {
+                "realtimeCollaboration": {
+                    "title": "שיתוף פעולה בזמן אמת",
+                    "description": "אפשרו לאורחים להוסיף שירים לרשימת ההשמעה שלכם מיד תוך שמירה על שליטה מלאה על מה שמתנגן."
+                },
+                "qrCodeSharing": {
+                    "title": "שיתוף קוד QR",
+                    "description": "שתפו את חוויית המוזיקה שלכם עם סריקת קוד QR פשוטה — אין צורך באפליקציות או הורדות."
+                },
+                "youtubeIntegration": {
+                    "title": "אינטגרציה עם YouTube",
+                    "description": "התחברו בצורה חלקה עם YouTube כדי לגשת למיליוני שירים וליצור את האווירה המושלמת."
+                },
+                "voteLikeSystem": {
+                    "title": "מערכת הצבעה ואוהבים",
+                    "description": "אורחים יכולים להצביע לשירים האהובים עליהם כדי להשפיע על תור רשימת ההשמעה בזמן אמת."
+                },
+                "silentParties": {
+                    "title": "מסיבות שקטות",
+                    "description": "ארגנו מסיבות שקטות ייחודיות שבהן כולם מאזינים דרך האוזניות שלהם."
+                },
+                "karaokeReady": {
+                    "title": "מוכן לקריוקי",
+                    "description": "מושלם לערבי קריוקי עם רשימות השמעה שיתופיות ובקשות שירים בזמן אמת."
+                }
+            },
+            "venueHeading": "מושלם לכל מקום",
+            "venues": {
+                "barsPubs": "ברים ופאבים",
+                "restaurants": "מסעדות",
+                "coffeeShops": "בתי קפה",
+                "eventsWeddings": "אירועים וחתונות",
+                "retailStores": "חנויות",
+                "gymsFitness": "מכוני כושר ופיטנס"
+            },
+            "closingStatement": "Tunes \u003cstrong\u003eחינם\u003c/strong\u003e לגילוי, ולפיצ\u0027רים בתשלום תוכלו לשדרג מאוחר יותר."
+        },
+        "whoIsFor": {
+            "headline": "למי מיועד explorers.earth?",
+            "subtext": "explorers.earth מיועד לכל מי שמאמין ששיתוף הוא אחריות — לא שידור.",
+            "cards": {
+                "individuals": {
+                    "title": "יחידים",
+                    "oneLiner": "שתפו המלצות אישיות או מקומיות.",
+                    "items": {
+                        "traveler": {
+                            "label": "מטייל",
+                            "oneLiner": "אנשים שמשתפים מקומות טיול"
+                        },
+                        "local": {
+                            "label": "מקומי",
+                            "oneLiner": "תושבים מקומיים שמשתפים טיפים על השכונה"
+                        },
+                        "family": {
+                            "label": "משפחה",
+                            "oneLiner": "משפחות שמשתפות מקומות שימושיים"
+                        },
+                        "student": {
+                            "label": "סטודנט",
+                            "oneLiner": "סטודנטים שמשתפים מקומות בקמפוס/קרובים"
+                        },
+                        "nomad": {
+                            "label": "נווד",
+                            "oneLiner": "נוודים שמפרטים מרחבים ידידותיים לעבודה"
+                        },
+                        "emergencySharer": {
+                            "label": "משתף חירום",
+                            "oneLiner": "משתפי חירום שמפרסמים מקומות חיוניים"
+                        }
+                    }
+                },
+                "creators": {
+                    "title": "יוצרים",
+                    "oneLiner": "שתפו רשימות מאורגנות עם הקהל שלכם.",
+                    "items": {
+                        "influencer": {
+                            "label": "אינפלואנסר",
+                            "oneLiner": "אינפלואנסרים שמשתפים בחירות מובילות"
+                        },
+                        "blogger": {
+                            "label": "בלוגר",
+                            "oneLiner": "בלוגרים שמארגנים מדריכים כתובים"
+                        },
+                        "vlogger": {
+                            "label": "וולוגר",
+                            "oneLiner": "וולוגרים שמשתפים מסעות ויזואליים"
+                        },
+                        "reviewer": {
+                            "label": "מבקר",
+                            "oneLiner": "מבקרים שמפרטים מקומות מדורגים ביותר"
+                        },
+                        "photographer": {
+                            "label": "צלם",
+                            "oneLiner": "צלמים שמשתפים מקומות צילום"
+                        },
+                        "educator": {
+                            "label": "מחנך",
+                            "oneLiner": "מחנכים שמשתפים מדריכי למידה"
+                        },
+                        "communityLeader": {
+                            "label": "מנהיג קהילה",
+                            "oneLiner": "מנהיגי קהילה שמארגנים רשימות שימושיות"
+                        }
+                    }
+                },
+                "hospitality": {
+                    "title": "אירוח",
+                    "oneLiner": "הציעו לאורחים תובנות מקומיות מאורגנות.",
+                    "items": {
+                        "hotel": {
+                            "label": "מלון",
+                            "oneLiner": "מלונות שמציעים מדריכים מקומיים"
+                        },
+                        "airbnb": {
+                            "label": "Airbnb",
+                            "oneLiner": "מארחים שמשתפים מועדפי שכונה"
+                        },
+                        "hostel": {
+                            "label": "אכסניה",
+                            "oneLiner": "אכסניות שמשתפות טיפים לתרמילאים"
+                        },
+                        "homestay": {
+                            "label": "אירוח ביתי",
+                            "oneLiner": "אירוח ביתי שמציע מדריכים מוכווני משפחה"
+                        },
+                        "resort": {
+                            "label": "אתר נופש",
+                            "oneLiner": "אתרי נופש שמספקים רשימות פעילויות"
+                        },
+                        "pgColiving": {
+                            "label": "PG/מגורים משותפים",
+                            "oneLiner": "PG/מגורים משותפים שמציגים מקומות חשובים קרובים"
+                        }
+                    }
+                },
+                "businesses": {
+                    "title": "עסקים",
+                    "oneLiner": "הנחו לקוחות עם המלצות שימושיות.",
+                    "items": {
+                        "restaurant": {
+                            "label": "מסעדה",
+                            "oneLiner": "מסעדות שמשתפות מנות לנסות"
+                        },
+                        "cafe": {
+                            "label": "בית קפה",
+                            "oneLiner": "בתי קפה שמדגישים פריטי תפריט מועדפים"
+                        },
+                        "retailShop": {
+                            "label": "חנות",
+                            "oneLiner": "חנויות שמשתפות המלצות מוצרים"
+                        },
+                        "gym": {
+                            "label": "מכון כושר",
+                            "oneLiner": "מכוני כושר שמציעים מקומות בריאות מקומיים"
+                        },
+                        "spa": {
+                            "label": "ספא",
+                            "oneLiner": "ספא שמפרטים אפשרויות הרפיה קרובות"
+                        },
+                        "salon": {
+                            "label": "סלון",
+                            "oneLiner": "סלונים שמציעים מדריכי יופי"
+                        },
+                        "clinic": {
+                            "label": "קליניקה",
+                            "oneLiner": "קליניקות שמשתפות מקומות הקשורים לבריאות"
+                        },
+                        "boutique": {
+                            "label": "בוטיק",
+                            "oneLiner": "בוטיקים שמפרטים תגליות מאורגנות"
+                        }
+                    }
+                },
+                "organizations": {
+                    "title": "ארגונים",
+                    "oneLiner": "ספקו מדריכים ומשאבים מאורגנים.",
+                    "items": {
+                        "airline": {
+                            "label": "חברת תעופה",
+                            "oneLiner": "חברות תעופה שמשתפות מדריכי עיר"
+                        },
+                        "agency": {
+                            "label": "סוכנות",
+                            "oneLiner": "סוכנויות נסיעות שמפרטות מקומות לבקר"
+                        },
+                        "university": {
+                            "label": "אוניברסיטה",
+                            "oneLiner": "אוניברסיטאות שמשתפות צרכים בסיסיים של הקמפוס"
+                        },
+                        "corporate": {
+                            "label": "תאגיד",
+                            "oneLiner": "תאגידים שמפרטים משאבים קרובים"
+                        },
+                        "airport": {
+                            "label": "שדה תעופה",
+                            "oneLiner": "שדות תעופה שמציעים מסופים + טיפים על העיר"
+                        },
+                        "railway": {
+                            "label": "רכבת",
+                            "oneLiner": "רכבות שמשתפות מידע על פלטפורמה"
+                        },
+                        "ngo": {
+                            "label": "ארגון לא ממשלתי",
+                            "oneLiner": "ארגונים לא ממשלתיים שמשתפים משאבי קהילה"
+                        },
+                        "government": {
+                            "label": "ממשלה",
+                            "oneLiner": "מחלקות שמדגישות שירותים ציבוריים"
+                        }
+                    }
+                }
+            },
+            "useCases": {
+                "travelers": "מטיילים",
+                "travelersDesc": "שתפו אבנים טובות שהתגלו עם עמיתים חוקרים",
+                "influencers": "אינפלואנסרים",
+                "influencersDesc": "הפכו ידע מקומי לכסף ובנו קהילה",
+                "airbnbHosts": "מארחי Airbnb",
+                "airbnbHostsDesc": "שפרו את חוויית האורחים עם תובנות מקומיות",
+                "hotels": "מלונות",
+                "hotelsDesc": "ספקו המלצות מקומיות מעוצבות",
+                "restaurants": "מסעדות",
+                "restaurantsDesc": "קידום צולב עם עסקים מקומיים אחרים",
+                "cafes": "קפאיות",
+                "cafesDesc": "שתפו מועדפי שכונה עם לקוחות",
+                "localGuides": "מדריכים מקומיים",
+                "localGuidesDesc": "הרחיבו את המומחיות שלכם מעבר לסיורים אישיים",
+                "creators": "יוצרים",
+                "creatorsDesc": "הוסיפו ערך מעבר לתוכן עם טיפים מעשיים",
+                "tourOperators": "מפעילי סיורים",
+                "tourOperatorsDesc": "הרחיבו חוויות מעבר לסיורים מתוזמנים",
+                "anyBusiness": "כל עסק",
+                "anyBusinessDesc": "בנו קהילה ונאמנות לקוחות"
+            }
+        },
+        "testimonials": {
+            "headline": "אהוב על ידי מטיילים, יוצרים ומארחים",
+            "subtext": "ראו איך אנשים ברחבי העולם משתמשים ב-explorers כדי לשתף את הדברים החשובים ביותר.",
+            "scrollLeft": "גללו המלצות שמאלה",
+            "scrollRight": "גללו המלצות ימינה",
+            "items": [
+                {
+                    "id": "1",
+                    "name": "Marcus Chen",
+                    "role": "בלוגר טיולים",
+                    "location": "סן פרנסיסקו",
+                    "quote": "explorers שינה את הדרך שבה אני משתף את הידע שלי על טיולים. העוקבים שלי אוהבים לקבל גישה מיידית להמלצות המתואמות שלי!"
+                },
+                {
+                    "id": "2",
+                    "name": "Sarah Johnson",
+                    "role": "מארח Airbnb",
+                    "location": "ברצלונה",
+                    "quote": "האורחים שלי אוהבים לחלוטין את קוד ה-QR המותאם אישית בערכת הברכה שלהם. זה הפך לחתימה שלי!"
+                },
+                {
+                    "id": "3",
+                    "name": "Alex Rodriguez",
+                    "role": "בעל מסעדה",
+                    "location": "מקסיקו סיטי",
+                    "quote": "אנחנו משתפים את ה-explorers שלנו עם לקוחות כדי להמליץ על מקומות מקומיים אחרים. זה יצר קשרי קהילה מדהימים."
+                },
+                {
+                    "id": "4",
+                    "name": "Emma Thompson",
+                    "role": "מדריך טיולים",
+                    "location": "לונדון",
+                    "quote": "explorers עוזר לי להרחיב את המומחיות שלי מעבר לשעות הסיור. לקוחות יכולים לגשת להמלצות שלי בכל עת!"
+                }
+            ]
+        },
+        "faq": {
+            "headline": "יש שאלות?",
+            "subtext": "ענינו על הדברים הנפוצים ביותר שאנשים שואלים לפני שמתחילים.",
+            "loading": "טוען שאלות נפוצות...",
+            "error": "שגיאה בטעינת שאלות נפוצות. אנא נסו שוב מאוחר יותר."
+        },
+        "features": {
+            "title": "נבנה כדי להישאר מחוץ לדרך",
+            "subtitle": "תכונות פשוטות ומחושבות המאפשרות להמלצות שלכם לזרוח.",
+            "simpleLinks": {
+                "title": "קישורים פשוטים ושיתוף QR"
+            },
+            "livingGuides": {
+                "title": "מדריכים חיים וניתנים לעריכה"
+            },
+            "locationAware": {
+                "title": "המלצות מודעות למיקום"
+            },
+            "soundPlaylists": {
+                "title": "צליל ורשימות השמעה אופציונליות"
+            },
+            "privacyFirst": {
+                "title": "פרטיות ראשונה על פי עיצוב"
+            },
+            "communityDriven": {
+                "title": "גילוי מונע על ידי קהילה"
+            }
+        },
+        "finalCTA": {
+            "headline": "התחילו לשתף את העולם שלכם היום",
+            "subtext": "הזמינו את ה-explorers החינמי שלכם והפכו את התובנות המקומיות שלכם למדריכים ניתנים לשיתוף.",
+            "ctaButton": "הזמינו את ה-explorers שלכם – חינם לנצח",
+            "disclaimer": "לא נדרש כרטיס אשראי • הגדרה תוך 2 דקות",
+            "creating": "יוצר את ה-explorers שלכם..."
+        }
+    },
+    "contact": {
+        "title": "בואו נתחבר.",
+        "subtitle": "בין אם יש לכם שאלה, רעיון, או פשוט רוצים להגיד שלום — נשמח לשמוע מכם.",
+        "getInTouch": "צרו קשר",
+        "email": "hello@explorers.earth",
+        "responseTime": "אנחנו עונים תוך 24-48 שעות",
+        "closingMessage": "אנחנו צוות קטן עם חזון גדול — המחשבות שלכם חשובות לנו. צרו קשר ובואו נבנה משהו מקומי וגלובלי יחד.",
+        "seo": {
+            "title": "Contact explorers | Support, Help and Partnership enquiries.",
+            "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
+            "loginTitle": "Login to explorers | Access Your Personalized Recommendations \u0026 Places",
+            "registerTitle": "Sign Up for explorers | Join the Community \u0026 Share Your Favorite Local Places",
+            "keywords": [
+                "contact explorers",
+                "explorers support",
+                "get in touch explorers",
+                "customer service travel app",
+                "partnership inquiry explorers",
+                "help center local recommendations",
+                "technical support explorers",
+                "travel app customer service",
+                "feedback location sharing",
+                "account assistance explorers",
+                "business collaboration explorers",
+                "report problem explorers",
+                "share local recommendations support",
+                "find explorers contact",
+                "customer service",
+                "explorers team",
+                "help center",
+                "contact support",
+                "QR code support",
+                "local recommendations help",
+                "partnership inquiries"
+            ]
+        }
+    },
+    "about": {
+        "title": "חוקרי כדור הארץ",
+        "subtitle": {
+            "line1": "קהילה גלובלית של אנשים שמגלים בזהירות — עבור אנשים, תרבות וכוכב הלכת שאנחנו חולקים.",
+            "line2": "גילוי עבורנו אינו על כמה רחוק אנחנו הולכים.",
+            "line3": "זה על כמה עמוק אנחנו מתחברים."
+        },
+        "section1": {
+            "title": "מה שאנחנו מאמינים",
+            "line1": "גילוי מתחיל במודעות.",
+            "line2": "בהבחנה במה שאחרים עוברים עליו.",
+            "line3": "בבחירה לנוע בזהירות, לא במהירות.",
+            "line4": "אנחנו חיים זמן קצר על כוכב לכת עתיק —\nמוסיפים כמה סימנים מכוונים לסיפור\nשהתחיל הרבה לפנינו\nוימשיך הרבה אחרי שנעזוב."
+        },
+        "section2": {
+            "title": "איך אנחנו רואים גילוי",
+            "line1": "גילוי לא נמדד במיילים.",
+            "line2": "הוא נמדד במשמעות.",
+            "line3": "הוא חי בהאטה, בתשומת לב,\nובכבוד לכל מקום שאנחנו דורכים עליו —\nרחוב, שביל הרים, שולחן בית קפה,\nאו רגע משותף עם מישהו חדש."
+        },
+        "section3": {
+            "title": "מה שאנחנו בונים",
+            "line1": "explorers הוא מקום עבור:",
+            "item1": "מדריכים מעוצבים על ידי ניסיון אמיתי",
+            "item2": "מקומות, מסעות, צלילים וסיפורים ששווה לזכור",
+            "item3": "קהילות בנויות על אנשים — לא על מדדי פופולריות",
+            "line2": "טכנולוגיה עוזרת לנו להתחבר.",
+            "line3": "אנשים נותנים לזה מטרה."
+        },
+        "section4": {
+            "title": "שייכות",
+            "line1": "חוקרי כדור הארץ אינו מועדון.",
+            "line2": "זה לא תווית.",
+            "line3": "זה מנטליות משותפת —\nהבנה שקטה של איך אנחנו נעים בעולם."
+        },
+        "closing": "אם אתה סקרן.\nאם אתה זהיר.\nאם אתה מוכן להאט ולהסתכל קרוב יותר —\nאתה כבר שייך לכאן.",
+        "seo": {
+            "title": "Explorers of Earth | About Us",
+            "description": "A global community of people who explore with care — for people, culture, and the planet we share. Exploration isn\u0027t about distance, it\u0027s about depth.",
+            "keywords": [
+                "explorers of earth",
+                "about explorers",
+                "exploration community",
+                "thoughtful travel",
+                "sustainable exploration",
+                "local recommendations platform",
+                "travel app about",
+                "community-driven recommendations",
+                "authentic local experiences",
+                "explorers team",
+                "local discovery platform",
+                "share local places",
+                "travel technology",
+                "local recommendations app",
+                "explorers story",
+                "who we are explorers"
+            ]
+        }
+    },
+    "cookieConsent": {
+        "title": "🍪 העדפות עוגיות",
+        "description": "אנו משתמשים בעוגיות כדי לשפר את חוויית הגלישה שלך, לספק תוכן מותאם אישית ולנתח תעבורה. תוכל לנהל העדפות בכל עת.",
+        "acceptAll": "✅ קבל את כל העוגיות",
+        "customize": "⚙️ התאמה אישית",
+        "rejectNonEssential": "❌ דחה לא חיוניות",
+        "preferencesTitle": "העדפות עוגיות",
+        "essentialCookies": {
+            "title": "עוגיות חיוניות",
+            "description": "נדרשות לתפקוד תקין של האתר",
+            "alwaysOn": "תמיד מופעלות"
+        },
+        "analyticsCookies": {
+            "title": "עוגיות אנליטיקה",
+            "description": "עוזרות לנו להבין כיצד מבקרים מתקשרים עם האתר שלנו"
+        },
+        "marketingCookies": {
+            "title": "עוגיות שיווק",
+            "description": "משמשות למסירת פרסומות מותאמות אישית"
+        },
+        "savePreferences": "שמור העדפות",
+        "acceptAllButton": "קבל הכל",
+        "closeBanner": "סגור באנר",
+        "goBack": "חזור"
+    },
+    "footer": {
+        "tagline": "תנו להמלצות שלכם לטייל בעולם.",
+        "email": "hello@explorers.earth",
+        "sections": {
+            "product": "מוצר",
+            "contact": "צור קשר",
+            "legal": "משפטי"
+        },
+        "links": {
+            "howItWorks": "איך זה עובד",
+            "faq": "שאלות נפוצות",
+            "contact": "צור קשר",
+            "about": "אודות",
+            "terms": "תנאים והגבלות",
+            "privacy": "מדיניות פרטיות",
+            "cookies": "מדיניות עוגיות"
+        },
+        "copyright": "© 2025 explorers. כל הזכויות שמורות.",
+        "madeWithLove": "נוצר באהבה על כדור הארץ"
+    },
+    "legal": {
+        "terms": {
+            "title": "תנאים והגבלות",
+            "loading": "טוען תנאים והגבלות...",
+            "error": "שגיאה בטעינת תנאים והגבלות. אנא נסו שוב מאוחר יותר."
+        },
+        "privacy": {
+            "title": "מדיניות פרטיות",
+            "loading": "טוען מדיניות פרטיות...",
+            "error": "שגיאה בטעינת מדיניות פרטיות. אנא נסו שוב מאוחר יותר."
+        },
+        "cookies": {
+            "title": "מדיניות עוגיות",
+            "loading": "טוען מדיניות עוגיות...",
+            "error": "שגיאה בטעינת מדיניות עוגיות. אנא נסו שוב מאוחר יותר."
+        }
+    },
+    "languageModal": {
+        "title": "בחר שפה",
+        "searchPlaceholder": "חפש שפות...",
+        "close": "סגור"
+    },
+    "auth": {
+        "signup": "הרשמה",
+        "signupSubtitle": "הירשמו כדי ליהנות מהתכונות של explorers",
+        "username": "שם משתמש",
+        "usernamePlaceholder": "הזינו את שם המשתמש שלכם",
+        "email": "אימייל",
+        "emailPlaceholder": "הזינו את האימייל שלכם",
+        "password": "סיסמה",
+        "passwordPlaceholder": "הזינו את הסיסמה שלכם",
+        "confirmPassword": "אשר סיסמה",
+        "confirmPasswordPlaceholder": "הזינו שוב את הסיסמה שלכם",
+        "register": "הרשמה",
+        "or": "או",
+        "signUpWithGoogle": "הרשמה עם Google",
+        "alreadyHaveAccount": "יש לכם כבר חשבון?",
+        "login": "התחברות",
+        "loginTitle": "התחברות",
+        "loginSubtitle": "אנא התחברו כדי להמשיך לחשבון שלכם",
+        "usernameOrEmail": "שם משתמש או אימייל",
+        "usernameOrEmailPlaceholder": "הזינו את שם המשתמש או האימייל שלכם",
+        "signInWithGoogle": "התחברות עם Google",
+        "newToexplorers": "חדשים ב-explorers?",
+        "forgotPassword": "שכחתם את הסיסמה?",
+        "validations": {
+            "username": {
+                "required": "שם משתמש נדרש",
+                "minLength": "שם המשתמש חייב להיות באורך של לפחות 3 תווים",
+                "maxLength": "שם המשתמש לא יכול לעלות על 30 תווים",
+                "invalidChars": "שם המשתמש יכול להכיל רק אותיות קטנות (a-z), מספרים (0-9) ומקפים (-)",
+                "mustStartWithLetter": "שם המשתמש חייב להתחיל באות (a-z)",
+                "cannotStartEndHyphen": "שם המשתמש לא יכול להתחיל או להסתיים במקף",
+                "noConsecutiveHyphens": "שם המשתמש לא יכול להכיל מקפים רצופים",
+                "cannotBeAllNumbers": "Username cannot be all numbers",
+                "reservedWords": "שם משתמש זה מכיל מילים שמורות ולא ניתן להשתמש בו",
+                "inappropriateContent": "שם המשתמש מכיל תוכן לא הולם",
+                "alreadyExists": "שם המשתמש כבר קיים",
+                "suggestedAlternatives": "חלופות מוצעות:",
+                "willBeConvertedLowercase": "שם המשתמש יומר לאותיות קטנות",
+                "checkingAvailability": "בודק זמינות...",
+                "available": "שם המשתמש זמין",
+                "willConvertToLowercase": "שם המשתמש יומר לאותיות קטנות"
+            },
+            "email": {
+                "required": "אימייל נדרש",
+                "invalidFormat": "אנא הזן כתובת אימייל תקינה",
+                "alreadyExists": "האימייל כבר קיים",
+                "invalid": "אימייל לא תקין"
+            },
+            "password": {
+                "required": "סיסמה נדרשת",
+                "minLength": "הסיסמה חייבת להיות באורך של לפחות 6 תווים",
+                "uppercaseRequired": "הסיסמה חייבת להכיל לפחות אות גדולה אחת (A-Z)",
+                "numberRequired": "הסיסמה חייבת להכיל לפחות מספר אחד (0-9)",
+                "specialCharRequired": "הסיסמה חייבת להכיל לפחות תו מיוחד אחד (!@#$%^\u0026*().,?\": {}|\u003c\u003e)",
+                "strength": "עוצמת הסיסמה",
+                "weak": "חלש",
+                "medium": "בינוני",
+                "strong": "חזק",
+                "maxLength": "הסיסמה לא יכולה לעלות על 32 תווים",
+                "lowercaseRequired": "הסיסמה חייבת להכיל לפחות אות קטנה אחת (a-z)",
+                "tooCommon": "הסיסמה הזו נפוצה מדי. אנא בחר סיסמה ייחודית יותר",
+                "sameAsCurrent": "הסיסמה החדשה לא יכולה להיות זהה לסיסמה הנוכחית שלך",
+                "considerLonger": "שקול להשתמש בסיסמה ארוכה יותר עם יותר גיוון לאבטחה טובה יותר",
+                "moreSecure": "סיסמאות עם 10 תווים או יותר מאובטחות יותר",
+                "veryWeak": "חלש מאוד",
+                "fair": "בינוני",
+                "good": "טוב",
+                "veryStrong": "חזק מאוד"
+            },
+            "confirmPassword": {
+                "required": "אנא אמת את הסיסמה שלך",
+                "mustMatch": "הסיסמאות לא תואמות",
+                "confirmRequired": "אימות הסיסמה נדרש",
+                "match": "הסיסמאות תואמות"
+            },
+            "login": {
+                "usernameOrEmailRequired": "שם משתמש או אימייל נדרש",
+                "invalidCredentials": "שם משתמש/אימייל או סיסמה לא תקינים",
+                "accountNotFound": "החשבון לא נמצא",
+                "tooManyAttempts": "יותר מדי ניסיונות כושלים",
+                "incorrectPassword": "סיסמה שגויה"
+            },
+            "general": {
+                "fillRequiredFields": "אנא מלא את כל השדות הנדרשים",
+                "somethingWentWrong": "משהו השתבש, אנא נסה שוב"
+            },
+            "forgotPassword": {
+                "title": "שכחת סיסמה?",
+                "description": "הזן את כתובת האימייל שלך ונשלח לך קישור לאיפוס.",
+                "emailLabel": "כתובת אימייל",
+                "emailPlaceholder": "הזן את האימייל שלך",
+                "sendResetLink": "שלח קישור לאיפוס",
+                "backToLogin": "חזור לכניסה",
+                "resetLinkSent": "קישור איפוס הסיסמה נשלח לאימייל שלך!",
+                "failedToSend": "שליחת קישור האיפוס נכשלה. נסה שוב מאוחר יותר.",
+                "somethingWentWrong": "משהו השתבש!"
+            },
+            "accountName": {
+                "required": "שם החשבון נדרש",
+                "minLength": "שם החשבון חייב להכיל לפחות 2 תווים",
+                "maxLength": "שם החשבון לא יכול לעלות על 50 תווים",
+                "invalidChars": "שם החשבון יכול להכיל רק אותיות, רווחים, גרש, מקפים ונקודות",
+                "noNumbers": "שם החשבון לא יכול להכיל מספרים"
+            },
+            "accountType": {
+                "required": "סוג החשבון נדרש",
+                "invalid": "סוג חשבון לא תקין"
+            },
+            "primaryAddress": {
+                "required": "כתובת ראשית נדרשת"
+            },
+            "socialMedia": {
+                "instagram": "אנא הכנס URL פרופיל Instagram תקין",
+                "whatsapp": "הכנס קשר WhatsApp תקין: טלפון (+1234567890) או קישור wa.me/api.whatsapp.com",
+                "mobile": "אנא הכנס מספר טלפון נייד תקין (למשל +1234567890)",
+                "youtube": "אנא הכנס URL ערוץ YouTube תקין (למשל youtube.com/@שםמשתמש)",
+                "x": "אנא הכנס URL פרופיל X (Twitter) תקין",
+                "spotify": "אנא הכנס URL Spotify תקין",
+                "website": "אנא הכנס URL אתר תקין",
+                "facebook": "אנא הכנס URL פרופיל Facebook תקין",
+                "youtubeMusic": "אנא הכנס URL ערוץ YouTube Music תקין",
+                "email": "אנא הכנס כתובת אימייל תקינה",
+                "linkedin": "אנא הכנס URL פרופיל LinkedIn תקין",
+                "appleMusic": "אנא הכנס URL Apple Music תקין",
+                "tiktok": "אנא הכנס URL פרופיל TikTok תקין",
+                "snapchat": "אנא הכנס שם משתמש Snapchat תקין"
+            },
+            "onboarding": {
+                "displayNameRequired": "שם תצוגה נדרש",
+                "displayNameMinLength": "שם התצוגה חייב להכיל לפחות 2 תווים",
+                "displayNameMaxLength": "שם התצוגה לא יכול לעלות על 50 תווים",
+                "bioRequired": "ביוגרפיה נדרשת",
+                "bioMaxLength": "הביוגרפיה לא יכולה לעלות על 250 תווים",
+                "mobileNumberRequired": "מספר נייד נדרש",
+                "mobileNumberInvalid": "אנא הזינו מספר נייד תקין",
+                "mobileNumberLength": "מספר הנייד חייב להכיל 10 ספרות",
+                "addressRequired": "כתובת נדרשת",
+                "cityRequired": "עיר נדרשת",
+                "stateRequired": "מדינה נדרשת",
+                "countryRequired": "ארץ נדרשת",
+                "postalCodeRequired": "מיקוד נדרש",
+                "primaryAddressRequired": "כתובת ראשית נדרשת",
+                "emailAddressRequired": "כתובת אימייל נדרשת",
+                "resetLinkSentSuccess": "קישור איפוס נשלח בהצלחה!",
+                "invalidUsername": "שם משתמש לא תקין",
+                "profileImageAlt": "Profile"
+            },
+            "resetPassword": {
+                "newPassword": "New Password",
+                "confirmPassword": "Confirm Password"
+            },
+            "resetLinkSent": {
+                "title": "אימייל נשלח!",
+                "description": "בדוק את תיבת הדואר הנכנס שלך עבור קישור איפוס הסיסמה.",
+                "resending": "שולח שוב...",
+                "resendWithCooldown": "שלח אימייל שוב ({{cooldown}}s)",
+                "resendMail": "שלח אימייל שוב"
+            }
+        },
+        "onboarding": {
+            "accountDetails": {
+                "title": "פרטי החשבון",
+                "description": "ספרו לנו על עצמכם",
+                "displayName": "שם תצוגה",
+                "displayNamePlaceholder": "הזינו את שם התצוגה שלכם",
+                "username": "שם משתמש",
+                "usernamePlaceholder": "הזינו את שם המשתמש שלכם",
+                "usernameDescription": "שם המשתמש שלכם הוא חלק מקישור הפרופיל הציבורי שלכם וקודי QR. דוגמה: explorers.earth/bhavya",
+                "bio": "ביוגרפיה",
+                "bioPlaceholder": "ספרו לנו על עצמכם",
+                "accountType": "סוג חשבון",
+                "personal": "אישי",
+                "creator": "יוצר",
+                "business": "עסקי",
+                "next": "הבא"
+            },
+            "contactDetails": {
+                "title": "פרטי יצירת קשר",
+                "description": "הוסיפו את מספר הנייד שלכם לאימות",
+                "mobileNumber": "מספר נייד",
+                "mobileNumberPlaceholder": "הזינו את מספר הנייד שלכם",
+                "next": "הבא",
+                "back": "חזור"
+            },
+            "addressDetails": {
+                "title": "פרטי כתובת",
+                "description": "איפה אתם נמצאים?",
+                "address": "כתובת",
+                "addressPlaceholder": "הזינו את הכתובת שלכם",
+                "streetName": "שם הרחוב",
+                "streetNamePlaceholder": "הזינו את שם הרחוב",
+                "city": "עיר",
+                "cityPlaceholder": "הזינו את העיר",
+                "state": "מדינה",
+                "statePlaceholder": "הזינו את המדינה",
+                "country": "ארץ",
+                "countryPlaceholder": "הזינו את הארץ",
+                "postalCode": "מיקוד",
+                "postalCodePlaceholder": "הזינו את המיקוד",
+                "primaryAddress": "כתובת ראשית",
+                "primaryAddressDescription": "מוצג בפרופיל הציבורי (עיר וארץ)",
+                "primaryAddressPlaceholder": "הזינו את הכתובת הראשית",
+                "sameAsAddress": "זהה לכתובת",
+                "confirmDetails": "אשר פרטים",
+                "back": "חזור"
+            }
+        },
+        "resetPassword": {
+            "newPasswordPlaceholder": "Enter new password",
+            "confirmPasswordPlaceholder": "Confirm your password"
+        }
+    },
+    "common": {
+        "loading": "טוען...",
+        "error": "אירעה שגיאה. אנא נסה שוב מאוחר יותר.",
+        "retry": "נסה שוב",
+        "noResults": "לא נמצאו תוצאות",
+        "submit": "שלח",
+        "hidePassword": "הסתר סיסמה",
+        "showPassword": "הצג סיסמה",
+        "signInWithGoogle": "התחבר עם Google",
+        "signUpWithGoogle": "הירשם עם Google",
+        "cancel": "ביטול"
+    },
+    "dashboard": {
+        "home": {
+            "welcomeBack": "ברוכים השבים",
+            "profile": "פרופיל",
+            "myRecommendations": "ההמלצות שלי",
+            "activePlaces": "מקומות פעילים",
+            "setupProfile": "הגדר את הפרופיל שלך",
+            "draft": "טיוטה",
+            "startCurating": "התחל לאסוף את ההמלצות שלך ושתף אותן עם העולם!",
+            "addRecommendations": "הוסף המלצות"
+        },
+        "shareModal": {
+            "copyLink": "העתק קישור",
+            "copied": "הועתק!",
+            "linkCopiedToast": "הקישור הועתק!!"
+        },
+        "recommendations": {
+            "locationButton": "מיקום",
+            "viewAll": "הצג הכל",
+            "recommendationsTab": "המלצות",
+            "manageTab": "נהל",
+            "manageHeading": "נהל",
+            "deleteAction": "מחק",
+            "editAction": "ערוך",
+            "publishedStatus": "פורסם",
+            "draftStatus": "טיוטה",
+            "myRecommendationsHeading": "ההמלצות שלי",
+            "myQRHeading": "ה-QR שלי",
+            "myRecommendationsQR": "ההמלצות שלי",
+            "travelLikeLocal": "נסע כמו מקומי",
+            "shareLink": "שתף קישור",
+            "copyLink": "העתק קישור",
+            "downloadQR": "הורד QR",
+            "emptyState": {
+                "title": "אין המלצות זמינות",
+                "subtitle": "התחילו להוסיף את המקומות הנבחרים שלכם לרשימה זו"
+            },
+            "draftLabel": "טיוטה",
+            "recommendButton": "המליצו",
+            "exploreSection": {
+                "heading": "חקרו עם explorers",
+                "addButton": "הוסיפו"
+            },
+            "locationLabels": {
+                "currentLocation": "מיקום נוכחי",
+                "selectedLocation": "מיקום נבחר"
+            },
+            "categories": {
+                "foodDrinks": "אוכל ומשקאות",
+                "lodging": "לינה",
+                "healthWellness": "בריאות ורווחה",
+                "shopping": "קניות",
+                "entertainment": "בידור",
+                "transportation": "תחבורה",
+                "services": "שירותים",
+                "tourism": "תיירות",
+                "naturalFeatures": "מאפיינים טבעיים"
+            },
+            "locationForm": {
+                "labels": {
+                    "searchLocation": "חיפוש מיקום",
+                    "recommendationSocialLink": "קישור חברתי המלצה",
+                    "note": "הערה",
+                    "placeUrl": "כתובת URL של המקום"
+                },
+                "placeholders": {
+                    "searchLocation": "הזן עיר, מדינה או ארץ (למשל פריז)",
+                    "recommendationSocialLink": "הזן URL (Youtube / Instagram)",
+                    "note": "הזן הערה הקשורה להמלצה שלך",
+                    "placeUrl": "הזן שם כדי ליצור קישור לשיתוף"
+                },
+                "buttons": {
+                    "addLocation": "הוסף מיקום",
+                    "updateLocation": "עדכן מיקום"
+                }
+            },
+            "toastMessages": {
+                "listCreated": "Recommendation List Created Successfully!!!",
+                "listPublished": "רשימת ההמלצות פורסמה בהצלחה!",
+                "listUnpublished": "רשימת ההמלצות הוסרה מפרסום בהצלחה!",
+                "listPublishError": "List Should have atleast one Recommended Place to be Published",
+                "listVisibilityError": "Failed to update recommendation list visibility.",
+                "qrDownloadSuccess": "QR code downloaded successfully!",
+                "qrDownloadError": "Failed to download QR code. Please try again.",
+                "linkCopied": "Link copied to clipboard!",
+                "linkCopyError": "Failed to copy link. Please try again.",
+                "qrNotReady": "QR code not ready for download"
+            },
+            "placesModal": {
+                "placesCount": "{{visible}} מתוך {{total}} מקומות",
+                "scrollToLoadMore": "גלול כדי לטעון עוד מקומות"
+            },
+            "noRecommendationsYet": "עדיין אין המלצות!!",
+            "setupProfileBeforeRecommendations": "הגדר את הפרופיל שלך לפני יצירת המלצות!!",
+            "startAddingPlaces": "התחל להוסיף את המקומות האהובים עליך ולשתף אותם עם אחרים.",
+            "startRecommending": "התחל להמליץ",
+            "addRecommendationForm": {
+                "searchField": {
+                    "label": "Search Recommendation with Google"
+                },
+                "mainInput": {
+                    "placeholder": "Enter your Recommendation"
+                },
+                "taggableFields": {
+                    "title": "כותרת",
+                    "address": "כתובת",
+                    "category": "קטגוריה",
+                    "contactNumber": "מספר איש קשר",
+                    "socialLink": "קישור חברתי",
+                    "personName": "שם האדם"
+                },
+                "accordionSection": {
+                    "heading": "Your Recommendation Details",
+                    "recommendationLink": {
+                        "label": "Your Recommendation Link",
+                        "placeholder": "You can insert Instagram reel, YouTube, or blog recommending"
+                    },
+                    "whyRecommend": {
+                        "label": "Why would you recommend?",
+                        "placeholder": "Why would you recommend?"
+                    }
+                },
+                "fileUpload": {
+                    "text": "Attach Image/Video",
+                    "subtext": "optional"
+                },
+                "actionButton": {
+                    "text": "Add recommendation"
+                },
+                "taggableFieldsPlaceholders": {
+                    "title": "הכנס כותרת",
+                    "address": "הכנס כתובת של המקום",
+                    "category": "הכנס קטגוריה",
+                    "contactNumber": "הכנס מספר איש קשר",
+                    "socialLink": "הכנס קישור חברתי (מקום)",
+                    "personName": "הכנס את השם המלא של האדם"
+                },
+                "validationMessages": {
+                    "titleRequired": "כותרת נדרשת",
+                    "addressRequired": "כתובת נדרשת",
+                    "categoryRequired": "קטגוריה נדרשת",
+                    "socialUrlRequired": "נדרש URL של Instagram או LinkedIn להמלצות על אנשים",
+                    "socialUrlInvalid": "אנא הכנס URL תקין של Instagram או LinkedIn"
+                },
+                "mapModal": {
+                    "cancelButton": "ביטול",
+                    "addRecommendationButton": "הוסף המלצה",
+                    "updateRecommendationButton": "עדכן המלצה",
+                    "setLocationButton": "הגדר מיקום"
+                },
+                "deleteRecommendation": "מחק המלצה",
+                "searchLocation": {
+                    "label": "חפש מיקום",
+                    "searchPlace": "חפש מקום",
+                    "placeholder": "הקלד ובחר מקום"
+                },
+                "fetchingImages": "מביא תמונות…",
+                "recommendationType": {
+                    "place": "מקום",
+                    "person": "אדם",
+                    "label": "סוג המלצה"
+                },
+                "imagePreview": {
+                    "alt": "תצוגה מקדימה",
+                    "deleteTooltip": "מחק",
+                    "setThumbnailTooltip": "הגדר כתמונת miniature",
+                    "confirmDeleteTitle": "אשר מחיקה",
+                    "confirmDeleteMessage": "האם אתה בטוח שברצונך למחוק תמונה זו מהאוסף?",
+                    "cancel": "בטל",
+                    "confirm": "אשר"
+                },
+                "deleteRecommendationModal": {
+                    "title": "אשר מחיקה",
+                    "message": "האם אתה בטוח שברצונך למחוק המלצה זו? פעולה זו לא ניתנת לביטול.",
+                    "cancel": "בטל"
+                }
+            }
+        },
+        "profile": {
+            "tabs": {
+                "publicProfile": "פרופיל ציבורי",
+                "account": "חשבון"
+            },
+            "publicProfile": {
+                "sections": {
+                    "profileInformation": "ביוגרפיה",
+                    "socialMedia": "קישורים חברתיים",
+                    "publicAddress": "כתובת ציבורית",
+                    "howToReachUs": "איך ליצור איתנו קשר",
+                    "howToReachUsDescription": "השתמשו בחלק זה כדי לשתף את פרטי מיקום העסק שלכם.",
+                    "feed": "פיד",
+                    "socialMediaSubtitle": "קישורים ומידע על רשתות חברתיות"
+                },
+                "fields": {
+                    "accountType": "סוג חשבון",
+                    "bio": "ביוגרפיה",
+                    "socialMedia": "רשתות חברתיות",
+                    "instagram": "Instagram",
+                    "whatsapp": "Whatsapp",
+                    "mobile": "נייד",
+                    "youtube": "Youtube",
+                    "x": "X",
+                    "spotify": "Spotify",
+                    "website": "אתר אינטרנט",
+                    "facebook": "Facebook",
+                    "youtubeMusic": "Youtube Music",
+                    "gmail": "Gmail",
+                    "linkedin": "Linkedin",
+                    "appleMusic": "Apple Music",
+                    "tiktok": "Tiktok",
+                    "snapchat": "Snapchat",
+                    "businessLocation": "הוסף את המיקום שלך. אלה יופיעו כמיקומים מומלצים בפרופיל הציבורי שלך",
+                    "primaryAddress": "כתובת ראשית - מוצגת בפרופיל ציבורי (עיר ומדינה)",
+                    "feed": "העלה תמונות או סרטונים של המיקום, המוצרים, השירותים או החוויות שלך. תמונות אלה יוצגו בגלריה שלך בפרופיל הציבורי",
+                    "title": "כותרת",
+                    "contact": "יצירת קשר",
+                    "about": "אודות",
+                    "addLocation": "הוסף את המיקום שלך",
+                    "addLocationInformation": "הוסף מידע על מיקום",
+                    "searchAddress": "חפש את הכתובת שלך...",
+                    "sameAsAddress": "זהה לכתובת"
+                },
+                "accountTypes": {
+                    "personal": "אישי",
+                    "creator": "יוצר תוכן",
+                    "business": "עסק"
+                },
+                "businessLocation": {
+                    "title": "כותרת",
+                    "contact": "יצירת קשר",
+                    "website": "אתר אינטרנט",
+                    "about": "אודות"
+                }
+            },
+            "account": {
+                "sections": {
+                    "account": "חשבון",
+                    "billingAddress": "כתובת חיוב"
+                },
+                "fields": {
+                    "username": "שם משתמש",
+                    "accountName": "שם חשבון",
+                    "address": "כתובת",
+                    "streetName": "שם רחוב",
+                    "state": "מחוז",
+                    "city": "עיר",
+                    "country": "מדינה",
+                    "postalCode": "מיקוד",
+                    "addressPlaceholder": "הכנס את הכתובת שלך",
+                    "detectLocation": "זהה את המיקום הנוכחי שלי"
+                }
+            },
+            "common": {
+                "visible": "גלוי",
+                "hidden": "מוסתר",
+                "mobileNumber": "מספר טלפון נייד",
+                "mobileNumberPlaceholder": "מספר טלפון נייד",
+                "whatsappNumber": "מספר WhatsApp",
+                "primaryAddress": "כתובת ראשית",
+                "editImage": "ערוך תמונה",
+                "confirm": "אשר",
+                "add": "הוסף",
+                "video": "וידאו",
+                "feedImage": "תמונת פיד",
+                "importedImage": "תמונה מיובאת",
+                "cover": "כריכה",
+                "profile": "פרופיל",
+                "saveAndPublish": "שמור ופרסם",
+                "saveToFeed": "שמור לפיד",
+                "savedAndPublishedSuccessfully": "נשמר ופורסם בהצלחה",
+                "saveAndPublishFailed": "שמירה ופרסום נכשלו. אנא נסה שוב.",
+                "failedToSaveChanges": "שמירת שינויים נכשלה. אנא נסה שוב.",
+                "networkError": "שגיאת רשת: אנא בדוק את החיבור שלך ונסה שוב.",
+                "unexpectedError": "אירעה שגיאה בלתי צפויה. אנא נסה שוב.",
+                "somethingWentWrong": "משהו השתבש. אנא נסה שוב.",
+                "failedToUploadFiles": "העלאת קבצים נכשלה. אנא נסה שוב.",
+                "failedToUploadImages": "העלאת תמונות נכשלה. אנא נסה שוב.",
+                "failedToSaveImagesToFeed": "שמירת תמונות לפיד נכשלה",
+                "failedToUpdateProfile": "עדכון פרופיל נכשל. אנא נסה שוב.",
+                "fetching": "מביא...",
+                "selectAll": "בחר הכל",
+                "clearSelection": "נקה בחירה",
+                "error": "אירעה שגיאה בטעינת הפרופיל שלך. אנא נסה שוב מאוחר יותר.",
+                "errors": {
+                    "noFileProvided": "לא סופק קובץ להעלאה",
+                    "failedToGetAccountId": "נכשל בקבלת מזהה החשבון להעלאה",
+                    "uploadResponseMissingFileData": "תגובת ההעלאה אינה מכילה נתוני קובץ"
+                }
+            },
+            "accountSetup": {
+                "title": "השלם את הגדרת החשבון שלך",
+                "progress": "התקדמות",
+                "complete": "הושלם",
+                "profileSetupCompleted": "הגדרת פרופיל הושלמה",
+                "profileSetupIncomplete": "הוסף תמונת פרופיל, ביוגרפיה וקישורים חברתיים",
+                "recommendationsSetupCompleted": "הגדרת המלצות הושלמה",
+                "recommendationsSetupIncomplete": "הוסף מיקומים, מקומות ופרסם את הרשימה הראשונה שלך",
+                "setupButton": "הגדר",
+                "footerMessage": "השלם את שני השלבים כדי לפתוח את חוויית לוח הבקרה המלאה שלך"
+            }
+        }
+    },
+    "toast": {
+        "success": {
+            "loginSuccessful": "התחברות הצליחה!",
+            "registrationSuccessful": "הרשמה הצליחה!",
+            "passwordResetSuccessful": "איפוס סיסמה הצליח!",
+            "emailVerificationSent": "Verification email sent!",
+            "resetLinkSent": "Password reset link sent to your email!",
+            "resetLinkResent": "קישור איפוס נשלח שוב!",
+            "profileImageUpdated": "תמונת הפרופיל עודכנה בהצלחה!",
+            "backgroundImageUpdated": "תמונת הרקע עודכנה בהצלחה!",
+            "recommendedListUpdated": "Recommended List Updated Successfully!!!",
+            "accountCreated": "החשבון נוצר בהצלחה!",
+            "usernameUpdated": "שם המשתמש עודכן בהצלחה!",
+            "profileUpdated": "הפרופיל עודכן בהצלחה!",
+            "settingsSaved": "ההגדרות נשמרו בהצלחה!",
+            "dataSaved": "הנתונים נשמרו בהצלחה!",
+            "changesSaved": "השינויים נשמרו בהצלחה!",
+            "fileUploaded": "הקובץ הועלה בהצלחה!",
+            "imageUploaded": "תמונה הועלתה בהצלחה!",
+            "linkCopied": "Link copied to clipboard!",
+            "emailSent": "האימייל נשלח בהצלחה!",
+            "notificationSent": "ההתראה נשלחה בהצלחה!",
+            "actionCompleted": "הפעולה הושלמה בהצלחה!",
+            "formSubmitted": "הטופס נשלח בהצלחה!",
+            "onboardingCompleted": "ההטמעה הושלמה בהצלחה!",
+            "welcomeMessage": "ברוכים הבאים ל-explorers!",
+            "accountActivated": "החשבון הופעל בהצלחה!",
+            "emailVerified": "אימייל אומת בהצלחה!",
+            "passwordChanged": "סיסמה שונתה בהצלחה!",
+            "usernameChanged": "שם משתמש שונה בהצלחה!",
+            "profileCompleted": "פרופיל הושלם בהצלחה!",
+            "setupCompleted": "הגדרה הושלמה בהצלחה!",
+            "loggedOutSuccessfully": "התנתק בהצלחה!"
+        },
+        "error": {
+            "loginFailed": "התחברות נכשלה. אנא בדוק את פרטי ההתחברות שלך.",
+            "registrationFailed": "הרשמה נכשלה. אנא נסה שוב.",
+            "passwordResetFailed": "איפוס סיסמה נכשל. אנא נסה שוב.",
+            "emailVerificationFailed": "אימות אימייל נכשל. אנא נסה שוב.",
+            "resetLinkFailed": "שליחת קישור איפוס נכשלה. נסה מאוחר יותר.",
+            "resetLinkResendFailed": "שליחה חוזרת נכשלה. נסה מאוחר יותר.",
+            "profileImageUpdateFailed": "Failed to upload profile image. Please try again.",
+            "backgroundImageUpdateFailed": "Failed to upload background image. Please try again.",
+            "recommendedListUpdateFailed": "Error Updating Recommended List!!!",
+            "accountCreationFailed": "Account creation failed. Please try again.",
+            "usernameUpdateFailed": "עדכון שם משתמש נכשל. אנא נסה שוב.",
+            "profileUpdateFailed": "Profile update failed. Please try again.",
+            "settingsSaveFailed": "Failed to save settings. Please try again.",
+            "dataSaveFailed": "Failed to save data. Please try again.",
+            "changesSaveFailed": "Failed to save changes. Please try again.",
+            "fileUploadFailed": "File upload failed. Please try again.",
+            "imageUploadFailed": "Image upload failed. Please try again",
+            "linkCopyFailed": "Failed to copy link. Please try again.",
+            "emailSendFailed": "שליחת אימייל נכשלה. אנא נסה שוב.",
+            "notificationSendFailed": "Failed to send notification. Please try again.",
+            "actionFailed": "Action failed. Please try again.",
+            "formSubmissionFailed": "Form submission failed. Please try again.",
+            "onboardingFailed": "הטמעה נכשלה. אנא נסה שוב.",
+            "accountActivationFailed": "Account activation failed. Please try again.",
+            "passwordChangeFailed": "Password change failed. Please try again.",
+            "usernameChangeFailed": "Username change failed. Please try again.",
+            "profileCompletionFailed": "Profile completion failed. Please try again.",
+            "setupFailed": "Setup failed. Please try again.",
+            "networkError": "שגיאת רשת. אנא בדוק את החיבור שלך.",
+            "serverError": "שגיאת שרת. אנא נסה שוב מאוחר יותר.",
+            "validationError": "שגיאת אימות. אנא בדוק את הקלט שלך.",
+            "permissionDenied": "Permission denied. Please contact support.",
+            "sessionExpired": "הפגישה פגה. אנא התחבר שוב.",
+            "invalidCredentials": "פרטי התחברות לא תקינים. אנא בדוק את הקלט שלך.",
+            "emailNotFound": "Email not found. Try again.",
+            "usernameAlreadyExists": "שם משתמש כבר קיים. אנא בחר אחר.",
+            "emailAlreadyExists": "Email already exists. Please use another email.",
+            "invalidEmailFormat": "פורמט אימייל לא תקין. אנא הכנס אימייל תקין.",
+            "passwordTooWeak": "Password is too weak. Please choose a stronger password.",
+            "passwordsDoNotMatch": "Passwords do not match. Please try again.",
+            "requiredFieldMissing": "Required field is missing. Please fill all required fields.",
+            "invalidInput": "Invalid input. Please check your data.",
+            "fileTooLarge": "File is too large. Please choose a smaller file.",
+            "unsupportedFileType": "Unsupported file type. Please choose a different file.",
+            "uploadLimitExceeded": "Upload limit exceeded. Please try again later.",
+            "operationTimeout": "Operation timed out. Please try again.",
+            "serviceUnavailable": "Service unavailable. Please try again later.",
+            "maintenanceMode": "Service is under maintenance. Please try again later.",
+            "rateLimitExceeded": "Too many requests. Please try again later.",
+            "quotaExceeded": "Quota exceeded. Please try again later.",
+            "accessDenied": "Access denied. You don\u0027t have permission to perform this action.",
+            "resourceNotFound": "Resource not found. Please check your request.",
+            "conflictError": "Conflict error. The resource already exists.",
+            "preconditionFailed": "Precondition failed. Please check your request.",
+            "tooManyAttempts": "יותר מדי ניסיונות. אנא נסה שוב מאוחר יותר.",
+            "accountLocked": "Account is locked. Please contact support.",
+            "accountSuspended": "Account is suspended. Please contact support.",
+            "accountDeleted": "Account is deleted. Please contact support.",
+            "emailNotVerified": "Email is not verified. Please verify your email first.",
+            "phoneNotVerified": "Phone number is not verified. Please verify your phone first.",
+            "twoFactorRequired": "Two-factor authentication is required.",
+            "twoFactorFailed": "Two-factor authentication failed. Please try again.",
+            "captchaFailed": "Captcha verification failed. Please try again.",
+            "invalidToken": "אסימון לא תקין. אנא נסה שוב.",
+            "expiredToken": "Token has expired. Please try again.",
+            "invalidCode": "Invalid code. Please check your input.",
+            "expiredCode": "Code has expired. Please request a new one.",
+            "codeLimitExceeded": "Code limit exceeded. Please try again later.",
+            "invalidUsername": "Invalid username. Please check your input.",
+            "usernameTooShort": "Username is too short. Please choose a longer username.",
+            "usernameTooLong": "Username is too long. Please choose a shorter username.",
+            "usernameInvalidChars": "Username contains invalid characters. Please use only letters, numbers, and hyphens.",
+            "usernameReserved": "Username is reserved. Please choose another username.",
+            "usernameProfanity": "Username contains inappropriate content. Please choose another username.",
+            "primaryAddressRequired": "Primary Address is required",
+            "addressRequired": "Address is required",
+            "cityRequired": "City is required",
+            "stateRequired": "State is required",
+            "countryRequired": "Country is required",
+            "postalCodeRequired": "Postal code is required",
+            "mobileNumberRequired": "Mobile number is required",
+            "mobileNumberInvalid": "Invalid mobile number format",
+            "mobileNumberTooShort": "Mobile number is too short",
+            "mobileNumberTooLong": "Mobile number is too long",
+            "bioRequired": "Bio is required",
+            "bioTooLong": "Bio is too long. Please keep it under 250 characters",
+            "displayNameRequired": "Display name is required",
+            "displayNameTooShort": "Display name is too short",
+            "displayNameTooLong": "Display name is too long",
+            "accountTypeRequired": "Account type is required",
+            "invalidAccountType": "Invalid account type selected",
+            "imageRequired": "Image is required",
+            "imageTooLarge": "Image is too large. Please choose a smaller image",
+            "unsupportedImageFormat": "Unsupported image format. Please use JPG, PNG, or GIF",
+            "imageProcessingFailed": "Image processing failed. Please try again",
+            "imageCorrupted": "Image is corrupted. Please choose another image",
+            "imageDimensionsInvalid": "Image dimensions are invalid. Please choose another image",
+            "imageSizeInvalid": "Image size is invalid. Please choose another image",
+            "imageFormatInvalid": "Image format is invalid. Please choose another image",
+            "imageQualityTooLow": "Image quality is too low. Please choose a higher quality image",
+            "imageTooSmall": "Image is too small. Please choose a larger image",
+            "imageTooBig": "Image is too big. Please choose a smaller image",
+            "imageAspectRatioInvalid": "Image aspect ratio is invalid. Please choose another image",
+            "imageColorSpaceInvalid": "Image color space is invalid. Please choose another image",
+            "imageMetadataInvalid": "Image metadata is invalid. Please choose another image",
+            "imageSecurityViolation": "Image security violation. Please choose another image",
+            "imageVirusDetected": "Virus detected in image. Please choose another image",
+            "imageMalwareDetected": "Malware detected in image. Please choose another image",
+            "imageSpamDetected": "Spam detected in image. Please choose another image",
+            "imageContentInappropriate": "Image content is inappropriate. Please choose another image",
+            "imageContentViolent": "Image content is violent. Please choose another image",
+            "imageContentSexual": "Image content is sexual. Please choose another image",
+            "imageContentHateful": "Image content is hateful. Please choose another image",
+            "imageContentDiscriminatory": "Image content is discriminatory. Please choose another image",
+            "imageContentOffensive": "Image content is offensive. Please choose another image",
+            "imageContentAbusive": "Image content is abusive. Please choose another image",
+            "imageContentHarassing": "Image content is harassing. Please choose another image",
+            "imageContentThreatening": "Image content is threatening. Please choose another image",
+            "imageContentDangerous": "Image content is dangerous. Please choose another image",
+            "imageContentIllegal": "Image content is illegal. Please choose another image",
+            "imageContentCopyright": "Image content violates copyright. Please choose another image",
+            "imageContentTrademark": "Image content violates trademark. Please choose another image",
+            "imageContentPrivacy": "Image content violates privacy. Please choose another image",
+            "imageContentConsent": "Image content lacks consent. Please choose another image",
+            "imageContentMinors": "Image content involves minors. Please choose another image",
+            "imageContentAnimals": "Image content involves animal cruelty. Please choose another image",
+            "imageContentEnvironment": "Image content harms environment. Please choose another image",
+            "imageContentHealth": "Image content harms health. Please choose another image",
+            "imageContentSafety": "Image content harms safety. Please choose another image",
+            "imageContentSecurity": "Image content harms security. Please choose another image",
+            "imageContentIntegrity": "Image content harms integrity. Please choose another image",
+            "imageContentReputation": "Image content harms reputation. Please choose another image",
+            "imageContentBrand": "Image content harms brand. Please choose another image",
+            "imageContentBusiness": "Image content harms business. Please choose another image",
+            "imageContentPersonal": "Image content harms personal interests. Please choose another image",
+            "imageContentProfessional": "Image content harms professional interests. Please choose another image",
+            "imageContentAcademic": "Image content harms academic interests. Please choose another image",
+            "imageContentCultural": "Image content harms cultural interests. Please choose another image",
+            "imageContentReligious": "Image content harms religious interests. Please choose another image",
+            "imageContentPolitical": "Image content harms political interests. Please choose another image",
+            "imageContentSocial": "Image content harms social interests. Please choose another image",
+            "imageContentEconomic": "Image content harms economic interests. Please choose another image",
+            "imageContentLegal": "Image content harms legal interests. Please choose another image",
+            "imageContentEthical": "Image content harms ethical interests. Please choose another image",
+            "imageContentMoral": "Image content harms moral interests. Please choose another image",
+            "imageContentSpiritual": "Image content harms spiritual interests. Please choose another image",
+            "imageContentPhilosophical": "Image content harms philosophical interests. Please choose another image",
+            "imageContentScientific": "Image content harms scientific interests. Please choose another image",
+            "imageContentTechnical": "Image content harms technical interests. Please choose another image",
+            "imageContentArtistic": "Image content harms artistic interests. Please choose another image",
+            "imageContentCreative": "Image content harms creative interests. Please choose another image",
+            "imageContentIntellectual": "Image content harms intellectual interests. Please choose another image",
+            "imageContentEducational": "Image content harms educational interests. Please choose another image",
+            "imageContentInformational": "Image content harms informational interests. Please choose another image",
+            "imageContentNews": "Image content harms news interests. Please choose another image",
+            "imageContentMedia": "Image content harms media interests. Please choose another image",
+            "imageContentEntertainment": "Image content harms entertainment interests. Please choose another image",
+            "imageContentSports": "Image content harms sports interests. Please choose another image",
+            "imageContentRecreation": "Image content harms recreation interests. Please choose another image",
+            "imageContentLeisure": "Image content harms leisure interests. Please choose another image",
+            "imageContentHobby": "Image content harms hobby interests. Please choose another image",
+            "imageContentInterest": "Image content harms interest interests. Please choose another image",
+            "imageContentPassion": "Image content harms passion interests. Please choose another image",
+            "imageContentLove": "Image content harms love interests. Please choose another image",
+            "imageContentHate": "Image content harms hate interests. Please choose another image",
+            "imageContentAnger": "Image content harms anger interests. Please choose another image",
+            "imageContentFear": "Image content harms fear interests. Please choose another image",
+            "imageContentSadness": "Image content harms sadness interests. Please choose another image",
+            "imageContentJoy": "Image content harms joy interests. Please choose another image",
+            "imageContentHappiness": "Image content harms happiness interests. Please choose another image",
+            "imageContentExcitement": "Image content harms excitement interests. Please choose another image",
+            "imageContentSurprise": "Image content harms surprise interests. Please choose another image",
+            "imageContentDisgust": "Image content harms disgust interests. Please choose another image",
+            "imageContentShame": "Image content harms shame interests. Please choose another image",
+            "imageContentGuilt": "Image content harms guilt interests. Please choose another image",
+            "imageContentPride": "Image content harms pride interests. Please choose another image",
+            "imageContentEnvy": "Image content harms envy interests. Please choose another image",
+            "imageContentJealousy": "Image content harms jealousy interests. Please choose another image",
+            "imageContentGreed": "Image content harms greed interests. Please choose another image",
+            "imageContentLust": "Image content harms lust interests. Please choose another image",
+            "imageContentGluttony": "Image content harms gluttony interests. Please choose another image",
+            "imageContentSloth": "Image content harms sloth interests. Please choose another image",
+            "imageContentWrath": "Image content harms wrath interests. Please choose another image"
+        },
+        "warning": {
+            "usernameCooldown": "Username change is temporarily locked due to cooldown period",
+            "passwordWeak": "Password is weak. Consider using a stronger password",
+            "emailNotVerified": "Email is not verified. Please verify your email",
+            "phoneNotVerified": "Phone number is not verified. Please verify your phone",
+            "profileIncomplete": "Profile is incomplete. Please complete your profile",
+            "settingsNotSaved": "Settings are not saved. Please save your settings",
+            "dataNotSaved": "Data is not saved. Please save your data",
+            "changesNotSaved": "Changes are not saved. Please save your changes",
+            "fileNotUploaded": "File is not uploaded. Please upload your file",
+            "imageNotUploaded": "Image is not uploaded. Please upload your image",
+            "linkNotCopied": "Link is not copied. Please copy your link",
+            "emailNotSent": "Email is not sent. Please send your email",
+            "notificationNotSent": "Notification is not sent. Please send your notification",
+            "actionNotCompleted": "Action is not completed. Please complete your action",
+            "formNotSubmitted": "Form is not submitted. Please submit your form",
+            "onboardingNotCompleted": "Onboarding is not completed. Please complete your onboarding",
+            "accountNotActivated": "Account is not activated. Please activate your account",
+            "passwordNotChanged": "Password is not changed. Please change your password",
+            "usernameNotChanged": "Username is not changed. Please change your username",
+            "profileNotCompleted": "Profile is not completed. Please complete your profile",
+            "setupNotCompleted": "Setup is not completed. Please complete your setup",
+            "networkSlow": "Network is slow. Please check your connection",
+            "serverSlow": "Server is slow. Please try again later",
+            "validationPending": "Validation is pending. Please wait",
+            "permissionPending": "Permission is pending. Please wait",
+            "sessionExpiring": "Session is expiring. Please login again",
+            "credentialsExpiring": "Credentials are expiring. Please update your credentials",
+            "emailExpiring": "Email is expiring. Please update your email",
+            "phoneExpiring": "Phone is expiring. Please update your phone",
+            "profileExpiring": "Profile is expiring. Please update your profile",
+            "settingsExpiring": "Settings are expiring. Please update your settings",
+            "dataExpiring": "Data is expiring. Please update your data",
+            "changesExpiring": "Changes are expiring. Please update your changes",
+            "fileExpiring": "File is expiring. Please update your file",
+            "imageExpiring": "Image is expiring. Please update your image",
+            "linkExpiring": "Link is expiring. Please update your link",
+            "notificationExpiring": "Notification is expiring. Please update your notification",
+            "actionExpiring": "Action is expiring. Please update your action",
+            "formExpiring": "Form is expiring. Please update your form",
+            "onboardingExpiring": "Onboarding is expiring. Please update your onboarding",
+            "accountExpiring": "Account is expiring. Please update your account",
+            "passwordExpiring": "Password is expiring. Please update your password",
+            "usernameExpiring": "Username is expiring. Please update your username",
+            "setupExpiring": "Setup is expiring. Please update your setup"
+        },
+        "info": {
+            "loading": "טוען...",
+            "processing": "Processing...",
+            "saving": "Saving...",
+            "uploading": "Uploading...",
+            "downloading": "Downloading...",
+            "connecting": "Connecting...",
+            "disconnecting": "Disconnecting...",
+            "sending": "Sending...",
+            "receiving": "Receiving...",
+            "updating": "Updating...",
+            "refreshing": "Refreshing...",
+            "synchronizing": "Synchronizing...",
+            "validating": "Validating...",
+            "verifying": "Verifying...",
+            "checking": "Checking...",
+            "searching": "Searching...",
+            "filtering": "Filtering...",
+            "sorting": "Sorting...",
+            "organizing": "Organizing...",
+            "arranging": "Arranging...",
+            "configuring": "Configuring...",
+            "setting": "Setting...",
+            "adjusting": "Adjusting...",
+            "modifying": "Modifying...",
+            "changing": "Changing...",
+            "switching": "Switching...",
+            "toggling": "Toggling...",
+            "enabling": "Enabling...",
+            "disabling": "Disabling...",
+            "activating": "Activating...",
+            "deactivating": "Deactivating...",
+            "starting": "Starting...",
+            "stopping": "Stopping...",
+            "pausing": "Pausing...",
+            "resuming": "Resuming...",
+            "restarting": "Restarting...",
+            "resetting": "Resetting...",
+            "clearing": "Clearing...",
+            "deleting": "Deleting...",
+            "removing": "Removing...",
+            "adding": "Adding...",
+            "inserting": "Inserting...",
+            "creating": "Creating...",
+            "building": "Building...",
+            "constructing": "Constructing...",
+            "generating": "Generating...",
+            "producing": "Producing...",
+            "making": "Making...",
+            "preparing": "Preparing...",
+            "readying": "Readying...",
+            "initializing": "Initializing...",
+            "launching": "Launching...",
+            "opening": "Opening...",
+            "closing": "Closing...",
+            "shutting": "Shutting...",
+            "ending": "Ending...",
+            "finishing": "Finishing...",
+            "completing": "Completing...",
+            "finalizing": "Finalizing...",
+            "concluding": "Concluding...",
+            "terminating": "Terminating...",
+            "canceling": "Canceling...",
+            "aborting": "Aborting...",
+            "interrupting": "Interrupting...",
+            "halting": "Halting...",
+            "freezing": "Freezing...",
+            "unfreezing": "Unfreezing...",
+            "thawing": "Thawing...",
+            "melting": "Melting...",
+            "cooling": "Cooling...",
+            "heating": "Heating...",
+            "warming": "Warming...",
+            "chilling": "Chilling...",
+            "renewing": "Renewing...",
+            "restoring": "Restoring...",
+            "recovering": "Recovering...",
+            "repairing": "Repairing...",
+            "fixing": "Fixing...",
+            "correcting": "Correcting...",
+            "tuning": "Tuning...",
+            "optimizing": "Optimizing...",
+            "improving": "Improving...",
+            "enhancing": "Enhancing...",
+            "upgrading": "Upgrading...",
+            "modernizing": "Modernizing..."
+        }
+    },
+    "emailVerification": {
+        "title": "Verify Your Email",
+        "description": "We\u0027ve sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
+        "checkEmail": "Check your email",
+        "emailSent": "Verification email sent!",
+        "resendEmail": "Resend Email",
+        "resendIn": "Resend in",
+        "seconds": "seconds",
+        "didntReceive": "Didn\u0027t receive the email?",
+        "checkSpam": "Please check your spam folder or try again.",
+        "backToLogin": "Back to Login",
+        "emailAddress": "Email Address",
+        "verificationSent": "Verification email sent to:",
+        "clickLink": "Click the link in the email to verify your account.",
+        "expiresIn": "This link expires in 24 hours.",
+        "needHelp": "Need help?",
+        "contactSupport": "Contact Support"
+    },
+    "settings": {
+        "title": "הגדרות",
+        "account": {
+            "heading": "חשבון",
+            "security": {
+                "title": "חשבון ואבטחה"
+            },
+            "changePassword": {
+                "text": "לשנות סיסמה?",
+                "button": "שנה סיסמה",
+                "modalTitle": "שנה סיסמה",
+                "currentPassword": "סיסמה נוכחית",
+                "newPassword": "סיסמה חדשה",
+                "confirmPassword": "אשר סיסמה חדשה",
+                "updateButton": "עדכן סיסמה",
+                "currentPasswordPlaceholder": "הזן את הסיסמה הנוכחית שלך",
+                "newPasswordPlaceholder": "הזן סיסמה חדשה",
+                "confirmPasswordPlaceholder": "הזן שוב את הסיסמה החדשה",
+                "successMessage": "הסיסמה עודכנה בהצלחה. תועבר לדף ההתחברות למטרות אבטחה.",
+                "redirectMessage": "מועבר לדף ההתחברות למטרות אבטחה..."
+            },
+            "deactivateAccount": {
+                "text": "לבטל את החשבון שלך?",
+                "button": "בטל חשבון",
+                "modalTitle": "לבטל את החשבון שלך?",
+                "modalDescription": "האם אתה בטוח שברצונך לבטל את החשבון שלך?",
+                "enterUsername": "הזן את שם המשתמש שלך",
+                "enterPassword": "הזן את הסיסמה שלך",
+                "usernamePlaceholder": "הזן את שם המשתמש שלך",
+                "passwordPlaceholder": "הזן את הסיסמה הנוכחית שלך",
+                "confirmButton": "בטל את החשבון שלי",
+                "deactivatedButton": "מבוטל",
+                "successMessage": "החשבון בוטל בהצלחה",
+                "activatedMessage": "החשבון הופעל בהצלחה"
+            },
+            "deleteAccount": {
+                "text": "למחוק את החשבון שלך?",
+                "button": "מחק חשבון",
+                "step1": {
+                    "modalTitle": "למחוק את החשבון שלך?",
+                    "modalDescription": "האם אתה בטוח שברצונך למחוק את החשבון שלך? פעולה זו אינה ניתנת לביטול.",
+                    "modalDescription2": "אם ברצונך לשמור על הנתונים שלך, תוכל לבטל את החשבון שלך במקום זאת.",
+                    "deactivateInsteadButton": "בטל חשבון במקום זאת",
+                    "continueButton": "המשך למחיקה"
+                },
+                "step2": {
+                    "modalTitle": "הזן את הפרטים שלך",
+                    "enterUsername": "הזן את שם המשתמש שלך",
+                    "enterPassword": "הזן את הסיסמה שלך",
+                    "confirmPassword": "אשר את הסיסמה שלך",
+                    "usernamePlaceholder": "הזן את שם המשתמש שלך",
+                    "passwordPlaceholder": "הזן את הסיסמה שלך",
+                    "confirmPasswordPlaceholder": "אשר את הסיסמה שלך",
+                    "continueButton": "המשך"
+                },
+                "step3": {
+                    "modalTitle": "למה אתה עוזב?",
+                    "reasonPlaceholder": "אנא ספר לנו את הסיבה לעזיבתך...",
+                    "continueButton": "המשך"
+                },
+                "step4": {
+                    "modalTitle": "אשר מחיקה",
+                    "confirmText": "הקלד \u0027CONFIRM DELETE\u0027 כדי להמשיך",
+                    "confirmPlaceholder": "הקלד \u0027CONFIRM DELETE\u0027 לאישור",
+                    "deleteButton": "מחק את החשבון שלי",
+                    "confirmationRequired": "אנא הקלד \u0027CONFIRM DELETE\u0027 לאישור.",
+                    "reasonRequired": "אנא ספק סיבה לעזיבה.",
+                    "successMessage": "החשבון נמחק בהצלחה."
+                }
+            }
+        },
+        "languagePreference": {
+            "heading": "העדפת שפה",
+            "selectLanguage": "בחר את השפה שלך",
+            "availableLanguages": "בחר מתוך 47 שפות זמינות",
+            "currentLanguage": "נוכחית: {{flag}} {{name}}",
+            "languageChanged": "השפה שונתה ל-{{name}}"
+        }
+    },
+    "seo": {
+        "loginTitle": "Login to explorers | Access Your Personalized Recommendations \u0026 Places",
+        "registerTitle": "Sign Up for explorers | Join the Community \u0026 Share Your Favorite Local Places"
+    },
+    "sidebar": {
+        "home": "בית",
+        "profile": "פרופיל",
+        "recommendations": "המלצות",
+        "settings": "הגדרות",
+        "logout": "התנתק",
+        "analytics": "אנליטיקה",
+        "loading": "טוען...",
+        "clickToOpenMenu": "לחץ כדי לפתוח את התפריט"
+    },
+    "modal": {
+        "unsavedChanges": {
+            "title": "שינויים שלא נשמרו",
+            "message": "יש לך שינויים שלא נשמרו שיאבדו אם תנווט משם. מה תרצה לעשות?",
+            "discard": "השלך",
+            "cancel": "ביטול",
+            "save": "שמור"
+        },
+        "usernameChange": {
+            "title": "אישור שינוי שם משתמש",
+            "description": "שם המשתמש שלך משמש בקישורי הפרופיל ורשימת ההמלצות:",
+            "profileLabel": "פרופיל:",
+            "listLabel": "רשימה:",
+            "warning": "כל קודי QR או קישורים עם שם המשתמש הישן שלך לא יעבדו עוד — תצטרך לעדכן ולשתף אותם מחדש.",
+            "cooldownPrefix": "תוכל לשנות את שם המשתמש שלך שוב בעוד",
+            "cooldownSuffix": "לאחר עדכון זה.",
+            "minute": "דקה אחת",
+            "day": "יום אחד",
+            "days": "ימים",
+            "cancel": "ביטול",
+            "confirm": "שנה שם משתמש"
+        }
+    },
+    "analytics": {
+        "dashboard": {
+            "title": "לוח בקרה אנליטי",
+            "subtitle": "עקוב אחר ביצועי קוד ה-QR שלך ומעורבות המשתמשים",
+            "timePeriod": "תקופת זמן:",
+            "timeFilter": {
+                "today": "היום",
+                "last7days": "7 הימים האחרונים",
+                "last30days": "30 הימים האחרונים",
+                "custom": "טווח מותאם אישית",
+                "selectPeriod": "בחר תקופה"
+            },
+            "dateRange": {
+                "from": "מ:",
+                "to": "עד:"
+            },
+            "summaryCards": {
+                "totalViews": "סה\"כ צפיות",
+                "totalClicks": "סה\"כ קליקים",
+                "totalQRViews": "סה\"כ צפיות QR",
+                "totalLinkViews": "סה\"כ צפיות קישורים"
+            },
+            "loading": {
+                "loadingData": "טוען נתוני אנליטיקה...",
+                "resolvingCountry": "פותר נתוני מדינה..."
+            },
+            "error": {
+                "title": "שגיאה בטעינת אנליטיקה",
+                "message": "לא ניתן לאחזר נתוני אנליטיקה. אנא נסה שוב מאוחר יותר.",
+                "errorLabel": "שגיאה:"
+            },
+            "comingSoon": {
+                "title": "אנליטיקה בקרוב",
+                "message": "אנליטיקה תהיה זמינה בעוד \u003cstrong\u003e{{days}} יום{{daysPlural}}\u003c/strong\u003e לאחר יצירת החשבון שלך.",
+                "whyWait": {
+                    "title": "למה לחכות?",
+                    "reasons": {
+                        "accuracy": "• מבטיח דיוק נתונים ומונע ספאם",
+                        "interactions": "• מאפשר זמן לאינטראקציות משמעותיות של משתמשים",
+                        "insights": "• מספק תובנות אנליטיות אמינות"
+                    }
+                },
+                "tip": "בינתיים, התחל לשתף את קודי ה-QR שלך כדי ליצור נתונים לכאשר האנליטיקה תהיה זמינה!",
+                "filterTip": "\u003cstrong\u003eטיפ:\u003c/strong\u003e ברגע שהאנליטיקה תהיה זמינה, תוכל לסנן לפי תקופות זמן (היום, 7 הימים האחרונים, 30 הימים האחרונים, או טווח מותאם אישית) כדי להציג את הנתונים שלך."
+            },
+            "emptyState": {
+                "title": "אין נתוני אנליטיקה",
+                "noDataMessage": "לא נמצאו נתוני אנליטיקה לחשבון שלך. האנליטיקה תופיע כאן ברגע שאנשים יתחילו לצפות ולהתקשר עם קודי ה-QR שלך.",
+                "customRange": {
+                    "bothMissing": "אנא בחר את תאריך ההתחלה והסיום לטווח המותאם אישית כדי להציג נתוני אנליטיקה.",
+                    "startMissing": "אנא בחר תאריך התחלה לטווח המותאם אישית כדי להציג נתוני אנליטיקה.",
+                    "endMissing": "אנא בחר תאריך סיום לטווח המותאם אישית כדי להציג נתוני אנליטיקה."
+                },
+                "noDataForPeriod": {
+                    "today": "אין נתוני אנליטיקה זמינים להיום. אנא בחר טווח זמן אחר כדי להציג את הנתונים שלך.",
+                    "last7days": "אין נתוני אנליטיקה זמינים ל-7 הימים האחרונים. אנא בחר טווח זמן אחר כדי להציג את הנתונים שלך.",
+                    "last30days": "אין נתוני אנליטיקה זמינים ל-30 הימים האחרונים. אנא בחר טווח זמן אחר כדי להציג את הנתונים שלך.",
+                    "custom": "אין נתוני אנליטיקה זמינים לטווח המותאם אישית ({{startDate}} עד {{endDate}}). אנא בחר טווח זמן אחר כדי להציג את הנתונים שלך.",
+                    "default": "אין נתוני אנליטיקה זמינים לטווח הזמן שנבחר. אנא בחר טווח זמן אחר כדי להציג את הנתונים שלך."
+                },
+                "howToStart": {
+                    "title": "כדי להתחיל לראות אנליטיקה:",
+                    "shareQR": "• שתף את קודי ה-QR שלך ברשתות החברתיות",
+                    "includeQR": "• כלול קודי QR בחומרי השיווק שלך",
+                    "askFriends": "• בקש מחברים לסרוק את קודי ה-QR שלך",
+                    "viewProfile": "• הצג את דפי הפרופיל הציבורי שלך"
+                }
+            },
+            "charts": {
+                "topCountries": {
+                    "title": "3 המדינות המובילות לפי צפיות",
+                    "retryGeolocation": "נסה שוב גאולוקיישן",
+                    "geolocationIssue": "בעיית גאולוקיישן:",
+                    "countryDataUnavailable": "נתוני מדינה לא זמינים",
+                    "unableToResolve": "לא ניתן לפתור כתובות IP למדינות בשלב זה. זה עשוי להיות בגלל הגבלות רשת או הגבלות שירות.",
+                    "failedToResolve": "נכשל בפתרון נתוני המדינה. אנא נסה שוב מאוחר יותר.",
+                    "analyticsSummary": "סיכום אנליטיקה:",
+                    "totalViewEvents": "• {{count}} סה\"כ אירועי צפייה",
+                    "eventsWithCountry": "• {{count}} אירועים עם נתוני מדינה",
+                    "eventsPending": "• {{count}} אירועים ממתינים לגאולוקיישן",
+                    "willAppear": "נתוני מדינה יופיעו אוטומטית ברגע ששירותי גאולוקיישן IP יהיו זמינים.",
+                    "tooltip": {
+                        "country": "מדינה: {{country}}",
+                        "views": "צפיות: {{count}}"
+                    },
+                    "legend": "צפיות"
+                },
+                "worldMap": {
+                    "title": "התפלגות צפיות גלובלית",
+                    "subtitle": "מפה עולמית אינטראקטיבית המציגה התפלגות צפיות בין מדינות מדפים ציבוריים",
+                    "noGeographicData": "אין נתונים גיאוגרפיים זמינים",
+                    "unableToResolve": "לא ניתן לפתור כתובות IP למדינות בשלב זה. זה עשוי להיות בגלל הגבלות רשת או הגבלות שירות.",
+                    "failedToResolve": "נכשל בפתרון נתוני המדינה. אנא נסה שוב מאוחר יותר.",
+                    "analyticsSummary": "סיכום אנליטיקה:",
+                    "totalViewEvents": "• {{count}} סה\"כ אירועי צפייה",
+                    "eventsWithCountry": "• {{count}} אירועים עם נתוני מדינה",
+                    "eventsPending": "• {{count}} אירועים ממתינים לגאולוקיישן",
+                    "willAppear": "נתוני מדינה יופיעו אוטומטית ברגע ששירותי גאולוקיישן IP יהיו זמינים.",
+                    "tooltip": {
+                        "country": "{{country}}",
+                        "views": "{{views}} צפיות"
+                    },
+                    "countriesWithViews": "{{count}} מדינות עם צפיות",
+                    "legend": {
+                        "views": "צפיות:",
+                        "low": "נמוך",
+                        "medium": "בינוני",
+                        "high": "גבוה",
+                        "highest": "הגבוה ביותר"
+                    }
+                },
+                "trafficSource": {
+                    "title": "מקור תעבורה לאורך זמן",
+                    "subtitle": "עקוב כיצד תעבורה ממקורות שונים משתנה לאורך זמן",
+                    "selectSource": "בחר מקור תעבורה:",
+                    "allSources": "כל המקורות",
+                    "direct": "ישיר",
+                    "qrCode": "קוד QR",
+                    "instagram": "Instagram",
+                    "whatsapp": "WhatsApp",
+                    "twitter": "Twitter",
+                    "noTrafficData": "אין נתוני תעבורה זמינים",
+                    "noViewEvents": "לא נמצאו אירועי צפייה עם מידע על מקור תעבורה.",
+                    "analyticsSummary": "סיכום אנליטיקה:",
+                    "totalViewEvents": "• {{count}} סה\"כ אירועי צפייה",
+                    "eventsWithUTM": "• {{count}} אירועים עם מקור UTM",
+                    "directTraffic": "• {{count}} אירועי תעבורה ישירה",
+                    "willAppear": "נתוני מקור תעבורה יופיעו ברגע שמשתמשים יבקרו בעמודים שלך עם פרמטרי UTM.",
+                    "tooltip": {
+                        "sourceCount": "{{source}}: {{count}}"
+                    }
+                },
+                "locationEngagement": {
+                    "title": "מעורבות עם מיקום",
+                    "subtitle": "עקוב אחר צפיות למיקומים שונים לאורך זמן",
+                    "selectLocation": "בחר מיקום:",
+                    "allLocations": "כל המיקומים",
+                    "selectLocationPlaceholder": "בחר מיקום",
+                    "locationViews": "{{location}} ({{count}} צפיות)",
+                    "noLocationData": "אין נתוני צפיית מיקום זמינים",
+                    "unknownLocation": "מיקום לא ידוע",
+                    "location": "מיקום",
+                    "tooltip": {
+                        "date": "תאריך: {{date}}",
+                        "locationViews": "{{location}}: {{value}} צפיות"
+                    },
+                    "stats": {
+                        "totalLocations": "סה\"כ מיקומים",
+                        "totalViews": "סה\"כ צפיות",
+                        "avgViews": "ממוצע צפיות/מיקום"
+                    }
+                },
+                "recommendedPlaces": {
+                    "title": "מעורבות עם מקומות מומלצים",
+                    "subtitle": "עקוב אחר קליקים על מקומות מומלצים לפי מיקום",
+                    "selectLocation": "בחר מיקום:",
+                    "selectLocationPlaceholder": "בחר מיקום",
+                    "locationPlaces": "{{location}} ({{count}} מקומות)",
+                    "noRecommendationData": "אין נתוני המלצה",
+                    "noDataMessage": "אין נתוני קליק המלצה זמינים לתקופה שנבחרה.",
+                    "analyticsSummary": "סיכום אנליטיקה:",
+                    "totalClickEvents": "• {{count}} סה\"כ אירועי קליק",
+                    "recordsWithRecommendations": "• {{count}} רשומות עם מזהה המלצה",
+                    "uniqueRecommendations": "• {{count}} המלצות ייחודיות",
+                    "selectLocationPrompt": "אנא בחר מיקום כדי להציג נתוני המלצה.",
+                    "noClicksMessage": "לא נמצאו קליקי המלצה למיקום שנבחר. נתוני המלצה יופיעו ברגע שמשתמשים ילחצו על כרטיסי מקום בעמודי המיקום שלך.",
+                    "unknownPlace": "מקום לא ידוע",
+                    "unknownCategory": "קטגוריה לא ידועה",
+                    "unknownLocation": "מיקום לא ידוע",
+                    "tooltip": {
+                        "place": "{{place}}",
+                        "category": "קטגוריה: {{category}}",
+                        "clicks": "קליקים: {{count}}"
+                    },
+                    "stats": {
+                        "placesShown": "מקומות מוצגים",
+                        "totalClicks": "סה\"כ קליקים",
+                        "avgClicks": "ממוצע קליקים/מקום"
+                    }
+                },
+                "socialMedia": {
+                    "title": "אינטראקציה ברשתות חברתיות",
+                    "subtitle": "עקוב אחר קליקים על קישורי רשתות חברתיות מהפרופיל הציבורי שלך בכל הפלטפורמות",
+                    "noDataTitle": "אין נתוני אינטראקציה ברשתות חברתיות",
+                    "noDataMessage": "אין נתוני קליק רשתות חברתיות זמינים מדף הפרופיל הציבורי שלך.",
+                    "analyticsSummary": "סיכום אנליטיקה:",
+                    "totalSocialClicks": "• {{count}} סה\"כ קליקי רשתות חברתיות",
+                    "uniquePlatforms": "• {{count}} פלטפורמות ייחודיות",
+                    "trackingNote": "• מעקב רק אחר קליקים מדף פרופיל ציבורי",
+                    "willAppear": "נתוני אינטראקציה ברשתות חברתיות יופיעו ברגע שמשתמשים ילחצו על קישורי הרשתות החברתיות שלך.",
+                    "tooltip": {
+                        "platform": "{{platform}}",
+                        "clicks": "קליקים: {{count}}"
+                    },
+                    "stats": {
+                        "platforms": "פלטפורמות",
+                        "totalClicks": "סה\"כ קליקים",
+                        "avgClicks": "ממוצע קליקים/פלטפורמה"
+                    }
+                }
+            }
+        }
+    },
+    "countries": {
+        "US": "ארצות הברית",
+        "IN": "הודו",
+        "GB": "הממלכה המאוחדת",
+        "CA": "קנדה",
+        "AU": "אוסטרליה",
+        "DE": "גרמניה",
+        "FR": "צרפת",
+        "IT": "איטליה",
+        "ES": "ספרד",
+        "BR": "ברזיל",
+        "MX": "מקסיקו",
+        "JP": "יפן",
+        "CN": "סין",
+        "RU": "רוסיה",
+        "KR": "קוריאה הדרומית",
+        "NL": "הולנד",
+        "SE": "שוודיה",
+        "NO": "נורווגיה",
+        "DK": "דנמרק",
+        "FI": "פינלנד",
+        "CH": "שווייץ",
+        "AT": "אוסטריה",
+        "BE": "בלגיה",
+        "PL": "פולין",
+        "CZ": "צ\u0027כיה",
+        "HU": "הונגריה",
+        "RO": "רומניה",
+        "BG": "בולגריה",
+        "GR": "יוון",
+        "PT": "פורטוגל",
+        "IE": "אירלנד",
+        "IS": "איסלנד",
+        "LU": "לוקסמבורג",
+        "MT": "מלטה",
+        "CY": "קפריסין",
+        "EE": "אסטוניה",
+        "LV": "לטביה",
+        "LT": "ליטא",
+        "SI": "סלובניה",
+        "SK": "סלובקיה",
+        "HR": "קרואטיה",
+        "BA": "בוסניה והרצגובינה",
+        "RS": "סרביה",
+        "ME": "מונטנגרו",
+        "MK": "מקדוניה הצפונית",
+        "AL": "אלבניה",
+        "XK": "קוסובו",
+        "MD": "מולדובה",
+        "UA": "אוקראינה",
+        "BY": "בלארוס",
+        "GE": "גאורגיה",
+        "AM": "ארמניה",
+        "AZ": "אזרבייג\u0027ן",
+        "KZ": "קזחסטן",
+        "UZ": "אוזבקיסטן",
+        "KG": "קירגיזסטן",
+        "TJ": "טג\u0027יקיסטן",
+        "TM": "טורקמניסטן",
+        "AF": "אפגניסטן",
+        "PK": "פקיסטן",
+        "BD": "בנגלדש",
+        "LK": "סרי לנקה",
+        "MV": "המלדיבים",
+        "NP": "נפאל",
+        "BT": "בהוטן",
+        "MM": "מיאנמר",
+        "TH": "תאילנד",
+        "LA": "לאוס",
+        "KH": "קמבודיה",
+        "VN": "וייטנאם",
+        "MY": "מלזיה",
+        "SG": "סינגפור",
+        "BN": "ברוניי",
+        "ID": "אינדונזיה",
+        "PH": "הפיליפינים",
+        "TL": "מזרח טימור",
+        "MN": "מונגוליה",
+        "KP": "קוריאה הצפונית",
+        "TW": "טאיוואן",
+        "HK": "הונג קונג",
+        "MO": "מקאו",
+        "SA": "ערב הסעודית",
+        "AE": "איחוד האמירויות הערביות",
+        "QA": "קטר",
+        "KW": "כווית",
+        "BH": "בחריין",
+        "OM": "עומאן",
+        "YE": "תימן",
+        "IQ": "עיראק",
+        "IR": "איראן",
+        "SY": "סוריה",
+        "LB": "לבנון",
+        "JO": "ירדן",
+        "IL": "ישראל",
+        "PS": "פלסטין",
+        "TR": "טורקיה",
+        "EG": "מצרים",
+        "LY": "לוב",
+        "TN": "תוניסיה",
+        "DZ": "אלג\u0027יריה",
+        "MA": "מרוקו",
+        "SD": "סודאן",
+        "SS": "דרום סודאן",
+        "ET": "אתיופיה",
+        "ER": "אריתריאה",
+        "DJ": "ג\u0027יבוטי",
+        "SO": "סומליה",
+        "KE": "קניה",
+        "UG": "אוגנדה",
+        "TZ": "טנזניה",
+        "RW": "רואנדה",
+        "BI": "בורundi",
+        "MW": "מלאווי",
+        "ZM": "זמביה",
+        "ZW": "זימבבואה",
+        "BW": "בוטסואנה",
+        "NA": "נמיביה",
+        "ZA": "דרום אפריקה",
+        "LS": "לסוטו",
+        "SZ": "אסווטיני",
+        "MG": "מדגסקר",
+        "MU": "מאוריציוס",
+        "SC": "סיישל",
+        "KM": "קומורו",
+        "MZ": "מוזמביק",
+        "AO": "אנגולה",
+        "CD": "הרפובליקה הדמוקרטית של קונגו",
+        "CG": "הרפובליקה של קונגו",
+        "CF": "הרפובליקה המרכז-אפריקאית",
+        "TD": "צ\u0027אד",
+        "CM": "קמרון",
+        "NG": "ניגריה",
+        "NE": "ניז\u0027ר",
+        "ML": "מאלי",
+        "BF": "בורקינה פאסו",
+        "CI": "חוף השנהב",
+        "GH": "גאנה",
+        "TG": "טוגו",
+        "BJ": "בנין",
+        "SN": "סנגל",
+        "GM": "גמביה",
+        "GW": "גינאה-ביסאו",
+        "GN": "גינאה",
+        "SL": "סיירה לאונה",
+        "LR": "ליבריה",
+        "MR": "מאוריטניה",
+        "CV": "כף ורדה",
+        "ST": "סאו טומה ופרינסיפה",
+        "GQ": "גינאה המשוונית",
+        "GA": "גבון",
+        "AR": "ארגנטינה",
+        "BO": "בוליביה",
+        "CL": "צ\u0027ילה",
+        "CO": "קולומביה",
+        "EC": "אקוודור",
+        "FK": "איי פוקלנד",
+        "GF": "גיאנה הצרפתית",
+        "GY": "גיאנה",
+        "PY": "פרגוואי",
+        "PE": "פרו",
+        "SR": "סורינאם",
+        "UY": "אורוגוואי",
+        "VE": "ונצואלה",
+        "CU": "קובה",
+        "JM": "ג\u0027מייקה",
+        "HT": "האיטי",
+        "DO": "הרפובליקה הדומיניקנית",
+        "PR": "פוארטו ריקו",
+        "TT": "טרינידד וטובגו",
+        "BB": "בarbados",
+        "LC": "סנט לוסיה",
+        "VC": "סנט וינסנט והגרנדינים",
+        "GD": "גרנדה",
+        "AG": "אנטיגואה וברבודה",
+        "KN": "סנט קיטס ונוויס",
+        "DM": "דומיניקה",
+        "BS": "איי בהאמה",
+        "BZ": "בליז",
+        "GT": "גואטמלה",
+        "SV": "אל סלוודור",
+        "HN": "הונדורס",
+        "NI": "ניקרגואה",
+        "CR": "קוסטה ריקה",
+        "PA": "פנמה",
+        "NZ": "ניו זילנד",
+        "FJ": "פיג\u0027י",
+        "PG": "פפואה גינאה החדשה",
+        "SB": "איי שלמה",
+        "VU": "וanutu",
+        "NC": "קלדוניה החדשה",
+        "PF": "פולינזיה הצרפתית",
+        "WS": "סמואה",
+        "TO": "טונגה",
+        "KI": "קיריבטי",
+        "TV": "טובלו",
+        "NR": "נאורו",
+        "PW": "פלאו",
+        "FM": "מיקרונזיה",
+        "MH": "איי מרשל"
+    }
+}

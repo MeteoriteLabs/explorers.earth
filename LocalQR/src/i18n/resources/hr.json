@@ -1,0 +1,1932 @@
+﻿{
+    "header": {
+        "nav": {
+            "howItWorks": "Kako radi",
+            "whoIsFor": "Za koga",
+            "faq": "Često postavljana pitanja",
+            "about": "O nama",
+            "contact": "Kontakt"
+        },
+        "auth": {
+            "login": "Prijava",
+            "signUp": "Registracija"
+        }
+    },
+    "hero": {
+        "headline": "Sve vaše preporuke u jednom QR-u i jednostavnoj vezi.",
+        "subtext": "Podijelite ono što znate i volite o mjestu — i učinite to otkrivljivim za sve, svugdje",
+        "inputLabel": "Rezervirajte vaš explorers URL:",
+        "inputPlaceholder": "vaše ime",
+        "ctaButton": "Rezervirajte explorers",
+        "signupPrompt": "Registrirajte se sada da dobijete vaš"
+    },
+    "sections": {
+        "createCustomize": {
+            "headline": "Kreirajte i prilagodite vaš explorers za minute",
+            "subtext": "Dodajte vaša omiljena mjesta, organizirajte po gradu ili temi, i generirajte vaš QR odmah.",
+            "bulletPoints": {
+                "addSpots": {
+                    "title": "Dodajte vaša omiljena mjesta",
+                    "description": "Kreirajte listu sa vašim must-visit"
+                },
+                "organize": {
+                    "title": "Organizirajte po gradu ili temi",
+                    "description": "Kreirajte kategorije koje imaju smisla za vašu publiku"
+                },
+                "generate": {
+                    "title": "Generirajte vašu vezu i QR odmah",
+                    "description": "Vaš prilagođeni QR je spreman za sekunde"
+                },
+                "share": {
+                    "title": "Podijelite digitalno ili putem QR-a u stvarnom svijetu",
+                    "description": ""
+                }
+            },
+            "mockup": {
+                "title": "Moje preporuke",
+                "addPlace": "Dodaj mjesto"
+            }
+        },
+        "shareAnywhere": {
+            "headline": "Podijelite na društvenim mrežama, izlozima trgovina ili gradskim zidovima",
+            "subtext": "Dodajte u vaš Instagram bio, ispišite na jelovnicima ili uključite u knjige dobrodošlice — vaš vodič, uvijek spreman.",
+            "scanText": "Skenirajte za lokalne preporuke",
+            "storefrontText": "Savršeno za prikaz izloga trgovine",
+            "instagramTitle": "Dodajte u vaš Instagram bio",
+            "instagramDesc": "Podijelite sa vašim pratiteljima odmah",
+            "menuTitle": "Ispišite na jelovnicima",
+            "menuDesc": "Fizičke kontaktne točke učinjene lako",
+            "welcomeTitle": "Uključite u knjige dobrodošlice",
+            "welcomeDesc": "Savršeno za domaćine i vodiče",
+            "cafeMenu": "Kafić meni",
+            "tokyoFoodGuide": "Moj tokijski gastronomski vodič explorers.earth/jane"
+        },
+        "analytics": {
+            "headline": "Pratite klikove, preporuke i angažman",
+            "subtext": "Pogledajte što radi, tko skenira, i koja mjesta dobivaju najviše ljubavi — u stvarnom vremenu.",
+            "workingTitle": "Pogledajte što radi",
+            "workingDesc": "Pratite popularnost vaših preporuka",
+            "scanningTitle": "Tko skenira",
+            "scanningDesc": "Pratite QR skeniranje i ažuriranja",
+            "spotsTitle": "Najbolja mjesta po performansama",
+            "spotsDesc": "Uvidi zasnovani na podacima za bolju kuraciju",
+            "dashboardTitle": "Analitička nadzorna ploča",
+            "last30Days": "Zadnjih 30 dana",
+            "totalScans": "Ukupno skeniranja",
+            "engagement": "Angažman",
+            "referrals": "Preporuke"
+        },
+        "referEarn": {
+            "headline": "Podijelite, preporučite i zaradite",
+            "subtext": "Pretvorite vaše preporuke u pasivne nagrade — dobijte kredit kada drugi koriste vaš QR.",
+            "comingSoon": "Program nagrada za preporuke (uskoro)",
+            "rewardsTitle": "Zaradite nagrade",
+            "rewardsDesc": "Dobijte novac kada ljudi koriste vaše preporuke",
+            "earnedThisMonth": "Zarađeno ovaj mjesec",
+            "passiveTitle": "Pretvorite preporuke u pasivne nagrade",
+            "networkTitle": "Izgradite vašu mrežu i zaradite automatski"
+        },
+        "localTunes": {
+            "mainHeading": "Tunes",
+            "title": "Slušajte dok istražujete",
+            "body": "Istraživanje nije samo vizualno. Zvuk nosi sjećanje, kontekst i emociju.\n\nTunes vam omogućava prikupljanje i dijeljenje soundtrackova za mjesta, putovanja i raspoloženja — bilo da je to glazba otkrivena na putu ili zvukovi koji definiraju mjesto za vas.\n\nBesprijekorno povezan s vašim Explorer profilom.",
+            "exploreButton": "Istražite Tunes",
+            "featuresHeading": "Moćne Funkcije",
+            "features": {
+                "realtimeCollaboration": {
+                    "title": "Suradnja u Stvarnom Vremenu",
+                    "description": "Dopustite gostima da trenutno dodaju pjesme na vašu playlistu dok zadržavate potpunu kontrolu nad onim što se reproducira."
+                },
+                "qrCodeSharing": {
+                    "title": "Dijeljenje QR Koda",
+                    "description": "Podijelite svoje glazbeno iskustvo jednostavnim skeniranjem QR koda — nisu potrebne aplikacije ili preuzimanja."
+                },
+                "youtubeIntegration": {
+                    "title": "YouTube Integracija",
+                    "description": "Besprijekorno se integrirajte s YouTube-om za pristup milijunima pjesama i stvaranje savršene atmosfere."
+                },
+                "voteLikeSystem": {
+                    "title": "Sustav Glasanja i Lajkanja",
+                    "description": "Gosti mogu glasati za svoje omiljene pjesme kako bi utjecali na red čekanja playliste u stvarnom vremenu."
+                },
+                "silentParties": {
+                    "title": "Tihi Zabavi",
+                    "description": "Organizirajte jedinstvene tihi zabavi gdje svi slušaju kroz svoje slušalice."
+                },
+                "karaokeReady": {
+                    "title": "Spremno za Karaoke",
+                    "description": "Savršeno za karaoke večeri s kolaborativnim playlistama i zahtjevima za pjesme u stvarnom vremenu."
+                }
+            },
+            "venueHeading": "Savršeno za Svako Mjesto",
+            "venues": {
+                "barsPubs": "Barovi i Pubovi",
+                "restaurants": "Restorani",
+                "coffeeShops": "Kafići",
+                "eventsWeddings": "Događaji i Vjenčanja",
+                "retailStores": "Trgovine",
+                "gymsFitness": "Teretane i Fitness"
+            },
+            "closingStatement": "Tunes je \u003cstrong\u003ebesplatan\u003c/strong\u003e za istraživanje, a za plaćene funkcije možete kasnije nadograditi."
+        },
+        "whoIsFor": {
+            "headline": "Za koga je explorers.earth?",
+            "subtext": "explorers.earth je za sve koji vjeruju da je dijeljenje odgovornost — ne emitiranje.",
+            "cards": {
+                "individuals": {
+                    "title": "Pojedinci",
+                    "oneLiner": "Podijelite osobne ili lokalne preporuke.",
+                    "items": {
+                        "traveler": {
+                            "label": "Putnik",
+                            "oneLiner": "Ljudi koji dijele mjesta za putovanje"
+                        },
+                        "local": {
+                            "label": "Lokalac",
+                            "oneLiner": "Mještani koji dijele savjete o kvartu"
+                        },
+                        "family": {
+                            "label": "Obitelj",
+                            "oneLiner": "Obitelji koje dijele korisna mjesta"
+                        },
+                        "student": {
+                            "label": "Student",
+                            "oneLiner": "Studenti koji dijele mjesta na kampusu/u blizini"
+                        },
+                        "nomad": {
+                            "label": "Nomad",
+                            "oneLiner": "Nomadi koji navode prostore prijateljske prema radu"
+                        },
+                        "emergencySharer": {
+                            "label": "Dijelitelj u Hitnim Slučajevima",
+                            "oneLiner": "Dijelitelji u hitnim slučajevima koji objavljuju ključna mjesta"
+                        }
+                    }
+                },
+                "creators": {
+                    "title": "Kreatori",
+                    "oneLiner": "Podijelite kurirane liste sa svojom publikom.",
+                    "items": {
+                        "influencer": {
+                            "label": "Influencer",
+                            "oneLiner": "Influenceri koji dijele najbolje izbore"
+                        },
+                        "blogger": {
+                            "label": "Bloger",
+                            "oneLiner": "Blogeri koji kuriraju pisane vodiče"
+                        },
+                        "vlogger": {
+                            "label": "Vloger",
+                            "oneLiner": "Vlogeri koji dijele vizualna putovanja"
+                        },
+                        "reviewer": {
+                            "label": "Recenzent",
+                            "oneLiner": "Recenzenti koji navode najbolje ocijenjena mjesta"
+                        },
+                        "photographer": {
+                            "label": "Fotograf",
+                            "oneLiner": "Fotografi koji dijele mjesta za fotografiranje"
+                        },
+                        "educator": {
+                            "label": "Edukator",
+                            "oneLiner": "Edukatori koji dijele vodiče za učenje"
+                        },
+                        "communityLeader": {
+                            "label": "Vođa Zajednice",
+                            "oneLiner": "Vođe zajednice koji kuriraju korisne liste"
+                        }
+                    }
+                },
+                "hospitality": {
+                    "title": "Gostoprimstvo",
+                    "oneLiner": "Ponudite gostima kurirane lokalne uvide.",
+                    "items": {
+                        "hotel": {
+                            "label": "Hotel",
+                            "oneLiner": "Hoteli koji nude lokalne vodiče"
+                        },
+                        "airbnb": {
+                            "label": "Airbnb",
+                            "oneLiner": "Domaćini koji dijele omiljene kvartove"
+                        },
+                        "hostel": {
+                            "label": "Hostel",
+                            "oneLiner": "Hosteli koji dijele savjete za backpackere"
+                        },
+                        "homestay": {
+                            "label": "Dom",
+                            "oneLiner": "Doma koji nude vodiče usmjerene na obitelj"
+                        },
+                        "resort": {
+                            "label": "Odmaralište",
+                            "oneLiner": "Odmarališta koja pružaju popise aktivnosti"
+                        },
+                        "pgColiving": {
+                            "label": "PG/Zajedničko Stanovanje",
+                            "oneLiner": "PG/Zajedničko Stanovanje koje prikazuje važna obližnja mjesta"
+                        }
+                    }
+                },
+                "businesses": {
+                    "title": "Tvrtke",
+                    "oneLiner": "Usmjerite klijente korisnim preporukama.",
+                    "items": {
+                        "restaurant": {
+                            "label": "Restoran",
+                            "oneLiner": "Restorani koji dijele jela za probati"
+                        },
+                        "cafe": {
+                            "label": "Kafić",
+                            "oneLiner": "Kafići koji ističu omiljene stavke iz menija"
+                        },
+                        "retailShop": {
+                            "label": "Trgovina",
+                            "oneLiner": "Trgovine koje dijele preporuke proizvoda"
+                        },
+                        "gym": {
+                            "label": "Teretana",
+                            "oneLiner": "Teretane koje predlažu lokalna wellness mjesta"
+                        },
+                        "spa": {
+                            "label": "Spa",
+                            "oneLiner": "Spa koji navode obližnje opcije za opuštanje"
+                        },
+                        "salon": {
+                            "label": "Salon",
+                            "oneLiner": "Saloni koji nude vodiče za ljepotu"
+                        },
+                        "clinic": {
+                            "label": "Klinika",
+                            "oneLiner": "Klinike koje dijele mjesta povezana sa zdravljem"
+                        },
+                        "boutique": {
+                            "label": "Butik",
+                            "oneLiner": "Butici koji navode kurirane nalaze"
+                        }
+                    }
+                },
+                "organizations": {
+                    "title": "Organizacije",
+                    "oneLiner": "Pružite kurirane vodiče i resurse.",
+                    "items": {
+                        "airline": {
+                            "label": "Zrakoplovna Tvrtka",
+                            "oneLiner": "Zrakoplovne tvrtke koje dijele vodiče za grad"
+                        },
+                        "agency": {
+                            "label": "Agencija",
+                            "oneLiner": "Putničke agencije koje navode mjesta za posjetiti"
+                        },
+                        "university": {
+                            "label": "Sveučilište",
+                            "oneLiner": "Sveučilišta koja dijele osnovne potrebe kampusa"
+                        },
+                        "corporate": {
+                            "label": "Korporativno",
+                            "oneLiner": "Korporacije koje navode obližnje resurse"
+                        },
+                        "airport": {
+                            "label": "Zračna Luka",
+                            "oneLiner": "Zračne luke koje nude terminale + savjete za grad"
+                        },
+                        "railway": {
+                            "label": "Željeznica",
+                            "oneLiner": "Željeznice koje dijele informacije o platformi"
+                        },
+                        "ngo": {
+                            "label": "NVO",
+                            "oneLiner": "NVO koje dijele resurse zajednice"
+                        },
+                        "government": {
+                            "label": "Vlada",
+                            "oneLiner": "Odjeli koji ističu javne usluge"
+                        }
+                    }
+                }
+            },
+            "useCases": {
+                "travelers": "Putnici",
+                "travelersDesc": "Podijelite otkrivene dragulje sa kolegama istraživačima",
+                "influencers": "Influenseri",
+                "influencersDesc": "Monetizirajte lokalno znanje i izgradite zajednicu",
+                "airbnbHosts": "Airbnb domaćini",
+                "airbnbHostsDesc": "Poboljšajte gostujuće iskustvo sa lokalnim uvidima",
+                "hotels": "Hoteli",
+                "hotelsDesc": "Pružite kurirane lokalne preporuke",
+                "restaurants": "Restorani",
+                "restaurantsDesc": "Križna promocija sa drugim lokalnim poslovima",
+                "cafes": "Kafići",
+                "cafesDesc": "Podijelite omiljena mjesta susjedstva sa klijentima",
+                "localGuides": "Lokalni vodiči",
+                "localGuidesDesc": "Skalirajte vašu ekspertizu izvan individualnih tura",
+                "creators": "Kreatori",
+                "creatorsDesc": "Dodajte vrijednost izvan sadržaja sa akcijskim savjetima",
+                "tourOperators": "Tur operateri",
+                "tourOperatorsDesc": "Proširite iskustva izvan planiranih tura",
+                "anyBusiness": "Bilo koji posao",
+                "anyBusinessDesc": "Izgradite zajednicu i lojalnost klijenata"
+            }
+        },
+        "testimonials": {
+            "headline": "Voljen od putnika, kreatora i domaćina",
+            "subtext": "Pogledajte kako ljudi širom svijeta koriste explorers za dijeljenje najvažnijih stvari.",
+            "scrollLeft": "Skrolujte preporuke ulijevo",
+            "scrollRight": "Skrolujte preporuke udesno",
+            "items": [
+                {
+                    "id": "1",
+                    "name": "Marcus Chen",
+                    "role": "Putnički Bloger",
+                    "location": "San Francisco",
+                    "quote": "explorers je promijenio način na koji dijelim svoje putničko znanje. Moji sljedbenici vole dobiti trenutni pristup mojim kuriranim preporukama!"
+                },
+                {
+                    "id": "2",
+                    "name": "Sarah Johnson",
+                    "role": "Airbnb Domaćin",
+                    "location": "Barcelona",
+                    "quote": "Moji gosti apsolutno vole personalizirani QR kod u svom dobrodošlici paketu. Postao je moj potpis!"
+                },
+                {
+                    "id": "3",
+                    "name": "Alex Rodriguez",
+                    "role": "Vlasnik Restorana",
+                    "location": "Mexico City",
+                    "quote": "Dijelimo naš explorers s klijentima da preporučimo druga lokalna mjesta. Stvorio je nevjerojatne veze u zajednici."
+                },
+                {
+                    "id": "4",
+                    "name": "Emma Thompson",
+                    "role": "Turistički Vodič",
+                    "location": "London",
+                    "quote": "explorers mi pomaže proširiti svoju stručnost izvan sati obilaska. Klijenti mogu pristupiti mojim preporukama bilo kada!"
+                }
+            ]
+        },
+        "faq": {
+            "headline": "Imate pitanja?",
+            "subtext": "Odgovorili smo na najčešće stvari koje ljudi pitaju prije početka.",
+            "loading": "Učitavanje FAQ...",
+            "error": "Greška pri učitavanju FAQ. Molimo pokušajte kasnije."
+        },
+        "features": {
+            "title": "Izgrađeno da ostane po strani",
+            "subtitle": "Jednostavne, promišljene značajke koje omogućuju vašim preporukama da sjaje.",
+            "simpleLinks": {
+                "title": "Jednostavne veze i dijeljenje QR"
+            },
+            "livingGuides": {
+                "title": "Živi, uredivi vodiči"
+            },
+            "locationAware": {
+                "title": "Preporuke svjesne lokacije"
+            },
+            "soundPlaylists": {
+                "title": "Neobavezni zvuk i playliste"
+            },
+            "privacyFirst": {
+                "title": "Privatnost na prvom mjestu po dizajnu"
+            },
+            "communityDriven": {
+                "title": "Otkrivanje vođeno zajednicom"
+            }
+        },
+        "finalCTA": {
+            "headline": "Počnite dijeliti vaš svijet danas",
+            "subtext": "Rezervirajte vaš besplatni explorers i pretvorite vaše lokalne uvide u djeljive vodiče.",
+            "ctaButton": "Rezervirajte vaš explorers – Besplatno zauvijek",
+            "disclaimer": "Kreditna kartica nije potrebna • Postavka za 2 minute",
+            "creating": "Kreiranje vašeg explorers..."
+        }
+    },
+    "contact": {
+        "title": "Hajde da se povežemo.",
+        "subtitle": "Bilo da imate pitanje, ideju ili samo želite reći zdravo — voljeli bismo čuti od vas.",
+        "getInTouch": "Povežite se",
+        "email": "hello@explorers.earth",
+        "responseTime": "Odgovaramo u roku od 24-48 sati",
+        "closingMessage": "Mi smo mali tim sa velikom vizijom — vaše misli su nam važne. Povežite se i hajde da gradimo nešto lokalno i globalno zajedno.",
+        "seo": {
+            "title": "Contact explorers | Support, Help and Partnership enquiries.",
+            "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
+            "loginTitle": "Login to explorers | Access Your Personalized Recommendations \u0026 Places",
+            "registerTitle": "Sign Up for explorers | Join the Community \u0026 Share Your Favorite Local Places",
+            "keywords": [
+                "contact explorers",
+                "explorers support",
+                "get in touch explorers",
+                "customer service travel app",
+                "partnership inquiry explorers",
+                "help center local recommendations",
+                "technical support explorers",
+                "travel app customer service",
+                "feedback location sharing",
+                "account assistance explorers",
+                "business collaboration explorers",
+                "report problem explorers",
+                "share local recommendations support",
+                "find explorers contact",
+                "customer service",
+                "explorers team",
+                "help center",
+                "contact support",
+                "QR code support",
+                "local recommendations help",
+                "partnership inquiries"
+            ]
+        }
+    },
+    "about": {
+        "title": "Istraživači Zemlje",
+        "subtitle": {
+            "line1": "Globalna zajednica ljudi koji istražuju s pažnjom — za ljude, kulturu i planet koji dijelimo.",
+            "line2": "Istraživanje za nas nije o tome koliko daleko idemo.",
+            "line3": "O tome je koliko duboko se povezujemo."
+        },
+        "section1": {
+            "title": "ŠTO VJERUJEMO",
+            "line1": "Istraživanje počinje sviješću.",
+            "line2": "Primjećivanjem onoga što drugi propuštaju.",
+            "line3": "Odabirom kretanja promišljeno, ne brzo.",
+            "line4": "Živimo kratko na drevnom planetu —\ndodajući nekoliko namjernih znakova priči\nkoja je počela davno prije nas\ni nastavit će se dugo nakon što ođemo."
+        },
+        "section2": {
+            "title": "KAKO VIDIMO ISTRAŽIVANJE",
+            "line1": "Istraživanje se ne mjeri u miljama.",
+            "line2": "Mjeri se značenjem.",
+            "line3": "Živi u usporavanju, pažnji\ni poštivanju svakog mjesta na koje zakoračimo —\nulica, planinska staza, stol u kafiću,\nili trenutak podijeljen s nekim novim."
+        },
+        "section3": {
+            "title": "ŠTO GRADIMO",
+            "line1": "explorers je mjesto za:",
+            "item1": "Vodiče oblikovane stvarnim iskustvom",
+            "item2": "Mjesta, putovanja, zvukove i priče vrijedne pamćenja",
+            "item3": "Zajednice izgrađene na ljudima — ne na metrikama popularnosti",
+            "line2": "Tehnologija nam pomaže povezati se.",
+            "line3": "Ljudi joj daju svrhu."
+        },
+        "section4": {
+            "title": "PRIPADANJE",
+            "line1": "Istraživači Zemlje nije klub.",
+            "line2": "Nije to etiketa.",
+            "line3": "To je zajednički mentalitet —\ntiha razumijevanje kako se krećemo kroz svijet."
+        },
+        "closing": "Ako ste znatiželjni.\nAko ste promišljeni.\nAko ste spremni usporiti i pogledati bliže —\nveć ovdje pripadate.",
+        "seo": {
+            "title": "Explorers of Earth | About Us",
+            "description": "A global community of people who explore with care — for people, culture, and the planet we share. Exploration isn\u0027t about distance, it\u0027s about depth.",
+            "keywords": [
+                "explorers of earth",
+                "about explorers",
+                "exploration community",
+                "thoughtful travel",
+                "sustainable exploration",
+                "local recommendations platform",
+                "travel app about",
+                "community-driven recommendations",
+                "authentic local experiences",
+                "explorers team",
+                "local discovery platform",
+                "share local places",
+                "travel technology",
+                "local recommendations app",
+                "explorers story",
+                "who we are explorers"
+            ]
+        }
+    },
+    "cookieConsent": {
+        "title": "🍪 Postavke kolačića",
+        "description": "Koristimo kolačiće za poboljšanje vašeg iskustva pregledavanja, pružanje personaliziranog sadržaja i analizu prometa. Postavke možete upravljati u bilo kojem trenutku.",
+        "acceptAll": "✅ Prihvati Sve Kolačiće",
+        "customize": "⚙️ Prilagodi",
+        "rejectNonEssential": "❌ Odbij Neesencijalne",
+        "preferencesTitle": "Postavke kolačića",
+        "essentialCookies": {
+            "title": "Esencijalni kolačići",
+            "description": "Potrebni za ispravno funkcioniranje web stranice",
+            "alwaysOn": "Uvijek Uključeno"
+        },
+        "analyticsCookies": {
+            "title": "Analitički kolačići",
+            "description": "Pomažu nam razumjeti kako posjetitelji komuniciraju s našom web stranicom"
+        },
+        "marketingCookies": {
+            "title": "Marketinški kolačići",
+            "description": "Koriste se za isporuku personaliziranih oglasa"
+        },
+        "savePreferences": "Spremi Postavke",
+        "acceptAllButton": "Prihvati Sve",
+        "closeBanner": "Zatvori banner",
+        "goBack": "Natrag"
+    },
+    "footer": {
+        "tagline": "Pustite vaše preporuke da putuju svijetom.",
+        "email": "hello@explorers.earth",
+        "sections": {
+            "product": "Proizvod",
+            "contact": "Kontakt",
+            "legal": "Pravni"
+        },
+        "links": {
+            "howItWorks": "Kako radi",
+            "faq": "Često postavljana pitanja",
+            "contact": "Kontakt",
+            "about": "O nama",
+            "terms": "Uvjeti i pravila",
+            "privacy": "Politika privatnosti",
+            "cookies": "Politika kolačića"
+        },
+        "copyright": "© 2025 explorers. Sva prava zadržana.",
+        "madeWithLove": "Napravljeno sa ljubavlju na Zemlji"
+    },
+    "legal": {
+        "terms": {
+            "title": "Uvjeti i pravila",
+            "loading": "Učitavanje uvjeta i pravila...",
+            "error": "Greška pri učitavanju uvjeta i pravila. Molimo pokušajte kasnije."
+        },
+        "privacy": {
+            "title": "Politika privatnosti",
+            "loading": "Učitavanje politike privatnosti...",
+            "error": "Greška pri učitavanju politike privatnosti. Molimo pokušajte kasnije."
+        },
+        "cookies": {
+            "title": "Politika kolačića",
+            "loading": "Učitavanje politike kolačića...",
+            "error": "Greška pri učitavanju politike kolačića. Molimo pokušajte kasnije."
+        }
+    },
+    "languageModal": {
+        "title": "Odaberite jezik",
+        "searchPlaceholder": "Pretražite jezike...",
+        "close": "Zatvori"
+    },
+    "auth": {
+        "signup": "Registracija",
+        "signupSubtitle": "Registrirajte se da uživate u funkcionalnostima explorers-a",
+        "username": "Korisničko ime",
+        "usernamePlaceholder": "Unesite svoje korisničko ime",
+        "email": "Email",
+        "emailPlaceholder": "Unesite svoj email",
+        "password": "Lozinka",
+        "passwordPlaceholder": "Unesite svoju lozinku",
+        "confirmPassword": "Potvrdite lozinku",
+        "confirmPasswordPlaceholder": "Unesite ponovno svoju lozinku",
+        "register": "Registriraj se",
+        "or": "ili",
+        "signUpWithGoogle": "Registriraj se s Google-om",
+        "alreadyHaveAccount": "Već imate račun?",
+        "login": "Prijava",
+        "loginTitle": "Prijava",
+        "loginSubtitle": "Molimo prijavite se da nastavite na svoj račun",
+        "usernameOrEmail": "Korisničko ime ili email",
+        "usernameOrEmailPlaceholder": "Unesite svoje korisničko ime ili email",
+        "signInWithGoogle": "Prijavite se s Google-om",
+        "newToexplorers": "Novi u explorers-u?",
+        "forgotPassword": "Zaboravili ste lozinku?",
+        "validations": {
+            "username": {
+                "required": "Korisničko ime je obavezno",
+                "minLength": "Korisničko ime mora imati najmanje 3 znaka",
+                "maxLength": "Korisničko ime ne smije premašiti 30 znakova",
+                "invalidChars": "Korisničko ime može sadržavati samo mala slova (a-z), brojeve (0-9) i crtice (-)",
+                "mustStartWithLetter": "Korisničko ime mora počinjati slovom (a-z)",
+                "cannotStartEndHyphen": "Korisničko ime ne može počinjati ili završavati crticom",
+                "noConsecutiveHyphens": "Korisničko ime ne može sadržavati uzastopne crtice",
+                "cannotBeAllNumbers": "Username cannot be all numbers",
+                "reservedWords": "Ovo korisničko ime sadrži rezervirane riječi i ne može se koristiti",
+                "inappropriateContent": "Korisničko ime sadrži neprikladan sadržaj",
+                "alreadyExists": "Korisničko ime već postoji",
+                "suggestedAlternatives": "Predložene alternative:",
+                "willBeConvertedLowercase": "Korisničko ime će biti pretvoreno u mala slova",
+                "checkingAvailability": "Provjera dostupnosti...",
+                "available": "Korisničko ime je dostupno",
+                "willConvertToLowercase": "Korisničko ime će se pretvoriti u mala slova"
+            },
+            "email": {
+                "required": "E-mail je obavezan",
+                "invalidFormat": "Molimo unesite valjanu e-mail adresu",
+                "alreadyExists": "E-mail već postoji",
+                "invalid": "Nevaljan e-mail"
+            },
+            "password": {
+                "required": "Lozinka je obavezna",
+                "minLength": "Lozinka mora imati najmanje 6 znakova",
+                "uppercaseRequired": "Lozinka mora sadržavati najmanje jedno veliko slovo (A-Z)",
+                "numberRequired": "Lozinka mora sadržavati najmanje jedan broj (0-9)",
+                "specialCharRequired": "Lozinka mora sadržavati najmanje jedan poseban znak (!@#$%^\u0026*().,?\": {}|\u003c\u003e)",
+                "strength": "Snaga lozinke",
+                "weak": "Slaba",
+                "medium": "Srednja",
+                "strong": "Jaka",
+                "maxLength": "Lozinka ne smije premašiti 32 znaka",
+                "lowercaseRequired": "Lozinka mora sadržavati najmanje jedno malo slovo (a-z)",
+                "tooCommon": "Ova lozinka je previše uobičajena. Molimo odaberite jedinstveniju lozinku",
+                "sameAsCurrent": "Nova lozinka ne može biti ista kao vaša trenutna lozinka",
+                "considerLonger": "Razmislite o korištenju duže lozinke s više raznolikosti za bolju sigurnost",
+                "moreSecure": "Lozinke s 10 ili više znakova su sigurnije",
+                "veryWeak": "Vrlo slaba",
+                "fair": "Srednja",
+                "good": "Dobra",
+                "veryStrong": "Vrlo jaka"
+            },
+            "confirmPassword": {
+                "required": "Molimo potvrdite svoju lozinku",
+                "mustMatch": "Lozinke se ne podudaraju",
+                "confirmRequired": "Potvrda lozinke je obavezna",
+                "match": "Lozinke se podudaraju"
+            },
+            "login": {
+                "usernameOrEmailRequired": "Korisničko ime ili e-mail je obavezan",
+                "invalidCredentials": "Nevaljano korisničko ime/e-mail ili lozinka",
+                "accountNotFound": "Račun nije pronađen",
+                "tooManyAttempts": "Previše neuspješnih pokušaja",
+                "incorrectPassword": "Netočna lozinka"
+            },
+            "general": {
+                "fillRequiredFields": "Molimo ispunite sva obavezna polja",
+                "somethingWentWrong": "Nešto je pošlo po zlu, molimo pokušajte ponovno"
+            },
+            "forgotPassword": {
+                "title": "Zaboravili ste lozinku?",
+                "description": "Unesite svoju e-mail adresu i poslat ćemo vam link za resetiranje.",
+                "emailLabel": "E-mail adresa",
+                "emailPlaceholder": "Unesite svoj e-mail",
+                "sendResetLink": "Pošalji link za resetiranje",
+                "backToLogin": "Natrag na prijavu",
+                "resetLinkSent": "Link za resetiranje lozinke poslan je na vaš e-mail!",
+                "failedToSend": "Slanje linka za resetiranje nije uspjelo. Pokušajte ponovno kasnije.",
+                "somethingWentWrong": "Nešto je pošlo po zlu!"
+            },
+            "accountName": {
+                "required": "Naziv računa je obavezan",
+                "minLength": "Naziv računa mora imati najmanje 2 znaka",
+                "maxLength": "Naziv računa ne smije premašiti 50 znakova",
+                "invalidChars": "Naziv računa može sadržavati samo slova, razmake, apostrofe, crtice i točke",
+                "noNumbers": "Naziv računa ne može sadržavati brojeve"
+            },
+            "accountType": {
+                "required": "Tip računa je obavezan",
+                "invalid": "Nevažeći tip računa"
+            },
+            "onboarding": {
+                "displayNameRequired": "Ime za prikaz je obavezno",
+                "displayNameMinLength": "Ime za prikaz mora imati najmanje 2 znaka",
+                "displayNameMaxLength": "Ime za prikaz ne smije premašiti 50 znakova",
+                "bioRequired": "Biografija je obavezna",
+                "bioMaxLength": "Biografija ne smije premašiti 250 znakova",
+                "mobileNumberRequired": "Broj mobitela je obavezan",
+                "mobileNumberInvalid": "Molimo unesite valjani broj mobitela",
+                "mobileNumberLength": "Broj mobitela mora imati 10 znamenki",
+                "addressRequired": "Adresa je obavezna",
+                "cityRequired": "Grad je obavezan",
+                "stateRequired": "Država je obavezna",
+                "countryRequired": "Zemlja je obavezna",
+                "postalCodeRequired": "Poštanski broj je obavezan",
+                "primaryAddressRequired": "Primarna adresa je obavezna",
+                "emailAddressRequired": "E-mail adresa je obavezna",
+                "resetLinkSentSuccess": "Link za resetiranje je uspješno poslan!",
+                "invalidUsername": "Neispravno korisničko ime",
+                "profileImageAlt": "Profile"
+            },
+            "resetPassword": {
+                "newPassword": "New Password",
+                "confirmPassword": "Confirm Password"
+            },
+            "resetLinkSent": {
+                "title": "E-mail poslan!",
+                "description": "Provjerite svoju poštu za link za resetiranje lozinke.",
+                "resending": "Šalje se ponovo...",
+                "resendWithCooldown": "Pošalji e-mail ponovo ({{cooldown}}s)",
+                "resendMail": "Pošalji e-mail ponovo"
+            }
+        },
+        "onboarding": {
+            "accountDetails": {
+                "title": "Detalji računa",
+                "description": "Recite nam o sebi",
+                "displayName": "Ime za prikaz",
+                "displayNamePlaceholder": "Unesite vaše ime za prikaz",
+                "username": "Korisničko ime",
+                "usernamePlaceholder": "Unesite vaše korisničko ime",
+                "usernameDescription": "Vaše korisničko ime dio je vaše javne veze profila i QR kodova. Primjer: explorers.earth/bhavya",
+                "bio": "Biografija",
+                "bioPlaceholder": "Recite nam o sebi",
+                "accountType": "Vrsta računa",
+                "personal": "Osobni",
+                "creator": "Kreator",
+                "business": "Poslovni",
+                "next": "Sljedeće"
+            },
+            "contactDetails": {
+                "title": "Kontakt detalji",
+                "description": "Dodajte svoj broj mobitela za provjeru",
+                "mobileNumber": "Broj mobitela",
+                "mobileNumberPlaceholder": "Unesite svoj broj mobitela",
+                "next": "Sljedeće",
+                "back": "Natrag"
+            },
+            "addressDetails": {
+                "title": "Detalji adrese",
+                "description": "Gdje se nalazite?",
+                "address": "Adresa",
+                "addressPlaceholder": "Unesite svoju adresu",
+                "streetName": "Naziv ulice",
+                "streetNamePlaceholder": "Unesite naziv ulice",
+                "city": "Grad",
+                "cityPlaceholder": "Unesite grad",
+                "state": "Država",
+                "statePlaceholder": "Unesite državu",
+                "country": "Zemlja",
+                "countryPlaceholder": "Unesite zemlju",
+                "postalCode": "Poštanski broj",
+                "postalCodePlaceholder": "Unesite poštanski broj",
+                "primaryAddress": "Primarna adresa",
+                "primaryAddressDescription": "prikazano na javnom profilu (grad i zemlja)",
+                "primaryAddressPlaceholder": "Unesite primarnu adresu",
+                "sameAsAddress": "Isto kao adresa",
+                "confirmDetails": "Potvrdite detalje",
+                "back": "Natrag"
+            }
+        },
+        "resetPassword": {
+            "newPasswordPlaceholder": "Enter new password",
+            "confirmPasswordPlaceholder": "Confirm your password"
+        }
+    },
+    "common": {
+        "loading": "Loading...",
+        "error": "An error occurred. Please try again later.",
+        "retry": "Try Again",
+        "noResults": "No results found",
+        "submit": "Submit",
+        "signInWithGoogle": "Sign in with Google",
+        "signUpWithGoogle": "Sign up with Google",
+        "cancel": "Odustani"
+    },
+    "dashboard": {
+        "home": {
+            "welcomeBack": "Dobrodošli natrag",
+            "profile": "Profil",
+            "myRecommendations": "Moje Preporuke",
+            "activePlaces": "aktivna mjesta",
+            "setupProfile": "Postavite Vaš Profil",
+            "draft": "Nacrt",
+            "startCurating": "Počnite s kuriranjem svojih preporuka i podijelite ih sa svijetom!",
+            "addRecommendations": "Dodajte Preporuke"
+        },
+        "shareModal": {
+            "copyLink": "Kopiraj vezu",
+            "copied": "Kopirano!",
+            "linkCopiedToast": "Veza je kopirana!!"
+        },
+        "recommendations": {
+            "locationButton": "Lokacija",
+            "viewAll": "Prikaži sve",
+            "recommendationsTab": "Preporuke",
+            "manageTab": "Upravljaj",
+            "manageHeading": "Upravljaj",
+            "deleteAction": "Obriši",
+            "editAction": "Uredi",
+            "publishedStatus": "Objavljeno",
+            "draftStatus": "Nacrt",
+            "myRecommendationsHeading": "Moje Preporuke",
+            "myQRHeading": "Moj QR",
+            "myRecommendationsQR": "Moje Preporuke",
+            "travelLikeLocal": "Putuj kao lokalac",
+            "shareLink": "Dijeli vezu",
+            "copyLink": "Kopiraj vezu",
+            "downloadQR": "Preuzmi QR",
+            "emptyState": {
+                "title": "Nema Dostupnih Preporuka",
+                "subtitle": "Počnite dodavati svoja omiljena mjesta u ovaj popis"
+            },
+            "draftLabel": "Nacrt",
+            "recommendButton": "Preporuči",
+            "exploreSection": {
+                "heading": "Istražite s explorers",
+                "addButton": "Dodaj"
+            },
+            "locationLabels": {
+                "currentLocation": "Trenutna Lokacija",
+                "selectedLocation": "Odabrana Lokacija"
+            },
+            "categories": {
+                "foodDrinks": "Hrana i Piće",
+                "lodging": "Smještaj",
+                "healthWellness": "Zdravlje i Dobrobit",
+                "shopping": "Kupovina",
+                "entertainment": "Zabava",
+                "transportation": "Prijevoz",
+                "services": "Usluge",
+                "tourism": "Turizam",
+                "naturalFeatures": "Prirodne Značajke"
+            },
+            "locationForm": {
+                "labels": {
+                    "searchLocation": "Pretraži lokaciju",
+                    "recommendationSocialLink": "Preporučena društvena poveznica",
+                    "note": "Bilješka",
+                    "placeUrl": "URL mjesta"
+                },
+                "placeholders": {
+                    "searchLocation": "Unesite grad, državu ili zemlju (npr. Pariz)",
+                    "recommendationSocialLink": "Unesite URL (Youtube / Instagram)",
+                    "note": "Unesite bilješku povezanu s vašom preporukom",
+                    "placeUrl": "Unesite ime za stvaranje dijeljene poveznice"
+                },
+                "buttons": {
+                    "addLocation": "Dodaj lokaciju",
+                    "updateLocation": "Ažuriraj lokaciju"
+                }
+            },
+            "toastMessages": {
+                "listCreated": "Recommendation List Created Successfully!!!",
+                "listPublished": "Lista preporuka uspješno objavljena!",
+                "listUnpublished": "Lista preporuka uspješno uklonjena iz objave!",
+                "listPublishError": "List Should have atleast one Recommended Place to be Published",
+                "listVisibilityError": "Failed to update recommendation list visibility.",
+                "qrDownloadSuccess": "QR code downloaded successfully!",
+                "qrDownloadError": "Failed to download QR code. Please try again.",
+                "linkCopied": "Link copied to clipboard!",
+                "linkCopyError": "Failed to copy link. Please try again.",
+                "qrNotReady": "QR code not ready for download"
+            },
+            "placesModal": {
+                "placesCount": "{{visible}} out of {{total}} places",
+                "scrollToLoadMore": "Scroll to load more places"
+            },
+            "noRecommendationsYet": "Još nema preporuka!!",
+            "setupProfileBeforeRecommendations": "Postavite svoj profil prije kreiranja preporuka!!",
+            "startAddingPlaces": "Počnite dodavati svoja omiljena mjesta i dijelite ih s drugima.",
+            "startRecommending": "Počni Preporučivati",
+            "addRecommendationForm": {
+                "searchField": {
+                    "label": "Search Recommendation with Google"
+                },
+                "mainInput": {
+                    "placeholder": "Enter your Recommendation"
+                },
+                "taggableFields": {
+                    "title": "Title",
+                    "address": "Address",
+                    "category": "Category",
+                    "contactNumber": "Contact Number",
+                    "socialLink": "Social Link"
+                },
+                "accordionSection": {
+                    "heading": "Your Recommendation Details",
+                    "recommendationLink": {
+                        "label": "Your Recommendation Link",
+                        "placeholder": "You can insert Instagram reel, YouTube, or blog recommending"
+                    },
+                    "whyRecommend": {
+                        "label": "Why would you recommend?",
+                        "placeholder": "Why would you recommend?"
+                    }
+                },
+                "fileUpload": {
+                    "text": "Attach Image/Video",
+                    "subtext": "optional"
+                },
+                "actionButton": {
+                    "text": "Add recommendation"
+                },
+                "taggableFieldsPlaceholders": {
+                    "title": "Enter the title",
+                    "address": "Enter the address of the Place",
+                    "category": "Enter a Category",
+                    "contactNumber": "Enter Contact Number",
+                    "socialLink": "Enter the Social Link (Place)"
+                },
+                "validationMessages": {
+                    "titleRequired": "Naslov je obavezan",
+                    "addressRequired": "Adresa je obavezna",
+                    "categoryRequired": "Kategorija je obavezna"
+                },
+                "mapModal": {
+                    "cancelButton": "Odustani",
+                    "addRecommendationButton": "Dodaj preporuku",
+                    "updateRecommendationButton": "Ažuriraj preporuku"
+                },
+                "fetchingImages": "Dohvaćanje slika…",
+                "recommendationType": {
+                    "place": "Mjesto",
+                    "person": "Osoba",
+                    "label": "Vrsta preporuke"
+                },
+                "imagePreview": {
+                    "alt": "Pregled",
+                    "deleteTooltip": "Obriši",
+                    "setThumbnailTooltip": "Postavi kao minijaturu",
+                    "confirmDeleteTitle": "Potvrdi brisanje",
+                    "confirmDeleteMessage": "Jeste li sigurni da želite obrisati ovu sliku iz zbirke?",
+                    "cancel": "Odustani",
+                    "confirm": "Potvrdi"
+                },
+                "deleteRecommendationModal": {
+                    "title": "Potvrdi brisanje",
+                    "message": "Jeste li sigurni da želite obrisati ovu preporuku? Ova radnja se ne može poništiti.",
+                    "cancel": "Odustani"
+                }
+            }
+        },
+        "profile": {
+            "tabs": {
+                "publicProfile": "Javni Profil",
+                "account": "Račun"
+            },
+            "publicProfile": {
+                "sections": {
+                    "profileInformation": "Bio",
+                    "socialMedia": "Društvene Veze",
+                    "publicAddress": "Javna Adresa",
+                    "howToReachUs": "Kako Nas Kontaktirati",
+                    "howToReachUsDescription": "Koristite ovaj odjeljak za dijeljenje detalja lokacije vašeg posla.",
+                    "feed": "Feed",
+                    "socialMediaSubtitle": "Veze i informacije društvenih mreža"
+                },
+                "fields": {
+                    "accountType": "Vrsta Računa",
+                    "bio": "Bio",
+                    "socialMedia": "Društvene Mreže",
+                    "instagram": "Instagram",
+                    "whatsapp": "Whatsapp",
+                    "mobile": "Mobilni",
+                    "youtube": "Youtube",
+                    "x": "X",
+                    "spotify": "Spotify",
+                    "website": "Web Stranica",
+                    "facebook": "Facebook",
+                    "youtubeMusic": "Youtube Music",
+                    "gmail": "Gmail",
+                    "linkedin": "Linkedin",
+                    "appleMusic": "Apple Music",
+                    "tiktok": "Tiktok",
+                    "snapchat": "Snapchat",
+                    "businessLocation": "Dodajte svoju lokaciju. One će se pojaviti kao preporučene lokacije u vašem javnom profilu",
+                    "primaryAddress": "Primarna Adresa - Prikazana u javnom profilu (grad i država)",
+                    "feed": "Učitajte slike ili videozapise svoje lokacije, proizvoda, usluga ili iskustava. Ove fotografije bit će prikazane u vašoj galeriji u vašem javnom profilu",
+                    "title": "Naslov",
+                    "contact": "Kontakt",
+                    "about": "O nama",
+                    "addLocation": "Dodajte svoju lokaciju",
+                    "addLocationInformation": "Dodaj Informacije o Lokaciji",
+                    "searchAddress": "Pretražite svoju adresu...",
+                    "sameAsAddress": "Ista kao adresa"
+                },
+                "accountTypes": {
+                    "personal": "Osobni",
+                    "creator": "Kreator",
+                    "business": "Posao"
+                },
+                "businessLocation": {
+                    "title": "Naslov",
+                    "contact": "Kontakt",
+                    "website": "Web Stranica",
+                    "about": "O nama"
+                }
+            },
+            "account": {
+                "sections": {
+                    "account": "Račun",
+                    "billingAddress": "Adresa za Naplatu"
+                },
+                "fields": {
+                    "username": "Korisničko ime",
+                    "accountName": "Naziv Računa",
+                    "address": "Adresa",
+                    "streetName": "Naziv Ulice",
+                    "state": "Županija",
+                    "city": "Grad",
+                    "country": "Država",
+                    "postalCode": "Poštanski Broj",
+                    "addressPlaceholder": "Unesite svoju adresu",
+                    "detectLocation": "Otkrij moju trenutnu lokaciju"
+                }
+            },
+            "common": {
+                "visible": "Vidljivo",
+                "hidden": "Skriveno",
+                "mobileNumber": "Broj mobitela",
+                "mobileNumberPlaceholder": "Broj mobitela",
+                "whatsappNumber": "Broj WhatsApp",
+                "primaryAddress": "Primarna Adresa",
+                "editImage": "Uredi Sliku",
+                "confirm": "Potvrdi",
+                "add": "Dodaj",
+                "video": "Video",
+                "feedImage": "Slika feeda",
+                "importedImage": "uvezena slika",
+                "cover": "Naslovnica",
+                "profile": "Profil",
+                "saveAndPublish": "Spremi i Objavi",
+                "saveToFeed": "Spremi u Feed",
+                "savedAndPublishedSuccessfully": "Uspješno spremljeno i objavljeno",
+                "saveAndPublishFailed": "Spremanje i objavljivanje nije uspjelo. Molimo pokušajte ponovno.",
+                "failedToSaveChanges": "Spremanje promjena nije uspjelo. Molimo pokušajte ponovno.",
+                "networkError": "Mrežna greška: Molimo provjerite svoju vezu i pokušajte ponovno.",
+                "unexpectedError": "Dogodila se neočekivana greška. Molimo pokušajte ponovno.",
+                "somethingWentWrong": "Nešto je pošlo po zlu. Molimo pokušajte ponovno.",
+                "failedToUploadFiles": "Učitavanje datoteka nije uspjelo. Molimo pokušajte ponovno.",
+                "failedToUploadImages": "Učitavanje slika nije uspjelo. Molimo pokušajte ponovno.",
+                "failedToSaveImagesToFeed": "Spremanje slika u feed nije uspjelo",
+                "failedToUpdateProfile": "Ažuriranje profila nije uspjelo. Molimo pokušajte ponovno.",
+                "fetching": "Dohvaćanje...",
+                "selectAll": "Odaberi sve",
+                "clearSelection": "Očisti odabir",
+                "error": "Dogodila se greška prilikom učitavanja vašeg profila. Molimo pokušajte kasnije.",
+                "errors": {
+                    "noFileProvided": "Nije navedena datoteka za učitavanje",
+                    "failedToGetAccountId": "Neuspjelo dohvaćanje ID-a računa za učitavanje",
+                    "uploadResponseMissingFileData": "Odgovor učitavanja ne sadrži podatke datoteke"
+                }
+            },
+            "accountSetup": {
+                "title": "Dovršite Postavke Vašeg Računa",
+                "progress": "Napredak",
+                "complete": "Dovršeno",
+                "profileSetupCompleted": "Postavke profila dovršene",
+                "profileSetupIncomplete": "Dodajte sliku profila, bio i društvene veze",
+                "recommendationsSetupCompleted": "Postavke preporuka dovršene",
+                "recommendationsSetupIncomplete": "Dodajte lokacije, mjesta i objavite svoj prvi popis",
+                "setupButton": "Postavi",
+                "footerMessage": "Dovršite oba koraka da otključate svoje potpuno iskustvo nadzorne ploče"
+            }
+        }
+    },
+    "toast": {
+        "success": {
+            "loginSuccessful": "Prijava uspješna!",
+            "registrationSuccessful": "Registracija uspješna!",
+            "passwordResetSuccessful": "Lozinka je uspješno resetirana!",
+            "emailVerificationSent": "E-mail za potvrdu poslan!",
+            "resetLinkSent": "Link za resetiranje lozinke poslan na vaš e-mail!",
+            "resetLinkResent": "Link za resetiranje ponovno poslan!",
+            "profileImageUpdated": "Slika profila uspješno ažurirana!",
+            "backgroundImageUpdated": "Pozadinska slika uspješno ažurirana!",
+            "recommendedListUpdated": "Recommended List Updated Successfully!!!",
+            "accountCreated": "Račun uspješno stvoren!",
+            "usernameUpdated": "Korisničko ime uspješno ažurirano!",
+            "profileUpdated": "Profil uspješno ažuriran!",
+            "settingsSaved": "Postavke uspješno spremljene!",
+            "dataSaved": "Podaci uspješno spremljeni!",
+            "changesSaved": "Promjene uspješno spremljene!",
+            "fileUploaded": "Datoteka uspješno učitana!",
+            "imageUploaded": "Slika uspješno učitana!",
+            "linkCopied": "Link copied to clipboard!",
+            "emailSent": "E-mail uspješno poslan!",
+            "notificationSent": "Obavijest uspješno poslana!",
+            "actionCompleted": "Akcija uspješno završena!",
+            "formSubmitted": "Obrazac uspješno poslan!",
+            "onboardingCompleted": "Uvodni proces završen uspješno!",
+            "welcomeMessage": "Dobrodošli u explorers!",
+            "accountActivated": "Račun je uspješno aktiviran!",
+            "emailVerified": "E-mail uspješno potvrđen!",
+            "passwordChanged": "Lozinka uspješno promijenjena!",
+            "usernameChanged": "Korisničko ime uspješno promijenjeno!",
+            "profileCompleted": "Profil uspješno dovršen!",
+            "setupCompleted": "Postavka uspješno završena!",
+            "loggedOutSuccessfully": "Uspje�no odjavljen!"
+        },
+        "error": {
+            "loginFailed": "Prijava neuspješna. Provjerite svoje podatke.",
+            "registrationFailed": "Registracija neuspješna. Pokušajte ponovo.",
+            "passwordResetFailed": "Resetiranje lozinke neuspješno. Pokušajte ponovo.",
+            "emailVerificationFailed": "Potvrda e-maila neuspješna. Pokušajte ponovo.",
+            "resetLinkFailed": "Slanje linka za resetiranje neuspješno. Pokušajte kasnije.",
+            "resetLinkResendFailed": "Ponovno slanje neuspješno. Pokušajte kasnije.",
+            "profileImageUpdateFailed": "Failed to upload profile image. Please try again.",
+            "backgroundImageUpdateFailed": "Failed to upload background image. Please try again.",
+            "recommendedListUpdateFailed": "Error Updating Recommended List!!!",
+            "accountCreationFailed": "Account creation failed. Please try again.",
+            "usernameUpdateFailed": "Ažuriranje korisničkog imena neuspješno. Pokušajte ponovo.",
+            "profileUpdateFailed": "Profile update failed. Please try again.",
+            "settingsSaveFailed": "Failed to save settings. Please try again.",
+            "dataSaveFailed": "Failed to save data. Please try again.",
+            "changesSaveFailed": "Failed to save changes. Please try again.",
+            "fileUploadFailed": "File upload failed. Please try again.",
+            "imageUploadFailed": "Učitavanje slike neuspješno. Pokušajte ponovo.",
+            "linkCopyFailed": "Failed to copy link. Please try again.",
+            "emailSendFailed": "Slanje e-maila neuspješno. Molimo pokušajte ponovo.",
+            "notificationSendFailed": "Failed to send notification. Please try again.",
+            "actionFailed": "Action failed. Please try again.",
+            "formSubmissionFailed": "Form submission failed. Please try again.",
+            "onboardingFailed": "Uvodni proces neuspješan. Pokušajte ponovo.",
+            "accountActivationFailed": "Account activation failed. Please try again.",
+            "passwordChangeFailed": "Password change failed. Please try again.",
+            "usernameChangeFailed": "Username change failed. Please try again.",
+            "profileCompletionFailed": "Profile completion failed. Please try again.",
+            "setupFailed": "Setup failed. Please try again.",
+            "networkError": "Mrežna greška. Provjerite svoju vezu.",
+            "serverError": "Greška servera. Pokušajte kasnije.",
+            "validationError": "Greška validacije. Provjerite svoje podatke.",
+            "permissionDenied": "Permission denied. Please contact support.",
+            "sessionExpired": "Sesija je istekla. Prijavite se ponovo.",
+            "invalidCredentials": "Neispravni podaci. Provjerite svoje podatke.",
+            "emailNotFound": "E-mail nije pronađen. Pokušajte ponovo.",
+            "usernameAlreadyExists": "Korisničko ime već postoji. Odaberite drugo.",
+            "emailAlreadyExists": "E-mail već postoji. Koristite drugi e-mail.",
+            "invalidEmailFormat": "Neispravan format e-maila. Unesite valjani e-mail.",
+            "passwordTooWeak": "Lozinka je preslaba. Odaberite jaču lozinku.",
+            "passwordsDoNotMatch": "Passwords do not match. Please try again.",
+            "requiredFieldMissing": "Required field is missing. Please fill all required fields.",
+            "invalidInput": "Invalid input. Please check your data.",
+            "fileTooLarge": "File is too large. Please choose a smaller file.",
+            "unsupportedFileType": "Unsupported file type. Please choose a different file.",
+            "uploadLimitExceeded": "Upload limit exceeded. Please try again later.",
+            "operationTimeout": "Operation timed out. Please try again.",
+            "serviceUnavailable": "Service unavailable. Please try again later.",
+            "maintenanceMode": "Service is under maintenance. Please try again later.",
+            "rateLimitExceeded": "Previše zahtjeva. Pokušajte kasnije.",
+            "quotaExceeded": "Quota exceeded. Please try again later.",
+            "accessDenied": "Access denied. You don\u0027t have permission to perform this action.",
+            "resourceNotFound": "Resource not found. Please check your request.",
+            "conflictError": "Conflict error. The resource already exists.",
+            "preconditionFailed": "Precondition failed. Please check your request.",
+            "tooManyAttempts": "Previše pokušaja. Pokušajte kasnije.",
+            "accountLocked": "Račun je zaključan. Kontaktirajte podršku.",
+            "accountSuspended": "Račun je suspendiran. Kontaktirajte podršku.",
+            "accountDeleted": "Account is deleted. Please contact support.",
+            "emailNotVerified": "Email is not verified. Please verify your email first.",
+            "phoneNotVerified": "Phone number is not verified. Please verify your phone first.",
+            "twoFactorRequired": "Two-factor authentication is required.",
+            "twoFactorFailed": "Two-factor authentication failed. Please try again.",
+            "captchaFailed": "Captcha verification failed. Please try again.",
+            "invalidToken": "Neispravan token. Pokušajte ponovo.",
+            "expiredToken": "Token je istekao. Pokušajte ponovo.",
+            "invalidCode": "Invalid code. Please check your input.",
+            "expiredCode": "Code has expired. Please request a new one.",
+            "codeLimitExceeded": "Code limit exceeded. Please try again later.",
+            "invalidUsername": "Invalid username. Please check your input.",
+            "usernameTooShort": "Username is too short. Please choose a longer username.",
+            "usernameTooLong": "Username is too long. Please choose a shorter username.",
+            "usernameInvalidChars": "Username contains invalid characters. Please use only letters, numbers, and hyphens.",
+            "usernameReserved": "Username is reserved. Please choose another username.",
+            "usernameProfanity": "Username contains inappropriate content. Please choose another username.",
+            "primaryAddressRequired": "Glavna adresa je obavezna",
+            "addressRequired": "Address is required",
+            "cityRequired": "City is required",
+            "stateRequired": "State is required",
+            "countryRequired": "Country is required",
+            "postalCodeRequired": "Postal code is required",
+            "mobileNumberRequired": "Mobile number is required",
+            "mobileNumberInvalid": "Invalid mobile number format",
+            "mobileNumberTooShort": "Mobile number is too short",
+            "mobileNumberTooLong": "Mobile number is too long",
+            "bioRequired": "Bio is required",
+            "bioTooLong": "Bio is too long. Please keep it under 250 characters",
+            "displayNameRequired": "Display name is required",
+            "displayNameTooShort": "Display name is too short",
+            "displayNameTooLong": "Display name is too long",
+            "accountTypeRequired": "Account type is required",
+            "invalidAccountType": "Invalid account type selected",
+            "imageRequired": "Image is required",
+            "imageTooLarge": "Image is too large. Please choose a smaller image",
+            "unsupportedImageFormat": "Unsupported image format. Please use JPG, PNG, or GIF",
+            "imageProcessingFailed": "Image processing failed. Please try again",
+            "imageCorrupted": "Image is corrupted. Please choose another image",
+            "imageDimensionsInvalid": "Image dimensions are invalid. Please choose another image",
+            "imageSizeInvalid": "Image size is invalid. Please choose another image",
+            "imageFormatInvalid": "Image format is invalid. Please choose another image",
+            "imageQualityTooLow": "Image quality is too low. Please choose a higher quality image",
+            "imageTooSmall": "Image is too small. Please choose a larger image",
+            "imageTooBig": "Image is too big. Please choose a smaller image",
+            "imageAspectRatioInvalid": "Image aspect ratio is invalid. Please choose another image",
+            "imageColorSpaceInvalid": "Image color space is invalid. Please choose another image",
+            "imageMetadataInvalid": "Image metadata is invalid. Please choose another image",
+            "imageSecurityViolation": "Image security violation. Please choose another image",
+            "imageVirusDetected": "Virus detected in image. Please choose another image",
+            "imageMalwareDetected": "Malware detected in image. Please choose another image",
+            "imageSpamDetected": "Spam detected in image. Please choose another image",
+            "imageContentInappropriate": "Image content is inappropriate. Please choose another image",
+            "imageContentViolent": "Image content is violent. Please choose another image",
+            "imageContentSexual": "Image content is sexual. Please choose another image",
+            "imageContentHateful": "Image content is hateful. Please choose another image",
+            "imageContentDiscriminatory": "Image content is discriminatory. Please choose another image",
+            "imageContentOffensive": "Image content is offensive. Please choose another image",
+            "imageContentAbusive": "Image content is abusive. Please choose another image",
+            "imageContentHarassing": "Image content is harassing. Please choose another image",
+            "imageContentThreatening": "Image content is threatening. Please choose another image",
+            "imageContentDangerous": "Image content is dangerous. Please choose another image",
+            "imageContentIllegal": "Image content is illegal. Please choose another image",
+            "imageContentCopyright": "Image content violates copyright. Please choose another image",
+            "imageContentTrademark": "Image content violates trademark. Please choose another image",
+            "imageContentPrivacy": "Image content violates privacy. Please choose another image",
+            "imageContentConsent": "Image content lacks consent. Please choose another image",
+            "imageContentMinors": "Image content involves minors. Please choose another image",
+            "imageContentAnimals": "Image content involves animal cruelty. Please choose another image",
+            "imageContentEnvironment": "Image content harms environment. Please choose another image",
+            "imageContentHealth": "Image content harms health. Please choose another image",
+            "imageContentSafety": "Image content harms safety. Please choose another image",
+            "imageContentSecurity": "Image content harms security. Please choose another image",
+            "imageContentIntegrity": "Image content harms integrity. Please choose another image",
+            "imageContentReputation": "Image content harms reputation. Please choose another image",
+            "imageContentBrand": "Image content harms brand. Please choose another image",
+            "imageContentBusiness": "Image content harms business. Please choose another image",
+            "imageContentPersonal": "Image content harms personal interests. Please choose another image",
+            "imageContentProfessional": "Image content harms professional interests. Please choose another image",
+            "imageContentAcademic": "Image content harms academic interests. Please choose another image",
+            "imageContentCultural": "Image content harms cultural interests. Please choose another image",
+            "imageContentReligious": "Image content harms religious interests. Please choose another image",
+            "imageContentPolitical": "Image content harms political interests. Please choose another image",
+            "imageContentSocial": "Image content harms social interests. Please choose another image",
+            "imageContentEconomic": "Image content harms economic interests. Please choose another image",
+            "imageContentLegal": "Image content harms legal interests. Please choose another image",
+            "imageContentEthical": "Image content harms ethical interests. Please choose another image",
+            "imageContentMoral": "Image content harms moral interests. Please choose another image",
+            "imageContentSpiritual": "Image content harms spiritual interests. Please choose another image",
+            "imageContentPhilosophical": "Image content harms philosophical interests. Please choose another image",
+            "imageContentScientific": "Image content harms scientific interests. Please choose another image",
+            "imageContentTechnical": "Image content harms technical interests. Please choose another image",
+            "imageContentArtistic": "Image content harms artistic interests. Please choose another image",
+            "imageContentCreative": "Image content harms creative interests. Please choose another image",
+            "imageContentIntellectual": "Image content harms intellectual interests. Please choose another image",
+            "imageContentEducational": "Image content harms educational interests. Please choose another image",
+            "imageContentInformational": "Image content harms informational interests. Please choose another image",
+            "imageContentNews": "Image content harms news interests. Please choose another image",
+            "imageContentMedia": "Image content harms media interests. Please choose another image",
+            "imageContentEntertainment": "Image content harms entertainment interests. Please choose another image",
+            "imageContentSports": "Image content harms sports interests. Please choose another image",
+            "imageContentRecreation": "Image content harms recreation interests. Please choose another image",
+            "imageContentLeisure": "Image content harms leisure interests. Please choose another image",
+            "imageContentHobby": "Image content harms hobby interests. Please choose another image",
+            "imageContentInterest": "Image content harms interest interests. Please choose another image",
+            "imageContentPassion": "Image content harms passion interests. Please choose another image",
+            "imageContentLove": "Image content harms love interests. Please choose another image",
+            "imageContentHate": "Image content harms hate interests. Please choose another image",
+            "imageContentAnger": "Image content harms anger interests. Please choose another image",
+            "imageContentFear": "Image content harms fear interests. Please choose another image",
+            "imageContentSadness": "Image content harms sadness interests. Please choose another image",
+            "imageContentJoy": "Image content harms joy interests. Please choose another image",
+            "imageContentHappiness": "Image content harms happiness interests. Please choose another image",
+            "imageContentExcitement": "Image content harms excitement interests. Please choose another image",
+            "imageContentSurprise": "Image content harms surprise interests. Please choose another image",
+            "imageContentDisgust": "Image content harms disgust interests. Please choose another image",
+            "imageContentShame": "Image content harms shame interests. Please choose another image",
+            "imageContentGuilt": "Image content harms guilt interests. Please choose another image",
+            "imageContentPride": "Image content harms pride interests. Please choose another image",
+            "imageContentEnvy": "Image content harms envy interests. Please choose another image",
+            "imageContentJealousy": "Image content harms jealousy interests. Please choose another image",
+            "imageContentGreed": "Image content harms greed interests. Please choose another image",
+            "imageContentLust": "Image content harms lust interests. Please choose another image",
+            "imageContentGluttony": "Image content harms gluttony interests. Please choose another image",
+            "imageContentSloth": "Image content harms sloth interests. Please choose another image",
+            "imageContentWrath": "Image content harms wrath interests. Please choose another image"
+        },
+        "warning": {
+            "usernameCooldown": "Username change is temporarily locked due to cooldown period",
+            "passwordWeak": "Password is weak. Consider using a stronger password",
+            "emailNotVerified": "Email is not verified. Please verify your email",
+            "phoneNotVerified": "Phone number is not verified. Please verify your phone",
+            "profileIncomplete": "Profile is incomplete. Please complete your profile",
+            "settingsNotSaved": "Settings are not saved. Please save your settings",
+            "dataNotSaved": "Data is not saved. Please save your data",
+            "changesNotSaved": "Changes are not saved. Please save your changes",
+            "fileNotUploaded": "File is not uploaded. Please upload your file",
+            "imageNotUploaded": "Image is not uploaded. Please upload your image",
+            "linkNotCopied": "Link is not copied. Please copy your link",
+            "emailNotSent": "Email is not sent. Please send your email",
+            "notificationNotSent": "Notification is not sent. Please send your notification",
+            "actionNotCompleted": "Action is not completed. Please complete your action",
+            "formNotSubmitted": "Form is not submitted. Please submit your form",
+            "onboardingNotCompleted": "Onboarding is not completed. Please complete your onboarding",
+            "accountNotActivated": "Account is not activated. Please activate your account",
+            "passwordNotChanged": "Password is not changed. Please change your password",
+            "usernameNotChanged": "Username is not changed. Please change your username",
+            "profileNotCompleted": "Profile is not completed. Please complete your profile",
+            "setupNotCompleted": "Setup is not completed. Please complete your setup",
+            "networkSlow": "Network is slow. Please check your connection",
+            "serverSlow": "Server is slow. Please try again later",
+            "validationPending": "Validation is pending. Please wait",
+            "permissionPending": "Permission is pending. Please wait",
+            "sessionExpiring": "Session is expiring. Please login again",
+            "credentialsExpiring": "Credentials are expiring. Please update your credentials",
+            "emailExpiring": "Email is expiring. Please update your email",
+            "phoneExpiring": "Phone is expiring. Please update your phone",
+            "profileExpiring": "Profile is expiring. Please update your profile",
+            "settingsExpiring": "Settings are expiring. Please update your settings",
+            "dataExpiring": "Data is expiring. Please update your data",
+            "changesExpiring": "Changes are expiring. Please update your changes",
+            "fileExpiring": "File is expiring. Please update your file",
+            "imageExpiring": "Image is expiring. Please update your image",
+            "linkExpiring": "Link is expiring. Please update your link",
+            "notificationExpiring": "Notification is expiring. Please update your notification",
+            "actionExpiring": "Action is expiring. Please update your action",
+            "formExpiring": "Form is expiring. Please update your form",
+            "onboardingExpiring": "Onboarding is expiring. Please update your onboarding",
+            "accountExpiring": "Account is expiring. Please update your account",
+            "passwordExpiring": "Password is expiring. Please update your password",
+            "usernameExpiring": "Username is expiring. Please update your username",
+            "setupExpiring": "Setup is expiring. Please update your setup"
+        },
+        "info": {
+            "loading": "Učitavanje...",
+            "processing": "Processing...",
+            "saving": "Saving...",
+            "uploading": "Uploading...",
+            "downloading": "Downloading...",
+            "connecting": "Connecting...",
+            "disconnecting": "Disconnecting...",
+            "sending": "Sending...",
+            "receiving": "Receiving...",
+            "updating": "Updating...",
+            "refreshing": "Refreshing...",
+            "synchronizing": "Synchronizing...",
+            "validating": "Validating...",
+            "verifying": "Verifying...",
+            "checking": "Checking...",
+            "searching": "Searching...",
+            "filtering": "Filtering...",
+            "sorting": "Sorting...",
+            "organizing": "Organizing...",
+            "arranging": "Arranging...",
+            "configuring": "Configuring...",
+            "setting": "Setting...",
+            "adjusting": "Adjusting...",
+            "modifying": "Modifying...",
+            "changing": "Changing...",
+            "switching": "Switching...",
+            "toggling": "Toggling...",
+            "enabling": "Enabling...",
+            "disabling": "Disabling...",
+            "activating": "Activating...",
+            "deactivating": "Deactivating...",
+            "starting": "Starting...",
+            "stopping": "Stopping...",
+            "pausing": "Pausing...",
+            "resuming": "Resuming...",
+            "restarting": "Restarting...",
+            "resetting": "Resetting...",
+            "clearing": "Clearing...",
+            "deleting": "Deleting...",
+            "removing": "Removing...",
+            "adding": "Adding...",
+            "inserting": "Inserting...",
+            "creating": "Creating...",
+            "building": "Building...",
+            "constructing": "Constructing...",
+            "generating": "Generating...",
+            "producing": "Producing...",
+            "making": "Making...",
+            "preparing": "Preparing...",
+            "readying": "Readying...",
+            "initializing": "Initializing...",
+            "launching": "Launching...",
+            "opening": "Opening...",
+            "closing": "Closing...",
+            "shutting": "Shutting...",
+            "ending": "Ending...",
+            "finishing": "Finishing...",
+            "completing": "Completing...",
+            "finalizing": "Finalizing...",
+            "concluding": "Concluding...",
+            "terminating": "Terminating...",
+            "canceling": "Canceling...",
+            "aborting": "Aborting...",
+            "interrupting": "Interrupting...",
+            "halting": "Halting...",
+            "freezing": "Freezing...",
+            "unfreezing": "Unfreezing...",
+            "thawing": "Thawing...",
+            "melting": "Melting...",
+            "cooling": "Cooling...",
+            "heating": "Heating...",
+            "warming": "Warming...",
+            "chilling": "Chilling...",
+            "renewing": "Renewing...",
+            "restoring": "Restoring...",
+            "recovering": "Recovering...",
+            "repairing": "Repairing...",
+            "fixing": "Fixing...",
+            "correcting": "Correcting...",
+            "tuning": "Tuning...",
+            "optimizing": "Optimizing...",
+            "improving": "Improving...",
+            "enhancing": "Enhancing...",
+            "upgrading": "Upgrading...",
+            "modernizing": "Modernizing..."
+        }
+    },
+    "emailVerification": {
+        "title": "Verify Your Email",
+        "description": "We\u0027ve sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
+        "checkEmail": "Check your email",
+        "emailSent": "Verification email sent!",
+        "resendEmail": "Resend Email",
+        "resendIn": "Resend in",
+        "seconds": "seconds",
+        "didntReceive": "Didn\u0027t receive the email?",
+        "checkSpam": "Please check your spam folder or try again.",
+        "backToLogin": "Back to Login",
+        "emailAddress": "Email Address",
+        "verificationSent": "Verification email sent to:",
+        "clickLink": "Click the link in the email to verify your account.",
+        "expiresIn": "This link expires in 24 hours.",
+        "needHelp": "Need help?",
+        "contactSupport": "Contact Support"
+    },
+    "settings": {
+        "title": "Postavke",
+        "account": {
+            "heading": "Račun",
+            "security": {
+                "title": "Račun i Sigurnost"
+            },
+            "changePassword": {
+                "text": "Promjena lozinke?",
+                "button": "Promijeni lozinku",
+                "modalTitle": "Promijeni lozinku",
+                "currentPassword": "Trenutna lozinka",
+                "newPassword": "Nova lozinka",
+                "confirmPassword": "Potvrdi novu lozinku",
+                "updateButton": "Ažuriraj lozinku",
+                "currentPasswordPlaceholder": "Unesite trenutnu lozinku",
+                "newPasswordPlaceholder": "Unesite novu lozinku",
+                "confirmPasswordPlaceholder": "Ponovno unesite novu lozinku",
+                "successMessage": "Lozinka je uspješno ažurirana. Bit ćete preusmjereni na prijavu radi sigurnosti.",
+                "redirectMessage": "Preusmjeravanje na prijavu radi sigurnosti...",
+                "description": "Ažurirajte svoju lozinku da zadržite svoj račun sigurnim"
+            },
+            "deactivateAccount": {
+                "text": "Deaktiviraj svoj račun?",
+                "button": "Deaktiviraj račun",
+                "modalTitle": "Deaktiviraj svoj račun?",
+                "modalDescription": "Jeste li sigurni da želite deaktivirati svoj račun?",
+                "enterUsername": "Unesite svoje korisničko ime",
+                "enterPassword": "Unesite svoju lozinku",
+                "usernamePlaceholder": "Unesite svoje korisničko ime",
+                "passwordPlaceholder": "Unesite svoju trenutnu lozinku",
+                "confirmButton": "Deaktiviraj moj račun",
+                "deactivatedButton": "Deaktiviran",
+                "successMessage": "Račun je uspješno deaktiviran",
+                "activatedMessage": "Račun je uspješno aktiviran",
+                "description": "Privremeno deaktivirajte svoj račun"
+            },
+            "deleteAccount": {
+                "text": "Obriši svoj račun?",
+                "button": "Obriši račun",
+                "step1": {
+                    "modalTitle": "Obriši svoj račun?",
+                    "modalDescription": "Jeste li sigurni da želite obrisati svoj račun? Ova radnja se ne može poništiti.",
+                    "modalDescription2": "Ako želite zadržati svoje podatke, možete umjesto toga deaktivirati svoj račun.",
+                    "deactivateInsteadButton": "Umjesto toga deaktiviraj račun",
+                    "continueButton": "Nastavi s brisanjem"
+                },
+                "step2": {
+                    "modalTitle": "Unesite svoje podatke",
+                    "enterUsername": "Unesite svoje korisničko ime",
+                    "enterPassword": "Unesite svoju lozinku",
+                    "confirmPassword": "Potvrdite svoju lozinku",
+                    "usernamePlaceholder": "Unesite svoje korisničko ime",
+                    "passwordPlaceholder": "Unesite svoju lozinku",
+                    "confirmPasswordPlaceholder": "Potvrdite svoju lozinku",
+                    "continueButton": "Nastavi"
+                },
+                "step3": {
+                    "modalTitle": "Zašto odlazite?",
+                    "reasonPlaceholder": "Molimo recite nam razlog vašeg odlaska...",
+                    "continueButton": "Nastavi"
+                },
+                "step4": {
+                    "modalTitle": "Potvrdi brisanje",
+                    "confirmText": "Upišite \u0027CONFIRM DELETE\u0027 za nastavak",
+                    "confirmPlaceholder": "Upišite \u0027CONFIRM DELETE\u0027 za potvrdu",
+                    "deleteButton": "Obriši moj račun",
+                    "confirmationRequired": "Molimo upišite \u0027CONFIRM DELETE\u0027 za potvrdu.",
+                    "reasonRequired": "Molimo navedite razlog odlaska.",
+                    "successMessage": "Račun je uspješno obrisan."
+                },
+                "description": "Trajno obrišite svoj račun i sve podatke"
+            }
+        },
+        "languagePreference": {
+            "heading": "Jezične postavke",
+            "selectLanguage": "Odaberite svoj jezik",
+            "availableLanguages": "Odaberite između 47 dostupnih jezika",
+            "currentLanguage": "Trenutni: {{flag}} {{name}}",
+            "languageChanged": "Jezik promijenjen na {{name}}",
+            "description": "Odaberite željeni jezik za sučelje. To će promijeniti jezik svih tekstova, gumbova i izbornika u cijeloj aplikaciji."
+        },
+        "subtitle": "Upravljajte postavkama i preferencijama svog računa"
+    },
+    "seo": {
+        "loginTitle": "Login to explorers | Access Your Personalized Recommendations \u0026 Places",
+        "registerTitle": "Sign Up for explorers | Join the Community \u0026 Share Your Favorite Local Places"
+    },
+    "sidebar": {
+        "home": "Početna",
+        "profile": "Profil",
+        "recommendations": "Preporuke",
+        "settings": "Postavke",
+        "logout": "Odjava",
+        "analytics": "Analitika",
+        "loading": "Učitavanje...",
+        "clickToOpenMenu": "Kliknite za otvaranje izbornika"
+    },
+    "analytics": {
+        "dashboard": {
+            "title": "Nadzorna ploča analitike",
+            "subtitle": "Pratite performanse QR koda i angažman korisnika",
+            "timePeriod": "Vremensko razdoblje:",
+            "timeFilter": {
+                "today": "Danas",
+                "last7days": "Zadnjih 7 dana",
+                "last30days": "Zadnjih 30 dana",
+                "custom": "Prilagođeni raspon",
+                "selectPeriod": "Odaberite razdoblje"
+            },
+            "dateRange": {
+                "from": "Od:",
+                "to": "Do:"
+            },
+            "summaryCards": {
+                "totalViews": "Ukupno pregleda",
+                "totalClicks": "Ukupno klikova",
+                "totalQRViews": "Ukupno QR pregleda",
+                "totalLinkViews": "Ukupno pregleda veza"
+            },
+            "loading": {
+                "loadingData": "Učitavanje podataka analitike...",
+                "resolvingCountry": "Rješavanje podataka o državi..."
+            },
+            "error": {
+                "title": "Greška pri učitavanju analitike",
+                "message": "Nije moguće dohvatiti podatke analitike. Molimo pokušajte ponovo kasnije.",
+                "errorLabel": "Greška:"
+            },
+            "comingSoon": {
+                "title": "Analitika uskoro",
+                "message": "Analitika će biti dostupna za \u003cstrong\u003e{{days}} dan{{daysPlural}}\u003c/strong\u003e nakon kreiranja vašeg računa.",
+                "whyWait": {
+                    "title": "Zašto čekanje?",
+                    "reasons": {
+                        "accuracy": "• Osigurava točnost podataka i sprječava spam",
+                        "interactions": "• Daje vrijeme za smislene interakcije korisnika",
+                        "insights": "• Pruža pouzdane uvide iz analitike"
+                    }
+                },
+                "tip": "U međuvremenu, počnite dijeliti QR kodove kako biste generirali podatke za kada analitika postane dostupna!",
+                "filterTip": "\u003cstrong\u003eSavjet:\u003c/strong\u003e Kada analitika postane dostupna, moći ćete filtrirati po vremenskim razdobljima (danas, zadnjih 7 dana, zadnjih 30 dana ili prilagođeni raspon) za pregled vaših podataka."
+            },
+            "emptyState": {
+                "title": "Nema podataka analitike",
+                "noDataMessage": "Nema podataka analitike za vaš račun. Analitika će se pojaviti ovdje kada ljudi počnu pregledavati i komunicirati s vašim QR kodovima.",
+                "customRange": {
+                    "bothMissing": "Molimo odaberite i datum početka i datum završetka za prilagođeni raspon za pregled podataka analitike.",
+                    "startMissing": "Molimo odaberite datum početka za prilagođeni raspon za pregled podataka analitike.",
+                    "endMissing": "Molimo odaberite datum završetka za prilagođeni raspon za pregled podataka analitike."
+                },
+                "noDataForPeriod": {
+                    "today": "Nema dostupnih podataka analitike za danas. Molimo odaberite drugo vremensko razdoblje za pregled vaših podataka.",
+                    "last7days": "Nema dostupnih podataka analitike za zadnjih 7 dana. Molimo odaberite drugo vremensko razdoblje za pregled vaših podataka.",
+                    "last30days": "Nema dostupnih podataka analitike za zadnjih 30 dana. Molimo odaberite drugo vremensko razdoblje za pregled vaših podataka.",
+                    "custom": "Nema dostupnih podataka analitike za prilagođeni raspon ({{startDate}} do {{endDate}}). Molimo odaberite drugo vremensko razdoblje za pregled vaših podataka.",
+                    "default": "Nema dostupnih podataka analitike za odabrano vremensko razdoblje. Molimo odaberite drugo vremensko razdoblje za pregled vaših podataka."
+                },
+                "howToStart": {
+                    "title": "Za početak pregleda analitike:",
+                    "shareQR": "• Podijelite QR kodove na društvenim mrežama",
+                    "includeQR": "• Uključite QR kodove u vaše marketinške materijale",
+                    "askFriends": "• Zamolite prijatelje da skeniraju vaše QR kodove",
+                    "viewProfile": "• Pregledajte vaše javne stranice profila"
+                }
+            },
+            "charts": {
+                "topCountries": {
+                    "title": "Top 3 države po pregledima",
+                    "retryGeolocation": "Ponovni pokušaj geolokacije",
+                    "geolocationIssue": "Problem geolokacije:",
+                    "countryDataUnavailable": "Podaci o državi nisu dostupni",
+                    "unableToResolve": "Trenutno nije moguće riješiti IP adrese u države. To može biti zbog mrežnih ograničenja ili ograničenja usluge.",
+                    "failedToResolve": "Neuspješno rješavanje podataka o državi. Molimo pokušajte ponovo kasnije.",
+                    "analyticsSummary": "Sažetak analitike:",
+                    "totalViewEvents": "• {{count}} ukupno događaja pregleda",
+                    "eventsWithCountry": "• {{count}} događaja s podacima o državi",
+                    "eventsPending": "• {{count}} događaja na čekanju geolokacije",
+                    "willAppear": "Podaci o državi će se automatski pojaviti kada usluge geolokacije IP-a postanu dostupne.",
+                    "tooltip": {
+                        "country": "Država: {{country}}",
+                        "views": "Pregledi: {{count}}"
+                    },
+                    "legend": "Pregledi"
+                },
+                "worldMap": {
+                    "title": "Globalna distribucija pregleda",
+                    "subtitle": "Interaktivna karta svijeta koja prikazuje distribuciju pregleda po državama s javnih stranica",
+                    "noGeographicData": "Nema dostupnih geografskih podataka",
+                    "unableToResolve": "Trenutno nije moguće riješiti IP adrese u države. To može biti zbog mrežnih ograničenja ili ograničenja usluge.",
+                    "failedToResolve": "Neuspješno rješavanje podataka o državi. Molimo pokušajte ponovo kasnije.",
+                    "analyticsSummary": "Sažetak analitike:",
+                    "totalViewEvents": "• {{count}} ukupno događaja pregleda",
+                    "eventsWithCountry": "• {{count}} događaja s podacima o državi",
+                    "eventsPending": "• {{count}} događaja na čekanju geolokacije",
+                    "willAppear": "Podaci o državi će se automatski pojaviti kada usluge geolokacije IP-a postanu dostupne.",
+                    "tooltip": {
+                        "country": "{{country}}",
+                        "views": "{{views}} pregleda"
+                    },
+                    "countriesWithViews": "{{count}} država s pregledima",
+                    "legend": {
+                        "views": "Pregledi:",
+                        "low": "Nisko",
+                        "medium": "Srednje",
+                        "high": "Visoko",
+                        "highest": "Najviše"
+                    }
+                },
+                "trafficSource": {
+                    "title": "Izvor prometa tijekom vremena",
+                    "subtitle": "Pratite kako promet iz različitih izvora varira tijekom vremena",
+                    "selectSource": "Odaberite izvor prometa:",
+                    "allSources": "Svi izvori",
+                    "direct": "Izravno",
+                    "qrCode": "QR kod",
+                    "instagram": "Instagram",
+                    "whatsapp": "WhatsApp",
+                    "twitter": "Twitter",
+                    "noTrafficData": "Nema dostupnih podataka o prometu",
+                    "noViewEvents": "Nisu pronađeni događaji pregleda s informacijama o izvoru prometa.",
+                    "analyticsSummary": "Sažetak analitike:",
+                    "totalViewEvents": "• {{count}} ukupno događaja pregleda",
+                    "eventsWithUTM": "• {{count}} događaja s izvorom UTM",
+                    "directTraffic": "• {{count}} događaja izravnog prometa",
+                    "willAppear": "Podaci o izvoru prometa će se pojaviti kada korisnici posjete vaše stranice s UTM parametrima.",
+                    "tooltip": {
+                        "sourceCount": "{{source}}: {{count}}"
+                    }
+                },
+                "locationEngagement": {
+                    "title": "Angažman s lokacijom",
+                    "subtitle": "Pratite preglede za različite lokacije tijekom vremena",
+                    "selectLocation": "Odaberite lokaciju:",
+                    "allLocations": "Sve lokacije",
+                    "selectLocationPlaceholder": "Odaberite lokaciju",
+                    "locationViews": "{{location}} ({{count}} pregleda)",
+                    "noLocationData": "Nema dostupnih podataka o pregledu lokacije",
+                    "unknownLocation": "Nepoznata Lokacija",
+                    "location": "Lokacija",
+                    "tooltip": {
+                        "date": "Datum: {{date}}",
+                        "locationViews": "{{location}}: {{value}} pregleda"
+                    },
+                    "stats": {
+                        "totalLocations": "Ukupno lokacija",
+                        "totalViews": "Ukupno pregleda",
+                        "avgViews": "Prosječno pregleda/lokacija"
+                    }
+                },
+                "recommendedPlaces": {
+                    "title": "Angažman s preporučenim mjestima",
+                    "subtitle": "Pratite klikove na preporučena mjesta po lokaciji",
+                    "selectLocation": "Odaberite lokaciju:",
+                    "selectLocationPlaceholder": "Odaberite lokaciju",
+                    "locationPlaces": "{{location}} ({{count}} mjesta)",
+                    "noRecommendationData": "Nema podataka o preporukama",
+                    "noDataMessage": "Nema dostupnih podataka o klikovima na preporuke za odabrano razdoblje.",
+                    "analyticsSummary": "Sažetak analitike:",
+                    "totalClickEvents": "• {{count}} ukupno događaja klikova",
+                    "recordsWithRecommendations": "• {{count}} zapisa s ID-om preporuke",
+                    "uniqueRecommendations": "• {{count}} jedinstvenih preporuka",
+                    "selectLocationPrompt": "Molimo odaberite lokaciju za pregled podataka o preporukama.",
+                    "noClicksMessage": "Nisu pronađeni klikovi na preporuke za odabranu lokaciju. Podaci o preporukama će se pojaviti kada korisnici kliknu na kartice mjesta na vašim stranicama lokacije.",
+                    "unknownPlace": "Nepoznato Mjesto",
+                    "unknownCategory": "Nepoznata Kategorija",
+                    "unknownLocation": "Nepoznata Lokacija",
+                    "tooltip": {
+                        "place": "{{place}}",
+                        "category": "Kategorija: {{category}}",
+                        "clicks": "Klikovi: {{count}}"
+                    },
+                    "stats": {
+                        "placesShown": "Prikazana mjesta",
+                        "totalClicks": "Ukupno klikova",
+                        "avgClicks": "Prosječno klikova/mjesto"
+                    }
+                },
+                "socialMedia": {
+                    "title": "Interakcija na društvenim mrežama",
+                    "subtitle": "Pratite klikove na veze društvenih mreža s vašeg javnog profila na svim platformama",
+                    "noDataTitle": "Nema podataka o interakciji na društvenim mrežama",
+                    "noDataMessage": "Nema dostupnih podataka o klikovima na društvene mreže s vaše stranice javnog profila.",
+                    "analyticsSummary": "Sažetak analitike:",
+                    "totalSocialClicks": "• {{count}} ukupno klikova na društvene mreže",
+                    "uniquePlatforms": "• {{count}} jedinstvenih platformi",
+                    "trackingNote": "• Praćenje samo klikova s stranice javnog profila",
+                    "willAppear": "Podaci o interakciji na društvenim mrežama će se pojaviti kada korisnici kliknu na vaše veze društvenih mreža.",
+                    "tooltip": {
+                        "platform": "{{platform}}",
+                        "clicks": "Klikovi: {{count}}"
+                    },
+                    "stats": {
+                        "platforms": "Platforme",
+                        "totalClicks": "Ukupno klikova",
+                        "avgClicks": "Prosječno klikova/platforma"
+                    }
+                }
+            }
+        }
+    },
+    "countries": {
+        "US": "United States",
+        "IN": "India",
+        "GB": "United Kingdom",
+        "CA": "Canada",
+        "AU": "Australia",
+        "DE": "Germany",
+        "FR": "France",
+        "IT": "Italy",
+        "ES": "Spain",
+        "BR": "Brazil",
+        "MX": "Mexico",
+        "JP": "Japan",
+        "CN": "China",
+        "RU": "Russia",
+        "KR": "South Korea",
+        "NL": "Netherlands",
+        "SE": "Sweden",
+        "NO": "Norway",
+        "DK": "Denmark",
+        "FI": "Finland",
+        "CH": "Switzerland",
+        "AT": "Austria",
+        "BE": "Belgium",
+        "PL": "Poland",
+        "CZ": "Czech Republic",
+        "HU": "Hungary",
+        "RO": "Romania",
+        "BG": "Bulgaria",
+        "GR": "Greece",
+        "PT": "Portugal",
+        "IE": "Ireland",
+        "IS": "Iceland",
+        "LU": "Luxembourg",
+        "MT": "Malta",
+        "CY": "Cyprus",
+        "EE": "Estonia",
+        "LV": "Latvia",
+        "LT": "Lithuania",
+        "SI": "Slovenia",
+        "SK": "Slovakia",
+        "HR": "Croatia",
+        "BA": "Bosnia and Herzegovina",
+        "RS": "Serbia",
+        "ME": "Montenegro",
+        "MK": "North Macedonia",
+        "AL": "Albania",
+        "XK": "Kosovo",
+        "MD": "Moldova",
+        "UA": "Ukraine",
+        "BY": "Belarus",
+        "GE": "Georgia",
+        "AM": "Armenia",
+        "AZ": "Azerbaijan",
+        "KZ": "Kazakhstan",
+        "UZ": "Uzbekistan",
+        "KG": "Kyrgyzstan",
+        "TJ": "Tajikistan",
+        "TM": "Turkmenistan",
+        "AF": "Afghanistan",
+        "PK": "Pakistan",
+        "BD": "Bangladesh",
+        "LK": "Sri Lanka",
+        "MV": "Maldives",
+        "NP": "Nepal",
+        "BT": "Bhutan",
+        "MM": "Myanmar",
+        "TH": "Thailand",
+        "LA": "Laos",
+        "KH": "Cambodia",
+        "VN": "Vietnam",
+        "MY": "Malaysia",
+        "SG": "Singapore",
+        "BN": "Brunei",
+        "ID": "Indonesia",
+        "PH": "Philippines",
+        "TL": "East Timor",
+        "MN": "Mongolia",
+        "KP": "North Korea",
+        "TW": "Taiwan",
+        "HK": "Hong Kong",
+        "MO": "Macau",
+        "SA": "Saudi Arabia",
+        "AE": "United Arab Emirates",
+        "QA": "Qatar",
+        "KW": "Kuwait",
+        "BH": "Bahrain",
+        "OM": "Oman",
+        "YE": "Yemen",
+        "IQ": "Iraq",
+        "IR": "Iran",
+        "SY": "Syria",
+        "LB": "Lebanon",
+        "JO": "Jordan",
+        "IL": "Israel",
+        "PS": "Palestine",
+        "TR": "Turkey",
+        "EG": "Egypt",
+        "LY": "Libya",
+        "TN": "Tunisia",
+        "DZ": "Algeria",
+        "MA": "Morocco",
+        "SD": "Sudan",
+        "SS": "South Sudan",
+        "ET": "Ethiopia",
+        "ER": "Eritrea",
+        "DJ": "Djibouti",
+        "SO": "Somalia",
+        "KE": "Kenya",
+        "UG": "Uganda",
+        "TZ": "Tanzania",
+        "RW": "Rwanda",
+        "BI": "Burundi",
+        "MW": "Malawi",
+        "ZM": "Zambia",
+        "ZW": "Zimbabwe",
+        "BW": "Botswana",
+        "NA": "Namibia",
+        "ZA": "South Africa",
+        "LS": "Lesotho",
+        "SZ": "Eswatini",
+        "MG": "Madagascar",
+        "MU": "Mauritius",
+        "SC": "Seychelles",
+        "KM": "Comoros",
+        "MZ": "Mozambique",
+        "AO": "Angola",
+        "CD": "Democratic Republic of the Congo",
+        "CG": "Republic of the Congo",
+        "CF": "Central African Republic",
+        "TD": "Chad",
+        "CM": "Cameroon",
+        "NG": "Nigeria",
+        "NE": "Niger",
+        "ML": "Mali",
+        "BF": "Burkina Faso",
+        "CI": "Ivory Coast",
+        "GH": "Ghana",
+        "TG": "Togo",
+        "BJ": "Benin",
+        "SN": "Senegal",
+        "GM": "Gambia",
+        "GW": "Guinea-Bissau",
+        "GN": "Guinea",
+        "SL": "Sierra Leone",
+        "LR": "Liberia",
+        "MR": "Mauritania",
+        "CV": "Cape Verde",
+        "ST": "São Tomé and Príncipe",
+        "GQ": "Equatorial Guinea",
+        "GA": "Gabon",
+        "AR": "Argentina",
+        "BO": "Bolivia",
+        "CL": "Chile",
+        "CO": "Colombia",
+        "EC": "Ecuador",
+        "FK": "Falkland Islands",
+        "GF": "French Guiana",
+        "GY": "Guyana",
+        "PY": "Paraguay",
+        "PE": "Peru",
+        "SR": "Suriname",
+        "UY": "Uruguay",
+        "VE": "Venezuela",
+        "CU": "Cuba",
+        "JM": "Jamaica",
+        "HT": "Haiti",
+        "DO": "Dominican Republic",
+        "PR": "Puerto Rico",
+        "TT": "Trinidad and Tobago",
+        "BB": "Barbados",
+        "LC": "Saint Lucia",
+        "VC": "Saint Vincent and the Grenadines",
+        "GD": "Grenada",
+        "AG": "Antigua and Barbuda",
+        "KN": "Saint Kitts and Nevis",
+        "DM": "Dominica",
+        "BS": "Bahamas",
+        "BZ": "Belize",
+        "GT": "Guatemala",
+        "SV": "El Salvador",
+        "HN": "Honduras",
+        "NI": "Nicaragua",
+        "CR": "Costa Rica",
+        "PA": "Panama",
+        "NZ": "New Zealand",
+        "FJ": "Fiji",
+        "PG": "Papua New Guinea",
+        "SB": "Solomon Islands",
+        "VU": "Vanuatu",
+        "NC": "New Caledonia",
+        "PF": "French Polynesia",
+        "WS": "Samoa",
+        "TO": "Tonga",
+        "KI": "Kiribati",
+        "TV": "Tuvalu",
+        "NR": "Nauru",
+        "PW": "Palau",
+        "FM": "Micronesia",
+        "MH": "Marshall Islands"
+    }
+}

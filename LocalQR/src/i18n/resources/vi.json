@@ -1,0 +1,1786 @@
+﻿{
+    "header": {
+        "nav": {
+            "howItWorks": "Cách Hoạt Động",
+            "whoIsFor": "Dành Cho Ai",
+            "faq": "Câu Hỏi Thường Gặp",
+            "about": "Về chúng tôi",
+            "contact": "Liên Hệ"
+        },
+        "auth": {
+            "login": "Đăng Nhập",
+            "signUp": "Đăng Ký"
+        }
+    },
+    "hero": {
+        "headline": "Tất cả gợi ý của bạn trong một QR và liên kết đơn giản.",
+        "subtext": "Chia sẻ những gì bạn biết và yêu thích về một nơi — và làm cho nó có thể khám phá cho mọi người, ở mọi nơi",
+        "inputLabel": "Đặt trước URL explorers của bạn:",
+        "inputPlaceholder": "tên của bạn",
+        "ctaButton": "Đặt Trước explorers",
+        "signupPrompt": "Đăng ký ngay để nhận của bạn"
+    },
+    "sections": {
+        "createCustomize": {
+            "headline": "Tạo và tùy chỉnh explorers của bạn trong vài phút",
+            "subtext": "Thêm những địa điểm yêu thích của bạn, sắp xếp theo thành phố hoặc chủ đề, và tạo QR của bạn ngay lập tức.",
+            "bulletPoints": {
+                "addSpots": {
+                    "title": "Thêm những địa điểm yêu thích của bạn",
+                    "description": "Tạo danh sách với những nơi must-visit"
+                },
+                "organize": {
+                    "title": "Sắp xếp theo thành phố hoặc chủ đề",
+                    "description": "Tạo các danh mục có ý nghĩa với khán giả của bạn"
+                },
+                "generate": {
+                    "title": "Tạo liên kết và QR của bạn ngay lập tức",
+                    "description": "QR cá nhân hóa của bạn sẵn sàng trong vài giây"
+                },
+                "share": {
+                    "title": "Chia sẻ kỹ thuật số hoặc qua QR trong thế giới thực",
+                    "description": ""
+                }
+            },
+            "mockup": {
+                "title": "Gợi Ý Của Tôi",
+                "addPlace": "Thêm Địa Điểm"
+            }
+        },
+        "shareAnywhere": {
+            "headline": "Chia sẻ trên mạng xã hội, cửa sổ cửa hàng, hoặc tường thành phố",
+            "subtext": "Thêm vào bio Instagram của bạn, in trên menu, hoặc bao gồm trong sách chào mừng — hướng dẫn của bạn, luôn sẵn sàng.",
+            "scanText": "Quét để có gợi ý địa phương",
+            "storefrontText": "Hoàn hảo cho cửa sổ cửa hàng",
+            "instagramTitle": "Thêm vào bio Instagram của bạn",
+            "instagramDesc": "Chia sẻ với người theo dõi ngay lập tức",
+            "menuTitle": "In trên menu",
+            "menuDesc": "Điểm tiếp xúc vật lý được đơn giản hóa",
+            "welcomeTitle": "Bao gồm trong sách chào mừng",
+            "welcomeDesc": "Hoàn hảo cho chủ nhà và hướng dẫn viên",
+            "cafeMenu": "Thực đơn quán cà phê",
+            "tokyoFoodGuide": "Hướng dẫn ẩm thực Tokyo của tôi explorers.earth/jane"
+        },
+        "analytics": {
+            "headline": "Theo dõi lượt nhấp, giới thiệu và tương tác",
+            "subtext": "Xem điều gì hiệu quả, ai đang quét, và những nơi nào nhận được nhiều tình yêu nhất — theo thời gian thực.",
+            "workingTitle": "Xem điều gì hiệu quả",
+            "workingDesc": "Theo dõi độ phổ biến của gợi ý của bạn",
+            "scanningTitle": "Ai đang quét",
+            "scanningDesc": "Giám sát quét QR và cập nhật",
+            "spotsTitle": "Những nơi tốt nhất",
+            "spotsDesc": "Thông tin dựa trên dữ liệu để quản lý tốt hơn",
+            "dashboardTitle": "Bảng điều khiển Analytics",
+            "last30Days": "30 ngày qua",
+            "totalScans": "Tổng số lần quét",
+            "engagement": "Tương tác",
+            "referrals": "Giới thiệu"
+        },
+        "referEarn": {
+            "headline": "Chia sẻ, giới thiệu và kiếm tiền",
+            "subtext": "Biến gợi ý của bạn thành phần thưởng thụ động — kiếm tín dụng khi người khác sử dụng QR của bạn.",
+            "comingSoon": "Chương Trình Thưởng Giới Thiệu (Sắp Ra Mắt)",
+            "rewardsTitle": "Kiếm Phần Thưởng",
+            "rewardsDesc": "Nhận tiền khi mọi người sử dụng gợi ý của bạn",
+            "earnedThisMonth": "Kiếm được tháng này",
+            "passiveTitle": "Biến gợi ý thành phần thưởng thụ động",
+            "networkTitle": "Xây dựng mạng lưới và kiếm tiền tự động"
+        },
+        "localTunes": {
+            "mainHeading": "Tunes",
+            "title": "Nghe khi bạn khám phá",
+            "body": "Khám phá không chỉ là hình ảnh. Âm thanh mang theo ký ức, ngữ cảnh và cảm xúc.\n\nTunes cho phép bạn thu thập và chia sẻ nhạc nền cho địa điểm, hành trình và tâm trạng — cho dù đó là âm nhạc được phát hiện trên đường hay âm thanh xác định một nơi cho bạn.\n\nKết nối liền mạch với hồ sơ Explorer của bạn.",
+            "exploreButton": "Khám Phá Tunes",
+            "featuresHeading": "Tính Năng Mạnh Mẽ",
+            "features": {
+                "realtimeCollaboration": {
+                    "title": "Hợp Tác Thời Gian Thực",
+                    "description": "Cho phép khách thêm bài hát vào danh sách phát của bạn ngay lập tức trong khi bạn duy trì quyền kiểm soát hoàn toàn đối với những gì được phát."
+                },
+                "qrCodeSharing": {
+                    "title": "Chia Sẻ Mã QR",
+                    "description": "Chia sẻ trải nghiệm âm nhạc của bạn với quét mã QR đơn giản — không cần ứng dụng hoặc tải xuống."
+                },
+                "youtubeIntegration": {
+                    "title": "Tích Hợp YouTube",
+                    "description": "Tích hợp liền mạch với YouTube để truy cập hàng triệu bài hát và tạo bầu không khí hoàn hảo."
+                },
+                "voteLikeSystem": {
+                    "title": "Hệ Thống Bình Chọn & Thích",
+                    "description": "Khách có thể bình chọn cho bài hát yêu thích của họ để ảnh hưởng đến hàng đợi danh sách phát theo thời gian thực."
+                },
+                "silentParties": {
+                    "title": "Bữa Tiệc Im Lặng",
+                    "description": "Tổ chức các bữa tiệc im lặng độc đáo nơi mọi người nghe qua tai nghe của riêng họ."
+                },
+                "karaokeReady": {
+                    "title": "Sẵn Sàng Karaoke",
+                    "description": "Hoàn hảo cho các buổi tối karaoke với danh sách phát hợp tác và yêu cầu bài hát thời gian thực."
+                }
+            },
+            "venueHeading": "Hoàn Hảo Cho Mọi Địa Điểm",
+            "venues": {
+                "barsPubs": "Quán Bar & Pub",
+                "restaurants": "Nhà Hàng",
+                "coffeeShops": "Quán Cà Phê",
+                "eventsWeddings": "Sự Kiện & Đám Cưới",
+                "retailStores": "Cửa Hàng Bán Lẻ",
+                "gymsFitness": "Phòng Gym & Thể Dục"
+            },
+            "closingStatement": "Tunes \u003cstrong\u003emiễn phí\u003c/strong\u003e để khám phá, và đối với các tính năng trả phí bạn có thể nâng cấp sau."
+        },
+        "whoIsFor": {
+            "headline": "explorers.earth dành cho ai?",
+            "subtext": "explorers.earth dành cho bất kỳ ai tin rằng chia sẻ là trách nhiệm — không phải phát sóng.",
+            "cards": {
+                "individuals": {
+                    "title": "Cá Nhân",
+                    "oneLiner": "Chia sẻ gợi ý cá nhân hoặc địa phương.",
+                    "items": {
+                        "traveler": {
+                            "label": "Du Khách",
+                            "oneLiner": "Những người chia sẻ địa điểm du lịch"
+                        },
+                        "local": {
+                            "label": "Người Địa Phương",
+                            "oneLiner": "Người địa phương chia sẻ mẹo khu phố"
+                        },
+                        "family": {
+                            "label": "Gia Đình",
+                            "oneLiner": "Gia đình chia sẻ địa điểm hữu ích"
+                        },
+                        "student": {
+                            "label": "Sinh Viên",
+                            "oneLiner": "Sinh viên chia sẻ địa điểm khuôn viên/gần đó"
+                        },
+                        "nomad": {
+                            "label": "Người Du Mục",
+                            "oneLiner": "Người du mục liệt kê không gian thân thiện với công việc"
+                        },
+                        "emergencySharer": {
+                            "label": "Người Chia Sẻ Khẩn Cấp",
+                            "oneLiner": "Người chia sẻ khẩn cấp đăng các địa điểm quan trọng"
+                        }
+                    }
+                },
+                "creators": {
+                    "title": "Người Sáng Tạo",
+                    "oneLiner": "Chia sẻ danh sách được quản lý với khán giả của bạn.",
+                    "items": {
+                        "influencer": {
+                            "label": "Người Có Ảnh Hưởng",
+                            "oneLiner": "Người có ảnh hưởng chia sẻ lựa chọn hàng đầu"
+                        },
+                        "blogger": {
+                            "label": "Blogger",
+                            "oneLiner": "Blogger quản lý hướng dẫn bằng văn bản"
+                        },
+                        "vlogger": {
+                            "label": "Vlogger",
+                            "oneLiner": "Vlogger chia sẻ hành trình trực quan"
+                        },
+                        "reviewer": {
+                            "label": "Người Đánh Giá",
+                            "oneLiner": "Người đánh giá liệt kê các địa điểm được đánh giá tốt nhất"
+                        },
+                        "photographer": {
+                            "label": "Nhiếp Ảnh Gia",
+                            "oneLiner": "Nhiếp ảnh gia chia sẻ địa điểm chụp ảnh"
+                        },
+                        "educator": {
+                            "label": "Nhà Giáo Dục",
+                            "oneLiner": "Nhà giáo dục chia sẻ hướng dẫn học tập"
+                        },
+                        "communityLeader": {
+                            "label": "Lãnh Đạo Cộng Đồng",
+                            "oneLiner": "Lãnh đạo cộng đồng quản lý danh sách hữu ích"
+                        }
+                    }
+                },
+                "hospitality": {
+                    "title": "Khách Sạn",
+                    "oneLiner": "Cung cấp thông tin chi tiết địa phương được quản lý cho khách.",
+                    "items": {
+                        "hotel": {
+                            "label": "Khách Sạn",
+                            "oneLiner": "Khách sạn cung cấp sách hướng dẫn địa phương"
+                        },
+                        "airbnb": {
+                            "label": "Airbnb",
+                            "oneLiner": "Chủ nhà chia sẻ yêu thích khu phố"
+                        },
+                        "hostel": {
+                            "label": "Nhà Trọ",
+                            "oneLiner": "Nhà trọ chia sẻ mẹo cho khách du lịch ba lô"
+                        },
+                        "homestay": {
+                            "label": "Homestay",
+                            "oneLiner": "Homestay cung cấp hướng dẫn hướng đến gia đình"
+                        },
+                        "resort": {
+                            "label": "Khu Nghỉ Dưỡng",
+                            "oneLiner": "Khu nghỉ dưỡng cung cấp danh sách hoạt động"
+                        },
+                        "pgColiving": {
+                            "label": "PG/Coliving",
+                            "oneLiner": "PG/Coliving hiển thị các địa điểm quan trọng gần đó"
+                        }
+                    }
+                },
+                "businesses": {
+                    "title": "Doanh Nghiệp",
+                    "oneLiner": "Hướng dẫn khách hàng với các gợi ý hữu ích.",
+                    "items": {
+                        "restaurant": {
+                            "label": "Nhà Hàng",
+                            "oneLiner": "Nhà hàng chia sẻ món ăn nên thử"
+                        },
+                        "cafe": {
+                            "label": "Quán Cà Phê",
+                            "oneLiner": "Quán cà phê làm nổi bật các mục menu yêu thích"
+                        },
+                        "retailShop": {
+                            "label": "Cửa Hàng Bán Lẻ",
+                            "oneLiner": "Cửa hàng chia sẻ gợi ý sản phẩm"
+                        },
+                        "gym": {
+                            "label": "Phòng Gym",
+                            "oneLiner": "Phòng gym đề xuất địa điểm sức khỏe địa phương"
+                        },
+                        "spa": {
+                            "label": "Spa",
+                            "oneLiner": "Spa liệt kê các tùy chọn thư giãn gần đó"
+                        },
+                        "salon": {
+                            "label": "Salon",
+                            "oneLiner": "Salon cung cấp hướng dẫn làm đẹp"
+                        },
+                        "clinic": {
+                            "label": "Phòng Khám",
+                            "oneLiner": "Phòng khám chia sẻ địa điểm liên quan đến sức khỏe"
+                        },
+                        "boutique": {
+                            "label": "Boutique",
+                            "oneLiner": "Boutique liệt kê các phát hiện được quản lý"
+                        }
+                    }
+                },
+                "organizations": {
+                    "title": "Tổ Chức",
+                    "oneLiner": "Cung cấp hướng dẫn và tài nguyên được quản lý.",
+                    "items": {
+                        "airline": {
+                            "label": "Hãng Hàng Không",
+                            "oneLiner": "Hãng hàng không chia sẻ hướng dẫn thành phố"
+                        },
+                        "agency": {
+                            "label": "Đại Lý",
+                            "oneLiner": "Đại lý du lịch liệt kê các địa điểm phải ghé thăm"
+                        },
+                        "university": {
+                            "label": "Đại Học",
+                            "oneLiner": "Đại học chia sẻ các điều cần thiết của khuôn viên"
+                        },
+                        "corporate": {
+                            "label": "Doanh Nghiệp",
+                            "oneLiner": "Doanh nghiệp liệt kê tài nguyên gần đó"
+                        },
+                        "airport": {
+                            "label": "Sân Bay",
+                            "oneLiner": "Sân bay cung cấp nhà ga + mẹo thành phố"
+                        },
+                        "railway": {
+                            "label": "Đường Sắt",
+                            "oneLiner": "Đường sắt chia sẻ thông tin nền tảng"
+                        },
+                        "ngo": {
+                            "label": "NGO",
+                            "oneLiner": "NGO chia sẻ tài nguyên cộng đồng"
+                        },
+                        "government": {
+                            "label": "Chính Phủ",
+                            "oneLiner": "Các bộ phận làm nổi bật dịch vụ công cộng"
+                        }
+                    }
+                }
+            },
+            "useCases": {
+                "travelers": "Du Khách",
+                "travelersDesc": "Chia sẻ những viên ngọc được khám phá với những người khám phá khác",
+                "influencers": "Người Có Ảnh Hưởng",
+                "influencersDesc": "Kiếm tiền từ kiến thức địa phương và xây dựng cộng đồng",
+                "airbnbHosts": "Chủ Nhà Airbnb",
+                "airbnbHostsDesc": "Nâng cao trải nghiệm khách với thông tin địa phương",
+                "hotels": "Khách Sạn",
+                "hotelsDesc": "Cung cấp gợi ý địa phương được tuyển chọn",
+                "restaurants": "Nhà Hàng",
+                "restaurantsDesc": "Quảng bá chéo với các doanh nghiệp địa phương khác",
+                "cafes": "Quán Cà Phê",
+                "cafesDesc": "Chia sẻ những địa điểm yêu thích trong khu vực với khách hàng",
+                "localGuides": "Hướng Dẫn Viên Địa Phương",
+                "localGuidesDesc": "Mở rộng chuyên môn vượt ra ngoài các tour cá nhân",
+                "creators": "Người Sáng Tạo",
+                "creatorsDesc": "Thêm giá trị vượt ra ngoài nội dung với các mẹo có thể thực hiện",
+                "tourOperators": "Nhà Điều Hành Tour",
+                "tourOperatorsDesc": "Mở rộng trải nghiệm vượt ra ngoài các tour đã lên kế hoạch",
+                "anyBusiness": "Bất Kỳ Doanh Nghiệp Nào",
+                "anyBusinessDesc": "Xây dựng cộng đồng và lòng trung thành của khách hàng"
+            }
+        },
+        "testimonials": {
+            "headline": "Được yêu thích bởi du khách, người sáng tạo và chủ nhà",
+            "subtext": "Xem cách mọi người trên khắp thế giới sử dụng explorers để chia sẻ những điều quan trọng nhất.",
+            "scrollLeft": "Cuộn lời chứng thực sang trái",
+            "scrollRight": "Cuộn lời chứng thực sang phải",
+            "items": [
+                {
+                    "id": "1",
+                    "name": "Marcus Chen",
+                    "role": "Blogger Du Lịch",
+                    "location": "San Francisco",
+                    "quote": "explorers đã thay đổi cách tôi chia sẻ kiến thức du lịch của mình. Người theo dõi của tôi thích có quyền truy cập tức thì vào các đề xuất được tuyển chọn của tôi!"
+                },
+                {
+                    "id": "2",
+                    "name": "Sarah Johnson",
+                    "role": "Chủ Nhà Airbnb",
+                    "location": "Barcelona",
+                    "quote": "Khách của tôi hoàn toàn yêu thích mã QR được cá nhân hóa trong bộ chào mừng của họ. Nó đã trở thành dấu ấn đặc trưng của tôi!"
+                },
+                {
+                    "id": "3",
+                    "name": "Alex Rodriguez",
+                    "role": "Chủ Sở Hữu Nhà Hàng",
+                    "location": "Thành Phố Mexico",
+                    "quote": "Chúng tôi chia sẻ explorers của mình với khách hàng để giới thiệu các địa điểm địa phương khác. Nó đã tạo ra những kết nối cộng đồng tuyệt vời."
+                },
+                {
+                    "id": "4",
+                    "name": "Emma Thompson",
+                    "role": "Hướng Dẫn Viên Du Lịch",
+                    "location": "London",
+                    "quote": "explorers giúp tôi mở rộng chuyên môn của mình vượt ra ngoài giờ tham quan. Khách hàng có thể truy cập các đề xuất của tôi bất cứ lúc nào!"
+                }
+            ]
+        },
+        "faq": {
+            "headline": "Có câu hỏi?",
+            "subtext": "Chúng tôi đã trả lời những điều phổ biến nhất mà mọi người hỏi trước khi bắt đầu.",
+            "loading": "Đang tải FAQ...",
+            "error": "Lỗi khi tải FAQ. Vui lòng thử lại sau."
+        },
+        "features": {
+            "title": "Được xây dựng để tránh xa",
+            "subtitle": "Các tính năng đơn giản, chu đáo giúp các đề xuất của bạn tỏa sáng.",
+            "simpleLinks": {
+                "title": "Liên kết đơn giản và chia sẻ QR"
+            },
+            "livingGuides": {
+                "title": "Hướng dẫn sống động, có thể chỉnh sửa"
+            },
+            "locationAware": {
+                "title": "Đề xuất nhận biết vị trí"
+            },
+            "soundPlaylists": {
+                "title": "Âm thanh và danh sách phát tùy chọn"
+            },
+            "privacyFirst": {
+                "title": "Quyền riêng tư trước tiên theo thiết kế"
+            },
+            "communityDriven": {
+                "title": "Khám phá do cộng đồng dẫn dắt"
+            }
+        },
+        "finalCTA": {
+            "headline": "Bắt đầu chia sẻ thế giới của bạn hôm nay",
+            "subtext": "Đặt trước explorers miễn phí của bạn và biến thông tin địa phương thành hướng dẫn có thể chia sẻ.",
+            "ctaButton": "Đặt Trước explorers – Miễn Phí Mãi Mãi",
+            "disclaimer": "Không cần thẻ tín dụng • Thiết lập trong 2 phút",
+            "creating": "Đang tạo explorers của bạn..."
+        }
+    },
+    "contact": {
+        "title": "Hãy kết nối.",
+        "subtitle": "Dù bạn có câu hỏi, ý tưởng, hoặc chỉ muốn chào hỏi — chúng tôi muốn nghe từ bạn.",
+        "getInTouch": "Liên Hệ",
+        "email": "hello@explorers.earth",
+        "responseTime": "Chúng tôi phản hồi trong vòng 24-48 giờ",
+        "closingMessage": "Chúng tôi là một đội ngũ nhỏ với tầm nhìn lớn — suy nghĩ của bạn quan trọng với chúng tôi. Liên hệ và hãy cùng xây dựng một cái gì đó địa phương và toàn cầu.",
+        "seo": {
+            "title": "Contact explorers | Support, Help and Partnership enquiries.",
+            "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
+            "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+            "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
+            "keywords": [
+                "contact explorers",
+                "explorers support",
+                "get in touch explorers",
+                "customer service travel app",
+                "partnership inquiry explorers",
+                "help center local recommendations",
+                "technical support explorers",
+                "travel app customer service",
+                "feedback location sharing",
+                "account assistance explorers",
+                "business collaboration explorers",
+                "report problem explorers",
+                "share local recommendations support",
+                "find explorers contact",
+                "customer service",
+                "explorers team",
+                "help center",
+                "contact support",
+                "QR code support",
+                "local recommendations help",
+                "partnership inquiries"
+            ]
+        }
+    },
+    "about": {
+        "title": "Những Người Khám Phá Trái Đất",
+        "subtitle": {
+            "line1": "Một cộng đồng toàn cầu của những người khám phá với sự quan tâm — cho con người, văn hóa và hành tinh mà chúng ta chia sẻ.",
+            "line2": "Khám phá đối với chúng ta không phải về việc chúng ta đi bao xa.",
+            "line3": "Đó là về việc chúng ta kết nối sâu sắc như thế nào."
+        },
+        "section1": {
+            "title": "CHÚNG TA TIN GÌ",
+            "line1": "Khám phá bắt đầu bằng nhận thức.",
+            "line2": "Bằng cách chú ý đến những gì người khác bỏ qua.",
+            "line3": "Bằng cách chọn di chuyển một cách có suy nghĩ, không nhanh.",
+            "line4": "Chúng ta sống ngắn ngủi trên một hành tinh cổ xưa —\nthêm một vài dấu hiệu có chủ ý vào một câu chuyện\nbắt đầu từ rất lâu trước chúng ta\nvà sẽ tiếp tục rất lâu sau khi chúng ta ra đi."
+        },
+        "section2": {
+            "title": "CHÚNG TA NHÌN KHÁM PHÁ NHƯ THẾ NÀO",
+            "line1": "Khám phá không được đo bằng dặm.",
+            "line2": "Nó được đo bằng ý nghĩa.",
+            "line3": "Nó sống trong việc chậm lại, chú ý,\nvà tôn trọng mọi nơi chúng ta bước vào —\nmột con phố, một con đường núi, một bàn cà phê,\nhoặc một khoảnh khắc được chia sẻ với ai đó mới."
+        },
+        "section3": {
+            "title": "CHÚNG TA ĐANG XÂY DỰNG GÌ",
+            "line1": "explorers là một nơi cho:",
+            "item1": "Hướng dẫn được hình thành bởi kinh nghiệm thực tế",
+            "item2": "Địa điểm, hành trình, âm thanh và câu chuyện đáng nhớ",
+            "item3": "Cộng đồng được xây dựng trên con người — không phải số liệu phổ biến",
+            "line2": "Công nghệ giúp chúng ta kết nối.",
+            "line3": "Con người cho nó mục đích."
+        },
+        "section4": {
+            "title": "THUỘC VỀ",
+            "line1": "Những Người Khám Phá Trái Đất không phải là một câu lạc bộ.",
+            "line2": "Nó không phải là một nhãn hiệu.",
+            "line3": "Đó là một tư duy được chia sẻ —\nmột sự hiểu biết yên lặng về cách chúng ta di chuyển trong thế giới."
+        },
+        "closing": "Nếu bạn tò mò.\nNếu bạn có suy nghĩ.\nNếu bạn sẵn sàng chậm lại và nhìn gần hơn —\nbạn đã thuộc về đây rồi.",
+        "seo": {
+            "title": "Explorers of Earth | About Us",
+            "description": "A global community of people who explore with care — for people, culture, and the planet we share. Exploration isn't about distance, it's about depth.",
+            "keywords": [
+                "explorers of earth",
+                "about explorers",
+                "exploration community",
+                "thoughtful travel",
+                "sustainable exploration",
+                "local recommendations platform",
+                "travel app about",
+                "community-driven recommendations",
+                "authentic local experiences",
+                "explorers team",
+                "local discovery platform",
+                "share local places",
+                "travel technology",
+                "local recommendations app",
+                "explorers story",
+                "who we are explorers"
+            ]
+        }
+    },
+    "cookieConsent": {
+        "title": "🍪 Tùy chọn Cookie",
+        "description": "Chúng tôi sử dụng cookie để cải thiện trải nghiệm duyệt web, cung cấp nội dung cá nhân hóa và phân tích lưu lượng truy cập. Bạn có thể quản lý tùy chọn bất cứ lúc nào.",
+        "acceptAll": "✅ Chấp nhận Tất cả Cookie",
+        "customize": "⚙️ Tùy chỉnh",
+        "rejectNonEssential": "❌ Từ chối Không cần thiết",
+        "preferencesTitle": "Tùy chọn Cookie",
+        "essentialCookies": {
+            "title": "Cookie Cần thiết",
+            "description": "Cần thiết để trang web hoạt động đúng cách",
+            "alwaysOn": "Luôn Bật"
+        },
+        "analyticsCookies": {
+            "title": "Cookie Phân tích",
+            "description": "Giúp chúng tôi hiểu cách khách truy cập tương tác với trang web của chúng tôi"
+        },
+        "marketingCookies": {
+            "title": "Cookie Tiếp thị",
+            "description": "Được sử dụng để cung cấp quảng cáo cá nhân hóa"
+        },
+        "savePreferences": "Lưu Tùy chọn",
+        "acceptAllButton": "Chấp nhận Tất cả",
+        "closeBanner": "Đóng banner",
+        "goBack": "Quay lại"
+    },
+    "footer": {
+        "tagline": "Hãy để gợi ý của bạn du lịch khắp thế giới.",
+        "email": "hello@explorers.earth",
+        "sections": {
+            "product": "Sản Phẩm",
+            "contact": "Liên Hệ",
+            "legal": "Pháp Lý"
+        },
+        "links": {
+            "howItWorks": "Cách Hoạt Động",
+            "faq": "Câu Hỏi Thường Gặp",
+            "contact": "Liên Hệ",
+            "about": "Về chúng tôi",
+            "terms": "Điều Khoản và Điều Kiện",
+            "privacy": "Chính Sách Bảo Mật",
+            "cookies": "Chính Sách Cookie"
+        },
+        "copyright": "© 2025 explorers. Tất cả quyền được bảo lưu.",
+        "madeWithLove": "Được tạo ra với tình yêu trên trái đất"
+    },
+    "legal": {
+        "terms": {
+            "title": "Điều Khoản và Điều Kiện",
+            "loading": "Đang tải điều khoản và điều kiện...",
+            "error": "Lỗi khi tải điều khoản và điều kiện. Vui lòng thử lại sau."
+        },
+        "privacy": {
+            "title": "Chính Sách Bảo Mật",
+            "loading": "Đang tải chính sách bảo mật...",
+            "error": "Lỗi khi tải chính sách bảo mật. Vui lòng thử lại sau."
+        },
+        "cookies": {
+            "title": "Chính Sách Cookie",
+            "loading": "Đang tải chính sách cookie...",
+            "error": "Lỗi khi tải chính sách cookie. Vui lòng thử lại sau."
+        }
+    },
+    "languageModal": {
+        "title": "Chọn Ngôn Ngữ",
+        "searchPlaceholder": "Tìm kiếm ngôn ngữ...",
+        "close": "Đóng"
+    },
+    "auth": {
+        "signup": "Đăng ký",
+        "signupSubtitle": "Đăng ký để tận hưởng các tính năng của explorers",
+        "username": "Tên người dùng",
+        "usernamePlaceholder": "Nhập tên người dùng của bạn",
+        "email": "Email",
+        "emailPlaceholder": "Nhập email của bạn",
+        "password": "Mật khẩu",
+        "passwordPlaceholder": "Nhập mật khẩu của bạn",
+        "confirmPassword": "Xác nhận Mật khẩu",
+        "confirmPasswordPlaceholder": "Nhập lại mật khẩu của bạn",
+        "register": "Đăng ký",
+        "or": "hoặc",
+        "signUpWithGoogle": "Đăng ký bằng Google",
+        "alreadyHaveAccount": "Đã có tài khoản?",
+        "login": "Đăng nhập",
+        "loginTitle": "Đăng nhập",
+        "loginSubtitle": "Vui lòng đăng nhập để tiếp tục đến tài khoản của bạn",
+        "usernameOrEmail": "Tên người dùng hoặc email",
+        "usernameOrEmailPlaceholder": "Nhập tên người dùng hoặc email của bạn",
+        "signInWithGoogle": "Đăng nhập bằng Google",
+        "newToexplorers": "Mới với explorers?",
+        "forgotPassword": "Quên mật khẩu?",
+        "validations": {
+            "username": {
+                "required": "Tên người dùng là bắt buộc",
+                "minLength": "Tên người dùng phải có ít nhất 3 ký tự",
+                "maxLength": "Tên người dùng không được vượt quá 30 ký tự",
+                "invalidChars": "Tên người dùng chỉ có thể chứa chữ thường (a-z), số (0-9) và dấu gạch ngang (-)",
+                "mustStartWithLetter": "Tên người dùng phải bắt đầu bằng chữ cái (a-z)",
+                "cannotStartEndHyphen": "Tên người dùng không thể bắt đầu hoặc kết thúc bằng dấu gạch ngang",
+                "noConsecutiveHyphens": "Tên người dùng không thể chứa dấu gạch ngang liên tiếp",
+                "cannotBeAllNumbers": "Tên người dùng không thể chỉ là số",
+                "reservedWords": "Tên người dùng này chứa từ dành riêng và không thể sử dụng",
+                "inappropriateContent": "Tên người dùng chứa nội dung không phù hợp",
+                "alreadyExists": "Tên người dùng đã tồn tại",
+                "suggestedAlternatives": "Gợi ý thay thế:",
+                "willBeConvertedLowercase": "Tên người dùng sẽ được chuyển thành chữ thường",
+                "checkingAvailability": "Đang kiểm tra tính khả dụng...",
+                "available": "Tên người dùng có sẵn",
+                "willConvertToLowercase": "Tên người dùng sẽ được chuyển đổi thành chữ thường"
+            },
+            "email": {
+                "required": "Email là bắt buộc",
+                "invalidFormat": "Vui lòng nhập địa chỉ email hợp lệ",
+                "alreadyExists": "Email đã tồn tại",
+                "invalid": "Email không hợp lệ"
+            },
+            "password": {
+                "required": "Mật khẩu là bắt buộc",
+                "minLength": "Mật khẩu phải có ít nhất 6 ký tự",
+                "uppercaseRequired": "Mật khẩu phải chứa ít nhất một chữ hoa (A-Z)",
+                "numberRequired": "Mật khẩu phải chứa ít nhất một số (0-9)",
+                "specialCharRequired": "Mật khẩu phải chứa ít nhất một ký tự đặc biệt (!@#$%^&*().,?\":{}|\u003c\u003e)",
+                "strength": "Độ mạnh mật khẩu",
+                "weak": "Yếu",
+                "medium": "Trung bình",
+                "strong": "Mạnh",
+                "maxLength": "Password must not exceed 32 characters",
+                "lowercaseRequired": "Password must contain at least one lowercase letter (a-z)",
+                "tooCommon": "This password is too common. Please choose a more unique password",
+                "sameAsCurrent": "New password cannot be the same as your current password",
+                "considerLonger": "Consider using a longer password with more variety for better security",
+                "moreSecure": "Passwords with 10 or more characters are more secure",
+                "veryWeak": "Rất yếu",
+                "fair": "Trung bình",
+                "good": "Tốt",
+                "veryStrong": "Rất mạnh"
+            },
+            "confirmPassword": {
+                "required": "Vui lòng xác nhận mật khẩu của bạn",
+                "mustMatch": "Mật khẩu không khớp",
+                "confirmRequired": "Xác nhận mật khẩu là bắt buộc",
+                "match": "Mật khẩu khớp nhau"
+            },
+            "login": {
+                "usernameOrEmailRequired": "Tên người dùng hoặc email là bắt buộc",
+                "invalidCredentials": "Tên người dùng/email hoặc mật khẩu không hợp lệ",
+                "accountNotFound": "Không tìm thấy tài khoản",
+                "tooManyAttempts": "Quá nhiều lần thử thất bại",
+                "incorrectPassword": "Mật khẩu không đúng"
+            },
+            "general": {
+                "fillRequiredFields": "Vui lòng điền tất cả các trường bắt buộc",
+                "somethingWentWrong": "Có gì đó đã xảy ra sai, vui lòng thử lại"
+            },
+            "forgotPassword": {
+                "title": "Quên Mật Khẩu?",
+                "description": "Nhập địa chỉ email của bạn và chúng tôi sẽ gửi cho bạn liên kết đặt lại.",
+                "emailLabel": "Địa chỉ email",
+                "emailPlaceholder": "Nhập email của bạn",
+                "sendResetLink": "Gửi Liên Kết Đặt Lại",
+                "backToLogin": "Quay Lại Đăng Nhập",
+                "resetLinkSent": "Liên kết đặt lại mật khẩu đã được gửi đến email của bạn!",
+                "failedToSend": "Gửi liên kết đặt lại thất bại. Thử lại sau.",
+                "somethingWentWrong": "Có gì đó đã xảy ra sai!"
+            },
+            "accountName": {
+                "required": "Tên tài khoản là bắt buộc",
+                "minLength": "Tên tài khoản phải có ít nhất 2 ký tự",
+                "maxLength": "Tên tài khoản không được vượt quá 50 ký tự",
+                "invalidChars": "Tên tài khoản chỉ có thể chứa chữ cái, khoảng trắng, dấu nháy đơn, dấu gạch ngang và dấu chấm",
+                "noNumbers": "Tên tài khoản không thể chứa số"
+            },
+            "accountType": {
+                "required": "Loại tài khoản là bắt buộc",
+                "invalid": "Loại tài khoản không hợp lệ"
+            },
+            "primaryAddress": {
+                "required": "Địa chỉ chính là bắt buộc"
+            },
+            "socialMedia": {
+                "instagram": "Vui lòng nhập URL hồ sơ Instagram hợp lệ",
+                "whatsapp": "Nhập liên hệ WhatsApp hợp lệ: số điện thoại (+1234567890) hoặc liên kết wa.me/api.whatsapp.com",
+                "mobile": "Vui lòng nhập số điện thoại di động hợp lệ (ví dụ: +1234567890)",
+                "youtube": "Vui lòng nhập URL kênh YouTube hợp lệ (ví dụ: youtube.com/@tênngườidùng)",
+                "x": "Vui lòng nhập URL hồ sơ X (Twitter) hợp lệ",
+                "spotify": "Vui lòng nhập URL Spotify hợp lệ",
+                "website": "Vui lòng nhập URL trang web hợp lệ",
+                "facebook": "Vui lòng nhập URL hồ sơ Facebook hợp lệ",
+                "youtubeMusic": "Vui lòng nhập URL kênh YouTube Music hợp lệ",
+                "email": "Vui lòng nhập địa chỉ email hợp lệ",
+                "linkedin": "Vui lòng nhập URL hồ sơ LinkedIn hợp lệ",
+                "appleMusic": "Vui lòng nhập URL Apple Music hợp lệ",
+                "tiktok": "Vui lòng nhập URL hồ sơ TikTok hợp lệ",
+                "snapchat": "Vui lòng nhập tên người dùng Snapchat hợp lệ"
+            },
+            "onboarding": {
+                "displayNameRequired": "Tên hiển thị là bắt buộc",
+                "displayNameMinLength": "Tên hiển thị phải có ít nhất 2 ký tự",
+                "displayNameMaxLength": "Tên hiển thị không được vượt quá 50 ký tự",
+                "bioRequired": "Tiểu sử là bắt buộc",
+                "bioMaxLength": "Tiểu sử không được vượt quá 250 ký tự",
+                "mobileNumberRequired": "Số điện thoại di động là bắt buộc",
+                "mobileNumberInvalid": "Vui lòng nhập số điện thoại di động hợp lệ",
+                "mobileNumberLength": "Số điện thoại di động phải có 10 chữ số",
+                "addressRequired": "Địa chỉ là bắt buộc",
+                "cityRequired": "Thành phố là bắt buộc",
+                "stateRequired": "Bang là bắt buộc",
+                "countryRequired": "Quốc gia là bắt buộc",
+                "postalCodeRequired": "Mã bưu điện là bắt buộc",
+                "primaryAddressRequired": "Địa chỉ chính là bắt buộc",
+                "emailAddressRequired": "Địa chỉ email là bắt buộc",
+                "resetLinkSentSuccess": "Liên kết đặt lại đã được gửi thành công!",
+                "invalidUsername": "Tên người dùng không hợp lệ",
+                "profileImageAlt": "Profile"
+            },
+            "resetPassword": {
+                "newPassword": "New Password",
+                "confirmPassword": "Confirm Password"
+            },
+            "resetLinkSent": {
+                "title": "Email đã được gửi!",
+                "description": "Kiểm tra hộp thư đến của bạn để lấy liên kết đặt lại mật khẩu.",
+                "resending": "Đang gửi lại...",
+                "resendWithCooldown": "Gửi lại email ({{cooldown}}s)",
+                "resendMail": "Gửi lại email"
+            }
+        },
+        "onboarding": {
+            "accountDetails": {
+                "title": "Chi tiết tài khoản",
+                "description": "Hãy cho chúng tôi biết về bạn",
+                "displayName": "Tên hiển thị",
+                "displayNamePlaceholder": "Nhập tên hiển thị của bạn",
+                "username": "Tên người dùng",
+                "usernamePlaceholder": "Nhập tên người dùng của bạn",
+                "usernameDescription": "Tên người dùng của bạn là một phần của liên kết hồ sơ công khai và mã QR. Ví dụ: explorers.earth/bhavya",
+                "bio": "Tiểu sử",
+                "bioPlaceholder": "Hãy cho chúng tôi biết về bạn",
+                "accountType": "Loại tài khoản",
+                "personal": "Cá nhân",
+                "creator": "Người tạo",
+                "business": "Kinh doanh",
+                "next": "Tiếp theo"
+            },
+            "contactDetails": {
+                "title": "Chi tiết liên hệ",
+                "description": "Thêm số điện thoại di động của bạn để xác minh",
+                "mobileNumber": "Số điện thoại di động",
+                "mobileNumberPlaceholder": "Nhập số điện thoại di động của bạn",
+                "next": "Tiếp theo",
+                "back": "Quay lại"
+            },
+            "addressDetails": {
+                "title": "Chi tiết địa chỉ",
+                "description": "Bạn đang ở đâu?",
+                "address": "Địa chỉ",
+                "addressPlaceholder": "Nhập địa chỉ của bạn",
+                "streetName": "Tên đường",
+                "streetNamePlaceholder": "Nhập tên đường",
+                "city": "Thành phố",
+                "cityPlaceholder": "Nhập thành phố",
+                "state": "Bang",
+                "statePlaceholder": "Nhập bang",
+                "country": "Quốc gia",
+                "countryPlaceholder": "Nhập quốc gia",
+                "postalCode": "Mã bưu điện",
+                "postalCodePlaceholder": "Nhập mã bưu điện",
+                "primaryAddress": "Địa chỉ chính",
+                "primaryAddressDescription": "hiển thị trong hồ sơ công khai (thành phố và quốc gia)",
+                "primaryAddressPlaceholder": "Nhập địa chỉ chính",
+                "sameAsAddress": "Giống như địa chỉ",
+                "confirmDetails": "Xác nhận chi tiết",
+                "back": "Quay lại"
+            }
+        },
+        "resetPassword": {
+            "newPasswordPlaceholder": "Enter new password",
+            "confirmPasswordPlaceholder": "Confirm your password"
+        }
+    },
+    "common": {
+        "loading": "Đang tải...",
+        "error": "Đã xảy ra lỗi. Vui lòng thử lại sau.",
+        "retry": "Thử lại",
+        "noResults": "Không tìm thấy kết quả",
+        "submit": "Gửi",
+        "signInWithGoogle": "Đăng nhập bằng Google",
+        "signUpWithGoogle": "Đăng ký bằng Google",
+        "hidePassword": "Ẩn mật khẩu",
+        "showPassword": "Hiển thị mật khẩu",
+        "cancel": "Hủy"
+    },
+    "dashboard": {
+        "home": {
+            "welcomeBack": "Chào mừng trở lại",
+            "profile": "Hồ sơ",
+            "myRecommendations": "Đề xuất của tôi",
+            "activePlaces": "địa điểm hoạt động",
+            "setupProfile": "Thiết lập hồ sơ của bạn",
+            "draft": "Bản nháp",
+            "startCurating": "Bắt đầu tuyển chọn các đề xuất của bạn và chia sẻ chúng với thế giới!",
+            "addRecommendations": "Thêm đề xuất"
+        },
+        "shareModal": {
+            "copyLink": "Sao chép liên kết",
+            "copied": "Đã sao chép!",
+            "linkCopiedToast": "Đã sao chép liên kết!!"
+        },
+        "recommendations": {
+            "locationButton": "Vị trí",
+            "viewAll": "Xem tất cả",
+            "recommendationsTab": "Đề xuất",
+            "manageTab": "Quản lý",
+            "manageHeading": "Quản lý",
+            "deleteAction": "Xóa",
+            "editAction": "Chỉnh sửa",
+            "publishedStatus": "Đã xuất bản",
+            "draftStatus": "Bản nháp",
+            "myRecommendationsHeading": "Đề Xuất Của Tôi",
+            "myQRHeading": "QR Của Tôi",
+            "myRecommendationsQR": "Đề Xuất Của Tôi",
+            "travelLikeLocal": "Du lịch như người địa phương",
+            "shareLink": "Chia Sẻ Liên Kết",
+            "copyLink": "Sao Chép Liên Kết",
+            "downloadQR": "Tải QR",
+            "emptyState": {
+                "title": "Không Có Gợi Ý Nào",
+                "subtitle": "Bắt đầu thêm những địa điểm yêu thích vào danh sách này"
+            },
+            "draftLabel": "Nháp",
+            "recommendButton": "Gợi ý",
+            "exploreSection": {
+                "heading": "Khám phá với explorers",
+                "addButton": "Thêm"
+            },
+            "locationLabels": {
+                "currentLocation": "Vị Trí Hiện Tại",
+                "selectedLocation": "Vị Trí Đã Chọn"
+            },
+            "categories": {
+                "foodDrinks": "Đồ Ăn và Thức Uống",
+                "lodging": "Chỗ Ở",
+                "healthWellness": "Sức Khỏe và Chăm Sóc",
+                "shopping": "Mua Sắm",
+                "entertainment": "Giải Trí",
+                "transportation": "Giao Thông",
+                "services": "Dịch Vụ",
+                "tourism": "Du Lịch",
+                "naturalFeatures": "Đặc Điểm Tự Nhiên"
+            },
+            "locationForm": {
+                "labels": {
+                    "searchLocation": "Tìm kiếm vị trí",
+                    "recommendationSocialLink": "Liên kết xã hội đề xuất",
+                    "note": "Ghi chú",
+                    "placeUrl": "URL địa điểm"
+                },
+                "placeholders": {
+                    "searchLocation": "Nhập thành phố, tiểu bang hoặc quốc gia (Ví dụ: Paris)",
+                    "recommendationSocialLink": "Nhập URL (Youtube / Instagram)",
+                    "note": "Nhập ghi chú liên quan đến đề xuất của bạn",
+                    "placeUrl": "Nhập tên để tạo liên kết có thể chia sẻ"
+                },
+                "buttons": {
+                    "addLocation": "Thêm vị trí",
+                    "updateLocation": "Cập nhật vị trí"
+                }
+            },
+            "toastMessages": {
+                "listCreated": "Recommendation List Created Successfully!!!",
+                "listPublished": "Recommendation list Published successfully!",
+                "listUnpublished": "Recommendation list Unpublished successfully!",
+                "listPublishError": "List Should have atleast one Recommended Place to be Published",
+                "listVisibilityError": "Failed to update recommendation list visibility.",
+                "qrDownloadSuccess": "QR code downloaded successfully!",
+                "qrDownloadError": "Failed to download QR code. Please try again.",
+                "linkCopied": "Link copied to clipboard!",
+                "linkCopyError": "Failed to copy link. Please try again.",
+                "qrNotReady": "QR code not ready for download"
+            },
+            "placesModal": {
+                "placesCount": "{{visible}} trên {{total}} địa điểm",
+                "scrollToLoadMore": "Cuộn để tải thêm địa điểm"
+            },
+            "noRecommendationsYet": "Chưa có đề xuất nào!!",
+            "setupProfileBeforeRecommendations": "Thiết lập hồ sơ của bạn trước khi tạo đề xuất!!",
+            "startAddingPlaces": "Bắt đầu thêm các địa điểm yêu thích của bạn và chia sẻ chúng với người khác.",
+            "startRecommending": "Bắt Đầu Đề Xuất",
+            "addRecommendationForm": {
+                "searchField": {
+                    "label": "Search Recommendation with Google"
+                },
+                "mainInput": {
+                    "placeholder": "Enter your Recommendation"
+                },
+                "taggableFields": {
+                    "title": "Tiêu đề",
+                    "address": "Địa chỉ",
+                    "category": "Danh mục",
+                    "contactNumber": "Số liên hệ",
+                    "socialLink": "Liên kết xã hội",
+                    "personName": "Tên người"
+                },
+                "accordionSection": {
+                    "heading": "Your Recommendation Details",
+                    "recommendationLink": {
+                        "label": "Your Recommendation Link",
+                        "placeholder": "You can insert Instagram reel, YouTube, or blog recommending"
+                    },
+                    "whyRecommend": {
+                        "label": "Why would you recommend?",
+                        "placeholder": "Why would you recommend?"
+                    }
+                },
+                "fileUpload": {
+                    "text": "Attach Image/Video",
+                    "subtext": "optional"
+                },
+                "actionButton": {
+                    "text": "Add recommendation"
+                },
+                "taggableFieldsPlaceholders": {
+                    "title": "Nhập tiêu đề",
+                    "address": "Nhập địa chỉ của địa điểm",
+                    "category": "Nhập một danh mục",
+                    "contactNumber": "Nhập số liên hệ",
+                    "socialLink": "Nhập liên kết xã hội (địa điểm)",
+                    "personName": "Nhập họ tên đầy đủ của người"
+                },
+                "validationMessages": {
+                    "titleRequired": "Tiêu đề là bắt buộc",
+                    "addressRequired": "Địa chỉ là bắt buộc",
+                    "categoryRequired": "Danh mục là bắt buộc",
+                    "socialUrlRequired": "URL Instagram hoặc LinkedIn là bắt buộc cho gợi ý về người",
+                    "socialUrlInvalid": "Vui lòng nhập URL Instagram hoặc LinkedIn hợp lệ"
+                },
+                "mapModal": {
+                    "cancelButton": "Hủy",
+                    "addRecommendationButton": "Thêm gợi ý",
+                    "updateRecommendationButton": "Cập nhật gợi ý",
+                    "setLocationButton": "Đặt vị trí"
+                },
+                "deleteRecommendation": "Xóa gợi ý",
+                "searchLocation": {
+                    "label": "Tìm kiếm vị trí",
+                    "searchPlace": "Tìm kiếm địa điểm",
+                    "placeholder": "Nhập và chọn địa điểm"
+                },
+                "fetchingImages": "Đang tải hình ảnh…",
+                "recommendationType": {
+                    "place": "Địa Điểm",
+                    "person": "Người",
+                    "label": "Loại Gợi Ý"
+                },
+                "imagePreview": {
+                    "alt": "Xem trước",
+                    "deleteTooltip": "Xóa",
+                    "setThumbnailTooltip": "Đặt làm hình thu nhỏ",
+                    "confirmDeleteTitle": "Xác Nhận Xóa",
+                    "confirmDeleteMessage": "Bạn có chắc chắn muốn xóa hình ảnh này khỏi bộ sưu tập không?",
+                    "cancel": "Hủy",
+                    "confirm": "Xác nhận"
+                },
+                "deleteRecommendationModal": {
+                    "title": "Xác nhận xóa",
+                    "message": "Bạn có chắc chắn muốn xóa gợi ý này không? Hành động này không thể hoàn tác.",
+                    "cancel": "Hủy"
+                }
+            }
+        },
+        "profile": {
+            "tabs": {
+                "publicProfile": "Hồ Sơ Công Khai",
+                "account": "Tài Khoản"
+            },
+            "publicProfile": {
+                "sections": {
+                    "profileInformation": "Tiểu Sử",
+                    "socialMedia": "Liên Kết Xã Hội",
+                    "publicAddress": "Địa Chỉ Công Khai",
+                    "howToReachUs": "Cách Liên Hệ Với Chúng Tôi",
+                    "howToReachUsDescription": "Sử dụng phần này để chia sẻ chi tiết vị trí doanh nghiệp của bạn.",
+                    "feed": "Bảng Tin",
+                    "socialMediaSubtitle": "Liên kết và thông tin mạng xã hội"
+                },
+                "fields": {
+                    "accountType": "Loại Tài Khoản",
+                    "bio": "Tiểu Sử",
+                    "socialMedia": "Mạng Xã Hội",
+                    "instagram": "Instagram",
+                    "whatsapp": "Whatsapp",
+                    "mobile": "Di Động",
+                    "youtube": "Youtube",
+                    "x": "X",
+                    "spotify": "Spotify",
+                    "website": "Trang Web",
+                    "facebook": "Facebook",
+                    "youtubeMusic": "Youtube Music",
+                    "gmail": "Gmail",
+                    "linkedin": "Linkedin",
+                    "appleMusic": "Apple Music",
+                    "tiktok": "Tiktok",
+                    "snapchat": "Snapchat",
+                    "businessLocation": "Thêm vị trí của bạn. Chúng sẽ xuất hiện như các vị trí nổi bật trong hồ sơ công khai của bạn",
+                    "primaryAddress": "Địa Chỉ Chính - Hiển thị trong hồ sơ công khai (thành phố và quốc gia)",
+                    "feed": "Tải lên hình ảnh hoặc video về vị trí, sản phẩm, dịch vụ hoặc trải nghiệm của bạn. Những bức ảnh này sẽ được hiển thị trong thư viện của bạn trong hồ sơ công khai",
+                    "title": "Tiêu Đề",
+                    "contact": "Liên Hệ",
+                    "about": "Về",
+                    "addLocation": "Thêm vị trí của bạn",
+                    "addLocationInformation": "Thêm Thông Tin Vị Trí",
+                    "searchAddress": "Tìm kiếm địa chỉ của bạn...",
+                    "sameAsAddress": "Giống như địa chỉ"
+                },
+                "accountTypes": {
+                    "personal": "Cá Nhân",
+                    "creator": "Người Sáng Tạo",
+                    "business": "Doanh Nghiệp"
+                },
+                "businessLocation": {
+                    "title": "Tiêu Đề",
+                    "contact": "Liên Hệ",
+                    "website": "Trang Web",
+                    "about": "Về"
+                }
+            },
+            "account": {
+                "sections": {
+                    "account": "Tài Khoản",
+                    "billingAddress": "Địa Chỉ Thanh Toán"
+                },
+                "fields": {
+                    "username": "Tên người dùng",
+                    "accountName": "Tên Tài Khoản",
+                    "address": "Địa Chỉ",
+                    "streetName": "Tên Đường",
+                    "state": "Tỉnh/Thành",
+                    "city": "Thành Phố",
+                    "country": "Quốc Gia",
+                    "postalCode": "Mã Bưu Điện",
+                    "addressPlaceholder": "Nhập địa chỉ của bạn",
+                    "detectLocation": "Phát hiện vị trí hiện tại của tôi"
+                }
+            },
+            "common": {
+                "visible": "Hiển Thị",
+                "hidden": "Ẩn",
+                "mobileNumber": "Số điện thoại di động",
+                "mobileNumberPlaceholder": "Số điện thoại di động",
+                "whatsappNumber": "Số WhatsApp",
+                "primaryAddress": "Địa Chỉ Chính",
+                "editImage": "Chỉnh Sửa Hình Ảnh",
+                "confirm": "Xác Nhận",
+                "add": "Thêm",
+                "video": "Video",
+                "feedImage": "Hình ảnh bảng tin",
+                "importedImage": "hình ảnh đã nhập",
+                "cover": "Ảnh Bìa",
+                "profile": "Hồ Sơ",
+                "saveAndPublish": "Lưu và Xuất Bản",
+                "saveToFeed": "Lưu vào Bảng Tin",
+                "savedAndPublishedSuccessfully": "Đã lưu và xuất bản thành công",
+                "saveAndPublishFailed": "Lưu và xuất bản thất bại. Vui lòng thử lại.",
+                "failedToSaveChanges": "Không thể lưu thay đổi. Vui lòng thử lại.",
+                "networkError": "Lỗi mạng: Vui lòng kiểm tra kết nối và thử lại.",
+                "unexpectedError": "Đã xảy ra lỗi không mong muốn. Vui lòng thử lại.",
+                "somethingWentWrong": "Đã xảy ra sự cố. Vui lòng thử lại.",
+                "failedToUploadFiles": "Không thể tải lên tệp. Vui lòng thử lại.",
+                "failedToUploadImages": "Không thể tải lên hình ảnh. Vui lòng thử lại.",
+                "failedToSaveImagesToFeed": "Không thể lưu hình ảnh vào bảng tin",
+                "failedToUpdateProfile": "Không thể cập nhật hồ sơ. Vui lòng thử lại.",
+                "fetching": "Đang tải...",
+                "selectAll": "Chọn tất cả",
+                "clearSelection": "Xóa lựa chọn",
+                "error": "Đã xảy ra lỗi khi tải hồ sơ của bạn. Vui lòng thử lại sau.",
+                "errors": {
+                    "noFileProvided": "Không có tệp nào được cung cấp để tải lên",
+                    "failedToGetAccountId": "Không thể lấy ID tài khoản để tải lên",
+                    "uploadResponseMissingFileData": "Phản hồi tải lên thiếu dữ liệu tệp"
+                }
+            },
+            "accountSetup": {
+                "title": "Hoàn Thành Thiết Lập Tài Khoản Của Bạn",
+                "progress": "Tiến Độ",
+                "complete": "Hoàn Thành",
+                "profileSetupCompleted": "Thiết lập hồ sơ đã hoàn thành",
+                "profileSetupIncomplete": "Thêm ảnh hồ sơ, tiểu sử và liên kết xã hội",
+                "recommendationsSetupCompleted": "Thiết lập đề xuất đã hoàn thành",
+                "recommendationsSetupIncomplete": "Thêm vị trí, địa điểm và xuất bản danh sách đầu tiên của bạn",
+                "setupButton": "Thiết Lập",
+                "footerMessage": "Hoàn thành cả hai bước để mở khóa trải nghiệm bảng điều khiển đầy đủ của bạn"
+            }
+        }
+    },
+    "toast": {
+        "success": {
+            "loginSuccessful": "Đăng nhập thành công!",
+            "registrationSuccessful": "Đăng ký thành công!",
+            "passwordResetSuccessful": "Đặt lại mật khẩu thành công!",
+            "emailVerificationSent": "Xác minh email đã được gửi!",
+            "resetLinkSent": "Liên kết đặt lại mật khẩu đã được gửi đến email của bạn!",
+            "resetLinkResent": "Liên kết đặt lại đã được gửi lại!",
+            "profileImageUpdated": "Cập nhật ảnh đại diện thành công!",
+            "backgroundImageUpdated": "Cập nhật ảnh nền thành công!",
+            "recommendedListUpdated": "Recommended List Updated Successfully!!!",
+            "accountCreated": "Account created successfully!",
+            "usernameUpdated": "Username updated successfully!",
+            "profileUpdated": "Profile updated successfully!",
+            "settingsSaved": "Settings saved successfully!",
+            "dataSaved": "Data saved successfully!",
+            "changesSaved": "Changes saved successfully!",
+            "fileUploaded": "File uploaded successfully!",
+            "imageUploaded": "Hình ảnh đã tải lên thành công!",
+            "linkCopied": "Link copied to clipboard!",
+            "emailSent": "Email sent successfully!",
+            "notificationSent": "Notification sent successfully!",
+            "actionCompleted": "Action completed successfully!",
+            "formSubmitted": "Form submitted successfully!",
+            "onboardingCompleted": "Giới thiệu hoàn thành thành công!",
+            "welcomeMessage": "Chào mừng đến với explorers!",
+            "accountActivated": "Tài khoản đã được kích hoạt thành công!",
+            "emailVerified": "E-mail đã được xác minh thành công!",
+            "passwordChanged": "Mật khẩu đã được thay đổi thành công!",
+            "usernameChanged": "Tên người dùng đã được thay đổi thành công!",
+            "profileCompleted": "Hồ sơ đã được hoàn thành thành công!",
+            "setupCompleted": "Thiết lập đã được hoàn thành thành công!",
+            "loggedOutSuccessfully": "Đăng xuất thành công!"
+        },
+        "error": {
+            "loginFailed": "Đăng nhập thất bại. Vui lòng kiểm tra thông tin đăng nhập của bạn.",
+            "registrationFailed": "Đăng ký thất bại. Vui lòng thử lại.",
+            "passwordResetFailed": "Đặt lại mật khẩu thất bại. Vui lòng thử lại.",
+            "emailVerificationFailed": "Xác minh email thất bại. Vui lòng thử lại.",
+            "resetLinkFailed": "Gửi liên kết đặt lại thất bại. Vui lòng thử lại sau.",
+            "resetLinkResendFailed": "Gửi lại thất bại. Vui lòng thử lại sau.",
+            "profileImageUpdateFailed": "Failed to upload profile image. Please try again.",
+            "backgroundImageUpdateFailed": "Failed to upload background image. Please try again.",
+            "recommendedListUpdateFailed": "Error Updating Recommended List!!!",
+            "accountCreationFailed": "Account creation failed. Please try again.",
+            "usernameUpdateFailed": "Cập nhật tên người dùng thất bại. Vui lòng thử lại.",
+            "profileUpdateFailed": "Profile update failed. Please try again.",
+            "settingsSaveFailed": "Failed to save settings. Please try again.",
+            "dataSaveFailed": "Failed to save data. Please try again.",
+            "changesSaveFailed": "Failed to save changes. Please try again.",
+            "fileUploadFailed": "File upload failed. Please try again.",
+            "imageUploadFailed": "Tải lên hình ảnh thất bại. Vui lòng thử lại.",
+            "linkCopyFailed": "Failed to copy link. Please try again.",
+            "emailSendFailed": "Gửi email thất bại. Vui lòng thử lại.",
+            "notificationSendFailed": "Failed to send notification. Please try again.",
+            "actionFailed": "Action failed. Please try again.",
+            "formSubmissionFailed": "Form submission failed. Please try again.",
+            "onboardingFailed": "Giới thiệu thất bại. Vui lòng thử lại.",
+            "accountActivationFailed": "Account activation failed. Please try again.",
+            "passwordChangeFailed": "Password change failed. Please try again.",
+            "usernameChangeFailed": "Username change failed. Please try again.",
+            "profileCompletionFailed": "Profile completion failed. Please try again.",
+            "setupFailed": "Setup failed. Please try again.",
+            "networkError": "Lỗi mạng. Vui lòng kiểm tra kết nối của bạn.",
+            "serverError": "Lỗi máy chủ. Vui lòng thử lại sau.",
+            "validationError": "Lỗi xác thực. Vui lòng kiểm tra dữ liệu đầu vào của bạn.",
+            "permissionDenied": "Permission denied. Please contact support.",
+            "sessionExpired": "Phiên đã hết hạn. Vui lòng đăng nhập lại.",
+            "invalidCredentials": "Thông tin đăng nhập không hợp lệ. Vui lòng kiểm tra dữ liệu đầu vào của bạn.",
+            "emailNotFound": "Không tìm thấy email. Vui lòng thử lại.",
+            "usernameAlreadyExists": "Tên người dùng đã tồn tại. Vui lòng chọn tên khác.",
+            "emailAlreadyExists": "Email đã tồn tại. Vui lòng sử dụng email khác.",
+            "invalidEmailFormat": "Định dạng email không hợp lệ. Vui lòng nhập email hợp lệ.",
+            "passwordTooWeak": "Mật khẩu quá yếu. Vui lòng chọn mật khẩu mạnh hơn.",
+            "passwordsDoNotMatch": "Mật khẩu không khớp. Vui lòng thử lại.",
+            "requiredFieldMissing": "Thiếu trường bắt buộc. Vui lòng điền tất cả các trường bắt buộc.",
+            "invalidInput": "Đầu vào không hợp lệ. Vui lòng kiểm tra dữ liệu của bạn.",
+            "fileTooLarge": "Tệp quá lớn. Vui lòng chọn tệp nhỏ hơn.",
+            "unsupportedFileType": "Loại tệp không được hỗ trợ. Vui lòng chọn tệp khác.",
+            "uploadLimitExceeded": "Vượt quá giới hạn tải lên. Vui lòng thử lại sau.",
+            "operationTimeout": "Thao tác hết thời gian. Vui lòng thử lại.",
+            "serviceUnavailable": "Dịch vụ không khả dụng. Vui lòng thử lại sau.",
+            "maintenanceMode": "Dịch vụ đang bảo trì. Vui lòng thử lại sau.",
+            "rateLimitExceeded": "Quá nhiều yêu cầu. Vui lòng thử lại sau.",
+            "quotaExceeded": "Vượt quá hạn mức. Vui lòng thử lại sau.",
+            "accessDenied": "Truy cập bị từ chối. Bạn không có quyền thực hiện hành động này.",
+            "resourceNotFound": "Không tìm thấy tài nguyên. Vui lòng kiểm tra yêu cầu của bạn.",
+            "conflictError": "Lỗi xung đột. Tài nguyên đã tồn tại.",
+            "preconditionFailed": "Điều kiện tiên quyết thất bại. Vui lòng kiểm tra yêu cầu của bạn.",
+            "tooManyAttempts": "Quá nhiều lần thử. Vui lòng thử lại sau.",
+            "accountLocked": "Tài khoản đã bị khóa. Vui lòng liên hệ hỗ trợ.",
+            "accountSuspended": "Tài khoản đã bị đình chỉ. Vui lòng liên hệ hỗ trợ.",
+            "accountDeleted": "Tài khoản đã bị xóa. Vui lòng liên hệ hỗ trợ.",
+            "emailNotVerified": "Email chưa được xác minh. Vui lòng xác minh email của bạn trước.",
+            "phoneNotVerified": "Số điện thoại chưa được xác minh. Vui lòng xác minh điện thoại của bạn trước.",
+            "twoFactorRequired": "Xác thực hai yếu tố là bắt buộc.",
+            "twoFactorFailed": "Xác thực hai yếu tố thất bại. Vui lòng thử lại.",
+            "captchaFailed": "Xác minh captcha thất bại. Vui lòng thử lại.",
+            "invalidToken": "Token không hợp lệ. Vui lòng thử lại.",
+            "expiredToken": "Token đã hết hạn. Vui lòng thử lại.",
+            "invalidCode": "Mã không hợp lệ. Vui lòng kiểm tra đầu vào của bạn.",
+            "expiredCode": "Mã đã hết hạn. Vui lòng yêu cầu mã mới.",
+            "codeLimitExceeded": "Vượt quá giới hạn mã. Vui lòng thử lại sau.",
+            "invalidUsername": "Tên người dùng không hợp lệ. Vui lòng kiểm tra đầu vào của bạn.",
+            "usernameTooShort": "Tên người dùng quá ngắn. Vui lòng chọn tên người dùng dài hơn.",
+            "usernameTooLong": "Tên người dùng quá dài. Vui lòng chọn tên người dùng ngắn hơn.",
+            "usernameInvalidChars": "Tên người dùng chứa ký tự không hợp lệ. Vui lòng chỉ sử dụng chữ cái, số và dấu gạch ngang.",
+            "usernameReserved": "Tên người dùng đã được đặt trước. Vui lòng chọn tên người dùng khác.",
+            "usernameProfanity": "Tên người dùng chứa nội dung không phù hợp. Vui lòng chọn tên người dùng khác.",
+            "primaryAddressRequired": "Địa chỉ chính là bắt buộc",
+            "addressRequired": "Địa chỉ là bắt buộc",
+            "cityRequired": "Thành phố là bắt buộc",
+            "stateRequired": "Tỉnh/Thành phố là bắt buộc",
+            "countryRequired": "Quốc gia là bắt buộc",
+            "postalCodeRequired": "Mã bưu điện là bắt buộc",
+            "mobileNumberRequired": "Số điện thoại di động là bắt buộc",
+            "mobileNumberInvalid": "Định dạng số điện thoại di động không hợp lệ",
+            "mobileNumberTooShort": "Số điện thoại di động quá ngắn",
+            "mobileNumberTooLong": "Số điện thoại di động quá dài",
+            "bioRequired": "Tiểu sử là bắt buộc",
+            "bioTooLong": "Tiểu sử quá dài. Vui lòng giữ dưới 250 ký tự",
+            "displayNameRequired": "Tên hiển thị là bắt buộc",
+            "displayNameTooShort": "Tên hiển thị quá ngắn",
+            "displayNameTooLong": "Tên hiển thị quá dài",
+            "accountTypeRequired": "Loại tài khoản là bắt buộc",
+            "invalidAccountType": "Loại tài khoản không hợp lệ đã được chọn",
+            "imageRequired": "Hình ảnh là bắt buộc",
+            "imageTooLarge": "Hình ảnh quá lớn. Vui lòng chọn hình ảnh nhỏ hơn",
+            "unsupportedImageFormat": "Định dạng hình ảnh không được hỗ trợ. Vui lòng sử dụng JPG, PNG hoặc GIF",
+            "imageProcessingFailed": "Xử lý hình ảnh thất bại. Vui lòng thử lại",
+            "imageCorrupted": "Hình ảnh bị hỏng. Vui lòng chọn hình ảnh khác",
+            "imageDimensionsInvalid": "Kích thước hình ảnh không hợp lệ. Vui lòng chọn hình ảnh khác",
+            "imageSizeInvalid": "Kích thước hình ảnh không hợp lệ. Vui lòng chọn hình ảnh khác",
+            "imageFormatInvalid": "Định dạng hình ảnh không hợp lệ. Vui lòng chọn hình ảnh khác",
+            "imageQualityTooLow": "Chất lượng hình ảnh quá thấp. Vui lòng chọn hình ảnh chất lượng cao hơn",
+            "imageTooSmall": "Hình ảnh quá nhỏ. Vui lòng chọn hình ảnh lớn hơn",
+            "imageTooBig": "Hình ảnh quá lớn. Vui lòng chọn hình ảnh nhỏ hơn",
+            "imageAspectRatioInvalid": "Tỷ lệ khung hình không hợp lệ. Vui lòng chọn hình ảnh khác",
+            "imageColorSpaceInvalid": "Không gian màu hình ảnh không hợp lệ. Vui lòng chọn hình ảnh khác",
+            "imageMetadataInvalid": "Siêu dữ liệu hình ảnh không hợp lệ. Vui lòng chọn hình ảnh khác",
+            "imageSecurityViolation": "Vi phạm bảo mật hình ảnh. Vui lòng chọn hình ảnh khác",
+            "imageVirusDetected": "Phát hiện vi-rút trong hình ảnh. Vui lòng chọn hình ảnh khác",
+            "imageMalwareDetected": "Phát hiện phần mềm độc hại trong hình ảnh. Vui lòng chọn hình ảnh khác",
+            "imageSpamDetected": "Phát hiện spam trong hình ảnh. Vui lòng chọn hình ảnh khác",
+            "imageContentInappropriate": "Nội dung hình ảnh không phù hợp. Vui lòng chọn hình ảnh khác",
+            "imageContentViolent": "Nội dung hình ảnh có tính bạo lực. Vui lòng chọn hình ảnh khác",
+            "imageContentSexual": "Nội dung hình ảnh có tính chất tình dục. Vui lòng chọn hình ảnh khác",
+            "imageContentHateful": "Nội dung hình ảnh chứa thù hận. Vui lòng chọn hình ảnh khác",
+            "imageContentDiscriminatory": "Nội dung hình ảnh có tính phân biệt đối xử. Vui lòng chọn hình ảnh khác",
+            "imageContentOffensive": "Nội dung hình ảnh xúc phạm. Vui lòng chọn hình ảnh khác",
+            "imageContentAbusive": "Nội dung hình ảnh lạm dụng. Vui lòng chọn hình ảnh khác",
+            "imageContentHarassing": "Nội dung hình ảnh quấy rối. Vui lòng chọn hình ảnh khác",
+            "imageContentThreatening": "Nội dung hình ảnh đe dọa. Vui lòng chọn hình ảnh khác",
+            "imageContentDangerous": "Nội dung hình ảnh nguy hiểm. Vui lòng chọn hình ảnh khác",
+            "imageContentIllegal": "Nội dung hình ảnh bất hợp pháp. Vui lòng chọn hình ảnh khác",
+            "imageContentCopyright": "Nội dung hình ảnh vi phạm bản quyền. Vui lòng chọn hình ảnh khác",
+            "imageContentTrademark": "Nội dung hình ảnh vi phạm thương hiệu. Vui lòng chọn hình ảnh khác",
+            "imageContentPrivacy": "Nội dung hình ảnh vi phạm quyền riêng tư. Vui lòng chọn hình ảnh khác",
+            "imageContentConsent": "Nội dung hình ảnh thiếu sự đồng ý. Vui lòng chọn hình ảnh khác",
+            "imageContentMinors": "Nội dung hình ảnh liên quan đến trẻ vị thành niên. Vui lòng chọn hình ảnh khác",
+            "imageContentAnimals": "Nội dung hình ảnh liên quan đến hành vi tàn ác với động vật. Vui lòng chọn hình ảnh khác",
+            "imageContentEnvironment": "Nội dung hình ảnh gây hại cho môi trường. Vui lòng chọn hình ảnh khác",
+            "imageContentHealth": "Nội dung hình ảnh gây hại cho sức khỏe. Vui lòng chọn hình ảnh khác",
+            "imageContentSafety": "Nội dung hình ảnh gây hại cho an toàn. Vui lòng chọn hình ảnh khác",
+            "imageContentSecurity": "Nội dung hình ảnh gây hại cho bảo mật. Vui lòng chọn hình ảnh khác",
+            "imageContentIntegrity": "Nội dung hình ảnh gây hại cho tính toàn vẹn. Vui lòng chọn hình ảnh khác",
+            "imageContentReputation": "Nội dung hình ảnh gây hại cho danh tiếng. Vui lòng chọn hình ảnh khác",
+            "imageContentBrand": "Nội dung hình ảnh gây hại cho thương hiệu. Vui lòng chọn hình ảnh khác",
+            "imageContentBusiness": "Nội dung hình ảnh gây hại cho kinh doanh. Vui lòng chọn hình ảnh khác",
+            "imageContentPersonal": "Nội dung hình ảnh gây hại cho lợi ích cá nhân. Vui lòng chọn hình ảnh khác",
+            "imageContentProfessional": "Nội dung hình ảnh gây hại cho lợi ích chuyên nghiệp. Vui lòng chọn hình ảnh khác",
+            "imageContentAcademic": "Nội dung hình ảnh gây hại cho lợi ích học thuật. Vui lòng chọn hình ảnh khác",
+            "imageContentCultural": "Nội dung hình ảnh gây hại cho lợi ích văn hóa. Vui lòng chọn hình ảnh khác",
+            "imageContentReligious": "Nội dung hình ảnh gây hại cho lợi ích tôn giáo. Vui lòng chọn hình ảnh khác",
+            "imageContentPolitical": "Nội dung hình ảnh gây hại cho lợi ích chính trị. Vui lòng chọn hình ảnh khác",
+            "imageContentSocial": "Nội dung hình ảnh gây hại cho lợi ích xã hội. Vui lòng chọn hình ảnh khác",
+            "imageContentEconomic": "Nội dung hình ảnh gây hại cho lợi ích kinh tế. Vui lòng chọn hình ảnh khác",
+            "imageContentLegal": "Nội dung hình ảnh gây hại cho lợi ích pháp lý. Vui lòng chọn hình ảnh khác",
+            "imageContentEthical": "Nội dung hình ảnh gây hại cho lợi ích đạo đức. Vui lòng chọn hình ảnh khác",
+            "imageContentMoral": "Nội dung hình ảnh gây hại cho lợi ích đạo đức. Vui lòng chọn hình ảnh khác",
+            "imageContentSpiritual": "Nội dung hình ảnh gây hại cho lợi ích tinh thần. Vui lòng chọn hình ảnh khác",
+            "imageContentPhilosophical": "Nội dung hình ảnh gây hại cho lợi ích triết học. Vui lòng chọn hình ảnh khác",
+            "imageContentScientific": "Nội dung hình ảnh gây hại cho lợi ích khoa học. Vui lòng chọn hình ảnh khác",
+            "imageContentTechnical": "Nội dung hình ảnh gây hại cho lợi ích kỹ thuật. Vui lòng chọn hình ảnh khác",
+            "imageContentArtistic": "Nội dung hình ảnh gây hại cho lợi ích nghệ thuật. Vui lòng chọn hình ảnh khác",
+            "imageContentCreative": "Nội dung hình ảnh gây hại cho lợi ích sáng tạo. Vui lòng chọn hình ảnh khác",
+            "imageContentIntellectual": "Nội dung hình ảnh gây hại cho lợi ích trí tuệ. Vui lòng chọn hình ảnh khác",
+            "imageContentEducational": "Nội dung hình ảnh gây hại cho lợi ích giáo dục. Vui lòng chọn hình ảnh khác",
+            "imageContentInformational": "Nội dung hình ảnh gây hại cho lợi ích thông tin. Vui lòng chọn hình ảnh khác",
+            "imageContentNews": "Nội dung hình ảnh gây hại cho lợi ích tin tức. Vui lòng chọn hình ảnh khác",
+            "imageContentMedia": "Nội dung hình ảnh gây hại cho lợi ích truyền thông. Vui lòng chọn hình ảnh khác",
+            "imageContentEntertainment": "Nội dung hình ảnh gây hại cho lợi ích giải trí. Vui lòng chọn hình ảnh khác",
+            "imageContentSports": "Nội dung hình ảnh gây hại cho lợi ích thể thao. Vui lòng chọn hình ảnh khác",
+            "imageContentRecreation": "Nội dung hình ảnh gây hại cho lợi ích giải trí. Vui lòng chọn hình ảnh khác",
+            "imageContentLeisure": "Nội dung hình ảnh gây hại cho lợi ích thời gian rảnh. Vui lòng chọn hình ảnh khác",
+            "imageContentHobby": "Nội dung hình ảnh gây hại cho lợi ích sở thích. Vui lòng chọn hình ảnh khác",
+            "imageContentInterest": "Nội dung hình ảnh gây hại cho lợi ích quan tâm. Vui lòng chọn hình ảnh khác",
+            "imageContentPassion": "Nội dung hình ảnh gây hại cho lợi ích đam mê. Vui lòng chọn hình ảnh khác",
+            "imageContentLove": "Nội dung hình ảnh gây hại cho lợi ích tình yêu. Vui lòng chọn hình ảnh khác",
+            "imageContentHate": "Nội dung hình ảnh gây hại cho lợi ích thù hận. Vui lòng chọn hình ảnh khác",
+            "imageContentAnger": "Nội dung hình ảnh gây hại cho lợi ích tức giận. Vui lòng chọn hình ảnh khác",
+            "imageContentFear": "Nội dung hình ảnh gây hại cho lợi ích sợ hãi. Vui lòng chọn hình ảnh khác",
+            "imageContentSadness": "Nội dung hình ảnh gây hại cho lợi ích buồn bã. Vui lòng chọn hình ảnh khác",
+            "imageContentJoy": "Nội dung hình ảnh gây hại cho lợi ích vui mừng. Vui lòng chọn hình ảnh khác",
+            "imageContentHappiness": "Nội dung hình ảnh gây hại cho lợi ích hạnh phúc. Vui lòng chọn hình ảnh khác",
+            "imageContentExcitement": "Nội dung hình ảnh gây hại cho lợi ích phấn khích. Vui lòng chọn hình ảnh khác",
+            "imageContentSurprise": "Nội dung hình ảnh gây hại cho lợi ích ngạc nhiên. Vui lòng chọn hình ảnh khác",
+            "imageContentDisgust": "Nội dung hình ảnh gây hại cho lợi ích ghê tởm. Vui lòng chọn hình ảnh khác",
+            "imageContentShame": "Nội dung hình ảnh gây hại cho lợi ích xấu hổ. Vui lòng chọn hình ảnh khác",
+            "imageContentGuilt": "Nội dung hình ảnh gây hại cho lợi ích tội lỗi. Vui lòng chọn hình ảnh khác",
+            "imageContentPride": "Nội dung hình ảnh gây hại cho lợi ích tự hào. Vui lòng chọn hình ảnh khác",
+            "imageContentEnvy": "Nội dung hình ảnh gây hại cho lợi ích ghen tị. Vui lòng chọn hình ảnh khác",
+            "imageContentJealousy": "Nội dung hình ảnh gây hại cho lợi ích ghen tuông. Vui lòng chọn hình ảnh khác",
+            "imageContentGreed": "Nội dung hình ảnh gây hại cho lợi ích tham lam. Vui lòng chọn hình ảnh khác",
+            "imageContentLust": "Nội dung hình ảnh gây hại cho lợi ích ham muốn. Vui lòng chọn hình ảnh khác",
+            "imageContentGluttony": "Nội dung hình ảnh gây hại cho lợi ích tham ăn. Vui lòng chọn hình ảnh khác",
+            "imageContentSloth": "Nội dung hình ảnh gây hại cho lợi ích lười biếng. Vui lòng chọn hình ảnh khác",
+            "imageContentWrath": "Nội dung hình ảnh gây hại cho lợi ích thịnh nộ. Vui lòng chọn hình ảnh khác"
+        },
+        "warning": {
+            "usernameCooldown": "Thay đổi tên người dùng tạm thời bị khóa do thời gian chờ",
+            "passwordWeak": "Mật khẩu yếu. Hãy cân nhắc sử dụng mật khẩu mạnh hơn",
+            "emailNotVerified": "Email chưa được xác minh. Vui lòng xác minh email của bạn",
+            "phoneNotVerified": "Số điện thoại chưa được xác minh. Vui lòng xác minh điện thoại của bạn",
+            "profileIncomplete": "Hồ sơ chưa hoàn chỉnh. Vui lòng hoàn thiện hồ sơ của bạn",
+            "settingsNotSaved": "Cài đặt chưa được lưu. Vui lòng lưu cài đặt của bạn",
+            "dataNotSaved": "Dữ liệu chưa được lưu. Vui lòng lưu dữ liệu của bạn",
+            "changesNotSaved": "Thay đổi chưa được lưu. Vui lòng lưu thay đổi của bạn",
+            "fileNotUploaded": "Tệp chưa được tải lên. Vui lòng tải lên tệp của bạn",
+            "imageNotUploaded": "Hình ảnh chưa được tải lên. Vui lòng tải lên hình ảnh của bạn",
+            "linkNotCopied": "Liên kết chưa được sao chép. Vui lòng sao chép liên kết của bạn",
+            "emailNotSent": "Email chưa được gửi. Vui lòng gửi email của bạn",
+            "notificationNotSent": "Thông báo chưa được gửi. Vui lòng gửi thông báo của bạn",
+            "actionNotCompleted": "Hành động chưa hoàn thành. Vui lòng hoàn thành hành động của bạn",
+            "formNotSubmitted": "Biểu mẫu chưa được gửi. Vui lòng gửi biểu mẫu của bạn",
+            "onboardingNotCompleted": "Onboarding chưa hoàn thành. Vui lòng hoàn thành onboarding của bạn",
+            "accountNotActivated": "Tài khoản chưa được kích hoạt. Vui lòng kích hoạt tài khoản của bạn",
+            "passwordNotChanged": "Mật khẩu chưa được thay đổi. Vui lòng thay đổi mật khẩu của bạn",
+            "usernameNotChanged": "Tên người dùng chưa được thay đổi. Vui lòng thay đổi tên người dùng của bạn",
+            "profileNotCompleted": "Hồ sơ chưa hoàn thành. Vui lòng hoàn thành hồ sơ của bạn",
+            "setupNotCompleted": "Thiết lập chưa hoàn thành. Vui lòng hoàn thành thiết lập của bạn",
+            "networkSlow": "Mạng chậm. Vui lòng kiểm tra kết nối của bạn",
+            "serverSlow": "Máy chủ chậm. Vui lòng thử lại sau",
+            "validationPending": "Xác thực đang chờ. Vui lòng đợi",
+            "permissionPending": "Quyền đang chờ. Vui lòng đợi",
+            "sessionExpiring": "Phiên đang hết hạn. Vui lòng đăng nhập lại",
+            "credentialsExpiring": "Thông tin đăng nhập đang hết hạn. Vui lòng cập nhật thông tin đăng nhập của bạn",
+            "emailExpiring": "Email đang hết hạn. Vui lòng cập nhật email của bạn",
+            "phoneExpiring": "Điện thoại đang hết hạn. Vui lòng cập nhật điện thoại của bạn",
+            "profileExpiring": "Hồ sơ đang hết hạn. Vui lòng cập nhật hồ sơ của bạn",
+            "settingsExpiring": "Cài đặt đang hết hạn. Vui lòng cập nhật cài đặt của bạn",
+            "dataExpiring": "Dữ liệu đang hết hạn. Vui lòng cập nhật dữ liệu của bạn",
+            "changesExpiring": "Thay đổi đang hết hạn. Vui lòng cập nhật thay đổi của bạn",
+            "fileExpiring": "Tệp đang hết hạn. Vui lòng cập nhật tệp của bạn",
+            "imageExpiring": "Hình ảnh đang hết hạn. Vui lòng cập nhật hình ảnh của bạn",
+            "linkExpiring": "Liên kết đang hết hạn. Vui lòng cập nhật liên kết của bạn",
+            "notificationExpiring": "Thông báo đang hết hạn. Vui lòng cập nhật thông báo của bạn",
+            "actionExpiring": "Hành động đang hết hạn. Vui lòng cập nhật hành động của bạn",
+            "formExpiring": "Biểu mẫu đang hết hạn. Vui lòng cập nhật biểu mẫu của bạn",
+            "onboardingExpiring": "Onboarding đang hết hạn. Vui lòng cập nhật onboarding của bạn",
+            "accountExpiring": "Tài khoản đang hết hạn. Vui lòng cập nhật tài khoản của bạn",
+            "passwordExpiring": "Mật khẩu đang hết hạn. Vui lòng cập nhật mật khẩu của bạn",
+            "usernameExpiring": "Tên người dùng đang hết hạn. Vui lòng cập nhật tên người dùng của bạn",
+            "setupExpiring": "Thiết lập đang hết hạn. Vui lòng cập nhật thiết lập của bạn"
+        },
+        "info": {
+            "loading": "Đang tải...",
+            "processing": "Đang xử lý...",
+            "saving": "Đang lưu...",
+            "uploading": "Đang tải lên...",
+            "downloading": "Đang tải xuống...",
+            "connecting": "Đang kết nối...",
+            "disconnecting": "Đang ngắt kết nối...",
+            "sending": "Đang gửi...",
+            "receiving": "Đang nhận...",
+            "updating": "Đang cập nhật...",
+            "refreshing": "Đang làm mới...",
+            "synchronizing": "Đang đồng bộ...",
+            "validating": "Đang xác thực...",
+            "verifying": "Đang xác minh...",
+            "checking": "Đang kiểm tra...",
+            "searching": "Đang tìm kiếm...",
+            "filtering": "Đang lọc...",
+            "sorting": "Đang sắp xếp...",
+            "organizing": "Đang tổ chức...",
+            "arranging": "Đang sắp xếp...",
+            "configuring": "Đang cấu hình...",
+            "setting": "Đang thiết lập...",
+            "adjusting": "Đang điều chỉnh...",
+            "modifying": "Đang sửa đổi...",
+            "changing": "Đang thay đổi...",
+            "switching": "Đang chuyển đổi...",
+            "toggling": "Đang bật/tắt...",
+            "enabling": "Đang bật...",
+            "disabling": "Đang tắt...",
+            "activating": "Đang kích hoạt...",
+            "deactivating": "Đang vô hiệu hóa...",
+            "starting": "Đang bắt đầu...",
+            "stopping": "Đang dừng...",
+            "pausing": "Đang tạm dừng...",
+            "resuming": "Đang tiếp tục...",
+            "restarting": "Đang khởi động lại...",
+            "resetting": "Đang đặt lại...",
+            "clearing": "Đang xóa...",
+            "deleting": "Đang xóa...",
+            "removing": "Đang xóa...",
+            "adding": "Đang thêm...",
+            "inserting": "Đang chèn...",
+            "creating": "Đang tạo...",
+            "building": "Đang xây dựng...",
+            "constructing": "Đang xây dựng...",
+            "generating": "Đang tạo...",
+            "producing": "Đang sản xuất...",
+            "making": "Đang tạo...",
+            "preparing": "Đang chuẩn bị...",
+            "readying": "Đang chuẩn bị...",
+            "initializing": "Đang khởi tạo...",
+            "launching": "Đang khởi chạy...",
+            "opening": "Đang mở...",
+            "closing": "Đang đóng...",
+            "shutting": "Đang đóng...",
+            "ending": "Đang kết thúc...",
+            "finishing": "Đang hoàn thành...",
+            "completing": "Đang hoàn thành...",
+            "finalizing": "Đang hoàn tất...",
+            "concluding": "Đang kết luận...",
+            "terminating": "Đang chấm dứt...",
+            "canceling": "Đang hủy...",
+            "aborting": "Đang hủy bỏ...",
+            "interrupting": "Đang gián đoạn...",
+            "halting": "Đang dừng...",
+            "freezing": "Đang đóng băng...",
+            "unfreezing": "Đang rã đông...",
+            "thawing": "Đang rã đông...",
+            "melting": "Đang tan chảy...",
+            "cooling": "Đang làm lạnh...",
+            "heating": "Đang làm nóng...",
+            "warming": "Đang làm ấm...",
+            "chilling": "Đang làm lạnh...",
+            "renewing": "Đang gia hạn...",
+            "restoring": "Đang khôi phục...",
+            "recovering": "Đang phục hồi...",
+            "repairing": "Đang sửa chữa...",
+            "fixing": "Đang sửa...",
+            "correcting": "Đang sửa...",
+            "tuning": "Đang điều chỉnh...",
+            "optimizing": "Đang tối ưu hóa...",
+            "improving": "Đang cải thiện...",
+            "enhancing": "Đang nâng cao...",
+            "upgrading": "Đang nâng cấp...",
+            "modernizing": "Đang hiện đại hóa..."
+        }
+    },
+    "emailVerification": {
+        "title": "Verify Your Email",
+        "description": "We've sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
+        "checkEmail": "Check your email",
+        "emailSent": "Verification email sent!",
+        "resendEmail": "Resend Email",
+        "resendIn": "Resend in",
+        "seconds": "seconds",
+        "didntReceive": "Didn't receive the email?",
+        "checkSpam": "Please check your spam folder or try again.",
+        "backToLogin": "Back to Login",
+        "emailAddress": "Email Address",
+        "verificationSent": "Verification email sent to:",
+        "clickLink": "Click the link in the email to verify your account.",
+        "expiresIn": "This link expires in 24 hours.",
+        "needHelp": "Need help?",
+        "contactSupport": "Contact Support"
+    },
+    "settings": {
+        "title": "Cài đặt",
+        "subtitle": "Quản lý cài đặt và tùy chọn tài khoản của bạn",
+        "account": {
+            "heading": "Tài khoản",
+            "security": {
+                "title": "Tài khoản và Bảo mật"
+            },
+            "changePassword": {
+                "text": "Đổi mật khẩu?",
+                "description": "Cập nhật mật khẩu để giữ tài khoản của bạn an toàn",
+                "button": "Đổi mật khẩu",
+                "modalTitle": "Đổi mật khẩu",
+                "currentPassword": "Mật khẩu hiện tại",
+                "newPassword": "Mật khẩu mới",
+                "confirmPassword": "Xác nhận mật khẩu mới",
+                "updateButton": "Cập nhật mật khẩu",
+                "currentPasswordPlaceholder": "Nhập mật khẩu hiện tại của bạn",
+                "newPasswordPlaceholder": "Nhập mật khẩu mới",
+                "confirmPasswordPlaceholder": "Nhập lại mật khẩu mới",
+                "successMessage": "Mật khẩu đã được cập nhật thành công. Bạn sẽ được chuyển hướng đến trang đăng nhập để bảo mật.",
+                "redirectMessage": "Đang chuyển hướng đến trang đăng nhập để bảo mật..."
+            },
+            "deactivateAccount": {
+                "text": "Hủy kích hoạt tài khoản của bạn?",
+                "description": "Tạm thời vô hiệu hóa tài khoản của bạn",
+                "button": "Hủy kích hoạt tài khoản",
+                "modalTitle": "Hủy kích hoạt tài khoản của bạn?",
+                "modalDescription": "Bạn có chắc chắn muốn hủy kích hoạt tài khoản của mình không?",
+                "enterUsername": "Nhập tên người dùng của bạn",
+                "enterPassword": "Nhập mật khẩu của bạn",
+                "usernamePlaceholder": "Nhập tên người dùng của bạn",
+                "passwordPlaceholder": "Nhập mật khẩu hiện tại của bạn",
+                "confirmButton": "Hủy kích hoạt tài khoản của tôi",
+                "deactivatedButton": "Đã hủy kích hoạt",
+                "successMessage": "Tài khoản đã được hủy kích hoạt thành công",
+                "activatedMessage": "Tài khoản đã được kích hoạt thành công"
+            },
+            "deleteAccount": {
+                "text": "Xóa tài khoản của bạn?",
+                "description": "Xóa vĩnh viễn tài khoản và tất cả dữ liệu của bạn",
+                "button": "Xóa tài khoản",
+                "step1": {
+                    "modalTitle": "Xóa tài khoản của bạn?",
+                    "modalDescription": "Bạn có chắc chắn muốn xóa tài khoản của mình không? Hành động này không thể hoàn tác.",
+                    "modalDescription2": "Nếu bạn muốn giữ dữ liệu của mình, bạn có thể hủy kích hoạt tài khoản thay thế.",
+                    "deactivateInsteadButton": "Hủy kích hoạt tài khoản thay thế",
+                    "continueButton": "Tiếp tục xóa"
+                },
+                "step2": {
+                    "modalTitle": "Nhập thông tin chi tiết của bạn",
+                    "enterUsername": "Nhập tên người dùng của bạn",
+                    "enterPassword": "Nhập mật khẩu của bạn",
+                    "confirmPassword": "Xác nhận mật khẩu của bạn",
+                    "usernamePlaceholder": "Nhập tên người dùng của bạn",
+                    "passwordPlaceholder": "Nhập mật khẩu của bạn",
+                    "confirmPasswordPlaceholder": "Xác nhận mật khẩu của bạn",
+                    "continueButton": "Tiếp tục"
+                },
+                "step3": {
+                    "modalTitle": "Tại sao bạn rời đi?",
+                    "reasonPlaceholder": "Vui lòng cho chúng tôi biết lý do rời đi...",
+                    "continueButton": "Tiếp tục"
+                },
+                "step4": {
+                    "modalTitle": "Xác nhận xóa",
+                    "confirmText": "Gõ 'CONFIRM DELETE' để tiếp tục",
+                    "confirmPlaceholder": "Gõ 'CONFIRM DELETE' để xác nhận",
+                    "deleteButton": "Xóa tài khoản của tôi",
+                    "confirmationRequired": "Vui lòng gõ 'CONFIRM DELETE' để xác nhận.",
+                    "reasonRequired": "Vui lòng cung cấp lý do rời đi.",
+                    "successMessage": "Tài khoản đã được xóa thành công."
+                }
+            }
+        },
+        "languagePreference": {
+            "heading": "Tùy chọn ngôn ngữ",
+            "description": "Chọn ngôn ngữ ưa thích của bạn cho giao diện. Điều này sẽ thay đổi ngôn ngữ của tất cả văn bản, nút và menu trong toàn bộ ứng dụng.",
+            "selectLanguage": "Chọn ngôn ngữ của bạn",
+            "availableLanguages": "Chọn từ 47 ngôn ngữ có sẵn",
+            "currentLanguage": "Hiện tại: {{flag}} {{name}}",
+            "languageChanged": "Đã đổi ngôn ngữ thành {{name}}"
+        }
+    },
+    "seo": {
+        "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+        "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+    },
+    "sidebar": {
+        "home": "Trang chủ",
+        "profile": "Hồ sơ",
+        "recommendations": "Gợi ý",
+        "analytics": "Phân Tích",
+        "settings": "Cài đặt",
+        "logout": "Đăng xuất",
+        "loading": "Đang tải...",
+        "clickToOpenMenu": "Nhấp để mở menu"
+    },
+    "modal": {
+        "unsavedChanges": {
+            "title": "Thay đổi chưa lưu",
+            "message": "Bạn có thay đổi chưa lưu sẽ bị mất nếu bạn điều hướng đi. Bạn muốn làm gì?",
+            "discard": "Hủy bỏ",
+            "cancel": "Hủy",
+            "save": "Lưu"
+        },
+        "usernameChange": {
+            "title": "Xác nhận thay đổi tên người dùng",
+            "description": "Tên người dùng của bạn được sử dụng trong các liên kết hồ sơ và danh sách gợi ý:",
+            "profileLabel": "Hồ sơ:",
+            "listLabel": "Danh sách:",
+            "warning": "Bất kỳ mã QR hoặc liên kết nào với tên người dùng cũ của bạn sẽ không còn hoạt động — bạn sẽ cần cập nhật và chia sẻ lại chúng.",
+            "cooldownPrefix": "Bạn sẽ có thể thay đổi tên người dùng của mình lại sau",
+            "cooldownSuffix": "sau bản cập nhật này.",
+            "minute": "1 phút",
+            "day": "1 ngày",
+            "days": "ngày",
+            "cancel": "Hủy",
+            "confirm": "Thay đổi tên người dùng"
+        }
+    },
+    "analytics": {
+        "dashboard": {
+            "title": "Bảng Điều Khiển Phân Tích",
+            "subtitle": "Theo dõi hiệu suất mã QR của bạn và sự tương tác của người dùng",
+            "timePeriod": "Khoảng Thời Gian:",
+            "timeFilter": {
+                "today": "Hôm Nay",
+                "last7days": "7 Ngày Qua",
+                "last30days": "30 Ngày Qua",
+                "custom": "Phạm Vi Tùy Chỉnh",
+                "selectPeriod": "Chọn Khoảng Thời Gian"
+            },
+            "dateRange": {
+                "from": "Từ:",
+                "to": "Đến:"
+            },
+            "summaryCards": {
+                "totalViews": "Tổng Lượt Xem",
+                "totalClicks": "Tổng Lượt Nhấp",
+                "totalQRViews": "Tổng Lượt Xem QR",
+                "totalLinkViews": "Tổng Lượt Xem Liên Kết"
+            },
+            "loading": {
+                "loadingData": "Đang tải dữ liệu phân tích...",
+                "resolvingCountry": "Đang giải quyết dữ liệu quốc gia..."
+            },
+            "error": {
+                "title": "Lỗi Tải Phân Tích",
+                "message": "Không thể tải dữ liệu phân tích. Vui lòng thử lại sau.",
+                "errorLabel": "Lỗi:"
+            },
+            "comingSoon": {
+                "title": "Phân Tích Sắp Ra Mắt",
+                "message": "Phân tích sẽ có sẵn trong \u003cstrong\u003e{{days}} ngày{{daysPlural}}\u003c/strong\u003e sau khi tạo tài khoản của bạn.",
+                "whyWait": {
+                    "title": "Tại sao phải chờ?",
+                    "reasons": {
+                        "accuracy": "• Đảm bảo độ chính xác dữ liệu và ngăn chặn spam",
+                        "interactions": "• Cho phép thời gian cho các tương tác người dùng có ý nghĩa",
+                        "insights": "• Cung cấp những hiểu biết phân tích đáng tin cậy"
+                    }
+                },
+                "tip": "Trong lúc đó, hãy bắt đầu chia sẻ mã QR của bạn để tạo dữ liệu cho khi phân tích có sẵn!",
+                "filterTip": "\u003cstrong\u003eMẹo:\u003c/strong\u003e Sau khi phân tích có sẵn, bạn sẽ có thể lọc theo khoảng thời gian (hôm nay, 7 ngày qua, 30 ngày qua hoặc phạm vi tùy chỉnh) để xem dữ liệu của bạn."
+            },
+            "emptyState": {
+                "title": "Không Có Dữ Liệu Phân Tích",
+                "noDataMessage": "Không tìm thấy dữ liệu phân tích cho tài khoản của bạn. Phân tích sẽ xuất hiện ở đây khi mọi người bắt đầu xem và tương tác với mã QR của bạn.",
+                "customRange": {
+                    "bothMissing": "Vui lòng chọn cả ngày bắt đầu và ngày kết thúc cho phạm vi tùy chỉnh để xem dữ liệu phân tích.",
+                    "startMissing": "Vui lòng chọn ngày bắt đầu cho phạm vi tùy chỉnh để xem dữ liệu phân tích.",
+                    "endMissing": "Vui lòng chọn ngày kết thúc cho phạm vi tùy chỉnh để xem dữ liệu phân tích."
+                },
+                "noDataForPeriod": {
+                    "today": "Không có dữ liệu phân tích có sẵn cho hôm nay. Vui lòng chọn khoảng thời gian khác để xem dữ liệu của bạn.",
+                    "last7days": "Không có dữ liệu phân tích có sẵn cho 7 ngày qua. Vui lòng chọn khoảng thời gian khác để xem dữ liệu của bạn.",
+                    "last30days": "Không có dữ liệu phân tích có sẵn cho 30 ngày qua. Vui lòng chọn khoảng thời gian khác để xem dữ liệu của bạn.",
+                    "custom": "Không có dữ liệu phân tích có sẵn cho phạm vi tùy chỉnh ({{startDate}} đến {{endDate}}). Vui lòng chọn khoảng thời gian khác để xem dữ liệu của bạn.",
+                    "default": "Không có dữ liệu phân tích có sẵn cho khoảng thời gian đã chọn. Vui lòng chọn khoảng thời gian khác để xem dữ liệu của bạn."
+                },
+                "howToStart": {
+                    "title": "Để bắt đầu xem phân tích:",
+                    "shareQR": "• Chia sẻ mã QR của bạn trên mạng xã hội",
+                    "includeQR": "• Bao gồm mã QR trong tài liệu tiếp thị của bạn",
+                    "askFriends": "• Nhờ bạn bè quét mã QR của bạn",
+                    "viewProfile": "• Xem các trang hồ sơ công khai của bạn"
+                }
+            },
+            "charts": {
+                "topCountries": {
+                    "title": "Top 3 Quốc Gia theo Lượt Xem",
+                    "retryGeolocation": "Thử Lại Định Vị Địa Lý",
+                    "geolocationIssue": "Vấn Đề Định Vị Địa Lý:",
+                    "countryDataUnavailable": "Dữ Liệu Quốc Gia Không Có Sẵn",
+                    "unableToResolve": "Không thể giải quyết địa chỉ IP thành quốc gia tại thời điểm này. Điều này có thể do hạn chế mạng hoặc giới hạn dịch vụ.",
+                    "failedToResolve": "Không thể giải quyết dữ liệu quốc gia. Vui lòng thử lại sau.",
+                    "analyticsSummary": "Tóm Tắt Phân Tích:",
+                    "totalViewEvents": "• {{count}} tổng sự kiện xem",
+                    "eventsWithCountry": "• {{count}} sự kiện có dữ liệu quốc gia",
+                    "eventsPending": "• {{count}} sự kiện đang chờ định vị địa lý",
+                    "willAppear": "Dữ liệu quốc gia sẽ xuất hiện tự động khi dịch vụ định vị địa lý IP có sẵn.",
+                    "tooltip": {
+                        "country": "Quốc gia: {{country}}",
+                        "views": "Lượt xem: {{count}}"
+                    },
+                    "legend": "Lượt Xem"
+                },
+                "worldMap": {
+                    "title": "Phân Phối Lượt Xem Toàn Cầu",
+                    "subtitle": "Bản đồ thế giới tương tác hiển thị phân phối lượt xem trên các quốc gia từ các trang công khai",
+                    "noGeographicData": "Không Có Dữ Liệu Địa Lý",
+                    "unableToResolve": "Không thể giải quyết địa chỉ IP thành quốc gia tại thời điểm này. Điều này có thể do hạn chế mạng hoặc giới hạn dịch vụ.",
+                    "failedToResolve": "Không thể giải quyết dữ liệu quốc gia. Vui lòng thử lại sau.",
+                    "analyticsSummary": "Tóm Tắt Phân Tích:",
+                    "totalViewEvents": "• {{count}} tổng sự kiện xem",
+                    "eventsWithCountry": "• {{count}} sự kiện có dữ liệu quốc gia",
+                    "eventsPending": "• {{count}} sự kiện đang chờ định vị địa lý",
+                    "willAppear": "Dữ liệu quốc gia sẽ xuất hiện tự động khi dịch vụ định vị địa lý IP có sẵn.",
+                    "tooltip": {
+                        "country": "{{country}}",
+                        "views": "{{views}} lượt xem"
+                    },
+                    "countriesWithViews": "{{count}} quốc gia có lượt xem",
+                    "legend": {
+                        "views": "Lượt xem:",
+                        "low": "Thấp",
+                        "medium": "Trung Bình",
+                        "high": "Cao",
+                        "highest": "Cao Nhất"
+                    }
+                },
+                "trafficSource": {
+                    "title": "Nguồn Lưu Lượng Theo Thời Gian",
+                    "subtitle": "Theo dõi cách lưu lượng từ các nguồn khác nhau thay đổi theo thời gian",
+                    "selectSource": "Chọn Nguồn Lưu Lượng:",
+                    "allSources": "Tất Cả Nguồn",
+                    "direct": "Trực Tiếp",
+                    "qrCode": "Mã QR",
+                    "instagram": "Instagram",
+                    "whatsapp": "WhatsApp",
+                    "twitter": "Twitter",
+                    "noTrafficData": "Không Có Dữ Liệu Lưu Lượng",
+                    "noViewEvents": "Không tìm thấy sự kiện xem với thông tin nguồn lưu lượng.",
+                    "analyticsSummary": "Tóm Tắt Phân Tích:",
+                    "totalViewEvents": "• {{count}} tổng sự kiện xem",
+                    "eventsWithUTM": "• {{count}} sự kiện có nguồn UTM",
+                    "directTraffic": "• {{count}} sự kiện lưu lượng trực tiếp",
+                    "willAppear": "Dữ liệu nguồn lưu lượng sẽ xuất hiện khi người dùng truy cập trang của bạn với tham số UTM.",
+                    "tooltip": {
+                        "sourceCount": "{{source}}: {{count}}"
+                    }
+                },
+                "locationEngagement": {
+                    "title": "Tương Tác với Địa Điểm",
+                    "subtitle": "Theo dõi lượt xem cho các địa điểm khác nhau theo thời gian",
+                    "selectLocation": "Chọn Địa Điểm:",
+                    "allLocations": "Tất Cả Địa Điểm",
+                    "selectLocationPlaceholder": "Chọn Địa Điểm",
+                    "locationViews": "{{location}} ({{count}} lượt xem)",
+                    "noLocationData": "Không có dữ liệu lượt xem địa điểm có sẵn",
+                    "unknownLocation": "Địa Điểm Không Xác Định",
+                    "location": "Địa Điểm",
+                    "tooltip": {
+                        "date": "Ngày: {{date}}",
+                        "locationViews": "{{location}}: {{value}} lượt xem"
+                    },
+                    "stats": {
+                        "totalLocations": "Tổng Địa Điểm",
+                        "totalViews": "Tổng Lượt Xem",
+                        "avgViews": "Trung Bình Lượt Xem/Địa Điểm"
+                    }
+                },
+                "recommendedPlaces": {
+                    "title": "Tương Tác với Địa Điểm Được Đề Xuất",
+                    "subtitle": "Theo dõi lượt nhấp vào địa điểm được đề xuất theo địa điểm",
+                    "selectLocation": "Chọn Địa Điểm:",
+                    "selectLocationPlaceholder": "Chọn Địa Điểm",
+                    "locationPlaces": "{{location}} ({{count}} địa điểm)",
+                    "noRecommendationData": "Không Có Dữ Liệu Đề Xuất",
+                    "noDataMessage": "Không có dữ liệu nhấp đề xuất có sẵn cho khoảng thời gian đã chọn.",
+                    "analyticsSummary": "Tóm Tắt Phân Tích:",
+                    "totalClickEvents": "• {{count}} tổng sự kiện nhấp",
+                    "recordsWithRecommendations": "• {{count}} bản ghi có ID Đề Xuất",
+                    "uniqueRecommendations": "• {{count}} đề xuất duy nhất",
+                    "selectLocationPrompt": "Vui lòng chọn địa điểm để xem dữ liệu đề xuất.",
+                    "noClicksMessage": "Không tìm thấy lượt nhấp đề xuất cho địa điểm đã chọn. Dữ liệu đề xuất sẽ xuất hiện khi người dùng nhấp vào thẻ địa điểm trong trang địa điểm của bạn.",
+                    "unknownPlace": "Địa Điểm Không Xác Định",
+                    "unknownCategory": "Danh Mục Không Xác Định",
+                    "unknownLocation": "Địa Điểm Không Xác Định",
+                    "tooltip": {
+                        "place": "{{place}}",
+                        "category": "Danh mục: {{category}}",
+                        "clicks": "Lượt nhấp: {{count}}"
+                    },
+                    "stats": {
+                        "placesShown": "Địa Điểm Đã Hiển Thị",
+                        "totalClicks": "Tổng Lượt Nhấp",
+                        "avgClicks": "Trung Bình Lượt Nhấp/Địa Điểm"
+                    }
+                },
+                "socialMedia": {
+                    "title": "Tương Tác Mạng Xã Hội",
+                    "subtitle": "Theo dõi lượt nhấp vào liên kết mạng xã hội từ hồ sơ công khai của bạn trên tất cả các nền tảng",
+                    "noDataTitle": "Không Có Dữ Liệu Tương Tác Mạng Xã Hội",
+                    "noDataMessage": "Không có dữ liệu nhấp mạng xã hội có sẵn từ trang hồ sơ công khai của bạn.",
+                    "analyticsSummary": "Tóm Tắt Phân Tích:",
+                    "totalSocialClicks": "• {{count}} tổng lượt nhấp mạng xã hội",
+                    "uniquePlatforms": "• {{count}} nền tảng duy nhất",
+                    "trackingNote": "• Chỉ theo dõi lượt nhấp từ trang hồ sơ công khai",
+                    "willAppear": "Dữ liệu tương tác mạng xã hội sẽ xuất hiện khi người dùng nhấp vào liên kết mạng xã hội của bạn.",
+                    "tooltip": {
+                        "platform": "{{platform}}",
+                        "clicks": "Lượt nhấp: {{count}}"
+                    },
+                    "stats": {
+                        "platforms": "Nền Tảng",
+                        "totalClicks": "Tổng Lượt Nhấp",
+                        "avgClicks": "Trung Bình Lượt Nhấp/Nền Tảng"
+                    }
+                }
+            }
+        }
+    }
+}

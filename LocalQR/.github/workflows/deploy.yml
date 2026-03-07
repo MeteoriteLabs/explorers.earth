@@ -1,0 +1,87 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Append secrets to .env
+        run: |
+            echo "VITE_API_URL=${{ secrets.VITE_API_URL }}" >> .env
+            echo "VITE_REST_API_URL=${{ secrets.VITE_REST_API_URL }}" >> .env
+            echo "VITE_GOOGLE_MAPS_API_KEY=${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}" >> .env
+            echo "VITE_PUBLIC_ACCESS_TOKEN=${{ secrets.VITE_PUBLIC_ACCESS_TOKEN }}" >> .env
+            echo "VITE_PUBLIC_SHAREABLE_LINK=${{ secrets.VITE_PUBLIC_SHAREABLE_LINK }}" >> .env
+            echo "VITE_GOOGLE_CUSTOM_SEARCH_API_KEY=${{ secrets.VITE_GOOGLE_CUSTOM_SEARCH_API_KEY }}" >> .env
+            echo "VITE_GOOGLE_CUSTOM_SEARCH_ENGINE_ID=${{ secrets.VITE_GOOGLE_CUSTOM_SEARCH_ENGINE_ID }}" >> .env
+            echo "VITE_LOCAL_TUNES_API_URL=${{ secrets.VITE_LOCAL_TUNES_API_URL }}" >> .env
+            echo "VITE_LOCAL_TUNES_ENABLED=${{ secrets.VITE_LOCAL_TUNES_ENABLED }}" >> .env
+            echo "VITE_LOCAL_TUNES_TIMEOUT=${{ secrets.VITE_LOCAL_TUNES_TIMEOUT }}" >> .env
+            echo "VITE_LOCAL_TUNES_RETRY_ATTEMPTS=${{ secrets.VITE_LOCAL_TUNES_RETRY_ATTEMPTS }}" >> .env
+            echo "VITE_RAZORPAY_KEY_ID_DEV=${{ secrets.VITE_RAZORPAY_KEY_ID_DEV }}" >> .env
+            echo "VITE_PAYMENT_API_URL=${{ secrets.VITE_PAYMENT_API_URL }}" >> .env
+            echo "VITE_RAZORPAY_KEY_ID_PROD=${{ secrets.VITE_RAZORPAY_KEY_ID_PROD }}" >> .env
+            echo "VITE_INSTAGRAM_API_URL=${{ secrets.VITE_INSTAGRAM_API_URL }}" >> .env
+      
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm i
+
+      - name: Build project
+        run: npm run build
+
+      - name: Clean up old deployment directory
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          script: |
+            rm -rf /home/deployuser/localqr-frontend/*
+            mkdir -p /home/deployuser/localqr-frontend
+
+      - name: Copy files to server
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          port: ${{ secrets.DEPLOY_PORT }}
+          source: "dist/"
+          target: "/home/deployuser/localqr-frontend"
+
+      
+      - name: Restart Nginx
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          script: |
+            sudo service nginx restart
+
+      # - name: Restart Nginx
+      #   run: |
+      #       sudo service nginx restart
+
+      # - name: (Optional) Restart service
+      #   uses: appleboy/ssh-action@v0.1.2
+      #   with:
+      #     host: ${{ secrets.DEPLOY_HOST }}
+      #     username: ${{ secrets.DEPLOY_USER }}
+      #     key: ${{ secrets.DEPLOY_KEY }}
+      #     port: ${{ secrets.DEPLOY_PORT }}
+      #     script: |
+      #       cd /home/deployuser/explorers-frontend
+      #       # pm2 reload your-app
+      #this is for testing

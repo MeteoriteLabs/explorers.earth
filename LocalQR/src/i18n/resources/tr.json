@@ -1,0 +1,1786 @@
+﻿{
+    "header": {
+        "nav": {
+            "howItWorks": "Nasıl Çalışır",
+            "whoIsFor": "Kimler İçin",
+            "faq": "Sık Sorulan Sorular",
+            "about": "Hakkında",
+            "contact": "İletişim"
+        },
+        "auth": {
+            "login": "Giriş Yap",
+            "signUp": "Kayıt Ol"
+        }
+    },
+    "hero": {
+        "headline": "Tüm önerilerinizi tek QR ve basit linkte.",
+        "subtext": "Bir yer hakkında bildiğiniz ve sevdiğiniz şeyleri paylaşın — ve herkesin, her yerde keşfedilebilir hale getirin",
+        "inputLabel": "explorers URL'nizi rezerve edin:",
+        "inputPlaceholder": "adınız",
+        "ctaButton": "explorers Rezerve Et",
+        "signupPrompt": "Sizinkini almak için şimdi kayıt olun"
+    },
+    "sections": {
+        "createCustomize": {
+            "headline": "explorers'ınızı dakikalar içinde oluşturun ve özelleştirin",
+            "subtext": "Favori yerlerinizi ekleyin, şehir veya temaya göre düzenleyin ve QR'ınızı anında oluşturun.",
+            "bulletPoints": {
+                "addSpots": {
+                    "title": "Favori yerlerinizi ekleyin",
+                    "description": "Mutlaka görülmesi gereken yerlerle liste oluşturun"
+                },
+                "organize": {
+                    "title": "Şehir veya temaya göre düzenleyin",
+                    "description": "Hedef kitleniz için anlamlı kategoriler oluşturun"
+                },
+                "generate": {
+                    "title": "Linkinizi ve QR'ınızı anında oluşturun",
+                    "description": "Kişiselleştirilmiş QR'ınız saniyeler içinde hazır"
+                },
+                "share": {
+                    "title": "Dijital olarak veya gerçek dünyada QR ile paylaşın",
+                    "description": ""
+                }
+            },
+            "mockup": {
+                "title": "Önerilerim",
+                "addPlace": "Yer Ekle"
+            }
+        },
+        "shareAnywhere": {
+            "headline": "Sosyal medyada, mağaza vitrinlerinde veya şehir duvarlarında paylaşın",
+            "subtext": "Instagram bio'nuza ekleyin, menülerde yazdırın veya karşılama kitaplarına dahil edin — rehberiniz, her zaman hazır.",
+            "scanText": "Yerel öneriler için tarayın",
+            "storefrontText": "Mağaza vitrinleri için mükemmel",
+            "instagramTitle": "Instagram bio'nuza ekleyin",
+            "instagramDesc": "Takipçilerinizle anında paylaşın",
+            "menuTitle": "Menülerde yazdırın",
+            "menuDesc": "Fiziksel temas noktaları basitleştirildi",
+            "welcomeTitle": "Karşılama kitaplarına dahil edin",
+            "welcomeDesc": "Ev sahipleri ve rehberler için mükemmel",
+            "cafeMenu": "Kafe Menüsü",
+            "tokyoFoodGuide": "Tokyo yemek rehberim explorers.earth/jane"
+        },
+        "analytics": {
+            "headline": "Tıklamaları, yönlendirmeleri ve etkileşimi takip edin",
+            "subtext": "Neyin işe yaradığını, kimin taradığını ve hangi yerlerin en çok sevildiğini gerçek zamanlı olarak görün.",
+            "workingTitle": "Neyin işe yaradığını görün",
+            "workingDesc": "Önerilerinizin popülerliğini takip edin",
+            "scanningTitle": "Kim tarıyor",
+            "scanningDesc": "QR taramaları ve güncellemeleri izleyin",
+            "spotsTitle": "En iyi yerler",
+            "spotsDesc": "Daha iyi küratörlük için veri odaklı içgörüler",
+            "dashboardTitle": "Analitik Panosu",
+            "last30Days": "Son 30 gün",
+            "totalScans": "Toplam Tarama",
+            "engagement": "Etkileşim",
+            "referrals": "Yönlendirmeler"
+        },
+        "referEarn": {
+            "headline": "Paylaşın, yönlendirin ve kazanın",
+            "subtext": "Önerilerinizi pasif ödüllere dönüştürün — başkaları QR'ınızı kullandığında kredi kazanın.",
+            "comingSoon": "Yönlendirme Ödül Programı (Yakında)",
+            "rewardsTitle": "Ödül Kazanın",
+            "rewardsDesc": "İnsanlar önerilerinizi kullandığında para kazanın",
+            "earnedThisMonth": "Bu ay kazanılan",
+            "passiveTitle": "Önerileri pasif ödüllere dönüştürün",
+            "networkTitle": "Ağınızı oluşturun ve otomatik kazanın"
+        },
+        "localTunes": {
+            "mainHeading": "Tunes",
+            "title": "Keşfederken dinleyin",
+            "body": "Keşif sadece görsel değildir. Ses hafıza, bağlam ve duygu taşır.\n\nTunes, yerler, yolculuklar ve ruh halleri için müzik parçaları toplamanıza ve paylaşmanıza olanak tanır — yolda keşfedilen müzik olsun veya sizin için bir yeri tanımlayan sesler olsun.\n\nExplorer profilinizle sorunsuz bir şekilde bağlanır.",
+            "exploreButton": "Tunes'u Keşfet",
+            "featuresHeading": "Güçlü Özellikler",
+            "features": {
+                "realtimeCollaboration": {
+                    "title": "Gerçek Zamanlı İşbirliği",
+                    "description": "Misafirlerin çalma listenize anında şarkı eklemesine izin verin, çalan içeriği tam kontrol altında tutun."
+                },
+                "qrCodeSharing": {
+                    "title": "QR Kod Paylaşımı",
+                    "description": "Basit bir QR kod taramasıyla müzik deneyiminizi paylaşın — uygulama veya indirme gerekmez."
+                },
+                "youtubeIntegration": {
+                    "title": "YouTube Entegrasyonu",
+                    "description": "Milyonlarca şarkıya erişmek ve mükemmel atmosferi yaratmak için YouTube ile sorunsuz bir şekilde entegre olun."
+                },
+                "voteLikeSystem": {
+                    "title": "Oylama ve Beğeni Sistemi",
+                    "description": "Misafirler favori şarkılarına oy vererek çalma listesi kuyruğunu gerçek zamanlı olarak etkileyebilir."
+                },
+                "silentParties": {
+                    "title": "Sessiz Partiler",
+                    "description": "Herkesin kendi kulaklıklarından dinlediği benzersiz sessiz partiler düzenleyin."
+                },
+                "karaokeReady": {
+                    "title": "Karaoke Hazır",
+                    "description": "İşbirlikçi çalma listeleri ve gerçek zamanlı şarkı istekleriyle karaoke geceleri için mükemmel."
+                }
+            },
+            "venueHeading": "Her Mekan İçin Mükemmel",
+            "venues": {
+                "barsPubs": "Barlar ve Pub'lar",
+                "restaurants": "Restoranlar",
+                "coffeeShops": "Kahve Dükkanları",
+                "eventsWeddings": "Etkinlikler ve Düğünler",
+                "retailStores": "Perakende Mağazalar",
+                "gymsFitness": "Spor Salonları ve Fitness"
+            },
+            "closingStatement": "Tunes keşfetmek için \u003cstrong\u003eücretsiz\u003c/strong\u003edir ve ücretli özellikler için daha sonra yükseltebilirsiniz."
+        },
+        "whoIsFor": {
+            "headline": "explorers.earth kimler için?",
+            "subtext": "explorers.earth paylaşmanın bir sorumluluk olduğuna inanan herkes içindir — yayın değil.",
+            "cards": {
+                "individuals": {
+                    "title": "Bireyler",
+                    "oneLiner": "Kişisel veya yerel öneriler paylaşın.",
+                    "items": {
+                        "traveler": {
+                            "label": "Gezgin",
+                            "oneLiner": "Seyahat yerlerini paylaşan insanlar"
+                        },
+                        "local": {
+                            "label": "Yerel",
+                            "oneLiner": "Mahalle ipuçlarını paylaşan yerel halk"
+                        },
+                        "family": {
+                            "label": "Aile",
+                            "oneLiner": "Faydalı yerler paylaşan aileler"
+                        },
+                        "student": {
+                            "label": "Öğrenci",
+                            "oneLiner": "Kampüs/yakındaki yerleri paylaşan öğrenciler"
+                        },
+                        "nomad": {
+                            "label": "Göçebe",
+                            "oneLiner": "Çalışma dostu alanları listeleyen göçebeler"
+                        },
+                        "emergencySharer": {
+                            "label": "Acil Durum Paylaşıcısı",
+                            "oneLiner": "Önemli yerler yayınlayan acil durum paylaşıcıları"
+                        }
+                    }
+                },
+                "creators": {
+                    "title": "Yaratıcılar",
+                    "oneLiner": "Kitlelerinizle küratörlü listeler paylaşın.",
+                    "items": {
+                        "influencer": {
+                            "label": "Etkileyici",
+                            "oneLiner": "En iyi seçimleri paylaşan etkileyiciler"
+                        },
+                        "blogger": {
+                            "label": "Blog Yazarı",
+                            "oneLiner": "Yazılı rehberler küratörlüğü yapan blog yazarları"
+                        },
+                        "vlogger": {
+                            "label": "Vlog Yazarı",
+                            "oneLiner": "Görsel yolculuklar paylaşan vlog yazarları"
+                        },
+                        "reviewer": {
+                            "label": "İncelemeci",
+                            "oneLiner": "En iyi puanlı yerleri listeleyen incelemeciler"
+                        },
+                        "photographer": {
+                            "label": "Fotoğrafçı",
+                            "oneLiner": "Fotoğraf yerlerini paylaşan fotoğrafçılar"
+                        },
+                        "educator": {
+                            "label": "Eğitimci",
+                            "oneLiner": "Öğrenme rehberleri paylaşan eğitimciler"
+                        },
+                        "communityLeader": {
+                            "label": "Topluluk Lideri",
+                            "oneLiner": "Faydalı listeler küratörlüğü yapan topluluk liderleri"
+                        }
+                    }
+                },
+                "hospitality": {
+                    "title": "Misafirperverlik",
+                    "oneLiner": "Misafirlere küratörlü yerel içgörüler sunun.",
+                    "items": {
+                        "hotel": {
+                            "label": "Otel",
+                            "oneLiner": "Yerel rehber kitaplar sunan oteller"
+                        },
+                        "airbnb": {
+                            "label": "Airbnb",
+                            "oneLiner": "Mahalle favorilerini paylaşan ev sahipleri"
+                        },
+                        "hostel": {
+                            "label": "Pansiyon",
+                            "oneLiner": "Sırt çantalı gezgin ipuçlarını paylaşan pansiyonlar"
+                        },
+                        "homestay": {
+                            "label": "Evde Konaklama",
+                            "oneLiner": "Aile odaklı rehberler sunan evde konaklamalar"
+                        },
+                        "resort": {
+                            "label": "Tatil Köyü",
+                            "oneLiner": "Aktivite listeleri sağlayan tatil köyleri"
+                        },
+                        "pgColiving": {
+                            "label": "PG/Ortak Yaşam",
+                            "oneLiner": "Önemli yakındaki yerleri gösteren PG/Ortak Yaşam"
+                        }
+                    }
+                },
+                "businesses": {
+                    "title": "İşletmeler",
+                    "oneLiner": "Müşterileri faydalı önerilerle yönlendirin.",
+                    "items": {
+                        "restaurant": {
+                            "label": "Restoran",
+                            "oneLiner": "Denenmesi gereken yemekleri paylaşan restoranlar"
+                        },
+                        "cafe": {
+                            "label": "Kafe",
+                            "oneLiner": "Favori menü öğelerini vurgulayan kafeler"
+                        },
+                        "retailShop": {
+                            "label": "Perakende Mağaza",
+                            "oneLiner": "Ürün önerilerini paylaşan mağazalar"
+                        },
+                        "gym": {
+                            "label": "Spor Salonu",
+                            "oneLiner": "Yerel sağlık yerleri öneren spor salonları"
+                        },
+                        "spa": {
+                            "label": "Spa",
+                            "oneLiner": "Yakındaki rahatlama seçeneklerini listeleyen spa'lar"
+                        },
+                        "salon": {
+                            "label": "Salon",
+                            "oneLiner": "Güzellik rehberleri sunan salonlar"
+                        },
+                        "clinic": {
+                            "label": "Klinik",
+                            "oneLiner": "Sağlıkla ilgili yerleri paylaşan klinikler"
+                        },
+                        "boutique": {
+                            "label": "Butik",
+                            "oneLiner": "Küratörlü bulguları listeleyen butikler"
+                        }
+                    }
+                },
+                "organizations": {
+                    "title": "Organizasyonlar",
+                    "oneLiner": "Küratörlü rehberler ve kaynaklar sağlayın.",
+                    "items": {
+                        "airline": {
+                            "label": "Havayolu",
+                            "oneLiner": "Şehir rehberleri paylaşan havayolları"
+                        },
+                        "agency": {
+                            "label": "Acenta",
+                            "oneLiner": "Görülmesi gereken yerleri listeleyen seyahat acenteleri"
+                        },
+                        "university": {
+                            "label": "Üniversite",
+                            "oneLiner": "Kampüs temel bilgilerini paylaşan üniversiteler"
+                        },
+                        "corporate": {
+                            "label": "Kurumsal",
+                            "oneLiner": "Yakındaki kaynakları listeleyen kurumsal şirketler"
+                        },
+                        "airport": {
+                            "label": "Havalimanı",
+                            "oneLiner": "Terminaller + şehir ipuçları sunan havalimanları"
+                        },
+                        "railway": {
+                            "label": "Demiryolu",
+                            "oneLiner": "Platform bilgilerini paylaşan demiryolları"
+                        },
+                        "ngo": {
+                            "label": "STK",
+                            "oneLiner": "Topluluk kaynaklarını paylaşan STK'lar"
+                        },
+                        "government": {
+                            "label": "Hükümet",
+                            "oneLiner": "Kamu hizmetlerini vurgulayan departmanlar"
+                        }
+                    }
+                }
+            },
+            "useCases": {
+                "travelers": "Seyyahlar",
+                "travelersDesc": "Keşfedilen mücevherleri diğer kaşiflerle paylaşın",
+                "influencers": "İnfluencerlar",
+                "influencersDesc": "Yerel bilgiyi para kazandırın ve topluluk oluşturun",
+                "airbnbHosts": "Airbnb Ev Sahipleri",
+                "airbnbHostsDesc": "Yerel içgörülerle misafir deneyimini geliştirin",
+                "hotels": "Otel",
+                "hotelsDesc": "Küratörlü yerel öneriler sunun",
+                "restaurants": "Restoranlar",
+                "restaurantsDesc": "Diğer yerel işletmelerle çapraz tanıtım yapın",
+                "cafes": "Kafeler",
+                "cafesDesc": "Müşterilerle mahalle favorilerini paylaşın",
+                "localGuides": "Yerel Rehberler",
+                "localGuidesDesc": "Bireysel turların ötesinde uzmanlığınızı ölçeklendirin",
+                "creators": "İçerik Üreticileri",
+                "creatorsDesc": "Eyleme dönüştürülebilir ipuçlarıyla içerik ötesinde değer ekleyin",
+                "tourOperators": "Tur Operatörleri",
+                "tourOperatorsDesc": "Planlanmış turların ötesinde deneyimi genişletin",
+                "anyBusiness": "Herhangi Bir İşletme",
+                "anyBusinessDesc": "Topluluk ve müşteri sadakati oluşturun"
+            }
+        },
+        "testimonials": {
+            "headline": "Seyyahlar, içerik üreticileri ve ev sahipleri tarafından sevilen",
+            "subtext": "Dünya çapındaki insanların explorers'ı en önemli şeyleri paylaşmak için nasıl kullandığını görün.",
+            "scrollLeft": "Referansları sola kaydır",
+            "scrollRight": "Referansları sağa kaydır",
+            "items": [
+                {
+                    "id": "1",
+                    "name": "Marcus Chen",
+                    "role": "Seyahat Blog Yazarı",
+                    "location": "San Francisco",
+                    "quote": "explorers seyahat bilgilerimi paylaşma şeklimi değiştirdi. Takipçilerim küratörlüğünü yaptığım önerilere anında erişmeyi seviyor!"
+                },
+                {
+                    "id": "2",
+                    "name": "Sarah Johnson",
+                    "role": "Airbnb Ev Sahibi",
+                    "location": "Barselona",
+                    "quote": "Misafirlerim hoş geldin kitlerindeki kişiselleştirilmiş QR kodunu kesinlikle seviyor. Bu benim imza dokunuşum oldu!"
+                },
+                {
+                    "id": "3",
+                    "name": "Alex Rodriguez",
+                    "role": "Restoran Sahibi",
+                    "location": "Meksiko Şehri",
+                    "quote": "Müşterilerimizle diğer yerel mekanları önermek için explorers'ımızı paylaşıyoruz. İnanılmaz topluluk bağlantıları yarattı."
+                },
+                {
+                    "id": "4",
+                    "name": "Emma Thompson",
+                    "role": "Tur Rehberi",
+                    "location": "Londra",
+                    "quote": "explorers uzmanlığımı tur saatlerinin ötesine genişletmeme yardımcı oluyor. Müşteriler önerilerime istediği zaman erişebiliyor!"
+                }
+            ]
+        },
+        "faq": {
+            "headline": "Sorularınız mı var?",
+            "subtext": "İnsanların başlamadan önce en sık sorduğu şeyleri yanıtladık.",
+            "loading": "SSS yükleniyor...",
+            "error": "SSS yüklenirken hata oluştu. Lütfen daha sonra tekrar deneyin."
+        },
+        "features": {
+            "title": "Yoldan uzak durmak için inşa edildi",
+            "subtitle": "Önerilerinizin parlamasına izin veren basit, düşünceli özellikler.",
+            "simpleLinks": {
+                "title": "Basit bağlantılar ve QR paylaşımı"
+            },
+            "livingGuides": {
+                "title": "Canlı, düzenlenebilir rehberler"
+            },
+            "locationAware": {
+                "title": "Konum bilinçli öneriler"
+            },
+            "soundPlaylists": {
+                "title": "İsteğe bağlı ses ve çalma listeleri"
+            },
+            "privacyFirst": {
+                "title": "Tasarıma göre gizlilik öncelikli"
+            },
+            "communityDriven": {
+                "title": "Topluluk odaklı keşif"
+            }
+        },
+        "finalCTA": {
+            "headline": "Dünyanızı bugün paylaşmaya başlayın",
+            "subtext": "Ücretsiz explorers'ınızı rezerve edin ve yerel içgörülerinizi paylaşılabilir rehberlere dönüştürün.",
+            "ctaButton": "explorers Rezerve Et – Sonsuza Kadar Ücretsiz",
+            "disclaimer": "Kredi kartı gerekmez • 2 dakikada kurulum",
+            "creating": "explorers'ınız oluşturuluyor..."
+        }
+    },
+    "contact": {
+        "title": "Bağlanalım.",
+        "subtitle": "Bir sorunuz, fikriniz var veya sadece merhaba demek istiyorsanız — sizden duymak isteriz.",
+        "getInTouch": "İletişime Geç",
+        "email": "hello@explorers.earth",
+        "responseTime": "24-48 saat içinde yanıt veriyoruz",
+        "closingMessage": "Büyük bir vizyona sahip küçük bir ekibiz — düşünceleriniz bizim için önemli. İletişime geçin ve birlikte yerel ve küresel bir şey oluşturalım.",
+        "seo": {
+            "title": "Contact explorers | Support, Help and Partnership enquiries.",
+            "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
+            "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+            "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
+            "keywords": [
+                "contact explorers",
+                "explorers support",
+                "get in touch explorers",
+                "customer service travel app",
+                "partnership inquiry explorers",
+                "help center local recommendations",
+                "technical support explorers",
+                "travel app customer service",
+                "feedback location sharing",
+                "account assistance explorers",
+                "business collaboration explorers",
+                "report problem explorers",
+                "share local recommendations support",
+                "find explorers contact",
+                "customer service",
+                "explorers team",
+                "help center",
+                "contact support",
+                "QR code support",
+                "local recommendations help",
+                "partnership inquiries"
+            ]
+        }
+    },
+    "about": {
+        "title": "Dünyanın Kaşifleri",
+        "subtitle": {
+            "line1": "İnsanlar, kültür ve paylaştığımız gezegen için özenle keşfeden insanların küresel topluluğu.",
+            "line2": "Keşif bizim için ne kadar uzağa gittiğimizle ilgili değil.",
+            "line3": "Ne kadar derin bağlandığımızla ilgili."
+        },
+        "section1": {
+            "title": "NEYE İNANIYORUZ",
+            "line1": "Keşif farkındalıkla başlar.",
+            "line2": "Başkalarının gözden kaçırdığı şeyleri fark etmekle.",
+            "line3": "Hızlı değil, düşünceli hareket etmeyi seçmekle.",
+            "line4": "Kısa bir süre eski bir gezegende yaşıyoruz —\nçok önceden başlayan bir hikayeye\nbirkaç kasıtlı işaret ekleyerek\nve biz gittikten çok sonra devam edecek bir hikayeye."
+        },
+        "section2": {
+            "title": "KEŞFİ NASIL GÖRÜYORUZ",
+            "line1": "Keşif mil olarak ölçülmez.",
+            "line2": "Anlam olarak ölçülür.",
+            "line3": "Yavaşlamakta, dikkat etmekte\nve adım attığımız her yere saygı duymakta yaşar —\nbir sokak, bir dağ yolu, bir kafe masası,\nveya yeni biriyle paylaşılan bir an."
+        },
+        "section3": {
+            "title": "NE İNŞA EDİYORUZ",
+            "line1": "explorers şunlar için bir yerdir:",
+            "item1": "Gerçek deneyimle şekillendirilmiş rehberler",
+            "item2": "Hatırlanmaya değer yerler, yolculuklar, sesler ve hikayeler",
+            "item3": "Popülerlik metrikleri değil, insanlar üzerine kurulu topluluklar",
+            "line2": "Teknoloji bağlanmamıza yardımcı olur.",
+            "line3": "İnsanlar ona amaç verir."
+        },
+        "section4": {
+            "title": "AİDİYET",
+            "line1": "Dünyanın Kaşifleri bir kulüp değildir.",
+            "line2": "Bir etiket değildir.",
+            "line3": "Paylaşılan bir zihniyettir —\ndünyada nasıl hareket ettiğimize dair sessiz bir anlayış."
+        },
+        "closing": "Eğer meraklıysanız.\nEğer düşünceliyseniz.\nEğer yavaşlamaya ve daha yakından bakmaya istekliyseniz —\nzaten buraya aitsiniz.",
+        "seo": {
+            "title": "Explorers of Earth | About Us",
+            "description": "A global community of people who explore with care — for people, culture, and the planet we share. Exploration isn't about distance, it's about depth.",
+            "keywords": [
+                "explorers of earth",
+                "about explorers",
+                "exploration community",
+                "thoughtful travel",
+                "sustainable exploration",
+                "local recommendations platform",
+                "travel app about",
+                "community-driven recommendations",
+                "authentic local experiences",
+                "explorers team",
+                "local discovery platform",
+                "share local places",
+                "travel technology",
+                "local recommendations app",
+                "explorers story",
+                "who we are explorers"
+            ]
+        }
+    },
+    "cookieConsent": {
+        "title": "🍪 Çerez Tercihleri",
+        "description": "Gözatma deneyiminizi geliştirmek, kişiselleştirilmiş içerik sunmak ve trafiği analiz etmek için çerezler kullanıyoruz. Tercihlerinizi istediğiniz zaman yönetebilirsiniz.",
+        "acceptAll": "✅ Tüm Çerezleri Kabul Et",
+        "customize": "⚙️ Özelleştir",
+        "rejectNonEssential": "❌ Gerekli Olmayanları Reddet",
+        "preferencesTitle": "Çerez Tercihleri",
+        "essentialCookies": {
+            "title": "Gerekli Çerezler",
+            "description": "Web sitesinin düzgün çalışması için gerekli",
+            "alwaysOn": "Her Zaman Açık"
+        },
+        "analyticsCookies": {
+            "title": "Analitik Çerezler",
+            "description": "Ziyaretçilerin web sitemizle nasıl etkileşim kurduğunu anlamamıza yardımcı olur"
+        },
+        "marketingCookies": {
+            "title": "Pazarlama Çerezleri",
+            "description": "Kişiselleştirilmiş reklamlar sunmak için kullanılır"
+        },
+        "savePreferences": "Tercihleri Kaydet",
+        "acceptAllButton": "Tümünü Kabul Et",
+        "closeBanner": "Banner'ı kapat",
+        "goBack": "Geri dön"
+    },
+    "footer": {
+        "tagline": "Önerilerinizin dünyayı dolaşmasına izin verin.",
+        "email": "hello@explorers.earth",
+        "sections": {
+            "product": "Ürün",
+            "contact": "İletişim",
+            "legal": "Yasal"
+        },
+        "links": {
+            "howItWorks": "Nasıl Çalışır",
+            "faq": "Sık Sorulan Sorular",
+            "contact": "İletişim",
+            "about": "Hakkında",
+            "terms": "Şartlar ve Koşullar",
+            "privacy": "Gizlilik Politikası",
+            "cookies": "Çerez Politikası"
+        },
+        "copyright": "© 2025 explorers. Tüm hakları saklıdır.",
+        "madeWithLove": "Dünyada sevgiyle yapıldı"
+    },
+    "legal": {
+        "terms": {
+            "title": "Şartlar ve Koşullar",
+            "loading": "Şartlar ve koşullar yükleniyor...",
+            "error": "Şartlar ve koşullar yüklenirken hata oluştu. Lütfen daha sonra tekrar deneyin."
+        },
+        "privacy": {
+            "title": "Gizlilik Politikası",
+            "loading": "Gizlilik politikası yükleniyor...",
+            "error": "Gizlilik politikası yüklenirken hata oluştu. Lütfen daha sonra tekrar deneyin."
+        },
+        "cookies": {
+            "title": "Çerez Politikası",
+            "loading": "Çerez politikası yükleniyor...",
+            "error": "Çerez politikası yüklenirken hata oluştu. Lütfen daha sonra tekrar deneyin."
+        }
+    },
+    "languageModal": {
+        "title": "Dil Seçin",
+        "searchPlaceholder": "Dilleri ara...",
+        "close": "Kapat"
+    },
+    "auth": {
+        "signup": "Kayıt Ol",
+        "signupSubtitle": "explorers özelliklerinin keyfini çıkarmak için kayıt olun",
+        "username": "Kullanıcı Adı",
+        "usernamePlaceholder": "Kullanıcı adınızı girin",
+        "email": "E-posta",
+        "emailPlaceholder": "E-posta adresinizi girin",
+        "password": "Şifre",
+        "passwordPlaceholder": "Şifrenizi girin",
+        "confirmPassword": "Şifreyi Onayla",
+        "confirmPasswordPlaceholder": "Şifrenizi tekrar girin",
+        "register": "Kayıt Ol",
+        "or": "veya",
+        "signUpWithGoogle": "Google ile Kayıt Ol",
+        "alreadyHaveAccount": "Zaten hesabınız var mı?",
+        "login": "Giriş Yap",
+        "loginTitle": "Giriş Yap",
+        "loginSubtitle": "Hesabınıza devam etmek için lütfen giriş yapın",
+        "usernameOrEmail": "Kullanıcı adı veya e-posta",
+        "usernameOrEmailPlaceholder": "Kullanıcı adınızı veya e-posta adresinizi girin",
+        "signInWithGoogle": "Google ile Giriş Yap",
+        "newToexplorers": "explorers'da yeni misiniz?",
+        "forgotPassword": "Şifrenizi mi unuttunuz?",
+        "validations": {
+            "username": {
+                "required": "Kullanıcı adı gereklidir",
+                "minLength": "Kullanıcı adı en az 3 karakter olmalıdır",
+                "maxLength": "Kullanıcı adı 30 karakteri aşamaz",
+                "invalidChars": "Kullanıcı adı yalnızca küçük harfler (a-z), rakamlar (0-9) ve tire (-) içerebilir",
+                "mustStartWithLetter": "Kullanıcı adı bir harf (a-z) ile başlamalıdır",
+                "cannotStartEndHyphen": "Kullanıcı adı tire ile başlayamaz veya bitemez",
+                "noConsecutiveHyphens": "Kullanıcı adı ardışık tire içeremez",
+                "cannotBeAllNumbers": "Kullanıcı adı yalnızca rakamlardan oluşamaz",
+                "reservedWords": "Bu kullanıcı adı ayrılmış kelimeler içeriyor ve kullanılamaz",
+                "inappropriateContent": "Kullanıcı adı uygunsuz içerik içeriyor",
+                "alreadyExists": "Kullanıcı adı zaten mevcut",
+                "suggestedAlternatives": "Önerilen alternatifler:",
+                "willBeConvertedLowercase": "Kullanıcı adı küçük harfe dönüştürülecek",
+                "checkingAvailability": "Kullanılabilirlik kontrol ediliyor...",
+                "available": "Kullanıcı adı kullanılabilir",
+                "willConvertToLowercase": "Kullanıcı adı küçük harfe dönüştürülecek"
+            },
+            "email": {
+                "required": "E-posta gereklidir",
+                "invalidFormat": "Lütfen geçerli bir e-posta adresi girin",
+                "alreadyExists": "E-posta zaten mevcut",
+                "invalid": "Geçersiz e-posta"
+            },
+            "password": {
+                "required": "Şifre gereklidir",
+                "minLength": "Şifre en az 6 karakter olmalıdır",
+                "uppercaseRequired": "Şifre en az bir büyük harf (A-Z) içermelidir",
+                "numberRequired": "Şifre en az bir rakam (0-9) içermelidir",
+                "specialCharRequired": "Şifre en az bir özel karakter (!@#$%^&*().,?\":{}|\u003c\u003e) içermelidir",
+                "strength": "Şifre gücü",
+                "weak": "Zayıf",
+                "medium": "Orta",
+                "strong": "Güçlü",
+                "maxLength": "Password must not exceed 32 characters",
+                "lowercaseRequired": "Password must contain at least one lowercase letter (a-z)",
+                "tooCommon": "This password is too common. Please choose a more unique password",
+                "sameAsCurrent": "New password cannot be the same as your current password",
+                "considerLonger": "Consider using a longer password with more variety for better security",
+                "moreSecure": "Passwords with 10 or more characters are more secure",
+                "veryWeak": "Çok zayıf",
+                "fair": "Orta",
+                "good": "İyi",
+                "veryStrong": "Çok güçlü"
+            },
+            "confirmPassword": {
+                "required": "Lütfen şifrenizi onaylayın",
+                "mustMatch": "Şifreler eşleşmiyor",
+                "confirmRequired": "Şifre onayı gereklidir",
+                "match": "Şifreler eşleşiyor"
+            },
+            "login": {
+                "usernameOrEmailRequired": "Kullanıcı adı veya e-posta gereklidir",
+                "invalidCredentials": "Geçersiz kullanıcı adı/e-posta veya şifre",
+                "accountNotFound": "Hesap bulunamadı",
+                "tooManyAttempts": "Çok fazla başarısız deneme",
+                "incorrectPassword": "Yanlış şifre"
+            },
+            "general": {
+                "fillRequiredFields": "Lütfen tüm gerekli alanları doldurun",
+                "somethingWentWrong": "Bir şeyler ters gitti, lütfen tekrar deneyin"
+            },
+            "forgotPassword": {
+                "title": "Şifrenizi mi Unuttunuz?",
+                "description": "E-posta adresinizi girin ve size sıfırlama bağlantısı gönderelim.",
+                "emailLabel": "E-posta adresi",
+                "emailPlaceholder": "E-posta adresinizi girin",
+                "sendResetLink": "Sıfırlama Bağlantısı Gönder",
+                "backToLogin": "Girişe Dön",
+                "resetLinkSent": "Şifre sıfırlama bağlantısı e-postanıza gönderildi!",
+                "failedToSend": "Sıfırlama bağlantısı gönderilemedi. Daha sonra tekrar deneyin.",
+                "somethingWentWrong": "Bir şeyler ters gitti!"
+            },
+            "accountName": {
+                "required": "Hesap adı gerekli",
+                "minLength": "Hesap adı en az 2 karakter olmalı",
+                "maxLength": "Hesap adı 50 karakteri aşmamalı",
+                "invalidChars": "Hesap adı yalnızca harfler, boşluklar, apostroflar, tireler ve noktalar içerebilir",
+                "noNumbers": "Hesap adı sayı içeremez"
+            },
+            "accountType": {
+                "required": "Hesap türü gerekli",
+                "invalid": "Geçersiz hesap türü"
+            },
+            "primaryAddress": {
+                "required": "Birincil adres gerekli"
+            },
+            "socialMedia": {
+                "instagram": "Lütfen geçerli bir Instagram profil URL'si girin",
+                "whatsapp": "Geçerli bir WhatsApp iletişimi girin: telefon (+1234567890) veya wa.me/api.whatsapp.com bağlantısı",
+                "mobile": "Lütfen geçerli bir cep telefonu numarası girin (örn. +1234567890)",
+                "youtube": "Lütfen geçerli bir YouTube kanal URL'si girin (örn. youtube.com/@kullanıcıadı)",
+                "x": "Lütfen geçerli bir X (Twitter) profil URL'si girin",
+                "spotify": "Lütfen geçerli bir Spotify URL'si girin",
+                "website": "Lütfen geçerli bir web sitesi URL'si girin",
+                "facebook": "Lütfen geçerli bir Facebook profil URL'si girin",
+                "youtubeMusic": "Lütfen geçerli bir YouTube Music kanal URL'si girin",
+                "email": "Lütfen geçerli bir e-posta adresi girin",
+                "linkedin": "Lütfen geçerli bir LinkedIn profil URL'si girin",
+                "appleMusic": "Lütfen geçerli bir Apple Music URL'si girin",
+                "tiktok": "Lütfen geçerli bir TikTok profil URL'si girin",
+                "snapchat": "Lütfen geçerli bir Snapchat kullanıcı adı girin"
+            },
+            "onboarding": {
+                "displayNameRequired": "Görünen ad gerekli",
+                "displayNameMinLength": "Görünen ad en az 2 karakter olmalı",
+                "displayNameMaxLength": "Görünen ad 50 karakteri aşmamalı",
+                "bioRequired": "Biyografi gerekli",
+                "bioMaxLength": "Biyografi 250 karakteri aşmamalı",
+                "mobileNumberRequired": "Cep telefonu numarası gerekli",
+                "mobileNumberInvalid": "Lütfen geçerli bir cep telefonu numarası girin",
+                "mobileNumberLength": "Cep telefonu numarası 10 haneli olmalı",
+                "addressRequired": "Adres gerekli",
+                "cityRequired": "Şehir gerekli",
+                "stateRequired": "Eyalet gerekli",
+                "countryRequired": "Ülke gerekli",
+                "postalCodeRequired": "Posta kodu gerekli",
+                "primaryAddressRequired": "Birincil adres gerekli",
+                "emailAddressRequired": "E-posta adresi gerekli",
+                "resetLinkSentSuccess": "Sıfırlama bağlantısı başarıyla gönderildi!",
+                "invalidUsername": "Geçersiz kullanıcı adı",
+                "profileImageAlt": "Profile"
+            },
+            "resetPassword": {
+                "newPassword": "New Password",
+                "confirmPassword": "Confirm Password"
+            },
+            "resetLinkSent": {
+                "title": "E-posta Gönderildi!",
+                "description": "Şifre sıfırlama bağlantısı için gelen kutunuzu kontrol edin.",
+                "resending": "Yeniden gönderiliyor...",
+                "resendWithCooldown": "E-postayı Yeniden Gönder ({{cooldown}}s)",
+                "resendMail": "E-postayı Yeniden Gönder"
+            }
+        },
+        "onboarding": {
+            "accountDetails": {
+                "title": "Hesap Detayları",
+                "description": "Bize kendiniz hakkında bilgi verin",
+                "displayName": "Görünen Ad",
+                "displayNamePlaceholder": "Görünen adınızı girin",
+                "username": "Kullanıcı Adı",
+                "usernamePlaceholder": "Kullanıcı adınızı girin",
+                "usernameDescription": "Kullanıcı adınız, genel profil bağlantınız ve QR kodlarınızın bir parçasıdır. Örnek: explorers.earth/bhavya",
+                "bio": "Biyografi",
+                "bioPlaceholder": "Bize kendiniz hakkında bilgi verin",
+                "accountType": "Hesap Türü",
+                "personal": "Kişisel",
+                "creator": "Yaratıcı",
+                "business": "İş",
+                "next": "İleri"
+            },
+            "contactDetails": {
+                "title": "İletişim Detayları",
+                "description": "Doğrulama için cep telefonu numaranızı ekleyin",
+                "mobileNumber": "Cep Telefonu Numarası",
+                "mobileNumberPlaceholder": "Cep telefonu numaranızı girin",
+                "next": "İleri",
+                "back": "Geri"
+            },
+            "addressDetails": {
+                "title": "Adres Detayları",
+                "description": "Nerede bulunuyorsunuz?",
+                "address": "Adres",
+                "addressPlaceholder": "Adresinizi girin",
+                "streetName": "Sokak Adı",
+                "streetNamePlaceholder": "Sokak adını girin",
+                "city": "Şehir",
+                "cityPlaceholder": "Şehri girin",
+                "state": "Eyalet",
+                "statePlaceholder": "Eyaleti girin",
+                "country": "Ülke",
+                "countryPlaceholder": "Ülkeyi girin",
+                "postalCode": "Posta Kodu",
+                "postalCodePlaceholder": "Posta kodunu girin",
+                "primaryAddress": "Birincil Adres",
+                "primaryAddressDescription": "genel profilde gösterilir (şehir ve ülke)",
+                "primaryAddressPlaceholder": "Birincil adresi girin",
+                "sameAsAddress": "Adres ile Aynı",
+                "confirmDetails": "Detayları Onayla",
+                "back": "Geri"
+            }
+        },
+        "resetPassword": {
+            "newPasswordPlaceholder": "Enter new password",
+            "confirmPasswordPlaceholder": "Confirm your password"
+        }
+    },
+    "common": {
+        "loading": "Yükleniyor...",
+        "error": "Bir hata oluştu. Lütfen daha sonra tekrar deneyin.",
+        "retry": "Tekrar Dene",
+        "noResults": "Sonuç bulunamadı",
+        "submit": "Gönder",
+        "signInWithGoogle": "Google ile Giriş Yap",
+        "signUpWithGoogle": "Google ile Kayıt Ol",
+        "hidePassword": "Şifreyi gizle",
+        "showPassword": "Şifreyi göster",
+        "cancel": "İptal"
+    },
+    "dashboard": {
+        "home": {
+            "welcomeBack": "Tekrar hoş geldiniz",
+            "profile": "Profil",
+            "myRecommendations": "Önerilerim",
+            "activePlaces": "aktif yerler",
+            "setupProfile": "Profilinizi Kurun",
+            "draft": "Taslak",
+            "startCurating": "Önerilerinizi düzenlemeye başlayın ve dünyayla paylaşın!",
+            "addRecommendations": "Öneriler Ekle"
+        },
+        "shareModal": {
+            "copyLink": "Bağlantıyı kopyala",
+            "copied": "Kopyalandı!",
+            "linkCopiedToast": "Bağlantı kopyalandı!!"
+        },
+        "recommendations": {
+            "locationButton": "Konum",
+            "viewAll": "Tümünü gör",
+            "recommendationsTab": "Öneriler",
+            "manageTab": "Yönet",
+            "manageHeading": "Yönet",
+            "deleteAction": "Sil",
+            "editAction": "Düzenle",
+            "publishedStatus": "Yayınlandı",
+            "draftStatus": "Taslak",
+            "myRecommendationsHeading": "Önerilerim",
+            "myQRHeading": "QR Kodum",
+            "myRecommendationsQR": "Önerilerim",
+            "travelLikeLocal": "Yerel gibi seyahat et",
+            "shareLink": "Bağlantıyı Paylaş",
+            "copyLink": "Bağlantıyı Kopyala",
+            "downloadQR": "QR İndir",
+            "emptyState": {
+                "title": "Uygun Öneri Yok",
+                "subtitle": "Bu listeye favori yerlerinizi eklemeye başlayın"
+            },
+            "draftLabel": "Taslak",
+            "recommendButton": "Öner",
+            "exploreSection": {
+                "heading": "explorers ile Keşfedin",
+                "addButton": "Ekle"
+            },
+            "locationLabels": {
+                "currentLocation": "Mevcut Konum",
+                "selectedLocation": "Seçilen Konum"
+            },
+            "categories": {
+                "foodDrinks": "Yiyecek ve İçecek",
+                "lodging": "Konaklama",
+                "healthWellness": "Sağlık ve Zindelik",
+                "shopping": "Alışveriş",
+                "entertainment": "Eğlence",
+                "transportation": "Ulaşım",
+                "services": "Hizmetler",
+                "tourism": "Turizm",
+                "naturalFeatures": "Doğal Özellikler"
+            },
+            "locationForm": {
+                "labels": {
+                    "searchLocation": "Konum Ara",
+                    "recommendationSocialLink": "Öneri Sosyal Bağlantısı",
+                    "note": "Not",
+                    "placeUrl": "Yer URL'si"
+                },
+                "placeholders": {
+                    "searchLocation": "Şehir, eyalet veya ülke girin (Örn. Paris)",
+                    "recommendationSocialLink": "URL girin (Youtube / Instagram)",
+                    "note": "Önerinizle ilgili bir not girin",
+                    "placeUrl": "Paylaşılabilir bağlantı oluşturmak için ad girin"
+                },
+                "buttons": {
+                    "addLocation": "Konum Ekle",
+                    "updateLocation": "Konumu Güncelle"
+                }
+            },
+            "toastMessages": {
+                "listCreated": "Öneri Listesi Başarıyla Oluşturuldu!!!",
+                "listPublished": "Öneri listesi başarıyla yayınlandı!",
+                "listUnpublished": "Öneri listesi başarıyla yayından kaldırıldı!",
+                "listPublishError": "Yayınlanmak için listede en az bir önerilen yer olmalıdır",
+                "listVisibilityError": "Öneri listesi görünürlüğü güncellenemedi.",
+                "qrDownloadSuccess": "QR kodu başarıyla indirildi!",
+                "qrDownloadError": "QR kodu indirilemedi. Lütfen tekrar deneyin.",
+                "linkCopied": "Bağlantı panoya kopyalandı!",
+                "linkCopyError": "Bağlantı kopyalanamadı. Lütfen tekrar deneyin.",
+                "qrNotReady": "QR kodu indirme için hazır değil"
+            },
+            "placesModal": {
+                "placesCount": "{{total}} yerden {{visible}} tanesi",
+                "scrollToLoadMore": "Daha fazla yer yüklemek için kaydırın"
+            },
+            "noRecommendationsYet": "Henüz öneri yok!!",
+            "setupProfileBeforeRecommendations": "Öneriler oluşturmadan önce profilinizi ayarlayın!!",
+            "startAddingPlaces": "Favori yerlerinizi eklemeye başlayın ve başkalarıyla paylaşın.",
+            "startRecommending": "Önermeye Başla",
+            "addRecommendationForm": {
+                "searchField": {
+                    "label": "Google ile Öneri Ara"
+                },
+                "mainInput": {
+                    "placeholder": "Önerinizi Girin"
+                },
+                "taggableFields": {
+                    "title": "Başlık",
+                    "address": "Adres",
+                    "category": "Kategori",
+                    "contactNumber": "İletişim Numarası",
+                    "socialLink": "Sosyal Bağlantı",
+                    "personName": "Kişi adı"
+                },
+                "accordionSection": {
+                    "heading": "Öneri Detaylarınız",
+                    "recommendationLink": {
+                        "label": "Öneri Bağlantınız",
+                        "placeholder": "Instagram reel, YouTube veya öneren blog ekleyebilirsiniz"
+                    },
+                    "whyRecommend": {
+                        "label": "Neden önerirsiniz?",
+                        "placeholder": "Neden önerirsiniz?"
+                    }
+                },
+                "fileUpload": {
+                    "text": "Resim/Video Ekle",
+                    "subtext": "isteğe bağlı"
+                },
+                "actionButton": {
+                    "text": "Öneri ekle"
+                },
+                "taggableFieldsPlaceholders": {
+                    "title": "Başlığı girin",
+                    "address": "Mekanın adresini girin",
+                    "category": "Bir kategori girin",
+                    "contactNumber": "İletişim numarasını girin",
+                    "socialLink": "Sosyal bağlantıyı girin (mekan)",
+                    "personName": "Kişinin tam adını girin"
+                },
+                "validationMessages": {
+                    "titleRequired": "Başlık gerekli",
+                    "addressRequired": "Adres gerekli",
+                    "categoryRequired": "Kategori gerekli",
+                    "socialUrlRequired": "Kişi önerileri için Instagram veya LinkedIn URL'si gereklidir",
+                    "socialUrlInvalid": "Lütfen geçerli bir Instagram veya LinkedIn URL'si girin"
+                },
+                "mapModal": {
+                    "cancelButton": "İptal",
+                    "addRecommendationButton": "Öneri ekle",
+                    "updateRecommendationButton": "Öneriyi güncelle",
+                    "setLocationButton": "Konumu ayarla"
+                },
+                "deleteRecommendation": "Öneriyi sil",
+                "searchLocation": {
+                    "label": "Konum ara",
+                    "searchPlace": "Yer ara",
+                    "placeholder": "Yazın ve yer seçin"
+                },
+                "fetchingImages": "Görüntüler alınıyor…",
+                "recommendationType": {
+                    "place": "Yer",
+                    "person": "Kişi",
+                    "label": "Öneri Türü"
+                },
+                "imagePreview": {
+                    "alt": "Önizleme",
+                    "deleteTooltip": "Sil",
+                    "setThumbnailTooltip": "Küçük resim olarak ayarla",
+                    "confirmDeleteTitle": "Silme İşlemini Onayla",
+                    "confirmDeleteMessage": "Bu görüntüyü koleksiyondan silmek istediğinizden emin misiniz?",
+                    "cancel": "İptal",
+                    "confirm": "Onayla"
+                },
+                "deleteRecommendationModal": {
+                    "title": "Silme işlemini onayla",
+                    "message": "Bu öneriyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+                    "cancel": "İptal"
+                }
+            }
+        },
+        "profile": {
+            "tabs": {
+                "publicProfile": "Halka Açık Profil",
+                "account": "Hesap"
+            },
+            "publicProfile": {
+                "sections": {
+                    "profileInformation": "Biyografi",
+                    "socialMedia": "Sosyal Bağlantılar",
+                    "publicAddress": "Halka Açık Adres",
+                    "howToReachUs": "Bize Nasıl Ulaşılır",
+                    "howToReachUsDescription": "İşletme konum bilgilerinizi paylaşmak için bu bölümü kullanın.",
+                    "feed": "Akış",
+                    "socialMediaSubtitle": "Sosyal medya bağlantıları ve bilgileri"
+                },
+                "fields": {
+                    "accountType": "Hesap Türü",
+                    "bio": "Biyografi",
+                    "socialMedia": "Sosyal Medya",
+                    "instagram": "Instagram",
+                    "whatsapp": "Whatsapp",
+                    "mobile": "Mobil",
+                    "youtube": "Youtube",
+                    "x": "X",
+                    "spotify": "Spotify",
+                    "website": "Web Sitesi",
+                    "facebook": "Facebook",
+                    "youtubeMusic": "Youtube Music",
+                    "gmail": "Gmail",
+                    "linkedin": "Linkedin",
+                    "appleMusic": "Apple Music",
+                    "tiktok": "Tiktok",
+                    "snapchat": "Snapchat",
+                    "businessLocation": "Konumunuzu ekleyin. Bunlar halka açık profilinizde öne çıkan konumlar olarak görünecek",
+                    "primaryAddress": "Birincil Adres - Halka açık profilde gösterilir (şehir ve ülke)",
+                    "feed": "Konumunuzun, ürünlerinizin, hizmetlerinizin veya deneyimlerinizin görüntülerini veya videolarını yükleyin. Bu fotoğraflar halka açık profilinizdeki galerinizde görüntülenecek",
+                    "title": "Başlık",
+                    "contact": "İletişim",
+                    "about": "Hakkında",
+                    "addLocation": "Konumunuzu ekleyin",
+                    "addLocationInformation": "Konum Bilgisi Ekle",
+                    "searchAddress": "Adresinizi arayın...",
+                    "sameAsAddress": "Adres ile aynı"
+                },
+                "accountTypes": {
+                    "personal": "Kişisel",
+                    "creator": "İçerik Üreticisi",
+                    "business": "İşletme"
+                },
+                "businessLocation": {
+                    "title": "Başlık",
+                    "contact": "İletişim",
+                    "website": "Web Sitesi",
+                    "about": "Hakkında"
+                }
+            },
+            "account": {
+                "sections": {
+                    "account": "Hesap",
+                    "billingAddress": "Fatura Adresi"
+                },
+                "fields": {
+                    "username": "Kullanıcı adı",
+                    "accountName": "Hesap Adı",
+                    "address": "Adres",
+                    "streetName": "Sokak Adı",
+                    "state": "İl",
+                    "city": "Şehir",
+                    "country": "Ülke",
+                    "postalCode": "Posta Kodu",
+                    "addressPlaceholder": "Adresinizi girin",
+                    "detectLocation": "Mevcut konumumu algıla"
+                }
+            },
+            "common": {
+                "visible": "Görünür",
+                "hidden": "Gizli",
+                "mobileNumber": "Cep telefonu numarası",
+                "mobileNumberPlaceholder": "Cep telefonu numarası",
+                "whatsappNumber": "WhatsApp numarası",
+                "primaryAddress": "Birincil Adres",
+                "editImage": "Görüntüyü Düzenle",
+                "confirm": "Onayla",
+                "add": "Ekle",
+                "video": "Video",
+                "feedImage": "Akış görüntüsü",
+                "importedImage": "içe aktarılan görüntü",
+                "cover": "Kapak",
+                "profile": "Profil",
+                "saveAndPublish": "Kaydet ve Yayınla",
+                "saveToFeed": "Akışa Kaydet",
+                "savedAndPublishedSuccessfully": "Başarıyla kaydedildi ve yayınlandı",
+                "saveAndPublishFailed": "Kaydetme ve yayınlama başarısız oldu. Lütfen tekrar deneyin.",
+                "failedToSaveChanges": "Değişiklikleri kaydetme başarısız oldu. Lütfen tekrar deneyin.",
+                "networkError": "Ağ hatası: Lütfen bağlantınızı kontrol edin ve tekrar deneyin.",
+                "unexpectedError": "Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.",
+                "somethingWentWrong": "Bir şeyler yanlış gitti. Lütfen tekrar deneyin.",
+                "failedToUploadFiles": "Dosyaları yükleme başarısız oldu. Lütfen tekrar deneyin.",
+                "failedToUploadImages": "Görüntüleri yükleme başarısız oldu. Lütfen tekrar deneyin.",
+                "failedToSaveImagesToFeed": "Görüntüleri akışa kaydetme başarısız oldu",
+                "failedToUpdateProfile": "Profili güncelleme başarısız oldu. Lütfen tekrar deneyin.",
+                "fetching": "Alınıyor...",
+                "selectAll": "Tümünü seç",
+                "clearSelection": "Seçimi temizle",
+                "error": "Profiliniz yüklenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.",
+                "errors": {
+                    "noFileProvided": "Yükleme için dosya sağlanmadı",
+                    "failedToGetAccountId": "Yükleme için hesap ID'si alınamadı",
+                    "uploadResponseMissingFileData": "Yükleme yanıtı dosya verisi içermiyor"
+                }
+            },
+            "accountSetup": {
+                "title": "Hesap Kurulumunuzu Tamamlayın",
+                "progress": "İlerleme",
+                "complete": "Tamamlandı",
+                "profileSetupCompleted": "Profil kurulumu tamamlandı",
+                "profileSetupIncomplete": "Profil fotoğrafı, biyografi ve sosyal bağlantılar ekleyin",
+                "recommendationsSetupCompleted": "Öneriler kurulumu tamamlandı",
+                "recommendationsSetupIncomplete": "Konumlar, yerler ekleyin ve ilk listenizi yayınlayın",
+                "setupButton": "Kurulum",
+                "footerMessage": "Tam pano deneyiminin kilidini açmak için her iki adımı da tamamlayın"
+            }
+        }
+    },
+    "toast": {
+        "success": {
+            "loginSuccessful": "Giriş başarılı!",
+            "registrationSuccessful": "Kayıt başarılı!",
+            "passwordResetSuccessful": "Şifre sıfırlama başarılı!",
+            "emailVerificationSent": "E-posta doğrulama gönderildi!",
+            "resetLinkSent": "Şifre sıfırlama bağlantısı e-postanıza gönderildi!",
+            "resetLinkResent": "Sıfırlama bağlantısı tekrar gönderildi!",
+            "profileImageUpdated": "Profil resmi başarıyla güncellendi!",
+            "backgroundImageUpdated": "Arka plan resmi başarıyla güncellendi!",
+            "recommendedListUpdated": "Recommended List Updated Successfully!!!",
+            "accountCreated": "Hesap başarıyla oluşturuldu!",
+            "usernameUpdated": "Kullanıcı adı başarıyla güncellendi!",
+            "profileUpdated": "Profil başarıyla güncellendi!",
+            "settingsSaved": "Ayarlar başarıyla kaydedildi!",
+            "dataSaved": "Veriler başarıyla kaydedildi!",
+            "changesSaved": "Değişiklikler başarıyla kaydedildi!",
+            "fileUploaded": "Dosya başarıyla yüklendi!",
+            "imageUploaded": "Resim başarıyla yüklendi!",
+            "linkCopied": "Link copied to clipboard!",
+            "emailSent": "E-posta başarıyla gönderildi!",
+            "notificationSent": "Bildirim başarıyla gönderildi!",
+            "actionCompleted": "İşlem başarıyla tamamlandı!",
+            "formSubmitted": "Form başarıyla gönderildi!",
+            "onboardingCompleted": "Onboarding başarıyla tamamlandı!",
+            "welcomeMessage": "explorers'a hoş geldiniz!",
+            "accountActivated": "Hesap başarıyla etkinleştirildi!",
+            "emailVerified": "E-posta başarıyla doğrulandı!",
+            "passwordChanged": "Şifre başarıyla değiştirildi!",
+            "usernameChanged": "Kullanıcı adı başarıyla değiştirildi!",
+            "profileCompleted": "Profil başarıyla tamamlandı!",
+            "setupCompleted": "Kurulum başarıyla tamamlandı!",
+            "loggedOutSuccessfully": "Başarıyla çıkış yapıldı!"
+        },
+        "error": {
+            "loginFailed": "Giriş başarısız. Kimlik bilgilerinizi kontrol edin.",
+            "registrationFailed": "Kayıt başarısız. Tekrar deneyin.",
+            "passwordResetFailed": "Şifre sıfırlama başarısız. Tekrar deneyin.",
+            "emailVerificationFailed": "E-posta doğrulama başarısız. Tekrar deneyin.",
+            "resetLinkFailed": "Sıfırlama bağlantısı gönderme başarısız. Daha sonra deneyin.",
+            "resetLinkResendFailed": "Tekrar gönderme başarısız. Daha sonra deneyin.",
+            "profileImageUpdateFailed": "Failed to upload profile image. Please try again.",
+            "backgroundImageUpdateFailed": "Failed to upload background image. Please try again.",
+            "recommendedListUpdateFailed": "Error Updating Recommended List!!!",
+            "accountCreationFailed": "Account creation failed. Please try again.",
+            "usernameUpdateFailed": "Kullanıcı adı güncelleme başarısız. Tekrar deneyin.",
+            "profileUpdateFailed": "Profile update failed. Please try again.",
+            "settingsSaveFailed": "Failed to save settings. Please try again.",
+            "dataSaveFailed": "Failed to save data. Please try again.",
+            "changesSaveFailed": "Failed to save changes. Please try again.",
+            "fileUploadFailed": "File upload failed. Please try again.",
+            "imageUploadFailed": "Resim yükleme başarısız. Tekrar deneyin.",
+            "linkCopyFailed": "Failed to copy link. Please try again.",
+            "emailSendFailed": "E-posta gönderme başarısız. Lütfen tekrar deneyin.",
+            "notificationSendFailed": "Failed to send notification. Please try again.",
+            "actionFailed": "Action failed. Please try again.",
+            "formSubmissionFailed": "Form submission failed. Please try again.",
+            "onboardingFailed": "Onboarding başarısız. Tekrar deneyin.",
+            "accountActivationFailed": "Account activation failed. Please try again.",
+            "passwordChangeFailed": "Password change failed. Please try again.",
+            "usernameChangeFailed": "Username change failed. Please try again.",
+            "profileCompletionFailed": "Profile completion failed. Please try again.",
+            "setupFailed": "Setup failed. Please try again.",
+            "networkError": "Ağ hatası. Bağlantınızı kontrol edin.",
+            "serverError": "Sunucu hatası. Daha sonra deneyin.",
+            "validationError": "Doğrulama hatası. Girişinizi kontrol edin.",
+            "permissionDenied": "İzin reddedildi. Lütfen destek ile iletişime geçin.",
+            "sessionExpired": "Oturum süresi doldu. Tekrar giriş yapın.",
+            "invalidCredentials": "Geçersiz kimlik bilgileri. Girişinizi kontrol edin.",
+            "emailNotFound": "E-posta bulunamadı. Tekrar deneyin.",
+            "usernameAlreadyExists": "Kullanıcı adı zaten mevcut. Başka bir tane seçin.",
+            "emailAlreadyExists": "E-posta zaten mevcut. Başka bir e-posta kullanın.",
+            "invalidEmailFormat": "Geçersiz e-posta formatı. Geçerli bir e-posta girin.",
+            "passwordTooWeak": "Şifre çok zayıf. Daha güçlü bir şifre seçin.",
+            "passwordsDoNotMatch": "Şifreler eşleşmiyor. Lütfen tekrar deneyin.",
+            "requiredFieldMissing": "Gerekli alan eksik. Lütfen tüm gerekli alanları doldurun.",
+            "invalidInput": "Geçersiz giriş. Lütfen verilerinizi kontrol edin.",
+            "fileTooLarge": "Dosya çok büyük. Lütfen daha küçük bir dosya seçin.",
+            "unsupportedFileType": "Desteklenmeyen dosya türü. Lütfen farklı bir dosya seçin.",
+            "uploadLimitExceeded": "Yükleme limiti aşıldı. Lütfen daha sonra tekrar deneyin.",
+            "operationTimeout": "İşlem zaman aşımına uğradı. Lütfen tekrar deneyin.",
+            "serviceUnavailable": "Hizmet kullanılamıyor. Lütfen daha sonra tekrar deneyin.",
+            "maintenanceMode": "Hizmet bakımda. Lütfen daha sonra tekrar deneyin.",
+            "rateLimitExceeded": "Çok fazla istek. Daha sonra deneyin.",
+            "quotaExceeded": "Kota aşıldı. Lütfen daha sonra tekrar deneyin.",
+            "accessDenied": "Erişim reddedildi. Bu işlemi gerçekleştirme izniniz yok.",
+            "resourceNotFound": "Kaynak bulunamadı. Lütfen isteğinizi kontrol edin.",
+            "conflictError": "Çakışma hatası. Kaynak zaten mevcut.",
+            "preconditionFailed": "Ön koşul başarısız. Lütfen isteğinizi kontrol edin.",
+            "tooManyAttempts": "Çok fazla deneme. Daha sonra deneyin.",
+            "accountLocked": "Hesap kilitli. Destek ile iletişime geçin.",
+            "accountSuspended": "Hesap askıya alındı. Destek ile iletişime geçin.",
+            "accountDeleted": "Hesap silindi. Lütfen destek ile iletişime geçin.",
+            "emailNotVerified": "E-posta doğrulanmadı. Lütfen önce e-postanızı doğrulayın.",
+            "phoneNotVerified": "Telefon numarası doğrulanmadı. Lütfen önce telefonunuzu doğrulayın.",
+            "twoFactorRequired": "İki faktörlü kimlik doğrulama gereklidir.",
+            "twoFactorFailed": "İki faktörlü kimlik doğrulama başarısız. Lütfen tekrar deneyin.",
+            "captchaFailed": "Captcha doğrulaması başarısız. Lütfen tekrar deneyin.",
+            "invalidToken": "Geçersiz token. Tekrar deneyin.",
+            "expiredToken": "Token süresi doldu. Tekrar deneyin.",
+            "invalidCode": "Geçersiz kod. Lütfen girişinizi kontrol edin.",
+            "expiredCode": "Kod süresi doldu. Lütfen yeni bir kod isteyin.",
+            "codeLimitExceeded": "Kod limiti aşıldı. Lütfen daha sonra tekrar deneyin.",
+            "invalidUsername": "Geçersiz kullanıcı adı. Lütfen girişinizi kontrol edin.",
+            "usernameTooShort": "Kullanıcı adı çok kısa. Lütfen daha uzun bir kullanıcı adı seçin.",
+            "usernameTooLong": "Kullanıcı adı çok uzun. Lütfen daha kısa bir kullanıcı adı seçin.",
+            "usernameInvalidChars": "Kullanıcı adı geçersiz karakterler içeriyor. Lütfen yalnızca harf, rakam ve tire kullanın.",
+            "usernameReserved": "Kullanıcı adı rezerve edilmiş. Lütfen başka bir kullanıcı adı seçin.",
+            "usernameProfanity": "Kullanıcı adı uygunsuz içerik içeriyor. Lütfen başka bir kullanıcı adı seçin.",
+            "primaryAddressRequired": "Birincil adres gerekli",
+            "addressRequired": "Adres gerekli",
+            "cityRequired": "Şehir gerekli",
+            "stateRequired": "Eyalet gerekli",
+            "countryRequired": "Ülke gerekli",
+            "postalCodeRequired": "Posta kodu gerekli",
+            "mobileNumberRequired": "Cep telefonu numarası gerekli",
+            "mobileNumberInvalid": "Geçersiz cep telefonu numarası formatı",
+            "mobileNumberTooShort": "Cep telefonu numarası çok kısa",
+            "mobileNumberTooLong": "Cep telefonu numarası çok uzun",
+            "bioRequired": "Biyografi gerekli",
+            "bioTooLong": "Biyografi çok uzun. Lütfen 250 karakterin altında tutun",
+            "displayNameRequired": "Görünen ad gerekli",
+            "displayNameTooShort": "Görünen ad çok kısa",
+            "displayNameTooLong": "Görünen ad çok uzun",
+            "accountTypeRequired": "Hesap türü gerekli",
+            "invalidAccountType": "Geçersiz hesap türü seçildi",
+            "imageRequired": "Görsel gerekli",
+            "imageTooLarge": "Görsel çok büyük. Lütfen daha küçük bir görsel seçin",
+            "unsupportedImageFormat": "Desteklenmeyen görsel formatı. Lütfen JPG, PNG veya GIF kullanın",
+            "imageProcessingFailed": "Görsel işleme başarısız. Lütfen tekrar deneyin",
+            "imageCorrupted": "Görsel bozuk. Lütfen başka bir görsel seçin",
+            "imageDimensionsInvalid": "Görsel boyutları geçersiz. Lütfen başka bir görsel seçin",
+            "imageSizeInvalid": "Görsel boyutu geçersiz. Lütfen başka bir görsel seçin",
+            "imageFormatInvalid": "Görsel formatı geçersiz. Lütfen başka bir görsel seçin",
+            "imageQualityTooLow": "Görsel kalitesi çok düşük. Lütfen daha yüksek kaliteli bir görsel seçin",
+            "imageTooSmall": "Görsel çok küçük. Lütfen daha büyük bir görsel seçin",
+            "imageTooBig": "Görsel çok büyük. Lütfen daha küçük bir görsel seçin",
+            "imageAspectRatioInvalid": "Görsel en-boy oranı geçersiz. Lütfen başka bir görsel seçin",
+            "imageColorSpaceInvalid": "Görsel renk alanı geçersiz. Lütfen başka bir görsel seçin",
+            "imageMetadataInvalid": "Görsel meta verileri geçersiz. Lütfen başka bir görsel seçin",
+            "imageSecurityViolation": "Görsel güvenlik ihlali. Lütfen başka bir görsel seçin",
+            "imageVirusDetected": "Görselde virüs tespit edildi. Lütfen başka bir görsel seçin",
+            "imageMalwareDetected": "Görselde kötü amaçlı yazılım tespit edildi. Lütfen başka bir görsel seçin",
+            "imageSpamDetected": "Görselde spam tespit edildi. Lütfen başka bir görsel seçin",
+            "imageContentInappropriate": "Görsel içeriği uygunsuz. Lütfen başka bir görsel seçin",
+            "imageContentViolent": "Görsel içeriği şiddet içeriyor. Lütfen başka bir görsel seçin",
+            "imageContentSexual": "Görsel içeriği cinsel. Lütfen başka bir görsel seçin",
+            "imageContentHateful": "Görsel içeriği nefret dolu. Lütfen başka bir görsel seçin",
+            "imageContentDiscriminatory": "Görsel içeriği ayrımcı. Lütfen başka bir görsel seçin",
+            "imageContentOffensive": "Görsel içeriği saldırgan. Lütfen başka bir görsel seçin",
+            "imageContentAbusive": "Görsel içeriği kötüye kullanım içeriyor. Lütfen başka bir görsel seçin",
+            "imageContentHarassing": "Görsel içeriği taciz içeriyor. Lütfen başka bir görsel seçin",
+            "imageContentThreatening": "Görsel içeriği tehdit içeriyor. Lütfen başka bir görsel seçin",
+            "imageContentDangerous": "Görsel içeriği tehlikeli. Lütfen başka bir görsel seçin",
+            "imageContentIllegal": "Görsel içeriği yasadışı. Lütfen başka bir görsel seçin",
+            "imageContentCopyright": "Görsel içeriği telif hakkını ihlal ediyor. Lütfen başka bir görsel seçin",
+            "imageContentTrademark": "Görsel içeriği marka hakkını ihlal ediyor. Lütfen başka bir görsel seçin",
+            "imageContentPrivacy": "Görsel içeriği gizliliği ihlal ediyor. Lütfen başka bir görsel seçin",
+            "imageContentConsent": "Görsel içeriği onay eksik. Lütfen başka bir görsel seçin",
+            "imageContentMinors": "Görsel içeriği reşit olmayanları içeriyor. Lütfen başka bir görsel seçin",
+            "imageContentAnimals": "Görsel içeriği hayvan zulmü içeriyor. Lütfen başka bir görsel seçin",
+            "imageContentEnvironment": "Görsel içeriği çevreye zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentHealth": "Görsel içeriği sağlığa zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentSafety": "Görsel içeriği güvenliğe zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentSecurity": "Görsel içeriği güvenliğe zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentIntegrity": "Görsel içeriği bütünlüğe zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentReputation": "Görsel içeriği itibara zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentBrand": "Görsel içeriği markaya zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentBusiness": "Görsel içeriği işletmeye zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentPersonal": "Görsel içeriği kişisel çıkarlara zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentProfessional": "Görsel içeriği profesyonel çıkarlara zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentAcademic": "Görsel içeriği akademik çıkarlara zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentCultural": "Görsel içeriği kültürel çıkarlara zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentReligious": "Görsel içeriği dini çıkarlara zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentPolitical": "Görsel içeriği siyasi çıkarlara zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentSocial": "Görsel içeriği sosyal çıkarlara zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentEconomic": "Görsel içeriği ekonomik çıkarlara zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentLegal": "Görsel içeriği yasal çıkarlara zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentEthical": "Görsel içeriği etik çıkarlara zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentMoral": "Görsel içeriği ahlaki çıkarlara zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentSpiritual": "Görsel içeriği manevi çıkarlara zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentPhilosophical": "Görsel içeriği felsefi çıkarlara zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentScientific": "Görsel içeriği bilimsel çıkarlara zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentTechnical": "Görsel içeriği teknik çıkarlara zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentArtistic": "Görsel içeriği sanatsal çıkarlara zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentCreative": "Görsel içeriği yaratıcı çıkarlara zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentIntellectual": "Görsel içeriği entelektüel çıkarlara zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentEducational": "Görsel içeriği eğitim çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentInformational": "Görsel içeriği bilgi çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentNews": "Görsel içeriği haber çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentMedia": "Görsel içeriği medya çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentEntertainment": "Görsel içeriği eğlence çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentSports": "Görsel içeriği spor çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentRecreation": "Görsel içeriği rekreasyon çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentLeisure": "Görsel içeriği boş zaman çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentHobby": "Görsel içeriği hobi çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentInterest": "Görsel içeriği ilgi çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentPassion": "Görsel içeriği tutku çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentLove": "Görsel içeriği aşk çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentHate": "Görsel içeriği nefret çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentAnger": "Görsel içeriği öfke çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentFear": "Görsel içeriği korku çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentSadness": "Görsel içeriği üzüntü çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentJoy": "Görsel içeriği sevinç çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentHappiness": "Görsel içeriği mutluluk çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentExcitement": "Görsel içeriği heyecan çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentSurprise": "Görsel içeriği sürpriz çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentDisgust": "Görsel içeriği iğrenme çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentShame": "Görsel içeriği utanç çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentGuilt": "Görsel içeriği suçluluk çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentPride": "Görsel içeriği gurur çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentEnvy": "Görsel içeriği kıskançlık çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentJealousy": "Görsel içeriği kıskançlık çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentGreed": "Görsel içeriği açgözlülük çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentLust": "Görsel içeriği şehvet çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentGluttony": "Görsel içeriği oburluk çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentSloth": "Görsel içeriği tembellik çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin",
+            "imageContentWrath": "Görsel içeriği öfke çıkarlarına zarar veriyor. Lütfen başka bir görsel seçin"
+        },
+        "warning": {
+            "usernameCooldown": "Kullanıcı adı değişikliği bekleme süresi nedeniyle geçici olarak kilitlendi",
+            "passwordWeak": "Şifre zayıf. Daha güçlü bir şifre kullanmayı düşünün",
+            "emailNotVerified": "E-posta doğrulanmadı. Lütfen e-postanızı doğrulayın",
+            "phoneNotVerified": "Telefon numarası doğrulanmadı. Lütfen telefonunuzu doğrulayın",
+            "profileIncomplete": "Profil tamamlanmamış. Lütfen profilinizi tamamlayın",
+            "settingsNotSaved": "Ayarlar kaydedilmedi. Lütfen ayarlarınızı kaydedin",
+            "dataNotSaved": "Veriler kaydedilmedi. Lütfen verilerinizi kaydedin",
+            "changesNotSaved": "Değişiklikler kaydedilmedi. Lütfen değişikliklerinizi kaydedin",
+            "fileNotUploaded": "Dosya yüklenmedi. Lütfen dosyanızı yükleyin",
+            "imageNotUploaded": "Görsel yüklenmedi. Lütfen görselinizi yükleyin",
+            "linkNotCopied": "Bağlantı kopyalanmadı. Lütfen bağlantınızı kopyalayın",
+            "emailNotSent": "E-posta gönderilmedi. Lütfen e-postanızı gönderin",
+            "notificationNotSent": "Bildirim gönderilmedi. Lütfen bildiriminizi gönderin",
+            "actionNotCompleted": "İşlem tamamlanmadı. Lütfen işleminizi tamamlayın",
+            "formNotSubmitted": "Form gönderilmedi. Lütfen formunuzu gönderin",
+            "onboardingNotCompleted": "Onboarding tamamlanmadı. Lütfen onboarding'inizi tamamlayın",
+            "accountNotActivated": "Hesap etkinleştirilmedi. Lütfen hesabınızı etkinleştirin",
+            "passwordNotChanged": "Şifre değiştirilmedi. Lütfen şifrenizi değiştirin",
+            "usernameNotChanged": "Kullanıcı adı değiştirilmedi. Lütfen kullanıcı adınızı değiştirin",
+            "profileNotCompleted": "Profil tamamlanmadı. Lütfen profilinizi tamamlayın",
+            "setupNotCompleted": "Kurulum tamamlanmadı. Lütfen kurulumunuzu tamamlayın",
+            "networkSlow": "Ağ yavaş. Lütfen bağlantınızı kontrol edin",
+            "serverSlow": "Sunucu yavaş. Lütfen daha sonra tekrar deneyin",
+            "validationPending": "Doğrulama bekliyor. Lütfen bekleyin",
+            "permissionPending": "İzin bekliyor. Lütfen bekleyin",
+            "sessionExpiring": "Oturum sona eriyor. Lütfen tekrar giriş yapın",
+            "credentialsExpiring": "Kimlik bilgileri sona eriyor. Lütfen kimlik bilgilerinizi güncelleyin",
+            "emailExpiring": "E-posta sona eriyor. Lütfen e-postanızı güncelleyin",
+            "phoneExpiring": "Telefon sona eriyor. Lütfen telefonunuzu güncelleyin",
+            "profileExpiring": "Profil sona eriyor. Lütfen profilinizi güncelleyin",
+            "settingsExpiring": "Ayarlar sona eriyor. Lütfen ayarlarınızı güncelleyin",
+            "dataExpiring": "Veriler sona eriyor. Lütfen verilerinizi güncelleyin",
+            "changesExpiring": "Değişiklikler sona eriyor. Lütfen değişikliklerinizi güncelleyin",
+            "fileExpiring": "Dosya sona eriyor. Lütfen dosyanızı güncelleyin",
+            "imageExpiring": "Görsel sona eriyor. Lütfen görselinizi güncelleyin",
+            "linkExpiring": "Bağlantı sona eriyor. Lütfen bağlantınızı güncelleyin",
+            "notificationExpiring": "Bildirim sona eriyor. Lütfen bildiriminizi güncelleyin",
+            "actionExpiring": "İşlem sona eriyor. Lütfen işleminizi güncelleyin",
+            "formExpiring": "Form sona eriyor. Lütfen formunuzu güncelleyin",
+            "onboardingExpiring": "Onboarding sona eriyor. Lütfen onboarding'inizi güncelleyin",
+            "accountExpiring": "Hesap sona eriyor. Lütfen hesabınızı güncelleyin",
+            "passwordExpiring": "Şifre sona eriyor. Lütfen şifrenizi güncelleyin",
+            "usernameExpiring": "Kullanıcı adı sona eriyor. Lütfen kullanıcı adınızı güncelleyin",
+            "setupExpiring": "Kurulum sona eriyor. Lütfen kurulumunuzu güncelleyin"
+        },
+        "info": {
+            "loading": "Yükleniyor...",
+            "processing": "İşleniyor...",
+            "saving": "Kaydediliyor...",
+            "uploading": "Yükleniyor...",
+            "downloading": "İndiriliyor...",
+            "connecting": "Bağlanıyor...",
+            "disconnecting": "Bağlantı kesiliyor...",
+            "sending": "Gönderiliyor...",
+            "receiving": "Alınıyor...",
+            "updating": "Güncelleniyor...",
+            "refreshing": "Yenileniyor...",
+            "synchronizing": "Senkronize ediliyor...",
+            "validating": "Doğrulanıyor...",
+            "verifying": "Doğrulanıyor...",
+            "checking": "Kontrol ediliyor...",
+            "searching": "Aranıyor...",
+            "filtering": "Filtreleniyor...",
+            "sorting": "Sıralanıyor...",
+            "organizing": "Düzenleniyor...",
+            "arranging": "Düzenleniyor...",
+            "configuring": "Yapılandırılıyor...",
+            "setting": "Ayarlanıyor...",
+            "adjusting": "Ayarlanıyor...",
+            "modifying": "Değiştiriliyor...",
+            "changing": "Değiştiriliyor...",
+            "switching": "Değiştiriliyor...",
+            "toggling": "Açılıp kapatılıyor...",
+            "enabling": "Etkinleştiriliyor...",
+            "disabling": "Devre dışı bırakılıyor...",
+            "activating": "Etkinleştiriliyor...",
+            "deactivating": "Devre dışı bırakılıyor...",
+            "starting": "Başlatılıyor...",
+            "stopping": "Durduruluyor...",
+            "pausing": "Duraklatılıyor...",
+            "resuming": "Devam ediliyor...",
+            "restarting": "Yeniden başlatılıyor...",
+            "resetting": "Sıfırlanıyor...",
+            "clearing": "Temizleniyor...",
+            "deleting": "Siliniyor...",
+            "removing": "Kaldırılıyor...",
+            "adding": "Ekleniyor...",
+            "inserting": "Ekleme yapılıyor...",
+            "creating": "Oluşturuluyor...",
+            "building": "Oluşturuluyor...",
+            "constructing": "İnşa ediliyor...",
+            "generating": "Oluşturuluyor...",
+            "producing": "Üretiliyor...",
+            "making": "Yapılıyor...",
+            "preparing": "Hazırlanıyor...",
+            "readying": "Hazırlanıyor...",
+            "initializing": "Başlatılıyor...",
+            "launching": "Başlatılıyor...",
+            "opening": "Açılıyor...",
+            "closing": "Kapatılıyor...",
+            "shutting": "Kapatılıyor...",
+            "ending": "Sonlandırılıyor...",
+            "finishing": "Bitiriliyor...",
+            "completing": "Tamamlanıyor...",
+            "finalizing": "Sonlandırılıyor...",
+            "concluding": "Sonuçlandırılıyor...",
+            "terminating": "Sonlandırılıyor...",
+            "canceling": "İptal ediliyor...",
+            "aborting": "İptal ediliyor...",
+            "interrupting": "Kesiliyor...",
+            "halting": "Durduruluyor...",
+            "freezing": "Donduruluyor...",
+            "unfreezing": "Çözülüyor...",
+            "thawing": "Çözülüyor...",
+            "melting": "Eritiliyor...",
+            "cooling": "Soğutuluyor...",
+            "heating": "Isıtılıyor...",
+            "warming": "Isıtılıyor...",
+            "chilling": "Soğutuluyor...",
+            "renewing": "Yenileniyor...",
+            "restoring": "Geri yükleniyor...",
+            "recovering": "Kurtarılıyor...",
+            "repairing": "Onarılıyor...",
+            "fixing": "Düzeltiliyor...",
+            "correcting": "Düzeltiliyor...",
+            "tuning": "Ayarlanıyor...",
+            "optimizing": "Optimize ediliyor...",
+            "improving": "İyileştiriliyor...",
+            "enhancing": "Geliştiriliyor...",
+            "upgrading": "Yükseltiliyor...",
+            "modernizing": "Modernleştiriliyor..."
+        }
+    },
+    "emailVerification": {
+        "title": "Verify Your Email",
+        "description": "We've sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
+        "checkEmail": "Check your email",
+        "emailSent": "Verification email sent!",
+        "resendEmail": "Resend Email",
+        "resendIn": "Resend in",
+        "seconds": "seconds",
+        "didntReceive": "Didn't receive the email?",
+        "checkSpam": "Please check your spam folder or try again.",
+        "backToLogin": "Back to Login",
+        "emailAddress": "Email Address",
+        "verificationSent": "Verification email sent to:",
+        "clickLink": "Click the link in the email to verify your account.",
+        "expiresIn": "This link expires in 24 hours.",
+        "needHelp": "Need help?",
+        "contactSupport": "Contact Support"
+    },
+    "settings": {
+        "title": "Ayarlar",
+        "account": {
+            "heading": "Hesap",
+            "security": {
+                "title": "Hesap ve Güvenlik"
+            },
+            "changePassword": {
+                "text": "Şifre değiştirilsin mi?",
+                "button": "Şifre Değiştir",
+                "modalTitle": "Şifre Değiştir",
+                "currentPassword": "Mevcut şifre",
+                "newPassword": "Yeni şifre",
+                "confirmPassword": "Yeni şifreyi onayla",
+                "updateButton": "Şifreyi Güncelle",
+                "currentPasswordPlaceholder": "Mevcut şifrenizi girin",
+                "newPasswordPlaceholder": "Yeni bir şifre girin",
+                "confirmPasswordPlaceholder": "Yeni şifreyi tekrar girin",
+                "successMessage": "Şifre başarıyla güncellendi. Güvenlik için giriş sayfasına yönlendirileceksiniz.",
+                "redirectMessage": "Güvenlik için giriş sayfasına yönlendiriliyor...",
+                "description": "Hesabınızı güvende tutmak için şifrenizi güncelleyin"
+            },
+            "deactivateAccount": {
+                "text": "Hesabınızı devre dışı bırakın?",
+                "button": "Hesabı Devre Dışı Bırak",
+                "modalTitle": "Hesabınızı devre dışı bırakın?",
+                "modalDescription": "Hesabınızı devre dışı bırakmak istediğinizden emin misiniz?",
+                "enterUsername": "Kullanıcı adınızı girin",
+                "enterPassword": "Şifrenizi girin",
+                "usernamePlaceholder": "Kullanıcı adınızı girin",
+                "passwordPlaceholder": "Mevcut şifrenizi girin",
+                "confirmButton": "Hesabımı Devre Dışı Bırak",
+                "deactivatedButton": "Devre Dışı",
+                "successMessage": "Hesap başarıyla devre dışı bırakıldı",
+                "activatedMessage": "Hesap başarıyla etkinleştirildi",
+                "description": "Hesabınızı geçici olarak devre dışı bırakın"
+            },
+            "deleteAccount": {
+                "text": "Hesabınızı silin?",
+                "button": "Hesabı Sil",
+                "step1": {
+                    "modalTitle": "Hesabınızı silin?",
+                    "modalDescription": "Hesabınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+                    "modalDescription2": "Verilerinizi saklamak istiyorsanız, bunun yerine hesabınızı devre dışı bırakabilirsiniz.",
+                    "deactivateInsteadButton": "Bunun yerine hesabı devre dışı bırak",
+                    "continueButton": "Silme işlemiyle devam et"
+                },
+                "step2": {
+                    "modalTitle": "Bilgilerinizi girin",
+                    "enterUsername": "Kullanıcı adınızı girin",
+                    "enterPassword": "Şifrenizi girin",
+                    "confirmPassword": "Şifrenizi onaylayın",
+                    "usernamePlaceholder": "Kullanıcı adınızı girin",
+                    "passwordPlaceholder": "Şifrenizi girin",
+                    "confirmPasswordPlaceholder": "Şifrenizi onaylayın",
+                    "continueButton": "Devam Et"
+                },
+                "step3": {
+                    "modalTitle": "Neden ayrılıyorsunuz?",
+                    "reasonPlaceholder": "Lütfen ayrılma nedeninizi bize bildirin...",
+                    "continueButton": "Devam Et"
+                },
+                "step4": {
+                    "modalTitle": "Silmeyi onayla",
+                    "confirmText": "Devam etmek için 'CONFIRM DELETE' yazın",
+                    "confirmPlaceholder": "Onaylamak için 'CONFIRM DELETE' yazın",
+                    "deleteButton": "Hesabımı Sil",
+                    "confirmationRequired": "Lütfen onaylamak için 'CONFIRM DELETE' yazın.",
+                    "reasonRequired": "Lütfen ayrılma nedeninizi belirtin.",
+                    "successMessage": "Hesap başarıyla silindi."
+                },
+                "description": "Hesabınızı ve tüm verileri kalıcı olarak silin"
+            }
+        },
+        "languagePreference": {
+            "heading": "Dil Tercihi",
+            "selectLanguage": "Dilinizi seçin",
+            "availableLanguages": "47 mevcut dil arasından seçin",
+            "currentLanguage": "Mevcut: {{flag}} {{name}}",
+            "languageChanged": "Dil {{name}} olarak değiştirildi",
+            "description": "Arayüz için tercih ettiğiniz dili seçin. Bu, uygulama genelinde tüm metinlerin, düğmelerin ve menülerin dilini değiştirecektir."
+        },
+        "subtitle": "Hesap ayarlarınızı ve tercihlerinizi yönetin"
+    },
+    "seo": {
+        "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+        "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+    },
+    "sidebar": {
+        "home": "Ana Sayfa",
+        "profile": "Profil",
+        "recommendations": "Öneriler",
+        "analytics": "Analitik",
+        "settings": "Ayarlar",
+        "logout": "Çıkış Yap",
+        "loading": "Yükleniyor...",
+        "clickToOpenMenu": "Menüyü açmak için tıklayın"
+    },
+    "modal": {
+        "unsavedChanges": {
+            "title": "Kaydedilmemiş değişiklikler",
+            "message": "Kaydedilmemiş değişiklikleriniz var, uzaklaşırsanız kaybolacak. Ne yapmak istersiniz?",
+            "discard": "Vazgeç",
+            "cancel": "İptal",
+            "save": "Kaydet"
+        },
+        "usernameChange": {
+            "title": "Kullanıcı adı değişikliği onayı",
+            "description": "Kullanıcı adınız profil ve öneri listesi bağlantılarınızda kullanılır:",
+            "profileLabel": "Profil:",
+            "listLabel": "Liste:",
+            "warning": "Eski kullanıcı adınızla ilgili QR kodlar veya bağlantılar artık çalışmayacak — bunları güncellemeniz ve yeniden paylaşmanız gerekecek.",
+            "cooldownPrefix": "Bu güncellemeden sonra",
+            "cooldownSuffix": "içinde kullanıcı adınızı tekrar değiştirebileceksiniz.",
+            "minute": "1 dakika",
+            "day": "1 gün",
+            "days": "gün",
+            "cancel": "İptal",
+            "confirm": "Kullanıcı adını değiştir"
+        }
+    },
+    "analytics": {
+        "dashboard": {
+            "title": "Analitik Panosu",
+            "subtitle": "QR kod performansınızı ve kullanıcı etkileşimini takip edin",
+            "timePeriod": "Zaman Aralığı:",
+            "timeFilter": {
+                "today": "Bugün",
+                "last7days": "Son 7 Gün",
+                "last30days": "Son 30 Gün",
+                "custom": "Özel Aralık",
+                "selectPeriod": "Dönem Seç"
+            },
+            "dateRange": {
+                "from": "Başlangıç:",
+                "to": "Bitiş:"
+            },
+            "summaryCards": {
+                "totalViews": "Toplam Görüntülenme",
+                "totalClicks": "Toplam Tıklama",
+                "totalQRViews": "Toplam QR Görüntülenme",
+                "totalLinkViews": "Toplam Bağlantı Görüntülenme"
+            },
+            "loading": {
+                "loadingData": "Analitik veriler yükleniyor...",
+                "resolvingCountry": "Ülke verileri çözümleniyor..."
+            },
+            "error": {
+                "title": "Analitik Yüklenirken Hata",
+                "message": "Analitik veriler alınamadı. Lütfen daha sonra tekrar deneyin.",
+                "errorLabel": "Hata:"
+            },
+            "comingSoon": {
+                "title": "Analitik Yakında",
+                "message": "Analitik, hesabınızın oluşturulmasından \u003cstrong\u003e{{days}} gün{{daysPlural}}\u003c/strong\u003e sonra kullanılabilir olacak.",
+                "whyWait": {
+                    "title": "Neden bekliyoruz?",
+                    "reasons": {
+                        "accuracy": "• Veri doğruluğunu sağlar ve spam'i önler",
+                        "interactions": "• Anlamlı kullanıcı etkileşimleri için zaman tanır",
+                        "insights": "• Güvenilir analitik içgörüler sağlar"
+                    }
+                },
+                "tip": "Bu arada, analitik kullanılabilir olduğunda veri oluşturmak için QR kodlarınızı paylaşmaya başlayın!",
+                "filterTip": "\u003cstrong\u003eİpucu:\u003c/strong\u003e Analitik kullanılabilir olduktan sonra, verilerinizi görüntülemek için zaman aralıklarına (bugün, son 7 gün, son 30 gün veya özel aralık) göre filtreleyebileceksiniz."
+            },
+            "emptyState": {
+                "title": "Analitik Verisi Yok",
+                "noDataMessage": "Hesabınız için analitik verisi bulunamadı. İnsanlar QR kodlarınızı görüntülemeye ve etkileşim kurmaya başladığında analitik burada görünecek.",
+                "customRange": {
+                    "bothMissing": "Analitik verilerini görüntülemek için lütfen özel aralık için hem başlangıç hem de bitiş tarihlerini seçin.",
+                    "startMissing": "Analitik verilerini görüntülemek için lütfen özel aralık için başlangıç tarihini seçin.",
+                    "endMissing": "Analitik verilerini görüntülemek için lütfen özel aralık için bitiş tarihini seçin."
+                },
+                "noDataForPeriod": {
+                    "today": "Bugün için analitik verisi mevcut değil. Verilerinizi görüntülemek için lütfen farklı bir zaman aralığı seçin.",
+                    "last7days": "Son 7 gün için analitik verisi mevcut değil. Verilerinizi görüntülemek için lütfen farklı bir zaman aralığı seçin.",
+                    "last30days": "Son 30 gün için analitik verisi mevcut değil. Verilerinizi görüntülemek için lütfen farklı bir zaman aralığı seçin.",
+                    "custom": "Özel aralık ({{startDate}} - {{endDate}}) için analitik verisi mevcut değil. Verilerinizi görüntülemek için lütfen farklı bir zaman aralığı seçin.",
+                    "default": "Seçilen zaman aralığı için analitik verisi mevcut değil. Verilerinizi görüntülemek için lütfen farklı bir zaman aralığı seçin."
+                },
+                "howToStart": {
+                    "title": "Analitik görmeye başlamak için:",
+                    "shareQR": "• QR kodlarınızı sosyal medyada paylaşın",
+                    "includeQR": "• Pazarlama materyallerinize QR kodlar ekleyin",
+                    "askFriends": "• Arkadaşlarınızdan QR kodlarınızı taratmalarını isteyin",
+                    "viewProfile": "• Halka açık profil sayfalarınızı görüntüleyin"
+                }
+            },
+            "charts": {
+                "topCountries": {
+                    "title": "Görüntülenmeye Göre En İyi 3 Ülke",
+                    "retryGeolocation": "Coğrafi Konumu Yeniden Dene",
+                    "geolocationIssue": "Coğrafi Konum Sorunu:",
+                    "countryDataUnavailable": "Ülke Verisi Kullanılamıyor",
+                    "unableToResolve": "Şu anda IP adresleri ülkelere çözümlenemiyor. Bu, ağ kısıtlamaları veya hizmet sınırlamaları nedeniyle olabilir.",
+                    "failedToResolve": "Ülke verileri çözümlenemedi. Lütfen daha sonra tekrar deneyin.",
+                    "analyticsSummary": "Analitik Özeti:",
+                    "totalViewEvents": "• {{count}} toplam görüntülenme olayı",
+                    "eventsWithCountry": "• {{count}} ülke verisi olan olay",
+                    "eventsPending": "• {{count}} coğrafi konum bekleyen olay",
+                    "willAppear": "IP coğrafi konum servisleri kullanılabilir olduğunda ülke verileri otomatik olarak görünecektir.",
+                    "tooltip": {
+                        "country": "Ülke: {{country}}",
+                        "views": "Görüntülenme: {{count}}"
+                    },
+                    "legend": "Görüntülenme"
+                },
+                "worldMap": {
+                    "title": "Küresel Görüntülenme Dağılımı",
+                    "subtitle": "Halka açık sayfalardan ülkeler arası görüntülenme dağılımını gösteren interaktif dünya haritası",
+                    "noGeographicData": "Coğrafi Veri Kullanılamıyor",
+                    "unableToResolve": "Şu anda IP adresleri ülkelere çözümlenemiyor. Bu, ağ kısıtlamaları veya hizmet sınırlamaları nedeniyle olabilir.",
+                    "failedToResolve": "Ülke verileri çözümlenemedi. Lütfen daha sonra tekrar deneyin.",
+                    "analyticsSummary": "Analitik Özeti:",
+                    "totalViewEvents": "• {{count}} toplam görüntülenme olayı",
+                    "eventsWithCountry": "• {{count}} ülke verisi olan olay",
+                    "eventsPending": "• {{count}} coğrafi konum bekleyen olay",
+                    "willAppear": "IP coğrafi konum servisleri kullanılabilir olduğunda ülke verileri otomatik olarak görünecektir.",
+                    "tooltip": {
+                        "country": "{{country}}",
+                        "views": "{{views}} görüntülenme"
+                    },
+                    "countriesWithViews": "{{count}} görüntülenmesi olan ülke",
+                    "legend": {
+                        "views": "Görüntülenme:",
+                        "low": "Düşük",
+                        "medium": "Orta",
+                        "high": "Yüksek",
+                        "highest": "En Yüksek"
+                    }
+                },
+                "trafficSource": {
+                    "title": "Zaman İçinde Trafik Kaynağı",
+                    "subtitle": "Farklı kaynaklardan gelen trafiğin zaman içinde nasıl değiştiğini takip edin",
+                    "selectSource": "Trafik Kaynağını Seç:",
+                    "allSources": "Tüm Kaynaklar",
+                    "direct": "Doğrudan",
+                    "qrCode": "QR Kod",
+                    "instagram": "Instagram",
+                    "whatsapp": "WhatsApp",
+                    "twitter": "Twitter",
+                    "noTrafficData": "Trafik Verisi Kullanılamıyor",
+                    "noViewEvents": "Trafik kaynağı bilgisi olan görüntülenme olayı bulunamadı.",
+                    "analyticsSummary": "Analitik Özeti:",
+                    "totalViewEvents": "• {{count}} toplam görüntülenme olayı",
+                    "eventsWithUTM": "• {{count}} UTM kaynağı olan olay",
+                    "directTraffic": "• {{count}} doğrudan trafik olayı",
+                    "willAppear": "Kullanıcılar sayfalarınızı UTM parametreleriyle ziyaret ettiğinde trafik kaynağı verileri görünecektir.",
+                    "tooltip": {
+                        "sourceCount": "{{source}}: {{count}}"
+                    }
+                },
+                "locationEngagement": {
+                    "title": "Konumla Etkileşim",
+                    "subtitle": "Farklı konumlar için zaman içinde görüntülenmeleri takip edin",
+                    "selectLocation": "Konum Seç:",
+                    "allLocations": "Tüm Konumlar",
+                    "selectLocationPlaceholder": "Konum Seç",
+                    "locationViews": "{{location}} ({{count}} görüntülenme)",
+                    "noLocationData": "Konum görüntülenme verisi mevcut değil",
+                    "unknownLocation": "Bilinmeyen Konum",
+                    "location": "Konum",
+                    "tooltip": {
+                        "date": "Tarih: {{date}}",
+                        "locationViews": "{{location}}: {{value}} görüntülenme"
+                    },
+                    "stats": {
+                        "totalLocations": "Toplam Konum",
+                        "totalViews": "Toplam Görüntülenme",
+                        "avgViews": "Ort. Görüntülenme/Konum"
+                    }
+                },
+                "recommendedPlaces": {
+                    "title": "Önerilen Yerlerle Etkileşim",
+                    "subtitle": "Konuma göre önerilen yerlerdeki tıklamaları takip edin",
+                    "selectLocation": "Konum Seç:",
+                    "selectLocationPlaceholder": "Konum Seç",
+                    "locationPlaces": "{{location}} ({{count}} yer)",
+                    "noRecommendationData": "Öneri Verisi Yok",
+                    "noDataMessage": "Seçilen dönem için öneri tıklama verisi mevcut değil.",
+                    "analyticsSummary": "Analitik Özeti:",
+                    "totalClickEvents": "• {{count}} toplam tıklama olayı",
+                    "recordsWithRecommendations": "• {{count}} Öneri ID'si olan kayıt",
+                    "uniqueRecommendations": "• {{count}} benzersiz öneri",
+                    "selectLocationPrompt": "Lütfen öneri verilerini görüntülemek için bir konum seçin.",
+                    "noClicksMessage": "Seçilen konum için öneri tıklaması bulunamadı. Kullanıcılar konum sayfalarınızdaki yer kartlarına tıkladığında öneri verileri görünecektir.",
+                    "unknownPlace": "Bilinmeyen Yer",
+                    "unknownCategory": "Bilinmeyen Kategori",
+                    "unknownLocation": "Bilinmeyen Konum",
+                    "tooltip": {
+                        "place": "{{place}}",
+                        "category": "Kategori: {{category}}",
+                        "clicks": "Tıklama: {{count}}"
+                    },
+                    "stats": {
+                        "placesShown": "Gösterilen Yerler",
+                        "totalClicks": "Toplam Tıklama",
+                        "avgClicks": "Ort. Tıklama/Yer"
+                    }
+                },
+                "socialMedia": {
+                    "title": "Sosyal Medya Etkileşimi",
+                    "subtitle": "Tüm platformlardaki halka açık profilinizden sosyal medya bağlantılarındaki tıklamaları takip edin",
+                    "noDataTitle": "Sosyal Medya Etkileşim Verisi Yok",
+                    "noDataMessage": "Halka açık profil sayfanızdan sosyal medya tıklama verisi mevcut değil.",
+                    "analyticsSummary": "Analitik Özeti:",
+                    "totalSocialClicks": "• {{count}} toplam sosyal medya tıklaması",
+                    "uniquePlatforms": "• {{count}} benzersiz platform",
+                    "trackingNote": "• Yalnızca halka açık profil sayfasından tıklamalar takip ediliyor",
+                    "willAppear": "Kullanıcılar sosyal medya bağlantılarınıza tıkladığında sosyal medya etkileşim verileri görünecektir.",
+                    "tooltip": {
+                        "platform": "{{platform}}",
+                        "clicks": "Tıklama: {{count}}"
+                    },
+                    "stats": {
+                        "platforms": "Platformlar",
+                        "totalClicks": "Toplam Tıklama",
+                        "avgClicks": "Ort. Tıklama/Platform"
+                    }
+                }
+            }
+        }
+    }
+}

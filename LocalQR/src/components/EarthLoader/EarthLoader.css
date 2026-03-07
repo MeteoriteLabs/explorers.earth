@@ -1,0 +1,272 @@
+/* ===== Earth Loader Component ===== */
+
+.earth-loader-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  width: 100%;
+  gap: 0;
+  position: relative;
+}
+
+/* ---- Globe + Plane Container ---- */
+.earth-loader {
+  text-align: center;
+  width: 100%;
+  position: relative;
+  overflow: visible;
+  max-width: 18rem;
+  height: 14rem;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* -- Plane -- */
+.earth-loader__plane {
+  position: absolute;
+  margin: 0 auto;
+  width: 100%;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.earth-loader__plane-img {
+  animation: earth-loader-spin 2.5s linear infinite;
+  width: 180px;
+  height: auto;
+  margin: 0 auto;
+  display: block;
+}
+
+@keyframes earth-loader-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* -- Earth Globe -- */
+.earth-loader__earth-wrapper {
+  position: absolute;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.earth-loader__earth {
+  width: 120px;
+  height: 120px;
+  background: url("https://zupimages.net/up/19/34/6vlb.gif");
+  border-radius: 100%;
+  background-size: 255px;
+  animation: earth-loader-earthAnim 12s infinite linear;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow:
+    0 0 30px rgba(0, 153, 204, 0.15),
+    0 0 60px rgba(0, 153, 204, 0.08),
+    inset 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes earth-loader-earthAnim {
+  0% {
+    background-position-x: 0;
+  }
+
+  100% {
+    background-position-x: -255px;
+  }
+}
+
+/* ---- Text Carousel ---- */
+.earth-loader__text-area {
+  position: relative;
+  width: 100%;
+  max-width: 22rem;
+  height: 2.5rem;
+  overflow: hidden;
+  margin-top: -0.5rem;
+}
+
+.earth-loader__text {
+  position: absolute;
+  width: 100%;
+  text-align: center;
+  font-family: "Poppins", "Inter", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.7);
+  transition: none;
+  will-change: opacity, transform;
+  padding: 0 1rem;
+  line-height: 1.4;
+  top: 50%;
+  left: 0;
+}
+
+/* States for text fade animation */
+.earth-loader__text--entering {
+  opacity: 0;
+  transform: translateY(12px) translateX(-50%);
+  left: 50%;
+}
+
+.earth-loader__text--active {
+  opacity: 1;
+  transform: translateY(-50%) translateX(-50%);
+  left: 50%;
+  transition:
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.earth-loader__text--exiting {
+  opacity: 0;
+  transform: translateY(-12px) translateX(-50%);
+  left: 50%;
+  transition:
+    opacity 0.4s cubic-bezier(0.7, 0, 0.84, 0),
+    transform 0.4s cubic-bezier(0.7, 0, 0.84, 0);
+}
+
+/* ---- Fill variant (fills parent container, no min-height) ---- */
+.earth-loader-wrapper--fill {
+  min-height: 100%;
+  height: 100%;
+}
+
+/* ---- Small variant (inline / section loaders) ---- */
+.earth-loader-wrapper--small {
+  min-height: auto;
+  padding: 2rem 0;
+}
+
+.earth-loader-wrapper--small .earth-loader {
+  max-width: 10rem;
+  height: 9rem;
+}
+
+.earth-loader-wrapper--small .earth-loader__plane-img {
+  width: 110px;
+}
+
+.earth-loader-wrapper--small .earth-loader__earth {
+  width: 72px;
+  height: 72px;
+  background-size: 155px;
+}
+
+@keyframes earth-loader-earthAnim-small {
+  0% {
+    background-position-x: 0;
+  }
+
+  100% {
+    background-position-x: -155px;
+  }
+}
+
+.earth-loader-wrapper--small .earth-loader__earth {
+  animation-name: earth-loader-earthAnim-small;
+}
+
+.earth-loader-wrapper--small .earth-loader__text-area {
+  max-width: 16rem;
+  height: 2rem;
+}
+
+.earth-loader-wrapper--small .earth-loader__text {
+  font-size: 0.7rem;
+}
+
+/* ---- Tiny variant (button / inline spinners) ---- */
+.earth-loader-wrapper--tiny {
+  min-height: auto;
+  padding: 0.5rem 0;
+  flex-direction: row;
+  gap: 0.75rem;
+}
+
+.earth-loader-wrapper--tiny .earth-loader {
+  max-width: 2.5rem;
+  height: 2.5rem;
+}
+
+.earth-loader-wrapper--tiny .earth-loader__plane {
+  display: none;
+}
+
+.earth-loader-wrapper--tiny .earth-loader__earth-wrapper {
+  padding-top: 0;
+}
+
+.earth-loader-wrapper--tiny .earth-loader__earth {
+  width: 28px;
+  height: 28px;
+  background-size: 60px;
+}
+
+@keyframes earth-loader-earthAnim-tiny {
+  0% {
+    background-position-x: 0;
+  }
+
+  100% {
+    background-position-x: -60px;
+  }
+}
+
+.earth-loader-wrapper--tiny .earth-loader__earth {
+  animation-name: earth-loader-earthAnim-tiny;
+}
+
+.earth-loader-wrapper--tiny .earth-loader__text-area {
+  max-width: 12rem;
+  height: 1.5rem;
+  margin-top: 0;
+}
+
+.earth-loader-wrapper--tiny .earth-loader__text {
+  font-size: 0.65rem;
+}
+
+/* ---- Responsive ---- */
+@media screen and (max-width: 420px) {
+  .earth-loader {
+    max-width: 14rem;
+    height: 12rem;
+  }
+
+  .earth-loader__plane-img {
+    width: 140px;
+  }
+
+  .earth-loader__earth {
+    width: 96px;
+    height: 96px;
+    background-size: 205px;
+  }
+
+  @keyframes earth-loader-earthAnim {
+    0% {
+      background-position-x: 0;
+    }
+
+    100% {
+      background-position-x: -205px;
+    }
+  }
+
+  .earth-loader__text {
+    font-size: 0.75rem;
+  }
+}

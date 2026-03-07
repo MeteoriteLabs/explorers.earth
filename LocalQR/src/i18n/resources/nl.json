@@ -1,0 +1,1814 @@
+﻿{
+  "header": {
+    "nav": {
+      "howItWorks": "Hoe het werkt",
+      "whoIsFor": "Voor wie",
+      "faq": "Veelgestelde vragen",
+      "about": "Over",
+      "contact": "Contact"
+    },
+    "auth": {
+      "login": "Inloggen",
+      "signUp": "Registreren"
+    }
+  },
+  "hero": {
+    "headline": "Al je aanbevelingen, gedeeld via één eenvoudige link of QR",
+    "subtext": "Van plaatsen tot geluiden, routes en verhalen — deel wat je weet en liefhebt.",
+    "inputLabel": "Claim je explorers URL:",
+    "inputPlaceholder": "je naam",
+    "ctaButton": "Claim Je explorers",
+    "signupPrompt": "Registreer nu om de jouwe te krijgen"
+  },
+  "sections": {
+    "createCustomize": {
+      "headline": "Maak je Explorer-pagina in minuten",
+      "subtext": "Verzamel alles wat je normaal zou delen in berichten, notities of gesprekken — en breng het samen op één plek.\n\nOrganiseer je aanbevelingen per stad, reis, thema of moment, en update ze wanneer je perspectief evolueert.",
+      "bulletPoints": {
+        "addSpots": {
+          "title": "Voeg plaatsen, ervaringen, routes, geluiden en notities toe",
+          "description": ""
+        },
+        "organize": {
+          "title": "Organiseer op locatie of interesse",
+          "description": ""
+        },
+        "generate": {
+          "title": "Bewerk altijd — je link blijft altijd hetzelfde",
+          "description": ""
+        },
+        "share": {
+          "title": "Deel digitaal of via een QR in de echte wereld",
+          "description": ""
+        }
+      },
+      "mockup": {
+        "title": "Mijn Aanbevelingen",
+        "addPlace": "Plaats Toevoegen"
+      }
+    },
+    "shareAnywhere": {
+      "headline": "Één link. Veel reizen.",
+      "subtext": "Je Explorer-link wordt een levende gids — iets dat mensen kunnen opslaan, opnieuw bezoeken en in hun eigen tempo verkennen.\n\nDeel het op een profiel, bericht, tafel, muur of kaart.\nWaar het ook gaat, je perspectief gaat mee.",
+      "scanText": "Scan voor lokale aanbevelingen",
+      "storefrontText": "Perfect voor winkelpui displays",
+      "instagramTitle": "Voeg toe aan je Instagram bio",
+      "instagramDesc": "Deel direct met je volgers",
+      "menuTitle": "Print op menu's",
+      "menuDesc": "Fysieke contactpunten eenvoudig gemaakt",
+      "welcomeTitle": "Neem op in welkomstboeken",
+      "welcomeDesc": "Perfect voor hosts en gidsen",
+      "cafeMenu": "Café Menu",
+      "tokyoFoodGuide": "Mijn Tokyo food gids explorers.earth/jane"
+    },
+    "analytics": {
+      "headline": "Volg klikken, verwijzingen en betrokkenheid",
+      "subtext": "Zie wat werkt, wie scant, en welke plekken de meeste liefde krijgen — in realtime.",
+      "workingTitle": "Zie wat werkt",
+      "workingDesc": "Volg de populariteit van je aanbevelingen",
+      "scanningTitle": "Wie scant",
+      "scanningDesc": "Monitor QR scans en updates",
+      "spotsTitle": "Beste presterende plekken",
+      "spotsDesc": "Data-gedreven inzichten voor betere curatie",
+      "dashboardTitle": "Analytisch Dashboard",
+      "last30Days": "Laatste 30 dagen",
+      "totalScans": "Totaal Scans",
+      "engagement": "Betrokkenheid",
+      "referrals": "Verwijzingen"
+    },
+    "localTunes": {
+      "mainHeading": "Tunes",
+      "title": "Luister terwijl je verkent",
+      "body": "Verkennen is niet alleen visueel. Geluid draagt geheugen, context en emotie.\n\nTunes stelt je in staat om soundtracks te verzamelen en te delen voor plaatsen, reizen en stemmingen — of het nu muziek is die onderweg is ontdekt of geluiden die een plek voor jou definiëren.\n\nNaadloos verbonden met je Explorer-profiel.",
+      "exploreButton": "Verken Tunes",
+      "featuresHeading": "Krachtige Functies",
+      "features": {
+        "realtimeCollaboration": {
+          "title": "Realtime Samenwerking",
+          "description": "Laat gasten direct nummers aan je afspeellijst toevoegen terwijl je volledige controle behoudt over wat er speelt."
+        },
+        "qrCodeSharing": {
+          "title": "QR-code Delen",
+          "description": "Deel je muziekervaring met een eenvoudige QR-code scan - geen apps of downloads vereist."
+        },
+        "youtubeIntegration": {
+          "title": "YouTube Integratie",
+          "description": "Integreer naadloos met YouTube om toegang te krijgen tot miljoenen nummers en de perfecte sfeer te creëren."
+        },
+        "voteLikeSystem": {
+          "title": "Stem & Like Systeem",
+          "description": "Gasten kunnen stemmen op hun favoriete nummers om de afspeellijstwachtrij in realtime te beïnvloeden."
+        },
+        "silentParties": {
+          "title": "Stille Feesten",
+          "description": "Organiseer unieke stille feesten waar iedereen via hun eigen koptelefoon luistert."
+        },
+        "karaokeReady": {
+          "title": "Karaoke Klaar",
+          "description": "Perfect voor karaokenachten met collaboratieve afspeellijsten en realtime nummerverzoeken."
+        }
+      },
+      "venueHeading": "Perfect voor Elke Locatie",
+      "venues": {
+        "barsPubs": "Bars & Pubs",
+        "restaurants": "Restaurants",
+        "coffeeShops": "Koffiehuizen",
+        "eventsWeddings": "Evenementen & Bruiloften",
+        "retailStores": "Winkels",
+        "gymsFitness": "Sportscholen & Fitness"
+      },
+      "closingStatement": "Tunes is <strong>gratis</strong> om te verkennen, en voor betaalde functies kun je daarna upgraden."
+    },
+    "referEarn": {
+      "headline": "Deel, verwijs en verdien",
+      "subtext": "Verander je aanbevelingen in passieve beloningen — krijg krediet wanneer anderen je QR gebruiken.",
+      "comingSoon": "Verwijzingsbeloningsprogramma (binnenkort)",
+      "rewardsTitle": "Verdien Beloningen",
+      "rewardsDesc": "Krijg betaald wanneer mensen je aanbevelingen gebruiken",
+      "earnedThisMonth": "Deze maand verdiend",
+      "passiveTitle": "Verander aanbevelingen in passieve beloningen",
+      "networkTitle": "Bouw je netwerk en verdien automatisch"
+    },
+    "whoIsFor": {
+      "headline": "Voor wie is explorers.earth?",
+      "subtext": "explorers.earth is voor iedereen die gelooft dat delen een verantwoordelijkheid is — geen uitzending.",
+      "cards": {
+        "individuals": {
+          "title": "Individuen",
+          "oneLiner": "Deel persoonlijke of lokale aanbevelingen.",
+          "items": {
+            "traveler": {
+              "label": "Reiziger",
+              "oneLiner": "Mensen die reisplekken delen"
+            },
+            "local": {
+              "label": "Lokaal",
+              "oneLiner": "Lokale bewoners die buurttips delen"
+            },
+            "family": {
+              "label": "Familie",
+              "oneLiner": "Gezinnen die nuttige plekken delen"
+            },
+            "student": {
+              "label": "Student",
+              "oneLiner": "Studenten die campus/nabijgelegen plekken delen"
+            },
+            "nomad": {
+              "label": "Nomade",
+              "oneLiner": "Nomaden die werkvriendelijke ruimtes vermelden"
+            },
+            "emergencySharer": {
+              "label": "Nooddeler",
+              "oneLiner": "Nooddelers die essentiële plekken posten"
+            }
+          }
+        },
+        "creators": {
+          "title": "Makers",
+          "oneLiner": "Deel gecureerde lijsten met je publiek.",
+          "items": {
+            "influencer": {
+              "label": "Influencer",
+              "oneLiner": "Influencers die topkeuzes delen"
+            },
+            "blogger": {
+              "label": "Blogger",
+              "oneLiner": "Bloggers die geschreven gidsen cureren"
+            },
+            "vlogger": {
+              "label": "Vlogger",
+              "oneLiner": "Vloggers die visuele reizen delen"
+            },
+            "reviewer": {
+              "label": "Recensent",
+              "oneLiner": "Recensenten die best beoordeelde plekken vermelden"
+            },
+            "photographer": {
+              "label": "Fotograaf",
+              "oneLiner": "Fotografen die fotoplekken delen"
+            },
+            "educator": {
+              "label": "Onderwijzer",
+              "oneLiner": "Onderwijzers die leergidsen delen"
+            },
+            "communityLeader": {
+              "label": "Gemeenschapsleider",
+              "oneLiner": "Gemeenschapsleiders die nuttige lijsten cureren"
+            }
+          }
+        },
+        "hospitality": {
+          "title": "Gastvrijheid",
+          "oneLiner": "Bied gasten gecureerde lokale inzichten.",
+          "items": {
+            "hotel": {
+              "label": "Hotel",
+              "oneLiner": "Hotels die lokale gidsen aanbieden"
+            },
+            "airbnb": {
+              "label": "Airbnb",
+              "oneLiner": "Hosts die buurtfavorieten delen"
+            },
+            "hostel": {
+              "label": "Hostel",
+              "oneLiner": "Hostels die backpackertips delen"
+            },
+            "homestay": {
+              "label": "Homestay",
+              "oneLiner": "Homestays die gezinsgerichte gidsen aanbieden"
+            },
+            "resort": {
+              "label": "Resort",
+              "oneLiner": "Resorts die activiteitenlijsten verstrekken"
+            },
+            "pgColiving": {
+              "label": "PG/Gedeeld Wonen",
+              "oneLiner": "PG/Gedeeld Wonen die belangrijke nabijgelegen plekken tonen"
+            }
+          }
+        },
+        "businesses": {
+          "title": "Bedrijven",
+          "oneLiner": "Leid klanten met nuttige aanbevelingen.",
+          "items": {
+            "restaurant": {
+              "label": "Restaurant",
+              "oneLiner": "Restaurants die te proberen gerechten delen"
+            },
+            "cafe": {
+              "label": "Café",
+              "oneLiner": "Cafés die favoriete menu-items benadrukken"
+            },
+            "retailShop": {
+              "label": "Winkel",
+              "oneLiner": "Winkels die productaanbevelingen delen"
+            },
+            "gym": {
+              "label": "Sportschool",
+              "oneLiner": "Sportscholen die lokale wellnessplekken suggereren"
+            },
+            "spa": {
+              "label": "Spa",
+              "oneLiner": "Spa's die nabijgelegen ontspanningsopties vermelden"
+            },
+            "salon": {
+              "label": "Salon",
+              "oneLiner": "Salons die schoonheidsgidsen aanbieden"
+            },
+            "clinic": {
+              "label": "Kliniek",
+              "oneLiner": "Klinieken die gezondheidsgerelateerde locaties delen"
+            },
+            "boutique": {
+              "label": "Boutique",
+              "oneLiner": "Boutiques die gecureerde vondsten vermelden"
+            }
+          }
+        },
+        "organizations": {
+          "title": "Organisaties",
+          "oneLiner": "Bied gecureerde gidsen en bronnen.",
+          "items": {
+            "airline": {
+              "label": "Luchtvaartmaatschappij",
+              "oneLiner": "Luchtvaartmaatschappijen die stadsgidsen delen"
+            },
+            "agency": {
+              "label": "Bureau",
+              "oneLiner": "Reisbureaus die te bezoeken plekken vermelden"
+            },
+            "university": {
+              "label": "Universiteit",
+              "oneLiner": "Universiteiten die campusessentials delen"
+            },
+            "corporate": {
+              "label": "Bedrijf",
+              "oneLiner": "Bedrijven die nabijgelegen bronnen vermelden"
+            },
+            "airport": {
+              "label": "Luchthaven",
+              "oneLiner": "Luchthavens die terminals + stedentips aanbieden"
+            },
+            "railway": {
+              "label": "Spoorweg",
+              "oneLiner": "Spoorwegen die platforminformatie delen"
+            },
+            "ngo": {
+              "label": "NGO",
+              "oneLiner": "NGO's die gemeenschapsbronnen delen"
+            },
+            "government": {
+              "label": "Overheid",
+              "oneLiner": "Afdelingen die openbare diensten benadrukken"
+            }
+          }
+        }
+      },
+      "useCases": {
+        "travelers": "Reizigers",
+        "travelersDesc": "Deel ontdekte juweeltjes met mede-ontdekkers",
+        "influencers": "Influencers",
+        "influencersDesc": "Monetiseer lokale kennis en bouw gemeenschap",
+        "airbnbHosts": "Airbnb Hosts",
+        "airbnbHostsDesc": "Verbeter gastenervaring met lokale inzichten",
+        "hotels": "Hotels",
+        "hotelsDesc": "Bied gecureerde lokale aanbevelingen",
+        "restaurants": "Restaurants",
+        "restaurantsDesc": "Cross-promotie met andere lokale bedrijven",
+        "cafes": "Cafés",
+        "cafesDesc": "Deel buurtfavorieten met klanten",
+        "localGuides": "Lokale Gidsen",
+        "localGuidesDesc": "Schaal je expertise voorbij individuele tours",
+        "creators": "Creators",
+        "creatorsDesc": "Voeg waarde toe voorbij content met uitvoerbare tips",
+        "tourOperators": "Tour Operatoren",
+        "tourOperatorsDesc": "Breid ervaringen uit voorbij geplande tours",
+        "anyBusiness": "Elk Bedrijf",
+        "anyBusinessDesc": "Bouw gemeenschap en klantloyaliteit"
+      }
+    },
+    "testimonials": {
+      "headline": "Geliefd door reizigers, creators en hosts",
+      "subtext": "Zie hoe mensen over de hele wereld explorers gebruiken om te delen wat het belangrijkst is.",
+      "scrollLeft": "Scroll testimonials naar links",
+      "scrollRight": "Scroll testimonials naar rechts",
+      "items": [
+        {
+          "id": "1",
+          "name": "Priya Sharma",
+          "role": "Reisblogger",
+          "location": "Mumbai, India",
+          "quote": "explorers heeft veranderd hoe ik mijn reiskennis deel. Mijn volgers houden ervan om directe toegang te hebben tot mijn gecureerde aanbevelingen!"
+        },
+        {
+          "id": "2",
+          "name": "Raj Patel",
+          "role": "Airbnb Host",
+          "location": "Delhi, India",
+          "quote": "Mijn gasten houden absoluut van de gepersonaliseerde QR-code in hun welkomstpakket. Het is mijn handtekening geworden!"
+        },
+        {
+          "id": "3",
+          "name": "Yuki Tanaka",
+          "role": "Restauranteigenaar",
+          "location": "Tokyo, Japan",
+          "quote": "We delen onze explorers met klanten om andere lokale plekken aan te bevelen. Het heeft geweldige gemeenschapsverbindingen gecreëerd."
+        },
+        {
+          "id": "4",
+          "name": "Maria Silva",
+          "role": "Tourgids",
+          "location": "São Paulo, Brazilië",
+          "quote": "explorers helpt me mijn expertise uit te breiden buiten de toururen. Klanten kunnen altijd toegang krijgen tot mijn aanbevelingen!"
+        },
+        {
+          "id": "5",
+          "name": "James Wilson",
+          "role": "Reisinfluencer",
+          "location": "Sydney, Australië",
+          "quote": "Als reisinfluencer maakt explorers het zo gemakkelijk om mijn favoriete plekken met mijn publiek te delen. De QR-code functie is briljant!"
+        },
+        {
+          "id": "6",
+          "name": "Sophie Martin",
+          "role": "Lokale Gids",
+          "location": "Parijs, Frankrijk",
+          "quote": "Ik gebruik explorers om wandeltochten voor mijn klanten te maken. Ze kunnen de QR scannen en in hun eigen tempo verkennen!"
+        }
+      ]
+    },
+    "faq": {
+      "headline": "Vragen?",
+      "subtext": "We hebben de meest voorkomende dingen beantwoord die mensen vragen voordat ze beginnen.",
+      "loading": "FAQ's laden...",
+      "error": "Fout bij het laden van FAQ's. Probeer het later opnieuw."
+    },
+    "features": {
+      "title": "Gebouwd om niet in de weg te staan",
+      "subtitle": "Eenvoudige, doordachte functies die je aanbevelingen laten stralen.",
+      "simpleLinks": {
+        "title": "Eenvoudige links en QR-delen"
+      },
+      "livingGuides": {
+        "title": "Levende, bewerkbare gidsen"
+      },
+      "locationAware": {
+        "title": "Locatiebewuste aanbevelingen"
+      },
+      "soundPlaylists": {
+        "title": "Optionele geluiden en afspeellijsten"
+      },
+      "privacyFirst": {
+        "title": "Privacy eerst door ontwerp"
+      },
+      "communityDriven": {
+        "title": "Gemeenschapsgedreven ontdekking"
+      }
+    },
+    "finalCTA": {
+      "headline": "Begin vandaag je wereld te delen",
+      "subtext": "Claim je gratis explorers en verander je lokale inzichten in deelbare gidsen.",
+      "ctaButton": "Claim je explorers – Voor Altijd Gratis",
+      "disclaimer": "Geen creditcard vereist • Setup in 2 minuten",
+      "creating": "Je explorers wordt aangemaakt..."
+    }
+  },
+  "contact": {
+    "title": "Laten we verbinden.",
+    "subtitle": "Of je nu een vraag, idee hebt, of gewoon hallo wilt zeggen — we horen graag van je.",
+    "getInTouch": "Neem Contact Op",
+    "email": "hello@explorers.earth",
+    "responseTime": "We reageren binnen 24-48 uur",
+    "closingMessage": "We zijn een klein team met een grote visie — je gedachten zijn belangrijk voor ons. Neem contact op en laten we samen iets lokaals en globaals bouwen.",
+    "seo": {
+      "title": "Contact explorers | Support, Help and Partnership enquiries.",
+      "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
+      "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+      "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
+      "keywords": [
+        "contact explorers",
+        "explorers support",
+        "get in touch explorers",
+        "customer service travel app",
+        "partnership inquiry explorers",
+        "help center local recommendations",
+        "technical support explorers",
+        "travel app customer service",
+        "feedback location sharing",
+        "account assistance explorers",
+        "business collaboration explorers",
+        "report problem explorers",
+        "share local recommendations support",
+        "find explorers contact",
+        "customer service",
+        "explorers team",
+        "help center",
+        "contact support",
+        "QR code support",
+        "local recommendations help",
+        "partnership inquiries"
+      ]
+    }
+  },
+  "about": {
+    "title": "Ontdekkers van de Aarde",
+    "subtitle": {
+      "line1": "Een wereldwijde gemeenschap van mensen die met zorg verkennen — voor mensen, cultuur en de planeet die we delen.",
+      "line2": "Verkennen gaat voor ons niet om hoe ver we gaan.",
+      "line3": "Het gaat om hoe diep we verbinden."
+    },
+    "section1": {
+      "title": "WAT WE GELOVEN",
+      "line1": "Verkennen begint met bewustzijn.",
+      "line2": "Met het opmerken van wat anderen voorbijgaan.",
+      "line3": "Met het kiezen om bedachtzaam te bewegen, niet snel.",
+      "line4": "We leven kort op een oude planeet —\nvoegen een paar opzettelijke markeringen toe aan een verhaal\ndat lang voor ons begon\nen lang na ons vertrek zal doorgaan."
+    },
+    "section2": {
+      "title": "HOE WE VERKENNEN ZIEN",
+      "line1": "Verkennen wordt niet gemeten in mijlen.",
+      "line2": "Het wordt gemeten in betekenis.",
+      "line3": "Het leeft in vertragen, aandacht schenken,\nen respecteren van elke plek waar we op stappen —\neen straat, een bergpad, een cafetafel,\nof een moment gedeeld met iemand nieuws."
+    },
+    "section3": {
+      "title": "WAT WE BOUWEN",
+      "line1": "explorers is een plek voor:",
+      "item1": "Gidsen gevormd door echte ervaring",
+      "item2": "Plekken, reizen, geluiden en verhalen die het waard zijn om te onthouden",
+      "item3": "Gemeenschappen gebouwd op mensen — niet op populariteitsmetrieken",
+      "line2": "Technologie helpt ons verbinden.",
+      "line3": "Mensen geven het doel."
+    },
+    "section4": {
+      "title": "BEHOREN",
+      "line1": "Ontdekkers van de Aarde is geen club.",
+      "line2": "Het is geen label.",
+      "line3": "Het is een gedeelde mentaliteit —\neen stille begrip van hoe we door de wereld bewegen."
+    },
+    "closing": "Als je nieuwsgierig bent.\nAls je bedachtzaam bent.\nAls je bereid bent te vertragen en dichterbij te kijken —\nje hoort hier al bij.",
+    "seo": {
+      "title": "Ontdekkers van de Aarde | Over Ons",
+      "description": "Een wereldwijde gemeenschap van mensen die met zorg verkennen — voor mensen, cultuur en de planeet die we delen. Verkennen gaat niet om afstand, het gaat om diepte.",
+      "keywords": [
+        "ontdekkers van de aarde",
+        "over explorers",
+        "verkenningsgemeenschap",
+        "bedachtzaam reizen",
+        "duurzame verkenning",
+        "lokaal aanbevelingen platform",
+        "reis app over",
+        "gemeenschapsgedreven aanbevelingen",
+        "authentieke lokale ervaringen",
+        "explorers team",
+        "lokaal ontdekking platform",
+        "deel lokale plekken",
+        "reistechnologie",
+        "lokaal aanbevelingen app",
+        "explorers verhaal",
+        "wie zijn wij explorers"
+      ]
+    }
+  },
+  "cookieConsent": {
+    "title": "🍪 Cookie-voorkeuren",
+    "description": "We gebruiken cookies om uw browse-ervaring te verbeteren, gepersonaliseerde inhoud te leveren en verkeer te analyseren. U kunt uw voorkeuren op elk moment beheren.",
+    "acceptAll": "✅ Alle cookies accepteren",
+    "customize": "⚙️ Aanpassen",
+    "rejectNonEssential": "❌ Niet-essentiële weigeren",
+    "preferencesTitle": "Cookie-voorkeuren",
+    "essentialCookies": {
+      "title": "Essentiële cookies",
+      "description": "Vereist voor het correct functioneren van de website",
+      "alwaysOn": "Altijd ingeschakeld"
+    },
+    "analyticsCookies": {
+      "title": "Analytische cookies",
+      "description": "Helpen ons begrijpen hoe bezoekers met onze website interageren"
+    },
+    "marketingCookies": {
+      "title": "Marketing cookies",
+      "description": "Gebruikt om gepersonaliseerde advertenties te leveren"
+    },
+    "savePreferences": "Voorkeuren opslaan",
+    "acceptAllButton": "Alles accepteren",
+    "closeBanner": "Banner sluiten",
+    "goBack": "Terug"
+  },
+  "footer": {
+    "tagline": "Laat je aanbevelingen de wereld rondreizen.",
+    "email": "hello@explorers.earth",
+    "sections": {
+      "product": "Product",
+      "contact": "Contact",
+      "legal": "Juridisch"
+    },
+    "links": {
+      "howItWorks": "Hoe het werkt",
+      "faq": "Veelgestelde vragen",
+      "contact": "Contact",
+      "about": "Over",
+      "terms": "Algemene Voorwaarden",
+      "privacy": "Privacybeleid",
+      "cookies": "Cookiebeleid"
+    },
+    "copyright": "© 2025 explorers. Alle rechten voorbehouden.",
+    "madeWithLove": "Met liefde gemaakt op aarde"
+  },
+  "legal": {
+    "terms": {
+      "title": "Algemene Voorwaarden",
+      "loading": "Algemene voorwaarden laden...",
+      "error": "Fout bij het laden van de algemene voorwaarden. Probeer het later opnieuw."
+    },
+    "privacy": {
+      "title": "Privacybeleid",
+      "loading": "Privacybeleid laden...",
+      "error": "Fout bij het laden van het privacybeleid. Probeer het later opnieuw."
+    },
+    "cookies": {
+      "title": "Cookiebeleid",
+      "loading": "Cookiebeleid laden...",
+      "error": "Fout bij het laden van het cookiebeleid. Probeer het later opnieuw."
+    }
+  },
+  "languageModal": {
+    "title": "Selecteer Taal",
+    "searchPlaceholder": "Zoek talen...",
+    "close": "Sluiten"
+  },
+  "auth": {
+    "signup": "Aanmelden",
+    "signupSubtitle": "Meld je aan om te genieten van de functies van explorers",
+    "username": "Gebruikersnaam",
+    "usernamePlaceholder": "Voer je gebruikersnaam in",
+    "email": "E-mail",
+    "emailPlaceholder": "Voer je e-mail in",
+    "password": "Wachtwoord",
+    "passwordPlaceholder": "Voer je wachtwoord in",
+    "confirmPassword": "Bevestig Wachtwoord",
+    "confirmPasswordPlaceholder": "Voer je wachtwoord opnieuw in",
+    "register": "Registreren",
+    "or": "of",
+    "signUpWithGoogle": "Aanmelden met Google",
+    "alreadyHaveAccount": "Heb je al een account?",
+    "login": "Inloggen",
+    "loginTitle": "Inloggen",
+    "loginSubtitle": "Log in om door te gaan naar je account",
+    "usernameOrEmail": "Gebruikersnaam of e-mail",
+    "usernameOrEmailPlaceholder": "Voer je gebruikersnaam of e-mail in",
+    "signInWithGoogle": "Inloggen met Google",
+    "newToexplorers": "Nieuw bij explorers?",
+    "forgotPassword": "Wachtwoord vergeten?",
+    "validations": {
+      "username": {
+        "required": "Gebruikersnaam is verplicht",
+        "minLength": "Gebruikersnaam moet minimaal 3 tekens lang zijn",
+        "maxLength": "Gebruikersnaam mag niet langer zijn dan 30 tekens",
+        "invalidChars": "Gebruikersnaam mag alleen kleine letters (a-z), cijfers (0-9) en streepjes (-) bevatten",
+        "mustStartWithLetter": "Gebruikersnaam moet beginnen met een letter (a-z)",
+        "cannotStartEndHyphen": "Gebruikersnaam mag niet beginnen of eindigen met een streepje",
+        "noConsecutiveHyphens": "Gebruikersnaam mag geen opeenvolgende streepjes bevatten",
+        "cannotBeAllNumbers": "Gebruikersnaam mag niet alleen uit cijfers bestaan",
+        "reservedWords": "Deze gebruikersnaam bevat gereserveerde woorden en kan niet worden gebruikt",
+        "inappropriateContent": "Gebruikersnaam bevat ongepaste inhoud",
+        "alreadyExists": "Gebruikersnaam bestaat al",
+        "suggestedAlternatives": "Voorgestelde alternatieven:",
+        "willBeConvertedLowercase": "Gebruikersnaam wordt omgezet naar kleine letters",
+        "checkingAvailability": "Beschikbaarheid controleren...",
+        "available": "Gebruikersnaam is beschikbaar",
+        "willConvertToLowercase": "Gebruikersnaam wordt omgezet naar kleine letters"
+      },
+      "email": {
+        "required": "E-mail is verplicht",
+        "invalidFormat": "Voer een geldig e-mailadres in",
+        "alreadyExists": "E-mail bestaat al",
+        "invalid": "Ongeldige e-mail"
+      },
+      "password": {
+        "required": "Wachtwoord is verplicht",
+        "minLength": "Wachtwoord moet minimaal 6 tekens lang zijn",
+        "uppercaseRequired": "Wachtwoord moet minimaal één hoofdletter (A-Z) bevatten",
+        "numberRequired": "Wachtwoord moet minimaal één cijfer (0-9) bevatten",
+        "specialCharRequired": "Wachtwoord moet minimaal één speciaal teken (!@#$%^&*().,?\":{}|<>) bevatten",
+        "strength": "Wachtwoordsterkte",
+        "weak": "Zwak",
+        "medium": "Gemiddeld",
+        "strong": "Sterk",
+        "maxLength": "Password must not exceed 32 characters",
+        "lowercaseRequired": "Password must contain at least one lowercase letter (a-z)",
+        "tooCommon": "This password is too common. Please choose a more unique password",
+        "sameAsCurrent": "New password cannot be the same as your current password",
+        "considerLonger": "Consider using a longer password with more variety for better security",
+        "moreSecure": "Passwords with 10 or more characters are more secure",
+        "veryWeak": "Zeer zwak",
+        "fair": "Gemiddeld",
+        "good": "Goed",
+        "veryStrong": "Zeer sterk"
+      },
+      "confirmPassword": {
+        "required": "Bevestig je wachtwoord",
+        "mustMatch": "Wachtwoorden komen niet overeen",
+        "confirmRequired": "Wachtwoordbevestiging is verplicht",
+        "match": "Wachtwoorden komen overeen"
+      },
+      "login": {
+        "usernameOrEmailRequired": "Gebruikersnaam of e-mail is verplicht",
+        "invalidCredentials": "Ongeldige gebruikersnaam/e-mail of wachtwoord",
+        "accountNotFound": "Account niet gevonden",
+        "tooManyAttempts": "Te veel mislukte pogingen",
+        "incorrectPassword": "Onjuist wachtwoord"
+      },
+      "general": {
+        "fillRequiredFields": "Vul alle verplichte velden in",
+        "somethingWentWrong": "Er ging iets mis, probeer opnieuw"
+      },
+      "forgotPassword": {
+        "title": "Wachtwoord Vergeten?",
+        "description": "Voer je e-mailadres in en we sturen je een resetlink.",
+        "emailLabel": "E-mailadres",
+        "emailPlaceholder": "Voer je e-mail in",
+        "sendResetLink": "Resetlink Verzenden",
+        "backToLogin": "Terug naar Inloggen",
+        "resetLinkSent": "Wachtwoord resetlink verzonden naar je e-mail!",
+        "failedToSend": "Verzenden van resetlink mislukt. Probeer later opnieuw.",
+        "somethingWentWrong": "Er ging iets mis!"
+      },
+      "accountName": {
+        "required": "Accountnaam is verplicht",
+        "minLength": "Accountnaam moet minimaal 2 tekens bevatten",
+        "maxLength": "Accountnaam mag niet meer dan 50 tekens bevatten",
+        "invalidChars": "Accountnaam mag alleen letters, spaties, apostrofen, streepjes en punten bevatten",
+        "noNumbers": "Accountnaam mag geen cijfers bevatten"
+      },
+      "accountType": {
+        "required": "Accounttype is verplicht",
+        "invalid": "Ongeldig accounttype"
+      },
+      "primaryAddress": {
+        "required": "Primair adres is verplicht"
+      },
+      "socialMedia": {
+        "instagram": "Voer een geldige Instagram-profiel-URL in",
+        "whatsapp": "Voer een geldig WhatsApp-contact in: telefoon (+1234567890) of wa.me/api.whatsapp.com-link",
+        "mobile": "Voer een geldig mobiel telefoonnummer in (bijv. +1234567890)",
+        "youtube": "Voer een geldige YouTube-kanaal-URL in (bijv. youtube.com/@gebruikersnaam)",
+        "x": "Voer een geldige X (Twitter)-profiel-URL in",
+        "spotify": "Voer een geldige Spotify-URL in",
+        "website": "Voer een geldige website-URL in",
+        "facebook": "Voer een geldige Facebook-profiel-URL in",
+        "youtubeMusic": "Voer een geldige YouTube Music-kanaal-URL in",
+        "email": "Voer een geldig e-mailadres in",
+        "linkedin": "Voer een geldige LinkedIn-profiel-URL in",
+        "appleMusic": "Voer een geldige Apple Music-URL in",
+        "tiktok": "Voer een geldige TikTok-profiel-URL in",
+        "snapchat": "Voer een geldige Snapchat-gebruikersnaam in"
+      },
+      "onboarding": {
+        "displayNameRequired": "Weergavenaam is verplicht",
+        "displayNameMinLength": "Weergavenaam moet minimaal 2 tekens bevatten",
+        "displayNameMaxLength": "Weergavenaam mag niet meer dan 50 tekens bevatten",
+        "bioRequired": "Biografie is verplicht",
+        "bioMaxLength": "Biografie mag niet meer dan 250 tekens bevatten",
+        "mobileNumberRequired": "Mobiel nummer is verplicht",
+        "mobileNumberInvalid": "Voer een geldig mobiel nummer in",
+        "mobileNumberLength": "Mobiel nummer moet 10 cijfers bevatten",
+        "addressRequired": "Adres is verplicht",
+        "cityRequired": "Stad is verplicht",
+        "stateRequired": "Staat is verplicht",
+        "countryRequired": "Land is verplicht",
+        "postalCodeRequired": "Postcode is verplicht",
+        "primaryAddressRequired": "Primair adres is verplicht",
+        "emailAddressRequired": "E-mailadres is verplicht",
+        "resetLinkSentSuccess": "Resetlink succesvol verzonden!",
+        "invalidUsername": "Ongeldige gebruikersnaam",
+        "profileImageAlt": "Profile"
+      },
+      "resetPassword": {
+        "newPassword": "New Password",
+        "confirmPassword": "Confirm Password"
+      },
+      "resetLinkSent": {
+        "title": "E-mail verzonden!",
+        "description": "Controleer je inbox voor de wachtwoord reset link.",
+        "resending": "Opnieuw verzenden...",
+        "resendWithCooldown": "E-mail opnieuw verzenden ({{cooldown}}s)",
+        "resendMail": "E-mail opnieuw verzenden"
+      }
+    },
+    "onboarding": {
+      "accountDetails": {
+        "title": "Accountgegevens",
+        "description": "Vertel ons over jezelf",
+        "displayName": "Weergavenaam",
+        "displayNamePlaceholder": "Voer je weergavenaam in",
+        "username": "Gebruikersnaam",
+        "usernamePlaceholder": "Voer je gebruikersnaam in",
+        "usernameDescription": "Je gebruikersnaam is onderdeel van je openbare profiellink en QR-codes. Voorbeeld: explorers.earth/bhavya",
+        "bio": "Biografie",
+        "bioPlaceholder": "Vertel ons over jezelf",
+        "accountType": "Accounttype",
+        "personal": "Persoonlijk",
+        "creator": "Maker",
+        "business": "Zakelijk",
+        "next": "Volgende"
+      },
+      "contactDetails": {
+        "title": "Contactgegevens",
+        "description": "Voeg je mobiele nummer toe voor verificatie",
+        "mobileNumber": "Mobiel nummer",
+        "mobileNumberPlaceholder": "Voer je mobiele nummer in",
+        "next": "Volgende",
+        "back": "Terug"
+      },
+      "addressDetails": {
+        "title": "Adresgegevens",
+        "description": "Waar bevind je je?",
+        "address": "Adres",
+        "addressPlaceholder": "Voer je adres in",
+        "streetName": "Straatnaam",
+        "streetNamePlaceholder": "Voer de straatnaam in",
+        "city": "Stad",
+        "cityPlaceholder": "Voer de stad in",
+        "state": "Staat",
+        "statePlaceholder": "Voer de staat in",
+        "country": "Land",
+        "countryPlaceholder": "Voer het land in",
+        "postalCode": "Postcode",
+        "postalCodePlaceholder": "Voer de postcode in",
+        "primaryAddress": "Primair adres",
+        "primaryAddressDescription": "weergegeven op openbaar profiel (stad en land)",
+        "primaryAddressPlaceholder": "Voer het primaire adres in",
+        "sameAsAddress": "Zelfde als adres",
+        "confirmDetails": "Bevestig details",
+        "back": "Terug"
+      }
+    },
+    "resetPassword": {
+      "newPasswordPlaceholder": "Enter new password",
+      "confirmPasswordPlaceholder": "Confirm your password"
+    }
+  },
+  "common": {
+    "loading": "Laden...",
+    "error": "Er is een fout opgetreden. Probeer het later opnieuw.",
+    "retry": "Opnieuw proberen",
+    "noResults": "Geen resultaten gevonden",
+    "submit": "Verzenden",
+    "signInWithGoogle": "Inloggen met Google",
+    "signUpWithGoogle": "Registreren met Google",
+    "hidePassword": "Wachtwoord verbergen",
+    "showPassword": "Wachtwoord tonen",
+    "cancel": "Annuleren"
+  },
+  "dashboard": {
+    "home": {
+      "welcomeBack": "Welkom terug",
+      "profile": "Profiel",
+      "myRecommendations": "Mijn Aanbevelingen",
+      "activePlaces": "actieve plaatsen",
+      "setupProfile": "Stel Uw Profiel In",
+      "draft": "Concept",
+      "startCurating": "Begin met het samenstellen van uw aanbevelingen en deel ze met de wereld!",
+      "addRecommendations": "Aanbevelingen Toevoegen"
+    },
+    "shareModal": {
+      "copyLink": "Link kopiëren",
+      "copied": "Gekopieerd!",
+      "linkCopiedToast": "Link gekopieerd!!"
+    },
+    "recommendations": {
+      "locationButton": "Locatie",
+      "viewAll": "Alles bekijken",
+      "recommendationsTab": "Aanbevelingen",
+      "manageTab": "Beheren",
+      "manageHeading": "Beheren",
+      "deleteAction": "Verwijderen",
+      "editAction": "Bewerken",
+      "publishedStatus": "Gepubliceerd",
+      "draftStatus": "Concept",
+      "myRecommendationsHeading": "Mijn Aanbevelingen",
+      "myQRHeading": "Mijn QR",
+      "myRecommendationsQR": "Mijn Aanbevelingen",
+      "travelLikeLocal": "Reis als een local",
+      "shareLink": "Link Delen",
+      "copyLink": "Link Kopiëren",
+      "downloadQR": "QR Downloaden",
+      "emptyState": {
+        "title": "Geen Aanbevelingen Beschikbaar",
+        "subtitle": "Begin met het toevoegen van je favoriete plekken aan deze lijst"
+      },
+      "draftLabel": "Concept",
+      "recommendButton": "Aanbevelen",
+      "exploreSection": {
+        "heading": "Verkennen met explorers",
+        "addButton": "Toevoegen"
+      },
+      "locationLabels": {
+        "currentLocation": "Huidige Locatie",
+        "selectedLocation": "Geselecteerde Locatie"
+      },
+      "categories": {
+        "foodDrinks": "Eten en Drinken",
+        "lodging": "Verblijf",
+        "healthWellness": "Gezondheid en Welzijn",
+        "shopping": "Winkelen",
+        "entertainment": "Entertainment",
+        "transportation": "Vervoer",
+        "services": "Diensten",
+        "tourism": "Toerisme",
+        "naturalFeatures": "Natuurlijke Kenmerken"
+      },
+      "locationForm": {
+        "labels": {
+          "searchLocation": "Locatie zoeken",
+          "recommendationSocialLink": "Aanbeveling sociale link",
+          "note": "Notitie",
+          "placeUrl": "Plaats URL"
+        },
+        "placeholders": {
+          "searchLocation": "Voer stad, staat of land in (bijv. Parijs)",
+          "recommendationSocialLink": "Voer URL in (Youtube / Instagram)",
+          "note": "Voer een notitie in gerelateerd aan uw aanbeveling",
+          "placeUrl": "Voer naam in om een deelbare link te maken"
+        },
+        "buttons": {
+          "addLocation": "Locatie toevoegen",
+          "updateLocation": "Locatie bijwerken"
+        }
+      },
+      "toastMessages": {
+        "listCreated": "Recommendation List Created Successfully!!!",
+        "listPublished": "Aanbevelingslijst succesvol gepubliceerd!",
+        "listUnpublished": "Aanbevelingslijst succesvol verwijderd uit publicatie!",
+        "listPublishError": "List Should have atleast one Recommended Place to be Published",
+        "listVisibilityError": "Failed to update recommendation list visibility.",
+        "qrDownloadSuccess": "QR code downloaded successfully!",
+        "qrDownloadError": "Failed to download QR code. Please try again.",
+        "linkCopied": "Link copied to clipboard!",
+        "linkCopyError": "Failed to copy link. Please try again.",
+        "qrNotReady": "QR code not ready for download"
+      },
+      "placesModal": {
+        "placesCount": "{{visible}} van {{total}} plaatsen",
+        "scrollToLoadMore": "Scroll om meer plaatsen te laden"
+      },
+      "noRecommendationsYet": "Nog geen aanbevelingen!!",
+      "setupProfileBeforeRecommendations": "Stel uw profiel in voordat u aanbevelingen maakt!!",
+      "startAddingPlaces": "Begin met het toevoegen van uw favoriete plaatsen en deel ze met anderen.",
+      "startRecommending": "Begin met Aanbevelen",
+      "addRecommendationForm": {
+        "searchField": {
+          "label": "Search Recommendation with Google"
+        },
+        "mainInput": {
+          "placeholder": "Enter your Recommendation"
+        },
+        "taggableFields": {
+          "title": "Titel",
+          "address": "Adres",
+          "category": "Categorie",
+          "contactNumber": "Contactnummer",
+          "socialLink": "Sociale link",
+          "personName": "Naam van de persoon"
+        },
+        "accordionSection": {
+          "heading": "Your Recommendation Details",
+          "recommendationLink": {
+            "label": "Your Recommendation Link",
+            "placeholder": "You can insert Instagram reel, YouTube, or blog recommending"
+          },
+          "whyRecommend": {
+            "label": "Why would you recommend?",
+            "placeholder": "Why would you recommend?"
+          }
+        },
+        "fileUpload": {
+          "text": "Attach Image/Video",
+          "subtext": "optional"
+        },
+        "actionButton": {
+          "text": "Add recommendation"
+        },
+        "taggableFieldsPlaceholders": {
+          "title": "Voer de titel in",
+          "address": "Voer het adres van de plaats in",
+          "category": "Voer een categorie in",
+          "contactNumber": "Voer contactnummer in",
+          "socialLink": "Voer sociale link in (plaats)",
+          "personName": "Voer de volledige naam van de persoon in"
+        },
+        "validationMessages": {
+          "titleRequired": "Titel is verplicht",
+          "addressRequired": "Adres is verplicht",
+          "categoryRequired": "Categorie is verplicht",
+          "socialUrlRequired": "Instagram of LinkedIn URL is vereist voor persoonaanbevelingen",
+          "socialUrlInvalid": "Voer een geldige Instagram of LinkedIn URL in"
+        },
+        "mapModal": {
+          "cancelButton": "Annuleren",
+          "addRecommendationButton": "Aanbeveling toevoegen",
+          "updateRecommendationButton": "Aanbeveling bijwerken",
+          "setLocationButton": "Locatie instellen"
+        },
+        "deleteRecommendation": "Aanbeveling verwijderen",
+        "searchLocation": {
+          "label": "Zoek een locatie",
+          "searchPlace": "Zoek een plaats",
+          "placeholder": "Typ en selecteer een plaats"
+        },
+        "fetchingImages": "Afbeeldingen ophalen…",
+        "recommendationType": {
+          "place": "Plaats",
+          "person": "Persoon",
+          "label": "Aanbevelingstype"
+        },
+        "imagePreview": {
+          "alt": "Voorbeeld",
+          "deleteTooltip": "Verwijderen",
+          "setThumbnailTooltip": "Instellen als miniatuur",
+          "confirmDeleteTitle": "Verwijderen Bevestigen",
+          "confirmDeleteMessage": "Weet je zeker dat je deze afbeelding uit de collectie wilt verwijderen?",
+          "cancel": "Annuleren",
+          "confirm": "Bevestigen"
+        },
+        "deleteRecommendationModal": {
+          "title": "Verwijdering bevestigen",
+          "message": "Weet je zeker dat je deze aanbeveling wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
+          "cancel": "Annuleren"
+        }
+      }
+    },
+    "profile": {
+      "tabs": {
+        "publicProfile": "Openbaar Profiel",
+        "account": "Account"
+      },
+      "publicProfile": {
+        "sections": {
+          "profileInformation": "Bio",
+          "socialMedia": "Sociale Links",
+          "publicAddress": "Openbaar Adres",
+          "howToReachUs": "Hoe ons te bereiken",
+          "howToReachUsDescription": "Gebruik dit gedeelte om uw bedrijfslocatiedetails te delen.",
+          "feed": "Feed",
+          "socialMediaSubtitle": "Sociale media links en informatie"
+        },
+        "fields": {
+          "accountType": "Accounttype",
+          "bio": "Bio",
+          "socialMedia": "Sociale Media",
+          "instagram": "Instagram",
+          "whatsapp": "Whatsapp",
+          "mobile": "Mobiel",
+          "youtube": "Youtube",
+          "x": "X",
+          "spotify": "Spotify",
+          "website": "Website",
+          "facebook": "Facebook",
+          "youtubeMusic": "Youtube Music",
+          "gmail": "Gmail",
+          "linkedin": "Linkedin",
+          "appleMusic": "Apple Music",
+          "tiktok": "Tiktok",
+          "snapchat": "Snapchat",
+          "businessLocation": "Voeg uw locatie toe. Deze verschijnen als uitgelichte locaties op uw openbare profiel",
+          "primaryAddress": "Primair Adres - Getoond op openbaar profiel (stad en land)",
+          "feed": "Upload afbeeldingen of video's van uw locatie, producten, diensten of ervaringen. Deze foto's worden weergegeven in uw galerij op uw openbare profiel",
+          "title": "Titel",
+          "contact": "Contact",
+          "about": "Over",
+          "addLocation": "Voeg uw locatie toe",
+          "addLocationInformation": "Locatie-informatie toevoegen",
+          "searchAddress": "Zoek naar uw adres...",
+          "sameAsAddress": "Hetzelfde als adres"
+        },
+        "accountTypes": {
+          "personal": "Persoonlijk",
+          "creator": "Maker",
+          "business": "Bedrijf"
+        },
+        "businessLocation": {
+          "title": "Titel",
+          "contact": "Contact",
+          "website": "Website",
+          "about": "Over"
+        }
+      },
+      "account": {
+        "sections": {
+          "account": "Account",
+          "billingAddress": "Factuuradres"
+        },
+        "fields": {
+          "username": "Gebruikersnaam",
+          "accountName": "Accountnaam",
+          "address": "Adres",
+          "streetName": "Straatnaam",
+          "state": "Staat",
+          "city": "Stad",
+          "country": "Land",
+          "postalCode": "Postcode",
+          "addressPlaceholder": "Voer uw adres in",
+          "detectLocation": "Mijn huidige locatie detecteren"
+        }
+      },
+      "common": {
+        "visible": "Zichtbaar",
+        "hidden": "Verborgen",
+        "mobileNumber": "Mobiel nummer",
+        "mobileNumberPlaceholder": "Mobiel nummer",
+        "whatsappNumber": "WhatsApp nummer",
+        "primaryAddress": "Primair Adres",
+        "editImage": "Afbeelding bewerken",
+        "confirm": "Bevestigen",
+        "add": "Toevoegen",
+        "video": "Video",
+        "feedImage": "Feed afbeelding",
+        "importedImage": "geïmporteerde afbeelding",
+        "cover": "Omslag",
+        "profile": "Profiel",
+        "saveAndPublish": "Opslaan & Publiceren",
+        "saveToFeed": "Opslaan naar Feed",
+        "savedAndPublishedSuccessfully": "Succesvol opgeslagen en gepubliceerd",
+        "saveAndPublishFailed": "Opslaan en publiceren mislukt. Probeer het opnieuw.",
+        "failedToSaveChanges": "Wijzigingen opslaan mislukt. Probeer het opnieuw.",
+        "networkError": "Netwerkfout: Controleer uw verbinding en probeer het opnieuw.",
+        "unexpectedError": "Er is een onverwachte fout opgetreden. Probeer het opnieuw.",
+        "somethingWentWrong": "Er is iets misgegaan. Probeer het opnieuw.",
+        "failedToUploadFiles": "Bestanden uploaden mislukt. Probeer het opnieuw.",
+        "failedToUploadImages": "Afbeeldingen uploaden mislukt. Probeer het opnieuw.",
+        "failedToSaveImagesToFeed": "Afbeeldingen opslaan naar feed mislukt",
+        "failedToUpdateProfile": "Profiel bijwerken mislukt. Probeer het opnieuw.",
+        "fetching": "Ophalen...",
+        "selectAll": "Alles selecteren",
+        "clearSelection": "Selectie wissen",
+        "errors": {
+          "noFileProvided": "Geen bestand opgegeven voor upload",
+          "failedToGetAccountId": "Kan account-ID niet ophalen voor upload",
+          "uploadResponseMissingFileData": "Uploadreactie bevat geen bestandsgegevens"
+        }
+      }
+    }
+  },
+  "toast": {
+    "success": {
+      "loginSuccessful": "Inloggen succesvol!",
+      "registrationSuccessful": "Registratie succesvol!",
+      "passwordResetSuccessful": "Wachtwoord reset succesvol!",
+      "emailVerificationSent": "E-mail verificatie verzonden!",
+      "resetLinkSent": "Wachtwoord reset link verzonden naar uw e-mail!",
+      "resetLinkResent": "Reset link opnieuw verzonden!",
+      "profileImageUpdated": "Profielfoto succesvol bijgewerkt!",
+      "backgroundImageUpdated": "Achtergrondafbeelding succesvol bijgewerkt!",
+      "recommendedListUpdated": "Aanbevolen lijst succesvol bijgewerkt!!!",
+      "accountCreated": "Account succesvol aangemaakt!",
+      "usernameUpdated": "Gebruikersnaam succesvol bijgewerkt!",
+      "profileUpdated": "Profiel succesvol bijgewerkt!",
+      "settingsSaved": "Instellingen succesvol opgeslagen!",
+      "dataSaved": "Gegevens succesvol opgeslagen!",
+      "changesSaved": "Wijzigingen succesvol opgeslagen!",
+      "fileUploaded": "Bestand succesvol geüpload!",
+      "imageUploaded": "Afbeelding succesvol geüpload!",
+      "linkCopied": "Link gekopieerd naar klembord!",
+      "emailSent": "E-mail succesvol verzonden!",
+      "notificationSent": "Melding succesvol verzonden!",
+      "actionCompleted": "Actie succesvol voltooid!",
+      "formSubmitted": "Formulier succesvol verzonden!",
+      "onboardingCompleted": "Onboarding succesvol voltooid!",
+      "welcomeMessage": "Welkom bij explorers!",
+      "accountActivated": "Account succesvol geactiveerd!",
+      "emailVerified": "E-mail succesvol geverifieerd!",
+      "passwordChanged": "Wachtwoord succesvol gewijzigd!",
+      "usernameChanged": "Gebruikersnaam succesvol gewijzigd!",
+      "profileCompleted": "Profiel succesvol voltooid!",
+      "setupCompleted": "Setup succesvol voltooid!",
+      "loggedOutSuccessfully": "Succesvol uitgelogd!"
+    },
+    "error": {
+      "loginFailed": "Inloggen mislukt. Controleer uw inloggegevens.",
+      "registrationFailed": "Registratie mislukt. Probeer opnieuw.",
+      "passwordResetFailed": "Wachtwoord reset mislukt. Probeer opnieuw.",
+      "emailVerificationFailed": "E-mail verificatie mislukt. Probeer opnieuw.",
+      "resetLinkFailed": "Reset link verzenden mislukt. Probeer later opnieuw.",
+      "resetLinkResendFailed": "Opnieuw verzenden mislukt. Probeer later opnieuw.",
+      "profileImageUpdateFailed": "Profielfoto uploaden mislukt. Probeer opnieuw.",
+      "backgroundImageUpdateFailed": "Achtergrondafbeelding uploaden mislukt. Probeer opnieuw.",
+      "recommendedListUpdateFailed": "Fout bij bijwerken van aanbevolen lijst!!!",
+      "accountCreationFailed": "Account aanmaken mislukt. Probeer opnieuw.",
+      "usernameUpdateFailed": "Gebruikersnaam update mislukt. Probeer opnieuw.",
+      "profileUpdateFailed": "Profiel update mislukt. Probeer opnieuw.",
+      "settingsSaveFailed": "Instellingen opslaan mislukt. Probeer opnieuw.",
+      "dataSaveFailed": "Gegevens opslaan mislukt. Probeer opnieuw.",
+      "changesSaveFailed": "Wijzigingen opslaan mislukt. Probeer opnieuw.",
+      "fileUploadFailed": "Bestand uploaden mislukt. Probeer opnieuw.",
+      "imageUploadFailed": "Afbeelding uploaden mislukt. Probeer opnieuw.",
+      "linkCopyFailed": "Link kopiëren mislukt. Probeer opnieuw.",
+      "emailSendFailed": "E-mail verzenden mislukt. Probeer opnieuw.",
+      "notificationSendFailed": "Melding verzenden mislukt. Probeer opnieuw.",
+      "actionFailed": "Actie mislukt. Probeer opnieuw.",
+      "formSubmissionFailed": "Formulier verzenden mislukt. Probeer opnieuw.",
+      "onboardingFailed": "Onboarding mislukt. Probeer opnieuw.",
+      "accountActivationFailed": "Account activatie mislukt. Probeer opnieuw.",
+      "passwordChangeFailed": "Wachtwoord wijzigen mislukt. Probeer opnieuw.",
+      "usernameChangeFailed": "Gebruikersnaam wijzigen mislukt. Probeer opnieuw.",
+      "profileCompletionFailed": "Profiel voltooien mislukt. Probeer opnieuw.",
+      "setupFailed": "Setup mislukt. Probeer opnieuw.",
+      "networkError": "Netwerkfout. Controleer uw verbinding.",
+      "serverError": "Serverfout. Probeer later opnieuw.",
+      "validationError": "Validatiefout. Controleer uw invoer.",
+      "permissionDenied": "Toegang geweigerd. Neem contact op met ondersteuning.",
+      "sessionExpired": "Sessie verlopen. Log opnieuw in.",
+      "invalidCredentials": "Ongeldige inloggegevens. Controleer uw invoer.",
+      "emailNotFound": "E-mail niet gevonden. Probeer opnieuw.",
+      "usernameAlreadyExists": "Gebruikersnaam bestaat al. Kies een andere.",
+      "emailAlreadyExists": "E-mail bestaat al. Gebruik een andere e-mail.",
+      "invalidEmailFormat": "Ongeldig e-mail formaat. Voer een geldige e-mail in.",
+      "passwordTooWeak": "Wachtwoord is te zwak. Kies een sterker wachtwoord.",
+      "passwordsDoNotMatch": "Wachtwoorden komen niet overeen. Probeer opnieuw.",
+      "requiredFieldMissing": "Verplicht veld ontbreekt. Vul alle verplichte velden in.",
+      "invalidInput": "Ongeldige invoer. Controleer uw gegevens.",
+      "fileTooLarge": "Bestand is te groot. Kies een kleiner bestand.",
+      "unsupportedFileType": "Niet-ondersteund bestandstype. Kies een ander bestand.",
+      "uploadLimitExceeded": "Upload limiet overschreden. Probeer later opnieuw.",
+      "operationTimeout": "Bewerking verlopen. Probeer opnieuw.",
+      "serviceUnavailable": "Service niet beschikbaar. Probeer later opnieuw.",
+      "maintenanceMode": "Service wordt onderhouden. Probeer later opnieuw.",
+      "rateLimitExceeded": "Te veel verzoeken. Probeer later opnieuw.",
+      "quotaExceeded": "Quota overschreden. Probeer later opnieuw.",
+      "accessDenied": "Toegang geweigerd. U heeft geen toestemming voor deze actie.",
+      "resourceNotFound": "Bron niet gevonden. Controleer uw verzoek.",
+      "conflictError": "Conflictfout. De bron bestaat al.",
+      "preconditionFailed": "Voorwaarde mislukt. Controleer uw verzoek.",
+      "tooManyAttempts": "Te veel pogingen. Probeer later opnieuw.",
+      "accountLocked": "Account is vergrendeld. Neem contact op met ondersteuning.",
+      "accountSuspended": "Account is opgeschort. Neem contact op met ondersteuning.",
+      "accountDeleted": "Account is verwijderd. Neem contact op met ondersteuning.",
+      "emailNotVerified": "E-mail is niet geverifieerd. Verifieer eerst uw e-mail.",
+      "phoneNotVerified": "Telefoonnummer is niet geverifieerd. Verifieer eerst uw telefoonnummer.",
+      "twoFactorRequired": "Twee-factor authenticatie is vereist.",
+      "twoFactorFailed": "Twee-factor authenticatie mislukt. Probeer opnieuw.",
+      "captchaFailed": "Captcha verificatie mislukt. Probeer opnieuw.",
+      "invalidToken": "Ongeldig token. Probeer opnieuw.",
+      "expiredToken": "Token verlopen. Probeer opnieuw.",
+      "invalidCode": "Ongeldige code. Controleer uw invoer.",
+      "expiredCode": "Code is verlopen. Vraag een nieuwe aan.",
+      "codeLimitExceeded": "Code limiet overschreden. Probeer later opnieuw.",
+      "invalidUsername": "Ongeldige gebruikersnaam. Controleer uw invoer.",
+      "usernameTooShort": "Gebruikersnaam is te kort. Kies een langere gebruikersnaam.",
+      "usernameTooLong": "Gebruikersnaam is te lang. Kies een kortere gebruikersnaam.",
+      "usernameInvalidChars": "Gebruikersnaam bevat ongeldige tekens. Gebruik alleen letters, cijfers en streepjes.",
+      "usernameReserved": "Gebruikersnaam is gereserveerd. Kies een andere gebruikersnaam.",
+      "usernameProfanity": "Gebruikersnaam bevat ongepaste inhoud. Kies een andere gebruikersnaam.",
+      "primaryAddressRequired": "Primair adres is vereist",
+      "addressRequired": "Adres is vereist",
+      "cityRequired": "Stad is vereist",
+      "stateRequired": "Provincie is vereist",
+      "countryRequired": "Land is vereist",
+      "postalCodeRequired": "Postcode is vereist",
+      "mobileNumberRequired": "Mobiel nummer is vereist",
+      "mobileNumberInvalid": "Ongeldig mobiel nummer formaat",
+      "mobileNumberTooShort": "Mobiel nummer is te kort",
+      "mobileNumberTooLong": "Mobiel nummer is te lang",
+      "bioRequired": "Bio is vereist",
+      "bioTooLong": "Bio is te lang. Houd het onder 250 tekens",
+      "displayNameRequired": "Weergavenaam is vereist",
+      "displayNameTooShort": "Weergavenaam is te kort",
+      "displayNameTooLong": "Weergavenaam is te lang",
+      "accountTypeRequired": "Account type is vereist",
+      "invalidAccountType": "Ongeldig account type geselecteerd",
+      "imageRequired": "Afbeelding is vereist",
+      "imageTooLarge": "Afbeelding is te groot. Kies een kleinere afbeelding",
+      "unsupportedImageFormat": "Niet-ondersteund afbeeldingsformaat. Gebruik JPG, PNG of GIF",
+      "imageProcessingFailed": "Afbeeldingsverwerking mislukt. Probeer opnieuw",
+      "imageCorrupted": "Afbeelding is beschadigd. Kies een andere afbeelding",
+      "imageDimensionsInvalid": "Afbeeldingsafmetingen zijn ongeldig. Kies een andere afbeelding",
+      "imageSizeInvalid": "Afbeeldingsgrootte is ongeldig. Kies een andere afbeelding",
+      "imageFormatInvalid": "Afbeeldingsformaat is ongeldig. Kies een andere afbeelding",
+      "imageQualityTooLow": "Afbeeldingskwaliteit is te laag. Kies een afbeelding met hogere kwaliteit",
+      "imageTooSmall": "Afbeelding is te klein. Kies een grotere afbeelding",
+      "imageTooBig": "Afbeelding is te groot. Kies een kleinere afbeelding",
+      "imageAspectRatioInvalid": "Afbeeldingsaspectverhouding is ongeldig. Kies een andere afbeelding",
+      "imageColorSpaceInvalid": "Afbeeldingskleurruimte is ongeldig. Kies een andere afbeelding",
+      "imageMetadataInvalid": "Afbeeldingsmetadata is ongeldig. Kies een andere afbeelding",
+      "imageSecurityViolation": "Afbeeldingsbeveiligingsschending. Kies een andere afbeelding",
+      "imageVirusDetected": "Virus gedetecteerd in afbeelding. Kies een andere afbeelding",
+      "imageMalwareDetected": "Malware gedetecteerd in afbeelding. Kies een andere afbeelding",
+      "imageSpamDetected": "Spam gedetecteerd in afbeelding. Kies een andere afbeelding",
+      "imageContentInappropriate": "Afbeeldingsinhoud is ongepast. Kies een andere afbeelding",
+      "imageContentViolent": "Afbeeldingsinhoud is gewelddadig. Kies een andere afbeelding",
+      "imageContentSexual": "Afbeeldingsinhoud is seksueel. Kies een andere afbeelding",
+      "imageContentHateful": "Afbeeldingsinhoud is hatelijk. Kies een andere afbeelding",
+      "imageContentDiscriminatory": "Afbeeldingsinhoud is discriminerend. Kies een andere afbeelding",
+      "imageContentOffensive": "Afbeeldingsinhoud is aanstootgevend. Kies een andere afbeelding",
+      "imageContentAbusive": "Afbeeldingsinhoud is misbruikend. Kies een andere afbeelding",
+      "imageContentHarassing": "Afbeeldingsinhoud is intimiderend. Kies een andere afbeelding",
+      "imageContentThreatening": "Afbeeldingsinhoud is bedreigend. Kies een andere afbeelding",
+      "imageContentDangerous": "Afbeeldingsinhoud is gevaarlijk. Kies een andere afbeelding",
+      "imageContentIllegal": "Afbeeldingsinhoud is illegaal. Kies een andere afbeelding",
+      "imageContentCopyright": "Afbeeldingsinhoud schendt auteursrecht. Kies een andere afbeelding",
+      "imageContentTrademark": "Afbeeldingsinhoud schendt merkrecht. Kies een andere afbeelding",
+      "imageContentPrivacy": "Afbeeldingsinhoud schendt privacy. Kies een andere afbeelding",
+      "imageContentConsent": "Afbeeldingsinhoud mist toestemming. Kies een andere afbeelding",
+      "imageContentMinors": "Afbeeldingsinhoud betreft minderjarigen. Kies een andere afbeelding",
+      "imageContentAnimals": "Afbeeldingsinhoud betreft dierenmishandeling. Kies een andere afbeelding",
+      "imageContentEnvironment": "Afbeeldingsinhoud schaadt milieu. Kies een andere afbeelding",
+      "imageContentHealth": "Afbeeldingsinhoud schaadt gezondheid. Kies een andere afbeelding",
+      "imageContentSafety": "Afbeeldingsinhoud schaadt veiligheid. Kies een andere afbeelding",
+      "imageContentSecurity": "Afbeeldingsinhoud schaadt beveiliging. Kies een andere afbeelding",
+      "imageContentIntegrity": "Afbeeldingsinhoud schaadt integriteit. Kies een andere afbeelding",
+      "imageContentReputation": "Afbeeldingsinhoud schaadt reputatie. Kies een andere afbeelding",
+      "imageContentBrand": "Afbeeldingsinhoud schaadt merk. Kies een andere afbeelding",
+      "imageContentBusiness": "Afbeeldingsinhoud schaadt bedrijf. Kies een andere afbeelding",
+      "imageContentPersonal": "Afbeeldingsinhoud schaadt persoonlijke belangen. Kies een andere afbeelding",
+      "imageContentProfessional": "Afbeeldingsinhoud schaadt professionele belangen. Kies een andere afbeelding",
+      "imageContentAcademic": "Afbeeldingsinhoud schaadt academische belangen. Kies een andere afbeelding",
+      "imageContentCultural": "Afbeeldingsinhoud schaadt culturele belangen. Kies een andere afbeelding",
+      "imageContentReligious": "Afbeeldingsinhoud schaadt religieuze belangen. Kies een andere afbeelding",
+      "imageContentPolitical": "Afbeeldingsinhoud schaadt politieke belangen. Kies een andere afbeelding",
+      "imageContentSocial": "Afbeeldingsinhoud schaadt sociale belangen. Kies een andere afbeelding",
+      "imageContentEconomic": "Afbeeldingsinhoud schaadt economische belangen. Kies een andere afbeelding",
+      "imageContentLegal": "Afbeeldingsinhoud schaadt juridische belangen. Kies een andere afbeelding",
+      "imageContentEthical": "Afbeeldingsinhoud schaadt ethische belangen. Kies een andere afbeelding",
+      "imageContentMoral": "Afbeeldingsinhoud schaadt morele belangen. Kies een andere afbeelding",
+      "imageContentSpiritual": "Afbeeldingsinhoud schaadt spirituele belangen. Kies een andere afbeelding",
+      "imageContentPhilosophical": "Afbeeldingsinhoud schaadt filosofische belangen. Kies een andere afbeelding",
+      "imageContentScientific": "Afbeeldingsinhoud schaadt wetenschappelijke belangen. Kies een andere afbeelding",
+      "imageContentTechnical": "Afbeeldingsinhoud schaadt technische belangen. Kies een andere afbeelding",
+      "imageContentArtistic": "Afbeeldingsinhoud schaadt artistieke belangen. Kies een andere afbeelding",
+      "imageContentCreative": "Afbeeldingsinhoud schaadt creatieve belangen. Kies een andere afbeelding",
+      "imageContentIntellectual": "Afbeeldingsinhoud schaadt intellectuele belangen. Kies een andere afbeelding",
+      "imageContentEducational": "Afbeeldingsinhoud schaadt educatieve belangen. Kies een andere afbeelding",
+      "imageContentInformational": "Afbeeldingsinhoud schaadt informatieve belangen. Kies een andere afbeelding",
+      "imageContentNews": "Afbeeldingsinhoud schaadt nieuwsbelangen. Kies een andere afbeelding",
+      "imageContentMedia": "Afbeeldingsinhoud schaadt mediabestanden. Kies een andere afbeelding",
+      "imageContentEntertainment": "Afbeeldingsinhoud schaadt entertainmentbelangen. Kies een andere afbeelding",
+      "imageContentSports": "Afbeeldingsinhoud schaadt sportbelangen. Kies een andere afbeelding",
+      "imageContentRecreation": "Afbeeldingsinhoud schaadt recreatiebelangen. Kies een andere afbeelding",
+      "imageContentLeisure": "Afbeeldingsinhoud schaadt vrijetijdsbelangen. Kies een andere afbeelding",
+      "imageContentHobby": "Afbeeldingsinhoud schaadt hobbybelangen. Kies een andere afbeelding",
+      "imageContentInterest": "Afbeeldingsinhoud schaadt interessebelangen. Kies een andere afbeelding",
+      "imageContentPassion": "Afbeeldingsinhoud schaadt passiebelangen. Kies een andere afbeelding",
+      "imageContentLove": "Afbeeldingsinhoud schaadt liefdesbelangen. Kies een andere afbeelding",
+      "imageContentHate": "Afbeeldingsinhoud schaadt haatbelangen. Kies een andere afbeelding",
+      "imageContentAnger": "Afbeeldingsinhoud schaadt woedebelangen. Kies een andere afbeelding",
+      "imageContentFear": "Afbeeldingsinhoud schaadt angstbelangen. Kies een andere afbeelding",
+      "imageContentSadness": "Afbeeldingsinhoud schaadt verdrietbelangen. Kies een andere afbeelding",
+      "imageContentJoy": "Afbeeldingsinhoud schaadt vreugdebelangen. Kies een andere afbeelding",
+      "imageContentHappiness": "Afbeeldingsinhoud schaadt geluksbelangen. Kies een andere afbeelding",
+      "imageContentExcitement": "Afbeeldingsinhoud schaadt opwindingbelangen. Kies een andere afbeelding",
+      "imageContentSurprise": "Afbeeldingsinhoud schaadt verrassingsbelangen. Kies een andere afbeelding",
+      "imageContentDisgust": "Afbeeldingsinhoud schaadt walgingsbelangen. Kies een andere afbeelding",
+      "imageContentShame": "Afbeeldingsinhoud schaadt schaamtebelangen. Kies een andere afbeelding",
+      "imageContentGuilt": "Afbeeldingsinhoud schaadt schuldbelangen. Kies een andere afbeelding",
+      "imageContentPride": "Afbeeldingsinhoud schaadt trotsbelangen. Kies een andere afbeelding",
+      "imageContentEnvy": "Afbeeldingsinhoud schaadt afgunstbelangen. Kies een andere afbeelding",
+      "imageContentJealousy": "Afbeeldingsinhoud schaadt jaloersbelangen. Kies een andere afbeelding",
+      "imageContentGreed": "Afbeeldingsinhoud schaadt hebzuchtbelangen. Kies een andere afbeelding",
+      "imageContentLust": "Afbeeldingsinhoud schaadt lustbelangen. Kies een andere afbeelding",
+      "imageContentGluttony": "Afbeeldingsinhoud schaadt vraatzuchtbelangen. Kies een andere afbeelding",
+      "imageContentSloth": "Afbeeldingsinhoud schaadt luiheidsbelangen. Kies een andere afbeelding",
+      "imageContentWrath": "Afbeeldingsinhoud schaadt woedebelangen. Kies een andere afbeelding"
+    },
+    "warning": {
+      "usernameCooldown": "Gebruikersnaam wijzigen is tijdelijk geblokkeerd vanwege cooldown periode",
+      "passwordWeak": "Wachtwoord is zwak. Overweeg een sterker wachtwoord te gebruiken",
+      "emailNotVerified": "E-mail is niet geverifieerd. Verifieer uw e-mail",
+      "phoneNotVerified": "Telefoonnummer is niet geverifieerd. Verifieer uw telefoonnummer",
+      "profileIncomplete": "Profiel is onvolledig. Voltooi uw profiel",
+      "settingsNotSaved": "Instellingen zijn niet opgeslagen. Sla uw instellingen op",
+      "dataNotSaved": "Gegevens zijn niet opgeslagen. Sla uw gegevens op",
+      "changesNotSaved": "Wijzigingen zijn niet opgeslagen. Sla uw wijzigingen op",
+      "fileNotUploaded": "Bestand is niet geüpload. Upload uw bestand",
+      "imageNotUploaded": "Afbeelding is niet geüpload. Upload uw afbeelding",
+      "linkNotCopied": "Link is niet gekopieerd. Kopieer uw link",
+      "emailNotSent": "E-mail is niet verzonden. Verstuur uw e-mail",
+      "notificationNotSent": "Melding is niet verzonden. Verstuur uw melding",
+      "actionNotCompleted": "Actie is niet voltooid. Voltooi uw actie",
+      "formNotSubmitted": "Formulier is niet verzonden. Verstuur uw formulier",
+      "onboardingNotCompleted": "Onboarding is niet voltooid. Voltooi uw onboarding",
+      "accountNotActivated": "Account is niet geactiveerd. Activeer uw account",
+      "passwordNotChanged": "Wachtwoord is niet gewijzigd. Wijzig uw wachtwoord",
+      "usernameNotChanged": "Gebruikersnaam is niet gewijzigd. Wijzig uw gebruikersnaam",
+      "profileNotCompleted": "Profiel is niet voltooid. Voltooi uw profiel",
+      "setupNotCompleted": "Setup is niet voltooid. Voltooi uw setup",
+      "networkSlow": "Netwerk is langzaam. Controleer uw verbinding",
+      "serverSlow": "Server is langzaam. Probeer later opnieuw",
+      "validationPending": "Validatie wordt verwerkt. Wacht even",
+      "permissionPending": "Toestemming wordt verwerkt. Wacht even",
+      "sessionExpiring": "Sessie verloopt. Log opnieuw in",
+      "credentialsExpiring": "Inloggegevens verlopen. Werk uw inloggegevens bij",
+      "emailExpiring": "E-mail verloopt. Werk uw e-mail bij",
+      "phoneExpiring": "Telefoonnummer verloopt. Werk uw telefoonnummer bij",
+      "profileExpiring": "Profiel verloopt. Werk uw profiel bij",
+      "settingsExpiring": "Instellingen verlopen. Werk uw instellingen bij",
+      "dataExpiring": "Gegevens verlopen. Werk uw gegevens bij",
+      "changesExpiring": "Wijzigingen verlopen. Werk uw wijzigingen bij",
+      "fileExpiring": "Bestand verloopt. Werk uw bestand bij",
+      "imageExpiring": "Afbeelding verloopt. Werk uw afbeelding bij",
+      "linkExpiring": "Link verloopt. Werk uw link bij",
+      "notificationExpiring": "Melding verloopt. Werk uw melding bij",
+      "actionExpiring": "Actie verloopt. Werk uw actie bij",
+      "formExpiring": "Formulier verloopt. Werk uw formulier bij",
+      "onboardingExpiring": "Onboarding verloopt. Werk uw onboarding bij",
+      "accountExpiring": "Account verloopt. Werk uw account bij",
+      "passwordExpiring": "Wachtwoord verloopt. Werk uw wachtwoord bij",
+      "usernameExpiring": "Gebruikersnaam verloopt. Werk uw gebruikersnaam bij",
+      "setupExpiring": "Setup verloopt. Werk uw setup bij"
+    },
+    "info": {
+      "loading": "Laden...",
+      "processing": "Verwerken...",
+      "saving": "Opslaan...",
+      "uploading": "Uploaden...",
+      "downloading": "Downloaden...",
+      "connecting": "Verbinden...",
+      "disconnecting": "Verbinding verbreken...",
+      "sending": "Verzenden...",
+      "receiving": "Ontvangen...",
+      "updating": "Bijwerken...",
+      "refreshing": "Vernieuwen...",
+      "synchronizing": "Synchroniseren...",
+      "validating": "Valideren...",
+      "verifying": "Verifiëren...",
+      "checking": "Controleren...",
+      "searching": "Zoeken...",
+      "filtering": "Filteren...",
+      "sorting": "Sorteren...",
+      "organizing": "Organiseren...",
+      "arranging": "Rangschikken...",
+      "configuring": "Configureren...",
+      "setting": "Instellen...",
+      "adjusting": "Aanpassen...",
+      "modifying": "Wijzigen...",
+      "changing": "Wijzigen...",
+      "switching": "Wisselen...",
+      "toggling": "Schakelen...",
+      "enabling": "Inschakelen...",
+      "disabling": "Uitschakelen...",
+      "activating": "Activeren...",
+      "deactivating": "Deactiveren...",
+      "starting": "Starten...",
+      "stopping": "Stoppen...",
+      "pausing": "Pauzeren...",
+      "resuming": "Hervatten...",
+      "restarting": "Herstarten...",
+      "resetting": "Resetten...",
+      "clearing": "Wissen...",
+      "deleting": "Verwijderen...",
+      "removing": "Verwijderen...",
+      "adding": "Toevoegen...",
+      "inserting": "Invoegen...",
+      "creating": "Aanmaken...",
+      "building": "Bouwen...",
+      "constructing": "Bouwen...",
+      "generating": "Genereren...",
+      "producing": "Produceren...",
+      "making": "Maken...",
+      "preparing": "Voorbereiden...",
+      "readying": "Voorbereiden...",
+      "initializing": "Initialiseren...",
+      "launching": "Lanceren...",
+      "opening": "Openen...",
+      "closing": "Sluiten...",
+      "shutting": "Sluiten...",
+      "ending": "Beëindigen...",
+      "finishing": "Afronden...",
+      "completing": "Voltooien...",
+      "finalizing": "Finaliseren...",
+      "concluding": "Afsluiten...",
+      "terminating": "Beëindigen...",
+      "canceling": "Annuleren...",
+      "aborting": "Afbreken...",
+      "interrupting": "Onderbreken...",
+      "halting": "Stoppen...",
+      "freezing": "Bevriezen...",
+      "unfreezing": "Ontdooien...",
+      "thawing": "Ontdooien...",
+      "melting": "Smelten...",
+      "cooling": "Koelen...",
+      "heating": "Verwarmen...",
+      "warming": "Opwarmen...",
+      "chilling": "Koelen...",
+      "renewing": "Vernieuwen...",
+      "restoring": "Herstellen...",
+      "recovering": "Herstellen...",
+      "repairing": "Repareren...",
+      "fixing": "Repareren...",
+      "correcting": "Corrigeren...",
+      "tuning": "Afstellen...",
+      "optimizing": "Optimaliseren...",
+      "improving": "Verbeteren...",
+      "enhancing": "Verbeteren...",
+      "upgrading": "Upgraden...",
+      "modernizing": "Moderniseren..."
+    }
+  },
+  "emailVerification": {
+    "title": "Verify Your Email",
+    "description": "We've sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
+    "checkEmail": "Check your email",
+    "emailSent": "Verification email sent!",
+    "resendEmail": "Resend Email",
+    "resendIn": "Resend in",
+    "seconds": "seconds",
+    "didntReceive": "Didn't receive the email?",
+    "checkSpam": "Please check your spam folder or try again.",
+    "backToLogin": "Back to Login",
+    "emailAddress": "Email Address",
+    "verificationSent": "Verification email sent to:",
+    "clickLink": "Click the link in the email to verify your account.",
+    "expiresIn": "This link expires in 24 hours.",
+    "needHelp": "Need help?",
+    "contactSupport": "Contact Support"
+  },
+  "settings": {
+    "title": "Instellingen",
+    "account": {
+      "heading": "Account",
+      "security": {
+        "title": "Account en Beveiliging"
+      },
+      "changePassword": {
+        "text": "Wachtwoord wijzigen?",
+        "button": "Wachtwoord wijzigen",
+        "modalTitle": "Wachtwoord wijzigen",
+        "currentPassword": "Huidig wachtwoord",
+        "newPassword": "Nieuw wachtwoord",
+        "confirmPassword": "Nieuw wachtwoord bevestigen",
+        "updateButton": "Wachtwoord bijwerken",
+        "currentPasswordPlaceholder": "Voer uw huidige wachtwoord in",
+        "newPasswordPlaceholder": "Voer een nieuw wachtwoord in",
+        "confirmPasswordPlaceholder": "Voer het nieuwe wachtwoord opnieuw in",
+        "successMessage": "Wachtwoord succesvol bijgewerkt. Voor de veiligheid wordt u doorgestuurd naar inloggen.",
+        "redirectMessage": "Doorsturen naar inloggen voor veiligheid...",
+        "description": "Werk uw wachtwoord bij om uw account veilig te houden"
+      },
+      "deactivateAccount": {
+        "text": "Uw account deactiveren?",
+        "button": "Account deactiveren",
+        "modalTitle": "Uw account deactiveren?",
+        "modalDescription": "Weet u zeker dat u uw account wilt deactiveren?",
+        "enterUsername": "Voer uw gebruikersnaam in",
+        "enterPassword": "Voer uw wachtwoord in",
+        "usernamePlaceholder": "Voer uw gebruikersnaam in",
+        "passwordPlaceholder": "Voer uw huidige wachtwoord in",
+        "confirmButton": "Mijn account deactiveren",
+        "deactivatedButton": "Gedeactiveerd",
+        "successMessage": "Account succesvol gedeactiveerd",
+        "activatedMessage": "Account succesvol geactiveerd",
+        "description": "Schakel uw account tijdelijk uit"
+      },
+      "deleteAccount": {
+        "text": "Uw account verwijderen?",
+        "button": "Account verwijderen",
+        "step1": {
+          "modalTitle": "Uw account verwijderen?",
+          "modalDescription": "Weet u zeker dat u uw account wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
+          "modalDescription2": "Als u uw gegevens wilt behouden, kunt u uw account in plaats daarvan deactiveren.",
+          "deactivateInsteadButton": "Account in plaats daarvan deactiveren",
+          "continueButton": "Doorgaan met verwijderen"
+        },
+        "step2": {
+          "modalTitle": "Voer uw gegevens in",
+          "enterUsername": "Voer uw gebruikersnaam in",
+          "enterPassword": "Voer uw wachtwoord in",
+          "confirmPassword": "Bevestig uw wachtwoord",
+          "usernamePlaceholder": "Voer uw gebruikersnaam in",
+          "passwordPlaceholder": "Voer uw wachtwoord in",
+          "confirmPasswordPlaceholder": "Bevestig uw wachtwoord",
+          "continueButton": "Doorgaan"
+        },
+        "step3": {
+          "modalTitle": "Waarom vertrekt u?",
+          "reasonPlaceholder": "Laat ons weten waarom u vertrekt...",
+          "continueButton": "Doorgaan"
+        },
+        "step4": {
+          "modalTitle": "Verwijdering bevestigen",
+          "confirmText": "Typ 'CONFIRM DELETE' om door te gaan",
+          "confirmPlaceholder": "Typ 'CONFIRM DELETE' om te bevestigen",
+          "confirmTextValue": "CONFIRM DELETE",
+          "deleteButton": "Mijn account verwijderen",
+          "confirmationRequired": "Typ 'CONFIRM DELETE' om te bevestigen.",
+          "reasonRequired": "Geef een reden voor vertrek.",
+          "successMessage": "Account succesvol verwijderd."
+        },
+        "description": "Verwijder uw account en alle gegevens permanent"
+      }
+    },
+    "languagePreference": {
+      "heading": "Taalvoorkeur",
+      "selectLanguage": "Selecteer uw taal",
+      "availableLanguages": "Kies uit 47 beschikbare talen",
+      "currentLanguage": "Huidig: {{flag}} {{name}}",
+      "languageChanged": "Taal gewijzigd naar {{name}}",
+      "description": "Kies uw voorkeurstaal voor de interface. Dit verandert de taal van alle teksten, knoppen en menu's in de hele applicatie."
+    },
+    "subtitle": "Beheer uw accountinstellingen en voorkeuren"
+  },
+  "seo": {
+    "title": "Contact explorers | Support, Help and Partnership enquiries.",
+    "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
+    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
+    "keywords": [
+      "contact explorers",
+      "explorers support",
+      "get in touch explorers",
+      "customer service travel app",
+      "partnership inquiry explorers",
+      "help center local recommendations",
+      "technical support explorers",
+      "travel app customer service",
+      "feedback location sharing",
+      "account assistance explorers",
+      "business collaboration explorers",
+      "report problem explorers",
+      "share local recommendations support",
+      "find explorers contact",
+      "customer service",
+      "explorers team",
+      "help center",
+      "contact support",
+      "QR code support",
+      "local recommendations help",
+      "partnership inquiries"
+    ]
+  },
+  "sidebar": {
+    "home": "Startpagina",
+    "profile": "Profiel",
+    "recommendations": "Aanbevelingen",
+    "analytics": "Analytics",
+    "settings": "Instellingen",
+    "logout": "Uitloggen",
+    "loading": "Laden...",
+    "clickToOpenMenu": "Klik om het menu te openen"
+  },
+  "modal": {
+    "unsavedChanges": {
+      "title": "Niet-opgeslagen wijzigingen",
+      "message": "U heeft niet-opgeslagen wijzigingen die verloren gaan als u weg navigeert. Wat wilt u doen?",
+      "discard": "Weggooien",
+      "cancel": "Annuleren",
+      "save": "Opslaan"
+    },
+    "usernameChange": {
+      "title": "Bevestiging gebruikersnaam wijzigen",
+      "description": "Uw gebruikersnaam wordt gebruikt in de links van uw profiel en aanbevelingenlijst:",
+      "profileLabel": "Profiel:",
+      "listLabel": "Lijst:",
+      "warning": "QR-codes of links met uw oude gebruikersnaam werken niet meer — u moet ze bijwerken en opnieuw delen.",
+      "cooldownPrefix": "U kunt uw gebruikersnaam opnieuw wijzigen over",
+      "cooldownSuffix": "na deze update.",
+      "minute": "1 minuut",
+      "day": "1 dag",
+      "days": "dagen",
+      "cancel": "Annuleren",
+      "confirm": "Gebruikersnaam wijzigen"
+    }
+  },
+  "analytics": {
+    "dashboard": {
+      "title": "Analytisch Dashboard",
+      "subtitle": "Volg de prestaties van uw QR-codes en gebruikersbetrokkenheid",
+      "timePeriod": "Tijdsperiode:",
+      "timeFilter": {
+        "today": "Vandaag",
+        "last7days": "Laatste 7 Dagen",
+        "last30days": "Laatste 30 Dagen",
+        "custom": "Aangepast Bereik",
+        "selectPeriod": "Selecteer Periode"
+      },
+      "dateRange": {
+        "from": "Van:",
+        "to": "Tot:"
+      },
+      "summaryCards": {
+        "totalViews": "Totaal Weergaven",
+        "totalClicks": "Totaal Klikken",
+        "totalQRViews": "Totaal QR Weergaven",
+        "totalLinkViews": "Totaal Link Weergaven"
+      },
+      "loading": {
+        "loadingData": "Analytics gegevens laden...",
+        "resolvingCountry": "Landgegevens oplossen..."
+      },
+      "error": {
+        "title": "Fout bij Laden van Analytics",
+        "message": "Kan analytics gegevens niet ophalen. Probeer het later opnieuw.",
+        "errorLabel": "Fout:"
+      },
+      "comingSoon": {
+        "title": "Analytics Binnenkort Beschikbaar",
+        "message": "Analytics zal beschikbaar zijn in <strong>{{days}} dag{{daysPlural}}</strong> na het aanmaken van uw account.",
+        "whyWait": {
+          "title": "Waarom wachten?",
+          "reasons": {
+            "accuracy": "• Zorgt voor datanauwkeurigheid en voorkomt spam",
+            "interactions": "• Biedt tijd voor betekenisvolle gebruikersinteracties",
+            "insights": "• Biedt betrouwbare analytics inzichten"
+          }
+        },
+        "tip": "Begin ondertussen met het delen van uw QR-codes om gegevens te genereren voor wanneer analytics beschikbaar is!",
+        "filterTip": "<strong>Tip:</strong> Zodra analytics beschikbaar is, kunt u filteren op tijdsperioden (vandaag, laatste 7 dagen, laatste 30 dagen of aangepast bereik) om uw gegevens te bekijken."
+      },
+      "emptyState": {
+        "title": "Geen Analytics Gegevens",
+        "noDataMessage": "Geen analytics gegevens gevonden voor uw account. Analytics verschijnen hier zodra mensen beginnen met het bekijken van en interactie met uw QR-codes.",
+        "customRange": {
+          "bothMissing": "Selecteer zowel start- als einddatum voor het aangepaste bereik om analytics gegevens te bekijken.",
+          "startMissing": "Selecteer een startdatum voor het aangepaste bereik om analytics gegevens te bekijken.",
+          "endMissing": "Selecteer een einddatum voor het aangepaste bereik om analytics gegevens te bekijken."
+        },
+        "noDataForPeriod": {
+          "today": "Geen analytics gegevens beschikbaar voor vandaag. Selecteer een andere tijdsperiode om uw gegevens te bekijken.",
+          "last7days": "Geen analytics gegevens beschikbaar voor de laatste 7 dagen. Selecteer een andere tijdsperiode om uw gegevens te bekijken.",
+          "last30days": "Geen analytics gegevens beschikbaar voor de laatste 30 dagen. Selecteer een andere tijdsperiode om uw gegevens te bekijken.",
+          "custom": "Geen analytics gegevens beschikbaar voor het aangepaste bereik ({{startDate}} tot {{endDate}}). Selecteer een andere tijdsperiode om uw gegevens te bekijken.",
+          "default": "Geen analytics gegevens beschikbaar voor de geselecteerde tijdsperiode. Selecteer een andere tijdsperiode om uw gegevens te bekijken."
+        },
+        "howToStart": {
+          "title": "Om analytics te zien:",
+          "shareQR": "• Deel uw QR-codes op sociale media",
+          "includeQR": "• Voeg QR-codes toe aan uw marketingmaterialen",
+          "askFriends": "• Vraag vrienden om uw QR-codes te scannen",
+          "viewProfile": "• Bekijk uw openbare profielpagina's"
+        }
+      },
+      "charts": {
+        "topCountries": {
+          "title": "Top 3 Landen op Weergaven",
+          "retryGeolocation": "Geolocatie Opnieuw Proberen",
+          "geolocationIssue": "Geolocatieprobleem:",
+          "countryDataUnavailable": "Landgegevens Niet Beschikbaar",
+          "unableToResolve": "Kan IP-adressen op dit moment niet naar landen oplossen. Dit kan te wijten zijn aan netwerkbeperkingen of servicelimitaties.",
+          "failedToResolve": "Kan landgegevens niet oplossen. Probeer het later opnieuw.",
+          "analyticsSummary": "Analytics Samenvatting:",
+          "totalViewEvents": "• {{count}} totale weergavegebeurtenissen",
+          "eventsWithCountry": "• {{count}} gebeurtenissen met landgegevens",
+          "eventsPending": "• {{count}} gebeurtenissen in afwachting van geolocatie",
+          "willAppear": "Landgegevens verschijnen automatisch zodra IP-geolocatieservices beschikbaar zijn.",
+          "tooltip": {
+            "country": "Land: {{country}}",
+            "views": "Weergaven: {{count}}"
+          },
+          "legend": "Weergaven"
+        },
+        "worldMap": {
+          "title": "Wereldwijde Weergaveverdeling",
+          "subtitle": "Interactieve wereldkaart met weergaveverdeling over landen vanuit openbare pagina's",
+          "noGeographicData": "Geen Geografische Gegevens Beschikbaar",
+          "unableToResolve": "Kan IP-adressen op dit moment niet naar landen oplossen. Dit kan te wijten zijn aan netwerkbeperkingen of servicelimitaties.",
+          "failedToResolve": "Kan landgegevens niet oplossen. Probeer het later opnieuw.",
+          "analyticsSummary": "Analytics Samenvatting:",
+          "totalViewEvents": "• {{count}} totale weergavegebeurtenissen",
+          "eventsWithCountry": "• {{count}} gebeurtenissen met landgegevens",
+          "eventsPending": "• {{count}} gebeurtenissen in afwachting van geolocatie",
+          "willAppear": "Landgegevens verschijnen automatisch zodra IP-geolocatieservices beschikbaar zijn.",
+          "tooltip": {
+            "country": "{{country}}",
+            "views": "{{views}} weergaven"
+          },
+          "countriesWithViews": "{{count}} landen met weergaven",
+          "legend": {
+            "views": "Weergaven:",
+            "low": "Laag",
+            "medium": "Gemiddeld",
+            "high": "Hoog",
+            "highest": "Hoogst"
+          }
+        },
+        "trafficSource": {
+          "title": "Verkeersbron in de Tijd",
+          "subtitle": "Volg hoe verkeer van verschillende bronnen in de tijd varieert",
+          "selectSource": "Selecteer Verkeersbron:",
+          "allSources": "Alle Bronnen",
+          "direct": "Direct",
+          "qrCode": "QR Code",
+          "instagram": "Instagram",
+          "whatsapp": "WhatsApp",
+          "twitter": "Twitter",
+          "noTrafficData": "Geen Verkeersgegevens Beschikbaar",
+          "noViewEvents": "Geen weergavegebeurtenissen gevonden met verkeersbroninformatie.",
+          "analyticsSummary": "Analytics Samenvatting:",
+          "totalViewEvents": "• {{count}} totale weergavegebeurtenissen",
+          "eventsWithUTM": "• {{count}} gebeurtenissen met UTM-bron",
+          "directTraffic": "• {{count}} directe verkeersgebeurtenissen",
+          "willAppear": "Verkeersbrongegevens verschijnen zodra gebruikers uw pagina's bezoeken met UTM-parameters.",
+          "tooltip": {
+            "sourceCount": "{{source}}: {{count}}"
+          }
+        },
+        "locationEngagement": {
+          "title": "Betrokkenheid bij Locatie",
+          "subtitle": "Volg weergaven voor verschillende locaties in de tijd",
+          "selectLocation": "Selecteer Locatie:",
+          "allLocations": "Alle Locaties",
+          "selectLocationPlaceholder": "Selecteer Locatie",
+          "locationViews": "{{location}} ({{count}} weergaven)",
+          "noLocationData": "Geen locatie weergavegegevens beschikbaar",
+          "unknownLocation": "Onbekende Locatie",
+          "location": "Locatie",
+          "tooltip": {
+            "date": "Datum: {{date}}",
+            "locationViews": "{{location}}: {{value}} weergaven"
+          },
+          "stats": {
+            "totalLocations": "Totaal Locaties",
+            "totalViews": "Totaal Weergaven",
+            "avgViews": "Gem. Weergaven/Locatie"
+          }
+        },
+        "recommendedPlaces": {
+          "title": "Betrokkenheid bij Aanbevolen Plaatsen",
+          "subtitle": "Volg klikken op aanbevolen plaatsen per locatie",
+          "selectLocation": "Selecteer Locatie:",
+          "selectLocationPlaceholder": "Selecteer Locatie",
+          "locationPlaces": "{{location}} ({{count}} plaatsen)",
+          "noRecommendationData": "Geen Aanbevelingsgegevens",
+          "noDataMessage": "Geen aanbevelingsklikgegevens beschikbaar voor de geselecteerde periode.",
+          "analyticsSummary": "Analytics Samenvatting:",
+          "totalClickEvents": "• {{count}} totale klikgebeurtenissen",
+          "recordsWithRecommendations": "• {{count}} records met Aanbevelings-ID",
+          "uniqueRecommendations": "• {{count}} unieke aanbevelingen",
+          "selectLocationPrompt": "Selecteer een locatie om aanbevelingsgegevens te bekijken.",
+          "noClicksMessage": "Geen aanbevelingsklikken gevonden voor de geselecteerde locatie. Aanbevelingsgegevens verschijnen zodra gebruikers klikken op plaatskaarten in uw locatiepagina's.",
+          "unknownPlace": "Onbekende Plaats",
+          "unknownCategory": "Onbekende Categorie",
+          "unknownLocation": "Onbekende Locatie",
+          "tooltip": {
+            "place": "{{place}}",
+            "category": "Categorie: {{category}}",
+            "clicks": "Klikken: {{count}}"
+          },
+          "stats": {
+            "placesShown": "Getoonde Plaatsen",
+            "totalClicks": "Totaal Klikken",
+            "avgClicks": "Gem. Klikken/Plaats"
+          }
+        },
+        "socialMedia": {
+          "title": "Social Media Interactie",
+          "subtitle": "Volg klikken op sociale media-koppelingen van uw openbare profiel op alle platforms",
+          "noDataTitle": "Geen Social Media Interactiegegevens",
+          "noDataMessage": "Geen sociale media klikgegevens beschikbaar van uw openbare profielpagina.",
+          "analyticsSummary": "Analytics Samenvatting:",
+          "totalSocialClicks": "• {{count}} totale sociale media klikken",
+          "uniquePlatforms": "• {{count}} unieke platforms",
+          "trackingNote": "• Alleen klikken van openbare profielpagina worden gevolgd",
+          "willAppear": "Sociale media interactiegegevens verschijnen zodra gebruikers klikken op uw sociale media-koppelingen.",
+          "tooltip": {
+            "platform": "{{platform}}",
+            "clicks": "Klikken: {{count}}"
+          },
+          "stats": {
+            "platforms": "Platforms",
+            "totalClicks": "Totaal Klikken",
+            "avgClicks": "Gem. Klikken/Platform"
+          }
+        }
+      }
+    }
+  }
+}

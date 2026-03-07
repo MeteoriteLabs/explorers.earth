@@ -1,0 +1,114 @@
+      <Accordion type="single" collapsible defaultValue="sharing" className="border rounded-md">
+        <AccordionItem value="sharing" className="border-none">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+            <div className="flex items-center">
+              <Share2 className="h-5 w-5 mr-2" />
+              <span className="text-xl font-semibold">Share Your Playlist</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-0 pt-0">
+            <div className="px-6 pb-6 space-y-4">
+              <CardDescription className="pb-2">Let others join your playlist and request songs</CardDescription>
+              
+              <div className="flex flex-wrap gap-4 items-center justify-between">
+                <div className="flex-1 min-w-[200px]">
+                  <p className="text-sm text-muted-foreground mb-2">Guest URL:</p>
+                  <code className="block p-2 bg-muted rounded-md text-xs break-all">
+                    {`${window.location.origin}/playlist/${user.guestUrl}`}
+                  </code>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="icon" onClick={handleCopyLink}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="icon" onClick={handleShare}>
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="icon" asChild>
+                    <a href={`${window.location.origin}/playlist/${user.guestUrl}`} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </Button>
+                </div>
+              </div>
+
+              <Accordion type="single" collapsible>
+                <AccordionItem value="qr">
+                  <AccordionTrigger>
+                    <div className="flex items-center">
+                      <QrCode className="h-4 w-4 mr-2" />
+                      Show QR Code
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="bg-white p-4 rounded-lg qr-code-container">
+                        <QRCode
+                          value={`${window.location.origin}/playlist/${user.guestUrl}`}
+                          style={{ width: "200px", height: "200px" }}
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        <Button variant="outline" size="sm" onClick={handleDownloadQR}>
+                          <Download className="h-4 w-4 mr-2" />
+                          Download
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={handleShare}>
+                          <Share2 className="h-4 w-4 mr-2" />
+                          Share
+                        </Button>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+
+              <div className="mt-4 space-y-6 border-t pt-6">
+                <div className="flex flex-wrap gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="allowSongRequests">Allow Song Requests</Label>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="allowSongRequests"
+                        checked={songRequestsEnabled}
+                        onCheckedChange={handleToggleSongRequests}
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {songRequestsEnabled ? "Enabled" : "Disabled"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="allowGuestPlayOnDevice">Guest Play on Device</Label>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="allowGuestPlayOnDevice"
+                        checked={allowGuestPlay}
+                        onCheckedChange={handleToggleGuestPlay}
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {allowGuestPlay ? "Enabled" : "Disabled"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="allowPlaylistSharing">Show Playlists to Guests</Label>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="allowPlaylistSharing" 
+                        checked={playlistSharingEnabled}
+                        onCheckedChange={handleTogglePlaylistSharing}
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {playlistSharingEnabled ? "Enabled" : "Disabled"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>

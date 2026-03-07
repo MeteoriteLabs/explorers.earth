@@ -1,0 +1,1987 @@
+﻿{
+    "header": {
+        "nav": {
+            "howItWorks": "ทำงานอย่างไร",
+            "whoIsFor": "สำหรับใคร",
+            "faq": "คำถามที่พบบ่อย",
+            "about": "เกี่ยวกับ",
+            "contact": "ติดต่อ"
+        },
+        "auth": {
+            "login": "เข้าสู่ระบบ",
+            "signUp": "สมัครสมาชิก"
+        }
+    },
+    "hero": {
+        "headline": "คำแนะนำทั้งหมดของคุณใน QR หนึ่งตัวและลิงก์ง่ายๆ",
+        "subtext": "แชร์สิ่งที่คุณรู้และรักเกี่ยวกับสถานที่ — และทำให้ค้นพบได้สำหรับทุกคน ทุกที่",
+        "inputLabel": "จอง URL explorers ของคุณ:",
+        "inputPlaceholder": "ชื่อของคุณ",
+        "ctaButton": "จอง explorers",
+        "signupPrompt": "สมัครสมาชิกตอนนี้เพื่อรับของคุณ"
+    },
+    "sections": {
+        "createCustomize": {
+            "headline": "สร้างและปรับแต่ง explorers ของคุณในไม่กี่นาที",
+            "subtext": "เพิ่มสถานที่โปรดของคุณ จัดเรียงตามเมืองหรือหัวข้อ และสร้าง QR ของคุณทันที",
+            "bulletPoints": {
+                "addSpots": {
+                    "title": "เพิ่มสถานที่โปรดของคุณ",
+                    "description": "สร้างรายการด้วย must-visit ของคุณ"
+                },
+                "organize": {
+                    "title": "จัดเรียงตามเมืองหรือหัวข้อ",
+                    "description": "สร้างหมวดหมู่ที่มีความหมายสำหรับผู้ชมของคุณ"
+                },
+                "generate": {
+                    "title": "สร้างลิงก์และ QR ของคุณทันที",
+                    "description": "QR ที่ปรับแต่งของคุณพร้อมในไม่กี่วินาที"
+                },
+                "share": {
+                    "title": "แชร์แบบดิจิทัลหรือผ่าน QR ในโลกแห่งความเป็นจริง",
+                    "description": ""
+                }
+            },
+            "mockup": {
+                "title": "คำแนะนำของฉัน",
+                "addPlace": "เพิ่มสถานที่"
+            }
+        },
+        "shareAnywhere": {
+            "headline": "แชร์บนโซเชียลมีเดีย หน้าร้าน หรือกำแพงเมือง",
+            "subtext": "เพิ่มใน Instagram bio ของคุณ พิมพ์บนเมนู หรือรวมในหนังสือต้อนรับ — คู่มือของคุณ พร้อมเสมอ",
+            "scanText": "สแกนเพื่อคำแนะนำท้องถิ่น",
+            "storefrontText": "เหมาะสำหรับการแสดงหน้าร้าน",
+            "instagramTitle": "เพิ่มใน Instagram bio ของคุณ",
+            "instagramDesc": "แชร์กับผู้ติดตามของคุณทันที",
+            "menuTitle": "พิมพ์บนเมนู",
+            "menuDesc": "จุดติดต่อทางกายภาพที่ทำได้ง่าย",
+            "welcomeTitle": "รวมในหนังสือต้อนรับ",
+            "welcomeDesc": "เหมาะสำหรับเจ้าบ้านและไกด์",
+            "cafeMenu": "เมนูคาเฟ่",
+            "tokyoFoodGuide": "คู่มืออาหารโตเกียวของฉัน explorers.earth/jane"
+        },
+        "analytics": {
+            "headline": "ติดตามคลิก การอ้างอิง และการมีส่วนร่วม",
+            "subtext": "ดูว่าอะไรทำงาน ใครสแกน และสถานที่ไหนได้รับความรักมากที่สุด — ในเวลาจริง",
+            "workingTitle": "ดูว่าอะไรทำงาน",
+            "workingDesc": "ติดตามความนิยมของคำแนะนำของคุณ",
+            "scanningTitle": "ใครสแกน",
+            "scanningDesc": "ตรวจสอบการสแกน QR และการอัปเดต",
+            "spotsTitle": "จุดที่มีประสิทธิภาพสูงสุด",
+            "spotsDesc": "ข้อมูลเชิงลึกที่ขับเคลื่อนด้วยข้อมูลสำหรับการคัดเลือกที่ดีขึ้น",
+            "dashboardTitle": "แดชบอร์ดการวิเคราะห์",
+            "last30Days": "30 วันที่ผ่านมา",
+            "totalScans": "การสแกนทั้งหมด",
+            "engagement": "การมีส่วนร่วม",
+            "referrals": "การอ้างอิง"
+        },
+        "referEarn": {
+            "headline": "แชร์ อ้างอิง และรับรายได้",
+            "subtext": "เปลี่ยนคำแนะนำของคุณเป็นรางวัลแบบพาสซีฟ — รับเครดิตเมื่อคนอื่นใช้ QR ของคุณ",
+            "comingSoon": "โปรแกรมรางวัลการอ้างอิง (เร็วๆ นี้)",
+            "rewardsTitle": "รับรางวัล",
+            "rewardsDesc": "รับเงินเมื่อคนใช้คำแนะนำของคุณ",
+            "earnedThisMonth": "ได้รับในเดือนนี้",
+            "passiveTitle": "เปลี่ยนคำแนะนำเป็นรางวัลแบบพาสซีฟ",
+            "networkTitle": "สร้างเครือข่ายของคุณและรับรายได้อัตโนมัติ"
+        },
+        "localTunes": {
+            "mainHeading": "Tunes",
+            "title": "ฟังขณะที่คุณสำรวจ",
+            "body": "การสำรวจไม่ใช่แค่ภาพ เสียงนำพาความทรงจำ บริบท และอารมณ์\n\nTunes ช่วยให้คุณรวบรวมและแชร์เพลงประกอบสำหรับสถานที่ การเดินทาง และอารมณ์ — ไม่ว่าจะเป็นเพลงที่ค้นพบระหว่างทางหรือเสียงที่กำหนดสถานที่สำหรับคุณ\n\nเชื่อมต่ออย่างราบรื่นกับโปรไฟล์ Explorer ของคุณ",
+            "exploreButton": "สำรวจ Tunes",
+            "featuresHeading": "คุณสมบัติที่ทรงพลัง",
+            "features": {
+                "realtimeCollaboration": {
+                    "title": "การทำงานร่วมกันแบบเรียลไทม์",
+                    "description": "ให้แขกเพิ่มเพลงลงในเพลย์ลิสต์ของคุณทันทีในขณะที่คุณควบคุมสิ่งที่เล่นได้อย่างสมบูรณ์"
+                },
+                "qrCodeSharing": {
+                    "title": "แชร์ QR Code",
+                    "description": "แชร์ประสบการณ์ดนตรีของคุณด้วยการสแกน QR Code แบบง่าย — ไม่ต้องใช้แอปหรือดาวน์โหลด"
+                },
+                "youtubeIntegration": {
+                    "title": "การรวม YouTube",
+                    "description": "รวมเข้ากับ YouTube อย่างราบรื่นเพื่อเข้าถึงเพลงนับล้านและสร้างบรรยากาศที่สมบูรณ์แบบ"
+                },
+                "voteLikeSystem": {
+                    "title": "ระบบโหวตและไลค์",
+                    "description": "แขกสามารถโหวตเพลงโปรดของพวกเขาเพื่อส่งผลต่อคิวเพลย์ลิสต์แบบเรียลไทม์"
+                },
+                "silentParties": {
+                    "title": "ปาร์ตี้เงียบ",
+                    "description": "จัดปาร์ตี้เงียบที่ไม่เหมือนใครที่ทุกคนฟังผ่านหูฟังของตัวเอง"
+                },
+                "karaokeReady": {
+                    "title": "พร้อมคาราโอเกะ",
+                    "description": "เหมาะสำหรับค่ำคืนคาราโอเกะด้วยเพลย์ลิสต์แบบร่วมมือและคำขอเพลงแบบเรียลไทม์"
+                }
+            },
+            "venueHeading": "เหมาะสำหรับทุกสถานที่",
+            "venues": {
+                "barsPubs": "บาร์และผับ",
+                "restaurants": "ร้านอาหาร",
+                "coffeeShops": "ร้านกาแฟ",
+                "eventsWeddings": "งานอีเวนต์และงานแต่งงาน",
+                "retailStores": "ร้านค้าปลีก",
+                "gymsFitness": "ยิมและฟิตเนส"
+            },
+            "closingStatement": "Tunes \u003cstrong\u003eฟรี\u003c/strong\u003eสำหรับการสำรวจ และสำหรับคุณสมบัติแบบชำระเงินคุณสามารถอัปเกรดได้ในภายหลัง"
+        },
+        "whoIsFor": {
+            "headline": "explorers.earth สำหรับใคร?",
+            "subtext": "explorers.earth สำหรับทุกคนที่เชื่อว่าการแบ่งปันคือความรับผิดชอบ — ไม่ใช่การออกอากาศ",
+            "cards": {
+                "individuals": {
+                    "title": "บุคคล",
+                    "oneLiner": "แชร์คำแนะนำส่วนตัวหรือท้องถิ่น",
+                    "items": {
+                        "traveler": {
+                            "label": "นักท่องเที่ยว",
+                            "oneLiner": "คนที่แชร์สถานที่ท่องเที่ยว"
+                        },
+                        "local": {
+                            "label": "คนท้องถิ่น",
+                            "oneLiner": "คนท้องถิ่นที่แชร์เคล็ดลับย่าน"
+                        },
+                        "family": {
+                            "label": "ครอบครัว",
+                            "oneLiner": "ครอบครัวที่แชร์สถานที่มีประโยชน์"
+                        },
+                        "student": {
+                            "label": "นักเรียน",
+                            "oneLiner": "นักเรียนที่แชร์สถานที่ในมหาวิทยาลัย/ใกล้เคียง"
+                        },
+                        "nomad": {
+                            "label": "นักเดินทาง",
+                            "oneLiner": "นักเดินทางที่ระบุพื้นที่ที่เป็นมิตรกับงาน"
+                        },
+                        "emergencySharer": {
+                            "label": "ผู้แชร์ฉุกเฉิน",
+                            "oneLiner": "ผู้แชร์ฉุกเฉินที่โพสต์สถานที่สำคัญ"
+                        }
+                    }
+                },
+                "creators": {
+                    "title": "ผู้สร้าง",
+                    "oneLiner": "แชร์รายการที่คัดสรรกับผู้ชมของคุณ",
+                    "items": {
+                        "influencer": {
+                            "label": "อินฟลูเอนเซอร์",
+                            "oneLiner": "อินฟลูเอนเซอร์ที่แชร์ตัวเลือกยอดนิยม"
+                        },
+                        "blogger": {
+                            "label": "บล็อกเกอร์",
+                            "oneLiner": "บล็อกเกอร์ที่คัดสรรคู่มือที่เป็นลายลักษณ์อักษร"
+                        },
+                        "vlogger": {
+                            "label": "วิดีโอบล็อกเกอร์",
+                            "oneLiner": "วิดีโอบล็อกเกอร์ที่แชร์การเดินทางแบบภาพ"
+                        },
+                        "reviewer": {
+                            "label": "ผู้รีวิว",
+                            "oneLiner": "ผู้รีวิวที่ระบุสถานที่ที่มีคะแนนดีที่สุด"
+                        },
+                        "photographer": {
+                            "label": "ช่างภาพ",
+                            "oneLiner": "ช่างภาพที่แชร์สถานที่ถ่ายภาพ"
+                        },
+                        "educator": {
+                            "label": "นักการศึกษา",
+                            "oneLiner": "นักการศึกษาที่แชร์คู่มือการเรียนรู้"
+                        },
+                        "communityLeader": {
+                            "label": "ผู้นำชุมชน",
+                            "oneLiner": "ผู้นำชุมชนที่คัดสรรรายการที่มีประโยชน์"
+                        }
+                    }
+                },
+                "hospitality": {
+                    "title": "การต้อนรับ",
+                    "oneLiner": "เสนอข้อมูลเชิงลึกท้องถิ่นที่คัดสรรให้แขก",
+                    "items": {
+                        "hotel": {
+                            "label": "โรงแรม",
+                            "oneLiner": "โรงแรมที่เสนอคู่มือท้องถิ่น"
+                        },
+                        "airbnb": {
+                            "label": "Airbnb",
+                            "oneLiner": "เจ้าบ้านที่แชร์สถานที่โปรดของย่าน"
+                        },
+                        "hostel": {
+                            "label": "โฮสเทล",
+                            "oneLiner": "โฮสเทลที่แชร์เคล็ดลับสำหรับนักเดินทาง"
+                        },
+                        "homestay": {
+                            "label": "โฮมสเตย์",
+                            "oneLiner": "โฮมสเตย์ที่เสนอคู่มือที่เน้นครอบครัว"
+                        },
+                        "resort": {
+                            "label": "รีสอร์ท",
+                            "oneLiner": "รีสอร์ทที่ให้รายการกิจกรรม"
+                        },
+                        "pgColiving": {
+                            "label": "PG/โคลิฟวิ่ง",
+                            "oneLiner": "PG/โคลิฟวิ่งที่แสดงสถานที่สำคัญใกล้เคียง"
+                        }
+                    }
+                },
+                "businesses": {
+                    "title": "ธุรกิจ",
+                    "oneLiner": "แนะนำลูกค้าด้วยคำแนะนำที่มีประโยชน์",
+                    "items": {
+                        "restaurant": {
+                            "label": "ร้านอาหาร",
+                            "oneLiner": "ร้านอาหารที่แชร์อาหารที่ต้องลอง"
+                        },
+                        "cafe": {
+                            "label": "ร้านกาแฟ",
+                            "oneLiner": "ร้านกาแฟที่เน้นรายการเมนูโปรด"
+                        },
+                        "retailShop": {
+                            "label": "ร้านค้าปลีก",
+                            "oneLiner": "ร้านค้าที่แชร์คำแนะนำผลิตภัณฑ์"
+                        },
+                        "gym": {
+                            "label": "ยิม",
+                            "oneLiner": "ยิมที่แนะนำสถานที่สุขภาพท้องถิ่น"
+                        },
+                        "spa": {
+                            "label": "สปา",
+                            "oneLiner": "สปาที่ระบุตัวเลือกการผ่อนคลายใกล้เคียง"
+                        },
+                        "salon": {
+                            "label": "ร้านเสริมสวย",
+                            "oneLiner": "ร้านเสริมสวยที่เสนอคู่มือความงาม"
+                        },
+                        "clinic": {
+                            "label": "คลินิก",
+                            "oneLiner": "คลินิกที่แชร์สถานที่ที่เกี่ยวข้องกับสุขภาพ"
+                        },
+                        "boutique": {
+                            "label": "บูติก",
+                            "oneLiner": "บูติกที่ระบุการค้นพบที่คัดสรร"
+                        }
+                    }
+                },
+                "organizations": {
+                    "title": "องค์กร",
+                    "oneLiner": "ให้คู่มือและทรัพยากรที่คัดสรร",
+                    "items": {
+                        "airline": {
+                            "label": "สายการบิน",
+                            "oneLiner": "สายการบินที่แชร์คู่มือเมือง"
+                        },
+                        "agency": {
+                            "label": "สำนักงาน",
+                            "oneLiner": "สำนักงานท่องเที่ยวที่ระบุสถานที่ที่ต้องเยี่ยมชม"
+                        },
+                        "university": {
+                            "label": "มหาวิทยาลัย",
+                            "oneLiner": "มหาวิทยาลัยที่แชร์สิ่งจำเป็นของมหาวิทยาลัย"
+                        },
+                        "corporate": {
+                            "label": "องค์กร",
+                            "oneLiner": "องค์กรที่ระบุทรัพยากรใกล้เคียง"
+                        },
+                        "airport": {
+                            "label": "สนามบิน",
+                            "oneLiner": "สนามบินที่เสนอเทอร์มินัล + เคล็ดลับเมือง"
+                        },
+                        "railway": {
+                            "label": "ทางรถไฟ",
+                            "oneLiner": "ทางรถไฟที่แชร์ข้อมูลแพลตฟอร์ม"
+                        },
+                        "ngo": {
+                            "label": "เอ็นจีโอ",
+                            "oneLiner": "เอ็นจีโอที่แชร์ทรัพยากรชุมชน"
+                        },
+                        "government": {
+                            "label": "รัฐบาล",
+                            "oneLiner": "หน่วยงานที่เน้นบริการสาธารณะ"
+                        }
+                    }
+                }
+            },
+            "useCases": {
+                "travelers": "นักเดินทาง",
+                "travelersDesc": "แชร์อัญมณีที่ค้นพบกับเพื่อนนักสำรวจ",
+                "influencers": "อินฟลูเอนเซอร์",
+                "influencersDesc": "สร้างรายได้จากความรู้ท้องถิ่นและสร้างชุมชน",
+                "airbnbHosts": "เจ้าบ้าน Airbnb",
+                "airbnbHostsDesc": "ปรับปรุงประสบการณ์แขกด้วยข้อมูลเชิงลึกท้องถิ่น",
+                "hotels": "โรงแรม",
+                "hotelsDesc": "ให้คำแนะนำท้องถิ่นที่คัดสรรแล้ว",
+                "restaurants": "ร้านอาหาร",
+                "restaurantsDesc": "การส่งเสริมข้ามกับธุรกิจท้องถิ่นอื่นๆ",
+                "cafes": "คาเฟ่",
+                "cafesDesc": "แชร์สถานที่โปรดของย่านกับลูกค้า",
+                "localGuides": "ไกด์ท้องถิ่น",
+                "localGuidesDesc": "ขยายความเชี่ยวชาญของคุณเกินกว่าทัวร์ส่วนตัว",
+                "creators": "ครีเอเตอร์",
+                "creatorsDesc": "เพิ่มมูลค่าเกินเนื้อหาด้วยเคล็ดลับที่ปฏิบัติได้",
+                "tourOperators": "ผู้ประกอบการทัวร์",
+                "tourOperatorsDesc": "ขยายประสบการณ์เกินกว่าทัวร์ที่กำหนดเวลา",
+                "anyBusiness": "ธุรกิจใดๆ",
+                "anyBusinessDesc": "สร้างชุมชนและความภักดีของลูกค้า"
+            }
+        },
+        "testimonials": {
+            "headline": "รักโดยนักเดินทาง ครีเอเตอร์ และเจ้าบ้าน",
+            "subtext": "ดูว่าคนทั่วโลกใช้ explorers อย่างไรเพื่อแชร์สิ่งที่สำคัญที่สุด",
+            "scrollLeft": "เลื่อนคำรับรองไปทางซ้าย",
+            "scrollRight": "เลื่อนคำรับรองไปทางขวา",
+            "items": [
+                {
+                    "id": "1",
+                    "name": "Marcus Chen",
+                    "role": "บล็อกเกอร์ท่องเที่ยว",
+                    "location": "ซานฟรานซิสโก",
+                    "quote": "explorers เปลี่ยนวิธีที่ฉันแบ่งปันความรู้การเดินทางของฉัน ผู้ติดตามของฉันชอบการเข้าถึงทันทีไปยังคำแนะนำที่ฉันคัดสรร!"
+                },
+                {
+                    "id": "2",
+                    "name": "Sarah Johnson",
+                    "role": "เจ้าบ้าน Airbnb",
+                    "location": "บาร์เซโลนา",
+                    "quote": "แขกของฉันชอบ QR code ที่ปรับแต่งในชุดต้อนรับของพวกเขาอย่างแน่นอน มันกลายเป็นลายเซ็นของฉัน!"
+                },
+                {
+                    "id": "3",
+                    "name": "Alex Rodriguez",
+                    "role": "เจ้าของร้านอาหาร",
+                    "location": "เม็กซิโกซิตี้",
+                    "quote": "เราแบ่งปัน explorers ของเรากับลูกค้าเพื่อแนะนำสถานที่ท้องถิ่นอื่นๆ มันสร้างการเชื่อมต่อชุมชนที่น่าทึ่ง"
+                },
+                {
+                    "id": "4",
+                    "name": "Emma Thompson",
+                    "role": "ไกด์ทัวร์",
+                    "location": "ลอนดอน",
+                    "quote": "explorers ช่วยให้ฉันขยายความเชี่ยวชาญของฉันเกินชั่วโมงทัวร์ ลูกค้าสามารถเข้าถึงคำแนะนำของฉันได้ตลอดเวลา!"
+                }
+            ]
+        },
+        "faq": {
+            "headline": "มีคำถาม?",
+            "subtext": "เราได้ตอบคำถามที่พบบ่อยที่สุดที่คนถามก่อนเริ่มต้น",
+            "loading": "กำลังโหลด FAQ...",
+            "error": "เกิดข้อผิดพลาดในการโหลด FAQ กรุณาลองใหม่ภายหลัง"
+        },
+        "features": {
+            "title": "สร้างขึ้นเพื่ออยู่ห่างจากทาง",
+            "subtitle": "คุณสมบัติที่เรียบง่ายและรอบคอบที่ทำให้คำแนะนำของคุณเปล่งประกาย",
+            "simpleLinks": {
+                "title": "ลิงก์ง่ายๆ และการแชร์ QR"
+            },
+            "livingGuides": {
+                "title": "คู่มือที่มีชีวิตและแก้ไขได้"
+            },
+            "locationAware": {
+                "title": "คำแนะนำที่ตระหนักถึงตำแหน่ง"
+            },
+            "soundPlaylists": {
+                "title": "เสียงและเพลย์ลิสต์ทางเลือก"
+            },
+            "privacyFirst": {
+                "title": "ความเป็นส่วนตัวเป็นอันดับแรกตามการออกแบบ"
+            },
+            "communityDriven": {
+                "title": "การค้นพบที่ขับเคลื่อนโดยชุมชน"
+            }
+        },
+        "finalCTA": {
+            "headline": "เริ่มแชร์โลกของคุณวันนี้",
+            "subtext": "จอง explorers ฟรีของคุณและเปลี่ยนข้อมูลเชิงลึกท้องถิ่นของคุณเป็นคู่มือที่แชร์ได้",
+            "ctaButton": "จอง explorers – ฟรีตลอดไป",
+            "disclaimer": "ไม่ต้องใช้บัตรเครดิต • ตั้งค่าใน 2 นาที",
+            "creating": "กำลังสร้าง explorers ของคุณ..."
+        }
+    },
+    "contact": {
+        "title": "มาเชื่อมต่อกันเถอะ",
+        "subtitle": "ไม่ว่าคุณจะมีคำถาม ไอเดีย หรือแค่อยากทักทาย — เราอยากได้ยินจากคุณ",
+        "getInTouch": "ติดต่อ",
+        "email": "hello@explorers.earth",
+        "responseTime": "เราตอบกลับภายใน 24-48 ชั่วโมง",
+        "closingMessage": "เราเป็นทีมเล็กที่มีวิสัยทัศน์ใหญ่ — ความคิดของคุณสำคัญสำหรับเรา ติดต่อมาและมาสร้างบางอย่างที่เป็นท้องถิ่นและระดับโลกกัน",
+        "seo": {
+            "title": "Contact explorers | Support, Help and Partnership enquiries.",
+            "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
+            "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+            "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
+            "keywords": [
+                "contact explorers",
+                "explorers support",
+                "get in touch explorers",
+                "customer service travel app",
+                "partnership inquiry explorers",
+                "help center local recommendations",
+                "technical support explorers",
+                "travel app customer service",
+                "feedback location sharing",
+                "account assistance explorers",
+                "business collaboration explorers",
+                "report problem explorers",
+                "share local recommendations support",
+                "find explorers contact",
+                "customer service",
+                "explorers team",
+                "help center",
+                "contact support",
+                "QR code support",
+                "local recommendations help",
+                "partnership inquiries"
+            ]
+        }
+    },
+    "about": {
+        "title": "นักสำรวจโลก",
+        "subtitle": {
+            "line1": "ชุมชนระดับโลกของผู้คนที่สำรวจด้วยความใส่ใจ — สำหรับผู้คน วัฒนธรรม และโลกที่เราแบ่งปัน",
+            "line2": "การสำรวจสำหรับเราไม่เกี่ยวกับว่าเราไปไกลแค่ไหน",
+            "line3": "มันเกี่ยวกับว่าเราเชื่อมต่อกันลึกซึ้งแค่ไหน"
+        },
+        "section1": {
+            "title": "สิ่งที่เราเชื่อ",
+            "line1": "การสำรวจเริ่มต้นด้วยการตระหนักรู้",
+            "line2": "ด้วยการสังเกตสิ่งที่คนอื่นมองข้าม",
+            "line3": "ด้วยการเลือกที่จะเคลื่อนไหวอย่างรอบคอบ ไม่ใช่เร็ว",
+            "line4": "เราอาศัยอยู่ชั่วคราวบนดาวเคราะห์โบราณ —\nเพิ่มเครื่องหมายที่ตั้งใจไว้บางอย่างให้กับเรื่องราว\nที่เริ่มต้นนานก่อนเรา\nและจะดำเนินต่อไปนานหลังจากที่เราจากไป"
+        },
+        "section2": {
+            "title": "วิธีที่เราเห็นการสำรวจ",
+            "line1": "การสำรวจไม่ได้วัดเป็นไมล์",
+            "line2": "มันวัดด้วยความหมาย",
+            "line3": "มันมีชีวิตอยู่ในการชะลอตัว การใส่ใจ\nและเคารพทุกสถานที่ที่เราเหยียบ —\nถนน เส้นทางภูเขา โต๊ะในร้านกาแฟ\nหรือช่วงเวลาที่แบ่งปันกับคนใหม่"
+        },
+        "section3": {
+            "title": "สิ่งที่เรากำลังสร้าง",
+            "line1": "explorers เป็นสถานที่สำหรับ:",
+            "item1": "คู่มือที่ถูกหล่อหลอมด้วยประสบการณ์จริง",
+            "item2": "สถานที่ การเดินทาง เสียง และเรื่องราวที่ควรค่าแก่การจดจำ",
+            "item3": "ชุมชนที่สร้างขึ้นบนผู้คน — ไม่ใช่ตัวชี้วัดความนิยม",
+            "line2": "เทคโนโลยีช่วยให้เราเชื่อมต่อ",
+            "line3": "ผู้คนให้มันมีจุดประสงค์"
+        },
+        "section4": {
+            "title": "การเป็นสมาชิก",
+            "line1": "นักสำรวจโลกไม่ใช่คลับ",
+            "line2": "มันไม่ใช่ป้ายกำกับ",
+            "line3": "มันคือความคิดที่แบ่งปันกัน —\nความเข้าใจที่เงียบสงบเกี่ยวกับวิธีที่เราเคลื่อนไหวในโลก"
+        },
+        "closing": "ถ้าคุณอยากรู้\nถ้าคุณรอบคอบ\nถ้าคุณเต็มใจที่จะชะลอตัวและมองใกล้ขึ้น —\nคุณเป็นส่วนหนึ่งของที่นี่อยู่แล้ว",
+        "seo": {
+            "title": "Explorers of Earth | About Us",
+            "description": "A global community of people who explore with care — for people, culture, and the planet we share. Exploration isn't about distance, it's about depth.",
+            "keywords": [
+                "explorers of earth",
+                "about explorers",
+                "exploration community",
+                "thoughtful travel",
+                "sustainable exploration",
+                "local recommendations platform",
+                "travel app about",
+                "community-driven recommendations",
+                "authentic local experiences",
+                "explorers team",
+                "local discovery platform",
+                "share local places",
+                "travel technology",
+                "local recommendations app",
+                "explorers story",
+                "who we are explorers"
+            ]
+        }
+    },
+    "cookieConsent": {
+        "title": "🍪 การตั้งค่าคุกกี้",
+        "description": "เราใช้คุกกี้เพื่อปรับปรุงประสบการณ์การท่องเว็บของคุณ ให้เนื้อหาที่ปรับแต่งได้ และวิเคราะห์การเข้าชม คุณสามารถจัดการการตั้งค่าได้ตลอดเวลา",
+        "acceptAll": "✅ ยอมรับคุกกี้ทั้งหมด",
+        "customize": "⚙️ ปรับแต่ง",
+        "rejectNonEssential": "❌ ปฏิเสธที่ไม่จำเป็น",
+        "preferencesTitle": "การตั้งค่าคุกกี้",
+        "essentialCookies": {
+            "title": "คุกกี้ที่จำเป็น",
+            "description": "จำเป็นสำหรับการทำงานของเว็บไซต์อย่างถูกต้อง",
+            "alwaysOn": "เปิดอยู่เสมอ"
+        },
+        "analyticsCookies": {
+            "title": "คุกกี้วิเคราะห์",
+            "description": "ช่วยให้เราเข้าใจว่าผู้เยี่ยมชมโต้ตอบกับเว็บไซต์ของเราอย่างไร"
+        },
+        "marketingCookies": {
+            "title": "คุกกี้การตลาด",
+            "description": "ใช้เพื่อส่งมอบโฆษณาที่ปรับแต่งได้"
+        },
+        "savePreferences": "บันทึกการตั้งค่า",
+        "acceptAllButton": "ยอมรับทั้งหมด",
+        "closeBanner": "ปิดแบนเนอร์",
+        "goBack": "กลับ"
+    },
+    "footer": {
+        "tagline": "ให้คำแนะนำของคุณเดินทางรอบโลก",
+        "email": "hello@explorers.earth",
+        "sections": {
+            "product": "ผลิตภัณฑ์",
+            "contact": "ติดต่อ",
+            "legal": "กฎหมาย"
+        },
+        "links": {
+            "howItWorks": "ทำงานอย่างไร",
+            "faq": "คำถามที่พบบ่อย",
+            "contact": "ติดต่อ",
+            "about": "เกี่ยวกับ",
+            "terms": "ข้อกำหนดและเงื่อนไข",
+            "privacy": "นโยบายความเป็นส่วนตัว",
+            "cookies": "นโยบายคุกกี้"
+        },
+        "copyright": "© 2025 explorers สงวนลิขสิทธิ์ทั้งหมด",
+        "madeWithLove": "สร้างด้วยความรักบนโลก"
+    },
+    "legal": {
+        "terms": {
+            "title": "ข้อกำหนดและเงื่อนไข",
+            "loading": "กำลังโหลดข้อกำหนดและเงื่อนไข...",
+            "error": "เกิดข้อผิดพลาดในการโหลดข้อกำหนดและเงื่อนไข กรุณาลองใหม่ภายหลัง"
+        },
+        "privacy": {
+            "title": "นโยบายความเป็นส่วนตัว",
+            "loading": "กำลังโหลดนโยบายความเป็นส่วนตัว...",
+            "error": "เกิดข้อผิดพลาดในการโหลดนโยบายความเป็นส่วนตัว กรุณาลองใหม่ภายหลัง"
+        },
+        "cookies": {
+            "title": "นโยบายคุกกี้",
+            "loading": "กำลังโหลดนโยบายคุกกี้...",
+            "error": "เกิดข้อผิดพลาดในการโหลดนโยบายคุกกี้ กรุณาลองใหม่ภายหลัง"
+        }
+    },
+    "languageModal": {
+        "title": "เลือกภาษา",
+        "searchPlaceholder": "ค้นหาภาษา...",
+        "close": "ปิด"
+    },
+    "auth": {
+        "signup": "สมัครสมาชิก",
+        "signupSubtitle": "สมัครสมาชิกเพื่อเพลิดเพลินกับฟีเจอร์ของ explorers",
+        "username": "ชื่อผู้ใช้",
+        "usernamePlaceholder": "กรอกชื่อผู้ใช้ของคุณ",
+        "email": "อีเมล",
+        "emailPlaceholder": "กรอกอีเมลของคุณ",
+        "password": "รหัสผ่าน",
+        "passwordPlaceholder": "กรอกรหัสผ่านของคุณ",
+        "confirmPassword": "ยืนยันรหัสผ่าน",
+        "confirmPasswordPlaceholder": "กรอกรหัสผ่านของคุณอีกครั้ง",
+        "register": "สมัครสมาชิก",
+        "or": "หรือ",
+        "signUpWithGoogle": "สมัครสมาชิกด้วย Google",
+        "alreadyHaveAccount": "มีบัญชีอยู่แล้ว?",
+        "login": "เข้าสู่ระบบ",
+        "loginTitle": "เข้าสู่ระบบ",
+        "loginSubtitle": "กรุณาเข้าสู่ระบบเพื่อดำเนินการต่อในบัญชีของคุณ",
+        "usernameOrEmail": "ชื่อผู้ใช้หรืออีเมล",
+        "usernameOrEmailPlaceholder": "กรอกชื่อผู้ใช้หรืออีเมลของคุณ",
+        "signInWithGoogle": "เข้าสู่ระบบด้วย Google",
+        "newToexplorers": "ใหม่กับ explorers?",
+        "forgotPassword": "ลืมรหัสผ่าน?",
+        "validations": {
+            "username": {
+                "required": "ต้องระบุชื่อผู้ใช้",
+                "minLength": "ชื่อผู้ใช้ต้องมีอย่างน้อย 3 ตัวอักษร",
+                "maxLength": "ชื่อผู้ใช้ต้องไม่เกิน 30 ตัวอักษร",
+                "invalidChars": "ชื่อผู้ใช้สามารถมีได้เฉพาะตัวอักษรพิมพ์เล็ก (a-z), ตัวเลข (0-9), และขีดกลาง (-)",
+                "mustStartWithLetter": "ชื่อผู้ใช้ต้องเริ่มต้นด้วยตัวอักษร (a-z)",
+                "cannotStartEndHyphen": "ชื่อผู้ใช้ไม่สามารถเริ่มต้นหรือลงท้ายด้วยขีดกลางได้",
+                "noConsecutiveHyphens": "ชื่อผู้ใช้ไม่สามารถมีขีดกลางติดกันได้",
+                "cannotBeAllNumbers": "ชื่อผู้ใช้ไม่สามารถเป็นตัวเลขทั้งหมดได้",
+                "reservedWords": "This username contains reserved words and cannot be used",
+                "inappropriateContent": "ชื่อผู้ใช้มีเนื้อหาที่ไม่เหมาะสม",
+                "alreadyExists": "ชื่อผู้ใช้นี้มีอยู่แล้ว",
+                "suggestedAlternatives": "Suggested alternatives:",
+                "willBeConvertedLowercase": "ชื่อผู้ใช้จะถูกแปลงเป็นตัวอักษรพิมพ์เล็ก",
+                "checkingAvailability": "กำลังตรวจสอบความพร้อมใช้งาน...",
+                "available": "ชื่อผู้ใช้พร้อมใช้งาน",
+                "willConvertToLowercase": "ชื่อผู้ใช้จะถูกแปลงเป็นตัวพิมพ์เล็ก"
+            },
+            "email": {
+                "required": "ต้องระบุอีเมล",
+                "invalidFormat": "กรุณาใส่อีเมลที่ถูกต้อง",
+                "alreadyExists": "อีเมลนี้มีอยู่แล้ว",
+                "invalid": "อีเมลไม่ถูกต้อง"
+            },
+            "password": {
+                "required": "ต้องระบุรหัสผ่าน",
+                "minLength": "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร",
+                "uppercaseRequired": "รหัสผ่านต้องมีตัวอักษรพิมพ์ใหญ่อย่างน้อย 1 ตัว (A-Z)",
+                "numberRequired": "รหัสผ่านต้องมีตัวเลขอย่างน้อย 1 ตัว (0-9)",
+                "specialCharRequired": "รหัสผ่านต้องมีตัวอักษรพิเศษอย่างน้อย 1 ตัว (!@#$%^&*().,?\":{}|\u003c\u003e)",
+                "strength": "ความแข็งแกร่งของรหัสผ่าน",
+                "weak": "อ่อนแอ",
+                "medium": "ปานกลาง",
+                "strong": "แข็งแกร่ง",
+                "maxLength": "รหัสผ่านต้องไม่เกิน 32 ตัวอักษร",
+                "lowercaseRequired": "รหัสผ่านต้องมีตัวอักษรพิมพ์เล็กอย่างน้อย 1 ตัว (a-z)",
+                "tooCommon": "This password is too common. Please choose a more unique password",
+                "sameAsCurrent": "New password cannot be the same as your current password",
+                "considerLonger": "Consider using a longer password with more variety for better security",
+                "moreSecure": "รหัสผ่านที่มี 10 ตัวอักษรหรือมากกว่านั้นจะปลอดภัยกว่า",
+                "veryWeak": "อ่อนแอมาก",
+                "fair": "ปานกลาง",
+                "good": "ดี",
+                "veryStrong": "แข็งแกร่งมาก"
+            },
+            "confirmPassword": {
+                "required": "กรุณายืนยันรหัสผ่านของคุณ",
+                "mustMatch": "Passwords do not match",
+                "confirmRequired": "ต้องยืนยันรหัสผ่าน",
+                "match": "รหัสผ่านตรงกัน"
+            },
+            "login": {
+                "usernameOrEmailRequired": "ต้องมีชื่อผู้ใช้หรืออีเมล",
+                "invalidCredentials": "ชื่อผู้ใช้/อีเมลหรือรหัสผ่านไม่ถูกต้อง",
+                "accountNotFound": "ไม่พบบัญชี",
+                "tooManyAttempts": "พยายามล้มเหลวมากเกินไป",
+                "incorrectPassword": "รหัสผ่านไม่ถูกต้อง"
+            },
+            "general": {
+                "fillRequiredFields": "กรุณากรอกข้อมูลในช่องที่จำเป็นทั้งหมด",
+                "somethingWentWrong": "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง"
+            },
+            "forgotPassword": {
+                "title": "ลืมรหัสผ่าน?",
+                "description": "ใส่อีเมลของคุณและเราจะส่งลิงก์รีเซ็ตให้คุณ",
+                "emailLabel": "ที่อยู่อีเมล",
+                "emailPlaceholder": "ใส่อีเมลของคุณและเราจะส่งลิงก์รีเซ็ตให้คุณ",
+                "sendResetLink": "ส่งลิงก์รีเซ็ต",
+                "backToLogin": "กลับไปเข้าสู่ระบบ",
+                "resetLinkSent": "ลิงก์รีเซ็ตรหัสผ่านถูกส่งไปยังอีเมลของคุณแล้ว!",
+                "failedToSend": "ส่งลิงก์รีเซ็ตไม่สำเร็จ ลองใหม่อีกครั้งภายหลัง",
+                "somethingWentWrong": "เกิดข้อผิดพลาด!"
+            },
+            "accountName": {
+                "required": "ชื่อบัญชีจำเป็น",
+                "minLength": "ชื่อบัญชีต้องมีอย่างน้อย 2 ตัวอักษร",
+                "maxLength": "ชื่อบัญชีต้องไม่เกิน 50 ตัวอักษร",
+                "invalidChars": "ชื่อบัญชีสามารถมีได้เฉพาะตัวอักษร ช่องว่าง อะโพสทรอฟี ขีดกลาง และจุด",
+                "noNumbers": "ชื่อบัญชีไม่สามารถมีตัวเลขได้"
+            },
+            "accountType": {
+                "required": "ประเภทบัญชีจำเป็น",
+                "invalid": "ประเภทบัญชีไม่ถูกต้อง"
+            },
+            "primaryAddress": {
+                "required": "ที่อยู่หลักจำเป็น"
+            },
+            "socialMedia": {
+                "instagram": "กรุณาใส่ URL โปรไฟล์ Instagram ที่ถูกต้อง",
+                "whatsapp": "ใส่ข้อมูลติดต่อ WhatsApp ที่ถูกต้อง: เบอร์โทร (+1234567890) หรือลิงก์ wa.me/api.whatsapp.com",
+                "mobile": "กรุณาใส่หมายเลขโทรศัพท์มือถือที่ถูกต้อง (เช่น +1234567890)",
+                "youtube": "กรุณาใส่ URL ช่อง YouTube ที่ถูกต้อง (เช่น youtube.com/@ชื่อผู้ใช้)",
+                "x": "กรุณาใส่ URL โปรไฟล์ X (Twitter) ที่ถูกต้อง",
+                "spotify": "กรุณาใส่ URL Spotify ที่ถูกต้อง",
+                "website": "กรุณาใส่ URL เว็บไซต์ที่ถูกต้อง",
+                "facebook": "กรุณาใส่ URL โปรไฟล์ Facebook ที่ถูกต้อง",
+                "youtubeMusic": "กรุณาใส่ URL ช่อง YouTube Music ที่ถูกต้อง",
+                "email": "กรุณาใส่ที่อยู่อีเมลที่ถูกต้อง",
+                "linkedin": "กรุณาใส่ URL โปรไฟล์ LinkedIn ที่ถูกต้อง",
+                "appleMusic": "กรุณาใส่ URL Apple Music ที่ถูกต้อง",
+                "tiktok": "กรุณาใส่ URL โปรไฟล์ TikTok ที่ถูกต้อง",
+                "snapchat": "กรุณาใส่ชื่อผู้ใช้ Snapchat ที่ถูกต้อง"
+            },
+            "onboarding": {
+                "displayNameRequired": "ชื่อที่แสดงจำเป็น",
+                "displayNameMinLength": "ชื่อที่แสดงต้องมีอย่างน้อย 2 ตัวอักษร",
+                "displayNameMaxLength": "ชื่อที่แสดงต้องไม่เกิน 50 ตัวอักษร",
+                "bioRequired": "ชีวประวัติจำเป็น",
+                "bioMaxLength": "ชีวประวัติต้องไม่เกิน 250 ตัวอักษร",
+                "mobileNumberRequired": "หมายเลขโทรศัพท์มือถือจำเป็น",
+                "mobileNumberInvalid": "กรุณาป้อนหมายเลขโทรศัพท์มือถือที่ถูกต้อง",
+                "mobileNumberLength": "หมายเลขโทรศัพท์มือถือต้องมี 10 หลัก",
+                "addressRequired": "ที่อยู่จำเป็น",
+                "cityRequired": "เมืองจำเป็น",
+                "stateRequired": "รัฐจำเป็น",
+                "countryRequired": "ประเทศจำเป็น",
+                "postalCodeRequired": "รหัสไปรษณีย์จำเป็น",
+                "primaryAddressRequired": "ที่อยู่หลักจำเป็น",
+                "emailAddressRequired": "ที่อยู่อีเมลจำเป็น",
+                "resetLinkSentSuccess": "ลิงก์รีเซ็ตส่งสำเร็จ!",
+                "invalidUsername": "ชื่อผู้ใช้ไม่ถูกต้อง",
+                "profileImageAlt": "Profile"
+            },
+            "resetPassword": {
+                "newPassword": "New Password",
+                "confirmPassword": "Confirm Password"
+            },
+            "resetLinkSent": {
+                "title": "ส่งอีเมลแล้ว!",
+                "description": "ตรวจสอบกล่องจดหมายของคุณสำหรับลิงก์รีเซ็ตรหัสผ่าน",
+                "resending": "กำลังส่งใหม่...",
+                "resendWithCooldown": "ส่งอีเมลใหม่ ({{cooldown}}s)",
+                "resendMail": "ส่งอีเมลใหม่"
+            }
+        },
+        "onboarding": {
+            "accountDetails": {
+                "title": "รายละเอียดบัญชี",
+                "description": "บอกเราเกี่ยวกับตัวคุณ",
+                "displayName": "ชื่อที่แสดง",
+                "displayNamePlaceholder": "ป้อนชื่อที่แสดงของคุณ",
+                "username": "ชื่อผู้ใช้",
+                "usernamePlaceholder": "ป้อนชื่อผู้ใช้ของคุณ",
+                "usernameDescription": "ชื่อผู้ใช้ของคุณเป็นส่วนหนึ่งของลิงก์โปรไฟล์สาธารณะและรหัส QR ของคุณ ตัวอย่าง: explorers.earth/bhavya",
+                "bio": "ชีวประวัติ",
+                "bioPlaceholder": "บอกเราเกี่ยวกับตัวคุณ",
+                "accountType": "ประเภทบัญชี",
+                "personal": "ส่วนตัว",
+                "creator": "ผู้สร้าง",
+                "business": "ธุรกิจ",
+                "next": "ถัดไป"
+            },
+            "contactDetails": {
+                "title": "รายละเอียดการติดต่อ",
+                "description": "เพิ่มหมายเลขโทรศัพท์มือถือของคุณเพื่อการยืนยัน",
+                "mobileNumber": "หมายเลขโทรศัพท์มือถือ",
+                "mobileNumberPlaceholder": "ป้อนหมายเลขโทรศัพท์มือถือของคุณ",
+                "next": "ถัดไป",
+                "back": "กลับ"
+            },
+            "addressDetails": {
+                "title": "รายละเอียดที่อยู่",
+                "description": "คุณอยู่ที่ไหน?",
+                "address": "ที่อยู่",
+                "addressPlaceholder": "ป้อนที่อยู่ของคุณ",
+                "streetName": "ชื่อถนน",
+                "streetNamePlaceholder": "ป้อนชื่อถนน",
+                "city": "เมือง",
+                "cityPlaceholder": "ป้อนเมือง",
+                "state": "รัฐ",
+                "statePlaceholder": "ป้อนรัฐ",
+                "country": "ประเทศ",
+                "countryPlaceholder": "ป้อนประเทศ",
+                "postalCode": "รหัสไปรษณีย์",
+                "postalCodePlaceholder": "ป้อนรหัสไปรษณีย์",
+                "primaryAddress": "ที่อยู่หลัก",
+                "primaryAddressDescription": "แสดงในโปรไฟล์สาธารณะ (เมืองและประเทศ)",
+                "primaryAddressPlaceholder": "ป้อนที่อยู่หลัก",
+                "sameAsAddress": "เหมือนกับที่อยู่",
+                "confirmDetails": "ยืนยันรายละเอียด",
+                "back": "กลับ"
+            }
+        },
+        "resetPassword": {
+            "newPasswordPlaceholder": "Enter new password",
+            "confirmPasswordPlaceholder": "Confirm your password"
+        }
+    },
+    "common": {
+        "loading": "กำลังโหลด...",
+        "error": "เกิดข้อผิดพลาด กรุณาลองอีกครั้งในภายหลัง",
+        "retry": "ลองอีกครั้ง",
+        "noResults": "ไม่พบผลลัพธ์",
+        "submit": "ส่ง",
+        "hidePassword": "ซ่อนรหัสผ่าน",
+        "showPassword": "แสดงรหัสผ่าน",
+        "signInWithGoogle": "เข้าสู่ระบบด้วย Google",
+        "signUpWithGoogle": "ลงทะเบียนด้วย Google",
+        "cancel": "ยกเลิก"
+    },
+    "dashboard": {
+        "home": {
+            "welcomeBack": "ยินดีต้อนรับกลับ",
+            "profile": "โปรไฟล์",
+            "myRecommendations": "คำแนะนำของฉัน",
+            "activePlaces": "สถานที่ที่ใช้งาน",
+            "setupProfile": "ตั้งค่าโปรไฟล์ของคุณ",
+            "draft": "ร่าง",
+            "startCurating": "เริ่มคัดสรรคำแนะนำของคุณและแบ่งปันกับโลก!",
+            "addRecommendations": "เพิ่มคำแนะนำ"
+        },
+        "shareModal": {
+            "copyLink": "คัดลอกลิงก์",
+            "copied": "คัดลอกแล้ว!",
+            "linkCopiedToast": "คัดลอกลิงก์แล้ว!!"
+        },
+        "recommendations": {
+            "locationButton": "ตำแหน่ง",
+            "viewAll": "ดูทั้งหมด",
+            "recommendationsTab": "คำแนะนำ",
+            "manageTab": "จัดการ",
+            "manageHeading": "จัดการ",
+            "deleteAction": "ลบ",
+            "editAction": "แก้ไข",
+            "publishedStatus": "เผยแพร่แล้ว",
+            "draftStatus": "แบบร่าง",
+            "myRecommendationsHeading": "คำแนะนำของฉัน",
+            "myQRHeading": "QR ของฉัน",
+            "myRecommendationsQR": "คำแนะนำของฉัน",
+            "travelLikeLocal": "เดินทางแบบคนท้องถิ่น",
+            "shareLink": "แชร์ลิงก์",
+            "copyLink": "คัดลอกลิงก์",
+            "downloadQR": "ดาวน์โหลด QR",
+            "emptyState": {
+                "title": "ไม่มีคำแนะนำที่ใช้ได้",
+                "subtitle": "เริ่มเพิ่มสถานที่โปรดของคุณลงในรายการนี้"
+            },
+            "draftLabel": "แบบร่าง",
+            "recommendButton": "แนะนำ",
+            "exploreSection": {
+                "heading": "สำรวจด้วย explorers",
+                "addButton": "เพิ่ม"
+            },
+            "locationLabels": {
+                "currentLocation": "ตำแหน่งปัจจุบัน",
+                "selectedLocation": "ตำแหน่งที่เลือก"
+            },
+            "categories": {
+                "foodDrinks": "อาหารและเครื่องดื่ม",
+                "lodging": "ที่พัก",
+                "healthWellness": "สุขภาพและความเป็นอยู่ที่ดี",
+                "shopping": "ช้อปปิ้ง",
+                "entertainment": "ความบันเทิง",
+                "transportation": "การขนส่ง",
+                "services": "บริการ",
+                "tourism": "การท่องเที่ยว",
+                "naturalFeatures": "ลักษณะธรรมชาติ"
+            },
+            "locationForm": {
+                "labels": {
+                    "searchLocation": "ค้นหาตำแหน่ง",
+                    "recommendationSocialLink": "ลิงก์โซเชียลแนะนำ",
+                    "note": "หมายเหตุ",
+                    "placeUrl": "URL สถานที่"
+                },
+                "placeholders": {
+                    "searchLocation": "ป้อนเมือง รัฐ หรือประเทศ (เช่น ปารีส)",
+                    "recommendationSocialLink": "ป้อน URL (Youtube / Instagram)",
+                    "note": "ป้อนหมายเหตุที่เกี่ยวข้องกับการแนะนำของคุณ",
+                    "placeUrl": "ป้อนชื่อเพื่อสร้างลิงก์ที่แชร์ได้"
+                },
+                "buttons": {
+                    "addLocation": "เพิ่มตำแหน่ง",
+                    "updateLocation": "อัพเดทตำแหน่ง"
+                }
+            },
+            "toastMessages": {
+                "listCreated": "Recommendation List Created Successfully!!!",
+                "listPublished": "Recommendation list Published successfully!",
+                "listUnpublished": "Recommendation list Unpublished successfully!",
+                "listPublishError": "List Should have atleast one Recommended Place to be Published",
+                "listVisibilityError": "Failed to update recommendation list visibility.",
+                "qrDownloadSuccess": "QR code downloaded successfully!",
+                "qrDownloadError": "Failed to download QR code. Please try again.",
+                "linkCopied": "Link copied to clipboard!",
+                "linkCopyError": "Failed to copy link. Please try again.",
+                "qrNotReady": "QR code not ready for download"
+            },
+            "placesModal": {
+                "placesCount": "{{visible}} จาก {{total}} สถานที่",
+                "scrollToLoadMore": "เลื่อนเพื่อโหลดสถานที่เพิ่มเติม"
+            },
+            "noRecommendationsYet": "ยังไม่มีคำแนะนำ!!",
+            "setupProfileBeforeRecommendations": "ตั้งค่าโปรไฟล์ของคุณก่อนสร้างคำแนะนำ!!",
+            "startAddingPlaces": "เริ่มเพิ่มสถานที่โปรดของคุณและแชร์กับผู้อื่น",
+            "startRecommending": "เริ่มแนะนำ",
+            "addRecommendationForm": {
+                "searchField": {
+                    "label": "Search Recommendation with Google"
+                },
+                "mainInput": {
+                    "placeholder": "Enter your Recommendation"
+                },
+                "taggableFields": {
+                    "title": "ชื่อเรื่อง",
+                    "address": "ที่อยู่",
+                    "category": "หมวดหมู่",
+                    "contactNumber": "หมายเลขติดต่อ",
+                    "socialLink": "ลิงก์โซเชียล",
+                    "personName": "ชื่อบุคคล"
+                },
+                "accordionSection": {
+                    "heading": "Your Recommendation Details",
+                    "recommendationLink": {
+                        "label": "Your Recommendation Link",
+                        "placeholder": "You can insert Instagram reel, YouTube, or blog recommending"
+                    },
+                    "whyRecommend": {
+                        "label": "Why would you recommend?",
+                        "placeholder": "Why would you recommend?"
+                    }
+                },
+                "fileUpload": {
+                    "text": "Attach Image/Video",
+                    "subtext": "optional"
+                },
+                "actionButton": {
+                    "text": "Add recommendation"
+                },
+                "taggableFieldsPlaceholders": {
+                    "title": "ใส่ชื่อเรื่อง",
+                    "address": "ใส่ที่อยู่ของสถานที่",
+                    "category": "ใส่หมวดหมู่",
+                    "contactNumber": "ใส่หมายเลขติดต่อ",
+                    "socialLink": "ใส่ลิงก์โซเชียล (สถานที่)",
+                    "personName": "ใส่ชื่อเต็มของบุคคล"
+                },
+                "validationMessages": {
+                    "titleRequired": "ต้องการชื่อเรื่อง",
+                    "addressRequired": "ต้องการที่อยู่",
+                    "categoryRequired": "ต้องการหมวดหมู่",
+                    "socialUrlRequired": "ต้องการ URL Instagram หรือ LinkedIn สำหรับคำแนะนำเกี่ยวกับบุคคล",
+                    "socialUrlInvalid": "กรุณาใส่ URL Instagram หรือ LinkedIn ที่ถูกต้อง"
+                },
+                "mapModal": {
+                    "cancelButton": "ยกเลิก",
+                    "addRecommendationButton": "เพิ่มคำแนะนำ",
+                    "updateRecommendationButton": "อัปเดตคำแนะนำ",
+                    "setLocationButton": "ตั้งค่าตำแหน่ง"
+                },
+                "deleteRecommendation": "ลบคำแนะนำ",
+                "searchLocation": {
+                    "label": "ค้นหาตำแหน่ง",
+                    "searchPlace": "ค้นหาสถานที่",
+                    "placeholder": "พิมพ์และเลือกสถานที่"
+                },
+                "fetchingImages": "กำลังดึงภาพ…",
+                "recommendationType": {
+                    "place": "สถานที่",
+                    "person": "บุคคล",
+                    "label": "ประเภทคำแนะนำ"
+                },
+                "imagePreview": {
+                    "alt": "ตัวอย่าง",
+                    "deleteTooltip": "ลบ",
+                    "setThumbnailTooltip": "ตั้งเป็นภาพย่อ",
+                    "confirmDeleteTitle": "ยืนยันการลบ",
+                    "confirmDeleteMessage": "คุณแน่ใจหรือไม่ว่าต้องการลบภาพนี้ออกจากคอลเลกชัน?",
+                    "cancel": "ยกเลิก",
+                    "confirm": "ยืนยัน"
+                },
+                "deleteRecommendationModal": {
+                    "title": "ยืนยันการลบ",
+                    "message": "คุณแน่ใจหรือไม่ว่าต้องการลบคำแนะนำนี้? การกระทำนี้ไม่สามารถยกเลิกได้",
+                    "cancel": "ยกเลิก"
+                }
+            }
+        },
+        "profile": {
+            "tabs": {
+                "publicProfile": "โปรไฟล์สาธารณะ",
+                "account": "บัญชี"
+            },
+            "publicProfile": {
+                "sections": {
+                    "profileInformation": "ประวัติ",
+                    "socialMedia": "ลิงก์โซเชียล",
+                    "publicAddress": "ที่อยู่สาธารณะ",
+                    "howToReachUs": "วิธีติดต่อเรา",
+                    "howToReachUsDescription": "ใช้ส่วนนี้เพื่อแชร์รายละเอียดตำแหน่งธุรกิจของคุณ",
+                    "feed": "ฟีด",
+                    "socialMediaSubtitle": "ลิงก์และข้อมูลโซเชียลมีเดีย"
+                },
+                "fields": {
+                    "accountType": "ประเภทบัญชี",
+                    "bio": "ประวัติ",
+                    "socialMedia": "โซเชียลมีเดีย",
+                    "instagram": "Instagram",
+                    "whatsapp": "Whatsapp",
+                    "mobile": "มือถือ",
+                    "youtube": "Youtube",
+                    "x": "X",
+                    "spotify": "Spotify",
+                    "website": "เว็บไซต์",
+                    "facebook": "Facebook",
+                    "youtubeMusic": "Youtube Music",
+                    "gmail": "Gmail",
+                    "linkedin": "Linkedin",
+                    "appleMusic": "Apple Music",
+                    "tiktok": "Tiktok",
+                    "snapchat": "Snapchat",
+                    "businessLocation": "เพิ่มตำแหน่งของคุณ สิ่งเหล่านี้จะปรากฏเป็นตำแหน่งแนะนำในโปรไฟล์สาธารณะของคุณ",
+                    "primaryAddress": "ที่อยู่หลัก - แสดงในโปรไฟล์สาธารณะ (เมืองและประเทศ)",
+                    "feed": "อัปโหลดรูปภาพหรือวิดีโอของตำแหน่ง ผลิตภัณฑ์ บริการ หรือประสบการณ์ของคุณ รูปภาพเหล่านี้จะแสดงในแกลเลอรีของคุณในโปรไฟล์สาธารณะ",
+                    "title": "หัวข้อ",
+                    "contact": "ติดต่อ",
+                    "about": "เกี่ยวกับ",
+                    "addLocation": "เพิ่มตำแหน่งของคุณ",
+                    "addLocationInformation": "เพิ่มข้อมูลตำแหน่ง",
+                    "searchAddress": "ค้นหาที่อยู่ของคุณ...",
+                    "sameAsAddress": "เหมือนกับที่อยู่"
+                },
+                "accountTypes": {
+                    "personal": "ส่วนตัว",
+                    "creator": "ผู้สร้าง",
+                    "business": "ธุรกิจ"
+                },
+                "businessLocation": {
+                    "title": "หัวข้อ",
+                    "contact": "ติดต่อ",
+                    "website": "เว็บไซต์",
+                    "about": "เกี่ยวกับ"
+                }
+            },
+            "account": {
+                "sections": {
+                    "account": "บัญชี",
+                    "billingAddress": "ที่อยู่เรียกเก็บเงิน"
+                },
+                "fields": {
+                    "username": "ชื่อผู้ใช้",
+                    "accountName": "ชื่อบัญชี",
+                    "address": "ที่อยู่",
+                    "streetName": "ชื่อถนน",
+                    "state": "จังหวัด",
+                    "city": "เมือง",
+                    "country": "ประเทศ",
+                    "postalCode": "รหัสไปรษณีย์",
+                    "addressPlaceholder": "ใส่ที่อยู่ของคุณ",
+                    "detectLocation": "ตรวจจับตำแหน่งปัจจุบันของฉัน"
+                }
+            },
+            "common": {
+                "visible": "มองเห็น",
+                "hidden": "ซ่อน",
+                "mobileNumber": "หมายเลขโทรศัพท์มือถือ",
+                "mobileNumberPlaceholder": "หมายเลขโทรศัพท์มือถือ",
+                "whatsappNumber": "หมายเลข WhatsApp",
+                "primaryAddress": "ที่อยู่หลัก",
+                "editImage": "แก้ไขรูปภาพ",
+                "confirm": "ยืนยัน",
+                "add": "เพิ่ม",
+                "video": "วิดีโอ",
+                "feedImage": "รูปภาพฟีด",
+                "importedImage": "รูปภาพที่นำเข้า",
+                "cover": "ปก",
+                "profile": "โปรไฟล์",
+                "saveAndPublish": "บันทึกและเผยแพร่",
+                "saveToFeed": "บันทึกลงฟีด",
+                "savedAndPublishedSuccessfully": "บันทึกและเผยแพร่สำเร็จ",
+                "saveAndPublishFailed": "บันทึกและเผยแพร่ล้มเหลว กรุณาลองอีกครั้ง",
+                "failedToSaveChanges": "บันทึกการเปลี่ยนแปลงล้มเหลว กรุณาลองอีกครั้ง",
+                "networkError": "ข้อผิดพลาดเครือข่าย: กรุณาตรวจสอบการเชื่อมต่อและลองอีกครั้ง",
+                "unexpectedError": "เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองอีกครั้ง",
+                "somethingWentWrong": "เกิดข้อผิดพลาด กรุณาลองอีกครั้ง",
+                "failedToUploadFiles": "อัปโหลดไฟล์ล้มเหลว กรุณาลองอีกครั้ง",
+                "failedToUploadImages": "อัปโหลดรูปภาพล้มเหลว กรุณาลองอีกครั้ง",
+                "failedToSaveImagesToFeed": "บันทึกรูปภาพลงฟีดล้มเหลว",
+                "failedToUpdateProfile": "อัปเดตโปรไฟล์ล้มเหลว กรุณาลองอีกครั้ง",
+                "fetching": "กำลังดึงข้อมูล...",
+                "selectAll": "เลือกทั้งหมด",
+                "clearSelection": "ล้างการเลือก",
+                "error": "เกิดข้อผิดพลาดขณะโหลดโปรไฟล์ของคุณ กรุณาลองอีกครั้งในภายหลัง",
+                "errors": {
+                    "noFileProvided": "ไม่ได้ระบุไฟล์สำหรับการอัปโหลด",
+                    "failedToGetAccountId": "ไม่สามารถรับ ID บัญชีสำหรับการอัปโหลด",
+                    "uploadResponseMissingFileData": "การตอบกลับการอัปโหลดไม่มีข้อมูลไฟล์"
+                }
+            },
+            "accountSetup": {
+                "title": "ทำการตั้งค่าบัญชีของคุณให้เสร็จสมบูรณ์",
+                "progress": "ความคืบหน้า",
+                "complete": "เสร็จสมบูรณ์",
+                "profileSetupCompleted": "การตั้งค่าโปรไฟล์เสร็จสมบูรณ์",
+                "profileSetupIncomplete": "เพิ่มรูปโปรไฟล์ ประวัติ และลิงก์โซเชียล",
+                "recommendationsSetupCompleted": "การตั้งค่าคำแนะนำเสร็จสมบูรณ์",
+                "recommendationsSetupIncomplete": "เพิ่มตำแหน่ง สถานที่ และเผยแพร่รายการแรกของคุณ",
+                "setupButton": "ตั้งค่า",
+                "footerMessage": "ทำทั้งสองขั้นตอนให้เสร็จสมบูรณ์เพื่อปลดล็อกประสบการณ์แดชบอร์ดแบบเต็มของคุณ"
+            }
+        }
+    },
+    "toast": {
+        "success": {
+            "loginSuccessful": "เข้าสู่ระบบสำเร็จ!",
+            "registrationSuccessful": "ลงทะเบียนสำเร็จ!",
+            "passwordResetSuccessful": "รีเซ็ตรหัสผ่านสำเร็จ!",
+            "emailVerificationSent": "ส่งการยืนยันอีเมลแล้ว!",
+            "resetLinkSent": "ส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมลของคุณแล้ว!",
+            "resetLinkResent": "ส่งลิงก์รีเซ็ตใหม่แล้ว!",
+            "profileImageUpdated": "อัปเดตรูปโปรไฟล์สำเร็จแล้ว!",
+            "backgroundImageUpdated": "อัปเดตรูปพื้นหลังสำเร็จแล้ว!",
+            "recommendedListUpdated": "Recommended List Updated Successfully!!!",
+            "accountCreated": "Account created successfully!",
+            "usernameUpdated": "Username updated successfully!",
+            "profileUpdated": "Profile updated successfully!",
+            "settingsSaved": "Settings saved successfully!",
+            "dataSaved": "Data saved successfully!",
+            "changesSaved": "Changes saved successfully!",
+            "fileUploaded": "File uploaded successfully!",
+            "imageUploaded": "อัปโหลดรูปภาพสำเร็จ!",
+            "linkCopied": "Link copied to clipboard!",
+            "emailSent": "Email sent successfully!",
+            "notificationSent": "Notification sent successfully!",
+            "actionCompleted": "Action completed successfully!",
+            "formSubmitted": "Form submitted successfully!",
+            "onboardingCompleted": "การแนะนำเสร็จสิ้นสำเร็จ!",
+            "welcomeMessage": "ยินดีต้อนรับสู่ explorers!",
+            "accountActivated": "เปิดใช้งานบัญชีสำเร็จ!",
+            "emailVerified": "ยืนยันอีเมลสำเร็จ!",
+            "passwordChanged": "เปลี่ยนรหัสผ่านสำเร็จ!",
+            "usernameChanged": "เปลี่ยนชื่อผู้ใช้สำเร็จ!",
+            "profileCompleted": "โปรไฟล์เสร็จสิ้นสำเร็จ!",
+            "setupCompleted": "การตั้งค่าเสร็จสิ้นสำเร็จ!",
+            "loggedOutSuccessfully": "ออกจากระบบสำเรจ!"
+        },
+        "error": {
+            "loginFailed": "เข้าสู่ระบบล้มเหลว กรุณาตรวจสอบข้อมูลการเข้าสู่ระบบของคุณ",
+            "registrationFailed": "การลงทะเบียนล้มเหลว กรุณาลองใหม่",
+            "passwordResetFailed": "การรีเซ็ตรหัสผ่านล้มเหลว กรุณาลองใหม่",
+            "emailVerificationFailed": "การยืนยันอีเมลล้มเหลว กรุณาลองใหม่",
+            "resetLinkFailed": "การส่งลิงก์รีเซ็ตล้มเหลว กรุณาลองใหม่ภายหลัง",
+            "resetLinkResendFailed": "การส่งใหม่ล้มเหลว กรุณาลองใหม่ภายหลัง",
+            "profileImageUpdateFailed": "Failed to upload profile image. Please try again.",
+            "backgroundImageUpdateFailed": "Failed to upload background image. Please try again.",
+            "recommendedListUpdateFailed": "Error Updating Recommended List!!!",
+            "accountCreationFailed": "Account creation failed. Please try again.",
+            "usernameUpdateFailed": "การอัปเดตชื่อผู้ใช้ล้มเหลว กรุณาลองใหม่",
+            "profileUpdateFailed": "Profile update failed. Please try again.",
+            "settingsSaveFailed": "Failed to save settings. Please try again.",
+            "dataSaveFailed": "Failed to save data. Please try again.",
+            "changesSaveFailed": "Failed to save changes. Please try again.",
+            "fileUploadFailed": "File upload failed. Please try again.",
+            "imageUploadFailed": "การอัปโหลดรูปภาพล้มเหลว กรุณาลองใหม่",
+            "linkCopyFailed": "Failed to copy link. Please try again.",
+            "emailSendFailed": "การส่งอีเมลล้มเหลว กรุณาลองใหม่อีกครั้ง",
+            "notificationSendFailed": "Failed to send notification. Please try again.",
+            "actionFailed": "Action failed. Please try again.",
+            "formSubmissionFailed": "Form submission failed. Please try again.",
+            "onboardingFailed": "การแนะนำล้มเหลว กรุณาลองใหม่",
+            "accountActivationFailed": "Account activation failed. Please try again.",
+            "passwordChangeFailed": "Password change failed. Please try again.",
+            "usernameChangeFailed": "Username change failed. Please try again.",
+            "profileCompletionFailed": "Profile completion failed. Please try again.",
+            "setupFailed": "Setup failed. Please try again.",
+            "networkError": "ข้อผิดพลาดเครือข่าย กรุณาตรวจสอบการเชื่อมต่อของคุณ",
+            "serverError": "ข้อผิดพลาดเซิร์ฟเวอร์ กรุณาลองใหม่ภายหลัง",
+            "validationError": "ข้อผิดพลาดในการตรวจสอบ กรุณาตรวจสอบข้อมูลที่ป้อน",
+            "permissionDenied": "ปฏิเสธการอนุญาต กรุณาติดต่อฝ่ายสนับสนุน",
+            "sessionExpired": "เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่",
+            "invalidCredentials": "ข้อมูลการเข้าสู่ระบบไม่ถูกต้อง กรุณาตรวจสอบข้อมูลที่ป้อน",
+            "emailNotFound": "ไม่พบอีเมล กรุณาลองใหม่",
+            "usernameAlreadyExists": "ชื่อผู้ใช้มีอยู่แล้ว กรุณาเลือกอันอื่น",
+            "emailAlreadyExists": "อีเมลมีอยู่แล้ว กรุณาใช้อีเมลอื่น",
+            "invalidEmailFormat": "รูปแบบอีเมลไม่ถูกต้อง กรุณาใส่อีเมลที่ถูกต้อง",
+            "passwordTooWeak": "รหัสผ่านอ่อนแอเกินไป กรุณาเลือกรหัสผ่านที่แข็งแกร่งกว่า",
+            "passwordsDoNotMatch": "รหัสผ่านไม่ตรงกัน กรุณาลองใหม่",
+            "requiredFieldMissing": "ฟิลด์ที่จำเป็นขาดหายไป กรุณากรอกฟิลด์ที่จำเป็นทั้งหมด",
+            "invalidInput": "ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบข้อมูลของคุณ",
+            "fileTooLarge": "ไฟล์ใหญ่เกินไป กรุณาเลือกไฟล์ที่เล็กกว่า",
+            "unsupportedFileType": "ประเภทไฟล์ไม่รองรับ กรุณาเลือกไฟล์อื่น",
+            "uploadLimitExceeded": "เกินขีดจำกัดการอัปโหลด กรุณาลองใหม่ภายหลัง",
+            "operationTimeout": "การดำเนินการหมดเวลา กรุณาลองใหม่",
+            "serviceUnavailable": "บริการไม่พร้อมใช้งาน กรุณาลองใหม่ภายหลัง",
+            "maintenanceMode": "บริการอยู่ระหว่างการบำรุงรักษา กรุณาลองใหม่ภายหลัง",
+            "rateLimitExceeded": "คำขอมากเกินไป กรุณาลองใหม่ภายหลัง",
+            "quotaExceeded": "เกินโควต้า กรุณาลองใหม่ภายหลัง",
+            "accessDenied": "ปฏิเสธการเข้าถึง คุณไม่มีสิทธิ์ในการดำเนินการนี้",
+            "resourceNotFound": "ไม่พบทรัพยากร กรุณาตรวจสอบคำขอของคุณ",
+            "conflictError": "ข้อผิดพลาดความขัดแย้ง ทรัพยากรมีอยู่แล้ว",
+            "preconditionFailed": "เงื่อนไขเบื้องต้นล้มเหลว กรุณาตรวจสอบคำขอของคุณ",
+            "tooManyAttempts": "พยายามมากเกินไป กรุณาลองใหม่ภายหลัง",
+            "accountLocked": "บัญชีถูกล็อค กรุณาติดต่อฝ่ายสนับสนุน",
+            "accountSuspended": "บัญชีถูกระงับ กรุณาติดต่อฝ่ายสนับสนุน",
+            "accountDeleted": "บัญชีถูกลบ กรุณาติดต่อฝ่ายสนับสนุน",
+            "emailNotVerified": "อีเมลยังไม่ได้รับการยืนยัน กรุณายืนยันอีเมลของคุณก่อน",
+            "phoneNotVerified": "หมายเลขโทรศัพท์ยังไม่ได้รับการยืนยัน กรุณายืนยันโทรศัพท์ของคุณก่อน",
+            "twoFactorRequired": "จำเป็นต้องมีการยืนยันตัวตนสองขั้นตอน",
+            "twoFactorFailed": "การยืนยันตัวตนสองขั้นตอนล้มเหลว กรุณาลองใหม่",
+            "captchaFailed": "การยืนยัน captcha ล้มเหลว กรุณาลองใหม่",
+            "invalidToken": "โทเค็นไม่ถูกต้อง กรุณาลองใหม่",
+            "expiredToken": "โทเค็นหมดอายุ กรุณาลองใหม่",
+            "invalidCode": "รหัสไม่ถูกต้อง กรุณาตรวจสอบข้อมูลที่ป้อน",
+            "expiredCode": "รหัสหมดอายุ กรุณาขอรหัสใหม่",
+            "codeLimitExceeded": "เกินขีดจำกัดรหัส กรุณาลองใหม่ภายหลัง",
+            "invalidUsername": "ชื่อผู้ใช้ไม่ถูกต้อง กรุณาตรวจสอบข้อมูลที่ป้อน",
+            "usernameTooShort": "ชื่อผู้ใช้สั้นเกินไป กรุณาเลือกชื่อผู้ใช้ที่ยาวกว่า",
+            "usernameTooLong": "ชื่อผู้ใช้ยาวเกินไป กรุณาเลือกชื่อผู้ใช้ที่สั้นกว่า",
+            "usernameInvalidChars": "ชื่อผู้ใช้มีอักขระที่ไม่ถูกต้อง กรุณาใช้เฉพาะตัวอักษร ตัวเลข และยัติภังค์",
+            "usernameReserved": "ชื่อผู้ใช้ถูกจองไว้ กรุณาเลือกชื่อผู้ใช้อื่น",
+            "usernameProfanity": "ชื่อผู้ใช้มีเนื้อหาที่ไม่เหมาะสม กรุณาเลือกชื่อผู้ใช้อื่น",
+            "primaryAddressRequired": "ต้องการที่อยู่หลัก",
+            "addressRequired": "ต้องการที่อยู่",
+            "cityRequired": "ต้องการเมือง",
+            "stateRequired": "ต้องการรัฐ",
+            "countryRequired": "ต้องการประเทศ",
+            "postalCodeRequired": "ต้องการรหัสไปรษณีย์",
+            "mobileNumberRequired": "ต้องการหมายเลขโทรศัพท์มือถือ",
+            "mobileNumberInvalid": "รูปแบบหมายเลขโทรศัพท์มือถือไม่ถูกต้อง",
+            "mobileNumberTooShort": "หมายเลขโทรศัพท์มือถือสั้นเกินไป",
+            "mobileNumberTooLong": "หมายเลขโทรศัพท์มือถือยาวเกินไป",
+            "bioRequired": "ต้องการประวัติ",
+            "bioTooLong": "ประวัติยาวเกินไป กรุณาเก็บไว้ต่ำกว่า 250 ตัวอักษร",
+            "displayNameRequired": "ต้องการชื่อที่แสดง",
+            "displayNameTooShort": "ชื่อที่แสดงสั้นเกินไป",
+            "displayNameTooLong": "ชื่อที่แสดงยาวเกินไป",
+            "accountTypeRequired": "ต้องการประเภทบัญชี",
+            "invalidAccountType": "เลือกประเภทบัญชีไม่ถูกต้อง",
+            "imageRequired": "ต้องการรูปภาพ",
+            "imageTooLarge": "รูปภาพใหญ่เกินไป กรุณาเลือกรูปภาพที่เล็กกว่า",
+            "unsupportedImageFormat": "รูปแบบรูปภาพไม่รองรับ กรุณาใช้ JPG, PNG หรือ GIF",
+            "imageProcessingFailed": "การประมวลผลรูปภาพล้มเหลว กรุณาลองใหม่",
+            "imageCorrupted": "รูปภาพเสียหาย กรุณาเลือกรูปภาพอื่น",
+            "imageDimensionsInvalid": "ขนาดรูปภาพไม่ถูกต้อง กรุณาเลือกรูปภาพอื่น",
+            "imageSizeInvalid": "ขนาดรูปภาพไม่ถูกต้อง กรุณาเลือกรูปภาพอื่น",
+            "imageFormatInvalid": "รูปแบบรูปภาพไม่ถูกต้อง กรุณาเลือกรูปภาพอื่น",
+            "imageQualityTooLow": "คุณภาพรูปภาพต่ำเกินไป กรุณาเลือกรูปภาพที่มีคุณภาพสูงกว่า",
+            "imageTooSmall": "รูปภาพเล็กเกินไป กรุณาเลือกรูปภาพที่ใหญ่กว่า",
+            "imageTooBig": "รูปภาพใหญ่เกินไป กรุณาเลือกรูปภาพที่เล็กกว่า",
+            "imageAspectRatioInvalid": "อัตราส่วนภาพไม่ถูกต้อง กรุณาเลือกรูปภาพอื่น",
+            "imageColorSpaceInvalid": "พื้นที่สีของรูปภาพไม่ถูกต้อง กรุณาเลือกรูปภาพอื่น",
+            "imageMetadataInvalid": "ข้อมูลเมตาของรูปภาพไม่ถูกต้อง กรุณาเลือกรูปภาพอื่น",
+            "imageSecurityViolation": "การละเมิดความปลอดภัยของรูปภาพ กรุณาเลือกรูปภาพอื่น",
+            "imageVirusDetected": "ตรวจพบไวรัสในรูปภาพ กรุณาเลือกรูปภาพอื่น",
+            "imageMalwareDetected": "ตรวจพบมัลแวร์ในรูปภาพ กรุณาเลือกรูปภาพอื่น",
+            "imageSpamDetected": "ตรวจพบสแปมในรูปภาพ กรุณาเลือกรูปภาพอื่น",
+            "imageContentInappropriate": "เนื้อหารูปภาพไม่เหมาะสม กรุณาเลือกรูปภาพอื่น",
+            "imageContentViolent": "เนื้อหารูปภาพมีความรุนแรง กรุณาเลือกรูปภาพอื่น",
+            "imageContentSexual": "เนื้อหารูปภาพเป็นเรื่องเพศ กรุณาเลือกรูปภาพอื่น",
+            "imageContentHateful": "เนื้อหารูปภาพแสดงความเกลียดชัง กรุณาเลือกรูปภาพอื่น",
+            "imageContentDiscriminatory": "เนื้อหารูปภาพเป็นการเลือกปฏิบัติ กรุณาเลือกรูปภาพอื่น",
+            "imageContentOffensive": "เนื้อหารูปภาพเป็นการดูหมิ่น กรุณาเลือกรูปภาพอื่น",
+            "imageContentAbusive": "เนื้อหารูปภาพเป็นการล่วงละเมิด กรุณาเลือกรูปภาพอื่น",
+            "imageContentHarassing": "เนื้อหารูปภาพเป็นการคุกคาม กรุณาเลือกรูปภาพอื่น",
+            "imageContentThreatening": "เนื้อหารูปภาพเป็นการข่มขู่ กรุณาเลือกรูปภาพอื่น",
+            "imageContentDangerous": "เนื้อหารูปภาพเป็นอันตราย กรุณาเลือกรูปภาพอื่น",
+            "imageContentIllegal": "เนื้อหารูปภาพผิดกฎหมาย กรุณาเลือกรูปภาพอื่น",
+            "imageContentCopyright": "เนื้อหารูปภาพละเมิดลิขสิทธิ์ กรุณาเลือกรูปภาพอื่น",
+            "imageContentTrademark": "เนื้อหารูปภาพละเมิดเครื่องหมายการค้า กรุณาเลือกรูปภาพอื่น",
+            "imageContentPrivacy": "เนื้อหารูปภาพละเมิดความเป็นส่วนตัว กรุณาเลือกรูปภาพอื่น",
+            "imageContentConsent": "เนื้อหารูปภาพขาดความยินยอม กรุณาเลือกรูปภาพอื่น",
+            "imageContentMinors": "เนื้อหารูปภาพเกี่ยวข้องกับผู้เยาว์ กรุณาเลือกรูปภาพอื่น",
+            "imageContentAnimals": "เนื้อหารูปภาพเกี่ยวข้องกับการทารุณสัตว์ กรุณาเลือกรูปภาพอื่น",
+            "imageContentEnvironment": "เนื้อหารูปภาพทำลายสิ่งแวดล้อม กรุณาเลือกรูปภาพอื่น",
+            "imageContentHealth": "เนื้อหารูปภาพทำลายสุขภาพ กรุณาเลือกรูปภาพอื่น",
+            "imageContentSafety": "เนื้อหารูปภาพทำลายความปลอดภัย กรุณาเลือกรูปภาพอื่น",
+            "imageContentSecurity": "เนื้อหารูปภาพทำลายความปลอดภัย กรุณาเลือกรูปภาพอื่น",
+            "imageContentIntegrity": "เนื้อหารูปภาพทำลายความซื่อสัตย์ กรุณาเลือกรูปภาพอื่น",
+            "imageContentReputation": "เนื้อหารูปภาพทำลายชื่อเสียง กรุณาเลือกรูปภาพอื่น",
+            "imageContentBrand": "เนื้อหารูปภาพทำลายแบรนด์ กรุณาเลือกรูปภาพอื่น",
+            "imageContentBusiness": "เนื้อหารูปภาพทำลายธุรกิจ กรุณาเลือกรูปภาพอื่น",
+            "imageContentPersonal": "เนื้อหารูปภาพทำลายผลประโยชน์ส่วนบุคคล กรุณาเลือกรูปภาพอื่น",
+            "imageContentProfessional": "เนื้อหารูปภาพทำลายผลประโยชน์ทางวิชาชีพ กรุณาเลือกรูปภาพอื่น",
+            "imageContentAcademic": "เนื้อหารูปภาพทำลายผลประโยชน์ทางวิชาการ กรุณาเลือกรูปภาพอื่น",
+            "imageContentCultural": "เนื้อหารูปภาพทำลายผลประโยชน์ทางวัฒนธรรม กรุณาเลือกรูปภาพอื่น",
+            "imageContentReligious": "เนื้อหารูปภาพทำลายผลประโยชน์ทางศาสนา กรุณาเลือกรูปภาพอื่น",
+            "imageContentPolitical": "เนื้อหารูปภาพทำลายผลประโยชน์ทางการเมือง กรุณาเลือกรูปภาพอื่น",
+            "imageContentSocial": "เนื้อหารูปภาพทำลายผลประโยชน์ทางสังคม กรุณาเลือกรูปภาพอื่น",
+            "imageContentEconomic": "เนื้อหารูปภาพทำลายผลประโยชน์ทางเศรษฐกิจ กรุณาเลือกรูปภาพอื่น",
+            "imageContentLegal": "เนื้อหารูปภาพทำลายผลประโยชน์ทางกฎหมาย กรุณาเลือกรูปภาพอื่น",
+            "imageContentEthical": "เนื้อหารูปภาพทำลายผลประโยชน์ทางจริยธรรม กรุณาเลือกรูปภาพอื่น",
+            "imageContentMoral": "เนื้อหารูปภาพทำลายผลประโยชน์ทางศีลธรรม กรุณาเลือกรูปภาพอื่น",
+            "imageContentSpiritual": "เนื้อหารูปภาพทำลายผลประโยชน์ทางจิตวิญญาณ กรุณาเลือกรูปภาพอื่น",
+            "imageContentPhilosophical": "เนื้อหารูปภาพทำลายผลประโยชน์ทางปรัชญา กรุณาเลือกรูปภาพอื่น",
+            "imageContentScientific": "เนื้อหารูปภาพทำลายผลประโยชน์ทางวิทยาศาสตร์ กรุณาเลือกรูปภาพอื่น",
+            "imageContentTechnical": "เนื้อหารูปภาพทำลายผลประโยชน์ทางเทคนิค กรุณาเลือกรูปภาพอื่น",
+            "imageContentArtistic": "เนื้อหารูปภาพทำลายผลประโยชน์ทางศิลปะ กรุณาเลือกรูปภาพอื่น",
+            "imageContentCreative": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความคิดสร้างสรรค์ กรุณาเลือกรูปภาพอื่น",
+            "imageContentIntellectual": "เนื้อหารูปภาพทำลายผลประโยชน์ทางปัญญา กรุณาเลือกรูปภาพอื่น",
+            "imageContentEducational": "เนื้อหารูปภาพทำลายผลประโยชน์ทางการศึกษา กรุณาเลือกรูปภาพอื่น",
+            "imageContentInformational": "เนื้อหารูปภาพทำลายผลประโยชน์ทางข้อมูล กรุณาเลือกรูปภาพอื่น",
+            "imageContentNews": "เนื้อหารูปภาพทำลายผลประโยชน์ทางข่าว กรุณาเลือกรูปภาพอื่น",
+            "imageContentMedia": "เนื้อหารูปภาพทำลายผลประโยชน์ทางสื่อ กรุณาเลือกรูปภาพอื่น",
+            "imageContentEntertainment": "เนื้อหารูปภาพทำลายผลประโยชน์ทางบันเทิง กรุณาเลือกรูปภาพอื่น",
+            "imageContentSports": "เนื้อหารูปภาพทำลายผลประโยชน์ทางกีฬา กรุณาเลือกรูปภาพอื่น",
+            "imageContentRecreation": "เนื้อหารูปภาพทำลายผลประโยชน์ทางนันทนาการ กรุณาเลือกรูปภาพอื่น",
+            "imageContentLeisure": "เนื้อหารูปภาพทำลายผลประโยชน์ทางเวลาว่าง กรุณาเลือกรูปภาพอื่น",
+            "imageContentHobby": "เนื้อหารูปภาพทำลายผลประโยชน์ทางงานอดิเรก กรุณาเลือกรูปภาพอื่น",
+            "imageContentInterest": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความสนใจ กรุณาเลือกรูปภาพอื่น",
+            "imageContentPassion": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความหลงใหล กรุณาเลือกรูปภาพอื่น",
+            "imageContentLove": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความรัก กรุณาเลือกรูปภาพอื่น",
+            "imageContentHate": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความเกลียดชัง กรุณาเลือกรูปภาพอื่น",
+            "imageContentAnger": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความโกรธ กรุณาเลือกรูปภาพอื่น",
+            "imageContentFear": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความกลัว กรุณาเลือกรูปภาพอื่น",
+            "imageContentSadness": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความเศร้า กรุณาเลือกรูปภาพอื่น",
+            "imageContentJoy": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความสุข กรุณาเลือกรูปภาพอื่น",
+            "imageContentHappiness": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความสุข กรุณาเลือกรูปภาพอื่น",
+            "imageContentExcitement": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความตื่นเต้น กรุณาเลือกรูปภาพอื่น",
+            "imageContentSurprise": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความประหลาดใจ กรุณาเลือกรูปภาพอื่น",
+            "imageContentDisgust": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความรังเกียจ กรุณาเลือกรูปภาพอื่น",
+            "imageContentShame": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความอับอาย กรุณาเลือกรูปภาพอื่น",
+            "imageContentGuilt": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความผิด กรุณาเลือกรูปภาพอื่น",
+            "imageContentPride": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความภาคภูมิใจ กรุณาเลือกรูปภาพอื่น",
+            "imageContentEnvy": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความอิจฉา กรุณาเลือกรูปภาพอื่น",
+            "imageContentJealousy": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความหึงหวง กรุณาเลือกรูปภาพอื่น",
+            "imageContentGreed": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความโลภ กรุณาเลือกรูปภาพอื่น",
+            "imageContentLust": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความใคร่ กรุณาเลือกรูปภาพอื่น",
+            "imageContentGluttony": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความตะกละ กรุณาเลือกรูปภาพอื่น",
+            "imageContentSloth": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความเกียจคร้าน กรุณาเลือกรูปภาพอื่น",
+            "imageContentWrath": "เนื้อหารูปภาพทำลายผลประโยชน์ทางความโกรธ กรุณาเลือกรูปภาพอื่น"
+        },
+        "warning": {
+            "usernameCooldown": "การเปลี่ยนชื่อผู้ใช้ถูกล็อคชั่วคราวเนื่องจากช่วงเวลารอคอย",
+            "passwordWeak": "รหัสผ่านอ่อนแอ พิจารณาใช้รหัสผ่านที่แข็งแกร่งกว่า",
+            "emailNotVerified": "อีเมลยังไม่ได้รับการยืนยัน กรุณายืนยันอีเมลของคุณ",
+            "phoneNotVerified": "หมายเลขโทรศัพท์ยังไม่ได้รับการยืนยัน กรุณายืนยันโทรศัพท์ของคุณ",
+            "profileIncomplete": "โปรไฟล์ไม่สมบูรณ์ กรุณาเติมโปรไฟล์ของคุณ",
+            "settingsNotSaved": "การตั้งค่าไม่ได้บันทึก กรุณาบันทึกการตั้งค่าของคุณ",
+            "dataNotSaved": "ข้อมูลไม่ได้บันทึก กรุณาบันทึกข้อมูลของคุณ",
+            "changesNotSaved": "การเปลี่ยนแปลงไม่ได้บันทึก กรุณาบันทึกการเปลี่ยนแปลงของคุณ",
+            "fileNotUploaded": "ไฟล์ไม่ได้อัปโหลด กรุณาอัปโหลดไฟล์ของคุณ",
+            "imageNotUploaded": "รูปภาพไม่ได้อัปโหลด กรุณาอัปโหลดรูปภาพของคุณ",
+            "linkNotCopied": "ลิงก์ไม่ได้คัดลอก กรุณาคัดลอกลิงก์ของคุณ",
+            "emailNotSent": "อีเมลไม่ได้ส่ง กรุณาส่งอีเมลของคุณ",
+            "notificationNotSent": "การแจ้งเตือนไม่ได้ส่ง กรุณาส่งการแจ้งเตือนของคุณ",
+            "actionNotCompleted": "การดำเนินการไม่เสร็จสมบูรณ์ กรุณาเสร็จสิ้นการดำเนินการของคุณ",
+            "formNotSubmitted": "แบบฟอร์มไม่ได้ส่ง กรุณาส่งแบบฟอร์มของคุณ",
+            "onboardingNotCompleted": "การเริ่มต้นใช้งานไม่เสร็จสมบูรณ์ กรุณาเสร็จสิ้นการเริ่มต้นใช้งานของคุณ",
+            "accountNotActivated": "บัญชีไม่ได้เปิดใช้งาน กรุณาเปิดใช้งานบัญชีของคุณ",
+            "passwordNotChanged": "รหัสผ่านไม่ได้เปลี่ยน กรุณาเปลี่ยนรหัสผ่านของคุณ",
+            "usernameNotChanged": "ชื่อผู้ใช้ไม่ได้เปลี่ยน กรุณาเปลี่ยนชื่อผู้ใช้ของคุณ",
+            "profileNotCompleted": "โปรไฟล์ไม่เสร็จสมบูรณ์ กรุณาเสร็จสิ้นโปรไฟล์ของคุณ",
+            "setupNotCompleted": "การตั้งค่าไม่เสร็จสมบูรณ์ กรุณาเสร็จสิ้นการตั้งค่าของคุณ",
+            "networkSlow": "เครือข่ายช้า กรุณาตรวจสอบการเชื่อมต่อของคุณ",
+            "serverSlow": "เซิร์ฟเวอร์ช้า กรุณาลองใหม่ภายหลัง",
+            "validationPending": "การตรวจสอบกำลังรอ กรุณารอ",
+            "permissionPending": "การอนุญาตกำลังรอ กรุณารอ",
+            "sessionExpiring": "เซสชันกำลังหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง",
+            "credentialsExpiring": "ข้อมูลประจำตัวกำลังหมดอายุ กรุณาอัปเดตข้อมูลประจำตัวของคุณ",
+            "emailExpiring": "อีเมลกำลังหมดอายุ กรุณาอัปเดตอีเมลของคุณ",
+            "phoneExpiring": "โทรศัพท์กำลังหมดอายุ กรุณาอัปเดตโทรศัพท์ของคุณ",
+            "profileExpiring": "โปรไฟล์กำลังหมดอายุ กรุณาอัปเดตโปรไฟล์ของคุณ",
+            "settingsExpiring": "การตั้งค่ากำลังหมดอายุ กรุณาอัปเดตการตั้งค่าของคุณ",
+            "dataExpiring": "ข้อมูลกำลังหมดอายุ กรุณาอัปเดตข้อมูลของคุณ",
+            "changesExpiring": "การเปลี่ยนแปลงกำลังหมดอายุ กรุณาอัปเดตการเปลี่ยนแปลงของคุณ",
+            "fileExpiring": "ไฟล์กำลังหมดอายุ กรุณาอัปเดตไฟล์ของคุณ",
+            "imageExpiring": "รูปภาพกำลังหมดอายุ กรุณาอัปเดตรูปภาพของคุณ",
+            "linkExpiring": "ลิงก์กำลังหมดอายุ กรุณาอัปเดตลิงก์ของคุณ",
+            "notificationExpiring": "การแจ้งเตือนกำลังหมดอายุ กรุณาอัปเดตการแจ้งเตือนของคุณ",
+            "actionExpiring": "การดำเนินการกำลังหมดอายุ กรุณาอัปเดตการดำเนินการของคุณ",
+            "formExpiring": "แบบฟอร์มกำลังหมดอายุ กรุณาอัปเดตแบบฟอร์มของคุณ",
+            "onboardingExpiring": "การเริ่มต้นใช้งานกำลังหมดอายุ กรุณาอัปเดตการเริ่มต้นใช้งานของคุณ",
+            "accountExpiring": "บัญชีกำลังหมดอายุ กรุณาอัปเดตบัญชีของคุณ",
+            "passwordExpiring": "รหัสผ่านกำลังหมดอายุ กรุณาอัปเดตรหัสผ่านของคุณ",
+            "usernameExpiring": "ชื่อผู้ใช้กำลังหมดอายุ กรุณาอัปเดตชื่อผู้ใช้ของคุณ",
+            "setupExpiring": "การตั้งค่ากำลังหมดอายุ กรุณาอัปเดตการตั้งค่าของคุณ"
+        },
+        "info": {
+            "loading": "กำลังโหลด...",
+            "processing": "กำลังประมวลผล...",
+            "saving": "กำลังบันทึก...",
+            "uploading": "กำลังอัปโหลด...",
+            "downloading": "กำลังดาวน์โหลด...",
+            "connecting": "กำลังเชื่อมต่อ...",
+            "disconnecting": "กำลังตัดการเชื่อมต่อ...",
+            "sending": "กำลังส่ง...",
+            "receiving": "กำลังรับ...",
+            "updating": "กำลังอัปเดต...",
+            "refreshing": "กำลังรีเฟรช...",
+            "synchronizing": "กำลังซิงค์...",
+            "validating": "กำลังตรวจสอบ...",
+            "verifying": "กำลังยืนยัน...",
+            "checking": "กำลังตรวจสอบ...",
+            "searching": "กำลังค้นหา...",
+            "filtering": "กำลังกรอง...",
+            "sorting": "กำลังเรียงลำดับ...",
+            "organizing": "กำลังจัดระเบียบ...",
+            "arranging": "กำลังจัดเรียง...",
+            "configuring": "กำลังกำหนดค่า...",
+            "setting": "กำลังตั้งค่า...",
+            "adjusting": "กำลังปรับ...",
+            "modifying": "กำลังแก้ไข...",
+            "changing": "กำลังเปลี่ยน...",
+            "switching": "กำลังสลับ...",
+            "toggling": "กำลังสลับ...",
+            "enabling": "กำลังเปิดใช้งาน...",
+            "disabling": "กำลังปิดใช้งาน...",
+            "activating": "กำลังเปิดใช้งาน...",
+            "deactivating": "กำลังปิดใช้งาน...",
+            "starting": "กำลังเริ่มต้น...",
+            "stopping": "กำลังหยุด...",
+            "pausing": "กำลังหยุดชั่วคราว...",
+            "resuming": "กำลังดำเนินการต่อ...",
+            "restarting": "กำลังเริ่มต้นใหม่...",
+            "resetting": "กำลังรีเซ็ต...",
+            "clearing": "กำลังล้าง...",
+            "deleting": "กำลังลบ...",
+            "removing": "กำลังลบ...",
+            "adding": "กำลังเพิ่ม...",
+            "inserting": "กำลังแทรก...",
+            "creating": "กำลังสร้าง...",
+            "building": "กำลังสร้าง...",
+            "constructing": "กำลังก่อสร้าง...",
+            "generating": "กำลังสร้าง...",
+            "producing": "กำลังผลิต...",
+            "making": "กำลังทำ...",
+            "preparing": "กำลังเตรียม...",
+            "readying": "กำลังเตรียม...",
+            "initializing": "กำลังเริ่มต้น...",
+            "launching": "กำลังเปิดใช้งาน...",
+            "opening": "กำลังเปิด...",
+            "closing": "กำลังปิด...",
+            "shutting": "กำลังปิด...",
+            "ending": "กำลังสิ้นสุด...",
+            "finishing": "กำลังเสร็จสิ้น...",
+            "completing": "กำลังเสร็จสมบูรณ์...",
+            "finalizing": "กำลังสรุป...",
+            "concluding": "กำลังสรุป...",
+            "terminating": "กำลังสิ้นสุด...",
+            "canceling": "กำลังยกเลิก...",
+            "aborting": "กำลังยกเลิก...",
+            "interrupting": "กำลังขัดจังหวะ...",
+            "halting": "กำลังหยุด...",
+            "freezing": "กำลังแช่แข็ง...",
+            "unfreezing": "กำลังละลาย...",
+            "thawing": "กำลังละลาย...",
+            "melting": "กำลังละลาย...",
+            "cooling": "กำลังเย็น...",
+            "heating": "กำลังร้อน...",
+            "warming": "กำลังอุ่น...",
+            "chilling": "กำลังเย็น...",
+            "renewing": "กำลังต่ออายุ...",
+            "restoring": "กำลังกู้คืน...",
+            "recovering": "กำลังกู้คืน...",
+            "repairing": "กำลังซ่อมแซม...",
+            "fixing": "กำลังแก้ไข...",
+            "correcting": "กำลังแก้ไข...",
+            "tuning": "กำลังปรับแต่ง...",
+            "optimizing": "กำลังปรับปรุง...",
+            "improving": "กำลังปรับปรุง...",
+            "enhancing": "กำลังปรับปรุง...",
+            "upgrading": "กำลังอัปเกรด...",
+            "modernizing": "กำลังทันสมัย..."
+        }
+    },
+    "emailVerification": {
+        "title": "Verify Your Email",
+        "description": "We've sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
+        "checkEmail": "Check your email",
+        "emailSent": "Verification email sent!",
+        "resendEmail": "Resend Email",
+        "resendIn": "Resend in",
+        "seconds": "seconds",
+        "didntReceive": "Didn't receive the email?",
+        "checkSpam": "Please check your spam folder or try again.",
+        "backToLogin": "Back to Login",
+        "emailAddress": "Email Address",
+        "verificationSent": "Verification email sent to:",
+        "clickLink": "Click the link in the email to verify your account.",
+        "expiresIn": "This link expires in 24 hours.",
+        "needHelp": "Need help?",
+        "contactSupport": "Contact Support"
+    },
+    "settings": {
+        "title": "การตั้งค่า",
+        "subtitle": "จัดการการตั้งค่าและความชอบของบัญชีของคุณ",
+        "account": {
+            "heading": "บัญชี",
+            "security": {
+                "title": "บัญชีและความปลอดภัย"
+            },
+            "changePassword": {
+                "text": "เปลี่ยนรหัสผ่าน?",
+                "description": "อัปเดตรหัสผ่านของคุณเพื่อรักษาบัญชีของคุณให้ปลอดภัย",
+                "button": "เปลี่ยนรหัสผ่าน",
+                "modalTitle": "เปลี่ยนรหัสผ่าน",
+                "currentPassword": "รหัสผ่านปัจจุบัน",
+                "newPassword": "รหัสผ่านใหม่",
+                "confirmPassword": "ยืนยันรหัสผ่านใหม่",
+                "updateButton": "อัปเดตรหัสผ่าน",
+                "currentPasswordPlaceholder": "ป้อนรหัสผ่านปัจจุบันของคุณ",
+                "newPasswordPlaceholder": "ป้อนรหัสผ่านใหม่",
+                "confirmPasswordPlaceholder": "ป้อนรหัสผ่านใหม่อีกครั้ง",
+                "successMessage": "อัปเดตรหัสผ่านสำเร็จแล้ว คุณจะถูกเปลี่ยนเส้นทางไปยังการเข้าสู่ระบบเพื่อความปลอดภัย",
+                "redirectMessage": "กำลังเปลี่ยนเส้นทางไปยังการเข้าสู่ระบบเพื่อความปลอดภัย..."
+            },
+            "deactivateAccount": {
+                "text": "ปิดใช้งานบัญชีของคุณ?",
+                "description": "ปิดใช้งานบัญชีของคุณชั่วคราว",
+                "button": "ปิดใช้งานบัญชี",
+                "modalTitle": "ปิดใช้งานบัญชีของคุณ?",
+                "modalDescription": "คุณแน่ใจหรือไม่ว่าต้องการปิดใช้งานบัญชีของคุณ?",
+                "enterUsername": "ป้อนชื่อผู้ใช้ของคุณ",
+                "enterPassword": "ป้อนรหัสผ่านของคุณ",
+                "usernamePlaceholder": "ป้อนชื่อผู้ใช้ของคุณ",
+                "passwordPlaceholder": "ป้อนรหัสผ่านปัจจุบันของคุณ",
+                "confirmButton": "ปิดใช้งานบัญชีของฉัน",
+                "deactivatedButton": "ปิดใช้งานแล้ว",
+                "successMessage": "ปิดใช้งานบัญชีสำเร็จแล้ว",
+                "activatedMessage": "เปิดใช้งานบัญชีสำเร็จแล้ว"
+            },
+            "deleteAccount": {
+                "text": "ลบบัญชีของคุณ?",
+                "description": "ลบบัญชีของคุณและข้อมูลทั้งหมดอย่างถาวร",
+                "button": "ลบบัญชี",
+                "step1": {
+                    "modalTitle": "ลบบัญชีของคุณ?",
+                    "modalDescription": "คุณแน่ใจหรือไม่ว่าต้องการลบบัญชีของคุณ? การกระทำนี้ไม่สามารถยกเลิกได้",
+                    "modalDescription2": "หากคุณต้องการเก็บข้อมูลของคุณไว้ คุณสามารถปิดใช้งานบัญชีของคุณแทน",
+                    "deactivateInsteadButton": "ปิดใช้งานบัญชีแทน",
+                    "continueButton": "ดำเนินการลบต่อ"
+                },
+                "step2": {
+                    "modalTitle": "ป้อนรายละเอียดของคุณ",
+                    "enterUsername": "ป้อนชื่อผู้ใช้ของคุณ",
+                    "enterPassword": "ป้อนรหัสผ่านของคุณ",
+                    "confirmPassword": "ยืนยันรหัสผ่านของคุณ",
+                    "usernamePlaceholder": "ป้อนชื่อผู้ใช้ของคุณ",
+                    "passwordPlaceholder": "ป้อนรหัสผ่านของคุณ",
+                    "confirmPasswordPlaceholder": "ยืนยันรหัสผ่านของคุณ",
+                    "continueButton": "ดำเนินการต่อ"
+                },
+                "step3": {
+                    "modalTitle": "ทำไมคุณถึงออกไป?",
+                    "reasonPlaceholder": "โปรดบอกเราเหตุผลในการออกไป...",
+                    "continueButton": "ดำเนินการต่อ"
+                },
+                "step4": {
+                    "modalTitle": "ยืนยันการลบ",
+                    "confirmText": "พิมพ์ 'CONFIRM DELETE' เพื่อดำเนินการต่อ",
+                    "confirmPlaceholder": "พิมพ์ 'CONFIRM DELETE' เพื่อยืนยัน",
+                    "deleteButton": "ลบบัญชีของฉัน",
+                    "confirmationRequired": "โปรดพิมพ์ 'CONFIRM DELETE' เพื่อยืนยัน",
+                    "reasonRequired": "โปรดให้เหตุผลในการออกไป",
+                    "successMessage": "ลบบัญชีสำเร็จแล้ว"
+                }
+            }
+        },
+        "languagePreference": {
+            "heading": "การตั้งค่าภาษา",
+            "description": "เลือกภาษาที่คุณต้องการสำหรับอินเทอร์เฟซ นี่จะเปลี่ยนภาษาของข้อความ ปุ่ม และเมนูทั้งหมดในแอปพลิเคชัน",
+            "selectLanguage": "เลือกภาษาของคุณ",
+            "availableLanguages": "เลือกจาก 47 ภาษาที่มีอยู่",
+            "currentLanguage": "ปัจจุบัน: {{flag}} {{name}}",
+            "languageChanged": "เปลี่ยนภาษาเป็น {{name}} แล้ว"
+        }
+    },
+    "seo": {
+        "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+        "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+    },
+    "sidebar": {
+        "home": "หน้าแรก",
+        "profile": "โปรไฟล์",
+        "recommendations": "คำแนะนำ",
+        "analytics": "การวิเคราะห์",
+        "settings": "การตั้งค่า",
+        "logout": "ออกจากระบบ",
+        "loading": "กำลังโหลด...",
+        "clickToOpenMenu": "คลิกเพื่อเปิดเมนู"
+    },
+    "modal": {
+        "unsavedChanges": {
+            "title": "การเปลี่ยนแปลงที่ยังไม่ได้บันทึก",
+            "message": "คุณมีการเปลี่ยนแปลงที่ยังไม่ได้บันทึกที่จะสูญหายหากคุณนำทางออก คุณต้องการทำอะไร?",
+            "discard": "ทิ้ง",
+            "cancel": "ยกเลิก",
+            "save": "บันทึก"
+        },
+        "usernameChange": {
+            "title": "ยืนยันการเปลี่ยนชื่อผู้ใช้",
+            "description": "ชื่อผู้ใช้ของคุณถูกใช้ในลิงก์โปรไฟล์และรายการคำแนะนำ:",
+            "profileLabel": "โปรไฟล์:",
+            "listLabel": "รายการ:",
+            "warning": "QR code หรือลิงก์ใดๆ ที่มีชื่อผู้ใช้เก่าของคุณจะไม่ทำงานอีกต่อไป — คุณจะต้องอัปเดตและแชร์ใหม่",
+            "cooldownPrefix": "คุณจะสามารถเปลี่ยนชื่อผู้ใช้ของคุณอีกครั้งใน",
+            "cooldownSuffix": "หลังจากอัปเดตนี้",
+            "minute": "1 นาที",
+            "day": "1 วัน",
+            "days": "วัน",
+            "cancel": "ยกเลิก",
+            "confirm": "เปลี่ยนชื่อผู้ใช้"
+        }
+    },
+    "analytics": {
+        "dashboard": {
+            "title": "แดชบอร์ดการวิเคราะห์",
+            "subtitle": "ติดตามประสิทธิภาพ QR Code ของคุณและการมีส่วนร่วมของผู้ใช้",
+            "timePeriod": "ช่วงเวลา:",
+            "timeFilter": {
+                "today": "วันนี้",
+                "last7days": "7 วันล่าสุด",
+                "last30days": "30 วันล่าสุด",
+                "custom": "ช่วงกำหนดเอง",
+                "selectPeriod": "เลือกช่วงเวลา"
+            },
+            "dateRange": {
+                "from": "ตั้งแต่:",
+                "to": "ถึง:"
+            },
+            "summaryCards": {
+                "totalViews": "จำนวนการดูทั้งหมด",
+                "totalClicks": "จำนวนคลิกทั้งหมด",
+                "totalQRViews": "จำนวนการดู QR ทั้งหมด",
+                "totalLinkViews": "จำนวนการดูลิงก์ทั้งหมด"
+            },
+            "loading": {
+                "loadingData": "กำลังโหลดข้อมูลการวิเคราะห์...",
+                "resolvingCountry": "กำลังแก้ไขข้อมูลประเทศ..."
+            },
+            "error": {
+                "title": "ข้อผิดพลาดในการโหลดการวิเคราะห์",
+                "message": "ไม่สามารถดึงข้อมูลการวิเคราะห์ได้ โปรดลองอีกครั้งในภายหลัง",
+                "errorLabel": "ข้อผิดพลาด:"
+            },
+            "comingSoon": {
+                "title": "การวิเคราะห์เร็วๆ นี้",
+                "message": "การวิเคราะห์จะพร้อมใช้งานใน \u003cstrong\u003e{{days}} วัน{{daysPlural}}\u003c/strong\u003e หลังจากสร้างบัญชีของคุณ",
+                "whyWait": {
+                    "title": "ทำไมต้องรอ?",
+                    "reasons": {
+                        "accuracy": "• รับรองความถูกต้องของข้อมูลและป้องกันสแปม",
+                        "interactions": "• ให้เวลาสำหรับการโต้ตอบที่มีความหมายจากผู้ใช้",
+                        "insights": "• ให้ข้อมูลเชิงลึกการวิเคราะห์ที่เชื่อถือได้"
+                    }
+                },
+                "tip": "ในขณะเดียวกัน เริ่มแชร์ QR Code ของคุณเพื่อสร้างข้อมูลสำหรับเมื่อการวิเคราะห์พร้อมใช้งาน!",
+                "filterTip": "\u003cstrong\u003eเคล็ดลับ:\u003c/strong\u003e เมื่อการวิเคราะห์พร้อมใช้งาน คุณจะสามารถกรองตามช่วงเวลา (วันนี้, 7 วันล่าสุด, 30 วันล่าสุด หรือช่วงกำหนดเอง) เพื่อดูข้อมูลของคุณ"
+            },
+            "emptyState": {
+                "title": "ไม่มีข้อมูลการวิเคราะห์",
+                "noDataMessage": "ไม่พบข้อมูลการวิเคราะห์สำหรับบัญชีของคุณ การวิเคราะห์จะปรากฏที่นี่เมื่อผู้คนเริ่มดูและโต้ตอบกับ QR Code ของคุณ",
+                "customRange": {
+                    "bothMissing": "โปรดเลือกทั้งวันที่เริ่มต้นและวันที่สิ้นสุดสำหรับช่วงกำหนดเองเพื่อดูข้อมูลการวิเคราะห์",
+                    "startMissing": "โปรดเลือกวันที่เริ่มต้นสำหรับช่วงกำหนดเองเพื่อดูข้อมูลการวิเคราะห์",
+                    "endMissing": "โปรดเลือกวันที่สิ้นสุดสำหรับช่วงกำหนดเองเพื่อดูข้อมูลการวิเคราะห์"
+                },
+                "noDataForPeriod": {
+                    "today": "ไม่มีข้อมูลการวิเคราะห์สำหรับวันนี้ โปรดเลือกช่วงเวลาอื่นเพื่อดูข้อมูลของคุณ",
+                    "last7days": "ไม่มีข้อมูลการวิเคราะห์สำหรับ 7 วันล่าสุด โปรดเลือกช่วงเวลาอื่นเพื่อดูข้อมูลของคุณ",
+                    "last30days": "ไม่มีข้อมูลการวิเคราะห์สำหรับ 30 วันล่าสุด โปรดเลือกช่วงเวลาอื่นเพื่อดูข้อมูลของคุณ",
+                    "custom": "ไม่มีข้อมูลการวิเคราะห์สำหรับช่วงกำหนดเอง ({{startDate}} ถึง {{endDate}}) โปรดเลือกช่วงเวลาอื่นเพื่อดูข้อมูลของคุณ",
+                    "default": "ไม่มีข้อมูลการวิเคราะห์สำหรับช่วงเวลาที่เลือก โปรดเลือกช่วงเวลาอื่นเพื่อดูข้อมูลของคุณ"
+                },
+                "howToStart": {
+                    "title": "เพื่อเริ่มดูการวิเคราะห์:",
+                    "shareQR": "• แชร์ QR Code ของคุณบนโซเชียลมีเดีย",
+                    "includeQR": "• รวม QR Code ในสื่อการตลาดของคุณ",
+                    "askFriends": "• ขอให้เพื่อนสแกน QR Code ของคุณ",
+                    "viewProfile": "• ดูหน้าประวัติสาธารณะของคุณ"
+                }
+            },
+            "charts": {
+                "topCountries": {
+                    "title": "3 ประเทศยอดนิยมตามการดู",
+                    "retryGeolocation": "ลองอีกครั้ง Geolocation",
+                    "geolocationIssue": "ปัญหาการระบุตำแหน่ง:",
+                    "countryDataUnavailable": "ข้อมูลประเทศไม่พร้อมใช้งาน",
+                    "unableToResolve": "ไม่สามารถแก้ไขที่อยู่ IP เป็นประเทศได้ในขณะนี้ อาจเนื่องจากการจำกัดเครือข่ายหรือข้อจำกัดของบริการ",
+                    "failedToResolve": "แก้ไขข้อมูลประเทศล้มเหลว กรุณาลองใหม่อีกครั้งในภายหลัง",
+                    "analyticsSummary": "สรุปการวิเคราะห์:",
+                    "totalViewEvents": "• {{count}} เหตุการณ์การดูทั้งหมด",
+                    "eventsWithCountry": "• {{count}} เหตุการณ์ที่มีข้อมูลประเทศ",
+                    "eventsPending": "• {{count}} เหตุการณ์ที่รอการระบุตำแหน่ง",
+                    "willAppear": "ข้อมูลประเทศจะปรากฏโดยอัตโนมัติเมื่อบริการระบุตำแหน่ง IP พร้อมใช้งาน",
+                    "tooltip": {
+                        "country": "ประเทศ: {{country}}",
+                        "views": "การดู: {{count}}"
+                    },
+                    "legend": "การดู"
+                },
+                "worldMap": {
+                    "title": "การกระจายการดูทั่วโลก",
+                    "subtitle": "แผนที่โลกแบบโต้ตอบแสดงการกระจายการดูในประเทศต่างๆ จากหน้าสาธารณะ",
+                    "noGeographicData": "ไม่มีข้อมูลทางภูมิศาสตร์",
+                    "unableToResolve": "ไม่สามารถแก้ไขที่อยู่ IP เป็นประเทศได้ในขณะนี้ อาจเนื่องจากการจำกัดเครือข่ายหรือข้อจำกัดของบริการ",
+                    "failedToResolve": "แก้ไขข้อมูลประเทศล้มเหลว กรุณาลองใหม่อีกครั้งในภายหลัง",
+                    "analyticsSummary": "สรุปการวิเคราะห์:",
+                    "totalViewEvents": "• {{count}} เหตุการณ์การดูทั้งหมด",
+                    "eventsWithCountry": "• {{count}} เหตุการณ์ที่มีข้อมูลประเทศ",
+                    "eventsPending": "• {{count}} เหตุการณ์ที่รอการระบุตำแหน่ง",
+                    "willAppear": "ข้อมูลประเทศจะปรากฏโดยอัตโนมัติเมื่อบริการระบุตำแหน่ง IP พร้อมใช้งาน",
+                    "tooltip": {
+                        "country": "{{country}}",
+                        "views": "{{views}} การดู"
+                    },
+                    "countriesWithViews": "{{count}} ประเทศที่มีการดู",
+                    "legend": {
+                        "views": "การดู:",
+                        "low": "ต่ำ",
+                        "medium": "ปานกลาง",
+                        "high": "สูง",
+                        "highest": "สูงสุด"
+                    }
+                },
+                "trafficSource": {
+                    "title": "แหล่งที่มาของการเข้าชมตามเวลา",
+                    "subtitle": "ติดตามการเปลี่ยนแปลงของการเข้าชมจากแหล่งต่างๆ ตามเวลา",
+                    "selectSource": "เลือกแหล่งที่มาของการเข้าชม:",
+                    "allSources": "ทุกแหล่ง",
+                    "direct": "โดยตรง",
+                    "qrCode": "QR Code",
+                    "instagram": "Instagram",
+                    "whatsapp": "WhatsApp",
+                    "twitter": "Twitter",
+                    "noTrafficData": "ไม่มีข้อมูลการเข้าชม",
+                    "noViewEvents": "ไม่พบเหตุการณ์การดูพร้อมข้อมูลแหล่งที่มาของการเข้าชม",
+                    "analyticsSummary": "สรุปการวิเคราะห์:",
+                    "totalViewEvents": "• {{count}} เหตุการณ์การดูทั้งหมด",
+                    "eventsWithUTM": "• {{count}} เหตุการณ์ที่มีแหล่ง UTM",
+                    "directTraffic": "• {{count}} เหตุการณ์การเข้าชมโดยตรง",
+                    "willAppear": "ข้อมูลแหล่งที่มาของการเข้าชมจะปรากฏเมื่อผู้ใช้เยี่ยมชมหน้าของคุณพร้อมพารามิเตอร์ UTM",
+                    "tooltip": {
+                        "sourceCount": "{{source}}: {{count}}"
+                    }
+                },
+                "locationEngagement": {
+                    "title": "การมีส่วนร่วมกับสถานที่",
+                    "subtitle": "ติดตามการดูสำหรับสถานที่ต่างๆ ตามเวลา",
+                    "selectLocation": "เลือกสถานที่:",
+                    "allLocations": "ทุกสถานที่",
+                    "selectLocationPlaceholder": "เลือกสถานที่",
+                    "locationViews": "{{location}} ({{count}} การดู)",
+                    "noLocationData": "ไม่มีข้อมูลการดูสถานที่",
+                    "unknownLocation": "สถานที่ที่ไม่ทราบ",
+                    "location": "สถานที่",
+                    "tooltip": {
+                        "date": "วันที่: {{date}}",
+                        "locationViews": "{{location}}: {{value}} การดู"
+                    },
+                    "stats": {
+                        "totalLocations": "สถานที่ทั้งหมด",
+                        "totalViews": "การดูทั้งหมด",
+                        "avgViews": "เฉลี่ยการดู/สถานที่"
+                    }
+                },
+                "recommendedPlaces": {
+                    "title": "การมีส่วนร่วมกับสถานที่แนะนำ",
+                    "subtitle": "ติดตามคลิกบนสถานที่แนะนำตามสถานที่",
+                    "selectLocation": "เลือกสถานที่:",
+                    "selectLocationPlaceholder": "เลือกสถานที่",
+                    "locationPlaces": "{{location}} ({{count}} สถานที่)",
+                    "noRecommendationData": "ไม่มีข้อมูลคำแนะนำ",
+                    "noDataMessage": "ไม่มีข้อมูลคลิกคำแนะนำสำหรับช่วงเวลาที่เลือก",
+                    "analyticsSummary": "สรุปการวิเคราะห์:",
+                    "totalClickEvents": "• {{count}} เหตุการณ์คลิกทั้งหมด",
+                    "recordsWithRecommendations": "• {{count}} บันทึกที่มี ID คำแนะนำ",
+                    "uniqueRecommendations": "• {{count}} คำแนะนำที่ไม่ซ้ำกัน",
+                    "selectLocationPrompt": "โปรดเลือกสถานที่เพื่อดูข้อมูลคำแนะนำ",
+                    "noClicksMessage": "ไม่พบคลิกคำแนะนำสำหรับสถานที่ที่เลือก ข้อมูลคำแนะนำจะปรากฏเมื่อผู้ใช้คลิกการ์ดสถานที่ในหน้าสถานที่ของคุณ",
+                    "unknownPlace": "สถานที่ที่ไม่ทราบ",
+                    "unknownCategory": "หมวดหมู่ที่ไม่ทราบ",
+                    "unknownLocation": "สถานที่ที่ไม่ทราบ",
+                    "tooltip": {
+                        "place": "{{place}}",
+                        "category": "หมวดหมู่: {{category}}",
+                        "clicks": "คลิก: {{count}}"
+                    },
+                    "stats": {
+                        "placesShown": "สถานที่ที่แสดง",
+                        "totalClicks": "คลิกทั้งหมด",
+                        "avgClicks": "เฉลี่ยคลิก/สถานที่"
+                    }
+                },
+                "socialMedia": {
+                    "title": "การโต้ตอบในโซเชียลมีเดีย",
+                    "subtitle": "ติดตามคลิกบนลิงก์โซเชียลมีเดียจากโปรไฟล์สาธารณะของคุณในทุกแพลตฟอร์ม",
+                    "noDataTitle": "ไม่มีข้อมูลการโต้ตอบในโซเชียลมีเดีย",
+                    "noDataMessage": "ไม่มีข้อมูลคลิกโซเชียลมีเดียจากหน้าประวัติสาธารณะของคุณ",
+                    "analyticsSummary": "สรุปการวิเคราะห์:",
+                    "totalSocialClicks": "• {{count}} คลิกโซเชียลมีเดียทั้งหมด",
+                    "uniquePlatforms": "• {{count}} แพลตฟอร์มที่ไม่ซ้ำกัน",
+                    "trackingNote": "• ติดตามคลิกจากหน้าประวัติสาธารณะเท่านั้น",
+                    "willAppear": "ข้อมูลการโต้ตอบในโซเชียลมีเดียจะปรากฏเมื่อผู้ใช้คลิกลิงก์โซเชียลมีเดียของคุณ",
+                    "tooltip": {
+                        "platform": "{{platform}}",
+                        "clicks": "คลิก: {{count}}"
+                    },
+                    "stats": {
+                        "platforms": "แพลตฟอร์ม",
+                        "totalClicks": "คลิกทั้งหมด",
+                        "avgClicks": "เฉลี่ยคลิก/แพลตฟอร์ม"
+                    }
+                }
+            }
+        }
+    },
+    "countries": {
+        "US": "United States",
+        "IN": "India",
+        "GB": "United Kingdom",
+        "CA": "Canada",
+        "AU": "Australia",
+        "DE": "Germany",
+        "FR": "France",
+        "IT": "Italy",
+        "ES": "Spain",
+        "BR": "Brazil",
+        "MX": "Mexico",
+        "JP": "Japan",
+        "CN": "China",
+        "RU": "Russia",
+        "KR": "South Korea",
+        "NL": "Netherlands",
+        "SE": "Sweden",
+        "NO": "Norway",
+        "DK": "Denmark",
+        "FI": "Finland",
+        "CH": "Switzerland",
+        "AT": "Austria",
+        "BE": "Belgium",
+        "PL": "Poland",
+        "CZ": "Czech Republic",
+        "HU": "Hungary",
+        "RO": "Romania",
+        "BG": "Bulgaria",
+        "GR": "Greece",
+        "PT": "Portugal",
+        "IE": "Ireland",
+        "IS": "Iceland",
+        "LU": "Luxembourg",
+        "MT": "Malta",
+        "CY": "Cyprus",
+        "EE": "Estonia",
+        "LV": "Latvia",
+        "LT": "Lithuania",
+        "SI": "Slovenia",
+        "SK": "Slovakia",
+        "HR": "Croatia",
+        "BA": "Bosnia and Herzegovina",
+        "RS": "Serbia",
+        "ME": "Montenegro",
+        "MK": "North Macedonia",
+        "AL": "Albania",
+        "XK": "Kosovo",
+        "MD": "Moldova",
+        "UA": "Ukraine",
+        "BY": "Belarus",
+        "GE": "Georgia",
+        "AM": "Armenia",
+        "AZ": "Azerbaijan",
+        "KZ": "Kazakhstan",
+        "UZ": "Uzbekistan",
+        "KG": "Kyrgyzstan",
+        "TJ": "Tajikistan",
+        "TM": "Turkmenistan",
+        "AF": "Afghanistan",
+        "PK": "Pakistan",
+        "BD": "Bangladesh",
+        "LK": "Sri Lanka",
+        "MV": "Maldives",
+        "NP": "Nepal",
+        "BT": "Bhutan",
+        "MM": "Myanmar",
+        "TH": "Thailand",
+        "LA": "Laos",
+        "KH": "Cambodia",
+        "VN": "Vietnam",
+        "MY": "Malaysia",
+        "SG": "Singapore",
+        "BN": "Brunei",
+        "ID": "Indonesia",
+        "PH": "Philippines",
+        "TL": "East Timor",
+        "MN": "Mongolia",
+        "KP": "North Korea",
+        "TW": "Taiwan",
+        "HK": "Hong Kong",
+        "MO": "Macau",
+        "SA": "Saudi Arabia",
+        "AE": "United Arab Emirates",
+        "QA": "Qatar",
+        "KW": "Kuwait",
+        "BH": "Bahrain",
+        "OM": "Oman",
+        "YE": "Yemen",
+        "IQ": "Iraq",
+        "IR": "Iran",
+        "SY": "Syria",
+        "LB": "Lebanon",
+        "JO": "Jordan",
+        "IL": "Israel",
+        "PS": "Palestine",
+        "TR": "Turkey",
+        "EG": "Egypt",
+        "LY": "Libya",
+        "TN": "Tunisia",
+        "DZ": "Algeria",
+        "MA": "Morocco",
+        "SD": "Sudan",
+        "SS": "South Sudan",
+        "ET": "Ethiopia",
+        "ER": "Eritrea",
+        "DJ": "Djibouti",
+        "SO": "Somalia",
+        "KE": "Kenya",
+        "UG": "Uganda",
+        "TZ": "Tanzania",
+        "RW": "Rwanda",
+        "BI": "Burundi",
+        "MW": "Malawi",
+        "ZM": "Zambia",
+        "ZW": "Zimbabwe",
+        "BW": "Botswana",
+        "NA": "Namibia",
+        "ZA": "South Africa",
+        "LS": "Lesotho",
+        "SZ": "Eswatini",
+        "MG": "Madagascar",
+        "MU": "Mauritius",
+        "SC": "Seychelles",
+        "KM": "Comoros",
+        "MZ": "Mozambique",
+        "AO": "Angola",
+        "CD": "Democratic Republic of the Congo",
+        "CG": "Republic of the Congo",
+        "CF": "Central African Republic",
+        "TD": "Chad",
+        "CM": "Cameroon",
+        "NG": "Nigeria",
+        "NE": "Niger",
+        "ML": "Mali",
+        "BF": "Burkina Faso",
+        "CI": "Ivory Coast",
+        "GH": "Ghana",
+        "TG": "Togo",
+        "BJ": "Benin",
+        "SN": "Senegal",
+        "GM": "Gambia",
+        "GW": "Guinea-Bissau",
+        "GN": "Guinea",
+        "SL": "Sierra Leone",
+        "LR": "Liberia",
+        "MR": "Mauritania",
+        "CV": "Cape Verde",
+        "ST": "São Tomé and Príncipe",
+        "GQ": "Equatorial Guinea",
+        "GA": "Gabon",
+        "AR": "Argentina",
+        "BO": "Bolivia",
+        "CL": "Chile",
+        "CO": "Colombia",
+        "EC": "Ecuador",
+        "FK": "Falkland Islands",
+        "GF": "French Guiana",
+        "GY": "Guyana",
+        "PY": "Paraguay",
+        "PE": "Peru",
+        "SR": "Suriname",
+        "UY": "Uruguay",
+        "VE": "Venezuela",
+        "CU": "Cuba",
+        "JM": "Jamaica",
+        "HT": "Haiti",
+        "DO": "Dominican Republic",
+        "PR": "Puerto Rico",
+        "TT": "Trinidad and Tobago",
+        "BB": "Barbados",
+        "LC": "Saint Lucia",
+        "VC": "Saint Vincent and the Grenadines",
+        "GD": "Grenada",
+        "AG": "Antigua and Barbuda",
+        "KN": "Saint Kitts and Nevis",
+        "DM": "Dominica",
+        "BS": "Bahamas",
+        "BZ": "Belize",
+        "GT": "Guatemala",
+        "SV": "El Salvador",
+        "HN": "Honduras",
+        "NI": "Nicaragua",
+        "CR": "Costa Rica",
+        "PA": "Panama",
+        "NZ": "New Zealand",
+        "FJ": "Fiji",
+        "PG": "Papua New Guinea",
+        "SB": "Solomon Islands",
+        "VU": "Vanuatu",
+        "NC": "New Caledonia",
+        "PF": "French Polynesia",
+        "WS": "Samoa",
+        "TO": "Tonga",
+        "KI": "Kiribati",
+        "TV": "Tuvalu",
+        "NR": "Nauru",
+        "PW": "Palau",
+        "FM": "Micronesia",
+        "MH": "Marshall Islands"
+    }
+}

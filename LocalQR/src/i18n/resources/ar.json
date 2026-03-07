@@ -1,0 +1,1786 @@
+﻿{
+    "header": {
+        "nav": {
+            "howItWorks": "كيف يعمل",
+            "whoIsFor": "لمن هو",
+            "faq": "الأسئلة الشائعة",
+            "about": "حول",
+            "contact": "اتصل بنا"
+        },
+        "auth": {
+            "login": "تسجيل الدخول",
+            "signUp": "إنشاء حساب"
+        }
+    },
+    "hero": {
+        "headline": "جميع توصياتك في QR و رابط بسيط.",
+        "subtext": "شارك ما تعرفه وتحبه عن مكان — واجعله قابل للاكتشاف للجميع، في كل مكان",
+        "inputLabel": "احجز رابط explorers الخاص بك:",
+        "inputPlaceholder": "اسمك",
+        "ctaButton": "احجز explorers",
+        "signupPrompt": "سجل الآن للحصول على الخاص بك"
+    },
+    "sections": {
+        "createCustomize": {
+            "headline": "أنشئ وخصص explorers الخاص بك في دقائق",
+            "subtext": "أضف أماكنك المفضلة، نظمها حسب المدينة أو الموضوع، واصنع QR الخاص بك فوراً.",
+            "bulletPoints": {
+                "addSpots": {
+                    "title": "أضف أماكنك المفضلة",
+                    "description": "أنشئ قائمة بأماكن must-visit"
+                },
+                "organize": {
+                    "title": "نظمها حسب المدينة أو الموضوع",
+                    "description": "أنشئ فئات منطقية لجمهورك"
+                },
+                "generate": {
+                    "title": "اصنع رابطك و QR فوراً",
+                    "description": "QR المخصص جاهز في ثوانٍ"
+                },
+                "share": {
+                    "title": "شارك رقمياً أو من خلال QR في العالم الحقيقي",
+                    "description": ""
+                }
+            },
+            "mockup": {
+                "title": "توصياتي",
+                "addPlace": "إضافة مكان"
+            }
+        },
+        "shareAnywhere": {
+            "headline": "شاركه على وسائل التواصل الاجتماعي، نوافذ المتاجر، أو جدران المدينة",
+            "subtext": "أضفه إلى bio الخاص بك في Instagram، اطبع على القوائم، أو ضعه في كتب الترحيب — دليلك، جاهز دائماً.",
+            "scanText": "امسح للحصول على توصيات محلية",
+            "storefrontText": "مثالي لعروض نوافذ المتاجر",
+            "instagramTitle": "أضفه إلى bio الخاص بك في Instagram",
+            "instagramDesc": "شارك مع متابعيك فوراً",
+            "menuTitle": "اطبع على القوائم",
+            "menuDesc": "نقاط الاتصال المادية أصبحت سهلة",
+            "welcomeTitle": "ضعه في كتب الترحيب",
+            "welcomeDesc": "مثالي للمضيفين والمرشدين",
+            "cafeMenu": "قائمة المقهى",
+            "tokyoFoodGuide": "دليل طوكيو للطعام explorers.earth/jane"
+        },
+        "analytics": {
+            "headline": "تتبع النقرات، الإحالات، والمشاركة",
+            "subtext": "شاهد ما يعمل، من يمسح، وأي الأماكن تحصل على المزيد من الحب — في الوقت الفعلي.",
+            "workingTitle": "شاهد ما يعمل",
+            "workingDesc": "تتبع شعبية توصياتك",
+            "scanningTitle": "من يمسح",
+            "scanningDesc": "راقب مسح QR والتحديثات",
+            "spotsTitle": "أفضل الأماكن أداءً",
+            "spotsDesc": "رؤى مدفوعة بالبيانات لتحسين التجميع",
+            "dashboardTitle": "لوحة تحليلات",
+            "last30Days": "آخر 30 يوماً",
+            "totalScans": "إجمالي المسح",
+            "engagement": "المشاركة",
+            "referrals": "الإحالات"
+        },
+        "referEarn": {
+            "headline": "شارك، أرشد، واكسب",
+            "subtext": "حول توصياتك إلى مكافآت سلبية — احصل على رصيد عندما يستخدم الآخرون QR الخاص بك.",
+            "comingSoon": "برنامج مكافآت الإحالة (قريباً)",
+            "rewardsTitle": "اكسب المكافآت",
+            "rewardsDesc": "احصل على أموال عندما يستخدم الناس توصياتك",
+            "earnedThisMonth": "كسب هذا الشهر",
+            "passiveTitle": "حول التوصيات إلى مكافآت سلبية",
+            "networkTitle": "ابن شبكتك واكسب تلقائياً"
+        },
+        "localTunes": {
+            "mainHeading": "Tunes",
+            "title": "استمع أثناء الاستكشاف",
+            "body": "الاستكشاف ليس مرئياً فقط. الصوت يحمل الذاكرة والسياق والعاطفة.\n\nTunes يتيح لك جمع ومشاركة الموسيقى التصويرية للأماكن والرحلات والمزاجات — سواء كانت موسيقى اكتُشفت على الطريق أو أصوات تحدد مكاناً بالنسبة لك.\n\nمتصل بسلاسة بملف Explorer الخاص بك.",
+            "exploreButton": "استكشف Tunes",
+            "featuresHeading": "ميزات قوية",
+            "features": {
+                "realtimeCollaboration": {
+                    "title": "التعاون في الوقت الفعلي",
+                    "description": "اسمح للضيوف بإضافة الأغاني إلى قائمة التشغيل الخاصة بك على الفور مع الحفاظ على السيطرة الكاملة على ما يتم تشغيله."
+                },
+                "qrCodeSharing": {
+                    "title": "مشاركة رمز QR",
+                    "description": "شارك تجربتك الموسيقية مع مسح بسيط لرمز QR - لا حاجة لتطبيقات أو تنزيلات."
+                },
+                "youtubeIntegration": {
+                    "title": "تكامل YouTube",
+                    "description": "تكامل بسلاسة مع YouTube للوصول إلى ملايين الأغاني وإنشاء الجو المثالي."
+                },
+                "voteLikeSystem": {
+                    "title": "نظام التصويت والإعجاب",
+                    "description": "يمكن للضيوف التصويت لأغنياتهم المفضلة للتأثير على قائمة الانتظار في الوقت الفعلي."
+                },
+                "silentParties": {
+                    "title": "حفلات صامتة",
+                    "description": "استضف حفلات صامتة فريدة حيث يستمع الجميع من خلال سماعاتهم الخاصة."
+                },
+                "karaokeReady": {
+                    "title": "جاهز للكاريوكي",
+                    "description": "مثالي لأمسيات الكاريوكي مع قوائم تشغيل تعاونية وطلبات أغاني في الوقت الفعلي."
+                }
+            },
+            "venueHeading": "مثالي لكل مكان",
+            "venues": {
+                "barsPubs": "الحانات والحانات",
+                "restaurants": "المطاعم",
+                "coffeeShops": "مقاهي",
+                "eventsWeddings": "الأحداث والأعراس",
+                "retailStores": "متاجر التجزئة",
+                "gymsFitness": "الصالات الرياضية واللياقة"
+            },
+            "closingStatement": "Tunes \u003cstrong\u003eمجاني\u003c/strong\u003e للاستكشاف، وبالنسبة للميزات المدفوعة يمكنك الترقية لاحقاً."
+        },
+        "whoIsFor": {
+            "headline": "لمن explorers.earth؟",
+            "subtext": "explorers.earth لأي شخص يؤمن أن المشاركة مسؤولية — وليست بثاً.",
+            "cards": {
+                "individuals": {
+                    "title": "أفراد",
+                    "oneLiner": "شارك توصيات شخصية أو محلية.",
+                    "items": {
+                        "traveler": {
+                            "label": "مسافر",
+                            "oneLiner": "أشخاص يشاركون أماكن السفر"
+                        },
+                        "local": {
+                            "label": "محلي",
+                            "oneLiner": "محليون يشاركون نصائح الحي"
+                        },
+                        "family": {
+                            "label": "عائلة",
+                            "oneLiner": "عائلات تشارك أماكن مفيدة"
+                        },
+                        "student": {
+                            "label": "طالب",
+                            "oneLiner": "طلاب يشاركون أماكن الحرم الجامعي/القريبة"
+                        },
+                        "nomad": {
+                            "label": "بدوي رقمي",
+                            "oneLiner": "بدويون رقميون يسردون مساحات صديقة للعمل"
+                        },
+                        "emergencySharer": {
+                            "label": "مشارك الطوارئ",
+                            "oneLiner": "مشاركو الطوارئ ينشرون أماكن أساسية"
+                        }
+                    }
+                },
+                "creators": {
+                    "title": "المبدعون",
+                    "oneLiner": "شارك قوائم منظمة مع جمهورك.",
+                    "items": {
+                        "influencer": {
+                            "label": "مؤثر",
+                            "oneLiner": "مؤثرون يشاركون أفضل الاختيارات"
+                        },
+                        "blogger": {
+                            "label": "مدون",
+                            "oneLiner": "مدونون ينظمون أدلة مكتوبة"
+                        },
+                        "vlogger": {
+                            "label": "فيديو بلوجر",
+                            "oneLiner": "فيديو بلوجرز يشاركون رحلات بصرية"
+                        },
+                        "reviewer": {
+                            "label": "مراجع",
+                            "oneLiner": "مراجعون يسردون أفضل الأماكن تقييماً"
+                        },
+                        "photographer": {
+                            "label": "مصور",
+                            "oneLiner": "مصورون يشاركون أماكن التصوير"
+                        },
+                        "educator": {
+                            "label": "مربي",
+                            "oneLiner": "مربون يشاركون أدلة التعلم"
+                        },
+                        "communityLeader": {
+                            "label": "قائد المجتمع",
+                            "oneLiner": "قادة المجتمع ينظمون قوائم مفيدة"
+                        }
+                    }
+                },
+                "hospitality": {
+                    "title": "الضيافة",
+                    "oneLiner": "قدم للضيوف رؤى محلية منظمة.",
+                    "items": {
+                        "hotel": {
+                            "label": "فندق",
+                            "oneLiner": "فنادق تقدم أدلة محلية"
+                        },
+                        "airbnb": {
+                            "label": "Airbnb",
+                            "oneLiner": "مضيفون يشاركون مفضلات الحي"
+                        },
+                        "hostel": {
+                            "label": "نزل",
+                            "oneLiner": "نزل يشاركون نصائح للمسافرين"
+                        },
+                        "homestay": {
+                            "label": "إقامة منزلية",
+                            "oneLiner": "إقامات منزلية تقدم أدلة موجهة للعائلة"
+                        },
+                        "resort": {
+                            "label": "منتجع",
+                            "oneLiner": "منتجعات توفر قوائم الأنشطة"
+                        },
+                        "pgColiving": {
+                            "label": "PG/العيش المشترك",
+                            "oneLiner": "PG/العيش المشترك يعرض أماكن مهمة قريبة"
+                        }
+                    }
+                },
+                "businesses": {
+                    "title": "الشركات",
+                    "oneLiner": "وجه العملاء بتوصيات مفيدة.",
+                    "items": {
+                        "restaurant": {
+                            "label": "مطعم",
+                            "oneLiner": "مطاعم تشارك أطباقاً يجب تجربتها"
+                        },
+                        "cafe": {
+                            "label": "مقهى",
+                            "oneLiner": "مقاهي تبرز عناصر القائمة المفضلة"
+                        },
+                        "retailShop": {
+                            "label": "متجر تجزئة",
+                            "oneLiner": "متاجر تشارك توصيات المنتجات"
+                        },
+                        "gym": {
+                            "label": "صالة رياضية",
+                            "oneLiner": "صالات رياضية تقترح أماكن صحية محلية"
+                        },
+                        "spa": {
+                            "label": "منتجع صحي",
+                            "oneLiner": "منتجعات صحية تسرد خيارات الاسترخاء القريبة"
+                        },
+                        "salon": {
+                            "label": "صالون",
+                            "oneLiner": "صالونات تقدم أدلة الجمال"
+                        },
+                        "clinic": {
+                            "label": "عيادة",
+                            "oneLiner": "عيادات تشارك أماكن متعلقة بالصحة"
+                        },
+                        "boutique": {
+                            "label": "بوتيك",
+                            "oneLiner": "بوتيكات تسرد اكتشافات منظمة"
+                        }
+                    }
+                },
+                "organizations": {
+                    "title": "المنظمات",
+                    "oneLiner": "قدم أدلة وموارد منظمة.",
+                    "items": {
+                        "airline": {
+                            "label": "شركة طيران",
+                            "oneLiner": "شركات طيران تشارك أدلة المدينة"
+                        },
+                        "agency": {
+                            "label": "وكالة",
+                            "oneLiner": "وكالات سفر تسرد أماكن يجب زيارتها"
+                        },
+                        "university": {
+                            "label": "جامعة",
+                            "oneLiner": "جامعات تشارك أساسيات الحرم الجامعي"
+                        },
+                        "corporate": {
+                            "label": "شركة",
+                            "oneLiner": "شركات تسرد موارد قريبة"
+                        },
+                        "airport": {
+                            "label": "مطار",
+                            "oneLiner": "مطارات تقدم محطات + نصائح المدينة"
+                        },
+                        "railway": {
+                            "label": "سكة حديد",
+                            "oneLiner": "سكك حديدية تشارك معلومات المنصة"
+                        },
+                        "ngo": {
+                            "label": "منظمة غير حكومية",
+                            "oneLiner": "منظمات غير حكومية تشارك موارد المجتمع"
+                        },
+                        "government": {
+                            "label": "حكومة",
+                            "oneLiner": "إدارات تبرز الخدمات العامة"
+                        }
+                    }
+                }
+            },
+            "useCases": {
+                "travelers": "المسافرون",
+                "travelersDesc": "شارك الجواهر المكتشفة مع مستكشفين آخرين",
+                "influencers": "المؤثرون",
+                "influencersDesc": "اجعل المعرفة المحلية مربحة وابنِ مجتمعاً",
+                "airbnbHosts": "مضيفو Airbnb",
+                "airbnbHostsDesc": "حسن تجربة الضيوف مع رؤى محلية",
+                "hotels": "الفنادق",
+                "hotelsDesc": "قدم توصيات محلية منتقاة",
+                "restaurants": "المطاعم",
+                "restaurantsDesc": "اعمل ترويج متقاطع مع أعمال محلية أخرى",
+                "cafes": "المقاهي",
+                "cafesDesc": "شارك الأماكن المفضلة في الحي مع العملاء",
+                "localGuides": "المرشدون المحليون",
+                "localGuidesDesc": "وسع خبرتك خارج الجولات الشخصية",
+                "creators": "المبدعون",
+                "creatorsDesc": "أضف قيمة خارج المحتوى مع نصائح قابلة للتنفيذ",
+                "tourOperators": "مشغلو الجولات",
+                "tourOperatorsDesc": "وسع التجارب خارج الجولات المخططة",
+                "anyBusiness": "أي عمل",
+                "anyBusinessDesc": "ابنِ مجتمعاً وولاء العملاء"
+            }
+        },
+        "testimonials": {
+            "headline": "محبوب من المسافرين، المبدعين، والمضيفين",
+            "subtext": "شاهد كيف يستخدم الناس حول العالم explorers لمشاركة ما يهم أكثر.",
+            "scrollLeft": "مرر الشهادات لليسار",
+            "scrollRight": "مرر الشهادات لليمين",
+            "items": [
+                {
+                    "id": "1",
+                    "name": "Marcus Chen",
+                    "role": "مدون السفر",
+                    "location": "سان فرانسيسكو",
+                    "quote": "explorers غيرت طريقة مشاركة معرفتي بالسفر. متابعي يحبون الحصول على وصول فوري لتوصياتي المنسقة!"
+                },
+                {
+                    "id": "2",
+                    "name": "Sarah Johnson",
+                    "role": "مضيفة Airbnb",
+                    "location": "برشلونة",
+                    "quote": "ضيوفي يحبون تماماً رمز QR المخصص في مجموعة الترحيب الخاصة بهم. لقد أصبحت لمستي المميزة!"
+                },
+                {
+                    "id": "3",
+                    "name": "Alex Rodriguez",
+                    "role": "مالك مطعم",
+                    "location": "مكسيكو سيتي",
+                    "quote": "نشارك explorers الخاص بنا مع العملاء لتوصية أماكن محلية أخرى. لقد أنشأ روابط مجتمعية مذهلة."
+                },
+                {
+                    "id": "4",
+                    "name": "Emma Thompson",
+                    "role": "مرشدة سياحية",
+                    "location": "لندن",
+                    "quote": "explorers تساعدني على توسيع خبرتي خارج ساعات الجولة. يمكن للعملاء الوصول إلى توصياتي في أي وقت!"
+                }
+            ]
+        },
+        "faq": {
+            "headline": "لديك أسئلة؟",
+            "subtext": "لقد أجبنا على الأشياء الأكثر شيوعاً التي يسأل عنها الناس قبل البدء.",
+            "loading": "جاري تحميل الأسئلة الشائعة...",
+            "error": "خطأ في تحميل الأسئلة الشائعة. يرجى المحاولة مرة أخرى لاحقاً."
+        },
+        "features": {
+            "title": "مصمم للبقاء بعيداً عن الطريق",
+            "subtitle": "ميزات بسيطة ومدروسة تسمح لتوصياتك بالتألق.",
+            "simpleLinks": {
+                "title": "روابط بسيطة ومشاركة QR"
+            },
+            "livingGuides": {
+                "title": "أدلة حية وقابلة للتعديل"
+            },
+            "locationAware": {
+                "title": "توصيات واعية بالموقع"
+            },
+            "soundPlaylists": {
+                "title": "صوت وقوائم تشغيل اختيارية"
+            },
+            "privacyFirst": {
+                "title": "الخصوصية أولاً حسب التصميم"
+            },
+            "communityDriven": {
+                "title": "اكتشاف مدفوع بالمجتمع"
+            }
+        },
+        "finalCTA": {
+            "headline": "ابدأ مشاركة عالمك اليوم",
+            "subtext": "احجز explorers المجاني الخاص بك وحول رؤاك المحلية إلى أدلة قابلة للمشاركة.",
+            "ctaButton": "احجز explorers – مجاني للأبد",
+            "disclaimer": "لا حاجة لبطاقة ائتمان • إعداد في دقيقتين",
+            "creating": "جاري إنشاء explorers الخاص بك..."
+        }
+    },
+    "contact": {
+        "title": "دعنا نتصل.",
+        "subtitle": "سواء كان لديك سؤال، فكرة، أو تريد فقط أن تقول مرحباً — نحب أن نسمع منك.",
+        "getInTouch": "تواصل معنا",
+        "email": "hello@explorers.earth",
+        "responseTime": "نرد خلال 24-48 ساعة",
+        "closingMessage": "نحن فريق صغير برؤية كبيرة — أفكارك مهمة لنا. تواصل معنا ودعنا نبني شيئاً محلياً وعالمياً معاً.",
+        "seo": {
+            "title": "Contact explorers | Support, Help and Partnership enquiries.",
+            "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
+            "loginTitle": "Login to explorers | Access Your Personalized Recommendations \u0026 Places",
+            "registerTitle": "Sign Up for explorers | Join the Community \u0026 Share Your Favorite Local Places",
+            "keywords": [
+                "contact explorers",
+                "explorers support",
+                "get in touch explorers",
+                "customer service travel app",
+                "partnership inquiry explorers",
+                "help center local recommendations",
+                "technical support explorers",
+                "travel app customer service",
+                "feedback location sharing",
+                "account assistance explorers",
+                "business collaboration explorers",
+                "report problem explorers",
+                "share local recommendations support",
+                "find explorers contact",
+                "customer service",
+                "explorers team",
+                "help center",
+                "contact support",
+                "QR code support",
+                "local recommendations help",
+                "partnership inquiries"
+            ]
+        }
+    },
+    "about": {
+        "title": "مستكشفو الأرض",
+        "subtitle": {
+            "line1": "مجتمع عالمي من الأشخاص الذين يستكشفون بعناية — للأشخاص والثقافة والكوكب الذي نتشاركه.",
+            "line2": "الاستكشاف بالنسبة لنا ليس عن مدى بعدنا.",
+            "line3": "إنه عن عمق اتصالنا."
+        },
+        "section1": {
+            "title": "ما نؤمن به",
+            "line1": "الاستكشاف يبدأ بالوعي.",
+            "line2": "بملاحظة ما يتجاهله الآخرون.",
+            "line3": "باختيار التحرك بتفكير، وليس بسرعة.",
+            "line4": "نحن نعيش لفترة وجيزة على كوكب قديم —\nنضيف بعض العلامات المتعمدة إلى قصة\nبدأت قبلنا بكثير\nوستستمر بعد رحيلنا بكثير."
+        },
+        "section2": {
+            "title": "كيف نرى الاستكشاف",
+            "line1": "الاستكشاف لا يُقاس بالأميال.",
+            "line2": "يُقاس بالمعنى.",
+            "line3": "يعيش في الإبطاء والانتباه\nوتكريم كل مكان نخطو إليه —\nشارع، مسار جبلي، طاولة مقهى،\nأو لحظة نتشاركها مع شخص جديد."
+        },
+        "section3": {
+            "title": "ما نبني",
+            "line1": "explorers مكان لـ:",
+            "item1": "أدلة تشكلها التجربة الحقيقية",
+            "item2": "أماكن ورحلات وأصوات وقصص تستحق التذكر",
+            "item3": "مجتمعات مبنية على الناس — وليس على مقاييس الشعبية",
+            "line2": "التكنولوجيا تساعدنا على الاتصال.",
+            "line3": "الناس يعطونها الغرض."
+        },
+        "section4": {
+            "title": "الانتماء",
+            "line1": "مستكشفو الأرض ليسوا نادياً.",
+            "line2": "إنه ليس علامة.",
+            "line3": "إنه عقلية مشتركة —\nفهم هادئ لكيفية تحركنا في العالم."
+        },
+        "closing": "إذا كنت فضولياً.\nإذا كنت مفكراً.\nإذا كنت على استعداد للإبطاء والنظر عن كثب —\nأنت تنتمي هنا بالفعل.",
+        "seo": {
+            "title": "Explorers of Earth | About Us",
+            "description": "A global community of people who explore with care — for people, culture, and the planet we share. Exploration isn\u0027t about distance, it\u0027s about depth.",
+            "keywords": [
+                "explorers of earth",
+                "about explorers",
+                "exploration community",
+                "thoughtful travel",
+                "sustainable exploration",
+                "local recommendations platform",
+                "travel app about",
+                "community-driven recommendations",
+                "authentic local experiences",
+                "explorers team",
+                "local discovery platform",
+                "share local places",
+                "travel technology",
+                "local recommendations app",
+                "explorers story",
+                "who we are explorers"
+            ]
+        }
+    },
+    "cookieConsent": {
+        "title": "🍪 تفضيلات ملفات تعريف الارتباط",
+        "description": "نستخدم ملفات تعريف الارتباط لتحسين تجربة التصفح وتقديم محتوى مخصص وتحليل حركة المرور. يمكنك إدارة التفضيلات في أي وقت.",
+        "acceptAll": "✅ قبول جميع ملفات تعريف الارتباط",
+        "customize": "⚙️ تخصيص",
+        "rejectNonEssential": "❌ رفض غير الضرورية",
+        "preferencesTitle": "تفضيلات ملفات تعريف الارتباط",
+        "essentialCookies": {
+            "title": "ملفات تعريف الارتباط الضرورية",
+            "description": "مطلوبة لعمل الموقع بشكل صحيح",
+            "alwaysOn": "مفعلة دائماً"
+        },
+        "analyticsCookies": {
+            "title": "ملفات تعريف الارتباط التحليلية",
+            "description": "تساعدنا على فهم كيفية تفاعل الزوار مع موقعنا"
+        },
+        "marketingCookies": {
+            "title": "ملفات تعريف الارتباط التسويقية",
+            "description": "تُستخدم لتقديم إعلانات مخصصة"
+        },
+        "savePreferences": "حفظ التفضيلات",
+        "acceptAllButton": "قبول الكل",
+        "closeBanner": "إغلاق الشعار",
+        "goBack": "رجوع"
+    },
+    "footer": {
+        "tagline": "دع توصياتك تسافر حول العالم.",
+        "email": "hello@explorers.earth",
+        "sections": {
+            "product": "المنتج",
+            "contact": "اتصل بنا",
+            "legal": "قانوني"
+        },
+        "links": {
+            "howItWorks": "كيف يعمل",
+            "faq": "الأسئلة الشائعة",
+            "contact": "اتصل بنا",
+            "about": "حول",
+            "terms": "الشروط والأحكام",
+            "privacy": "سياسة الخصوصية",
+            "cookies": "سياسة ملفات تعريف الارتباط"
+        },
+        "copyright": "© 2025 explorers. جميع الحقوق محفوظة.",
+        "madeWithLove": "صُنع بحب على الأرض"
+    },
+    "legal": {
+        "terms": {
+            "title": "الشروط والأحكام",
+            "loading": "جاري تحميل الشروط والأحكام...",
+            "error": "خطأ في تحميل الشروط والأحكام. يرجى المحاولة مرة أخرى لاحقاً."
+        },
+        "privacy": {
+            "title": "سياسة الخصوصية",
+            "loading": "جاري تحميل سياسة الخصوصية...",
+            "error": "خطأ في تحميل سياسة الخصوصية. يرجى المحاولة مرة أخرى لاحقاً."
+        },
+        "cookies": {
+            "title": "سياسة ملفات تعريف الارتباط",
+            "loading": "جاري تحميل سياسة ملفات تعريف الارتباط...",
+            "error": "خطأ في تحميل سياسة ملفات تعريف الارتباط. يرجى المحاولة مرة أخرى لاحقاً."
+        }
+    },
+    "languageModal": {
+        "title": "اختر اللغة",
+        "searchPlaceholder": "البحث عن اللغات...",
+        "close": "إغلاق"
+    },
+    "auth": {
+        "signup": "التسجيل",
+        "signupSubtitle": "سجل للاستمتاع بميزات explorers",
+        "username": "اسم المستخدم",
+        "usernamePlaceholder": "أدخل اسم المستخدم",
+        "email": "البريد الإلكتروني",
+        "emailPlaceholder": "أدخل بريدك الإلكتروني",
+        "password": "كلمة المرور",
+        "passwordPlaceholder": "أدخل كلمة المرور",
+        "confirmPassword": "تأكيد كلمة المرور",
+        "confirmPasswordPlaceholder": "أعد إدخال كلمة المرور",
+        "register": "التسجيل",
+        "or": "أو",
+        "signUpWithGoogle": "التسجيل عبر Google",
+        "alreadyHaveAccount": "هل لديك حساب بالفعل؟",
+        "login": "تسجيل الدخول",
+        "loginTitle": "تسجيل الدخول",
+        "loginSubtitle": "يرجى تسجيل الدخول للمتابعة إلى حسابك",
+        "usernameOrEmail": "اسم المستخدم أو البريد الإلكتروني",
+        "usernameOrEmailPlaceholder": "أدخل اسم المستخدم أو البريد الإلكتروني",
+        "signInWithGoogle": "تسجيل الدخول عبر Google",
+        "newToexplorers": "جديد في explorers؟",
+        "forgotPassword": "نسيت كلمة المرور؟",
+        "validations": {
+            "username": {
+                "required": "اسم المستخدم مطلوب",
+                "minLength": "يجب أن يكون اسم المستخدم 3 أحرف على الأقل",
+                "maxLength": "لا يمكن أن يتجاوز اسم المستخدم 30 حرفاً",
+                "invalidChars": "يمكن أن يحتوي اسم المستخدم على الأحرف الصغيرة (a-z) والأرقام (0-9) والشرطات (-) فقط",
+                "mustStartWithLetter": "يجب أن يبدأ اسم المستخدم بحرف (a-z)",
+                "cannotStartEndHyphen": "لا يمكن أن يبدأ أو ينتهي اسم المستخدم بشرطة",
+                "noConsecutiveHyphens": "لا يمكن أن يحتوي اسم المستخدم على شرطات متتالية",
+                "cannotBeAllNumbers": "لا يمكن أن يكون اسم المستخدم أرقاماً فقط",
+                "reservedWords": "يحتوي اسم المستخدم هذا على كلمات محجوزة ولا يمكن استخدامه",
+                "inappropriateContent": "يحتوي اسم المستخدم على محتوى غير مناسب",
+                "alreadyExists": "اسم المستخدم موجود بالفعل",
+                "suggestedAlternatives": "البدائل المقترحة:",
+                "willBeConvertedLowercase": "سيتم تحويل اسم المستخدم إلى أحرف صغيرة",
+                "checkingAvailability": "جاري التحقق من التوفر...",
+                "available": "اسم المستخدم متاح",
+                "willConvertToLowercase": "سيتم تحويل اسم المستخدم إلى أحرف صغيرة"
+            },
+            "email": {
+                "required": "البريد الإلكتروني مطلوب",
+                "invalidFormat": "يرجى إدخال عنوان بريد إلكتروني صحيح",
+                "alreadyExists": "البريد الإلكتروني موجود بالفعل",
+                "invalid": "بريد إلكتروني غير صحيح"
+            },
+            "password": {
+                "required": "كلمة المرور مطلوبة",
+                "minLength": "يجب أن تكون كلمة المرور 6 أحرف على الأقل",
+                "uppercaseRequired": "يجب أن تحتوي كلمة المرور على حرف كبير واحد على الأقل (A-Z)",
+                "numberRequired": "يجب أن تحتوي كلمة المرور على رقم واحد على الأقل (0-9)",
+                "specialCharRequired": "يجب أن تحتوي كلمة المرور على رمز خاص واحد على الأقل (!@#$%^\u0026*().,?\": {}|\u003c\u003e)",
+                "strength": "قوة كلمة المرور",
+                "weak": "ضعيفة",
+                "medium": "متوسطة",
+                "strong": "قوية",
+                "maxLength": "يجب ألا تتجاوز كلمة المرور 32 حرفاً",
+                "lowercaseRequired": "يجب أن تحتوي كلمة المرور على حرف صغير واحد على الأقل (a-z)",
+                "tooCommon": "كلمة المرور هذه شائعة جداً. يرجى اختيار كلمة مرور أكثر تفرداً",
+                "sameAsCurrent": "كلمة المرور الجديدة لا يمكن أن تكون نفس كلمة المرور الحالية",
+                "considerLonger": "فكر في استخدام كلمة مرور أطول مع تنوع أكثر لأمان أفضل",
+                "moreSecure": "كلمات المرور التي تحتوي على 10 أحرف أو أكثر أكثر أماناً",
+                "veryWeak": "ضعيفة جداً",
+                "fair": "عادلة",
+                "good": "جيدة",
+                "veryStrong": "قوية جداً"
+            },
+            "confirmPassword": {
+                "required": "يرجى تأكيد كلمة المرور",
+                "mustMatch": "كلمات المرور غير متطابقة",
+                "confirmRequired": "تأكيد كلمة المرور مطلوب",
+                "match": "كلمات المرور متطابقة"
+            },
+            "login": {
+                "usernameOrEmailRequired": "اسم المستخدم أو البريد الإلكتروني مطلوب",
+                "invalidCredentials": "اسم المستخدم/البريد الإلكتروني أو كلمة المرور غير صحيحة",
+                "accountNotFound": "لم يتم العثور على الحساب",
+                "tooManyAttempts": "محاولات فاشلة كثيرة جداً",
+                "incorrectPassword": "كلمة المرور غير صحيحة"
+            },
+            "general": {
+                "fillRequiredFields": "يرجى ملء جميع الحقول المطلوبة",
+                "somethingWentWrong": "حدث خطأ ما، يرجى المحاولة مرة أخرى"
+            },
+            "forgotPassword": {
+                "title": "نسيت كلمة المرور؟",
+                "description": "أدخل عنوان بريدك الإلكتروني وسنرسل لك رابط إعادة التعيين.",
+                "emailLabel": "عنوان البريد الإلكتروني",
+                "emailPlaceholder": "أدخل بريدك الإلكتروني",
+                "sendResetLink": "إرسال رابط إعادة التعيين",
+                "backToLogin": "العودة لتسجيل الدخول",
+                "resetLinkSent": "تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني!",
+                "failedToSend": "فشل في إرسال رابط إعادة التعيين. حاول مرة أخرى لاحقاً.",
+                "somethingWentWrong": "حدث خطأ ما!"
+            },
+            "accountName": {
+                "required": "اسم الحساب مطلوب",
+                "minLength": "يجب أن يكون اسم الحساب حرفين على الأقل",
+                "maxLength": "يجب ألا يتجاوز اسم الحساب 50 حرفاً",
+                "invalidChars": "يمكن أن يحتوي اسم الحساب على الحروف والمسافات والفواصل العليا والشرطات والنقاط فقط",
+                "noNumbers": "لا يمكن أن يحتوي اسم الحساب على أرقام"
+            },
+            "accountType": {
+                "required": "نوع الحساب مطلوب",
+                "invalid": "نوع حساب غير صحيح"
+            },
+            "primaryAddress": {
+                "required": "العنوان الرئيسي مطلوب"
+            },
+            "socialMedia": {
+                "instagram": "يرجى إدخال رابط ملف Instagram صالح",
+                "whatsapp": "أدخل جهة اتصال WhatsApp صالحة: رقم الهاتف (+1234567890) أو رابط wa.me/api.whatsapp.com",
+                "mobile": "يرجى إدخال رقم هاتف محمول صالح (مثل +1234567890)",
+                "youtube": "يرجى إدخال رابط قناة YouTube صالح (مثل youtube.com/@اسم_المستخدم)",
+                "x": "يرجى إدخال رابط ملف X (Twitter) صالح",
+                "spotify": "يرجى إدخال رابط Spotify صالح",
+                "website": "يرجى إدخال رابط موقع ويب صالح",
+                "facebook": "يرجى إدخال رابط ملف Facebook صالح",
+                "youtubeMusic": "يرجى إدخال رابط قناة YouTube Music صالح",
+                "email": "يرجى إدخال عنوان بريد إلكتروني صالح",
+                "linkedin": "يرجى إدخال رابط ملف LinkedIn صالح",
+                "appleMusic": "يرجى إدخال رابط Apple Music صالح",
+                "tiktok": "يرجى إدخال رابط ملف TikTok صالح",
+                "snapchat": "يرجى إدخال اسم مستخدم Snapchat صالح"
+            },
+            "onboarding": {
+                "displayNameRequired": "الاسم المعروض مطلوب",
+                "displayNameMinLength": "الاسم المعروض يجب أن يكون حرفين على الأقل",
+                "displayNameMaxLength": "الاسم المعروض لا يجب أن يتجاوز 50 حرف",
+                "bioRequired": "النبذة الشخصية مطلوبة",
+                "bioMaxLength": "النبذة الشخصية لا يجب أن تتجاوز 250 حرف",
+                "mobileNumberRequired": "رقم الهاتف المحمول مطلوب",
+                "mobileNumberInvalid": "يرجى إدخال رقم هاتف محمول صحيح",
+                "mobileNumberLength": "رقم الهاتف المحمول يجب أن يكون 10 أرقام",
+                "addressRequired": "العنوان مطلوب",
+                "cityRequired": "المدينة مطلوبة",
+                "stateRequired": "الولاية مطلوبة",
+                "countryRequired": "البلد مطلوب",
+                "postalCodeRequired": "الرمز البريدي مطلوب",
+                "primaryAddressRequired": "العنوان الأساسي مطلوب",
+                "emailAddressRequired": "عنوان البريد الإلكتروني مطلوب",
+                "resetLinkSentSuccess": "تم إرسال رابط إعادة التعيين بنجاح!",
+                "invalidUsername": "اسم المستخدم غير صالح",
+                "profileImageAlt": "الملف الشخصي"
+            },
+            "resetPassword": {
+                "newPassword": "كلمة مرور جديدة",
+                "confirmPassword": "تأكيد كلمة المرور"
+            },
+            "resetLinkSent": {
+                "title": "تم إرسال البريد الإلكتروني!",
+                "description": "تحقق من صندوق الوارد الخاص بك للحصول على رابط إعادة تعيين كلمة المرور.",
+                "resending": "جاري إعادة الإرسال...",
+                "resendWithCooldown": "إعادة إرسال البريد ({{cooldown}}ث)",
+                "resendMail": "إعادة إرسال البريد"
+            }
+        },
+        "onboarding": {
+            "accountDetails": {
+                "title": "تفاصيل الحساب",
+                "description": "أخبرنا عن نفسك",
+                "displayName": "الاسم المعروض",
+                "displayNamePlaceholder": "أدخل اسمك المعروض",
+                "username": "اسم المستخدم",
+                "usernamePlaceholder": "أدخل اسم المستخدم",
+                "usernameDescription": "اسم المستخدم جزء من رابط ملفك الشخصي العام ورموز QR. مثال: explorers.earth/bhavya",
+                "bio": "نبذة شخصية",
+                "bioPlaceholder": "أخبرنا عن نفسك",
+                "accountType": "نوع الحساب",
+                "personal": "شخصي",
+                "creator": "منشئ محتوى",
+                "business": "أعمال",
+                "next": "التالي"
+            },
+            "contactDetails": {
+                "title": "تفاصيل الاتصال",
+                "description": "أضف رقم هاتفك المحمول للتحقق",
+                "mobileNumber": "رقم الهاتف المحمول",
+                "mobileNumberPlaceholder": "أدخل رقم هاتفك المحمول",
+                "next": "التالي",
+                "back": "السابق"
+            },
+            "addressDetails": {
+                "title": "تفاصيل العنوان",
+                "description": "أين تقع؟",
+                "address": "العنوان",
+                "addressPlaceholder": "أدخل عنوانك",
+                "streetName": "اسم الشارع",
+                "streetNamePlaceholder": "أدخل اسم الشارع",
+                "city": "المدينة",
+                "cityPlaceholder": "أدخل المدينة",
+                "state": "الولاية",
+                "statePlaceholder": "أدخل الولاية",
+                "country": "البلد",
+                "countryPlaceholder": "أدخل البلد",
+                "postalCode": "الرمز البريدي",
+                "postalCodePlaceholder": "أدخل الرمز البريدي",
+                "primaryAddress": "العنوان الأساسي",
+                "primaryAddressDescription": "يظهر في الملف الشخصي العام (المدينة والبلد)",
+                "primaryAddressPlaceholder": "أدخل العنوان الأساسي",
+                "sameAsAddress": "نفس العنوان",
+                "confirmDetails": "تأكيد التفاصيل",
+                "back": "السابق"
+            }
+        },
+        "resetPassword": {
+            "newPasswordPlaceholder": "أدخل كلمة المرور الجديدة",
+            "confirmPasswordPlaceholder": "أكد كلمة المرور الخاصة بك"
+        }
+    },
+    "common": {
+        "loading": "جاري التحميل...",
+        "error": "حدث خطأ. يرجى المحاولة مرة أخرى لاحقًا.",
+        "retry": "حاول مرة أخرى",
+        "noResults": "لم يتم العثور على نتائج",
+        "submit": "إرسال",
+        "signInWithGoogle": "تسجيل الدخول باستخدام Google",
+        "signUpWithGoogle": "التسجيل باستخدام Google",
+        "hidePassword": "إخفاء كلمة المرور",
+        "showPassword": "إظهار كلمة المرور",
+        "cancel": "إلغاء"
+    },
+    "dashboard": {
+        "home": {
+            "welcomeBack": "مرحبا بعودتك",
+            "profile": "الملف الشخصي",
+            "myRecommendations": "توصياتي",
+            "activePlaces": "أماكن نشطة",
+            "setupProfile": "إعداد ملفك الشخصي",
+            "draft": "مسودة",
+            "startCurating": "ابدأ في تنسيق توصياتك وشاركها مع العالم!",
+            "addRecommendations": "إضافة التوصيات"
+        },
+        "shareModal": {
+            "copyLink": "نسخ الرابط",
+            "copied": "تم النسخ!",
+            "linkCopiedToast": "تم نسخ الرابط!!"
+        },
+        "recommendations": {
+            "locationButton": "الموقع",
+            "viewAll": "عرض الكل",
+            "recommendationsTab": "التوصيات",
+            "manageTab": "إدارة",
+            "manageHeading": "إدارة",
+            "deleteAction": "حذف",
+            "editAction": "تحرير",
+            "publishedStatus": "منشور",
+            "draftStatus": "مسودة",
+            "myRecommendationsHeading": "توصياتي",
+            "myQRHeading": "رمز الاستجابة السريعة الخاص بي",
+            "myRecommendationsQR": "توصياتي",
+            "travelLikeLocal": "سافر مثل السكان المحليين",
+            "shareLink": "مشاركة الرابط",
+            "copyLink": "نسخ الرابط",
+            "downloadQR": "تحميل رمز الاستجابة السريعة",
+            "emptyState": {
+                "title": "لا توجد توصيات متاحة",
+                "subtitle": "ابدأ بإضافة أماكنك المفضلة إلى هذه القائمة"
+            },
+            "draftLabel": "مسودة",
+            "recommendButton": "أوصي",
+            "exploreSection": {
+                "heading": "استكشف مع explorers",
+                "addButton": "إضافة"
+            },
+            "locationLabels": {
+                "currentLocation": "الموقع الحالي",
+                "selectedLocation": "الموقع المحدد"
+            },
+            "categories": {
+                "foodDrinks": "الطعام والشراب",
+                "lodging": "السكن",
+                "healthWellness": "الصحة والعافية",
+                "shopping": "التسوق",
+                "entertainment": "الترفيه",
+                "transportation": "المواصلات",
+                "services": "الخدمات",
+                "tourism": "السياحة",
+                "naturalFeatures": "المعالم الطبيعية"
+            },
+            "locationForm": {
+                "labels": {
+                    "searchLocation": "البحث عن الموقع",
+                    "recommendationSocialLink": "رابط التوصية الاجتماعي",
+                    "note": "ملاحظة",
+                    "placeUrl": "رابط المكان"
+                },
+                "placeholders": {
+                    "searchLocation": "أدخل المدينة أو الولاية أو البلد (مثل: باريس)",
+                    "recommendationSocialLink": "أدخل الرابط (يوتيوب / إنستغرام)",
+                    "note": "أدخل ملاحظة متعلقة بتوصيتك",
+                    "placeUrl": "أدخل الاسم لإنشاء رابط قابل للمشاركة"
+                },
+                "buttons": {
+                    "addLocation": "إضافة موقع",
+                    "updateLocation": "تحديث الموقع"
+                }
+            },
+            "toastMessages": {
+                "listCreated": "تم إنشاء قائمة التوصيات بنجاح !!!",
+                "listPublished": "تم نشر قائمة التوصيات بنجاح !",
+                "listUnpublished": "تم إلغاء نشر قائمة التوصيات بنجاح !",
+                "listPublishError": "يجب أن تحتوي القائمة على مكان موصى به واحد على الأقل ليتم نشرها",
+                "listVisibilityError": "فشل في تحديث رؤية قائمة التوصيات.",
+                "qrDownloadSuccess": "تم تنزيل رمز QR بنجاح !",
+                "qrDownloadError": "فشل في تنزيل رمز QR. يرجى المحاولة مرة أخرى.",
+                "linkCopied": "تم نسخ الرابط إلى الحافظة !",
+                "linkCopyError": "فشل في نسخ الرابط. يرجى المحاولة مرة أخرى.",
+                "qrNotReady": "رمز QR غير جاهز للتنزيل"
+            },
+            "placesModal": {
+                "placesCount": "{{visible}} من {{total}} أماكن",
+                "scrollToLoadMore": "قم بالتمرير لتحميل المزيد من الأماكن"
+            },
+            "noRecommendationsYet": "لا توجد توصيات بعد!!",
+            "setupProfileBeforeRecommendations": "قم بإعداد ملفك الشخصي قبل إنشاء التوصيات!!",
+            "startAddingPlaces": "ابدأ في إضافة أماكنك المفضلة وشاركها مع الآخرين.",
+            "startRecommending": "بدء التوصية",
+            "addRecommendationForm": {
+                "searchField": {
+                    "label": "ابحث عن التوصية باستخدام Google"
+                },
+                "mainInput": {
+                    "placeholder": "أدخل توصيتك"
+                },
+                "taggableFields": {
+                    "title": "العنوان",
+                    "address": "العنوان",
+                    "category": "الفئة",
+                    "contactNumber": "رقم الاتصال",
+                    "socialLink": "الرابط الاجتماعي",
+                    "personName": "اسم الشخص"
+                },
+                "accordionSection": {
+                    "heading": "تفاصيل توصيتك",
+                    "recommendationLink": {
+                        "label": "رابط توصيتك",
+                        "placeholder": "يمكنك إدراج فيديو Instagram أو YouTube أو مدونة توصي"
+                    },
+                    "whyRecommend": {
+                        "label": "لماذا توصي بذلك؟",
+                        "placeholder": "لماذا توصي بذلك؟"
+                    }
+                },
+                "fileUpload": {
+                    "text": "إرفاق صورة/فيديو",
+                    "subtext": "اختياري"
+                },
+                "actionButton": {
+                    "text": "إضافة توصية"
+                },
+                "taggableFieldsPlaceholders": {
+                    "title": "أدخل العنوان",
+                    "address": "أدخل عنوان المكان",
+                    "category": "أدخل فئة",
+                    "contactNumber": "أدخل رقم الاتصال",
+                    "socialLink": "أدخل الرابط الاجتماعي (المكان)",
+                    "personName": "أدخل الاسم الكامل للشخص"
+                },
+                "validationMessages": {
+                    "titleRequired": "العنوان مطلوب",
+                    "addressRequired": "العنوان مطلوب",
+                    "categoryRequired": "الفئة مطلوبة",
+                    "socialUrlRequired": "يُطلب رابط Instagram أو LinkedIn لتوصيات الأشخاص",
+                    "socialUrlInvalid": "يرجى إدخال رابط Instagram أو LinkedIn صالح"
+                },
+                "mapModal": {
+                    "cancelButton": "إلغاء",
+                    "addRecommendationButton": "إضافة توصية",
+                    "updateRecommendationButton": "تحديث التوصية",
+                    "setLocationButton": "تعيين الموقع"
+                },
+                "deleteRecommendation": "حذف التوصية",
+                "searchLocation": {
+                    "label": "البحث عن موقع",
+                    "searchPlace": "البحث عن مكان",
+                    "placeholder": "اكتب واختر مكان"
+                },
+                "fetchingImages": "جاري جلب الصور…",
+                "recommendationType": {
+                    "place": "مكان",
+                    "person": "شخص",
+                    "label": "نوع التوصية"
+                },
+                "imagePreview": {
+                    "alt": "معاينة",
+                    "deleteTooltip": "حذف",
+                    "setThumbnailTooltip": "تعيين كصورة مصغرة",
+                    "confirmDeleteTitle": "تأكيد الحذف",
+                    "confirmDeleteMessage": "هل أنت متأكد من أنك تريد حذف هذه الصورة من المجموعة؟",
+                    "cancel": "إلغاء",
+                    "confirm": "تأكيد"
+                },
+                "deleteRecommendationModal": {
+                    "title": "تأكيد الحذف",
+                    "message": "هل أنت متأكد من أنك تريد حذف هذه التوصية؟ لا يمكن التراجع عن هذا الإجراء.",
+                    "cancel": "إلغاء"
+                }
+            }
+        },
+        "profile": {
+            "tabs": {
+                "publicProfile": "الملف الشخصي العام",
+                "account": "الحساب"
+            },
+            "publicProfile": {
+                "sections": {
+                    "profileInformation": "السيرة الذاتية",
+                    "socialMedia": "الروابط الاجتماعية",
+                    "publicAddress": "العنوان العام",
+                    "howToReachUs": "كيفية التواصل معنا",
+                    "howToReachUsDescription": "استخدم هذا القسم لمشاركة تفاصيل موقع عملك.",
+                    "feed": "المشاركات",
+                    "socialMediaSubtitle": "روابط ومعلومات وسائل التواصل الاجتماعي"
+                },
+                "fields": {
+                    "accountType": "نوع الحساب",
+                    "bio": "السيرة الذاتية",
+                    "socialMedia": "وسائل التواصل الاجتماعي",
+                    "instagram": "Instagram",
+                    "whatsapp": "Whatsapp",
+                    "mobile": "الجوال",
+                    "youtube": "Youtube",
+                    "x": "X",
+                    "spotify": "Spotify",
+                    "website": "الموقع الإلكتروني",
+                    "facebook": "Facebook",
+                    "youtubeMusic": "Youtube Music",
+                    "gmail": "Gmail",
+                    "linkedin": "Linkedin",
+                    "appleMusic": "Apple Music",
+                    "tiktok": "Tiktok",
+                    "snapchat": "Snapchat",
+                    "businessLocation": "أضف موقعك. ستظهر كمواقع مميزة في ملفك الشخصي العام",
+                    "primaryAddress": "العنوان الرئيسي - يظهر في الملف الشخصي العام (المدينة والدولة)",
+                    "feed": "قم بتحميل الصور أو مقاطع الفيديو لموقعك أو منتجاتك أو خدماتك أو تجاربك. ستُعرض هذه الصور في معرضك في ملفك الشخصي العام",
+                    "title": "العنوان",
+                    "contact": "جهة الاتصال",
+                    "about": "حول",
+                    "addLocation": "أضف موقعك",
+                    "addLocationInformation": "إضافة معلومات الموقع",
+                    "searchAddress": "ابحث عن عنوانك...",
+                    "sameAsAddress": "نفس العنوان"
+                },
+                "accountTypes": {
+                    "personal": "شخصي",
+                    "creator": "منشئ محتوى",
+                    "business": "عمل تجاري"
+                },
+                "businessLocation": {
+                    "title": "العنوان",
+                    "contact": "جهة الاتصال",
+                    "website": "الموقع الإلكتروني",
+                    "about": "حول"
+                }
+            },
+            "account": {
+                "sections": {
+                    "account": "الحساب",
+                    "billingAddress": "عنوان الفواتير"
+                },
+                "fields": {
+                    "username": "اسم المستخدم",
+                    "accountName": "اسم الحساب",
+                    "address": "العنوان",
+                    "streetName": "اسم الشارع",
+                    "state": "الولاية",
+                    "city": "المدينة",
+                    "country": "الدولة",
+                    "postalCode": "الرمز البريدي",
+                    "addressPlaceholder": "أدخل عنوانك",
+                    "detectLocation": "اكتشاف موقعي الحالي"
+                }
+            },
+            "common": {
+                "visible": "مرئي",
+                "hidden": "مخفي",
+                "mobileNumber": "رقم الهاتف المحمول",
+                "mobileNumberPlaceholder": "رقم الهاتف المحمول",
+                "whatsappNumber": "رقم WhatsApp",
+                "primaryAddress": "العنوان الرئيسي",
+                "editImage": "تعديل الصورة",
+                "confirm": "تأكيد",
+                "add": "إضافة",
+                "video": "فيديو",
+                "feedImage": "صورة المشاركة",
+                "importedImage": "صورة مستوردة",
+                "cover": "الغلاف",
+                "profile": "الملف الشخصي",
+                "saveAndPublish": "حفظ ونشر",
+                "saveToFeed": "حفظ في المشاركات",
+                "savedAndPublishedSuccessfully": "تم الحفظ والنشر بنجاح",
+                "saveAndPublishFailed": "فشل الحفظ والنشر. يرجى المحاولة مرة أخرى.",
+                "failedToSaveChanges": "فشل حفظ التغييرات. يرجى المحاولة مرة أخرى.",
+                "networkError": "خطأ في الشبكة: يرجى التحقق من اتصالك والمحاولة مرة أخرى.",
+                "unexpectedError": "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.",
+                "somethingWentWrong": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+                "failedToUploadFiles": "فشل تحميل الملفات. يرجى المحاولة مرة أخرى.",
+                "failedToUploadImages": "فشل تحميل الصور. يرجى المحاولة مرة أخرى.",
+                "failedToSaveImagesToFeed": "فشل حفظ الصور في المشاركات",
+                "failedToUpdateProfile": "فشل تحديث الملف الشخصي. يرجى المحاولة مرة أخرى.",
+                "fetching": "جارٍ الجلب...",
+                "selectAll": "تحديد الكل",
+                "clearSelection": "مسح التحديد",
+                "error": "حدث خطأ أثناء تحميل ملفك الشخصي. يرجى المحاولة مرة أخرى لاحقًا.",
+                "errors": {
+                    "noFileProvided": "لم يتم توفير ملف للتحميل",
+                    "failedToGetAccountId": "فشل في الحصول على معرف الحساب للتحميل",
+                    "uploadResponseMissingFileData": "استجابة التحميل لا تحتوي على بيانات الملف"
+                }
+            },
+            "accountSetup": {
+                "title": "أكمل إعداد حسابك",
+                "progress": "التقدم",
+                "complete": "مكتمل",
+                "profileSetupCompleted": "اكتمل إعداد الملف الشخصي",
+                "profileSetupIncomplete": "أضف صورة الملف الشخصي والسيرة الذاتية والروابط الاجتماعية",
+                "recommendationsSetupCompleted": "اكتمل إعداد التوصيات",
+                "recommendationsSetupIncomplete": "أضف المواقع والأماكن وانشر قائمتك الأولى",
+                "setupButton": "إعداد",
+                "footerMessage": "أكمل كلا الخطوتين لفتح تجربة لوحة التحكم الكاملة"
+            }
+        }
+    },
+    "toast": {
+        "success": {
+            "loginSuccessful": "تم تسجيل الدخول بنجاح!",
+            "registrationSuccessful": "تم التسجيل بنجاح!",
+            "passwordResetSuccessful": "تم إعادة تعيين كلمة المرور بنجاح!",
+            "emailVerificationSent": "تم إرسال رسالة التحقق!",
+            "resetLinkSent": "تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني!",
+            "resetLinkResent": "تم إعادة إرسال رابط إعادة التعيين!",
+            "profileImageUpdated": "تم تحديث صورة الملف الشخصي بنجاح!",
+            "backgroundImageUpdated": "تم تحديث صورة الخلفية بنجاح!",
+            "recommendedListUpdated": "تم تحديث قائمة التوصيات بنجاح!!!",
+            "accountCreated": "تم إنشاء الحساب بنجاح!",
+            "usernameUpdated": "تم تحديث اسم المستخدم بنجاح!",
+            "profileUpdated": "تم تحديث الملف الشخصي بنجاح!",
+            "settingsSaved": "تم حفظ الإعدادات بنجاح!",
+            "dataSaved": "تم حفظ البيانات بنجاح!",
+            "changesSaved": "تم حفظ التغييرات بنجاح!",
+            "fileUploaded": "تم رفع الملف بنجاح!",
+            "imageUploaded": "تم رفع الصورة بنجاح!",
+            "linkCopied": "تم نسخ الرابط إلى الحافظة!",
+            "emailSent": "تم إرسال البريد الإلكتروني بنجاح!",
+            "notificationSent": "تم إرسال الإشعار بنجاح!",
+            "actionCompleted": "تم إكمال الإجراء بنجاح!",
+            "formSubmitted": "تم إرسال النموذج بنجاح!",
+            "onboardingCompleted": "تم إكمال التسجيل بنجاح!",
+            "welcomeMessage": "مرحباً بك في explorers!",
+            "accountActivated": "تم تفعيل الحساب بنجاح!",
+            "emailVerified": "تم التحقق من البريد الإلكتروني بنجاح!",
+            "passwordChanged": "تم تغيير كلمة المرور بنجاح!",
+            "usernameChanged": "تم تغيير اسم المستخدم بنجاح!",
+            "profileCompleted": "تم إكمال الملف الشخصي بنجاح!",
+            "setupCompleted": "تم إكمال الإعداد بنجاح!",
+            "loggedOutSuccessfully": "تم تسجيل الخروج بنجاح!"
+        },
+        "error": {
+            "loginFailed": "فشل تسجيل الدخول. يرجى التحقق من بيانات الاعتماد.",
+            "registrationFailed": "فشل التسجيل. يرجى المحاولة مرة أخرى.",
+            "passwordResetFailed": "فشل إعادة تعيين كلمة المرور. يرجى المحاولة مرة أخرى.",
+            "emailVerificationFailed": "فشل التحقق من البريد الإلكتروني. يرجى المحاولة مرة أخرى.",
+            "resetLinkFailed": "فشل في إرسال رابط إعادة التعيين. يرجى المحاولة لاحقاً.",
+            "resetLinkResendFailed": "فشل في إعادة الإرسال. يرجى المحاولة لاحقاً.",
+            "profileImageUpdateFailed": "فشل في رفع صورة الملف الشخصي. يرجى المحاولة مرة أخرى.",
+            "backgroundImageUpdateFailed": "فشل في رفع صورة الخلفية. يرجى المحاولة مرة أخرى.",
+            "recommendedListUpdateFailed": "خطأ في تحديث قائمة التوصيات!!!",
+            "accountCreationFailed": "فشل في إنشاء الحساب. يرجى المحاولة مرة أخرى.",
+            "usernameUpdateFailed": "فشل في تحديث اسم المستخدم. يرجى المحاولة مرة أخرى.",
+            "profileUpdateFailed": "فشل في تحديث الملف الشخصي. يرجى المحاولة مرة أخرى.",
+            "settingsSaveFailed": "فشل في حفظ الإعدادات. يرجى المحاولة مرة أخرى.",
+            "dataSaveFailed": "فشل في حفظ البيانات. يرجى المحاولة مرة أخرى.",
+            "changesSaveFailed": "فشل في حفظ التغييرات. يرجى المحاولة مرة أخرى.",
+            "fileUploadFailed": "فشل في رفع الملف. يرجى المحاولة مرة أخرى.",
+            "imageUploadFailed": "فشل في رفع الصورة. يرجى المحاولة مرة أخرى",
+            "linkCopyFailed": "فشل في نسخ الرابط. يرجى المحاولة مرة أخرى.",
+            "emailSendFailed": "فشل في إرسال البريد الإلكتروني. يرجى المحاولة مرة أخرى.",
+            "notificationSendFailed": "فشل في إرسال الإشعار. يرجى المحاولة مرة أخرى.",
+            "actionFailed": "فشل الإجراء. يرجى المحاولة مرة أخرى.",
+            "formSubmissionFailed": "فشل في إرسال النموذج. يرجى المحاولة مرة أخرى.",
+            "onboardingFailed": "فشل في إكمال التسجيل. يرجى المحاولة مرة أخرى.",
+            "accountActivationFailed": "فشل في تفعيل الحساب. يرجى المحاولة مرة أخرى.",
+            "passwordChangeFailed": "فشل في تغيير كلمة المرور. يرجى المحاولة مرة أخرى.",
+            "usernameChangeFailed": "فشل في تغيير اسم المستخدم. يرجى المحاولة مرة أخرى.",
+            "profileCompletionFailed": "فشل في إكمال الملف الشخصي. يرجى المحاولة مرة أخرى.",
+            "setupFailed": "فشل في الإعداد. يرجى المحاولة مرة أخرى.",
+            "networkError": "خطأ في الشبكة. يرجى التحقق من اتصالك.",
+            "serverError": "خطأ في الخادم. يرجى المحاولة لاحقاً.",
+            "validationError": "خطأ في التحقق. يرجى التحقق من إدخالك.",
+            "permissionDenied": "تم رفض الإذن. يرجى الاتصال بالدعم.",
+            "sessionExpired": "انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى.",
+            "invalidCredentials": "بيانات اعتماد غير صحيحة. يرجى التحقق من إدخالك.",
+            "emailNotFound": "البريد الإلكتروني غير موجود. يرجى المحاولة مرة أخرى.",
+            "usernameAlreadyExists": "اسم المستخدم موجود بالفعل. يرجى اختيار آخر.",
+            "emailAlreadyExists": "البريد الإلكتروني موجود بالفعل. يرجى استخدام بريد آخر.",
+            "invalidEmailFormat": "تنسيق البريد الإلكتروني غير صحيح. يرجى إدخال بريد إلكتروني صحيح.",
+            "passwordTooWeak": "كلمة المرور ضعيفة جداً. يرجى اختيار كلمة مرور أقوى.",
+            "passwordsDoNotMatch": "كلمات المرور غير متطابقة. يرجى المحاولة مرة أخرى.",
+            "requiredFieldMissing": "حقل مطلوب مفقود. يرجى ملء جميع الحقول المطلوبة.",
+            "invalidInput": "إدخال غير صحيح. يرجى التحقق من بياناتك.",
+            "fileTooLarge": "الملف كبير جداً. يرجى اختيار ملف أصغر.",
+            "unsupportedFileType": "نوع ملف غير مدعوم. يرجى اختيار ملف آخر.",
+            "uploadLimitExceeded": "تم تجاوز حد الرفع. يرجى المحاولة لاحقاً.",
+            "operationTimeout": "انتهت مهلة العملية. يرجى المحاولة مرة أخرى.",
+            "serviceUnavailable": "الخدمة غير متاحة. يرجى المحاولة لاحقاً.",
+            "maintenanceMode": "الخدمة تحت الصيانة. يرجى المحاولة لاحقاً.",
+            "rateLimitExceeded": "طلبات كثيرة جداً. يرجى المحاولة لاحقاً.",
+            "quotaExceeded": "تم تجاوز الحصة المحددة. يرجى المحاولة لاحقاً.",
+            "accessDenied": "تم رفض الوصول. ليس لديك إذن لتنفيذ هذا الإجراء.",
+            "resourceNotFound": "المورد غير موجود. يرجى التحقق من طلبك.",
+            "conflictError": "خطأ في التضارب. المورد موجود بالفعل.",
+            "preconditionFailed": "فشل الشرط المسبق. يرجى التحقق من طلبك.",
+            "tooManyAttempts": "محاولات كثيرة جداً. يرجى المحاولة لاحقاً.",
+            "accountLocked": "الحساب مقفل. يرجى الاتصال بالدعم.",
+            "accountSuspended": "الحساب معلق. يرجى الاتصال بالدعم.",
+            "accountDeleted": "الحساب محذوف. يرجى الاتصال بالدعم.",
+            "emailNotVerified": "البريد الإلكتروني غير محقق. يرجى التحقق من بريدك الإلكتروني أولاً.",
+            "phoneNotVerified": "رقم الهاتف غير محقق. يرجى التحقق من هاتفك أولاً.",
+            "twoFactorRequired": "المصادقة الثنائية مطلوبة.",
+            "twoFactorFailed": "فشلت المصادقة الثنائية. يرجى المحاولة مرة أخرى.",
+            "captchaFailed": "فشل التحقق من الكابتشا. يرجى المحاولة مرة أخرى.",
+            "invalidToken": "رمز غير صحيح. يرجى المحاولة مرة أخرى.",
+            "expiredToken": "انتهت صلاحية الرمز. يرجى المحاولة مرة أخرى.",
+            "invalidCode": "رمز غير صحيح. يرجى التحقق من إدخالك.",
+            "expiredCode": "انتهت صلاحية الرمز. يرجى طلب رمز جديد.",
+            "codeLimitExceeded": "تم تجاوز حد الرموز. يرجى المحاولة لاحقاً.",
+            "invalidUsername": "اسم مستخدم غير صحيح. يرجى التحقق من إدخالك.",
+            "usernameTooShort": "اسم المستخدم قصير جداً. يرجى اختيار اسم مستخدم أطول.",
+            "usernameTooLong": "اسم المستخدم طويل جداً. يرجى اختيار اسم مستخدم أقصر.",
+            "usernameInvalidChars": "اسم المستخدم يحتوي على أحرف غير صحيحة. يرجى استخدام الأحرف والأرقام والشرطات فقط.",
+            "usernameReserved": "اسم المستخدم محجوز. يرجى اختيار اسم مستخدم آخر.",
+            "usernameProfanity": "اسم المستخدم يحتوي على محتوى غير لائق. يرجى اختيار اسم مستخدم آخر.",
+            "primaryAddressRequired": "العنوان الأساسي مطلوب",
+            "addressRequired": "العنوان مطلوب",
+            "cityRequired": "المدينة مطلوبة",
+            "stateRequired": "الولاية مطلوبة",
+            "countryRequired": "البلد مطلوب",
+            "postalCodeRequired": "الرمز البريدي مطلوب",
+            "mobileNumberRequired": "رقم الهاتف المحمول مطلوب",
+            "mobileNumberInvalid": "تنسيق رقم الهاتف المحمول غير صحيح",
+            "mobileNumberTooShort": "رقم الهاتف المحمول قصير جداً",
+            "mobileNumberTooLong": "رقم الهاتف المحمول طويل جداً",
+            "bioRequired": "السيرة الذاتية مطلوبة",
+            "bioTooLong": "السيرة الذاتية طويلة جداً. يرجى الاحتفاظ بها تحت 250 حرف",
+            "displayNameRequired": "اسم العرض مطلوب",
+            "displayNameTooShort": "اسم العرض قصير جداً",
+            "displayNameTooLong": "اسم العرض طويل جداً",
+            "accountTypeRequired": "نوع الحساب مطلوب",
+            "invalidAccountType": "نوع حساب غير صحيح محدد",
+            "imageRequired": "الصورة مطلوبة",
+            "imageTooLarge": "الصورة كبيرة جداً. يرجى اختيار صورة أصغر",
+            "unsupportedImageFormat": "تنسيق صورة غير مدعوم. يرجى استخدام JPG أو PNG أو GIF",
+            "imageProcessingFailed": "فشل في معالجة الصورة. يرجى المحاولة مرة أخرى",
+            "imageCorrupted": "الصورة تالفة. يرجى اختيار صورة أخرى",
+            "imageDimensionsInvalid": "أبعاد الصورة غير صحيحة. يرجى اختيار صورة أخرى",
+            "imageSizeInvalid": "حجم الصورة غير صحيح. يرجى اختيار صورة أخرى",
+            "imageFormatInvalid": "تنسيق الصورة غير صحيح. يرجى اختيار صورة أخرى",
+            "imageQualityTooLow": "جودة الصورة منخفضة جداً. يرجى اختيار صورة بجودة أعلى",
+            "imageTooSmall": "الصورة صغيرة جداً. يرجى اختيار صورة أكبر",
+            "imageTooBig": "الصورة كبيرة جداً. يرجى اختيار صورة أصغر",
+            "imageAspectRatioInvalid": "نسبة العرض إلى الارتفاع للصورة غير صحيحة. يرجى اختيار صورة أخرى",
+            "imageColorSpaceInvalid": "مساحة الألوان للصورة غير صحيحة. يرجى اختيار صورة أخرى",
+            "imageMetadataInvalid": "بيانات تعريف الصورة غير صحيحة. يرجى اختيار صورة أخرى",
+            "imageSecurityViolation": "انتهاك أمان الصورة. يرجى اختيار صورة أخرى",
+            "imageVirusDetected": "تم اكتشاف فيروس في الصورة. يرجى اختيار صورة أخرى",
+            "imageMalwareDetected": "تم اكتشاف برمجيات خبيثة في الصورة. يرجى اختيار صورة أخرى",
+            "imageSpamDetected": "تم اكتشاف رسائل غير مرغوب فيها في الصورة. يرجى اختيار صورة أخرى",
+            "imageContentInappropriate": "محتوى الصورة غير لائق. يرجى اختيار صورة أخرى",
+            "imageContentViolent": "محتوى الصورة عنيف. يرجى اختيار صورة أخرى",
+            "imageContentSexual": "محتوى الصورة جنسي. يرجى اختيار صورة أخرى",
+            "imageContentHateful": "محتوى الصورة كاره. يرجى اختيار صورة أخرى",
+            "imageContentDiscriminatory": "محتوى الصورة تمييزي. يرجى اختيار صورة أخرى",
+            "imageContentOffensive": "محتوى الصورة مسيء. يرجى اختيار صورة أخرى",
+            "imageContentAbusive": "محتوى الصورة مسيء. يرجى اختيار صورة أخرى",
+            "imageContentHarassing": "محتوى الصورة مضايق. يرجى اختيار صورة أخرى",
+            "imageContentThreatening": "محتوى الصورة تهديدي. يرجى اختيار صورة أخرى",
+            "imageContentDangerous": "محتوى الصورة خطير. يرجى اختيار صورة أخرى",
+            "imageContentIllegal": "محتوى الصورة غير قانوني. يرجى اختيار صورة أخرى",
+            "imageContentCopyright": "محتوى الصورة ينتهك حقوق النشر. يرجى اختيار صورة أخرى",
+            "imageContentTrademark": "محتوى الصورة ينتهك العلامة التجارية. يرجى اختيار صورة أخرى",
+            "imageContentPrivacy": "محتوى الصورة ينتهك الخصوصية. يرجى اختيار صورة أخرى",
+            "imageContentConsent": "محتوى الصورة يفتقر إلى الموافقة. يرجى اختيار صورة أخرى",
+            "imageContentMinors": "محتوى الصورة يتضمن قاصرين. يرجى اختيار صورة أخرى",
+            "imageContentAnimals": "محتوى الصورة يتضمن قسوة على الحيوانات. يرجى اختيار صورة أخرى",
+            "imageContentEnvironment": "محتوى الصورة يضر بالبيئة. يرجى اختيار صورة أخرى",
+            "imageContentHealth": "محتوى الصورة يضر بالصحة. يرجى اختيار صورة أخرى",
+            "imageContentSafety": "محتوى الصورة يضر بالأمان. يرجى اختيار صورة أخرى",
+            "imageContentSecurity": "محتوى الصورة يضر بالأمان. يرجى اختيار صورة أخرى",
+            "imageContentIntegrity": "محتوى الصورة يضر بالنزاهة. يرجى اختيار صورة أخرى",
+            "imageContentReputation": "محتوى الصورة يضر بالسمعة. يرجى اختيار صورة أخرى",
+            "imageContentBrand": "محتوى الصورة يضر بالعلامة التجارية. يرجى اختيار صورة أخرى",
+            "imageContentBusiness": "محتوى الصورة يضر بالأعمال. يرجى اختيار صورة أخرى",
+            "imageContentPersonal": "محتوى الصورة يضر بالمصالح الشخصية. يرجى اختيار صورة أخرى",
+            "imageContentProfessional": "محتوى الصورة يضر بالمصالح المهنية. يرجى اختيار صورة أخرى",
+            "imageContentAcademic": "محتوى الصورة يضر بالمصالح الأكاديمية. يرجى اختيار صورة أخرى",
+            "imageContentCultural": "محتوى الصورة يضر بالمصالح الثقافية. يرجى اختيار صورة أخرى",
+            "imageContentReligious": "محتوى الصورة يضر بالمصالح الدينية. يرجى اختيار صورة أخرى",
+            "imageContentPolitical": "محتوى الصورة يضر بالمصالح السياسية. يرجى اختيار صورة أخرى",
+            "imageContentSocial": "محتوى الصورة يضر بالمصالح الاجتماعية. يرجى اختيار صورة أخرى",
+            "imageContentEconomic": "محتوى الصورة يضر بالمصالح الاقتصادية. يرجى اختيار صورة أخرى",
+            "imageContentLegal": "محتوى الصورة يضر بالمصالح القانونية. يرجى اختيار صورة أخرى",
+            "imageContentEthical": "محتوى الصورة يضر بالمصالح الأخلاقية. يرجى اختيار صورة أخرى",
+            "imageContentMoral": "محتوى الصورة يضر بالمصالح الأخلاقية. يرجى اختيار صورة أخرى",
+            "imageContentSpiritual": "محتوى الصورة يضر بالمصالح الروحية. يرجى اختيار صورة أخرى",
+            "imageContentPhilosophical": "محتوى الصورة يضر بالمصالح الفلسفية. يرجى اختيار صورة أخرى",
+            "imageContentScientific": "محتوى الصورة يضر بالمصالح العلمية. يرجى اختيار صورة أخرى",
+            "imageContentTechnical": "محتوى الصورة يضر بالمصالح التقنية. يرجى اختيار صورة أخرى",
+            "imageContentArtistic": "محتوى الصورة يضر بالمصالح الفنية. يرجى اختيار صورة أخرى",
+            "imageContentCreative": "محتوى الصورة يضر بالمصالح الإبداعية. يرجى اختيار صورة أخرى",
+            "imageContentIntellectual": "محتوى الصورة يضر بالمصالح الفكرية. يرجى اختيار صورة أخرى",
+            "imageContentEducational": "محتوى الصورة يضر بالمصالح التعليمية. يرجى اختيار صورة أخرى",
+            "imageContentInformational": "محتوى الصورة يضر بالمصالح المعلوماتية. يرجى اختيار صورة أخرى",
+            "imageContentNews": "محتوى الصورة يضر بمصالح الأخبار. يرجى اختيار صورة أخرى",
+            "imageContentMedia": "محتوى الصورة يضر بمصالح الإعلام. يرجى اختيار صورة أخرى",
+            "imageContentEntertainment": "محتوى الصورة يضر بمصالح الترفيه. يرجى اختيار صورة أخرى",
+            "imageContentSports": "محتوى الصورة يضر بمصالح الرياضة. يرجى اختيار صورة أخرى",
+            "imageContentRecreation": "محتوى الصورة يضر بمصالح الترفيه. يرجى اختيار صورة أخرى",
+            "imageContentLeisure": "محتوى الصورة يضر بمصالح وقت الفراغ. يرجى اختيار صورة أخرى",
+            "imageContentHobby": "محتوى الصورة يضر بمصالح الهواية. يرجى اختيار صورة أخرى",
+            "imageContentInterest": "محتوى الصورة يضر بمصالح الاهتمام. يرجى اختيار صورة أخرى",
+            "imageContentPassion": "محتوى الصورة يضر بمصالح الشغف. يرجى اختيار صورة أخرى",
+            "imageContentLove": "محتوى الصورة يضر بمصالح الحب. يرجى اختيار صورة أخرى",
+            "imageContentHate": "محتوى الصورة يضر بمصالح الكراهية. يرجى اختيار صورة أخرى",
+            "imageContentAnger": "محتوى الصورة يضر بمصالح الغضب. يرجى اختيار صورة أخرى",
+            "imageContentFear": "محتوى الصورة يضر بمصالح الخوف. يرجى اختيار صورة أخرى",
+            "imageContentSadness": "محتوى الصورة يضر بمصالح الحزن. يرجى اختيار صورة أخرى",
+            "imageContentJoy": "محتوى الصورة يضر بمصالح الفرح. يرجى اختيار صورة أخرى",
+            "imageContentHappiness": "محتوى الصورة يضر بمصالح السعادة. يرجى اختيار صورة أخرى",
+            "imageContentExcitement": "محتوى الصورة يضر بمصالح الإثارة. يرجى اختيار صورة أخرى",
+            "imageContentSurprise": "محتوى الصورة يضر بمصالح المفاجأة. يرجى اختيار صورة أخرى",
+            "imageContentDisgust": "محتوى الصورة يضر بمصالح الاشمئزاز. يرجى اختيار صورة أخرى",
+            "imageContentShame": "محتوى الصورة يضر بمصالح الخجل. يرجى اختيار صورة أخرى",
+            "imageContentGuilt": "محتوى الصورة يضر بمصالح الذنب. يرجى اختيار صورة أخرى",
+            "imageContentPride": "محتوى الصورة يضر بمصالح الفخر. يرجى اختيار صورة أخرى",
+            "imageContentEnvy": "محتوى الصورة يضر بمصالح الحسد. يرجى اختيار صورة أخرى",
+            "imageContentJealousy": "محتوى الصورة يضر بمصالح الغيرة. يرجى اختيار صورة أخرى",
+            "imageContentGreed": "محتوى الصورة يضر بمصالح الجشع. يرجى اختيار صورة أخرى",
+            "imageContentLust": "محتوى الصورة يضر بمصالح الشهوة. يرجى اختيار صورة أخرى",
+            "imageContentGluttony": "محتوى الصورة يضر بمصالح الشره. يرجى اختيار صورة أخرى",
+            "imageContentSloth": "محتوى الصورة يضر بمصالح الكسل. يرجى اختيار صورة أخرى",
+            "imageContentWrath": "محتوى الصورة يضر بمصالح الغضب. يرجى اختيار صورة أخرى"
+        },
+        "warning": {
+            "usernameCooldown": "تغيير اسم المستخدم مؤقتاً مقفل بسبب فترة الانتظار",
+            "passwordWeak": "كلمة المرور ضعيفة. يُنصح باستخدام كلمة مرور أقوى",
+            "emailNotVerified": "البريد الإلكتروني غير محقق. يرجى التحقق من بريدك الإلكتروني",
+            "phoneNotVerified": "رقم الهاتف غير محقق. يرجى التحقق من هاتفك",
+            "profileIncomplete": "الملف الشخصي غير مكتمل. يرجى إكمال ملفك الشخصي",
+            "settingsNotSaved": "الإعدادات غير محفوظة. يرجى حفظ إعداداتك",
+            "dataNotSaved": "البيانات غير محفوظة. يرجى حفظ بياناتك",
+            "changesNotSaved": "التغييرات غير محفوظة. يرجى حفظ تغييراتك",
+            "fileNotUploaded": "الملف غير مرفوع. يرجى رفع ملفك",
+            "imageNotUploaded": "الصورة غير مرفوعة. يرجى رفع صورتك",
+            "linkNotCopied": "الرابط غير منسوخ. يرجى نسخ رابطك",
+            "emailNotSent": "البريد الإلكتروني غير مرسل. يرجى إرسال بريدك الإلكتروني",
+            "notificationNotSent": "الإشعار غير مرسل. يرجى إرسال إشعارك",
+            "actionNotCompleted": "الإجراء غير مكتمل. يرجى إكمال إجراءك",
+            "formNotSubmitted": "النموذج غير مُرسل. يرجى إرسال نموذجك",
+            "onboardingNotCompleted": "البدء غير مكتمل. يرجى إكمال البدء",
+            "accountNotActivated": "الحساب غير مفعّل. يرجى تفعيل حسابك",
+            "passwordNotChanged": "كلمة المرور غير متغيرة. يرجى تغيير كلمة مرورك",
+            "usernameNotChanged": "اسم المستخدم غير متغير. يرجى تغيير اسم المستخدم",
+            "profileNotCompleted": "الملف الشخصي غير مكتمل. يرجى إكمال ملفك الشخصي",
+            "setupNotCompleted": "الإعداد غير مكتمل. يرجى إكمال الإعداد",
+            "networkSlow": "الشبكة بطيئة. يرجى التحقق من اتصالك",
+            "serverSlow": "الخادم بطيء. يرجى المحاولة لاحقاً",
+            "validationPending": "التحقق معلق. يرجى الانتظار",
+            "permissionPending": "الإذن معلق. يرجى الانتظار",
+            "sessionExpiring": "الجلسة تنتهي. يرجى تسجيل الدخول مرة أخرى",
+            "credentialsExpiring": "بيانات الاعتماد تنتهي. يرجى تحديث بيانات اعتمادك",
+            "emailExpiring": "البريد الإلكتروني ينتهي. يرجى تحديث بريدك الإلكتروني",
+            "phoneExpiring": "الهاتف ينتهي. يرجى تحديث هاتفك",
+            "profileExpiring": "الملف الشخصي ينتهي. يرجى تحديث ملفك الشخصي",
+            "settingsExpiring": "الإعدادات تنتهي. يرجى تحديث إعداداتك",
+            "dataExpiring": "البيانات تنتهي. يرجى تحديث بياناتك",
+            "changesExpiring": "التغييرات تنتهي. يرجى تحديث تغييراتك",
+            "fileExpiring": "الملف ينتهي. يرجى تحديث ملفك",
+            "imageExpiring": "الصورة تنتهي. يرجى تحديث صورتك",
+            "linkExpiring": "الرابط ينتهي. يرجى تحديث رابطك",
+            "notificationExpiring": "الإشعار ينتهي. يرجى تحديث إشعارك",
+            "actionExpiring": "الإجراء ينتهي. يرجى تحديث إجراءك",
+            "formExpiring": "النموذج ينتهي. يرجى تحديث نموذجك",
+            "onboardingExpiring": "البدء ينتهي. يرجى تحديث البدء",
+            "accountExpiring": "الحساب ينتهي. يرجى تحديث حسابك",
+            "passwordExpiring": "كلمة المرور تنتهي. يرجى تحديث كلمة مرورك",
+            "usernameExpiring": "اسم المستخدم ينتهي. يرجى تحديث اسم المستخدم",
+            "setupExpiring": "الإعداد ينتهي. يرجى تحديث الإعداد"
+        },
+        "info": {
+            "loading": "جاري التحميل...",
+            "processing": "جاري المعالجة...",
+            "saving": "جاري الحفظ...",
+            "uploading": "جاري الرفع...",
+            "downloading": "جاري التحميل...",
+            "connecting": "جاري الاتصال...",
+            "disconnecting": "جاري قطع الاتصال...",
+            "sending": "جاري الإرسال...",
+            "receiving": "جاري الاستقبال...",
+            "updating": "جاري التحديث...",
+            "refreshing": "جاري التحديث...",
+            "synchronizing": "جاري المزامنة...",
+            "validating": "جاري التحقق...",
+            "verifying": "جاري التحقق...",
+            "checking": "جاري التحقق...",
+            "searching": "جاري البحث...",
+            "filtering": "جاري التصفية...",
+            "sorting": "جاري الترتيب...",
+            "organizing": "جاري التنظيم...",
+            "arranging": "جاري الترتيب...",
+            "configuring": "جاري التكوين...",
+            "setting": "جاري الإعداد...",
+            "adjusting": "جاري الضبط...",
+            "modifying": "جاري التعديل...",
+            "changing": "جاري التغيير...",
+            "switching": "جاري التبديل...",
+            "toggling": "جاري التبديل...",
+            "enabling": "جاري التفعيل...",
+            "disabling": "جاري التعطيل...",
+            "activating": "جاري التفعيل...",
+            "deactivating": "جاري التعطيل...",
+            "starting": "جاري البدء...",
+            "stopping": "جاري الإيقاف...",
+            "pausing": "جاري الإيقاف المؤقت...",
+            "resuming": "جاري الاستئناف...",
+            "restarting": "جاري إعادة البدء...",
+            "resetting": "جاري إعادة التعيين...",
+            "clearing": "جاري المسح...",
+            "deleting": "جاري الحذف...",
+            "removing": "جاري الإزالة...",
+            "adding": "جاري الإضافة...",
+            "inserting": "جاري الإدراج...",
+            "creating": "جاري الإنشاء...",
+            "building": "جاري البناء...",
+            "constructing": "جاري البناء...",
+            "generating": "جاري التوليد...",
+            "producing": "جاري الإنتاج...",
+            "making": "جاري الإنشاء...",
+            "preparing": "جاري التحضير...",
+            "readying": "جاري التحضير...",
+            "initializing": "جاري التهيئة...",
+            "launching": "جاري الإطلاق...",
+            "opening": "جاري الفتح...",
+            "closing": "جاري الإغلاق...",
+            "shutting": "جاري الإغلاق...",
+            "ending": "جاري الانتهاء...",
+            "finishing": "جاري الإنهاء...",
+            "completing": "جاري الإكمال...",
+            "finalizing": "جاري الإنهاء...",
+            "concluding": "جاري الختام...",
+            "terminating": "جاري الإنهاء...",
+            "canceling": "جاري الإلغاء...",
+            "aborting": "جاري الإيقاف...",
+            "interrupting": "جاري المقاطعة...",
+            "halting": "جاري الإيقاف...",
+            "freezing": "جاري التجميد...",
+            "unfreezing": "جاري الإذابة...",
+            "thawing": "جاري الإذابة...",
+            "melting": "جاري الذوبان...",
+            "cooling": "جاري التبريد...",
+            "heating": "جاري التسخين...",
+            "warming": "جاري التسخين...",
+            "chilling": "جاري التبريد...",
+            "renewing": "جاري التجديد...",
+            "restoring": "جاري الاستعادة...",
+            "recovering": "جاري الاستعادة...",
+            "repairing": "جاري الإصلاح...",
+            "fixing": "جاري الإصلاح...",
+            "correcting": "جاري التصحيح...",
+            "tuning": "جاري الضبط...",
+            "optimizing": "جاري التحسين...",
+            "improving": "جاري التحسين...",
+            "enhancing": "جاري التحسين...",
+            "upgrading": "جاري الترقية...",
+            "modernizing": "جاري التحديث..."
+        }
+    },
+    "emailVerification": {
+        "title": "Verify Your Email",
+        "description": "We\u0027ve sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
+        "checkEmail": "Check your email",
+        "emailSent": "Verification email sent!",
+        "resendEmail": "Resend Email",
+        "resendIn": "Resend in",
+        "seconds": "seconds",
+        "didntReceive": "Didn\u0027t receive the email?",
+        "checkSpam": "Please check your spam folder or try again.",
+        "backToLogin": "Back to Login",
+        "emailAddress": "Email Address",
+        "verificationSent": "Verification email sent to:",
+        "clickLink": "Click the link in the email to verify your account.",
+        "expiresIn": "This link expires in 24 hours.",
+        "needHelp": "Need help?",
+        "contactSupport": "Contact Support"
+    },
+    "settings": {
+        "title": "الإعدادات",
+        "account": {
+            "heading": "الحساب",
+            "security": {
+                "title": "الحساب والأمان"
+            },
+            "changePassword": {
+                "text": "تغيير كلمة المرور؟",
+                "button": "تغيير كلمة المرور",
+                "modalTitle": "تغيير كلمة المرور",
+                "currentPassword": "كلمة المرور الحالية",
+                "newPassword": "كلمة المرور الجديدة",
+                "confirmPassword": "تأكيد كلمة المرور الجديدة",
+                "updateButton": "تحديث كلمة المرور",
+                "currentPasswordPlaceholder": "أدخل كلمة المرور الحالية",
+                "newPasswordPlaceholder": "أدخل كلمة مرور جديدة",
+                "confirmPasswordPlaceholder": "أعد إدخال كلمة المرور الجديدة",
+                "successMessage": "تم تحديث كلمة المرور بنجاح. سيتم إعادة توجيهك لتسجيل الدخول للأمان.",
+                "redirectMessage": "إعادة التوجيه إلى تسجيل الدخول للأمان...",
+                "description": "قم بتحديث كلمة المرور الخاصة بك للحفاظ على أمان حسابك"
+            },
+            "deactivateAccount": {
+                "text": "إلغاء تفعيل حسابك؟",
+                "button": "إلغاء تفعيل الحساب",
+                "modalTitle": "إلغاء تفعيل حسابك؟",
+                "modalDescription": "هل أنت متأكد من أنك تريد إلغاء تفعيل حسابك؟",
+                "enterUsername": "أدخل اسم المستخدم",
+                "enterPassword": "أدخل كلمة المرور",
+                "usernamePlaceholder": "أدخل اسم المستخدم الخاص بك",
+                "passwordPlaceholder": "أدخل كلمة المرور الحالية",
+                "confirmButton": "إلغاء تفعيل حسابي",
+                "deactivatedButton": "معطل",
+                "successMessage": "تم إلغاء تفعيل الحساب بنجاح",
+                "activatedMessage": "تم تفعيل الحساب بنجاح",
+                "description": "قم بتعطيل حسابك مؤقتاً"
+            },
+            "deleteAccount": {
+                "text": "حذف حسابك؟",
+                "button": "حذف الحساب",
+                "step1": {
+                    "modalTitle": "حذف حسابك؟",
+                    "modalDescription": "هل أنت متأكد من أنك تريد حذف حسابك؟ لا يمكن التراجع عن هذا الإجراء.",
+                    "modalDescription2": "إذا كنت تريد الاحتفاظ ببياناتك، يمكنك إلغاء تفعيل حسابك بدلاً من ذلك.",
+                    "deactivateInsteadButton": "إلغاء التفعيل بدلاً من ذلك",
+                    "continueButton": "متابعة الحذف"
+                },
+                "step2": {
+                    "modalTitle": "أدخل تفاصيلك",
+                    "enterUsername": "أدخل اسم المستخدم",
+                    "enterPassword": "أدخل كلمة المرور",
+                    "confirmPassword": "تأكيد كلمة المرور",
+                    "usernamePlaceholder": "أدخل اسم المستخدم",
+                    "passwordPlaceholder": "أدخل كلمة المرور",
+                    "confirmPasswordPlaceholder": "تأكيد كلمة المرور",
+                    "continueButton": "متابعة"
+                },
+                "step3": {
+                    "modalTitle": "لماذا تغادر؟",
+                    "reasonPlaceholder": "يرجى إخبارنا بسبب مغادرتك...",
+                    "continueButton": "متابعة"
+                },
+                "step4": {
+                    "modalTitle": "تأكيد الحذف",
+                    "confirmText": "اكتب \u0027CONFIRM DELETE\u0027 للمتابعة",
+                    "confirmPlaceholder": "اكتب \u0027CONFIRM DELETE\u0027 للتأكيد",
+                    "deleteButton": "حذف حسابي",
+                    "confirmationRequired": "يرجى كتابة \u0027CONFIRM DELETE\u0027 للتأكيد.",
+                    "reasonRequired": "يرجى تقديم سبب للمغادرة.",
+                    "successMessage": "تم حذف الحساب بنجاح."
+                },
+                "description": "احذف حسابك وجميع البيانات نهائياً"
+            }
+        },
+        "languagePreference": {
+            "heading": "تفضيل اللغة",
+            "selectLanguage": "اختر لغتك",
+            "availableLanguages": "اختر من 47 لغة متاحة",
+            "currentLanguage": "الحالية: {{flag}} {{name}}",
+            "languageChanged": "تم تغيير اللغة إلى {{name}}",
+            "description": "اختر لغتك المفضلة للواجهة. سيؤدي هذا إلى تغيير لغة جميع النصوص والأزرار والقوائم في جميع أنحاء التطبيق."
+        },
+        "subtitle": "إدارة إعدادات حسابك وتفضيلاتك"
+    },
+    "seo": {
+        "loginTitle": "Login to explorers | Access Your Personalized Recommendations \u0026 Places",
+        "registerTitle": "Sign Up for explorers | Join the Community \u0026 Share Your Favorite Local Places"
+    },
+    "sidebar": {
+        "home": "الرئيسية",
+        "profile": "الملف الشخصي",
+        "recommendations": "التوصيات",
+        "analytics": "التحليلات",
+        "settings": "الإعدادات",
+        "logout": "تسجيل الخروج",
+        "loading": "جاري التحميل...",
+        "clickToOpenMenu": "انقر لفتح القائمة"
+    },
+    "modal": {
+        "unsavedChanges": {
+            "title": "تغييرات غير محفوظة",
+            "message": "لديك تغييرات غير محفوظة سيتم فقدانها إذا انتقلت بعيدًا. ماذا تريد أن تفعل؟",
+            "discard": "تجاهل",
+            "cancel": "إلغاء",
+            "save": "حفظ"
+        },
+        "usernameChange": {
+            "title": "تأكيد تغيير اسم المستخدم",
+            "description": "يُستخدم اسم المستخدم الخاص بك في روابط ملفك الشخصي وقائمة التوصيات:",
+            "profileLabel": "الملف الشخصي:",
+            "listLabel": "القائمة:",
+            "warning": "لن تعمل أي رموز QR أو روابط تحتوي على اسم المستخدم القديم بعد الآن — ستحتاج إلى تحديثها ومشاركتها مرة أخرى.",
+            "cooldownPrefix": "ستتمكن من تغيير اسم المستخدم مرة أخرى خلال",
+            "cooldownSuffix": "بعد هذا التحديث.",
+            "minute": "دقيقة واحدة",
+            "day": "يوم واحد",
+            "days": "أيام",
+            "cancel": "إلغاء",
+            "confirm": "تغيير اسم المستخدم"
+        }
+    },
+    "analytics": {
+        "dashboard": {
+            "title": "لوحة تحليلات",
+            "subtitle": "تتبع أداء رموز QR الخاصة بك ومشاركة المستخدمين",
+            "timePeriod": "الفترة الزمنية:",
+            "timeFilter": {
+                "today": "اليوم",
+                "last7days": "آخر 7 أيام",
+                "last30days": "آخر 30 يومًا",
+                "custom": "نطاق مخصص",
+                "selectPeriod": "اختر الفترة"
+            },
+            "dateRange": {
+                "from": "من:",
+                "to": "إلى:"
+            },
+            "summaryCards": {
+                "totalViews": "إجمالي المشاهدات",
+                "totalClicks": "إجمالي النقرات",
+                "totalQRViews": "إجمالي مشاهدات QR",
+                "totalLinkViews": "إجمالي مشاهدات الروابط"
+            },
+            "loading": {
+                "loadingData": "جارٍ تحميل بيانات التحليلات...",
+                "resolvingCountry": "جارٍ حل بيانات البلد..."
+            },
+            "error": {
+                "title": "خطأ في تحميل التحليلات",
+                "message": "تعذر جلب بيانات التحليلات. يرجى المحاولة مرة أخرى لاحقًا.",
+                "errorLabel": "خطأ:"
+            },
+            "comingSoon": {
+                "title": "التحليلات قريبًا",
+                "message": "ستكون التحليلات متاحة خلال \u003cstrong\u003e{{days}} يوم{{daysPlural}}\u003c/strong\u003e بعد إنشاء حسابك.",
+                "whyWait": {
+                    "title": "لماذا الانتظار؟",
+                    "reasons": {
+                        "accuracy": "• يضمن دقة البيانات ويمنع البريد العشوائي",
+                        "interactions": "• يسمح بالوقت للتفاعلات الهادفة للمستخدمين",
+                        "insights": "• يوفر رؤى تحليلية موثوقة"
+                    }
+                },
+                "tip": "في الوقت نفسه، ابدأ بمشاركة رموز QR الخاصة بك لإنشاء بيانات عندما تصبح التحليلات متاحة!",
+                "filterTip": "\u003cstrong\u003eنصيحة:\u003c/strong\u003e بمجرد أن تصبح التحليلات متاحة، ستتمكن من التصفية حسب الفترات الزمنية (اليوم، آخر 7 أيام، آخر 30 يومًا، أو نطاق مخصص) لعرض بياناتك."
+            },
+            "emptyState": {
+                "title": "لا توجد بيانات تحليلات",
+                "noDataMessage": "لم يتم العثور على بيانات تحليلات لحسابك. ستظهر التحليلات هنا بمجرد أن يبدأ الأشخاص في عرض رموز QR الخاصة بك والتفاعل معها.",
+                "customRange": {
+                    "bothMissing": "الرجاء تحديد تاريخي البداية والنهاية للنطاق المخصص لعرض بيانات التحليلات.",
+                    "startMissing": "الرجاء تحديد تاريخ البداية للنطاق المخصص لعرض بيانات التحليلات.",
+                    "endMissing": "الرجاء تحديد تاريخ النهاية للنطاق المخصص لعرض بيانات التحليلات."
+                },
+                "noDataForPeriod": {
+                    "today": "لا توجد بيانات تحليلات متاحة لليوم. الرجاء تحديد نطاق زمني مختلف لعرض بياناتك.",
+                    "last7days": "لا توجد بيانات تحليلات متاحة لآخر 7 أيام. الرجاء تحديد نطاق زمني مختلف لعرض بياناتك.",
+                    "last30days": "لا توجد بيانات تحليلات متاحة لآخر 30 يومًا. الرجاء تحديد نطاق زمني مختلف لعرض بياناتك.",
+                    "custom": "لا توجد بيانات تحليلات متاحة للنطاق المخصص ({{startDate}} إلى {{endDate}}). الرجاء تحديد نطاق زمني مختلف لعرض بياناتك.",
+                    "default": "لا توجد بيانات تحليلات متاحة للنطاق الزمني المحدد. الرجاء تحديد نطاق زمني مختلف لعرض بياناتك."
+                },
+                "howToStart": {
+                    "title": "للبدء في رؤية التحليلات:",
+                    "shareQR": "• شارك رموز QR الخاصة بك على وسائل التواصل الاجتماعي",
+                    "includeQR": "• قم بتضمين رموز QR في مواد التسويق الخاصة بك",
+                    "askFriends": "• اطلب من الأصدقاء مسح رموز QR الخاصة بك",
+                    "viewProfile": "• اعرض صفحات ملفك الشخصي العامة"
+                }
+            },
+            "charts": {
+                "topCountries": {
+                    "title": "أهم 3 دول حسب المشاهدات",
+                    "retryGeolocation": "إعادة المحاولة في تحديد الموقع الجغرافي",
+                    "geolocationIssue": "مشكلة تحديد الموقع الجغرافي:",
+                    "countryDataUnavailable": "بيانات البلد غير متاحة",
+                    "unableToResolve": "تعذر حل عناوين IP إلى بلدان في هذا الوقت. قد يكون ذلك بسبب قيود الشبكة أو قيود الخدمة.",
+                    "failedToResolve": "فشل في حل بيانات البلد. يرجى المحاولة مرة أخرى لاحقاً.",
+                    "analyticsSummary": "ملخص التحليلات:",
+                    "totalViewEvents": "• {{count}} إجمالي أحداث المشاهدة",
+                    "eventsWithCountry": "• {{count}} أحداث مع بيانات البلد",
+                    "eventsPending": "• {{count}} أحداث معلقة لتحديد الموقع الجغرافي",
+                    "willAppear": "ستظهر بيانات البلد تلقائيًا بمجرد أن تصبح خدمات تحديد الموقع الجغرافي لعناوين IP متاحة.",
+                    "tooltip": {
+                        "country": "البلد: {{country}}",
+                        "views": "المشاهدات: {{count}}"
+                    },
+                    "legend": "المشاهدات"
+                },
+                "worldMap": {
+                    "title": "توزيع المشاهدات العالمية",
+                    "subtitle": "خريطة عالمية تفاعلية تُظهر توزيع المشاهدات عبر البلدان من الصفحات العامة",
+                    "noGeographicData": "لا توجد بيانات جغرافية متاحة",
+                    "unableToResolve": "تعذر حل عناوين IP إلى بلدان في هذا الوقت. قد يكون ذلك بسبب قيود الشبكة أو قيود الخدمة.",
+                    "failedToResolve": "فشل في حل بيانات البلد. يرجى المحاولة مرة أخرى لاحقاً.",
+                    "analyticsSummary": "ملخص التحليلات:",
+                    "totalViewEvents": "• {{count}} إجمالي أحداث المشاهدة",
+                    "eventsWithCountry": "• {{count}} أحداث مع بيانات البلد",
+                    "eventsPending": "• {{count}} أحداث معلقة لتحديد الموقع الجغرافي",
+                    "willAppear": "ستظهر بيانات البلد تلقائيًا بمجرد أن تصبح خدمات تحديد الموقع الجغرافي لعناوين IP متاحة.",
+                    "tooltip": {
+                        "country": "{{country}}",
+                        "views": "{{views}} مشاهدات"
+                    },
+                    "countriesWithViews": "{{count}} دول مع مشاهدات",
+                    "legend": {
+                        "views": "المشاهدات:",
+                        "low": "منخفض",
+                        "medium": "متوسط",
+                        "high": "مرتفع",
+                        "highest": "الأعلى"
+                    }
+                },
+                "trafficSource": {
+                    "title": "مصدر الحركة بمرور الوقت",
+                    "subtitle": "تتبع كيفية تغير الحركة من مصادر مختلفة بمرور الوقت",
+                    "selectSource": "اختر مصدر الحركة:",
+                    "allSources": "جميع المصادر",
+                    "direct": "مباشر",
+                    "qrCode": "رمز QR",
+                    "instagram": "Instagram",
+                    "whatsapp": "WhatsApp",
+                    "twitter": "Twitter",
+                    "noTrafficData": "لا توجد بيانات حركة متاحة",
+                    "noViewEvents": "لم يتم العثور على أحداث مشاهدة مع معلومات مصدر الحركة.",
+                    "analyticsSummary": "ملخص التحليلات:",
+                    "totalViewEvents": "• {{count}} إجمالي أحداث المشاهدة",
+                    "eventsWithUTM": "• {{count}} أحداث مع مصدر UTM",
+                    "directTraffic": "• {{count}} أحداث حركة مباشرة",
+                    "willAppear": "ستظهر بيانات مصدر الحركة بمجرد أن يزور المستخدمون صفحاتك مع معاملات UTM.",
+                    "tooltip": {
+                        "sourceCount": "{{source}}: {{count}}"
+                    }
+                },
+                "locationEngagement": {
+                    "title": "المشاركة مع الموقع",
+                    "subtitle": "تتبع المشاهدات للمواقع المختلفة بمرور الوقت",
+                    "selectLocation": "اختر الموقع:",
+                    "allLocations": "جميع المواقع",
+                    "selectLocationPlaceholder": "اختر الموقع",
+                    "locationViews": "{{location}} ({{count}} مشاهدات)",
+                    "noLocationData": "لا توجد بيانات مشاهدة موقع متاحة",
+                    "unknownLocation": "موقع غير معروف",
+                    "location": "الموقع",
+                    "tooltip": {
+                        "date": "التاريخ: {{date}}",
+                        "locationViews": "{{location}}: {{value}} مشاهدات"
+                    },
+                    "stats": {
+                        "totalLocations": "إجمالي المواقع",
+                        "totalViews": "إجمالي المشاهدات",
+                        "avgViews": "متوسط المشاهدات/الموقع"
+                    }
+                },
+                "recommendedPlaces": {
+                    "title": "المشاركة مع الأماكن الموصى بها",
+                    "subtitle": "تتبع النقرات على الأماكن الموصى بها حسب الموقع",
+                    "selectLocation": "اختر الموقع:",
+                    "selectLocationPlaceholder": "اختر الموقع",
+                    "locationPlaces": "{{location}} ({{count}} أماكن)",
+                    "noRecommendationData": "لا توجد بيانات توصيات",
+                    "noDataMessage": "لا توجد بيانات نقر توصيات متاحة للفترة المحددة.",
+                    "analyticsSummary": "ملخص التحليلات:",
+                    "totalClickEvents": "• {{count}} إجمالي أحداث النقر",
+                    "recordsWithRecommendations": "• {{count}} سجلات مع معرف التوصية",
+                    "uniqueRecommendations": "• {{count}} توصيات فريدة",
+                    "selectLocationPrompt": "الرجاء تحديد موقع لعرض بيانات التوصيات.",
+                    "noClicksMessage": "لم يتم العثور على نقرات توصيات للموقع المحدد. ستظهر بيانات التوصيات بمجرد أن ينقر المستخدمون على بطاقات الأماكن في صفحات الموقع الخاصة بك.",
+                    "unknownPlace": "مكان غير معروف",
+                    "unknownCategory": "فئة غير معروفة",
+                    "unknownLocation": "موقع غير معروف",
+                    "tooltip": {
+                        "place": "{{place}}",
+                        "category": "الفئة: {{category}}",
+                        "clicks": "النقرات: {{count}}"
+                    },
+                    "stats": {
+                        "placesShown": "الأماكن المعروضة",
+                        "totalClicks": "إجمالي النقرات",
+                        "avgClicks": "متوسط النقرات/المكان"
+                    }
+                },
+                "socialMedia": {
+                    "title": "تفاعل وسائل التواصل الاجتماعي",
+                    "subtitle": "تتبع النقرات على روابط وسائل التواصل الاجتماعي من ملفك الشخصي العام عبر جميع المنصات",
+                    "noDataTitle": "لا توجد بيانات تفاعل وسائل التواصل الاجتماعي",
+                    "noDataMessage": "لا توجد بيانات نقر وسائل التواصل الاجتماعي متاحة من صفحة ملفك الشخصي العامة.",
+                    "analyticsSummary": "ملخص التحليلات:",
+                    "totalSocialClicks": "• {{count}} إجمالي نقرات وسائل التواصل الاجتماعي",
+                    "uniquePlatforms": "• {{count}} منصات فريدة",
+                    "trackingNote": "• تتبع النقرات من صفحة الملف الشخصي العام فقط",
+                    "willAppear": "ستظهر بيانات تفاعل وسائل التواصل الاجتماعي بمجرد أن ينقر المستخدمون على روابط وسائل التواصل الاجتماعي الخاصة بك.",
+                    "tooltip": {
+                        "platform": "{{platform}}",
+                        "clicks": "النقرات: {{count}}"
+                    },
+                    "stats": {
+                        "platforms": "المنصات",
+                        "totalClicks": "إجمالي النقرات",
+                        "avgClicks": "متوسط النقرات/المنصة"
+                    }
+                }
+            }
+        }
+    }
+}

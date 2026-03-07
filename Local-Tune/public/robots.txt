@@ -1,0 +1,16 @@
+# Local Tunes robots.txt
+User-agent: *
+Allow: /
+
+# Disallow admin routes
+Disallow: /admin/
+Disallow: /api/
+Disallow: /settings/
+
+# Don't crawl specific files
+Disallow: /*.json$
+Disallow: /*.js$
+Disallow: /*.css$
+
+# Point to sitemap
+Sitemap: https://localtunes.com/sitemap.xml

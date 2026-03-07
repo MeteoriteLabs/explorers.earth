@@ -1,0 +1,1786 @@
+﻿{
+    "header": {
+        "nav": {
+            "howItWorks": "Cara Kerja",
+            "whoIsFor": "Untuk Siapa",
+            "faq": "Pertanyaan Umum",
+            "about": "Tentang",
+            "contact": "Kontak"
+        },
+        "auth": {
+            "login": "Masuk",
+            "signUp": "Daftar"
+        }
+    },
+    "hero": {
+        "headline": "Semua rekomendasi Anda dalam satu QR dan link sederhana.",
+        "subtext": "Bagikan apa yang Anda tahu dan sukai tentang suatu tempat — dan buat dapat ditemukan oleh semua orang, di mana saja",
+        "inputLabel": "Reservasi URL explorers Anda:",
+        "inputPlaceholder": "nama Anda",
+        "ctaButton": "Reservasi explorers",
+        "signupPrompt": "Daftar sekarang untuk mendapatkan milik Anda"
+    },
+    "sections": {
+        "createCustomize": {
+            "headline": "Buat dan sesuaikan explorers Anda dalam hitungan menit",
+            "subtext": "Tambahkan tempat favorit Anda, atur berdasarkan kota atau tema, dan buat QR Anda secara instan.",
+            "bulletPoints": {
+                "addSpots": {
+                    "title": "Tambahkan tempat favorit Anda",
+                    "description": "Buat daftar dengan must-visit Anda"
+                },
+                "organize": {
+                    "title": "Atur berdasarkan kota atau tema",
+                    "description": "Buat kategori yang bermakna untuk audiens Anda"
+                },
+                "generate": {
+                    "title": "Buat link dan QR Anda secara instan",
+                    "description": "QR pribadi Anda siap dalam hitungan detik"
+                },
+                "share": {
+                    "title": "Bagikan secara digital atau melalui QR di dunia nyata",
+                    "description": ""
+                }
+            },
+            "mockup": {
+                "title": "Rekomendasi Saya",
+                "addPlace": "Tambah Tempat"
+            }
+        },
+        "shareAnywhere": {
+            "headline": "Bagikan di media sosial, etalase toko, atau dinding kota",
+            "subtext": "Tambahkan ke bio Instagram Anda, cetak di menu, atau sertakan dalam buku sambutan — panduan Anda, selalu siap.",
+            "scanText": "Pindai untuk rekomendasi lokal",
+            "storefrontText": "Sempurna untuk tampilan etalase",
+            "instagramTitle": "Tambahkan ke bio Instagram Anda",
+            "instagramDesc": "Bagikan dengan pengikut Anda secara instan",
+            "menuTitle": "Cetak di menu",
+            "menuDesc": "Titik kontak fisik dibuat mudah",
+            "welcomeTitle": "Sertakan dalam buku sambutan",
+            "welcomeDesc": "Sempurna untuk host dan pemandu",
+            "cafeMenu": "Menu Kafe",
+            "tokyoFoodGuide": "Panduan kuliner Tokyo saya explorers.earth/jane"
+        },
+        "analytics": {
+            "headline": "Lacak klik, rujukan, dan keterlibatan",
+            "subtext": "Lihat apa yang berfungsi, siapa yang memindai, dan tempat mana yang mendapat paling banyak cinta — secara real-time.",
+            "workingTitle": "Lihat apa yang berfungsi",
+            "workingDesc": "Lacak popularitas rekomendasi Anda",
+            "scanningTitle": "Siapa yang memindai",
+            "scanningDesc": "Pantau pemindaian QR dan pembaruan",
+            "spotsTitle": "Tempat berkinerja terbaik",
+            "spotsDesc": "Wawasan berbasis data untuk kurasi yang lebih baik",
+            "dashboardTitle": "Dashboard Analytics",
+            "last30Days": "30 hari terakhir",
+            "totalScans": "Total Pindai",
+            "engagement": "Keterlibatan",
+            "referrals": "Rujukan"
+        },
+        "referEarn": {
+            "headline": "Bagikan, rujuk, dan dapatkan",
+            "subtext": "Ubah rekomendasi Anda menjadi hadiah pasif — dapatkan kredit saat orang lain menggunakan QR Anda.",
+            "comingSoon": "Program hadiah rujukan (segera hadir)",
+            "rewardsTitle": "Dapatkan Hadiah",
+            "rewardsDesc": "Dibayar saat orang menggunakan rekomendasi Anda",
+            "earnedThisMonth": "Diperoleh bulan ini",
+            "passiveTitle": "Ubah rekomendasi menjadi hadiah pasif",
+            "networkTitle": "Bangun jaringan Anda dan dapatkan secara otomatis"
+        },
+        "localTunes": {
+            "mainHeading": "Tunes",
+            "title": "Dengarkan sambil menjelajah",
+            "body": "Eksplorasi tidak hanya visual. Suara membawa memori, konteks, dan emosi.\n\nTunes memungkinkan Anda mengumpulkan dan berbagi soundtrack untuk tempat, perjalanan, dan suasana hati — baik itu musik yang ditemukan di jalan atau suara yang mendefinisikan tempat untuk Anda.\n\nTerhubung mulus dengan profil Explorer Anda.",
+            "exploreButton": "Jelajahi Tunes",
+            "featuresHeading": "Fitur Kuat",
+            "features": {
+                "realtimeCollaboration": {
+                    "title": "Kolaborasi Waktu Nyata",
+                    "description": "Biarkan tamu menambahkan lagu ke playlist Anda secara instan sambil Anda mempertahankan kontrol penuh atas apa yang diputar."
+                },
+                "qrCodeSharing": {
+                    "title": "Berbagi Kode QR",
+                    "description": "Bagikan pengalaman musik Anda dengan pemindaian kode QR sederhana — tidak perlu aplikasi atau unduhan."
+                },
+                "youtubeIntegration": {
+                    "title": "Integrasi YouTube",
+                    "description": "Terintegrasi mulus dengan YouTube untuk mengakses jutaan lagu dan menciptakan suasana yang sempurna."
+                },
+                "voteLikeSystem": {
+                    "title": "Sistem Voting \u0026 Suka",
+                    "description": "Tamu dapat memilih lagu favorit mereka untuk mempengaruhi antrian playlist secara real-time."
+                },
+                "silentParties": {
+                    "title": "Pesta Sunyi",
+                    "description": "Selenggarakan pesta sunyi unik di mana semua orang mendengarkan melalui headphone mereka sendiri."
+                },
+                "karaokeReady": {
+                    "title": "Siap Karaoke",
+                    "description": "Sempurna untuk malam karaoke dengan playlist kolaboratif dan permintaan lagu real-time."
+                }
+            },
+            "venueHeading": "Sempurna untuk Setiap Tempat",
+            "venues": {
+                "barsPubs": "Bar \u0026 Pub",
+                "restaurants": "Restoran",
+                "coffeeShops": "Kedai Kopi",
+                "eventsWeddings": "Acara \u0026 Pernikahan",
+                "retailStores": "Toko Ritel",
+                "gymsFitness": "Gym \u0026 Kebugaran"
+            },
+            "closingStatement": "Tunes \u003cstrong\u003egratis\u003c/strong\u003e untuk dijelajahi, dan untuk fitur berbayar Anda dapat meningkatkan nanti."
+        },
+        "whoIsFor": {
+            "headline": "Untuk siapa explorers.earth?",
+            "subtext": "explorers.earth untuk siapa saja yang percaya bahwa berbagi adalah tanggung jawab — bukan siaran.",
+            "cards": {
+                "individuals": {
+                    "title": "Individu",
+                    "oneLiner": "Bagikan rekomendasi pribadi atau lokal.",
+                    "items": {
+                        "traveler": {
+                            "label": "Pelancong",
+                            "oneLiner": "Orang yang berbagi tempat perjalanan"
+                        },
+                        "local": {
+                            "label": "Lokal",
+                            "oneLiner": "Penduduk lokal yang berbagi tips lingkungan"
+                        },
+                        "family": {
+                            "label": "Keluarga",
+                            "oneLiner": "Keluarga yang berbagi tempat berguna"
+                        },
+                        "student": {
+                            "label": "Siswa",
+                            "oneLiner": "Siswa yang berbagi tempat kampus/dekat"
+                        },
+                        "nomad": {
+                            "label": "Nomaden",
+                            "oneLiner": "Nomaden yang mencantumkan ruang ramah kerja"
+                        },
+                        "emergencySharer": {
+                            "label": "Pembagi Darurat",
+                            "oneLiner": "Pembagi darurat yang memposting tempat penting"
+                        }
+                    }
+                },
+                "creators": {
+                    "title": "Kreator",
+                    "oneLiner": "Bagikan daftar kurasi dengan audiens Anda.",
+                    "items": {
+                        "influencer": {
+                            "label": "Influencer",
+                            "oneLiner": "Influencer yang berbagi pilihan teratas"
+                        },
+                        "blogger": {
+                            "label": "Blogger",
+                            "oneLiner": "Blogger yang mengkurasi panduan tertulis"
+                        },
+                        "vlogger": {
+                            "label": "Vlogger",
+                            "oneLiner": "Vlogger yang berbagi perjalanan visual"
+                        },
+                        "reviewer": {
+                            "label": "Reviewer",
+                            "oneLiner": "Reviewer yang mencantumkan tempat dengan rating terbaik"
+                        },
+                        "photographer": {
+                            "label": "Fotografer",
+                            "oneLiner": "Fotografer yang berbagi tempat foto"
+                        },
+                        "educator": {
+                            "label": "Pendidik",
+                            "oneLiner": "Pendidik yang berbagi panduan pembelajaran"
+                        },
+                        "communityLeader": {
+                            "label": "Pemimpin Komunitas",
+                            "oneLiner": "Pemimpin komunitas yang mengkurasi daftar berguna"
+                        }
+                    }
+                },
+                "hospitality": {
+                    "title": "Hospitalitas",
+                    "oneLiner": "Tawarkan wawasan lokal kurasi kepada tamu.",
+                    "items": {
+                        "hotel": {
+                            "label": "Hotel",
+                            "oneLiner": "Hotel yang menawarkan panduan lokal"
+                        },
+                        "airbnb": {
+                            "label": "Airbnb",
+                            "oneLiner": "Host yang berbagi favorit lingkungan"
+                        },
+                        "hostel": {
+                            "label": "Hostel",
+                            "oneLiner": "Hostel yang berbagi tips backpacker"
+                        },
+                        "homestay": {
+                            "label": "Homestay",
+                            "oneLiner": "Homestay yang menawarkan panduan berorientasi keluarga"
+                        },
+                        "resort": {
+                            "label": "Resort",
+                            "oneLiner": "Resort yang menyediakan daftar aktivitas"
+                        },
+                        "pgColiving": {
+                            "label": "PG/Coliving",
+                            "oneLiner": "PG/Coliving yang menampilkan tempat penting terdekat"
+                        }
+                    }
+                },
+                "businesses": {
+                    "title": "Bisnis",
+                    "oneLiner": "Pandu pelanggan dengan rekomendasi yang berguna.",
+                    "items": {
+                        "restaurant": {
+                            "label": "Restoran",
+                            "oneLiner": "Restoran yang berbagi hidangan yang harus dicoba"
+                        },
+                        "cafe": {
+                            "label": "Kafe",
+                            "oneLiner": "Kafe yang menyoroti item menu favorit"
+                        },
+                        "retailShop": {
+                            "label": "Toko Ritel",
+                            "oneLiner": "Toko yang berbagi rekomendasi produk"
+                        },
+                        "gym": {
+                            "label": "Gym",
+                            "oneLiner": "Gym yang menyarankan tempat wellness lokal"
+                        },
+                        "spa": {
+                            "label": "Spa",
+                            "oneLiner": "Spa yang mencantumkan opsi relaksasi terdekat"
+                        },
+                        "salon": {
+                            "label": "Salon",
+                            "oneLiner": "Salon yang menawarkan panduan kecantikan"
+                        },
+                        "clinic": {
+                            "label": "Klinik",
+                            "oneLiner": "Klinik yang berbagi lokasi terkait kesehatan"
+                        },
+                        "boutique": {
+                            "label": "Butik",
+                            "oneLiner": "Butik yang mencantumkan temuan kurasi"
+                        }
+                    }
+                },
+                "organizations": {
+                    "title": "Organisasi",
+                    "oneLiner": "Sediakan panduan dan sumber daya kurasi.",
+                    "items": {
+                        "airline": {
+                            "label": "Maskapai Penerbangan",
+                            "oneLiner": "Maskapai penerbangan yang berbagi panduan kota"
+                        },
+                        "agency": {
+                            "label": "Agen",
+                            "oneLiner": "Agen perjalanan yang mencantumkan tempat yang harus dikunjungi"
+                        },
+                        "university": {
+                            "label": "Universitas",
+                            "oneLiner": "Universitas yang berbagi kebutuhan kampus"
+                        },
+                        "corporate": {
+                            "label": "Korporat",
+                            "oneLiner": "Korporat yang mencantumkan sumber daya terdekat"
+                        },
+                        "airport": {
+                            "label": "Bandara",
+                            "oneLiner": "Bandara yang menawarkan terminal + tips kota"
+                        },
+                        "railway": {
+                            "label": "Kereta Api",
+                            "oneLiner": "Kereta api yang berbagi informasi platform"
+                        },
+                        "ngo": {
+                            "label": "NGO",
+                            "oneLiner": "NGO yang berbagi sumber daya komunitas"
+                        },
+                        "government": {
+                            "label": "Pemerintah",
+                            "oneLiner": "Departemen yang menyoroti layanan publik"
+                        }
+                    }
+                }
+            },
+            "useCases": {
+                "travelers": "Wisatawan",
+                "travelersDesc": "Bagikan permata yang ditemukan dengan sesama penjelajah",
+                "influencers": "Influencer",
+                "influencersDesc": "Monetisasi pengetahuan lokal dan membangun komunitas",
+                "airbnbHosts": "Host Airbnb",
+                "airbnbHostsDesc": "Tingkatkan pengalaman tamu dengan wawasan lokal",
+                "hotels": "Hotel",
+                "hotelsDesc": "Berikan rekomendasi lokal yang dikurasi",
+                "restaurants": "Restoran",
+                "restaurantsDesc": "Cross-promosi dengan bisnis lokal lainnya",
+                "cafes": "Kafe",
+                "cafesDesc": "Bagikan favorit lingkungan dengan pelanggan",
+                "localGuides": "Pemandu Lokal",
+                "localGuidesDesc": "Skalakan keahlian Anda melampaui tur pribadi",
+                "creators": "Kreator",
+                "creatorsDesc": "Tambahkan nilai melampaui konten dengan tips yang dapat ditindaklanjuti",
+                "tourOperators": "Operator Tur",
+                "tourOperatorsDesc": "Perluas pengalaman melampaui tur terjadwal",
+                "anyBusiness": "Bisnis Apa Pun",
+                "anyBusinessDesc": "Bangun komunitas dan loyalitas pelanggan"
+            }
+        },
+        "testimonials": {
+            "headline": "Disukai oleh wisatawan, kreator, dan host",
+            "subtext": "Lihat bagaimana orang di seluruh dunia menggunakan explorers untuk berbagi hal yang paling penting.",
+            "scrollLeft": "Gulir testimonial ke kiri",
+            "scrollRight": "Gulir testimonial ke kanan",
+            "items": [
+                {
+                    "id": "1",
+                    "name": "Marcus Chen",
+                    "role": "Blogger Perjalanan",
+                    "location": "San Francisco",
+                    "quote": "explorers mengubah cara saya berbagi pengetahuan perjalanan saya. Pengikut saya suka mendapatkan akses instan ke rekomendasi kurasi saya!"
+                },
+                {
+                    "id": "2",
+                    "name": "Sarah Johnson",
+                    "role": "Host Airbnb",
+                    "location": "Barcelona",
+                    "quote": "Tamu saya benar-benar menyukai QR code yang dipersonalisasi dalam paket sambutan mereka. Itu telah menjadi sentuhan khas saya!"
+                },
+                {
+                    "id": "3",
+                    "name": "Alex Rodriguez",
+                    "role": "Pemilik Restoran",
+                    "location": "Kota Meksiko",
+                    "quote": "Kami berbagi explorers kami dengan pelanggan untuk merekomendasikan tempat lokal lainnya. Itu telah menciptakan koneksi komunitas yang luar biasa."
+                },
+                {
+                    "id": "4",
+                    "name": "Emma Thompson",
+                    "role": "Pemandu Wisata",
+                    "location": "London",
+                    "quote": "explorers membantu saya memperluas keahlian saya di luar jam tur. Pelanggan dapat mengakses rekomendasi saya kapan saja!"
+                }
+            ]
+        },
+        "faq": {
+            "headline": "Ada pertanyaan?",
+            "subtext": "Kami telah menjawab hal-hal paling umum yang ditanyakan orang sebelum memulai.",
+            "loading": "Memuat FAQ...",
+            "error": "Kesalahan memuat FAQ. Silakan coba lagi nanti."
+        },
+        "features": {
+            "title": "Dibangun untuk tetap di luar jalan",
+            "subtitle": "Fitur sederhana dan bijaksana yang membuat rekomendasi Anda bersinar.",
+            "simpleLinks": {
+                "title": "Tautan sederhana dan berbagi QR"
+            },
+            "livingGuides": {
+                "title": "Panduan hidup dan dapat diedit"
+            },
+            "locationAware": {
+                "title": "Rekomendasi yang sadar lokasi"
+            },
+            "soundPlaylists": {
+                "title": "Suara dan daftar putar opsional"
+            },
+            "privacyFirst": {
+                "title": "Privasi pertama berdasarkan desain"
+            },
+            "communityDriven": {
+                "title": "Penemuan yang digerakkan komunitas"
+            }
+        },
+        "finalCTA": {
+            "headline": "Mulai berbagi dunia Anda hari ini",
+            "subtext": "Klaim explorers gratis Anda dan ubah wawasan lokal menjadi panduan yang dapat dibagikan.",
+            "ctaButton": "Klaim explorers – Gratis Selamanya",
+            "disclaimer": "Tidak perlu kartu kredit • Setup dalam 2 menit",
+            "creating": "Membuat explorers Anda..."
+        }
+    },
+    "contact": {
+        "title": "Mari terhubung.",
+        "subtitle": "Apakah Anda memiliki pertanyaan, ide, atau hanya ingin menyapa — kami ingin mendengar dari Anda.",
+        "getInTouch": "Hubungi Kami",
+        "email": "hello@explorers.earth",
+        "responseTime": "Kami merespons dalam 24-48 jam",
+        "closingMessage": "Kami adalah tim kecil dengan visi besar — pemikiran Anda penting bagi kami. Hubungi kami dan mari membangun sesuatu yang lokal dan global bersama.",
+        "seo": {
+            "title": "Contact explorers | Support, Help and Partnership enquiries.",
+            "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
+            "loginTitle": "Login to explorers | Access Your Personalized Recommendations \u0026 Places",
+            "registerTitle": "Sign Up for explorers | Join the Community \u0026 Share Your Favorite Local Places",
+            "keywords": [
+                "contact explorers",
+                "explorers support",
+                "get in touch explorers",
+                "customer service travel app",
+                "partnership inquiry explorers",
+                "help center local recommendations",
+                "technical support explorers",
+                "travel app customer service",
+                "feedback location sharing",
+                "account assistance explorers",
+                "business collaboration explorers",
+                "report problem explorers",
+                "share local recommendations support",
+                "find explorers contact",
+                "customer service",
+                "explorers team",
+                "help center",
+                "contact support",
+                "QR code support",
+                "local recommendations help",
+                "partnership inquiries"
+            ]
+        }
+    },
+    "about": {
+        "title": "Penjelajah Bumi",
+        "subtitle": {
+            "line1": "Komunitas global orang-orang yang menjelajah dengan penuh perhatian — untuk manusia, budaya, dan planet yang kita bagi.",
+            "line2": "Eksplorasi bagi kami bukan tentang seberapa jauh kita pergi.",
+            "line3": "Ini tentang seberapa dalam kita terhubung."
+        },
+        "section1": {
+            "title": "APA YANG KITA PERCAYAI",
+            "line1": "Eksplorasi dimulai dengan kesadaran.",
+            "line2": "Dengan memperhatikan apa yang dilewatkan orang lain.",
+            "line3": "Dengan memilih untuk bergerak dengan penuh pertimbangan, bukan cepat.",
+            "line4": "Kita hidup sebentar di planet kuno —\nmenambahkan beberapa tanda yang disengaja pada cerita\nyang dimulai jauh sebelum kita\ndan akan berlanjut lama setelah kita pergi."
+        },
+        "section2": {
+            "title": "BAGAIMANA KITA MELIHAT EKSPLORASI",
+            "line1": "Eksplorasi tidak diukur dalam mil.",
+            "line2": "Ini diukur dalam makna.",
+            "line3": "Ini hidup dalam memperlambat, memperhatikan,\ndan menghormati setiap tempat yang kita masuki —\nsebuah jalan, jalur gunung, meja kafe,\natau momen yang dibagikan dengan seseorang yang baru."
+        },
+        "section3": {
+            "title": "APA YANG KITA BANGUN",
+            "line1": "explorers adalah tempat untuk:",
+            "item1": "Panduan yang dibentuk oleh pengalaman nyata",
+            "item2": "Tempat, perjalanan, suara, dan cerita yang layak diingat",
+            "item3": "Komunitas yang dibangun di atas orang — bukan metrik popularitas",
+            "line2": "Teknologi membantu kita terhubung.",
+            "line3": "Orang memberikannya tujuan."
+        },
+        "section4": {
+            "title": "KEANGGOTAAN",
+            "line1": "Penjelajah Bumi bukanlah klub.",
+            "line2": "Ini bukan label.",
+            "line3": "Ini adalah pola pikir bersama —\npemahaman yang tenang tentang bagaimana kita bergerak di dunia."
+        },
+        "closing": "Jika Anda penasaran.\nJika Anda bijaksana.\nJika Anda bersedia memperlambat dan melihat lebih dekat —\nAnda sudah termasuk di sini.",
+        "seo": {
+            "title": "Explorers of Earth | About Us",
+            "description": "A global community of people who explore with care — for people, culture, and the planet we share. Exploration isn\u0027t about distance, it\u0027s about depth.",
+            "keywords": [
+                "explorers of earth",
+                "about explorers",
+                "exploration community",
+                "thoughtful travel",
+                "sustainable exploration",
+                "local recommendations platform",
+                "travel app about",
+                "community-driven recommendations",
+                "authentic local experiences",
+                "explorers team",
+                "local discovery platform",
+                "share local places",
+                "travel technology",
+                "local recommendations app",
+                "explorers story",
+                "who we are explorers"
+            ]
+        }
+    },
+    "cookieConsent": {
+        "title": "🍪 Preferensi Cookie",
+        "description": "Kami menggunakan cookie untuk meningkatkan pengalaman menjelajah Anda, menyajikan konten yang dipersonalisasi, dan menganalisis lalu lintas. Anda dapat mengelola preferensi kapan saja.",
+        "acceptAll": "✅ Terima Semua Cookie",
+        "customize": "⚙️ Sesuaikan",
+        "rejectNonEssential": "❌ Tolak Non-Esensial",
+        "preferencesTitle": "Preferensi Cookie",
+        "essentialCookies": {
+            "title": "Cookie Esensial",
+            "description": "Diperlukan agar situs web berfungsi dengan baik",
+            "alwaysOn": "Selalu Aktif"
+        },
+        "analyticsCookies": {
+            "title": "Cookie Analitik",
+            "description": "Membantu kami memahami bagaimana pengunjung berinteraksi dengan situs web kami"
+        },
+        "marketingCookies": {
+            "title": "Cookie Pemasaran",
+            "description": "Digunakan untuk menyampaikan iklan yang dipersonalisasi"
+        },
+        "savePreferences": "Simpan Preferensi",
+        "acceptAllButton": "Terima Semua",
+        "closeBanner": "Tutup banner",
+        "goBack": "Kembali"
+    },
+    "footer": {
+        "tagline": "Biarkan rekomendasi Anda berkeliling dunia.",
+        "email": "hello@explorers.earth",
+        "sections": {
+            "product": "Produk",
+            "contact": "Kontak",
+            "legal": "Hukum"
+        },
+        "links": {
+            "howItWorks": "Cara Kerja",
+            "faq": "Pertanyaan Umum",
+            "contact": "Kontak",
+            "about": "Tentang",
+            "terms": "Syarat dan Ketentuan",
+            "privacy": "Kebijakan Privasi",
+            "cookies": "Kebijakan Cookie"
+        },
+        "copyright": "© 2025 explorers. Semua hak dilindungi.",
+        "madeWithLove": "Dibuat dengan cinta di bumi"
+    },
+    "legal": {
+        "terms": {
+            "title": "Syarat dan Ketentuan",
+            "loading": "Memuat syarat dan ketentuan...",
+            "error": "Kesalahan memuat syarat dan ketentuan. Silakan coba lagi nanti."
+        },
+        "privacy": {
+            "title": "Kebijakan Privasi",
+            "loading": "Memuat kebijakan privasi...",
+            "error": "Kesalahan memuat kebijakan privasi. Silakan coba lagi nanti."
+        },
+        "cookies": {
+            "title": "Kebijakan Cookie",
+            "loading": "Memuat kebijakan cookie...",
+            "error": "Kesalahan memuat kebijakan cookie. Silakan coba lagi nanti."
+        }
+    },
+    "languageModal": {
+        "title": "Pilih Bahasa",
+        "searchPlaceholder": "Cari bahasa...",
+        "close": "Tutup"
+    },
+    "auth": {
+        "signup": "Daftar",
+        "signupSubtitle": "Daftar untuk menikmati fitur-fitur explorers",
+        "username": "Nama Pengguna",
+        "usernamePlaceholder": "Masukkan nama pengguna Anda",
+        "email": "Email",
+        "emailPlaceholder": "Masukkan email Anda",
+        "password": "Kata Sandi",
+        "passwordPlaceholder": "Masukkan kata sandi Anda",
+        "confirmPassword": "Konfirmasi Kata Sandi",
+        "confirmPasswordPlaceholder": "Masukkan kembali kata sandi Anda",
+        "register": "Daftar",
+        "or": "atau",
+        "signUpWithGoogle": "Daftar dengan Google",
+        "alreadyHaveAccount": "Sudah punya akun?",
+        "login": "Masuk",
+        "loginTitle": "Masuk",
+        "loginSubtitle": "Silakan masuk untuk melanjutkan ke akun Anda",
+        "usernameOrEmail": "Nama pengguna atau email",
+        "usernameOrEmailPlaceholder": "Masukkan nama pengguna atau email Anda",
+        "signInWithGoogle": "Masuk dengan Google",
+        "newToexplorers": "Baru di explorers?",
+        "forgotPassword": "Lupa kata sandi?",
+        "validations": {
+            "username": {
+                "required": "Nama pengguna wajib diisi",
+                "minLength": "Nama pengguna harus minimal 3 karakter",
+                "maxLength": "Nama pengguna tidak boleh lebih dari 30 karakter",
+                "invalidChars": "Nama pengguna hanya boleh berisi huruf kecil (a-z), angka (0-9), dan tanda hubung (-)",
+                "mustStartWithLetter": "Nama pengguna harus dimulai dengan huruf (a-z)",
+                "cannotStartEndHyphen": "Nama pengguna tidak boleh dimulai atau diakhiri dengan tanda hubung",
+                "noConsecutiveHyphens": "Nama pengguna tidak boleh berisi tanda hubung berturut-turut",
+                "cannotBeAllNumbers": "Nama pengguna tidak boleh hanya berisi angka",
+                "reservedWords": "Nama pengguna ini berisi kata-kata yang dicadangkan dan tidak dapat digunakan",
+                "inappropriateContent": "Nama pengguna berisi konten yang tidak pantas",
+                "alreadyExists": "Nama pengguna sudah ada",
+                "suggestedAlternatives": "Alternatif yang disarankan:",
+                "willBeConvertedLowercase": "Nama pengguna akan dikonversi ke huruf kecil",
+                "checkingAvailability": "Memeriksa ketersediaan...",
+                "available": "Nama pengguna tersedia",
+                "willConvertToLowercase": "Nama pengguna akan dikonversi ke huruf kecil"
+            },
+            "email": {
+                "required": "Email wajib diisi",
+                "invalidFormat": "Masukkan alamat email yang valid",
+                "alreadyExists": "Email sudah ada",
+                "invalid": "Email tidak valid"
+            },
+            "password": {
+                "required": "Kata sandi wajib diisi",
+                "minLength": "Kata sandi harus minimal 6 karakter",
+                "uppercaseRequired": "Kata sandi harus berisi minimal satu huruf besar (A-Z)",
+                "numberRequired": "Kata sandi harus berisi minimal satu angka (0-9)",
+                "specialCharRequired": "Kata sandi harus berisi minimal satu karakter khusus (!@#$%^\u0026*().,?\": {}|\u003c\u003e)",
+                "strength": "Kekuatan kata sandi",
+                "weak": "Lemah",
+                "medium": "Sedang",
+                "strong": "Kuat",
+                "maxLength": "Password must not exceed 32 characters",
+                "lowercaseRequired": "Password must contain at least one lowercase letter (a-z)",
+                "tooCommon": "This password is too common. Please choose a more unique password",
+                "sameAsCurrent": "New password cannot be the same as your current password",
+                "considerLonger": "Consider using a longer password with more variety for better security",
+                "moreSecure": "Passwords with 10 or more characters are more secure",
+                "veryWeak": "Sangat lemah",
+                "fair": "Sedang",
+                "good": "Baik",
+                "veryStrong": "Sangat kuat"
+            },
+            "confirmPassword": {
+                "required": "Konfirmasi kata sandi Anda",
+                "mustMatch": "Kata sandi tidak cocok",
+                "confirmRequired": "Konfirmasi kata sandi wajib diisi",
+                "match": "Kata sandi cocok"
+            },
+            "login": {
+                "usernameOrEmailRequired": "Nama pengguna atau email wajib diisi",
+                "invalidCredentials": "Nama pengguna/email atau kata sandi tidak valid",
+                "accountNotFound": "Akun tidak ditemukan",
+                "tooManyAttempts": "Terlalu banyak percobaan gagal",
+                "incorrectPassword": "Kata sandi salah"
+            },
+            "general": {
+                "fillRequiredFields": "Isi semua field yang wajib diisi",
+                "somethingWentWrong": "Terjadi kesalahan, silakan coba lagi"
+            },
+            "forgotPassword": {
+                "title": "Lupa Kata Sandi?",
+                "description": "Masukkan alamat email Anda dan kami akan mengirimkan link reset.",
+                "emailLabel": "Alamat email",
+                "emailPlaceholder": "Masukkan email Anda",
+                "sendResetLink": "Kirim Link Reset",
+                "backToLogin": "Kembali ke Login",
+                "resetLinkSent": "Link reset kata sandi telah dikirim ke email Anda!",
+                "failedToSend": "Gagal mengirim link reset. Coba lagi nanti.",
+                "somethingWentWrong": "Terjadi kesalahan!"
+            },
+            "accountName": {
+                "required": "Nama akun diperlukan",
+                "minLength": "Nama akun harus minimal 2 karakter",
+                "maxLength": "Nama akun tidak boleh melebihi 50 karakter",
+                "invalidChars": "Nama akun hanya boleh berisi huruf, spasi, apostrof, tanda hubung, dan titik",
+                "noNumbers": "Nama akun tidak boleh berisi angka"
+            },
+            "accountType": {
+                "required": "Jenis akun diperlukan",
+                "invalid": "Jenis akun tidak valid"
+            },
+            "primaryAddress": {
+                "required": "Alamat utama diperlukan"
+            },
+            "socialMedia": {
+                "instagram": "Silakan masukkan URL profil Instagram yang valid",
+                "whatsapp": "Masukkan kontak WhatsApp yang valid: telepon (+1234567890) atau tautan wa.me/api.whatsapp.com",
+                "mobile": "Silakan masukkan nomor ponsel yang valid (mis. +1234567890)",
+                "youtube": "Silakan masukkan URL saluran YouTube yang valid (mis. youtube.com/@namapengguna)",
+                "x": "Silakan masukkan URL profil X (Twitter) yang valid",
+                "spotify": "Silakan masukkan URL Spotify yang valid",
+                "website": "Silakan masukkan URL situs web yang valid",
+                "facebook": "Silakan masukkan URL profil Facebook yang valid",
+                "youtubeMusic": "Silakan masukkan URL saluran YouTube Music yang valid",
+                "email": "Silakan masukkan alamat email yang valid",
+                "linkedin": "Silakan masukkan URL profil LinkedIn yang valid",
+                "appleMusic": "Silakan masukkan URL Apple Music yang valid",
+                "tiktok": "Silakan masukkan URL profil TikTok yang valid",
+                "snapchat": "Silakan masukkan nama pengguna Snapchat yang valid"
+            },
+            "onboarding": {
+                "displayNameRequired": "Nama tampilan diperlukan",
+                "displayNameMinLength": "Nama tampilan harus minimal 2 karakter",
+                "displayNameMaxLength": "Nama tampilan tidak boleh melebihi 50 karakter",
+                "bioRequired": "Biografi diperlukan",
+                "bioMaxLength": "Biografi tidak boleh melebihi 250 karakter",
+                "mobileNumberRequired": "Nomor ponsel diperlukan",
+                "mobileNumberInvalid": "Silakan masukkan nomor ponsel yang valid",
+                "mobileNumberLength": "Nomor ponsel harus 10 digit",
+                "addressRequired": "Alamat diperlukan",
+                "cityRequired": "Kota diperlukan",
+                "stateRequired": "Provinsi diperlukan",
+                "countryRequired": "Negara diperlukan",
+                "postalCodeRequired": "Kode pos diperlukan",
+                "primaryAddressRequired": "Alamat utama diperlukan",
+                "emailAddressRequired": "Alamat email diperlukan",
+                "resetLinkSentSuccess": "Tautan reset berhasil dikirim!",
+                "invalidUsername": "Nama pengguna tidak valid",
+                "profileImageAlt": "Profile"
+            },
+            "resetPassword": {
+                "newPassword": "New Password",
+                "confirmPassword": "Confirm Password"
+            },
+            "resetLinkSent": {
+                "title": "Email terkirim!",
+                "description": "Periksa kotak masuk Anda untuk link reset password.",
+                "resending": "Mengirim ulang...",
+                "resendWithCooldown": "Kirim ulang email ({{cooldown}}s)",
+                "resendMail": "Kirim ulang email"
+            }
+        },
+        "onboarding": {
+            "accountDetails": {
+                "title": "Detail Akun",
+                "description": "Ceritakan tentang diri Anda",
+                "displayName": "Nama Tampilan",
+                "displayNamePlaceholder": "Masukkan nama tampilan Anda",
+                "username": "Nama Pengguna",
+                "usernamePlaceholder": "Masukkan nama pengguna Anda",
+                "usernameDescription": "Nama pengguna Anda adalah bagian dari tautan profil publik dan kode QR. Contoh: explorers.earth/bhavya",
+                "bio": "Biografi",
+                "bioPlaceholder": "Ceritakan tentang diri Anda",
+                "accountType": "Jenis Akun",
+                "personal": "Pribadi",
+                "creator": "Kreator",
+                "business": "Bisnis",
+                "next": "Selanjutnya"
+            },
+            "contactDetails": {
+                "title": "Detail Kontak",
+                "description": "Tambahkan nomor ponsel Anda untuk verifikasi",
+                "mobileNumber": "Nomor Ponsel",
+                "mobileNumberPlaceholder": "Masukkan nomor ponsel Anda",
+                "next": "Selanjutnya",
+                "back": "Kembali"
+            },
+            "addressDetails": {
+                "title": "Detail Alamat",
+                "description": "Di mana Anda berada?",
+                "address": "Alamat",
+                "addressPlaceholder": "Masukkan alamat Anda",
+                "streetName": "Nama Jalan",
+                "streetNamePlaceholder": "Masukkan nama jalan",
+                "city": "Kota",
+                "cityPlaceholder": "Masukkan kota",
+                "state": "Provinsi",
+                "statePlaceholder": "Masukkan provinsi",
+                "country": "Negara",
+                "countryPlaceholder": "Masukkan negara",
+                "postalCode": "Kode Pos",
+                "postalCodePlaceholder": "Masukkan kode pos",
+                "primaryAddress": "Alamat Utama",
+                "primaryAddressDescription": "ditampilkan di profil publik (kota dan negara)",
+                "primaryAddressPlaceholder": "Masukkan alamat utama",
+                "sameAsAddress": "Sama dengan Alamat",
+                "confirmDetails": "Konfirmasi Detail",
+                "back": "Kembali"
+            }
+        },
+        "resetPassword": {
+            "newPasswordPlaceholder": "Enter new password",
+            "confirmPasswordPlaceholder": "Confirm your password"
+        }
+    },
+    "common": {
+        "loading": "Memuat...",
+        "error": "Terjadi kesalahan. Silakan coba lagi nanti.",
+        "retry": "Coba Lagi",
+        "noResults": "Tidak ada hasil ditemukan",
+        "submit": "Kirim",
+        "hidePassword": "Sembunyikan kata sandi",
+        "showPassword": "Tampilkan kata sandi",
+        "signInWithGoogle": "Masuk dengan Google",
+        "signUpWithGoogle": "Daftar dengan Google",
+        "cancel": "Batal"
+    },
+    "dashboard": {
+        "home": {
+            "welcomeBack": "Selamat datang kembali",
+            "profile": "Profil",
+            "myRecommendations": "Rekomendasi Saya",
+            "activePlaces": "tempat aktif",
+            "setupProfile": "Atur Profil Anda",
+            "draft": "Draf",
+            "startCurating": "Mulai kurasi rekomendasi Anda dan bagikan dengan dunia!",
+            "addRecommendations": "Tambah Rekomendasi"
+        },
+        "shareModal": {
+            "copyLink": "Salin tautan",
+            "copied": "Tersalin!",
+            "linkCopiedToast": "Tautan tersalin!!"
+        },
+        "recommendations": {
+            "locationButton": "Lokasi",
+            "viewAll": "Lihat semua",
+            "recommendationsTab": "Rekomendasi",
+            "manageTab": "Kelola",
+            "manageHeading": "Kelola",
+            "deleteAction": "Hapus",
+            "editAction": "Edit",
+            "publishedStatus": "Diterbitkan",
+            "draftStatus": "Draf",
+            "myRecommendationsHeading": "Rekomendasi Saya",
+            "myQRHeading": "QR Saya",
+            "myRecommendationsQR": "Rekomendasi Saya",
+            "travelLikeLocal": "Berwisata seperti lokal",
+            "shareLink": "Bagikan Tautan",
+            "copyLink": "Salin Tautan",
+            "downloadQR": "Unduh QR",
+            "emptyState": {
+                "title": "Tidak Ada Rekomendasi Tersedia",
+                "subtitle": "Mulai menambahkan tempat favorit Anda ke daftar ini"
+            },
+            "draftLabel": "Draf",
+            "recommendButton": "Rekomendasikan",
+            "exploreSection": {
+                "heading": "Jelajahi dengan explorers",
+                "addButton": "Tambah"
+            },
+            "locationLabels": {
+                "currentLocation": "Lokasi Saat Ini",
+                "selectedLocation": "Lokasi yang Dipilih"
+            },
+            "categories": {
+                "foodDrinks": "Makanan dan Minuman",
+                "lodging": "Penginapan",
+                "healthWellness": "Kesehatan dan Kebugaran",
+                "shopping": "Belanja",
+                "entertainment": "Hiburan",
+                "transportation": "Transportasi",
+                "services": "Layanan",
+                "tourism": "Pariwisata",
+                "naturalFeatures": "Fitur Alami"
+            },
+            "locationForm": {
+                "labels": {
+                    "searchLocation": "Cari Lokasi",
+                    "recommendationSocialLink": "Tautan Sosial Rekomendasi",
+                    "note": "Catatan",
+                    "placeUrl": "URL Tempat"
+                },
+                "placeholders": {
+                    "searchLocation": "Masukkan kota, negara bagian, atau negara (contoh: Paris)",
+                    "recommendationSocialLink": "Masukkan URL (Youtube / Instagram)",
+                    "note": "Masukkan catatan terkait rekomendasi Anda",
+                    "placeUrl": "Masukkan nama untuk membuat tautan yang dapat dibagikan"
+                },
+                "buttons": {
+                    "addLocation": "Tambah Lokasi",
+                    "updateLocation": "Perbarui Lokasi"
+                }
+            },
+            "toastMessages": {
+                "listCreated": "Recommendation List Created Successfully!!!",
+                "listPublished": "Daftar rekomendasi berhasil dipublikasikan!",
+                "listUnpublished": "Daftar rekomendasi berhasil dihapus dari publikasi!",
+                "listPublishError": "List Should have atleast one Recommended Place to be Published",
+                "listVisibilityError": "Failed to update recommendation list visibility.",
+                "qrDownloadSuccess": "QR code downloaded successfully!",
+                "qrDownloadError": "Failed to download QR code. Please try again.",
+                "linkCopied": "Link copied to clipboard!",
+                "linkCopyError": "Failed to copy link. Please try again.",
+                "qrNotReady": "QR code not ready for download"
+            },
+            "placesModal": {
+                "placesCount": "{{visible}} dari {{total}} tempat",
+                "scrollToLoadMore": "Gulir untuk memuat lebih banyak tempat"
+            },
+            "noRecommendationsYet": "Belum ada rekomendasi!!",
+            "setupProfileBeforeRecommendations": "Atur profil Anda sebelum membuat rekomendasi!!",
+            "startAddingPlaces": "Mulai tambahkan tempat favorit Anda dan bagikan dengan orang lain.",
+            "startRecommending": "Mulai Merekomendasikan",
+            "addRecommendationForm": {
+                "searchField": {
+                    "label": "Search Recommendation with Google"
+                },
+                "mainInput": {
+                    "placeholder": "Enter your Recommendation"
+                },
+                "taggableFields": {
+                    "title": "Judul",
+                    "address": "Alamat",
+                    "category": "Kategori",
+                    "contactNumber": "Nomor kontak",
+                    "socialLink": "Tautan sosial",
+                    "personName": "Nama orang"
+                },
+                "accordionSection": {
+                    "heading": "Your Recommendation Details",
+                    "recommendationLink": {
+                        "label": "Your Recommendation Link",
+                        "placeholder": "You can insert Instagram reel, YouTube, or blog recommending"
+                    },
+                    "whyRecommend": {
+                        "label": "Why would you recommend?",
+                        "placeholder": "Why would you recommend?"
+                    }
+                },
+                "fileUpload": {
+                    "text": "Attach Image/Video",
+                    "subtext": "optional"
+                },
+                "actionButton": {
+                    "text": "Add recommendation"
+                },
+                "taggableFieldsPlaceholders": {
+                    "title": "Masukkan judul",
+                    "address": "Masukkan alamat tempat",
+                    "category": "Masukkan kategori",
+                    "contactNumber": "Masukkan nomor kontak",
+                    "socialLink": "Masukkan tautan sosial (tempat)",
+                    "personName": "Masukkan nama lengkap orang"
+                },
+                "validationMessages": {
+                    "titleRequired": "Judul wajib diisi",
+                    "addressRequired": "Alamat wajib diisi",
+                    "categoryRequired": "Kategori wajib diisi",
+                    "socialUrlRequired": "URL Instagram atau LinkedIn diperlukan untuk rekomendasi orang",
+                    "socialUrlInvalid": "Silakan masukkan URL Instagram atau LinkedIn yang valid"
+                },
+                "mapModal": {
+                    "cancelButton": "Batal",
+                    "addRecommendationButton": "Tambah Rekomendasi",
+                    "updateRecommendationButton": "Perbarui Rekomendasi",
+                    "setLocationButton": "Tetapkan lokasi"
+                },
+                "deleteRecommendation": "Hapus rekomendasi",
+                "searchLocation": {
+                    "label": "Cari lokasi",
+                    "searchPlace": "Cari tempat",
+                    "placeholder": "Ketik dan pilih tempat"
+                },
+                "fetchingImages": "Mengambil gambar…",
+                "recommendationType": {
+                    "place": "Tempat",
+                    "person": "Orang",
+                    "label": "Jenis Rekomendasi"
+                },
+                "imagePreview": {
+                    "alt": "Pratinjau",
+                    "deleteTooltip": "Hapus",
+                    "setThumbnailTooltip": "Tetapkan sebagai thumbnail",
+                    "confirmDeleteTitle": "Konfirmasi Hapus",
+                    "confirmDeleteMessage": "Apakah Anda yakin ingin menghapus gambar ini dari koleksi?",
+                    "cancel": "Batal",
+                    "confirm": "Konfirmasi"
+                },
+                "deleteRecommendationModal": {
+                    "title": "Konfirmasi penghapusan",
+                    "message": "Apakah Anda yakin ingin menghapus rekomendasi ini? Tindakan ini tidak dapat dibatalkan.",
+                    "cancel": "Batal"
+                }
+            }
+        },
+        "profile": {
+            "tabs": {
+                "publicProfile": "Profil Publik",
+                "account": "Akun"
+            },
+            "publicProfile": {
+                "sections": {
+                    "profileInformation": "Bio",
+                    "socialMedia": "Tautan Sosial",
+                    "publicAddress": "Alamat Publik",
+                    "howToReachUs": "Cara Menghubungi Kami",
+                    "howToReachUsDescription": "Gunakan bagian ini untuk berbagi detail lokasi bisnis Anda.",
+                    "feed": "Feed",
+                    "socialMediaSubtitle": "Tautan dan informasi media sosial"
+                },
+                "fields": {
+                    "accountType": "Jenis Akun",
+                    "bio": "Bio",
+                    "socialMedia": "Media Sosial",
+                    "instagram": "Instagram",
+                    "whatsapp": "Whatsapp",
+                    "mobile": "Mobile",
+                    "youtube": "Youtube",
+                    "x": "X",
+                    "spotify": "Spotify",
+                    "website": "Situs Web",
+                    "facebook": "Facebook",
+                    "youtubeMusic": "Youtube Music",
+                    "gmail": "Gmail",
+                    "linkedin": "Linkedin",
+                    "appleMusic": "Apple Music",
+                    "tiktok": "Tiktok",
+                    "snapchat": "Snapchat",
+                    "businessLocation": "Tambahkan lokasi Anda. Ini akan muncul sebagai lokasi unggulan di profil publik Anda",
+                    "primaryAddress": "Alamat Utama - Ditampilkan di profil publik (kota dan negara)",
+                    "feed": "Unggah gambar atau video lokasi, produk, layanan, atau pengalaman Anda. Foto-foto ini akan ditampilkan di galeri Anda di profil publik",
+                    "title": "Judul",
+                    "contact": "Kontak",
+                    "about": "Tentang",
+                    "addLocation": "Tambahkan lokasi Anda",
+                    "addLocationInformation": "Tambahkan Informasi Lokasi",
+                    "searchAddress": "Cari alamat Anda...",
+                    "sameAsAddress": "Sama dengan alamat"
+                },
+                "accountTypes": {
+                    "personal": "Pribadi",
+                    "creator": "Kreator",
+                    "business": "Bisnis"
+                },
+                "businessLocation": {
+                    "title": "Judul",
+                    "contact": "Kontak",
+                    "website": "Situs Web",
+                    "about": "Tentang"
+                }
+            },
+            "account": {
+                "sections": {
+                    "account": "Akun",
+                    "billingAddress": "Alamat Penagihan"
+                },
+                "fields": {
+                    "username": "Nama pengguna",
+                    "accountName": "Nama Akun",
+                    "address": "Alamat",
+                    "streetName": "Nama Jalan",
+                    "state": "Provinsi",
+                    "city": "Kota",
+                    "country": "Negara",
+                    "postalCode": "Kode Pos",
+                    "addressPlaceholder": "Masukkan alamat Anda",
+                    "detectLocation": "Deteksi lokasi saya saat ini"
+                }
+            },
+            "common": {
+                "visible": "Terlihat",
+                "hidden": "Tersembunyi",
+                "mobileNumber": "Nomor ponsel",
+                "mobileNumberPlaceholder": "Nomor ponsel",
+                "whatsappNumber": "Nomor WhatsApp",
+                "primaryAddress": "Alamat Utama",
+                "editImage": "Edit Gambar",
+                "confirm": "Konfirmasi",
+                "add": "Tambahkan",
+                "video": "Video",
+                "feedImage": "Gambar feed",
+                "importedImage": "gambar yang diimpor",
+                "cover": "Sampul",
+                "profile": "Profil",
+                "saveAndPublish": "Simpan dan Terbitkan",
+                "saveToFeed": "Simpan ke Feed",
+                "savedAndPublishedSuccessfully": "Berhasil disimpan dan diterbitkan",
+                "saveAndPublishFailed": "Gagal menyimpan dan menerbitkan. Silakan coba lagi.",
+                "failedToSaveChanges": "Gagal menyimpan perubahan. Silakan coba lagi.",
+                "networkError": "Kesalahan jaringan: Silakan periksa koneksi Anda dan coba lagi.",
+                "unexpectedError": "Terjadi kesalahan yang tidak terduga. Silakan coba lagi.",
+                "somethingWentWrong": "Terjadi kesalahan. Silakan coba lagi.",
+                "failedToUploadFiles": "Gagal mengunggah file. Silakan coba lagi.",
+                "failedToUploadImages": "Gagal mengunggah gambar. Silakan coba lagi.",
+                "failedToSaveImagesToFeed": "Gagal menyimpan gambar ke feed",
+                "failedToUpdateProfile": "Gagal memperbarui profil. Silakan coba lagi.",
+                "fetching": "Mengambil...",
+                "selectAll": "Pilih semua",
+                "clearSelection": "Hapus pilihan",
+                "error": "Terjadi kesalahan saat memuat profil Anda. Silakan coba lagi nanti.",
+                "errors": {
+                    "noFileProvided": "Tidak ada file yang disediakan untuk unggah",
+                    "failedToGetAccountId": "Gagal mendapatkan ID akun untuk unggah",
+                    "uploadResponseMissingFileData": "Respons unggah tidak berisi data file"
+                }
+            },
+            "accountSetup": {
+                "title": "Lengkapi Pengaturan Akun Anda",
+                "progress": "Kemajuan",
+                "complete": "Lengkap",
+                "profileSetupCompleted": "Pengaturan profil selesai",
+                "profileSetupIncomplete": "Tambahkan foto profil, bio, dan tautan sosial",
+                "recommendationsSetupCompleted": "Pengaturan rekomendasi selesai",
+                "recommendationsSetupIncomplete": "Tambahkan lokasi, tempat, dan publikasikan daftar pertama Anda",
+                "setupButton": "Pengaturan",
+                "footerMessage": "Lengkapi kedua langkah untuk membuka kunci pengalaman dasbor lengkap Anda"
+            }
+        }
+    },
+    "toast": {
+        "success": {
+            "loginSuccessful": "Login berhasil!",
+            "registrationSuccessful": "Registrasi berhasil!",
+            "passwordResetSuccessful": "Reset kata sandi berhasil!",
+            "emailVerificationSent": "Email verifikasi terkirim!",
+            "resetLinkSent": "Link reset kata sandi terkirim ke email Anda!",
+            "resetLinkResent": "Link reset terkirim ulang!",
+            "profileImageUpdated": "Gambar profil berhasil diperbarui!",
+            "backgroundImageUpdated": "Gambar latar belakang berhasil diperbarui!",
+            "recommendedListUpdated": "Recommended List Updated Successfully!!!",
+            "accountCreated": "Akun berhasil dibuat!",
+            "usernameUpdated": "Nama pengguna berhasil diperbarui!",
+            "profileUpdated": "Profil berhasil diperbarui!",
+            "settingsSaved": "Pengaturan berhasil disimpan!",
+            "dataSaved": "Data berhasil disimpan!",
+            "changesSaved": "Perubahan berhasil disimpan!",
+            "fileUploaded": "File berhasil diunggah!",
+            "imageUploaded": "Gambar berhasil diunggah!",
+            "linkCopied": "Link copied to clipboard!",
+            "emailSent": "Email berhasil dikirim!",
+            "notificationSent": "Notifikasi berhasil dikirim!",
+            "actionCompleted": "Aksi berhasil diselesaikan!",
+            "formSubmitted": "Formulir berhasil dikirim!",
+            "onboardingCompleted": "Onboarding selesai dengan sukses!",
+            "welcomeMessage": "Selamat datang di explorers!",
+            "accountActivated": "Akun berhasil diaktifkan!",
+            "emailVerified": "Email berhasil diverifikasi!",
+            "passwordChanged": "Kata sandi berhasil diubah!",
+            "usernameChanged": "Nama pengguna berhasil diubah!",
+            "profileCompleted": "Profil berhasil diselesaikan!",
+            "setupCompleted": "Pengaturan berhasil diselesaikan!",
+            "loggedOutSuccessfully": "Berhasil keluar!"
+        },
+        "error": {
+            "loginFailed": "Login gagal. Periksa kredensial Anda.",
+            "registrationFailed": "Registrasi gagal. Coba lagi.",
+            "passwordResetFailed": "Reset kata sandi gagal. Coba lagi.",
+            "emailVerificationFailed": "Verifikasi email gagal. Coba lagi.",
+            "resetLinkFailed": "Gagal mengirim link reset. Coba lagi nanti.",
+            "resetLinkResendFailed": "Gagal mengirim ulang. Coba lagi nanti.",
+            "profileImageUpdateFailed": "Failed to upload profile image. Please try again.",
+            "backgroundImageUpdateFailed": "Failed to upload background image. Please try again.",
+            "recommendedListUpdateFailed": "Error Updating Recommended List!!!",
+            "accountCreationFailed": "Account creation failed. Please try again.",
+            "usernameUpdateFailed": "Update username gagal. Coba lagi.",
+            "profileUpdateFailed": "Profile update failed. Please try again.",
+            "settingsSaveFailed": "Failed to save settings. Please try again.",
+            "dataSaveFailed": "Failed to save data. Please try again.",
+            "changesSaveFailed": "Failed to save changes. Please try again.",
+            "fileUploadFailed": "File upload failed. Please try again.",
+            "imageUploadFailed": "Upload gambar gagal. Coba lagi.",
+            "linkCopyFailed": "Failed to copy link. Please try again.",
+            "emailSendFailed": "Gagal mengirim email. Silakan coba lagi.",
+            "notificationSendFailed": "Failed to send notification. Please try again.",
+            "actionFailed": "Action failed. Please try again.",
+            "formSubmissionFailed": "Form submission failed. Please try again.",
+            "onboardingFailed": "Onboarding gagal. Coba lagi.",
+            "accountActivationFailed": "Account activation failed. Please try again.",
+            "passwordChangeFailed": "Password change failed. Please try again.",
+            "usernameChangeFailed": "Username change failed. Please try again.",
+            "profileCompletionFailed": "Profile completion failed. Please try again.",
+            "setupFailed": "Setup failed. Please try again.",
+            "networkError": "Error jaringan. Periksa koneksi Anda.",
+            "serverError": "Error server. Coba lagi nanti.",
+            "validationError": "Error validasi. Periksa input Anda.",
+            "permissionDenied": "Permission denied. Please contact support.",
+            "sessionExpired": "Sesi berakhir. Login lagi.",
+            "invalidCredentials": "Kredensial tidak valid. Periksa input Anda.",
+            "emailNotFound": "Email tidak ditemukan. Coba lagi.",
+            "usernameAlreadyExists": "Username sudah ada. Pilih yang lain.",
+            "emailAlreadyExists": "Email sudah ada. Gunakan email lain.",
+            "invalidEmailFormat": "Format email tidak valid. Masukkan email yang valid.",
+            "passwordTooWeak": "Kata sandi terlalu lemah. Pilih kata sandi yang lebih kuat.",
+            "passwordsDoNotMatch": "Kata sandi tidak cocok. Coba lagi.",
+            "requiredFieldMissing": "Field wajib tidak ada. Harap isi semua field wajib.",
+            "invalidInput": "Input tidak valid. Periksa data Anda.",
+            "fileTooLarge": "File terlalu besar. Pilih file yang lebih kecil.",
+            "unsupportedFileType": "Jenis file tidak didukung. Pilih file lain.",
+            "uploadLimitExceeded": "Batas unggah terlampaui. Coba lagi nanti.",
+            "operationTimeout": "Operasi habis waktu. Coba lagi.",
+            "serviceUnavailable": "Layanan tidak tersedia. Coba lagi nanti.",
+            "maintenanceMode": "Layanan sedang dalam pemeliharaan. Coba lagi nanti.",
+            "rateLimitExceeded": "Terlalu banyak permintaan. Coba lagi nanti.",
+            "quotaExceeded": "Kuota terlampaui. Coba lagi nanti.",
+            "accessDenied": "Akses ditolak. Anda tidak memiliki izin untuk melakukan tindakan ini.",
+            "resourceNotFound": "Sumber daya tidak ditemukan. Periksa permintaan Anda.",
+            "conflictError": "Kesalahan konflik. Sumber daya sudah ada.",
+            "preconditionFailed": "Prasyarat gagal. Periksa permintaan Anda.",
+            "tooManyAttempts": "Terlalu banyak percobaan. Coba lagi nanti.",
+            "accountLocked": "Akun terkunci. Hubungi dukungan.",
+            "accountSuspended": "Akun ditangguhkan. Hubungi dukungan.",
+            "accountDeleted": "Akun dihapus. Hubungi dukungan.",
+            "emailNotVerified": "Email belum diverifikasi. Harap verifikasi email Anda terlebih dahulu.",
+            "phoneNotVerified": "Nomor telepon belum diverifikasi. Harap verifikasi telepon Anda terlebih dahulu.",
+            "twoFactorRequired": "Autentikasi dua faktor diperlukan.",
+            "twoFactorFailed": "Autentikasi dua faktor gagal. Coba lagi.",
+            "captchaFailed": "Verifikasi captcha gagal. Coba lagi.",
+            "invalidToken": "Token tidak valid. Coba lagi.",
+            "expiredToken": "Token telah berakhir. Coba lagi.",
+            "invalidCode": "Kode tidak valid. Periksa input Anda.",
+            "expiredCode": "Kode telah berakhir. Harap minta kode baru.",
+            "codeLimitExceeded": "Batas kode terlampaui. Coba lagi nanti.",
+            "invalidUsername": "Username tidak valid. Periksa input Anda.",
+            "usernameTooShort": "Username terlalu pendek. Pilih username yang lebih panjang.",
+            "usernameTooLong": "Username terlalu panjang. Pilih username yang lebih pendek.",
+            "usernameInvalidChars": "Username berisi karakter tidak valid. Gunakan hanya huruf, angka, dan tanda hubung.",
+            "usernameReserved": "Username sudah dipesan. Pilih username lain.",
+            "usernameProfanity": "Username berisi konten yang tidak pantas. Pilih username lain.",
+            "primaryAddressRequired": "Alamat utama diperlukan",
+            "addressRequired": "Alamat diperlukan",
+            "cityRequired": "Kota diperlukan",
+            "stateRequired": "Provinsi diperlukan",
+            "countryRequired": "Negara diperlukan",
+            "postalCodeRequired": "Kode pos diperlukan",
+            "mobileNumberRequired": "Nomor ponsel diperlukan",
+            "mobileNumberInvalid": "Format nomor ponsel tidak valid",
+            "mobileNumberTooShort": "Nomor ponsel terlalu pendek",
+            "mobileNumberTooLong": "Nomor ponsel terlalu panjang",
+            "bioRequired": "Bio diperlukan",
+            "bioTooLong": "Bio terlalu panjang. Harap tetap di bawah 250 karakter",
+            "displayNameRequired": "Nama tampilan diperlukan",
+            "displayNameTooShort": "Nama tampilan terlalu pendek",
+            "displayNameTooLong": "Nama tampilan terlalu panjang",
+            "accountTypeRequired": "Jenis akun diperlukan",
+            "invalidAccountType": "Jenis akun tidak valid dipilih",
+            "imageRequired": "Gambar diperlukan",
+            "imageTooLarge": "Gambar terlalu besar. Pilih gambar yang lebih kecil",
+            "unsupportedImageFormat": "Format gambar tidak didukung. Gunakan JPG, PNG, atau GIF",
+            "imageProcessingFailed": "Pemrosesan gambar gagal. Coba lagi",
+            "imageCorrupted": "Gambar rusak. Pilih gambar lain",
+            "imageDimensionsInvalid": "Dimensi gambar tidak valid. Pilih gambar lain",
+            "imageSizeInvalid": "Ukuran gambar tidak valid. Pilih gambar lain",
+            "imageFormatInvalid": "Format gambar tidak valid. Pilih gambar lain",
+            "imageQualityTooLow": "Kualitas gambar terlalu rendah. Pilih gambar dengan kualitas lebih tinggi",
+            "imageTooSmall": "Gambar terlalu kecil. Pilih gambar yang lebih besar",
+            "imageTooBig": "Gambar terlalu besar. Pilih gambar yang lebih kecil",
+            "imageAspectRatioInvalid": "Rasio aspek gambar tidak valid. Pilih gambar lain",
+            "imageColorSpaceInvalid": "Ruang warna gambar tidak valid. Pilih gambar lain",
+            "imageMetadataInvalid": "Metadata gambar tidak valid. Pilih gambar lain",
+            "imageSecurityViolation": "Pelanggaran keamanan gambar. Pilih gambar lain",
+            "imageVirusDetected": "Virus terdeteksi dalam gambar. Pilih gambar lain",
+            "imageMalwareDetected": "Malware terdeteksi dalam gambar. Pilih gambar lain",
+            "imageSpamDetected": "Spam terdeteksi dalam gambar. Pilih gambar lain",
+            "imageContentInappropriate": "Konten gambar tidak pantas. Pilih gambar lain",
+            "imageContentViolent": "Konten gambar mengandung kekerasan. Pilih gambar lain",
+            "imageContentSexual": "Konten gambar bersifat seksual. Pilih gambar lain",
+            "imageContentHateful": "Konten gambar mengandung kebencian. Pilih gambar lain",
+            "imageContentDiscriminatory": "Konten gambar diskriminatif. Pilih gambar lain",
+            "imageContentOffensive": "Konten gambar menyinggung. Pilih gambar lain",
+            "imageContentAbusive": "Konten gambar kasar. Pilih gambar lain",
+            "imageContentHarassing": "Konten gambar melecehkan. Pilih gambar lain",
+            "imageContentThreatening": "Konten gambar mengancam. Pilih gambar lain",
+            "imageContentDangerous": "Konten gambar berbahaya. Pilih gambar lain",
+            "imageContentIllegal": "Konten gambar ilegal. Pilih gambar lain",
+            "imageContentCopyright": "Konten gambar melanggar hak cipta. Pilih gambar lain",
+            "imageContentTrademark": "Konten gambar melanggar merek dagang. Pilih gambar lain",
+            "imageContentPrivacy": "Konten gambar melanggar privasi. Pilih gambar lain",
+            "imageContentConsent": "Konten gambar tidak memiliki persetujuan. Pilih gambar lain",
+            "imageContentMinors": "Konten gambar melibatkan anak di bawah umur. Pilih gambar lain",
+            "imageContentAnimals": "Konten gambar melibatkan kekejaman terhadap hewan. Pilih gambar lain",
+            "imageContentEnvironment": "Konten gambar merugikan lingkungan. Pilih gambar lain",
+            "imageContentHealth": "Konten gambar merugikan kesehatan. Pilih gambar lain",
+            "imageContentSafety": "Konten gambar merugikan keselamatan. Pilih gambar lain",
+            "imageContentSecurity": "Konten gambar merugikan keamanan. Pilih gambar lain",
+            "imageContentIntegrity": "Konten gambar merugikan integritas. Pilih gambar lain",
+            "imageContentReputation": "Konten gambar merugikan reputasi. Pilih gambar lain",
+            "imageContentBrand": "Konten gambar merugikan merek. Pilih gambar lain",
+            "imageContentBusiness": "Konten gambar merugikan bisnis. Pilih gambar lain",
+            "imageContentPersonal": "Konten gambar merugikan kepentingan pribadi. Pilih gambar lain",
+            "imageContentProfessional": "Konten gambar merugikan kepentingan profesional. Pilih gambar lain",
+            "imageContentAcademic": "Konten gambar merugikan kepentingan akademik. Pilih gambar lain",
+            "imageContentCultural": "Konten gambar merugikan kepentingan budaya. Pilih gambar lain",
+            "imageContentReligious": "Konten gambar merugikan kepentingan agama. Pilih gambar lain",
+            "imageContentPolitical": "Konten gambar merugikan kepentingan politik. Pilih gambar lain",
+            "imageContentSocial": "Konten gambar merugikan kepentingan sosial. Pilih gambar lain",
+            "imageContentEconomic": "Konten gambar merugikan kepentingan ekonomi. Pilih gambar lain",
+            "imageContentLegal": "Konten gambar merugikan kepentingan hukum. Pilih gambar lain",
+            "imageContentEthical": "Konten gambar merugikan kepentingan etis. Pilih gambar lain",
+            "imageContentMoral": "Konten gambar merugikan kepentingan moral. Pilih gambar lain",
+            "imageContentSpiritual": "Konten gambar merugikan kepentingan spiritual. Pilih gambar lain",
+            "imageContentPhilosophical": "Konten gambar merugikan kepentingan filosofis. Pilih gambar lain",
+            "imageContentScientific": "Konten gambar merugikan kepentingan ilmiah. Pilih gambar lain",
+            "imageContentTechnical": "Konten gambar merugikan kepentingan teknis. Pilih gambar lain",
+            "imageContentArtistic": "Konten gambar merugikan kepentingan artistik. Pilih gambar lain",
+            "imageContentCreative": "Konten gambar merugikan kepentingan kreatif. Pilih gambar lain",
+            "imageContentIntellectual": "Konten gambar merugikan kepentingan intelektual. Pilih gambar lain",
+            "imageContentEducational": "Konten gambar merugikan kepentingan pendidikan. Pilih gambar lain",
+            "imageContentInformational": "Konten gambar merugikan kepentingan informasi. Pilih gambar lain",
+            "imageContentNews": "Konten gambar merugikan kepentingan berita. Pilih gambar lain",
+            "imageContentMedia": "Konten gambar merugikan kepentingan media. Pilih gambar lain",
+            "imageContentEntertainment": "Konten gambar merugikan kepentingan hiburan. Pilih gambar lain",
+            "imageContentSports": "Konten gambar merugikan kepentingan olahraga. Pilih gambar lain",
+            "imageContentRecreation": "Konten gambar merugikan kepentingan rekreasi. Pilih gambar lain",
+            "imageContentLeisure": "Konten gambar merugikan kepentingan waktu luang. Pilih gambar lain",
+            "imageContentHobby": "Konten gambar merugikan kepentingan hobi. Pilih gambar lain",
+            "imageContentInterest": "Konten gambar merugikan kepentingan minat. Pilih gambar lain",
+            "imageContentPassion": "Konten gambar merugikan kepentingan passion. Pilih gambar lain",
+            "imageContentLove": "Konten gambar merugikan kepentingan cinta. Pilih gambar lain",
+            "imageContentHate": "Konten gambar merugikan kepentingan kebencian. Pilih gambar lain",
+            "imageContentAnger": "Konten gambar merugikan kepentingan kemarahan. Pilih gambar lain",
+            "imageContentFear": "Konten gambar merugikan kepentingan ketakutan. Pilih gambar lain",
+            "imageContentSadness": "Konten gambar merugikan kepentingan kesedihan. Pilih gambar lain",
+            "imageContentJoy": "Konten gambar merugikan kepentingan kegembiraan. Pilih gambar lain",
+            "imageContentHappiness": "Konten gambar merugikan kepentingan kebahagiaan. Pilih gambar lain",
+            "imageContentExcitement": "Konten gambar merugikan kepentingan kegembiraan. Pilih gambar lain",
+            "imageContentSurprise": "Konten gambar merugikan kepentingan kejutan. Pilih gambar lain",
+            "imageContentDisgust": "Konten gambar merugikan kepentingan jijik. Pilih gambar lain",
+            "imageContentShame": "Konten gambar merugikan kepentingan rasa malu. Pilih gambar lain",
+            "imageContentGuilt": "Konten gambar merugikan kepentingan rasa bersalah. Pilih gambar lain",
+            "imageContentPride": "Konten gambar merugikan kepentingan kebanggaan. Pilih gambar lain",
+            "imageContentEnvy": "Konten gambar merugikan kepentingan iri hati. Pilih gambar lain",
+            "imageContentJealousy": "Konten gambar merugikan kepentingan kecemburuan. Pilih gambar lain",
+            "imageContentGreed": "Konten gambar merugikan kepentingan keserakahan. Pilih gambar lain",
+            "imageContentLust": "Konten gambar merugikan kepentingan nafsu. Pilih gambar lain",
+            "imageContentGluttony": "Konten gambar merugikan kepentingan kerakusan. Pilih gambar lain",
+            "imageContentSloth": "Konten gambar merugikan kepentingan kemalasan. Pilih gambar lain",
+            "imageContentWrath": "Konten gambar merugikan kepentingan kemarahan. Pilih gambar lain"
+        },
+        "warning": {
+            "usernameCooldown": "Perubahan username sementara dikunci karena periode cooldown",
+            "passwordWeak": "Kata sandi lemah. Pertimbangkan menggunakan kata sandi yang lebih kuat",
+            "emailNotVerified": "Email belum diverifikasi. Harap verifikasi email Anda",
+            "phoneNotVerified": "Nomor telepon belum diverifikasi. Harap verifikasi telepon Anda",
+            "profileIncomplete": "Profil tidak lengkap. Lengkapi profil Anda",
+            "settingsNotSaved": "Pengaturan tidak disimpan. Simpan pengaturan Anda",
+            "dataNotSaved": "Data tidak disimpan. Simpan data Anda",
+            "changesNotSaved": "Perubahan tidak disimpan. Simpan perubahan Anda",
+            "fileNotUploaded": "File tidak diunggah. Unggah file Anda",
+            "imageNotUploaded": "Gambar tidak diunggah. Unggah gambar Anda",
+            "linkNotCopied": "Tautan tidak disalin. Salin tautan Anda",
+            "emailNotSent": "Email tidak terkirim. Kirim email Anda",
+            "notificationNotSent": "Notifikasi tidak terkirim. Kirim notifikasi Anda",
+            "actionNotCompleted": "Tindakan tidak selesai. Selesaikan tindakan Anda",
+            "formNotSubmitted": "Formulir tidak dikirim. Kirim formulir Anda",
+            "onboardingNotCompleted": "Onboarding tidak selesai. Selesaikan onboarding Anda",
+            "accountNotActivated": "Akun tidak diaktifkan. Aktifkan akun Anda",
+            "passwordNotChanged": "Kata sandi tidak diubah. Ubah kata sandi Anda",
+            "usernameNotChanged": "Username tidak diubah. Ubah username Anda",
+            "profileNotCompleted": "Profil tidak selesai. Selesaikan profil Anda",
+            "setupNotCompleted": "Pengaturan tidak selesai. Selesaikan pengaturan Anda",
+            "networkSlow": "Jaringan lambat. Periksa koneksi Anda",
+            "serverSlow": "Server lambat. Coba lagi nanti",
+            "validationPending": "Validasi tertunda. Harap tunggu",
+            "permissionPending": "Izin tertunda. Harap tunggu",
+            "sessionExpiring": "Sesi akan berakhir. Login lagi",
+            "credentialsExpiring": "Kredensial akan berakhir. Perbarui kredensial Anda",
+            "emailExpiring": "Email akan berakhir. Perbarui email Anda",
+            "phoneExpiring": "Telepon akan berakhir. Perbarui telepon Anda",
+            "profileExpiring": "Profil akan berakhir. Perbarui profil Anda",
+            "settingsExpiring": "Pengaturan akan berakhir. Perbarui pengaturan Anda",
+            "dataExpiring": "Data akan berakhir. Perbarui data Anda",
+            "changesExpiring": "Perubahan akan berakhir. Perbarui perubahan Anda",
+            "fileExpiring": "File akan berakhir. Perbarui file Anda",
+            "imageExpiring": "Gambar akan berakhir. Perbarui gambar Anda",
+            "linkExpiring": "Tautan akan berakhir. Perbarui tautan Anda",
+            "notificationExpiring": "Notifikasi akan berakhir. Perbarui notifikasi Anda",
+            "actionExpiring": "Tindakan akan berakhir. Perbarui tindakan Anda",
+            "formExpiring": "Formulir akan berakhir. Perbarui formulir Anda",
+            "onboardingExpiring": "Onboarding akan berakhir. Perbarui onboarding Anda",
+            "accountExpiring": "Akun akan berakhir. Perbarui akun Anda",
+            "passwordExpiring": "Kata sandi akan berakhir. Perbarui kata sandi Anda",
+            "usernameExpiring": "Username akan berakhir. Perbarui username Anda",
+            "setupExpiring": "Pengaturan akan berakhir. Perbarui pengaturan Anda"
+        },
+        "info": {
+            "loading": "Memuat...",
+            "processing": "Memproses...",
+            "saving": "Menyimpan...",
+            "uploading": "Mengunggah...",
+            "downloading": "Mengunduh...",
+            "connecting": "Menghubungkan...",
+            "disconnecting": "Memutuskan...",
+            "sending": "Mengirim...",
+            "receiving": "Menerima...",
+            "updating": "Memperbarui...",
+            "refreshing": "Menyegarkan...",
+            "synchronizing": "Menyinkronkan...",
+            "validating": "Memvalidasi...",
+            "verifying": "Memverifikasi...",
+            "checking": "Memeriksa...",
+            "searching": "Mencari...",
+            "filtering": "Menyaring...",
+            "sorting": "Mengurutkan...",
+            "organizing": "Mengatur...",
+            "arranging": "Mengatur...",
+            "configuring": "Mengonfigurasi...",
+            "setting": "Mengatur...",
+            "adjusting": "Menyesuaikan...",
+            "modifying": "Memodifikasi...",
+            "changing": "Mengubah...",
+            "switching": "Beralih...",
+            "toggling": "Mengalihkan...",
+            "enabling": "Mengaktifkan...",
+            "disabling": "Menonaktifkan...",
+            "activating": "Mengaktifkan...",
+            "deactivating": "Menonaktifkan...",
+            "starting": "Memulai...",
+            "stopping": "Menghentikan...",
+            "pausing": "Menjeda...",
+            "resuming": "Melanjutkan...",
+            "restarting": "Memulai ulang...",
+            "resetting": "Mengatur ulang...",
+            "clearing": "Membersihkan...",
+            "deleting": "Menghapus...",
+            "removing": "Menghapus...",
+            "adding": "Menambahkan...",
+            "inserting": "Menyisipkan...",
+            "creating": "Membuat...",
+            "building": "Membangun...",
+            "constructing": "Membangun...",
+            "generating": "Menghasilkan...",
+            "producing": "Memproduksi...",
+            "making": "Membuat...",
+            "preparing": "Mempersiapkan...",
+            "readying": "Mempersiapkan...",
+            "initializing": "Menginisialisasi...",
+            "launching": "Meluncurkan...",
+            "opening": "Membuka...",
+            "closing": "Menutup...",
+            "shutting": "Menutup...",
+            "ending": "Mengakhiri...",
+            "finishing": "Menyelesaikan...",
+            "completing": "Menyelesaikan...",
+            "finalizing": "Menyelesaikan...",
+            "concluding": "Menyimpulkan...",
+            "terminating": "Mengakhiri...",
+            "canceling": "Membatalkan...",
+            "aborting": "Menghentikan...",
+            "interrupting": "Mengganggu...",
+            "halting": "Menghentikan...",
+            "freezing": "Membekukan...",
+            "unfreezing": "Mencairkan...",
+            "thawing": "Mencairkan...",
+            "melting": "Melelehkan...",
+            "cooling": "Mendinginkan...",
+            "heating": "Memanas...",
+            "warming": "Menghangatkan...",
+            "chilling": "Mendinginkan...",
+            "renewing": "Memperbarui...",
+            "restoring": "Memulihkan...",
+            "recovering": "Memulihkan...",
+            "repairing": "Memperbaiki...",
+            "fixing": "Memperbaiki...",
+            "correcting": "Memperbaiki...",
+            "tuning": "Menyetel...",
+            "optimizing": "Mengoptimalkan...",
+            "improving": "Meningkatkan...",
+            "enhancing": "Meningkatkan...",
+            "upgrading": "Meningkatkan...",
+            "modernizing": "Memodernisasi..."
+        }
+    },
+    "emailVerification": {
+        "title": "Verify Your Email",
+        "description": "We\u0027ve sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
+        "checkEmail": "Check your email",
+        "emailSent": "Verification email sent!",
+        "resendEmail": "Resend Email",
+        "resendIn": "Resend in",
+        "seconds": "seconds",
+        "didntReceive": "Didn\u0027t receive the email?",
+        "checkSpam": "Please check your spam folder or try again.",
+        "backToLogin": "Back to Login",
+        "emailAddress": "Email Address",
+        "verificationSent": "Verification email sent to:",
+        "clickLink": "Click the link in the email to verify your account.",
+        "expiresIn": "This link expires in 24 hours.",
+        "needHelp": "Need help?",
+        "contactSupport": "Contact Support"
+    },
+    "settings": {
+        "title": "Pengaturan",
+        "account": {
+            "heading": "Akun",
+            "security": {
+                "title": "Akun dan Keamanan"
+            },
+            "changePassword": {
+                "text": "Ubah kata sandi?",
+                "button": "Ubah kata sandi",
+                "modalTitle": "Ubah kata sandi",
+                "currentPassword": "Kata sandi saat ini",
+                "newPassword": "Kata sandi baru",
+                "confirmPassword": "Konfirmasi kata sandi baru",
+                "updateButton": "Perbarui kata sandi",
+                "currentPasswordPlaceholder": "Masukkan kata sandi saat ini",
+                "newPasswordPlaceholder": "Masukkan kata sandi baru",
+                "confirmPasswordPlaceholder": "Masukkan ulang kata sandi baru",
+                "successMessage": "Kata sandi berhasil diperbarui. Anda akan diarahkan ke halaman masuk untuk keamanan.",
+                "redirectMessage": "Mengarahkan ke halaman masuk untuk keamanan...",
+                "description": "Perbarui kata sandi Anda untuk menjaga keamanan akun Anda"
+            },
+            "deactivateAccount": {
+                "text": "Nonaktifkan akun Anda?",
+                "button": "Nonaktifkan akun",
+                "modalTitle": "Nonaktifkan akun Anda?",
+                "modalDescription": "Apakah Anda yakin ingin menonaktifkan akun Anda?",
+                "enterUsername": "Masukkan nama pengguna Anda",
+                "enterPassword": "Masukkan kata sandi Anda",
+                "usernamePlaceholder": "Masukkan nama pengguna Anda",
+                "passwordPlaceholder": "Masukkan kata sandi saat ini",
+                "confirmButton": "Nonaktifkan akun saya",
+                "deactivatedButton": "Dinonaktifkan",
+                "successMessage": "Akun berhasil dinonaktifkan",
+                "activatedMessage": "Akun berhasil diaktifkan",
+                "description": "Nonaktifkan sementara akun Anda"
+            },
+            "deleteAccount": {
+                "text": "Hapus akun Anda?",
+                "button": "Hapus akun",
+                "step1": {
+                    "modalTitle": "Hapus akun Anda?",
+                    "modalDescription": "Apakah Anda yakin ingin menghapus akun Anda? Tindakan ini tidak dapat dibatalkan.",
+                    "modalDescription2": "Jika Anda ingin menyimpan data Anda, Anda dapat menonaktifkan akun Anda sebagai gantinya.",
+                    "deactivateInsteadButton": "Nonaktifkan akun sebagai gantinya",
+                    "continueButton": "Lanjutkan penghapusan"
+                },
+                "step2": {
+                    "modalTitle": "Masukkan detail Anda",
+                    "enterUsername": "Masukkan nama pengguna Anda",
+                    "enterPassword": "Masukkan kata sandi Anda",
+                    "confirmPassword": "Konfirmasi kata sandi Anda",
+                    "usernamePlaceholder": "Masukkan nama pengguna Anda",
+                    "passwordPlaceholder": "Masukkan kata sandi Anda",
+                    "confirmPasswordPlaceholder": "Konfirmasi kata sandi Anda",
+                    "continueButton": "Lanjutkan"
+                },
+                "step3": {
+                    "modalTitle": "Mengapa Anda pergi?",
+                    "reasonPlaceholder": "Silakan beri tahu kami alasan Anda pergi...",
+                    "continueButton": "Lanjutkan"
+                },
+                "step4": {
+                    "modalTitle": "Konfirmasi penghapusan",
+                    "confirmText": "Ketik \u0027CONFIRM DELETE\u0027 untuk melanjutkan",
+                    "confirmPlaceholder": "Ketik \u0027CONFIRM DELETE\u0027 untuk konfirmasi",
+                    "deleteButton": "Hapus akun saya",
+                    "confirmationRequired": "Silakan ketik \u0027CONFIRM DELETE\u0027 untuk konfirmasi.",
+                    "reasonRequired": "Silakan berikan alasan untuk pergi.",
+                    "successMessage": "Akun berhasil dihapus."
+                },
+                "description": "Hapus permanen akun Anda dan semua data"
+            }
+        },
+        "languagePreference": {
+            "heading": "Preferensi bahasa",
+            "selectLanguage": "Pilih bahasa Anda",
+            "availableLanguages": "Pilih dari 47 bahasa yang tersedia",
+            "currentLanguage": "Saat ini: {{flag}} {{name}}",
+            "languageChanged": "Bahasa diubah ke {{name}}",
+            "description": "Pilih bahasa pilihan Anda untuk antarmuka. Ini akan mengubah bahasa semua teks, tombol, dan menu di seluruh aplikasi."
+        },
+        "subtitle": "Kelola pengaturan dan preferensi akun Anda"
+    },
+    "seo": {
+        "loginTitle": "Login to explorers | Access Your Personalized Recommendations \u0026 Places",
+        "registerTitle": "Sign Up for explorers | Join the Community \u0026 Share Your Favorite Local Places"
+    },
+    "sidebar": {
+        "home": "Beranda",
+        "profile": "Profil",
+        "recommendations": "Rekomendasi",
+        "analytics": "Analitik",
+        "settings": "Pengaturan",
+        "logout": "Keluar",
+        "loading": "Memuat...",
+        "clickToOpenMenu": "Klik untuk membuka menu"
+    },
+    "modal": {
+        "unsavedChanges": {
+            "title": "Perubahan yang belum disimpan",
+            "message": "Anda memiliki perubahan yang belum disimpan yang akan hilang jika Anda menavigasi pergi. Apa yang ingin Anda lakukan?",
+            "discard": "Buang",
+            "cancel": "Batal",
+            "save": "Simpan"
+        },
+        "usernameChange": {
+            "title": "Konfirmasi perubahan nama pengguna",
+            "description": "Nama pengguna Anda digunakan dalam tautan profil dan daftar rekomendasi:",
+            "profileLabel": "Profil:",
+            "listLabel": "Daftar:",
+            "warning": "Setiap kode QR atau tautan dengan nama pengguna lama Anda tidak akan berfungsi lagi — Anda perlu memperbarui dan membagikannya lagi.",
+            "cooldownPrefix": "Anda akan dapat mengubah nama pengguna Anda lagi dalam",
+            "cooldownSuffix": "setelah pembaruan ini.",
+            "minute": "1 menit",
+            "day": "1 hari",
+            "days": "hari",
+            "cancel": "Batal",
+            "confirm": "Ubah nama pengguna"
+        }
+    },
+    "analytics": {
+        "dashboard": {
+            "title": "Dashboard Analytics",
+            "subtitle": "Lacak performa kode QR Anda dan keterlibatan pengguna",
+            "timePeriod": "Periode Waktu:",
+            "timeFilter": {
+                "today": "Hari Ini",
+                "last7days": "7 Hari Terakhir",
+                "last30days": "30 Hari Terakhir",
+                "custom": "Rentang Kustom",
+                "selectPeriod": "Pilih Periode"
+            },
+            "dateRange": {
+                "from": "Dari:",
+                "to": "Hingga:"
+            },
+            "summaryCards": {
+                "totalViews": "Total Tampilan",
+                "totalClicks": "Total Klik",
+                "totalQRViews": "Total Tampilan QR",
+                "totalLinkViews": "Total Tampilan Tautan"
+            },
+            "loading": {
+                "loadingData": "Memuat data analytics...",
+                "resolvingCountry": "Menyelesaikan data negara..."
+            },
+            "error": {
+                "title": "Kesalahan Memuat Analytics",
+                "message": "Tidak dapat mengambil data analytics. Silakan coba lagi nanti.",
+                "errorLabel": "Kesalahan:"
+            },
+            "comingSoon": {
+                "title": "Analytics Segera Hadir",
+                "message": "Analytics akan tersedia dalam \u003cstrong\u003e{{days}} hari{{daysPlural}}\u003c/strong\u003e setelah pembuatan akun Anda.",
+                "whyWait": {
+                    "title": "Mengapa menunggu?",
+                    "reasons": {
+                        "accuracy": "• Memastikan keakuratan data dan mencegah spam",
+                        "interactions": "• Memberikan waktu untuk interaksi pengguna yang bermakna",
+                        "insights": "• Memberikan wawasan analytics yang dapat diandalkan"
+                    }
+                },
+                "tip": "Sementara itu, mulailah berbagi kode QR Anda untuk menghasilkan data untuk saat analytics tersedia!",
+                "filterTip": "\u003cstrong\u003eTips:\u003c/strong\u003e Setelah analytics tersedia, Anda akan dapat memfilter berdasarkan periode waktu (hari ini, 7 hari terakhir, 30 hari terakhir, atau rentang kustom) untuk melihat data Anda."
+            },
+            "emptyState": {
+                "title": "Tidak Ada Data Analytics",
+                "noDataMessage": "Tidak ada data analytics yang ditemukan untuk akun Anda. Analytics akan muncul di sini begitu orang mulai melihat dan berinteraksi dengan kode QR Anda.",
+                "customRange": {
+                    "bothMissing": "Silakan pilih tanggal mulai dan akhir untuk rentang kustom untuk melihat data analytics.",
+                    "startMissing": "Silakan pilih tanggal mulai untuk rentang kustom untuk melihat data analytics.",
+                    "endMissing": "Silakan pilih tanggal akhir untuk rentang kustom untuk melihat data analytics."
+                },
+                "noDataForPeriod": {
+                    "today": "Tidak ada data analytics tersedia untuk hari ini. Silakan pilih rentang waktu yang berbeda untuk melihat data Anda.",
+                    "last7days": "Tidak ada data analytics tersedia untuk 7 hari terakhir. Silakan pilih rentang waktu yang berbeda untuk melihat data Anda.",
+                    "last30days": "Tidak ada data analytics tersedia untuk 30 hari terakhir. Silakan pilih rentang waktu yang berbeda untuk melihat data Anda.",
+                    "custom": "Tidak ada data analytics tersedia untuk rentang kustom ({{startDate}} hingga {{endDate}}). Silakan pilih rentang waktu yang berbeda untuk melihat data Anda.",
+                    "default": "Tidak ada data analytics tersedia untuk rentang waktu yang dipilih. Silakan pilih rentang waktu yang berbeda untuk melihat data Anda."
+                },
+                "howToStart": {
+                    "title": "Untuk mulai melihat analytics:",
+                    "shareQR": "• Bagikan kode QR Anda di media sosial",
+                    "includeQR": "• Sertakan kode QR dalam materi pemasaran Anda",
+                    "askFriends": "• Minta teman untuk memindai kode QR Anda",
+                    "viewProfile": "• Lihat halaman profil publik Anda"
+                }
+            },
+            "charts": {
+                "topCountries": {
+                    "title": "3 Negara Teratas berdasarkan Tampilan",
+                    "retryGeolocation": "Coba Geolokasi Lagi",
+                    "geolocationIssue": "Masalah Geolokasi:",
+                    "countryDataUnavailable": "Data Negara Tidak Tersedia",
+                    "unableToResolve": "Tidak dapat menyelesaikan alamat IP ke negara saat ini. Ini mungkin karena pembatasan jaringan atau keterbatasan layanan.",
+                    "failedToResolve": "Gagal menyelesaikan data negara. Silakan coba lagi nanti.",
+                    "analyticsSummary": "Ringkasan Analytics:",
+                    "totalViewEvents": "• {{count}} total acara tampilan",
+                    "eventsWithCountry": "• {{count}} acara dengan data negara",
+                    "eventsPending": "• {{count}} acara yang menunggu geolokasi",
+                    "willAppear": "Data negara akan muncul secara otomatis begitu layanan geolokasi IP tersedia.",
+                    "tooltip": {
+                        "country": "Negara: {{country}}",
+                        "views": "Tampilan: {{count}}"
+                    },
+                    "legend": "Tampilan"
+                },
+                "worldMap": {
+                    "title": "Distribusi Tampilan Global",
+                    "subtitle": "Peta dunia interaktif yang menunjukkan distribusi tampilan di negara-negara dari halaman publik",
+                    "noGeographicData": "Tidak Ada Data Geografis Tersedia",
+                    "unableToResolve": "Tidak dapat menyelesaikan alamat IP ke negara saat ini. Ini mungkin karena pembatasan jaringan atau keterbatasan layanan.",
+                    "failedToResolve": "Gagal menyelesaikan data negara. Silakan coba lagi nanti.",
+                    "analyticsSummary": "Ringkasan Analytics:",
+                    "totalViewEvents": "• {{count}} total acara tampilan",
+                    "eventsWithCountry": "• {{count}} acara dengan data negara",
+                    "eventsPending": "• {{count}} acara yang menunggu geolokasi",
+                    "willAppear": "Data negara akan muncul secara otomatis begitu layanan geolokasi IP tersedia.",
+                    "tooltip": {
+                        "country": "{{country}}",
+                        "views": "{{views}} tampilan"
+                    },
+                    "countriesWithViews": "{{count}} negara dengan tampilan",
+                    "legend": {
+                        "views": "Tampilan:",
+                        "low": "Rendah",
+                        "medium": "Sedang",
+                        "high": "Tinggi",
+                        "highest": "Tertinggi"
+                    }
+                },
+                "trafficSource": {
+                    "title": "Sumber Lalu Lintas Seiring Waktu",
+                    "subtitle": "Lacak bagaimana lalu lintas dari berbagai sumber bervariasi seiring waktu",
+                    "selectSource": "Pilih Sumber Lalu Lintas:",
+                    "allSources": "Semua Sumber",
+                    "direct": "Langsung",
+                    "qrCode": "Kode QR",
+                    "instagram": "Instagram",
+                    "whatsapp": "WhatsApp",
+                    "twitter": "Twitter",
+                    "noTrafficData": "Tidak Ada Data Lalu Lintas Tersedia",
+                    "noViewEvents": "Tidak ada acara tampilan yang ditemukan dengan informasi sumber lalu lintas.",
+                    "analyticsSummary": "Ringkasan Analytics:",
+                    "totalViewEvents": "• {{count}} total acara tampilan",
+                    "eventsWithUTM": "• {{count}} acara dengan sumber UTM",
+                    "directTraffic": "• {{count}} acara lalu lintas langsung",
+                    "willAppear": "Data sumber lalu lintas akan muncul begitu pengguna mengunjungi halaman Anda dengan parameter UTM.",
+                    "tooltip": {
+                        "sourceCount": "{{source}}: {{count}}"
+                    }
+                },
+                "locationEngagement": {
+                    "title": "Keterlibatan dengan Lokasi",
+                    "subtitle": "Lacak tampilan untuk berbagai lokasi seiring waktu",
+                    "selectLocation": "Pilih Lokasi:",
+                    "allLocations": "Semua Lokasi",
+                    "selectLocationPlaceholder": "Pilih Lokasi",
+                    "locationViews": "{{location}} ({{count}} tampilan)",
+                    "noLocationData": "Tidak ada data tampilan lokasi tersedia",
+                    "unknownLocation": "Lokasi Tidak Dikenal",
+                    "location": "Lokasi",
+                    "tooltip": {
+                        "date": "Tanggal: {{date}}",
+                        "locationViews": "{{location}}: {{value}} tampilan"
+                    },
+                    "stats": {
+                        "totalLocations": "Total Lokasi",
+                        "totalViews": "Total Tampilan",
+                        "avgViews": "Rata-rata Tampilan/Lokasi"
+                    }
+                },
+                "recommendedPlaces": {
+                    "title": "Keterlibatan dengan Tempat yang Direkomendasikan",
+                    "subtitle": "Lacak klik pada tempat yang direkomendasikan berdasarkan lokasi",
+                    "selectLocation": "Pilih Lokasi:",
+                    "selectLocationPlaceholder": "Pilih Lokasi",
+                    "locationPlaces": "{{location}} ({{count}} tempat)",
+                    "noRecommendationData": "Tidak Ada Data Rekomendasi",
+                    "noDataMessage": "Tidak ada data klik rekomendasi tersedia untuk periode yang dipilih.",
+                    "analyticsSummary": "Ringkasan Analytics:",
+                    "totalClickEvents": "• {{count}} total acara klik",
+                    "recordsWithRecommendations": "• {{count}} catatan dengan ID Rekomendasi",
+                    "uniqueRecommendations": "• {{count}} rekomendasi unik",
+                    "selectLocationPrompt": "Silakan pilih lokasi untuk melihat data rekomendasi.",
+                    "noClicksMessage": "Tidak ada klik rekomendasi ditemukan untuk lokasi yang dipilih. Data rekomendasi akan muncul begitu pengguna mengklik kartu tempat di halaman lokasi Anda.",
+                    "unknownPlace": "Tempat Tidak Dikenal",
+                    "unknownCategory": "Kategori Tidak Dikenal",
+                    "unknownLocation": "Lokasi Tidak Dikenal",
+                    "tooltip": {
+                        "place": "{{place}}",
+                        "category": "Kategori: {{category}}",
+                        "clicks": "Klik: {{count}}"
+                    },
+                    "stats": {
+                        "placesShown": "Tempat yang Ditampilkan",
+                        "totalClicks": "Total Klik",
+                        "avgClicks": "Rata-rata Klik/Tempat"
+                    }
+                },
+                "socialMedia": {
+                    "title": "Interaksi Media Sosial",
+                    "subtitle": "Lacak klik pada tautan media sosial dari profil publik Anda di semua platform",
+                    "noDataTitle": "Tidak Ada Data Interaksi Media Sosial",
+                    "noDataMessage": "Tidak ada data klik media sosial tersedia dari halaman profil publik Anda.",
+                    "analyticsSummary": "Ringkasan Analytics:",
+                    "totalSocialClicks": "• {{count}} total klik media sosial",
+                    "uniquePlatforms": "• {{count}} platform unik",
+                    "trackingNote": "• Hanya melacak klik dari halaman profil publik",
+                    "willAppear": "Data interaksi media sosial akan muncul begitu pengguna mengklik tautan media sosial Anda.",
+                    "tooltip": {
+                        "platform": "{{platform}}",
+                        "clicks": "Klik: {{count}}"
+                    },
+                    "stats": {
+                        "platforms": "Platform",
+                        "totalClicks": "Total Klik",
+                        "avgClicks": "Rata-rata Klik/Platform"
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,1987 @@
+﻿{
+    "header": {
+        "nav": {
+            "howItWorks": "Cum funcționează",
+            "whoIsFor": "Pentru cine",
+            "faq": "Întrebări frecvente",
+            "about": "Despre",
+            "contact": "Contact"
+        },
+        "auth": {
+            "login": "Autentificare",
+            "signUp": "Înregistrare"
+        }
+    },
+    "hero": {
+        "headline": "Toate recomandările tale într-un QR și link simplu.",
+        "subtext": "Împărtășește ceea ce știi și iubești despre un loc — și fă-l descoperibil pentru toți, oriunde",
+        "inputLabel": "Rezervă-ți URL-ul explorers:",
+        "inputPlaceholder": "numele tău",
+        "ctaButton": "Rezervă explorers",
+        "signupPrompt": "Înregistrează-te acum pentru a-ți lua al tău"
+    },
+    "sections": {
+        "createCustomize": {
+            "headline": "Creează și personalizează explorers-ul tău în minute",
+            "subtext": "Adaugă locurile tale preferate, organizează după oraș sau temă, și generează QR-ul instant.",
+            "bulletPoints": {
+                "addSpots": {
+                    "title": "Adaugă locurile tale preferate",
+                    "description": "Creează o listă cu must-visit-urile tale"
+                },
+                "organize": {
+                    "title": "Organizează după oraș sau temă",
+                    "description": "Creează categorii care au sens pentru publicul tău"
+                },
+                "generate": {
+                    "title": "Generează link-ul și QR-ul instant",
+                    "description": "QR-ul tău personalizat este gata în secunde"
+                },
+                "share": {
+                    "title": "Distribuie digital sau prin QR în lumea reală",
+                    "description": ""
+                }
+            },
+            "mockup": {
+                "title": "Recomandările Mele",
+                "addPlace": "Adaugă Loc"
+            }
+        },
+        "shareAnywhere": {
+            "headline": "Împărtășește pe social media, vitrine de magazine, sau pereți de oraș",
+            "subtext": "Adaugă în bio-ul tău Instagram, printează pe meniuri, sau include în cărți de bun venit — ghidul tău, întotdeauna gata.",
+            "scanText": "Scanează pentru recomandări locale",
+            "storefrontText": "Perfect pentru vitrine de magazine",
+            "instagramTitle": "Adaugă în bio-ul tău Instagram",
+            "instagramDesc": "Împărtășește cu urmăritorii tăi instant",
+            "menuTitle": "Printează pe meniuri",
+            "menuDesc": "Punctele de contact fizice făcute ușoare",
+            "welcomeTitle": "Include în cărți de bun venit",
+            "welcomeDesc": "Perfect pentru gazde și ghizi",
+            "cafeMenu": "Meniul cafenelei",
+            "tokyoFoodGuide": "Ghidul meu culinar Tokyo explorers.earth/jane"
+        },
+        "analytics": {
+            "headline": "Urmărește click-uri, referințe și angajament",
+            "subtext": "Vezi ce funcționează, cine scanează, și ce locuri primesc cea mai multă iubire — în timp real.",
+            "workingTitle": "Vezi ce funcționează",
+            "workingDesc": "Urmărește popularitatea recomandărilor tale",
+            "scanningTitle": "Cine scanează",
+            "scanningDesc": "Monitorizează scanările QR și actualizările",
+            "spotsTitle": "Locuri de top performanță",
+            "spotsDesc": "Perspective bazate pe date pentru o curatare mai bună",
+            "dashboardTitle": "Dashboard Analytics",
+            "last30Days": "Ultimele 30 de zile",
+            "totalScans": "Total Scanări",
+            "engagement": "Angajament",
+            "referrals": "Referințe"
+        },
+        "referEarn": {
+            "headline": "Împărtășește, referă și câștigă",
+            "subtext": "Transformă recomandările tale în recompense pasive — primește credit când alții folosesc QR-ul tău.",
+            "comingSoon": "Programul de recompense referințe (în curând)",
+            "rewardsTitle": "Câștigă Recompense",
+            "rewardsDesc": "Primește bani când oamenii folosesc recomandările tale",
+            "earnedThisMonth": "Câștigat luna aceasta",
+            "passiveTitle": "Transformă recomandările în recompense pasive",
+            "networkTitle": "Construiește rețeaua ta și câștigă automat"
+        },
+        "localTunes": {
+            "mainHeading": "Tunes",
+            "title": "Ascultă în timp ce explorezi",
+            "body": "Explorarea nu este doar vizuală. Sunetul poartă memorie, context și emoție.\n\nTunes îți permite să colectezi și să împărtășești coloane sonore pentru locuri, călătorii și stări de spirit — fie că este vorba despre muzică descoperită pe drum sau sunete care definesc un loc pentru tine.\n\nConectat perfect la profilul tău Explorer.",
+            "exploreButton": "Explorează Tunes",
+            "featuresHeading": "Funcții Puternice",
+            "features": {
+                "realtimeCollaboration": {
+                    "title": "Colaborare în Timp Real",
+                    "description": "Permite oaspeților să adauge melodii în lista ta de redare instantaneu, menținând controlul complet asupra a ceea ce se redă."
+                },
+                "qrCodeSharing": {
+                    "title": "Partajare Cod QR",
+                    "description": "Împărtășește experiența ta muzicală cu un simplu scanare cod QR — fără aplicații sau descărcări necesare."
+                },
+                "youtubeIntegration": {
+                    "title": "Integrare YouTube",
+                    "description": "Integrează-te perfect cu YouTube pentru a accesa milioane de melodii și a crea atmosfera perfectă."
+                },
+                "voteLikeSystem": {
+                    "title": "Sistem de Votare și Apreciere",
+                    "description": "Oaspeții pot vota pentru melodiile lor preferate pentru a influența coada listei de redare în timp real."
+                },
+                "silentParties": {
+                    "title": "Petreceri Silențioase",
+                    "description": "Organizează petreceri silențioase unice unde toată lumea ascultă prin propriile căști."
+                },
+                "karaokeReady": {
+                    "title": "Gata pentru Karaoke",
+                    "description": "Perfect pentru serile de karaoke cu liste de redare colaborative și cereri de melodii în timp real."
+                }
+            },
+            "venueHeading": "Perfect pentru Orice Loc",
+            "venues": {
+                "barsPubs": "Baruri și Puburi",
+                "restaurants": "Restaurante",
+                "coffeeShops": "Cafenele",
+                "eventsWeddings": "Evenimente și Nunti",
+                "retailStores": "Magazine",
+                "gymsFitness": "Săli de Sport și Fitness"
+            },
+            "closingStatement": "Tunes este \u003cstrong\u003egratuit\u003c/strong\u003e de explorat, iar pentru funcții plătite poți face upgrade mai târziu."
+        },
+        "whoIsFor": {
+            "headline": "Pentru cine este explorers.earth?",
+            "subtext": "explorers.earth este pentru oricine crede că împărtășirea este o responsabilitate — nu o transmisie.",
+            "cards": {
+                "individuals": {
+                    "title": "Indivizi",
+                    "oneLiner": "Împărtășește recomandări personale sau locale.",
+                    "items": {
+                        "traveler": {
+                            "label": "Călător",
+                            "oneLiner": "Oameni care împărtășesc locuri de călătorie"
+                        },
+                        "local": {
+                            "label": "Local",
+                            "oneLiner": "Localnici care împărtășesc sfaturi despre cartier"
+                        },
+                        "family": {
+                            "label": "Familie",
+                            "oneLiner": "Familii care împărtășesc locuri utile"
+                        },
+                        "student": {
+                            "label": "Student",
+                            "oneLiner": "Studenți care împărtășesc locuri din campus/în apropiere"
+                        },
+                        "nomad": {
+                            "label": "Nomad",
+                            "oneLiner": "Nomazi care listează spații prietenoase cu munca"
+                        },
+                        "emergencySharer": {
+                            "label": "Împărtășitor de Urgență",
+                            "oneLiner": "Împărtășitori de urgență care postează locuri esențiale"
+                        }
+                    }
+                },
+                "creators": {
+                    "title": "Creatori",
+                    "oneLiner": "Împărtășește liste curate cu publicul tău.",
+                    "items": {
+                        "influencer": {
+                            "label": "Influencer",
+                            "oneLiner": "Influenceri care împărtășesc alegerile de top"
+                        },
+                        "blogger": {
+                            "label": "Blogger",
+                            "oneLiner": "Bloggeri care curatează ghiduri scrise"
+                        },
+                        "vlogger": {
+                            "label": "Vlogger",
+                            "oneLiner": "Vloggeri care împărtășesc călătorii vizuale"
+                        },
+                        "reviewer": {
+                            "label": "Recenzent",
+                            "oneLiner": "Recenzenți care listează locurile cel mai bine evaluate"
+                        },
+                        "photographer": {
+                            "label": "Fotograf",
+                            "oneLiner": "Fotografi care împărtășesc locuri pentru fotografii"
+                        },
+                        "educator": {
+                            "label": "Educator",
+                            "oneLiner": "Educatori care împărtășesc ghiduri de învățare"
+                        },
+                        "communityLeader": {
+                            "label": "Lider de Comunitate",
+                            "oneLiner": "Lideri de comunitate care curatează liste utile"
+                        }
+                    }
+                },
+                "hospitality": {
+                    "title": "Ospitalitate",
+                    "oneLiner": "Oferă oaspeților perspective locale curate.",
+                    "items": {
+                        "hotel": {
+                            "label": "Hotel",
+                            "oneLiner": "Hoteluri care oferă ghiduri locale"
+                        },
+                        "airbnb": {
+                            "label": "Airbnb",
+                            "oneLiner": "Gazde care împărtășesc favoritele cartierului"
+                        },
+                        "hostel": {
+                            "label": "Hostel",
+                            "oneLiner": "Hosteluri care împărtășesc sfaturi pentru backpackeri"
+                        },
+                        "homestay": {
+                            "label": "Cazare la Domiciliu",
+                            "oneLiner": "Cazări la domiciliu care oferă ghiduri orientate către familie"
+                        },
+                        "resort": {
+                            "label": "Stațiune",
+                            "oneLiner": "Stațiuni care oferă liste de activități"
+                        },
+                        "pgColiving": {
+                            "label": "PG/Coliving",
+                            "oneLiner": "PG/Coliving care arată locuri importante din apropiere"
+                        }
+                    }
+                },
+                "businesses": {
+                    "title": "Afaceri",
+                    "oneLiner": "Ghidează clienții cu recomandări utile.",
+                    "items": {
+                        "restaurant": {
+                            "label": "Restaurant",
+                            "oneLiner": "Restaurante care împărtășesc feluri de mâncare de încercat"
+                        },
+                        "cafe": {
+                            "label": "Cafenea",
+                            "oneLiner": "Cafenele care evidențiază elementele preferate din meniu"
+                        },
+                        "retailShop": {
+                            "label": "Magazin",
+                            "oneLiner": "Magazine care împărtășesc recomandări de produse"
+                        },
+                        "gym": {
+                            "label": "Sala de Sport",
+                            "oneLiner": "Săli de sport care sugerează locuri locale de wellness"
+                        },
+                        "spa": {
+                            "label": "Spa",
+                            "oneLiner": "Spa-uri care listează opțiuni de relaxare din apropiere"
+                        },
+                        "salon": {
+                            "label": "Salon",
+                            "oneLiner": "Saloane care oferă ghiduri de frumusețe"
+                        },
+                        "clinic": {
+                            "label": "Clinica",
+                            "oneLiner": "Clinicile care împărtășesc locuri legate de sănătate"
+                        },
+                        "boutique": {
+                            "label": "Boutique",
+                            "oneLiner": "Boutique-uri care listează descoperiri curate"
+                        }
+                    }
+                },
+                "organizations": {
+                    "title": "Organizații",
+                    "oneLiner": "Oferă ghiduri și resurse curate.",
+                    "items": {
+                        "airline": {
+                            "label": "Companie Aeriană",
+                            "oneLiner": "Companii aeriene care împărtășesc ghiduri ale orașului"
+                        },
+                        "agency": {
+                            "label": "Agenție",
+                            "oneLiner": "Agenții de turism care listează locuri de vizitat"
+                        },
+                        "university": {
+                            "label": "Universitate",
+                            "oneLiner": "Universități care împărtășesc esențiale ale campusului"
+                        },
+                        "corporate": {
+                            "label": "Corporativ",
+                            "oneLiner": "Corporații care listează resurse din apropiere"
+                        },
+                        "airport": {
+                            "label": "Aeroport",
+                            "oneLiner": "Aeroporturi care oferă terminale + sfaturi despre oraș"
+                        },
+                        "railway": {
+                            "label": "Cale Ferată",
+                            "oneLiner": "Căi ferate care împărtășesc informații despre platformă"
+                        },
+                        "ngo": {
+                            "label": "ONG",
+                            "oneLiner": "ONG-uri care împărtășesc resurse ale comunității"
+                        },
+                        "government": {
+                            "label": "Guvern",
+                            "oneLiner": "Departamente care evidențiază servicii publice"
+                        }
+                    }
+                }
+            },
+            "useCases": {
+                "travelers": "Călători",
+                "travelersDesc": "Împărtășește bijuteriile descoperite cu colegii exploratori",
+                "influencers": "Influenceri",
+                "influencersDesc": "Monetizează cunoștințele locale și construiește comunitate",
+                "airbnbHosts": "Gazde Airbnb",
+                "airbnbHostsDesc": "Îmbunătățește experiența oaspeților cu perspective locale",
+                "hotels": "Hoteluri",
+                "hotelsDesc": "Oferă recomandări locale curate",
+                "restaurants": "Restaurante",
+                "restaurantsDesc": "Cross-promoție cu alte afaceri locale",
+                "cafes": "Cafenele",
+                "cafesDesc": "Împărtășește favoritele cartierului cu clienții",
+                "localGuides": "Ghizi Locali",
+                "localGuidesDesc": "Scalează expertiza ta dincolo de tururile individuale",
+                "creators": "Creatori",
+                "creatorsDesc": "Adaugă valoare dincolo de conținut cu sfaturi acționabile",
+                "tourOperators": "Operatorii de Tur",
+                "tourOperatorsDesc": "Extinde experiențele dincolo de tururile programate",
+                "anyBusiness": "Orice Afacere",
+                "anyBusinessDesc": "Construiește comunitate și loialitate clienți"
+            }
+        },
+        "testimonials": {
+            "headline": "Iubit de călători, creatori și gazde",
+            "subtext": "Vezi cum oamenii din întreaga lume folosesc explorers pentru a împărtăși ceea ce contează cel mai mult.",
+            "scrollLeft": "Derulează recomandările la stânga",
+            "scrollRight": "Derulează recomandările la dreapta",
+            "items": [
+                {
+                    "id": "1",
+                    "name": "Marcus Chen",
+                    "role": "Blogger de Călătorii",
+                    "location": "San Francisco",
+                    "quote": "explorers a schimbat modul în care împărtășesc cunoștințele mele de călătorie. Urmăritorii mei adoră să aibă acces instant la recomandările mele curate!"
+                },
+                {
+                    "id": "2",
+                    "name": "Sarah Johnson",
+                    "role": "Gazdă Airbnb",
+                    "location": "Barcelona",
+                    "quote": "Oaspeții mei adoră absolut codul QR personalizat din pachetul lor de bun venit. A devenit semnătura mea!"
+                },
+                {
+                    "id": "3",
+                    "name": "Alex Rodriguez",
+                    "role": "Proprietar Restaurant",
+                    "location": "Mexico City",
+                    "quote": "Împărtășim explorers-ul nostru cu clienții pentru a recomanda alte locuri locale. A creat conexiuni comunitare uimitoare."
+                },
+                {
+                    "id": "4",
+                    "name": "Emma Thompson",
+                    "role": "Ghid Turistic",
+                    "location": "Londra",
+                    "quote": "explorers mă ajută să extind expertiza mea dincolo de orele de tur. Clienții pot accesa recomandările mele oricând!"
+                }
+            ]
+        },
+        "faq": {
+            "headline": "Ai întrebări?",
+            "subtext": "Am răspuns la cele mai comune lucruri pe care oamenii le întreabă înainte de a începe.",
+            "loading": "Se încarcă FAQ-urile...",
+            "error": "Eroare la încărcarea FAQ-urilor. Încearcă din nou mai târziu."
+        },
+        "features": {
+            "title": "Construit pentru a rămâne departe",
+            "subtitle": "Funcții simple și gândite care lasă recomandările tale să strălucească.",
+            "simpleLinks": {
+                "title": "Linkuri simple și partajare QR"
+            },
+            "livingGuides": {
+                "title": "Ghiduri vii, editabile"
+            },
+            "locationAware": {
+                "title": "Recomandări conștiente de locație"
+            },
+            "soundPlaylists": {
+                "title": "Sunet și liste de redare opționale"
+            },
+            "privacyFirst": {
+                "title": "Confidențialitate primul prin design"
+            },
+            "communityDriven": {
+                "title": "Descoperire condusă de comunitate"
+            }
+        },
+        "finalCTA": {
+            "headline": "Începe să-ți împărtășești lumea astăzi",
+            "subtext": "Rezervă-ți explorers-ul gratuit și transformă perspectivele tale locale în ghiduri partajabile.",
+            "ctaButton": "Rezervă explorers – Gratuit Pentru Totdeauna",
+            "disclaimer": "Card de credit nu este necesar • Configurare în 2 minute",
+            "creating": "Se creează explorers-ul tău..."
+        }
+    },
+    "contact": {
+        "title": "Să ne conectăm.",
+        "subtitle": "Fie că ai o întrebare, idee sau vrei doar să spui salut — ne-ar plăcea să auzim de la tine.",
+        "getInTouch": "Ia Legătura",
+        "email": "hello@explorers.earth",
+        "responseTime": "Răspundem în 24-48 de ore",
+        "closingMessage": "Suntem o echipă mică cu o viziune mare — gândurile tale sunt importante pentru noi. Ia legătura și să construim ceva local și global împreună.",
+        "seo": {
+            "title": "Contact explorers | Support, Help and Partnership enquiries.",
+            "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
+            "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+            "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
+            "keywords": [
+                "contact explorers",
+                "explorers support",
+                "get in touch explorers",
+                "customer service travel app",
+                "partnership inquiry explorers",
+                "help center local recommendations",
+                "technical support explorers",
+                "travel app customer service",
+                "feedback location sharing",
+                "account assistance explorers",
+                "business collaboration explorers",
+                "report problem explorers",
+                "share local recommendations support",
+                "find explorers contact",
+                "customer service",
+                "explorers team",
+                "help center",
+                "contact support",
+                "QR code support",
+                "local recommendations help",
+                "partnership inquiries"
+            ]
+        }
+    },
+    "about": {
+        "title": "Exploratorii Pământului",
+        "subtitle": {
+            "line1": "O comunitate globală de oameni care explorează cu grijă — pentru oameni, cultură și planeta pe care o împărtășim.",
+            "line2": "Explorarea pentru noi nu este despre cât de departe mergem.",
+            "line3": "Este despre cât de profund ne conectăm."
+        },
+        "section1": {
+            "title": "CE CREDEM",
+            "line1": "Explorarea începe cu conștientizarea.",
+            "line2": "Cu observarea a ceea ce alții trec cu vederea.",
+            "line3": "Cu alegerea de a te mișca gândit, nu rapid.",
+            "line4": "Trăim scurt pe o planetă veche —\nadăugând câteva semne intenționate unei povești\ncare a început cu mult înaintea noastră\nși va continua mult după ce plecăm."
+        },
+        "section2": {
+            "title": "CUM VEDEM EXPLORAREA",
+            "line1": "Explorarea nu se măsoară în mile.",
+            "line2": "Se măsoară în sens.",
+            "line3": "Trăiește în încetinire, în atenție,\nși în respectarea fiecărui loc în care pășim —\no stradă, o potecă de munte, o masă de cafenea,\nsau un moment împărtășit cu cineva nou."
+        },
+        "section3": {
+            "title": "CE CONSTRUIM",
+            "line1": "explorers este un loc pentru:",
+            "item1": "Ghiduri modelate de experiență reală",
+            "item2": "Locuri, călătorii, sunete și povești demne de amintit",
+            "item3": "Comunități construite pe oameni — nu pe metrici de popularitate",
+            "line2": "Tehnologia ne ajută să ne conectăm.",
+            "line3": "Oamenii îi dau scop."
+        },
+        "section4": {
+            "title": "APARTENENȚĂ",
+            "line1": "Exploratorii Pământului nu este un club.",
+            "line2": "Nu este o etichetă.",
+            "line3": "Este o mentalitate împărtășită —\no înțelegere tăcută despre cum ne mișcăm prin lume."
+        },
+        "closing": "Dacă ești curios.\nDacă ești gânditor.\nDacă ești dispus să încetinești și să privești mai aproape —\naparțini deja aici.",
+        "seo": {
+            "title": "Explorers of Earth | About Us",
+            "description": "A global community of people who explore with care — for people, culture, and the planet we share. Exploration isn't about distance, it's about depth.",
+            "keywords": [
+                "explorers of earth",
+                "about explorers",
+                "exploration community",
+                "thoughtful travel",
+                "sustainable exploration",
+                "local recommendations platform",
+                "travel app about",
+                "community-driven recommendations",
+                "authentic local experiences",
+                "explorers team",
+                "local discovery platform",
+                "share local places",
+                "travel technology",
+                "local recommendations app",
+                "explorers story",
+                "who we are explorers"
+            ]
+        }
+    },
+    "cookieConsent": {
+        "title": "🍪 Preferințe Cookie",
+        "description": "Folosim cookie-uri pentru a îmbunătăți experiența dvs. de navigare, pentru a oferi conținut personalizat și pentru a analiza traficul. Puteți gestiona preferințele oricând.",
+        "acceptAll": "✅ Acceptă Toate Cookie-urile",
+        "customize": "⚙️ Personalizează",
+        "rejectNonEssential": "❌ Respinge Non-Esențiale",
+        "preferencesTitle": "Preferințe Cookie",
+        "essentialCookies": {
+            "title": "Cookie-uri Esențiale",
+            "description": "Necesare pentru funcționarea corectă a site-ului web",
+            "alwaysOn": "Întotdeauna Pornite"
+        },
+        "analyticsCookies": {
+            "title": "Cookie-uri Analitice",
+            "description": "Ne ajută să înțelegem cum interacționează vizitatorii cu site-ul nostru web"
+        },
+        "marketingCookies": {
+            "title": "Cookie-uri de Marketing",
+            "description": "Folosite pentru a livra reclame personalizate"
+        },
+        "savePreferences": "Salvează Preferințele",
+        "acceptAllButton": "Acceptă Toate",
+        "closeBanner": "Închide bannerul",
+        "goBack": "Înapoi"
+    },
+    "footer": {
+        "tagline": "Lasă recomandările tale să călătorească lumea.",
+        "email": "hello@explorers.earth",
+        "sections": {
+            "product": "Produs",
+            "contact": "Contact",
+            "legal": "Legal"
+        },
+        "links": {
+            "howItWorks": "Cum funcționează",
+            "faq": "Întrebări frecvente",
+            "contact": "Contact",
+            "about": "Despre",
+            "terms": "Termeni și Condiții",
+            "privacy": "Politica de Confidențialitate",
+            "cookies": "Politica Cookie-urilor"
+        },
+        "copyright": "© 2025 explorers. Toate drepturile rezervate.",
+        "madeWithLove": "Făcut cu dragoste pe Pământ"
+    },
+    "legal": {
+        "terms": {
+            "title": "Termeni și Condiții",
+            "loading": "Se încarcă termenii și condițiile...",
+            "error": "Eroare la încărcarea termenilor și condițiilor. Încearcă din nou mai târziu."
+        },
+        "privacy": {
+            "title": "Politica de Confidențialitate",
+            "loading": "Se încarcă politica de confidențialitate...",
+            "error": "Eroare la încărcarea politicii de confidențialitate. Încearcă din nou mai târziu."
+        },
+        "cookies": {
+            "title": "Politica Cookie-urilor",
+            "loading": "Se încarcă politica cookie-urilor...",
+            "error": "Eroare la încărcarea politicii cookie-urilor. Încearcă din nou mai târziu."
+        }
+    },
+    "languageModal": {
+        "title": "Selectează Limba",
+        "searchPlaceholder": "Caută limbi...",
+        "close": "Închide"
+    },
+    "auth": {
+        "signup": "Înregistrare",
+        "signupSubtitle": "Înregistrează-te pentru a te bucura de funcționalitățile explorers",
+        "username": "Nume de utilizator",
+        "usernamePlaceholder": "Introdu numele tău de utilizator",
+        "email": "Email",
+        "emailPlaceholder": "Introdu email-ul tău",
+        "password": "Parolă",
+        "passwordPlaceholder": "Introdu parola ta",
+        "confirmPassword": "Confirmă parola",
+        "confirmPasswordPlaceholder": "Introdu din nou parola ta",
+        "register": "Înregistrează-te",
+        "or": "sau",
+        "signUpWithGoogle": "Înregistrează-te cu Google",
+        "alreadyHaveAccount": "Ai deja un cont?",
+        "login": "Autentificare",
+        "loginTitle": "Autentificare",
+        "loginSubtitle": "Te rugăm să te autentifici pentru a continua la contul tău",
+        "usernameOrEmail": "Nume de utilizator sau email",
+        "usernameOrEmailPlaceholder": "Introdu numele tău de utilizator sau email-ul",
+        "signInWithGoogle": "Autentifică-te cu Google",
+        "newToexplorers": "Nou la explorers?",
+        "forgotPassword": "Ai uitat parola?",
+        "validations": {
+            "username": {
+                "required": "Numele de utilizator este obligatoriu",
+                "minLength": "Numele de utilizator trebuie să aibă cel puțin 3 caractere",
+                "maxLength": "Numele de utilizator nu poate depăși 30 de caractere",
+                "invalidChars": "Numele de utilizator poate conține doar litere mici (a-z), cifre (0-9) și cratime (-)",
+                "mustStartWithLetter": "Numele de utilizator trebuie să înceapă cu o literă (a-z)",
+                "cannotStartEndHyphen": "Numele de utilizator nu poate începe sau se termina cu cratimă",
+                "noConsecutiveHyphens": "Numele de utilizator nu poate conține cratime consecutive",
+                "cannotBeAllNumbers": "Numele de utilizator nu poate fi doar cifre",
+                "reservedWords": "This username contains reserved words and cannot be used",
+                "inappropriateContent": "Numele de utilizator conține conținut nepotrivit",
+                "alreadyExists": "Numele de utilizator există deja",
+                "suggestedAlternatives": "Suggested alternatives:",
+                "willBeConvertedLowercase": "Numele de utilizator va fi convertit în litere mici",
+                "checkingAvailability": "Verificare disponibilitate...",
+                "available": "Numele de utilizator este disponibil",
+                "willConvertToLowercase": "Numele de utilizator va fi convertit în litere mici"
+            },
+            "email": {
+                "required": "E-mailul este obligatoriu",
+                "invalidFormat": "Vă rugăm să introduceți o adresă de email validă",
+                "alreadyExists": "Email-ul există deja",
+                "invalid": "Email invalid"
+            },
+            "password": {
+                "required": "Parola este obligatorie",
+                "minLength": "Parola trebuie să aibă cel puțin 6 caractere",
+                "uppercaseRequired": "Parola trebuie să conțină cel puțin o literă mare (A-Z)",
+                "numberRequired": "Parola trebuie să conțină cel puțin o cifră (0-9)",
+                "specialCharRequired": "Parola trebuie să conțină cel puțin un caracter special (!@#$%^&*().,?\":{}|\u003c\u003e)",
+                "strength": "Puterea parolei",
+                "weak": "Slabă",
+                "medium": "Medie",
+                "strong": "Puternică",
+                "maxLength": "Parola nu poate depăși 32 de caractere",
+                "lowercaseRequired": "Parola trebuie să conțină cel puțin o literă mică (a-z)",
+                "tooCommon": "This password is too common. Please choose a more unique password",
+                "sameAsCurrent": "New password cannot be the same as your current password",
+                "considerLonger": "Consider using a longer password with more variety for better security",
+                "moreSecure": "Parolele cu 10 sau mai multe caractere sunt mai sigure",
+                "veryWeak": "Foarte slabă",
+                "fair": "Medie",
+                "good": "Bună",
+                "veryStrong": "Foarte puternică"
+            },
+            "confirmPassword": {
+                "required": "Vă rugăm să confirmați parola",
+                "mustMatch": "Passwords do not match",
+                "confirmRequired": "Confirmarea parolei este necesară",
+                "match": "Parolele se potrivesc"
+            },
+            "login": {
+                "usernameOrEmailRequired": "Numele de utilizator sau email-ul este necesar",
+                "invalidCredentials": "Nume de utilizator/email sau parolă invalidă",
+                "accountNotFound": "Contul nu a fost găsit",
+                "tooManyAttempts": "Prea multe încercări eșuate",
+                "incorrectPassword": "Parolă incorectă"
+            },
+            "general": {
+                "fillRequiredFields": "Vă rugăm să completați toate câmpurile necesare",
+                "somethingWentWrong": "Ceva a mers prost, vă rugăm să încercați din nou"
+            },
+            "forgotPassword": {
+                "title": "Ați uitat parola?",
+                "description": "Introduceți adresa dvs. de email și vă vom trimite un link de resetare.",
+                "emailLabel": "Adresa de email",
+                "emailPlaceholder": "Introduceți adresa dvs. de email și vă vom trimite un link de resetare.",
+                "sendResetLink": "Trimite link-ul de resetare",
+                "backToLogin": "Înapoi la autentificare",
+                "resetLinkSent": "Link-ul de resetare a parolei a fost trimis la email-ul dvs.!",
+                "failedToSend": "Nu s-a putut trimite link-ul de resetare. Încercați din nou mai târziu.",
+                "somethingWentWrong": "Ceva a mers prost!"
+            },
+            "accountName": {
+                "required": "Numele contului este necesar",
+                "minLength": "Numele contului trebuie să aibă cel puțin 2 caractere",
+                "maxLength": "Numele contului nu trebuie să depășească 50 de caractere",
+                "invalidChars": "Numele contului poate conține doar litere, spații, apostroafe, cratime și puncte",
+                "noNumbers": "Numele contului nu poate conține cifre"
+            },
+            "accountType": {
+                "required": "Tipul contului este necesar",
+                "invalid": "Tip de cont invalid"
+            },
+            "primaryAddress": {
+                "required": "Adresa principală este obligatorie"
+            },
+            "socialMedia": {
+                "instagram": "Vă rugăm să introduceți un URL de profil Instagram valid",
+                "whatsapp": "Introduceți un contact WhatsApp valid: telefon (+1234567890) sau link wa.me/api.whatsapp.com",
+                "mobile": "Vă rugăm să introduceți un număr de telefon mobil valid (ex. +1234567890)",
+                "youtube": "Vă rugăm să introduceți un URL de canal YouTube valid (ex. youtube.com/@numeutilizator)",
+                "x": "Vă rugăm să introduceți un URL de profil X (Twitter) valid",
+                "spotify": "Vă rugăm să introduceți un URL Spotify valid",
+                "website": "Vă rugăm să introduceți un URL de site web valid",
+                "facebook": "Vă rugăm să introduceți un URL de profil Facebook valid",
+                "youtubeMusic": "Vă rugăm să introduceți un URL de canal YouTube Music valid",
+                "email": "Vă rugăm să introduceți o adresă de email validă",
+                "linkedin": "Vă rugăm să introduceți un URL de profil LinkedIn valid",
+                "appleMusic": "Vă rugăm să introduceți un URL Apple Music valid",
+                "tiktok": "Vă rugăm să introduceți un URL de profil TikTok valid",
+                "snapchat": "Vă rugăm să introduceți un nume de utilizator Snapchat valid"
+            },
+            "onboarding": {
+                "displayNameRequired": "Numele de afișare este obligatoriu",
+                "displayNameMinLength": "Numele de afișare trebuie să aibă cel puțin 2 caractere",
+                "displayNameMaxLength": "Numele de afișare nu trebuie să depășească 50 de caractere",
+                "bioRequired": "Biografia este obligatorie",
+                "bioMaxLength": "Biografia nu trebuie să depășească 250 de caractere",
+                "mobileNumberRequired": "Numărul de telefon mobil este obligatoriu",
+                "mobileNumberInvalid": "Vă rugăm să introduceți un număr de telefon mobil valid",
+                "mobileNumberLength": "Numărul de telefon mobil trebuie să aibă 10 cifre",
+                "addressRequired": "Adresa este obligatorie",
+                "cityRequired": "Orașul este obligatoriu",
+                "stateRequired": "Județul este obligatoriu",
+                "countryRequired": "Țara este obligatorie",
+                "postalCodeRequired": "Codul poștal este obligatoriu",
+                "primaryAddressRequired": "Adresa principală este obligatorie",
+                "emailAddressRequired": "Adresa de e-mail este obligatorie",
+                "resetLinkSentSuccess": "Linkul de resetare a fost trimis cu succes!",
+                "invalidUsername": "Nume de utilizator invalid",
+                "profileImageAlt": "Profile"
+            },
+            "resetPassword": {
+                "newPassword": "New Password",
+                "confirmPassword": "Confirm Password"
+            },
+            "resetLinkSent": {
+                "title": "E-mail trimis!",
+                "description": "Verificați căsuța de e-mail pentru linkul de resetare a parolei.",
+                "resending": "Se retrimite...",
+                "resendWithCooldown": "Retrimite e-mail ({{cooldown}}s)",
+                "resendMail": "Retrimite e-mail"
+            }
+        },
+        "onboarding": {
+            "accountDetails": {
+                "title": "Detalii Cont",
+                "description": "Spune-ne despre tine",
+                "displayName": "Nume de Afișare",
+                "displayNamePlaceholder": "Introduceți numele de afișare",
+                "username": "Nume de Utilizator",
+                "usernamePlaceholder": "Introduceți numele de utilizator",
+                "usernameDescription": "Numele de utilizator face parte din linkul de profil public și codurile QR. Exemplu: explorers.earth/bhavya",
+                "bio": "Biografie",
+                "bioPlaceholder": "Spune-ne despre tine",
+                "accountType": "Tip Cont",
+                "personal": "Personal",
+                "creator": "Creator",
+                "business": "Afaceri",
+                "next": "Următorul"
+            },
+            "contactDetails": {
+                "title": "Detalii Contact",
+                "description": "Adăugați numărul de telefon mobil pentru verificare",
+                "mobileNumber": "Număr Telefon Mobil",
+                "mobileNumberPlaceholder": "Introduceți numărul de telefon mobil",
+                "next": "Următorul",
+                "back": "Înapoi"
+            },
+            "addressDetails": {
+                "title": "Detalii Adresă",
+                "description": "Unde vă aflați?",
+                "address": "Adresă",
+                "addressPlaceholder": "Introduceți adresa",
+                "streetName": "Numele Străzii",
+                "streetNamePlaceholder": "Introduceți numele străzii",
+                "city": "Oraș",
+                "cityPlaceholder": "Introduceți orașul",
+                "state": "Județ",
+                "statePlaceholder": "Introduceți județul",
+                "country": "Țară",
+                "countryPlaceholder": "Introduceți țara",
+                "postalCode": "Cod Poștal",
+                "postalCodePlaceholder": "Introduceți codul poștal",
+                "primaryAddress": "Adresă Principală",
+                "primaryAddressDescription": "afișată în profilul public (oraș și țară)",
+                "primaryAddressPlaceholder": "Introduceți adresa principală",
+                "sameAsAddress": "La fel ca Adresa",
+                "confirmDetails": "Confirmă Detaliile",
+                "back": "Înapoi"
+            }
+        },
+        "resetPassword": {
+            "newPasswordPlaceholder": "Enter new password",
+            "confirmPasswordPlaceholder": "Confirm your password"
+        }
+    },
+    "common": {
+        "loading": "Se încarcă...",
+        "error": "A apărut o eroare. Vă rugăm să încercați din nou mai târziu.",
+        "retry": "Încearcă din nou",
+        "noResults": "Nu s-au găsit rezultate",
+        "submit": "Trimite",
+        "hidePassword": "Ascunde parola",
+        "showPassword": "Afișează parola",
+        "signInWithGoogle": "Conectează-te cu Google",
+        "signUpWithGoogle": "Înregistrează-te cu Google",
+        "cancel": "Anulează"
+    },
+    "dashboard": {
+        "home": {
+            "welcomeBack": "Bun venit înapoi",
+            "profile": "Profil",
+            "myRecommendations": "Recomandările Mele",
+            "activePlaces": "locuri active",
+            "setupProfile": "Configurați-vă Profilul",
+            "draft": "Schiță",
+            "startCurating": "Începeți să vă curați recomandările și împărțiți-le cu lumea!",
+            "addRecommendations": "Adăugați Recomandări"
+        },
+        "shareModal": {
+            "copyLink": "Copiază linkul",
+            "copied": "Copiat!",
+            "linkCopiedToast": "Linkul a fost copiat!!"
+        },
+        "recommendations": {
+            "locationButton": "Locația",
+            "viewAll": "Vezi toate",
+            "recommendationsTab": "Recomandări",
+            "manageTab": "Gestionează",
+            "manageHeading": "Gestionează",
+            "deleteAction": "Șterge",
+            "editAction": "Editează",
+            "publishedStatus": "Publicat",
+            "draftStatus": "Ciornă",
+            "myRecommendationsHeading": "Recomandările Mele",
+            "myQRHeading": "QR-ul Meu",
+            "myRecommendationsQR": "Recomandările Mele",
+            "travelLikeLocal": "Călătorește ca un local",
+            "shareLink": "Partajează Linkul",
+            "copyLink": "Copiază Linkul",
+            "downloadQR": "Descarcă QR",
+            "emptyState": {
+                "title": "Nu Sunt Disponibile Recomandări",
+                "subtitle": "Începeți să adăugați locurile voastre preferate în această listă"
+            },
+            "draftLabel": "Ciornă",
+            "recommendButton": "Recomandă",
+            "exploreSection": {
+                "heading": "Explorați cu explorers",
+                "addButton": "Adăugați"
+            },
+            "locationLabels": {
+                "currentLocation": "Locația Curentă",
+                "selectedLocation": "Locația Selectată"
+            },
+            "categories": {
+                "foodDrinks": "Mâncare și Băuturi",
+                "lodging": "Cazare",
+                "healthWellness": "Sănătate și Bunăstare",
+                "shopping": "Cumpărături",
+                "entertainment": "Divertisment",
+                "transportation": "Transport",
+                "services": "Servicii",
+                "tourism": "Turism",
+                "naturalFeatures": "Caracteristici Naturale"
+            },
+            "locationForm": {
+                "labels": {
+                    "searchLocation": "Căutare locație",
+                    "recommendationSocialLink": "Link social de recomandare",
+                    "note": "Notă",
+                    "placeUrl": "URL locație"
+                },
+                "placeholders": {
+                    "searchLocation": "Introduceți orașul, statul sau țara (ex. Paris)",
+                    "recommendationSocialLink": "Introduceți URL (Youtube / Instagram)",
+                    "note": "Introduceți o notă legată de recomandarea dvs.",
+                    "placeUrl": "Introduceți numele pentru a crea un link partajabil"
+                },
+                "buttons": {
+                    "addLocation": "Adaugă locație",
+                    "updateLocation": "Actualizează locația"
+                }
+            },
+            "toastMessages": {
+                "listCreated": "Recommendation List Created Successfully!!!",
+                "listPublished": "Lista de recomandări publicată cu succes!",
+                "listUnpublished": "Lista de recomandări eliminată cu succes din publicare!",
+                "listPublishError": "List Should have atleast one Recommended Place to be Published",
+                "listVisibilityError": "Failed to update recommendation list visibility.",
+                "qrDownloadSuccess": "QR code downloaded successfully!",
+                "qrDownloadError": "Failed to download QR code. Please try again.",
+                "linkCopied": "Link copied to clipboard!",
+                "linkCopyError": "Failed to copy link. Please try again.",
+                "qrNotReady": "QR code not ready for download"
+            },
+            "placesModal": {
+                "placesCount": "{{visible}} din {{total}} locuri",
+                "scrollToLoadMore": "Derulează pentru a încărca mai multe locuri"
+            },
+            "noRecommendationsYet": "Încă nu există recomandări!!",
+            "setupProfileBeforeRecommendations": "Configurați-vă profilul înainte de a crea recomandări!!",
+            "startAddingPlaces": "Începeți să adăugați locurile voastre preferate și să le partajați cu alții.",
+            "startRecommending": "Începeți să Recomandați",
+            "addRecommendationForm": {
+                "searchField": {
+                    "label": "Search Recommendation with Google"
+                },
+                "mainInput": {
+                    "placeholder": "Enter your Recommendation"
+                },
+                "taggableFields": {
+                    "title": "Titlu",
+                    "address": "Adresă",
+                    "category": "Categorie",
+                    "contactNumber": "Număr de contact",
+                    "socialLink": "Link social",
+                    "personName": "Numele persoanei"
+                },
+                "accordionSection": {
+                    "heading": "Your Recommendation Details",
+                    "recommendationLink": {
+                        "label": "Your Recommendation Link",
+                        "placeholder": "You can insert Instagram reel, YouTube, or blog recommending"
+                    },
+                    "whyRecommend": {
+                        "label": "Why would you recommend?",
+                        "placeholder": "Why would you recommend?"
+                    }
+                },
+                "fileUpload": {
+                    "text": "Attach Image/Video",
+                    "subtext": "optional"
+                },
+                "actionButton": {
+                    "text": "Add recommendation"
+                },
+                "taggableFieldsPlaceholders": {
+                    "title": "Introduceți titlul",
+                    "address": "Introduceți adresa locului",
+                    "category": "Introduceți o categorie",
+                    "contactNumber": "Introduceți numărul de contact",
+                    "socialLink": "Introduceți linkul social (loc)",
+                    "personName": "Introduceți numele complet al persoanei"
+                },
+                "validationMessages": {
+                    "titleRequired": "Titlul este obligatoriu",
+                    "addressRequired": "Adresa este obligatorie",
+                    "categoryRequired": "Categoria este obligatorie",
+                    "socialUrlRequired": "URL Instagram sau LinkedIn este necesar pentru recomandările de persoane",
+                    "socialUrlInvalid": "Vă rugăm să introduceți un URL Instagram sau LinkedIn valid"
+                },
+                "mapModal": {
+                    "cancelButton": "Anulează",
+                    "addRecommendationButton": "Adaugă recomandare",
+                    "updateRecommendationButton": "Actualizează recomandarea",
+                    "setLocationButton": "Setați locația"
+                },
+                "deleteRecommendation": "Ștergeți recomandarea",
+                "searchLocation": {
+                    "label": "Căutați o locație",
+                    "searchPlace": "Căutați un loc",
+                    "placeholder": "Tastați și selectați un loc"
+                },
+                "fetchingImages": "Se preiau imaginile…",
+                "recommendationType": {
+                    "place": "Locație",
+                    "person": "Persoană",
+                    "label": "Tipul Recomandării"
+                },
+                "imagePreview": {
+                    "alt": "Previzualizare",
+                    "deleteTooltip": "Șterge",
+                    "setThumbnailTooltip": "Setează ca miniatură",
+                    "confirmDeleteTitle": "Confirmă Ștergerea",
+                    "confirmDeleteMessage": "Sigur doriți să ștergeți această imagine din colecție?",
+                    "cancel": "Anulează",
+                    "confirm": "Confirmă"
+                },
+                "deleteRecommendationModal": {
+                    "title": "Confirmă ștergerea",
+                    "message": "Sigur doriți să ștergeți această recomandare? Această acțiune nu poate fi anulată.",
+                    "cancel": "Anulează"
+                }
+            }
+        },
+        "profile": {
+            "tabs": {
+                "publicProfile": "Profil Public",
+                "account": "Cont"
+            },
+            "publicProfile": {
+                "sections": {
+                    "profileInformation": "Bio",
+                    "socialMedia": "Link-uri Sociale",
+                    "publicAddress": "Adresă Publică",
+                    "howToReachUs": "Cum Să Ne Contactați",
+                    "howToReachUsDescription": "Folosiți această secțiune pentru a partaja detaliile locației afacerii dvs.",
+                    "feed": "Feed",
+                    "socialMediaSubtitle": "Link-uri și informații despre rețelele sociale"
+                },
+                "fields": {
+                    "accountType": "Tip de Cont",
+                    "bio": "Bio",
+                    "socialMedia": "Rețele Sociale",
+                    "instagram": "Instagram",
+                    "whatsapp": "Whatsapp",
+                    "mobile": "Mobil",
+                    "youtube": "Youtube",
+                    "x": "X",
+                    "spotify": "Spotify",
+                    "website": "Site Web",
+                    "facebook": "Facebook",
+                    "youtubeMusic": "Youtube Music",
+                    "gmail": "Gmail",
+                    "linkedin": "Linkedin",
+                    "appleMusic": "Apple Music",
+                    "tiktok": "Tiktok",
+                    "snapchat": "Snapchat",
+                    "businessLocation": "Adăugați locația dvs. Acestea vor apărea ca locații recomandate în profilul dvs. public",
+                    "primaryAddress": "Adresă Principală - Afișată în profilul public (oraș și țară)",
+                    "feed": "Încărcați imagini sau videoclipuri despre locația, produsele, serviciile sau experiențele dvs. Aceste fotografii vor fi afișate în galeria dvs. din profilul public",
+                    "title": "Titlu",
+                    "contact": "Contact",
+                    "about": "Despre",
+                    "addLocation": "Adăugați locația dvs.",
+                    "addLocationInformation": "Adăugați Informații despre Locație",
+                    "searchAddress": "Căutați adresa dvs....",
+                    "sameAsAddress": "La fel ca adresa"
+                },
+                "accountTypes": {
+                    "personal": "Personal",
+                    "creator": "Creator",
+                    "business": "Afacere"
+                },
+                "businessLocation": {
+                    "title": "Titlu",
+                    "contact": "Contact",
+                    "website": "Site Web",
+                    "about": "Despre"
+                }
+            },
+            "account": {
+                "sections": {
+                    "account": "Cont",
+                    "billingAddress": "Adresă de Facturare"
+                },
+                "fields": {
+                    "username": "Nume de utilizator",
+                    "accountName": "Numele Contului",
+                    "address": "Adresă",
+                    "streetName": "Numele Străzii",
+                    "state": "Județ",
+                    "city": "Oraș",
+                    "country": "Țară",
+                    "postalCode": "Cod Poștal",
+                    "addressPlaceholder": "Introduceți adresa dvs.",
+                    "detectLocation": "Detectează locația mea actuală"
+                }
+            },
+            "common": {
+                "visible": "Vizibil",
+                "hidden": "Ascuns",
+                "mobileNumber": "Număr de telefon mobil",
+                "mobileNumberPlaceholder": "Număr de telefon mobil",
+                "whatsappNumber": "Număr WhatsApp",
+                "primaryAddress": "Adresă Principală",
+                "editImage": "Editează Imaginea",
+                "confirm": "Confirmă",
+                "add": "Adaugă",
+                "video": "Video",
+                "feedImage": "Imagine feed",
+                "importedImage": "imagine importată",
+                "cover": "Copertă",
+                "profile": "Profil",
+                "saveAndPublish": "Salvează și Publică",
+                "saveToFeed": "Salvează în Feed",
+                "savedAndPublishedSuccessfully": "Salvat și publicat cu succes",
+                "saveAndPublishFailed": "Salvarea și publicarea au eșuat. Vă rugăm să încercați din nou.",
+                "failedToSaveChanges": "Salvarea modificărilor a eșuat. Vă rugăm să încercați din nou.",
+                "networkError": "Eroare de rețea: Vă rugăm să verificați conexiunea și să încercați din nou.",
+                "unexpectedError": "A apărut o eroare neașteptată. Vă rugăm să încercați din nou.",
+                "somethingWentWrong": "Ceva a mers greșit. Vă rugăm să încercați din nou.",
+                "failedToUploadFiles": "Încărcarea fișierelor a eșuat. Vă rugăm să încercați din nou.",
+                "failedToUploadImages": "Încărcarea imaginilor a eșuat. Vă rugăm să încercați din nou.",
+                "failedToSaveImagesToFeed": "Salvarea imaginilor în feed a eșuat",
+                "failedToUpdateProfile": "Actualizarea profilului a eșuat. Vă rugăm să încercați din nou.",
+                "fetching": "Se preiau...",
+                "selectAll": "Selectează tot",
+                "clearSelection": "Șterge selecția",
+                "error": "A apărut o eroare la încărcarea profilului dvs. Vă rugăm să încercați mai târziu.",
+                "errors": {
+                    "noFileProvided": "Nu a fost furnizat niciun fișier pentru încărcare",
+                    "failedToGetAccountId": "Nu s-a putut obține ID-ul contului pentru încărcare",
+                    "uploadResponseMissingFileData": "Răspunsul de încărcare nu conține date despre fișier"
+                }
+            },
+            "accountSetup": {
+                "title": "Finalizați Configurarea Contului Dvs.",
+                "progress": "Progres",
+                "complete": "Complet",
+                "profileSetupCompleted": "Configurarea profilului finalizată",
+                "profileSetupIncomplete": "Adăugați fotografie de profil, bio și link-uri sociale",
+                "recommendationsSetupCompleted": "Configurarea recomandărilor finalizată",
+                "recommendationsSetupIncomplete": "Adăugați locații, locuri și publicați prima dvs. listă",
+                "setupButton": "Configurare",
+                "footerMessage": "Finalizați ambele pași pentru a debloca experiența completă a tabloului de bord"
+            }
+        }
+    },
+    "toast": {
+        "success": {
+            "loginSuccessful": "Autentificare reușită!",
+            "registrationSuccessful": "Înregistrare reușită!",
+            "passwordResetSuccessful": "Resetarea parolei reușită!",
+            "emailVerificationSent": "Verificarea e-mailului trimisă!",
+            "resetLinkSent": "Link-ul de resetare a parolei trimis la e-mailul dvs!",
+            "resetLinkResent": "Link-ul de resetare retrimis!",
+            "profileImageUpdated": "Imaginea de profil a fost actualizată cu succes!",
+            "backgroundImageUpdated": "Imaginea de fundal a fost actualizată cu succes!",
+            "recommendedListUpdated": "Recommended List Updated Successfully!!!",
+            "accountCreated": "Cont creat cu succes!",
+            "usernameUpdated": "Numele de utilizator actualizat cu succes!",
+            "profileUpdated": "Profilul actualizat cu succes!",
+            "settingsSaved": "Setările salvate cu succes!",
+            "dataSaved": "Datele salvate cu succes!",
+            "changesSaved": "Modificările salvate cu succes!",
+            "fileUploaded": "Fișierul încărcat cu succes!",
+            "imageUploaded": "Imaginea încărcată cu succes!",
+            "linkCopied": "Link copied to clipboard!",
+            "emailSent": "E-mail trimis cu succes!",
+            "notificationSent": "Notificarea trimisă cu succes!",
+            "actionCompleted": "Acțiunea finalizată cu succes!",
+            "formSubmitted": "Formularul trimis cu succes!",
+            "onboardingCompleted": "Onboarding finalizat cu succes!",
+            "welcomeMessage": "Bun venit la explorers!",
+            "accountActivated": "Contul a fost activat cu succes!",
+            "emailVerified": "E-mail verificat cu succes!",
+            "passwordChanged": "Parola modificată cu succes!",
+            "usernameChanged": "Numele de utilizator modificat cu succes!",
+            "profileCompleted": "Profil finalizat cu succes!",
+            "setupCompleted": "Configurare finalizată cu succes!",
+            "loggedOutSuccessfully": "Deconectat cu succes!"
+        },
+        "error": {
+            "loginFailed": "Autentificarea a eșuat. Verificați credențialele.",
+            "registrationFailed": "Înregistrarea a eșuat. Încercați din nou.",
+            "passwordResetFailed": "Resetarea parolei a eșuat. Încercați din nou.",
+            "emailVerificationFailed": "Verificarea e-mailului a eșuat. Încercați din nou.",
+            "resetLinkFailed": "Trimiterea link-ului de resetare a eșuat. Încercați mai târziu.",
+            "resetLinkResendFailed": "Retrimiterea a eșuat. Încercați mai târziu.",
+            "profileImageUpdateFailed": "Failed to upload profile image. Please try again.",
+            "backgroundImageUpdateFailed": "Failed to upload background image. Please try again.",
+            "recommendedListUpdateFailed": "Error Updating Recommended List!!!",
+            "accountCreationFailed": "Account creation failed. Please try again.",
+            "usernameUpdateFailed": "Actualizarea numelui de utilizator a eșuat. Încercați din nou.",
+            "profileUpdateFailed": "Profile update failed. Please try again.",
+            "settingsSaveFailed": "Failed to save settings. Please try again.",
+            "dataSaveFailed": "Failed to save data. Please try again.",
+            "changesSaveFailed": "Failed to save changes. Please try again.",
+            "fileUploadFailed": "File upload failed. Please try again.",
+            "imageUploadFailed": "Încărcarea imaginii a eșuat. Încercați din nou.",
+            "linkCopyFailed": "Failed to copy link. Please try again.",
+            "emailSendFailed": "Trimiterea e-mailului a eșuat. Vă rugăm să încercați din nou.",
+            "notificationSendFailed": "Failed to send notification. Please try again.",
+            "actionFailed": "Action failed. Please try again.",
+            "formSubmissionFailed": "Form submission failed. Please try again.",
+            "onboardingFailed": "Onboarding-ul a eșuat. Încercați din nou.",
+            "accountActivationFailed": "Account activation failed. Please try again.",
+            "passwordChangeFailed": "Password change failed. Please try again.",
+            "usernameChangeFailed": "Username change failed. Please try again.",
+            "profileCompletionFailed": "Profile completion failed. Please try again.",
+            "setupFailed": "Setup failed. Please try again.",
+            "networkError": "Eroare de rețea. Verificați conexiunea.",
+            "serverError": "Eroare de server. Încercați mai târziu.",
+            "validationError": "Eroare de validare. Verificați datele introduse.",
+            "permissionDenied": "Permission denied. Please contact support.",
+            "sessionExpired": "Sesiunea a expirat. Autentificați-vă din nou.",
+            "invalidCredentials": "Credențiale invalide. Verificați datele introduse.",
+            "emailNotFound": "E-mailul nu a fost găsit. Încercați din nou.",
+            "usernameAlreadyExists": "Numele de utilizator există deja. Alegeți altul.",
+            "emailAlreadyExists": "E-mailul există deja. Folosiți alt e-mail.",
+            "invalidEmailFormat": "Format e-mail invalid. Introduceți un e-mail valid.",
+            "passwordTooWeak": "Parola este prea slabă. Alegeți o parolă mai puternică.",
+            "passwordsDoNotMatch": "Passwords do not match. Please try again.",
+            "requiredFieldMissing": "Required field is missing. Please fill all required fields.",
+            "invalidInput": "Invalid input. Please check your data.",
+            "fileTooLarge": "File is too large. Please choose a smaller file.",
+            "unsupportedFileType": "Unsupported file type. Please choose a different file.",
+            "uploadLimitExceeded": "Upload limit exceeded. Please try again later.",
+            "operationTimeout": "Operation timed out. Please try again.",
+            "serviceUnavailable": "Service unavailable. Please try again later.",
+            "maintenanceMode": "Service is under maintenance. Please try again later.",
+            "rateLimitExceeded": "Prea multe cereri. Încercați mai târziu.",
+            "quotaExceeded": "Quota exceeded. Please try again later.",
+            "accessDenied": "Access denied. You don't have permission to perform this action.",
+            "resourceNotFound": "Resource not found. Please check your request.",
+            "conflictError": "Conflict error. The resource already exists.",
+            "preconditionFailed": "Precondition failed. Please check your request.",
+            "tooManyAttempts": "Prea multe încercări. Încercați mai târziu.",
+            "accountLocked": "Contul este blocat. Contactați suportul.",
+            "accountSuspended": "Contul este suspendat. Contactați suportul.",
+            "accountDeleted": "Account is deleted. Please contact support.",
+            "emailNotVerified": "Email is not verified. Please verify your email first.",
+            "phoneNotVerified": "Phone number is not verified. Please verify your phone first.",
+            "twoFactorRequired": "Two-factor authentication is required.",
+            "twoFactorFailed": "Two-factor authentication failed. Please try again.",
+            "captchaFailed": "Captcha verification failed. Please try again.",
+            "invalidToken": "Token invalid. Încercați din nou.",
+            "expiredToken": "Token-ul a expirat. Încercați din nou.",
+            "invalidCode": "Invalid code. Please check your input.",
+            "expiredCode": "Code has expired. Please request a new one.",
+            "codeLimitExceeded": "Code limit exceeded. Please try again later.",
+            "invalidUsername": "Invalid username. Please check your input.",
+            "usernameTooShort": "Username is too short. Please choose a longer username.",
+            "usernameTooLong": "Username is too long. Please choose a shorter username.",
+            "usernameInvalidChars": "Username contains invalid characters. Please use only letters, numbers, and hyphens.",
+            "usernameReserved": "Username is reserved. Please choose another username.",
+            "usernameProfanity": "Username contains inappropriate content. Please choose another username.",
+            "primaryAddressRequired": "Adresa principală este obligatorie",
+            "addressRequired": "Address is required",
+            "cityRequired": "City is required",
+            "stateRequired": "State is required",
+            "countryRequired": "Country is required",
+            "postalCodeRequired": "Postal code is required",
+            "mobileNumberRequired": "Mobile number is required",
+            "mobileNumberInvalid": "Invalid mobile number format",
+            "mobileNumberTooShort": "Mobile number is too short",
+            "mobileNumberTooLong": "Mobile number is too long",
+            "bioRequired": "Bio is required",
+            "bioTooLong": "Bio is too long. Please keep it under 250 characters",
+            "displayNameRequired": "Display name is required",
+            "displayNameTooShort": "Display name is too short",
+            "displayNameTooLong": "Display name is too long",
+            "accountTypeRequired": "Account type is required",
+            "invalidAccountType": "Invalid account type selected",
+            "imageRequired": "Image is required",
+            "imageTooLarge": "Image is too large. Please choose a smaller image",
+            "unsupportedImageFormat": "Unsupported image format. Please use JPG, PNG, or GIF",
+            "imageProcessingFailed": "Image processing failed. Please try again",
+            "imageCorrupted": "Image is corrupted. Please choose another image",
+            "imageDimensionsInvalid": "Image dimensions are invalid. Please choose another image",
+            "imageSizeInvalid": "Image size is invalid. Please choose another image",
+            "imageFormatInvalid": "Image format is invalid. Please choose another image",
+            "imageQualityTooLow": "Image quality is too low. Please choose a higher quality image",
+            "imageTooSmall": "Image is too small. Please choose a larger image",
+            "imageTooBig": "Image is too big. Please choose a smaller image",
+            "imageAspectRatioInvalid": "Image aspect ratio is invalid. Please choose another image",
+            "imageColorSpaceInvalid": "Image color space is invalid. Please choose another image",
+            "imageMetadataInvalid": "Image metadata is invalid. Please choose another image",
+            "imageSecurityViolation": "Image security violation. Please choose another image",
+            "imageVirusDetected": "Virus detected in image. Please choose another image",
+            "imageMalwareDetected": "Malware detected in image. Please choose another image",
+            "imageSpamDetected": "Spam detected in image. Please choose another image",
+            "imageContentInappropriate": "Image content is inappropriate. Please choose another image",
+            "imageContentViolent": "Image content is violent. Please choose another image",
+            "imageContentSexual": "Image content is sexual. Please choose another image",
+            "imageContentHateful": "Image content is hateful. Please choose another image",
+            "imageContentDiscriminatory": "Image content is discriminatory. Please choose another image",
+            "imageContentOffensive": "Image content is offensive. Please choose another image",
+            "imageContentAbusive": "Image content is abusive. Please choose another image",
+            "imageContentHarassing": "Image content is harassing. Please choose another image",
+            "imageContentThreatening": "Image content is threatening. Please choose another image",
+            "imageContentDangerous": "Image content is dangerous. Please choose another image",
+            "imageContentIllegal": "Image content is illegal. Please choose another image",
+            "imageContentCopyright": "Image content violates copyright. Please choose another image",
+            "imageContentTrademark": "Image content violates trademark. Please choose another image",
+            "imageContentPrivacy": "Image content violates privacy. Please choose another image",
+            "imageContentConsent": "Image content lacks consent. Please choose another image",
+            "imageContentMinors": "Image content involves minors. Please choose another image",
+            "imageContentAnimals": "Image content involves animal cruelty. Please choose another image",
+            "imageContentEnvironment": "Image content harms environment. Please choose another image",
+            "imageContentHealth": "Image content harms health. Please choose another image",
+            "imageContentSafety": "Image content harms safety. Please choose another image",
+            "imageContentSecurity": "Image content harms security. Please choose another image",
+            "imageContentIntegrity": "Image content harms integrity. Please choose another image",
+            "imageContentReputation": "Image content harms reputation. Please choose another image",
+            "imageContentBrand": "Image content harms brand. Please choose another image",
+            "imageContentBusiness": "Image content harms business. Please choose another image",
+            "imageContentPersonal": "Image content harms personal interests. Please choose another image",
+            "imageContentProfessional": "Image content harms professional interests. Please choose another image",
+            "imageContentAcademic": "Image content harms academic interests. Please choose another image",
+            "imageContentCultural": "Image content harms cultural interests. Please choose another image",
+            "imageContentReligious": "Image content harms religious interests. Please choose another image",
+            "imageContentPolitical": "Image content harms political interests. Please choose another image",
+            "imageContentSocial": "Image content harms social interests. Please choose another image",
+            "imageContentEconomic": "Image content harms economic interests. Please choose another image",
+            "imageContentLegal": "Image content harms legal interests. Please choose another image",
+            "imageContentEthical": "Image content harms ethical interests. Please choose another image",
+            "imageContentMoral": "Image content harms moral interests. Please choose another image",
+            "imageContentSpiritual": "Image content harms spiritual interests. Please choose another image",
+            "imageContentPhilosophical": "Image content harms philosophical interests. Please choose another image",
+            "imageContentScientific": "Image content harms scientific interests. Please choose another image",
+            "imageContentTechnical": "Image content harms technical interests. Please choose another image",
+            "imageContentArtistic": "Image content harms artistic interests. Please choose another image",
+            "imageContentCreative": "Image content harms creative interests. Please choose another image",
+            "imageContentIntellectual": "Image content harms intellectual interests. Please choose another image",
+            "imageContentEducational": "Image content harms educational interests. Please choose another image",
+            "imageContentInformational": "Image content harms informational interests. Please choose another image",
+            "imageContentNews": "Image content harms news interests. Please choose another image",
+            "imageContentMedia": "Image content harms media interests. Please choose another image",
+            "imageContentEntertainment": "Image content harms entertainment interests. Please choose another image",
+            "imageContentSports": "Image content harms sports interests. Please choose another image",
+            "imageContentRecreation": "Image content harms recreation interests. Please choose another image",
+            "imageContentLeisure": "Image content harms leisure interests. Please choose another image",
+            "imageContentHobby": "Image content harms hobby interests. Please choose another image",
+            "imageContentInterest": "Image content harms interest interests. Please choose another image",
+            "imageContentPassion": "Image content harms passion interests. Please choose another image",
+            "imageContentLove": "Image content harms love interests. Please choose another image",
+            "imageContentHate": "Image content harms hate interests. Please choose another image",
+            "imageContentAnger": "Image content harms anger interests. Please choose another image",
+            "imageContentFear": "Image content harms fear interests. Please choose another image",
+            "imageContentSadness": "Image content harms sadness interests. Please choose another image",
+            "imageContentJoy": "Image content harms joy interests. Please choose another image",
+            "imageContentHappiness": "Image content harms happiness interests. Please choose another image",
+            "imageContentExcitement": "Image content harms excitement interests. Please choose another image",
+            "imageContentSurprise": "Image content harms surprise interests. Please choose another image",
+            "imageContentDisgust": "Image content harms disgust interests. Please choose another image",
+            "imageContentShame": "Image content harms shame interests. Please choose another image",
+            "imageContentGuilt": "Image content harms guilt interests. Please choose another image",
+            "imageContentPride": "Image content harms pride interests. Please choose another image",
+            "imageContentEnvy": "Image content harms envy interests. Please choose another image",
+            "imageContentJealousy": "Image content harms jealousy interests. Please choose another image",
+            "imageContentGreed": "Image content harms greed interests. Please choose another image",
+            "imageContentLust": "Image content harms lust interests. Please choose another image",
+            "imageContentGluttony": "Image content harms gluttony interests. Please choose another image",
+            "imageContentSloth": "Image content harms sloth interests. Please choose another image",
+            "imageContentWrath": "Image content harms wrath interests. Please choose another image"
+        },
+        "warning": {
+            "usernameCooldown": "Username change is temporarily locked due to cooldown period",
+            "passwordWeak": "Password is weak. Consider using a stronger password",
+            "emailNotVerified": "Email is not verified. Please verify your email",
+            "phoneNotVerified": "Phone number is not verified. Please verify your phone",
+            "profileIncomplete": "Profile is incomplete. Please complete your profile",
+            "settingsNotSaved": "Settings are not saved. Please save your settings",
+            "dataNotSaved": "Data is not saved. Please save your data",
+            "changesNotSaved": "Changes are not saved. Please save your changes",
+            "fileNotUploaded": "File is not uploaded. Please upload your file",
+            "imageNotUploaded": "Image is not uploaded. Please upload your image",
+            "linkNotCopied": "Link is not copied. Please copy your link",
+            "emailNotSent": "Email is not sent. Please send your email",
+            "notificationNotSent": "Notification is not sent. Please send your notification",
+            "actionNotCompleted": "Action is not completed. Please complete your action",
+            "formNotSubmitted": "Form is not submitted. Please submit your form",
+            "onboardingNotCompleted": "Onboarding is not completed. Please complete your onboarding",
+            "accountNotActivated": "Account is not activated. Please activate your account",
+            "passwordNotChanged": "Password is not changed. Please change your password",
+            "usernameNotChanged": "Username is not changed. Please change your username",
+            "profileNotCompleted": "Profile is not completed. Please complete your profile",
+            "setupNotCompleted": "Setup is not completed. Please complete your setup",
+            "networkSlow": "Network is slow. Please check your connection",
+            "serverSlow": "Server is slow. Please try again later",
+            "validationPending": "Validation is pending. Please wait",
+            "permissionPending": "Permission is pending. Please wait",
+            "sessionExpiring": "Session is expiring. Please login again",
+            "credentialsExpiring": "Credentials are expiring. Please update your credentials",
+            "emailExpiring": "Email is expiring. Please update your email",
+            "phoneExpiring": "Phone is expiring. Please update your phone",
+            "profileExpiring": "Profile is expiring. Please update your profile",
+            "settingsExpiring": "Settings are expiring. Please update your settings",
+            "dataExpiring": "Data is expiring. Please update your data",
+            "changesExpiring": "Changes are expiring. Please update your changes",
+            "fileExpiring": "File is expiring. Please update your file",
+            "imageExpiring": "Image is expiring. Please update your image",
+            "linkExpiring": "Link is expiring. Please update your link",
+            "notificationExpiring": "Notification is expiring. Please update your notification",
+            "actionExpiring": "Action is expiring. Please update your action",
+            "formExpiring": "Form is expiring. Please update your form",
+            "onboardingExpiring": "Onboarding is expiring. Please update your onboarding",
+            "accountExpiring": "Account is expiring. Please update your account",
+            "passwordExpiring": "Password is expiring. Please update your password",
+            "usernameExpiring": "Username is expiring. Please update your username",
+            "setupExpiring": "Setup is expiring. Please update your setup"
+        },
+        "info": {
+            "loading": "Se încarcă...",
+            "processing": "Processing...",
+            "saving": "Saving...",
+            "uploading": "Uploading...",
+            "downloading": "Downloading...",
+            "connecting": "Connecting...",
+            "disconnecting": "Disconnecting...",
+            "sending": "Sending...",
+            "receiving": "Receiving...",
+            "updating": "Updating...",
+            "refreshing": "Refreshing...",
+            "synchronizing": "Synchronizing...",
+            "validating": "Validating...",
+            "verifying": "Verifying...",
+            "checking": "Checking...",
+            "searching": "Searching...",
+            "filtering": "Filtering...",
+            "sorting": "Sorting...",
+            "organizing": "Organizing...",
+            "arranging": "Arranging...",
+            "configuring": "Configuring...",
+            "setting": "Setting...",
+            "adjusting": "Adjusting...",
+            "modifying": "Modifying...",
+            "changing": "Changing...",
+            "switching": "Switching...",
+            "toggling": "Toggling...",
+            "enabling": "Enabling...",
+            "disabling": "Disabling...",
+            "activating": "Activating...",
+            "deactivating": "Deactivating...",
+            "starting": "Starting...",
+            "stopping": "Stopping...",
+            "pausing": "Pausing...",
+            "resuming": "Resuming...",
+            "restarting": "Restarting...",
+            "resetting": "Resetting...",
+            "clearing": "Clearing...",
+            "deleting": "Deleting...",
+            "removing": "Removing...",
+            "adding": "Adding...",
+            "inserting": "Inserting...",
+            "creating": "Creating...",
+            "building": "Building...",
+            "constructing": "Constructing...",
+            "generating": "Generating...",
+            "producing": "Producing...",
+            "making": "Making...",
+            "preparing": "Preparing...",
+            "readying": "Readying...",
+            "initializing": "Initializing...",
+            "launching": "Launching...",
+            "opening": "Opening...",
+            "closing": "Closing...",
+            "shutting": "Shutting...",
+            "ending": "Ending...",
+            "finishing": "Finishing...",
+            "completing": "Completing...",
+            "finalizing": "Finalizing...",
+            "concluding": "Concluding...",
+            "terminating": "Terminating...",
+            "canceling": "Canceling...",
+            "aborting": "Aborting...",
+            "interrupting": "Interrupting...",
+            "halting": "Halting...",
+            "freezing": "Freezing...",
+            "unfreezing": "Unfreezing...",
+            "thawing": "Thawing...",
+            "melting": "Melting...",
+            "cooling": "Cooling...",
+            "heating": "Heating...",
+            "warming": "Warming...",
+            "chilling": "Chilling...",
+            "renewing": "Renewing...",
+            "restoring": "Restoring...",
+            "recovering": "Recovering...",
+            "repairing": "Repairing...",
+            "fixing": "Fixing...",
+            "correcting": "Correcting...",
+            "tuning": "Tuning...",
+            "optimizing": "Optimizing...",
+            "improving": "Improving...",
+            "enhancing": "Enhancing...",
+            "upgrading": "Upgrading...",
+            "modernizing": "Modernizing..."
+        }
+    },
+    "emailVerification": {
+        "title": "Verify Your Email",
+        "description": "We've sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
+        "checkEmail": "Check your email",
+        "emailSent": "Verification email sent!",
+        "resendEmail": "Resend Email",
+        "resendIn": "Resend in",
+        "seconds": "seconds",
+        "didntReceive": "Didn't receive the email?",
+        "checkSpam": "Please check your spam folder or try again.",
+        "backToLogin": "Back to Login",
+        "emailAddress": "Email Address",
+        "verificationSent": "Verification email sent to:",
+        "clickLink": "Click the link in the email to verify your account.",
+        "expiresIn": "This link expires in 24 hours.",
+        "needHelp": "Need help?",
+        "contactSupport": "Contact Support"
+    },
+    "settings": {
+        "title": "Setări",
+        "account": {
+            "heading": "Cont",
+            "security": {
+                "title": "Cont și Securitate"
+            },
+            "changePassword": {
+                "text": "Schimbați parola?",
+                "button": "Schimbă parola",
+                "modalTitle": "Schimbă parola",
+                "currentPassword": "Parola curentă",
+                "newPassword": "Parola nouă",
+                "confirmPassword": "Confirmă parola nouă",
+                "updateButton": "Actualizează parola",
+                "currentPasswordPlaceholder": "Introduceți parola curentă",
+                "newPasswordPlaceholder": "Introduceți o parolă nouă",
+                "confirmPasswordPlaceholder": "Introduceți din nou parola nouă",
+                "successMessage": "Parola a fost actualizată cu succes. Veți fi redirecționat la conectare pentru securitate.",
+                "redirectMessage": "Redirecționare la conectare pentru securitate...",
+                "description": "Actualizați parola pentru a vă păstra contul securizat"
+            },
+            "deactivateAccount": {
+                "text": "Dezactivați-vă contul?",
+                "button": "Dezactivează contul",
+                "modalTitle": "Dezactivați-vă contul?",
+                "modalDescription": "Sigur doriți să vă dezactivați contul?",
+                "enterUsername": "Introduceți numele de utilizator",
+                "enterPassword": "Introduceți parola",
+                "usernamePlaceholder": "Introduceți numele de utilizator",
+                "passwordPlaceholder": "Introduceți parola curentă",
+                "confirmButton": "Dezactivează contul meu",
+                "deactivatedButton": "Dezactivat",
+                "successMessage": "Contul a fost dezactivat cu succes",
+                "activatedMessage": "Contul a fost activat cu succes",
+                "description": "Dezactivați temporar contul dvs."
+            },
+            "deleteAccount": {
+                "text": "Ștergeți-vă contul?",
+                "button": "Șterge contul",
+                "step1": {
+                    "modalTitle": "Ștergeți-vă contul?",
+                    "modalDescription": "Sigur doriți să vă ștergeți contul? Această acțiune nu poate fi anulată.",
+                    "modalDescription2": "Dacă doriți să vă păstrați datele, puteți dezactiva contul în schimb.",
+                    "deactivateInsteadButton": "Dezactivează contul în schimb",
+                    "continueButton": "Continuă cu ștergerea"
+                },
+                "step2": {
+                    "modalTitle": "Introduceți detaliile",
+                    "enterUsername": "Introduceți numele de utilizator",
+                    "enterPassword": "Introduceți parola",
+                    "confirmPassword": "Confirmați parola",
+                    "usernamePlaceholder": "Introduceți numele de utilizator",
+                    "passwordPlaceholder": "Introduceți parola",
+                    "confirmPasswordPlaceholder": "Confirmați parola",
+                    "continueButton": "Continuă"
+                },
+                "step3": {
+                    "modalTitle": "De ce plecați?",
+                    "reasonPlaceholder": "Vă rugăm să ne spuneți motivul plecării...",
+                    "continueButton": "Continuă"
+                },
+                "step4": {
+                    "modalTitle": "Confirmă ștergerea",
+                    "confirmText": "Tastați 'CONFIRM DELETE' pentru a continua",
+                    "confirmPlaceholder": "Tastați 'CONFIRM DELETE' pentru a confirma",
+                    "deleteButton": "Șterge contul meu",
+                    "confirmationRequired": "Vă rugăm să tastați 'CONFIRM DELETE' pentru a confirma.",
+                    "reasonRequired": "Vă rugăm să furnizați un motiv pentru plecare.",
+                    "successMessage": "Contul a fost șters cu succes."
+                },
+                "description": "Ștergeți permanent contul dvs. și toate datele"
+            }
+        },
+        "languagePreference": {
+            "heading": "Preferință limbă",
+            "selectLanguage": "Selectați limba",
+            "availableLanguages": "Alegeți din 47 de limbi disponibile",
+            "currentLanguage": "Curent: {{flag}} {{name}}",
+            "languageChanged": "Limba schimbată în {{name}}",
+            "description": "Alegeți limba preferată pentru interfață. Aceasta va schimba limba tuturor textelor, butoanelor și meniurilor din întreaga aplicație."
+        },
+        "subtitle": "Gestionați setările și preferințele contului dvs."
+    },
+    "seo": {
+        "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+        "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+    },
+    "sidebar": {
+        "home": "Acasă",
+        "profile": "Profil",
+        "recommendations": "Recomandări",
+        "settings": "Setări",
+        "logout": "Deconectare",
+        "analytics": "Analiză",
+        "loading": "Se încarcă...",
+        "clickToOpenMenu": "Faceți clic pentru a deschide meniul"
+    },
+    "modal": {
+        "unsavedChanges": {
+            "title": "Modificări nesalvate",
+            "message": "Aveți modificări nesalvate care vor fi pierdute dacă navigați departe. Ce doriți să faceți?",
+            "discard": "Renunță",
+            "cancel": "Anulează",
+            "save": "Salvează"
+        },
+        "usernameChange": {
+            "title": "Confirmare schimbare nume utilizator",
+            "description": "Numele dvs. de utilizator este folosit în linkurile profilului și listei de recomandări:",
+            "profileLabel": "Profil:",
+            "listLabel": "Listă:",
+            "warning": "Orice coduri QR sau linkuri cu vechiul dvs. nume de utilizator nu vor mai funcționa — va trebui să le actualizați și să le partajați din nou.",
+            "cooldownPrefix": "Veți putea schimba din nou numele de utilizator în",
+            "cooldownSuffix": "după această actualizare.",
+            "minute": "1 minut",
+            "day": "1 zi",
+            "days": "zile",
+            "cancel": "Anulează",
+            "confirm": "Schimbă numele de utilizator"
+        }
+    },
+    "analytics": {
+        "dashboard": {
+            "title": "Panou de Control Analiză",
+            "subtitle": "Urmăriți performanța codurilor QR și implicarea utilizatorilor",
+            "timePeriod": "Perioadă de timp:",
+            "timeFilter": {
+                "today": "Astăzi",
+                "last7days": "Ultimele 7 zile",
+                "last30days": "Ultimele 30 zile",
+                "custom": "Interval personalizat",
+                "selectPeriod": "Selectați perioada"
+            },
+            "dateRange": {
+                "from": "De la:",
+                "to": "Până la:"
+            },
+            "summaryCards": {
+                "totalViews": "Vizualizări totale",
+                "totalClicks": "Clicuri totale",
+                "totalQRViews": "Vizualizări QR totale",
+                "totalLinkViews": "Vizualizări link totale"
+            },
+            "loading": {
+                "loadingData": "Se încarcă datele de analiză...",
+                "resolvingCountry": "Se rezolvă datele țării..."
+            },
+            "error": {
+                "title": "Eroare la încărcarea analizei",
+                "message": "Nu s-au putut prelua datele de analiză. Vă rugăm să încercați din nou mai târziu.",
+                "errorLabel": "Eroare:"
+            },
+            "comingSoon": {
+                "title": "Analiza vine în curând",
+                "message": "Analiza va fi disponibilă în \u003cstrong\u003e{{days}} zi{{daysPlural}}\u003c/strong\u003e după crearea contului dvs.",
+                "whyWait": {
+                    "title": "De ce așteptarea?",
+                    "reasons": {
+                        "accuracy": "• Asigură acuratețea datelor și previne spam-ul",
+                        "interactions": "• Oferă timp pentru interacțiuni semnificative ale utilizatorilor",
+                        "insights": "• Oferă informații fiabile de analiză"
+                    }
+                },
+                "tip": "Între timp, începeți să partajați codurile QR pentru a genera date pentru când analiza devine disponibilă!",
+                "filterTip": "\u003cstrong\u003eSfat:\u003c/strong\u003e Odată ce analiza este disponibilă, veți putea filtra pe perioade de timp (astăzi, ultimele 7 zile, ultimele 30 zile sau interval personalizat) pentru a vizualiza datele dvs."
+            },
+            "emptyState": {
+                "title": "Fără date de analiză",
+                "noDataMessage": "Nu s-au găsit date de analiză pentru contul dvs. Analiza va apărea aici odată ce oamenii încep să vizualizeze și să interacționeze cu codurile QR.",
+                "customRange": {
+                    "bothMissing": "Vă rugăm să selectați atât data de început cât și data de sfârșit pentru intervalul personalizat pentru a vizualiza datele de analiză.",
+                    "startMissing": "Vă rugăm să selectați o dată de început pentru intervalul personalizat pentru a vizualiza datele de analiză.",
+                    "endMissing": "Vă rugăm să selectați o dată de sfârșit pentru intervalul personalizat pentru a vizualiza datele de analiză."
+                },
+                "noDataForPeriod": {
+                    "today": "Nu sunt disponibile date de analiză pentru astăzi. Vă rugăm să selectați un interval de timp diferit pentru a vizualiza datele dvs.",
+                    "last7days": "Nu sunt disponibile date de analiză pentru ultimele 7 zile. Vă rugăm să selectați un interval de timp diferit pentru a vizualiza datele dvs.",
+                    "last30days": "Nu sunt disponibile date de analiză pentru ultimele 30 zile. Vă rugăm să selectați un interval de timp diferit pentru a vizualiza datele dvs.",
+                    "custom": "Nu sunt disponibile date de analiză pentru intervalul personalizat ({{startDate}} până la {{endDate}}). Vă rugăm să selectați un interval de timp diferit pentru a vizualiza datele dvs.",
+                    "default": "Nu sunt disponibile date de analiză pentru intervalul de timp selectat. Vă rugăm să selectați un interval de timp diferit pentru a vizualiza datele dvs."
+                },
+                "howToStart": {
+                    "title": "Pentru a începe să vedeți analiza:",
+                    "shareQR": "• Partajați codurile QR pe rețelele sociale",
+                    "includeQR": "• Includeți coduri QR în materialele de marketing",
+                    "askFriends": "• Cereți prietenilor să scaneze codurile QR",
+                    "viewProfile": "• Vizualizați paginile de profil publice"
+                }
+            },
+            "charts": {
+                "topCountries": {
+                    "title": "Top 3 țări după vizualizări",
+                    "retryGeolocation": "Reîncercare geolocație",
+                    "geolocationIssue": "Problemă geolocație:",
+                    "countryDataUnavailable": "Date despre țară indisponibile",
+                    "unableToResolve": "Nu se pot rezolva adresele IP în țări în acest moment. Acest lucru se poate datora restricțiilor de rețea sau limitărilor serviciului.",
+                    "failedToResolve": "Nu s-au putut rezolva datele despre țară. Vă rugăm să încercați din nou mai târziu.",
+                    "analyticsSummary": "Rezumat analiză:",
+                    "totalViewEvents": "• {{count}} evenimente totale de vizualizare",
+                    "eventsWithCountry": "• {{count}} evenimente cu date despre țară",
+                    "eventsPending": "• {{count}} evenimente în așteptarea geolocației",
+                    "willAppear": "Datele despre țară vor apărea automat odată ce serviciile de geolocație IP devin disponibile.",
+                    "tooltip": {
+                        "country": "Țară: {{country}}",
+                        "views": "Vizualizări: {{count}}"
+                    },
+                    "legend": "Vizualizări"
+                },
+                "worldMap": {
+                    "title": "Distribuția vizualizărilor globale",
+                    "subtitle": "Hartă interactivă a lumii care arată distribuția vizualizărilor pe țări din paginile publice",
+                    "noGeographicData": "Nu sunt disponibile date geografice",
+                    "unableToResolve": "Nu se pot rezolva adresele IP în țări în acest moment. Acest lucru se poate datora restricțiilor de rețea sau limitărilor serviciului.",
+                    "failedToResolve": "Nu s-au putut rezolva datele despre țară. Vă rugăm să încercați din nou mai târziu.",
+                    "analyticsSummary": "Rezumat analiză:",
+                    "totalViewEvents": "• {{count}} evenimente totale de vizualizare",
+                    "eventsWithCountry": "• {{count}} evenimente cu date despre țară",
+                    "eventsPending": "• {{count}} evenimente în așteptarea geolocației",
+                    "willAppear": "Datele despre țară vor apărea automat odată ce serviciile de geolocație IP devin disponibile.",
+                    "tooltip": {
+                        "country": "{{country}}",
+                        "views": "{{views}} vizualizări"
+                    },
+                    "countriesWithViews": "{{count}} țări cu vizualizări",
+                    "legend": {
+                        "views": "Vizualizări:",
+                        "low": "Scăzut",
+                        "medium": "Mediu",
+                        "high": "Ridicat",
+                        "highest": "Cel mai ridicat"
+                    }
+                },
+                "trafficSource": {
+                    "title": "Sursa traficului în timp",
+                    "subtitle": "Urmăriți cum variază traficul din diferite surse în timp",
+                    "selectSource": "Selectați sursa traficului:",
+                    "allSources": "Toate sursele",
+                    "direct": "Direct",
+                    "qrCode": "Cod QR",
+                    "instagram": "Instagram",
+                    "whatsapp": "WhatsApp",
+                    "twitter": "Twitter",
+                    "noTrafficData": "Nu sunt disponibile date despre trafic",
+                    "noViewEvents": "Nu s-au găsit evenimente de vizualizare cu informații despre sursa traficului.",
+                    "analyticsSummary": "Rezumat analiză:",
+                    "totalViewEvents": "• {{count}} evenimente totale de vizualizare",
+                    "eventsWithUTM": "• {{count}} evenimente cu sursă UTM",
+                    "directTraffic": "• {{count}} evenimente de trafic direct",
+                    "willAppear": "Datele despre sursa traficului vor apărea odată ce utilizatorii vizitează paginile dvs. cu parametri UTM.",
+                    "tooltip": {
+                        "sourceCount": "{{source}}: {{count}}"
+                    }
+                },
+                "locationEngagement": {
+                    "title": "Implicare cu locația",
+                    "subtitle": "Urmăriți vizualizările pentru diferite locații în timp",
+                    "selectLocation": "Selectați locația:",
+                    "allLocations": "Toate locațiile",
+                    "selectLocationPlaceholder": "Selectați locația",
+                    "locationViews": "{{location}} ({{count}} vizualizări)",
+                    "noLocationData": "Nu sunt disponibile date de vizualizare pentru locație",
+                    "unknownLocation": "Locație Necunoscută",
+                    "location": "Locație",
+                    "tooltip": {
+                        "date": "Data: {{date}}",
+                        "locationViews": "{{location}}: {{value}} vizualizări"
+                    },
+                    "stats": {
+                        "totalLocations": "Locații totale",
+                        "totalViews": "Vizualizări totale",
+                        "avgViews": "Medie vizualizări/locație"
+                    }
+                },
+                "recommendedPlaces": {
+                    "title": "Implicare cu locurile recomandate",
+                    "subtitle": "Urmăriți clicurile pe locurile recomandate pe locație",
+                    "selectLocation": "Selectați locația:",
+                    "selectLocationPlaceholder": "Selectați locația",
+                    "locationPlaces": "{{location}} ({{count}} locuri)",
+                    "noRecommendationData": "Nu există date de recomandare",
+                    "noDataMessage": "Nu sunt disponibile date de clic pentru recomandări pentru perioada selectată.",
+                    "analyticsSummary": "Rezumat analiză:",
+                    "totalClickEvents": "• {{count}} evenimente totale de clic",
+                    "recordsWithRecommendations": "• {{count}} înregistrări cu ID de recomandare",
+                    "uniqueRecommendations": "• {{count}} recomandări unice",
+                    "selectLocationPrompt": "Vă rugăm să selectați o locație pentru a vizualiza datele de recomandare.",
+                    "noClicksMessage": "Nu s-au găsit clicuri de recomandare pentru locația selectată. Datele de recomandare vor apărea odată ce utilizatorii fac clic pe cardurile de locuri din paginile dvs. de locație.",
+                    "unknownPlace": "Loc Necunoscut",
+                    "unknownCategory": "Categorie Necunoscută",
+                    "unknownLocation": "Locație Necunoscută",
+                    "tooltip": {
+                        "place": "{{place}}",
+                        "category": "Categorie: {{category}}",
+                        "clicks": "Clicuri: {{count}}"
+                    },
+                    "stats": {
+                        "placesShown": "Locuri afișate",
+                        "totalClicks": "Clicuri totale",
+                        "avgClicks": "Medie clicuri/loc"
+                    }
+                },
+                "socialMedia": {
+                    "title": "Interacțiune rețele sociale",
+                    "subtitle": "Urmăriți clicurile pe linkurile de rețele sociale din profilul dvs. public pe toate platformele",
+                    "noDataTitle": "Nu există date de interacțiune rețele sociale",
+                    "noDataMessage": "Nu sunt disponibile date de clic pentru rețelele sociale din pagina dvs. de profil public.",
+                    "analyticsSummary": "Rezumat analiză:",
+                    "totalSocialClicks": "• {{count}} clicuri totale pe rețelele sociale",
+                    "uniquePlatforms": "• {{count}} platforme unice",
+                    "trackingNote": "• Urmărirea doar a clicurilor din pagina de profil public",
+                    "willAppear": "Datele de interacțiune cu rețelele sociale vor apărea odată ce utilizatorii fac clic pe linkurile dvs. de rețele sociale.",
+                    "tooltip": {
+                        "platform": "{{platform}}",
+                        "clicks": "Clicuri: {{count}}"
+                    },
+                    "stats": {
+                        "platforms": "Platforme",
+                        "totalClicks": "Clicuri totale",
+                        "avgClicks": "Medie clicuri/platformă"
+                    }
+                }
+            }
+        }
+    },
+    "countries": {
+        "US": "United States",
+        "IN": "India",
+        "GB": "United Kingdom",
+        "CA": "Canada",
+        "AU": "Australia",
+        "DE": "Germany",
+        "FR": "France",
+        "IT": "Italy",
+        "ES": "Spain",
+        "BR": "Brazil",
+        "MX": "Mexico",
+        "JP": "Japan",
+        "CN": "China",
+        "RU": "Russia",
+        "KR": "South Korea",
+        "NL": "Netherlands",
+        "SE": "Sweden",
+        "NO": "Norway",
+        "DK": "Denmark",
+        "FI": "Finland",
+        "CH": "Switzerland",
+        "AT": "Austria",
+        "BE": "Belgium",
+        "PL": "Poland",
+        "CZ": "Czech Republic",
+        "HU": "Hungary",
+        "RO": "Romania",
+        "BG": "Bulgaria",
+        "GR": "Greece",
+        "PT": "Portugal",
+        "IE": "Ireland",
+        "IS": "Iceland",
+        "LU": "Luxembourg",
+        "MT": "Malta",
+        "CY": "Cyprus",
+        "EE": "Estonia",
+        "LV": "Latvia",
+        "LT": "Lithuania",
+        "SI": "Slovenia",
+        "SK": "Slovakia",
+        "HR": "Croatia",
+        "BA": "Bosnia and Herzegovina",
+        "RS": "Serbia",
+        "ME": "Montenegro",
+        "MK": "North Macedonia",
+        "AL": "Albania",
+        "XK": "Kosovo",
+        "MD": "Moldova",
+        "UA": "Ukraine",
+        "BY": "Belarus",
+        "GE": "Georgia",
+        "AM": "Armenia",
+        "AZ": "Azerbaijan",
+        "KZ": "Kazakhstan",
+        "UZ": "Uzbekistan",
+        "KG": "Kyrgyzstan",
+        "TJ": "Tajikistan",
+        "TM": "Turkmenistan",
+        "AF": "Afghanistan",
+        "PK": "Pakistan",
+        "BD": "Bangladesh",
+        "LK": "Sri Lanka",
+        "MV": "Maldives",
+        "NP": "Nepal",
+        "BT": "Bhutan",
+        "MM": "Myanmar",
+        "TH": "Thailand",
+        "LA": "Laos",
+        "KH": "Cambodia",
+        "VN": "Vietnam",
+        "MY": "Malaysia",
+        "SG": "Singapore",
+        "BN": "Brunei",
+        "ID": "Indonesia",
+        "PH": "Philippines",
+        "TL": "East Timor",
+        "MN": "Mongolia",
+        "KP": "North Korea",
+        "TW": "Taiwan",
+        "HK": "Hong Kong",
+        "MO": "Macau",
+        "SA": "Saudi Arabia",
+        "AE": "United Arab Emirates",
+        "QA": "Qatar",
+        "KW": "Kuwait",
+        "BH": "Bahrain",
+        "OM": "Oman",
+        "YE": "Yemen",
+        "IQ": "Iraq",
+        "IR": "Iran",
+        "SY": "Syria",
+        "LB": "Lebanon",
+        "JO": "Jordan",
+        "IL": "Israel",
+        "PS": "Palestine",
+        "TR": "Turkey",
+        "EG": "Egypt",
+        "LY": "Libya",
+        "TN": "Tunisia",
+        "DZ": "Algeria",
+        "MA": "Morocco",
+        "SD": "Sudan",
+        "SS": "South Sudan",
+        "ET": "Ethiopia",
+        "ER": "Eritrea",
+        "DJ": "Djibouti",
+        "SO": "Somalia",
+        "KE": "Kenya",
+        "UG": "Uganda",
+        "TZ": "Tanzania",
+        "RW": "Rwanda",
+        "BI": "Burundi",
+        "MW": "Malawi",
+        "ZM": "Zambia",
+        "ZW": "Zimbabwe",
+        "BW": "Botswana",
+        "NA": "Namibia",
+        "ZA": "South Africa",
+        "LS": "Lesotho",
+        "SZ": "Eswatini",
+        "MG": "Madagascar",
+        "MU": "Mauritius",
+        "SC": "Seychelles",
+        "KM": "Comoros",
+        "MZ": "Mozambique",
+        "AO": "Angola",
+        "CD": "Democratic Republic of the Congo",
+        "CG": "Republic of the Congo",
+        "CF": "Central African Republic",
+        "TD": "Chad",
+        "CM": "Cameroon",
+        "NG": "Nigeria",
+        "NE": "Niger",
+        "ML": "Mali",
+        "BF": "Burkina Faso",
+        "CI": "Ivory Coast",
+        "GH": "Ghana",
+        "TG": "Togo",
+        "BJ": "Benin",
+        "SN": "Senegal",
+        "GM": "Gambia",
+        "GW": "Guinea-Bissau",
+        "GN": "Guinea",
+        "SL": "Sierra Leone",
+        "LR": "Liberia",
+        "MR": "Mauritania",
+        "CV": "Cape Verde",
+        "ST": "São Tomé and Príncipe",
+        "GQ": "Equatorial Guinea",
+        "GA": "Gabon",
+        "AR": "Argentina",
+        "BO": "Bolivia",
+        "CL": "Chile",
+        "CO": "Colombia",
+        "EC": "Ecuador",
+        "FK": "Falkland Islands",
+        "GF": "French Guiana",
+        "GY": "Guyana",
+        "PY": "Paraguay",
+        "PE": "Peru",
+        "SR": "Suriname",
+        "UY": "Uruguay",
+        "VE": "Venezuela",
+        "CU": "Cuba",
+        "JM": "Jamaica",
+        "HT": "Haiti",
+        "DO": "Dominican Republic",
+        "PR": "Puerto Rico",
+        "TT": "Trinidad and Tobago",
+        "BB": "Barbados",
+        "LC": "Saint Lucia",
+        "VC": "Saint Vincent and the Grenadines",
+        "GD": "Grenada",
+        "AG": "Antigua and Barbuda",
+        "KN": "Saint Kitts and Nevis",
+        "DM": "Dominica",
+        "BS": "Bahamas",
+        "BZ": "Belize",
+        "GT": "Guatemala",
+        "SV": "El Salvador",
+        "HN": "Honduras",
+        "NI": "Nicaragua",
+        "CR": "Costa Rica",
+        "PA": "Panama",
+        "NZ": "New Zealand",
+        "FJ": "Fiji",
+        "PG": "Papua New Guinea",
+        "SB": "Solomon Islands",
+        "VU": "Vanuatu",
+        "NC": "New Caledonia",
+        "PF": "French Polynesia",
+        "WS": "Samoa",
+        "TO": "Tonga",
+        "KI": "Kiribati",
+        "TV": "Tuvalu",
+        "NR": "Nauru",
+        "PW": "Palau",
+        "FM": "Micronesia",
+        "MH": "Marshall Islands"
+    }
+}

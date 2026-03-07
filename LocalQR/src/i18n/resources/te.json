@@ -1,0 +1,1927 @@
+﻿{
+    "header": {
+        "nav": {
+            "howItWorks": "ఎలా పనిచేస్తుంది",
+            "whoIsFor": "ఎవరికోసం",
+            "faq": "తరచుగా అడిగే ప్రశ్నలు",
+            "about": "గురించి",
+            "contact": "సంప్రదింపు"
+        },
+        "auth": {
+            "login": "లాగిన్",
+            "signUp": "నమోదు"
+        }
+    },
+    "hero": {
+        "headline": "ఒక QR మరియు సాధారణ లింక్‌లో మీ అన్ని సిఫార్సులు.",
+        "subtext": "ఒక స్థలం గురించి మీకు తెలిసిన మరియు ఇష్టమైన వాటిని పంచుకోండి — మరియు అన్నిచోట్ల, అందరికీ కనుగొనగలిగేలా చేయండి",
+        "inputLabel": "మీ explorers URL ను రిజర్వ్ చేయండి:",
+        "inputPlaceholder": "మీ పేరు",
+        "ctaButton": "explorers రిజర్వ్ చేయండి",
+        "signupPrompt": "మీదాన్ని పొందడానికి ఇప్పుడే నమోదు చేయండి"
+    },
+    "sections": {
+        "createCustomize": {
+            "headline": "నిమిషాలలో మీ explorers ను సృష్టించి కస్టమైజ్ చేయండి",
+            "subtext": "మీ ఇష్టమైన స్థలాలను జోడించండి, నగరం లేదా థీమ్ ప్రకారం వ్యవస్థీకరించండి, మరియు మీ QR ను తక్షణం సృష్టించండి.",
+            "bulletPoints": {
+                "addSpots": {
+                    "title": "మీ ఇష్టమైన స్థలాలను జోడించండి",
+                    "description": "మీ must-visit తో జాబితా సృష్టించండి"
+                },
+                "organize": {
+                    "title": "నగరం లేదా థీమ్ ప్రకారం వ్యవస్థీకరించండి",
+                    "description": "మీ ప్రేక్షకులకు అర్థవంతమైన వర్గాలను సృష్టించండి"
+                },
+                "generate": {
+                    "title": "మీ లింక్ మరియు QR ను తక్షణం సృష్టించండి",
+                    "description": "మీ వ్యక్తిగత QR సెకన్లలో సిద్ధంగా ఉంటుంది"
+                },
+                "share": {
+                    "title": "డిజిటల్‌గా లేదా నిజ ప్రపంచంలో QR ద్వారా భాగస్వామ్యం చేయండి",
+                    "description": ""
+                }
+            },
+            "mockup": {
+                "title": "నా సిఫార్సులు",
+                "addPlace": "స్థలం జోడించు"
+            }
+        },
+        "shareAnywhere": {
+            "headline": "సోషల్ మీడియా, దుకాణ విండోలు, లేదా నగర గోడలపై పంచుకోండి",
+            "subtext": "మీ Instagram bio కు జోడించండి, మెనూలపై ప్రింట్ చేయండి, లేదా స్వాగత పుస్తకాలలో చేర్చండి — మీ గైడ్, ఎల్లప్పుడూ సిద్ధంగా.",
+            "scanText": "స్థానిక సిఫార్సుల కోసం స్కాన్ చేయండి",
+            "storefrontText": "దుకాణ విండో ప్రదర్శనలకు పర్ఫెక్ట్",
+            "instagramTitle": "మీ Instagram bio కు జోడించండి",
+            "instagramDesc": "మీ ఫాలోవర్లతో తక్షణం పంచుకోండి",
+            "menuTitle": "మెనూలపై ప్రింట్ చేయండి",
+            "menuDesc": "భౌతిక సంప్రదింపు పాయింట్లు సులభం చేయబడ్డాయి",
+            "welcomeTitle": "స్వాగత పుస్తకాలలో చేర్చండి",
+            "welcomeDesc": "హోస్ట్‌లు మరియు గైడ్‌లకు పర్ఫెక్ట్",
+            "cafeMenu": "కెఫే మెనూ",
+            "tokyoFoodGuide": "నా టోక్యో ఫుడ్ గైడ్ explorers.earth/jane"
+        },
+        "analytics": {
+            "headline": "క్లిక్‌లు, రిఫరల్‌లు మరియు ఇంగేజ్‌మెంట్‌ను ట్రాక్ చేయండి",
+            "subtext": "ఏమి పనిచేస్తుందో, ఎవరు స్కాన్ చేస్తున్నారో, మరియు ఏ స్థలాలు ఎక్కువ ప్రేమను పొందుతున్నాయో — రియల్ టైమ్‌లో చూడండి.",
+            "workingTitle": "ఏమి పనిచేస్తుందో చూడండి",
+            "workingDesc": "మీ సిఫార్సుల ప్రజాదరణను ట్రాక్ చేయండి",
+            "scanningTitle": "ఎవరు స్కాన్ చేస్తున్నారు",
+            "scanningDesc": "QR స్కాన్‌లు మరియు అప్‌డేట్‌లను మానిటర్ చేయండి",
+            "spotsTitle": "అత్యుత్తమ పనితీరు స్థలాలు",
+            "spotsDesc": "మెరుగైన క్యూరేషన్ కోసం డేటా-డ్రివెన్ ఇన్‌సైట్‌లు",
+            "dashboardTitle": "అనాలిటిక్స్ డాష్‌బోర్డ్",
+            "last30Days": "గత 30 రోజులు",
+            "totalScans": "మొత్తం స్కాన్‌లు",
+            "engagement": "ఇంగేజ్‌మెంట్",
+            "referrals": "రిఫరల్‌లు"
+        },
+        "referEarn": {
+            "headline": "పంచుకోండి, రిఫర్ చేయండి, మరియు సంపాదించండి",
+            "subtext": "మీ సిఫార్సులను పాసివ్ రివార్డ్‌లుగా మార్చండి — ఇతరులు మీ QR ను ఉపయోగించినప్పుడు క్రెడిట్ పొందండి.",
+            "comingSoon": "రిఫరల్ రివార్డ్ ప్రోగ్రామ్ (త్వరలో వస్తుంది)",
+            "rewardsTitle": "రివార్డ్‌లను సంపాదించండి",
+            "rewardsDesc": "ప్రజలు మీ సిఫార్సులను ఉపయోగించినప్పుడు డబ్బు పొందండి",
+            "earnedThisMonth": "ఈ నెల సంపాదించినది",
+            "passiveTitle": "సిఫార్సులను పాసివ్ రివార్డ్‌లుగా మార్చండి",
+            "networkTitle": "మీ నెట్‌వర్క్‌ను నిర్మించండి మరియు స్వయంచాలకంగా సంపాదించండి"
+        },
+        "localTunes": {
+            "mainHeading": "Tunes",
+            "title": "మీరు అన్వేషించేటప్పుడు వినండి",
+            "body": "అన్వేషణ దృశ్యమాత్రమే కాదు. శబ్దం జ్ఞాపకం, సందర్భం మరియు భావనను తీసుకువస్తుంది.\n\nTunes స్థలాలు, ప్రయాణాలు మరియు మూడ్‌లకు సౌండ్‌ట్రాక్‌లను సేకరించడానికి మరియు భాగస్వామ్యం చేయడానికి మిమ్మల్ని అనుమతిస్తుంది — అది రోడ్డులో కనుగొనబడిన సంగీతం అయినా లేదా మీకు ఒక స్థలాన్ని నిర్వచించే శబ్దాలు అయినా.\n\nమీ Explorer ప్రొఫైల్‌తో నిరాఘాటంగా కనెక్ట్ చేయబడింది.",
+            "exploreButton": "Tunes ను అన్వేషించండి",
+            "featuresHeading": "శక్తివంతమైన లక్షణాలు",
+            "features": {
+                "realtimeCollaboration": {
+                    "title": "రియల్-టైమ్ సహకారం",
+                    "description": "అతిథులు మీ ప్లేలిస్ట్‌కు తక్షణమే పాటలను జోడించడానికి అనుమతించండి, మీరు ప్లే అవుతున్న దానిపై పూర్తి నియంత్రణను నిర్వహిస్తూ."
+                },
+                "qrCodeSharing": {
+                    "title": "QR కోడ్ భాగస్వామ్యం",
+                    "description": "సాధారణ QR కోడ్ స్కాన్‌తో మీ సంగీత అనుభవాన్ని భాగస్వామ్యం చేయండి — అనువర్తనాలు లేదా డౌన్‌లోడ్‌ల అవసరం లేదు."
+                },
+                "youtubeIntegration": {
+                    "title": "YouTube ఇంటిగ్రేషన్",
+                    "description": "మిలియన్ల పాటలకు ప్రాప్యత పొందడానికి మరియు సంపూర్ణ వాతావరణాన్ని సృష్టించడానికి YouTube తో నిరాఘాటంగా ఇంటిగ్రేట్ చేయండి."
+                },
+                "voteLikeSystem": {
+                    "title": "వోట్ మరియు లైక్ సిస్టమ్",
+                    "description": "అతిథులు తమ ఇష్టమైన పాటలకు వోట్ చేయవచ్చు రియల్-టైమ్‌లో ప్లేలిస్ట్ క్యూను ప్రభావితం చేయడానికి."
+                },
+                "silentParties": {
+                    "title": "నిశ్శబ్ద పార్టీలు",
+                    "description": "ప్రత్యేకమైన నిశ్శబ్ద పార్టీలను నిర్వహించండి, అక్కడ అందరూ తమ స్వంత హెడ్‌ఫోన్‌ల ద్వారా వింటారు."
+                },
+                "karaokeReady": {
+                    "title": "కారియోకే సిద్ధం",
+                    "description": "సహకార ప్లేలిస్ట్‌లు మరియు రియల్-టైమ్ పాట అభ్యర్థనలతో కారియోకే రాత్రులకు సంపూర్ణం."
+                }
+            },
+            "venueHeading": "ప్రతి స్థలానికి సంపూర్ణం",
+            "venues": {
+                "barsPubs": "బార్‌లు మరియు పబ్‌లు",
+                "restaurants": "రెస్టారెంట్‌లు",
+                "coffeeShops": "కాఫీ షాప్‌లు",
+                "eventsWeddings": "ఈవెంట్‌లు మరియు వివాహాలు",
+                "retailStores": "రిటైల్ స్టోర్‌లు",
+                "gymsFitness": "జిమ్‌లు మరియు ఫిట్నెస్"
+            },
+            "closingStatement": "Tunes అన్వేషించడానికి \u003cstrong\u003eఉచితం\u003c/strong\u003e, మరియు చెల్లింపు లక్షణాల కోసం మీరు తర్వాత అప్‌గ్రేడ్ చేయవచ్చు."
+        },
+        "whoIsFor": {
+            "headline": "explorers.earth ఎవరికోసం?",
+            "subtext": "explorers.earth భాగస్వామ్యం ఒక బాధ్యత అని నమ్మే ప్రతి ఒక్కరికీ — ప్రసారం కాదు.",
+            "cards": {
+                "individuals": {
+                    "title": "వ్యక్తులు",
+                    "oneLiner": "వ్యక్తిగత లేదా స్థానిక సిఫార్సులను భాగస్వామ్యం చేయండి.",
+                    "items": {
+                        "traveler": {
+                            "label": "ప్రయాణికుడు",
+                            "oneLiner": "ప్రయాణ స్థలాలను భాగస్వామ్యం చేసే వ్యక్తులు"
+                        },
+                        "local": {
+                            "label": "స్థానిక",
+                            "oneLiner": "పొరుగు చిట్కాలను భాగస్వామ్యం చేసే స్థానికులు"
+                        },
+                        "family": {
+                            "label": "కుటుంబం",
+                            "oneLiner": "ఉపయోగకరమైన స్థలాలను భాగస్వామ్యం చేసే కుటుంబాలు"
+                        },
+                        "student": {
+                            "label": "విద్యార్థి",
+                            "oneLiner": "క్యాంపస్/సమీప స్థలాలను భాగస్వామ్యం చేసే విద్యార్థులు"
+                        },
+                        "nomad": {
+                            "label": "సంచారి",
+                            "oneLiner": "పని-స్నేహపూర్వక స్థలాలను జాబితా చేసే సంచారులు"
+                        },
+                        "emergencySharer": {
+                            "label": "అత్యవసర భాగస్వామ్యదారు",
+                            "oneLiner": "ముఖ్యమైన స్థలాలను పోస్ట్ చేసే అత్యవసర భాగస్వామ్యదారులు"
+                        }
+                    }
+                },
+                "creators": {
+                    "title": "సృష్టికర్తలు",
+                    "oneLiner": "మీ ప్రేక్షకులతో క్యూరేట్ చేసిన జాబితాలను భాగస్వామ్యం చేయండి.",
+                    "items": {
+                        "influencer": {
+                            "label": "ఇన్‌ఫ్లుఎన్సర్",
+                            "oneLiner": "టాప్ ఎంపికలను భాగస్వామ్యం చేసే ఇన్‌ఫ్లుఎన్సర్‌లు"
+                        },
+                        "blogger": {
+                            "label": "బ్లాగర్",
+                            "oneLiner": "వ్రాతపూర్వక గైడ్‌లను క్యూరేట్ చేసే బ్లాగర్‌లు"
+                        },
+                        "vlogger": {
+                            "label": "వ్లాగర్",
+                            "oneLiner": "విజువల్ ప్రయాణాలను భాగస్వామ్యం చేసే వ్లాగర్‌లు"
+                        },
+                        "reviewer": {
+                            "label": "రివ్యూయర్",
+                            "oneLiner": "ఉత్తమమైన రేట్ చేయబడిన స్థలాలను జాబితా చేసే రివ్యూయర్‌లు"
+                        },
+                        "photographer": {
+                            "label": "ఫోటోగ్రాఫర్",
+                            "oneLiner": "ఫోటో స్థలాలను భాగస్వామ్యం చేసే ఫోటోగ్రాఫర్‌లు"
+                        },
+                        "educator": {
+                            "label": "విద్యావేత్త",
+                            "oneLiner": "నేర్చుకోవడం గైడ్‌లను భాగస్వామ్యం చేసే విద్యావేత్తలు"
+                        },
+                        "communityLeader": {
+                            "label": "సంఘ నాయకుడు",
+                            "oneLiner": "ఉపయోగకరమైన జాబితాలను క్యూరేట్ చేసే సంఘ నాయకులు"
+                        }
+                    }
+                },
+                "hospitality": {
+                    "title": "ఆతిథ్యం",
+                    "oneLiner": "అతిథులకు క్యూరేట్ చేసిన స్థానిక అంతర్దృష్టులను అందించండి.",
+                    "items": {
+                        "hotel": {
+                            "label": "హోటల్",
+                            "oneLiner": "స్థానిక గైడ్‌లను అందించే హోటల్‌లు"
+                        },
+                        "airbnb": {
+                            "label": "Airbnb",
+                            "oneLiner": "పొరుగు ఇష్టాలను భాగస్వామ్యం చేసే హోస్ట్‌లు"
+                        },
+                        "hostel": {
+                            "label": "హోస్టెల్",
+                            "oneLiner": "బ్యాక్‌ప్యాకర్ చిట్కాలను భాగస్వామ్యం చేసే హోస్టెల్‌లు"
+                        },
+                        "homestay": {
+                            "label": "హోమ్‌స్టే",
+                            "oneLiner": "కుటుంబ-కేంద్రీకృత గైడ్‌లను అందించే హోమ్‌స్టేలు"
+                        },
+                        "resort": {
+                            "label": "రిసార్ట్",
+                            "oneLiner": "కార్యకలాపాల జాబితాలను అందించే రిసార్ట్‌లు"
+                        },
+                        "pgColiving": {
+                            "label": "PG/కోలివింగ్",
+                            "oneLiner": "ముఖ్యమైన సమీప స్థలాలను చూపించే PG/కోలివింగ్"
+                        }
+                    }
+                },
+                "businesses": {
+                    "title": "వ్యాపారాలు",
+                    "oneLiner": "ఉపయోగకరమైన సిఫార్సులతో కస్టమర్‌లను మార్గనిర్దేశం చేయండి.",
+                    "items": {
+                        "restaurant": {
+                            "label": "రెస్టారెంట్",
+                            "oneLiner": "ప్రయత్నించడానికి వంటకాలను భాగస్వామ్యం చేసే రెస్టారెంట్‌లు"
+                        },
+                        "cafe": {
+                            "label": "కాఫీ",
+                            "oneLiner": "ఇష్టమైన మెను అంశాలను హైలైట్ చేసే కాఫీ షాప్‌లు"
+                        },
+                        "retailShop": {
+                            "label": "రిటైల్ షాప్",
+                            "oneLiner": "ఉత్పత్తి సిఫార్సులను భాగస్వామ్యం చేసే దుకాణాలు"
+                        },
+                        "gym": {
+                            "label": "జిమ్",
+                            "oneLiner": "స్థానిక వెల్‌నెస్ స్థలాలను సూచించే జిమ్‌లు"
+                        },
+                        "spa": {
+                            "label": "స్పా",
+                            "oneLiner": "సమీప విశ్రాంతి ఎంపికలను జాబితా చేసే స్పాలు"
+                        },
+                        "salon": {
+                            "label": "సాలన్",
+                            "oneLiner": "అందం గైడ్‌లను అందించే సాలన్‌లు"
+                        },
+                        "clinic": {
+                            "label": "క్లినిక్",
+                            "oneLiner": "ఆరోగ్య-సంబంధిత స్థలాలను భాగస్వామ్యం చేసే క్లినిక్‌లు"
+                        },
+                        "boutique": {
+                            "label": "బౌటిక్",
+                            "oneLiner": "క్యూరేట్ చేసిన కనుగొనడాలను జాబితా చేసే బౌటిక్‌లు"
+                        }
+                    }
+                },
+                "organizations": {
+                    "title": "సంస్థలు",
+                    "oneLiner": "క్యూరేట్ చేసిన గైడ్‌లు మరియు వనరులను అందించండి.",
+                    "items": {
+                        "airline": {
+                            "label": "ఎయిర్‌లైన్",
+                            "oneLiner": "నగర గైడ్‌లను భాగస్వామ్యం చేసే ఎయిర్‌లైన్‌లు"
+                        },
+                        "agency": {
+                            "label": "ఏజెన్సీ",
+                            "oneLiner": "సందర్శించాల్సిన స్థలాలను జాబితా చేసే ట్రావెల్ ఏజెన్సీలు"
+                        },
+                        "university": {
+                            "label": "విశ్వవిద్యాలయం",
+                            "oneLiner": "క్యాంపస్ అవసరాలను భాగస్వామ్యం చేసే విశ్వవిద్యాలయాలు"
+                        },
+                        "corporate": {
+                            "label": "కార్పొరేట్",
+                            "oneLiner": "సమీప వనరులను జాబితా చేసే కార్పొరేషన్‌లు"
+                        },
+                        "airport": {
+                            "label": "విమానాశ్రయం",
+                            "oneLiner": "టెర్మినల్‌లు + నగర చిట్కాలను అందించే విమానాశ్రయాలు"
+                        },
+                        "railway": {
+                            "label": "రైల్వే",
+                            "oneLiner": "ప్లాట్‌ఫారమ్ సమాచారాన్ని భాగస్వామ్యం చేసే రైల్వేలు"
+                        },
+                        "ngo": {
+                            "label": "NGO",
+                            "oneLiner": "సంఘ వనరులను భాగస్వామ్యం చేసే NGOలు"
+                        },
+                        "government": {
+                            "label": "ప్రభుత్వం",
+                            "oneLiner": "ప్రజా సేవలను హైలైట్ చేసే విభాగాలు"
+                        }
+                    }
+                }
+            },
+            "useCases": {
+                "travelers": "ప్రయాణికులు",
+                "travelersDesc": "కనుగొనబడిన రత్నాలను సహ-అన్వేషకులతో పంచుకోండి",
+                "influencers": "ఇన్‌ఫ్లుయెన్సర్‌లు",
+                "influencersDesc": "స్థానిక జ్ఞానాన్ని మనీటైజ్ చేయండి మరియు కమ్యూనిటీ నిర్మించండి",
+                "airbnbHosts": "Airbnb హోస్ట్‌లు",
+                "airbnbHostsDesc": "స్థానిక ఇన్‌సైట్‌లతో గెస్ట్ అనుభవాన్ని మెరుగుపరచండి",
+                "hotels": "హోటల్‌లు",
+                "hotelsDesc": "క్యూరేట్ చేసిన స్థానిక సిఫార్సులను అందించండి",
+                "restaurants": "రెస్టారెంట్‌లు",
+                "restaurantsDesc": "ఇతర స్థానిక వ్యాపారాలతో క్రాస్-ప్రమోషన్ చేయండి",
+                "cafes": "కెఫేలు",
+                "cafesDesc": "కస్టమర్‌లతో పొరుగు ఇష్టమైన స్థలాలను పంచుకోండి",
+                "localGuides": "స్థానిక గైడ్‌లు",
+                "localGuidesDesc": "వ్యక్తిగత టూర్‌లకు మించి మీ నైపుణ్యాన్ని స్కేల్ చేయండి",
+                "creators": "క్రియేటర్‌లు",
+                "creatorsDesc": "ఆక్షన్‌ఎబుల్ టిప్‌లతో కంటెంట్‌కు మించి విలువను జోడించండి",
+                "tourOperators": "టూర్ ఆపరేటర్‌లు",
+                "tourOperatorsDesc": "షెడ్యూల్ చేసిన టూర్‌లకు మించి అనుభవాన్ని విస్తరించండి",
+                "anyBusiness": "ఏ వ్యాపారమైనా",
+                "anyBusinessDesc": "కమ్యూనిటీ మరియు కస్టమర్ లాయల్టీ నిర్మించండి"
+            }
+        },
+        "testimonials": {
+            "headline": "ప్రయాణికులు, క్రియేటర్‌లు మరియు హోస్ట్‌లచే ప్రియమైనది",
+            "subtext": "ప్రపంచవ్యాప్తంగా ఉన్న ప్రజలు explorers ను ఉపయోగించి అత్యంత ముఖ్యమైన వాటిని పంచుకునే విధానాన్ని చూడండి.",
+            "scrollLeft": "టెస్టిమోనియల్‌లను ఎడమకు స్క్రోల్ చేయండి",
+            "scrollRight": "టెస్టిమోనియల్‌లను కుడికి స్క్రోల్ చేయండి",
+            "items": [
+                {
+                    "id": "1",
+                    "name": "మార్కస్ చెన్",
+                    "role": "ట్రావెల్ బ్లాగర్",
+                    "location": "సాన్ ఫ్రాన్సిస్కో",
+                    "quote": "explorers నా ప్రయాణ జ్ఞానాన్ని పంచుకునే విధానాన్ని మార్చింది. నా అనుచరులు నా క్యూరేట్ చేసిన సిఫారసులకు తక్షణ ప్రవేశం పొందడాన్ని ఇష్టపడతారు!"
+                },
+                {
+                    "id": "2",
+                    "name": "సారా జాన్సన్",
+                    "role": "ఎయిర్‌బిఎన్‌బి హోస్ట్",
+                    "location": "బార్సిలోనా",
+                    "quote": "నా అతిథులు వారి స్వాగత కిట్‌లో వ్యక్తిగత QR కోడ్‌ను ఇష్టపడతారు. అది నా సంతకం స్పర్శ అయింది!"
+                },
+                {
+                    "id": "3",
+                    "name": "అలెక్స్ రోడ్రిగ్వెజ్",
+                    "role": "రెస్టారెంట్ యజమాని",
+                    "location": "మెక్సికో సిటీ",
+                    "quote": "మేము మా కస్టమర్‌లతో మా explorers ను పంచుకుంటాము ఇతర స్థానిక ప్రదేశాలను సిఫారసు చేయడానికి. ఇది అద్భుతమైన కమ్యూనిటీ కనెక్షన్‌లను సృష్టించింది."
+                },
+                {
+                    "id": "4",
+                    "name": "ఎమ్మా థామ్సన్",
+                    "role": "టూర్ గైడ్",
+                    "location": "లండన్",
+                    "quote": "explorers నాకు టూర్ గంటలకు మించి నా నైపుణ్యాలను విస్తరించడంలో సహాయపడుతుంది. కస్టమర్‌లు ఎప్పుడైనా నా సిఫారసులను యాక్సెస్ చేయవచ్చు!"
+                }
+            ]
+        },
+        "faq": {
+            "headline": "ప్రశ్నలు ఉన్నాయా?",
+            "subtext": "ప్రజలు ప్రారంభించే ముందు అడిగే అత్యంత సాధారణ విషయాలకు మేము సమాధానం ఇచ్చాము.",
+            "loading": "FAQ లోడ్ అవుతోంది...",
+            "error": "FAQ లోడ్ చేయడంలో లోపం. తర్వాత మళ్లీ ప్రయత్నించండి."
+        },
+        "features": {
+            "title": "మార్గం నుండి దూరంగా ఉండడానికి నిర్మించబడింది",
+            "subtitle": "మీ సిఫార్సులను ప్రకాశవంతంగా చేసే సరళమైన, ఆలోచనాపరమైన లక్షణాలు.",
+            "simpleLinks": {
+                "title": "సరళమైన లింకులు మరియు QR షేరింగ్"
+            },
+            "livingGuides": {
+                "title": "జీవంతమైన, సవరించదగిన గైడ్లు"
+            },
+            "locationAware": {
+                "title": "స్థానం-అవగాహన ఉన్న సిఫార్సులు"
+            },
+            "soundPlaylists": {
+                "title": "ఐచ్ఛిక ధ్వని మరియు ప్లేలిస్ట్‌లు"
+            },
+            "privacyFirst": {
+                "title": "డిజైన్ ద్వారా గోప్యత-మొదట"
+            },
+            "communityDriven": {
+                "title": "కమ్యూనిటీ-చోదిత కనుగొనడం"
+            }
+        },
+        "finalCTA": {
+            "headline": "ఈరోజు మీ ప్రపంచాన్ని పంచుకోవడం ప్రారంభించండి",
+            "subtext": "మీ ఉచిత explorers ను రిజర్వ్ చేయండి మరియు మీ స్థానిక ఇన్‌సైట్‌లను పంచుకోగల గైడ్‌లుగా మార్చండి.",
+            "ctaButton": "explorers రిజర్వ్ చేయండి – ఎప్పటికీ ఉచితం",
+            "disclaimer": "క్రెడిట్ కార్డ్ అవసరం లేదు • 2 నిమిషాలలో సెటప్",
+            "creating": "మీ explorers సృష్టించబడుతోంది..."
+        }
+    },
+    "contact": {
+        "title": "కనెక్ట్ అవ్వండి.",
+        "subtitle": "మీకు ప్రశ్న ఉందా, ఆలోచన ఉందా, లేదా కేవలం హాయ్ చెప్పాలనుకుంటున్నారా — మేము మీ నుండి వినాలనుకుంటున్నాము.",
+        "getInTouch": "సంప్రదించండి",
+        "email": "hello@explorers.earth",
+        "responseTime": "మేము 24-48 గంటలలో సమాధానం ఇస్తాము",
+        "closingMessage": "మేము పెద్ద దృష్టితో చిన్న జట్టు — మీ ఆలోచనలు మాకు ముఖ్యమైనవి. సంప్రదించండి మరియు కలిసి స్థానిక మరియు ప్రపంచవ్యాప్తమైనదాన్ని నిర్మిద్దాం.",
+        "seo": {
+            "title": "Contact explorers | Support, Help and Partnership enquiries.",
+            "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
+            "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+            "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
+            "keywords": [
+                "contact explorers",
+                "explorers support",
+                "get in touch explorers",
+                "customer service travel app",
+                "partnership inquiry explorers",
+                "help center local recommendations",
+                "technical support explorers",
+                "travel app customer service",
+                "feedback location sharing",
+                "account assistance explorers",
+                "business collaboration explorers",
+                "report problem explorers",
+                "share local recommendations support",
+                "find explorers contact",
+                "customer service",
+                "explorers team",
+                "help center",
+                "contact support",
+                "QR code support",
+                "local recommendations help",
+                "partnership inquiries"
+            ]
+        }
+    },
+    "about": {
+        "title": "భూమి అన్వేషకులు",
+        "subtitle": {
+            "line1": "మనుషులు, సంస్కృతి మరియు మనం పంచుకునే గ్రహానికి — జాగ్రత్తగా అన్వేషించే వ్యక్తుల ప్రపంచవ్యాప్త సంఘం.",
+            "line2": "మాకు, అన్వేషణ మనం ఎంత దూరం వెళ్తాము అనేది గురించి కాదు.",
+            "line3": "మనం ఎంత లోతుగా కనెక్ట్ అవుతాము అనేది గురించి."
+        },
+        "section1": {
+            "title": "మనం ఏమి నమ్ముతాము",
+            "line1": "అన్వేషణ అవగాహనతో ప్రారంభమవుతుంది.",
+            "line2": "ఇతరులు దాటిపోయే వాటిని గమనించడం ద్వారా.",
+            "line3": "వేగంగా కాకుండా, ఆలోచనాత్మకంగా కదలడాన్ని ఎంచుకోవడం ద్వారా.",
+            "line4": "మనం ఒక పురాతన గ్రహంపై క్లుప్తంగా జీవిస్తున్నాము —\nమనకు చాలా ముందు ప్రారంభమైన కథకు\nకొన్ని ఉద్దేశపూర్వక సంకేతాలను జోడించడం ద్వారా\nమరియు మనం వెళ్ళిన తర్వాత చాలా కాలం కొనసాగుతుంది."
+        },
+        "section2": {
+            "title": "మనం అన్వేషణను ఎలా చూస్తాము",
+            "line1": "అన్వేషణ మైళ్ళలో కొలవబడదు.",
+            "line2": "అది అర్థంలో కొలవబడుతుంది.",
+            "line3": "నెమ్మదిగా, శ్రద్ధ వహించడంలో జీవిస్తుంది,\nమరియు మనం అడుగు పెట్టే ప్రతి స్థలానికి గౌరవం చూపడంలో —\nఒక వీధి, ఒక పర్వత మార్గం, ఒక కాఫీ టేబుల్,\nలేదా ఎవరైనా కొత్త వ్యక్తితో పంచుకున్న క్షణం."
+        },
+        "section3": {
+            "title": "మనం ఏమి నిర్మిస్తున్నాము",
+            "line1": "explorers ఒక స్థలం:",
+            "item1": "నిజమైన అనుభవంతో రూపొందించబడిన గైడ్‌లు",
+            "item2": "గుర్తుంచుకోవడానికి విలువైన స్థలాలు, ప్రయాణాలు, శబ్దాలు మరియు కథలు",
+            "item3": "ప్రజలపై నిర్మించబడిన సంఘాలు — ప్రజాదరణ మెట్రిక్‌లపై కాదు",
+            "line2": "సాంకేతికత మనలను కనెక్ట్ చేయడంలో సహాయపడుతుంది.",
+            "line3": "ప్రజలు దీనికి ఉద్దేశ్యాన్ని ఇస్తారు."
+        },
+        "section4": {
+            "title": "స్వంతం",
+            "line1": "భూమి అన్వేషకులు ఒక క్లబ్ కాదు.",
+            "line2": "ఇది ఒక లేబుల్ కాదు.",
+            "line3": "ఇది ఒక పంచుకున్న మనస్తత్వం —\nమనం ప్రపంచంలో ఎలా కదులుతాము అనేది గురించి శాంతమైన అవగాహన."
+        },
+        "closing": "మీరు ఆసక్తిగా ఉంటే.\nమీరు ఆలోచనాత్మకంగా ఉంటే.\nమీరు నెమ్మదిగా మరియు దగ్గరగా చూడడానికి సిద్ధంగా ఉంటే —\nమీరు ఇప్పటికే ఇక్కడకు చెందినవారు.",
+        "seo": {
+            "title": "Explorers of Earth | About Us",
+            "description": "A global community of people who explore with care — for people, culture, and the planet we share. Exploration isn't about distance, it's about depth.",
+            "keywords": [
+                "explorers of earth",
+                "about explorers",
+                "exploration community",
+                "thoughtful travel",
+                "sustainable exploration",
+                "local recommendations platform",
+                "travel app about",
+                "community-driven recommendations",
+                "authentic local experiences",
+                "explorers team",
+                "local discovery platform",
+                "share local places",
+                "travel technology",
+                "local recommendations app",
+                "explorers story",
+                "who we are explorers"
+            ]
+        }
+    },
+    "cookieConsent": {
+        "title": "🍪 కుకీ ప్రాధాన్యతలు",
+        "description": "మీ బ్రౌజింగ్ అనుభవాన్ని మెరుగుపరచడానికి, వ్యక్తిగతీకరించిన కంటెంట్‌ను అందించడానికి మరియు ట్రాఫిక్‌ను విశ్లేషించడానికి మేము కుకీలను ఉపయోగిస్తాము. మీరు ఎప్పుడైనా ప్రాధాన్యతలను నిర్వహించవచ్చు.",
+        "acceptAll": "✅ అన్ని కుకీలను అంగీకరించండి",
+        "customize": "⚙️ అనుకూలీకరించండి",
+        "rejectNonEssential": "❌ అవసరమైనవి కానివి తిరస్కరించండి",
+        "preferencesTitle": "కుకీ ప్రాధాన్యతలు",
+        "essentialCookies": {
+            "title": "అవసరమైన కుకీలు",
+            "description": "వెబ్‌సైట్ సరిగా పనిచేయడానికి అవసరం",
+            "alwaysOn": "ఎప్పుడూ ఆన్"
+        },
+        "analyticsCookies": {
+            "title": "విశ్లేషణ కుకీలు",
+            "description": "సందర్శకులు మా వెబ్‌సైట్‌తో ఎలా సంకర్షణ చేస్తారో అర్థం చేసుకోవడంలో మాకు సహాయపడతాయి"
+        },
+        "marketingCookies": {
+            "title": "మార్కెటింగ్ కుకీలు",
+            "description": "వ్యక్తిగతీకరించిన ప్రకటనలను అందించడానికి ఉపయోగిస్తారు"
+        },
+        "savePreferences": "ప్రాధాన్యతలను సేవ్ చేయండి",
+        "acceptAllButton": "అన్నింటినీ అంగీకరించండి",
+        "closeBanner": "బ్యానర్‌ను మూసివేయండి",
+        "goBack": "వెనక్కి వెళ్ళండి"
+    },
+    "footer": {
+        "tagline": "మీ సిఫార్సులు ప్రపంచాన్ని ప్రయాణించనివ్వండి.",
+        "email": "hello@explorers.earth",
+        "sections": {
+            "product": "ఉత్పత్తి",
+            "contact": "సంప్రదింపు",
+            "legal": "చట్టపరమైన"
+        },
+        "links": {
+            "howItWorks": "ఎలా పనిచేస్తుంది",
+            "faq": "తరచుగా అడిగే ప్రశ్నలు",
+            "contact": "సంప్రదింపు",
+            "about": "గురించి",
+            "terms": "నిబంధనలు మరియు షరతులు",
+            "privacy": "గోప్యతా విధానం",
+            "cookies": "కుకీ విధానం"
+        },
+        "copyright": "© 2025 explorers. అన్ని హక్కులు ప్రత్యేకించబడ్డాయి.",
+        "madeWithLove": "భూమిపై ప్రేమతో తయారు చేయబడింది"
+    },
+    "legal": {
+        "terms": {
+            "title": "నిబంధనలు మరియు షరతులు",
+            "loading": "నిబంధనలు మరియు షరతులు లోడ్ అవుతోంది...",
+            "error": "నిబంధనలు మరియు షరతులు లోడ్ చేయడంలో లోపం. తర్వాత మళ్లీ ప్రయత్నించండి."
+        },
+        "privacy": {
+            "title": "గోప్యతా విధానం",
+            "loading": "గోప్యతా విధానం లోడ్ అవుతోంది...",
+            "error": "గోప్యతా విధానం లోడ్ చేయడంలో లోపం. తర్వాత మళ్లీ ప్రయత్నించండి."
+        },
+        "cookies": {
+            "title": "కుకీ విధానం",
+            "loading": "కుకీ విధానం లోడ్ అవుతోంది...",
+            "error": "కుకీ విధానం లోడ్ చేయడంలో లోపం. తర్వాత మళ్లీ ప్రయత్నించండి."
+        }
+    },
+    "languageModal": {
+        "title": "భాషను ఎంచుకోండి",
+        "searchPlaceholder": "భాషలను వెతకండి...",
+        "close": "మూసివేయండి"
+    },
+    "auth": {
+        "signup": "సైన్ అప్",
+        "signupSubtitle": "explorers యొక్క లక్షణాలను ఆస్వాదించడానికి సైన్ అప్ చేయండి",
+        "username": "వినియోగదారు పేరు",
+        "usernamePlaceholder": "మీ వినియోగదారు పేరును నమోదు చేయండి",
+        "email": "ఇమెయిల్",
+        "emailPlaceholder": "మీ ఇమెయిల్‌ను నమోదు చేయండి",
+        "password": "పాస్‌వర్డ్",
+        "passwordPlaceholder": "మీ పాస్‌వర్డ్‌ను నమోదు చేయండి",
+        "confirmPassword": "పాస్‌వర్డ్‌ను నిర్ధారించండి",
+        "confirmPasswordPlaceholder": "మీ పాస్‌వర్డ్‌ను మళ్లీ నమోదు చేయండి",
+        "register": "నమోదు చేయండి",
+        "or": "లేదా",
+        "signUpWithGoogle": "Googleతో సైన్ అప్ చేయండి",
+        "alreadyHaveAccount": "ఇప్పటికే ఖాతా ఉందా?",
+        "login": "లాగిన్",
+        "loginTitle": "లాగిన్",
+        "loginSubtitle": "మీ ఖాతాకు కొనసాగించడానికి దయచేసి లాగిన్ చేయండి",
+        "usernameOrEmail": "వినియోగదారు పేరు లేదా ఇమెయిల్",
+        "usernameOrEmailPlaceholder": "మీ వినియోగదారు పేరు లేదా ఇమెయిల్‌ను నమోదు చేయండి",
+        "signInWithGoogle": "Googleతో లాగిన్ చేయండి",
+        "newToexplorers": "explorersలో కొత్తవారా?",
+        "forgotPassword": "పాస్‌వర్డ్ మర్చిపోయారా?",
+        "validations": {
+            "username": {
+                "required": "వినియోగదారు పేరు అవసరం",
+                "minLength": "వినియోగదారు పేరు కనీసం 3 అక్షరాలుగా ఉండాలి",
+                "maxLength": "వినియోగదారు పేరు 30 అక్షరాలను మించకూడదు",
+                "invalidChars": "వినియోగదారు పేరు చిన్న అక్షరాలు (a-z), సంఖ్యలు (0-9), మరియు హైఫెన్లు (-) మాత్రమే కలిగి ఉండవచ్చు",
+                "mustStartWithLetter": "వినియోగదారు పేరు అక్షరంతో (a-z) ప్రారంభమై ఉండాలి",
+                "cannotStartEndHyphen": "వినియోగదారు పేరు హైఫెన్తో ప్రారంభమో లేదా ముగింపో ఉండకూడదు",
+                "noConsecutiveHyphens": "వినియోగదారు పేరు వరుసగా హైఫెన్లను కలిగి ఉండకూడదు",
+                "cannotBeAllNumbers": "వినియోగదారు పేరు అన్నీ సంఖ్యలు ఉండకూడదు",
+                "reservedWords": "This username contains reserved words and cannot be used",
+                "inappropriateContent": "వినియోగదారు పేరు తగని కంటెంట్ను కలిగి ఉంది",
+                "alreadyExists": "వినియోగదారు పేరు ఇప్పటికే ఉంది",
+                "suggestedAlternatives": "Suggested alternatives:",
+                "willBeConvertedLowercase": "వినియోగదారు పేరు చిన్న అక్షరాలుగా మార్చబడుతుంది",
+                "checkingAvailability": "అందుబాటులో ఉన్నది తనిఖీ చేస్తోంది...",
+                "available": "వినియోగదారు పేరు అందుబాటులో ఉంది",
+                "willConvertToLowercase": "వినియోగదారు పేరు చిన్న అక్షరాలకు మార్చబడుతుంది"
+            },
+            "email": {
+                "required": "ఇమెయిల్ అవసరం",
+                "invalidFormat": "దయచేసి చెల్లుబాటు అయ్యే ఇమెయిల్ చిరునామాను నమోదు చేయండి",
+                "alreadyExists": "ఇమెయిల్ ఇప్పటికే ఉంది",
+                "invalid": "చెల్లని ఇమెయిల్"
+            },
+            "password": {
+                "required": "పాస్‌వర్డ్ అవసరం",
+                "minLength": "పాస్‌వర్డ్ కనీసం 6 అక్షరాలుగా ఉండాలి",
+                "uppercaseRequired": "పాస్‌వర్డ్ కనీసం ఒక పెద్ద అక్షరం (A-Z) కలిగి ఉండాలి",
+                "numberRequired": "పాస్‌వర్డ్ కనీసం ఒక సంఖ్య (0-9) కలిగి ఉండాలి",
+                "specialCharRequired": "పాస్‌వర్డ్ కనీసం ఒక ప్రత్యేక అక్షరం (!@#$%^&*().,?\":{}|\u003c\u003e) కలిగి ఉండాలి",
+                "strength": "పాస్‌వర్డ్‌ల బలం",
+                "weak": "బలహీనం",
+                "medium": "మధ్యస్థం",
+                "strong": "బలమైనది",
+                "maxLength": "పాస్‌వర్డ్ 32 అక్షరాలను మించకూడదు",
+                "lowercaseRequired": "పాస్‌వర్డ్ కనీసం ఒక చిన్న అక్షరం (a-z) కలిగి ఉండాలి",
+                "tooCommon": "This password is too common. Please choose a more unique password",
+                "sameAsCurrent": "New password cannot be the same as your current password",
+                "considerLonger": "Consider using a longer password with more variety for better security",
+                "moreSecure": "10 లేదా అంతకంటే ఎక్కువ అక్షరాలతో ఉన్న పాస్‌వర్డ్‌లు మరింత సురక్షితం",
+                "veryWeak": "చాలా బలహీనం",
+                "fair": "మధ్యస్థం",
+                "good": "మంచిది",
+                "veryStrong": "చాలా బలమైనది"
+            },
+            "confirmPassword": {
+                "required": "దయచేసి మీ పాస్‌వర్డ్‌ను నిర్ధారించండి",
+                "mustMatch": "Passwords do not match",
+                "confirmRequired": "పాస్‌వర్డ్‌ను నిర్ధారించడం అవసరం",
+                "match": "పాస్‌వర్డ్‌లు సరిపోతాయి"
+            },
+            "login": {
+                "usernameOrEmailRequired": "వినియోగదారు పేరు లేదా ఇమెయిల్ అవసరం",
+                "invalidCredentials": "చెల్లని వినియోగదారు పేరు/ఇమెయిల్ లేదా పాస్‌వర్డ్",
+                "accountNotFound": "ఖాతా కనుగొనబడలేదు",
+                "tooManyAttempts": "చాలా ఎక్కువ విఫల ప్రయత్నాలు",
+                "incorrectPassword": "తప్పు పాస్‌వర్డ్"
+            },
+            "general": {
+                "fillRequiredFields": "దయచేసి అన్ని అవసరమైన ఫీల్డ్‌లను పూరించండి",
+                "somethingWentWrong": "ఏదో తప్పు జరిగింది, దయచేసి మళ్లీ ప్రయత్నించండి"
+            },
+            "forgotPassword": {
+                "title": "పాస్‌వర్డ్ మర్చిపోయారా?",
+                "description": "మీ ఇమెయిల్ చిరునామాను నమోదు చేయండి మరియు మేము మీకు రీసెట్ లింక్‌ను పంపిస్తాము.",
+                "emailLabel": "ఇమెయిల్ చిరునామా",
+                "emailPlaceholder": "మీ ఇమెయిల్ చిరునామాను నమోదు చేయండి మరియు మేము మీకు రీసెట్ లింక్‌ను పంపిస్తాము.",
+                "sendResetLink": "రీసెట్ లింక్‌ను పంపండి",
+                "backToLogin": "లాగిన్‌కు తిరిగి వెళ్లండి",
+                "resetLinkSent": "పాస్‌వర్డ్ రీసెట్ లింక్ మీ ఇమెయిల్‌కు పంపబడింది!",
+                "failedToSend": "రీసెట్ లింక్‌ను పంపడంలో విఫలమైంది. తర్వాత మళ్లీ ప్రయత్నించండి.",
+                "somethingWentWrong": "ఏదో తప్పు జరిగింది!"
+            },
+            "accountName": {
+                "required": "ఖాతా పేరు అవసరం",
+                "minLength": "ఖాతా పేరు కనీసం 2 అక్షరాలుగా ఉండాలి",
+                "maxLength": "ఖాతా పేరు 50 అక్షరాలను మించకూడదు",
+                "invalidChars": "ఖాతా పేరులో అక్షరాలు, ఖాళీలు, అపోస్ట్రోఫీ, హైఫన్ మరియు పీరియడ్ మాత్రమే ఉండగలవు",
+                "noNumbers": "ఖాతా పేరులో సంఖ్యలు ఉండకూడదు"
+            },
+            "accountType": {
+                "required": "ఖాతా రకం అవసరం",
+                "invalid": "చెల్లని ఖాతా రకం"
+            },
+            "onboarding": {
+                "displayNameRequired": "ప్రదర్శన పేరు అవసరం",
+                "displayNameMinLength": "ప్రదర్శన పేరు కనీసం 2 అక్షరాలుగా ఉండాలి",
+                "displayNameMaxLength": "ప్రదర్శన పేరు 50 అక్షరాలను మించకూడదు",
+                "bioRequired": "జీవిత చరిత్ర అవసరం",
+                "bioMaxLength": "జీవిత చరిత్ర 250 అక్షరాలను మించకూడదు",
+                "mobileNumberRequired": "మొబైల్ నంబర్ అవసరం",
+                "mobileNumberInvalid": "దయచేసి చెల్లుబాటు అయ్యే మొబైల్ నంబర్‌ను నమోదు చేయండి",
+                "mobileNumberLength": "మొబైల్ నంబర్ 10 అంకెలుగా ఉండాలి",
+                "addressRequired": "చిరునామా అవసరం",
+                "cityRequired": "నగరం అవసరం",
+                "stateRequired": "రాష్ట్రం అవసరం",
+                "countryRequired": "దేశం అవసరం",
+                "postalCodeRequired": "పిన్ కోడ్ అవసరం",
+                "primaryAddressRequired": "ప్రాథమిక చిరునామా అవసరం",
+                "emailAddressRequired": "ఇమెయిల్ చిరునామా అవసరం",
+                "resetLinkSentSuccess": "రీసెట్ లింక్ విజయవంతంగా పంపబడింది!",
+                "invalidUsername": "చెల్లని వినియోగదారు పేరు",
+                "profileImageAlt": "Profile"
+            },
+            "resetPassword": {
+                "newPassword": "New Password",
+                "confirmPassword": "Confirm Password"
+            },
+            "resetLinkSent": {
+                "title": "ఇమెయిల్ పంపబడింది!",
+                "description": "పాస్‌వర్డ్ రీసెట్ లింక్ కోసం మీ ఇన్‌బాక్స్‌ను తనిఖీ చేయండి.",
+                "resending": "మళ్లీ పంపుతోంది...",
+                "resendWithCooldown": "ఇమెయిల్‌ను మళ్లీ పంపండి ({{cooldown}}s)",
+                "resendMail": "ఇమెయిల్‌ను మళ్లీ పంపండి"
+            }
+        },
+        "onboarding": {
+            "accountDetails": {
+                "title": "ఖాతా వివరాలు",
+                "description": "మీ గురించి మాకు చెప్పండి",
+                "displayName": "ప్రదర్శన పేరు",
+                "displayNamePlaceholder": "మీ ప్రదర్శన పేరును నమోదు చేయండి",
+                "username": "వినియోగదారు పేరు",
+                "usernamePlaceholder": "మీ వినియోగదారు పేరును నమోదు చేయండి",
+                "usernameDescription": "మీ వినియోగదారు పేరు మీ పబ్లిక్ ప్రొఫైల్ లింక్ మరియు QR కోడ్‌లలో భాగం. ఉదాహరణ: explorers.earth/bhavya",
+                "bio": "జీవిత చరిత్ర",
+                "bioPlaceholder": "మీ గురించి మాకు చెప్పండి",
+                "accountType": "ఖాతా రకం",
+                "personal": "వ్యక్తిగత",
+                "creator": "సృష్టికర్త",
+                "business": "వ్యాపారం",
+                "next": "తదుపరి"
+            },
+            "contactDetails": {
+                "title": "సంప్రదింపు వివరాలు",
+                "description": "ధృవీకరణ కోసం మీ మొబైల్ నంబర్‌ను జోడించండి",
+                "mobileNumber": "మొబైల్ నంబర్",
+                "mobileNumberPlaceholder": "మీ మొబైల్ నంబర్‌ను నమోదు చేయండి",
+                "next": "తదుపరి",
+                "back": "వెనుకకు"
+            },
+            "addressDetails": {
+                "title": "చిరునామా వివరాలు",
+                "description": "మీరు ఎక్కడ ఉన్నారు?",
+                "address": "చిరునామా",
+                "addressPlaceholder": "మీ చిరునామాను నమోదు చేయండి",
+                "streetName": "వీధి పేరు",
+                "streetNamePlaceholder": "వీధి పేరును నమోదు చేయండి",
+                "city": "నగరం",
+                "cityPlaceholder": "నగరాన్ని నమోదు చేయండి",
+                "state": "రాష్ట్రం",
+                "statePlaceholder": "రాష్ట్రాన్ని నమోదు చేయండి",
+                "country": "దేశం",
+                "countryPlaceholder": "దేశాన్ని నమోదు చేయండి",
+                "postalCode": "పిన్ కోడ్",
+                "postalCodePlaceholder": "పిన్ కోడ్‌ను నమోదు చేయండి",
+                "primaryAddress": "ప్రాథమిక చిరునామా",
+                "primaryAddressDescription": "పబ్లిక్ ప్రొఫైల్‌లో చూపబడుతుంది (నగరం మరియు దేశం)",
+                "primaryAddressPlaceholder": "ప్రాథమిక చిరునామాను నమోదు చేయండి",
+                "sameAsAddress": "చిరునామా వలె",
+                "confirmDetails": "వివరాలను నిర్ధారించండి",
+                "back": "వెనుకకు"
+            }
+        },
+        "resetPassword": {
+            "newPasswordPlaceholder": "Enter new password",
+            "confirmPasswordPlaceholder": "Confirm your password"
+        }
+    },
+    "common": {
+        "loading": "Loading...",
+        "error": "An error occurred. Please try again later.",
+        "retry": "Try Again",
+        "noResults": "No results found",
+        "submit": "Submit",
+        "signInWithGoogle": "Sign in with Google",
+        "signUpWithGoogle": "Sign up with Google",
+        "cancel": "రద్దు చేయి"
+    },
+    "dashboard": {
+        "home": {
+            "welcomeBack": "తిరిగి స్వాగతం",
+            "profile": "ప్రొఫైల్",
+            "myRecommendations": "నా సిఫార్సులు",
+            "activePlaces": "క్రియాశీల స్థలాలు",
+            "setupProfile": "మీ ప్రొఫైల్ను సెటప్ చేయండి",
+            "draft": "డ్రాఫ్ట్",
+            "startCurating": "మీ సిఫార్సులను క్యూరేట్ చేయడం ప్రారంభించండి మరియు వాటిని ప్రపంచంతో పంచుకోండి!",
+            "addRecommendations": "సిఫార్సులు జోడించండి"
+        },
+        "shareModal": {
+            "copyLink": "లింక్ కాపీ చేయండి",
+            "copied": "కాపీ చేయబడింది!",
+            "linkCopiedToast": "లింక్ కాపీ చేయబడింది!!"
+        },
+        "recommendations": {
+            "locationButton": "స్థానం",
+            "viewAll": "అన్నీ చూడండి",
+            "recommendationsTab": "సిఫారసులు",
+            "manageTab": "నిర్వహించండి",
+            "manageHeading": "నిర్వహించండి",
+            "deleteAction": "తొలగించండి",
+            "editAction": "సవరించండి",
+            "publishedStatus": "ప్రచురించబడింది",
+            "draftStatus": "ముసాయిదా",
+            "myRecommendationsHeading": "నా సిఫారసులు",
+            "myQRHeading": "నా QR",
+            "myRecommendationsQR": "నా సిఫారసులు",
+            "travelLikeLocal": "స్థానికుల వలె ప్రయాణం",
+            "shareLink": "లింక్ షేర్ చేయండి",
+            "copyLink": "లింక్ కాపీ చేయండి",
+            "downloadQR": "QR డౌన్లోడ్ చేయండి",
+            "emptyState": {
+                "title": "ఎటువంటి సిఫారసులు అందుబాటులో లేవు",
+                "subtitle": "ఈ జాబితాకు మీ ఇష్టమైన స్థలాలను జోడించడం ప్రారంభించండి"
+            },
+            "draftLabel": "డ్రాఫ్ట్",
+            "recommendButton": "సిఫారసు చేయండి",
+            "exploreSection": {
+                "heading": "explorers తో అన్వేషించండి",
+                "addButton": "జోడించండి"
+            },
+            "locationLabels": {
+                "currentLocation": "ప్రస్తుత స్థానం",
+                "selectedLocation": "ఎంచుకున్న స్థానం"
+            },
+            "categories": {
+                "foodDrinks": "ఆహారం మరియు పానీయాలు",
+                "lodging": "వసతి",
+                "healthWellness": "ఆరోగ్యం మరియు క్షేమం",
+                "shopping": "షాపింగ్",
+                "entertainment": "వినోదం",
+                "transportation": "రవాణా",
+                "services": "సేవలు",
+                "tourism": "పర్యటన",
+                "naturalFeatures": "సహజ లక్షణాలు"
+            },
+            "locationForm": {
+                "labels": {
+                    "searchLocation": "స్థానాన్ని వెతకండి",
+                    "recommendationSocialLink": "సిఫార్సు సామాజిక లింక్",
+                    "note": "గమనిక",
+                    "placeUrl": "స్థల URL"
+                },
+                "placeholders": {
+                    "searchLocation": "నగరం, రాష్ట్రం లేదా దేశాన్ని నమోదు చేయండి (ఉదా. పారిస్)",
+                    "recommendationSocialLink": "URL ను నమోదు చేయండి (యూట్యూబ్ / ఇన్‌స్టాగ్రామ్)",
+                    "note": "మీ సిఫార్సుకు సంబంధించిన గమనికను నమోదు చేయండి",
+                    "placeUrl": "పంచుకోగల లింక్‌ను సృష్టించడానికి పేరును నమోదు చేయండి"
+                },
+                "buttons": {
+                    "addLocation": "స్థానాన్ని చేర్చండి",
+                    "updateLocation": "స్థానాన్ని నవీకరించండి"
+                }
+            },
+            "toastMessages": {
+                "listCreated": "Recommendation List Created Successfully!!!",
+                "listPublished": "Recommendation list Published successfully!",
+                "listUnpublished": "Recommendation list Unpublished successfully!",
+                "listPublishError": "List Should have atleast one Recommended Place to be Published",
+                "listVisibilityError": "Failed to update recommendation list visibility.",
+                "qrDownloadSuccess": "QR code downloaded successfully!",
+                "qrDownloadError": "Failed to download QR code. Please try again.",
+                "linkCopied": "Link copied to clipboard!",
+                "linkCopyError": "Failed to copy link. Please try again.",
+                "qrNotReady": "QR code not ready for download"
+            },
+            "placesModal": {
+                "placesCount": "{{total}} స్థలాలలో {{visible}}",
+                "scrollToLoadMore": "మరిన్ని స్థలాలను లోడ్ చేయడానికి స్క్రోల్ చేయండి"
+            },
+            "noRecommendationsYet": "ఇంకా సిఫార్సులు లేవు!!",
+            "setupProfileBeforeRecommendations": "సిఫార్సులు సృష్టించే ముందు మీ ప్రొఫైల్‌ను సెటప్ చేయండి!!",
+            "startAddingPlaces": "మీ ఇష్టమైన స్థలాలను జోడించడం ప్రారంభించండి మరియు వాటిని ఇతరులతో భాగస్వామ్యం చేయండి.",
+            "startRecommending": "సిఫార్సు చేయడం ప్రారంభించండి",
+            "addRecommendationForm": {
+                "searchField": {
+                    "label": "Search Recommendation with Google"
+                },
+                "mainInput": {
+                    "placeholder": "Enter your Recommendation"
+                },
+                "taggableFields": {
+                    "title": "Title",
+                    "address": "Address",
+                    "category": "Category",
+                    "contactNumber": "Contact Number",
+                    "socialLink": "Social Link"
+                },
+                "accordionSection": {
+                    "heading": "Your Recommendation Details",
+                    "recommendationLink": {
+                        "label": "Your Recommendation Link",
+                        "placeholder": "You can insert Instagram reel, YouTube, or blog recommending"
+                    },
+                    "whyRecommend": {
+                        "label": "Why would you recommend?",
+                        "placeholder": "Why would you recommend?"
+                    }
+                },
+                "fileUpload": {
+                    "text": "Attach Image/Video",
+                    "subtext": "optional"
+                },
+                "actionButton": {
+                    "text": "Add recommendation"
+                },
+                "taggableFieldsPlaceholders": {
+                    "title": "శీర్షికను నమోదు చేయండి",
+                    "address": "స్థలం యొక్క చిరునామాను నమోదు చేయండి",
+                    "category": "ఒక వర్గాన్ని నమోదు చేయండి",
+                    "contactNumber": "సంప్రదింపు నంబర్‌ను నమోదు చేయండి",
+                    "socialLink": "సామాజిక లింక్‌ను నమోదు చేయండి (స్థలం)"
+                },
+                "validationMessages": {
+                    "titleRequired": "శీర్షిక అవసరం",
+                    "addressRequired": "చిరునామా అవసరం",
+                    "categoryRequired": "వర్గం అవసరం"
+                },
+                "mapModal": {
+                    "cancelButton": "రద్దు చేయి",
+                    "addRecommendationButton": "సిఫార్సు జోడించు",
+                    "updateRecommendationButton": "సిఫార్సును నవీకరించు"
+                },
+                "fetchingImages": "చిత్రాలను పొందుతోంది…",
+                "recommendationType": {
+                    "place": "స్థలం",
+                    "person": "వ్యక్తి",
+                    "label": "సిఫార్సు రకం"
+                },
+                "imagePreview": {
+                    "alt": "ప్రివ్యూ",
+                    "deleteTooltip": "తొలగించు",
+                    "setThumbnailTooltip": "థంబ్నెయిల్గా సెట్ చేయి",
+                    "confirmDeleteTitle": "తొలగింపును నిర్ధారించండి",
+                    "confirmDeleteMessage": "మీరు ఖచ్చితంగా ఈ చిత్రాన్ని సేకరణ నుండి తొలగించాలనుకుంటున్నారా?",
+                    "cancel": "రద్దు చేయి",
+                    "confirm": "నిర్ధారించండి"
+                },
+                "deleteRecommendationModal": {
+                    "title": "తొలగింపును నిర్ధారించండి",
+                    "message": "మీరు ఖచ్చితంగా ఈ సిఫార్సును తొలగించాలనుకుంటున్నారా? ఈ చర్యను రద్దు చేయలేరు.",
+                    "cancel": "రద్దు చేయి"
+                }
+            }
+        },
+        "profile": {
+            "tabs": {
+                "publicProfile": "పబ్లిక్ ప్రొఫైల్",
+                "account": "ఖాతా"
+            },
+            "publicProfile": {
+                "sections": {
+                    "profileInformation": "బయో",
+                    "socialMedia": "సోషల్ లింక్‌లు",
+                    "publicAddress": "పబ్లిక్ చిరునామా",
+                    "howToReachUs": "మాకు ఎలా చేరుకోవాలి",
+                    "howToReachUsDescription": "మీ వ్యాపార స్థాన వివరాలను భాగస్వామ్యం చేయడానికి ఈ విభాగాన్ని ఉపయోగించండి.",
+                    "feed": "ఫీడ్",
+                    "socialMediaSubtitle": "సోషల్ మీడియా లింక్‌లు మరియు సమాచారం"
+                },
+                "fields": {
+                    "accountType": "ఖాతా రకం",
+                    "bio": "బయో",
+                    "socialMedia": "సోషల్ మీడియా",
+                    "instagram": "Instagram",
+                    "whatsapp": "Whatsapp",
+                    "mobile": "మొబైల్",
+                    "youtube": "Youtube",
+                    "x": "X",
+                    "spotify": "Spotify",
+                    "website": "వెబ్‌సైట్",
+                    "facebook": "Facebook",
+                    "youtubeMusic": "Youtube Music",
+                    "gmail": "Gmail",
+                    "linkedin": "Linkedin",
+                    "appleMusic": "Apple Music",
+                    "tiktok": "Tiktok",
+                    "snapchat": "Snapchat",
+                    "businessLocation": "మీ స్థానాన్ని జోడించండి. ఇవి మీ పబ్లిక్ ప్రొఫైల్‌లో ప్రముఖ స్థానాలుగా కనిపిస్తాయి",
+                    "primaryAddress": "ప్రాథమిక చిరునామా - పబ్లిక్ ప్రొఫైల్‌లో చూపబడుతుంది (నగరం మరియు దేశం)",
+                    "feed": "మీ స్థానం, ఉత్పత్తులు, సేవలు లేదా అనుభవాల చిత్రాలు లేదా వీడియోలను అప్‌లోడ్ చేయండి. ఈ ఫోటోలు మీ పబ్లిక్ ప్రొఫైల్‌లో మీ గ్యాలరీలో ప్రదర్శించబడతాయి",
+                    "title": "శీర్షిక",
+                    "contact": "సంప్రదింపు",
+                    "about": "గురించి",
+                    "addLocation": "మీ స్థానాన్ని జోడించండి",
+                    "addLocationInformation": "స్థాన సమాచారాన్ని జోడించండి",
+                    "searchAddress": "మీ చిరునామాను శోధించండి...",
+                    "sameAsAddress": "చిరునామా వలె అదే"
+                },
+                "accountTypes": {
+                    "personal": "వ్యక్తిగత",
+                    "creator": "సృష్టికర్త",
+                    "business": "వ్యాపారం"
+                },
+                "businessLocation": {
+                    "title": "శీర్షిక",
+                    "contact": "సంప్రదింపు",
+                    "website": "వెబ్‌సైట్",
+                    "about": "గురించి"
+                }
+            },
+            "account": {
+                "sections": {
+                    "account": "ఖాతా",
+                    "billingAddress": "బిల్లింగ్ చిరునామా"
+                },
+                "fields": {
+                    "username": "వినియోగదారు పేరు",
+                    "accountName": "ఖాతా పేరు",
+                    "address": "చిరునామా",
+                    "streetName": "వీధి పేరు",
+                    "state": "రాష్ట్రం",
+                    "city": "నగరం",
+                    "country": "దేశం",
+                    "postalCode": "పోస్టల్ కోడ్",
+                    "addressPlaceholder": "మీ చిరునామాను నమోదు చేయండి",
+                    "detectLocation": "నా ప్రస్తుత స్థానాన్ని గుర్తించండి"
+                }
+            },
+            "common": {
+                "visible": "దృశ్యమానం",
+                "hidden": "దాచబడిన",
+                "mobileNumber": "మొబైల్ నంబర్",
+                "mobileNumberPlaceholder": "మొబైల్ నంబర్",
+                "whatsappNumber": "WhatsApp నంబర్",
+                "primaryAddress": "ప్రాథమిక చిరునామా",
+                "editImage": "చిత్రాన్ని సవరించండి",
+                "confirm": "నిర్ధారించండి",
+                "add": "జోడించండి",
+                "video": "వీడియో",
+                "feedImage": "ఫీడ్ చిత్రం",
+                "importedImage": "దిగుమతి చేసిన చిత్రం",
+                "cover": "కవర్",
+                "profile": "ప్రొఫైల్",
+                "saveAndPublish": "సేవ్ చేసి ప్రచురించండి",
+                "saveToFeed": "ఫీడ్‌కు సేవ్ చేయండి",
+                "savedAndPublishedSuccessfully": "విజయవంతంగా సేవ్ చేయబడింది మరియు ప్రచురించబడింది",
+                "saveAndPublishFailed": "సేవ్ చేయడం మరియు ప్రచురించడం విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.",
+                "failedToSaveChanges": "మార్పులను సేవ్ చేయడం విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.",
+                "networkError": "నెట్‌వర్క్ లోపం: దయచేసి మీ కనెక్షన్‌ను తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.",
+                "unexpectedError": "ఊహించని లోపం సంభవించింది. దయచేసి మళ్లీ ప్రయత్నించండి.",
+                "somethingWentWrong": "ఏదో తప్పు జరిగింది. దయచేసి మళ్లీ ప్రయత్నించండి.",
+                "failedToUploadFiles": "ఫైళ్‌లను అప్‌లోడ్ చేయడం విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.",
+                "failedToUploadImages": "చిత్రాలను అప్‌లోడ్ చేయడం విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.",
+                "failedToSaveImagesToFeed": "చిత్రాలను ఫీడ్‌కు సేవ్ చేయడం విఫలమైంది",
+                "failedToUpdateProfile": "ప్రొఫైల్‌ను నవీకరించడం విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.",
+                "fetching": "పొందుతోంది...",
+                "selectAll": "అన్నీ ఎంచుకోండి",
+                "clearSelection": "ఎంపికను క్లియర్ చేయండి",
+                "error": "మీ ప్రొఫైల్‌ను లోడ్ చేస్తున్నప్పుడు లోపం సంభవించింది. దయచేసి తర్వాత మళ్లీ ప్రయత్నించండి.",
+                "errors": {
+                    "noFileProvided": "అప్‌లోడ్ కోసం ఫైల్ అందించబడలేదు",
+                    "failedToGetAccountId": "అప్‌లోడ్ కోసం ఖాతా ID పొందడంలో విఫలమైంది",
+                    "uploadResponseMissingFileData": "అప్‌లోడ్ ప్రతిస్పందనలో ఫైల్ డేటా లేదు"
+                }
+            },
+            "accountSetup": {
+                "title": "మీ ఖాతా సెటప్‌ను పూర్తి చేయండి",
+                "progress": "పురోగతి",
+                "complete": "పూర్తి",
+                "profileSetupCompleted": "ప్రొఫైల్ సెటప్ పూర్తయింది",
+                "profileSetupIncomplete": "ప్రొఫైల్ చిత్రం, బయో మరియు సోషల్ లింక్‌లను జోడించండి",
+                "recommendationsSetupCompleted": "సిఫారసులు సెటప్ పూర్తయింది",
+                "recommendationsSetupIncomplete": "స్థానాలు, ప్రదేశాలను జోడించండి మరియు మీ మొదటి జాబితాను ప్రచురించండి",
+                "setupButton": "సెటప్",
+                "footerMessage": "మీ పూర్తి డాష్‌బోర్డ్ అనుభవాన్ని అన్‌లాక్ చేయడానికి రెండు దశలను పూర్తి చేయండి"
+            }
+        }
+    },
+    "toast": {
+        "success": {
+            "loginSuccessful": "లాగిన్ విజయవంతం!",
+            "registrationSuccessful": "నమోదు విజయవంతం!",
+            "passwordResetSuccessful": "పాస్‌వర్డ్ రీసెట్ విజయవంతం!",
+            "emailVerificationSent": "ఇమెయిల్ ధృవీకరణ పంపబడింది!",
+            "resetLinkSent": "పాస్‌వర్డ్ రీసెట్ లింక్ మీ ఇమెయిల్‌కు పంపబడింది!",
+            "resetLinkResent": "రీసెట్ లింక్ మళ్లీ పంపబడింది!",
+            "profileImageUpdated": "ప్రొఫైల్ చిత్రం విజయవంతంగా నవీకరించబడింది!",
+            "backgroundImageUpdated": "బ్యాక్‌గ్రౌండ్ చిత్రం విజయవంతంగా నవీకరించబడింది!",
+            "recommendedListUpdated": "Recommended List Updated Successfully!!!",
+            "accountCreated": "Account created successfully!",
+            "usernameUpdated": "Username updated successfully!",
+            "profileUpdated": "Profile updated successfully!",
+            "settingsSaved": "Settings saved successfully!",
+            "dataSaved": "Data saved successfully!",
+            "changesSaved": "Changes saved successfully!",
+            "fileUploaded": "File uploaded successfully!",
+            "imageUploaded": "చిత్రం విజయవంతంగా అప్‌లోడ్ చేయబడింది!",
+            "linkCopied": "Link copied to clipboard!",
+            "emailSent": "Email sent successfully!",
+            "notificationSent": "Notification sent successfully!",
+            "actionCompleted": "Action completed successfully!",
+            "formSubmitted": "Form submitted successfully!",
+            "onboardingCompleted": "ఆన్‌బోర్డింగ్ విజయవంతంగా పూర్తయింది!",
+            "welcomeMessage": "explorers కు స్వాగతం!",
+            "accountActivated": "ఖాతా విజయవంతంగా సక్రియం!",
+            "emailVerified": "ఇమెయిల్ విజయవంతంగా ధృవీకరించబడింది!",
+            "passwordChanged": "పాస్‌వర్డ్ విజయవంతంగా మార్చబడింది!",
+            "usernameChanged": "వినియోగదారు పేరు విజయవంతంగా మార్చబడింది!",
+            "profileCompleted": "ప్రొఫైల్ విజయవంతంగా పూర్తయింది!",
+            "setupCompleted": "సెటప్ విజయవంతంగా పూర్తయింది!",
+            "loggedOutSuccessfully": "వజయవతగ లగ అవట!"
+        },
+        "error": {
+            "loginFailed": "లాగిన్ విఫలం. మీ లాగిన్ వివరాలను తనిఖీ చేయండి.",
+            "registrationFailed": "నమోదు విఫలం. మళ్లీ ప్రయత్నించండి.",
+            "passwordResetFailed": "పాస్‌వర్డ్ రీసెట్ విఫలం. మళ్లీ ప్రయత్నించండి.",
+            "emailVerificationFailed": "ఇమెయిల్ ధృవీకరణ విఫలం. మళ్లీ ప్రయత్నించండి.",
+            "resetLinkFailed": "రీసెట్ లింక్ పంపడం విఫలం. తర్వాత ప్రయత్నించండి.",
+            "resetLinkResendFailed": "మళ్లీ పంపడం విఫలం. తర్వాత ప్రయత్నించండి.",
+            "profileImageUpdateFailed": "Failed to upload profile image. Please try again.",
+            "backgroundImageUpdateFailed": "Failed to upload background image. Please try again.",
+            "recommendedListUpdateFailed": "Error Updating Recommended List!!!",
+            "accountCreationFailed": "Account creation failed. Please try again.",
+            "usernameUpdateFailed": "వినియోగదారు పేరు నవీకరణ విఫలం. మళ్లీ ప్రయత్నించండి.",
+            "profileUpdateFailed": "Profile update failed. Please try again.",
+            "settingsSaveFailed": "Failed to save settings. Please try again.",
+            "dataSaveFailed": "Failed to save data. Please try again.",
+            "changesSaveFailed": "Failed to save changes. Please try again.",
+            "fileUploadFailed": "File upload failed. Please try again.",
+            "imageUploadFailed": "చిత్రం అప్‌లోడ్ విఫలం. మళ్లీ ప్రయత్నించండి.",
+            "linkCopyFailed": "Failed to copy link. Please try again.",
+            "emailSendFailed": "ఇమెయిల్ పంపడం విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.",
+            "notificationSendFailed": "Failed to send notification. Please try again.",
+            "actionFailed": "Action failed. Please try again.",
+            "formSubmissionFailed": "Form submission failed. Please try again.",
+            "onboardingFailed": "ఆన్‌బోర్డింగ్ విఫలం. మళ్లీ ప్రయత్నించండి.",
+            "accountActivationFailed": "Account activation failed. Please try again.",
+            "passwordChangeFailed": "Password change failed. Please try again.",
+            "usernameChangeFailed": "Username change failed. Please try again.",
+            "profileCompletionFailed": "Profile completion failed. Please try again.",
+            "setupFailed": "Setup failed. Please try again.",
+            "networkError": "నెట్‌వర్క్ లోపం. మీ కనెక్షన్‌ను తనిఖీ చేయండి.",
+            "serverError": "సర్వర్ లోపం. తర్వాత ప్రయత్నించండి.",
+            "validationError": "ధృవీకరణ లోపం. మీ ఇన్‌పుట్‌ను తనిఖీ చేయండి.",
+            "permissionDenied": "అనుమతి నిరాకరించబడింది. మద్దతుతో సంప్రదించండి.",
+            "sessionExpired": "సెషన్ గడువు ముగిసింది. మళ్లీ లాగిన్ చేయండి.",
+            "invalidCredentials": "చెల్లని లాగిన్ వివరాలు. మీ ఇన్‌పుట్‌ను తనిఖీ చేయండి.",
+            "emailNotFound": "ఇమెయిల్ కనుగొనబడలేదు. మళ్లీ ప్రయత్నించండి.",
+            "usernameAlreadyExists": "వినియోగదారు పేరు ఇప్పటికే ఉంది. వేరేది ఎంచుకోండి.",
+            "emailAlreadyExists": "ఇమెయిల్ ఇప్పటికే ఉంది. వేరే ఇమెయిల్ ఉపయోగించండి.",
+            "invalidEmailFormat": "చెల్లని ఇమెయిల్ ఫార్మాట్. చెల్లుబాటు అయ్యే ఇమెయిల్ నమోదు చేయండి.",
+            "passwordTooWeak": "పాస్‌వర్డ్ చాలా బలహీనం. బలమైన పాస్‌వర్డ్ ఎంచుకోండి.",
+            "passwordsDoNotMatch": "పాస్‌వర్డ్‌లు సరిపోలలేదు. మళ్లీ ప్రయత్నించండి.",
+            "requiredFieldMissing": "అవసరమైన ఫీల్డ్ లేదు. అన్ని అవసరమైన ఫీల్డ్‌లను పూరించండి.",
+            "invalidInput": "చెల్లని ఇన్‌పుట్. మీ డేటాను తనిఖీ చేయండి.",
+            "fileTooLarge": "ఫైల్ చాలా పెద్దది. చిన్న ఫైల్‌ను ఎంచుకోండి.",
+            "unsupportedFileType": "సమర్థించబడని ఫైల్ రకం. వేరే ఫైల్‌ను ఎంచుకోండి.",
+            "uploadLimitExceeded": "అప్‌లోడ్ పరిమితి మీరబడింది. తర్వాత ప్రయత్నించండి.",
+            "operationTimeout": "ఆపరేషన్ సమయం ముగిసింది. మళ్లీ ప్రయత్నించండి.",
+            "serviceUnavailable": "సేవ అందుబాటులో లేదు. తర్వాత ప్రయత్నించండి.",
+            "maintenanceMode": "సేవ నిర్వహణలో ఉంది. తర్వాత ప్రయత్నించండి.",
+            "rateLimitExceeded": "చాలా అభ్యర్థనలు. తర్వాత ప్రయత్నించండి.",
+            "quotaExceeded": "కోటా మీరబడింది. తర్వాత ప్రయత్నించండి.",
+            "accessDenied": "ప్రవేశం నిరాకరించబడింది. ఈ చర్యను చేయడానికి మీకు అనుమతి లేదు.",
+            "resourceNotFound": "వనరు కనుగొనబడలేదు. మీ అభ్యర్థనను తనిఖీ చేయండి.",
+            "conflictError": "సంఘర్షణ లోపం. వనరు ఇప్పటికే ఉంది.",
+            "preconditionFailed": "ముందస్తు షరతు విఫలమైంది. మీ అభ్యర్థనను తనిఖీ చేయండి.",
+            "tooManyAttempts": "చాలా ప్రయత్నాలు. తర్వాత ప్రయత్నించండి.",
+            "accountLocked": "ఖాతా లాక్ చేయబడింది. మద్దతుతో సంప్రదించండి.",
+            "accountSuspended": "ఖాతా సస్పెండ్ చేయబడింది. మద్దతుతో సంప్రదించండి.",
+            "accountDeleted": "ఖాతా తొలగించబడింది. మద్దతుతో సంప్రదించండి.",
+            "emailNotVerified": "ఇమెయిల్ ధృవీకరించబడలేదు. మొదట మీ ఇమెయిల్‌ను ధృవీకరించండి.",
+            "phoneNotVerified": "ఫోన్ నంబర్ ధృవీకరించబడలేదు. మొదట మీ ఫోన్‌ను ధృవీకరించండి.",
+            "twoFactorRequired": "రెండు-కారక ప్రామాణీకరణ అవసరం.",
+            "twoFactorFailed": "రెండు-కారక ప్రామాణీకరణ విఫలమైంది. మళ్లీ ప్రయత్నించండి.",
+            "captchaFailed": "Captcha ధృవీకరణ విఫలమైంది. మళ్లీ ప్రయత్నించండి.",
+            "invalidToken": "చెల్లని టోకెన్. మళ్లీ ప్రయత్నించండి.",
+            "expiredToken": "టోకెన్ గడువు ముగిసింది. మళ్లీ ప్రయత్నించండి.",
+            "invalidCode": "చెల్లని కోడ్. మీ ఇన్‌పుట్‌ను తనిఖీ చేయండి.",
+            "expiredCode": "కోడ్ గడువు ముగిసింది. కొత్త కోడ్‌ను అభ్యర్థించండి.",
+            "codeLimitExceeded": "కోడ్ పరిమితి మీరబడింది. తర్వాత ప్రయత్నించండి.",
+            "invalidUsername": "చెల్లని వినియోగదారు పేరు. మీ ఇన్‌పుట్‌ను తనిఖీ చేయండి.",
+            "usernameTooShort": "వినియోగదారు పేరు చాలా చిన్నది. పొడవైన వినియోగదారు పేరును ఎంచుకోండి.",
+            "usernameTooLong": "వినియోగదారు పేరు చాలా పొడవైనది. చిన్న వినియోగదారు పేరును ఎంచుకోండి.",
+            "usernameInvalidChars": "వినియోగదారు పేరులో చెల్లని అక్షరాలు ఉన్నాయి. అక్షరాలు, సంఖ్యలు మరియు హైఫెన్‌లను మాత్రమే ఉపయోగించండి.",
+            "usernameReserved": "వినియోగదారు పేరు రిజర్వ్ చేయబడింది. వేరే వినియోగదారు పేరును ఎంచుకోండి.",
+            "usernameProfanity": "వినియోగదారు పేరులో తగని కంటెంట్ ఉంది. వేరే వినియోగదారు పేరును ఎంచుకోండి.",
+            "primaryAddressRequired": "ప్రాథమిక చిరునామా అవసరం",
+            "addressRequired": "చిరునామా అవసరం",
+            "cityRequired": "నగరం అవసరం",
+            "stateRequired": "రాష్ట్రం అవసరం",
+            "countryRequired": "దేశం అవసరం",
+            "postalCodeRequired": "పోస్టల్ కోడ్ అవసరం",
+            "mobileNumberRequired": "మొబైల్ నంబర్ అవసరం",
+            "mobileNumberInvalid": "చెల్లని మొబైల్ నంబర్ ఫార్మాట్",
+            "mobileNumberTooShort": "మొబైల్ నంబర్ చాలా చిన్నది",
+            "mobileNumberTooLong": "మొబైల్ నంబర్ చాలా పొడవైనది",
+            "bioRequired": "బయో అవసరం",
+            "bioTooLong": "బయో చాలా పొడవైనది. దీన్ని 250 అక్షరాల క్రింద ఉంచండి",
+            "displayNameRequired": "ప్రదర్శన పేరు అవసరం",
+            "displayNameTooShort": "ప్రదర్శన పేరు చాలా చిన్నది",
+            "displayNameTooLong": "ప్రదర్శన పేరు చాలా పొడవైనది",
+            "accountTypeRequired": "ఖాతా రకం అవసరం",
+            "invalidAccountType": "చెల్లని ఖాతా రకం ఎంపిక చేయబడింది",
+            "imageRequired": "చిత్రం అవసరం",
+            "imageTooLarge": "చిత్రం చాలా పెద్దది. చిన్న చిత్రాన్ని ఎంచుకోండి",
+            "unsupportedImageFormat": "సమర్థించబడని చిత్ర ఫార్మాట్. JPG, PNG లేదా GIF ఉపయోగించండి",
+            "imageProcessingFailed": "చిత్ర ప్రాసెసింగ్ విఫలమైంది. మళ్లీ ప్రయత్నించండి",
+            "imageCorrupted": "చిత్రం దెబ్బతిన్నది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageDimensionsInvalid": "చిత్ర కొలతలు చెల్లనివి. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageSizeInvalid": "చిత్ర పరిమాణం చెల్లనిది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageFormatInvalid": "చిత్ర ఫార్మాట్ చెల్లనిది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageQualityTooLow": "చిత్ర నాణ్యత చాలా తక్కువ. అధిక నాణ్యత గల చిత్రాన్ని ఎంచుకోండి",
+            "imageTooSmall": "చిత్రం చాలా చిన్నది. పెద్ద చిత్రాన్ని ఎంచుకోండి",
+            "imageTooBig": "చిత్రం చాలా పెద్దది. చిన్న చిత్రాన్ని ఎంచుకోండి",
+            "imageAspectRatioInvalid": "చిత్ర ఆస్పెక్ట్ రేషియో చెల్లనిది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageColorSpaceInvalid": "చిత్ర రంగు స్థలం చెల్లనిది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageMetadataInvalid": "చిత్ర మెటాడేటా చెల్లనిది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageSecurityViolation": "చిత్ర భద్రత ఉల్లంఘన. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageVirusDetected": "చిత్రంలో వైరస్ కనుగొనబడింది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageMalwareDetected": "చిత్రంలో మాల్వేర్ కనుగొనబడింది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageSpamDetected": "చిత్రంలో స్పామ్ కనుగొనబడింది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentInappropriate": "చిత్ర కంటెంట్ తగనిది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentViolent": "చిత్ర కంటెంట్ హింసాత్మకమైనది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentSexual": "చిత్ర కంటెంట్ లైంగికమైనది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentHateful": "చిత్ర కంటెంట్ ద్వేషపూరితమైనది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentDiscriminatory": "చిత్ర కంటెంట్ వివక్షాత్మకమైనది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentOffensive": "చిత్ర కంటెంట్ అప్రియమైనది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentAbusive": "చిత్ర కంటెంట్ దుర్వినియోగమైనది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentHarassing": "చిత్ర కంటెంట్ హింసించేది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentThreatening": "చిత్ర కంటెంట్ బెదిరించేది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentDangerous": "చిత్ర కంటెంట్ ప్రమాదకరమైనది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentIllegal": "చిత్ర కంటెంట్ చట్టవిరుద్ధమైనది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentCopyright": "చిత్ర కంటెంట్ కాపీరైట్‌ను ఉల్లంఘిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentTrademark": "చిత్ర కంటెంట్ ట్రేడ్‌మార్క్‌ను ఉల్లంఘిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentPrivacy": "చిత్ర కంటెంట్ గోప్యతను ఉల్లంఘిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentConsent": "చిత్ర కంటెంట్‌లో సమ్మతి లేదు. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentMinors": "చిత్ర కంటెంట్ అల్పవయస్కులను కలిగి ఉంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentAnimals": "చిత్ర కంటెంట్ జంతు క్రూరత్వాన్ని కలిగి ఉంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentEnvironment": "చిత్ర కంటెంట్ పర్యావరణానికి హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentHealth": "చిత్ర కంటెంట్ ఆరోగ్యానికి హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentSafety": "చిత్ర కంటెంట్ భద్రతకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentSecurity": "చిత్ర కంటెంట్ భద్రతకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentIntegrity": "చిత్ర కంటెంట్ సమగ్రతకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentReputation": "చిత్ర కంటెంట్ పేరుకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentBrand": "చిత్ర కంటెంట్ బ్రాండ్‌కు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentBusiness": "చిత్ర కంటెంట్ వ్యాపారానికి హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentPersonal": "చిత్ర కంటెంట్ వ్యక్తిగత ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentProfessional": "చిత్ర కంటెంట్ వృత్తిపరమైన ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentAcademic": "చిత్ర కంటెంట్ విద్యాపరమైన ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentCultural": "చిత్ర కంటెంట్ సాంస్కృతిక ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentReligious": "చిత్ర కంటెంట్ మతపరమైన ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentPolitical": "చిత్ర కంటెంట్ రాజకీయ ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentSocial": "చిత్ర కంటెంట్ సామాజిక ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentEconomic": "చిత్ర కంటెంట్ ఆర్థిక ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentLegal": "చిత్ర కంటెంట్ చట్టపరమైన ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentEthical": "చిత్ర కంటెంట్ నైతిక ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentMoral": "చిత్ర కంటెంట్ నైతిక ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentSpiritual": "చిత్ర కంటెంట్ ఆధ్యాత్మిక ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentPhilosophical": "చిత్ర కంటెంట్ తాత్విక ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentScientific": "చిత్ర కంటెంట్ శాస్త్రీయ ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentTechnical": "చిత్ర కంటెంట్ సాంకేతిక ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentArtistic": "చిత్ర కంటెంట్ కళాపరమైన ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentCreative": "చిత్ర కంటెంట్ సృజనాత్మక ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentIntellectual": "చిత్ర కంటెంట్ మేధాపరమైన ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentEducational": "చిత్ర కంటెంట్ విద్యాపరమైన ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentInformational": "చిత్ర కంటెంట్ సమాచార ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentNews": "చిత్ర కంటెంట్ వార్తా ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentMedia": "చిత్ర కంటెంట్ మీడియా ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentEntertainment": "చిత్ర కంటెంట్ వినోద ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentSports": "చిత్ర కంటెంట్ క్రీడా ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentRecreation": "చిత్ర కంటెంట్ వినోద ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentLeisure": "చిత్ర కంటెంట్ విశ్రాంతి ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentHobby": "చిత్ర కంటెంట్ అభిరుచి ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentInterest": "చిత్ర కంటెంట్ ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentPassion": "చిత్ర కంటెంట్ అభిరుచి ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentLove": "చిత్ర కంటెంట్ ప్రేమ ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentHate": "చిత్ర కంటెంట్ ద్వేష ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentAnger": "చిత్ర కంటెంట్ కోపం ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentFear": "చిత్ర కంటెంట్ భయం ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentSadness": "చిత్ర కంటెంట్ విచారం ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentJoy": "చిత్ర కంటెంట్ ఆనందం ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentHappiness": "చిత్ర కంటెంట్ సంతోషం ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentExcitement": "చిత్ర కంటెంట్ ఉత్సాహం ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentSurprise": "చిత్ర కంటెంట్ ఆశ్చర్యం ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentDisgust": "చిత్ర కంటెంట్ అసహ్యం ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentShame": "చిత్ర కంటెంట్ సిగ్గు ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentGuilt": "చిత్ర కంటెంట్ అపరాధం ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentPride": "చిత్ర కంటెంట్ గర్వం ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentEnvy": "చిత్ర కంటెంట్ అసూయ ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentJealousy": "చిత్ర కంటెంట్ అసూయ ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentGreed": "చిత్ర కంటెంట్ దురాశ ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentLust": "చిత్ర కంటెంట్ కామం ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentGluttony": "చిత్ర కంటెంట్ అతిభోజనం ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentSloth": "చిత్ర కంటెంట్ సోమరితనం ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి",
+            "imageContentWrath": "చిత్ర కంటెంట్ కోపం ఆసక్తులకు హాని కలిగిస్తుంది. వేరే చిత్రాన్ని ఎంచుకోండి"
+        },
+        "warning": {
+            "usernameCooldown": "కూల్‌డౌన్ కాలం కారణంగా వినియోగదారు పేరు మార్పు తాత్కాలికంగా లాక్ చేయబడింది",
+            "passwordWeak": "పాస్‌వర్డ్ బలహీనం. బలమైన పాస్‌వర్డ్ ఉపయోగించడాన్ని పరిగణించండి",
+            "emailNotVerified": "ఇమెయిల్ ధృవీకరించబడలేదు. మీ ఇమెయిల్‌ను ధృవీకరించండి",
+            "phoneNotVerified": "ఫోన్ నంబర్ ధృవీకరించబడలేదు. మీ ఫోన్‌ను ధృవీకరించండి",
+            "profileIncomplete": "ప్రొఫైల్ అసంపూర్ణంగా ఉంది. మీ ప్రొఫైల్‌ను పూర్తి చేయండి",
+            "settingsNotSaved": "సెట్టింగ్‌లు సేవ్ చేయబడలేదు. మీ సెట్టింగ్‌లను సేవ్ చేయండి",
+            "dataNotSaved": "డేటా సేవ్ చేయబడలేదు. మీ డేటాను సేవ్ చేయండి",
+            "changesNotSaved": "మార్పులు సేవ్ చేయబడలేదు. మీ మార్పులను సేవ్ చేయండి",
+            "fileNotUploaded": "ఫైల్ అప్‌లోడ్ చేయబడలేదు. మీ ఫైల్‌ను అప్‌లోడ్ చేయండి",
+            "imageNotUploaded": "చిత్రం అప్‌లోడ్ చేయబడలేదు. మీ చిత్రాన్ని అప్‌లోడ్ చేయండి",
+            "linkNotCopied": "లింక్ కాపీ చేయబడలేదు. మీ లింక్‌ను కాపీ చేయండి",
+            "emailNotSent": "ఇమెయిల్ పంపబడలేదు. మీ ఇమెయిల్‌ను పంపండి",
+            "notificationNotSent": "నోటిఫికేషన్ పంపబడలేదు. మీ నోటిఫికేషన్‌ను పంపండి",
+            "actionNotCompleted": "చర్య పూర్తి కాలేదు. మీ చర్యను పూర్తి చేయండి",
+            "formNotSubmitted": "ఫారమ్ సమర్పించబడలేదు. మీ ఫారమ్‌ను సమర్పించండి",
+            "onboardingNotCompleted": "ఆన్‌బోర్డింగ్ పూర్తి కాలేదు. మీ ఆన్‌బోర్డింగ్‌ను పూర్తి చేయండి",
+            "accountNotActivated": "ఖాతా యాక్టివేట్ చేయబడలేదు. మీ ఖాతాను యాక్టివేట్ చేయండి",
+            "passwordNotChanged": "పాస్‌వర్డ్ మార్చబడలేదు. మీ పాస్‌వర్డ్‌ను మార్చండి",
+            "usernameNotChanged": "వినియోగదారు పేరు మార్చబడలేదు. మీ వినియోగదారు పేరును మార్చండి",
+            "profileNotCompleted": "ప్రొఫైల్ పూర్తి కాలేదు. మీ ప్రొఫైల్‌ను పూర్తి చేయండి",
+            "setupNotCompleted": "సెటప్ పూర్తి కాలేదు. మీ సెటప్‌ను పూర్తి చేయండి",
+            "networkSlow": "నెట్‌వర్క్ నెమ్మదిగా ఉంది. మీ కనెక్షన్‌ను తనిఖీ చేయండి",
+            "serverSlow": "సర్వర్ నెమ్మదిగా ఉంది. తర్వాత ప్రయత్నించండి",
+            "validationPending": "ధృవీకరణ పెండింగ్‌లో ఉంది. దయచేసి వేచి ఉండండి",
+            "permissionPending": "అనుమతి పెండింగ్‌లో ఉంది. దయచేసి వేచి ఉండండి",
+            "sessionExpiring": "సెషన్ గడువు ముగుస్తోంది. మళ్లీ లాగిన్ చేయండి",
+            "credentialsExpiring": "క్రెడెన్షియల్‌లు గడువు ముగుస్తున్నాయి. మీ క్రెడెన్షియల్‌లను అప్‌డేట్ చేయండి",
+            "emailExpiring": "ఇమెయిల్ గడువు ముగుస్తోంది. మీ ఇమెయిల్‌ను అప్‌డేట్ చేయండి",
+            "phoneExpiring": "ఫోన్ గడువు ముగుస్తోంది. మీ ఫోన్‌ను అప్‌డేట్ చేయండి",
+            "profileExpiring": "ప్రొఫైల్ గడువు ముగుస్తోంది. మీ ప్రొఫైల్‌ను అప్‌డేట్ చేయండి",
+            "settingsExpiring": "సెట్టింగ్‌లు గడువు ముగుస్తున్నాయి. మీ సెట్టింగ్‌లను అప్‌డేట్ చేయండి",
+            "dataExpiring": "డేటా గడువు ముగుస్తోంది. మీ డేటాను అప్‌డేట్ చేయండి",
+            "changesExpiring": "మార్పులు గడువు ముగుస్తున్నాయి. మీ మార్పులను అప్‌డేట్ చేయండి",
+            "fileExpiring": "ఫైల్ గడువు ముగుస్తోంది. మీ ఫైల్‌ను అప్‌డేట్ చేయండి",
+            "imageExpiring": "చిత్రం గడువు ముగుస్తోంది. మీ చిత్రాన్ని అప్‌డేట్ చేయండి",
+            "linkExpiring": "లింక్ గడువు ముగుస్తోంది. మీ లింక్‌ను అప్‌డేట్ చేయండి",
+            "notificationExpiring": "నోటిఫికేషన్ గడువు ముగుస్తోంది. మీ నోటిఫికేషన్‌ను అప్‌డేట్ చేయండి",
+            "actionExpiring": "చర్య గడువు ముగుస్తోంది. మీ చర్యను అప్‌డేట్ చేయండి",
+            "formExpiring": "ఫారమ్ గడువు ముగుస్తోంది. మీ ఫారమ్‌ను అప్‌డేట్ చేయండి",
+            "onboardingExpiring": "ఆన్‌బోర్డింగ్ గడువు ముగుస్తోంది. మీ ఆన్‌బోర్డింగ్‌ను అప్‌డేట్ చేయండి",
+            "accountExpiring": "ఖాతా గడువు ముగుస్తోంది. మీ ఖాతాను అప్‌డేట్ చేయండి",
+            "passwordExpiring": "పాస్‌వర్డ్ గడువు ముగుస్తోంది. మీ పాస్‌వర్డ్‌ను అప్‌డేట్ చేయండి",
+            "usernameExpiring": "వినియోగదారు పేరు గడువు ముగుస్తోంది. మీ వినియోగదారు పేరును అప్‌డేట్ చేయండి",
+            "setupExpiring": "సెటప్ గడువు ముగుస్తోంది. మీ సెటప్‌ను అప్‌డేట్ చేయండి"
+        },
+        "info": {
+            "loading": "లోడ్ అవుతోంది...",
+            "processing": "ప్రాసెస్ చేస్తోంది...",
+            "saving": "సేవ్ చేస్తోంది...",
+            "uploading": "అప్‌లోడ్ చేస్తోంది...",
+            "downloading": "డౌన్‌లోడ్ చేస్తోంది...",
+            "connecting": "కనెక్ట్ అవుతోంది...",
+            "disconnecting": "డిస్‌కనెక్ట్ అవుతోంది...",
+            "sending": "పంపుతోంది...",
+            "receiving": "స్వీకరిస్తోంది...",
+            "updating": "అప్‌డేట్ చేస్తోంది...",
+            "refreshing": "రిఫ్రెష్ చేస్తోంది...",
+            "synchronizing": "సమకాలీకరిస్తోంది...",
+            "validating": "ధృవీకరిస్తోంది...",
+            "verifying": "ధృవీకరిస్తోంది...",
+            "checking": "తనిఖీ చేస్తోంది...",
+            "searching": "శోధిస్తోంది...",
+            "filtering": "ఫిల్టర్ చేస్తోంది...",
+            "sorting": "క్రమబద్ధీకరిస్తోంది...",
+            "organizing": "ఆర్గనైజ్ చేస్తోంది...",
+            "arranging": "ఏర్పాటు చేస్తోంది...",
+            "configuring": "కాన్ఫిగర్ చేస్తోంది...",
+            "setting": "సెట్ చేస్తోంది...",
+            "adjusting": "సర్దుబాటు చేస్తోంది...",
+            "modifying": "మారుస్తోంది...",
+            "changing": "మారుస్తోంది...",
+            "switching": "మారుస్తోంది...",
+            "toggling": "మారుస్తోంది...",
+            "enabling": "ఎనేబుల్ చేస్తోంది...",
+            "disabling": "డిసేబుల్ చేస్తోంది...",
+            "activating": "యాక్టివేట్ చేస్తోంది...",
+            "deactivating": "డియాక్టివేట్ చేస్తోంది...",
+            "starting": "ప్రారంభిస్తోంది...",
+            "stopping": "ఆపుతోంది...",
+            "pausing": "పాజ్ చేస్తోంది...",
+            "resuming": "కొనసాగిస్తోంది...",
+            "restarting": "మళ్లీ ప్రారంభిస్తోంది...",
+            "resetting": "రీసెట్ చేస్తోంది...",
+            "clearing": "క్లియర్ చేస్తోంది...",
+            "deleting": "డిలీట్ చేస్తోంది...",
+            "removing": "తీసివేస్తోంది...",
+            "adding": "జోడిస్తోంది...",
+            "inserting": "చేరుస్తోంది...",
+            "creating": "సృష్టిస్తోంది...",
+            "building": "నిర్మిస్తోంది...",
+            "constructing": "నిర్మిస్తోంది...",
+            "generating": "జనరేట్ చేస్తోంది...",
+            "producing": "ఉత్పత్తి చేస్తోంది...",
+            "making": "చేస్తోంది...",
+            "preparing": "సిద్ధం చేస్తోంది...",
+            "readying": "సిద్ధం చేస్తోంది...",
+            "initializing": "ప్రారంభిస్తోంది...",
+            "launching": "ప్రారంభిస్తోంది...",
+            "opening": "తెరుస్తోంది...",
+            "closing": "మూస్తోంది...",
+            "shutting": "మూస్తోంది...",
+            "ending": "ముగుస్తోంది...",
+            "finishing": "ముగుస్తోంది...",
+            "completing": "పూర్తి చేస్తోంది...",
+            "finalizing": "ఫైనలైజ్ చేస్తోంది...",
+            "concluding": "ముగుస్తోంది...",
+            "terminating": "ముగుస్తోంది...",
+            "canceling": "రద్దు చేస్తోంది...",
+            "aborting": "రద్దు చేస్తోంది...",
+            "interrupting": "అంతరాయం కలిగిస్తోంది...",
+            "halting": "ఆపుతోంది...",
+            "freezing": "ఫ్రీజ్ చేస్తోంది...",
+            "unfreezing": "అన్‌ఫ్రీజ్ చేస్తోంది...",
+            "thawing": "కరిగిస్తోంది...",
+            "melting": "కరిగిస్తోంది...",
+            "cooling": "చల్లబరుస్తోంది...",
+            "heating": "వేడి చేస్తోంది...",
+            "warming": "వేడి చేస్తోంది...",
+            "chilling": "చల్లబరుస్తోంది...",
+            "renewing": "నవీకరిస్తోంది...",
+            "restoring": "పునరుద్ధరిస్తోంది...",
+            "recovering": "పునరుద్ధరిస్తోంది...",
+            "repairing": "రిపేర్ చేస్తోంది...",
+            "fixing": "సరిచేస్తోంది...",
+            "correcting": "సరిచేస్తోంది...",
+            "tuning": "ట్యూన్ చేస్తోంది...",
+            "optimizing": "ఆప్టిమైజ్ చేస్తోంది...",
+            "improving": "మెరుగుపరుస్తోంది...",
+            "enhancing": "మెరుగుపరుస్తోంది...",
+            "upgrading": "అప్‌గ్రేడ్ చేస్తోంది...",
+            "modernizing": "ఆధునికీకరిస్తోంది..."
+        }
+    },
+    "emailVerification": {
+        "title": "Verify Your Email",
+        "description": "We've sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
+        "checkEmail": "Check your email",
+        "emailSent": "Verification email sent!",
+        "resendEmail": "Resend Email",
+        "resendIn": "Resend in",
+        "seconds": "seconds",
+        "didntReceive": "Didn't receive the email?",
+        "checkSpam": "Please check your spam folder or try again.",
+        "backToLogin": "Back to Login",
+        "emailAddress": "Email Address",
+        "verificationSent": "Verification email sent to:",
+        "clickLink": "Click the link in the email to verify your account.",
+        "expiresIn": "This link expires in 24 hours.",
+        "needHelp": "Need help?",
+        "contactSupport": "Contact Support"
+    },
+    "settings": {
+        "title": "సెట్టింగులు",
+        "account": {
+            "heading": "ఖాతా",
+            "security": {
+                "title": "ఖాతా మరియు భద్రత"
+            },
+            "changePassword": {
+                "text": "పాస్‌వర్డ్ మార్చాలా?",
+                "button": "పాస్‌వర్డ్ మార్చండి",
+                "modalTitle": "పాస్‌వర్డ్ మార్చండి",
+                "currentPassword": "ప్రస్తుత పాస్‌వర్డ్",
+                "newPassword": "కొత్త పాస్‌వర్డ్",
+                "confirmPassword": "కొత్త పాస్‌వర్డ్‌ను నిర్ధారించండి",
+                "updateButton": "పాస్‌వర్డ్ అప్‌డేట్ చేయండి",
+                "currentPasswordPlaceholder": "మీ ప్రస్తుత పాస్‌వర్డ్‌ను నమోదు చేయండి",
+                "newPasswordPlaceholder": "కొత్త పాస్‌వర్డ్‌ను నమోదు చేయండి",
+                "confirmPasswordPlaceholder": "కొత్త పాస్‌వర్డ్‌ను మళ్లీ నమోదు చేయండి",
+                "successMessage": "పాస్‌వర్డ్ విజయవంతంగా అప్‌డేట్ చేయబడింది. భద్రత కోసం మిమ్మల్ని లాగిన్‌కు రీడైరెక్ట్ చేస్తాము.",
+                "redirectMessage": "భద్రత కోసం లాగిన్‌కు రీడైరెక్ట్ చేస్తున్నాము..."
+            },
+            "deactivateAccount": {
+                "text": "మీ ఖాతాను నిష్క్రియం చేయాలా?",
+                "button": "ఖాతాను నిష్క్రియం చేయండి",
+                "modalTitle": "మీ ఖాతాను నిష్క్రియం చేయాలా?",
+                "modalDescription": "మీరు మీ ఖాతాను నిష్క్రియం చేయాలని నిశ్చయించుకున్నారా?",
+                "enterUsername": "మీ వినియోగదారు పేరును నమోదు చేయండి",
+                "enterPassword": "మీ పాస్‌వర్డ్‌ను నమోదు చేయండి",
+                "usernamePlaceholder": "మీ వినియోగదారు పేరును నమోదు చేయండి",
+                "passwordPlaceholder": "మీ ప్రస్తుత పాస్‌వర్డ్‌ను నమోదు చేయండి",
+                "confirmButton": "నా ఖాతాను నిష్క్రియం చేయండి",
+                "deactivatedButton": "నిష్క్రియం చేయబడింది",
+                "successMessage": "ఖాతా విజయవంతంగా నిష్క్రియం చేయబడింది",
+                "activatedMessage": "ఖాతా విజయవంతంగా సక్రియం చేయబడింది"
+            },
+            "deleteAccount": {
+                "text": "మీ ఖాతాను తొలగించాలా?",
+                "button": "ఖాతాను తొలగించండి",
+                "step1": {
+                    "modalTitle": "మీ ఖాతాను తొలగించాలా?",
+                    "modalDescription": "మీరు మీ ఖాతాను తొలగించాలని నిశ్చయించుకున్నారా? ఈ చర్యను రద్దు చేయలేము.",
+                    "modalDescription2": "మీరు మీ డేటాను ఉంచాలని అనుకుంటే, బదులుగా మీ ఖాతాను నిష్క్రియం చేయవచ్చు.",
+                    "deactivateInsteadButton": "బదులుగా ఖాతాను నిష్క్రియం చేయండి",
+                    "continueButton": "తొలగింపుతో కొనసాగండి"
+                },
+                "step2": {
+                    "modalTitle": "మీ వివరాలను నమోదు చేయండి",
+                    "enterUsername": "మీ వినియోగదారు పేరును నమోదు చేయండి",
+                    "enterPassword": "మీ పాస్‌వర్డ్‌ను నమోదు చేయండి",
+                    "confirmPassword": "మీ పాస్‌వర్డ్‌ను నిర్ధారించండి",
+                    "usernamePlaceholder": "మీ వినియోగదారు పేరును నమోదు చేయండి",
+                    "passwordPlaceholder": "మీ పాస్‌వర్డ్‌ను నమోదు చేయండి",
+                    "confirmPasswordPlaceholder": "మీ పాస్‌వర్డ్‌ను నిర్ధారించండి",
+                    "continueButton": "కొనసాగండి"
+                },
+                "step3": {
+                    "modalTitle": "మీరు ఎందుకు వెళ్లిపోతున్నారు?",
+                    "reasonPlaceholder": "దయచేసి వెళ్లిపోవడానికి కారణం చెప్పండి...",
+                    "continueButton": "కొనసాగండి"
+                },
+                "step4": {
+                    "modalTitle": "తొలగింపును నిర్ధారించండి",
+                    "confirmText": "కొనసాగడానికి 'CONFIRM DELETE' అని టైప్ చేయండి",
+                    "confirmPlaceholder": "నిర్ధారించడానికి 'CONFIRM DELETE' అని టైప్ చేయండి",
+                    "deleteButton": "నా ఖాతాను తొలగించండి",
+                    "confirmationRequired": "దయచేసి నిర్ధారించడానికి 'CONFIRM DELETE' అని టైప్ చేయండి.",
+                    "reasonRequired": "దయచేసి వెళ్లిపోవడానికి కారణం ఇవ్వండి.",
+                    "successMessage": "ఖాతా విజయవంతంగా తొలగించబడింది."
+                }
+            }
+        },
+        "languagePreference": {
+            "heading": "భాషా ప్రాధాన్యత",
+            "selectLanguage": "మీ భాషను ఎంచుకోండి",
+            "availableLanguages": "47 అందుబాటులో ఉన్న భాషల నుండి ఎంచుకోండి",
+            "currentLanguage": "ప్రస్తుత: {{flag}} {{name}}",
+            "languageChanged": "భాష {{name}}కు మార్చబడింది"
+        }
+    },
+    "seo": {
+        "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+        "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+    },
+    "sidebar": {
+        "home": "హోమ్",
+        "profile": "ప్రొఫైల్",
+        "recommendations": "సిఫార్సులు",
+        "settings": "సెట్టింగ్‌లు",
+        "logout": "లాగ్ అవుట్",
+        "analytics": "విశ్లేషణ",
+        "loading": "లోడ్ అవుతోంది...",
+        "clickToOpenMenu": "మెనూను తెరవడానికి క్లిక్ చేయండి"
+    },
+    "analytics": {
+        "dashboard": {
+            "title": "విశ్లేషణ డాష్‌బోర్డ్",
+            "subtitle": "మీ QR కోడ్ పనితీరు మరియు వినియోగదారు నిమగ్నతను ట్రాక్ చేయండి",
+            "timePeriod": "సమయ వ్యవధి:",
+            "timeFilter": {
+                "today": "ఈరోజు",
+                "last7days": "గత 7 రోజులు",
+                "last30days": "గత 30 రోజులు",
+                "custom": "అనుకూల పరిధి",
+                "selectPeriod": "వ్యవధిని ఎంచుకోండి"
+            },
+            "dateRange": {
+                "from": "నుండి:",
+                "to": "వరకు:"
+            },
+            "summaryCards": {
+                "totalViews": "మొత్తం వీక్షణలు",
+                "totalClicks": "మొత్తం క్లిక్‌లు",
+                "totalQRViews": "మొత్తం QR వీక్షణలు",
+                "totalLinkViews": "మొత్తం లింక్ వీక్షణలు"
+            },
+            "loading": {
+                "loadingData": "విశ్లేషణ డేటా లోడ్ అవుతోంది...",
+                "resolvingCountry": "దేశ డేటాను పరిష్కరిస్తోంది..."
+            },
+            "error": {
+                "title": "విశ్లేషణను లోడ్ చేయడంలో లోపం",
+                "message": "విశ్లేషణ డేటాను పొందలేకపోయాము. దయచేసి తర్వాత మళ్లీ ప్రయత్నించండి.",
+                "errorLabel": "లోపం:"
+            },
+            "comingSoon": {
+                "title": "విశ్లేషణ త్వరలో రాబోతోంది",
+                "message": "విశ్లేషణ మీ అకౌంట్ సృష్టించిన \u003cstrong\u003e{{days}} రోజు{{daysPlural}}\u003c/strong\u003e తర్వాత అందుబాటులో ఉంటుంది.",
+                "whyWait": {
+                    "title": "ఎందుకు వేచి ఉండాలి?",
+                    "reasons": {
+                        "accuracy": "• డేటా ఖచ్చితత్వాన్ని నిర్ధారిస్తుంది మరియు స్పామ్‌ను నిరోధిస్తుంది",
+                        "interactions": "• అర్థవంతమైన వినియోగదారు పరస్పర చర్యలకు సమయాన్ని అనుమతిస్తుంది",
+                        "insights": "• నమ్మకమైన విశ్లేషణ అంతర్దృష్టులను అందిస్తుంది"
+                    }
+                },
+                "tip": "అంతర్వర్తి కాలంలో, విశ్లేషణ అందుబాటులో ఉన్నప్పుడు డేటాను రూపొందించడానికి మీ QR కోడ్‌లను భాగస్వామ్యం చేయడం ప్రారంభించండి!",
+                "filterTip": "\u003cstrong\u003eసూచన:\u003c/strong\u003e విశ్లేషణ అందుబాటులో ఉన్న తర్వాత, మీ డేటాను వీక్షించడానికి సమయ వ్యవధుల ద్వారా (ఈరోజు, గత 7 రోజులు, గత 30 రోజులు, లేదా అనుకూల పరిధి) వడపోత చేయగలరు."
+            },
+            "emptyState": {
+                "title": "విశ్లేషణ డేటా లేదు",
+                "noDataMessage": "మీ అకౌంట్‌కు విశ్లేషణ డేటా కనుగొనబడలేదు. ప్రజలు మీ QR కోడ్‌లను వీక్షించడం మరియు పరస్పర చర్య చేయడం ప్రారంభించిన తర్వాత విశ్లేషణ ఇక్కడ కనిపిస్తుంది.",
+                "customRange": {
+                    "bothMissing": "విశ్లేషణ డేటాను వీక్షించడానికి అనుకూల పరిధికి ప్రారంభ మరియు ముగింపు తేదీలను ఎంచుకోండి.",
+                    "startMissing": "విశ్లేషణ డేటాను వీక్షించడానికి అనుకూల పరిధికి ప్రారంభ తేదీని ఎంచుకోండి.",
+                    "endMissing": "విశ్లేషణ డేటాను వీక్షించడానికి అనుకూల పరిధికి ముగింపు తేదీని ఎంచుకోండి."
+                },
+                "noDataForPeriod": {
+                    "today": "ఈరోజుకు విశ్లేషణ డేటా అందుబాటులో లేదు. మీ డేటాను వీక్షించడానికి వేరే సమయ పరిధిని ఎంచుకోండి.",
+                    "last7days": "గత 7 రోజులకు విశ్లేషణ డేటా అందుబాటులో లేదు. మీ డేటాను వీక్షించడానికి వేరే సమయ పరిధిని ఎంచుకోండి.",
+                    "last30days": "గత 30 రోజులకు విశ్లేషణ డేటా అందుబాటులో లేదు. మీ డేటాను వీక్షించడానికి వేరే సమయ పరిధిని ఎంచుకోండి.",
+                    "custom": "అనుకూల పరిధికి ({{startDate}} నుండి {{endDate}} వరకు) విశ్లేషణ డేటా అందుబాటులో లేదు. మీ డేటాను వీక్షించడానికి వేరే సమయ పరిధిని ఎంచుకోండి.",
+                    "default": "ఎంచుకున్న సమయ పరిధికి విశ్లేషణ డేటా అందుబాటులో లేదు. మీ డేటాను వీక్షించడానికి వేరే సమయ పరిధిని ఎంచుకోండి."
+                },
+                "howToStart": {
+                    "title": "విశ్లేషణను చూడడం ప్రారంభించడానికి:",
+                    "shareQR": "• సోషల్ మీడియాలో మీ QR కోడ్‌లను భాగస్వామ్యం చేయండి",
+                    "includeQR": "• మీ మార్కెటింగ్ పదార్థాలలో QR కోడ్‌లను చేర్చండి",
+                    "askFriends": "• మీ స్నేహితులను మీ QR కోడ్‌లను స్కాన్ చేయమని అడగండి",
+                    "viewProfile": "• మీ పబ్లిక్ ప్రొఫైల్ పేజీలను వీక్షించండి"
+                }
+            },
+            "charts": {
+                "topCountries": {
+                    "title": "వీక్షణల ద్వారా టాప్ 3 దేశాలు",
+                    "retryGeolocation": "జియోలొకేషన్‌ను మళ్లీ ప్రయత్నించండి",
+                    "geolocationIssue": "జియోలొకేషన్ సమస్య:",
+                    "countryDataUnavailable": "దేశ డేటా అందుబాటులో లేదు",
+                    "unableToResolve": "ఈ సమయంలో IP చిరునామాలను దేశాలకు పరిష్కరించలేకపోయాము. ఇది నెట్‌వర్క్ పరిమితులు లేదా సేవా పరిమితుల కారణంగా ఉండవచ్చు.",
+                    "failedToResolve": "దేశ డేటాను పరిష్కరించడంలో విఫలమైంది. తర్వాత మళ్లీ ప్రయత్నించండి.",
+                    "analyticsSummary": "విశ్లేషణ సారాంశం:",
+                    "totalViewEvents": "• {{count}} మొత్తం వీక్షణ సంఘటనలు",
+                    "eventsWithCountry": "• {{count}} దేశ డేటాతో సంఘటనలు",
+                    "eventsPending": "• {{count}} జియోలొకేషన్ కోసం పెండింగ్‌లో ఉన్న సంఘటనలు",
+                    "willAppear": "IP జియోలొకేషన్ సేవలు అందుబాటులో ఉన్న తర్వాత దేశ డేటా స్వయంచాలకంగా కనిపిస్తుంది.",
+                    "tooltip": {
+                        "country": "దేశం: {{country}}",
+                        "views": "వీక్షణలు: {{count}}"
+                    },
+                    "legend": "వీక్షణలు"
+                },
+                "worldMap": {
+                    "title": "ప్రపంచ వ్యాప్త వీక్షణ పంపిణీ",
+                    "subtitle": "పబ్లిక్ పేజీల నుండి దేశాలలో వీక్షణ పంపిణీని చూపించే ఇంటరాక్టివ్ ప్రపంచ పటం",
+                    "noGeographicData": "భౌగోళిక డేటా అందుబాటులో లేదు",
+                    "unableToResolve": "ఈ సమయంలో IP చిరునామాలను దేశాలకు పరిష్కరించలేకపోయాము. ఇది నెట్‌వర్క్ పరిమితులు లేదా సేవా పరిమితుల కారణంగా ఉండవచ్చు.",
+                    "failedToResolve": "దేశ డేటాను పరిష్కరించడంలో విఫలమైంది. తర్వాత మళ్లీ ప్రయత్నించండి.",
+                    "analyticsSummary": "విశ్లేషణ సారాంశం:",
+                    "totalViewEvents": "• {{count}} మొత్తం వీక్షణ సంఘటనలు",
+                    "eventsWithCountry": "• {{count}} దేశ డేటాతో సంఘటనలు",
+                    "eventsPending": "• {{count}} జియోలొకేషన్ కోసం పెండింగ్‌లో ఉన్న సంఘటనలు",
+                    "willAppear": "IP జియోలొకేషన్ సేవలు అందుబాటులో ఉన్న తర్వాత దేశ డేటా స్వయంచాలకంగా కనిపిస్తుంది.",
+                    "tooltip": {
+                        "country": "{{country}}",
+                        "views": "{{views}} వీక్షణలు"
+                    },
+                    "countriesWithViews": "{{count}} వీక్షణలతో దేశాలు",
+                    "legend": {
+                        "views": "వీక్షణలు:",
+                        "low": "తక్కువ",
+                        "medium": "మధ్యస్థ",
+                        "high": "అధిక",
+                        "highest": "అత్యధిక"
+                    }
+                },
+                "trafficSource": {
+                    "title": "కాలంతో పాటు ట్రాఫిక్ మూలం",
+                    "subtitle": "కాలంతో పాటు వేర్వేరు మూలాల నుండి ట్రాఫిక్ ఎలా మారుతుందో ట్రాక్ చేయండి",
+                    "selectSource": "ట్రాఫిక్ మూలాన్ని ఎంచుకోండి:",
+                    "allSources": "అన్ని మూలాలు",
+                    "direct": "ప్రత్యక్ష",
+                    "qrCode": "QR కోడ్",
+                    "instagram": "Instagram",
+                    "whatsapp": "WhatsApp",
+                    "twitter": "Twitter",
+                    "noTrafficData": "ట్రాఫిక్ డేటా అందుబాటులో లేదు",
+                    "noViewEvents": "ట్రాఫిక్ మూల సమాచారంతో వీక్షణ సంఘటనలు కనుగొనబడలేదు.",
+                    "analyticsSummary": "విశ్లేషణ సారాంశం:",
+                    "totalViewEvents": "• {{count}} మొత్తం వీక్షణ సంఘటనలు",
+                    "eventsWithUTM": "• {{count}} UTM మూలంతో సంఘటనలు",
+                    "directTraffic": "• {{count}} ప్రత్యక్ష ట్రాఫిక్ సంఘటనలు",
+                    "willAppear": "వినియోగదారులు UTM పారామితులతో మీ పేజీలను సందర్శించిన తర్వాత ట్రాఫిక్ మూల డేటా కనిపిస్తుంది.",
+                    "tooltip": {
+                        "sourceCount": "{{source}}: {{count}}"
+                    }
+                },
+                "locationEngagement": {
+                    "title": "స్థానంతో నిమగ్నత",
+                    "subtitle": "కాలంతో పాటు వేర్వేరు స్థానాల కోసం వీక్షణలను ట్రాక్ చేయండి",
+                    "selectLocation": "స్థానాన్ని ఎంచుకోండి:",
+                    "allLocations": "అన్ని స్థానాలు",
+                    "selectLocationPlaceholder": "స్థానాన్ని ఎంచుకోండి",
+                    "locationViews": "{{location}} ({{count}} వీక్షణలు)",
+                    "noLocationData": "స్థాన వీక్షణ డేటా అందుబాటులో లేదు",
+                    "unknownLocation": "తెలియని స్థానం",
+                    "location": "స్థానం",
+                    "tooltip": {
+                        "date": "తేదీ: {{date}}",
+                        "locationViews": "{{location}}: {{value}} వీక్షణలు"
+                    },
+                    "stats": {
+                        "totalLocations": "మొత్తం స్థానాలు",
+                        "totalViews": "మొత్తం వీక్షణలు",
+                        "avgViews": "సగటు వీక్షణలు/స్థానం"
+                    }
+                },
+                "recommendedPlaces": {
+                    "title": "సిఫార్సు చేసిన స్థలాలతో నిమగ్నత",
+                    "subtitle": "స్థానం ప్రకారం సిఫార్సు చేసిన స్థలాలపై క్లిక్‌లను ట్రాక్ చేయండి",
+                    "selectLocation": "స్థానాన్ని ఎంచుకోండి:",
+                    "selectLocationPlaceholder": "స్థానాన్ని ఎంచుకోండి",
+                    "locationPlaces": "{{location}} ({{count}} స్థలాలు)",
+                    "noRecommendationData": "సిఫార్సు డేటా లేదు",
+                    "noDataMessage": "ఎంచుకున్న కాలానికి సిఫార్సు క్లిక్ డేటా అందుబాటులో లేదు.",
+                    "analyticsSummary": "విశ్లేషణ సారాంశం:",
+                    "totalClickEvents": "• {{count}} మొత్తం క్లిక్ సంఘటనలు",
+                    "recordsWithRecommendations": "• {{count}} సిఫార్సు ID తో రికార్డ్‌లు",
+                    "uniqueRecommendations": "• {{count}} ప్రత్యేక సిఫార్సులు",
+                    "selectLocationPrompt": "సిఫార్సు డేటాను వీక్షించడానికి స్థానాన్ని ఎంచుకోండి.",
+                    "noClicksMessage": "ఎంచుకున్న స్థానానికి సిఫార్సు క్లిక్‌లు కనుగొనబడలేదు. వినియోగదారులు మీ స్థాన పేజీలలో స్థల కార్డ్‌లపై క్లిక్ చేసిన తర్వాత సిఫార్సు డేటా కనిపిస్తుంది.",
+                    "unknownPlace": "తెలియని స్థలం",
+                    "unknownCategory": "తెలియని వర్గం",
+                    "unknownLocation": "తెలియని స్థానం",
+                    "tooltip": {
+                        "place": "{{place}}",
+                        "category": "వర్గం: {{category}}",
+                        "clicks": "క్లిక్‌లు: {{count}}"
+                    },
+                    "stats": {
+                        "placesShown": "చూపించిన స్థలాలు",
+                        "totalClicks": "మొత్తం క్లిక్‌లు",
+                        "avgClicks": "సగటు క్లిక్‌లు/స్థలం"
+                    }
+                },
+                "socialMedia": {
+                    "title": "సోషల్ మీడియా పరస్పర చర్య",
+                    "subtitle": "అన్ని ప్లాట్‌ఫార్మ్‌లలో మీ పబ్లిక్ ప్రొఫైల్ నుండి సోషల్ మీడియా లింక్‌లపై క్లిక్‌లను ట్రాక్ చేయండి",
+                    "noDataTitle": "సోషల్ మీడియా పరస్పర చర్య డేటా లేదు",
+                    "noDataMessage": "మీ పబ్లిక్ ప్రొఫైల్ పేజీ నుండి సోషల్ మీడియా క్లిక్ డేటా అందుబాటులో లేదు.",
+                    "analyticsSummary": "విశ్లేషణ సారాంశం:",
+                    "totalSocialClicks": "• {{count}} మొత్తం సోషల్ మీడియా క్లిక్‌లు",
+                    "uniquePlatforms": "• {{count}} ప్రత్యేక ప్లాట్‌ఫార్మ్‌లు",
+                    "trackingNote": "• పబ్లిక్-ప్రొఫైల్ పేజీ నుండి మాత్రమే క్లిక్‌లను ట్రాక్ చేస్తోంది",
+                    "willAppear": "వినియోగదారులు మీ సోషల్ మీడియా లింక్‌లపై క్లిక్ చేసిన తర్వాత సోషల్ మీడియా పరస్పర చర్య డేటా కనిపిస్తుంది.",
+                    "tooltip": {
+                        "platform": "{{platform}}",
+                        "clicks": "క్లిక్‌లు: {{count}}"
+                    },
+                    "stats": {
+                        "platforms": "ప్లాట్‌ఫార్మ్‌లు",
+                        "totalClicks": "మొత్తం క్లిక్‌లు",
+                        "avgClicks": "సగటు క్లిక్‌లు/ప్లాట్‌ఫార్మ్"
+                    }
+                }
+            }
+        }
+    },
+    "countries": {
+        "US": "United States",
+        "IN": "India",
+        "GB": "United Kingdom",
+        "CA": "Canada",
+        "AU": "Australia",
+        "DE": "Germany",
+        "FR": "France",
+        "IT": "Italy",
+        "ES": "Spain",
+        "BR": "Brazil",
+        "MX": "Mexico",
+        "JP": "Japan",
+        "CN": "China",
+        "RU": "Russia",
+        "KR": "South Korea",
+        "NL": "Netherlands",
+        "SE": "Sweden",
+        "NO": "Norway",
+        "DK": "Denmark",
+        "FI": "Finland",
+        "CH": "Switzerland",
+        "AT": "Austria",
+        "BE": "Belgium",
+        "PL": "Poland",
+        "CZ": "Czech Republic",
+        "HU": "Hungary",
+        "RO": "Romania",
+        "BG": "Bulgaria",
+        "GR": "Greece",
+        "PT": "Portugal",
+        "IE": "Ireland",
+        "IS": "Iceland",
+        "LU": "Luxembourg",
+        "MT": "Malta",
+        "CY": "Cyprus",
+        "EE": "Estonia",
+        "LV": "Latvia",
+        "LT": "Lithuania",
+        "SI": "Slovenia",
+        "SK": "Slovakia",
+        "HR": "Croatia",
+        "BA": "Bosnia and Herzegovina",
+        "RS": "Serbia",
+        "ME": "Montenegro",
+        "MK": "North Macedonia",
+        "AL": "Albania",
+        "XK": "Kosovo",
+        "MD": "Moldova",
+        "UA": "Ukraine",
+        "BY": "Belarus",
+        "GE": "Georgia",
+        "AM": "Armenia",
+        "AZ": "Azerbaijan",
+        "KZ": "Kazakhstan",
+        "UZ": "Uzbekistan",
+        "KG": "Kyrgyzstan",
+        "TJ": "Tajikistan",
+        "TM": "Turkmenistan",
+        "AF": "Afghanistan",
+        "PK": "Pakistan",
+        "BD": "Bangladesh",
+        "LK": "Sri Lanka",
+        "MV": "Maldives",
+        "NP": "Nepal",
+        "BT": "Bhutan",
+        "MM": "Myanmar",
+        "TH": "Thailand",
+        "LA": "Laos",
+        "KH": "Cambodia",
+        "VN": "Vietnam",
+        "MY": "Malaysia",
+        "SG": "Singapore",
+        "BN": "Brunei",
+        "ID": "Indonesia",
+        "PH": "Philippines",
+        "TL": "East Timor",
+        "MN": "Mongolia",
+        "KP": "North Korea",
+        "TW": "Taiwan",
+        "HK": "Hong Kong",
+        "MO": "Macau",
+        "SA": "Saudi Arabia",
+        "AE": "United Arab Emirates",
+        "QA": "Qatar",
+        "KW": "Kuwait",
+        "BH": "Bahrain",
+        "OM": "Oman",
+        "YE": "Yemen",
+        "IQ": "Iraq",
+        "IR": "Iran",
+        "SY": "Syria",
+        "LB": "Lebanon",
+        "JO": "Jordan",
+        "IL": "Israel",
+        "PS": "Palestine",
+        "TR": "Turkey",
+        "EG": "Egypt",
+        "LY": "Libya",
+        "TN": "Tunisia",
+        "DZ": "Algeria",
+        "MA": "Morocco",
+        "SD": "Sudan",
+        "SS": "South Sudan",
+        "ET": "Ethiopia",
+        "ER": "Eritrea",
+        "DJ": "Djibouti",
+        "SO": "Somalia",
+        "KE": "Kenya",
+        "UG": "Uganda",
+        "TZ": "Tanzania",
+        "RW": "Rwanda",
+        "BI": "Burundi",
+        "MW": "Malawi",
+        "ZM": "Zambia",
+        "ZW": "Zimbabwe",
+        "BW": "Botswana",
+        "NA": "Namibia",
+        "ZA": "South Africa",
+        "LS": "Lesotho",
+        "SZ": "Eswatini",
+        "MG": "Madagascar",
+        "MU": "Mauritius",
+        "SC": "Seychelles",
+        "KM": "Comoros",
+        "MZ": "Mozambique",
+        "AO": "Angola",
+        "CD": "Democratic Republic of the Congo",
+        "CG": "Republic of the Congo",
+        "CF": "Central African Republic",
+        "TD": "Chad",
+        "CM": "Cameroon",
+        "NG": "Nigeria",
+        "NE": "Niger",
+        "ML": "Mali",
+        "BF": "Burkina Faso",
+        "CI": "Ivory Coast",
+        "GH": "Ghana",
+        "TG": "Togo",
+        "BJ": "Benin",
+        "SN": "Senegal",
+        "GM": "Gambia",
+        "GW": "Guinea-Bissau",
+        "GN": "Guinea",
+        "SL": "Sierra Leone",
+        "LR": "Liberia",
+        "MR": "Mauritania",
+        "CV": "Cape Verde",
+        "ST": "São Tomé and Príncipe",
+        "GQ": "Equatorial Guinea",
+        "GA": "Gabon",
+        "AR": "Argentina",
+        "BO": "Bolivia",
+        "CL": "Chile",
+        "CO": "Colombia",
+        "EC": "Ecuador",
+        "FK": "Falkland Islands",
+        "GF": "French Guiana",
+        "GY": "Guyana",
+        "PY": "Paraguay",
+        "PE": "Peru",
+        "SR": "Suriname",
+        "UY": "Uruguay",
+        "VE": "Venezuela",
+        "CU": "Cuba",
+        "JM": "Jamaica",
+        "HT": "Haiti",
+        "DO": "Dominican Republic",
+        "PR": "Puerto Rico",
+        "TT": "Trinidad and Tobago",
+        "BB": "Barbados",
+        "LC": "Saint Lucia",
+        "VC": "Saint Vincent and the Grenadines",
+        "GD": "Grenada",
+        "AG": "Antigua and Barbuda",
+        "KN": "Saint Kitts and Nevis",
+        "DM": "Dominica",
+        "BS": "Bahamas",
+        "BZ": "Belize",
+        "GT": "Guatemala",
+        "SV": "El Salvador",
+        "HN": "Honduras",
+        "NI": "Nicaragua",
+        "CR": "Costa Rica",
+        "PA": "Panama",
+        "NZ": "New Zealand",
+        "FJ": "Fiji",
+        "PG": "Papua New Guinea",
+        "SB": "Solomon Islands",
+        "VU": "Vanuatu",
+        "NC": "New Caledonia",
+        "PF": "French Polynesia",
+        "WS": "Samoa",
+        "TO": "Tonga",
+        "KI": "Kiribati",
+        "TV": "Tuvalu",
+        "NR": "Nauru",
+        "PW": "Palau",
+        "FM": "Micronesia",
+        "MH": "Marshall Islands"
+    }
+}

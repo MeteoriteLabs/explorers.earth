@@ -1,0 +1,1811 @@
+﻿{
+  "header": {
+    "nav": {
+      "howItWorks": "工作原理",
+      "whoIsFor": "适用对象",
+      "faq": "常见问题",
+      "about": "关于",
+      "contact": "联系我们"
+    },
+    "auth": {
+      "login": "登录",
+      "signUp": "注册"
+    }
+  },
+  "hero": {
+    "headline": "所有推荐内容，一个简单的二维码和链接。",
+    "subtext": "分享您对某个地方的了解和喜爱——让全世界都能发现",
+    "inputLabel": "预订您的explorers网址：",
+    "inputPlaceholder": "您的姓名",
+    "ctaButton": "预订explorers",
+    "signupPrompt": "立即注册获取您的专属二维码"
+  },
+  "sections": {
+    "createCustomize": {
+      "headline": "几分钟内创建并定制您的explorers",
+      "subtext": "添加您喜欢的地方，按城市或主题整理，立即生成您的二维码。",
+      "bulletPoints": {
+        "addSpots": {
+          "title": "添加您喜欢的地方",
+          "description": "创建包含必访地点的清单"
+        },
+        "organize": {
+          "title": "按城市或主题整理",
+          "description": "创建对您的受众有意义的类别"
+        },
+        "generate": {
+          "title": "立即生成您的链接和二维码",
+          "description": "您的个性化二维码几秒钟内就准备好了"
+        },
+        "share": {
+          "title": "以数字方式或通过现实世界中的二维码分享",
+          "description": ""
+        }
+      },
+      "mockup": {
+        "title": "我的推荐",
+        "addPlace": "添加地点"
+      }
+    },
+    "shareAnywhere": {
+      "headline": "在社交媒体、商店橱窗或城市墙壁上分享",
+      "subtext": "添加到您的Instagram简介，打印在菜单上，或包含在欢迎书中——您的指南，随时准备就绪。",
+      "scanText": "扫描获取本地推荐",
+      "storefrontText": "完美适合商店橱窗展示",
+      "instagramTitle": "添加到您的Instagram简介",
+      "instagramDesc": "立即与您的关注者分享",
+      "menuTitle": "打印在菜单上",
+      "menuDesc": "物理接触点变得简单",
+      "welcomeTitle": "包含在欢迎书中",
+      "welcomeDesc": "完美适合房东和导游",
+      "cafeMenu": "咖啡厅菜单",
+      "tokyoFoodGuide": "我的东京美食指南 explorers.earth/jane"
+    },
+    "analytics": {
+      "headline": "跟踪点击、推荐和参与度",
+      "subtext": "查看什么有效，谁在扫描，哪些地方获得最多喜爱——实时查看。",
+      "workingTitle": "查看什么有效",
+      "workingDesc": "跟踪您推荐的受欢迎程度",
+      "scanningTitle": "谁在扫描",
+      "scanningDesc": "监控二维码扫描和更新",
+      "spotsTitle": "表现最佳的地点",
+      "spotsDesc": "数据驱动的洞察，用于更好的策展",
+      "dashboardTitle": "分析仪表板",
+      "last30Days": "最近30天",
+      "totalScans": "总扫描次数",
+      "engagement": "参与度",
+      "referrals": "推荐"
+    },
+    "referEarn": {
+      "headline": "分享、推荐并赚取",
+      "subtext": "将您的推荐转化为被动奖励——当其他人使用您的二维码时获得积分。",
+      "comingSoon": "推荐奖励计划（即将推出）",
+      "rewardsTitle": "赚取奖励",
+      "rewardsDesc": "当人们使用您的推荐时获得报酬",
+      "earnedThisMonth": "本月赚取",
+      "passiveTitle": "将推荐转化为被动奖励",
+      "networkTitle": "建立您的网络并自动赚取"
+    },
+    "localTunes": {
+      "mainHeading": "Tunes",
+      "title": "在探索时聆听",
+      "body": "探索不仅仅是视觉的。声音承载着记忆、背景和情感。\n\nTunes让您可以为地点、旅程和心情收集和分享配乐——无论是路上发现的音乐，还是为您定义某个地方的声音。\n\n与您的Explorer个人资料无缝连接。",
+      "exploreButton": "探索Tunes",
+      "featuresHeading": "强大功能",
+      "features": {
+        "realtimeCollaboration": {
+          "title": "实时协作",
+          "description": "让客人立即将歌曲添加到您的播放列表，同时您完全控制播放内容。"
+        },
+        "qrCodeSharing": {
+          "title": "二维码分享",
+          "description": "通过简单的二维码扫描分享您的音乐体验——无需应用程序或下载。"
+        },
+        "youtubeIntegration": {
+          "title": "YouTube集成",
+          "description": "与YouTube无缝集成，访问数百万首歌曲并创造完美氛围。"
+        },
+        "voteLikeSystem": {
+          "title": "投票和点赞系统",
+          "description": "客人可以为他们最喜欢的歌曲投票，以实时影响播放列表队列。"
+        },
+        "silentParties": {
+          "title": "无声派对",
+          "description": "举办独特的无声派对，每个人通过自己的耳机聆听。"
+        },
+        "karaokeReady": {
+          "title": "卡拉OK就绪",
+          "description": "非常适合卡拉OK之夜，具有协作播放列表和实时歌曲请求。"
+        }
+      },
+      "venueHeading": "适合任何场所",
+      "venues": {
+        "barsPubs": "酒吧和酒馆",
+        "restaurants": "餐厅",
+        "coffeeShops": "咖啡店",
+        "eventsWeddings": "活动和婚礼",
+        "retailStores": "零售店",
+        "gymsFitness": "健身房和健身"
+      },
+      "closingStatement": "Tunes可以<strong>免费</strong>探索，付费功能可以稍后升级。"
+    },
+    "whoIsFor": {
+      "headline": "explorers.earth适合谁？",
+      "subtext": "explorers.earth适合任何相信分享是一种责任的人——而不是广播。",
+      "cards": {
+        "individuals": {
+          "title": "个人",
+          "oneLiner": "分享个人或本地推荐。",
+          "items": {
+            "traveler": {
+              "label": "旅行者",
+              "oneLiner": "分享旅行地点的人们"
+            },
+            "local": {
+              "label": "本地人",
+              "oneLiner": "分享社区提示的本地人"
+            },
+            "family": {
+              "label": "家庭",
+              "oneLiner": "分享有用地点的家庭"
+            },
+            "student": {
+              "label": "学生",
+              "oneLiner": "分享校园/附近地点的学生"
+            },
+            "nomad": {
+              "label": "数字游民",
+              "oneLiner": "列出适合工作的空间的数字游民"
+            },
+            "emergencySharer": {
+              "label": "紧急分享者",
+              "oneLiner": "发布重要地点的紧急分享者"
+            }
+          }
+        },
+        "creators": {
+          "title": "创作者",
+          "oneLiner": "与您的观众分享精选列表。",
+          "items": {
+            "influencer": {
+              "label": "影响者",
+              "oneLiner": "分享最佳选择的影响者"
+            },
+            "blogger": {
+              "label": "博主",
+              "oneLiner": "策划书面指南的博主"
+            },
+            "vlogger": {
+              "label": "视频博主",
+              "oneLiner": "分享视觉旅程的视频博主"
+            },
+            "reviewer": {
+              "label": "评论者",
+              "oneLiner": "列出最佳评分地点的评论者"
+            },
+            "photographer": {
+              "label": "摄影师",
+              "oneLiner": "分享照片地点的摄影师"
+            },
+            "educator": {
+              "label": "教育者",
+              "oneLiner": "分享学习指南的教育者"
+            },
+            "communityLeader": {
+              "label": "社区领袖",
+              "oneLiner": "策划有用列表的社区领袖"
+            }
+          }
+        },
+        "hospitality": {
+          "title": "酒店业",
+          "oneLiner": "为客人提供精选的本地见解。",
+          "items": {
+            "hotel": {
+              "label": "酒店",
+              "oneLiner": "提供本地指南的酒店"
+            },
+            "airbnb": {
+              "label": "Airbnb",
+              "oneLiner": "分享社区最爱的房东"
+            },
+            "hostel": {
+              "label": "青年旅舍",
+              "oneLiner": "分享背包客提示的青年旅舍"
+            },
+            "homestay": {
+              "label": "民宿",
+              "oneLiner": "提供面向家庭的指南的民宿"
+            },
+            "resort": {
+              "label": "度假村",
+              "oneLiner": "提供活动列表的度假村"
+            },
+            "pgColiving": {
+              "label": "PG/合租",
+              "oneLiner": "显示重要附近地点的PG/合租"
+            }
+          }
+        },
+        "businesses": {
+          "title": "企业",
+          "oneLiner": "用有用的推荐指导客户。",
+          "items": {
+            "restaurant": {
+              "label": "餐厅",
+              "oneLiner": "分享必试菜肴的餐厅"
+            },
+            "cafe": {
+              "label": "咖啡馆",
+              "oneLiner": "突出显示最受欢迎菜单项的咖啡馆"
+            },
+            "retailShop": {
+              "label": "零售店",
+              "oneLiner": "分享产品推荐的商店"
+            },
+            "gym": {
+              "label": "健身房",
+              "oneLiner": "建议本地健康场所的健身房"
+            },
+            "spa": {
+              "label": "水疗中心",
+              "oneLiner": "列出附近放松选项的水疗中心"
+            },
+            "salon": {
+              "label": "沙龙",
+              "oneLiner": "提供美容指南的沙龙"
+            },
+            "clinic": {
+              "label": "诊所",
+              "oneLiner": "分享健康相关地点的诊所"
+            },
+            "boutique": {
+              "label": "精品店",
+              "oneLiner": "列出精选发现的精品店"
+            }
+          }
+        },
+        "organizations": {
+          "title": "组织",
+          "oneLiner": "提供精选的指南和资源。",
+          "items": {
+            "airline": {
+              "label": "航空公司",
+              "oneLiner": "分享城市指南的航空公司"
+            },
+            "agency": {
+              "label": "旅行社",
+              "oneLiner": "列出必游地点的旅行社"
+            },
+            "university": {
+              "label": "大学",
+              "oneLiner": "分享校园必需品的大学"
+            },
+            "corporate": {
+              "label": "企业",
+              "oneLiner": "列出附近资源的企业"
+            },
+            "airport": {
+              "label": "机场",
+              "oneLiner": "提供航站楼+城市提示的机场"
+            },
+            "railway": {
+              "label": "铁路",
+              "oneLiner": "分享平台信息的铁路"
+            },
+            "ngo": {
+              "label": "非政府组织",
+              "oneLiner": "分享社区资源的非政府组织"
+            },
+            "government": {
+              "label": "政府",
+              "oneLiner": "突出公共服务的部门"
+            }
+          }
+        }
+      },
+      "useCases": {
+        "travelers": "旅行者",
+        "travelersDesc": "与其他探索者分享发现的宝藏",
+        "influencers": "影响者",
+        "influencersDesc": "将本地知识货币化并建立社区",
+        "airbnbHosts": "Airbnb房东",
+        "airbnbHostsDesc": "用本地洞察提升客人体验",
+        "hotels": "酒店",
+        "hotelsDesc": "提供精选的本地推荐",
+        "restaurants": "餐厅",
+        "restaurantsDesc": "与其他本地企业交叉推广",
+        "cafes": "咖啡馆",
+        "cafesDesc": "与客户分享附近喜爱的地方",
+        "localGuides": "本地向导",
+        "localGuidesDesc": "将个人导览之外的专长规模化",
+        "creators": "创作者",
+        "creatorsDesc": "通过可操作的提示为内容增加价值",
+        "tourOperators": "旅游运营商",
+        "tourOperatorsDesc": "将体验扩展到计划旅游之外",
+        "anyBusiness": "任何企业",
+        "anyBusinessDesc": "建立社区和客户忠诚度"
+      }
+    },
+    "testimonials": {
+      "headline": "深受旅行者、创作者和房东喜爱",
+      "subtext": "看看世界各地的人们如何使用explorers分享最重要的内容。",
+      "scrollLeft": "向左滚动推荐",
+      "scrollRight": "向右滚动推荐",
+      "items": [
+        {
+          "id": "1",
+          "name": "Marcus Chen",
+          "role": "旅行博主",
+          "location": "旧金山",
+          "quote": "explorers改变了我分享旅行知识的方式。我的粉丝们喜欢即时访问我精心策划的推荐！"
+        },
+        {
+          "id": "2",
+          "name": "Sarah Johnson",
+          "role": "Airbnb房东",
+          "location": "巴塞罗那",
+          "quote": "我的客人绝对喜欢他们欢迎包中的个性化二维码。这已经成为我的标志性特色！"
+        },
+        {
+          "id": "3",
+          "name": "Alex Rodriguez",
+          "role": "餐厅老板",
+          "location": "墨西哥城",
+          "quote": "我们与客户分享我们的explorers来推荐其他本地景点。它创造了惊人的社区联系。"
+        },
+        {
+          "id": "4",
+          "name": "Emma Thompson",
+          "role": "导游",
+          "location": "伦敦",
+          "quote": "explorers帮助我扩展我的专业知识超越游览时间。客户可以随时访问我的推荐！"
+        }
+      ]
+    },
+    "faq": {
+      "headline": "有问题吗？",
+      "subtext": "我们已经回答了人们在开始之前最常问的问题。",
+      "loading": "加载常见问题...",
+      "error": "加载常见问题时出错。请稍后重试。"
+    },
+    "features": {
+      "title": "设计为保持低调",
+      "subtitle": "简单、周到的功能，让您的推荐闪闪发光。",
+      "simpleLinks": {
+        "title": "简单链接和二维码分享"
+      },
+      "livingGuides": {
+        "title": "实时、可编辑的指南"
+      },
+      "locationAware": {
+        "title": "位置感知推荐"
+      },
+      "soundPlaylists": {
+        "title": "可选声音和播放列表"
+      },
+      "privacyFirst": {
+        "title": "设计优先考虑隐私"
+      },
+      "communityDriven": {
+        "title": "社区驱动的发现"
+      }
+    },
+    "finalCTA": {
+      "headline": "今天就开始分享您的世界",
+      "subtext": "预订您的免费explorers，将您的本地洞察转化为可分享的指南。",
+      "ctaButton": "预订explorers – 永久免费",
+      "disclaimer": "无需信用卡 • 2分钟设置",
+      "creating": "正在创建您的explorers..."
+    }
+  },
+  "contact": {
+    "title": "让我们联系。",
+    "subtext": "无论您有疑问、想法，还是只想打个招呼——我们很乐意听到您的声音。",
+    "getInTouch": "联系我们",
+    "email": "hello@explorers.earth",
+    "responseTime": "我们会在24-48小时内回复",
+    "closingMessage": "我们是一个小团队，有着大愿景——您的想法对我们很重要。联系我们，让我们一起构建本地和全球的东西。",
+    "seo": {
+      "title": "Contact explorers | Support, Help and Partnership enquiries.",
+      "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
+      "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+      "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
+      "keywords": [
+        "联系explorers",
+        "explorers支持",
+        "联系explorers",
+        "旅行应用客户服务",
+        "explorers合作咨询",
+        "帮助中心本地推荐",
+        "explorers技术支持",
+        "旅行应用客户服务",
+        "反馈位置分享",
+        "explorers账户协助",
+        "explorers商业合作",
+        "报告问题explorers",
+        "分享本地推荐支持",
+        "查找explorers联系",
+        "客户服务",
+        "explorers团队",
+        "帮助中心",
+        "联系支持",
+        "二维码支持",
+        "本地推荐帮助",
+        "合作咨询"
+      ]
+    }
+  },
+  "about": {
+    "title": "地球探索者",
+    "subtitle": {
+      "line1": "一个由细心探索的人们组成的全球社区——为了人们、文化和我们共享的星球。",
+      "line2": "对我们来说，探索不在于我们走多远。",
+      "line3": "而在于我们连接得有多深。"
+    },
+    "section1": {
+      "title": "我们的信念",
+      "line1": "探索始于意识。",
+      "line2": "始于注意到别人忽略的东西。",
+      "line3": "始于选择深思熟虑地行动，而不是快速行动。",
+      "line4": "我们短暂地生活在一个古老的星球上——\n在一个很久以前就开始了的故事中\n添加一些有意的标记，\n这个故事将在我们离开后很久继续。"
+    },
+    "section2": {
+      "title": "我们如何看待探索",
+      "line1": "探索不是用英里来衡量的。",
+      "line2": "它是用意义来衡量的。",
+      "line3": "它存在于放慢脚步、注意\n并尊重我们踏入的每一个地方——\n一条街道、一条山路、一张咖啡桌，\n或与新人分享的时刻。"
+    },
+    "section3": {
+      "title": "我们正在建设什么",
+      "line1": "explorers是一个为以下而设的地方：",
+      "item1": "由真实经验塑造的指南",
+      "item2": "值得记住的地点、旅程、声音和故事",
+      "item3": "建立在人们基础上的社区——而不是受欢迎度指标",
+      "line2": "技术帮助我们连接。",
+      "line3": "人们赋予它目的。"
+    },
+    "section4": {
+      "title": "归属",
+      "line1": "地球探索者不是一个俱乐部。",
+      "line2": "它不是一个标签。",
+      "line3": "它是一种共享的心态——\n对我们如何在世界中移动的安静理解。"
+    },
+    "closing": "如果你好奇。\n如果你深思熟虑。\n如果你愿意放慢脚步，更仔细地看——\n你已经属于这里了。",
+    "seo": {
+      "title": "Explorers of Earth | About Us",
+      "description": "A global community of people who explore with care — for people, culture, and the planet we share. Exploration isn't about distance, it's about depth.",
+      "keywords": [
+        "explorers of earth",
+        "about explorers",
+        "exploration community",
+        "thoughtful travel",
+        "sustainable exploration",
+        "local recommendations platform",
+        "travel app about",
+        "community-driven recommendations",
+        "authentic local experiences",
+        "explorers team",
+        "local discovery platform",
+        "share local places",
+        "travel technology",
+        "local recommendations app",
+        "explorers story",
+        "who we are explorers"
+      ]
+    }
+  },
+  "cookieConsent": {
+    "title": "🍪 Cookie偏好设置",
+    "description": "我们使用Cookie来增强您的浏览体验、提供个性化内容并分析流量。您可以随时管理偏好设置。",
+    "acceptAll": "✅ 接受所有Cookie",
+    "customize": "⚙️ 自定义",
+    "rejectNonEssential": "❌ 拒绝非必需",
+    "preferencesTitle": "Cookie偏好设置",
+    "essentialCookies": {
+      "title": "必需Cookie",
+      "description": "网站正常运行所必需",
+      "alwaysOn": "始终开启"
+    },
+    "analyticsCookies": {
+      "title": "分析Cookie",
+      "description": "帮助我们了解访问者如何与我们的网站互动"
+    },
+    "marketingCookies": {
+      "title": "营销Cookie",
+      "description": "用于提供个性化广告"
+    },
+    "savePreferences": "保存偏好设置",
+    "acceptAllButton": "接受全部",
+    "closeBanner": "关闭横幅",
+    "goBack": "返回"
+  },
+  "footer": {
+    "tagline": "让您的推荐环游世界。",
+    "email": "hello@explorers.earth",
+    "sections": {
+      "product": "产品",
+      "contact": "联系我们",
+      "legal": "法律"
+    },
+    "links": {
+      "howItWorks": "工作原理",
+      "faq": "常见问题",
+      "contact": "联系我们",
+      "about": "关于",
+      "terms": "条款和条件",
+      "privacy": "隐私政策",
+      "cookies": "Cookie政策"
+    },
+    "copyright": "© 2025 explorers。保留所有权利。",
+    "madeWithLove": "在地球上用爱制作"
+  },
+  "legal": {
+    "terms": {
+      "title": "条款和条件",
+      "loading": "加载条款和条件...",
+      "error": "加载条款和条件时出错。请稍后重试。"
+    },
+    "privacy": {
+      "title": "隐私政策",
+      "loading": "加载隐私政策...",
+      "error": "加载隐私政策时出错。请稍后重试。"
+    },
+    "cookies": {
+      "title": "Cookie政策",
+      "loading": "加载Cookie政策...",
+      "error": "加载Cookie政策时出错。请稍后重试。"
+    }
+  },
+  "languageModal": {
+    "title": "选择语言",
+    "searchPlaceholder": "搜索语言...",
+    "close": "关闭"
+  },
+  "auth": {
+    "signup": "注册",
+    "signupSubtitle": "注册以享受explorers的功能",
+    "username": "用户名",
+    "usernamePlaceholder": "请输入您的用户名",
+    "email": "邮箱",
+    "emailPlaceholder": "请输入您的邮箱",
+    "password": "密码",
+    "passwordPlaceholder": "请输入您的密码",
+    "confirmPassword": "确认密码",
+    "confirmPasswordPlaceholder": "请重新输入您的密码",
+    "register": "注册",
+    "or": "或",
+    "signUpWithGoogle": "使用Google注册",
+    "alreadyHaveAccount": "已有账户？",
+    "login": "登录",
+    "loginTitle": "登录",
+    "loginSubtitle": "请登录以继续到您的账户",
+    "usernameOrEmail": "用户名或邮箱",
+    "usernameOrEmailPlaceholder": "请输入您的用户名或邮箱",
+    "signInWithGoogle": "使用Google登录",
+    "newToexplorers": "新用户？",
+    "forgotPassword": "忘记密码？",
+    "validations": {
+      "username": {
+        "required": "用户名是必需的",
+        "minLength": "用户名必须至少3个字符",
+        "maxLength": "用户名不能超过30个字符",
+        "invalidChars": "用户名只能包含小写字母(a-z)、数字(0-9)和连字符(-)",
+        "mustStartWithLetter": "用户名必须以字母(a-z)开头",
+        "cannotStartEndHyphen": "用户名不能以连字符开头或结尾",
+        "noConsecutiveHyphens": "用户名不能包含连续的连字符",
+        "cannotBeAllNumbers": "用户名不能全是数字",
+        "reservedWords": "此用户名包含保留词，不能使用",
+        "inappropriateContent": "用户名包含不当内容",
+        "alreadyExists": "用户名已存在",
+        "suggestedAlternatives": "建议的替代方案：",
+        "willBeConvertedLowercase": "用户名将转换为小写",
+        "checkingAvailability": "正在检查可用性...",
+        "available": "用户名可用",
+        "willConvertToLowercase": "用户名将转换为小写"
+      },
+      "email": {
+        "required": "邮箱是必需的",
+        "invalidFormat": "请输入有效的邮箱地址",
+        "alreadyExists": "邮箱已存在",
+        "invalid": "无效的邮箱"
+      },
+      "password": {
+        "required": "密码是必需的",
+        "minLength": "密码必须至少6个字符",
+        "uppercaseRequired": "密码必须包含至少一个大写字母(A-Z)",
+        "numberRequired": "密码必须包含至少一个数字(0-9)",
+        "specialCharRequired": "密码必须包含至少一个特殊字符(!@#$%^&*().,?\":{}|<>)",
+        "strength": "密码强度",
+        "weak": "弱",
+        "medium": "中等",
+        "strong": "强",
+        "maxLength": "密码不能超过32个字符",
+        "lowercaseRequired": "密码必须包含至少一个小写字母(a-z)",
+        "tooCommon": "此密码太常见。请选择更独特的密码",
+        "sameAsCurrent": "新密码不能与当前密码相同",
+        "considerLonger": "考虑使用更长、更多样化的密码以获得更好的安全性",
+        "moreSecure": "10个或更多字符的密码更安全",
+        "veryWeak": "非常弱",
+        "fair": "一般",
+        "good": "良好",
+        "veryStrong": "非常强"
+      },
+      "confirmPassword": {
+        "required": "请确认您的密码",
+        "mustMatch": "密码不匹配",
+        "confirmRequired": "确认密码是必需的",
+        "match": "密码匹配"
+      },
+      "login": {
+        "usernameOrEmailRequired": "用户名或邮箱是必需的",
+        "invalidCredentials": "无效的用户名/邮箱或密码",
+        "accountNotFound": "未找到账户",
+        "tooManyAttempts": "尝试次数过多",
+        "incorrectPassword": "密码错误"
+      },
+      "general": {
+        "fillRequiredFields": "请填写所有必填字段",
+        "somethingWentWrong": "出现错误，请重试"
+      },
+      "forgotPassword": {
+        "title": "忘记密码？",
+        "description": "输入您的邮箱地址，我们将向您发送重置链接。",
+        "emailLabel": "邮箱地址",
+        "emailPlaceholder": "请输入您的邮箱",
+        "sendResetLink": "发送重置链接",
+        "backToLogin": "返回登录",
+        "resetLinkSent": "密码重置链接已发送到您的邮箱！",
+        "failedToSend": "发送重置链接失败。请稍后重试。",
+        "somethingWentWrong": "出现错误！"
+      },
+      "accountName": {
+        "required": "账户名称是必需的",
+        "minLength": "账户名称必须至少2个字符",
+        "maxLength": "账户名称不能超过50个字符",
+        "invalidChars": "账户名称只能包含字母、空格、撇号、连字符和句号",
+        "noNumbers": "账户名称不能包含数字"
+      },
+      "accountType": {
+        "required": "账户类型是必需的",
+        "invalid": "无效的账户类型"
+      },
+      "primaryAddress": {
+        "required": "主要地址是必需的"
+      },
+      "socialMedia": {
+        "instagram": "请输入有效的 Instagram 个人资料 URL",
+        "whatsapp": "请输入有效的 WhatsApp 联系方式：电话 (+1234567890) 或 wa.me/api.whatsapp.com 链接",
+        "mobile": "请输入有效的手机号码（例如，+1234567890）",
+        "youtube": "请输入有效的 YouTube 频道 URL（例如，youtube.com/@用户名）",
+        "x": "请输入有效的 X (Twitter) 个人资料 URL",
+        "spotify": "请输入有效的 Spotify URL",
+        "website": "请输入有效的网站 URL",
+        "facebook": "请输入有效的 Facebook 个人资料 URL",
+        "youtubeMusic": "请输入有效的 YouTube Music 频道 URL",
+        "email": "请输入有效的电子邮件地址",
+        "linkedin": "请输入有效的 LinkedIn 个人资料 URL",
+        "appleMusic": "请输入有效的 Apple Music URL",
+        "tiktok": "请输入有效的 TikTok 个人资料 URL",
+        "snapchat": "请输入有效的 Snapchat 用户名"
+      },
+      "onboarding": {
+        "displayNameRequired": "显示名称是必需的",
+        "displayNameMinLength": "显示名称必须至少2个字符",
+        "displayNameMaxLength": "显示名称不能超过50个字符",
+        "bioRequired": "个人简介是必需的",
+        "bioMaxLength": "个人简介不能超过250个字符",
+        "mobileNumberRequired": "手机号码是必需的",
+        "mobileNumberInvalid": "请输入有效的手机号码",
+        "mobileNumberLength": "手机号码必须是10位数字",
+        "addressRequired": "地址是必需的",
+        "cityRequired": "城市是必需的",
+        "stateRequired": "州/省是必需的",
+        "countryRequired": "国家是必需的",
+        "postalCodeRequired": "邮政编码是必需的",
+        "primaryAddressRequired": "主要地址是必需的",
+        "emailAddressRequired": "电子邮件地址是必需的",
+        "resetLinkSentSuccess": "重置链接发送成功！",
+        "invalidUsername": "无效的用户名",
+        "profileImageAlt": "Profile"
+      },
+      "resetPassword": {
+        "newPassword": "New Password",
+        "confirmPassword": "Confirm Password"
+      },
+      "resetLinkSent": {
+        "title": "邮件已发送！",
+        "description": "请检查您的收件箱以获取密码重置链接。",
+        "resending": "重新发送中...",
+        "resendWithCooldown": "重新发送邮件 ({{cooldown}}秒)",
+        "resendMail": "重新发送邮件"
+      }
+    },
+    "onboarding": {
+      "accountDetails": {
+        "title": "账户详情",
+        "description": "告诉我们关于您自己",
+        "displayName": "显示名称",
+        "displayNamePlaceholder": "输入您的显示名称",
+        "username": "用户名",
+        "usernamePlaceholder": "输入您的用户名",
+        "usernameDescription": "您的用户名是您公开个人资料链接和QR码的一部分。示例：explorers.earth/bhavya",
+        "bio": "个人简介",
+        "bioPlaceholder": "告诉我们关于您自己",
+        "accountType": "账户类型",
+        "personal": "个人",
+        "creator": "创作者",
+        "business": "商业",
+        "next": "下一步"
+      },
+      "contactDetails": {
+        "title": "联系详情",
+        "description": "添加您的手机号码进行验证",
+        "mobileNumber": "手机号码",
+        "mobileNumberPlaceholder": "输入您的手机号码",
+        "next": "下一步",
+        "back": "返回"
+      },
+      "addressDetails": {
+        "title": "地址详情",
+        "description": "您在哪里？",
+        "address": "地址",
+        "addressPlaceholder": "输入您的地址",
+        "streetName": "街道名称",
+        "streetNamePlaceholder": "输入街道名称",
+        "city": "城市",
+        "cityPlaceholder": "输入城市",
+        "state": "州/省",
+        "statePlaceholder": "输入州/省",
+        "country": "国家",
+        "countryPlaceholder": "输入国家",
+        "postalCode": "邮政编码",
+        "postalCodePlaceholder": "输入邮政编码",
+        "primaryAddress": "主要地址",
+        "primaryAddressDescription": "在公开个人资料中显示（城市和国家）",
+        "primaryAddressPlaceholder": "输入主要地址",
+        "sameAsAddress": "与地址相同",
+        "confirmDetails": "确认详情",
+        "back": "返回"
+      }
+    },
+    "resetPassword": {
+      "newPasswordPlaceholder": "Enter new password",
+      "confirmPasswordPlaceholder": "Confirm your password"
+    }
+  },
+  "common": {
+    "loading": "加载中...",
+    "error": "发生错误。请稍后再试。",
+    "retry": "重试",
+    "noResults": "未找到结果",
+    "submit": "提交",
+    "hidePassword": "隐藏密码",
+    "showPassword": "显示密码",
+    "signInWithGoogle": "使用 Google 登录",
+    "signUpWithGoogle": "使用 Google 注册",
+    "cancel": "取消"
+  },
+  "dashboard": {
+    "home": {
+      "welcomeBack": "欢迎回来",
+      "profile": "个人资料",
+      "myRecommendations": "我的推荐",
+      "activePlaces": "活跃地点",
+      "setupProfile": "设置您的个人资料",
+      "draft": "草稿",
+      "startCurating": "开始策划您的推荐并与世界分享！",
+      "addRecommendations": "添加推荐"
+    },
+    "shareModal": {
+      "copyLink": "复制链接",
+      "copied": "已复制！",
+      "linkCopiedToast": "链接已复制!!"
+    },
+    "recommendations": {
+      "locationButton": "位置",
+      "viewAll": "查看全部",
+      "recommendationsTab": "推荐",
+      "manageTab": "管理",
+      "manageHeading": "管理",
+      "deleteAction": "删除",
+      "editAction": "编辑",
+      "publishedStatus": "已发布",
+      "draftStatus": "草稿",
+      "myRecommendationsHeading": "我的推荐",
+      "myQRHeading": "我的二维码",
+      "myRecommendationsQR": "我的推荐",
+      "travelLikeLocal": "像当地人一样旅行",
+      "shareLink": "分享链接",
+      "copyLink": "复制链接",
+      "downloadQR": "下载二维码",
+      "emptyState": {
+        "title": "没有可用的推荐",
+        "subtitle": "开始将您喜欢的地方添加到此列表"
+      },
+      "draftLabel": "草稿",
+      "recommendButton": "推荐",
+      "exploreSection": {
+        "heading": "使用explorers探索",
+        "addButton": "添加"
+      },
+      "locationLabels": {
+        "currentLocation": "当前位置",
+        "selectedLocation": "选定位置"
+      },
+      "categories": {
+        "foodDrinks": "餐饮",
+        "lodging": "住宿",
+        "healthWellness": "健康与保健",
+        "shopping": "购物",
+        "entertainment": "娱乐",
+        "transportation": "交通",
+        "services": "服务",
+        "tourism": "旅游",
+        "naturalFeatures": "自然特色"
+      },
+      "locationForm": {
+        "labels": {
+          "searchLocation": "搜索位置",
+          "recommendationSocialLink": "推荐社交链接",
+          "note": "备注",
+          "placeUrl": "地点URL"
+        },
+        "placeholders": {
+          "searchLocation": "输入城市、州或国家（例如：巴黎）",
+          "recommendationSocialLink": "输入URL（Youtube / Instagram）",
+          "note": "输入与您推荐相关的备注",
+          "placeUrl": "输入名称以创建可分享的链接"
+        },
+        "buttons": {
+          "addLocation": "添加位置",
+          "updateLocation": "更新位置"
+        }
+      },
+      "toastMessages": {
+        "listCreated": "推荐列表创建成功！！！",
+        "listPublished": "推荐列表发布成功！",
+        "listUnpublished": "推荐列表取消发布成功！",
+        "listPublishError": "列表至少要有一个推荐地点才能发布",
+        "listVisibilityError": "更新推荐列表可见性失败。",
+        "qrDownloadSuccess": "二维码下载成功！",
+        "qrDownloadError": "下载二维码失败。请重试。",
+        "linkCopied": "链接已复制到剪贴板！",
+        "linkCopyError": "复制链接失败。请重试。",
+        "qrNotReady": "二维码还未准备好下载"
+      },
+      "placesModal": {
+        "placesCount": "{{visible}} / {{total}} 个地点",
+        "scrollToLoadMore": "滚动加载更多地点"
+      },
+      "noRecommendationsYet": "还没有推荐!!",
+      "setupProfileBeforeRecommendations": "在创建推荐之前设置您的资料!!",
+      "startAddingPlaces": "开始添加您喜欢的地点并与他人分享。",
+      "startRecommending": "开始推荐",
+      "addRecommendationForm": {
+        "searchField": {
+          "label": "使用Google搜索推荐"
+        },
+        "mainInput": {
+          "placeholder": "输入您的推荐"
+        },
+        "taggableFields": {
+          "title": "标题",
+          "address": "地址",
+          "category": "类别",
+          "contactNumber": "联系电话",
+          "socialLink": "社交链接",
+          "personName": "人员姓名"
+        },
+        "accordionSection": {
+          "heading": "您的推荐详情",
+          "recommendationLink": {
+            "label": "您的推荐链接",
+            "placeholder": "您可以插入Instagram视频、YouTube或推荐博客"
+          },
+          "whyRecommend": {
+            "label": "您为什么推荐？",
+            "placeholder": "您为什么推荐？"
+          }
+        },
+        "fileUpload": {
+          "text": "附加图片/视频",
+          "subtext": "可选"
+        },
+        "actionButton": {
+          "text": "添加推荐"
+        },
+        "taggableFieldsPlaceholders": {
+          "title": "输入标题",
+          "address": "输入地点地址",
+          "category": "输入类别",
+          "contactNumber": "输入联系电话",
+          "socialLink": "输入社交链接（地点）",
+          "personName": "输入人员全名"
+        },
+        "validationMessages": {
+          "titleRequired": "标题是必需的",
+          "addressRequired": "地址是必需的",
+          "categoryRequired": "类别是必需的",
+          "socialUrlRequired": "人员推荐需要Instagram或LinkedIn URL",
+          "socialUrlInvalid": "请输入有效的Instagram或LinkedIn URL"
+        },
+        "mapModal": {
+          "cancelButton": "取消",
+          "addRecommendationButton": "添加推荐",
+          "updateRecommendationButton": "更新推荐",
+          "setLocationButton": "设置位置"
+        },
+        "deleteRecommendation": "删除推荐",
+        "searchLocation": {
+          "label": "搜索位置",
+          "searchPlace": "搜索地点",
+          "placeholder": "输入并选择地点"
+        },
+        "fetchingImages": "正在获取图片…",
+        "recommendationType": {
+          "place": "地点",
+          "person": "人物",
+          "label": "推荐类型"
+        },
+        "imagePreview": {
+          "alt": "预览",
+          "deleteTooltip": "删除",
+          "setThumbnailTooltip": "设为缩略图",
+          "confirmDeleteTitle": "确认删除",
+          "confirmDeleteMessage": "您确定要从收藏中删除此图片吗？",
+          "cancel": "取消",
+          "confirm": "确认"
+        },
+        "deleteRecommendationModal": {
+          "title": "确认删除",
+          "message": "您确定要删除此推荐吗？此操作无法撤销。",
+          "cancel": "取消"
+        }
+      }
+    },
+    "profile": {
+      "tabs": {
+        "publicProfile": "公开资料",
+        "account": "账户"
+      },
+      "publicProfile": {
+        "sections": {
+          "profileInformation": "简介",
+          "socialMedia": "社交链接",
+          "publicAddress": "公开地址",
+          "howToReachUs": "如何联系我们",
+          "howToReachUsDescription": "使用此部分分享您的营业地点详情。",
+          "feed": "动态",
+          "socialMediaSubtitle": "社交媒体链接和信息"
+        },
+        "fields": {
+          "accountType": "账户类型",
+          "bio": "简介",
+          "socialMedia": "社交媒体",
+          "instagram": "Instagram",
+          "whatsapp": "Whatsapp",
+          "mobile": "手机",
+          "youtube": "Youtube",
+          "x": "X",
+          "spotify": "Spotify",
+          "website": "网站",
+          "facebook": "Facebook",
+          "youtubeMusic": "Youtube Music",
+          "gmail": "Gmail",
+          "linkedin": "Linkedin",
+          "appleMusic": "Apple Music",
+          "tiktok": "Tiktok",
+          "snapchat": "Snapchat",
+          "businessLocation": "添加您的位置。这些将作为精选位置显示在您的公开资料中",
+          "primaryAddress": "主要地址 - 显示在公开资料中（城市和国家）",
+          "feed": "上传您的位置、产品、服务或体验的图片或视频。这些照片将显示在您公开资料中的图库中",
+          "title": "标题",
+          "contact": "联系方式",
+          "about": "关于",
+          "addLocation": "添加您的位置",
+          "addLocationInformation": "添加位置信息",
+          "searchAddress": "搜索您的地址...",
+          "sameAsAddress": "与地址相同"
+        },
+        "accountTypes": {
+          "personal": "个人",
+          "creator": "创作者",
+          "business": "企业"
+        },
+        "businessLocation": {
+          "title": "标题",
+          "contact": "联系方式",
+          "website": "网站",
+          "about": "关于"
+        }
+      },
+      "account": {
+        "sections": {
+          "account": "账户",
+          "billingAddress": "账单地址"
+        },
+        "fields": {
+          "username": "用户名",
+          "accountName": "账户名称",
+          "address": "地址",
+          "streetName": "街道名称",
+          "state": "州/省",
+          "city": "城市",
+          "country": "国家",
+          "postalCode": "邮政编码",
+          "addressPlaceholder": "输入您的地址",
+          "detectLocation": "检测我的当前位置"
+        }
+      },
+      "common": {
+        "visible": "可见",
+        "hidden": "隐藏",
+        "mobileNumber": "手机号码",
+        "mobileNumberPlaceholder": "手机号码",
+        "whatsappNumber": "WhatsApp号码",
+        "primaryAddress": "主要地址",
+        "editImage": "编辑图片",
+        "confirm": "确认",
+        "add": "添加",
+        "video": "视频",
+        "feedImage": "动态图片",
+        "importedImage": "导入的图片",
+        "cover": "封面",
+        "profile": "资料",
+        "saveAndPublish": "保存并发布",
+        "saveToFeed": "保存到动态",
+        "savedAndPublishedSuccessfully": "已成功保存并发布",
+        "saveAndPublishFailed": "保存并发布失败。请重试。",
+        "failedToSaveChanges": "保存更改失败。请重试。",
+        "networkError": "网络错误：请检查您的连接并重试。",
+        "unexpectedError": "发生意外错误。请重试。",
+        "somethingWentWrong": "出了些问题。请重试。",
+        "failedToUploadFiles": "上传文件失败。请重试。",
+        "failedToUploadImages": "上传图片失败。请重试。",
+        "failedToSaveImagesToFeed": "保存图片到动态失败",
+        "failedToUpdateProfile": "更新资料失败。请重试。",
+        "fetching": "获取中...",
+        "selectAll": "全选",
+        "clearSelection": "清除选择",
+        "error": "加载您的资料时发生错误。请稍后重试。",
+        "errors": {
+          "noFileProvided": "未提供要上传的文件",
+          "failedToGetAccountId": "获取账户ID失败，无法上传",
+          "uploadResponseMissingFileData": "上传响应缺少文件数据"
+        }
+      },
+      "accountSetup": {
+        "title": "完成您的账户设置",
+        "progress": "进度",
+        "complete": "完成",
+        "profileSetupCompleted": "资料设置已完成",
+        "profileSetupIncomplete": "添加资料图片、简介和社交链接",
+        "recommendationsSetupCompleted": "推荐设置已完成",
+        "recommendationsSetupIncomplete": "添加位置、地点并发布您的第一个列表",
+        "setupButton": "设置",
+        "footerMessage": "完成两个步骤以解锁您的完整仪表板体验"
+      }
+    }
+  },
+  "toast": {
+    "success": {
+      "loginSuccessful": "登录成功！",
+      "registrationSuccessful": "注册成功！",
+      "passwordResetSuccessful": "密码重置成功！",
+      "emailVerificationSent": "邮件验证已发送！",
+      "resetLinkSent": "密码重置链接已发送到您的邮箱！",
+      "resetLinkResent": "重置链接已重新发送！",
+      "profileImageUpdated": "个人资料图片更新成功！",
+      "backgroundImageUpdated": "背景图片更新成功！",
+      "recommendedListUpdated": "推荐列表更新成功！！！",
+      "accountCreated": "账户创建成功！",
+      "usernameUpdated": "用户名更新成功！",
+      "profileUpdated": "个人资料更新成功！",
+      "settingsSaved": "设置保存成功！",
+      "dataSaved": "数据保存成功！",
+      "changesSaved": "更改保存成功！",
+      "fileUploaded": "文件上传成功！",
+      "imageUploaded": "图片上传成功！",
+      "linkCopied": "链接已复制到剪贴板！",
+      "emailSent": "邮件发送成功！",
+      "notificationSent": "通知发送成功！",
+      "actionCompleted": "操作完成成功！",
+      "formSubmitted": "表单提交成功！",
+      "onboardingCompleted": "入门引导完成成功！",
+      "welcomeMessage": "欢迎来到 explorers！",
+      "accountActivated": "账户激活成功！",
+      "emailVerified": "邮件验证成功！",
+      "passwordChanged": "密码修改成功！",
+      "usernameChanged": "用户名修改成功！",
+      "profileCompleted": "个人资料完成成功！",
+      "setupCompleted": "设置完成成功！",
+      "loggedOutSuccessfully": "登出成功！"
+    },
+    "error": {
+      "loginFailed": "登录失败。请检查您的登录凭据。",
+      "registrationFailed": "注册失败。请重试。",
+      "passwordResetFailed": "密码重置失败。请重试。",
+      "emailVerificationFailed": "邮件验证失败。请重试。",
+      "resetLinkFailed": "发送重置链接失败。请稍后重试。",
+      "resetLinkResendFailed": "重新发送失败。请稍后重试。",
+      "profileImageUpdateFailed": "上传个人资料图片失败。请重试。",
+      "backgroundImageUpdateFailed": "上传背景图片失败。请重试。",
+      "recommendedListUpdateFailed": "更新推荐列表时出错！！！",
+      "accountCreationFailed": "账户创建失败。请重试。",
+      "usernameUpdateFailed": "用户名更新失败。请重试。",
+      "profileUpdateFailed": "个人资料更新失败。请重试。",
+      "settingsSaveFailed": "保存设置失败。请重试。",
+      "dataSaveFailed": "保存数据失败。请重试。",
+      "changesSaveFailed": "保存更改失败。请重试。",
+      "fileUploadFailed": "文件上传失败。请重试。",
+      "imageUploadFailed": "图片上传失败。请重试。",
+      "linkCopyFailed": "复制链接失败。请重试。",
+      "emailSendFailed": "发送邮件失败。请重试。",
+      "notificationSendFailed": "发送通知失败。请重试。",
+      "actionFailed": "操作失败。请重试。",
+      "formSubmissionFailed": "提交表单失败。请重试。",
+      "onboardingFailed": "入门引导失败。请重试。",
+      "accountActivationFailed": "账户激活失败。请重试。",
+      "passwordChangeFailed": "密码修改失败。请重试。",
+      "usernameChangeFailed": "用户名修改失败。请重试。",
+      "profileCompletionFailed": "个人资料完成失败。请重试。",
+      "setupFailed": "设置失败。请重试。",
+      "networkError": "网络错误。请检查您的连接。",
+      "serverError": "服务器错误。请稍后重试。",
+      "validationError": "验证错误。请检查您的输入。",
+      "permissionDenied": "权限被拒绝。请联系支持。",
+      "sessionExpired": "会话已过期。请重新登录。",
+      "invalidCredentials": "无效的登录凭据。请检查您的输入。",
+      "emailNotFound": "未找到邮箱。请重试。",
+      "usernameAlreadyExists": "用户名已存在。请选择其他用户名。",
+      "emailAlreadyExists": "邮箱已存在。请使用其他邮箱。",
+      "invalidEmailFormat": "无效的邮箱格式。请输入有效的邮箱。",
+      "passwordTooWeak": "密码太弱。请选择更强的密码。",
+      "passwordsDoNotMatch": "密码不匹配。请重试。",
+      "requiredFieldMissing": "缺少必填字段。请填写所有必填字段。",
+      "invalidInput": "输入无效。请检查您的数据。",
+      "fileTooLarge": "文件太大。请选择较小的文件。",
+      "unsupportedFileType": "不支持的文件类型。请选择不同的文件。",
+      "uploadLimitExceeded": "超过上传限制。请稍后重试。",
+      "operationTimeout": "操作超时。请重试。",
+      "serviceUnavailable": "服务不可用。请稍后重试。",
+      "maintenanceMode": "服务正在维护中。请稍后重试。",
+      "rateLimitExceeded": "请求过多。请稍后重试。",
+      "quotaExceeded": "超过配额。请稍后重试。",
+      "accessDenied": "访问被拒绝。您没有执行此操作的权限。",
+      "resourceNotFound": "未找到资源。请检查您的请求。",
+      "conflictError": "冲突错误。资源已存在。",
+      "preconditionFailed": "前置条件失败。请检查您的请求。",
+      "tooManyAttempts": "尝试次数过多。请稍后重试。",
+      "accountLocked": "账户已锁定。请联系支持。",
+      "accountSuspended": "账户已暂停。请联系支持。",
+      "accountDeleted": "账户已删除。请联系支持。",
+      "emailNotVerified": "邮箱未验证。请先验证您的邮箱。",
+      "phoneNotVerified": "电话号码未验证。请先验证您的电话。",
+      "twoFactorRequired": "需要双因素身份验证。",
+      "twoFactorFailed": "双因素身份验证失败。请重试。",
+      "captchaFailed": "验证码验证失败。请重试。",
+      "invalidToken": "无效的令牌。请重试。",
+      "expiredToken": "令牌已过期。请重试。",
+      "invalidCode": "无效的代码。请检查您的输入。",
+      "expiredCode": "代码已过期。请请求新的代码。",
+      "codeLimitExceeded": "超过代码限制。请稍后重试。",
+      "invalidUsername": "无效的用户名。请检查您的输入。",
+      "usernameTooShort": "用户名太短。请选择更长的用户名。",
+      "usernameTooLong": "用户名太长。请选择较短的用户名。",
+      "usernameInvalidChars": "用户名包含无效字符。请仅使用字母、数字和连字符。",
+      "usernameReserved": "用户名已保留。请选择其他用户名。",
+      "usernameProfanity": "用户名包含不当内容。请选择其他用户名。",
+      "primaryAddressRequired": "需要主要地址",
+      "addressRequired": "需要地址",
+      "cityRequired": "需要城市",
+      "stateRequired": "需要州/省",
+      "countryRequired": "需要国家",
+      "postalCodeRequired": "需要邮政编码",
+      "mobileNumberRequired": "需要手机号码",
+      "mobileNumberInvalid": "无效的手机号码格式",
+      "mobileNumberTooShort": "手机号码太短",
+      "mobileNumberTooLong": "手机号码太长",
+      "bioRequired": "需要简介",
+      "bioTooLong": "简介太长。请保持在250个字符以下",
+      "displayNameRequired": "需要显示名称",
+      "displayNameTooShort": "显示名称太短",
+      "displayNameTooLong": "显示名称太长",
+      "accountTypeRequired": "需要账户类型",
+      "invalidAccountType": "选择了无效的账户类型",
+      "imageRequired": "需要图片",
+      "imageTooLarge": "图片太大。请选择较小的图片",
+      "unsupportedImageFormat": "不支持的图片格式。请使用 JPG、PNG 或 GIF",
+      "imageProcessingFailed": "图片处理失败。请重试",
+      "imageCorrupted": "图片已损坏。请选择其他图片",
+      "imageDimensionsInvalid": "图片尺寸无效。请选择其他图片",
+      "imageSizeInvalid": "图片大小无效。请选择其他图片",
+      "imageFormatInvalid": "图片格式无效。请选择其他图片",
+      "imageQualityTooLow": "图片质量太低。请选择更高质量的图片",
+      "imageTooSmall": "图片太小。请选择更大的图片",
+      "imageTooBig": "图片太大。请选择较小的图片",
+      "imageAspectRatioInvalid": "图片宽高比无效。请选择其他图片",
+      "imageColorSpaceInvalid": "图片色彩空间无效。请选择其他图片",
+      "imageMetadataInvalid": "图片元数据无效。请选择其他图片",
+      "imageSecurityViolation": "图片安全违规。请选择其他图片",
+      "imageVirusDetected": "检测到图片中的病毒。请选择其他图片",
+      "imageMalwareDetected": "检测到图片中的恶意软件。请选择其他图片",
+      "imageSpamDetected": "检测到图片中的垃圾信息。请选择其他图片",
+      "imageContentInappropriate": "图片内容不当。请选择其他图片",
+      "imageContentViolent": "图片内容包含暴力。请选择其他图片",
+      "imageContentSexual": "图片内容包含性内容。请选择其他图片",
+      "imageContentHateful": "图片内容包含仇恨。请选择其他图片",
+      "imageContentDiscriminatory": "图片内容具有歧视性。请选择其他图片",
+      "imageContentOffensive": "图片内容具有冒犯性。请选择其他图片",
+      "imageContentAbusive": "图片内容具有辱骂性。请选择其他图片",
+      "imageContentHarassing": "图片内容具有骚扰性。请选择其他图片",
+      "imageContentThreatening": "图片内容具有威胁性。请选择其他图片",
+      "imageContentDangerous": "图片内容具有危险性。请选择其他图片",
+      "imageContentIllegal": "图片内容非法。请选择其他图片",
+      "imageContentCopyright": "图片内容侵犯版权。请选择其他图片",
+      "imageContentTrademark": "图片内容侵犯商标。请选择其他图片",
+      "imageContentPrivacy": "图片内容侵犯隐私。请选择其他图片",
+      "imageContentConsent": "图片内容缺少同意。请选择其他图片",
+      "imageContentMinors": "图片内容涉及未成年人。请选择其他图片",
+      "imageContentAnimals": "图片内容涉及虐待动物。请选择其他图片",
+      "imageContentEnvironment": "图片内容损害环境。请选择其他图片",
+      "imageContentHealth": "图片内容损害健康。请选择其他图片",
+      "imageContentSafety": "图片内容损害安全。请选择其他图片",
+      "imageContentSecurity": "图片内容损害安全。请选择其他图片",
+      "imageContentIntegrity": "图片内容损害完整性。请选择其他图片",
+      "imageContentReputation": "图片内容损害声誉。请选择其他图片",
+      "imageContentBrand": "图片内容损害品牌。请选择其他图片",
+      "imageContentBusiness": "图片内容损害业务。请选择其他图片",
+      "imageContentPersonal": "图片内容损害个人利益。请选择其他图片",
+      "imageContentProfessional": "图片内容损害专业利益。请选择其他图片",
+      "imageContentAcademic": "图片内容损害学术利益。请选择其他图片",
+      "imageContentCultural": "图片内容损害文化利益。请选择其他图片",
+      "imageContentReligious": "图片内容损害宗教利益。请选择其他图片",
+      "imageContentPolitical": "图片内容损害政治利益。请选择其他图片",
+      "imageContentSocial": "图片内容损害社会利益。请选择其他图片",
+      "imageContentEconomic": "图片内容损害经济利益。请选择其他图片",
+      "imageContentLegal": "图片内容损害法律利益。请选择其他图片",
+      "imageContentEthical": "图片内容损害道德利益。请选择其他图片",
+      "imageContentMoral": "图片内容损害道德利益。请选择其他图片",
+      "imageContentSpiritual": "图片内容损害精神利益。请选择其他图片",
+      "imageContentPhilosophical": "图片内容损害哲学利益。请选择其他图片",
+      "imageContentScientific": "图片内容损害科学利益。请选择其他图片",
+      "imageContentTechnical": "图片内容损害技术利益。请选择其他图片",
+      "imageContentArtistic": "图片内容损害艺术利益。请选择其他图片",
+      "imageContentCreative": "图片内容损害创意利益。请选择其他图片",
+      "imageContentIntellectual": "图片内容损害智力利益。请选择其他图片",
+      "imageContentEducational": "图片内容损害教育利益。请选择其他图片",
+      "imageContentInformational": "图片内容损害信息利益。请选择其他图片",
+      "imageContentNews": "图片内容损害新闻利益。请选择其他图片",
+      "imageContentMedia": "图片内容损害媒体利益。请选择其他图片",
+      "imageContentEntertainment": "图片内容损害娱乐利益。请选择其他图片",
+      "imageContentSports": "图片内容损害体育利益。请选择其他图片",
+      "imageContentRecreation": "图片内容损害休闲利益。请选择其他图片",
+      "imageContentLeisure": "图片内容损害休闲利益。请选择其他图片",
+      "imageContentHobby": "图片内容损害爱好利益。请选择其他图片",
+      "imageContentInterest": "图片内容损害兴趣利益。请选择其他图片",
+      "imageContentPassion": "图片内容损害 passion 利益。请选择其他图片",
+      "imageContentLove": "图片内容损害爱情利益。请选择其他图片",
+      "imageContentHate": "图片内容损害仇恨利益。请选择其他图片",
+      "imageContentAnger": "图片内容损害愤怒利益。请选择其他图片",
+      "imageContentFear": "图片内容损害恐惧利益。请选择其他图片",
+      "imageContentSadness": "图片内容损害悲伤利益。请选择其他图片",
+      "imageContentJoy": "图片内容损害快乐利益。请选择其他图片",
+      "imageContentHappiness": "图片内容损害幸福利益。请选择其他图片",
+      "imageContentExcitement": "图片内容损害兴奋利益。请选择其他图片",
+      "imageContentSurprise": "图片内容损害惊喜利益。请选择其他图片",
+      "imageContentDisgust": "图片内容损害厌恶利益。请选择其他图片",
+      "imageContentShame": "图片内容损害羞耻利益。请选择其他图片",
+      "imageContentGuilt": "图片内容损害内疚利益。请选择其他图片",
+      "imageContentPride": "图片内容损害骄傲利益。请选择其他图片",
+      "imageContentEnvy": "图片内容损害嫉妒利益。请选择其他图片",
+      "imageContentJealousy": "图片内容损害嫉妒利益。请选择其他图片",
+      "imageContentGreed": "图片内容损害贪婪利益。请选择其他图片",
+      "imageContentLust": "图片内容损害欲望利益。请选择其他图片",
+      "imageContentGluttony": "图片内容损害暴食利益。请选择其他图片",
+      "imageContentSloth": "图片内容损害懒惰利益。请选择其他图片",
+      "imageContentWrath": "图片内容损害愤怒利益。请选择其他图片"
+    },
+    "warning": {
+      "usernameCooldown": "由于冷却期，用户名更改暂时被锁定",
+      "passwordWeak": "密码较弱。请考虑使用更强的密码",
+      "emailNotVerified": "邮箱未验证。请验证您的邮箱",
+      "phoneNotVerified": "电话号码未验证。请验证您的电话",
+      "profileIncomplete": "个人资料不完整。请完成您的个人资料",
+      "settingsNotSaved": "设置未保存。请保存您的设置",
+      "dataNotSaved": "数据未保存。请保存您的数据",
+      "changesNotSaved": "更改未保存。请保存您的更改",
+      "fileNotUploaded": "文件未上传。请上传您的文件",
+      "imageNotUploaded": "图片未上传。请上传您的图片",
+      "linkNotCopied": "链接未复制。请复制您的链接",
+      "emailNotSent": "邮箱未发送。请发送您的邮箱",
+      "notificationNotSent": "通知未发送。请发送您的通知",
+      "actionNotCompleted": "操作未完成。请完成您的操作",
+      "formNotSubmitted": "表单未提交。请提交您的表单",
+      "onboardingNotCompleted": "入门引导未完成。请完成您的入门引导",
+      "accountNotActivated": "账户未激活。请激活您的账户",
+      "passwordNotChanged": "密码未更改。请更改您的密码",
+      "usernameNotChanged": "用户名未更改。请更改您的用户名",
+      "profileNotCompleted": "个人资料未完成。请完成您的个人资料",
+      "setupNotCompleted": "设置未完成。请完成您的设置",
+      "networkSlow": "网络较慢。请检查您的连接",
+      "serverSlow": "服务器较慢。请稍后重试",
+      "validationPending": "验证待处理。请等待",
+      "permissionPending": "权限待处理。请等待",
+      "sessionExpiring": "会话即将过期。请重新登录",
+      "credentialsExpiring": "凭据即将过期。请更新您的凭据",
+      "emailExpiring": "邮箱即将过期。请更新您的邮箱",
+      "phoneExpiring": "电话即将过期。请更新您的电话",
+      "profileExpiring": "个人资料即将过期。请更新您的个人资料",
+      "settingsExpiring": "设置即将过期。请更新您的设置",
+      "dataExpiring": "数据即将过期。请更新您的数据",
+      "changesExpiring": "更改即将过期。请更新您的更改",
+      "fileExpiring": "文件即将过期。请更新您的文件",
+      "imageExpiring": "图片即将过期。请更新您的图片",
+      "linkExpiring": "链接即将过期。请更新您的链接",
+      "notificationExpiring": "通知即将过期。请更新您的通知",
+      "actionExpiring": "操作即将过期。请更新您的操作",
+      "formExpiring": "表单即将过期。请更新您的表单",
+      "onboardingExpiring": "入门引导即将过期。请更新您的入门引导",
+      "accountExpiring": "账户即将过期。请更新您的账户",
+      "passwordExpiring": "密码即将过期。请更新您的密码",
+      "usernameExpiring": "用户名即将过期。请更新您的用户名",
+      "setupExpiring": "设置即将过期。请更新您的设置"
+    },
+    "info": {
+      "loading": "加载中...",
+      "processing": "处理中...",
+      "saving": "保存中...",
+      "uploading": "上传中...",
+      "downloading": "下载中...",
+      "connecting": "连接中...",
+      "disconnecting": "断开连接中...",
+      "sending": "发送中...",
+      "receiving": "接收中...",
+      "updating": "更新中...",
+      "refreshing": "刷新中...",
+      "synchronizing": "同步中...",
+      "validating": "验证中...",
+      "verifying": "验证中...",
+      "checking": "检查中...",
+      "searching": "搜索中...",
+      "filtering": "过滤中...",
+      "sorting": "排序中...",
+      "organizing": "整理中...",
+      "arranging": "整理中...",
+      "configuring": "配置中...",
+      "setting": "设置中...",
+      "adjusting": "调整中...",
+      "modifying": "修改中...",
+      "changing": "更改中...",
+      "switching": "切换中...",
+      "toggling": "切换中...",
+      "enabling": "启用中...",
+      "disabling": "禁用中...",
+      "activating": "激活中...",
+      "deactivating": "停用中...",
+      "starting": "启动中...",
+      "stopping": "停止中...",
+      "pausing": "暂停中...",
+      "resuming": "恢复中...",
+      "restarting": "重启中...",
+      "resetting": "重置中...",
+      "clearing": "清除中...",
+      "deleting": "删除中...",
+      "removing": "移除中...",
+      "adding": "添加中...",
+      "inserting": "插入中...",
+      "creating": "创建中...",
+      "building": "构建中...",
+      "constructing": "构建中...",
+      "generating": "生成中...",
+      "producing": "生产中...",
+      "making": "制作中...",
+      "preparing": "准备中...",
+      "readying": "准备中...",
+      "initializing": "初始化中...",
+      "launching": "启动中...",
+      "opening": "打开中...",
+      "closing": "关闭中...",
+      "shutting": "关闭中...",
+      "ending": "结束中...",
+      "finishing": "完成中...",
+      "completing": "完成中...",
+      "finalizing": "完成中...",
+      "concluding": "完成中...",
+      "terminating": "终止中...",
+      "canceling": "取消中...",
+      "aborting": "中止中...",
+      "interrupting": "中断中...",
+      "halting": "停止中...",
+      "freezing": "冻结中...",
+      "unfreezing": "解冻中...",
+      "thawing": "解冻中...",
+      "melting": "融化中...",
+      "cooling": "冷却中...",
+      "heating": "加热中...",
+      "warming": "加热中...",
+      "chilling": "冷却中...",
+      "renewing": "更新中...",
+      "restoring": "恢复中...",
+      "recovering": "恢复中...",
+      "repairing": "修复中...",
+      "fixing": "修复中...",
+      "correcting": "纠正中...",
+      "tuning": "调整中...",
+      "optimizing": "优化中...",
+      "improving": "改进中...",
+      "enhancing": "增强中...",
+      "upgrading": "升级中...",
+      "modernizing": "现代化中..."
+    }
+  },
+  "emailVerification": {
+    "title": "Verify Your Email",
+    "description": "We've sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
+    "checkEmail": "Check your email",
+    "emailSent": "Verification email sent!",
+    "resendEmail": "Resend Email",
+    "resendIn": "Resend in",
+    "seconds": "seconds",
+    "didntReceive": "Didn't receive the email?",
+    "checkSpam": "Please check your spam folder or try again.",
+    "backToLogin": "Back to Login",
+    "emailAddress": "Email Address",
+    "verificationSent": "Verification email sent to:",
+    "clickLink": "Click the link in the email to verify your account.",
+    "expiresIn": "This link expires in 24 hours.",
+    "needHelp": "Need help?",
+    "contactSupport": "Contact Support"
+  },
+  "settings": {
+    "title": "设置",
+    "account": {
+      "heading": "账户",
+      "security": {
+        "title": "账户和安全"
+      },
+      "changePassword": {
+        "text": "更改密码？",
+        "button": "更改密码",
+        "modalTitle": "更改密码",
+        "currentPassword": "当前密码",
+        "newPassword": "新密码",
+        "confirmPassword": "确认新密码",
+        "updateButton": "更新密码",
+        "currentPasswordPlaceholder": "输入您的当前密码",
+        "newPasswordPlaceholder": "输入新密码",
+        "confirmPasswordPlaceholder": "再次输入新密码",
+        "successMessage": "密码已成功更新。为了安全起见，您将被重定向到登录页面。",
+        "redirectMessage": "为了安全起见，正在重定向到登录页面...",
+        "description": "更新您的密码以保持账户安全"
+      },
+      "deactivateAccount": {
+        "text": "停用您的账户？",
+        "button": "停用账户",
+        "modalTitle": "停用您的账户？",
+        "modalDescription": "您确定要停用您的账户吗？",
+        "enterUsername": "输入您的用户名",
+        "enterPassword": "输入您的密码",
+        "usernamePlaceholder": "输入您的用户名",
+        "passwordPlaceholder": "输入您的当前密码",
+        "confirmButton": "停用我的账户",
+        "deactivatedButton": "已停用",
+        "successMessage": "账户已成功停用",
+        "activatedMessage": "账户已成功激活",
+        "description": "暂时停用您的账户"
+      },
+      "deleteAccount": {
+        "text": "删除您的账户？",
+        "button": "删除账户",
+        "step1": {
+          "modalTitle": "删除您的账户？",
+          "modalDescription": "您确定要删除您的账户吗？此操作无法撤销。",
+          "modalDescription2": "如果您想保留数据，可以选择停用账户。",
+          "deactivateInsteadButton": "选择停用账户",
+          "continueButton": "继续删除"
+        },
+        "step2": {
+          "modalTitle": "输入您的详细信息",
+          "enterUsername": "输入您的用户名",
+          "enterPassword": "输入您的密码",
+          "confirmPassword": "确认您的密码",
+          "usernamePlaceholder": "输入您的用户名",
+          "passwordPlaceholder": "输入您的密码",
+          "confirmPasswordPlaceholder": "确认您的密码",
+          "continueButton": "继续"
+        },
+        "step3": {
+          "modalTitle": "您为什么要离开？",
+          "reasonPlaceholder": "请告诉我们您离开的原因...",
+          "continueButton": "继续"
+        },
+        "step4": {
+          "modalTitle": "确认删除",
+          "confirmText": "输入 'CONFIRM DELETE' 以继续",
+          "confirmPlaceholder": "输入 'CONFIRM DELETE' 以确认",
+          "deleteButton": "删除我的账户",
+          "confirmationRequired": "请输入 'CONFIRM DELETE' 以确认。",
+          "reasonRequired": "请提供离开的原因。",
+          "successMessage": "账户已成功删除。"
+        },
+        "description": "永久删除您的账户和所有数据"
+      }
+    },
+    "languagePreference": {
+      "heading": "语言偏好",
+      "selectLanguage": "选择您的语言",
+      "availableLanguages": "从47种可用语言中选择",
+      "currentLanguage": "当前：{{flag}} {{name}}",
+      "languageChanged": "语言已更改为{{name}}",
+      "description": "为界面选择您偏好的语言。这将更改整个应用程序中所有文本、按钮和菜单的语言。"
+    },
+    "subtitle": "管理您的账户设置和偏好"
+  },
+  "seo": {
+    "title": "Contact explorers | Support, Help and Partnership enquiries.",
+    "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
+    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
+    "keywords": [
+      "contact explorers",
+      "explorers support",
+      "get in touch explorers",
+      "customer service travel app",
+      "partnership inquiry explorers",
+      "help center local recommendations",
+      "technical support explorers",
+      "travel app customer service",
+      "feedback location sharing",
+      "account assistance explorers",
+      "business collaboration explorers",
+      "report problem explorers",
+      "share local recommendations support",
+      "find explorers contact",
+      "customer service",
+      "explorers team",
+      "help center",
+      "contact support",
+      "QR code support",
+      "local recommendations help",
+      "partnership inquiries"
+    ]
+  },
+  "sidebar": {
+    "home": "首页",
+    "profile": "个人资料",
+    "recommendations": "推荐",
+    "analytics": "分析",
+    "settings": "设置",
+    "logout": "退出登录",
+    "loading": "加载中...",
+    "clickToOpenMenu": "点击打开菜单"
+  },
+  "modal": {
+    "unsavedChanges": {
+      "title": "未保存的更改",
+      "message": "您有未保存的更改，如果离开将会丢失。您想要做什么？",
+      "discard": "放弃",
+      "cancel": "取消",
+      "save": "保存"
+    },
+    "usernameChange": {
+      "title": "确认更改用户名",
+      "description": "您的用户名用于您的个人资料和推荐列表链接：",
+      "profileLabel": "个人资料：",
+      "listLabel": "列表：",
+      "warning": "任何带有您旧用户名的二维码或链接将不再有效 — 您需要更新并重新分享它们。",
+      "cooldownPrefix": "您可以在",
+      "cooldownSuffix": "之后再次更改用户名。",
+      "minute": "1分钟",
+      "day": "1天",
+      "days": "天",
+      "cancel": "取消",
+      "confirm": "更改用户名"
+    }
+  },
+  "analytics": {
+    "dashboard": {
+      "title": "分析仪表板",
+      "subtitle": "跟踪您的二维码性能和用户参与度",
+      "timePeriod": "时间段:",
+      "timeFilter": {
+        "today": "今天",
+        "last7days": "最近7天",
+        "last30days": "最近30天",
+        "custom": "自定义范围",
+        "selectPeriod": "选择时间段"
+      },
+      "dateRange": {
+        "from": "从:",
+        "to": "到:"
+      },
+      "summaryCards": {
+        "totalViews": "总浏览次数",
+        "totalClicks": "总点击次数",
+        "totalQRViews": "二维码总浏览次数",
+        "totalLinkViews": "链接总浏览次数"
+      },
+      "loading": {
+        "loadingData": "正在加载分析数据...",
+        "resolvingCountry": "正在解析国家数据..."
+      },
+      "error": {
+        "title": "加载分析时出错",
+        "message": "无法获取分析数据。请稍后再试。",
+        "errorLabel": "错误:"
+      },
+      "comingSoon": {
+        "title": "分析即将推出",
+        "message": "分析将在您创建账户后的<strong>{{days}}天{{daysPlural}}</strong>内可用。",
+        "whyWait": {
+          "title": "为什么要等待？",
+          "reasons": {
+            "accuracy": "• 确保数据准确性并防止垃圾信息",
+            "interactions": "• 允许用户有意义的交互时间",
+            "insights": "• 提供可靠的分析洞察"
+          }
+        },
+        "tip": "与此同时，开始分享您的二维码，以便在分析可用时生成数据！",
+        "filterTip": "<strong>提示:</strong> 一旦分析可用，您将能够按时间段（今天、最近7天、最近30天或自定义范围）过滤以查看您的数据。"
+      },
+      "emptyState": {
+        "title": "没有分析数据",
+        "noDataMessage": "未找到您账户的分析数据。一旦人们开始查看并与您的二维码交互，分析就会出现在这里。",
+        "customRange": {
+          "bothMissing": "请选择自定义范围的开始和结束日期以查看分析数据。",
+          "startMissing": "请选择自定义范围的开始日期以查看分析数据。",
+          "endMissing": "请选择自定义范围的结束日期以查看分析数据。"
+        },
+        "noDataForPeriod": {
+          "today": "今天没有可用的分析数据。请选择不同的时间范围以查看您的数据。",
+          "last7days": "最近7天没有可用的分析数据。请选择不同的时间范围以查看您的数据。",
+          "last30days": "最近30天没有可用的分析数据。请选择不同的时间范围以查看您的数据。",
+          "custom": "自定义范围（{{startDate}}到{{endDate}}）没有可用的分析数据。请选择不同的时间范围以查看您的数据。",
+          "default": "所选时间段没有可用的分析数据。请选择不同的时间范围以查看您的数据。"
+        },
+        "howToStart": {
+          "title": "要开始查看分析:",
+          "shareQR": "• 在社交媒体上分享您的二维码",
+          "includeQR": "• 在您的营销材料中包含二维码",
+          "askFriends": "• 请朋友扫描您的二维码",
+          "viewProfile": "• 查看您的公共个人资料页面"
+        }
+      },
+      "charts": {
+        "topCountries": {
+          "title": "按浏览次数排名前3的国家",
+          "retryGeolocation": "重试地理位置定位",
+          "geolocationIssue": "地理位置问题:",
+          "countryDataUnavailable": "国家数据不可用",
+          "unableToResolve": "目前无法将IP地址解析为国家。这可能是由于网络限制或服务限制。",
+          "failedToResolve": "解析国家数据失败。请稍后再试。",
+          "analyticsSummary": "分析摘要:",
+          "totalViewEvents": "• {{count}}个总浏览事件",
+          "eventsWithCountry": "• {{count}}个包含国家数据的事件",
+          "eventsPending": "• {{count}}个待地理位置定位的事件",
+          "willAppear": "一旦IP地理位置定位服务可用，国家数据将自动出现。",
+          "tooltip": {
+            "country": "国家: {{country}}",
+            "views": "浏览次数: {{count}}"
+          },
+          "legend": "浏览次数"
+        },
+        "worldMap": {
+          "title": "全球浏览次数分布",
+          "subtitle": "显示公共页面各国浏览次数分布的交互式世界地图",
+          "noGeographicData": "没有可用的地理数据",
+          "unableToResolve": "目前无法将IP地址解析为国家。这可能是由于网络限制或服务限制。",
+          "failedToResolve": "解析国家数据失败。请稍后再试。",
+          "analyticsSummary": "分析摘要:",
+          "totalViewEvents": "• {{count}}个总浏览事件",
+          "eventsWithCountry": "• {{count}}个包含国家数据的事件",
+          "eventsPending": "• {{count}}个待地理位置定位的事件",
+          "willAppear": "一旦IP地理位置定位服务可用，国家数据将自动出现。",
+          "tooltip": {
+            "country": "{{country}}",
+            "views": "{{views}}次浏览"
+          },
+          "countriesWithViews": "{{count}}个国家有浏览次数",
+          "legend": {
+            "views": "浏览次数:",
+            "low": "低",
+            "medium": "中",
+            "high": "高",
+            "highest": "最高"
+          }
+        },
+        "trafficSource": {
+          "title": "流量来源随时间变化",
+          "subtitle": "跟踪来自不同来源的流量随时间的变化",
+          "selectSource": "选择流量来源:",
+          "allSources": "所有来源",
+          "direct": "直接访问",
+          "qrCode": "二维码",
+          "instagram": "Instagram",
+          "whatsapp": "WhatsApp",
+          "twitter": "Twitter",
+          "noTrafficData": "没有可用的流量数据",
+          "noViewEvents": "未找到包含流量来源信息的浏览事件。",
+          "analyticsSummary": "分析摘要:",
+          "totalViewEvents": "• {{count}}个总浏览事件",
+          "eventsWithUTM": "• {{count}}个包含UTM来源的事件",
+          "directTraffic": "• {{count}}个直接流量事件",
+          "willAppear": "一旦用户使用UTM参数访问您的页面，流量来源数据就会出现。",
+          "tooltip": {
+            "sourceCount": "{{source}}: {{count}}"
+          }
+        },
+        "locationEngagement": {
+          "title": "位置参与度",
+          "subtitle": "跟踪不同位置随时间的变化",
+          "selectLocation": "选择位置:",
+          "allLocations": "所有位置",
+          "selectLocationPlaceholder": "选择位置",
+          "locationViews": "{{location}} ({{count}}次浏览)",
+          "noLocationData": "没有可用的位置浏览数据",
+          "unknownLocation": "未知位置",
+          "location": "位置",
+          "tooltip": {
+            "date": "日期: {{date}}",
+            "locationViews": "{{location}}: {{value}}次浏览"
+          },
+          "stats": {
+            "totalLocations": "总位置数",
+            "totalViews": "总浏览次数",
+            "avgViews": "平均浏览次数/位置"
+          }
+        },
+        "recommendedPlaces": {
+          "title": "推荐地点参与度",
+          "subtitle": "按位置跟踪推荐地点的点击次数",
+          "selectLocation": "选择位置:",
+          "selectLocationPlaceholder": "选择位置",
+          "locationPlaces": "{{location}} ({{count}}个地点)",
+          "noRecommendationData": "没有推荐数据",
+          "noDataMessage": "所选时间段没有可用的推荐点击数据。",
+          "analyticsSummary": "分析摘要:",
+          "totalClickEvents": "• {{count}}个总点击事件",
+          "recordsWithRecommendations": "• {{count}}条包含推荐ID的记录",
+          "uniqueRecommendations": "• {{count}}个唯一推荐",
+          "selectLocationPrompt": "请选择位置以查看推荐数据。",
+          "noClicksMessage": "所选位置未找到推荐点击。一旦用户点击您位置页面中的地点卡片，推荐数据就会出现。",
+          "unknownPlace": "未知地点",
+          "unknownCategory": "未知类别",
+          "unknownLocation": "未知位置",
+          "tooltip": {
+            "place": "{{place}}",
+            "category": "类别: {{category}}",
+            "clicks": "点击次数: {{count}}"
+          },
+          "stats": {
+            "placesShown": "显示的地点",
+            "totalClicks": "总点击次数",
+            "avgClicks": "平均点击次数/地点"
+          }
+        },
+        "socialMedia": {
+          "title": "社交媒体互动",
+          "subtitle": "跟踪您公共个人资料中所有平台社交媒体链接的点击次数",
+          "noDataTitle": "没有社交媒体互动数据",
+          "noDataMessage": "您的公共个人资料页面没有可用的社交媒体点击数据。",
+          "analyticsSummary": "分析摘要:",
+          "totalSocialClicks": "• {{count}}个总社交媒体点击",
+          "uniquePlatforms": "• {{count}}个唯一平台",
+          "trackingNote": "• 仅跟踪公共个人资料页面的点击",
+          "willAppear": "一旦用户点击您的社交媒体链接，社交媒体互动数据就会出现。",
+          "tooltip": {
+            "platform": "{{platform}}",
+            "clicks": "点击次数: {{count}}"
+          },
+          "stats": {
+            "platforms": "平台",
+            "totalClicks": "总点击次数",
+            "avgClicks": "平均点击次数/平台"
+          }
+        }
+      }
+    }
+  }
+}

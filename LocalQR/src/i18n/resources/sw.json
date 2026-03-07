@@ -1,0 +1,1956 @@
+﻿{
+  "header": {
+    "nav": {
+      "howItWorks": "Inavyofanya Kazi",
+      "whoIsFor": "Kwa Nani",
+      "faq": "Maswali ya Kawaida",
+      "about": "Kuhusu",
+      "contact": "Wasiliana"
+    },
+    "auth": {
+      "login": "Ingia",
+      "signUp": "Jisajili"
+    }
+  },
+  "hero": {
+    "headline": "Mapendekezo yako yote katika QR moja na kiungo rahisi.",
+    "subtext": "Shiriki unachojua na kupenda kuhusu mahali — na uifanye ipatikane kwa kila mtu, popote",
+    "inputLabel": "Hifadhi URL ya explorers yako:",
+    "inputPlaceholder": "jina lako",
+    "ctaButton": "Hifadhi explorers",
+    "signupPrompt": "Jisajili sasa kupata yako"
+  },
+  "sections": {
+    "createCustomize": {
+      "headline": "Unda na ubadilishe explorers yako kwa dakika",
+      "subtext": "Ongeza maeneo unayopenda, panga kwa mji au mada, na tengeneza QR yako mara moja.",
+      "bulletPoints": {
+        "addSpots": {
+          "title": "Ongeza maeneo unayopenda",
+          "description": "Unda orodha na must-visit zako"
+        },
+        "organize": {
+          "title": "Panga kwa mji au mada",
+          "description": "Unda kategoria zinazofaa kwa watazamaji wako"
+        },
+        "generate": {
+          "title": "Tengeneza kiungo na QR yako mara moja",
+          "description": "QR yako ya kibinafsi iko tayari kwa sekunde"
+        },
+        "share": {
+          "title": "Shiriki kidijitali au kupitia QR katika ulimwengu halisi",
+          "description": ""
+        }
+      },
+      "mockup": {
+        "title": "Mapendekezo Yangu",
+        "addPlace": "Ongeza Mahali"
+      }
+    },
+    "shareAnywhere": {
+      "headline": "Shiriki kwenye mitandao ya kijamii, maduka, au kuta za mji",
+      "subtext": "Ongeza kwenye bio yako ya Instagram, chapisha kwenye orodha, au jumuisha kwenye vitabu vya kukaribisha — mwongozo wako, daima tayari.",
+      "scanText": "Piga picha kwa mapendekezo ya kienyeji",
+      "storefrontText": "Bora kwa maonyesho ya maduka",
+      "instagramTitle": "Ongeza kwenye bio yako ya Instagram",
+      "instagramDesc": "Shiriki na wafuasi wako mara moja",
+      "menuTitle": "Chapisha kwenye orodha",
+      "menuDesc": "Vipindi vya mawasiliano vya kimwili vimefanywa rahisi",
+      "welcomeTitle": "Jumuisha kwenye vitabu vya kukaribisha",
+      "welcomeDesc": "Bora kwa wenyeji na viongozi",
+      "cafeMenu": "Menyu ya Kahawa",
+      "tokyoFoodGuide": "Mwongozo wangu wa chakula cha Tokyo explorers.earth/jane"
+    },
+    "analytics": {
+      "headline": "Fuatilia vibonyezo, marejeleo na ushiriki",
+      "subtext": "Angalia kinachofanya kazi, nani anapiga picha, na maeneo gani yanapata upendo zaidi — kwa wakati halisi.",
+      "workingTitle": "Angalia kinachofanya kazi",
+      "workingDesc": "Fuatilia umaarufu wa mapendekezo yako",
+      "scanningTitle": "Nani anapiga picha",
+      "scanningDesc": "Fuatilia upigaji picha wa QR na masasisho",
+      "spotsTitle": "Maeneo ya utendaji wa juu",
+      "spotsDesc": "Ufahamu wa msingi wa data kwa uongozi bora",
+      "dashboardTitle": "Dashibodi ya Uchambuzi",
+      "last30Days": "Siku 30 zilizopita",
+      "totalScans": "Jumla ya Upigaji Picha",
+      "engagement": "Ushiriki",
+      "referrals": "Marejeleo"
+    },
+    "referEarn": {
+      "headline": "Shiriki, rejea na pata",
+      "subtext": "Badilisha mapendekezo yako kuwa malipo ya kujitegemea — pata kredi wakati wengine wanatumia QR yako.",
+      "comingSoon": "Mpango wa malipo ya marejeleo (hivi karibuni)",
+      "rewardsTitle": "Pata Malipo",
+      "rewardsDesc": "Pata pesa wakati watu wanatumia mapendekezo yako",
+      "earnedThisMonth": "Imepatikana mwezi huu",
+      "passiveTitle": "Badilisha mapendekezo kuwa malipo ya kujitegemea",
+      "networkTitle": "Jenga mtandao wako na pata kiotomatiki"
+    },
+    "localTunes": {
+      "mainHeading": "Tunes",
+      "title": "Sikiliza wakati unachunguza",
+      "body": "Uchunguzi sio wa kuona tu. Sauti hubeba kumbukumbu, muktadha na hisia.\n\nTunes inakuruhusu kukusanya na kushiriki sauti za maeneo, safari na hali — iwe ni muziki uliogunduliwa njiani au sauti zinazofafanua eneo kwako.\n\nImeunganishwa kwa urahisi na wasifu wako wa Explorer.",
+      "exploreButton": "Chunguza Tunes",
+      "featuresHeading": "Vipengele Vikuu",
+      "features": {
+        "realtimeCollaboration": {
+          "title": "Ushirikiano wa Wakati Halisi",
+          "description": "Wacha wageni waongeze nyimbo kwenye orodha yako ya kucheza mara moja huku ukidumisha udhibiti kamili wa kinachochezwa."
+        },
+        "qrCodeSharing": {
+          "title": "Kushiriki Msimbo wa QR",
+          "description": "Shiriki uzoefu wako wa muziki kwa kuchanganua msimbo wa QR kwa urahisi — hakuna programu au upakuaji unahitajika."
+        },
+        "youtubeIntegration": {
+          "title": "Ujumuishaji wa YouTube",
+          "description": "Jumuisha kwa urahisi na YouTube ili kufikia mamilioni ya nyimbo na kuunda hali kamili."
+        },
+        "voteLikeSystem": {
+          "title": "Mfumo wa Kupiga Kura na Kupenda",
+          "description": "Wageni wanaweza kupiga kura kwa nyimbo zao za kupenda ili kuathiri foleni ya orodha ya kucheza kwa wakati halisi."
+        },
+        "silentParties": {
+          "title": "Sherehe za Kimya",
+          "description": "Andaa sherehe za kimya za kipekee ambapo kila mtu anasikiliza kupitia vichwa vya kusikilizia vyake."
+        },
+        "karaokeReady": {
+          "title": "Tayari kwa Karaoke",
+          "description": "Bora kwa usiku wa karaoke na orodha za kucheza za ushirikiano na maombi ya nyimbo kwa wakati halisi."
+        }
+      },
+      "venueHeading": "Bora kwa Kila Eneo",
+      "venues": {
+        "barsPubs": "Baa na Pubs",
+        "restaurants": "Mikahawa",
+        "coffeeShops": "Vikahawa",
+        "eventsWeddings": "Matukio na Arusi",
+        "retailStores": "Maduka",
+        "gymsFitness": "Vyumba vya Mazoezi na Fitness"
+      },
+      "closingStatement": "Tunes ni <strong>bure</strong> kuchunguza, na kwa vipengele vilivyolipwa unaweza kuboresha baadaye."
+    },
+    "whoIsFor": {
+      "headline": "explorers.earth ni kwa nani?",
+      "subtext": "explorers.earth ni kwa mtu yeyote anayeamini kuwa kushiriki ni wajibu — si utangazaji.",
+      "cards": {
+        "individuals": {
+          "title": "Watu Binafsi",
+          "oneLiner": "Shiriki mapendekezo ya kibinafsi au ya ndani.",
+          "items": {
+            "traveler": {
+              "label": "Msafiri",
+              "oneLiner": "Watu wanaoshiriki maeneo ya kusafiri"
+            },
+            "local": {
+              "label": "Mwenyeji",
+              "oneLiner": "Wenyeji wanaoshiriki vidokezo vya kitongoji"
+            },
+            "family": {
+              "label": "Familia",
+              "oneLiner": "Familia zinazoshiriki maeneo muhimu"
+            },
+            "student": {
+              "label": "Mwanafunzi",
+              "oneLiner": "Wanafunzi wanaoshiriki maeneo ya chuo/karibu"
+            },
+            "nomad": {
+              "label": "Mhamaji",
+              "oneLiner": "Wahamaji wanaoorodhesha nafasi za kazi"
+            },
+            "emergencySharer": {
+              "label": "Mshiriki wa Dharura",
+              "oneLiner": "Washiriki wa dharura wanaochapisha maeneo muhimu"
+            }
+          }
+        },
+        "creators": {
+          "title": "Waundaji",
+          "oneLiner": "Shiriki orodha zilizochaguliwa na hadhira yako.",
+          "items": {
+            "influencer": {
+              "label": "Mwenye Athari",
+              "oneLiner": "Wenye athari wanaoshiriki chaguzi bora"
+            },
+            "blogger": {
+              "label": "Mwanablogu",
+              "oneLiner": "Wanablogu wanaochagua miongozo iliyoandikwa"
+            },
+            "vlogger": {
+              "label": "Mwanalogu",
+              "oneLiner": "Wanalogu wanaoshiriki safari za kuona"
+            },
+            "reviewer": {
+              "label": "Mhakiki",
+              "oneLiner": "Wahakiki wanaoorodhesha maeneo yaliyopewa alama bora"
+            },
+            "photographer": {
+              "label": "Mpiga Picha",
+              "oneLiner": "Wapiga picha wanaoshiriki maeneo ya kupiga picha"
+            },
+            "educator": {
+              "label": "Mwalimu",
+              "oneLiner": "Walimu wanaoshiriki miongozo ya kujifunza"
+            },
+            "communityLeader": {
+              "label": "Kiongozi wa Jamii",
+              "oneLiner": "Viongozi wa jamii wanaochagua orodha muhimu"
+            }
+          }
+        },
+        "hospitality": {
+          "title": "Ukarimu",
+          "oneLiner": "Toa maarifa ya ndani yaliyochaguliwa kwa wageni.",
+          "items": {
+            "hotel": {
+              "label": "Hoteli",
+              "oneLiner": "Hoteli zinazotoa miongozo ya ndani"
+            },
+            "airbnb": {
+              "label": "Airbnb",
+              "oneLiner": "Wenyeji wanaoshiriki maeneo ya kupendeza ya kitongoji"
+            },
+            "hostel": {
+              "label": "Hosteli",
+              "oneLiner": "Hosteli zinazoshiriki vidokezo vya wasafiri wa mkoba"
+            },
+            "homestay": {
+              "label": "Makao ya Nyumbani",
+              "oneLiner": "Makao ya nyumbani yanayotoa miongozo yanayolenga familia"
+            },
+            "resort": {
+              "label": "Resoti",
+              "oneLiner": "Resoti zinazotoa orodha za shughuli"
+            },
+            "pgColiving": {
+              "label": "PG/Makao ya Pamoja",
+              "oneLiner": "PG/Makao ya Pamoja yanayoonyesha maeneo muhimu ya karibu"
+            }
+          }
+        },
+        "businesses": {
+          "title": "Biashara",
+          "oneLiner": "Elekeza wateja kwa mapendekezo muhimu.",
+          "items": {
+            "restaurant": {
+              "label": "Mkahawa",
+              "oneLiner": "Mikahawa inayoshiriki vyakula vya kujaribu"
+            },
+            "cafe": {
+              "label": "Kahawa",
+              "oneLiner": "Vikahawa vinavyokazia vitu vya kupendeza vya menyu"
+            },
+            "retailShop": {
+              "label": "Duka",
+              "oneLiner": "Maduka yanayoshiriki mapendekezo ya bidhaa"
+            },
+            "gym": {
+              "label": "Chumba cha Mazoezi",
+              "oneLiner": "Vyumba vya mazoezi vinavyopendekeza maeneo ya afya ya ndani"
+            },
+            "spa": {
+              "label": "Spa",
+              "oneLiner": "Spa zinazoorodhesha chaguzi za kupumzika za karibu"
+            },
+            "salon": {
+              "label": "Saloni",
+              "oneLiner": "Saloni zinazotoa miongozo ya uzuri"
+            },
+            "clinic": {
+              "label": "Kliniki",
+              "oneLiner": "Kliniki zinazoshiriki maeneo yanayohusiana na afya"
+            },
+            "boutique": {
+              "label": "Duka la Nguo",
+              "oneLiner": "Maduka ya nguo yanayoorodhesha uvumbuzi uliochaguliwa"
+            }
+          }
+        },
+        "organizations": {
+          "title": "Mashirika",
+          "oneLiner": "Toa miongozo na rasilimali zilizochaguliwa.",
+          "items": {
+            "airline": {
+              "label": "Kampuni ya Ndege",
+              "oneLiner": "Kampuni za ndege zinazoshiriki miongozo ya jiji"
+            },
+            "agency": {
+              "label": "Wakala",
+              "oneLiner": "Mawakala wa safari wanaoorodhesha maeneo ya kutembelea"
+            },
+            "university": {
+              "label": "Chuo Kikuu",
+              "oneLiner": "Vyuo vikuu vinazoshiriki mambo muhimu ya chuo"
+            },
+            "corporate": {
+              "label": "Kampuni",
+              "oneLiner": "Makampuni yanayoorodhesha rasilimali za karibu"
+            },
+            "airport": {
+              "label": "Uwanja wa Ndege",
+              "oneLiner": "Viwanja vya ndege vinavyotoa terminali + vidokezo vya jiji"
+            },
+            "railway": {
+              "label": "Reli",
+              "oneLiner": "Reli zinazoshiriki taarifa za jukwaa"
+            },
+            "ngo": {
+              "label": "NGO",
+              "oneLiner": "NGO zinazoshiriki rasilimali za jamii"
+            },
+            "government": {
+              "label": "Serikali",
+              "oneLiner": "Idara zinazokazia huduma za umma"
+            }
+          }
+        }
+      },
+      "useCases": {
+        "travelers": "Wasafiri",
+        "travelersDesc": "Shiriki vito vilivyogunduliwa na wachunguzi wenzako",
+        "influencers": "Washiriki",
+        "influencersDesc": "Pata faida kutoka kwa ujuzi wa kienyeji na jenga jamii",
+        "airbnbHosts": "Wenyeji wa Airbnb",
+        "airbnbHostsDesc": "Boresha uzoefu wa wageni na ufahamu wa kienyeji",
+        "hotels": "Hoteli",
+        "hotelsDesc": "Toa mapendekezo ya kienyeji yaliyochaguliwa",
+        "restaurants": "Mikahawa",
+        "restaurantsDesc": "Uuzaji wa pamoja na biashara zingine za kienyeji",
+        "cafes": "Mikahawa ya kahawa",
+        "cafesDesc": "Shiriki vipendwa vya kitongoji na wateja",
+        "localGuides": "Viongozi wa Kienyeji",
+        "localGuidesDesc": "Punguza ujuzi wako zaidi ya safari za kibinafsi",
+        "creators": "Waundaji",
+        "creatorsDesc": "Ongeza thamani zaidi ya maudhui na vidokezo vya vitendo",
+        "tourOperators": "Wafanyikazi wa Utalii",
+        "tourOperatorsDesc": "Panua uzoefu zaidi ya safari zilizopangwa",
+        "anyBusiness": "Biashara Yoyote",
+        "anyBusinessDesc": "Jenga jamii na uaminifu wa wateja"
+      }
+    },
+    "testimonials": {
+      "headline": "Inapendwa na wasafiri, waundaji na wenyeji",
+      "subtext": "Angalia jinsi watu duniani kote wanatumia explorers kushiriki mambo muhimu zaidi.",
+      "scrollLeft": "Peleka ushahidi kushoto",
+      "scrollRight": "Peleka ushahidi kulia",
+      "items": [
+        {
+          "id": "1",
+          "name": "Marcus Chen",
+          "role": "Mwandishi wa Blogu ya Usafiri",
+          "location": "San Francisco",
+          "quote": "explorers ilibadilisha jinsi ninavyoshiriki ujuzi wangu wa usafiri. Wafuasi wangu wanapenda kupata ufikiaji wa haraka kwa mapendekezo yangu yaliyochaguliwa!"
+        },
+        {
+          "id": "2",
+          "name": "Sarah Johnson",
+          "role": "Mwenyeji wa Airbnb",
+          "location": "Barcelona",
+          "quote": "Wageni wangu wanapenda kabisa QR code ya kibinafsi katika kifurushi chao cha kukaribisha. Imekuwa saini yangu!"
+        },
+        {
+          "id": "3",
+          "name": "Alex Rodriguez",
+          "role": "Mwenyekiti wa Mkahawa",
+          "location": "Mexico City",
+          "quote": "Tunashiriki explorers yetu na wateja ili kupendekeza maeneo mengine ya kienyeji. Imetengeneza uhusiano wa ajabu wa jamii."
+        },
+        {
+          "id": "4",
+          "name": "Emma Thompson",
+          "role": "Mwongozi wa Utalii",
+          "location": "London",
+          "quote": "explorers inanisaidia kupanua ujuzi wangu zaidi ya masaa ya ziara. Wateja wanaweza kufikia mapendekezo yangu wakati wowote!"
+        }
+      ]
+    },
+    "faq": {
+      "headline": "Una maswali?",
+      "subtext": "Tumekuwa tukijibu maswali ya kawaida zaidi ambayo watu huuliza kabla ya kuanza.",
+      "loading": "Inapakia FAQ...",
+      "error": "Hitilafu katika kupakia FAQ. Tafadhali jaribu tena baadaye."
+    },
+    "features": {
+      "title": "Imejengwa ili kukaa mbali na njia",
+      "subtitle": "Vipengele rahisi na vya kufikirika vinavyoruhusu mapendekezo yako kuangaza.",
+      "simpleLinks": {
+        "title": "Viungo rahisi na kushiriki QR"
+      },
+      "livingGuides": {
+        "title": "Mwongozo hai, unaoweza kuhaririwa"
+      },
+      "locationAware": {
+        "title": "Mapendekezo yanayojua eneo"
+      },
+      "soundPlaylists": {
+        "title": "Sauti na orodha za kucheza za hiari"
+      },
+      "privacyFirst": {
+        "title": "Faragha kwanza kwa muundo"
+      },
+      "communityDriven": {
+        "title": "Ugunduzi unaoendeshwa na jamii"
+      }
+    },
+    "finalCTA": {
+      "headline": "Anza kushiriki ulimwengu wako leo",
+      "subtext": "Hifadhi explorers yako ya bure na ubadilishe ufahamu wako wa kienyeji kuwa miongozo ya kushiriki.",
+      "ctaButton": "Hifadhi explorers Yako – Bure Milele",
+      "disclaimer": "Kadi ya mkopo haihitajiki • Usanidi kwa dakika 2",
+      "creating": "Inaunda explorers yako..."
+    }
+  },
+  "contact": {
+    "title": "Tuungane.",
+    "subtitle": "Iwe una swali, wazo, au unataka tu kusalimu — tungependa kusikia kutoka kwako.",
+    "getInTouch": "Wasiliana",
+    "email": "hello@explorers.earth",
+    "responseTime": "Tunajibu ndani ya masaa 24-48",
+    "closingMessage": "Sisi ni timu ndogo na maono makubwa — mawazo yako ni muhimu kwetu. Wasiliana na tuunde kitu cha kienyeji na cha kimataifa pamoja.",
+    "seo": {
+      "title": "Wasiliana na explorers | Msaada, Usaidizi na Maombi ya Ushirikiano.",
+      "description": "Wasiliana na explorers kwa msaada, fursa za ushirikiano au maswali. Kituo chetu cha usaidizi kinasaidia na ufikiaji wa akaunti, mapendekezo ya kienyeji na matatizo ya kiufundi. Wasiliana nasi kwa majibu ya haraka na ya kirafiki na ushirikiano.",
+      "keywords": [
+        "wasiliana explorers",
+        "msaada explorers",
+        "unganisha explorers",
+        "huduma ya wateja ya programu ya kusafiri",
+        "maombi ya ushirikiano explorers",
+        "kituo cha usaidizi cha mapendekezo ya kienyeji",
+        "msaada wa kiufundi explorers",
+        "huduma ya wateja ya programu ya kusafiri",
+        "maoni ya kushiriki eneo",
+        "msaada wa akaunti explorers",
+        "ushirikiano wa biashara explorers",
+        "ripoti tatizo explorers",
+        "msaada wa kushiriki mapendekezo ya kienyeji",
+        "tafuta mawasiliano explorers",
+        "huduma ya wateja",
+        "timu explorers",
+        "kituo cha usaidizi",
+        "mawasiliano ya msaada",
+        "msaada wa msimbo QR",
+        "usaidizi wa mapendekezo ya kienyeji",
+        "maombi ya ushirikiano"
+      ]
+    }
+  },
+  "about": {
+    "title": "Wachunguzi wa Dunia",
+    "subtitle": {
+      "line1": "Jumuiya ya kimataifa ya watu wanaochunguza kwa uangalifu — kwa watu, tamaduni na sayari tunayoshiriki.",
+      "line2": "Uchunguzi kwetu sio kuhusu umbali tunaloenda.",
+      "line3": "Ni kuhusu kina tunachounganisha."
+    },
+    "section1": {
+      "title": "TUNAAMINI NINI",
+      "line1": "Uchunguzi huanza na ufahamu.",
+      "line2": "Kwa kutambua kile wengine wanachokipita.",
+      "line3": "Kwa kuchagua kusonga kwa uangalifu, si kwa haraka.",
+      "line4": "Tunaishi kwa muda mfupi kwenye sayari ya zamani —\nkuongeza alama chache za makusudi kwenye hadithi\niliyoanza muda mrefu kabla yetu\nna itaendelea muda mrefu baada ya kuondoka kwetu."
+    },
+    "section2": {
+      "title": "TUNAONAJE UCHUNGUZI",
+      "line1": "Uchunguzi haupimwi kwa maili.",
+      "line2": "Hupimwa kwa maana.",
+      "line3": "Huishi katika kupunguza kasi, kuzingatia,\nna kuheshimu kila eneo tunalopiga hatua —\nbarabara, njia ya mlima, meza ya kahawa,\nau wakati ulioshirikiwa na mtu mpya."
+    },
+    "section3": {
+      "title": "TUNAJENGA NINI",
+      "line1": "explorers ni eneo la:",
+      "item1": "Miongozo yaliyoundwa na uzoefu halisi",
+      "item2": "Maeneo, safari, sauti na hadithi zenye thamani ya kukumbuka",
+      "item3": "Jumuiya zilizojengwa juu ya watu — si juu ya vipimo vya umaarufu",
+      "line2": "Teknolojia inatusaidia kuungana.",
+      "line3": "Watu wanapeana lengo."
+    },
+    "section4": {
+      "title": "KUWA MWANACHAMA",
+      "line1": "Wachunguzi wa Dunia sio kilabu.",
+      "line2": "Sio lebo.",
+      "line3": "Ni mawazo ya pamoja —\nuelewa wa kimya wa jinsi tunavyosonga ulimwenguni."
+    },
+    "closing": "Ikiwa wewe ni mwenye udadisi.\nIkiwa wewe ni mwenye kufikiria.\nIkiwa wewe tayari kupunguza kasi na kuangalia karibu zaidi —\ntayari unahusika hapa.",
+    "seo": {
+      "title": "Wachunguzi wa Dunia | Kuhusu Sisi",
+      "description": "Jumuiya ya kimataifa ya watu wanaochunguza kwa uangalifu — kwa watu, tamaduni na sayari tunayoshiriki. Uchunguzi sio kuhusu umbali, ni kuhusu kina.",
+      "keywords": [
+        "wachunguzi wa dunia",
+        "kuhusu explorers",
+        "jumuiya ya uchunguzi",
+        "safari ya kufikiria",
+        "uchunguzi endelevu",
+        "jukwaa la mapendekezo ya ndani",
+        "kuhusu programu ya safari",
+        "mapendekezo yanayoongozwa na jumuiya",
+        "uzoefu wa ndani wa kweli",
+        "timu ya explorers",
+        "jukwaa la ugunduzi wa ndani",
+        "shiriki maeneo ya ndani",
+        "teknolojia ya safari",
+        "programu ya mapendekezo ya ndani",
+        "hadithi ya explorers",
+        "sisi ni nani explorers"
+      ]
+    }
+  },
+  "cookieConsent": {
+    "title": "🍪 Mapendeleo ya Vidakuzi",
+    "description": "Tunatumia vidakuzi ili kuboresha uzoefu wako wa kuvinjari, kutoa maudhui yanayofaa na kuchambua trafiki. Unaweza kusimamia mapendeleo wakati wowote.",
+    "acceptAll": "✅ Kubali Vidakuzi Vyote",
+    "customize": "⚙️ Badilisha",
+    "rejectNonEssential": "❌ Kataa Zisizo Muhimu",
+    "preferencesTitle": "Mapendeleo ya Vidakuzi",
+    "essentialCookies": {
+      "title": "Vidakuzi Muhimu",
+      "description": "Inahitajika kwa tovuti kufanya kazi vizuri",
+      "alwaysOn": "Zimewashwa Daima"
+    },
+    "analyticsCookies": {
+      "title": "Vidakuzi vya Uchambuzi",
+      "description": "Zinatusaidia kuelewa jinsi wageni wanavyojumuika na tovuti yetu"
+    },
+    "marketingCookies": {
+      "title": "Vidakuzi vya Utangazaji",
+      "description": "Zinatumika kutoa matangazo yanayofaa"
+    },
+    "savePreferences": "Hifadhi Mapendeleo",
+    "acceptAllButton": "Kubali Vyote",
+    "closeBanner": "Funga bango",
+    "goBack": "Rudi"
+  },
+  "footer": {
+    "tagline": "Acha mapendekezo yako yasafiri ulimwenguni.",
+    "email": "hello@explorers.earth",
+    "sections": {
+      "product": "Bidhaa",
+      "contact": "Wasiliana",
+      "legal": "Kisheria"
+    },
+    "links": {
+      "howItWorks": "Inavyofanya Kazi",
+      "faq": "Maswali ya Kawaida",
+      "contact": "Wasiliana",
+      "about": "Kuhusu",
+      "terms": "Masharti na Hali",
+      "privacy": "Sera ya Faragha",
+      "cookies": "Sera ya Vidakuzi"
+    },
+    "copyright": "© 2025 explorers. Haki zote zimehifadhiwa.",
+    "madeWithLove": "Imeundwa kwa upendo duniani"
+  },
+  "legal": {
+    "terms": {
+      "title": "Masharti na Hali",
+      "loading": "Inapakia masharti na hali...",
+      "error": "Hitilafu katika kupakia masharti na hali. Tafadhali jaribu tena baadaye."
+    },
+    "privacy": {
+      "title": "Sera ya Faragha",
+      "loading": "Inapakia sera ya faragha...",
+      "error": "Hitilafu katika kupakia sera ya faragha. Tafadhali jaribu tena baadaye."
+    },
+    "cookies": {
+      "title": "Sera ya Vidakuzi",
+      "loading": "Inapakia sera ya vidakuzi...",
+      "error": "Hitilafu katika kupakia sera ya vidakuzi. Tafadhali jaribu tena baadaye."
+    }
+  },
+  "languageModal": {
+    "title": "Chagua Lugha",
+    "searchPlaceholder": "Tafuta lugha...",
+    "close": "Funga"
+  },
+  "auth": {
+    "signup": "Jisajili",
+    "signupSubtitle": "Jisajili ili kufurahia vipengele vya explorers",
+    "username": "Jina la Mtumiaji",
+    "usernamePlaceholder": "Ingiza jina lako la mtumiaji",
+    "email": "Barua pepe",
+    "emailPlaceholder": "Ingiza barua pepe yako",
+    "password": "Nenosiri",
+    "passwordPlaceholder": "Ingiza nenosiri lako",
+    "confirmPassword": "Thibitisha Nenosiri",
+    "confirmPasswordPlaceholder": "Ingiza nenosiri lako tena",
+    "register": "Jisajili",
+    "or": "au",
+    "signUpWithGoogle": "Jisajili na Google",
+    "alreadyHaveAccount": "Una akaunti tayari?",
+    "login": "Ingia",
+    "loginTitle": "Ingia",
+    "loginSubtitle": "Tafadhali ingia ili kuendelea na akaunti yako",
+    "usernameOrEmail": "Jina la mtumiaji au barua pepe",
+    "usernameOrEmailPlaceholder": "Ingiza jina lako la mtumiaji au barua pepe",
+    "signInWithGoogle": "Ingia na Google",
+    "newToexplorers": "Mpya kwa explorers?",
+    "forgotPassword": "Umesahau nenosiri?",
+    "validations": {
+      "username": {
+        "required": "Jina la mtumiaji linahitajika",
+        "minLength": "Jina la mtumiaji lazima liwe na angalau herufi 3",
+        "maxLength": "Jina la mtumiaji hawezi kuzidi herufi 30",
+        "invalidChars": "Jina la mtumiaji linaweza kuwa na herufi ndogo (a-z), nambari (0-9), na alama za mkato (-) tu",
+        "mustStartWithLetter": "Jina la mtumiaji lazima lianze na herufi (a-z)",
+        "cannotStartEndHyphen": "Jina la mtumiaji hawezi kuanza au kuishia na alama ya mkato",
+        "noConsecutiveHyphens": "Jina la mtumiaji haliwezi kuwa na alama za mkato mfululizo",
+        "cannotBeAllNumbers": "Jina la mtumiaji haliwezi kuwa nambari tu",
+        "reservedWords": "This username contains reserved words and cannot be used",
+        "inappropriateContent": "Jina la mtumiaji lina maudhui yasiyofaa",
+        "alreadyExists": "Jina la mtumiaji tayari lipo",
+        "suggestedAlternatives": "Suggested alternatives:",
+        "willBeConvertedLowercase": "Jina la mtumiaji litabadilishwa kuwa herufi ndogo",
+        "checkingAvailability": "Kuangalia upatikanaji...",
+        "available": "Jina la mtumiaji linapatikana",
+        "willConvertToLowercase": "Jina la mtumiaji litabadilishwa kuwa herufi ndogo"
+      },
+      "email": {
+        "required": "Barua pepe inahitajika",
+        "invalidFormat": "Umbizo la barua pepe si halali",
+        "alreadyExists": "Barua pepe tayari ipo",
+        "invalid": "Barua pepe si halali"
+      },
+      "password": {
+        "required": "Nenosiri linahitajika",
+        "minLength": "Nenosiri lazima liwe na angalau herufi 6",
+        "uppercaseRequired": "Nenosiri lazima liwe na angalau herufi moja kubwa (A-Z)",
+        "numberRequired": "Nenosiri lazima liwe na angalau nambari moja (0-9)",
+        "specialCharRequired": "Nenosiri lazima liwe na angalau herufi maalum moja (!@#$%^&*().,?\":{}|<>)",
+        "strength": "Nguvu ya nywila",
+        "weak": "Dhaifu",
+        "medium": "Wastani",
+        "strong": "Kali",
+        "maxLength": "Nenosiri haliwezi kuzidi herufi 32",
+        "lowercaseRequired": "Nenosiri lazima liwe na angalau herufi moja ndogo (a-z)",
+        "tooCommon": "This password is too common. Please choose a more unique password",
+        "sameAsCurrent": "New password cannot be the same as your current password",
+        "considerLonger": "Consider using a longer password with more variety for better security",
+        "moreSecure": "Nenosiri zenye herufi 10 au zaidi ni salama zaidi",
+        "veryWeak": "Dhaifu sana",
+        "fair": "Wastani",
+        "good": "Nzuri",
+        "veryStrong": "Kali sana"
+      },
+      "confirmPassword": {
+        "required": "Tafadhali thibitisha nenosiri lako",
+        "mustMatch": "Passwords do not match",
+        "confirmRequired": "Uthibitisho wa nenosiri unahitajika",
+        "match": "Nywila zinafanana"
+      },
+      "login": {
+        "usernameOrEmailRequired": "Jina la mtumiaji au barua pepe inahitajika",
+        "invalidCredentials": "Jina la mtumiaji/barua pepe au nenosiri si halali",
+        "accountNotFound": "Akaunti haijapatikana",
+        "tooManyAttempts": "Majaribio mengi yamekosa",
+        "incorrectPassword": "Nenosiri si sahihi"
+      },
+      "general": {
+        "fillRequiredFields": "Tafadhali jaza sehemu zote zinazohitajika",
+        "somethingWentWrong": "Kitu kimekwenda vibaya, tafadhali jaribu tena"
+      },
+      "forgotPassword": {
+        "title": "Umesahau Nenosiri?",
+        "description": "Ingiza anwani yako ya barua pepe na tutakutumia kiungo cha kurekebisha.",
+        "emailLabel": "Anwani ya barua pepe",
+        "emailPlaceholder": "Ingiza barua pepe yako",
+        "sendResetLink": "Tuma Kiungo cha Kurekebisha",
+        "backToLogin": "Rudi kwa Kuingia",
+        "resetLinkSent": "Kiungo cha kurekebisha nenosiri kimetumwa kwenye barua pepe yako!",
+        "failedToSend": "Kutuma kiungo cha kurekebisha hakukufanikiwa. Jaribu tena baadaye.",
+        "somethingWentWrong": "Kitu kimekwenda vibaya!"
+      },
+      "accountName": {
+        "required": "Jina la akaunti linahitajika",
+        "minLength": "Jina la akaunti lazima liwe na angalau herufi 2",
+        "maxLength": "Jina la akaunti halipaswi kuzidi herufi 50",
+        "invalidChars": "Jina la akaunti linaweza kuwa na herufi, nafasi, alama za mkato, na nukta tu",
+        "noNumbers": "Jina la akaunti haliwezi kuwa na nambari"
+      },
+      "accountType": {
+        "required": "Aina ya akaunti inahitajika",
+        "invalid": "Aina ya akaunti si halali"
+      },
+      "onboarding": {
+        "displayNameRequired": "Jina la onyesho linahitajika",
+        "displayNameMinLength": "Jina la onyesho lazima liwe na angalau herufi 2",
+        "displayNameMaxLength": "Jina la onyesho halipaswi kuzidi herufi 50",
+        "bioRequired": "Wasifu unahitajika",
+        "bioMaxLength": "Wasifu haupaswi kuzidi herufi 250",
+        "mobileNumberRequired": "Nambari ya simu ya mkononi inahitajika",
+        "mobileNumberInvalid": "Tafadhali ingiza nambari halali ya simu ya mkononi",
+        "mobileNumberLength": "Nambari ya simu ya mkononi lazima iwe nambari 10",
+        "addressRequired": "Anwani inahitajika",
+        "cityRequired": "Jiji linahitajika",
+        "stateRequired": "Jimbo linahitajika",
+        "countryRequired": "Nchi inahitajika",
+        "postalCodeRequired": "Nambari ya posta inahitajika",
+        "primaryAddressRequired": "Anwani ya msingi inahitajika",
+        "emailAddressRequired": "Anwani ya barua pepe inahitajika",
+        "resetLinkSentSuccess": "Kiungo cha kurekebisha kimetumwa kwa mafanikio!",
+        "invalidUsername": "Jina la mtumiaji batili",
+        "profileImageAlt": "Profile"
+      },
+      "resetPassword": {
+        "newPassword": "New Password",
+        "confirmPassword": "Confirm Password"
+      },
+      "resetLinkSent": {
+        "title": "Barua pepe imetumwa!",
+        "description": "Angalia kikasha chako cha barua pepe kwa kiungo cha kurekebisha nenosiri.",
+        "resending": "Inatumwa tena...",
+        "resendWithCooldown": "Tuma barua pepe tena ({{cooldown}}s)",
+        "resendMail": "Tuma barua pepe tena"
+      }
+    },
+    "onboarding": {
+      "accountDetails": {
+        "title": "Maelezo ya Akaunti",
+        "description": "Tuambie kuhusu wewe",
+        "displayName": "Jina la Onyesho",
+        "displayNamePlaceholder": "Ingiza jina lako la onyesho",
+        "username": "Jina la Mtumiaji",
+        "usernamePlaceholder": "Ingiza jina lako la mtumiaji",
+        "usernameDescription": "Jina lako la mtumiaji ni sehemu ya kiungo cha wasifu wako wa umma na nambari za QR. Mfano: explorers.earth/bhavya",
+        "bio": "Wasifu",
+        "bioPlaceholder": "Tuambie kuhusu wewe",
+        "accountType": "Aina ya Akaunti",
+        "personal": "Binafsi",
+        "creator": "Muumba",
+        "business": "Biashara",
+        "next": "Ifuatayo"
+      },
+      "contactDetails": {
+        "title": "Maelezo ya Mawasiliano",
+        "description": "Ongeza nambari yako ya simu ya mkononi kwa uthibitisho",
+        "mobileNumber": "Nambari ya Simu ya Mkononi",
+        "mobileNumberPlaceholder": "Ingiza nambari yako ya simu ya mkononi",
+        "next": "Ifuatayo",
+        "back": "Nyuma"
+      },
+      "addressDetails": {
+        "title": "Maelezo ya Anwani",
+        "description": "Uko wapi?",
+        "address": "Anwani",
+        "addressPlaceholder": "Ingiza anwani yako",
+        "streetName": "Jina la Mtaa",
+        "streetNamePlaceholder": "Ingiza jina la mtaa",
+        "city": "Jiji",
+        "cityPlaceholder": "Ingiza jiji",
+        "state": "Jimbo",
+        "statePlaceholder": "Ingiza jimbo",
+        "country": "Nchi",
+        "countryPlaceholder": "Ingiza nchi",
+        "postalCode": "Nambari ya Posta",
+        "postalCodePlaceholder": "Ingiza nambari ya posta",
+        "primaryAddress": "Anwani ya Msingi",
+        "primaryAddressDescription": "inaonyeshwa katika wasifu wa umma (jiji na nchi)",
+        "primaryAddressPlaceholder": "Ingiza anwani ya msingi",
+        "sameAsAddress": "Sawa na Anwani",
+        "confirmDetails": "Thibitisha Maelezo",
+        "back": "Nyuma"
+      }
+    },
+    "resetPassword": {
+      "newPasswordPlaceholder": "Enter new password",
+      "confirmPasswordPlaceholder": "Confirm your password"
+    }
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred. Please try again later.",
+    "retry": "Try Again",
+    "noResults": "No results found",
+    "submit": "Submit",
+    "signInWithGoogle": "Sign in with Google",
+    "signUpWithGoogle": "Sign up with Google",
+    "cancel": "Ghairi"
+  },
+  "dashboard": {
+    "home": {
+      "welcomeBack": "Karibu tena",
+      "profile": "Wasifu",
+      "myRecommendations": "Mapendekezo Yangu",
+      "activePlaces": "maeneo yanayotumika",
+      "setupProfile": "Sanidi Wasifu Wako",
+      "draft": "Rasimu",
+      "startCurating": "Anza kuandaa mapendekezo yako na uyashiriki na ulimwengu!",
+      "addRecommendations": "Ongeza Mapendekezo"
+    },
+    "shareModal": {
+      "copyLink": "Nakili kiungo",
+      "copied": "Imenakiliwa!",
+      "linkCopiedToast": "Kiungo kimenakiliwa!!"
+    },
+    "recommendations": {
+      "locationButton": "Mahali",
+      "viewAll": "Ona yote",
+      "recommendationsTab": "Mapendekezo",
+      "manageTab": "Dhibiti",
+      "manageHeading": "Dhibiti",
+      "deleteAction": "Futa",
+      "editAction": "Hariri",
+      "publishedStatus": "Imechapishwa",
+      "draftStatus": "Muswada",
+      "myRecommendationsHeading": "Mapendekezo Yangu",
+      "myQRHeading": "QR Yangu",
+      "myRecommendationsQR": "Mapendekezo Yangu",
+      "travelLikeLocal": "Safari kama mwenyeji",
+      "shareLink": "Shiriki Kiungo",
+      "copyLink": "Nakili Kiungo",
+      "downloadQR": "Pakua QR",
+      "emptyState": {
+        "title": "Hakuna Mapendekezo Yanayopatikana",
+        "subtitle": "Anza kuongeza maeneo unayoyapenda kwenye orodha hii"
+      },
+      "draftLabel": "Rasimu",
+      "recommendButton": "Pendekeza",
+      "exploreSection": {
+        "heading": "Gundua na explorers",
+        "addButton": "Ongeza"
+      },
+      "locationLabels": {
+        "currentLocation": "Eneo la Sasa",
+        "selectedLocation": "Eneo Lililochaguliwa"
+      },
+      "categories": {
+        "foodDrinks": "Chakula na Vinywaji",
+        "lodging": "Malazi",
+        "healthWellness": "Afya na Ustawi",
+        "shopping": "Ununuzi",
+        "entertainment": "Burudani",
+        "transportation": "Usafiri",
+        "services": "Huduma",
+        "tourism": "Utalii",
+        "naturalFeatures": "Vipengele vya Asili"
+      },
+      "locationForm": {
+        "labels": {
+          "searchLocation": "Tafuta Mahali",
+          "recommendationSocialLink": "Kiungo cha Kijamii cha Mapendekezo",
+          "note": "Kumbuka",
+          "placeUrl": "URL ya Mahali"
+        },
+        "placeholders": {
+          "searchLocation": "Ingiza jiji, jimbo au nchi (mfano Paris)",
+          "recommendationSocialLink": "Ingiza URL (Youtube / Instagram)",
+          "note": "Ingiza kumbuka inayohusiana na mapendekezo yako",
+          "placeUrl": "Ingiza jina la kuunda kiungo kinachoshirikiwa"
+        },
+        "buttons": {
+          "addLocation": "Ongeza Mahali",
+          "updateLocation": "Sasisha Mahali"
+        }
+      },
+      "toastMessages": {
+        "listCreated": "Recommendation List Created Successfully!!!",
+        "listPublished": "Orodha ya mapendekezo imechapishwa kwa mafanikio!",
+        "listUnpublished": "Orodha ya mapendekezo imeondolewa kwenye uchapishaji kwa mafanikio!",
+        "listPublishError": "List Should have atleast one Recommended Place to be Published",
+        "listVisibilityError": "Failed to update recommendation list visibility.",
+        "qrDownloadSuccess": "QR code downloaded successfully!",
+        "qrDownloadError": "Failed to download QR code. Please try again.",
+        "linkCopied": "Link copied to clipboard!",
+        "linkCopyError": "Failed to copy link. Please try again.",
+        "qrNotReady": "QR code not ready for download"
+      },
+      "placesModal": {
+        "placesCount": "{{visible}} out of {{total}} places",
+        "scrollToLoadMore": "Scroll to load more places"
+      },
+      "noRecommendationsYet": "Bado hakuna mapendekezo!!",
+      "setupProfileBeforeRecommendations": "Sanidi wasifu wako kabla ya kuunda mapendekezo!!",
+      "startAddingPlaces": "Anza kuongeza maeneo unayopenda na uwashiriki na wengine.",
+      "startRecommending": "Anza Kupendekeza",
+      "addRecommendationForm": {
+        "searchField": {
+          "label": "Search Recommendation with Google"
+        },
+        "mainInput": {
+          "placeholder": "Enter your Recommendation"
+        },
+        "taggableFields": {
+          "title": "Title",
+          "address": "Address",
+          "category": "Category",
+          "contactNumber": "Contact Number",
+          "socialLink": "Social Link"
+        },
+        "accordionSection": {
+          "heading": "Your Recommendation Details",
+          "recommendationLink": {
+            "label": "Your Recommendation Link",
+            "placeholder": "You can insert Instagram reel, YouTube, or blog recommending"
+          },
+          "whyRecommend": {
+            "label": "Why would you recommend?",
+            "placeholder": "Why would you recommend?"
+          }
+        },
+        "fileUpload": {
+          "text": "Attach Image/Video",
+          "subtext": "optional"
+        },
+        "actionButton": {
+          "text": "Add recommendation"
+        },
+        "taggableFieldsPlaceholders": {
+          "title": "Enter the title",
+          "address": "Enter the address of the Place",
+          "category": "Enter a Category",
+          "contactNumber": "Enter Contact Number",
+          "socialLink": "Enter the Social Link (Place)"
+        },
+        "validationMessages": {
+          "titleRequired": "Kichwa kinahitajika",
+          "addressRequired": "Anwani inahitajika",
+          "categoryRequired": "Jamii inahitajika"
+        },
+        "mapModal": {
+          "cancelButton": "Ghairi",
+          "addRecommendationButton": "Ongeza mapendekezo",
+          "updateRecommendationButton": "Sasisha mapendekezo",
+          "setLocationButton": "Weka eneo"
+        },
+        "fetchingImages": "Inapata picha…",
+        "recommendationType": {
+          "place": "Mahali",
+          "person": "Mtu",
+          "label": "Aina ya Mapendekezo"
+        },
+        "imagePreview": {
+          "alt": "Hakiki",
+          "deleteTooltip": "Futa",
+          "setThumbnailTooltip": "Weka kama Thumbnail",
+          "confirmDeleteTitle": "Thibitisha Ufutaji",
+          "confirmDeleteMessage": "Je, una uhakika unataka kufuta Picha hii kutoka kwenye Mkusanyiko?",
+          "cancel": "Ghairi",
+          "confirm": "Thibitisha"
+        },
+        "deleteRecommendationModal": {
+          "title": "Thibitisha ufutaji",
+          "message": "Je, una uhakika unataka kufuta mapendekezo haya? Kitendo hiki hakiwezi kurejeshwa.",
+          "cancel": "Ghairi"
+        }
+      }
+    },
+    "profile": {
+      "tabs": {
+        "publicProfile": "Wasifu wa Umma",
+        "account": "Akaunti"
+      },
+      "publicProfile": {
+        "sections": {
+          "profileInformation": "Wasifu",
+          "socialMedia": "Viungo vya Kijamii",
+          "publicAddress": "Anwani ya Umma",
+          "howToReachUs": "Jinsi Ya Kutufikia",
+          "howToReachUsDescription": "Tumia sehemu hii kushiriki maelezo ya eneo la biashara yako.",
+          "feed": "Feed",
+          "socialMediaSubtitle": "Viungo na taarifa za mitandao ya kijamii"
+        },
+        "fields": {
+          "accountType": "Aina ya Akaunti",
+          "bio": "Wasifu",
+          "socialMedia": "Mitandao ya Kijamii",
+          "instagram": "Instagram",
+          "whatsapp": "Whatsapp",
+          "mobile": "Simu ya Mkononi",
+          "youtube": "Youtube",
+          "x": "X",
+          "spotify": "Spotify",
+          "website": "Tovuti",
+          "facebook": "Facebook",
+          "youtubeMusic": "Youtube Music",
+          "gmail": "Gmail",
+          "linkedin": "Linkedin",
+          "appleMusic": "Apple Music",
+          "tiktok": "Tiktok",
+          "snapchat": "Snapchat",
+          "businessLocation": "Ongeza eneo lako. Hizi zitaonekana kama maeneo yaliyopendekezwa katika wasifu wako wa umma",
+          "primaryAddress": "Anwani ya Msingi - Inaonyeshwa kwenye wasifu wa umma (jiji na nchi)",
+          "feed": "Pakia picha au video za eneo lako, bidhaa, huduma au uzoefu wako. Picha hizi zitaonyeshwa kwenye galeria yako kwenye wasifu wako wa umma",
+          "title": "Kichwa",
+          "contact": "Wasiliana",
+          "about": "Kuhusu",
+          "addLocation": "Ongeza eneo lako",
+          "addLocationInformation": "Ongeza Taarifa za Eneo",
+          "searchAddress": "Tafuta anwani yako...",
+          "sameAsAddress": "Sawa na anwani"
+        },
+        "accountTypes": {
+          "personal": "Binafsi",
+          "creator": "Muumba",
+          "business": "Biashara"
+        },
+        "businessLocation": {
+          "title": "Kichwa",
+          "contact": "Wasiliana",
+          "website": "Tovuti",
+          "about": "Kuhusu"
+        }
+      },
+      "account": {
+        "sections": {
+          "account": "Akaunti",
+          "billingAddress": "Anwani ya Bili"
+        },
+        "fields": {
+          "username": "Jina la mtumiaji",
+          "accountName": "Jina la Akaunti",
+          "address": "Anwani",
+          "streetName": "Jina la Mtaa",
+          "state": "Jimbo",
+          "city": "Jiji",
+          "country": "Nchi",
+          "postalCode": "Msimbo wa Posta",
+          "addressPlaceholder": "Ingiza anwani yako",
+          "detectLocation": "Gundua eneo langu la sasa"
+        }
+      },
+      "common": {
+        "visible": "Inaonekana",
+        "hidden": "Imefichwa",
+        "mobileNumber": "Nambari ya simu ya mkononi",
+        "mobileNumberPlaceholder": "Nambari ya simu ya mkononi",
+        "whatsappNumber": "Nambari ya WhatsApp",
+        "primaryAddress": "Anwani ya Msingi",
+        "editImage": "Hariri Picha",
+        "confirm": "Thibitisha",
+        "add": "Ongeza",
+        "video": "Video",
+        "feedImage": "Picha ya feed",
+        "importedImage": "picha iliyoagizwa",
+        "cover": "Jalada",
+        "profile": "Wasifu",
+        "saveAndPublish": "Hifadhi na Chapisha",
+        "saveToFeed": "Hifadhi kwenye Feed",
+        "savedAndPublishedSuccessfully": "Imehifadhiwa na kuchapishwa kwa mafanikio",
+        "saveAndPublishFailed": "Kuhifadhi na kuchapisha hakukufanikiwa. Tafadhali jaribu tena.",
+        "failedToSaveChanges": "Kuhifadhi mabadiliko hakukufanikiwa. Tafadhali jaribu tena.",
+        "networkError": "Hitilafu ya mtandao: Tafadhali angalia muunganisho wako na ujaribu tena.",
+        "unexpectedError": "Hitilafu isiyotarajiwa imetokea. Tafadhali jaribu tena.",
+        "somethingWentWrong": "Kitu kimekwenda vibaya. Tafadhali jaribu tena.",
+        "failedToUploadFiles": "Kupakia faili hakukufanikiwa. Tafadhali jaribu tena.",
+        "failedToUploadImages": "Kupakia picha hakukufanikiwa. Tafadhali jaribu tena.",
+        "failedToSaveImagesToFeed": "Kuhifadhi picha kwenye feed hakukufanikiwa",
+        "failedToUpdateProfile": "Kusasisha wasifu hakukufanikiwa. Tafadhali jaribu tena.",
+        "fetching": "Inapata...",
+        "selectAll": "Chagua zote",
+        "clearSelection": "Futa uteuzi",
+        "error": "Hitilafu imetokea wakati wa kupakia wasifu wako. Tafadhali jaribu tena baadaye.",
+        "errors": {
+          "noFileProvided": "Hakuna faili iliyotolewa kwa upakiaji",
+          "failedToGetAccountId": "Kupata ID ya akaunti kwa upakiaji hakukufanikiwa",
+          "uploadResponseMissingFileData": "Jibu la upakiaji halina data ya faili"
+        }
+      },
+      "accountSetup": {
+        "title": "Kamilisha Usanidi wa Akaunti Yako",
+        "progress": "Maendeleo",
+        "complete": "Kamili",
+        "profileSetupCompleted": "Usanidi wa wasifu umekamilika",
+        "profileSetupIncomplete": "Ongeza picha ya wasifu, wasifu, na viungo vya kijamii",
+        "recommendationsSetupCompleted": "Usanidi wa mapendekezo umekamilika",
+        "recommendationsSetupIncomplete": "Ongeza maeneo, maeneo, na uchapishe orodha yako ya kwanza",
+        "setupButton": "Sanidi",
+        "footerMessage": "Kamilisha hatua zote mbili ili kufungua uzoefu wako kamili wa dashibodi"
+      }
+    }
+  },
+  "toast": {
+    "success": {
+      "loginSuccessful": "Kuingia kumefanikiwa!",
+      "registrationSuccessful": "Usajili umefanikiwa!",
+      "passwordResetSuccessful": "Kuweka upya nenosiri kumefanikiwa!",
+      "emailVerificationSent": "Uthibitisho wa barua pepe umepelekwa!",
+      "resetLinkSent": "Kiungo cha kuweka upya nenosiri kimepelekwa kwenye barua pepe yako!",
+      "resetLinkResent": "Kiungo cha kuweka upya kimepelekwa tena!",
+      "profileImageUpdated": "Picha ya wasifu imesasishwa kwa mafanikio!",
+      "backgroundImageUpdated": "Picha ya nyuma imesasishwa kwa mafanikio!",
+      "recommendedListUpdated": "Recommended List Updated Successfully!!!",
+      "accountCreated": "Akaunti imeundwa kwa mafanikio!",
+      "usernameUpdated": "Jina la mtumiaji limebadilishwa kwa mafanikio!",
+      "profileUpdated": "Wasifu umeongezwa kwa mafanikio!",
+      "settingsSaved": "Mipangilio imehifadhiwa kwa mafanikio!",
+      "dataSaved": "Data imehifadhiwa kwa mafanikio!",
+      "changesSaved": "Mabadiliko yamehifadhiwa kwa mafanikio!",
+      "fileUploaded": "Faili imepakiwa kwa mafanikio!",
+      "imageUploaded": "Picha imepakiwa kwa mafanikio!",
+      "linkCopied": "Link copied to clipboard!",
+      "emailSent": "Barua pepe imetumwa kwa mafanikio!",
+      "notificationSent": "Arifa imetumwa kwa mafanikio!",
+      "actionCompleted": "Hatua imekamilika kwa mafanikio!",
+      "formSubmitted": "Fomu imewasilishwa kwa mafanikio!",
+      "onboardingCompleted": "Kuingia kumekamilika kwa mafanikio!",
+      "welcomeMessage": "Karibu explorers!",
+      "accountActivated": "Akaunti imeamilishwa kwa mafanikio!",
+      "emailVerified": "Barua pepe imethibitishwa kwa mafanikio!",
+      "passwordChanged": "Nenosiri limebadilishwa kwa mafanikio!",
+      "usernameChanged": "Jina la mtumiaji limebadilishwa kwa mafanikio!",
+      "profileCompleted": "Wasifu umekamilika kwa mafanikio!",
+      "setupCompleted": "Usanidi umekamilika kwa mafanikio!",
+      "loggedOutSuccessfully": "Imefanikiwa kutoka!"
+    },
+    "error": {
+      "loginFailed": "Kuingia hakukufanikiwa. Angalia maelezo yako ya kuingia.",
+      "registrationFailed": "Usajili haukufanikiwa. Jaribu tena.",
+      "passwordResetFailed": "Kuweka upya nenosiri hakukufanikiwa. Jaribu tena.",
+      "emailVerificationFailed": "Uthibitisho wa barua pepe haukufanikiwa. Jaribu tena.",
+      "resetLinkFailed": "Kutuma kiungo cha kuweka upya hakukufanikiwa. Jaribu baadaye.",
+      "resetLinkResendFailed": "Kutuma tena hakukufanikiwa. Jaribu baadaye.",
+      "profileImageUpdateFailed": "Failed to upload profile image. Please try again.",
+      "backgroundImageUpdateFailed": "Failed to upload background image. Please try again.",
+      "recommendedListUpdateFailed": "Error Updating Recommended List!!!",
+      "accountCreationFailed": "Account creation failed. Please try again.",
+      "usernameUpdateFailed": "Kusasisha jina la mtumiaji hakukufanikiwa. Jaribu tena.",
+      "profileUpdateFailed": "Profile update failed. Please try again.",
+      "settingsSaveFailed": "Failed to save settings. Please try again.",
+      "dataSaveFailed": "Failed to save data. Please try again.",
+      "changesSaveFailed": "Failed to save changes. Please try again.",
+      "fileUploadFailed": "File upload failed. Please try again.",
+      "imageUploadFailed": "Kupakia picha hakukufanikiwa. Jaribu tena.",
+      "linkCopyFailed": "Failed to copy link. Please try again.",
+      "emailSendFailed": "Kutuma barua pepe hakukufanikiwa. Jaribu tena.",
+      "notificationSendFailed": "Failed to send notification. Please try again.",
+      "actionFailed": "Action failed. Please try again.",
+      "formSubmissionFailed": "Form submission failed. Please try again.",
+      "onboardingFailed": "Kuingia hakukufanikiwa. Jaribu tena.",
+      "accountActivationFailed": "Account activation failed. Please try again.",
+      "passwordChangeFailed": "Password change failed. Please try again.",
+      "usernameChangeFailed": "Username change failed. Please try again.",
+      "profileCompletionFailed": "Profile completion failed. Please try again.",
+      "setupFailed": "Setup failed. Please try again.",
+      "networkError": "Hitilafu ya mtandao. Angalia muunganisho wako.",
+      "serverError": "Hitilafu ya seva. Jaribu baadaye.",
+      "validationError": "Hitilafu ya uthibitisho. Angalia pembejeo yako.",
+      "permissionDenied": "Permission denied. Please contact support.",
+      "sessionExpired": "Kipindi kimeisha. Ingia tena.",
+      "invalidCredentials": "Maelezo ya kuingia si sahihi. Angalia pembejeo yako.",
+      "emailNotFound": "Barua pepe haijapatikana. Jaribu tena.",
+      "usernameAlreadyExists": "Jina la mtumiaji tayari lipo. Chagua lingine.",
+      "emailAlreadyExists": "Barua pepe tayari ipo. Tumia barua pepe nyingine.",
+      "invalidEmailFormat": "Muundo wa barua pepe si sahihi. Ingiza barua pepe sahihi.",
+      "passwordTooWeak": "Nenosiri ni dhaifu sana. Chagua nenosiri kali zaidi.",
+      "passwordsDoNotMatch": "Passwords do not match. Please try again.",
+      "requiredFieldMissing": "Required field is missing. Please fill all required fields.",
+      "invalidInput": "Invalid input. Please check your data.",
+      "fileTooLarge": "File is too large. Please choose a smaller file.",
+      "unsupportedFileType": "Unsupported file type. Please choose a different file.",
+      "uploadLimitExceeded": "Upload limit exceeded. Please try again later.",
+      "operationTimeout": "Operation timed out. Please try again.",
+      "serviceUnavailable": "Service unavailable. Please try again later.",
+      "maintenanceMode": "Service is under maintenance. Please try again later.",
+      "rateLimitExceeded": "Maombi mengi sana. Jaribu baadaye.",
+      "quotaExceeded": "Quota exceeded. Please try again later.",
+      "accessDenied": "Access denied. You don't have permission to perform this action.",
+      "resourceNotFound": "Resource not found. Please check your request.",
+      "conflictError": "Conflict error. The resource already exists.",
+      "preconditionFailed": "Precondition failed. Please check your request.",
+      "tooManyAttempts": "Majaribio mengi sana. Jaribu baadaye.",
+      "accountLocked": "Akaunti imefungwa. Wasiliana na msaada.",
+      "accountSuspended": "Akaunti imesimamishwa. Wasiliana na msaada.",
+      "accountDeleted": "Account is deleted. Please contact support.",
+      "emailNotVerified": "Email is not verified. Please verify your email first.",
+      "phoneNotVerified": "Phone number is not verified. Please verify your phone first.",
+      "twoFactorRequired": "Two-factor authentication is required.",
+      "twoFactorFailed": "Two-factor authentication failed. Please try again.",
+      "captchaFailed": "Captcha verification failed. Please try again.",
+      "invalidToken": "Tokeni si sahihi. Jaribu tena.",
+      "expiredToken": "Tokeni imeisha. Jaribu tena.",
+      "invalidCode": "Invalid code. Please check your input.",
+      "expiredCode": "Code has expired. Please request a new one.",
+      "codeLimitExceeded": "Code limit exceeded. Please try again later.",
+      "invalidUsername": "Invalid username. Please check your input.",
+      "usernameTooShort": "Username is too short. Please choose a longer username.",
+      "usernameTooLong": "Username is too long. Please choose a shorter username.",
+      "usernameInvalidChars": "Username contains invalid characters. Please use only letters, numbers, and hyphens.",
+      "usernameReserved": "Username is reserved. Please choose another username.",
+      "usernameProfanity": "Username contains inappropriate content. Please choose another username.",
+      "primaryAddressRequired": "Anwani ya msingi inahitajika",
+      "addressRequired": "Address is required",
+      "cityRequired": "City is required",
+      "stateRequired": "State is required",
+      "countryRequired": "Country is required",
+      "postalCodeRequired": "Postal code is required",
+      "mobileNumberRequired": "Mobile number is required",
+      "mobileNumberInvalid": "Invalid mobile number format",
+      "mobileNumberTooShort": "Mobile number is too short",
+      "mobileNumberTooLong": "Mobile number is too long",
+      "bioRequired": "Bio is required",
+      "bioTooLong": "Bio is too long. Please keep it under 250 characters",
+      "displayNameRequired": "Display name is required",
+      "displayNameTooShort": "Display name is too short",
+      "displayNameTooLong": "Display name is too long",
+      "accountTypeRequired": "Account type is required",
+      "invalidAccountType": "Invalid account type selected",
+      "imageRequired": "Image is required",
+      "imageTooLarge": "Image is too large. Please choose a smaller image",
+      "unsupportedImageFormat": "Unsupported image format. Please use JPG, PNG, or GIF",
+      "imageProcessingFailed": "Image processing failed. Please try again",
+      "imageCorrupted": "Image is corrupted. Please choose another image",
+      "imageDimensionsInvalid": "Image dimensions are invalid. Please choose another image",
+      "imageSizeInvalid": "Image size is invalid. Please choose another image",
+      "imageFormatInvalid": "Image format is invalid. Please choose another image",
+      "imageQualityTooLow": "Image quality is too low. Please choose a higher quality image",
+      "imageTooSmall": "Image is too small. Please choose a larger image",
+      "imageTooBig": "Image is too big. Please choose a smaller image",
+      "imageAspectRatioInvalid": "Image aspect ratio is invalid. Please choose another image",
+      "imageColorSpaceInvalid": "Image color space is invalid. Please choose another image",
+      "imageMetadataInvalid": "Image metadata is invalid. Please choose another image",
+      "imageSecurityViolation": "Image security violation. Please choose another image",
+      "imageVirusDetected": "Virus detected in image. Please choose another image",
+      "imageMalwareDetected": "Malware detected in image. Please choose another image",
+      "imageSpamDetected": "Spam detected in image. Please choose another image",
+      "imageContentInappropriate": "Image content is inappropriate. Please choose another image",
+      "imageContentViolent": "Image content is violent. Please choose another image",
+      "imageContentSexual": "Image content is sexual. Please choose another image",
+      "imageContentHateful": "Image content is hateful. Please choose another image",
+      "imageContentDiscriminatory": "Image content is discriminatory. Please choose another image",
+      "imageContentOffensive": "Image content is offensive. Please choose another image",
+      "imageContentAbusive": "Image content is abusive. Please choose another image",
+      "imageContentHarassing": "Image content is harassing. Please choose another image",
+      "imageContentThreatening": "Image content is threatening. Please choose another image",
+      "imageContentDangerous": "Image content is dangerous. Please choose another image",
+      "imageContentIllegal": "Image content is illegal. Please choose another image",
+      "imageContentCopyright": "Image content violates copyright. Please choose another image",
+      "imageContentTrademark": "Image content violates trademark. Please choose another image",
+      "imageContentPrivacy": "Image content violates privacy. Please choose another image",
+      "imageContentConsent": "Image content lacks consent. Please choose another image",
+      "imageContentMinors": "Image content involves minors. Please choose another image",
+      "imageContentAnimals": "Image content involves animal cruelty. Please choose another image",
+      "imageContentEnvironment": "Image content harms environment. Please choose another image",
+      "imageContentHealth": "Image content harms health. Please choose another image",
+      "imageContentSafety": "Image content harms safety. Please choose another image",
+      "imageContentSecurity": "Image content harms security. Please choose another image",
+      "imageContentIntegrity": "Image content harms integrity. Please choose another image",
+      "imageContentReputation": "Image content harms reputation. Please choose another image",
+      "imageContentBrand": "Image content harms brand. Please choose another image",
+      "imageContentBusiness": "Image content harms business. Please choose another image",
+      "imageContentPersonal": "Image content harms personal interests. Please choose another image",
+      "imageContentProfessional": "Image content harms professional interests. Please choose another image",
+      "imageContentAcademic": "Image content harms academic interests. Please choose another image",
+      "imageContentCultural": "Image content harms cultural interests. Please choose another image",
+      "imageContentReligious": "Image content harms religious interests. Please choose another image",
+      "imageContentPolitical": "Image content harms political interests. Please choose another image",
+      "imageContentSocial": "Image content harms social interests. Please choose another image",
+      "imageContentEconomic": "Image content harms economic interests. Please choose another image",
+      "imageContentLegal": "Image content harms legal interests. Please choose another image",
+      "imageContentEthical": "Image content harms ethical interests. Please choose another image",
+      "imageContentMoral": "Image content harms moral interests. Please choose another image",
+      "imageContentSpiritual": "Image content harms spiritual interests. Please choose another image",
+      "imageContentPhilosophical": "Image content harms philosophical interests. Please choose another image",
+      "imageContentScientific": "Image content harms scientific interests. Please choose another image",
+      "imageContentTechnical": "Image content harms technical interests. Please choose another image",
+      "imageContentArtistic": "Image content harms artistic interests. Please choose another image",
+      "imageContentCreative": "Image content harms creative interests. Please choose another image",
+      "imageContentIntellectual": "Image content harms intellectual interests. Please choose another image",
+      "imageContentEducational": "Image content harms educational interests. Please choose another image",
+      "imageContentInformational": "Image content harms informational interests. Please choose another image",
+      "imageContentNews": "Image content harms news interests. Please choose another image",
+      "imageContentMedia": "Image content harms media interests. Please choose another image",
+      "imageContentEntertainment": "Image content harms entertainment interests. Please choose another image",
+      "imageContentSports": "Image content harms sports interests. Please choose another image",
+      "imageContentRecreation": "Image content harms recreation interests. Please choose another image",
+      "imageContentLeisure": "Image content harms leisure interests. Please choose another image",
+      "imageContentHobby": "Image content harms hobby interests. Please choose another image",
+      "imageContentInterest": "Image content harms interest interests. Please choose another image",
+      "imageContentPassion": "Image content harms passion interests. Please choose another image",
+      "imageContentLove": "Image content harms love interests. Please choose another image",
+      "imageContentHate": "Image content harms hate interests. Please choose another image",
+      "imageContentAnger": "Image content harms anger interests. Please choose another image",
+      "imageContentFear": "Image content harms fear interests. Please choose another image",
+      "imageContentSadness": "Image content harms sadness interests. Please choose another image",
+      "imageContentJoy": "Image content harms joy interests. Please choose another image",
+      "imageContentHappiness": "Image content harms happiness interests. Please choose another image",
+      "imageContentExcitement": "Image content harms excitement interests. Please choose another image",
+      "imageContentSurprise": "Image content harms surprise interests. Please choose another image",
+      "imageContentDisgust": "Image content harms disgust interests. Please choose another image",
+      "imageContentShame": "Image content harms shame interests. Please choose another image",
+      "imageContentGuilt": "Image content harms guilt interests. Please choose another image",
+      "imageContentPride": "Image content harms pride interests. Please choose another image",
+      "imageContentEnvy": "Image content harms envy interests. Please choose another image",
+      "imageContentJealousy": "Image content harms jealousy interests. Please choose another image",
+      "imageContentGreed": "Image content harms greed interests. Please choose another image",
+      "imageContentLust": "Image content harms lust interests. Please choose another image",
+      "imageContentGluttony": "Image content harms gluttony interests. Please choose another image",
+      "imageContentSloth": "Image content harms sloth interests. Please choose another image",
+      "imageContentWrath": "Image content harms wrath interests. Please choose another image"
+    },
+    "warning": {
+      "usernameCooldown": "Username change is temporarily locked due to cooldown period",
+      "passwordWeak": "Password is weak. Consider using a stronger password",
+      "emailNotVerified": "Email is not verified. Please verify your email",
+      "phoneNotVerified": "Phone number is not verified. Please verify your phone",
+      "profileIncomplete": "Profile is incomplete. Please complete your profile",
+      "settingsNotSaved": "Settings are not saved. Please save your settings",
+      "dataNotSaved": "Data is not saved. Please save your data",
+      "changesNotSaved": "Changes are not saved. Please save your changes",
+      "fileNotUploaded": "File is not uploaded. Please upload your file",
+      "imageNotUploaded": "Image is not uploaded. Please upload your image",
+      "linkNotCopied": "Link is not copied. Please copy your link",
+      "emailNotSent": "Email is not sent. Please send your email",
+      "notificationNotSent": "Notification is not sent. Please send your notification",
+      "actionNotCompleted": "Action is not completed. Please complete your action",
+      "formNotSubmitted": "Form is not submitted. Please submit your form",
+      "onboardingNotCompleted": "Onboarding is not completed. Please complete your onboarding",
+      "accountNotActivated": "Account is not activated. Please activate your account",
+      "passwordNotChanged": "Password is not changed. Please change your password",
+      "usernameNotChanged": "Username is not changed. Please change your username",
+      "profileNotCompleted": "Profile is not completed. Please complete your profile",
+      "setupNotCompleted": "Setup is not completed. Please complete your setup",
+      "networkSlow": "Network is slow. Please check your connection",
+      "serverSlow": "Server is slow. Please try again later",
+      "validationPending": "Validation is pending. Please wait",
+      "permissionPending": "Permission is pending. Please wait",
+      "sessionExpiring": "Session is expiring. Please login again",
+      "credentialsExpiring": "Credentials are expiring. Please update your credentials",
+      "emailExpiring": "Email is expiring. Please update your email",
+      "phoneExpiring": "Phone is expiring. Please update your phone",
+      "profileExpiring": "Profile is expiring. Please update your profile",
+      "settingsExpiring": "Settings are expiring. Please update your settings",
+      "dataExpiring": "Data is expiring. Please update your data",
+      "changesExpiring": "Changes are expiring. Please update your changes",
+      "fileExpiring": "File is expiring. Please update your file",
+      "imageExpiring": "Image is expiring. Please update your image",
+      "linkExpiring": "Link is expiring. Please update your link",
+      "notificationExpiring": "Notification is expiring. Please update your notification",
+      "actionExpiring": "Action is expiring. Please update your action",
+      "formExpiring": "Form is expiring. Please update your form",
+      "onboardingExpiring": "Onboarding is expiring. Please update your onboarding",
+      "accountExpiring": "Account is expiring. Please update your account",
+      "passwordExpiring": "Password is expiring. Please update your password",
+      "usernameExpiring": "Username is expiring. Please update your username",
+      "setupExpiring": "Setup is expiring. Please update your setup"
+    },
+    "info": {
+      "loading": "Inapakia...",
+      "processing": "Processing...",
+      "saving": "Saving...",
+      "uploading": "Uploading...",
+      "downloading": "Downloading...",
+      "connecting": "Connecting...",
+      "disconnecting": "Disconnecting...",
+      "sending": "Sending...",
+      "receiving": "Receiving...",
+      "updating": "Updating...",
+      "refreshing": "Refreshing...",
+      "synchronizing": "Synchronizing...",
+      "validating": "Validating...",
+      "verifying": "Verifying...",
+      "checking": "Checking...",
+      "searching": "Searching...",
+      "filtering": "Filtering...",
+      "sorting": "Sorting...",
+      "organizing": "Organizing...",
+      "arranging": "Arranging...",
+      "configuring": "Configuring...",
+      "setting": "Setting...",
+      "adjusting": "Adjusting...",
+      "modifying": "Modifying...",
+      "changing": "Changing...",
+      "switching": "Switching...",
+      "toggling": "Toggling...",
+      "enabling": "Enabling...",
+      "disabling": "Disabling...",
+      "activating": "Activating...",
+      "deactivating": "Deactivating...",
+      "starting": "Starting...",
+      "stopping": "Stopping...",
+      "pausing": "Pausing...",
+      "resuming": "Resuming...",
+      "restarting": "Restarting...",
+      "resetting": "Resetting...",
+      "clearing": "Clearing...",
+      "deleting": "Deleting...",
+      "removing": "Removing...",
+      "adding": "Adding...",
+      "inserting": "Inserting...",
+      "creating": "Creating...",
+      "building": "Building...",
+      "constructing": "Constructing...",
+      "generating": "Generating...",
+      "producing": "Producing...",
+      "making": "Making...",
+      "preparing": "Preparing...",
+      "readying": "Readying...",
+      "initializing": "Initializing...",
+      "launching": "Launching...",
+      "opening": "Opening...",
+      "closing": "Closing...",
+      "shutting": "Shutting...",
+      "ending": "Ending...",
+      "finishing": "Finishing...",
+      "completing": "Completing...",
+      "finalizing": "Finalizing...",
+      "concluding": "Concluding...",
+      "terminating": "Terminating...",
+      "canceling": "Canceling...",
+      "aborting": "Aborting...",
+      "interrupting": "Interrupting...",
+      "halting": "Halting...",
+      "freezing": "Freezing...",
+      "unfreezing": "Unfreezing...",
+      "thawing": "Thawing...",
+      "melting": "Melting...",
+      "cooling": "Cooling...",
+      "heating": "Heating...",
+      "warming": "Warming...",
+      "chilling": "Chilling...",
+      "renewing": "Renewing...",
+      "restoring": "Restoring...",
+      "recovering": "Recovering...",
+      "repairing": "Repairing...",
+      "fixing": "Fixing...",
+      "correcting": "Correcting...",
+      "tuning": "Tuning...",
+      "optimizing": "Optimizing...",
+      "improving": "Improving...",
+      "enhancing": "Enhancing...",
+      "upgrading": "Upgrading...",
+      "modernizing": "Modernizing..."
+    }
+  },
+  "emailVerification": {
+    "title": "Verify Your Email",
+    "description": "We've sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
+    "checkEmail": "Check your email",
+    "emailSent": "Verification email sent!",
+    "resendEmail": "Resend Email",
+    "resendIn": "Resend in",
+    "seconds": "seconds",
+    "didntReceive": "Didn't receive the email?",
+    "checkSpam": "Please check your spam folder or try again.",
+    "backToLogin": "Back to Login",
+    "emailAddress": "Email Address",
+    "verificationSent": "Verification email sent to:",
+    "clickLink": "Click the link in the email to verify your account.",
+    "expiresIn": "This link expires in 24 hours.",
+    "needHelp": "Need help?",
+    "contactSupport": "Contact Support"
+  },
+  "settings": {
+    "title": "Mipangilio",
+    "account": {
+      "heading": "Akaunti",
+      "security": {
+        "title": "Akaunti na Usalama"
+      },
+      "changePassword": {
+        "text": "Badilisha nenosiri?",
+        "button": "Badilisha Nenosiri",
+        "modalTitle": "Badilisha Nenosiri",
+        "currentPassword": "Nenosiri la sasa",
+        "newPassword": "Nenosiri jipya",
+        "confirmPassword": "Thibitisha nenosiri jipya",
+        "updateButton": "Sasisha Nenosiri",
+        "currentPasswordPlaceholder": "Ingiza nenosiri lako la sasa",
+        "newPasswordPlaceholder": "Ingiza nenosiri jipya",
+        "confirmPasswordPlaceholder": "Ingiza tena nenosiri jipya",
+        "successMessage": "Nenosiri limesasishwa kwa mafanikio. Utaelekezwa kwenye kuingia kwa usalama.",
+        "redirectMessage": "Inaelekeza kwenye kuingia kwa usalama...",
+        "description": "Sasisha nenosiri lako ili kuweka akaunti yako salama"
+      },
+      "deactivateAccount": {
+        "text": "Lemaza akaunti yako?",
+        "button": "Lemaza Akaunti",
+        "modalTitle": "Lemaza akaunti yako?",
+        "modalDescription": "Je, una uhakika unataka kulemaza akaunti yako?",
+        "enterUsername": "Ingiza jina lako la mtumiaji",
+        "enterPassword": "Ingiza nenosiri lako",
+        "usernamePlaceholder": "Ingiza jina lako la mtumiaji",
+        "passwordPlaceholder": "Ingiza nenosiri lako la sasa",
+        "confirmButton": "Lemaza Akaunti Yangu",
+        "deactivatedButton": "Imelemazwa",
+        "successMessage": "Akaunti imelemazwa kwa mafanikio",
+        "activatedMessage": "Akaunti imeamilishwa kwa mafanikio",
+        "description": "Zima akaunti yako kwa muda"
+      },
+      "deleteAccount": {
+        "text": "Futa akaunti yako?",
+        "button": "Futa Akaunti",
+        "step1": {
+          "modalTitle": "Futa akaunti yako?",
+          "modalDescription": "Je, una uhakika unataka kufuta akaunti yako? Kitendo hiki hakiwezi kubatilishwa.",
+          "modalDescription2": "Ikiwa unataka kuhifadhi data yako, unaweza kulemaza akaunti yako badala yake.",
+          "deactivateInsteadButton": "Lemaza akaunti badala yake",
+          "continueButton": "Endelea na kufuta"
+        },
+        "step2": {
+          "modalTitle": "Ingiza maelezo yako",
+          "enterUsername": "Ingiza jina lako la mtumiaji",
+          "enterPassword": "Ingiza nenosiri lako",
+          "confirmPassword": "Thibitisha nenosiri lako",
+          "usernamePlaceholder": "Ingiza jina lako la mtumiaji",
+          "passwordPlaceholder": "Ingiza nenosiri lako",
+          "confirmPasswordPlaceholder": "Thibitisha nenosiri lako",
+          "continueButton": "Endelea"
+        },
+        "step3": {
+          "modalTitle": "Kwa nini unaondoka?",
+          "reasonPlaceholder": "Tafadhali tuambie sababu ya kuondoka...",
+          "continueButton": "Endelea"
+        },
+        "step4": {
+          "modalTitle": "Thibitisha kufuta",
+          "confirmText": "Chapa 'CONFIRM DELETE' ili kuendelea",
+          "confirmPlaceholder": "Chapa 'CONFIRM DELETE' ili kuthibitisha",
+          "deleteButton": "Futa Akaunti Yangu",
+          "confirmationRequired": "Tafadhali chapa 'CONFIRM DELETE' ili kuthibitisha.",
+          "reasonRequired": "Tafadhali toa sababu ya kuondoka.",
+          "successMessage": "Akaunti imefutwa kwa mafanikio."
+        },
+        "description": "Futa akaunti yako na data zote kabisa"
+      }
+    },
+    "languagePreference": {
+      "heading": "Upendeleo wa Lugha",
+      "selectLanguage": "Chagua lugha yako",
+      "availableLanguages": "Chagua kutoka kwa lugha 47 zinazopatikana",
+      "currentLanguage": "Ya sasa: {{flag}} {{name}}",
+      "languageChanged": "Lugha imebadilishwa kuwa {{name}}",
+      "description": "Chagua lugha unayopendelea kwa kiolesura. Hii itabadilisha lugha ya maandishi yote, vifungo na meni katika programu yote."
+    },
+    "subtitle": "Simamia mipangilio na mapendeleo ya akaunti yako"
+  },
+  "seo": {
+    "title": "Contact explorers | Support, Help and Partnership enquiries.",
+    "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
+    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
+    "keywords": [
+      "contact explorers",
+      "explorers support",
+      "get in touch explorers",
+      "customer service travel app",
+      "partnership inquiry explorers",
+      "help center local recommendations",
+      "technical support explorers",
+      "travel app customer service",
+      "feedback location sharing",
+      "account assistance explorers",
+      "business collaboration explorers",
+      "report problem explorers",
+      "share local recommendations support",
+      "find explorers contact",
+      "customer service",
+      "explorers team",
+      "help center",
+      "contact support",
+      "QR code support",
+      "local recommendations help",
+      "partnership inquiries"
+    ]
+  },
+  "sidebar": {
+    "home": "Nyumbani",
+    "profile": "Wasifu",
+    "recommendations": "Mapendekezo",
+    "settings": "Mipangilio",
+    "logout": "Ondoka",
+    "analytics": "Uchambuzi",
+    "loading": "Inapakia...",
+    "clickToOpenMenu": "Bofya ili kufungua menyu"
+  },
+  "analytics": {
+    "dashboard": {
+      "title": "Dashibodi ya Uchambuzi",
+      "subtitle": "Fuatilia utendakazi wa nambari za QR zako na mshirikiano wa watumiaji",
+      "timePeriod": "Kipindi cha Muda:",
+      "timeFilter": {
+        "today": "Leo",
+        "last7days": "Siku 7 Zilizopita",
+        "last30days": "Siku 30 Zilizopita",
+        "custom": "Masafa Maalum",
+        "selectPeriod": "Chagua Kipindi"
+      },
+      "dateRange": {
+        "from": "Kutoka:",
+        "to": "Hadi:"
+      },
+      "summaryCards": {
+        "totalViews": "Jumla ya Maoni",
+        "totalClicks": "Jumla ya Kubofya",
+        "totalQRViews": "Jumla ya Maoni ya QR",
+        "totalLinkViews": "Jumla ya Maoni ya Kiungo"
+      },
+      "loading": {
+        "loadingData": "Inapakia data ya uchambuzi...",
+        "resolvingCountry": "Inatatua data ya nchi..."
+      },
+      "error": {
+        "title": "Hitilafu ya Kuingiza Uchambuzi",
+        "message": "Hawezi kuleta data ya uchambuzi. Tafadhali jaribu tena baadaye.",
+        "errorLabel": "Hitilafu:"
+      },
+      "comingSoon": {
+        "title": "Uchambuzi Unakuja Hivi Karibuni",
+        "message": "Uchambuzi utapatikana katika <strong>{{days}} siku{{daysPlural}}</strong> baada ya kuunda akaunti yako.",
+        "whyWait": {
+          "title": "Kwa nini kusubiri?",
+          "reasons": {
+            "accuracy": "• Inahakikisha usahihi wa data na kuzuia spam",
+            "interactions": "• Inatoa muda wa mwingiliano wa maana wa watumiaji",
+            "insights": "• Inatoa maarifa ya uhakika ya uchambuzi"
+          }
+        },
+        "tip": "Wakati huo, anza kushiriki nambari za QR zako ili kuzalisha data kwa wakati uchambuzi utakapopatikana!",
+        "filterTip": "<strong>Kidokezo:</strong> Mara tu uchambuzi utakapopatikana, utaweza kuchuja kwa vipindi vya muda (leo, siku 7 zilizopita, siku 30 zilizopita, au masafa maalum) ili kuona data yako."
+      },
+      "emptyState": {
+        "title": "Hakuna Data ya Uchambuzi",
+        "noDataMessage": "Hakuna data ya uchambuzi iliyopatikana kwa akaunti yako. Uchambuzi utaonekana hapa mara watu watakapoanza kuona na kuingiliana na nambari za QR zako.",
+        "customRange": {
+          "bothMissing": "Tafadhali chagua tarehe za mwanzo na mwisho kwa masafa maalum ili kuona data ya uchambuzi.",
+          "startMissing": "Tafadhali chagua tarehe ya mwanzo kwa masafa maalum ili kuona data ya uchambuzi.",
+          "endMissing": "Tafadhali chagua tarehe ya mwisho kwa masafa maalum ili kuona data ya uchambuzi."
+        },
+        "noDataForPeriod": {
+          "today": "Hakuna data ya uchambuzi inayopatikana kwa leo. Tafadhali chagua muda mwingine wa muda ili kuona data yako.",
+          "last7days": "Hakuna data ya uchambuzi inayopatikana kwa siku 7 zilizopita. Tafadhali chagua muda mwingine wa muda ili kuona data yako.",
+          "last30days": "Hakuna data ya uchambuzi inayopatikana kwa siku 30 zilizopita. Tafadhali chagua muda mwingine wa muda ili kuona data yako.",
+          "custom": "Hakuna data ya uchambuzi inayopatikana kwa masafa maalum ({{startDate}} hadi {{endDate}}). Tafadhali chagua muda mwingine wa muda ili kuona data yako.",
+          "default": "Hakuna data ya uchambuzi inayopatikana kwa muda uliochaguliwa. Tafadhali chagua muda mwingine wa muda ili kuona data yako."
+        },
+        "howToStart": {
+          "title": "Kuanza kuona uchambuzi:",
+          "shareQR": "• Shiriki nambari za QR zako kwenye mitandao ya kijamii",
+          "includeQR": "• Jumuisha nambari za QR kwenye nyenzo zako za uuzaji",
+          "askFriends": "• Omba marafiki wapige picha nambari za QR zako",
+          "viewProfile": "• Tazama kurasa za wasifu wako wa umma"
+        }
+      },
+      "charts": {
+        "topCountries": {
+          "title": "Nchi 3 Bora kwa Maoni",
+          "retryGeolocation": "Rudia Geolocation",
+          "geolocationIssue": "Tatizo la Geolocation:",
+          "countryDataUnavailable": "Data ya Nchi Haipatikani",
+          "unableToResolve": "Hawezi kutatua anwani za IP kwa nchi wakati huu. Hii inaweza kuwa kutokana na vikwazo vya mtandao au ukomo wa huduma.",
+          "failedToResolve": "Imeshindwa kutatua data ya nchi. Tafadhali jaribu tena baadaye.",
+          "analyticsSummary": "Muhtasari wa Uchambuzi:",
+          "totalViewEvents": "• {{count}} jumla ya matukio ya maoni",
+          "eventsWithCountry": "• {{count}} matukio yenye data ya nchi",
+          "eventsPending": "• {{count}} matukio yanayosubiri geolocation",
+          "willAppear": "Data ya nchi itaonekana kiotomatiki mara huduma za geolocation za IP zitakapopatikana.",
+          "tooltip": {
+            "country": "Nchi: {{country}}",
+            "views": "Maoni: {{count}}"
+          },
+          "legend": "Maoni"
+        },
+        "worldMap": {
+          "title": "Usambazaji wa Maoni Duniani",
+          "subtitle": "Ramani ya dunia ya mwingiliano inayonyesha usambazaji wa maoni katika nchi kutoka kurasa za umma",
+          "noGeographicData": "Hakuna Data ya Kijiografia Inayopatikana",
+          "unableToResolve": "Hawezi kutatua anwani za IP kwa nchi wakati huu. Hii inaweza kuwa kutokana na vikwazo vya mtandao au ukomo wa huduma.",
+          "failedToResolve": "Imeshindwa kutatua data ya nchi. Tafadhali jaribu tena baadaye.",
+          "analyticsSummary": "Muhtasari wa Uchambuzi:",
+          "totalViewEvents": "• {{count}} jumla ya matukio ya maoni",
+          "eventsWithCountry": "• {{count}} matukio yenye data ya nchi",
+          "eventsPending": "• {{count}} matukio yanayosubiri geolocation",
+          "willAppear": "Data ya nchi itaonekana kiotomatiki mara huduma za geolocation za IP zitakapopatikana.",
+          "tooltip": {
+            "country": "{{country}}",
+            "views": "{{views}} maoni"
+          },
+          "countriesWithViews": "{{count}} nchi zenye maoni",
+          "legend": {
+            "views": "Maoni:",
+            "low": "Chini",
+            "medium": "Wastani",
+            "high": "Juu",
+            "highest": "Juu Zaidi"
+          }
+        },
+        "trafficSource": {
+          "title": "Chanzo cha Trafiki Baada ya Muda",
+          "subtitle": "Fuatilia jinsi trafiki kutoka vyanzo tofauti inavyobadilika baada ya muda",
+          "selectSource": "Chagua Chanzo cha Trafiki:",
+          "allSources": "Vyanzo Vyote",
+          "direct": "Moja kwa Moja",
+          "qrCode": "Nambari ya QR",
+          "instagram": "Instagram",
+          "whatsapp": "WhatsApp",
+          "twitter": "Twitter",
+          "noTrafficData": "Hakuna Data ya Trafiki Inayopatikana",
+          "noViewEvents": "Hakuna matukio ya maoni yaliyopatikana na habari za chanzo cha trafiki.",
+          "analyticsSummary": "Muhtasari wa Uchambuzi:",
+          "totalViewEvents": "• {{count}} jumla ya matukio ya maoni",
+          "eventsWithUTM": "• {{count}} matukio yenye chanzo cha UTM",
+          "directTraffic": "• {{count}} matukio ya trafiki ya moja kwa moja",
+          "willAppear": "Data ya chanzo cha trafiki itaonekana mara watumiaji watakapotembelea kurasa zako na vigezo vya UTM.",
+          "tooltip": {
+            "sourceCount": "{{source}}: {{count}}"
+          }
+        },
+        "locationEngagement": {
+          "title": "Mshirikiano na Eneo",
+          "subtitle": "Fuatilia maoni kwa maeneo tofauti baada ya muda",
+          "selectLocation": "Chagua Eneo:",
+          "allLocations": "Maeneo Yote",
+          "selectLocationPlaceholder": "Chagua Eneo",
+          "locationViews": "{{location}} ({{count}} maoni)",
+          "noLocationData": "Hakuna data ya maoni ya eneo inayopatikana",
+          "unknownLocation": "Eneo Lisilojulikana",
+          "location": "Eneo",
+          "tooltip": {
+            "date": "Tarehe: {{date}}",
+            "locationViews": "{{location}}: {{value}} maoni"
+          },
+          "stats": {
+            "totalLocations": "Jumla ya Maeneo",
+            "totalViews": "Jumla ya Maoni",
+            "avgViews": "Wastani wa Maoni/Eneo"
+          }
+        },
+        "recommendedPlaces": {
+          "title": "Mshirikiano na Maeneo Yanayopendekezwa",
+          "subtitle": "Fuatilia kubofya kwa maeneo yanayopendekezwa kwa eneo",
+          "selectLocation": "Chagua Eneo:",
+          "selectLocationPlaceholder": "Chagua Eneo",
+          "locationPlaces": "{{location}} ({{count}} maeneo)",
+          "noRecommendationData": "Hakuna Data ya Mapendekezo",
+          "noDataMessage": "Hakuna data ya kubofya kwa mapendekezo inayopatikana kwa kipindi kilichochaguliwa.",
+          "analyticsSummary": "Muhtasari wa Uchambuzi:",
+          "totalClickEvents": "• {{count}} jumla ya matukio ya kubofya",
+          "recordsWithRecommendations": "• {{count}} rekodi zenye Kitambulisho cha Mapendekezo",
+          "uniqueRecommendations": "• {{count}} mapendekezo ya kipekee",
+          "selectLocationPrompt": "Tafadhali chagua eneo ili kuona data ya mapendekezo.",
+          "noClicksMessage": "Hakuna kubofya kwa mapendekezo kilichopatikana kwa eneo lililochaguliwa. Data ya mapendekezo itaonekana mara watumiaji watakapobofya kadi za maeneo katika kurasa zako za eneo.",
+          "unknownPlace": "Mahali Lisilojulikana",
+          "unknownCategory": "Jamii Isiyojulikana",
+          "unknownLocation": "Eneo Lisilojulikana",
+          "tooltip": {
+            "place": "{{place}}",
+            "category": "Jamii: {{category}}",
+            "clicks": "Kubofya: {{count}}"
+          },
+          "stats": {
+            "placesShown": "Maeneo Yaliyoonyeshwa",
+            "totalClicks": "Jumla ya Kubofya",
+            "avgClicks": "Wastani wa Kubofya/Mahali"
+          }
+        },
+        "socialMedia": {
+          "title": "Mwingiliano wa Mitandao ya Kijamii",
+          "subtitle": "Fuatilia kubofya kwa viungo vya mitandao ya kijamii kutoka wasifu wako wa umma katika majukwaa yote",
+          "noDataTitle": "Hakuna Data ya Mwingiliano wa Mitandao ya Kijamii",
+          "noDataMessage": "Hakuna data ya kubofya kwa mitandao ya kijamii inayopatikana kutoka ukurasa wako wa wasifu wa umma.",
+          "analyticsSummary": "Muhtasari wa Uchambuzi:",
+          "totalSocialClicks": "• {{count}} jumla ya kubofya kwa mitandao ya kijamii",
+          "uniquePlatforms": "• {{count}} majukwaa ya kipekee",
+          "trackingNote": "• Inafuatilia tu kubofya kutoka ukurasa wa wasifu wa umma",
+          "willAppear": "Data ya mwingiliano wa mitandao ya kijamii itaonekana mara watumiaji watakapobofya viungo vyako vya mitandao ya kijamii.",
+          "tooltip": {
+            "platform": "{{platform}}",
+            "clicks": "Kubofya: {{count}}"
+          },
+          "stats": {
+            "platforms": "Majukwaa",
+            "totalClicks": "Jumla ya Kubofya",
+            "avgClicks": "Wastani wa Kubofya/Jukwaa"
+          }
+        }
+      }
+    }
+  },
+  "countries": {
+    "US": "United States",
+    "IN": "India",
+    "GB": "United Kingdom",
+    "CA": "Canada",
+    "AU": "Australia",
+    "DE": "Germany",
+    "FR": "France",
+    "IT": "Italy",
+    "ES": "Spain",
+    "BR": "Brazil",
+    "MX": "Mexico",
+    "JP": "Japan",
+    "CN": "China",
+    "RU": "Russia",
+    "KR": "South Korea",
+    "NL": "Netherlands",
+    "SE": "Sweden",
+    "NO": "Norway",
+    "DK": "Denmark",
+    "FI": "Finland",
+    "CH": "Switzerland",
+    "AT": "Austria",
+    "BE": "Belgium",
+    "PL": "Poland",
+    "CZ": "Czech Republic",
+    "HU": "Hungary",
+    "RO": "Romania",
+    "BG": "Bulgaria",
+    "GR": "Greece",
+    "PT": "Portugal",
+    "IE": "Ireland",
+    "IS": "Iceland",
+    "LU": "Luxembourg",
+    "MT": "Malta",
+    "CY": "Cyprus",
+    "EE": "Estonia",
+    "LV": "Latvia",
+    "LT": "Lithuania",
+    "SI": "Slovenia",
+    "SK": "Slovakia",
+    "HR": "Croatia",
+    "BA": "Bosnia and Herzegovina",
+    "RS": "Serbia",
+    "ME": "Montenegro",
+    "MK": "North Macedonia",
+    "AL": "Albania",
+    "XK": "Kosovo",
+    "MD": "Moldova",
+    "UA": "Ukraine",
+    "BY": "Belarus",
+    "GE": "Georgia",
+    "AM": "Armenia",
+    "AZ": "Azerbaijan",
+    "KZ": "Kazakhstan",
+    "UZ": "Uzbekistan",
+    "KG": "Kyrgyzstan",
+    "TJ": "Tajikistan",
+    "TM": "Turkmenistan",
+    "AF": "Afghanistan",
+    "PK": "Pakistan",
+    "BD": "Bangladesh",
+    "LK": "Sri Lanka",
+    "MV": "Maldives",
+    "NP": "Nepal",
+    "BT": "Bhutan",
+    "MM": "Myanmar",
+    "TH": "Thailand",
+    "LA": "Laos",
+    "KH": "Cambodia",
+    "VN": "Vietnam",
+    "MY": "Malaysia",
+    "SG": "Singapore",
+    "BN": "Brunei",
+    "ID": "Indonesia",
+    "PH": "Philippines",
+    "TL": "East Timor",
+    "MN": "Mongolia",
+    "KP": "North Korea",
+    "TW": "Taiwan",
+    "HK": "Hong Kong",
+    "MO": "Macau",
+    "SA": "Saudi Arabia",
+    "AE": "United Arab Emirates",
+    "QA": "Qatar",
+    "KW": "Kuwait",
+    "BH": "Bahrain",
+    "OM": "Oman",
+    "YE": "Yemen",
+    "IQ": "Iraq",
+    "IR": "Iran",
+    "SY": "Syria",
+    "LB": "Lebanon",
+    "JO": "Jordan",
+    "IL": "Israel",
+    "PS": "Palestine",
+    "TR": "Turkey",
+    "EG": "Egypt",
+    "LY": "Libya",
+    "TN": "Tunisia",
+    "DZ": "Algeria",
+    "MA": "Morocco",
+    "SD": "Sudan",
+    "SS": "South Sudan",
+    "ET": "Ethiopia",
+    "ER": "Eritrea",
+    "DJ": "Djibouti",
+    "SO": "Somalia",
+    "KE": "Kenya",
+    "UG": "Uganda",
+    "TZ": "Tanzania",
+    "RW": "Rwanda",
+    "BI": "Burundi",
+    "MW": "Malawi",
+    "ZM": "Zambia",
+    "ZW": "Zimbabwe",
+    "BW": "Botswana",
+    "NA": "Namibia",
+    "ZA": "South Africa",
+    "LS": "Lesotho",
+    "SZ": "Eswatini",
+    "MG": "Madagascar",
+    "MU": "Mauritius",
+    "SC": "Seychelles",
+    "KM": "Comoros",
+    "MZ": "Mozambique",
+    "AO": "Angola",
+    "CD": "Democratic Republic of the Congo",
+    "CG": "Republic of the Congo",
+    "CF": "Central African Republic",
+    "TD": "Chad",
+    "CM": "Cameroon",
+    "NG": "Nigeria",
+    "NE": "Niger",
+    "ML": "Mali",
+    "BF": "Burkina Faso",
+    "CI": "Ivory Coast",
+    "GH": "Ghana",
+    "TG": "Togo",
+    "BJ": "Benin",
+    "SN": "Senegal",
+    "GM": "Gambia",
+    "GW": "Guinea-Bissau",
+    "GN": "Guinea",
+    "SL": "Sierra Leone",
+    "LR": "Liberia",
+    "MR": "Mauritania",
+    "CV": "Cape Verde",
+    "ST": "São Tomé and Príncipe",
+    "GQ": "Equatorial Guinea",
+    "GA": "Gabon",
+    "AR": "Argentina",
+    "BO": "Bolivia",
+    "CL": "Chile",
+    "CO": "Colombia",
+    "EC": "Ecuador",
+    "FK": "Falkland Islands",
+    "GF": "French Guiana",
+    "GY": "Guyana",
+    "PY": "Paraguay",
+    "PE": "Peru",
+    "SR": "Suriname",
+    "UY": "Uruguay",
+    "VE": "Venezuela",
+    "CU": "Cuba",
+    "JM": "Jamaica",
+    "HT": "Haiti",
+    "DO": "Dominican Republic",
+    "PR": "Puerto Rico",
+    "TT": "Trinidad and Tobago",
+    "BB": "Barbados",
+    "LC": "Saint Lucia",
+    "VC": "Saint Vincent and the Grenadines",
+    "GD": "Grenada",
+    "AG": "Antigua and Barbuda",
+    "KN": "Saint Kitts and Nevis",
+    "DM": "Dominica",
+    "BS": "Bahamas",
+    "BZ": "Belize",
+    "GT": "Guatemala",
+    "SV": "El Salvador",
+    "HN": "Honduras",
+    "NI": "Nicaragua",
+    "CR": "Costa Rica",
+    "PA": "Panama",
+    "NZ": "New Zealand",
+    "FJ": "Fiji",
+    "PG": "Papua New Guinea",
+    "SB": "Solomon Islands",
+    "VU": "Vanuatu",
+    "NC": "New Caledonia",
+    "PF": "French Polynesia",
+    "WS": "Samoa",
+    "TO": "Tonga",
+    "KI": "Kiribati",
+    "TV": "Tuvalu",
+    "NR": "Nauru",
+    "PW": "Palau",
+    "FM": "Micronesia",
+    "MH": "Marshall Islands"
+  }
+}

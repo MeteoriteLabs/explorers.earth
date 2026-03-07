@@ -1,0 +1,1932 @@
+﻿{
+    "header": {
+        "nav": {
+            "howItWorks": "તે કેવી રીતે કામ કરે છે",
+            "whoIsFor": "કોના માટે",
+            "faq": "વારંવાર પૂછાતા પ્રશ્નો",
+            "about": "વિશે",
+            "contact": "સંપર્ક"
+        },
+        "auth": {
+            "login": "લોગ ઇન",
+            "signUp": "સાઇન અપ"
+        }
+    },
+    "hero": {
+        "headline": "તમારી બધી ભલામણો એક QR અને સરળ લિંકમાં.",
+        "subtext": "એક સ્થળ વિશે તમે જે જાણો છો અને પ્રેમ કરો છો તે શેર કરો — અને તેને બધા માટે, દરેક જગ્યાએ શોધવા યોગ્ય બનાવો",
+        "inputLabel": "તમારું explorers URL રાખો:",
+        "inputPlaceholder": "તમારું નામ",
+        "ctaButton": "explorers રાખો",
+        "signupPrompt": "હવે સાઇન અપ કરો અને તમારું મેળવો"
+    },
+    "sections": {
+        "createCustomize": {
+            "headline": "મિનિટોમાં તમારું explorers બનાવો અને કસ્ટમાઇઝ કરો",
+            "subtext": "તમારા પ્રિય સ્થળો ઉમેરો, શહેર અથવા વિષય દ્વારા વ્યવસ્થિત કરો, અને તમારું QR તાત્કાલિક જનરેટ કરો.",
+            "bulletPoints": {
+                "addSpots": {
+                    "title": "તમારા પ્રિય સ્થળો ઉમેરો",
+                    "description": "તમારા must-visit સાથે યાદી બનાવો"
+                },
+                "organize": {
+                    "title": "શહેર અથવા વિષય દ્વારા વ્યવસ્થિત કરો",
+                    "description": "તમારા પ્રેક્ષકો માટે અર્થપૂર્ણ કેટેગરીઝ બનાવો"
+                },
+                "generate": {
+                    "title": "તમારું લિંક અને QR તાત્કાલિક જનરેટ કરો",
+                    "description": "તમારું કસ્ટમાઇઝ્ડ QR સેકન્ડોમાં તૈયાર છે"
+                },
+                "share": {
+                    "title": "ડિજિટલ રીતે અથવા વાસ્તવિક વિશ્વમાં QR દ્વારા શેર કરો",
+                    "description": ""
+                }
+            },
+            "mockup": {
+                "title": "મારી ભલામણો",
+                "addPlace": "સ્થળ ઉમેરો"
+            }
+        },
+        "shareAnywhere": {
+            "headline": "સોશિયલ મીડિયા, સ્ટોરફ્રન્ટ, અથવા શહેરી દિવાલો પર શેર કરો",
+            "subtext": "તમારા Instagram bio માં ઉમેરો, મેનુ પર પ્રિન્ટ કરો, અથવા સ્વાગત પુસ્તકોમાં સમાવેશ કરો — તમારી માર્ગદર્શિકા, હંમેશા તૈયાર.",
+            "scanText": "સ્થાનિક ભલામણો માટે સ્કેન કરો",
+            "storefrontText": "સ્ટોરફ્રન્ટ ડિસ્પ્લે માટે પરફેક્ટ",
+            "instagramTitle": "તમારા Instagram bio માં ઉમેરો",
+            "instagramDesc": "તમારા ફોલોવર્સ સાથે તાત્કાલિક શેર કરો",
+            "menuTitle": "મેનુ પર પ્રિન્ટ કરો",
+            "menuDesc": "ભૌતિક સંપર્ક બિંદુઓ સરળ બનાવ્યા",
+            "welcomeTitle": "સ્વાગત પુસ્તકોમાં સમાવેશ કરો",
+            "welcomeDesc": "હોસ્ટ અને માર્ગદર્શકો માટે પરફેક્ટ",
+            "cafeMenu": "કેફે મેનુ",
+            "tokyoFoodGuide": "મારો ટોક્યો ફૂડ ગાઇડ explorers.earth/jane"
+        },
+        "analytics": {
+            "headline": "ક્લિક્સ, રેફરલ્સ અને એન્ગેજમેન્ટ ટ્રેક કરો",
+            "subtext": "જુઓ કે શું કામ કરે છે, કોણ સ્કેન કરે છે, અને કયા સ્થળોને સૌથી વધુ પ્રેમ મળે છે — રિઅલ ટાઇમમાં.",
+            "workingTitle": "જુઓ કે શું કામ કરે છે",
+            "workingDesc": "તમારી ભલામણોની લોકપ્રિયતા ટ્રેક કરો",
+            "scanningTitle": "કોણ સ્કેન કરે છે",
+            "scanningDesc": "QR સ્કેનિંગ અને અપડેટ્સ મોનિટર કરો",
+            "spotsTitle": "ટોપ પરફોર્મિંગ સ્પોટ્સ",
+            "spotsDesc": "વધુ સારા ક્યુરેશન માટે ડેટા-આધારિત અંતર્દૃષ્ટિ",
+            "dashboardTitle": "એનાલિટિક્સ ડેશબોર્ડ",
+            "last30Days": "છેલ્લા 30 દિવસ",
+            "totalScans": "કુલ સ્કેન્સ",
+            "engagement": "એન્ગેજમેન્ટ",
+            "referrals": "રેફરલ્સ"
+        },
+        "referEarn": {
+            "headline": "શેર કરો, રેફર કરો અને કમાઓ",
+            "subtext": "તમારી ભલામણોને પેસિવ રિવોર્ડ્સમાં રૂપાંતરિત કરો — જ્યારે અન્ય લોકો તમારા QR નો ઉપયોગ કરે ત્યારે ક્રેડિટ મેળવો.",
+            "comingSoon": "રેફરલ રિવોર્ડ્સ પ્રોગ્રામ (ટૂંક સમયમાં)",
+            "rewardsTitle": "રિવોર્ડ્સ કમાઓ",
+            "rewardsDesc": "જ્યારે લોકો તમારી ભલામણોનો ઉપયોગ કરે ત્યારે પૈસા મેળવો",
+            "earnedThisMonth": "આ મહિને કમાયું",
+            "passiveTitle": "ભલામણોને પેસિવ રિવોર્ડ્સમાં રૂપાંતરિત કરો",
+            "networkTitle": "તમારું નેટવર્ક બનાવો અને ઓટોમેટિક કમાઓ"
+        },
+        "localTunes": {
+            "mainHeading": "Tunes",
+            "title": "તમે એક્સપ્લોર કરો છો ત્યારે સાંભળો",
+            "body": "એક્સપ્લોરેશન ફક્ત વિઝ્યુઅલ નથી. અવાજ મેમરી, સંદર્ભ અને ભાવના લઈ જાય છે.\n\nTunes તમને સ્થાનો, પ્રવાસો અને મૂડ માટે સાઉન્ડટ્રેક એકત્રિત કરવા અને શેર કરવાની મંજૂરી આપે છે — તે રસ્તામાં મળેલું સંગીત હોય અથવા તમારા માટે સ્થાન વ્યાખ્યાયિત કરતા અવાજો હોય.\n\nતમારા Explorer પ્રોફાઇલ સાથે સરળતાથી જોડાયેલું.",
+            "exploreButton": "Tunes એક્સપ્લોર કરો",
+            "featuresHeading": "શક્તિશાળી સુવિધાઓ",
+            "features": {
+                "realtimeCollaboration": {
+                    "title": "રિયલ-ટાઇમ સહયોગ",
+                    "description": "મહેમાનોને તમારી પ્લેલિસ્ટમાં તરત જ ગીતો ઉમેરવા દો જ્યારે તમે જે વગાડવામાં આવે છે તેના પર સંપૂર્ણ નિયંત્રણ જાળવો છો."
+                },
+                "qrCodeSharing": {
+                    "title": "QR કોડ શેરિંગ",
+                    "description": "સરળ QR કોડ સ્કેન સાથે તમારો સંગીત અનુભવ શેર કરો — કોઈ એપ્સ અથવા ડાઉનલોડની જરૂર નથી."
+                },
+                "youtubeIntegration": {
+                    "title": "YouTube એકીકરણ",
+                    "description": "લાખો ગીતોની પ્રવેશ મેળવવા અને સંપૂર્ણ વાતાવરણ બનાવવા માટે YouTube સાથે સરળતાથી એકીકૃત કરો."
+                },
+                "voteLikeSystem": {
+                    "title": "વોટ અને લાઇક સિસ્ટમ",
+                    "description": "મહેમાનો તેમના પ્રિય ગીતો માટે વોટ આપી શકે છે રિયલ-ટાઇમમાં પ્લેલિસ્ટ કતારને અસર કરવા માટે."
+                },
+                "silentParties": {
+                    "title": "સાયલન્ટ પાર્ટીઓ",
+                    "description": "અનન્ય સાયલન્ટ પાર્ટીઓ આયોજિત કરો જ્યાં દરેક વ્યક્તિ તેમના પોતાના હેડફોન દ્વારા સાંભળે છે."
+                },
+                "karaokeReady": {
+                    "title": "કારાઓકે તૈયાર",
+                    "description": "સહયોગી પ્લેલિસ્ટ અને રિયલ-ટાઇમ ગીત વિનંતીઓ સાથે કારાઓકે રાત્રિ માટે સંપૂર્ણ."
+                }
+            },
+            "venueHeading": "દરેક સ્થાન માટે સંપૂર્ણ",
+            "venues": {
+                "barsPubs": "બાર અને પબ",
+                "restaurants": "રેસ્ટોરન્ટ",
+                "coffeeShops": "કોફી શોપ",
+                "eventsWeddings": "ઇવેન્ટ અને લગ્ન",
+                "retailStores": "રિટેલ સ્ટોર",
+                "gymsFitness": "જિમ અને ફિટનેસ"
+            },
+            "closingStatement": "Tunes એક્સપ્લોર કરવા માટે \u003cstrong\u003eમફત\u003c/strong\u003e છે, અને પેઇડ સુવિધાઓ માટે તમે પછી અપગ્રેડ કરી શકો છો."
+        },
+        "whoIsFor": {
+            "headline": "explorers.earth કોના માટે છે?",
+            "subtext": "explorers.earth તે દરેક માટે છે જે માને છે કે શેરિંગ એ જવાબદારી છે — પ્રસારણ નથી.",
+            "cards": {
+                "individuals": {
+                    "title": "વ્યક્તિઓ",
+                    "oneLiner": "વ્યક્તિગત અથવા સ્થાનિક ભલામણો શેર કરો.",
+                    "items": {
+                        "traveler": {
+                            "label": "પ્રવાસી",
+                            "oneLiner": "પ્રવાસ સ્થાનો શેર કરતા લોકો"
+                        },
+                        "local": {
+                            "label": "સ્થાનિક",
+                            "oneLiner": "પડોશી ટિપ્સ શેર કરતા સ્થાનિક લોકો"
+                        },
+                        "family": {
+                            "label": "કુટુંબ",
+                            "oneLiner": "ઉપયોગી સ્થાનો શેર કરતા કુટુંબો"
+                        },
+                        "student": {
+                            "label": "વિદ્યાર્થી",
+                            "oneLiner": "કેમ્પસ/નજીકના સ્થાનો શેર કરતા વિદ્યાર્થીઓ"
+                        },
+                        "nomad": {
+                            "label": "નોમાડ",
+                            "oneLiner": "કામ-મૈત્રીપૂર્ણ જગ્યાઓ યાદી કરતા નોમાડ"
+                        },
+                        "emergencySharer": {
+                            "label": "અનિવાર્ય શેરર",
+                            "oneLiner": "મહત્વપૂર્ણ સ્થાનો પોસ્ટ કરતા અનિવાર્ય શેરર"
+                        }
+                    }
+                },
+                "creators": {
+                    "title": "સર્જકો",
+                    "oneLiner": "તમારા પ્રેક્ષકો સાથે ક્યુરેટેડ યાદીઓ શેર કરો.",
+                    "items": {
+                        "influencer": {
+                            "label": "ઇન્ફ્લુએન્સર",
+                            "oneLiner": "ટોપ પસંદગીઓ શેર કરતા ઇન્ફ્લુએન્સર"
+                        },
+                        "blogger": {
+                            "label": "બ્લોગર",
+                            "oneLiner": "લેખિત માર્ગદર્શિકાઓ ક્યુરેટ કરતા બ્લોગર"
+                        },
+                        "vlogger": {
+                            "label": "વ્લોગર",
+                            "oneLiner": "વિઝ્યુઅલ પ્રવાસો શેર કરતા વ્લોગર"
+                        },
+                        "reviewer": {
+                            "label": "રિવ્યુઅર",
+                            "oneLiner": "શ્રેષ્ઠ રેટ કરેલા સ્થાનો યાદી કરતા રિવ્યુઅર"
+                        },
+                        "photographer": {
+                            "label": "ફોટોગ્રાફર",
+                            "oneLiner": "ફોટો સ્થાનો શેર કરતા ફોટોગ્રાફર"
+                        },
+                        "educator": {
+                            "label": "શિક્ષક",
+                            "oneLiner": "શીખવાની માર્ગદર્શિકાઓ શેર કરતા શિક્ષકો"
+                        },
+                        "communityLeader": {
+                            "label": "સમુદાય નેતા",
+                            "oneLiner": "ઉપયોગી યાદીઓ ક્યુરેટ કરતા સમુદાય નેતાઓ"
+                        }
+                    }
+                },
+                "hospitality": {
+                    "title": "આતિથ્ય",
+                    "oneLiner": "મહેમાનોને ક્યુરેટેડ સ્થાનિક અંતર્દૃષ્ટિ ઓફર કરો.",
+                    "items": {
+                        "hotel": {
+                            "label": "હોટેલ",
+                            "oneLiner": "સ્થાનિક માર્ગદર્શિકાઓ ઓફર કરતા હોટેલ"
+                        },
+                        "airbnb": {
+                            "label": "Airbnb",
+                            "oneLiner": "પડોશી પ્રિય શેર કરતા હોસ્ટ"
+                        },
+                        "hostel": {
+                            "label": "હોસ્ટેલ",
+                            "oneLiner": "બેકપેકર ટિપ્સ શેર કરતા હોસ્ટેલ"
+                        },
+                        "homestay": {
+                            "label": "હોમસ્ટે",
+                            "oneLiner": "કુટુંબ-કેન્દ્રિત માર્ગદર્શિકાઓ ઓફર કરતા હોમસ્ટે"
+                        },
+                        "resort": {
+                            "label": "રિસોર્ટ",
+                            "oneLiner": "પ્રવૃત્તિઓની યાદીઓ પ્રદાન કરતા રિસોર્ટ"
+                        },
+                        "pgColiving": {
+                            "label": "PG/કોલિવિંગ",
+                            "oneLiner": "મહત્વપૂર્ણ નજીકના સ્થાનો બતાવતા PG/કોલિવિંગ"
+                        }
+                    }
+                },
+                "businesses": {
+                    "title": "વ્યવસાયો",
+                    "oneLiner": "ઉપયોગી ભલામણો સાથે ગ્રાહકોને માર્ગદર્શન આપો.",
+                    "items": {
+                        "restaurant": {
+                            "label": "રેસ્ટોરન્ટ",
+                            "oneLiner": "પ્રયાસ કરવા માટે ખોરાક શેર કરતા રેસ્ટોરન્ટ"
+                        },
+                        "cafe": {
+                            "label": "કોફી",
+                            "oneLiner": "પ્રિય મેનુ આઇટમ્સ હાઇલાઇટ કરતા કોફી શોપ"
+                        },
+                        "retailShop": {
+                            "label": "રિટેલ શોપ",
+                            "oneLiner": "ઉત્પાદન ભલામણો શેર કરતા દુકાનો"
+                        },
+                        "gym": {
+                            "label": "જિમ",
+                            "oneLiner": "સ્થાનિક વેલનેસ સ્થાનો સૂચવતા જિમ"
+                        },
+                        "spa": {
+                            "label": "સ્પા",
+                            "oneLiner": "નજીકના વિશ્રામ વિકલ્પો યાદી કરતા સ્પા"
+                        },
+                        "salon": {
+                            "label": "સેલોન",
+                            "oneLiner": "સુંદરતા માર્ગદર્શિકાઓ ઓફર કરતા સેલોન"
+                        },
+                        "clinic": {
+                            "label": "ક્લિનિક",
+                            "oneLiner": "આરોગ્ય-સંબંધિત સ્થાનો શેર કરતા ક્લિનિક"
+                        },
+                        "boutique": {
+                            "label": "બુટિક",
+                            "oneLiner": "ક્યુરેટેડ શોધ યાદી કરતા બુટિક"
+                        }
+                    }
+                },
+                "organizations": {
+                    "title": "સંસ્થાઓ",
+                    "oneLiner": "ક્યુરેટેડ માર્ગદર્શિકાઓ અને સંસાધનો પ્રદાન કરો.",
+                    "items": {
+                        "airline": {
+                            "label": "એરલાઇન",
+                            "oneLiner": "શહેર માર્ગદર્શિકાઓ શેર કરતા એરલાઇન"
+                        },
+                        "agency": {
+                            "label": "એજન્સી",
+                            "oneLiner": "મુલાકાત લેવા માટે સ્થાનો યાદી કરતા પ્રવાસ એજન્સી"
+                        },
+                        "university": {
+                            "label": "યુનિવર્સિટી",
+                            "oneLiner": "કેમ્પસ આવશ્યકતાઓ શેર કરતા યુનિવર્સિટી"
+                        },
+                        "corporate": {
+                            "label": "કોર્પોરેટ",
+                            "oneLiner": "નજીકના સંસાધનો યાદી કરતા કોર્પોરેશન"
+                        },
+                        "airport": {
+                            "label": "એરપોર્ટ",
+                            "oneLiner": "ટર્મિનલ + શહેર ટિપ્સ ઓફર કરતા એરપોર્ટ"
+                        },
+                        "railway": {
+                            "label": "રેલવે",
+                            "oneLiner": "પ્લેટફોર્મ માહિતી શેર કરતા રેલવે"
+                        },
+                        "ngo": {
+                            "label": "NGO",
+                            "oneLiner": "સમુદાય સંસાધનો શેર કરતા NGO"
+                        },
+                        "government": {
+                            "label": "સરકાર",
+                            "oneLiner": "જાહેર સેવાઓ હાઇલાઇટ કરતા વિભાગો"
+                        }
+                    }
+                }
+            },
+            "useCases": {
+                "travelers": "પ્રવાસીઓ",
+                "travelersDesc": "સહયોગી એક્સપ્લોરર્સ સાથે શોધાયેલા મોતી શેર કરો",
+                "influencers": "ઇન્ફ્લુએન્સર્સ",
+                "influencersDesc": "સ્થાનિક જ્ઞાનને મોનેટાઇઝ કરો અને કમ્યુનિટી બનાવો",
+                "airbnbHosts": "Airbnb હોસ્ટ્સ",
+                "airbnbHostsDesc": "સ્થાનિક અંતર્દૃષ્ટિ સાથે ગેસ્ટ અનુભવને સુધારો",
+                "hotels": "હોટેલ્સ",
+                "hotelsDesc": "ક્યુરેટેડ સ્થાનિક ભલામણો પ્રદાન કરો",
+                "restaurants": "રેસ્ટોરન્ટ્સ",
+                "restaurantsDesc": "અન્ય સ્થાનિક વ્યવસાયો સાથે ક્રોસ-પ્રોમોશન",
+                "cafes": "કેફેસ",
+                "cafesDesc": "ગ્રાહકો સાથે પડોશના પ્રિય શેર કરો",
+                "localGuides": "સ્થાનિક માર્ગદર્શકો",
+                "localGuidesDesc": "વ્યક્તિગત ટૂર્સની બહાર તમારા નિપુણતાને સ્કેલ કરો",
+                "creators": "ક્રિએટર્સ",
+                "creatorsDesc": "એક્શનેબલ ટિપ્સ સાથે કન્ટેન્ટની બહાર મૂલ્ય ઉમેરો",
+                "tourOperators": "ટૂર ઓપરેટર્સ",
+                "tourOperatorsDesc": "શેડ્યૂલ્ડ ટૂર્સની બહાર અનુભવોને વિસ્તૃત કરો",
+                "anyBusiness": "કોઈપણ વ્યવસાય",
+                "anyBusinessDesc": "કમ્યુનિટી અને ગ્રાહક વફાદારી બનાવો"
+            }
+        },
+        "testimonials": {
+            "headline": "પ્રવાસીઓ, ક્રિએટર્સ અને હોસ્ટ્સ દ્વારા પ્રિય",
+            "subtext": "જુઓ કે વિશ્વભરના લોકો explorers નો ઉપયોગ સૌથી મહત્વપૂર્ણ વસ્તુઓ શેર કરવા માટે કેવી રીતે કરે છે.",
+            "scrollLeft": "ટેસ્ટિમોનિયલ્સને ડાબી તરફ સ્ક્રોલ કરો",
+            "scrollRight": "ટેસ્ટિમોનિયલ્સને જમણી તરફ સ્ક્રોલ કરો",
+            "items": [
+                {
+                    "id": "1",
+                    "name": "માર્કસ ચેન",
+                    "role": "ટ્રાવેલ બ્લોગર",
+                    "location": "સાન ફ્રાન્સિસ્કો",
+                    "quote": "explorers ને મારા ટ્રાવેલ જ્ઞાન શેર કરવાની રીત બદલી છે. મારા ફોલોવર્સને મારી ક્યુરેટેડ ભલામણોની તાત્કાલિક ઍક્સેસ મળવાનું ખૂબ ગમે છે!"
+                },
+                {
+                    "id": "2",
+                    "name": "સારા જોહ્નસન",
+                    "role": "એરબીએનબી હોસ્ટ",
+                    "location": "બાર્સિલોના",
+                    "quote": "મારા મહેમાનોને તેમના વેલકમ કિટમાં વ્યક્તિગત QR કોડ ખૂબ ગમે છે. તે મારો સિગ્નેચર ટચ બની ગયો છે!"
+                },
+                {
+                    "id": "3",
+                    "name": "એલેક્સ રોડ્રિગ્વેઝ",
+                    "role": "રેસ્ટોરન્ટ માલિક",
+                    "location": "મેક્સિકો સિટી",
+                    "quote": "અમે અમારા ગ્રાહકો સાથે અમારો explorers શેર કરીએ છીએ અન્ય સ્થાનિક સ્થળોની ભલામણ કરવા માટે. આથી અદ્ભુત કમ્યુનિટી કનેક્શન્સ બન્યા છે."
+                },
+                {
+                    "id": "4",
+                    "name": "એમ્મા થોમ્પસન",
+                    "role": "ટૂર ગાઇડ",
+                    "location": "લંડન",
+                    "quote": "explorers મને મારી નિપુણતા ટૂરના કલાકોની બહાર વિસ્તારવામાં મદદ કરે છે. ક્લાયન્ટ્સ કોઈપણ સમયે મારી ભલામણો ઍક્સેસ કરી શકે છે!"
+                }
+            ]
+        },
+        "faq": {
+            "headline": "પ્રશ્નો છે?",
+            "subtext": "અમે શરૂ કરતા પહેલા લોકો પૂછતા સૌથી સામાન્ય વસ્તુઓના જવાબો આપ્યા છે.",
+            "loading": "FAQ લોડ થઈ રહ્યા છે...",
+            "error": "FAQ લોડ કરવામાં ભૂલ. કૃપા કરીને પછી ફરી પ્રયાસ કરો."
+        },
+        "features": {
+            "title": "રસ્તાથી દૂર રહેવા માટે બનાવેલ",
+            "subtitle": "સરળ, વિચારશીલ સુવિધાઓ જે તમારી ભલામણોને ચમકાવે છે.",
+            "simpleLinks": {
+                "title": "સરળ લિંક્સ અને QR શેરિંગ"
+            },
+            "livingGuides": {
+                "title": "જીવંત, સંપાદન યોગ્ય માર્ગદર્શિકાઓ"
+            },
+            "locationAware": {
+                "title": "સ્થાન-જાગૃત ભલામણો"
+            },
+            "soundPlaylists": {
+                "title": "વૈકલ્પિક અવાજ અને પ્લેલિસ્ટ્સ"
+            },
+            "privacyFirst": {
+                "title": "ડિઝાઇન દ્વારા ગોપનીયતા-પ્રથમ"
+            },
+            "communityDriven": {
+                "title": "સમુદાય-ચાલિત શોધ"
+            }
+        },
+        "finalCTA": {
+            "headline": "આજે તમારી દુનિયા શેર કરવાનું શરૂ કરો",
+            "subtext": "તમારું મફત explorers રાખો અને તમારી સ્થાનિક અંતર્દૃષ્ટિને શેર કરી શકાય તેવા માર્ગદર્શકોમાં રૂપાંતરિત કરો.",
+            "ctaButton": "તમારું explorers રાખો – હંમેશા મફત",
+            "disclaimer": "ક્રેડિટ કાર્ડ જરૂરી નથી • 2 મિનિટમાં સેટઅપ",
+            "creating": "તમારું explorers બનાવી રહ્યા છીએ..."
+        }
+    },
+    "contact": {
+        "title": "ચાલો જોડાઈએ.",
+        "subtitle": "ભલે તમારી પાસે પ્રશ્ન હોય, વિચાર હોય, અથવા ફક્ત હેલો કહેવું હોય — અમે તમારી પાસેથી સાંભળવા માંગીએ છીએ.",
+        "getInTouch": "સંપર્ક કરો",
+        "email": "hello@explorers.earth",
+        "responseTime": "અમે 24-48 કલાકમાં જવાબ આપીએ છીએ",
+        "closingMessage": "અમે મોટા વિઝન સાથે એક નાની ટીમ છીએ — તમારા વિચારો અમારા માટે મહત્વપૂર્ણ છે. સંપર્ક કરો અને ચાલો કંઈક સ્થાનિક અને વૈશ્વિક બનાવીએ.",
+        "seo": {
+            "title": "Contact explorers | Support, Help and Partnership enquiries.",
+            "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
+            "loginTitle": "Login to explorers | Access Your Personalized Recommendations \u0026 Places",
+            "registerTitle": "Sign Up for explorers | Join the Community \u0026 Share Your Favorite Local Places",
+            "keywords": [
+                "contact explorers",
+                "explorers support",
+                "get in touch explorers",
+                "customer service travel app",
+                "partnership inquiry explorers",
+                "help center local recommendations",
+                "technical support explorers",
+                "travel app customer service",
+                "feedback location sharing",
+                "account assistance explorers",
+                "business collaboration explorers",
+                "report problem explorers",
+                "share local recommendations support",
+                "find explorers contact",
+                "customer service",
+                "explorers team",
+                "help center",
+                "contact support",
+                "QR code support",
+                "local recommendations help",
+                "partnership inquiries"
+            ]
+        }
+    },
+    "about": {
+        "title": "પૃથ્વીના એક્સપ્લોરર",
+        "subtitle": {
+            "line1": "માનવ, સંસ્કૃતિ અને આપણે જે ગ્રહ શેર કરીએ છીએ તેના માટે — કાળજીપૂર્વક એક્સપ્લોર કરતા લોકોનો વૈશ્વિક સમુદાય.",
+            "line2": "આપણા માટે, એક્સપ્લોરેશન આપણે કેટલી દૂર જઈએ છીએ તે વિશે નથી.",
+            "line3": "તે આપણે કેટલી ઊંડાઈથી જોડાઈએ છીએ તે વિશે છે."
+        },
+        "section1": {
+            "title": "આપણે શું માનીએ છીએ",
+            "line1": "એક્સપ્લોરેશન જાગૃતિ સાથે શરૂ થાય છે.",
+            "line2": "બીજા જે છોડી દે છે તેની નોંધ લઈને.",
+            "line3": "ઝડપથી નહીં, વિચારપૂર્વક આગળ વધવાની પસંદગી કરીને.",
+            "line4": "આપણે એક પ્રાચીન ગ્રહ પર ટૂંકા સમય માટે જીવીએ છીએ —\nઆપણાથી ઘણું પહેલાં શરૂ થયેલી કથામાં\nકેટલાક હેતુપૂર્વકના ચિહ્નો ઉમેરીને\nઅને આપણે ગયા પછી ઘણો સમય ચાલુ રહેશે."
+        },
+        "section2": {
+            "title": "આપણે એક્સપ્લોરેશનને કેવી રીતે જોઈએ છીએ",
+            "line1": "એક્સપ્લોરેશન માઇલમાં માપવામાં આવતું નથી.",
+            "line2": "તે અર્થમાં માપવામાં આવે છે.",
+            "line3": "તે ધીમું કરવામાં, ધ્યાન આપવામાં જીવે છે,\nઅને આપણે જે દરેક સ્થાન પર પગ મૂકીએ છીએ તેનો આદર કરવામાં —\nએક શેરી, એક પર્વત માર્ગ, એક કોફી ટેબલ,\nઅથવા કોઈ નવી વ્યક્તિ સાથે શેર કરેલી ક્ષણ."
+        },
+        "section3": {
+            "title": "આપણે શું બનાવીએ છીએ",
+            "line1": "explorers એક સ્થાન છે:",
+            "item1": "વાસ્તવિક અનુભવ દ્વારા આકાર આપેલા માર્ગદર્શકો",
+            "item2": "યાદ રાખવા યોગ્ય સ્થાનો, પ્રવાસો, અવાજો અને કથાઓ",
+            "item3": "લોકો પર બનાવેલા સમુદાયો — લોકપ્રિયતા મેટ્રિક્સ પર નહીં",
+            "line2": "ટેકનોલોજી આપણને જોડવામાં મદદ કરે છે.",
+            "line3": "લોકો તેને હેતુ આપે છે."
+        },
+        "section4": {
+            "title": "સભ્યપદ",
+            "line1": "પૃથ્વીના એક્સપ્લોરર એ ક્લબ નથી.",
+            "line2": "તે લેબલ નથી.",
+            "line3": "તે એક શેર કરેલી માનસિકતા છે —\nઆપણે વિશ્વમાં કેવી રીતે આગળ વધીએ છીએ તેની શાંત સમજ."
+        },
+        "closing": "જો તમે જિજ્ઞાસુ છો.\nજો તમે વિચારશીલ છો.\nજો તમે ધીમું કરવા અને નજીકથી જોવા તૈયાર છો —\nતમે પહેલેથી જ અહીં સંબંધિત છો.",
+        "seo": {
+            "title": "Explorers of Earth | About Us",
+            "description": "A global community of people who explore with care — for people, culture, and the planet we share. Exploration isn\u0027t about distance, it\u0027s about depth.",
+            "keywords": [
+                "explorers of earth",
+                "about explorers",
+                "exploration community",
+                "thoughtful travel",
+                "sustainable exploration",
+                "local recommendations platform",
+                "travel app about",
+                "community-driven recommendations",
+                "authentic local experiences",
+                "explorers team",
+                "local discovery platform",
+                "share local places",
+                "travel technology",
+                "local recommendations app",
+                "explorers story",
+                "who we are explorers"
+            ]
+        }
+    },
+    "cookieConsent": {
+        "title": "🍪 કુકી પસંદગીઓ",
+        "description": "અમે તમારા બ્રાઉઝિંગ અનુભવને સુધારવા, વ્યક્તિગત સામગ્રી પ્રદાન કરવા અને ટ્રાફિકનું વિશ્લેષણ કરવા માટે કુકીઝનો ઉપયોગ કરીએ છીએ. તમે કોઈ પણ સમયે પસંદગીઓનું સંચાલન કરી શકો છો.",
+        "acceptAll": "✅ બધી કુકીઝ સ્વીકારો",
+        "customize": "⚙️ કસ્ટમાઇઝ કરો",
+        "rejectNonEssential": "❌ બિન-જરૂરી નકારો",
+        "preferencesTitle": "કુકી પસંદગીઓ",
+        "essentialCookies": {
+            "title": "જરૂરી કુકીઝ",
+            "description": "વેબસાઇટ યોગ્ય રીતે કાર્ય કરવા માટે જરૂરી",
+            "alwaysOn": "હંમેશા ચાલુ"
+        },
+        "analyticsCookies": {
+            "title": "વિશ્લેષણ કુકીઝ",
+            "description": "મુલાકાતીઓ અમારી વેબસાઇટ સાથે કેવી રીતે ક્રિયાપ્રતિક્રિયા કરે છે તે સમજવામાં અમને મદદ કરે છે"
+        },
+        "marketingCookies": {
+            "title": "માર્કેટિંગ કુકીઝ",
+            "description": "વ્યક્તિગત જાહેરાતો પ્રદાન કરવા માટે ઉપયોગમાં લેવાય છે"
+        },
+        "savePreferences": "પસંદગીઓ સાચવો",
+        "acceptAllButton": "બધું સ્વીકારો",
+        "closeBanner": "બેનર બંધ કરો",
+        "goBack": "પાછળ જાઓ"
+    },
+    "footer": {
+        "tagline": "તમારી ભલામણોને વિશ્વમાં પ્રવાસ કરવા દો.",
+        "email": "hello@explorers.earth",
+        "sections": {
+            "product": "પ્રોડક્ટ",
+            "contact": "સંપર્ક",
+            "legal": "કાનૂની"
+        },
+        "links": {
+            "howItWorks": "તે કેવી રીતે કામ કરે છે",
+            "faq": "વારંવાર પૂછાતા પ્રશ્નો",
+            "contact": "સંપર્ક",
+            "about": "વિશે",
+            "terms": "નિયમો અને શરતો",
+            "privacy": "ગોપનીયતા નીતિ",
+            "cookies": "કૂકી નીતિ"
+        },
+        "copyright": "© 2025 explorers. બધા અધિકારો આરક્ષિત.",
+        "madeWithLove": "પૃથ્વી પર પ્રેમ સાથે બનાવ્યું"
+    },
+    "legal": {
+        "terms": {
+            "title": "નિયમો અને શરતો",
+            "loading": "નિયમો અને શરતો લોડ થઈ રહ્યા છે...",
+            "error": "નિયમો અને શરતો લોડ કરવામાં ભૂલ. કૃપા કરીને પછી ફરી પ્રયાસ કરો."
+        },
+        "privacy": {
+            "title": "ગોપનીયતા નીતિ",
+            "loading": "ગોપનીયતા નીતિ લોડ થઈ રહ્યા છે...",
+            "error": "ગોપનીયતા નીતિ લોડ કરવામાં ભૂલ. કૃપા કરીને પછી ફરી પ્રયાસ કરો."
+        },
+        "cookies": {
+            "title": "કૂકી નીતિ",
+            "loading": "કૂકી નીતિ લોડ થઈ રહ્યા છે...",
+            "error": "કૂકી નીતિ લોડ કરવામાં ભૂલ. કૃપા કરીને પછી ફરી પ્રયાસ કરો."
+        }
+    },
+    "languageModal": {
+        "title": "ભાષા પસંદ કરો",
+        "searchPlaceholder": "ભાષાઓ શોધો...",
+        "close": "બંધ કરો"
+    },
+    "auth": {
+        "signup": "સાઇન અપ",
+        "signupSubtitle": "explorers ની સુવિધાઓનો આનંદ લેવા માટે સાઇન અપ કરો",
+        "username": "વપરાશકર્તા નામ",
+        "usernamePlaceholder": "તમારું વપરાશકર્તા નામ દાખલ કરો",
+        "email": "ઇમેઇલ",
+        "emailPlaceholder": "તમારો ઇમેઇલ દાખલ કરો",
+        "password": "પાસવર્ડ",
+        "passwordPlaceholder": "તમારો પાસવર્ડ દાખલ કરો",
+        "confirmPassword": "પાસવર્ડની પુષ્ટિ કરો",
+        "confirmPasswordPlaceholder": "તમારો પાસવર્ડ ફરીથી દાખલ કરો",
+        "register": "નોંધણી કરો",
+        "or": "અથવા",
+        "signUpWithGoogle": "Google સાથે સાઇન અપ કરો",
+        "alreadyHaveAccount": "પહેલાથી જ ખાતું છે?",
+        "login": "લોગ ઇન",
+        "loginTitle": "લોગ ઇન",
+        "loginSubtitle": "તમારા ખાતામાં આગળ વધવા માટે કૃપા કરીને લોગ ઇન કરો",
+        "usernameOrEmail": "વપરાશકર્તા નામ અથવા ઇમેઇલ",
+        "usernameOrEmailPlaceholder": "તમારું વપરાશકર્તા નામ અથવા ઇમેઇલ દાખલ કરો",
+        "signInWithGoogle": "Google સાથે લોગ ઇન કરો",
+        "newToexplorers": "explorers માં નવા છો?",
+        "forgotPassword": "પાસવર્ડ ભૂલી ગયા છો?",
+        "validations": {
+            "username": {
+                "required": "વપરકર્તા નામ જરૂરી છે",
+                "minLength": "વપરકર્તા નામ ઓછામાં ઓછા 3 અક્ષરોનું હોવું જોઈએ",
+                "maxLength": "વપરકર્તા નામ 30 અક્ષરોથી વધુ ન હોવું જોઈએ",
+                "invalidChars": "વપરકર્તા નામમાં ફક્ત નાના અક્ષરો (a-z), સંખ્યાઓ (0-9), અને હાઇફન (-) હોઈ શકે છે",
+                "mustStartWithLetter": "વપરકર્તા નામ અક્ષર (a-z) થી શરૂ થવું જોઈએ",
+                "cannotStartEndHyphen": "વપરકર્તા નામ હાઇફનથી શરૂ અથવા સમાપ્ત થઈ શકે નહીં",
+                "noConsecutiveHyphens": "વપરકર્તા નામમાં ક્રમિક હાઇફન હોઈ શકે નહીં",
+                "cannotBeAllNumbers": "Username cannot be all numbers",
+                "reservedWords": "આ વપરકર્તા નામમાં અનામત શબ્દો છે અને તેનો ઉપયોગ કરી શકાય નહીં",
+                "inappropriateContent": "વપરકર્તા નામમાં અનુચિત સામગ્રી છે",
+                "alreadyExists": "વપરકર્તા નામ પહેલેથી અસ્તિત્વમાં છે",
+                "suggestedAlternatives": "સૂચવેલ વિકલ્પો:",
+                "willBeConvertedLowercase": "વપરકર્તા નામ નાના અક્ષરોમાં રૂપાંતરિત થશે",
+                "checkingAvailability": "ઉપલબ્ધતા તપાસી રહ્યા છીએ...",
+                "available": "વપરાશકર્તા નામ ઉપલબ્ધ છે",
+                "willConvertToLowercase": "વપરાશકર્તા નામ નાના અક્ષરોમાં રૂપાંતરિત થશે"
+            },
+            "email": {
+                "required": "ઇમેઇલ જરૂરી છે",
+                "invalidFormat": "કૃપા કરીને માન્ય ઇમેઇલ સરનામું દાખલ કરો",
+                "alreadyExists": "ઇમેઇલ પહેલેથી અસ્તિત્વમાં છે",
+                "invalid": "અમાન્ય ઇમેઇલ"
+            },
+            "password": {
+                "required": "પાસવર્ડ જરૂરી છે",
+                "minLength": "પાસવર્ડ ઓછામાં ઓછા 6 અક્ષરોનું હોવું જોઈએ",
+                "uppercaseRequired": "પાસવર્ડમાં ઓછામાં ઓછું એક મોટું અક્ષર (A-Z) હોવું જોઈએ",
+                "numberRequired": "પાસવર્ડમાં ઓછામાં ઓછી એક સંખ્યા (0-9) હોવી જોઈએ",
+                "specialCharRequired": "પાસવર્ડમાં ઓછામાં ઓછું એક વિશેષ અક્ષર (!@#$%^\u0026*().,?\": {}|\u003c\u003e) હોવું જોઈએ",
+                "strength": "પાસવર્ડની તાકાત",
+                "weak": "નબળું",
+                "medium": "મધ્યમ",
+                "strong": "મજબૂત",
+                "maxLength": "પાસવર્ડ 32 અક્ષરોથી વધુ ન હોવું જોઈએ",
+                "lowercaseRequired": "પાસવર્ડમાં ઓછામાં ઓછું એક નાનું અક્ષર (a-z) હોવું જોઈએ",
+                "tooCommon": "આ પાસવર્ડ ખૂબ સામાન્ય છે. કૃપા કરીને વધુ અનન્ય પાસવર્ડ પસંદ કરો",
+                "sameAsCurrent": "નવો પાસવર્ડ તમારા વર્તમાન પાસવર્ડ જેવો જ ન હોઈ શકે",
+                "considerLonger": "વધુ સુરક્ષા માટે વધુ વિવિધતા સાથે લાંબો પાસવર્ડ વાપરવાનું વિચારો",
+                "moreSecure": "10 અથવા વધુ અક્ષરોવાળા પાસવર્ડ વધુ સુરક્ષિત છે",
+                "veryWeak": "ખૂબ નબળું",
+                "fair": "મધ્યમ",
+                "good": "સારું",
+                "veryStrong": "ખૂબ મજબૂત"
+            },
+            "confirmPassword": {
+                "required": "કૃપા કરીને તમારા પાસવર્ડની પુષ્ટિ કરો",
+                "mustMatch": "પાસવર્ડ મેળ ખાતા નથી",
+                "confirmRequired": "પાસવર્ડની પુષ્ટિ જરૂરી છે",
+                "match": "પાસવર્ડ મેળ ખાય છે"
+            },
+            "login": {
+                "usernameOrEmailRequired": "વપરકર્તા નામ અથવા ઇમેઇલ જરૂરી છે",
+                "invalidCredentials": "અમાન્ય વપરકર્તા નામ/ઇમેઇલ અથવા પાસવર્ડ",
+                "accountNotFound": "એકાઉન્ટ મળ્યું નથી",
+                "tooManyAttempts": "ખૂબ વધુ નિષ્ફળ પ્રયાસો",
+                "incorrectPassword": "ખોટો પાસવર્ડ"
+            },
+            "general": {
+                "fillRequiredFields": "કૃપા કરીને બધા જરૂરી ક્ષેત્રો ભરો",
+                "somethingWentWrong": "કંઈક ખોટું થયું, કૃપા કરીને ફરી પ્રયાસ કરો"
+            },
+            "forgotPassword": {
+                "title": "પાસવર્ડ ભૂલી ગયા?",
+                "description": "તમારું ઇમેઇલ સરનામું દાખલ કરો અને અમે તમને રીસેટ લિંક મોકલીશું.",
+                "emailLabel": "ઇમેઇલ સરનામું",
+                "emailPlaceholder": "તમારું ઇમેઇલ દાખલ કરો",
+                "sendResetLink": "રીસેટ લિંક મોકલો",
+                "backToLogin": "લોગિન પર પાછા જાઓ",
+                "resetLinkSent": "પાસવર્ડ રીસેટ લિંક તમારા ઇમેઇલ પર મોકલવામાં આવ્યો!",
+                "failedToSend": "રીસેટ લિંક મોકલવામાં નિષ્ફળ. પછી ફરી પ્રયાસ કરો.",
+                "somethingWentWrong": "કંઈક ખોટું થયું!"
+            },
+            "accountName": {
+                "required": "એકાઉન્ટ નામ જરૂરી છે",
+                "minLength": "એકાઉન્ટ નામ ઓછામાં ઓછા 2 અક્ષર હોવું જોઈએ",
+                "maxLength": "એકાઉન્ટ નામ 50 અક્ષરથી વધુ ન હોવું જોઈએ",
+                "invalidChars": "એકાઉન્ટ નામમાં ફક્ત અક્ષરો, જગ્યાઓ, એપોસ્ટ્રોફી, હાઇફન અને પિરિયડ હોઈ શકે છે",
+                "noNumbers": "એકાઉન્ટ નામમાં સંખ્યાઓ હોઈ શકતી નથી"
+            },
+            "accountType": {
+                "required": "એકાઉન્ટ પ્રકાર જરૂરી છે",
+                "invalid": "અમાન્ય એકાઉન્ટ પ્રકાર"
+            },
+            "onboarding": {
+                "displayNameRequired": "ડિસ્પ્લે નામ જરૂરી છે",
+                "displayNameMinLength": "ડિસ્પ્લે નામ ઓછામાં ઓછા 2 અક્ષરોનું હોવું જોઈએ",
+                "displayNameMaxLength": "ડિસ્પ્લે નામ 50 અક્ષરો કરતાં વધુ ન હોવું જોઈએ",
+                "bioRequired": "બાયો જરૂરી છે",
+                "bioMaxLength": "બાયો 250 અક્ષરો કરતાં વધુ ન હોવું જોઈએ",
+                "mobileNumberRequired": "મોબાઇલ નંબર જરૂરી છે",
+                "mobileNumberInvalid": "કૃપા કરીને માન્ય મોબાઇલ નંબર દાખલ કરો",
+                "mobileNumberLength": "મોબાઇલ નંબર 10 અંકોનો હોવો જોઈએ",
+                "addressRequired": "સરનામું જરૂરી છે",
+                "cityRequired": "શહેર જરૂરી છે",
+                "stateRequired": "રાજ્ય જરૂરી છે",
+                "countryRequired": "દેશ જરૂરી છે",
+                "postalCodeRequired": "પોસ્ટલ કોડ જરૂરી છે",
+                "primaryAddressRequired": "પ્રાથમિક સરનામું જરૂરી છે",
+                "emailAddressRequired": "ઇમેઇલ સરનામું જરૂરી છે",
+                "resetLinkSentSuccess": "રીસેટ લિંક સફળતાપૂર્વક મોકલવામાં આવ્યો!",
+                "invalidUsername": "અમાન્ય વપરાશકર્તા નામ",
+                "profileImageAlt": "Profile"
+            },
+            "resetPassword": {
+                "newPassword": "New Password",
+                "confirmPassword": "Confirm Password"
+            },
+            "resetLinkSent": {
+                "title": "ઇમેઇલ મોકલ્યો!",
+                "description": "પાસવર્ડ રીસેટ લિંક માટે તમારું ઇનબોક્સ તપાસો.",
+                "resending": "ફરીથી મોકલી રહ્યા છીએ...",
+                "resendWithCooldown": "ઇમેઇલ ફરીથી મોકલો ({{cooldown}}s)",
+                "resendMail": "ઇમેઇલ ફરીથી મોકલો"
+            }
+        },
+        "onboarding": {
+            "accountDetails": {
+                "title": "એકાઉન્ટની વિગતો",
+                "description": "અમને તમારા વિશે કહો",
+                "displayName": "ડિસ્પ્લે નામ",
+                "displayNamePlaceholder": "તમારું ડિસ્પ્લે નામ દાખલ કરો",
+                "username": "વપરાશકર્તા નામ",
+                "usernamePlaceholder": "તમારું વપરાશકર્તા નામ દાખલ કરો",
+                "usernameDescription": "તમારું વપરાશકર્તા નામ તમારા જાહેર પ્રોફાઇલ લિંક અને QR કોડનો ભાગ છે. ઉદાહરણ: explorers.earth/bhavya",
+                "bio": "બાયો",
+                "bioPlaceholder": "અમને તમારા વિશે કહો",
+                "accountType": "એકાઉન્ટ પ્રકાર",
+                "personal": "વ્યક્તિગત",
+                "creator": "સર્જક",
+                "business": "વ્યવસાય",
+                "next": "આગળ"
+            },
+            "contactDetails": {
+                "title": "સંપર્ક વિગતો",
+                "description": "સત્યાપન માટે તમારો મોબાઇલ નંબર ઉમેરો",
+                "mobileNumber": "મોબાઇલ નંબર",
+                "mobileNumberPlaceholder": "તમારો મોબાઇલ નંબર દાખલ કરો",
+                "next": "આગળ",
+                "back": "પાછળ"
+            },
+            "addressDetails": {
+                "title": "સરનામાં વિગતો",
+                "description": "તમે ક્યાં સ્થિત છો?",
+                "address": "સરનામું",
+                "addressPlaceholder": "તમારું સરનામું દાખલ કરો",
+                "streetName": "રસ્તાનું નામ",
+                "streetNamePlaceholder": "રસ્તાનું નામ દાખલ કરો",
+                "city": "શહેર",
+                "cityPlaceholder": "શહેર દાખલ કરો",
+                "state": "રાજ્ય",
+                "statePlaceholder": "રાજ્ય દાખલ કરો",
+                "country": "દેશ",
+                "countryPlaceholder": "દેશ દાખલ કરો",
+                "postalCode": "પોસ્ટલ કોડ",
+                "postalCodePlaceholder": "પોસ્ટલ કોડ દાખલ કરો",
+                "primaryAddress": "પ્રાથમિક સરનામું",
+                "primaryAddressDescription": "જાહેર પ્રોફાઇલ પર બતાવવામાં આવે છે (શહેર અને દેશ)",
+                "primaryAddressPlaceholder": "પ્રાથમિક સરનામું દાખલ કરો",
+                "sameAsAddress": "સરનામા જેવું જ",
+                "confirmDetails": "વિગતોની પુષ્ટિ કરો",
+                "back": "પાછળ"
+            }
+        },
+        "resetPassword": {
+            "newPasswordPlaceholder": "Enter new password",
+            "confirmPasswordPlaceholder": "Confirm your password"
+        }
+    },
+    "common": {
+        "loading": "Loading...",
+        "error": "An error occurred. Please try again later.",
+        "retry": "Try Again",
+        "noResults": "No results found",
+        "submit": "Submit",
+        "signInWithGoogle": "Sign in with Google",
+        "signUpWithGoogle": "Sign up with Google",
+        "cancel": "રદ કરો"
+    },
+    "dashboard": {
+        "home": {
+            "welcomeBack": "પાછા સ્વાગત છે",
+            "profile": "પ્રોફાઇલ",
+            "myRecommendations": "મારી ભલામણો",
+            "activePlaces": "સક્રિય સ્થાનો",
+            "setupProfile": "તમારી પ્રોફાઇલ સેટ કરો",
+            "draft": "ડ્રાફ્ટ",
+            "startCurating": "તમારી ભલામણોને ક્યુરેટ કરવાનું શરૂ કરો અને તેમને વિશ્વ સાથે શેર કરો!",
+            "addRecommendations": "ભલામણો ઉમેરો"
+        },
+        "shareModal": {
+            "copyLink": "લિંક કૉપિ કરો",
+            "copied": "કૉપિ થયું!",
+            "linkCopiedToast": "લિંક કૉપિ થઈ ગઈ!!"
+        },
+        "recommendations": {
+            "locationButton": "સ્થાન",
+            "viewAll": "બધું જુઓ",
+            "recommendationsTab": "ભલામણો",
+            "manageTab": "વ્યવસ્થાપન",
+            "manageHeading": "વ્યવસ્થાપન",
+            "deleteAction": "કાઢી નાખો",
+            "editAction": "સંપાદન",
+            "publishedStatus": "પ્રકાશિત",
+            "draftStatus": "ડ્રાફ્ટ",
+            "myRecommendationsHeading": "મારી ભલામણો",
+            "myQRHeading": "મારો QR",
+            "myRecommendationsQR": "મારી ભલામણો",
+            "travelLikeLocal": "સ્થાનિકની જેમ મુસાફરી કરો",
+            "shareLink": "લિંક શેર કરો",
+            "copyLink": "લિંક કોપી કરો",
+            "downloadQR": "QR ડાઉનલોડ કરો",
+            "emptyState": {
+                "title": "કોઈ ભલામણો ઉપલબ્ધ નથી",
+                "subtitle": "આ સૂચિમાં તમારા મનપસંદ સ્થાનો ઉમેરવાનું શરૂ કરો"
+            },
+            "draftLabel": "ડ્રાફ્ટ",
+            "recommendButton": "ભલામણ કરો",
+            "exploreSection": {
+                "heading": "explorers સાથે અન્વેષણ કરો",
+                "addButton": "ઉમેરો"
+            },
+            "locationLabels": {
+                "currentLocation": "વર્તમાન સ્થાન",
+                "selectedLocation": "પસંદ કરેલું સ્થાન"
+            },
+            "categories": {
+                "foodDrinks": "ખાદ્ય અને પીણાં",
+                "lodging": "રહેવાની જગ્યા",
+                "healthWellness": "આરોગ્ય અને કલ્યાણ",
+                "shopping": "ખરીદી",
+                "entertainment": "મનોરંજન",
+                "transportation": "પરિવહન",
+                "services": "સેવાઓ",
+                "tourism": "પર્યટન",
+                "naturalFeatures": "કુદરતી વિશેષતાઓ"
+            },
+            "locationForm": {
+                "labels": {
+                    "searchLocation": "સ્થાન શોધો",
+                    "recommendationSocialLink": "ભલામણ સામાજિક લિંક",
+                    "note": "નોંધ",
+                    "placeUrl": "સ્થાન URL"
+                },
+                "placeholders": {
+                    "searchLocation": "શહેર, રાજ્ય અથવા દેશ દાખલ કરો (ઉદા. પેરિસ)",
+                    "recommendationSocialLink": "URL દાખલ કરો (યુટ્યુબ / ઇન્સ્ટાગ્રામ)",
+                    "note": "તમારી ભલામણ સાથે સંબંધિત નોંધ દાખલ કરો",
+                    "placeUrl": "શેર કરી શકાય તેવી લિંક બનાવવા માટે નામ દાખલ કરો"
+                },
+                "buttons": {
+                    "addLocation": "સ્થાન ઉમેરો",
+                    "updateLocation": "સ્થાન અપડેટ કરો"
+                }
+            },
+            "toastMessages": {
+                "listCreated": "Recommendation List Created Successfully!!!",
+                "listPublished": "ભલામણની સૂચિ સફળતાપૂર્વક પ્રકાશિત!",
+                "listUnpublished": "ભલામણની સૂચિ સફળતાપૂર્વક અપ્રકાશિત!",
+                "listPublishError": "List Should have atleast one Recommended Place to be Published",
+                "listVisibilityError": "Failed to update recommendation list visibility.",
+                "qrDownloadSuccess": "QR code downloaded successfully!",
+                "qrDownloadError": "Failed to download QR code. Please try again.",
+                "linkCopied": "Link copied to clipboard!",
+                "linkCopyError": "Failed to copy link. Please try again.",
+                "qrNotReady": "QR code not ready for download"
+            },
+            "placesModal": {
+                "placesCount": "{{total}} સ્થળોમાંથી {{visible}}",
+                "scrollToLoadMore": "વધુ સ્થળો લોડ કરવા માટે સ્ક્રોલ કરો"
+            },
+            "noRecommendationsYet": "હજુ સુધી કોઈ ભલામણો નથી!!",
+            "setupProfileBeforeRecommendations": "ભલામણો બનાવતા પહેલા તમારી પ્રોફાઇલ સેટઅપ કરો!!",
+            "startAddingPlaces": "તમારી મનપસંદ જગ્યાઓ ઉમેરવાનું શરૂ કરો અને તેમને અન્ય લોકો સાથે શેર કરો.",
+            "startRecommending": "ભલામણ કરવાનું શરૂ કરો",
+            "addRecommendationForm": {
+                "searchField": {
+                    "label": "Search Recommendation with Google"
+                },
+                "mainInput": {
+                    "placeholder": "Enter your Recommendation"
+                },
+                "taggableFields": {
+                    "title": "Title",
+                    "address": "Address",
+                    "category": "Category",
+                    "contactNumber": "Contact Number",
+                    "socialLink": "Social Link"
+                },
+                "accordionSection": {
+                    "heading": "Your Recommendation Details",
+                    "recommendationLink": {
+                        "label": "Your Recommendation Link",
+                        "placeholder": "You can insert Instagram reel, YouTube, or blog recommending"
+                    },
+                    "whyRecommend": {
+                        "label": "Why would you recommend?",
+                        "placeholder": "Why would you recommend?"
+                    }
+                },
+                "fileUpload": {
+                    "text": "Attach Image/Video",
+                    "subtext": "optional"
+                },
+                "actionButton": {
+                    "text": "Add recommendation"
+                },
+                "taggableFieldsPlaceholders": {
+                    "title": "શીર્ષક દાખલ કરો",
+                    "address": "સ્થળનું સરનામું દાખલ કરો",
+                    "category": "એક કેટેગરી દાખલ કરો",
+                    "contactNumber": "સંપર્ક નંબર દાખલ કરો",
+                    "socialLink": "સામાજિક લિંક દાખલ કરો (સ્થળ)"
+                },
+                "validationMessages": {
+                    "titleRequired": "શીર્ષક આવશ્યક છે",
+                    "addressRequired": "સરનામું આવશ્યક છે",
+                    "categoryRequired": "વર્ગ આવશ્યક છે"
+                },
+                "mapModal": {
+                    "cancelButton": "રદ કરો",
+                    "addRecommendationButton": "ભલામણ ઉમેરો",
+                    "updateRecommendationButton": "ભલામણ અપડેટ કરો"
+                },
+                "fetchingImages": "છબીઓ મેળવી રહ્યા છીએ…",
+                "recommendationType": {
+                    "place": "સ્થળ",
+                    "person": "વ્યક્તિ",
+                    "label": "ભલામણ પ્રકાર"
+                },
+                "imagePreview": {
+                    "alt": "પૂર્વાવલોકન",
+                    "deleteTooltip": "કાઢી નાખો",
+                    "setThumbnailTooltip": "થંબનેલ તરીકે સેટ કરો",
+                    "confirmDeleteTitle": "કાઢી નાખવાની પુષ્ટિ કરો",
+                    "confirmDeleteMessage": "શું તમે ખરેખર આ છબીને સંગ્રહમાંથી કાઢી નાખવા માંગો છો?",
+                    "cancel": "રદ કરો",
+                    "confirm": "પુષ્ટિ કરો"
+                },
+                "deleteRecommendationModal": {
+                    "title": "કાઢી નાખવાની પુષ્ટિ કરો",
+                    "message": "શું તમે ખરેખર આ ભલામણ કાઢી નાખવા માંગો છો? આ ક્રિયાને પૂર્વવત્ કરી શકાશે નહીં.",
+                    "cancel": "રદ કરો"
+                }
+            }
+        },
+        "profile": {
+            "tabs": {
+                "publicProfile": "જાહેર પ્રોફાઇલ",
+                "account": "એકાઉન્ટ"
+            },
+            "publicProfile": {
+                "sections": {
+                    "profileInformation": "બાયો",
+                    "socialMedia": "સામાજિક લિંક્સ",
+                    "publicAddress": "જાહેર સરનામું",
+                    "howToReachUs": "અમને કેવી રીતે પહોંચવું",
+                    "howToReachUsDescription": "તમારા વ્યવસાયના સ્થાનની વિગતો શેર કરવા માટે આ વિભાગનો ઉપયોગ કરો.",
+                    "feed": "ફીડ",
+                    "socialMediaSubtitle": "સામાજિક મીડિયા લિંક્સ અને માહિતી"
+                },
+                "fields": {
+                    "accountType": "એકાઉન્ટ પ્રકાર",
+                    "bio": "બાયો",
+                    "socialMedia": "સામાજિક મીડિયા",
+                    "instagram": "Instagram",
+                    "whatsapp": "Whatsapp",
+                    "mobile": "મોબાઇલ",
+                    "youtube": "Youtube",
+                    "x": "X",
+                    "spotify": "Spotify",
+                    "website": "વેબસાઇટ",
+                    "facebook": "Facebook",
+                    "youtubeMusic": "Youtube Music",
+                    "gmail": "Gmail",
+                    "linkedin": "Linkedin",
+                    "appleMusic": "Apple Music",
+                    "tiktok": "Tiktok",
+                    "snapchat": "Snapchat",
+                    "businessLocation": "તમારું સ્થાન ઉમેરો. આ તમારી જાહેર પ્રોફાઇલમાં ભલામણ કરેલા સ્થાનો તરીકે દેખાશે",
+                    "primaryAddress": "પ્રાથમિક સરનામું - જાહેર પ્રોફાઇલમાં બતાવવામાં આવે છે (શહેર અને દેશ)",
+                    "feed": "તમારા સ્થાન, ઉત્પાદનો, સેવાઓ અથવા અનુભવોની છબીઓ અથવા વિડિયો અપલોડ કરો. આ ફોટા તમારી જાહેર પ્રોફાઇલમાં તમારી ગેલેરીમાં પ્રદર્શિત થશે",
+                    "title": "શીર્ષક",
+                    "contact": "સંપર્ક",
+                    "about": "વિશે",
+                    "addLocation": "તમારું સ્થાન ઉમેરો",
+                    "addLocationInformation": "સ્થાન માહિતી ઉમેરો",
+                    "searchAddress": "તમારું સરનામું શોધો...",
+                    "sameAsAddress": "સરનામા જેવું જ"
+                },
+                "accountTypes": {
+                    "personal": "વ્યક્તિગત",
+                    "creator": "સર્જક",
+                    "business": "વ્યવસાય"
+                },
+                "businessLocation": {
+                    "title": "શીર્ષક",
+                    "contact": "સંપર્ક",
+                    "website": "વેબસાઇટ",
+                    "about": "વિશે"
+                }
+            },
+            "account": {
+                "sections": {
+                    "account": "એકાઉન્ટ",
+                    "billingAddress": "બિલિંગ સરનામું"
+                },
+                "fields": {
+                    "username": "વપરાશકર્તા નામ",
+                    "accountName": "એકાઉન્ટ નામ",
+                    "address": "સરનામું",
+                    "streetName": "રસ્તાનું નામ",
+                    "state": "રાજ્ય",
+                    "city": "શહેર",
+                    "country": "દેશ",
+                    "postalCode": "પોસ્ટલ કોડ",
+                    "addressPlaceholder": "તમારું સરનામું દાખલ કરો",
+                    "detectLocation": "મારું વર્તમાન સ્થાન શોધો"
+                }
+            },
+            "common": {
+                "visible": "દૃશ્યમાન",
+                "hidden": "છુપાયેલું",
+                "mobileNumber": "મોબાઇલ નંબર",
+                "mobileNumberPlaceholder": "મોબાઇલ નંબર",
+                "whatsappNumber": "WhatsApp નંબર",
+                "primaryAddress": "પ્રાથમિક સરનામું",
+                "editImage": "છબી સંપાદિત કરો",
+                "confirm": "પુષ્ટિ કરો",
+                "add": "ઉમેરો",
+                "video": "વિડિયો",
+                "feedImage": "ફીડ છબી",
+                "importedImage": "આયાત કરેલી છબી",
+                "cover": "કવર",
+                "profile": "પ્રોફાઇલ",
+                "saveAndPublish": "સાચવો અને પ્રકાશિત કરો",
+                "saveToFeed": "ફીડમાં સાચવો",
+                "savedAndPublishedSuccessfully": "સફળતાપૂર્વક સાચવ્યું અને પ્રકાશિત કર્યું",
+                "saveAndPublishFailed": "સાચવવું અને પ્રકાશિત કરવું નિષ્ફળ. કૃપા કરીને ફરી પ્રયાસ કરો.",
+                "failedToSaveChanges": "ફેરફારો સાચવવા નિષ્ફળ. કૃપા કરીને ફરી પ્રયાસ કરો.",
+                "networkError": "નેટવર્ક ભૂલ: કૃપા કરીને તમારું કનેક્શન તપાસો અને ફરી પ્રયાસ કરો.",
+                "unexpectedError": "અનપેક્ષિત ભૂલ આવી. કૃપા કરીને ફરી પ્રયાસ કરો.",
+                "somethingWentWrong": "કંઈક ખોટું થયું. કૃપા કરીને ફરી પ્રયાસ કરો.",
+                "failedToUploadFiles": "ફાઇલો અપલોડ કરવામાં નિષ્ફળ. કૃપા કરીને ફરી પ્રયાસ કરો.",
+                "failedToUploadImages": "છબીઓ અપલોડ કરવામાં નિષ્ફળ. કૃપા કરીને ફરી પ્રયાસ કરો.",
+                "failedToSaveImagesToFeed": "છબીઓને ફીડમાં સાચવવામાં નિષ્ફળ",
+                "failedToUpdateProfile": "પ્રોફાઇલ અપડેટ કરવામાં નિષ્ફળ. કૃપા કરીને ફરી પ્રયાસ કરો.",
+                "fetching": "મેળવી રહ્યા છીએ...",
+                "selectAll": "બધું પસંદ કરો",
+                "clearSelection": "પસંદગી સાફ કરો",
+                "error": "તમારી પ્રોફાઇલ લોડ કરતી વખતે ભૂલ આવી. કૃપા કરીને પછી ફરી પ્રયાસ કરો.",
+                "errors": {
+                    "noFileProvided": "અપલોડ માટે કોઈ ફાઇલ પ્રદાન કરવામાં આવી નથી",
+                    "failedToGetAccountId": "અપલોડ માટે એકાઉન્ટ ID મેળવવામાં નિષ્ફળ",
+                    "uploadResponseMissingFileData": "અપલોડ પ્રતિભાવમાં ફાઇલ ડેટા ખૂટે છે"
+                }
+            },
+            "accountSetup": {
+                "title": "તમારું એકાઉન્ટ સેટઅપ પૂર્ણ કરો",
+                "progress": "પ્રગતિ",
+                "complete": "પૂર્ણ",
+                "profileSetupCompleted": "પ્રોફાઇલ સેટઅપ પૂર્ણ થયું",
+                "profileSetupIncomplete": "પ્રોફાઇલ ફોટો, બાયો અને સામાજિક લિંક્સ ઉમેરો",
+                "recommendationsSetupCompleted": "ભલામણો સેટઅપ પૂર્ણ થયું",
+                "recommendationsSetupIncomplete": "સ્થાનો, સ્થળો ઉમેરો અને તમારી પ્રથમ સૂચિ પ્રકાશિત કરો",
+                "setupButton": "સેટઅપ",
+                "footerMessage": "તમારા સંપૂર્ણ ડેશબોર્ડ અનુભવને અનલૉક કરવા માટે બંને પગલાં પૂર્ણ કરો"
+            }
+        }
+    },
+    "toast": {
+        "success": {
+            "loginSuccessful": "લોગિન સફળ!",
+            "registrationSuccessful": "નોંધણી સફળ!",
+            "passwordResetSuccessful": "પાસવર્ડ રીસેટ સફળ!",
+            "emailVerificationSent": "Verification email sent!",
+            "resetLinkSent": "Password reset link sent to your email!",
+            "resetLinkResent": "રીસેટ લિંક ફરીથી મોકલ્યો!",
+            "profileImageUpdated": "પ્રોફાઇલ ઇમેજ સફળતાપૂર્વક અપડેટ થયું!",
+            "backgroundImageUpdated": "બેકગ્રાઉન્ડ ઇમેજ સફળતાપૂર્વક અપડેટ થયું!",
+            "recommendedListUpdated": "Recommended List Updated Successfully!!!",
+            "accountCreated": "એકાઉન્ટ સફળતાપૂર્વક બનાવ્યું!",
+            "usernameUpdated": "વપરાશકર્તા નામ સફળતાપૂર્વક અપડેટ!",
+            "profileUpdated": "પ્રોફાઇલ સફળતાપૂર્વક અપડેટ!",
+            "settingsSaved": "સેટિંગ્સ સફળતાપૂર્વક સેવ!",
+            "dataSaved": "ડેટા સફળતાપૂર્વક સેવ!",
+            "changesSaved": "ફેરફારો સફળતાપૂર્વક સેવ!",
+            "fileUploaded": "ફાઇલ સફળતાપૂર્વક અપલોડ!",
+            "imageUploaded": "છબી સફળતાપૂર્વક અપલોડ!",
+            "linkCopied": "Link copied to clipboard!",
+            "emailSent": "ઇમેઇલ સફળતાપૂર્વક મોકલ્યો!",
+            "notificationSent": "સૂચના સફળતાપૂર્વક મોકલી!",
+            "actionCompleted": "ક્રિયા સફળતાપૂર્વક પૂર્ણ!",
+            "formSubmitted": "ફોર્મ સફળતાપૂર્વક સબમિટ!",
+            "onboardingCompleted": "ઓનબોર્ડિંગ સફળતાપૂર્વક પૂર્ણ!",
+            "welcomeMessage": "explorers માં આપનું સ્વાગત છે!",
+            "accountActivated": "ખાતું સફળતાપૂર્વક સક્રિય!",
+            "emailVerified": "ઇમેઇલ સફળતાપૂર્વક ચકાસાયું!",
+            "passwordChanged": "પાસવર્ડ સફળતાપૂર્વક બદલાયું!",
+            "usernameChanged": "વપરાશકર્તા નામ સફળતાપૂર્વક બદલાયું!",
+            "profileCompleted": "પ્રોફાઇલ સફળતાપૂર્વક પૂર્ણ!",
+            "setupCompleted": "સેટઅપ સફળતાપૂર્વક પૂર્ણ!",
+            "loggedOutSuccessfully": "સફળતપરવક લગ આઉટ!"
+        },
+        "error": {
+            "loginFailed": "લોગિન નિષ્ફળ. કૃપા કરીને તમારા ક્રેડેન્શિયલ્સ તપાસો.",
+            "registrationFailed": "નોંધણી નિષ્ફળ. કૃપા કરીને ફરીથી પ્રયાસ કરો.",
+            "passwordResetFailed": "પાસવર્ડ રીસેટ નિષ્ફળ. કૃપા કરીને ફરીથી પ્રયાસ કરો.",
+            "emailVerificationFailed": "ઇમેઇલ ચકાસણી નિષ્ફળ. કૃપા કરીને ફરીથી પ્રયાસ કરો.",
+            "resetLinkFailed": "રીસેટ લિંક મોકલવામાં નિષ્ફળ. પછી ફરીથી પ્રયાસ કરો.",
+            "resetLinkResendFailed": "ફરીથી મોકલવામાં નિષ્ફળ. પછી ફરીથી પ્રયાસ કરો.",
+            "profileImageUpdateFailed": "Failed to upload profile image. Please try again.",
+            "backgroundImageUpdateFailed": "Failed to upload background image. Please try again.",
+            "recommendedListUpdateFailed": "Error Updating Recommended List!!!",
+            "accountCreationFailed": "Account creation failed. Please try again.",
+            "usernameUpdateFailed": "વપરાશકર્તા નામ અપડેટ નિષ્ફળ. કૃપા કરીને ફરીથી પ્રયાસ કરો.",
+            "profileUpdateFailed": "Profile update failed. Please try again.",
+            "settingsSaveFailed": "Failed to save settings. Please try again.",
+            "dataSaveFailed": "Failed to save data. Please try again.",
+            "changesSaveFailed": "Failed to save changes. Please try again.",
+            "fileUploadFailed": "File upload failed. Please try again.",
+            "imageUploadFailed": "Image upload failed. Please try again",
+            "linkCopyFailed": "Failed to copy link. Please try again.",
+            "emailSendFailed": "ઇમેઇલ મોકલવામાં નિષ્ફળ. કૃપા કરીને ફરીથી પ્રયાસ કરો.",
+            "notificationSendFailed": "Failed to send notification. Please try again.",
+            "actionFailed": "Action failed. Please try again.",
+            "formSubmissionFailed": "Form submission failed. Please try again.",
+            "onboardingFailed": "ઓનબોર્ડિંગ નિષ્ફળ. કૃપા કરીને ફરીથી પ્રયાસ કરો.",
+            "accountActivationFailed": "Account activation failed. Please try again.",
+            "passwordChangeFailed": "Password change failed. Please try again.",
+            "usernameChangeFailed": "Username change failed. Please try again.",
+            "profileCompletionFailed": "Profile completion failed. Please try again.",
+            "setupFailed": "Setup failed. Please try again.",
+            "networkError": "નેટવર્ક ભૂલ. કૃપા કરીને તમારા કનેક્શનને તપાસો.",
+            "serverError": "સર્વર ભૂલ. કૃપા કરીને પછી પ્રયાસ કરો.",
+            "validationError": "ચકાસણી ભૂલ. કૃપા કરીને તમારા ઇનપુટને તપાસો.",
+            "permissionDenied": "Permission denied. Please contact support.",
+            "sessionExpired": "સત્ર સમાપ્ત. કૃપા કરીને ફરીથી લોગિન કરો.",
+            "invalidCredentials": "અમાન્ય ક્રેડેન્શિયલ્સ. કૃપા કરીને તમારા ઇનપુટને તપાસો.",
+            "emailNotFound": "Email not found. Try again.",
+            "usernameAlreadyExists": "વપરાશકર્તા નામ પહેલાથી અસ્તિત્વમાં છે. કૃપા કરીને બીજું પસંદ કરો.",
+            "emailAlreadyExists": "Email already exists. Please use another email.",
+            "invalidEmailFormat": "અમાન્ય ઇમેઇલ ફોર્મેટ. કૃપા કરીને માન્ય ઇમેઇલ દાખલ કરો.",
+            "passwordTooWeak": "Password is too weak. Please choose a stronger password.",
+            "passwordsDoNotMatch": "Passwords do not match. Please try again.",
+            "requiredFieldMissing": "Required field is missing. Please fill all required fields.",
+            "invalidInput": "Invalid input. Please check your data.",
+            "fileTooLarge": "File is too large. Please choose a smaller file.",
+            "unsupportedFileType": "Unsupported file type. Please choose a different file.",
+            "uploadLimitExceeded": "Upload limit exceeded. Please try again later.",
+            "operationTimeout": "Operation timed out. Please try again.",
+            "serviceUnavailable": "Service unavailable. Please try again later.",
+            "maintenanceMode": "Service is under maintenance. Please try again later.",
+            "rateLimitExceeded": "Too many requests. Please try again later.",
+            "quotaExceeded": "Quota exceeded. Please try again later.",
+            "accessDenied": "Access denied. You don\u0027t have permission to perform this action.",
+            "resourceNotFound": "Resource not found. Please check your request.",
+            "conflictError": "Conflict error. The resource already exists.",
+            "preconditionFailed": "Precondition failed. Please check your request.",
+            "tooManyAttempts": "ખૂબ વધુ પ્રયાસો. કૃપા કરીને પછી પ્રયાસ કરો.",
+            "accountLocked": "Account is locked. Please contact support.",
+            "accountSuspended": "Account is suspended. Please contact support.",
+            "accountDeleted": "Account is deleted. Please contact support.",
+            "emailNotVerified": "Email is not verified. Please verify your email first.",
+            "phoneNotVerified": "Phone number is not verified. Please verify your phone first.",
+            "twoFactorRequired": "Two-factor authentication is required.",
+            "twoFactorFailed": "Two-factor authentication failed. Please try again.",
+            "captchaFailed": "Captcha verification failed. Please try again.",
+            "invalidToken": "અમાન્ય ટોકન. કૃપા કરીને ફરીથી પ્રયાસ કરો.",
+            "expiredToken": "Token has expired. Please try again.",
+            "invalidCode": "Invalid code. Please check your input.",
+            "expiredCode": "Code has expired. Please request a new one.",
+            "codeLimitExceeded": "Code limit exceeded. Please try again later.",
+            "invalidUsername": "Invalid username. Please check your input.",
+            "usernameTooShort": "Username is too short. Please choose a longer username.",
+            "usernameTooLong": "Username is too long. Please choose a shorter username.",
+            "usernameInvalidChars": "Username contains invalid characters. Please use only letters, numbers, and hyphens.",
+            "usernameReserved": "Username is reserved. Please choose another username.",
+            "usernameProfanity": "Username contains inappropriate content. Please choose another username.",
+            "primaryAddressRequired": "Primary Address is required",
+            "addressRequired": "Address is required",
+            "cityRequired": "City is required",
+            "stateRequired": "State is required",
+            "countryRequired": "Country is required",
+            "postalCodeRequired": "Postal code is required",
+            "mobileNumberRequired": "Mobile number is required",
+            "mobileNumberInvalid": "Invalid mobile number format",
+            "mobileNumberTooShort": "Mobile number is too short",
+            "mobileNumberTooLong": "Mobile number is too long",
+            "bioRequired": "Bio is required",
+            "bioTooLong": "Bio is too long. Please keep it under 250 characters",
+            "displayNameRequired": "Display name is required",
+            "displayNameTooShort": "Display name is too short",
+            "displayNameTooLong": "Display name is too long",
+            "accountTypeRequired": "Account type is required",
+            "invalidAccountType": "Invalid account type selected",
+            "imageRequired": "Image is required",
+            "imageTooLarge": "Image is too large. Please choose a smaller image",
+            "unsupportedImageFormat": "Unsupported image format. Please use JPG, PNG, or GIF",
+            "imageProcessingFailed": "Image processing failed. Please try again",
+            "imageCorrupted": "Image is corrupted. Please choose another image",
+            "imageDimensionsInvalid": "Image dimensions are invalid. Please choose another image",
+            "imageSizeInvalid": "Image size is invalid. Please choose another image",
+            "imageFormatInvalid": "Image format is invalid. Please choose another image",
+            "imageQualityTooLow": "Image quality is too low. Please choose a higher quality image",
+            "imageTooSmall": "Image is too small. Please choose a larger image",
+            "imageTooBig": "Image is too big. Please choose a smaller image",
+            "imageAspectRatioInvalid": "Image aspect ratio is invalid. Please choose another image",
+            "imageColorSpaceInvalid": "Image color space is invalid. Please choose another image",
+            "imageMetadataInvalid": "Image metadata is invalid. Please choose another image",
+            "imageSecurityViolation": "Image security violation. Please choose another image",
+            "imageVirusDetected": "Virus detected in image. Please choose another image",
+            "imageMalwareDetected": "Malware detected in image. Please choose another image",
+            "imageSpamDetected": "Spam detected in image. Please choose another image",
+            "imageContentInappropriate": "Image content is inappropriate. Please choose another image",
+            "imageContentViolent": "Image content is violent. Please choose another image",
+            "imageContentSexual": "Image content is sexual. Please choose another image",
+            "imageContentHateful": "Image content is hateful. Please choose another image",
+            "imageContentDiscriminatory": "Image content is discriminatory. Please choose another image",
+            "imageContentOffensive": "Image content is offensive. Please choose another image",
+            "imageContentAbusive": "Image content is abusive. Please choose another image",
+            "imageContentHarassing": "Image content is harassing. Please choose another image",
+            "imageContentThreatening": "Image content is threatening. Please choose another image",
+            "imageContentDangerous": "Image content is dangerous. Please choose another image",
+            "imageContentIllegal": "Image content is illegal. Please choose another image",
+            "imageContentCopyright": "Image content violates copyright. Please choose another image",
+            "imageContentTrademark": "Image content violates trademark. Please choose another image",
+            "imageContentPrivacy": "Image content violates privacy. Please choose another image",
+            "imageContentConsent": "Image content lacks consent. Please choose another image",
+            "imageContentMinors": "Image content involves minors. Please choose another image",
+            "imageContentAnimals": "Image content involves animal cruelty. Please choose another image",
+            "imageContentEnvironment": "Image content harms environment. Please choose another image",
+            "imageContentHealth": "Image content harms health. Please choose another image",
+            "imageContentSafety": "Image content harms safety. Please choose another image",
+            "imageContentSecurity": "Image content harms security. Please choose another image",
+            "imageContentIntegrity": "Image content harms integrity. Please choose another image",
+            "imageContentReputation": "Image content harms reputation. Please choose another image",
+            "imageContentBrand": "Image content harms brand. Please choose another image",
+            "imageContentBusiness": "Image content harms business. Please choose another image",
+            "imageContentPersonal": "Image content harms personal interests. Please choose another image",
+            "imageContentProfessional": "Image content harms professional interests. Please choose another image",
+            "imageContentAcademic": "Image content harms academic interests. Please choose another image",
+            "imageContentCultural": "Image content harms cultural interests. Please choose another image",
+            "imageContentReligious": "Image content harms religious interests. Please choose another image",
+            "imageContentPolitical": "Image content harms political interests. Please choose another image",
+            "imageContentSocial": "Image content harms social interests. Please choose another image",
+            "imageContentEconomic": "Image content harms economic interests. Please choose another image",
+            "imageContentLegal": "Image content harms legal interests. Please choose another image",
+            "imageContentEthical": "Image content harms ethical interests. Please choose another image",
+            "imageContentMoral": "Image content harms moral interests. Please choose another image",
+            "imageContentSpiritual": "Image content harms spiritual interests. Please choose another image",
+            "imageContentPhilosophical": "Image content harms philosophical interests. Please choose another image",
+            "imageContentScientific": "Image content harms scientific interests. Please choose another image",
+            "imageContentTechnical": "Image content harms technical interests. Please choose another image",
+            "imageContentArtistic": "Image content harms artistic interests. Please choose another image",
+            "imageContentCreative": "Image content harms creative interests. Please choose another image",
+            "imageContentIntellectual": "Image content harms intellectual interests. Please choose another image",
+            "imageContentEducational": "Image content harms educational interests. Please choose another image",
+            "imageContentInformational": "Image content harms informational interests. Please choose another image",
+            "imageContentNews": "Image content harms news interests. Please choose another image",
+            "imageContentMedia": "Image content harms media interests. Please choose another image",
+            "imageContentEntertainment": "Image content harms entertainment interests. Please choose another image",
+            "imageContentSports": "Image content harms sports interests. Please choose another image",
+            "imageContentRecreation": "Image content harms recreation interests. Please choose another image",
+            "imageContentLeisure": "Image content harms leisure interests. Please choose another image",
+            "imageContentHobby": "Image content harms hobby interests. Please choose another image",
+            "imageContentInterest": "Image content harms interest interests. Please choose another image",
+            "imageContentPassion": "Image content harms passion interests. Please choose another image",
+            "imageContentLove": "Image content harms love interests. Please choose another image",
+            "imageContentHate": "Image content harms hate interests. Please choose another image",
+            "imageContentAnger": "Image content harms anger interests. Please choose another image",
+            "imageContentFear": "Image content harms fear interests. Please choose another image",
+            "imageContentSadness": "Image content harms sadness interests. Please choose another image",
+            "imageContentJoy": "Image content harms joy interests. Please choose another image",
+            "imageContentHappiness": "Image content harms happiness interests. Please choose another image",
+            "imageContentExcitement": "Image content harms excitement interests. Please choose another image",
+            "imageContentSurprise": "Image content harms surprise interests. Please choose another image",
+            "imageContentDisgust": "Image content harms disgust interests. Please choose another image",
+            "imageContentShame": "Image content harms shame interests. Please choose another image",
+            "imageContentGuilt": "Image content harms guilt interests. Please choose another image",
+            "imageContentPride": "Image content harms pride interests. Please choose another image",
+            "imageContentEnvy": "Image content harms envy interests. Please choose another image",
+            "imageContentJealousy": "Image content harms jealousy interests. Please choose another image",
+            "imageContentGreed": "Image content harms greed interests. Please choose another image",
+            "imageContentLust": "Image content harms lust interests. Please choose another image",
+            "imageContentGluttony": "Image content harms gluttony interests. Please choose another image",
+            "imageContentSloth": "Image content harms sloth interests. Please choose another image",
+            "imageContentWrath": "Image content harms wrath interests. Please choose another image"
+        },
+        "warning": {
+            "usernameCooldown": "Username change is temporarily locked due to cooldown period",
+            "passwordWeak": "Password is weak. Consider using a stronger password",
+            "emailNotVerified": "Email is not verified. Please verify your email",
+            "phoneNotVerified": "Phone number is not verified. Please verify your phone",
+            "profileIncomplete": "Profile is incomplete. Please complete your profile",
+            "settingsNotSaved": "Settings are not saved. Please save your settings",
+            "dataNotSaved": "Data is not saved. Please save your data",
+            "changesNotSaved": "Changes are not saved. Please save your changes",
+            "fileNotUploaded": "File is not uploaded. Please upload your file",
+            "imageNotUploaded": "Image is not uploaded. Please upload your image",
+            "linkNotCopied": "Link is not copied. Please copy your link",
+            "emailNotSent": "Email is not sent. Please send your email",
+            "notificationNotSent": "Notification is not sent. Please send your notification",
+            "actionNotCompleted": "Action is not completed. Please complete your action",
+            "formNotSubmitted": "Form is not submitted. Please submit your form",
+            "onboardingNotCompleted": "Onboarding is not completed. Please complete your onboarding",
+            "accountNotActivated": "Account is not activated. Please activate your account",
+            "passwordNotChanged": "Password is not changed. Please change your password",
+            "usernameNotChanged": "Username is not changed. Please change your username",
+            "profileNotCompleted": "Profile is not completed. Please complete your profile",
+            "setupNotCompleted": "Setup is not completed. Please complete your setup",
+            "networkSlow": "Network is slow. Please check your connection",
+            "serverSlow": "Server is slow. Please try again later",
+            "validationPending": "Validation is pending. Please wait",
+            "permissionPending": "Permission is pending. Please wait",
+            "sessionExpiring": "Session is expiring. Please login again",
+            "credentialsExpiring": "Credentials are expiring. Please update your credentials",
+            "emailExpiring": "Email is expiring. Please update your email",
+            "phoneExpiring": "Phone is expiring. Please update your phone",
+            "profileExpiring": "Profile is expiring. Please update your profile",
+            "settingsExpiring": "Settings are expiring. Please update your settings",
+            "dataExpiring": "Data is expiring. Please update your data",
+            "changesExpiring": "Changes are expiring. Please update your changes",
+            "fileExpiring": "File is expiring. Please update your file",
+            "imageExpiring": "Image is expiring. Please update your image",
+            "linkExpiring": "Link is expiring. Please update your link",
+            "notificationExpiring": "Notification is expiring. Please update your notification",
+            "actionExpiring": "Action is expiring. Please update your action",
+            "formExpiring": "Form is expiring. Please update your form",
+            "onboardingExpiring": "Onboarding is expiring. Please update your onboarding",
+            "accountExpiring": "Account is expiring. Please update your account",
+            "passwordExpiring": "Password is expiring. Please update your password",
+            "usernameExpiring": "Username is expiring. Please update your username",
+            "setupExpiring": "Setup is expiring. Please update your setup"
+        },
+        "info": {
+            "loading": "લોડ થઈ રહ્યું છે...",
+            "processing": "Processing...",
+            "saving": "Saving...",
+            "uploading": "Uploading...",
+            "downloading": "Downloading...",
+            "connecting": "Connecting...",
+            "disconnecting": "Disconnecting...",
+            "sending": "Sending...",
+            "receiving": "Receiving...",
+            "updating": "Updating...",
+            "refreshing": "Refreshing...",
+            "synchronizing": "Synchronizing...",
+            "validating": "Validating...",
+            "verifying": "Verifying...",
+            "checking": "Checking...",
+            "searching": "Searching...",
+            "filtering": "Filtering...",
+            "sorting": "Sorting...",
+            "organizing": "Organizing...",
+            "arranging": "Arranging...",
+            "configuring": "Configuring...",
+            "setting": "Setting...",
+            "adjusting": "Adjusting...",
+            "modifying": "Modifying...",
+            "changing": "Changing...",
+            "switching": "Switching...",
+            "toggling": "Toggling...",
+            "enabling": "Enabling...",
+            "disabling": "Disabling...",
+            "activating": "Activating...",
+            "deactivating": "Deactivating...",
+            "starting": "Starting...",
+            "stopping": "Stopping...",
+            "pausing": "Pausing...",
+            "resuming": "Resuming...",
+            "restarting": "Restarting...",
+            "resetting": "Resetting...",
+            "clearing": "Clearing...",
+            "deleting": "Deleting...",
+            "removing": "Removing...",
+            "adding": "Adding...",
+            "inserting": "Inserting...",
+            "creating": "Creating...",
+            "building": "Building...",
+            "constructing": "Constructing...",
+            "generating": "Generating...",
+            "producing": "Producing...",
+            "making": "Making...",
+            "preparing": "Preparing...",
+            "readying": "Readying...",
+            "initializing": "Initializing...",
+            "launching": "Launching...",
+            "opening": "Opening...",
+            "closing": "Closing...",
+            "shutting": "Shutting...",
+            "ending": "Ending...",
+            "finishing": "Finishing...",
+            "completing": "Completing...",
+            "finalizing": "Finalizing...",
+            "concluding": "Concluding...",
+            "terminating": "Terminating...",
+            "canceling": "Canceling...",
+            "aborting": "Aborting...",
+            "interrupting": "Interrupting...",
+            "halting": "Halting...",
+            "freezing": "Freezing...",
+            "unfreezing": "Unfreezing...",
+            "thawing": "Thawing...",
+            "melting": "Melting...",
+            "cooling": "Cooling...",
+            "heating": "Heating...",
+            "warming": "Warming...",
+            "chilling": "Chilling...",
+            "renewing": "Renewing...",
+            "restoring": "Restoring...",
+            "recovering": "Recovering...",
+            "repairing": "Repairing...",
+            "fixing": "Fixing...",
+            "correcting": "Correcting...",
+            "tuning": "Tuning...",
+            "optimizing": "Optimizing...",
+            "improving": "Improving...",
+            "enhancing": "Enhancing...",
+            "upgrading": "Upgrading...",
+            "modernizing": "Modernizing..."
+        }
+    },
+    "emailVerification": {
+        "title": "Verify Your Email",
+        "description": "We\u0027ve sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
+        "checkEmail": "Check your email",
+        "emailSent": "Verification email sent!",
+        "resendEmail": "Resend Email",
+        "resendIn": "Resend in",
+        "seconds": "seconds",
+        "didntReceive": "Didn\u0027t receive the email?",
+        "checkSpam": "Please check your spam folder or try again.",
+        "backToLogin": "Back to Login",
+        "emailAddress": "Email Address",
+        "verificationSent": "Verification email sent to:",
+        "clickLink": "Click the link in the email to verify your account.",
+        "expiresIn": "This link expires in 24 hours.",
+        "needHelp": "Need help?",
+        "contactSupport": "Contact Support"
+    },
+    "settings": {
+        "title": "સેટિંગ્સ",
+        "subtitle": "તમારા એકાઉન્ટની સેટિંગ્સ અને પસંદગીઓનું સંચાલન કરો",
+        "account": {
+            "heading": "એકાઉન્ટ",
+            "security": {
+                "title": "એકાઉન્ટ અને સુરક્ષા"
+            },
+            "changePassword": {
+                "text": "પાસવર્ડ બદલશો?",
+                "description": "તમારા એકાઉન્ટને સુરક્ષિત રાખવા માટે તમારો પાસવર્ડ અપડેટ કરો",
+                "button": "પાસવર્ડ બદલો",
+                "modalTitle": "પાસવર્ડ બદલો",
+                "currentPassword": "વર્તમાન પાસવર્ડ",
+                "newPassword": "નવો પાસવર્ડ",
+                "confirmPassword": "નવો પાસવર્ડ કન્ફર્મ કરો",
+                "updateButton": "પાસવર્ડ અપડેટ કરો",
+                "currentPasswordPlaceholder": "તમારો વર્તમાન પાસવર્ડ દાખલ કરો",
+                "newPasswordPlaceholder": "નવો પાસવર્ડ દાખલ કરો",
+                "confirmPasswordPlaceholder": "નવો પાસવર્ડ ફરીથી દાખલ કરો",
+                "successMessage": "પાસવર્ડ સફળતાપૂર્વક અપડેટ થયો છે. સુરક્ષા માટે તમને લોગિન પર રીડાયરેક્ટ કરવામાં આવશે.",
+                "redirectMessage": "સુરક્ષા માટે લોગિન પર રીડાયરેક્ટ કરી રહ્યા છીએ..."
+            },
+            "deactivateAccount": {
+                "text": "તમારું એકાઉન્ટ ડિએક્ટિવેટ કરશો?",
+                "description": "તમારા એકાઉન્ટને અસ્થાયી રીતે નિષ્ક્રિય કરો",
+                "button": "એકાઉન્ટ ડિએક્ટિવેટ કરો",
+                "modalTitle": "તમારું એકાઉન્ટ ડિએક્ટિવેટ કરશો?",
+                "modalDescription": "શું તમે ખરેખર તમારું એકાઉન્ટ ડિએક્ટિવેટ કરવા માંગો છો?",
+                "enterUsername": "તમારું યુઝરનેમ દાખલ કરો",
+                "enterPassword": "તમારો પાસવર્ડ દાખલ કરો",
+                "usernamePlaceholder": "તમારું યુઝરનેમ દાખલ કરો",
+                "passwordPlaceholder": "તમારો વર્તમાન પાસવર્ડ દાખલ કરો",
+                "confirmButton": "મારું એકાઉન્ટ ડિએક્ટિવેટ કરો",
+                "deactivatedButton": "ડિએક્ટિવેટેડ",
+                "successMessage": "એકાઉન્ટ સફળતાપૂર્વક ડિએક્ટિવેટ થયું",
+                "activatedMessage": "એકાઉન્ટ સફળતાપૂર્વક એક્ટિવેટ થયું"
+            },
+            "deleteAccount": {
+                "text": "તમારું એકાઉન્ટ ડિલીટ કરશો?",
+                "description": "તમારા એકાઉન્ટ અને બધા ડેટાને કાયમી રીતે કાઢી નાખો",
+                "button": "એકાઉન્ટ ડિલીટ કરો",
+                "step1": {
+                    "modalTitle": "તમારું એકાઉન્ટ ડિલીટ કરશો?",
+                    "modalDescription": "શું તમે ખરેખર તમારું એકાઉન્ટ ડિલીટ કરવા માંગો છો? આ કાર્ય પાછું કરી શકાશે નહીં.",
+                    "modalDescription2": "જો તમે તમારો ડેટા રાખવા માંગો છો, તો તમે તેના બદલે તમારું એકાઉન્ટ ડિએક્ટિવેટ કરી શકો છો.",
+                    "deactivateInsteadButton": "તેના બદલે એકાઉન્ટ ડિએક્ટિવેટ કરો",
+                    "continueButton": "ડિલીટ કરવાનું ચાલુ રાખો"
+                },
+                "step2": {
+                    "modalTitle": "તમારી વિગતો દાખલ કરો",
+                    "enterUsername": "તમારું યુઝરનેમ દાખલ કરો",
+                    "enterPassword": "તમારો પાસવર્ડ દાખલ કરો",
+                    "confirmPassword": "તમારો પાસવર્ડ કન્ફર્મ કરો",
+                    "usernamePlaceholder": "તમારું યુઝરનેમ દાખલ કરો",
+                    "passwordPlaceholder": "તમારો પાસવર્ડ દાખલ કરો",
+                    "confirmPasswordPlaceholder": "તમારો પાસવર્ડ કન્ફર્મ કરો",
+                    "continueButton": "ચાલુ રાખો"
+                },
+                "step3": {
+                    "modalTitle": "તમે કેમ જતા રહ્યા છો?",
+                    "reasonPlaceholder": "કૃપા કરીને અમને તમારા જવાનું કારણ જણાવો...",
+                    "continueButton": "ચાલુ રાખો"
+                },
+                "step4": {
+                    "modalTitle": "ડિલીટ કન્ફર્મ કરો",
+                    "confirmText": "આગળ વધવા માટે \u0027CONFIRM DELETE\u0027 ટાઇપ કરો",
+                    "confirmPlaceholder": "કન્ફર્મ કરવા માટે \u0027CONFIRM DELETE\u0027 ટાઇપ કરો",
+                    "deleteButton": "મારું એકાઉન્ટ ડિલીટ કરો",
+                    "confirmationRequired": "કૃપા કરીને કન્ફર્મ કરવા માટે \u0027CONFIRM DELETE\u0027 ટાઇપ કરો.",
+                    "reasonRequired": "કૃપા કરીને જવાનું કારણ આપો.",
+                    "successMessage": "એકાઉન્ટ સફળતાપૂર્વક ડિલીટ થયું."
+                }
+            }
+        },
+        "languagePreference": {
+            "heading": "ભાષાની પસંદગી",
+            "description": "ઇન્ટરફેસ માટે તમારી પસંદગીની ભાષા પસંદ કરો। આ એપ્લિકેશનમાં તમામ ટેક્સ્ટ, બટન અને મેનુની ભાષા બદલશે।",
+            "selectLanguage": "તમારી ભાષા પસંદ કરો",
+            "availableLanguages": "47 ઉપલબ્ધ ભાષાઓમાંથી પસંદ કરો",
+            "currentLanguage": "વર્તમાન: {{flag}} {{name}}",
+            "languageChanged": "ભાષા {{name}} માં બદલાઈ ગઈ"
+        }
+    },
+    "seo": {
+        "loginTitle": "Login to explorers | Access Your Personalized Recommendations \u0026 Places",
+        "registerTitle": "Sign Up for explorers | Join the Community \u0026 Share Your Favorite Local Places"
+    },
+    "sidebar": {
+        "home": "હોમ",
+        "profile": "પ્રોફાઇલ",
+        "recommendations": "ભલામણો",
+        "settings": "સેટિંગ્સ",
+        "logout": "લોગ આઉટ",
+        "analytics": "વિશ્લેષણ",
+        "loading": "લોડ થઈ રહ્યું છે...",
+        "clickToOpenMenu": "મેનુ ખોલવા માટે ક્લિક કરો"
+    },
+    "analytics": {
+        "dashboard": {
+            "title": "એનાલિટિક્સ ડેશબોર્ડ",
+            "subtitle": "તમારા QR કોડની પ્રદર્શન અને વપરાશકર્તા જોડાણને ટ્રેક કરો",
+            "timePeriod": "સમય સમયગાળો:",
+            "timeFilter": {
+                "today": "આજે",
+                "last7days": "છેલ્લા 7 દિવસ",
+                "last30days": "છેલ્લા 30 દિવસ",
+                "custom": "કસ્ટમ રેન્જ",
+                "selectPeriod": "સમયગાળો પસંદ કરો"
+            },
+            "dateRange": {
+                "from": "થી:",
+                "to": "સુધી:"
+            },
+            "summaryCards": {
+                "totalViews": "કુલ દૃશ્યો",
+                "totalClicks": "કુલ ક્લિક્સ",
+                "totalQRViews": "કુલ QR દૃશ્યો",
+                "totalLinkViews": "કુલ લિંક દૃશ્યો"
+            },
+            "loading": {
+                "loadingData": "એનાલિટિક્સ ડેટા લોડ થઈ રહ્યું છે...",
+                "resolvingCountry": "દેશ ડેટા હલ કરી રહ્યું છે..."
+            },
+            "error": {
+                "title": "એનાલિટિક્સ લોડ કરવામાં ભૂલ",
+                "message": "એનાલિટિક્સ ડેટા લાવવામાં અસમર્થ. કૃપા કરીને પછી પ્રયાસ કરો.",
+                "errorLabel": "ભૂલ:"
+            },
+            "comingSoon": {
+                "title": "એનાલિટિક્સ ટૂંક સમયમાં",
+                "message": "એનાલિટિક્સ તમારા એકાઉન્ટ બનાવ્યા પછી \u003cstrong\u003e{{days}} દિવસ{{daysPlural}}\u003c/strong\u003e માં ઉપલબ્ધ થશે.",
+                "whyWait": {
+                    "title": "કેમ રાહ જોવી?",
+                    "reasons": {
+                        "accuracy": "• ડેટા ચોકસાઈની ખાતરી આપે છે અને સ્પામને અટકાવે છે",
+                        "interactions": "• અર્થપૂર્ણ વપરાશકર્તા પરસ્પર ક્રિયાઓ માટે સમય પરવાનગી આપે છે",
+                        "insights": "• વિશ્વસનીય એનાલિટિક્સ અંતર્દૃષ્ટિ પ્રદાન કરે છે"
+                    }
+                },
+                "tip": "આ દરમિયાન, જ્યારે એનાલિટિક્સ ઉપલબ્ધ થાય ત્યારે ડેટા જનરેટ કરવા માટે તમારા QR કોડ્સ શેર કરવાનું શરૂ કરો!",
+                "filterTip": "\u003cstrong\u003eટિપ:\u003c/strong\u003e એકવાર એનાલિટિક્સ ઉપલબ્ધ થયા પછી, તમે તમારા ડેટાને જોવા માટે સમય સમયગાળા (આજે, છેલ્લા 7 દિવસ, છેલ્લા 30 દિવસ, અથવા કસ્ટમ રેન્જ) દ્વારા ફિલ્ટર કરી શકશો."
+            },
+            "emptyState": {
+                "title": "કોઈ એનાલિટિક્સ ડેટા નથી",
+                "noDataMessage": "તમારા એકાઉન્ટ માટે કોઈ એનાલિટિક્સ ડેટા મળ્યો નથી. લોકો તમારા QR કોડ્સ જોવા અને તેની સાથે ક્રિયાપ્રતિક્રિયા કરવાનું શરૂ કરે ત્યારે એનાલિટિક્સ અહીં દેખાશે.",
+                "customRange": {
+                    "bothMissing": "કૃપા કરીને કસ્ટમ રેન્જ માટે એનાલિટિક્સ ડેટા જોવા માટે શરૂઆત અને અંત તારીખ બંને પસંદ કરો.",
+                    "startMissing": "કૃપા કરીને કસ્ટમ રેન્જ માટે એનાલિટિક્સ ડેટા જોવા માટે શરૂઆત તારીખ પસંદ કરો.",
+                    "endMissing": "કૃપા કરીને કસ્ટમ રેન્જ માટે એનાલિટિક્સ ડેટા જોવા માટે અંત તારીખ પસંદ કરો."
+                },
+                "noDataForPeriod": {
+                    "today": "આજે માટે કોઈ એનાલિટિક્સ ડેટા ઉપલબ્ધ નથી. તમારા ડેટાને જોવા માટે કૃપા કરીને અલગ સમય રેન્જ પસંદ કરો.",
+                    "last7days": "છેલ્લા 7 દિવસ માટે કોઈ એનાલિટિક્સ ડેટા ઉપલબ્ધ નથી. તમારા ડેટાને જોવા માટે કૃપા કરીને અલગ સમય રેન્જ પસંદ કરો.",
+                    "last30days": "છેલ્લા 30 દિવસ માટે કોઈ એનાલિટિક્સ ડેટા ઉપલબ્ધ નથી. તમારા ડેટાને જોવા માટે કૃપા કરીને અલગ સમય રેન્જ પસંદ કરો.",
+                    "custom": "કસ્ટમ રેન્જ ({{startDate}} થી {{endDate}} સુધી) માટે કોઈ એનાલિટિક્સ ડેટા ઉપલબ્ધ નથી. તમારા ડેટાને જોવા માટે કૃપા કરીને અલગ સમય રેન્જ પસંદ કરો.",
+                    "default": "પસંદ કરેલા સમય રેન્જ માટે કોઈ એનાલિટિક્સ ડેટા ઉપલબ્ધ નથી. તમારા ડેટાને જોવા માટે કૃપા કરીને અલગ સમય રેન્જ પસંદ કરો."
+                },
+                "howToStart": {
+                    "title": "એનાલિટિક્સ જોવાનું શરૂ કરવા માટે:",
+                    "shareQR": "• સોશિયલ મીડિયા પર તમારા QR કોડ્સ શેર કરો",
+                    "includeQR": "• તમારી માર્કેટિંગ સામગ્રીમાં QR કોડ્સ શામેલ કરો",
+                    "askFriends": "• મિત્રોને તમારા QR કોડ્સ સ્કેન કરવા કહો",
+                    "viewProfile": "• તમારા પબ્લિક પ્રોફાઇલ પૃષ્ઠો જુઓ"
+                }
+            },
+            "charts": {
+                "topCountries": {
+                    "title": "દૃશ્યો દ્વારા ટોપ 3 દેશો",
+                    "retryGeolocation": "જીઓલોકેશન ફરીથી પ્રયાસ કરો",
+                    "geolocationIssue": "જીઓલોકેશન સમસ્યા:",
+                    "countryDataUnavailable": "દેશ ડેટા ઉપલબ્ધ નથી",
+                    "unableToResolve": "આ સમયે IP સરનામાંને દેશોમાં હલ કરવામાં અસમર્થ. આ નેટવર્ક પ્રતિબંધો અથવા સેવા મર્યાદાઓને કારણે હોઈ શકે છે.",
+                    "failedToResolve": "દેશ ડેટા હલ કરવામાં અસફળ. કૃપા કરીને પછી ફરીથી પ્રયાસ કરો.",
+                    "analyticsSummary": "એનાલિટિક્સ સારાંશ:",
+                    "totalViewEvents": "• {{count}} કુલ દૃશ્ય ઇવેન્ટ્સ",
+                    "eventsWithCountry": "• {{count}} દેશ ડેટા સાથે ઇવેન્ટ્સ",
+                    "eventsPending": "• {{count}} જીઓલોકેશન માટે બાકી રહેલા ઇવેન્ટ્સ",
+                    "willAppear": "IP જીઓલોકેશન સેવાઓ ઉપલબ્ધ થયા પછી દેશ ડેટા આપમેળે દેખાશે.",
+                    "tooltip": {
+                        "country": "દેશ: {{country}}",
+                        "views": "દૃશ્યો: {{count}}"
+                    },
+                    "legend": "દૃશ્યો"
+                },
+                "worldMap": {
+                    "title": "વૈશ્વિક દૃશ્ય વિતરણ",
+                    "subtitle": "પબ્લિક પૃષ્ઠોમાંથી દેશોમાં દૃશ્ય વિતરણ દર્શાવતો ઇન્ટરેક્ટિવ વિશ્વ નકશો",
+                    "noGeographicData": "કોઈ ભૌગોલિક ડેટા ઉપલબ્ધ નથી",
+                    "unableToResolve": "આ સમયે IP સરનામાંને દેશોમાં હલ કરવામાં અસમર્થ. આ નેટવર્ક પ્રતિબંધો અથવા સેવા મર્યાદાઓને કારણે હોઈ શકે છે.",
+                    "failedToResolve": "દેશ ડેટા હલ કરવામાં અસફળ. કૃપા કરીને પછી ફરીથી પ્રયાસ કરો.",
+                    "analyticsSummary": "એનાલિટિક્સ સારાંશ:",
+                    "totalViewEvents": "• {{count}} કુલ દૃશ્ય ઇવેન્ટ્સ",
+                    "eventsWithCountry": "• {{count}} દેશ ડેટા સાથે ઇવેન્ટ્સ",
+                    "eventsPending": "• {{count}} જીઓલોકેશન માટે બાકી રહેલા ઇવેન્ટ્સ",
+                    "willAppear": "IP જીઓલોકેશન સેવાઓ ઉપલબ્ધ થયા પછી દેશ ડેટા આપમેળે દેખાશે.",
+                    "tooltip": {
+                        "country": "{{country}}",
+                        "views": "{{views}} દૃશ્યો"
+                    },
+                    "countriesWithViews": "{{count}} દૃશ્યો સાથે દેશો",
+                    "legend": {
+                        "views": "દૃશ્યો:",
+                        "low": "નીચું",
+                        "medium": "મધ્યમ",
+                        "high": "ઉચ્ચ",
+                        "highest": "સૌથી ઉચ્ચ"
+                    }
+                },
+                "trafficSource": {
+                    "title": "સમય સાથે ટ્રાફિક સ્રોત",
+                    "subtitle": "વિવિધ સ્ત્રોતોમાંથી ટ્રાફિક સમય સાથે કેવી રીતે બદલાય છે તે ટ્રેક કરો",
+                    "selectSource": "ટ્રાફિક સ્રોત પસંદ કરો:",
+                    "allSources": "બધા સ્ત્રોતો",
+                    "direct": "ડાયરેક્ટ",
+                    "qrCode": "QR કોડ",
+                    "instagram": "Instagram",
+                    "whatsapp": "WhatsApp",
+                    "twitter": "Twitter",
+                    "noTrafficData": "ટ્રાફિક ડેટા ઉપલબ્ધ નથી",
+                    "noViewEvents": "ટ્રાફિક સ્રોત માહિતી સાથે કોઈ દૃશ્ય ઇવેન્ટ્સ મળ્યા નથી.",
+                    "analyticsSummary": "એનાલિટિક્સ સારાંશ:",
+                    "totalViewEvents": "• {{count}} કુલ દૃશ્ય ઇવેન્ટ્સ",
+                    "eventsWithUTM": "• {{count}} UTM સ્રોત સાથે ઇવેન્ટ્સ",
+                    "directTraffic": "• {{count}} ડાયરેક્ટ ટ્રાફિક ઇવેન્ટ્સ",
+                    "willAppear": "વપરાશકર્તાઓ UTM પરિમાણો સાથે તમારા પૃષ્ઠોની મુલાકાત લે ત્યારે ટ્રાફિક સ્રોત ડેટા દેખાશે.",
+                    "tooltip": {
+                        "sourceCount": "{{source}}: {{count}}"
+                    }
+                },
+                "locationEngagement": {
+                    "title": "સ્થાન સાથે જોડાણ",
+                    "subtitle": "સમય સાથે વિવિધ સ્થાનો માટે દૃશ્યો ટ્રેક કરો",
+                    "selectLocation": "સ્થાન પસંદ કરો:",
+                    "allLocations": "બધા સ્થાનો",
+                    "selectLocationPlaceholder": "સ્થાન પસંદ કરો",
+                    "locationViews": "{{location}} ({{count}} દૃશ્યો)",
+                    "noLocationData": "કોઈ સ્થાન દૃશ્ય ડેટા ઉપલબ્ધ નથી",
+                    "unknownLocation": "અજ્ઞાત સ્થાન",
+                    "location": "સ્થાન",
+                    "tooltip": {
+                        "date": "તારીખ: {{date}}",
+                        "locationViews": "{{location}}: {{value}} દૃશ્યો"
+                    },
+                    "stats": {
+                        "totalLocations": "કુલ સ્થાનો",
+                        "totalViews": "કુલ દૃશ્યો",
+                        "avgViews": "સરેરાશ દૃશ્યો/સ્થાન"
+                    }
+                },
+                "recommendedPlaces": {
+                    "title": "ભલામણ કરેલ સ્થળો સાથે જોડાણ",
+                    "subtitle": "સ્થાન દ્વારા ભલામણ કરેલ સ્થળો પર ક્લિક્સ ટ્રેક કરો",
+                    "selectLocation": "સ્થાન પસંદ કરો:",
+                    "selectLocationPlaceholder": "સ્થાન પસંદ કરો",
+                    "locationPlaces": "{{location}} ({{count}} સ્થળો)",
+                    "noRecommendationData": "કોઈ ભલામણ ડેટા નથી",
+                    "noDataMessage": "પસંદ કરેલ સમયગાળા માટે ભલામણ ક્લિક ડેટા ઉપલબ્ધ નથી.",
+                    "analyticsSummary": "એનાલિટિક્સ સારાંશ:",
+                    "totalClickEvents": "• {{count}} કુલ ક્લિક ઇવેન્ટ્સ",
+                    "recordsWithRecommendations": "• {{count}} ભલામણ ID સાથે રેકોર્ડ્સ",
+                    "uniqueRecommendations": "• {{count}} અનન્ય ભલામણો",
+                    "selectLocationPrompt": "કૃપા કરીને ભલામણ ડેટા જોવા માટે સ્થાન પસંદ કરો.",
+                    "noClicksMessage": "પસંદ કરેલ સ્થાન માટે કોઈ ભલામણ ક્લિક્સ મળ્યા નથી. વપરાશકર્તાઓ તમારા સ્થાન પૃષ્ઠોમાં સ્થળ કાર્ડ્સ પર ક્લિક કરે ત્યારે ભલામણ ડેટા દેખાશે.",
+                    "unknownPlace": "અજ્ઞાત સ્થળ",
+                    "unknownCategory": "અજ્ઞાત કેટેગરી",
+                    "unknownLocation": "અજ્ઞાત સ્થાન",
+                    "tooltip": {
+                        "place": "{{place}}",
+                        "category": "શ્રેણી: {{category}}",
+                        "clicks": "ક્લિક્સ: {{count}}"
+                    },
+                    "stats": {
+                        "placesShown": "દર્શાવેલ સ્થળો",
+                        "totalClicks": "કુલ ક્લિક્સ",
+                        "avgClicks": "સરેરાશ ક્લિક્સ/સ્થળ"
+                    }
+                },
+                "socialMedia": {
+                    "title": "સોશિયલ મીડિયા ક્રિયાપ્રતિક્રિયા",
+                    "subtitle": "બધા પ્લેટફોર્મ્સ પર તમારા પબ્લિક પ્રોફાઇલમાંથી સોશિયલ મીડિયા લિંક્સ પર ક્લિક્સ ટ્રેક કરો",
+                    "noDataTitle": "કોઈ સોશિયલ મીડિયા ક્રિયાપ્રતિક્રિયા ડેટા નથી",
+                    "noDataMessage": "તમારા પબ્લિક પ્રોફાઇલ પૃષ્ઠમાંથી કોઈ સોશિયલ મીડિયા ક્લિક ડેટા ઉપલબ્ધ નથી.",
+                    "analyticsSummary": "એનાલિટિક્સ સારાંશ:",
+                    "totalSocialClicks": "• {{count}} કુલ સોશિયલ મીડિયા ક્લિક્સ",
+                    "uniquePlatforms": "• {{count}} અનન્ય પ્લેટફોર્મ્સ",
+                    "trackingNote": "• માત્ર પબ્લિક-પ્રોફાઇલ પૃષ્ઠમાંથી ક્લિક્સ ટ્રેક કરે છે",
+                    "willAppear": "વપરાશકર્તાઓ તમારા સોશિયલ મીડિયા લિંક્સ પર ક્લિક કરે ત્યારે સોશિયલ મીડિયા ક્રિયાપ્રતિક્રિયા ડેટા દેખાશે.",
+                    "tooltip": {
+                        "platform": "{{platform}}",
+                        "clicks": "ક્લિક્સ: {{count}}"
+                    },
+                    "stats": {
+                        "platforms": "પ્લેટફોર્મ્સ",
+                        "totalClicks": "કુલ ક્લિક્સ",
+                        "avgClicks": "સરેરાશ ક્લિક્સ/પ્લેટફોર્મ"
+                    }
+                }
+            }
+        }
+    },
+    "countries": {
+        "US": "United States",
+        "IN": "India",
+        "GB": "United Kingdom",
+        "CA": "Canada",
+        "AU": "Australia",
+        "DE": "Germany",
+        "FR": "France",
+        "IT": "Italy",
+        "ES": "Spain",
+        "BR": "Brazil",
+        "MX": "Mexico",
+        "JP": "Japan",
+        "CN": "China",
+        "RU": "Russia",
+        "KR": "South Korea",
+        "NL": "Netherlands",
+        "SE": "Sweden",
+        "NO": "Norway",
+        "DK": "Denmark",
+        "FI": "Finland",
+        "CH": "Switzerland",
+        "AT": "Austria",
+        "BE": "Belgium",
+        "PL": "Poland",
+        "CZ": "Czech Republic",
+        "HU": "Hungary",
+        "RO": "Romania",
+        "BG": "Bulgaria",
+        "GR": "Greece",
+        "PT": "Portugal",
+        "IE": "Ireland",
+        "IS": "Iceland",
+        "LU": "Luxembourg",
+        "MT": "Malta",
+        "CY": "Cyprus",
+        "EE": "Estonia",
+        "LV": "Latvia",
+        "LT": "Lithuania",
+        "SI": "Slovenia",
+        "SK": "Slovakia",
+        "HR": "Croatia",
+        "BA": "Bosnia and Herzegovina",
+        "RS": "Serbia",
+        "ME": "Montenegro",
+        "MK": "North Macedonia",
+        "AL": "Albania",
+        "XK": "Kosovo",
+        "MD": "Moldova",
+        "UA": "Ukraine",
+        "BY": "Belarus",
+        "GE": "Georgia",
+        "AM": "Armenia",
+        "AZ": "Azerbaijan",
+        "KZ": "Kazakhstan",
+        "UZ": "Uzbekistan",
+        "KG": "Kyrgyzstan",
+        "TJ": "Tajikistan",
+        "TM": "Turkmenistan",
+        "AF": "Afghanistan",
+        "PK": "Pakistan",
+        "BD": "Bangladesh",
+        "LK": "Sri Lanka",
+        "MV": "Maldives",
+        "NP": "Nepal",
+        "BT": "Bhutan",
+        "MM": "Myanmar",
+        "TH": "Thailand",
+        "LA": "Laos",
+        "KH": "Cambodia",
+        "VN": "Vietnam",
+        "MY": "Malaysia",
+        "SG": "Singapore",
+        "BN": "Brunei",
+        "ID": "Indonesia",
+        "PH": "Philippines",
+        "TL": "East Timor",
+        "MN": "Mongolia",
+        "KP": "North Korea",
+        "TW": "Taiwan",
+        "HK": "Hong Kong",
+        "MO": "Macau",
+        "SA": "Saudi Arabia",
+        "AE": "United Arab Emirates",
+        "QA": "Qatar",
+        "KW": "Kuwait",
+        "BH": "Bahrain",
+        "OM": "Oman",
+        "YE": "Yemen",
+        "IQ": "Iraq",
+        "IR": "Iran",
+        "SY": "Syria",
+        "LB": "Lebanon",
+        "JO": "Jordan",
+        "IL": "Israel",
+        "PS": "Palestine",
+        "TR": "Turkey",
+        "EG": "Egypt",
+        "LY": "Libya",
+        "TN": "Tunisia",
+        "DZ": "Algeria",
+        "MA": "Morocco",
+        "SD": "Sudan",
+        "SS": "South Sudan",
+        "ET": "Ethiopia",
+        "ER": "Eritrea",
+        "DJ": "Djibouti",
+        "SO": "Somalia",
+        "KE": "Kenya",
+        "UG": "Uganda",
+        "TZ": "Tanzania",
+        "RW": "Rwanda",
+        "BI": "Burundi",
+        "MW": "Malawi",
+        "ZM": "Zambia",
+        "ZW": "Zimbabwe",
+        "BW": "Botswana",
+        "NA": "Namibia",
+        "ZA": "South Africa",
+        "LS": "Lesotho",
+        "SZ": "Eswatini",
+        "MG": "Madagascar",
+        "MU": "Mauritius",
+        "SC": "Seychelles",
+        "KM": "Comoros",
+        "MZ": "Mozambique",
+        "AO": "Angola",
+        "CD": "Democratic Republic of the Congo",
+        "CG": "Republic of the Congo",
+        "CF": "Central African Republic",
+        "TD": "Chad",
+        "CM": "Cameroon",
+        "NG": "Nigeria",
+        "NE": "Niger",
+        "ML": "Mali",
+        "BF": "Burkina Faso",
+        "CI": "Ivory Coast",
+        "GH": "Ghana",
+        "TG": "Togo",
+        "BJ": "Benin",
+        "SN": "Senegal",
+        "GM": "Gambia",
+        "GW": "Guinea-Bissau",
+        "GN": "Guinea",
+        "SL": "Sierra Leone",
+        "LR": "Liberia",
+        "MR": "Mauritania",
+        "CV": "Cape Verde",
+        "ST": "São Tomé and Príncipe",
+        "GQ": "Equatorial Guinea",
+        "GA": "Gabon",
+        "AR": "Argentina",
+        "BO": "Bolivia",
+        "CL": "Chile",
+        "CO": "Colombia",
+        "EC": "Ecuador",
+        "FK": "Falkland Islands",
+        "GF": "French Guiana",
+        "GY": "Guyana",
+        "PY": "Paraguay",
+        "PE": "Peru",
+        "SR": "Suriname",
+        "UY": "Uruguay",
+        "VE": "Venezuela",
+        "CU": "Cuba",
+        "JM": "Jamaica",
+        "HT": "Haiti",
+        "DO": "Dominican Republic",
+        "PR": "Puerto Rico",
+        "TT": "Trinidad and Tobago",
+        "BB": "Barbados",
+        "LC": "Saint Lucia",
+        "VC": "Saint Vincent and the Grenadines",
+        "GD": "Grenada",
+        "AG": "Antigua and Barbuda",
+        "KN": "Saint Kitts and Nevis",
+        "DM": "Dominica",
+        "BS": "Bahamas",
+        "BZ": "Belize",
+        "GT": "Guatemala",
+        "SV": "El Salvador",
+        "HN": "Honduras",
+        "NI": "Nicaragua",
+        "CR": "Costa Rica",
+        "PA": "Panama",
+        "NZ": "New Zealand",
+        "FJ": "Fiji",
+        "PG": "Papua New Guinea",
+        "SB": "Solomon Islands",
+        "VU": "Vanuatu",
+        "NC": "New Caledonia",
+        "PF": "French Polynesia",
+        "WS": "Samoa",
+        "TO": "Tonga",
+        "KI": "Kiribati",
+        "TV": "Tuvalu",
+        "NR": "Nauru",
+        "PW": "Palau",
+        "FM": "Micronesia",
+        "MH": "Marshall Islands"
+    }
+}
