@@ -1,5 +1,5 @@
 /**
- * New Auth Page - LocalQR Auth Model
+ * New Auth Page - explorers.earth Auth Model
  * Login page with Google OAuth support
  */
 
@@ -32,7 +32,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useEffect } from 'react';
 import { useLocation } from 'wouter';
 
-const VITE_REST_API_URL = import.meta.env.VITE_REST_API_URL || 'https://api.localqr.earth';
+const VITE_REST_API_URL = import.meta.env.VITE_REST_API_URL || 'https://api.explorers.earth';
 
 const loginSchema = z.object({
   identifier: z.string().min(1, 'Username or email is required'),
@@ -233,13 +233,13 @@ export default function NewAuthPage() {
                   </div>
                   <div className="space-y-2">
                     <Button
-                      onClick={() => window.open('https://localqr.earth/register', '_blank')}
+                      onClick={() => window.open('https://explorers.earth/register', '_blank')}
                       className="w-full"
                     >
                       Create Explorers Account
                     </Button>
                     <Button
-                      onClick={() => window.open('https://localqr.earth/login', '_blank')}
+                      onClick={() => window.open('https://explorers.earth/login', '_blank')}
                       variant="outline"
                       className="w-full"
                     >

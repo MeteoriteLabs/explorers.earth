@@ -441,26 +441,26 @@ export default function AuthPage() {
                   <div className="space-y-4 text-center">
                     <div className="space-y-3">
                       <p className="text-sm text-muted-foreground">
-                        To use LocalTunes, you need to connect your LocalQR account
+                        To use LocalTunes, you need to connect your explorers.earth account
                       </p>
                       <div className="text-left space-y-2 text-xs text-muted-foreground">
-                        <p><strong>New users:</strong> Create LocalQR account and enable LocalTunes during signup</p>
-                        <p><strong>Existing users:</strong> If you already have LocalQR account, connect LocalTunes from Settings tab</p>
+                        <p><strong>New users:</strong> Create explorers.earth account and enable LocalTunes during signup</p>
+                        <p><strong>Existing users:</strong> If you already have explorers.earth account, connect LocalTunes from Settings tab</p>
                       </div>
                     </div>
                     <div className="space-y-2">
                       <Button
-                        onClick={() => window.open('https://localqr.earth/register', '_blank')}
+                        onClick={() => window.open('https://explorers.earth/register', '_blank')}
                         className="w-full"
                       >
-                        Create LocalQR Account
+                        Create explorers.earth Account
                       </Button>
                       <Button
-                        onClick={() => window.open('https://localqr.earth/login', '_blank')}
+                        onClick={() => window.open('https://explorers.earth/login', '_blank')}
                         variant="outline"
                         className="w-full"
                       >
-                        Already have LocalQR? Login
+                        Already have explorers.earth? Login
                       </Button>
                     </div>
                   </div>

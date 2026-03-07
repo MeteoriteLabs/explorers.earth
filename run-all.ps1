@@ -1,5 +1,5 @@
 # ============================================================
-#  run-all.ps1 — Start Local-Tune and LocalQR in one shot
+#  run-all.ps1 — Start Local-Tune and explorers-earth in one shot
 #  Usage: .\run-all.ps1
 # ============================================================
 
@@ -12,7 +12,7 @@ Write-Host "  ML Project — Starting all apps" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor DarkCyan
 Write-Host ""
 Write-Host "  [1] Local-Tune  → http://localhost:5000" -ForegroundColor Cyan
-Write-Host "  [2] LocalQR     → http://localhost:5173" -ForegroundColor Magenta
+Write-Host "  [2] explorers-earth → http://localhost:5173" -ForegroundColor Magenta
 Write-Host ""
 Write-Host "  Press Ctrl+C to stop both servers." -ForegroundColor Yellow
 Write-Host "============================================" -ForegroundColor DarkCyan
@@ -28,11 +28,11 @@ Start-Process powershell -ArgumentList @(
 # Small delay so ports don't collide on startup
 Start-Sleep -Seconds 2
 
-# Start LocalQR in a new window
+# Start explorers-earth in a new window
 Start-Process powershell -ArgumentList @(
     "-NoExit",
     "-Command",
-    "cd '$root\LocalQR'; `$host.UI.RawUI.WindowTitle = 'LocalQR :5173'; npm run dev"
+    "cd '$root\explorers-earth'; `$host.UI.RawUI.WindowTitle = 'explorers-earth :5173'; npm run dev"
 )
 
 Write-Host "✅ Both servers launched in separate windows." -ForegroundColor Green
