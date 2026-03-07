@@ -12,7 +12,7 @@ import PlaylistPage from "@/pages/playlist-page";
 import LandingPage from "@/pages/landing-page";
 import DashboardPage from "@/pages/dashboard-page";
 import SettingsPage from "@/pages/settings-page";
-import AdminDashboard from "@/pages/admin-dashboard";
+import AdminDashboard from "@/pages/AdminDashboard";
 import AdminSEOPage from "@/pages/admin-seo";
 import UserDetailPage from "@/pages/user-detail-page";
 import AnalyticsTest from "@/pages/analytics-test";
