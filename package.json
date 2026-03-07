@@ -1,15 +1,15 @@
 {
   "name": "ml-project",
   "version": "1.0.0",
-  "description": "Monorepo runner for Local-Tune and explorers-earth",
+  "description": "Monorepo runner for tunes and LocalQR",
   "private": true,
   "scripts": {
-    "dev": "concurrently --names \"LOCAL-TUNE,EXPLORERS-EARTH\" --prefix-colors \"cyan.bold,magenta.bold\" --kill-others-on-fail \"npm run dev --prefix Local-Tune\" \"npm run dev --prefix explorers-earth\"",
-    "dev:local-tune": "npm run dev --prefix Local-Tune",
-    "dev:explorers-earth": "npm run dev --prefix explorers-earth",
-    "install:all": "npm install --prefix Local-Tune && npm install --prefix explorers-earth",
-    "db:push": "npm run db:push --prefix Local-Tune",
-    "build:all": "npm run build --prefix Local-Tune && npm run build --prefix explorers-earth"
+    "dev": "concurrently --names \"TUNES,LOCALQR\" --prefix-colors \"cyan.bold,magenta.bold\" --kill-others-on-fail \"npm run dev --prefix tunes\" \"npm run dev --prefix LocalQR\"",
+    "dev:tunes": "npm run dev --prefix tunes",
+    "dev:localqr": "npm run dev --prefix LocalQR",
+    "install:all": "npm install --prefix tunes && npm install --prefix LocalQR",
+    "db:push": "npm run db:push --prefix tunes",
+    "build:all": "npm run build --prefix tunes && npm run build --prefix LocalQR"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
