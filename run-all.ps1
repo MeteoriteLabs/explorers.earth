@@ -1,5 +1,5 @@
 # ============================================================
-#  run-all.ps1 — Start tunes and LocalQR in one shot
+#  run-all.ps1 — Start tunes and explorers-earth in one shot
 #  Usage: .\run-all.ps1
 # ============================================================
 
@@ -8,11 +8,11 @@ $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 Write-Host ""
 Write-Host "============================================" -ForegroundColor DarkCyan
-Write-Host "  ML Project — Starting all apps" -ForegroundColor Cyan
+Write-Host "  Explorers Earth — Starting all apps" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor DarkCyan
 Write-Host ""
-Write-Host "  [1] tunes        → http://localhost:5000" -ForegroundColor Cyan
-Write-Host "  [2] LocalQR     → http://localhost:5173" -ForegroundColor Magenta
+Write-Host "  [1] tunes           → http://localhost:5000" -ForegroundColor Cyan
+Write-Host "  [2] explorers-earth → http://localhost:5173" -ForegroundColor Magenta
 Write-Host ""
 Write-Host "  Press Ctrl+C to stop both servers." -ForegroundColor Yellow
 Write-Host "============================================" -ForegroundColor DarkCyan
