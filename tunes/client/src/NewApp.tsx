@@ -1,5 +1,5 @@
 /**
- * New App Component - LocalQR Auth Model
+ * New App Component - explorers.earth Auth Model
  * Main app with Apollo Client and new auth system
  */
 
