@@ -1,5 +1,5 @@
 import { createRoot } from "react-dom/client";
-// Import NewApp for LocalQR auth model
+// Import NewApp for explorers.earth auth model
 import NewApp from "./NewApp";
 // Old App is still available if needed
 // import App from "./App";
@@ -44,5 +44,5 @@ const initMicrosoftClarity = () => {
 // Initialize analytics
 initMicrosoftClarity();
 
-// Render the app with new LocalQR auth model
+// Render the app with new explorers.earth auth model
 createRoot(document.getElementById("root")!).render(<NewApp />);

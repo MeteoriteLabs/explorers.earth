@@ -7,7 +7,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Radio, Music2, ListMusic, Share2, PlayCircle, History, Palette, ShieldCheck, Mic2, Headphones, Users2, Building2, ThumbsUp, Coffee, Beer, ShoppingBag, PartyPopper, Utensils, Dumbbell, Home, HelpCircle, Book, Heart, Facebook, Twitter, Instagram, QrCode, MapPin, BarChart3, Users, Globe, ArrowRight } from "lucide-react";
 import { motion } from 'framer-motion';
 
-function LocalQRHero() {
+function ExplorersEarthHero() {
   const features = [
     {
       icon: QrCode,
@@ -78,7 +78,7 @@ function LocalQRHero() {
             transition={{ duration: 0.6, delay: 0.4 }}
             className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 sm:mb-4 bg-gradient-to-r from-blue-300 via-cyan-300 to-blue-400 bg-clip-text text-transparent"
           >
-            LocalQR
+            explorers.earth
           </motion.h2>
           
           {/* Subtitle */}
@@ -644,8 +644,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* LocalQR Section */}
-      <LocalQRHero />
+      {/* explorers.earth Section */}
+      <ExplorersEarthHero />
 
       {/* FAQ Section */}
       <section id="faq" className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-16 sm:py-24">

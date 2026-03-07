@@ -47,8 +47,8 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
           script: |
-            rm -rf /home/deployuser/explorers-earth/*
-            mkdir -p /home/deployuser/explorers-earth
+            rm -rf /home/deployuser/explorers-earth-frontend/*
+            mkdir -p /home/deployuser/explorers-earth-frontend
 
       - name: Copy files to server
         uses: appleboy/scp-action@v1.0.0
@@ -58,7 +58,7 @@ jobs:
           key: ${{ secrets.DEPLOY_KEY }}
           port: ${{ secrets.DEPLOY_PORT }}
           source: "dist/"
-          target: "/home/deployuser/explorers-earth"
+          target: "/home/deployuser/explorers-earth-frontend"
 
       
       - name: Restart Nginx

@@ -1,5 +1,5 @@
 /**
- * Strapi Auth Hook - LocalQR Auth Model
+ * Strapi Auth Hook - explorers.earth Auth Model
  * Hook for authentication with Strapi GraphQL
  */
 
