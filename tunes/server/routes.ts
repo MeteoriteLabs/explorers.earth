@@ -80,7 +80,7 @@ export function registerRoutes(app: Express): Server {
   // Strapi configuration endpoint for client
   app.get('/api/strapi/config', (req, res) => {
     res.json({
-      strapiUrl: process.env.STRAPI_URL || 'https://api.localqr.earth',
+      strapiUrl: process.env.STRAPI_URL || 'https://api.explorers.earth',
       accessToken: process.env.STRAPI_ACCESS_TOKEN || '',
     });
   });

@@ -1,5 +1,5 @@
 /**
- * Zustand Auth Store - LocalQR Auth Model
+ * Zustand Auth Store - explorers.earth Auth Model
  * Stores authentication state with localStorage persistence
  */
 
@@ -31,7 +31,7 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       login: (data) => {
         const { token, ...user } = data;
-        // Store token in localStorage under 'qrtoken' key (same as LocalQR)
+        // Store token in localStorage under 'qrtoken' key (same as explorers.earth)
         localStorage.setItem('qrtoken', token);
         set({
           isAuthenticated: true,
@@ -44,7 +44,7 @@ export const useAuthStore = create<AuthState>()(
         localStorage.removeItem('qrtoken');
         localStorage.removeItem('auth-storage');
         localStorage.removeItem('localTunes_session');
-        sessionStorage.removeItem('localqr_user_credentials');
+        sessionStorage.removeItem('explorers_user_credentials');
         
         // Clear cross-domain SSO keys
         localStorage.removeItem('localtunes_cross_domain_auth');
@@ -69,7 +69,7 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: 'auth-storage', // localStorage key (same as LocalQR)
+      name: 'auth-storage', // localStorage key (same as explorers.earth)
       storage: createJSONStorage(() => localStorage),
     }
   )

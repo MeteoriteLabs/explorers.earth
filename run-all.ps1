@@ -28,11 +28,11 @@ Start-Process powershell -ArgumentList @(
 # Small delay so ports don't collide on startup
 Start-Sleep -Seconds 2
 
-# Start LocalQR in a new window
+# Start explorers-earth in a new window
 Start-Process powershell -ArgumentList @(
     "-NoExit",
     "-Command",
-    "cd '$root\LocalQR'; `$host.UI.RawUI.WindowTitle = 'LocalQR :5173'; npm run dev"
+    "cd '$root\explorers-earth'; `$host.UI.RawUI.WindowTitle = 'explorers-earth :5173'; npm run dev"
 )
 
 Write-Host "✅ Both servers launched in separate windows." -ForegroundColor Green
