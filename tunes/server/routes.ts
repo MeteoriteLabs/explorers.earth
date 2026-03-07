@@ -16,12 +16,14 @@ import { setupUserRoutes } from './user-routes';
 import { setupSeoRoutes } from './seo-routes';
 import { setupPaymentRoutes } from './routes/paymentRoutes';
 import { setupSubscriptionRoutes } from './routes/subscriptionRoutes';
+import { setupStrapiRoutes } from './routes/strapiRoutes';
+import { setupYouTubeRoutes } from './routes/youtubeRoutes';
+import { setupEmailRoutes } from './routes/emailRoutes';
+import { setupPageRoutes } from './routes/pageRoutes';
 import { randomBytes, createHash } from 'crypto';
 import { emailService } from './services/email-service';
 import { importYouTubeMusicPlaylist, importYouTubeMusicPlaylistToMain } from './services/youtube-playlist-import';
 import { importSpotifyPlaylist, importSpotifyPlaylistToMain } from './services/spotify-playlist-import';
-import { strapiService } from './services/strapi-service';
-import { extractYouTubeVideoId, isYouTubeUrl } from './utils/youtube';
 import { setupGeminiRoutes } from './routes/geminiRoutes';
 import { setupInstagramRoutes } from './routes/instagramRoutes';
 import { setupGoogleOAuthRoutes } from './google-oauth-routes';
@@ -77,14 +79,6 @@ export function registerRoutes(app: Express): Server {
   // Setup Auth Bridge routes (sync Strapi auth with Neon DB)
   setupAuthBridgeRoutes(app);
 
-  // Strapi configuration endpoint for client
-  app.get('/api/strapi/config', (req, res) => {
-    res.json({
-      strapiUrl: process.env.STRAPI_URL || 'https://api.localqr.earth',
-      accessToken: process.env.STRAPI_ACCESS_TOKEN || '',
-    });
-  });
-
   // Setup user-related routes
   setupUserRoutes(app);
 
@@ -102,6 +96,18 @@ export function registerRoutes(app: Express): Server {
 
   // Setup Instagram scraping routes
   setupInstagramRoutes(app);
+
+  // Setup Strapi routes
+  setupStrapiRoutes(app);
+
+  // Setup YouTube routes
+  setupYouTubeRoutes(app);
+
+  // Setup email routes
+  setupEmailRoutes(app);
+
+  // Setup public page/system routes
+  setupPageRoutes(app);
 
   // Add guest interaction tracking middleware
   app.use(async (req, res, next) => {
@@ -1739,73 +1745,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Send email (API)
-  app.post("/api/email/send", async (req, res) => {
-    // API token authentication
-    const apiToken = req.headers.authorization?.split(' ')[1];
-    if (!apiToken) {
-      return res.status(401).json({ message: "API token is required" });
-    }
-
-    try {
-      // Validate token
-      const token = await storage.getApiTokenByToken(apiToken);
-      if (!token || !token.isActive) {
-        return res.status(401).json({ message: "Invalid or inactive API token" });
-      }
-
-      // Update token last used timestamp
-      await storage.updateApiTokenLastUsed(token.id);
-
-      // Get required parameters
-      const { recipient, templateId, variables, subject } = req.body;
-
-      // Validate required fields
-      if (!recipient || !templateId || !variables) {
-        return res.status(400).json({
-          message: "Missing required fields",
-          required: ["recipient", "templateId", "variables"]
-        });
-      }
-
-      // Check if AWS SES is configured
-      const configValidation = emailService.validateConfig();
-      if (!configValidation.isValid) {
-        return res.status(500).json({
-          message: "Email service is not properly configured",
-          details: configValidation.message
-        });
-      }
-
-      // Send email
-      const result = await emailService.sendEmail(
-        recipient,
-        templateId,
-        variables,
-        token.id,
-        subject
-      );
-
-      if (result.success) {
-        res.json({
-          message: "Email sent successfully",
-          messageId: result.messageId
-        });
-      } else {
-        res.status(400).json({
-          message: "Failed to send email",
-          error: result.error
-        });
-      }
-    } catch (error) {
-      console.error('Error sending email:', error);
-      res.status(500).json({
-        message: "Failed to send email",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
   app.delete("/api/admin/users/:userId", async (req, res) => {
     if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
       return res.status(403).json({ message: "Unauthorized access" });
@@ -3031,386 +2970,6 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
-
-
-  // Add YouTube API endpoints
-  // Get video details from YouTube URL (register before search to ensure it's matched)
-  console.log('\n✅ ============================================');
-  console.log('✅ Registering route: POST /api/youtube/video-from-url');
-  console.log('✅ Route will be available at: http://localhost:5000/api/youtube/video-from-url');
-  console.log('✅ ============================================\n');
-
-  // Register the route with explicit method matching
-  // IMPORTANT: This route MUST be registered before Vite middleware is added
-  // CRITICAL: Do NOT include 'next' parameter - this is a route handler, not middleware
-  app.post("/api/youtube/video-from-url", async (req, res) => {
-    console.log('\n🔵 ============================================');
-    console.log('🔵 YouTube video-from-url endpoint HIT!');
-    console.log('🔵 ============================================');
-    console.log('🔵 Request method:', req.method);
-    console.log('🔵 Request path:', req.path);
-    console.log('🔵 Request originalUrl:', req.originalUrl);
-    console.log('🔵 Request headers:', JSON.stringify(req.headers, null, 2));
-    console.log('🔵 Request body:', req.body);
-    console.log('🔵 ============================================\n');
-
-    const { url } = req.body;
-    console.log('YouTube video-from-url request:', {
-      url,
-      userId: req.user?.id,
-      isAuthenticated: req.isAuthenticated()
-    });
-
-    try {
-      if (!url || typeof url !== 'string') {
-        return res.status(400).json({
-          message: "URL is required",
-          error: "Missing or invalid URL parameter"
-        });
-      }
-
-      if (!process.env.YOUTUBE_API_KEY) {
-        throw new Error("YouTube API key is not configured");
-      }
-
-      // Extract video ID from URL
-      const videoId = extractYouTubeVideoId(url);
-      if (!videoId) {
-        return res.status(400).json({
-          message: "Invalid YouTube URL",
-          error: "Could not extract video ID from URL"
-        });
-      }
-
-      // Log the video details API usage
-      await logYouTubeAPIUsage('video_details', req.user?.id);
-
-      // Call YouTube Data API v3 videos endpoint
-      const params = new URLSearchParams({
-        part: 'snippet',
-        id: videoId,
-        key: process.env.YOUTUBE_API_KEY
-      });
-
-      const apiUrl = `https://www.googleapis.com/youtube/v3/videos?${params.toString()}`;
-      console.log('Making YouTube API request to:', apiUrl.replace(process.env.YOUTUBE_API_KEY, '[REDACTED]'));
-
-      const response = await fetch(apiUrl, {
-        headers: {
-          'Accept': 'application/json',
-          'referer': 'https://cosmic-playlist.replit.app/'
-        }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('YouTube API error response:', errorData);
-
-        if (response.status === 404 || response.status === 400) {
-          return res.status(404).json({
-            message: "Video not found",
-            error: errorData.error?.message || "The video could not be found"
-          });
-        }
-
-        if (response.status === 403) {
-          const errorMessage = errorData.error?.message || "API key validation failed";
-          throw new Error(`YouTube API error: ${errorMessage}`);
-        }
-        throw new Error(`YouTube API error: ${errorData.error?.message || response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log('YouTube API request successful:', {
-        itemsCount: data.items?.length,
-        timestampUTC: new Date().toISOString()
-      });
-
-      // Check if video was found
-      if (!data.items || data.items.length === 0) {
-        return res.status(404).json({
-          message: "Video not found",
-          error: "The video could not be found"
-        });
-      }
-
-      // Transform the response to match search results format
-      const video = data.items[0];
-      const result = {
-        id: { videoId: video.id },
-        snippet: {
-          title: video.snippet.title,
-          channelTitle: video.snippet.channelTitle,
-          thumbnails: {
-            default: { url: video.snippet.thumbnails.default?.url || '' }
-          }
-        }
-      };
-
-      res.json(result);
-    } catch (error) {
-      console.error('Error in YouTube video-from-url:', error);
-      res.status(500).json({
-        message: "Failed to fetch video from URL",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  app.post("/api/youtube/search", async (req, res) => {
-    const { query, pageToken } = req.body;
-    console.log('YouTube search request:', {
-      query,
-      pageToken,
-      userId: req.user?.id,
-      isAuthenticated: req.isAuthenticated()
-    });
-
-    try {
-      if (!process.env.YOUTUBE_API_KEY) {
-        throw new Error("YouTube API key is not configured");
-      }
-
-      // Log the YouTube API key length for debugging (don't log the actual key)
-      console.log('YouTube API key length:', process.env.YOUTUBE_API_KEY.length);
-
-      // Log the search API usage with enhanced debugging
-      console.log('Attempting to log YouTube API usage for user:', req.user?.id);
-      await logYouTubeAPIUsage('search', req.user?.id);
-      console.log('Successfully logged YouTube API usage');
-
-      const params = new URLSearchParams({
-        part: 'snippet',
-        maxResults: '20',
-        q: query,
-        type: 'video',
-        key: process.env.YOUTUBE_API_KEY
-      });
-
-      if (pageToken) {
-        params.append('pageToken', pageToken);
-      }
-
-      const apiUrl = `https://www.googleapis.com/youtube/v3/search?${params.toString()}`;
-      console.log('Making YouTube API request to:', apiUrl.replace(process.env.YOUTUBE_API_KEY, '[REDACTED]'));
-
-      const response = await fetch(apiUrl, {
-        headers: {
-          'Accept': 'application/json',
-          'referer': 'https://cosmic-playlist.replit.app/'
-        }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('YouTube API error response:', errorData);
-
-        if (response.status === 403) {
-          const errorMessage = errorData.error?.message || "API key validation failed";
-          throw new Error(`YouTube API error: ${errorMessage}`);
-        }
-        throw new Error(`YouTube API error: ${errorData.error?.message || response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log('YouTube API request successful:', {
-        itemsCount: data.items?.length,
-        nextPageToken: data.nextPageToken,
-        totalResults: data.pageInfo?.totalResults,
-        timestampUTC: new Date().toISOString()
-      });
-
-      // Send response immediately to user
-      res.json(data);
-
-      // Track song search in Strapi after successful API response (non-blocking)
-      // This runs in the background and won't delay the user's response
-      console.log('🔍 [STRAPI] Checking Strapi tracking conditions:', {
-        isAuthenticated: req.isAuthenticated(),
-        userId: req.user?.id,
-        username: req.user?.username,
-        userObject: req.user ? { id: req.user.id, username: req.user.username } : null,
-        hasUser: !!req.user
-      });
-
-      // Get username - try from req.user first, then request body (for guests), then fetch from DB if needed
-      let username: string | undefined = req.user?.username || req.body.username;
-
-      // If username is not available but user ID is, fetch from database
-      if (!username && req.user?.id) {
-        try {
-          const user = await storage.getUser(req.user.id);
-          username = user?.username;
-          console.log(`🔍 [STRAPI] Fetched username from DB: ${username}`);
-        } catch (error) {
-          console.error('❌ [STRAPI] Failed to fetch user from DB:', error);
-        }
-      }
-
-      if (username) {
-        console.log(`📊 [STRAPI] Starting Strapi tracking for username: ${username}`);
-        console.log(`📊 [STRAPI] About to call strapiService.incrementSongRequests('${username}')`);
-
-        // Make the GraphQL call - this should appear in network tab
-        try {
-          // Await the Strapi call to ensure it runs
-          const result = await strapiService.incrementSongRequests(username);
-          console.log(`✅ [STRAPI] Successfully tracked song search in Strapi for user: ${username}, song_requests: ${result.song_requests}`);
-        } catch (strapiError) {
-          console.error(`❌ [STRAPI] Failed to track song search in Strapi for user: ${username}:`, strapiError);
-          if (strapiError instanceof Error) {
-            console.error(`❌ [STRAPI] Error details:`, strapiError.message);
-            console.error(`❌ [STRAPI] Error stack:`, strapiError.stack);
-          }
-        }
-      } else {
-        console.log('⚠️ [STRAPI] Skipping Strapi tracking - username not available:', {
-          isAuthenticated: req.isAuthenticated(),
-          hasUser: !!req.user,
-          hasUsername: !!req.user?.username,
-          userId: req.user?.id,
-          fetchedUsername: username
-        });
-      }
-    } catch (error) {
-      console.error('Error in YouTube search:', error);
-      res.status(500).json({
-        message: "Failed to search YouTube",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Debug endpoint to test Strapi connection
-  app.get("/api/debug/strapi", async (req, res) => {
-    try {
-      const config = {
-        strapiUrl: process.env.STRAPI_URL || 'NOT SET',
-        accessToken: process.env.STRAPI_ACCESS_TOKEN ? 'SET (hidden)' : 'NOT SET',
-        isConfigured: !!(process.env.STRAPI_URL && process.env.STRAPI_ACCESS_TOKEN)
-      };
-
-      if (!config.isConfigured) {
-        return res.json({
-          status: 'error',
-          message: 'Strapi environment variables not configured',
-          config
-        });
-      }
-
-      // Try to make a simple query to test connection
-      try {
-        const testResult = await strapiService.findSongLimitByUsername('test_user_12345');
-        res.json({
-          status: 'success',
-          message: 'Strapi connection is working',
-          config: {
-            ...config,
-            accessToken: 'SET (hidden)'
-          },
-          testQuery: testResult ? 'Found test record' : 'No test record found (this is normal)'
-        });
-      } catch (error) {
-        res.json({
-          status: 'error',
-          message: 'Strapi connection failed',
-          config,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
-      }
-    } catch (error) {
-      res.status(500).json({
-        status: 'error',
-        message: 'Debug endpoint error',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  // Get Strapi configuration for client
-  app.get("/api/strapi/config", async (req, res) => {
-    try {
-      const strapiUrl = process.env.STRAPI_URL;
-      const accessToken = process.env.STRAPI_ACCESS_TOKEN;
-
-      if (!strapiUrl || !accessToken) {
-        return res.status(500).json({
-          error: 'Strapi configuration is missing on the server'
-        });
-      }
-
-      // Return the URL and token to the client
-      // Note: In production, you might want to use a more secure approach
-      res.json({
-        strapiUrl: strapiUrl.endsWith('/') ? strapiUrl.slice(0, -1) : strapiUrl,
-        accessToken,
-      });
-    } catch (error) {
-      console.error('Error getting Strapi config:', error);
-      res.status(500).json({
-        error: 'Failed to get Strapi configuration'
-      });
-    }
-  });
-
-  // Strapi GraphQL proxy endpoint
-  app.post("/api/strapi/graphql", async (req, res) => {
-    try {
-      const { query, variables } = req.body;
-
-      if (!query) {
-        return res.status(400).json({
-          errors: [{ message: 'GraphQL query is required' }]
-        });
-      }
-
-      const strapiUrl = process.env.STRAPI_URL;
-      const accessToken = process.env.STRAPI_ACCESS_TOKEN;
-
-      if (!strapiUrl || !accessToken) {
-        return res.status(500).json({
-          errors: [{ message: 'Strapi configuration is missing. Please set STRAPI_URL and STRAPI_ACCESS_TOKEN environment variables.' }]
-        });
-      }
-
-      const graphqlEndpoint = `${strapiUrl}/graphql`;
-
-      const response = await fetch(graphqlEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          query,
-          variables,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Strapi API error response:', errorText);
-        return res.status(response.status).json({
-          errors: [{ message: `Strapi API error: ${response.status} ${response.statusText}` }]
-        });
-      }
-
-      const result = await response.json();
-
-      if (result.errors && result.errors.length > 0) {
-        console.error('GraphQL errors:', result.errors);
-        return res.status(400).json(result);
-      }
-
-      res.json(result);
-    } catch (error) {
-      console.error('Strapi GraphQL proxy error:', error);
-      res.status(500).json({
-        errors: [{ message: error instanceof Error ? error.message : 'Unknown error occurred' }]
-      });
-    }
-  });
-
   // Video details endpoint
   app.get("/api/youtube/video/:id", async (req, res) => {
     try {
@@ -5404,31 +4963,6 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Modify existing endpoints to log API usage
-
-
-
-  // Page content API routes (for Terms & Conditions, Privacy Policy, etc.)
-  app.get("/api/page-contents/:slug", async (req, res) => {
-    try {
-      const { slug } = req.params;
-      const pageContent = await storage.getPageContentBySlug(slug);
-
-      if (!pageContent) {
-        return res.status(404).json({ error: "Page content not found" });
-      }
-
-      // Only return published content to regular users
-      if (!pageContent.isPublished && (!req.user || (req.user as any).role !== 'admin')) {
-        return res.status(404).json({ error: "Page content not found" });
-      }
-
-      return res.json(pageContent);
-    } catch (error) {
-      console.error('Error fetching page content:', error);
-      return res.status(500).json({ error: "Server error" });
-    }
-  });
-
   // Admin routes for managing page content
   app.get("/api/admin/page-contents", async (req, res) => {
     try {
@@ -5794,29 +5328,6 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ message: "Failed to delete system setting" });
     }
   });
-
-  // Utility endpoint to get a system setting by key (available for all authenticated users)
-  app.get("/api/system-settings/:key", async (req, res) => {
-    try {
-      const key = req.params.key;
-      const setting = await storage.getSystemSetting(key);
-
-      if (!setting) {
-        return res.status(404).json({ message: `Setting with key "${key}" not found` });
-      }
-
-      // Don't expose secret values to non-super-admins
-      if (setting.isSecret && (!req.isAuthenticated() || req.user!.username !== 'yapral27')) {
-        return res.status(403).json({ message: "Access to this setting is restricted" });
-      }
-
-      res.json(setting);
-    } catch (error) {
-      console.error('Error fetching system setting:', error);
-      res.status(500).json({ message: "Failed to fetch system setting" });
-    }
-  });
-
   // Route for admin to create or update system settings
   app.post("/api/admin/system-settings", async (req, res) => {
     try {
