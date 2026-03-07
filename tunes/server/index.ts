@@ -1,5 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
+import { registerRoutes } from "./routes/index";
 import { setupVite, serveStatic, log } from "./vite";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
@@ -121,7 +121,7 @@ app.use((req, res, next) => {
 (async () => {
   try {
     console.log('Starting server initialization...');
-    const server = await registerRoutes(app);
+    const server = await registerRoutes(app, storage);
 
     // Error handling middleware
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

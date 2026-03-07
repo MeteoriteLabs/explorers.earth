@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { setupAuth, hashPassword, comparePasswords } from "./auth";
+import { hashPassword, comparePasswords } from "./auth";
 import { storage } from "./storage";
 import { Server as SocketIOServer } from 'socket.io';
 import type { Socket } from 'socket.io';
@@ -11,21 +11,12 @@ import { themeSchema } from '@shared/schema';
 import { sql } from 'drizzle-orm';
 import { db } from './db';
 import passport from 'passport';
-import { setupSwagger } from './swagger';
-import { setupUserRoutes } from './user-routes';
-import { setupSeoRoutes } from './seo-routes';
-import { setupPaymentRoutes } from './routes/paymentRoutes';
-import { setupSubscriptionRoutes } from './routes/subscriptionRoutes';
 import { randomBytes, createHash } from 'crypto';
 import { emailService } from './services/email-service';
 import { importYouTubeMusicPlaylist, importYouTubeMusicPlaylistToMain } from './services/youtube-playlist-import';
 import { importSpotifyPlaylist, importSpotifyPlaylistToMain } from './services/spotify-playlist-import';
 import { strapiService } from './services/strapi-service';
 import { extractYouTubeVideoId, isYouTubeUrl } from './utils/youtube';
-import { setupGeminiRoutes } from './routes/geminiRoutes';
-import { setupInstagramRoutes } from './routes/instagramRoutes';
-import { setupGoogleOAuthRoutes } from './google-oauth-routes';
-import { setupAuthBridgeRoutes } from './auth-bridge-routes';
 import jwt from 'jsonwebtoken';
 import { extractDeviceInfo, extractBrowserInfo, extractOSInfo } from './auth';
 import { getGeoInfo } from './utils/geolocation';
@@ -51,9 +42,7 @@ async function logYouTubeAPIUsage(endpointType: 'search' | 'video_details', user
   }
 }
 
-export function registerRoutes(app: Express): Server {
-  const server = createServer(app);
-
+export function setupLegacyRemainingRoutes(app: Express): Server {
   // Basic middleware setup
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
@@ -64,44 +53,6 @@ export function registerRoutes(app: Express): Server {
     importSpotifyPlaylist: typeof importSpotifyPlaylist,
     importSpotifyPlaylistToMain: typeof importSpotifyPlaylistToMain
   });
-
-  // Setup Swagger documentation
-  setupSwagger(app);
-
-  // Setup authentication first - must be before protected routes
-  setupAuth(app);
-
-  // Setup Google OAuth routes
-  setupGoogleOAuthRoutes(app);
-
-  // Setup Auth Bridge routes (sync Strapi auth with Neon DB)
-  setupAuthBridgeRoutes(app);
-
-  // Strapi configuration endpoint for client
-  app.get('/api/strapi/config', (req, res) => {
-    res.json({
-      strapiUrl: process.env.STRAPI_URL || 'https://api.explorers.earth',
-      accessToken: process.env.STRAPI_ACCESS_TOKEN || '',
-    });
-  });
-
-  // Setup user-related routes
-  setupUserRoutes(app);
-
-  // Setup SEO-related routes
-  setupSeoRoutes(app);
-
-  // Setup payment-related routes
-  setupPaymentRoutes(app);
-
-  // Setup subscription-related routes
-  setupSubscriptionRoutes(app);
-
-  // Setup Gemini AI routes
-  setupGeminiRoutes(app);
-
-  // Setup Instagram scraping routes
-  setupInstagramRoutes(app);
 
   // Add guest interaction tracking middleware
   app.use(async (req, res, next) => {
