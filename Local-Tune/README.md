@@ -1,6 +1,6 @@
-# Cosmic - Collaborative Playlist Management Platform
+#Tunes - Collaborative Playlist Management Platform
 
-Cosmic is an advanced collaborative playlist management platform that transforms music sharing across diverse social and venue settings, creating immersive and interactive music experiences. The platform features responsive design, persistent user sessions, advanced music control capabilities with YouTube integration, and comprehensive administrative tools.
+tunes is a songs recommendation platform that transforms music sharing across diverse social and venue settings, creating immersive and interactive music experiences. The platform features responsive design, persistent user sessions, advanced music control capabilities with YouTube integration, and comprehensive administrative tools.
 
 ## 🌟 Features
 
