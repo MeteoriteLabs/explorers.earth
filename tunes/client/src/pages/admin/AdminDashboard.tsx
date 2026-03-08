@@ -4,6 +4,16 @@ import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { BarChart3, BookOpen, Code, Globe2, Lock, Mail, Menu, Settings, Shield, Users } from "lucide-react";
+import AnalyticsTab from "./tabs/AnalyticsTab";
+import UsersTab from "./tabs/UsersTab";
+import TeamTab from "./tabs/TeamTab";
+import SystemTab from "./tabs/SystemTab";
+import ApiTokensTab from "./tabs/ApiTokensTab";
+import EmailTab from "./tabs/EmailTab";
+import SeoTab from "./tabs/SeoTab";
+import WebsiteTab from "./tabs/WebsiteTab";
+import GuestApisTab from "./tabs/GuestApisTab";
+import EmailApisTab from "./tabs/EmailApisTab";
 
 type TabId =
   | "analytics"
@@ -51,14 +61,6 @@ function getTabFromLocation(location: string): TabId {
   return "analytics";
 }
 
-function TabPlaceholder({ tabLabel }: { tabLabel: string }) {
-  return (
-    <div className="rounded-md border border-dashed p-8 text-center text-muted-foreground">
-      {tabLabel} tab coming soon
-    </div>
-  );
-}
-
 export default function AdminDashboard() {
   const { user } = useAuth();
   const [location] = useLocation();
@@ -77,17 +79,27 @@ export default function AdminDashboard() {
   const renderContent = () => {
     switch (selectedTab) {
       case "analytics":
+        return <AnalyticsTab />;
       case "users":
+        return <UsersTab />;
       case "team":
+        return <TeamTab />;
       case "website":
+        return <WebsiteTab />;
       case "seo":
+        return <SeoTab />;
       case "system":
+        return <SystemTab />;
       case "email":
+        return <EmailTab />;
       case "apitokens":
+        return <ApiTokensTab />;
       case "guestapis":
+        return <GuestApisTab />;
       case "emailapis":
+        return <EmailApisTab />;
       default:
-        return <TabPlaceholder tabLabel={selectedItem.label} />;
+        return <AnalyticsTab />;
     }
   };
 
