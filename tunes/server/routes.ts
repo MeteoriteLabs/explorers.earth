@@ -15,13 +15,15 @@ import { setupUserRoutes } from './user-routes';
 import { setupSeoRoutes } from './seo-routes';
 import { setupPaymentRoutes } from './routes/paymentRoutes';
 import { setupSubscriptionRoutes } from './routes/subscriptionRoutes';
+import { setupStrapiRoutes } from './routes/strapiRoutes';
+import { setupYouTubeRoutes } from './routes/youtubeRoutes';
+import { setupEmailRoutes } from './routes/emailRoutes';
+import { setupPageRoutes } from './routes/pageRoutes';
 import { setupAdminRoutes } from './routes/adminRoutes';
 import { setupPlaylistRoutes } from './routes/playlistRoutes';
 import { randomBytes, createHash } from 'crypto';
 import { emailService } from './services/email-service';
 import { importSpotifyPlaylist, importSpotifyPlaylistToMain } from './services/spotify-playlist-import';
-import { strapiService } from './services/strapi-service';
-import { extractYouTubeVideoId, isYouTubeUrl } from './utils/youtube';
 import { setupGeminiRoutes } from './routes/geminiRoutes';
 import { setupInstagramRoutes } from './routes/instagramRoutes';
 import { setupGoogleOAuthRoutes } from './google-oauth-routes';
@@ -77,14 +79,6 @@ export function registerRoutes(app: Express): Server {
   // Setup Auth Bridge routes (sync Strapi auth with Neon DB)
   setupAuthBridgeRoutes(app);
 
-  // Strapi configuration endpoint for client
-  app.get('/api/strapi/config', (req, res) => {
-    res.json({
-      strapiUrl: process.env.STRAPI_URL || 'https://api.explorers.earth',
-      accessToken: process.env.STRAPI_ACCESS_TOKEN || '',
-    });
-  });
-
   // Setup user-related routes
   setupUserRoutes(app);
 
@@ -106,6 +100,20 @@ export function registerRoutes(app: Express): Server {
   // Setup Instagram scraping routes
   setupInstagramRoutes(app);
 
+  // Setup Strapi routes
+  setupStrapiRoutes(app);
+
+  // Setup YouTube routes
+  setupYouTubeRoutes(app);
+
+  // Setup email routes
+  setupEmailRoutes(app);
+
+  // Setup public page/system routes
+  setupPageRoutes(app);
+
+  // Add guest interaction tracking middleware
+  app.use(async (req, res, next) => {
   // Setup playlist routes
   setupPlaylistRoutes(app, storage);
 
@@ -1291,6 +1299,9 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.delete("/api/admin/users/:userId", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
+      return res.status(403).json({ message: "Unauthorized access" });
   // Verify email with token (POST method for forward compatibility)
   app.post("/api/verify-email/:token", async (req, res) => {
     try {
@@ -3498,31 +3509,6 @@ export function registerRoutes(app: Express): Server {
   // Add the YouTube costs endpoint
 
   // Modify existing endpoints to log API usage
-
-
-
-  // Page content API routes (for Terms & Conditions, Privacy Policy, etc.)
-  app.get("/api/page-contents/:slug", async (req, res) => {
-    try {
-      const { slug } = req.params;
-      const pageContent = await storage.getPageContentBySlug(slug);
-
-      if (!pageContent) {
-        return res.status(404).json({ error: "Page content not found" });
-      }
-
-      // Only return published content to regular users
-      if (!pageContent.isPublished && (!req.user || (req.user as any).role !== 'admin')) {
-        return res.status(404).json({ error: "Page content not found" });
-      }
-
-      return res.json(pageContent);
-    } catch (error) {
-      console.error('Error fetching page content:', error);
-      return res.status(500).json({ error: "Server error" });
-    }
-  });
-
   // Admin routes for managing page content
 
 
@@ -3712,6 +3698,13 @@ export function registerRoutes(app: Express): Server {
 
 
 
+      await storage.deleteSystemSetting(key);
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting system setting:', error);
+      res.status(500).json({ message: "Failed to delete system setting" });
+    }
+  });
 
   // Utility endpoint to get a system setting by key (available for all authenticated users)
   app.get("/api/system-settings/:key", async (req, res) => {
@@ -3739,4 +3732,3 @@ export function registerRoutes(app: Express): Server {
 
   return httpServer;
 }
-
