@@ -11,6 +11,8 @@ import WebsiteTab from "./website-tab";
 import TeamTab from "./tabs/TeamTab";
 import SystemTab from "./tabs/SystemTab";
 import ApiTokensTab from "./tabs/ApiTokensTab";
+import AnalyticsTab from "./tabs/AnalyticsTab";
+import UsersTab from "./tabs/UsersTab";
 import { SeoSettings } from "@shared/schema";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -36,7 +38,6 @@ import {
   Timer,
   CreditCard,
   Code,
-  Calculator,
   Copy,
   Lock,
   BookOpen,
@@ -48,11 +49,9 @@ import {
   Percent,
   RefreshCw,
   Loader2,
-  Database,
   ChevronRight,
   Menu,
   Save,
-  Search,
   Send,
 } from "lucide-react";
 import React, { useState, useEffect } from "react";
@@ -107,7 +106,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { WorldMap } from "@/components/world-map";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { 
@@ -128,37 +126,6 @@ import {
 } from "@/components/ui/alert-dialog";
 
 
-interface DailyStat {
-  date: string;
-  count: number;
-  endpoint_type: string;
-}
-
-interface YoutubeStats {
-  total: number;
-  daily: DailyStat[];
-  weeklyAvg: number;
-  monthlyTotal: number;
-}
-
-interface AnalyticsData {
-  total: number;
-  active: number;
-  totalPlaylists: number;
-  avgSongsPerHost: number;
-  youtubeStats: YoutubeStats;
-  totalGuests?: number;
-  totalSongRequests?: number;
-  peakHours?: string;
-  avgSessionDuration?: string;
-  regionalStats?: { 
-    [region: string]: { 
-      hostCount: number;
-      guestCount?: number;
-      songRequestCount?: number;
-    } 
-  };
-}
 
 const emailTemplateSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
