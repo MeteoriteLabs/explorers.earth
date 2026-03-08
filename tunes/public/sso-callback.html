@@ -8,7 +8,7 @@
 <body>
     <script>
         // LocalTunes SSO Callback Handler
-        // This page handles cross-domain SSO communication from LocalQR
+        // This page handles cross-domain SSO communication from explorers.earth
         
         console.log('🔧 LocalTunes SSO callback page loaded');
         
@@ -22,16 +22,16 @@
             console.log('📡 Notified parent window that SSO callback is ready');
         }
         
-        // Listen for SSO authentication data from LocalQR
+        // Listen for SSO authentication data from explorers.earth
         window.addEventListener('message', function(event) {
-            // Security: Only accept messages from localhost:5173 (LocalQR)
+            // Security: Only accept messages from localhost:5173 (explorers.earth)
             if (event.origin !== 'http://localhost:5173' && event.origin !== 'https://localhost:5173') {
                 console.log('⚠️ Rejected message from unauthorized origin:', event.origin);
                 return;
             }
             
             if (event.data.type === 'LOCALTUNES_SSO_AUTH') {
-                console.log('🔐 Received SSO authentication data from LocalQR');
+                console.log('🔐 Received SSO authentication data from explorers.earth');
                 
                 const authData = event.data.authData;
                 
@@ -103,7 +103,7 @@
     <div style="display: none;">
         <!-- Hidden content for SSO callback -->
         <p>LocalTunes SSO Callback Handler</p>
-        <p>This page handles cross-domain authentication from LocalQR.</p>
+        <p>This page handles cross-domain authentication from explorers.earth.</p>
     </div>
 </body>
 </html>

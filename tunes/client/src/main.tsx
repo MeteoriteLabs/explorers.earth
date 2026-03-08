@@ -1,8 +1,5 @@
 import { createRoot } from "react-dom/client";
-// Import NewApp for LocalQR auth model
-import NewApp from "./NewApp";
-// Old App is still available if needed
-// import App from "./App";
+import App from "./App";
 import "./index.css";
 
 // Initialize Microsoft Clarity Analytics if project ID is available
@@ -44,5 +41,4 @@ const initMicrosoftClarity = () => {
 // Initialize analytics
 initMicrosoftClarity();
 
-// Render the app with new LocalQR auth model
-createRoot(document.getElementById("root")!).render(<NewApp />);
+createRoot(document.getElementById("root")!).render(<App />);

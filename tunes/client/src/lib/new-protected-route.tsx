@@ -1,5 +1,5 @@
 /**
- * Protected Route Component - LocalQR Auth Model
+ * Protected Route Component - explorers.earth Auth Model
  * Handles route protection with Zustand auth state
  */
 
