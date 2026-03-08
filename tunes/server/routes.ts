@@ -10,12 +10,12 @@ import express from 'express';
 import { themeSchema } from '@shared/schema';
 import { sql } from 'drizzle-orm';
 import { db } from './db';
-import passport from 'passport';
 import { setupSwagger } from './swagger';
 import { setupUserRoutes } from './user-routes';
 import { setupSeoRoutes } from './seo-routes';
 import { setupPaymentRoutes } from './routes/paymentRoutes';
 import { setupSubscriptionRoutes } from './routes/subscriptionRoutes';
+import { setupAuthRoutes } from './routes/authRoutes';
 import { randomBytes, createHash } from 'crypto';
 import { emailService } from './services/email-service';
 import { importYouTubeMusicPlaylist, importYouTubeMusicPlaylistToMain } from './services/youtube-playlist-import';
@@ -2124,207 +2124,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Verify email with token (GET method)
-  app.get("/api/verify-email", async (req, res) => {
-    try {
-      const { token } = req.query;
-
-      if (!token || typeof token !== 'string') {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid verification token"
-        });
-      }
-
-      console.log('Verifying email with token (GET):', token);
-
-      // First try the email service verification
-      let result = await emailService.verifyUserEmail(token);
-
-      // If the email service verification fails, try direct verification as a fallback
-      if (!result.success) {
-        console.log('Email service verification failed, attempting direct verification');
-        // Find the user by the verification token
-        const user = await storage.getUserByVerificationToken(token);
-
-        if (!user) {
-          return res.status(400).json({
-            success: false,
-            message: "Invalid or expired verification token"
-          });
-        }
-
-        // Check if token is expired
-        if (user.emailVerificationExpiry && new Date() > new Date(user.emailVerificationExpiry)) {
-          return res.status(400).json({
-            success: false,
-            message: "Verification token has expired"
-          });
-        }
-
-        // Mark email as verified and clear the token
-        const updated = await storage.markEmailAsVerified(user.id);
-
-        if (updated) {
-          result = {
-            success: true,
-            message: "Email verified successfully",
-            userId: user.id
-          };
-        } else {
-          return res.status(500).json({
-            success: false,
-            message: "Failed to mark email as verified"
-          });
-        }
-      }
-
-      if (result.success) {
-        res.json({
-          success: true,
-          message: result.message
-        });
-      } else {
-        res.status(400).json({
-          success: false,
-          message: result.error
-        });
-      }
-    } catch (error) {
-      console.error('Error verifying email:', error);
-      res.status(500).json({
-        success: false,
-        message: "An error occurred while verifying your email"
-      });
-    }
-  });
-
-  // Verify email with token (POST method for forward compatibility)
-  app.post("/api/verify-email/:token", async (req, res) => {
-    try {
-      const { token } = req.params;
-
-      if (!token || typeof token !== 'string') {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid verification token"
-        });
-      }
-
-      console.log('Verifying email with token (POST):', token);
-
-      // First try the email service verification
-      let result = await emailService.verifyUserEmail(token);
-
-      // If the email service verification fails, try direct verification as a fallback
-      if (!result.success) {
-        console.log('Email service verification failed, attempting direct verification');
-        // Find the user by the verification token
-        const user = await storage.getUserByVerificationToken(token);
-
-        if (!user) {
-          return res.status(400).json({
-            success: false,
-            message: "Invalid or expired verification token"
-          });
-        }
-
-        // Check if token is expired
-        if (user.emailVerificationExpiry && new Date() > new Date(user.emailVerificationExpiry)) {
-          return res.status(400).json({
-            success: false,
-            message: "Verification token has expired"
-          });
-        }
-
-        // Mark email as verified and clear the token
-        const updated = await storage.markEmailAsVerified(user.id);
-
-        if (updated) {
-          result = {
-            success: true,
-            message: "Email verified successfully",
-            userId: user.id
-          };
-        } else {
-          return res.status(500).json({
-            success: false,
-            message: "Failed to mark email as verified"
-          });
-        }
-      }
-
-      if (result.success) {
-        res.json({
-          success: true,
-          message: result.message
-        });
-      } else {
-        res.status(400).json({
-          success: false,
-          message: result.error
-        });
-      }
-    } catch (error) {
-      console.error('Error verifying email:', error);
-      res.status(500).json({
-        success: false,
-        message: "An error occurred while verifying your email"
-      });
-    }
-  });
-
-  // Resend verification email
-  app.post("/api/resend-verification", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    try {
-      const user = req.user!;
-
-      if (!user.email) {
-        return res.status(400).json({
-          success: false,
-          message: "No email address is associated with this account"
-        });
-      }
-
-      if (user.isEmailVerified) {
-        return res.status(400).json({
-          success: false,
-          message: "Email is already verified"
-        });
-      }
-
-      console.log('Resending verification email to user:', user.id);
-      const result = await emailService.sendEmailVerification(
-        user.id,
-        user.email,
-        user.username
-      );
-
-      if (result.success) {
-        res.json({
-          success: true,
-          message: `Verification email has been sent to ${user.email}`
-        });
-      } else {
-        res.status(500).json({
-          success: false,
-          message: result.error || "Failed to send verification email"
-        });
-      }
-    } catch (error) {
-      console.error('Error resending verification email:', error);
-      res.status(500).json({
-        success: false,
-        message: "An error occurred while resending verification email"
-      });
-    }
-  });
-
-  // Create or update user profile  
+  // Create or update user profile
   app.post("/api/user/profile", async (req, res) => {
     // Support multiple auth methods:
     // 1. Session auth (old)
@@ -3407,48 +3207,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Log user session start
-  app.post("/api/login", passport.authenticate("local"), async (req, res) => {
-    try {
-      // Log user session
-      await db.execute(
-        `INSERT INTO user_sessions 
-        (user_id, start_time, device_info, ip_address) 
-        VALUES ($1, NOW(), $2, $3)`,
-        [
-          req.user!.id,
-          JSON.stringify({ userAgent: req.headers['user-agent'] }),
-          req.ip
-        ]
-      );
-    } catch (error) {
-      console.error('Error logging user session:', error);
-    }
-    res.status(200).json(req.user);
-  });
-
-  // Log user session end
-  app.post("/api/logout", async (req, res, next) => {
-    if (req.user) {
-      try {
-        // Update session end time
-        await db.execute(
-          `UPDATE user_sessions 
-          SET end_time = NOW() 
-          WHERE user_id = $1 
-          AND end_time IS NULL`,
-          [req.user.id]
-        );
-      } catch (error) {
-        console.error('Error updating session end time:', error);
-      }
-    }
-
-    req.logout((err) => {
-      if (err) return next(err);
-      res.sendStatus(200);
-    });
-  });
 
   // Add route to log user activity
   app.use(async (req, res, next) => {
