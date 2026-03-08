@@ -15,6 +15,7 @@ import { setupUserRoutes } from './user-routes';
 import { setupSeoRoutes } from './seo-routes';
 import { setupPaymentRoutes } from './routes/paymentRoutes';
 import { setupSubscriptionRoutes } from './routes/subscriptionRoutes';
+import { setupAdminRoutes } from './routes/adminRoutes';
 import { setupPlaylistRoutes } from './routes/playlistRoutes';
 import { randomBytes, createHash } from 'crypto';
 import { emailService } from './services/email-service';
@@ -86,6 +87,9 @@ export function registerRoutes(app: Express): Server {
 
   // Setup user-related routes
   setupUserRoutes(app);
+
+  // Setup admin routes
+  setupAdminRoutes(app, storage);
 
   // Setup SEO-related routes
   setupSeoRoutes(app);
@@ -3481,234 +3485,17 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Add the remaining routes from original code here.
-  app.get("/api/admin/users", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
-
-    try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
-
-      // Get users with pagination and account manager info
-      const { users, total } = await storage.getAllUsers(page, limit);
-
-      // Get active users stats
-      const stats = await storage.getUserStats();
-
-      res.json({
-        users,
-        total,
-        stats
-      });
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      res.status(500).json({
-        message: "Failed to fetch users",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
 
   // Update user's account manager endpoint
-  app.patch("/api/admin/users/:userId/account-manager", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
 
-    try {
-      const userId = parseInt(req.params.userId);
-      const { accountManagerId } = req.body;
 
-      if (userId === req.user!.id) {
-        return res.status(400).json({ message: "Cannot modify super admin's account manager" });
-      }
-
-      await storage.updateUserAccountManager(userId, accountManagerId);
-      res.sendStatus(200);
-    } catch (error) {
-      console.error('Error updating account manager:', error);
-      res.status(500).json({
-        message: "Failed to update account manager",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  app.get("/api/admin/users/:userId/activity", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
-
-    try {
-      const userId = parseInt(req.params.userId);
-      const activity = await storage.getUserActivity(userId);
-      res.json(activity);
-    } catch (error) {
-      console.error('Error fetching user activity:', error);
-      res.status(500).json({
-        message: "Failed to fetch user activity",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  app.delete("/api/admin/users/:userId", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
-
-    try {
-      const userId = parseInt(req.params.userId);
-      if (userId === req.user!.id) {
-        return res.status(400).json({ message: "Cannot delete super admin account" });
-      }
-      await storage.deleteUser(userId);
-      res.sendStatus(200);
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      res.status(500).json({
-        message: "Failed to delete user",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
 
   // Add the stats endpoint after the existing admin endpoints
-  app.get("/api/admin/stats", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
-
-    try {
-      const stats = await storage.getUserStats();
-      res.json(stats);
-    } catch (error) {
-      console.error('Error fetching analytics data:', error);
-      res.status(500).json({
-        message: "Failed to fetch analytics data",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
 
 
   // Add new system endpoint within registerRoutes function
-  app.get("/api/admin/system", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
-
-    try {
-      const systemMetrics = {
-        uptime: process.uptime().toFixed(0) + "s",
-        avgResponseTime: "120",
-        memoryUsage: Math.round((process.memoryUsage().heapUsed / process.memoryUsage().heapTotal) * 100),
-        cpuLoad: "45",
-        dbConnections: await storage.getActiveConnections(),
-        avgQueryTime: "25",
-        errorRate: "0.02",
-        recentErrors: [
-          {
-            message: "Database connection timeout",
-            timestamp: new Date(Date.now() - 300000).toISOString(),
-            severity: "high"
-          },
-          {
-            message: "Rate limit exceeded",
-            timestamp: new Date(Date.now() - 600000).toISOString(),
-            severity: "medium"
-          }
-        ],
-        rateLimit: 60,
-        debugMode: false,
-        maintenanceMode: false
-      };
-
-      res.json(systemMetrics);
-    } catch (error) {
-      console.error('Error fetching system metrics:', error);
-      res.status(500).json({
-        message: "Failed to fetch system metrics",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
 
   // Add the YouTube costs endpoint
-  app.get("/api/admin/finance/youtube-costs", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
-
-    try {
-      // Get today's usage
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-
-      const monthStart = new Date();
-      monthStart.setDate(1);
-      monthStart.setHours(0, 0, 0, 0);
-
-      // Fetch daily usage
-      const dailyUsage = await db.execute(
-        `SELECT endpoint_type, SUM(quota_cost) as total_cost 
-         FROM youtube_api_usage 
-         WHERE created_at >= $1
-         GROUP BY endpoint_type`,
-        [todayStart.toISOString()]
-      );
-
-      // Fetch monthly usage
-      const monthlyUsage = await db.execute(
-        `SELECT endpoint_type, SUM(quota_cost) as total_cost 
-         FROM youtube_api_usage 
-         WHERE created_at >= $1
-         GROUP BY endpoint_type`,
-        [monthStart.toISOString()]
-      );
-
-      // Calculate totals
-      const dailyResults: Record<string, number> = {};
-      const monthlyResults: Record<string, number> = {};
-
-      dailyUsage.rows.forEach((row: any) => {
-        dailyResults[row.endpoint_type] = parseInt(row.total_cost);
-      });
-
-      monthlyUsage.rows.forEach((row: any) => {
-        monthlyResults[row.endpoint_type] = parseInt(row.total_cost);
-      });
-
-      // Calculate costs (YouTube API is free but we'll estimate based on standard quota)
-      const totalDailyQuota = Object.values(dailyResults).reduce((a, b) => a + b, 0);
-      const totalMonthlyQuota = Object.values(monthlyResults).reduce((a, b) => a + b, 0);
-
-      // Estimate cost based on quota usage (hypothetical cost calculation)
-      const estimatedCost = (totalMonthlyQuota / 10000) * 5; // $5 per 10,000 quota points
-
-      res.json({
-        todayQuota: totalDailyQuota,
-        monthlyQuota: totalMonthlyQuota,
-        estimatedCost: estimatedCost.toFixed(2),
-        quotaLimit: 10000,
-        searchUsage: {
-          daily: dailyResults.search || 0,
-          monthly: monthlyResults.search || 0
-        },
-        videoDetailsUsage: {
-          daily: dailyResults.video_details || 0,
-          monthly: monthlyResults.video_details || 0
-        }
-      });
-    } catch (error) {
-      console.error('Error fetching YouTube API costs:', error);
-      res.status(500).json({
-        message: "Failed to fetch YouTube API costs",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
 
   // Modify existing endpoints to log API usage
 
@@ -3737,106 +3524,9 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Admin routes for managing page content
-  app.get("/api/admin/page-contents", async (req, res) => {
-    try {
-      if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-        return res.status(403).json({ message: "Unauthorized access" });
-      }
 
-      const pageContents = await storage.getAllPageContents();
-      return res.json(pageContents);
-    } catch (error) {
-      console.error('Error fetching all page contents:', error);
-      return res.status(500).json({ error: "Server error" });
-    }
-  });
 
-  app.post("/api/admin/page-contents", async (req, res) => {
-    try {
-      if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-        return res.status(403).json({ message: "Unauthorized access" });
-      }
 
-      const { slug, title, content, isPublished } = req.body;
-
-      if (!slug || !title || !content) {
-        return res.status(400).json({ error: "Missing required fields" });
-      }
-
-      // Check if content with this slug already exists
-      const existing = await storage.getPageContentBySlug(slug);
-      if (existing) {
-        return res.status(409).json({ error: "Content with this slug already exists" });
-      }
-
-      const pageContent = await storage.createPageContent({
-        slug,
-        title,
-        content,
-        createdBy: req.user!.id,
-        isPublished: isPublished !== undefined ? isPublished : true
-      });
-
-      return res.status(201).json(pageContent);
-    } catch (error) {
-      console.error('Error creating page content:', error);
-      return res.status(500).json({ error: "Server error" });
-    }
-  });
-
-  app.put("/api/admin/page-contents/:slug", async (req, res) => {
-    try {
-      if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-        return res.status(403).json({ message: "Unauthorized access" });
-      }
-
-      const { slug } = req.params;
-      const { title, content, isPublished } = req.body;
-
-      // First get the page content by slug
-      const existingContent = await storage.getPageContentBySlug(slug);
-
-      if (!existingContent) {
-        return res.status(404).json({ error: "Page content not found" });
-      }
-
-      // Create update object with only provided fields
-      const updates: any = {};
-      if (title !== undefined) updates.title = title;
-      if (content !== undefined) updates.content = content;
-      if (isPublished !== undefined) updates.isPublished = isPublished;
-      updates.updatedBy = req.user!.id;
-
-      const pageContent = await storage.updatePageContent(existingContent.id, updates);
-      return res.json(pageContent);
-    } catch (error) {
-      console.error('Error updating page content:', error);
-      return res.status(500).json({ error: "Server error" });
-    }
-  });
-
-  app.delete("/api/admin/page-contents/:slug", async (req, res) => {
-    try {
-      if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-        return res.status(403).json({ message: "Unauthorized access" });
-      }
-
-      const { slug } = req.params;
-
-      // First get the page content by slug
-      const existingContent = await storage.getPageContentBySlug(slug);
-
-      if (!existingContent) {
-        return res.status(404).json({ error: "Page content not found" });
-      }
-
-      await storage.deletePageContent(existingContent.id);
-      return res.status(204).end();
-    } catch (error) {
-      console.error('Error deleting page content:', error);
-      return res.status(500).json({ error: "Server error" });
-    }
-  });
 
   const httpServer = createServer(app);
   const sessionMiddleware = app.get('session middleware');
@@ -4019,53 +3709,9 @@ export function registerRoutes(app: Express): Server {
       const key = req.params.key;
       const { value } = req.body;
 
-      if (!value) {
-        return res.status(400).json({ message: "Value is required" });
-      }
 
-      // Check if setting exists
-      const existingSetting = await storage.getSystemSetting(key);
-      if (!existingSetting) {
-        return res.status(404).json({ message: `Setting with key "${key}" not found` });
-      }
 
-      const updatedSetting = await storage.updateSystemSetting({
-        id: existingSetting.id,
-        key,
-        value,
-        description: existingSetting.description,
-        category: existingSetting.category,
-        isSecret: existingSetting.isSecret,
-        updatedBy: req.user!.id
-      });
-      res.json(updatedSetting);
-    } catch (error) {
-      console.error('Error updating system setting:', error);
-      res.status(500).json({ message: "Failed to update system setting" });
-    }
-  });
 
-  app.delete("/api/admin/system-settings/:key", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
-
-    try {
-      const key = req.params.key;
-
-      // Check if setting exists
-      const existingSetting = await storage.getSystemSetting(key);
-      if (!existingSetting) {
-        return res.status(404).json({ message: `Setting with key "${key}" not found` });
-      }
-
-      await storage.deleteSystemSetting(key);
-      res.status(204).send();
-    } catch (error) {
-      console.error('Error deleting system setting:', error);
-      res.status(500).json({ message: "Failed to delete system setting" });
-    }
-  });
 
   // Utility endpoint to get a system setting by key (available for all authenticated users)
   app.get("/api/system-settings/:key", async (req, res) => {
@@ -4090,102 +3736,6 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Route for admin to create or update system settings
-  app.post("/api/admin/system-settings", async (req, res) => {
-    try {
-      // Check if user is authenticated and is super admin
-      if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-        return res.status(403).json({ message: "Access denied. Super admin privileges required." });
-      }
-
-      const { key, value, description, category, isSecret } = req.body;
-
-      if (!key || !value || !category) {
-        return res.status(400).json({ message: "Key, value, and category are required fields" });
-      }
-
-      // Check if setting already exists
-      const existingSetting = await storage.getSystemSetting(key);
-
-      console.log("Request body:", {
-        key,
-        value,
-        description,
-        category,
-        isSecret
-      });
-
-      if (existingSetting) {
-        console.log("Existing setting:", {
-          id: existingSetting.id,
-          key: existingSetting.key,
-          value: existingSetting.value,
-          description: existingSetting.description,
-          category: existingSetting.category,
-          isSecret: existingSetting.isSecret,
-          updatedBy: existingSetting.updatedBy
-        });
-      } else {
-        console.log("No existing setting found for key:", key);
-      }
-
-      let result;
-      try {
-        if (existingSetting) {
-          // Check if the value is actually changing
-          if (existingSetting.value === value) {
-            // No change in value, just return the existing setting
-            console.log(`System setting '${key}' value unchanged, skipping update`);
-            return res.status(200).json({
-              message: "Setting unchanged",
-              setting: existingSetting
-            });
-          }
-
-          // Update existing setting
-          console.log(`Updating system setting '${key}' with new value: '${value}'`);
-
-          try {
-            // Update using the updated storage method
-            result = await storage.updateSystemSetting({
-              id: existingSetting.id,
-              key,
-              value,
-              description: description || existingSetting.description,
-              category,
-              isSecret: isSecret ?? existingSetting.isSecret,
-              updatedBy: req.user!.id
-            });
-            console.log("Update result:", result);
-          } catch (updateError) {
-            console.error("Error in updateSystemSetting call:", updateError);
-            return res.status(500).json({ message: "Failed to update setting", error: String(updateError) });
-          }
-        } else {
-          // Create new setting
-          console.log(`Creating new system setting '${key}' with value: '${value}'`);
-          result = await storage.createSystemSetting({
-            key,
-            value,
-            description,
-            category,
-            isSecret: isSecret ?? false,
-            updatedBy: req.user!.id
-          });
-        }
-
-        res.status(200).json({
-          message: existingSetting ? "Setting updated successfully" : "Setting created successfully",
-          setting: result
-        });
-      } catch (err) {
-        console.error('Database operation failed:', err);
-        res.status(500).json({ message: "Database operation failed" });
-      }
-    } catch (error) {
-      console.error('Error processing system setting request:', error);
-      res.status(500).json({ message: "Failed to process request" });
-    }
-  });
 
   return httpServer;
 }
