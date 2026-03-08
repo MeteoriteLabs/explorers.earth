@@ -2,9 +2,10 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Music2, Wifi, WifiOff, Loader2 } from 'lucide-react';
+import { Music2, Wifi, WifiOff, Loader2, Play } from 'lucide-react';
 import PlaylistTable from './playlist-table';
 import SearchSongs from './search-songs';
+import YoutubePlayer from './youtube-player';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { localTunesRequest } from '../lib/apiClient';
 import type { TunesDashboardData } from '../hooks/useTunesDashboard';
@@ -122,6 +123,50 @@ export default function MusicDashboard({ data }: MusicDashboardProps) {
 
   const guestPageUrl = `${import.meta.env.VITE_LOCAL_TUNES_API_URL || 'https://localtunes.earth'}/guest/${guestUrl}`;
 
+  // Mini-player: current song and next song in queue
+  // Note: when a song is playing its status changes from 'queued' to 'playing',
+  // so currentlyPlaying may not appear in songs[]. next song is always the first queued song.
+  const currentSongForPlayer = currentlyPlaying;
+  const nextSongForPlayer = songs[0] as Song | undefined;
+
+  // Fetch current song from tunes API (used by YoutubePlayer for 2s polling)
+  const fetchCurrentSong = useCallback(async (): Promise<Song | undefined> => {
+    if (!guestUrl) return undefined;
+    try {
+      const data: any = await localTunesRequest('GET', `/api/playlist/${guestUrl}`);
+      return data?.currentlyPlaying as Song | undefined;
+    } catch {
+      return undefined;
+    }
+  }, [guestUrl]);
+
+  // Advance to next song when current song finishes
+  const handleSongFinished = useCallback(async () => {
+    const next = nextSongForPlayer;
+    if (next) {
+      try {
+        await localTunesRequest('POST', '/api/playlist/currently-playing', {
+          songId: next.id,
+          username: localUser?.username,
+        });
+      } catch {
+        // ignore — queue may be empty
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: ['tunes-playlist', guestUrl] });
+  }, [nextSongForPlayer, localUser, guestUrl, queryClient]);
+
+  // Set the first queued song as currently playing (when nothing is playing yet)
+  const setCurrentSongMutation = useMutation({
+    mutationFn: (songId: number) =>
+      localTunesRequest('POST', '/api/playlist/currently-playing', {
+        songId,
+        username: localUser?.username,
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tunes-playlist', guestUrl] }),
+    onError: () => toast.error('Failed to start playback'),
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12 gap-2 text-gray-400">
@@ -142,8 +187,8 @@ export default function MusicDashboard({ data }: MusicDashboardProps) {
 
   return (
     <div className="space-y-4">
-      {/* Now Playing Bar */}
-      {currentlyPlaying && (
+      {/* Now Playing Bar — hidden on Queue tab since the player is shown there */}
+      {currentlyPlaying && activeTab !== 'queue' && (
         <div className="flex items-center gap-3 bg-green-500/10 border border-green-500/20 rounded-lg p-3">
           <img
             src={currentlyPlaying.thumbnailUrl}
@@ -187,20 +232,63 @@ export default function MusicDashboard({ data }: MusicDashboardProps) {
 
       {/* Queue Tab */}
       {activeTab === 'queue' && (
-        songs.length === 0 ? (
+        /* Empty state: nothing playing and nothing queued */
+        !currentlyPlaying && songs.length === 0 ? (
           <div className="text-center py-10 text-gray-400">
             <Music2 className="w-10 h-10 mx-auto mb-3 opacity-40" />
             <p className="text-sm">Queue is empty</p>
             <p className="text-xs mt-1 opacity-60">Go to Search to add songs</p>
           </div>
         ) : (
-          <PlaylistTable
-            songs={songs}
-            currentPlayingSong={currentlyPlaying}
-            showControls={true}
-            showReorderControls={false}
-            onDeleteSong={(id) => deleteSongMutation.mutate(id)}
-          />
+          <div className="space-y-4">
+            {/* Mini player */}
+            {currentSongForPlayer ? (
+              <YoutubePlayer
+                currentSong={currentSongForPlayer}
+                nextSong={nextSongForPlayer}
+                fetchCurrentSong={fetchCurrentSong}
+                onSongFinished={handleSongFinished}
+                defaultAutoplay={true}
+                showAutoplayControl={false}
+              />
+            ) : (
+              /* Songs queued but nothing playing yet — show first song with Play button */
+              <div className="flex items-center gap-3 p-3 bg-black/20 rounded-lg">
+                <img
+                  src={songs[0].thumbnailUrl}
+                  className="w-12 h-12 rounded object-cover flex-shrink-0"
+                  alt={songs[0].title}
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm font-medium truncate">{songs[0].title}</p>
+                  <p className="text-gray-400 text-xs truncate">{songs[0].artist}</p>
+                </div>
+                <button
+                  onClick={() => setCurrentSongMutation.mutate(songs[0].id)}
+                  disabled={setCurrentSongMutation.isPending}
+                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-dashboard-accent rounded-full text-white text-sm font-medium hover:opacity-90 disabled:opacity-50"
+                >
+                  {setCurrentSongMutation.isPending
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : <Play className="w-4 h-4" />
+                  }
+                  Play
+                </button>
+              </div>
+            )}
+
+            {/* Queue list — shows remaining queued songs (not the one currently playing) */}
+            {songs.length > 0 && (
+              <PlaylistTable
+                songs={songs}
+                currentPlayingSong={currentlyPlaying}
+                showControls={true}
+                showReorderControls={false}
+                onDeleteSong={(id) => deleteSongMutation.mutate(id)}
+              />
+            )}
+          </div>
         )
       )}
 
