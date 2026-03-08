@@ -369,6 +369,11 @@ export default function YoutubePlayer({
   const handleSongEnd = useCallback(async () => {
     if (!onSongFinished) return;
 
+    // Always advance queue first — do not wait for server confirmation
+    stopProgressPolling();
+    onSongFinished();
+
+    // Best-effort: notify server the song ended (may return 401 if unauthenticated — that's OK)
     try {
       const apiBaseUrl = import.meta.env.VITE_LOCAL_TUNES_API_URL || 'https://localtunes.earth';
       await fetch(`${apiBaseUrl}/api/playlist/currently-playing`, {
@@ -376,14 +381,10 @@ export default function YoutubePlayer({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ songId: null })
       });
-
-      stopProgressPolling();
-      onSongFinished();
-    } catch (error) {
-      console.error('Error handling song end:', error);
-      toast("Failed to update playback status", { variant: "destructive" });
+    } catch {
+      // ignore
     }
-  }, [onSongFinished, toast, stopProgressPolling]);
+  }, [onSongFinished, stopProgressPolling]);
 
   // Error handling with retries
   const handleError = useCallback(async (error: any) => {
@@ -421,6 +422,10 @@ export default function YoutubePlayer({
     if (autoplay && onSongFinished) {
       toast("Could not play this video. Skipping to next song.", { variant: "destructive" });
 
+      // Advance queue immediately
+      onSongFinished();
+
+      // Best-effort server notification
       try {
         const apiBaseUrl = import.meta.env.VITE_LOCAL_TUNES_API_URL || 'https://localtunes.earth';
         await fetch(`${apiBaseUrl}/api/playlist/currently-playing`, {
@@ -428,12 +433,8 @@ export default function YoutubePlayer({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ songId: null })
         });
-
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        onSongFinished();
-      } catch (skipError) {
-        console.error('Error while trying to skip song:', skipError);
-        toast("Failed to skip to next song. Please try again.", { variant: "destructive" });
+      } catch {
+        // ignore
       }
     }
   }, [autoplay, currentSong, onSongFinished, toast, stopProgressPolling, getInternalPlayer]);

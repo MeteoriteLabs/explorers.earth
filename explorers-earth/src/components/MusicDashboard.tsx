@@ -13,6 +13,8 @@ import {
   Library,
   ChevronDown,
   ExternalLink,
+  Play,
+  History,
 } from 'lucide-react';
 import PlaylistTable from './playlist-table';
 import SearchSongs from './search-songs';
@@ -90,6 +92,7 @@ export default function MusicDashboard({ data }: MusicDashboardProps) {
 
   const songs = (playlist?.songs ?? []) as Song[];
   const currentlyPlaying = playlist?.currentlyPlaying as Song | undefined;
+  const playedSongs = (playlist?.playedSongs ?? []) as Song[];
   const selectedPlaylist = playlists?.find((p: any) => p.id === selectedPlaylistId);
 
   // Socket.io for real-time queue updates
@@ -166,6 +169,39 @@ export default function MusicDashboard({ data }: MusicDashboardProps) {
       queryClient.invalidateQueries({ queryKey: ['tunes-playlist', guestUrl] });
     },
     onError: () => toast.error('Failed to remove song'),
+  });
+
+  // Add a song from a saved playlist into the live queue
+  const addToQueueMutation = useMutation({
+    mutationFn: (song: Song) =>
+      localTunesRequest('POST', '/api/playlist/songs', {
+        youtubeId: song.youtubeId,
+        title: song.title,
+        artist: song.artist,
+        thumbnailUrl: song.thumbnailUrl,
+        username: localUser?.username,
+      }),
+    onSuccess: () => {
+      toast.success('Added to queue');
+      queryClient.invalidateQueries({ queryKey: ['tunes-playlist', guestUrl] });
+    },
+    onError: () => toast.error('Failed to add to queue'),
+  });
+
+  // Reorder queue songs
+  const reorderMutation = useMutation({
+    mutationFn: (newOrder: number[]) =>
+      Promise.all(
+        newOrder.map((songId, position) =>
+          localTunesRequest('PATCH', `/api/playlist/songs/${songId}/position`, {
+            position,
+            username: localUser?.username,
+          })
+        )
+      ),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['tunes-playlist', guestUrl] }),
+    onError: () => toast.error('Failed to reorder songs'),
   });
 
   // Update guest settings
@@ -257,7 +293,7 @@ export default function MusicDashboard({ data }: MusicDashboardProps) {
               showAutoplayControl={false}
             />
           ) : (
-            /* Songs queued but auto-start in progress */
+            /* Songs queued but nothing playing — show Play button */
             <div className="flex items-center gap-3 p-2">
               <img
                 src={songs[0].thumbnailUrl}
@@ -268,11 +304,14 @@ export default function MusicDashboard({ data }: MusicDashboardProps) {
               <div className="flex-1 min-w-0">
                 <p className="text-white text-sm font-medium truncate">{songs[0].title}</p>
                 <p className="text-gray-400 text-xs truncate">{songs[0].artist}</p>
-                <div className="flex items-center gap-1.5 mt-1 text-dashboard-accent text-xs">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Starting playback…
-                </div>
               </div>
+              <button
+                onClick={() => handlePlaySong(songs[0])}
+                className="w-10 h-10 rounded-full bg-dashboard-accent flex items-center justify-center flex-shrink-0 hover:opacity-80 transition-opacity"
+                title="Start playing"
+              >
+                <Play className="w-4 h-4 text-white ml-0.5" />
+              </button>
             </div>
           )}
         </div>
@@ -321,14 +360,32 @@ export default function MusicDashboard({ data }: MusicDashboardProps) {
                 songs={songs}
                 currentPlayingSong={currentlyPlaying}
                 showControls={true}
-                showReorderControls={false}
+                showReorderControls={true}
                 onPlaySong={handlePlaySong}
                 onDeleteSong={(id) => deleteSongMutation.mutate(id)}
+                onReorderSongs={(newOrder) => reorderMutation.mutate(newOrder)}
               />
             )}
           </>
         )}
       </Section>
+
+      {/* History section */}
+      {playedSongs.length > 0 && (
+        <Section
+          icon={<History className="w-4 h-4" />}
+          title="Recently Played"
+          subtitle={`${playedSongs.length} song${playedSongs.length !== 1 ? 's' : ''}`}
+          defaultOpen={false}
+        >
+          <PlaylistTable
+            songs={playedSongs}
+            isHistory={true}
+            showControls={false}
+            showReorderControls={false}
+          />
+        </Section>
+      )}
 
       {/* Add Songs section */}
       <Section
@@ -482,8 +539,10 @@ export default function MusicDashboard({ data }: MusicDashboardProps) {
             <p className="text-white font-medium mb-3">{selectedPlaylist?.name}</p>
             <PlaylistTable
               songs={(selectedPlaylist?.songs ?? []) as Song[]}
-              showControls={false}
+              showControls={true}
               showReorderControls={false}
+              showAddToQueue={true}
+              onAddToQueue={(song) => addToQueueMutation.mutate(song)}
             />
           </>
         )}
