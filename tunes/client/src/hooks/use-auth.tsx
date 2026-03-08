@@ -10,15 +10,16 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { useAnalytics, AnalyticsEventCategory, AnalyticsEventAction } from "@/hooks/use-analytics";
 import { getCsrfToken } from "../lib/csrf";
-import { 
-  saveUserToStorage, 
-  loadUserFromStorage, 
-  clearAuthStorage, 
+import {
+  saveUserToStorage,
+  loadUserFromStorage,
+  clearAuthStorage,
   hasValidAuthData,
   checkSSOAuth,
   clearSSOAuth,
   hasValidSSOAuth
 } from "../lib/authStorage";
+import { useAuthStore } from "@/stores/authStore";
 
 type AuthContextType = {
   user: SelectUser | null;
@@ -51,58 +52,56 @@ export function AuthProvider({ children, skipAuthCheck = false }: AuthProviderPr
   const { trackEvent, setUser: setAnalyticsUser } = useAnalytics();
   const redirectAttempted = useRef(false);
   const logoutInProgress = useRef(false);
-  
+
+  // Always call the Zustand store hook (Rules of Hooks — no conditional calls)
+  // Values are only used when skipAuthCheck=true (Strapi auth mode)
+  const { user: strapiUser, isAuthenticated: strapiIsAuthenticated } = useAuthStore();
+
   // When skipAuthCheck is true (new app), fetch from Neon DB instead
   const [localUser, setLocalUser] = useState<SelectUser | null>(() => {
     if (skipAuthCheck) {
       // Will be populated by useEffect below
       return null;
     }
-    
+
     // Only try to load from storage if not on auth page
     if (isAuthPage) return null;
-    
+
     // First check for SSO authentication
     const ssoUser = checkSSOAuth();
     if (ssoUser) {
       console.log('✅ Found SSO user on app initialization');
       return ssoUser;
     }
-    
+
     return loadUserFromStorage();
   });
-  
-  // Fetch Neon DB user data when skipAuthCheck is true (new auth system)
+
+  // Fetch Neon DB user data reactively whenever Strapi auth state changes.
+  // This runs on mount AND any time the user logs in/out via Strapi,
+  // fixing the race condition where the effect only ran once at mount time.
   useEffect(() => {
     if (!skipAuthCheck) return;
-    
-    // Get Strapi user from Zustand store
-    const strapiUser = (window as any).__strapiUser;
-    if (!strapiUser) {
-      // Try to get from localStorage
-      const authStorage = localStorage.getItem('auth-storage');
-      if (authStorage) {
-        try {
-          const parsed = JSON.parse(authStorage);
-          const user = parsed.state?.user;
-          if (user && user.username) {
-            console.log('🔄 Fetching Neon DB user for:', user.username);
-            fetch(`/api/auth/user-data?username=${user.username}`)
-              .then(res => res.json())
-              .then(data => {
-                if (data.success && data.user) {
-                  console.log('✅ Loaded Neon DB user data');
-                  setLocalUser(data.user);
-                }
-              })
-              .catch(err => console.error('Failed to fetch Neon user:', err));
-          }
-        } catch (e) {
-          console.error('Failed to parse auth storage:', e);
-        }
-      }
+
+    if (!strapiIsAuthenticated || !strapiUser?.username) {
+      // Logged out — clear local user
+      setLocalUser(null);
+      return;
     }
-  }, [skipAuthCheck]);
+
+    console.log('🔄 Fetching Neon DB user for:', strapiUser.username);
+    fetch(`/api/auth/user-data?username=${encodeURIComponent(strapiUser.username)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.user) {
+          console.log('✅ Loaded Neon DB user data for:', strapiUser.username);
+          setLocalUser(data.user);
+        } else {
+          console.warn('⚠️ Neon DB user not found for:', strapiUser.username);
+        }
+      })
+      .catch(err => console.error('Failed to fetch Neon user:', err));
+  }, [skipAuthCheck, strapiIsAuthenticated, strapiUser?.username]);
 
   // Query server for user data, with fallback to local storage
   const {

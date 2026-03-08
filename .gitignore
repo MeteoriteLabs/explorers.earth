@@ -160,3 +160,10 @@ replit.nix
 *.patch
 *.rej
 attached_assets/
+
+# ----------------------------
+# Local environment credential folders
+# (kept on disk for dev, never committed)
+# ----------------------------
+explorers environment/
+tunes environment/
