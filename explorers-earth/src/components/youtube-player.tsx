@@ -68,6 +68,7 @@ export default function YoutubePlayer({
   const lastPlayerStateUpdate = useRef<number>(0);
   const playerStateUpdateThrottle = 200;
   const progressPollInterval = useRef<NodeJS.Timeout | null>(null);
+  const isPlayingRef = useRef(defaultAutoplay);
 
   // Safe wrapper to call getInternalPlayer
   const getInternalPlayer = useCallback(() => {
@@ -128,17 +129,17 @@ export default function YoutubePlayer({
     }
   );
 
-  // Load preferences from localStorage
+  // Keep isPlayingRef in sync with isPlaying state
   useEffect(() => {
-    const savedAutoplay = localStorage.getItem('youtube_autoplay');
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  // Load preferences from localStorage (volume/shuffle/repeatMode only — NOT play state)
+  useEffect(() => {
     const savedVolume = localStorage.getItem('youtube_volume');
     const savedShuffle = localStorage.getItem('youtube_shuffle');
     const savedRepeatMode = localStorage.getItem('youtube_repeat_mode') as RepeatMode;
 
-    if (savedAutoplay !== null) {
-      setAutoplay(savedAutoplay === 'true');
-      setIsPlaying(savedAutoplay === 'true');
-    }
     if (savedVolume !== null) {
       setVolume(parseInt(savedVolume));
     }
@@ -149,11 +150,6 @@ export default function YoutubePlayer({
       setRepeatMode(savedRepeatMode);
     }
   }, []);
-
-  // Save preferences to localStorage
-  useEffect(() => {
-    localStorage.setItem('youtube_autoplay', isPlaying.toString());
-  }, [isPlaying]);
 
   useEffect(() => {
     localStorage.setItem('youtube_volume', volume.toString());
@@ -249,9 +245,8 @@ export default function YoutubePlayer({
                 // Start polling once we have duration
                 startProgressPolling();
 
-                // Sync play state
-                const savedPlayState = localStorage.getItem('youtube_autoplay');
-                const shouldPlay = savedPlayState === null ? defaultAutoplay : savedPlayState === 'true';
+                // Sync play state — use current isPlaying state, not localStorage
+                const shouldPlay = isPlayingRef.current;
 
                 if (shouldPlay && typeof player.playVideo === 'function') {
                   player.playVideo();
@@ -325,15 +320,11 @@ export default function YoutubePlayer({
         await handleSongEnd();
         break;
       case 'none':
-        // Only move to next if autoplay is enabled
-        if (autoplay) {
-          await handleSongEnd();
-        } else {
-          setIsPlaying(false);
-        }
+        // Always advance to next song when current song ends
+        await handleSongEnd();
         break;
     }
-  }, [repeatMode, autoplay, onSongFinished]);
+  }, [repeatMode, onSongFinished]);
 
   const seekTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
