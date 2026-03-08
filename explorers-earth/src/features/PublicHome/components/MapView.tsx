@@ -240,7 +240,7 @@ const MapView = memo(() => {
 
   const { username } = useParams();
   const { placeSlug } = useParams();
-  const { data, loading } = useQuery(getPlaceCoordinatesQuery, {
+  const { data, loading, error } = useQuery(getPlaceCoordinatesQuery, {
     variables: {
       filters: {
         username: {
@@ -269,7 +269,7 @@ const MapView = memo(() => {
       list?.recommended_places?.map((place) => ({
         ...place.Place_Details,
         Media: place.Media,
-        category: place.recommendation_category.Category_Name,
+        category: place.recommendation_category?.Category_Name,
         region: list.List_Name || 'Unknown Region',
         documentId: place.documentId,
       })) || []
@@ -527,6 +527,22 @@ const MapView = memo(() => {
     return (
       <div className="flex bg-black items-center justify-center min-h-screen">
         <EarthLoader context="general" size="small" />
+      </div>
+    );
+
+  if (error)
+    return (
+      <div className="flex bg-black items-center justify-center min-h-screen">
+        <div className="text-white text-center">
+          <h2 className="text-xl font-semibold mb-2">Failed to Load Map</h2>
+          <p className="text-gray-400 mb-4">Could not connect to the data service.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-md text-sm transition-colors"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
 
