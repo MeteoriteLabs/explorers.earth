@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTunesDashboard } from "../hooks/useTunesDashboard";
 import { gql, useQuery, useMutation } from "@apollo/client";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -17,6 +18,7 @@ import {
   getCredentialsForLocalTunes
 } from "../utils/sessionCredentials";
 import { loginQuery } from "../features/Authentication/api/mutation";
+import MusicDashboard from "../components/MusicDashboard";
 
 const getUserAccountQuery = gql`
   query UsersPermissionsUser($documentId: ID!) {
@@ -70,6 +72,9 @@ const MusicPage = () => {
   const localTunesIntegratedValue = userData?.usersPermissionsUser?.accounts?.[0]?.localtunes_integrated;
   const localTunesConnected = localTunesIntegratedValue === "Yes";
   const accountDocumentId = userData?.usersPermissionsUser?.accounts?.[0]?.documentId;
+
+  // Phase 1: sync with tunes Neon DB and fetch dashboard data when connected
+  const tunesDashboard = useTunesDashboard();
 
   const handleGoToLocalTunes = () => {
     window.open(`${import.meta.env.VITE_LOCAL_TUNES_API_URL}/auth?tab=login`, '_blank');
@@ -315,74 +320,59 @@ const MusicPage = () => {
 
             {/* Main Content */}
             <div className="bg-dashboard-sidebar rounded-xl p-4">
-              <div className="flex flex-col lg:flex-row gap-8">
-                {/* Left Side - Info */}
-                <div className="flex-1">
-                  <h2 className="text-xl font-semibold text-white mb-3">What is Local Tunes?</h2>
-                  <p className="text-gray-300 mb-4">
-                    Create collaborative music experiences where guests can contribute to your space's atmosphere in real-time.
-                  </p>
+              {localTunesConnected ? (
+                /* Full-width embedded dashboard */
+                <MusicDashboard data={tunesDashboard} />
+              ) : (
+                /* Two-column connect view */
+                <div className="flex flex-col lg:flex-row gap-8">
+                  {/* Left Side - Info */}
+                  <div className="flex-1">
+                    <h2 className="text-xl font-semibold text-white mb-3">What is Local Tunes?</h2>
+                    <p className="text-gray-300 mb-4">
+                      Create collaborative music experiences where guests can contribute to your space's atmosphere in real-time.
+                    </p>
 
-                  {/* Features */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-dashboard-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span className="text-gray-300 text-sm">Real-time guest contributions</span>
-                    </div>
+                    {/* Features */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <svg className="w-5 h-5 text-dashboard-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className="text-gray-300 text-sm">Real-time guest contributions</span>
+                      </div>
 
-                    <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-dashboard-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span className="text-gray-300 text-sm">Uses your existing explorers account</span>
-                    </div>
+                      <div className="flex items-center gap-2">
+                        <svg className="w-5 h-5 text-dashboard-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className="text-gray-300 text-sm">Uses your existing explorers account</span>
+                      </div>
 
-                    <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-dashboard-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span className="text-gray-300 text-sm">Enhanced engagement through shared discovery</span>
+                      <div className="flex items-center gap-2">
+                        <svg className="w-5 h-5 text-dashboard-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className="text-gray-300 text-sm">Enhanced engagement through shared discovery</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Right Side - Connection Status & Actions */}
-                <div className="lg:w-80">
-                  <div className="bg-dashboard-bg rounded-lg p-6">
-                    <h3 className="text-white font-semibold mb-4">Connection Status</h3>
+                  {/* Right Side - Connection Status (not connected state only) */}
+                  <div className="lg:w-80">
+                    <div className="bg-dashboard-bg rounded-lg p-6">
+                      <h3 className="text-white font-semibold mb-4">Connection Status</h3>
 
-                    {/* Status Indicator */}
-                    <div className="flex items-center gap-2 mb-6">
-                      {localTunesConnected ? (
-                        <div className="flex items-center gap-2 text-green-400">
-                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                          </svg>
-                          <span className="font-medium">Connected</span>
-                        </div>
-                      ) : (
+                      <div className="flex items-center gap-2 mb-6">
                         <div className="flex items-center gap-2 text-gray-400">
                           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                           </svg>
                           <span className="font-medium">Not Connected</span>
                         </div>
-                      )}
-                    </div>
+                      </div>
 
-                    {/* Action Buttons */}
-                    <div className="space-y-3">
-                      {localTunesConnected ? (
-                        <Button
-                          btnText="Go to Local Tunes"
-                          size="medium"
-                          variant="primary"
-                          onClickHandler={handleGoToLocalTunes}
-                          className="w-full"
-                        />
-                      ) : (
+                      <div className="space-y-3">
                         <Button
                           btnText={isConnecting ? "Connecting..." : "Connect to Local Tunes"}
                           size="medium"
@@ -392,17 +382,15 @@ const MusicPage = () => {
                           disabled={isConnecting || accountLoading}
                           className="w-full"
                         />
-                      )}
-                    </div>
+                      </div>
 
-                    {!localTunesConnected && (
                       <p className="text-gray-400 text-xs mt-4 text-center">
                         Your explorers account information will be used to create your Local Tunes account.
                       </p>
-                    )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </motion.div>
         </div>

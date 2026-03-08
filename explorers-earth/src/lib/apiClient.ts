@@ -42,7 +42,7 @@ localTunesClient.interceptors.request.use(
     if (authStorage) {
       try {
         const authData = JSON.parse(authStorage);
-        const token = authData?.state?.jwt;
+        const token = authData?.state?.token;
 
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
