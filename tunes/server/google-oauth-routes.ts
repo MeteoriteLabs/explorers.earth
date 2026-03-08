@@ -1,11 +1,11 @@
 /**
- * Google OAuth Routes - LocalQR Auth Model
+ * Google OAuth Routes - explorers.earth Auth Model
  * Handles Google OAuth flow for Strapi authentication
  */
 
 import type { Express } from 'express';
 
-const VITE_REST_API_URL = process.env.VITE_REST_API_URL || 'https://api.localqr.earth';
+const VITE_REST_API_URL = process.env.VITE_REST_API_URL || 'https://api.explorers.earth';
 
 export function setupGoogleOAuthRoutes(app: Express) {
   // Redirect to Strapi's Google OAuth endpoint
