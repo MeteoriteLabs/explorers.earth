@@ -1,5 +1,5 @@
 /**
- * GraphQL Mutations - LocalQR Auth Model
+ * GraphQL Mutations - explorers.earth Auth Model
  * Authentication mutations for Strapi UsersPermissions
  */
 

@@ -10,7 +10,6 @@ import express from 'express';
 import { themeSchema } from '@shared/schema';
 import { sql } from 'drizzle-orm';
 import { db } from './db';
-import passport from 'passport';
 import { setupSwagger } from './swagger';
 import { setupUserRoutes } from './user-routes';
 import { setupSeoRoutes } from './seo-routes';
@@ -80,7 +79,7 @@ export function registerRoutes(app: Express): Server {
   // Strapi configuration endpoint for client
   app.get('/api/strapi/config', (req, res) => {
     res.json({
-      strapiUrl: process.env.STRAPI_URL || 'https://api.localqr.earth',
+      strapiUrl: process.env.STRAPI_URL || 'https://api.explorers.earth',
       accessToken: process.env.STRAPI_ACCESS_TOKEN || '',
     });
   });
@@ -890,33 +889,6 @@ export function registerRoutes(app: Express): Server {
       console.error('Error sending email:', error);
       res.status(500).json({
         message: "Failed to send email",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  app.delete("/api/admin/users/:userId", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
-
-    try {
-      const userId = parseInt(req.params.userId);
-      if (userId === req.user!.id) {
-        return res.status(400).json({ message: "Cannot delete super admin account" });
-      }
-
-      console.log('Starting user deletion process for ID:', userId);
-
-      // The deleteUser method now handles all cascade deletion properly
-      // Including youtube_music tables and all other related tables
-      await storage.deleteUser(userId);
-
-      res.sendStatus(200);
-    } catch (error) {
-      console.error('Error in user deletion process:', error);
-      res.status(500).json({
-        message: "Failed to delete user",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
@@ -2747,390 +2719,605 @@ export function registerRoutes(app: Express): Server {
       return res.status(403).json({ message: "Unauthorized access" });
     }
 
+      // Get username - try from req.user first, then request body (for guests), then fetch from DB if needed
+      let username: string | undefined = req.user?.username || req.body.username;
+
+      // If username is not available but user ID is, fetch from database
+      if (!username && req.user?.id) {
+        try {
+          const user = await storage.getUser(req.user.id);
+          username = user?.username;
+          console.log(`🔍 [STRAPI] Fetched username from DB: ${username}`);
+        } catch (error) {
+          console.error('❌ [STRAPI] Failed to fetch user from DB:', error);
+        }
+      }
+
+      if (username) {
+        console.log(`📊 [STRAPI] Starting Strapi tracking for username: ${username}`);
+        console.log(`📊 [STRAPI] About to call strapiService.incrementSongRequests('${username}')`);
+
+        // Make the GraphQL call - this should appear in network tab
+        try {
+          // Await the Strapi call to ensure it runs
+          const result = await strapiService.incrementSongRequests(username);
+          console.log(`✅ [STRAPI] Successfully tracked song search in Strapi for user: ${username}, song_requests: ${result.song_requests}`);
+        } catch (strapiError) {
+          console.error(`❌ [STRAPI] Failed to track song search in Strapi for user: ${username}:`, strapiError);
+          if (strapiError instanceof Error) {
+            console.error(`❌ [STRAPI] Error details:`, strapiError.message);
+            console.error(`❌ [STRAPI] Error stack:`, strapiError.stack);
+          }
+        }
+      } else {
+        console.log('⚠️ [STRAPI] Skipping Strapi tracking - username not available:', {
+          isAuthenticated: req.isAuthenticated(),
+          hasUser: !!req.user,
+          hasUsername: !!req.user?.username,
+          userId: req.user?.id,
+          fetchedUsername: username
+        });
+      }
+    } catch (error) {
+      console.error('Error in YouTube search:', error);
+      res.status(500).json({
+        message: "Failed to search YouTube",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Debug endpoint to test Strapi connection
+  app.get("/api/debug/strapi", async (req, res) => {
     try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
+      const config = {
+        strapiUrl: process.env.STRAPI_URL || 'NOT SET',
+        accessToken: process.env.STRAPI_ACCESS_TOKEN ? 'SET (hidden)' : 'NOT SET',
+        isConfigured: !!(process.env.STRAPI_URL && process.env.STRAPI_ACCESS_TOKEN)
+      };
 
-      // Get users with pagination and account manager info
-      const { users, total } = await storage.getAllUsers(page, limit);
+      if (!config.isConfigured) {
+        return res.json({
+          status: 'error',
+          message: 'Strapi environment variables not configured',
+          config
+        });
+      }
 
-      // Get active users stats
-      const stats = await storage.getUserStats();
+      // Try to make a simple query to test connection
+      try {
+        const testResult = await strapiService.findSongLimitByUsername('test_user_12345');
+        res.json({
+          status: 'success',
+          message: 'Strapi connection is working',
+          config: {
+            ...config,
+            accessToken: 'SET (hidden)'
+          },
+          testQuery: testResult ? 'Found test record' : 'No test record found (this is normal)'
+        });
+      } catch (error) {
+        res.json({
+          status: 'error',
+          message: 'Strapi connection failed',
+          config,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    } catch (error) {
+      res.status(500).json({
+        status: 'error',
+        message: 'Debug endpoint error',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
 
+  // Get Strapi configuration for client
+  app.get("/api/strapi/config", async (req, res) => {
+    try {
+      const strapiUrl = process.env.STRAPI_URL;
+      const accessToken = process.env.STRAPI_ACCESS_TOKEN;
+
+      if (!strapiUrl || !accessToken) {
+        return res.status(500).json({
+          error: 'Strapi configuration is missing on the server'
+        });
+      }
+
+      // Return the URL and token to the client
+      // Note: In production, you might want to use a more secure approach
       res.json({
-        users,
-        total,
-        stats
+        strapiUrl: strapiUrl.endsWith('/') ? strapiUrl.slice(0, -1) : strapiUrl,
+        accessToken,
       });
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('Error getting Strapi config:', error);
       res.status(500).json({
-        message: "Failed to fetch users",
-        error: error instanceof Error ? error.message : "Unknown error"
+        error: 'Failed to get Strapi configuration'
       });
     }
   });
 
-  // Update user's account manager endpoint
-  app.patch("/api/admin/users/:userId/account-manager", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
-
+  // Strapi GraphQL proxy endpoint
+  app.post("/api/strapi/graphql", async (req, res) => {
     try {
-      const userId = parseInt(req.params.userId);
-      const { accountManagerId } = req.body;
+      const { query, variables } = req.body;
 
-      if (userId === req.user!.id) {
-        return res.status(400).json({ message: "Cannot modify super admin's account manager" });
+      if (!query) {
+        return res.status(400).json({
+          errors: [{ message: 'GraphQL query is required' }]
+        });
       }
 
-      await storage.updateUserAccountManager(userId, accountManagerId);
-      res.sendStatus(200);
-    } catch (error) {
-      console.error('Error updating account manager:', error);
-      res.status(500).json({
-        message: "Failed to update account manager",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
+      const strapiUrl = process.env.STRAPI_URL;
+      const accessToken = process.env.STRAPI_ACCESS_TOKEN;
 
-  app.get("/api/admin/users/:userId/activity", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
-
-    try {
-      const userId = parseInt(req.params.userId);
-      const activity = await storage.getUserActivity(userId);
-      res.json(activity);
-    } catch (error) {
-      console.error('Error fetching user activity:', error);
-      res.status(500).json({
-        message: "Failed to fetch user activity",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  app.delete("/api/admin/users/:userId", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
-
-    try {
-      const userId = parseInt(req.params.userId);
-      if (userId === req.user!.id) {
-        return res.status(400).json({ message: "Cannot delete super admin account" });
+      if (!strapiUrl || !accessToken) {
+        return res.status(500).json({
+          errors: [{ message: 'Strapi configuration is missing. Please set STRAPI_URL and STRAPI_ACCESS_TOKEN environment variables.' }]
+        });
       }
-      await storage.deleteUser(userId);
-      res.sendStatus(200);
+
+      const graphqlEndpoint = `${strapiUrl}/graphql`;
+
+      const response = await fetch(graphqlEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          query,
+          variables,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Strapi API error response:', errorText);
+        return res.status(response.status).json({
+          errors: [{ message: `Strapi API error: ${response.status} ${response.statusText}` }]
+        });
+      }
+
+      const result = await response.json();
+
+      if (result.errors && result.errors.length > 0) {
+        console.error('GraphQL errors:', result.errors);
+        return res.status(400).json(result);
+      }
+
+      res.json(result);
     } catch (error) {
-      console.error('Error deleting user:', error);
+      console.error('Strapi GraphQL proxy error:', error);
       res.status(500).json({
-        message: "Failed to delete user",
-        error: error instanceof Error ? error.message : "Unknown error"
+        errors: [{ message: error instanceof Error ? error.message : 'Unknown error occurred' }]
       });
     }
   });
 
-  // Add the stats endpoint after the existing admin endpoints
-  app.get("/api/admin/stats", async (req, res) => {
+  // Video details endpoint
+
+  // Add YouTube stats endpoint for admin
+  app.get("/api/admin/youtube-stats", async (req, res) => {
     if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
       return res.status(403).json({ message: "Unauthorized access" });
     }
 
     try {
-      const stats = await storage.getUserStats();
-      res.json(stats);
+      // Get the stats from storage
+      const stats = await storage.getYoutubeApiUsageStats();
+
+      // Log the raw stats for debugging
+      console.log('Raw YouTube API stats:', stats);
+
+      // Structure the response in a more clear format
+      const response = {
+        youtubeStats: {
+          total: stats.total,
+          monthlyTotal: stats.monthlyTotal,
+          weeklyAvg: stats.weeklyAvg,
+          daily: stats.daily.map(day => ({
+            date: day.date,
+            count: Number(day.count),
+            endpoint_type: day.endpoint_type
+          }))
+        }
+      };
+
+      // Log the formatted response
+      console.log('Formatted YouTube stats response:', response);
+
+      res.json(response);
     } catch (error) {
-      console.error('Error fetching analytics data:', error);
+      console.error('Error fetching YouTube API stats:', error);
       res.status(500).json({
-        message: "Failed to fetch analytics data",
+        message: "Failed to fetch YouTube API stats",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
+  });
+
+  // Add new system endpoint within registerRoutes function
+
+  // Add the YouTube costs endpoint
+
+  // Modify existing endpoints to log API usage
+
+
+
+  // In your video details endpoint
+  app.get("/api/youtube/video/:id", async (req, res) => {
+    try {
+      // Log the video details API usage
+      await logYouTubeAPIUsage('video_details');
+
+      // Your existing video details logic here
+      // ... (replace with actual video details logic)
+      res.json({ message: "Video details fetched" }); // Placeholder
+
+    } catch (error) {
+      console.error('Error fetching video details:', error);
+      res.status(500).json({ message: "Failed to fetch video details" });
+    }
+  });
+
+  // Add the user analytics endpoint
+
+  // Log user session start
+
+  // Log user session end
+
+  // Add route to log user activity
+  app.use(async (req, res, next) => {
+    if (req.isAuthenticated()) {
+      try {
+        const userId = req.user!.id;
+        const path = req.path;
+        const method = req.method;
+
+        // Use the centralized storage method instead of direct SQL
+        await storage.logUserActivity(userId, path, method);
+      } catch (error) {
+        console.error('Error logging user activity:', error);
+      }
+    }
+    next();
   });
 
 
   // Add new system endpoint within registerRoutes function
-  app.get("/api/admin/system", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
-
-    try {
-      const systemMetrics = {
-        uptime: process.uptime().toFixed(0) + "s",
-        avgResponseTime: "120",
-        memoryUsage: Math.round((process.memoryUsage().heapUsed / process.memoryUsage().heapTotal) * 100),
-        cpuLoad: "45",
-        dbConnections: await storage.getActiveConnections(),
-        avgQueryTime: "25",
-        errorRate: "0.02",
-        recentErrors: [
-          {
-            message: "Database connection timeout",
-            timestamp: new Date(Date.now() - 300000).toISOString(),
-            severity: "high"
-          },
-          {
-            message: "Rate limit exceeded",
-            timestamp: new Date(Date.now() - 600000).toISOString(),
-            severity: "medium"
-          }
-        ],
-        rateLimit: 60,
-        debugMode: false,
-        maintenanceMode: false
-      };
-
-      res.json(systemMetrics);
-    } catch (error) {
-      console.error('Error fetching system metrics:', error);
-      res.status(500).json({
-        message: "Failed to fetch system metrics",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
 
   // Add the YouTube costs endpoint
-  app.get("/api/admin/finance/youtube-costs", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
-
-    try {
-      // Get today's usage
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-
-      const monthStart = new Date();
-      monthStart.setDate(1);
-      monthStart.setHours(0, 0, 0, 0);
-
-      // Fetch daily usage
-      const dailyUsage = await db.execute(
-        `SELECT endpoint_type, SUM(quota_cost) as total_cost 
-         FROM youtube_api_usage 
-         WHERE created_at >= $1
-         GROUP BY endpoint_type`,
-        [todayStart.toISOString()]
-      );
-
-      // Fetch monthly usage
-      const monthlyUsage = await db.execute(
-        `SELECT endpoint_type, SUM(quota_cost) as total_cost 
-         FROM youtube_api_usage 
-         WHERE created_at >= $1
-         GROUP BY endpoint_type`,
-        [monthStart.toISOString()]
-      );
-
-      // Calculate totals
-      const dailyResults: Record<string, number> = {};
-      const monthlyResults: Record<string, number> = {};
-
-      dailyUsage.rows.forEach((row: any) => {
-        dailyResults[row.endpoint_type] = parseInt(row.total_cost);
-      });
-
-      monthlyUsage.rows.forEach((row: any) => {
-        monthlyResults[row.endpoint_type] = parseInt(row.total_cost);
-      });
-
-      // Calculate costs (YouTube API is free but we'll estimate based on standard quota)
-      const totalDailyQuota = Object.values(dailyResults).reduce((a, b) => a + b, 0);
-      const totalMonthlyQuota = Object.values(monthlyResults).reduce((a, b) => a + b, 0);
-
-      // Estimate cost based on quota usage (hypothetical cost calculation)
-      const estimatedCost = (totalMonthlyQuota / 10000) * 5; // $5 per 10,000 quota points
-
-      res.json({
-        todayQuota: totalDailyQuota,
-        monthlyQuota: totalMonthlyQuota,
-        estimatedCost: estimatedCost.toFixed(2),
-        quotaLimit: 10000,
-        searchUsage: {
-          daily: dailyResults.search || 0,
-          monthly: monthlyResults.search || 0
-        },
-        videoDetailsUsage: {
-          daily: dailyResults.video_details || 0,
-          monthly: monthlyResults.video_details || 0
-        }
-      });
-    } catch (error) {
-      console.error('Error fetching YouTube API costs:', error);
-      res.status(500).json({
-        message: "Failed to fetch YouTube API costs",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
 
 
 
   // Add the user analytics endpoint
-  app.get("/api/user/analytics", async (req, res) => {
+
+  // Log user session start
+
+  // Log user session end
+
+  // Add route to log user activity
+  app.use(async (req, res, next) => {
+    if (req.isAuthenticated()) {
+      try {
+        const userId = req.user!.id;
+        const path = req.path;
+        const method = req.method;
+
+        // Use the centralized storage method instead of direct SQL
+        await storage.logUserActivity(userId, path, method);
+      } catch (error) {
+        console.error('Error logging user activity:', error);
+      }
+    }
+    next();
+  });
+
+  // Get playlist for a user (works for both host and guest URLs)
+  app.get("/api/playlist/:guestUrl", async (req, res) => {
+    console.log('Fetching playlist for guestUrl:', req.params.guestUrl);
+    const user = await storage.getUserByGuestUrl(req.params.guestUrl);
+    if (!user) {
+      console.log('User not found for guestUrl:', req.params.guestUrl);
+      return res.status(404).json({ message: "Playlist not found" });
+    }
+
+    const songs = await storage.getSongs(user.id);
+    const currentlyPlaying = await storage.getCurrentlyPlaying(user.id);
+    const playedSongs = await storage.getPlayedSongs(user.id);
+
+    // Debug log to verify data
+    console.log('Sending playlist data:', {
+      songs: songs.length,
+      user: user.id,
+      allowGuestPlayOnDevice: user.allowGuestPlayOnDevice,
+      allowRecentlyPlayedVisibility: user.allowRecentlyPlayedVisibility,
+      currentlyPlaying: currentlyPlaying ? {
+        id: currentlyPlaying.id,
+        title: currentlyPlaying.title
+      } : null,
+      playedSongs: playedSongs.length
+    });
+
+    res.json({
+      songs,
+      user,
+      currentlyPlaying,
+      playedSongs,
+      allowGuestPlayOnDevice: user.allowGuestPlayOnDevice,
+      allowRecentlyPlayedVisibility: user.allowRecentlyPlayedVisibility
+    });
+  });
+
+  // Update currently playing song
+  app.post("/api/playlist/currently-playing", async (req, res) => {
+    console.log('Updating currently playing song:', req.body);
+
+    // Allow both authenticated users and guest URL access
+    let userId: number;
+
+    if (req.isAuthenticated()) {
+      userId = req.user!.id;
+    } else {
+      const guestUrl = req.query.guestUrl as string;
+      if (!guestUrl) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const user = await storage.getUserByGuestUrl(guestUrl);
+      if (!user) {
+        return res.status(404).json({ message: "Playlist not found" });
+      }
+      userId = user.id;
+    }
+
+    const { songId } = req.body;
+    if (typeof songId !== "number" && songId !== null) {
+      return res.status(400).json({ message: "Invalid song ID" });
+    }
+
+    await storage.setCurrentlyPlaying(userId, songId);
+
+    res.sendStatus(200);
+  });
+
+  // Add song to playlist (host or guest)
+  app.post("/api/playlist/songs", async (req, res) => {
+    let userId: number;
+    console.log('Add song request received:', {
+      body: req.body,
+      query: req.query,
+      isAuthenticated: req.isAuthenticated()
+    });
+
+    // If authenticated, use the logged-in user's ID
+    if (req.isAuthenticated() && req.user) {
+      userId = req.user.id;
+    }
+    // Otherwise, try to get user ID from guest URL
+    else {
+      const guestUrl = req.query.guestUrl as string;
+      if (!guestUrl) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const user = await storage.getUserByGuestUrl(guestUrl);
+      if (!user) {
+        return res.status(404).json({ message: "Playlist not found" });
+      }
+
+      // Check if song requests are allowed
+      if (!user.allowSongRequests) {
+        return res.status(403).json({ message: "Song requests are not allowed for this playlist" });
+      }
+
+      userId = user.id;
+
+      // Log guest song request
+      try {
+        await db.execute(
+          `INSERT INTO guest_interactions 
+          (user_id, guest_id, song_request, interaction_type, created_at) 
+          VALUES ($1, $2, true, 'song_request', NOW())`,
+          [userId, req.sessionID]
+        );
+      } catch (error) {
+        console.error('Error logging song request:', error);
+      }
+    }
+
+    try {
+      console.log('Adding song for user:', userId);
+      const song = await storage.addSong(userId, req.body);
+      res.status(201).json(song);
+    } catch (error) {
+      console.error('Error adding song:', error);
+      res.status(500).json({ message: "Failed to add song to playlist" });
+    }
+  });
+
+  // Remove song from playlist (host only)
+  app.delete("/api/playlist/songs/:songId", async (req, res) => {
+    // Support multiple auth methods
+    let userId: number;
+
+    // 1. Try session auth first (old system)
+    if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+      userId = req.user.id;
+      console.log('✅ Delete song - session auth - User ID:', req.user.id);
+    }
+    // 2. Try JWT token (new system)
+    else if (req.headers.authorization?.startsWith('Bearer ')) {
+      const token = req.headers.authorization.substring(7);
+      try {
+        // Decode JWT to validate it's a real token
+        const decoded = jwt.decode(token) as any;
+        if (!decoded || !decoded.id) {
+          return res.status(401).json({ message: "Unauthorized - Invalid token" });
+        }
+
+        // Check expiration
+        if (decoded.exp && decoded.exp < Date.now() / 1000) {
+          return res.status(401).json({ message: "Unauthorized - Token expired" });
+        }
+
+        console.log('✅ Delete song - JWT validated for Strapi user:', decoded.id);
+
+        // Look up Neon DB user by username
+        const username = req.query.username as string;
+        if (!username) {
+          return res.status(400).json({ message: "Username required with JWT auth" });
+        }
+
+        const user = await storage.getUserByUsername(username);
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        console.log('✅ Mapped JWT to Neon DB user:', user.username);
+        userId = user.id;
+      } catch (error) {
+        console.error('❌ JWT validation error:', error);
+        return res.status(401).json({ message: "Unauthorized - Invalid token" });
+      }
+    }
+    // 3. Legacy fallback
+    else if (req.query.userId) {
+      userId = parseInt(req.query.userId as string);
+    }
+    else {
+      return res.status(401).json({ message: "Unauthorized - authentication required" });
+    }
+
+    try {
+      await storage.removeSong(userId, parseInt(req.params.songId));
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error removing song:', error);
+      res.status(500).json({ message: "Failed to remove song from playlist" });
+    }
+  });
+
+  // Update song position (host only)
+  app.patch("/api/playlist/songs/:songId/position", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { position } = req.body;
+    if (typeof position !== "number") {
+      return res.status(400).json({ message: "Invalid position" });
+    }
+
+    try {
+      await storage.updateSongPosition(
+        req.user!.id,
+        parseInt(req.params.songId),
+        position
+      );
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error updating song position:', error);
+      res.status(500).json({ message: "Failed to update song position" });
+    }
+  });
+
+  // Add bulk delete route with proper error handling
+  app.delete("/api/playlist/songs/bulk", async (req, res) => {
+    console.log('Server: Bulk delete request received:', {
+      body: req.body,
+      isAuthenticated: req.isAuthenticated(),
+      userId: req.user?.id
+    });
+
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     try {
-      const userId = req.user!.id;
+      const { songIds } = req.body;
 
-      // Get guest interaction metrics
-      const guestMetrics = await db.execute(
-        `SELECT 
-          COUNT(DISTINCT guest_id) as total_views,
-          COUNT(CASE WHEN song_request = true THEN 1 END) as total_song_requests,
-          AVG(session_duration) as avg_session_duration
-        FROM guest_interactions 
-        WHERE user_id = $1`,
-        [userId]
-      );
+      // Validate request body
+      if (!songIds || !Array.isArray(songIds)) {
+        console.error('Server: Invalid request body:', req.body);
+        return res.status(400).json({ message: "Invalid request. Expected songIds array." });
+      }
 
-      // Get daily views and song requests for the last 30 days
-      const dailyStats = await db.execute(
-        `SELECT 
-          DATE(created_at) as date,
-          COUNT(DISTINCT CASE WHEN page_view = true THEN guest_id END) as views,
-          COUNT(CASE WHEN song_request = true THEN 1 END) as song_requests
-        FROM guest_interactions
-        WHERE user_id = $1 
-          AND created_at >= NOW() - INTERVAL '30 days'
-        GROUP BY date
-        ORDER BY date`,
-        [userId]
-      );
+      // Convert to numbers and validate
+      const validSongIds = songIds
+        .map(id => typeof id === 'string' ? parseInt(id, 10) : id)
+        .filter(id => !isNaN(id) && typeof id === 'number');
 
-      // Get weekly aggregation
-      const weeklyStats = await db.execute(
-        `SELECT 
-          DATE_TRUNC('week', created_at) as week_start,
-          COUNT(DISTINCT CASE WHEN page_view = true THEN guest_id END) as views,
-          COUNT(CASE WHEN song_request = true THEN 1 END) as song_requests
-        FROM guest_interactions
-        WHERE user_id = $1 
-          AND created_at >= NOW() - INTERVAL '12 weeks'
-        GROUP BY week_start
-        ORDER BY week_start`,
-        [userId]
-      );
+      if (validSongIds.length === 0) {
+        console.error('Server: No valid song IDs found in:', songIds);
+        return res.status(400).json({ message: "No valid song IDs provided" });
+      }
 
-      // Get monthly aggregation
-      const monthlyStats = await db.execute(
-        `SELECT 
-          DATE_TRUNC('month', created_at) as month_start,
-          COUNT(DISTINCT CASE WHEN page_view = true THEN guest_id END) as views,
-          COUNT(CASE WHEN song_request = true THEN 1 END) as song_requests
-        FROM guest_interactions
-        WHERE user_id = $1 
-          AND created_at >= NOW() - INTERVAL '12 months'
-        GROUP BY month_start
-        ORDER BY month_start`,
-        [userId]
-      );
+      console.log(`Server: Attempting to delete ${validSongIds.length} songs for user ${req.user!.id}:`, validSongIds);
 
-      // Get session statistics and peak hours
-      const sessionStats = await db.execute(
-        `SELECT 
-          EXTRACT(HOUR FROM start_time) as hour,
-          COUNT(*) as session_count
-        FROM user_sessions 
-        WHERE user_id = $1 
-        GROUP BY hour 
-        ORDER BY session_count DESC 
-        LIMIT 1`,
-        [userId]
-      );
+      // First verify all songs belong to the user
+      const userSongs = await storage.getSongs(req.user!.id);
+      const userSongIds = new Set(userSongs.map(song => song.id));
+      const invalidSongIds = validSongIds.filter(id => !userSongIds.has(id));
 
-      // Get playlist statistics
-      const playlistStats = await db.execute(
-        `SELECT COUNT(*) as total_songs_played
-        FROM played_songs 
-        WHERE user_id = $1`,
-        [userId]
-      );
+      if (invalidSongIds.length > 0) {
+        console.error('Server: Found invalid song IDs:', invalidSongIds);
+        return res.status(403).json({ message: "Some songs do not belong to the user" });
+      }
 
-      const peakHour = sessionStats.rows[0]?.hour
-        ? `${sessionStats.rows[0].hour}:00`
-        : '--';
+      await storage.removeMultipleSongs(req.user!.id, validSongIds);
 
-      res.json({
-        guestMetrics: {
-          totalViews: parseInt(guestMetrics.rows[0]?.total_views || '0'),
-          totalSongRequests: parseInt(guestMetrics.rows[0]?.total_song_requests || '0'),
-          avgSessionDuration: Math.round(guestMetrics.rows[0]?.avg_session_duration || 0)
-        },
-        sessionStats: {
-          peakHour,
-          avgSessionDuration: Math.round(guestMetrics.rows[0]?.avg_session_duration || 0)
-        },
-        playlistStats: {
-          totalSongsPlayed: parseInt(playlistStats.rows[0]?.total_songs_played || '0')
-        },
-        timeSeriesData: {
-          daily: dailyStats.rows,
-          weekly: weeklyStats.rows,
-          monthly: monthlyStats.rows
-        }
-      });
-
+      console.log('Server: Successfully deleted songs');
+      res.sendStatus(200);
     } catch (error) {
-      console.error('Error fetching user analytics:', error);
+      console.error('Server: Error in bulk delete route:', error);
       res.status(500).json({
-        message: "Failed to fetch analytics",
+        message: "Failed to remove songs",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
   });
 
-  // Log user session start
-  app.post("/api/login", passport.authenticate("local"), async (req, res) => {
-    try {
-      // Log user session
-      await db.execute(
-        `INSERT INTO user_sessions 
-        (user_id, start_time, device_info, ip_address) 
-        VALUES ($1, NOW(), $2, $3)`,
-        [
-          req.user!.id,
-          JSON.stringify({ userAgent: req.headers['user-agent'] }),
-          req.ip
-        ]
-      );
-    } catch (error) {
-      console.error('Error logging user session:', error);
+  // Add route to clear playlist history
+  app.delete("/api/playlist/history", async (req, res) => {
+    console.log('Clear history request received:', {
+      isAuthenticated: req.isAuthenticated(),
+      userId: req.user?.id
+    });
+
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
     }
-    res.status(200).json(req.user);
+
+    try {
+      console.log(`Attempting to clear history for user ${req.user!.id}`);
+      await storage.clearHistory(req.user!.id);
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error clearing history:', error);
+      res.status(500).json({ message: "Failed to clear history" });
+    }
   });
+
+  // Admin routes
+
+  // Update user's account manager endpoint
+
+  // Add the stats endpoint after the existing admin endpoints
+
+
+  // Add new system endpoint within registerRoutes function
+
+  // Add the YouTube costs endpoint
+
+
+
+  // Add the user analytics endpoint
+
+  // Log user session start
 
   // Log user session end
-  app.post("/api/logout", async (req, res, next) => {
-    if (req.user) {
-      try {
-        // Update session end time
-        await db.execute(
-          `UPDATE user_sessions 
-          SET end_time = NOW() 
-          WHERE user_id = $1 
-          AND end_time IS NULL`,
-          [req.user.id]
-        );
-      } catch (error) {
-        console.error('Error updating session end time:', error);
-      }
-    }
-
-    req.logout((err) => {
-      if (err) return next(err);
-      res.sendStatus(200);
-    });
-  });
 
   // Add route to log user activity
   app.use(async (req, res, next) => {
@@ -3149,234 +3336,15 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Add the remaining routes from original code here.
-  app.get("/api/admin/users", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
-
-    try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
-
-      // Get users with pagination and account manager info
-      const { users, total } = await storage.getAllUsers(page, limit);
-
-      // Get active users stats
-      const stats = await storage.getUserStats();
-
-      res.json({
-        users,
-        total,
-        stats
-      });
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      res.status(500).json({
-        message: "Failed to fetch users",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
 
   // Update user's account manager endpoint
-  app.patch("/api/admin/users/:userId/account-manager", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
-
-    try {
-      const userId = parseInt(req.params.userId);
-      const { accountManagerId } = req.body;
-
-      if (userId === req.user!.id) {
-        return res.status(400).json({ message: "Cannot modify super admin's account manager" });
-      }
-
-      await storage.updateUserAccountManager(userId, accountManagerId);
-      res.sendStatus(200);
-    } catch (error) {
-      console.error('Error updating account manager:', error);
-      res.status(500).json({
-        message: "Failed to update account manager",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  app.get("/api/admin/users/:userId/activity", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
-
-    try {
-      const userId = parseInt(req.params.userId);
-      const activity = await storage.getUserActivity(userId);
-      res.json(activity);
-    } catch (error) {
-      console.error('Error fetching user activity:', error);
-      res.status(500).json({
-        message: "Failed to fetch user activity",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  app.delete("/api/admin/users/:userId", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
-
-    try {
-      const userId = parseInt(req.params.userId);
-      if (userId === req.user!.id) {
-        return res.status(400).json({ message: "Cannot delete super admin account" });
-      }
-      await storage.deleteUser(userId);
-      res.sendStatus(200);
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      res.status(500).json({
-        message: "Failed to delete user",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
 
   // Add the stats endpoint after the existing admin endpoints
-  app.get("/api/admin/stats", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
-
-    try {
-      const stats = await storage.getUserStats();
-      res.json(stats);
-    } catch (error) {
-      console.error('Error fetching analytics data:', error);
-      res.status(500).json({
-        message: "Failed to fetch analytics data",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
 
 
   // Add new system endpoint within registerRoutes function
-  app.get("/api/admin/system", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
-
-    try {
-      const systemMetrics = {
-        uptime: process.uptime().toFixed(0) + "s",
-        avgResponseTime: "120",
-        memoryUsage: Math.round((process.memoryUsage().heapUsed / process.memoryUsage().heapTotal) * 100),
-        cpuLoad: "45",
-        dbConnections: await storage.getActiveConnections(),
-        avgQueryTime: "25",
-        errorRate: "0.02",
-        recentErrors: [
-          {
-            message: "Database connection timeout",
-            timestamp: new Date(Date.now() - 300000).toISOString(),
-            severity: "high"
-          },
-          {
-            message: "Rate limit exceeded",
-            timestamp: new Date(Date.now() - 600000).toISOString(),
-            severity: "medium"
-          }
-        ],
-        rateLimit: 60,
-        debugMode: false,
-        maintenanceMode: false
-      };
-
-      res.json(systemMetrics);
-    } catch (error) {
-      console.error('Error fetching system metrics:', error);
-      res.status(500).json({
-        message: "Failed to fetch system metrics",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
 
   // Add the YouTube costs endpoint
-  app.get("/api/admin/finance/youtube-costs", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
-
-    try {
-      // Get today's usage
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-
-      const monthStart = new Date();
-      monthStart.setDate(1);
-      monthStart.setHours(0, 0, 0, 0);
-
-      // Fetch daily usage
-      const dailyUsage = await db.execute(
-        `SELECT endpoint_type, SUM(quota_cost) as total_cost 
-         FROM youtube_api_usage 
-         WHERE created_at >= $1
-         GROUP BY endpoint_type`,
-        [todayStart.toISOString()]
-      );
-
-      // Fetch monthly usage
-      const monthlyUsage = await db.execute(
-        `SELECT endpoint_type, SUM(quota_cost) as total_cost 
-         FROM youtube_api_usage 
-         WHERE created_at >= $1
-         GROUP BY endpoint_type`,
-        [monthStart.toISOString()]
-      );
-
-      // Calculate totals
-      const dailyResults: Record<string, number> = {};
-      const monthlyResults: Record<string, number> = {};
-
-      dailyUsage.rows.forEach((row: any) => {
-        dailyResults[row.endpoint_type] = parseInt(row.total_cost);
-      });
-
-      monthlyUsage.rows.forEach((row: any) => {
-        monthlyResults[row.endpoint_type] = parseInt(row.total_cost);
-      });
-
-      // Calculate costs (YouTube API is free but we'll estimate based on standard quota)
-      const totalDailyQuota = Object.values(dailyResults).reduce((a, b) => a + b, 0);
-      const totalMonthlyQuota = Object.values(monthlyResults).reduce((a, b) => a + b, 0);
-
-      // Estimate cost based on quota usage (hypothetical cost calculation)
-      const estimatedCost = (totalMonthlyQuota / 10000) * 5; // $5 per 10,000 quota points
-
-      res.json({
-        todayQuota: totalDailyQuota,
-        monthlyQuota: totalMonthlyQuota,
-        estimatedCost: estimatedCost.toFixed(2),
-        quotaLimit: 10000,
-        searchUsage: {
-          daily: dailyResults.search || 0,
-          monthly: monthlyResults.search || 0
-        },
-        videoDetailsUsage: {
-          daily: dailyResults.video_details || 0,
-          monthly: monthlyResults.video_details || 0
-        }
-      });
-    } catch (error) {
-      console.error('Error fetching YouTube API costs:', error);
-      res.status(500).json({
-        message: "Failed to fetch YouTube API costs",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
 
 
 
@@ -3496,48 +3464,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Log user session start
-  app.post("/api/login", passport.authenticate("local"), async (req, res) => {
-    try {
-      // Log user session
-      await db.execute(
-        `INSERT INTO user_sessions 
-        (user_id, start_time, device_info, ip_address) 
-        VALUES ($1, NOW(), $2, $3)`,
-        [
-          req.user!.id,
-          JSON.stringify({ userAgent: req.headers['user-agent'] }),
-          req.ip
-        ]
-      );
-    } catch (error) {
-      console.error('Error logging user session:', error);
-    }
-    res.status(200).json(req.user);
-  });
-
-  // Log user session end
-  app.post("/api/logout", async (req, res, next) => {
-    if (req.user) {
-      try {
-        // Update session end time
-        await db.execute(
-          `UPDATE user_sessions 
-          SET end_time = NOW() 
-          WHERE user_id = $1 
-          AND end_time IS NULL`,
-          [req.user.id]
-        );
-      } catch (error) {
-        console.error('Error updating session end time:', error);
-      }
-    }
-
-    req.logout((err) => {
-      if (err) return next(err);
-      res.sendStatus(200);
-    });
-  });
 
   // Add route to log user activity
   app.use(async (req, res, next) => {
@@ -4081,41 +4007,6 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error('Error fetching system setting:', error);
       res.status(500).json({ message: "Failed to fetch system setting" });
-    }
-  });
-
-  app.post("/api/admin/system-settings", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
-
-    try {
-      const { key, value, description, isSecret, category } = req.body;
-
-      // Validate required fields
-      if (!key || !value || !category) {
-        return res.status(400).json({ message: "Key, value, and category are required" });
-      }
-
-      // Check if setting already exists
-      const existingSetting = await storage.getSystemSetting(key);
-      if (existingSetting) {
-        return res.status(409).json({ message: `Setting with key "${key}" already exists` });
-      }
-
-      const newSetting = await storage.createSystemSetting({
-        key,
-        value,
-        description: description || null,
-        isSecret: isSecret === true,
-        category,
-        updatedBy: req.user!.id,
-      });
-
-      res.status(201).json(newSetting);
-    } catch (error) {
-      console.error('Error creating system setting:', error);
-      res.status(500).json({ message: "Failed to create system setting" });
     }
   });
 

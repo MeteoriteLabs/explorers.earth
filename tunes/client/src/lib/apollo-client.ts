@@ -1,5 +1,5 @@
 /**
- * Apollo Client Configuration - LocalQR Auth Model
+ * Apollo Client Configuration - explorers.earth Auth Model
  * GraphQL client with authentication token handling
  */
 
@@ -7,7 +7,7 @@ import { ApolloClient, InMemoryCache, createHttpLink, from } from '@apollo/clien
 import { setContext } from '@apollo/client/link/context';
 import { onError } from '@apollo/client/link/error';
 
-const VITE_API_URL = import.meta.env.VITE_API_URL || 'https://api.localqr.earth/graphql';
+const VITE_API_URL = import.meta.env.VITE_API_URL || 'https://api.explorers.earth/graphql';
 const VITE_PUBLIC_ACCESS_TOKEN = import.meta.env.VITE_PUBLIC_ACCESS_TOKEN || '';
 
 // List of operations that don't need authentication
@@ -40,7 +40,7 @@ const authLink = setContext((operation, { headers }) => {
     };
   }
   
-  // Get token from localStorage (same key as LocalQR)
+  // Get token from localStorage (same key as explorers.earth)
   const token = localStorage.getItem('qrtoken');
   
   return {
