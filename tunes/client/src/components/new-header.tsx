@@ -1,5 +1,5 @@
 /**
- * New Header Component - explorers.earth Auth Model
+ * New Header Component - LocalQR Auth Model
  * Header with Zustand auth integration
  */
 
@@ -26,7 +26,7 @@ export default function NewHeader() {
   // Determine if we're in the admin section
   const isAdminSection = location.startsWith('/admin');
   
-  // For explorers.earth auth, user doesn't have venueName, so use username
+  // For LocalQR auth, user doesn't have venueName, so use username
   const headerTitle = isAdminSection ? 'Admin Dashboard' : user.username;
   const headerLink = isAdminSection ? '/admin/dashboard' : '/dashboard';
 

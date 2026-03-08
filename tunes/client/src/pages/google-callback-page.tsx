@@ -8,7 +8,7 @@ import { useLocation } from 'wouter';
 import { useAuthStore } from '@/stores/authStore';
 import { Loader2 } from 'lucide-react';
 
-const VITE_REST_API_URL = import.meta.env.VITE_REST_API_URL || 'https://api.explorers.earth';
+const VITE_REST_API_URL = import.meta.env.VITE_REST_API_URL || 'https://api.localqr.earth';
 
 export default function GoogleCallbackPage() {
   const [, setLocation] = useLocation();
@@ -52,7 +52,7 @@ export default function GoogleCallbackPage() {
         // Store credentials if needed (optional)
         if (typeof sessionStorage !== 'undefined') {
           sessionStorage.setItem(
-            'explorers_user_credentials',
+            'localqr_user_credentials',
             JSON.stringify({
               username: data.user.username,
               email: data.user.email,
