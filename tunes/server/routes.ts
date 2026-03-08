@@ -15,10 +15,9 @@ import { setupUserRoutes } from './user-routes';
 import { setupSeoRoutes } from './seo-routes';
 import { setupPaymentRoutes } from './routes/paymentRoutes';
 import { setupSubscriptionRoutes } from './routes/subscriptionRoutes';
-import { setupAuthRoutes } from './routes/authRoutes';
+import { setupPlaylistRoutes } from './routes/playlistRoutes';
 import { randomBytes, createHash } from 'crypto';
 import { emailService } from './services/email-service';
-import { importYouTubeMusicPlaylist, importYouTubeMusicPlaylistToMain } from './services/youtube-playlist-import';
 import { importSpotifyPlaylist, importSpotifyPlaylistToMain } from './services/spotify-playlist-import';
 import { strapiService } from './services/strapi-service';
 import { extractYouTubeVideoId, isYouTubeUrl } from './utils/youtube';
@@ -103,919 +102,8 @@ export function registerRoutes(app: Express): Server {
   // Setup Instagram scraping routes
   setupInstagramRoutes(app);
 
-  // Add guest interaction tracking middleware
-  app.use(async (req, res, next) => {
-    try {
-      // Only track guest playlist interactions
-      if (req.path.startsWith('/api/playlist/') && req.method === 'GET') {
-        const guestUrl = req.params.guestUrl;
-        if (guestUrl) {
-          const user = await storage.getUserByGuestUrl(guestUrl);
-          if (user) {
-            // Use SQL tagged template literal for safe query construction
-            await db.execute(sql`
-              INSERT INTO guest_interactions 
-              (user_id, guest_id, page_view, interaction_type, created_at) 
-              VALUES (${user.id}, ${req.sessionID}, true, 'playlist_view', NOW())
-            `);
-          }
-        }
-      }
-      next();
-    } catch (error) {
-      console.error('Error in guest interaction middleware:', error);
-      next(); // Continue even if logging fails 
-    }
-  });
-
-  // Add playlist routes
-  app.get("/api/playlists", async (req, res) => {
-    // Support multiple auth methods:
-    // 1. Session auth (old)
-    // 2. JWT token (new)
-    // 3. Legacy fallbacks
-    let userId: number;
-
-    // 1. Try session auth first (old system)
-    if (req.isAuthenticated && req.isAuthenticated() && req.user) {
-      userId = req.user.id;
-      console.log('✅ Playlists - session auth - User ID:', userId);
-    }
-    // 2. Try JWT token (new system)
-    else if (req.headers.authorization?.startsWith('Bearer ')) {
-      const token = req.headers.authorization.substring(7);
-      try {
-        // Decode JWT to validate
-        const decoded = jwt.decode(token) as any;
-        if (!decoded || !decoded.id) {
-          return res.status(401).json({ message: "Unauthorized - Invalid token" });
-        }
-
-        // Check expiration
-        if (decoded.exp && decoded.exp < Date.now() / 1000) {
-          return res.status(401).json({ message: "Unauthorized - Token expired" });
-        }
-
-        console.log('✅ Playlists - JWT validated for Strapi user:', decoded.id);
-
-        // Look up Neon DB user by username (passed in query)
-        const username = req.query.username as string;
-        if (!username) {
-          return res.status(400).json({ message: "Username required with JWT auth" });
-        }
-
-        const user = await storage.getUserByUsername(username);
-        if (!user) {
-          return res.status(404).json({ message: "User not found" });
-        }
-
-        console.log('✅ Mapped JWT to Neon DB user:', user.username, '(ID:', user.id, ')');
-        userId = user.id;
-      } catch (error) {
-        console.error('❌ JWT validation error:', error);
-        return res.status(401).json({ message: "Unauthorized - Invalid token" });
-      }
-    }
-    // 3. Legacy fallback - userId query param
-    else if (req.query.userId) {
-      userId = parseInt(req.query.userId as string);
-      console.log('⚠️ Using legacy userId param:', userId);
-    }
-    else {
-      return res.status(401).json({ message: "Unauthorized - authentication required" });
-    }
-
-    try {
-      const playlists = await storage.getPlaylists(userId);
-      console.log('Fetched playlists for user:', userId, '- count:', playlists?.length || 0);
-      res.json(playlists);
-    } catch (error) {
-      console.error('Error fetching playlists:', error);
-      res.status(500).json({
-        message: "Failed to fetch playlists",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  app.post("/api/playlists", async (req, res) => {
-    let userId: number;
-
-    // 1. Try session auth
-    if (req.isAuthenticated() && req.user) {
-      userId = req.user.id;
-    }
-    // 2. Try JWT token
-    else if (req.headers.authorization?.startsWith('Bearer ')) {
-      const token = req.headers.authorization.substring(7);
-      try {
-        const decoded = jwt.decode(token) as any;
-        if (!decoded || !decoded.id) {
-          return res.status(401).json({ message: "Unauthorized - Invalid token" });
-        }
-
-        // Check expiration
-        if (decoded.exp && decoded.exp < Date.now() / 1000) {
-          return res.status(401).json({ message: "Unauthorized - Token expired" });
-        }
-
-        // Look up user
-        let usernameForLookup = req.query.username || req.headers['x-username'];
-        if (!usernameForLookup && req.body.username) {
-          usernameForLookup = req.body.username;
-        }
-
-        if (usernameForLookup) {
-          const user = await storage.getUserByUsername(usernameForLookup as string);
-          if (user) {
-            userId = user.id;
-          } else {
-            return res.status(404).json({ message: "User not found" });
-          }
-        } else {
-          console.error('❌ Username not provided for JWT auth in create playlist');
-          return res.status(401).json({ message: "Unauthorized - Username required for JWT auth" });
-        }
-      } catch (error) {
-        console.error('❌ JWT validation error:', error);
-        return res.status(401).json({ message: "Unauthorized - Invalid token" });
-      }
-    } else {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    try {
-      const playlist = await storage.createPlaylist(userId, req.body);
-      console.log('Created playlist:', playlist);
-      res.status(201).json(playlist);
-    } catch (error) {
-      console.error('Error creating playlist:', error);
-      res.status(500).json({
-        message: "Failed to create playlist",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  app.delete("/api/playlists/:playlistId", async (req, res) => {
-    let userId: number;
-
-    // 1. Try session auth
-    if (req.isAuthenticated() && req.user) {
-      userId = req.user.id;
-    }
-    // 2. Try JWT token
-    else if (req.headers.authorization?.startsWith('Bearer ')) {
-      const token = req.headers.authorization.substring(7);
-      try {
-        const decoded = jwt.decode(token) as any;
-        if (!decoded || !decoded.id) {
-          return res.status(401).json({ message: "Unauthorized - Invalid token" });
-        }
-        // Check expiration
-        if (decoded.exp && decoded.exp < Date.now() / 1000) {
-          return res.status(401).json({ message: "Unauthorized - Token expired" });
-        }
-        // Look up user
-        let usernameForLookup = req.query.username || req.headers['x-username'];
-        if (!usernameForLookup && req.body.username) {
-          usernameForLookup = req.body.username;
-        }
-
-        if (usernameForLookup) {
-          const user = await storage.getUserByUsername(usernameForLookup as string);
-          if (user) {
-            userId = user.id;
-          } else {
-            return res.status(404).json({ message: "User not found" });
-          }
-        } else {
-          return res.status(401).json({ message: "Unauthorized - Username required for JWT auth" });
-        }
-      } catch (error) {
-        return res.status(401).json({ message: "Unauthorized - Invalid token" });
-      }
-    } else {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    try {
-      const playlistId = parseInt(req.params.playlistId);
-      // Verify playlist belongs to user
-      const playlist = await storage.getPlaylistById(playlistId);
-      if (!playlist || playlist.userId !== req.user!.id) {
-        return res.status(403).json({ message: "Playlist not found or unauthorized" });
-      }
-
-      await storage.deletePlaylist(playlistId);
-      res.sendStatus(200);
-    } catch (error) {
-      console.error('Error deleting playlist:', error);
-      res.status(500).json({
-        message: "Failed to delete playlist",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Update playlist details (name and description)
-  app.patch("/api/playlists/:playlistId", async (req, res) => {
-    let userId: number;
-
-    // 1. Try session auth
-    if (req.isAuthenticated() && req.user) {
-      userId = req.user.id;
-    }
-    // 2. Try JWT token
-    else if (req.headers.authorization?.startsWith('Bearer ')) {
-      const token = req.headers.authorization.substring(7);
-      try {
-        const decoded = jwt.decode(token) as any;
-        if (!decoded || !decoded.id) {
-          return res.status(401).json({ message: "Unauthorized - Invalid token" });
-        }
-        // Check expiration
-        if (decoded.exp && decoded.exp < Date.now() / 1000) {
-          return res.status(401).json({ message: "Unauthorized - Token expired" });
-        }
-        // Look up user
-        let usernameForLookup = req.query.username || req.headers['x-username'];
-        if (!usernameForLookup && req.body.username) {
-          usernameForLookup = req.body.username;
-        }
-
-        if (usernameForLookup) {
-          const user = await storage.getUserByUsername(usernameForLookup as string);
-          if (user) {
-            userId = user.id;
-          } else {
-            return res.status(404).json({ message: "User not found" });
-          }
-        } else {
-          return res.status(401).json({ message: "Unauthorized - Username required for JWT auth" });
-        }
-      } catch (error) {
-        return res.status(401).json({ message: "Unauthorized - Invalid token" });
-      }
-    } else {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    try {
-      const playlistId = parseInt(req.params.playlistId);
-      const { name, description } = req.body;
-
-      // Validate request body
-      if (!name || typeof name !== 'string') {
-        return res.status(400).json({ message: "Invalid playlist name" });
-      }
-
-      // Verify playlist belongs to user
-      const playlist = await storage.getPlaylistById(playlistId);
-      if (!playlist || playlist.userId !== userId) {
-        return res.status(403).json({ message: "Playlist not found or unauthorized" });
-      }
-
-      const updatedPlaylist = await storage.updatePlaylist(playlistId, {
-        name,
-        description: description || null
-      });
-
-      res.json(updatedPlaylist);
-    } catch (error) {
-      console.error('Error updating playlist:', error);
-      res.status(500).json({
-        message: "Failed to update playlist",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Add songs to playlist
-  app.post("/api/playlists/:playlistId/songs", async (req, res) => {
-    let userId: number;
-
-    // 1. Try session auth
-    if (req.isAuthenticated() && req.user) {
-      userId = req.user.id;
-    }
-    // 2. Try JWT token
-    else if (req.headers.authorization?.startsWith('Bearer ')) {
-      const token = req.headers.authorization.substring(7);
-      try {
-        const decoded = jwt.decode(token) as any;
-        if (!decoded || !decoded.id) {
-          return res.status(401).json({ message: "Unauthorized - Invalid token" });
-        }
-        // Check expiration
-        if (decoded.exp && decoded.exp < Date.now() / 1000) {
-          return res.status(401).json({ message: "Unauthorized - Token expired" });
-        }
-        // Look up user
-        let usernameForLookup = req.query.username || req.headers['x-username'];
-        if (!usernameForLookup && req.body.username) {
-          usernameForLookup = req.body.username;
-        }
-
-        if (usernameForLookup) {
-          const user = await storage.getUserByUsername(usernameForLookup as string);
-          if (user) {
-            userId = user.id;
-          } else {
-            return res.status(404).json({ message: "User not found" });
-          }
-        } else {
-          return res.status(401).json({ message: "Unauthorized - Username required for JWT auth" });
-        }
-      } catch (error) {
-        return res.status(401).json({ message: "Unauthorized - Invalid token" });
-      }
-    } else {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    try {
-      const playlistId = parseInt(req.params.playlistId);
-      const { songs } = req.body;
-
-      if (!Array.isArray(songs)) {
-        return res.status(400).json({ message: "Invalid request format - songs must be an array" });
-      }
-
-      // Verify playlist belongs to user
-      const playlist = await storage.getPlaylistById(playlistId);
-      if (!playlist || playlist.userId !== userId) {
-        return res.status(403).json({ message: "Playlist not found or unauthorized" });
-      }
-
-      // Process each song
-      const processedSongs = songs.map(song => ({
-        youtubeId: song.youtubeId,
-        title: song.title,
-        artist: song.artist,
-        thumbnailUrl: song.thumbnailUrl,
-        userId: userId
-      }));
-
-      await storage.addSongsToPlaylist(playlistId, processedSongs);
-
-      res.status(201).json({ success: true });
-    } catch (error) {
-      console.error('Error adding songs to playlist:', error);
-      res.status(500).json({
-        message: "Failed to add songs to playlist",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Import YouTube Music playlist to main playlist
-  app.post("/api/playlist/import-youtube", async (req, res) => {
-    let userId: number;
-
-    // If authenticated, use the logged-in user's ID
-    if (req.isAuthenticated() && req.user) {
-      userId = req.user.id;
-    }
-    // Otherwise, try to get user ID from guest URL
-    else {
-      const guestUrl = req.query.guestUrl as string;
-      if (!guestUrl) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      const user = await storage.getUserByGuestUrl(guestUrl);
-      if (!user) {
-        return res.status(404).json({ message: "Playlist not found" });
-      }
-
-      // Check if song requests are allowed
-      if (!user.allowSongRequests) {
-        return res.status(403).json({ message: "Song requests are not allowed for this playlist" });
-      }
-
-      userId = user.id;
-    }
-
-    try {
-      const { url: youtubePlaylistUrl } = req.body;
-
-      if (!youtubePlaylistUrl) {
-        return res.status(400).json({ message: "YouTube playlist URL is required" });
-      }
-
-      if (!process.env.YOUTUBE_API_KEY) {
-        return res.status(500).json({ message: "YouTube API key is not configured" });
-      }
-
-      // Log the YouTube API usage
-      try {
-        await storage.logYoutubeApiUsage({
-          endpointType: 'playlist_import',
-          userId: userId
-        });
-      } catch (logError) {
-        console.error('Error logging YouTube API usage:', logError);
-        // Don't throw - continue with the import even if logging fails
-      }
-
-      // Import the playlist to main playlist
-      const result = await importYouTubeMusicPlaylistToMain(
-        youtubePlaylistUrl,
-        userId,
-        storage,
-        process.env.YOUTUBE_API_KEY
-      );
-
-      res.status(200).json(result);
-    } catch (error) {
-      console.error('Error importing YouTube playlist to main:', error);
-
-      // Handle specific error types
-      if (error instanceof Error) {
-        if (error.message.includes('403')) {
-          return res.status(403).json({
-            message: "Failed to access YouTube playlist",
-            error: error.message
-          });
-        }
-        if (error.message.includes('404') || error.message.includes('not found')) {
-          return res.status(404).json({
-            message: "YouTube playlist not found",
-            error: error.message
-          });
-        }
-        if (error.message.includes('quota')) {
-          return res.status(429).json({
-            message: "YouTube API quota exceeded",
-            error: error.message
-          });
-        }
-        if (error.message.includes('Invalid playlist URL')) {
-          return res.status(400).json({
-            message: "Invalid YouTube playlist URL",
-            error: error.message
-          });
-        }
-      }
-
-      res.status(500).json({
-        message: "Failed to import YouTube playlist",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Import Spotify playlist to main playlist
-  app.post("/api/playlist/import-spotify", async (req, res) => {
-    let userId: number;
-
-    // If authenticated, use the logged-in user's ID
-    if (req.isAuthenticated() && req.user) {
-      userId = req.user.id;
-    }
-    // Otherwise, try to get user ID from guest URL
-    else {
-      const guestUrl = req.query.guestUrl as string;
-      if (!guestUrl) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      const user = await storage.getUserByGuestUrl(guestUrl);
-      if (!user) {
-        return res.status(404).json({ message: "Playlist not found" });
-      }
-
-      // Check if song requests are allowed
-      if (!user.allowSongRequests) {
-        return res.status(403).json({ message: "Song requests are not allowed for this playlist" });
-      }
-
-      userId = user.id;
-    }
-
-    try {
-      const { url: spotifyPlaylistUrl } = req.body;
-
-      if (!spotifyPlaylistUrl) {
-        return res.status(400).json({ message: "Spotify playlist URL is required" });
-      }
-
-      if (!process.env.SPOTIFY_CLIENT_ID || !process.env.SPOTIFY_CLIENT_SECRET) {
-        return res.status(500).json({ message: "Spotify API credentials are not configured" });
-      }
-
-      if (!process.env.YOUTUBE_API_KEY) {
-        return res.status(500).json({ message: "YouTube API key is required for Spotify import (to find YouTube videos)" });
-      }
-
-      // Log the YouTube API usage (since we use YouTube API to find videos)
-      try {
-        await storage.logYoutubeApiUsage({
-          endpointType: 'playlist_import',
-          userId: userId
-        });
-      } catch (logError) {
-        console.error('Error logging YouTube API usage:', logError);
-        // Don't throw - continue with the import even if logging fails
-      }
-
-      // Import the playlist to main playlist
-      const result = await importSpotifyPlaylistToMain(
-        spotifyPlaylistUrl,
-        userId,
-        storage,
-        process.env.SPOTIFY_CLIENT_ID,
-        process.env.SPOTIFY_CLIENT_SECRET,
-        process.env.YOUTUBE_API_KEY
-      );
-
-      res.status(200).json(result);
-    } catch (error) {
-      console.error('Error importing Spotify playlist to main:', error);
-
-      // Handle specific error types
-      if (error instanceof Error) {
-        if (error.message.includes('401') || error.message.includes('authentication')) {
-          return res.status(401).json({
-            message: "Spotify API authentication failed",
-            error: error.message
-          });
-        }
-        if (error.message.includes('403') || error.message.includes('Access denied')) {
-          return res.status(403).json({
-            message: "Access denied to Spotify playlist",
-            error: error.message
-          });
-        }
-        if (error.message.includes('404') || error.message.includes('not found')) {
-          return res.status(404).json({
-            message: "Spotify playlist not found",
-            error: error.message
-          });
-        }
-        if (error.message.includes('Invalid playlist URL')) {
-          return res.status(400).json({
-            message: "Invalid Spotify playlist URL",
-            error: error.message
-          });
-        }
-      }
-
-      res.status(500).json({
-        message: "Failed to import Spotify playlist",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Import Spotify playlist to saved playlist
-  app.post("/api/playlists/:id/import-spotify", async (req, res) => {
-    console.log("Spotify import endpoint hit for playlist:", req.params.id);
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    try {
-      const targetPlaylistId = parseInt(req.params.id);
-      const { url: spotifyPlaylistUrl } = req.body;
-      console.log("Importing Spotify playlist:", spotifyPlaylistUrl);
-
-      if (!spotifyPlaylistUrl) {
-        return res.status(400).json({ message: "Spotify playlist URL is required" });
-      }
-
-      const userId = req.user!.id;
-
-      // Verify playlist belongs to user
-      const playlist = await storage.getPlaylistById(targetPlaylistId);
-      if (!playlist || playlist.userId !== userId) {
-        return res.status(403).json({ message: "Playlist not found or unauthorized" });
-      }
-
-      if (!process.env.SPOTIFY_CLIENT_ID || !process.env.SPOTIFY_CLIENT_SECRET) {
-        return res.status(500).json({ message: "Spotify API credentials are not configured" });
-      }
-
-      if (!process.env.YOUTUBE_API_KEY) {
-        return res.status(500).json({ message: "YouTube API key is required for Spotify import (to find YouTube videos)" });
-      }
-
-      // Log the YouTube API usage (since we use YouTube API to find videos)
-      try {
-        await storage.logYoutubeApiUsage({
-          endpointType: 'playlist_import',
-          userId: userId
-        });
-      } catch (logError) {
-        console.error('Error logging YouTube API usage:', logError);
-        // Don't throw - continue with the import even if logging fails
-      }
-
-      // Import the playlist
-      const result = await importSpotifyPlaylist(
-        spotifyPlaylistUrl,
-        userId,
-        targetPlaylistId,
-        storage,
-        process.env.SPOTIFY_CLIENT_ID,
-        process.env.SPOTIFY_CLIENT_SECRET,
-        process.env.YOUTUBE_API_KEY
-      );
-
-      res.status(200).json(result);
-    } catch (error) {
-      console.error('Error importing Spotify playlist:', error);
-
-      // Handle specific error types
-      if (error instanceof Error) {
-        if (error.message.includes('401') || error.message.includes('authentication')) {
-          return res.status(401).json({
-            message: "Spotify API authentication failed",
-            error: error.message
-          });
-        }
-        if (error.message.includes('403') || error.message.includes('Access denied')) {
-          return res.status(403).json({
-            message: "Access denied to Spotify playlist",
-            error: error.message
-          });
-        }
-        if (error.message.includes('404') || error.message.includes('not found')) {
-          return res.status(404).json({
-            message: "Spotify playlist not found",
-            error: error.message
-          });
-        }
-        if (error.message.includes('Invalid playlist URL')) {
-          return res.status(400).json({
-            message: "Invalid Spotify playlist URL",
-            error: error.message
-          });
-        }
-      }
-
-      res.status(500).json({
-        message: "Failed to import Spotify playlist",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Import YouTube Music playlist to saved playlist
-  app.post("/api/playlists/:id/import-youtube", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    try {
-      const targetPlaylistId = parseInt(req.params.id);
-      const { url: youtubePlaylistUrl } = req.body;
-
-      if (!youtubePlaylistUrl) {
-        return res.status(400).json({ message: "YouTube playlist URL is required" });
-      }
-
-      if (!process.env.YOUTUBE_API_KEY) {
-        return res.status(500).json({ message: "YouTube API key is not configured" });
-      }
-
-      const userId = req.user!.id;
-
-      // Verify playlist belongs to user
-      const playlist = await storage.getPlaylistById(targetPlaylistId);
-      if (!playlist || playlist.userId !== userId) {
-        return res.status(403).json({ message: "Playlist not found or unauthorized" });
-      }
-
-      // Log the YouTube API usage (using storage directly to support playlist_import type)
-      try {
-        await storage.logYoutubeApiUsage({
-          endpointType: 'playlist_import',
-          userId: userId
-        });
-      } catch (logError) {
-        console.error('Error logging YouTube API usage:', logError);
-        // Don't throw - continue with the import even if logging fails
-      }
-
-      // Import the playlist
-      const result = await importYouTubeMusicPlaylist(
-        youtubePlaylistUrl,
-        userId,
-        targetPlaylistId,
-        storage,
-        process.env.YOUTUBE_API_KEY
-      );
-
-      res.status(200).json(result);
-    } catch (error) {
-      console.error('Error importing YouTube playlist:', error);
-
-      // Handle specific error types
-      if (error instanceof Error) {
-        if (error.message.includes('403')) {
-          return res.status(403).json({
-            message: "Failed to access YouTube playlist",
-            error: error.message
-          });
-        }
-        if (error.message.includes('404') || error.message.includes('not found')) {
-          return res.status(404).json({
-            message: "YouTube playlist not found",
-            error: error.message
-          });
-        }
-        if (error.message.includes('quota')) {
-          return res.status(429).json({
-            message: "YouTube API quota exceeded",
-            error: error.message
-          });
-        }
-        if (error.message.includes('Invalid playlist URL')) {
-          return res.status(400).json({
-            message: "Invalid YouTube playlist URL",
-            error: error.message
-          });
-        }
-      }
-
-      res.status(500).json({
-        message: "Failed to import YouTube playlist",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Get playlist with songs
-  app.get("/api/playlists/:playlistId", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    try {
-      const playlistId = parseInt(req.params.playlistId);
-      const playlist = await storage.getPlaylistById(playlistId);
-
-      if (!playlist || playlist.userId !== req.user!.id) {
-        return res.status(403).json({ message: "Playlist not found or unauthorized" });
-      }
-
-      // Get the songs for this playlist
-      const songs = await storage.getPlaylistSongs(playlistId);
-      res.json({ playlist, songs });
-    } catch (error) {
-      console.error('Error fetching playlist:', error);
-      res.status(500).json({
-        message: "Failed to fetch playlist",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Delete song from playlist
-  app.delete("/api/playlists/:playlistId/songs/:songId", async (req, res) => {
-    let userId: number;
-
-    // 1. Try session auth
-    if (req.isAuthenticated() && req.user) {
-      userId = req.user.id;
-    }
-    // 2. Try JWT token
-    else if (req.headers.authorization?.startsWith('Bearer ')) {
-      const token = req.headers.authorization.substring(7);
-      try {
-        const decoded = jwt.decode(token) as any;
-        if (!decoded || !decoded.id) {
-          return res.status(401).json({ message: "Unauthorized - Invalid token" });
-        }
-        // Check expiration
-        if (decoded.exp && decoded.exp < Date.now() / 1000) {
-          return res.status(401).json({ message: "Unauthorized - Token expired" });
-        }
-        // Look up user
-        let usernameForLookup = req.query.username || req.headers['x-username'];
-        if (!usernameForLookup && req.body.username) {
-          usernameForLookup = req.body.username;
-        }
-
-        if (usernameForLookup) {
-          const user = await storage.getUserByUsername(usernameForLookup as string);
-          if (user) {
-            userId = user.id;
-          } else {
-            return res.status(404).json({ message: "User not found" });
-          }
-        } else {
-          return res.status(401).json({ message: "Unauthorized - Username required for JWT auth" });
-        }
-      } catch (error) {
-        return res.status(401).json({ message: "Unauthorized - Invalid token" });
-      }
-    } else {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    try {
-      const playlistId = parseInt(req.params.playlistId);
-      const songId = parseInt(req.params.songId);
-
-      // Verify playlist belongs to user
-      const playlist = await storage.getPlaylistById(playlistId);
-      if (!playlist || playlist.userId !== userId) {
-        return res.status(403).json({ message: "Playlist not found or unauthorized" });
-      }
-
-      // Remove song from playlist
-      await storage.removeSongFromPlaylist(playlistId, songId);
-      res.sendStatus(200);
-    } catch (error) {
-      console.error('Error removing song from playlist:', error);
-      res.status(500).json({
-        message: "Failed to remove song from playlist",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Reorder songs in playlist
-  app.patch("/api/playlists/:playlistId/reorder", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    try {
-      const playlistId = parseInt(req.params.playlistId);
-      const { songId, position } = req.body;
-
-      console.log('DEBUG - Reorder request received:', {
-        playlistId,
-        songId,
-        position,
-        body: req.body,
-        userId: req.user!.id
-      });
-
-      // Input validation
-      if (!Number.isInteger(songId) || !Number.isInteger(position)) {
-        console.log('DEBUG - Invalid input types:', { songId, position });
-        return res.status(400).json({ message: "Invalid songId or position" });
-      }
-
-      // Verify playlist belongs to user
-      const playlist = await storage.getPlaylistById(playlistId);
-      if (!playlist || playlist.userId !== req.user!.id) {
-        console.log('DEBUG - Playlist verification failed:', {
-          playlistExists: !!playlist,
-          playlistUserId: playlist?.userId,
-          requestUserId: req.user!.id
-        });
-        return res.status(403).json({ message: "Playlist not found or unauthorized" });
-      }
-
-      await storage.reorderPlaylistSong(playlistId, songId, position);
-
-      console.log('DEBUG - Reorder completed successfully');
-      res.json({ success: true });
-    } catch (error) {
-      console.error('DEBUG - Error in reorder endpoint:', error);
-      res.status(500).json({
-        message: "Failed to reorder playlist",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Add route to handle playlist visibility updates
-  app.patch("/api/playlists/:playlistId/visibility", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    try {
-      const playlistId = parseInt(req.params.playlistId);
-      const { isVisible } = req.body;
-
-      if (typeof isVisible !== 'boolean') {
-        return res.status(400).json({ message: "Invalid visibility value" });
-      }
-
-      // Verify playlist belongs to user
-      const playlist = await storage.getPlaylistById(playlistId);
-      if (!playlist || playlist.userId !== req.user!.id) {
-        return res.status(403).json({ message: "Playlist not found or unauthorized" });
-      }
-
-      // Update playlist visibility
-      await storage.updatePlaylistVisibility(playlistId, isVisible);
-
-      res.json({ success: true, isVisibleToGuests: isVisible });
-    } catch (error) {
-      console.error('Error updating playlist visibility:', error);
-      res.status(500).json({
-        message: "Failed to update playlist visibility",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
+  // Setup playlist routes
+  setupPlaylistRoutes(app, storage);
 
   // Add the reset password endpoint (moved from auth.ts)
   app.post("/api/admin/reset-password", async (req, res) => {
@@ -2124,7 +1212,207 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Create or update user profile
+  // Verify email with token (GET method)
+  app.get("/api/verify-email", async (req, res) => {
+    try {
+      const { token } = req.query;
+
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid verification token"
+        });
+      }
+
+      console.log('Verifying email with token (GET):', token);
+
+      // First try the email service verification
+      let result = await emailService.verifyUserEmail(token);
+
+      // If the email service verification fails, try direct verification as a fallback
+      if (!result.success) {
+        console.log('Email service verification failed, attempting direct verification');
+        // Find the user by the verification token
+        const user = await storage.getUserByVerificationToken(token);
+
+        if (!user) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid or expired verification token"
+          });
+        }
+
+        // Check if token is expired
+        if (user.emailVerificationExpiry && new Date() > new Date(user.emailVerificationExpiry)) {
+          return res.status(400).json({
+            success: false,
+            message: "Verification token has expired"
+          });
+        }
+
+        // Mark email as verified and clear the token
+        const updated = await storage.markEmailAsVerified(user.id);
+
+        if (updated) {
+          result = {
+            success: true,
+            message: "Email verified successfully",
+            userId: user.id
+          };
+        } else {
+          return res.status(500).json({
+            success: false,
+            message: "Failed to mark email as verified"
+          });
+        }
+      }
+
+      if (result.success) {
+        res.json({
+          success: true,
+          message: result.message
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: result.error
+        });
+      }
+    } catch (error) {
+      console.error('Error verifying email:', error);
+      res.status(500).json({
+        success: false,
+        message: "An error occurred while verifying your email"
+      });
+    }
+  });
+
+  // Verify email with token (POST method for forward compatibility)
+  app.post("/api/verify-email/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid verification token"
+        });
+      }
+
+      console.log('Verifying email with token (POST):', token);
+
+      // First try the email service verification
+      let result = await emailService.verifyUserEmail(token);
+
+      // If the email service verification fails, try direct verification as a fallback
+      if (!result.success) {
+        console.log('Email service verification failed, attempting direct verification');
+        // Find the user by the verification token
+        const user = await storage.getUserByVerificationToken(token);
+
+        if (!user) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid or expired verification token"
+          });
+        }
+
+        // Check if token is expired
+        if (user.emailVerificationExpiry && new Date() > new Date(user.emailVerificationExpiry)) {
+          return res.status(400).json({
+            success: false,
+            message: "Verification token has expired"
+          });
+        }
+
+        // Mark email as verified and clear the token
+        const updated = await storage.markEmailAsVerified(user.id);
+
+        if (updated) {
+          result = {
+            success: true,
+            message: "Email verified successfully",
+            userId: user.id
+          };
+        } else {
+          return res.status(500).json({
+            success: false,
+            message: "Failed to mark email as verified"
+          });
+        }
+      }
+
+      if (result.success) {
+        res.json({
+          success: true,
+          message: result.message
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: result.error
+        });
+      }
+    } catch (error) {
+      console.error('Error verifying email:', error);
+      res.status(500).json({
+        success: false,
+        message: "An error occurred while verifying your email"
+      });
+    }
+  });
+
+  // Resend verification email
+  app.post("/api/resend-verification", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const user = req.user!;
+
+      if (!user.email) {
+        return res.status(400).json({
+          success: false,
+          message: "No email address is associated with this account"
+        });
+      }
+
+      if (user.isEmailVerified) {
+        return res.status(400).json({
+          success: false,
+          message: "Email is already verified"
+        });
+      }
+
+      console.log('Resending verification email to user:', user.id);
+      const result = await emailService.sendEmailVerification(
+        user.id,
+        user.email,
+        user.username
+      );
+
+      if (result.success) {
+        res.json({
+          success: true,
+          message: `Verification email has been sent to ${user.email}`
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: result.error || "Failed to send verification email"
+        });
+      }
+    } catch (error) {
+      console.error('Error resending verification email:', error);
+      res.status(500).json({
+        success: false,
+        message: "An error occurred while resending verification email"
+      });
+    }
+  });
+
+  // Create or update user profile  
   app.post("/api/user/profile", async (req, res) => {
     // Support multiple auth methods:
     // 1. Session auth (old)
@@ -2241,25 +1529,145 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get playlist for a user (works for both host and guest URLs)
-
-  // Update currently playing song
-
-  // Add song to playlist (host or guest)
-
-  // Remove song from playlist (host only)
-
-  // Update song position (host only)
-
-  // Add bulk delete route with proper error handling
-
-  // Add route to clear playlist history
-
   // Admin routes
+  app.get("/api/admin/users", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
+      return res.status(403).json({ message: "Unauthorized access" });
+    }
+
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+
+      // Get users with pagination and account manager info
+      const search = req.query.search as string || "";
+      const { users, total } = await storage.getAllUsers(page, limit, search);
+
+      // Get active users stats
+      const stats = await storage.getUserStats();
+
+      res.json({
+        users,
+        total,
+        stats
+      });
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      res.status(500).json({
+        message: "Failed to fetch users",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
 
   // Update user's account manager endpoint
+  app.patch("/api/admin/users/:userId/account-manager", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
+      return res.status(403).json({ message: "Unauthorized access" });
+    }
+
+    try {
+      const userId = parseInt(req.params.userId);
+      const { accountManagerId } = req.body;
+
+      if (userId === req.user!.id) {
+        return res.status(400).json({ message: "Cannot modify super admin's account manager" });
+      }
+
+      await storage.updateUserAccountManager(userId, accountManagerId);
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error updating account manager:', error);
+      res.status(500).json({
+        message: "Failed to update account manager",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  app.get("/api/admin/users/:userId/activity", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
+      return res.status(403).json({ message: "Unauthorized access" });
+    }
+
+    try {
+      const userId = parseInt(req.params.userId);
+      const activity = await storage.getUserActivity(userId);
+      res.json(activity);
+    } catch (error) {
+      console.error('Error fetching user activity:', error);
+      res.status(500).json({
+        message: "Failed to fetch user activity",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  app.delete("/api/admin/users/:userId", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
+      return res.status(403).json({ message: "Unauthorized access" });
+    }
+
+    try {
+      const userId = parseInt(req.params.userId);
+      if (userId === req.user!.id) {
+        return res.status(400).json({ message: "Cannot delete super admin account" });
+      }
+      await storage.deleteUser(userId);
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      res.status(500).json({
+        message: "Failed to delete user",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
 
   // Add the stats endpoint after the existing admin endpoints
+  app.get("/api/admin/stats", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
+      return res.status(403).json({ message: "Unauthorized access" });
+    }
+
+    try {
+      // Get the stats from storage
+      const stats = await storage.getYoutubeApiUsageStats();
+      console.log('Raw YouTube API stats:', stats);
+
+      // Get the host stats
+      const userStats = await storage.getUserStats();
+
+      // Use the real regional statistics from the database
+      console.log('Comprehensive statistics:', userStats);
+
+      // Structure the response in a clear format
+      const response = {
+        ...userStats,
+        youtubeStats: {
+          total: Number(stats.total) || 0,
+          monthlyTotal: Number(stats.monthlyTotal) || 0,
+          weeklyAvg: Number(stats.weeklyAvg) || 0,
+          daily: Array.isArray(stats.daily) ? stats.daily.map(day => ({
+            date: day.date,
+            count: Number(day.count),
+            endpoint_type: day.endpoint_type
+          })) : []
+        }
+      };
+
+      // Log the formatted response
+      console.log('Formatted stats response:', response);
+
+      res.json(response);
+    } catch (error) {
+      console.error('Error fetching admin stats:', error);
+      res.status(500).json({
+        message: "Failed to fetch admin stats",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
 
 
   // Add YouTube API endpoints
@@ -2461,6 +1869,855 @@ export function registerRoutes(app: Express): Server {
         userObject: req.user ? { id: req.user.id, username: req.user.username } : null,
         hasUser: !!req.user
       });
+
+      // Get username - try from req.user first, then request body (for guests), then fetch from DB if needed
+      let username: string | undefined = req.user?.username || req.body.username;
+
+      // If username is not available but user ID is, fetch from database
+      if (!username && req.user?.id) {
+        try {
+          const user = await storage.getUser(req.user.id);
+          username = user?.username;
+          console.log(`🔍 [STRAPI] Fetched username from DB: ${username}`);
+        } catch (error) {
+          console.error('❌ [STRAPI] Failed to fetch user from DB:', error);
+        }
+      }
+
+      if (username) {
+        console.log(`📊 [STRAPI] Starting Strapi tracking for username: ${username}`);
+        console.log(`📊 [STRAPI] About to call strapiService.incrementSongRequests('${username}')`);
+
+        // Make the GraphQL call - this should appear in network tab
+        try {
+          // Await the Strapi call to ensure it runs
+          const result = await strapiService.incrementSongRequests(username);
+          console.log(`✅ [STRAPI] Successfully tracked song search in Strapi for user: ${username}, song_requests: ${result.song_requests}`);
+        } catch (strapiError) {
+          console.error(`❌ [STRAPI] Failed to track song search in Strapi for user: ${username}:`, strapiError);
+          if (strapiError instanceof Error) {
+            console.error(`❌ [STRAPI] Error details:`, strapiError.message);
+            console.error(`❌ [STRAPI] Error stack:`, strapiError.stack);
+          }
+        }
+      } else {
+        console.log('⚠️ [STRAPI] Skipping Strapi tracking - username not available:', {
+          isAuthenticated: req.isAuthenticated(),
+          hasUser: !!req.user,
+          hasUsername: !!req.user?.username,
+          userId: req.user?.id,
+          fetchedUsername: username
+        });
+      }
+    } catch (error) {
+      console.error('Error in YouTube search:', error);
+      res.status(500).json({
+        message: "Failed to search YouTube",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Debug endpoint to test Strapi connection
+  app.get("/api/debug/strapi", async (req, res) => {
+    try {
+      const config = {
+        strapiUrl: process.env.STRAPI_URL || 'NOT SET',
+        accessToken: process.env.STRAPI_ACCESS_TOKEN ? 'SET (hidden)' : 'NOT SET',
+        isConfigured: !!(process.env.STRAPI_URL && process.env.STRAPI_ACCESS_TOKEN)
+      };
+
+      if (!config.isConfigured) {
+        return res.json({
+          status: 'error',
+          message: 'Strapi environment variables not configured',
+          config
+        });
+      }
+
+      // Try to make a simple query to test connection
+      try {
+        const testResult = await strapiService.findSongLimitByUsername('test_user_12345');
+        res.json({
+          status: 'success',
+          message: 'Strapi connection is working',
+          config: {
+            ...config,
+            accessToken: 'SET (hidden)'
+          },
+          testQuery: testResult ? 'Found test record' : 'No test record found (this is normal)'
+        });
+      } catch (error) {
+        res.json({
+          status: 'error',
+          message: 'Strapi connection failed',
+          config,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    } catch (error) {
+      res.status(500).json({
+        status: 'error',
+        message: 'Debug endpoint error',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Get Strapi configuration for client
+  app.get("/api/strapi/config", async (req, res) => {
+    try {
+      const strapiUrl = process.env.STRAPI_URL;
+      const accessToken = process.env.STRAPI_ACCESS_TOKEN;
+
+      if (!strapiUrl || !accessToken) {
+        return res.status(500).json({
+          error: 'Strapi configuration is missing on the server'
+        });
+      }
+
+      // Return the URL and token to the client
+      // Note: In production, you might want to use a more secure approach
+      res.json({
+        strapiUrl: strapiUrl.endsWith('/') ? strapiUrl.slice(0, -1) : strapiUrl,
+        accessToken,
+      });
+    } catch (error) {
+      console.error('Error getting Strapi config:', error);
+      res.status(500).json({
+        error: 'Failed to get Strapi configuration'
+      });
+    }
+  });
+
+  // Strapi GraphQL proxy endpoint
+  app.post("/api/strapi/graphql", async (req, res) => {
+    try {
+      const { query, variables } = req.body;
+
+      if (!query) {
+        return res.status(400).json({
+          errors: [{ message: 'GraphQL query is required' }]
+        });
+      }
+
+      const strapiUrl = process.env.STRAPI_URL;
+      const accessToken = process.env.STRAPI_ACCESS_TOKEN;
+
+      if (!strapiUrl || !accessToken) {
+        return res.status(500).json({
+          errors: [{ message: 'Strapi configuration is missing. Please set STRAPI_URL and STRAPI_ACCESS_TOKEN environment variables.' }]
+        });
+      }
+
+      const graphqlEndpoint = `${strapiUrl}/graphql`;
+
+      const response = await fetch(graphqlEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          query,
+          variables,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Strapi API error response:', errorText);
+        return res.status(response.status).json({
+          errors: [{ message: `Strapi API error: ${response.status} ${response.statusText}` }]
+        });
+      }
+
+      const result = await response.json();
+
+      if (result.errors && result.errors.length > 0) {
+        console.error('GraphQL errors:', result.errors);
+        return res.status(400).json(result);
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error('Strapi GraphQL proxy error:', error);
+      res.status(500).json({
+        errors: [{ message: error instanceof Error ? error.message : 'Unknown error occurred' }]
+      });
+    }
+  });
+
+  // Video details endpoint
+  app.get("/api/youtube/video/:id", async (req, res) => {
+    try {
+      // Log the video details API usage
+      await logYouTubeAPIUsage('video_details', req.user?.id);
+
+      // Your existing video details logic here
+      // ... (replace with actual video details logic)
+      res.json({ message: "Video details fetched" }); // Placeholder
+
+    } catch (error) {
+      console.error('Error fetching video details:', error);
+      res.status(500).json({ message: "Failed to fetch video details" });
+    }
+  });
+
+  // Add YouTube stats endpoint for admin
+  app.get("/api/admin/youtube-stats", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
+      return res.status(403).json({ message: "Unauthorized access" });
+    }
+
+    try {
+      // Get the stats from storage
+      const stats = await storage.getYoutubeApiUsageStats();
+
+      // Log the raw stats for debugging
+      console.log('Raw YouTube API stats:', stats);
+
+      // Structure the response in a more clear format
+      const response = {
+        youtubeStats: {
+          total: stats.total,
+          monthlyTotal: stats.monthlyTotal,
+          weeklyAvg: stats.weeklyAvg,
+          daily: stats.daily.map(day => ({
+            date: day.date,
+            count: Number(day.count),
+            endpoint_type: day.endpoint_type
+          }))
+        }
+      };
+
+      // Log the formatted response
+      console.log('Formatted YouTube stats response:', response);
+
+      res.json(response);
+    } catch (error) {
+      console.error('Error fetching YouTube API stats:', error);
+      res.status(500).json({
+        message: "Failed to fetch YouTube API stats",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add new system endpoint within registerRoutes function
+  app.get("/api/admin/system", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
+      return res.status(403).json({ message: "Unauthorized access" });
+    }
+
+    try {
+      const systemMetrics = {
+        uptime: process.uptime().toFixed(0) + "s",
+        avgResponseTime: "120",
+        memoryUsage: Math.round((process.memoryUsage().heapUsed / process.memoryUsage().heapTotal) * 100),
+        cpuLoad: "45",
+        dbConnections: await storage.getActiveConnections(),
+        avgQueryTime: "25",
+        errorRate: "0.02",
+        recentErrors: [
+          {
+            message: "Database connection timeout",
+            timestamp: new Date(Date.now() - 300000).toISOString(),
+            severity: "high"
+          },
+          {
+            message: "Rate limit exceeded",
+            timestamp: new Date(Date.now() - 600000).toISOString(),
+            severity: "medium"
+          }
+        ],
+        rateLimit: 60,
+        debugMode: false,
+        maintenanceMode: false
+      };
+
+      res.json(systemMetrics);
+    } catch (error) {
+      console.error('Error fetching system metrics:', error);
+      res.status(500).json({
+        message: "Failed to fetch system metrics",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add the YouTube costs endpoint
+  app.get("/api/admin/finance/youtube-costs", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
+      return res.status(403).json({ message: "Unauthorized access" });
+    }
+
+    try {
+      // Get today's usage
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+
+      // Fetch daily usage
+      const dailyUsage = await db.execute(
+        `SELECT endpoint_type, SUM(quota_cost) as total_cost 
+         FROM youtube_api_usage 
+         WHERE created_at >= $1
+         GROUP BY endpoint_type`,
+        [todayStart.toISOString()]
+      );
+
+      // Fetch monthly usage
+      const monthlyUsage = await db.execute(
+        `SELECT endpoint_type, SUM(quota_cost) as total_cost 
+         FROM youtube_api_usage 
+         WHERE created_at >= $1
+         GROUP BY endpoint_type`,
+        [monthStart.toISOString()]
+      );
+
+      // Calculate totals
+      const dailyResults: Record<string, number> = {};
+      const monthlyResults: Record<string, number> = {};
+
+      dailyUsage.rows.forEach((row: any) => {
+        dailyResults[row.endpoint_type] = parseInt(row.total_cost);
+      });
+
+      monthlyUsage.rows.forEach((row: any) => {
+        monthlyResults[row.endpoint_type] = parseInt(row.total_cost);
+      });
+
+      // Calculate costs (YouTube API is free but we'll estimate based on standard quota)
+      const totalDailyQuota = Object.values(dailyResults).reduce((a, b) => a + b, 0);
+      const totalMonthlyQuota = Object.values(monthlyResults).reduce((a, b) => a + b, 0);
+
+      // Estimate cost based on quota usage (hypothetical cost calculation)
+      const estimatedCost = (totalMonthlyQuota / 10000) * 5; // $5 per 10,000 quota points
+
+      res.json({
+        todayQuota: totalDailyQuota,
+        monthlyQuota: totalMonthlyQuota,
+        estimatedCost: estimatedCost.toFixed(2),
+        quotaLimit: 10000,
+        searchUsage: {
+          daily: dailyResults.search || 0,
+          monthly: monthlyResults.search || 0
+        },
+        videoDetailsUsage: {
+          daily: dailyResults.video_details || 0,
+          monthly: monthlyResults.video_details || 0
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching YouTube API costs:', error);
+      res.status(500).json({
+        message: "Failed to fetch YouTube API costs",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Modify existing endpoints to log API usage
+
+
+
+  // In your video details endpoint
+  app.get("/api/youtube/video/:id", async (req, res) => {
+    try {
+      // Log the video details API usage
+      await logYouTubeAPIUsage('video_details');
+
+      // Your existing video details logic here
+      // ... (replace with actual video details logic)
+      res.json({ message: "Video details fetched" }); // Placeholder
+
+    } catch (error) {
+      console.error('Error fetching video details:', error);
+      res.status(500).json({ message: "Failed to fetch video details" });
+    }
+  });
+
+  // Add the user analytics endpoint
+  app.get("/api/user/analytics", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const userId = req.user!.id;
+
+      // Get guest interaction metrics
+      const guestMetrics = await db.execute(
+        `SELECT 
+          COUNT(DISTINCT guest_id) as total_views,
+          COUNT(CASE WHEN song_request = true THEN 1 END) as total_song_requests,
+          AVG(session_duration) as avg_session_duration
+        FROM guest_interactions 
+        WHERE user_id = $1`,
+        [userId]
+      );
+
+      // Get daily views and song requests for the last 30 days
+      const dailyStats = await db.execute(
+        `SELECT 
+          DATE(created_at) as date,
+          COUNT(DISTINCT CASE WHEN page_view = true THEN guest_id END) as views,
+          COUNT(CASE WHEN song_request = true THEN 1 END) as song_requests
+        FROM guest_interactions
+        WHERE user_id = $1 
+          AND created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY date
+        ORDER BY date`,
+        [userId]
+      );
+
+      // Get weekly aggregation
+      const weeklyStats = await db.execute(
+        `SELECT 
+          DATE_TRUNC('week', created_at) as week_start,
+          COUNT(DISTINCT CASE WHEN page_view = true THEN guest_id END) as views,
+          COUNT(CASE WHEN song_request = true THEN 1 END) as song_requests
+        FROM guest_interactions
+        WHERE user_id = $1 
+          AND created_at >= NOW() - INTERVAL '12 weeks'
+        GROUP BY week_start
+        ORDER BY week_start`,
+        [userId]
+      );
+
+      // Get monthly aggregation
+      const monthlyStats = await db.execute(
+        `SELECT 
+          DATE_TRUNC('month', created_at) as month_start,
+          COUNT(DISTINCT CASE WHEN page_view = true THEN guest_id END) as views,
+          COUNT(CASE WHEN song_request = true THEN 1 END) as song_requests
+        FROM guest_interactions
+        WHERE user_id = $1 
+          AND created_at >= NOW() - INTERVAL '12 months'
+        GROUP BY month_start
+        ORDER BY month_start`,
+        [userId]
+      );
+
+      // Get session statistics and peak hours
+      const sessionStats = await db.execute(
+        `SELECT 
+          EXTRACT(HOUR FROM start_time) as hour,
+          COUNT(*) as session_count
+        FROM user_sessions 
+        WHERE user_id = $1 
+        GROUP BY hour 
+        ORDER BY session_count DESC 
+        LIMIT 1`,
+        [userId]
+      );
+
+      // Get playlist statistics
+      const playlistStats = await db.execute(
+        `SELECT COUNT(*) as total_songs_played
+        FROM played_songs 
+        WHERE user_id = $1`,
+        [userId]
+      );
+
+      const peakHour = sessionStats.rows[0]?.hour
+        ? `${sessionStats.rows[0].hour}:00`
+        : '--';
+
+      res.json({
+        guestMetrics: {
+          totalViews: parseInt(guestMetrics.rows[0]?.total_views || '0'),
+          totalSongRequests: parseInt(guestMetrics.rows[0]?.total_song_requests || '0'),
+          avgSessionDuration: Math.round(guestMetrics.rows[0]?.avg_session_duration || 0)
+        },
+        sessionStats: {
+          peakHour,
+          avgSessionDuration: Math.round(guestMetrics.rows[0]?.avg_session_duration || 0)
+        },
+        playlistStats: {
+          totalSongsPlayed: parseInt(playlistStats.rows[0]?.total_songs_played || '0')
+        },
+        timeSeriesData: {
+          daily: dailyStats.rows,
+          weekly: weeklyStats.rows,
+          monthly: monthlyStats.rows
+        }
+      });
+
+    } catch (error) {
+      console.error('Error fetching user analytics:', error);
+      res.status(500).json({
+        message: "Failed to fetch analytics",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Log user session start
+  app.post("/api/login", passport.authenticate("local"), async (req, res) => {
+    try {
+      // Log user session
+      await db.execute(
+        `INSERT INTO user_sessions 
+        (user_id, start_time, device_info, ip_address) 
+        VALUES ($1, NOW(), $2, $3)`,
+        [
+          req.user!.id,
+          JSON.stringify({ userAgent: req.headers['user-agent'] }),
+          req.ip
+        ]
+      );
+    } catch (error) {
+      console.error('Error logging user session:', error);
+    }
+    res.status(200).json(req.user);
+  });
+
+  // Log user session end
+  app.post("/api/logout", async (req, res, next) => {
+    if (req.user) {
+      try {
+        // Update session end time
+        await db.execute(
+          `UPDATE user_sessions 
+          SET end_time = NOW() 
+          WHERE user_id = $1 
+          AND end_time IS NULL`,
+          [req.user.id]
+        );
+      } catch (error) {
+        console.error('Error updating session end time:', error);
+      }
+    }
+
+    req.logout((err) => {
+      if (err) return next(err);
+      res.sendStatus(200);
+    });
+  });
+
+  // Add route to log user activity
+  app.use(async (req, res, next) => {
+    if (req.isAuthenticated()) {
+      try {
+        const userId = req.user!.id;
+        const path = req.path;
+        const method = req.method;
+
+        // Use the centralized storage method instead of direct SQL
+        await storage.logUserActivity(userId, path, method);
+      } catch (error) {
+        console.error('Error logging user activity:', error);
+      }
+    }
+    next();
+  });
+
+
+  // Add new system endpoint within registerRoutes function
+  app.get("/api/admin/system", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
+      return res.status(403).json({ message: "Unauthorized access" });
+    }
+
+    try {
+      const systemMetrics = {
+        uptime: process.uptime().toFixed(0) + "s",
+        avgResponseTime: "120",
+        memoryUsage: Math.round((process.memoryUsage().heapUsed / process.memoryUsage().heapTotal) * 100),
+        cpuLoad: "45",
+        dbConnections: await storage.getActiveConnections(),
+        avgQueryTime: "25",
+        errorRate: "0.02",
+        recentErrors: [
+          {
+            message: "Database connection timeout",
+            timestamp: new Date(Date.now() - 300000).toISOString(),
+            severity: "high"
+          },
+          {
+            message: "Rate limit exceeded",
+            timestamp: new Date(Date.now() - 600000).toISOString(),
+            severity: "medium"
+          }
+        ],
+        rateLimit: 60,
+        debugMode: false,
+        maintenanceMode: false
+      };
+
+      res.json(systemMetrics);
+    } catch (error) {
+      console.error('Error fetching system metrics:', error);
+      res.status(500).json({
+        message: "Failed to fetch system metrics",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add the YouTube costs endpoint
+  app.get("/api/admin/finance/youtube-costs", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
+      return res.status(403).json({ message: "Unauthorized access" });
+    }
+
+    try {
+      // Get today's usage
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+
+      // Fetch daily usage
+      const dailyUsage = await db.execute(
+        `SELECT endpoint_type, SUM(quota_cost) as total_cost 
+         FROM youtube_api_usage 
+         WHERE created_at >= $1
+         GROUP BY endpoint_type`,
+        [todayStart.toISOString()]
+      );
+
+      // Fetch monthly usage
+      const monthlyUsage = await db.execute(
+        `SELECT endpoint_type, SUM(quota_cost) as total_cost 
+         FROM youtube_api_usage 
+         WHERE created_at >= $1
+         GROUP BY endpoint_type`,
+        [monthStart.toISOString()]
+      );
+
+      // Calculate totals
+      const dailyResults: Record<string, number> = {};
+      const monthlyResults: Record<string, number> = {};
+
+      dailyUsage.rows.forEach((row: any) => {
+        dailyResults[row.endpoint_type] = parseInt(row.total_cost);
+      });
+
+      monthlyUsage.rows.forEach((row: any) => {
+        monthlyResults[row.endpoint_type] = parseInt(row.total_cost);
+      });
+
+      // Calculate costs (YouTube API is free but we'll estimate based on standard quota)
+      const totalDailyQuota = Object.values(dailyResults).reduce((a, b) => a + b, 0);
+      const totalMonthlyQuota = Object.values(monthlyResults).reduce((a, b) => a + b, 0);
+
+      // Estimate cost based on quota usage (hypothetical cost calculation)
+      const estimatedCost = (totalMonthlyQuota / 10000) * 5; // $5 per 10,000 quota points
+
+      res.json({
+        todayQuota: totalDailyQuota,
+        monthlyQuota: totalMonthlyQuota,
+        estimatedCost: estimatedCost.toFixed(2),
+        quotaLimit: 10000,
+        searchUsage: {
+          daily: dailyResults.search || 0,
+          monthly: monthlyResults.search || 0
+        },
+        videoDetailsUsage: {
+          daily: dailyResults.video_details || 0,
+          monthly: monthlyResults.video_details || 0
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching YouTube API costs:', error);
+      res.status(500).json({
+        message: "Failed to fetch YouTube API costs",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+
+
+  // Add the user analytics endpoint
+  app.get("/api/user/analytics", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const userId = req.user!.id;
+
+      // Get guest interaction metrics
+      const guestMetrics = await db.execute(
+        `SELECT 
+          COUNT(DISTINCT guest_id) as total_views,
+          COUNT(CASE WHEN song_request = true THEN 1 END) as total_song_requests,
+          AVG(session_duration) as avg_session_duration
+        FROM guest_interactions 
+        WHERE user_id = $1`,
+        [userId]
+      );
+
+      // Get daily views and song requests for the last 30 days
+      const dailyStats = await db.execute(
+        `SELECT 
+          DATE(created_at) as date,
+          COUNT(DISTINCT CASE WHEN page_view = true THEN guest_id END) as views,
+          COUNT(CASE WHEN song_request = true THEN 1 END) as song_requests
+        FROM guest_interactions
+        WHERE user_id = $1 
+          AND created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY date
+        ORDER BY date`,
+        [userId]
+      );
+
+      // Get weekly aggregation
+      const weeklyStats = await db.execute(
+        `SELECT 
+          DATE_TRUNC('week', created_at) as week_start,
+          COUNT(DISTINCT CASE WHEN page_view = true THEN guest_id END) as views,
+          COUNT(CASE WHEN song_request = true THEN 1 END) as song_requests
+        FROM guest_interactions
+        WHERE user_id = $1 
+          AND created_at >= NOW() - INTERVAL '12 weeks'
+        GROUP BY week_start
+        ORDER BY week_start`,
+        [userId]
+      );
+
+      // Get monthly aggregation
+      const monthlyStats = await db.execute(
+        `SELECT 
+          DATE_TRUNC('month', created_at) as month_start,
+          COUNT(DISTINCT CASE WHEN page_view = true THEN guest_id END) as views,
+          COUNT(CASE WHEN song_request = true THEN 1 END) as song_requests
+        FROM guest_interactions
+        WHERE user_id = $1 
+          AND created_at >= NOW() - INTERVAL '12 months'
+        GROUP BY month_start
+        ORDER BY month_start`,
+        [userId]
+      );
+
+      // Get session statistics and peak hours
+      const sessionStats = await db.execute(
+        `SELECT 
+          EXTRACT(HOUR FROM start_time) as hour,
+          COUNT(*) as session_count
+        FROM user_sessions 
+        WHERE user_id = $1 
+        GROUP BY hour 
+        ORDER BY session_count DESC 
+        LIMIT 1`,
+        [userId]
+      );
+
+      // Get playlist statistics
+      const playlistStats = await db.execute(
+        `SELECT COUNT(*) as total_songs_played
+        FROM played_songs 
+        WHERE user_id = $1`,
+        [userId]
+      );
+
+      const peakHour = sessionStats.rows[0]?.hour
+        ? `${sessionStats.rows[0].hour}:00`
+        : '--';
+
+      res.json({
+        guestMetrics: {
+          totalViews: parseInt(guestMetrics.rows[0]?.total_views || '0'),
+          totalSongRequests: parseInt(guestMetrics.rows[0]?.total_song_requests || '0'),
+          avgSessionDuration: Math.round(guestMetrics.rows[0]?.avg_session_duration || 0)
+        },
+        sessionStats: {
+          peakHour,
+          avgSessionDuration: Math.round(guestMetrics.rows[0]?.avg_session_duration || 0)
+        },
+        playlistStats: {
+          totalSongsPlayed: parseInt(playlistStats.rows[0]?.total_songs_played || '0')
+        },
+        timeSeriesData: {
+          daily: dailyStats.rows,
+          weekly: weeklyStats.rows,
+          monthly: monthlyStats.rows
+        }
+      });
+
+    } catch (error) {
+      console.error('Error fetching user analytics:', error);
+      res.status(500).json({
+        message: "Failed to fetch analytics",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Log user session start
+  app.post("/api/login", passport.authenticate("local"), async (req, res) => {
+    try {
+      // Log user session
+      await db.execute(
+        `INSERT INTO user_sessions 
+        (user_id, start_time, device_info, ip_address) 
+        VALUES ($1, NOW(), $2, $3)`,
+        [
+          req.user!.id,
+          JSON.stringify({ userAgent: req.headers['user-agent'] }),
+          req.ip
+        ]
+      );
+    } catch (error) {
+      console.error('Error logging user session:', error);
+    }
+    res.status(200).json(req.user);
+  });
+
+  // Log user session end
+  app.post("/api/logout", async (req, res, next) => {
+    if (req.user) {
+      try {
+        // Update session end time
+        await db.execute(
+          `UPDATE user_sessions 
+          SET end_time = NOW() 
+          WHERE user_id = $1 
+          AND end_time IS NULL`,
+          [req.user.id]
+        );
+      } catch (error) {
+        console.error('Error updating session end time:', error);
+      }
+    }
+
+    req.logout((err) => {
+      if (err) return next(err);
+      res.sendStatus(200);
+    });
+  });
+
+  // Add route to log user activity
+  app.use(async (req, res, next) => {
+    if (req.isAuthenticated()) {
+      try {
+        const userId = req.user!.id;
+        const path = req.path;
+        const method = req.method;
+
+        // Use the centralized storage method instead of direct SQL
+        await storage.logUserActivity(userId, path, method);
+      } catch (error) {
+        console.error('Error logging user activity:', error);
+      }
+    }
+    next();
+  });
+
+  // Admin routes
+  app.get("/api/admin/users", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
+      return res.status(403).json({ message: "Unauthorized access" });
+    }
 
       // Get username - try from req.user first, then request body (for guests), then fetch from DB if needed
       let username: string | undefined = req.user?.username || req.body.username;
@@ -3932,3 +4189,4 @@ export function registerRoutes(app: Express): Server {
 
   return httpServer;
 }
+
