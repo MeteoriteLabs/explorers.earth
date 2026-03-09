@@ -26,9 +26,11 @@ interface SearchSongsProps {
   onSongsAdded?: (songs: Song[]) => void;
   onSongsAddedCallback?: () => void;
   disabled?: boolean;
+  /** When provided, overrides queue-add behaviour — songs are passed to this callback instead */
+  onAddSongs?: (songs: Song[]) => void;
 }
 
-export default function SearchSongs({ guestUrl, onSongsAdded, onSongsAddedCallback, disabled = false }: SearchSongsProps) {
+export default function SearchSongs({ guestUrl, onSongsAdded, onSongsAddedCallback, disabled = false, onAddSongs }: SearchSongsProps) {
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<YouTubeSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -176,8 +178,8 @@ export default function SearchSongs({ guestUrl, onSongsAdded, onSongsAddedCallba
 
   // Handle adding selected songs
   const handleAddSelectedSongs = () => {
-    // Prevent adding songs if disabled (limit reached)
-    if (disabled) {
+    // Prevent adding songs if disabled (limit reached) — only applies to queue mode
+    if (disabled && !onAddSongs) {
       toast("Song request limit has been reached. Cannot add more songs.", { variant: "destructive" });
       return;
     }
@@ -195,7 +197,16 @@ export default function SearchSongs({ guestUrl, onSongsAdded, onSongsAddedCallba
       }));
 
     if (songsToAdd.length > 0) {
-      addSongsMutation.mutate(songsToAdd);
+      if (onAddSongs) {
+        // Playlist mode — delegate to parent, reset selection
+        onAddSongs(songsToAdd);
+        setSelectedSongs(new Set());
+        setSearchResults([]);
+        setQuery('');
+        setHasSearched(false);
+      } else {
+        addSongsMutation.mutate(songsToAdd);
+      }
     }
   };
 
@@ -217,7 +228,7 @@ export default function SearchSongs({ guestUrl, onSongsAdded, onSongsAddedCallba
       return;
     }
 
-    if (!guestUrl) {
+    if (!onAddSongs && !guestUrl) {
       toast("Guest URL is required", { variant: "destructive" });
       return;
     }
@@ -226,14 +237,14 @@ export default function SearchSongs({ guestUrl, onSongsAdded, onSongsAddedCallba
     setIsAddingFromUrl(true);
     try {
       // Get video details from URL
-      const videoData = await youtubeAPI.getVideoFromUrl(urlInput.trim(), guestUrl);
-      
+      const videoData = await youtubeAPI.getVideoFromUrl(urlInput.trim(), guestUrl ?? '');
+
       // Parse YouTube API response format
       const youtubeId = videoData?.id?.videoId || videoData?.youtubeId;
       const title = videoData?.snippet?.title || videoData?.title || 'Unknown Title';
       const artist = videoData?.snippet?.channelTitle || videoData?.artist || 'Unknown Artist';
-      const thumbnailUrl = videoData?.snippet?.thumbnails?.medium?.url || 
-                          videoData?.snippet?.thumbnails?.default?.url || 
+      const thumbnailUrl = videoData?.snippet?.thumbnails?.medium?.url ||
+                          videoData?.snippet?.thumbnails?.default?.url ||
                           videoData?.thumbnailUrl || '';
 
       if (!videoData || !youtubeId) {
@@ -241,36 +252,44 @@ export default function SearchSongs({ guestUrl, onSongsAdded, onSongsAddedCallba
         return;
       }
 
-      // Add song to playlist
-      const apiBaseUrl = import.meta.env.VITE_LOCAL_TUNES_API_URL || 'https://localtunes.earth';
-      const response = await fetch(`${apiBaseUrl}/api/playlist/songs?guestUrl=${guestUrl}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          youtubeId: youtubeId,
-          title: title,
-          artist: artist,
-          thumbnailUrl: thumbnailUrl,
-        }),
-      });
+      if (onAddSongs) {
+        // Playlist mode — pass song to parent callback
+        onAddSongs([{
+          id: 0,
+          youtubeId,
+          title,
+          artist,
+          thumbnailUrl,
+          position: 0,
+          status: 'queued' as const,
+        }]);
+        setUrlInput('');
+        toast("Song added to playlist successfully");
+      } else {
+        // Queue mode — add via guest URL endpoint
+        const apiBaseUrl = import.meta.env.VITE_LOCAL_TUNES_API_URL || 'https://localtunes.earth';
+        const response = await fetch(`${apiBaseUrl}/api/playlist/songs?guestUrl=${guestUrl}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ youtubeId, title, artist, thumbnailUrl }),
+        });
 
-      if (!response.ok) {
-        throw new Error('Failed to add song');
+        if (!response.ok) {
+          throw new Error('Failed to add song');
+        }
+
+        toast("Song added to playlist successfully");
+        setUrlInput('');
+        onSongsAdded?.([]);
+        await onSongsAddedCallback?.();
       }
-
-      toast("Song added to playlist successfully");
-      setUrlInput('');
-      onSongsAdded?.([]);
-      await onSongsAddedCallback?.();
     } catch (error) {
       console.error('Error adding song from URL:', error);
       toast("Could not add song from URL", { variant: "destructive" });
     } finally {
       setIsAddingFromUrl(false);
     }
-  }, [urlInput, guestUrl, disabled, toast, onSongsAdded, onSongsAddedCallback]);
+  }, [urlInput, guestUrl, onAddSongs, disabled, toast, onSongsAdded, onSongsAddedCallback]);
 
   // Handle importing playlist
   const handleImportPlaylist = useCallback(async () => {

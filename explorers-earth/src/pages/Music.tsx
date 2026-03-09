@@ -288,43 +288,20 @@ const MusicPage = () => {
         siteName="explorers"
       />
       <div className="dashboard-theme h-full bg-dashboard-bg">
-        <div className="container mx-auto px-2 sm:px-4 py-8 h-full overflow-auto">
+        <div className="container mx-auto px-2 sm:px-4 py-4 h-full overflow-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             className="max-w-4xl mx-auto"
           >
-            {/* Header */}
-            <div className="text-center mb-8">
-              <div className="flex items-center justify-center mb-4">
-                <div className="w-16 h-16 rounded-lg overflow-hidden bg-black flex items-center justify-center border border-white">
-                  <img
-                    src="/locar-tunes.png"
-                    alt="Local Tunes Logo"
-                    className="w-full h-full object-contain"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                      (e.currentTarget.nextElementSibling as HTMLElement)!.style.display = 'flex';
-                    }}
-                  />
-                  <div className="w-full h-full bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 flex items-center justify-center hidden">
-                    <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 11-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-              <h1 className="text-3xl font-bold text-white mb-2">Local Tunes</h1>
-            </div>
-
             {/* Main Content */}
-            <div className="bg-dashboard-sidebar rounded-xl p-4">
-              {localTunesConnected ? (
-                /* Full-width embedded dashboard */
-                <MusicDashboard data={tunesDashboard} />
-              ) : (
-                /* Two-column connect view */
+            {localTunesConnected ? (
+              /* Full-width embedded dashboard */
+              <MusicDashboard data={tunesDashboard} />
+            ) : (
+              /* Two-column connect view */
+              <div className="bg-dashboard-sidebar rounded-xl p-4">
                 <div className="flex flex-col lg:flex-row gap-8">
                   {/* Left Side - Info */}
                   <div className="flex-1">
@@ -390,8 +367,8 @@ const MusicPage = () => {
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </motion.div>
         </div>
 

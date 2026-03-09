@@ -554,6 +554,13 @@ export default function YoutubePlayer({
     };
   }, [stopProgressPolling]);
 
+  // 15-second loading timeout safety net
+  useEffect(() => {
+    if (!currentSong) return;
+    const timeout = setTimeout(() => setIsLoading(false), 15000);
+    return () => clearTimeout(timeout);
+  }, [currentSong?.youtubeId]);
+
   // Start/stop polling based on playing state
   useEffect(() => {
     if (isPlaying) {
@@ -644,6 +651,7 @@ export default function YoutubePlayer({
           onDuration={(dur: number) => {
             if (dur && dur > 0 && !isNaN(dur)) {
               setDuration(dur);
+              setIsLoading(false);
             }
           }}
           onReady={handlePlayerReady}
@@ -679,16 +687,7 @@ export default function YoutubePlayer({
             setIsPlaying(false);
             stopProgressPolling();
           }}
-          config={{
-            youtube: {
-              rel: 0,
-              disablekb: 0,
-              iv_load_policy: 3,
-              playsinline: 1,
-              enablejsapi: 1,
-              origin: window.location.origin
-            }
-          } as any}
+          config={{ youtube: { playerVars: { rel: 0, disablekb: 1, iv_load_policy: 3, playsinline: 1, enablejsapi: 1, origin: window.location.origin } } }}
         />
       </div>
 

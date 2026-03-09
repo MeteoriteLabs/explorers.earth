@@ -252,9 +252,9 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
     try {
       const playlistId = parseInt(req.params.playlistId);
-      // Verify playlist belongs to user
+      // Verify playlist belongs to user (use userId resolved above, not req.user which is only set in session auth)
       const playlist = await storage.getPlaylistById(playlistId);
-      if (!playlist || playlist.userId !== req.user!.id) {
+      if (!playlist || playlist.userId !== userId) {
         return res.status(403).json({ message: "Playlist not found or unauthorized" });
       }
 
@@ -937,7 +937,39 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
   // Add route to handle playlist visibility updates
   app.patch("/api/playlists/:playlistId/visibility", async (req, res) => {
-    if (!req.isAuthenticated()) {
+    let userId: number;
+
+    // 1. Try session auth
+    if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+      userId = req.user.id;
+    }
+    // 2. Try JWT Bearer token
+    else if (req.headers.authorization?.startsWith('Bearer ')) {
+      const token = req.headers.authorization.substring(7);
+      try {
+        const decoded = jwt.decode(token) as any;
+        if (!decoded || !decoded.id) {
+          return res.status(401).json({ message: "Unauthorized - Invalid token" });
+        }
+        if (decoded.exp && decoded.exp < Date.now() / 1000) {
+          return res.status(401).json({ message: "Unauthorized - Token expired" });
+        }
+        let usernameForLookup = req.query.username || req.headers['x-username'];
+        if (!usernameForLookup && req.body.username) usernameForLookup = req.body.username;
+        if (usernameForLookup) {
+          const user = await storage.getUserByUsername(usernameForLookup as string);
+          if (user) {
+            userId = user.id;
+          } else {
+            return res.status(404).json({ message: "User not found" });
+          }
+        } else {
+          return res.status(401).json({ message: "Unauthorized - Username required for JWT auth" });
+        }
+      } catch (error) {
+        return res.status(401).json({ message: "Unauthorized - Invalid token" });
+      }
+    } else {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
@@ -951,7 +983,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
       // Verify playlist belongs to user
       const playlist = await storage.getPlaylistById(playlistId);
-      if (!playlist || playlist.userId !== req.user!.id) {
+      if (!playlist || playlist.userId !== userId) {
         return res.status(403).json({ message: "Playlist not found or unauthorized" });
       }
 
@@ -2744,7 +2776,37 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
   // Update song position (host only)
   app.patch("/api/playlist/songs/:songId/position", async (req, res) => {
-    if (!req.isAuthenticated()) {
+    let userId: number;
+
+    // 1. Try session auth first (old system)
+    if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+      userId = req.user.id;
+    }
+    // 2. Try JWT Bearer token (new system from explorers-earth)
+    else if (req.headers.authorization?.startsWith('Bearer ')) {
+      const token = req.headers.authorization.substring(7);
+      try {
+        const decoded = jwt.decode(token) as any;
+        if (!decoded || !decoded.id) {
+          return res.status(401).json({ message: "Unauthorized - Invalid token" });
+        }
+        if (decoded.exp && decoded.exp < Date.now() / 1000) {
+          return res.status(401).json({ message: "Unauthorized - Token expired" });
+        }
+        const username = req.body.username || (req.query.username as string);
+        if (!username) {
+          return res.status(400).json({ message: "Username required with JWT auth" });
+        }
+        const user = await storage.getUserByUsername(username);
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+        userId = user.id;
+      } catch (error) {
+        console.error('❌ JWT validation error:', error);
+        return res.status(401).json({ message: "Unauthorized - Invalid token" });
+      }
+    } else {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
@@ -2755,7 +2817,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
     try {
       await storage.updateSongPosition(
-        req.user!.id,
+        userId,
         parseInt(req.params.songId),
         position
       );
@@ -4212,7 +4274,37 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
   // Update song position (host only)
   app.patch("/api/playlist/songs/:songId/position", async (req, res) => {
-    if (!req.isAuthenticated()) {
+    let userId: number;
+
+    // 1. Try session auth first (old system)
+    if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+      userId = req.user.id;
+    }
+    // 2. Try JWT Bearer token (new system from explorers-earth)
+    else if (req.headers.authorization?.startsWith('Bearer ')) {
+      const token = req.headers.authorization.substring(7);
+      try {
+        const decoded = jwt.decode(token) as any;
+        if (!decoded || !decoded.id) {
+          return res.status(401).json({ message: "Unauthorized - Invalid token" });
+        }
+        if (decoded.exp && decoded.exp < Date.now() / 1000) {
+          return res.status(401).json({ message: "Unauthorized - Token expired" });
+        }
+        const username = req.body.username || (req.query.username as string);
+        if (!username) {
+          return res.status(400).json({ message: "Username required with JWT auth" });
+        }
+        const user = await storage.getUserByUsername(username);
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+        userId = user.id;
+      } catch (error) {
+        console.error('❌ JWT validation error:', error);
+        return res.status(401).json({ message: "Unauthorized - Invalid token" });
+      }
+    } else {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
@@ -4223,7 +4315,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
     try {
       await storage.updateSongPosition(
-        req.user!.id,
+        userId,
         parseInt(req.params.songId),
         position
       );

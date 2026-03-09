@@ -1,18 +1,16 @@
 // PlaylistTable component for displaying songs in a table format
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Song } from '../types/music';
-import Button from './ui/Button';
-import Checkbox from './ui/checkbox';
-import { 
-  Play, 
-  Plus, 
-  Trash2, 
-  ChevronUp, 
+import {
+  Play,
+  Plus,
+  Trash2,
+  ChevronUp,
   ChevronDown,
   Music2,
-  Clock
+  Clock,
+  GripVertical,
 } from 'lucide-react';
-import PlaylistCard, { PlaylistCardContent } from './ui/PlaylistCard';
 import Badge from './ui/badge';
 
 interface PlaylistTableProps {
@@ -32,6 +30,9 @@ interface PlaylistTableProps {
 
 const SONGS_PER_PAGE = 10;
 
+// Accent colour for the drag drop-zone indicator line
+const ACCENT = '#22c55e'; // Tailwind green-500 — matches dashboard-accent
+
 export default function PlaylistTable({
   songs,
   showControls = true,
@@ -45,251 +46,266 @@ export default function PlaylistTable({
   onDeleteMultiple,
   onReorderSongs,
 }: PlaylistTableProps) {
-  const [selectedSongs, setSelectedSongs] = useState<Set<number>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
+  const draggable = showReorderControls && !isHistory && !!onReorderSongs;
+
+  // ── Drag state stored in refs so nothing re-renders during the drag ──
+  const draggedIdRef   = useRef<number | null>(null);   // which song is being dragged
+  const dragSourceEl   = useRef<HTMLElement | null>(null); // its DOM node
+  const prevDragOverEl = useRef<HTMLElement | null>(null); // last highlighted target
 
   // Pagination
-  const totalPages = Math.ceil(songs.length / SONGS_PER_PAGE);
-  const startIndex = (currentPage - 1) * SONGS_PER_PAGE;
-  const endIndex = startIndex + SONGS_PER_PAGE;
-  const currentSongs = songs.slice(startIndex, endIndex);
+  const totalPages   = Math.ceil(songs.length / SONGS_PER_PAGE);
+  const startIndex   = (currentPage - 1) * SONGS_PER_PAGE;
+  const currentSongs = songs.slice(startIndex, startIndex + SONGS_PER_PAGE);
 
-  // Handle song selection
-  const handleSelectSong = (songId: number) => {
-    const newSelected = new Set(selectedSongs);
-    if (newSelected.has(songId)) {
-      newSelected.delete(songId);
-    } else {
-      newSelected.add(songId);
-    }
-    setSelectedSongs(newSelected);
-  };
-
-  // Handle delete selected
-  const handleDeleteSelected = () => {
-    if (selectedSongs.size > 0 && onDeleteMultiple) {
-      onDeleteMultiple(Array.from(selectedSongs));
-      setSelectedSongs(new Set());
-    }
-  };
-
-  // Handle reorder
+  // ── Up/down button reorder ──────────────────────────────────────────────
   const handleReorder = (songId: number, direction: 'up' | 'down') => {
-    const songIndex = songs.findIndex(song => song.id === songId);
-    if (songIndex === -1) return;
-
-    const newSongs = [...songs];
-    const targetIndex = direction === 'up' ? songIndex - 1 : songIndex + 1;
-
-    if (targetIndex >= 0 && targetIndex < songs.length) {
-      [newSongs[songIndex], newSongs[targetIndex]] = [newSongs[targetIndex], newSongs[songIndex]];
-      onReorderSongs?.(newSongs.map(song => song.id));
+    const idx = songs.findIndex(s => s.id === songId);
+    if (idx === -1) return;
+    const next = [...songs];
+    const target = direction === 'up' ? idx - 1 : idx + 1;
+    if (target >= 0 && target < songs.length) {
+      [next[idx], next[target]] = [next[target], next[idx]];
+      onReorderSongs?.(next.map(s => s.id));
     }
   };
 
-  // Get song status badge
-  const getStatusBadge = (song: Song) => {
-    if (song.id === currentPlayingSong?.id) {
-      return <Badge variant="default" className="bg-green-500">Now Playing</Badge>;
+  // ── Clear all drag visual state ─────────────────────────────────────────
+  const clearDragVisuals = () => {
+    if (dragSourceEl.current) {
+      dragSourceEl.current.style.opacity   = '1';
+      dragSourceEl.current.style.transform = '';
+      dragSourceEl.current = null;
     }
-    if (song.status === 'playing') {
-      return <Badge variant="secondary">Playing</Badge>;
+    if (prevDragOverEl.current) {
+      prevDragOverEl.current.style.borderTop    = '';
+      prevDragOverEl.current.style.paddingTop   = '';
+      prevDragOverEl.current = null;
     }
-    if (song.status === 'played') {
-      return <Badge variant="outline">Played</Badge>;
-    }
-    return <Badge variant="outline">Queued</Badge>;
   };
 
+  // ── Drag START ──────────────────────────────────────────────────────────
+  // Key: store id in ref (no setState → no re-render → browser drag stays alive)
+  // Key: use requestAnimationFrame to fade AFTER browser captures ghost image
+  const handleDragStart = (e: React.DragEvent, songId: number) => {
+    draggedIdRef.current = songId;
+    dragSourceEl.current = e.currentTarget as HTMLElement;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(songId));
+    // Fade the source card after ghost snapshot is taken
+    const el = e.currentTarget as HTMLElement;
+    requestAnimationFrame(() => {
+      el.style.opacity   = '0.35';
+      el.style.transform = 'scale(0.97)';
+    });
+  };
+
+  // ── Drag OVER another card ──────────────────────────────────────────────
+  const handleDragOver = (e: React.DragEvent, songId: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (songId === draggedIdRef.current) return;
+
+    const el = e.currentTarget as HTMLElement;
+    if (prevDragOverEl.current && prevDragOverEl.current !== el) {
+      // Remove indicator from previous target
+      prevDragOverEl.current.style.borderTop  = '';
+      prevDragOverEl.current.style.paddingTop = '';
+    }
+    // Show a bright insertion line above this target card
+    el.style.borderTop  = `2px solid ${ACCENT}`;
+    el.style.paddingTop = '0';   // keep height stable
+    prevDragOverEl.current = el;
+  };
+
+  // ── Drag LEAVE a card ───────────────────────────────────────────────────
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only clear if truly leaving the card (not moving over a child element)
+    const el = e.currentTarget as HTMLElement;
+    if (!el.contains(e.relatedTarget as Node)) {
+      el.style.borderTop  = '';
+      el.style.paddingTop = '';
+      if (prevDragOverEl.current === el) prevDragOverEl.current = null;
+    }
+  };
+
+  // ── DROP ────────────────────────────────────────────────────────────────
+  const handleDrop = (e: React.DragEvent, targetId: number) => {
+    e.preventDefault();
+    clearDragVisuals();
+    const from = draggedIdRef.current;
+    draggedIdRef.current = null;
+    if (from === null || from === targetId) return;
+
+    const next   = [...songs];
+    const fromIdx = next.findIndex(s => s.id === from);
+    const toIdx   = next.findIndex(s => s.id === targetId);
+    if (fromIdx !== -1 && toIdx !== -1) {
+      const [removed] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, removed);
+      onReorderSongs?.(next.map(s => s.id));
+    }
+  };
+
+  // ── Drag END (fired on source even if dropped outside) ──────────────────
+  const handleDragEnd = () => {
+    clearDragVisuals();
+    draggedIdRef.current = null;
+  };
+
+  // ── Empty state ─────────────────────────────────────────────────────────
   if (songs.length === 0) {
     return (
-      <PlaylistCard>
-        <PlaylistCardContent className="p-8 text-center">
-          <Music2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">
-            {isHistory ? 'No songs have been played yet' : 'No songs in the playlist'}
-          </p>
-        </PlaylistCardContent>
-      </PlaylistCard>
+      <div className="py-8 text-center">
+        <Music2 className="h-10 w-10 mx-auto text-gray-600 mb-3" />
+        <p className="text-sm text-gray-500">
+          {isHistory ? 'No songs have been played yet' : 'No songs in the playlist'}
+        </p>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {/* Bulk actions */}
-      {selectedSongs.size > 0 && (
-        <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-          <span className="text-sm text-muted-foreground">
-            {selectedSongs.size} song{selectedSongs.size > 1 ? 's' : ''} selected
-          </span>
-          <div className="flex gap-2">
-            {showAddToQueue && onAddToQueue && (
-              <Button
-                size="small"
-                variant="secondary"
-                onClick={() => {
-                  const selectedSongObjects = songs.filter(song => selectedSongs.has(song.id));
-                  selectedSongObjects.forEach(song => onAddToQueue(song));
-                  setSelectedSongs(new Set());
-                }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add to Queue
-              </Button>
-            )}
-            {onDeleteMultiple && (
-              <Button
-                size="small"
-                variant="danger"
-                onClick={handleDeleteSelected}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete Selected
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
+    <div className="space-y-3">
+      {/* ── Song rows ── */}
+      <div className="space-y-1">
+        {currentSongs.map((song) => {
+          const globalIdx = songs.findIndex(s => s.id === song.id);
+          const isPlaying = song.id === currentPlayingSong?.id;
 
-      {/* Songs table */}
-      <div className="space-y-2">
-        {currentSongs.map((song, index) => (
-          <PlaylistCard key={song.id} className="hover:shadow-md transition-shadow bg-black">
-            <PlaylistCardContent className="p-4">
-              <div className="flex items-center space-x-4">
-                {/* Selection checkbox */}
-                {showControls && (
-                  <Checkbox
-                    checked={selectedSongs.has(song.id)}
-                    onCheckedChange={() => handleSelectSong(song.id)}
-                  />
-                )}
-
-                {/* Thumbnail */}
-                <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
-                  <img
-                    src={song.thumbnailUrl}
-                    alt={song.title}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
-                    }}
-                  />
-                  {song.id === currentPlayingSong?.id && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
-                        <Play className="h-3 w-3 text-black ml-0.5" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Song info */}
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-sm truncate">{song.title}</h4>
-                  <p className="text-xs text-muted-foreground truncate">{song.artist}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    {getStatusBadge(song)}
-                    {song.playedAt && (
-                      <div className="flex items-center text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {new Date(song.playedAt).toLocaleTimeString()}
-                      </div>
-                    )}
+          return (
+            <div
+              key={song.id}
+              draggable={draggable}
+              onDragStart={draggable ? (e) => handleDragStart(e, song.id) : undefined}
+              onDragOver={draggable  ? (e) => handleDragOver(e, song.id)  : undefined}
+              onDragLeave={draggable ? handleDragLeave                     : undefined}
+              onDrop={draggable      ? (e) => handleDrop(e, song.id)       : undefined}
+              onDragEnd={draggable   ? handleDragEnd                        : undefined}
+              className="flex items-center gap-2 p-2.5 rounded-lg bg-white/5 select-none transition-[opacity,transform] duration-150"
+            >
+              {/* ── DRAG HANDLE + UP/DOWN ── */}
+              {showReorderControls && !isHistory && (
+                <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+                  <div
+                    className={`transition-colors ${draggable ? 'cursor-grab active:cursor-grabbing text-gray-500 hover:text-gray-200' : 'text-gray-700'}`}
+                    title="Drag to reorder"
+                  >
+                    <GripVertical className="h-4 w-4" />
                   </div>
+                  <button
+                    onClick={() => handleReorder(song.id, 'up')}
+                    disabled={globalIdx === 0}
+                    title="Move up"
+                    className="h-4 w-4 flex items-center justify-center rounded text-gray-600 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronUp className="h-3 w-3" />
+                  </button>
+                  <button
+                    onClick={() => handleReorder(song.id, 'down')}
+                    disabled={globalIdx === songs.length - 1}
+                    title="Move down"
+                    className="h-4 w-4 flex items-center justify-center rounded text-gray-600 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronDown className="h-3 w-3" />
+                  </button>
                 </div>
+              )}
 
-                {/* Actions */}
-                <div className="flex items-center gap-2">
-                  {/* Play song */}
-                  {onPlaySong && song.id !== currentPlayingSong?.id && (
-                    <button
-                      onClick={() => onPlaySong(song)}
-                      className="px-2 py-1.5 rounded-md transition-all duration-300 flex items-center justify-center bg-dashboard-accent/70 hover:bg-dashboard-accent"
-                      title="Play this song"
-                    >
-                      <Play className="h-3.5 w-3.5 text-white" />
-                    </button>
-                  )}
-
-                  {/* Reorder controls */}
-                  {showReorderControls && !isHistory && (
-                    <div className="flex flex-col">
-                      <Button
-                        size="small"
-                        variant="ghost"
-                        className="h-6 w-6 p-0"
-                        onClick={() => handleReorder(song.id, 'up')}
-                        disabled={index === 0}
-                      >
-                        <ChevronUp className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="ghost"
-                        className="h-6 w-6 p-0"
-                        onClick={() => handleReorder(song.id, 'down')}
-                        disabled={index === songs.length - 1}
-                      >
-                        <ChevronDown className="h-3 w-3" />
-                      </Button>
+              {/* ── THUMBNAIL ── */}
+              <div className="relative w-10 h-10 rounded overflow-hidden flex-shrink-0">
+                <img
+                  src={song.thumbnailUrl}
+                  alt={song.title}
+                  draggable={false}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src =
+                      'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
+                  }}
+                />
+                {isPlaying && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center">
+                      <Play className="h-2.5 w-2.5 text-black ml-0.5" />
                     </div>
-                  )}
+                  </div>
+                )}
+              </div>
 
-                  {/* Add to queue */}
-                  {showAddToQueue && onAddToQueue && (
-                    <button
-                      onClick={() => {
-                        console.log('Adding song to queue:', song);
-                        onAddToQueue(song);
-                      }}
-                      className="px-3 py-1.5 rounded-md transition-all duration-300 flex items-center justify-center bg-gray-600 hover:bg-gray-700"
-                      style={{ backgroundColor: '#4b5563' }}
-                    >
-                      <Plus className="h-4 w-4" style={{ color: 'white' }} />
-                    </button>
+              {/* ── SONG INFO ── */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate leading-tight">{song.title}</p>
+                <p className="text-xs text-gray-400 truncate">{song.artist}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  {isPlaying && (
+                    <Badge variant="default" className="bg-green-500 text-xs py-0 px-1.5">
+                      Now Playing
+                    </Badge>
                   )}
-
-                  {/* Delete */}
-                  {onDeleteSong && (
-                    <Button
-                      size="small"
-                      variant="ghost"
-                      onClick={() => onDeleteSong(song.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  {song.playedAt && (
+                    <div className="flex items-center text-xs text-gray-600">
+                      <Clock className="h-3 w-3 mr-0.5" />
+                      {new Date(song.playedAt).toLocaleTimeString()}
+                    </div>
                   )}
                 </div>
               </div>
-            </PlaylistCardContent>
-          </PlaylistCard>
-        ))}
+
+              {/* ── ACTION BUTTONS ── */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {onPlaySong && !isPlaying && (
+                  <button
+                    onClick={() => onPlaySong(song)}
+                    title="Play"
+                    className="p-1.5 rounded text-white/60 hover:text-white bg-dashboard-accent/40 hover:bg-dashboard-accent transition-colors"
+                  >
+                    <Play className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                {showAddToQueue && onAddToQueue && (
+                  <button
+                    onClick={() => onAddToQueue(song)}
+                    title="Add to queue"
+                    className="p-1.5 rounded text-white/60 hover:text-white bg-white/10 hover:bg-white/20 transition-colors"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                {onDeleteSong && (
+                  <button
+                    onClick={() => onDeleteSong(song.id)}
+                    title="Remove"
+                    className="p-1.5 rounded text-red-400/60 hover:text-red-300 hover:bg-red-400/10 transition-colors"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Pagination */}
+      {/* ── Pagination ── */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center space-x-2">
-          <Button
-            variant="secondary"
-            size="small"
-            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+        <div className="flex items-center justify-center gap-2 pt-1">
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
+            className="text-xs px-3 py-1.5 rounded bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             Previous
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            Page {currentPage} of {totalPages}
-          </span>
-          <Button
-            variant="secondary"
-            size="small"
-            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+          </button>
+          <span className="text-xs text-gray-500">{currentPage} / {totalPages}</span>
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
+            className="text-xs px-3 py-1.5 rounded bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             Next
-          </Button>
+          </button>
         </div>
       )}
     </div>
