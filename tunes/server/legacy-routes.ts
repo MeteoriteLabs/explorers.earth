@@ -252,9 +252,9 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
     try {
       const playlistId = parseInt(req.params.playlistId);
-      // Verify playlist belongs to user
+      // Verify playlist belongs to user (use userId resolved above, not req.user which is only set in session auth)
       const playlist = await storage.getPlaylistById(playlistId);
-      if (!playlist || playlist.userId !== req.user!.id) {
+      if (!playlist || playlist.userId !== userId) {
         return res.status(403).json({ message: "Playlist not found or unauthorized" });
       }
 
@@ -424,27 +424,47 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
   app.post("/api/playlist/import-youtube", async (req, res) => {
     let userId: number;
 
-    // If authenticated, use the logged-in user's ID
+    // 1. Session auth (cookie-based — highest priority for logged-in dashboard)
     if (req.isAuthenticated() && req.user) {
       userId = req.user.id;
     }
-    // Otherwise, try to get user ID from guest URL
-    else {
+    // 2. Guest URL — check BEFORE JWT so public guest page requests aren't blocked
+    //    even if apiRequest auto-attaches a Bearer token to all requests
+    else if (req.query.guestUrl) {
       const guestUrl = req.query.guestUrl as string;
-      if (!guestUrl) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
       const user = await storage.getUserByGuestUrl(guestUrl);
-      if (!user) {
-        return res.status(404).json({ message: "Playlist not found" });
-      }
-
-      // Check if song requests are allowed
-      if (!user.allowSongRequests) {
-        return res.status(403).json({ message: "Song requests are not allowed for this playlist" });
-      }
-
+      if (!user) return res.status(404).json({ message: "Playlist not found" });
+      if (!user.allowSongRequests) return res.status(403).json({ message: "Song requests are not allowed for this playlist" });
       userId = user.id;
+    }
+    // 3. JWT Bearer token auth (authenticated dashboard with no guestUrl)
+    else if (req.headers.authorization?.startsWith('Bearer ')) {
+      const token = req.headers.authorization.substring(7);
+      try {
+        const decoded = jwt.decode(token) as any;
+        if (!decoded || !decoded.id) {
+          return res.status(401).json({ message: "Unauthorized - Invalid token" });
+        }
+        if (decoded.exp && decoded.exp < Date.now() / 1000) {
+          return res.status(401).json({ message: "Unauthorized - Token expired" });
+        }
+        // Need username to map JWT → Neon DB user
+        const username = (req.query.username as string) || req.body.username;
+        if (!username) {
+          return res.status(401).json({ message: "Unauthorized - Username required" });
+        }
+        const user = await storage.getUserByUsername(username);
+        if (!user) return res.status(404).json({ message: "User not found" });
+        console.log('✅ import-youtube: JWT auth mapped to user:', user.username);
+        userId = user.id;
+      } catch (error) {
+        console.error('❌ JWT validation error (import-youtube):', error);
+        return res.status(401).json({ message: "Unauthorized - Invalid token" });
+      }
+    }
+    // 4. No valid auth
+    else {
+      return res.status(401).json({ message: "Unauthorized" });
     }
 
     try {
@@ -520,27 +540,46 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
   app.post("/api/playlist/import-spotify", async (req, res) => {
     let userId: number;
 
-    // If authenticated, use the logged-in user's ID
+    // 1. Session auth
     if (req.isAuthenticated() && req.user) {
       userId = req.user.id;
     }
-    // Otherwise, try to get user ID from guest URL
-    else {
+    // 2. Guest URL — check BEFORE JWT so public guest pages aren't blocked
+    //    even if apiRequest auto-attaches a Bearer token
+    else if (req.query.guestUrl) {
       const guestUrl = req.query.guestUrl as string;
-      if (!guestUrl) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
       const user = await storage.getUserByGuestUrl(guestUrl);
-      if (!user) {
-        return res.status(404).json({ message: "Playlist not found" });
-      }
-
-      // Check if song requests are allowed
-      if (!user.allowSongRequests) {
-        return res.status(403).json({ message: "Song requests are not allowed for this playlist" });
-      }
-
+      if (!user) return res.status(404).json({ message: "Playlist not found" });
+      if (!user.allowSongRequests) return res.status(403).json({ message: "Song requests are not allowed for this playlist" });
       userId = user.id;
+    }
+    // 3. JWT Bearer token auth (authenticated dashboard with no guestUrl)
+    else if (req.headers.authorization?.startsWith('Bearer ')) {
+      const token = req.headers.authorization.substring(7);
+      try {
+        const decoded = jwt.decode(token) as any;
+        if (!decoded || !decoded.id) {
+          return res.status(401).json({ message: "Unauthorized - Invalid token" });
+        }
+        if (decoded.exp && decoded.exp < Date.now() / 1000) {
+          return res.status(401).json({ message: "Unauthorized - Token expired" });
+        }
+        const username = (req.query.username as string) || req.body.username;
+        if (!username) {
+          return res.status(401).json({ message: "Unauthorized - Username required" });
+        }
+        const user = await storage.getUserByUsername(username);
+        if (!user) return res.status(404).json({ message: "User not found" });
+        console.log('✅ import-spotify: JWT auth mapped to user:', user.username);
+        userId = user.id;
+      } catch (error) {
+        console.error('❌ JWT validation error (import-spotify):', error);
+        return res.status(401).json({ message: "Unauthorized - Invalid token" });
+      }
+    }
+    // 4. No valid auth
+    else {
+      return res.status(401).json({ message: "Unauthorized" });
     }
 
     try {
@@ -591,10 +630,10 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
             error: error.message
           });
         }
-        if (error.message.includes('403') || error.message.includes('Access denied')) {
-          return res.status(403).json({
-            message: "Access denied to Spotify playlist",
-            error: error.message
+        if (error.message.includes('403') || error.message.includes('Access denied') || error.message.includes('private')) {
+          return res.status(422).json({
+            message: "Spotify playlist is private",
+            error: "Please make the Spotify playlist public first. In Spotify: open the playlist → ⋯ menu → Make public."
           });
         }
         if (error.message.includes('404') || error.message.includes('not found')) {
@@ -621,7 +660,29 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
   // Import Spotify playlist to saved playlist
   app.post("/api/playlists/:id/import-spotify", async (req, res) => {
     console.log("Spotify import endpoint hit for playlist:", req.params.id);
-    if (!req.isAuthenticated()) {
+    let userId: number;
+
+    // 1. Session auth
+    if (req.isAuthenticated() && req.user) {
+      userId = req.user.id;
+    }
+    // 2. JWT Bearer token auth
+    else if (req.headers.authorization?.startsWith('Bearer ')) {
+      const token = req.headers.authorization.substring(7);
+      try {
+        const decoded = jwt.decode(token) as any;
+        if (!decoded || !decoded.id) return res.status(401).json({ message: "Unauthorized - Invalid token" });
+        if (decoded.exp && decoded.exp < Date.now() / 1000) return res.status(401).json({ message: "Unauthorized - Token expired" });
+        const username = (req.query.username as string) || req.body.username;
+        if (!username) return res.status(401).json({ message: "Username required with JWT auth" });
+        const user = await storage.getUserByUsername(username);
+        if (!user) return res.status(404).json({ message: "User not found" });
+        console.log('✅ playlists/:id/import-spotify: JWT auth for user:', user.username);
+        userId = user.id;
+      } catch (err) {
+        return res.status(401).json({ message: "Unauthorized - Invalid token" });
+      }
+    } else {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
@@ -633,8 +694,6 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       if (!spotifyPlaylistUrl) {
         return res.status(400).json({ message: "Spotify playlist URL is required" });
       }
-
-      const userId = req.user!.id;
 
       // Verify playlist belongs to user
       const playlist = await storage.getPlaylistById(targetPlaylistId);
@@ -684,10 +743,10 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
             error: error.message
           });
         }
-        if (error.message.includes('403') || error.message.includes('Access denied')) {
-          return res.status(403).json({
-            message: "Access denied to Spotify playlist",
-            error: error.message
+        if (error.message.includes('403') || error.message.includes('Access denied') || error.message.includes('private')) {
+          return res.status(422).json({
+            message: "Spotify playlist is private",
+            error: "Please make the Spotify playlist public first. In Spotify: open the playlist → ⋯ menu → Make public."
           });
         }
         if (error.message.includes('404') || error.message.includes('not found')) {
@@ -713,7 +772,29 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
   // Import YouTube Music playlist to saved playlist
   app.post("/api/playlists/:id/import-youtube", async (req, res) => {
-    if (!req.isAuthenticated()) {
+    let userId: number;
+
+    // 1. Session auth
+    if (req.isAuthenticated() && req.user) {
+      userId = req.user.id;
+    }
+    // 2. JWT Bearer token auth
+    else if (req.headers.authorization?.startsWith('Bearer ')) {
+      const token = req.headers.authorization.substring(7);
+      try {
+        const decoded = jwt.decode(token) as any;
+        if (!decoded || !decoded.id) return res.status(401).json({ message: "Unauthorized - Invalid token" });
+        if (decoded.exp && decoded.exp < Date.now() / 1000) return res.status(401).json({ message: "Unauthorized - Token expired" });
+        const username = (req.query.username as string) || req.body.username;
+        if (!username) return res.status(401).json({ message: "Username required with JWT auth" });
+        const user = await storage.getUserByUsername(username);
+        if (!user) return res.status(404).json({ message: "User not found" });
+        console.log('✅ playlists/:id/import-youtube: JWT auth for user:', user.username);
+        userId = user.id;
+      } catch (err) {
+        return res.status(401).json({ message: "Unauthorized - Invalid token" });
+      }
+    } else {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
@@ -728,8 +809,6 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       if (!process.env.YOUTUBE_API_KEY) {
         return res.status(500).json({ message: "YouTube API key is not configured" });
       }
-
-      const userId = req.user!.id;
 
       // Verify playlist belongs to user
       const playlist = await storage.getPlaylistById(targetPlaylistId);
@@ -937,7 +1016,39 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
   // Add route to handle playlist visibility updates
   app.patch("/api/playlists/:playlistId/visibility", async (req, res) => {
-    if (!req.isAuthenticated()) {
+    let userId: number;
+
+    // 1. Try session auth
+    if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+      userId = req.user.id;
+    }
+    // 2. Try JWT Bearer token
+    else if (req.headers.authorization?.startsWith('Bearer ')) {
+      const token = req.headers.authorization.substring(7);
+      try {
+        const decoded = jwt.decode(token) as any;
+        if (!decoded || !decoded.id) {
+          return res.status(401).json({ message: "Unauthorized - Invalid token" });
+        }
+        if (decoded.exp && decoded.exp < Date.now() / 1000) {
+          return res.status(401).json({ message: "Unauthorized - Token expired" });
+        }
+        let usernameForLookup = req.query.username || req.headers['x-username'];
+        if (!usernameForLookup && req.body.username) usernameForLookup = req.body.username;
+        if (usernameForLookup) {
+          const user = await storage.getUserByUsername(usernameForLookup as string);
+          if (user) {
+            userId = user.id;
+          } else {
+            return res.status(404).json({ message: "User not found" });
+          }
+        } else {
+          return res.status(401).json({ message: "Unauthorized - Username required for JWT auth" });
+        }
+      } catch (error) {
+        return res.status(401).json({ message: "Unauthorized - Invalid token" });
+      }
+    } else {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
@@ -951,7 +1062,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
       // Verify playlist belongs to user
       const playlist = await storage.getPlaylistById(playlistId);
-      if (!playlist || playlist.userId !== req.user!.id) {
+      if (!playlist || playlist.userId !== userId) {
         return res.status(403).json({ message: "Playlist not found or unauthorized" });
       }
 
@@ -2707,8 +2818,8 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
         console.log('✅ Delete song - JWT validated for Strapi user:', decoded.id);
 
-        // Look up Neon DB user by username
-        const username = req.query.username as string;
+        // Look up Neon DB user - check X-Username header first, then query param
+        const username = (req.headers['x-username'] as string) || (req.query.username as string);
         if (!username) {
           return res.status(400).json({ message: "Username required with JWT auth" });
         }
@@ -2744,7 +2855,40 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
   // Update song position (host only)
   app.patch("/api/playlist/songs/:songId/position", async (req, res) => {
-    if (!req.isAuthenticated()) {
+    let userId: number;
+
+    // 1. Try session auth first (old system)
+    if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+      userId = req.user.id;
+    }
+    // 2. Try JWT Bearer token (new system from explorers-earth)
+    else if (req.headers.authorization?.startsWith('Bearer ')) {
+      const token = req.headers.authorization.substring(7);
+      try {
+        const decoded = jwt.decode(token) as any;
+        if (!decoded || !decoded.id) {
+          return res.status(401).json({ message: "Unauthorized - Invalid token" });
+        }
+        if (decoded.exp && decoded.exp < Date.now() / 1000) {
+          return res.status(401).json({ message: "Unauthorized - Token expired" });
+        }
+        // Look up Neon DB user - check X-Username header first, then body/query
+        const username = (req.headers['x-username'] as string)
+          || req.body.username
+          || (req.query.username as string);
+        if (!username) {
+          return res.status(400).json({ message: "Username required with JWT auth" });
+        }
+        const user = await storage.getUserByUsername(username);
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+        userId = user.id;
+      } catch (error) {
+        console.error('❌ JWT validation error:', error);
+        return res.status(401).json({ message: "Unauthorized - Invalid token" });
+      }
+    } else {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
@@ -2755,7 +2899,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
     try {
       await storage.updateSongPosition(
-        req.user!.id,
+        userId,
         parseInt(req.params.songId),
         position
       );
@@ -4175,8 +4319,8 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
         console.log('✅ Delete song - JWT validated for Strapi user:', decoded.id);
 
-        // Look up Neon DB user by username
-        const username = req.query.username as string;
+        // Look up Neon DB user - check X-Username header first, then query param
+        const username = (req.headers['x-username'] as string) || (req.query.username as string);
         if (!username) {
           return res.status(400).json({ message: "Username required with JWT auth" });
         }
@@ -4212,7 +4356,40 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
   // Update song position (host only)
   app.patch("/api/playlist/songs/:songId/position", async (req, res) => {
-    if (!req.isAuthenticated()) {
+    let userId: number;
+
+    // 1. Try session auth first (old system)
+    if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+      userId = req.user.id;
+    }
+    // 2. Try JWT Bearer token (new system from explorers-earth)
+    else if (req.headers.authorization?.startsWith('Bearer ')) {
+      const token = req.headers.authorization.substring(7);
+      try {
+        const decoded = jwt.decode(token) as any;
+        if (!decoded || !decoded.id) {
+          return res.status(401).json({ message: "Unauthorized - Invalid token" });
+        }
+        if (decoded.exp && decoded.exp < Date.now() / 1000) {
+          return res.status(401).json({ message: "Unauthorized - Token expired" });
+        }
+        // Look up Neon DB user - check X-Username header first, then body/query
+        const username = (req.headers['x-username'] as string)
+          || req.body.username
+          || (req.query.username as string);
+        if (!username) {
+          return res.status(400).json({ message: "Username required with JWT auth" });
+        }
+        const user = await storage.getUserByUsername(username);
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+        userId = user.id;
+      } catch (error) {
+        console.error('❌ JWT validation error:', error);
+        return res.status(401).json({ message: "Unauthorized - Invalid token" });
+      }
+    } else {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
@@ -4223,7 +4400,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
     try {
       await storage.updateSongPosition(
-        req.user!.id,
+        userId,
         parseInt(req.params.songId),
         position
       );

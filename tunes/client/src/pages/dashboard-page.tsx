@@ -266,7 +266,7 @@ export default function DashboardPage() {
     refetchInterval: 5000, // Poll for updates
     retry: 3, // Retry up to 3 times on error
     retryDelay: (attempt) => Math.min(1000 * Math.pow(2, attempt), 10000), // Exponential backoff
-    staleTime: 2000, // Reduce refetches for better performance
+    staleTime: 0,           // always stale so invalidations/refetches apply immediately
     refetchOnWindowFocus: false, // Avoid refetching when window regains focus
     onError: (err) => {
       console.error("Failed to load playlist data:", err);
@@ -514,10 +514,11 @@ export default function DashboardPage() {
 
   const updateSongPositionMutation = useMutation({
     mutationFn: async ({ songId, position }: { songId: number; position: number }) => {
-      if (!user?.guestUrl) return;
+      if (!user) return;
 
       console.log("Making position update request:", { songId, position });
       try {
+        // X-Username header is attached automatically by apiRequest via auth-storage
         await apiRequest("PATCH", `/api/playlist/songs/${songId}/position`, { position });
       } catch (error) {
         console.error("Position update request failed:", error);
@@ -526,7 +527,7 @@ export default function DashboardPage() {
     },
     onSuccess: () => {
       if (user?.guestUrl) {
-        queryClient.invalidateQueries({ queryKey: [`/api/playlist/${user.guestUrl}`] });
+        queryClient.refetchQueries({ queryKey: [`/api/playlist/${user.guestUrl}`] });
       }
     },
     onError: (error) => {
@@ -593,15 +594,21 @@ export default function DashboardPage() {
   const handleSongFinished = async () => {
     if (!currentPlayingSong) return;
 
+    // Capture the next song NOW before we clear the current one,
+    // because clearing currentlyPlaying triggers a refetch that may reorder the list.
+    const currentSongs = playlist?.songs ?? [];
+    const currentIndex = currentSongs.findIndex((s) => s.id === currentPlayingSong.id);
+    const nextSong = currentIndex >= 0 ? currentSongs[currentIndex + 1] : currentSongs[0];
+
     try {
+      // Clear the currently playing song first
       await updateCurrentlyPlayingMutation.mutateAsync(null);
       setCurrentPlayingSong(undefined);
 
-      if (playlist?.songs && playlist.songs.length > 0) {
-        const nextSong = playlist.songs[0];
-        if (nextSong) {
-          await handlePlaySong(nextSong);
-        }
+      // Play the next song if available
+      if (nextSong) {
+        await updateCurrentlyPlayingMutation.mutateAsync(nextSong.id);
+        setCurrentPlayingSong(nextSong);
       }
 
       if (user?.guestUrl) {

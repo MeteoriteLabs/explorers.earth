@@ -37,15 +37,21 @@ const localTunesClient = axios.create({
 localTunesClient.interceptors.request.use(
   (config) => {
     // Local Tunes API uses JWT-based authentication now
-    // We get the token from the Strapi auth storage
+    // We get the token and username from the Zustand auth-storage
     const authStorage = localStorage.getItem('auth-storage');
     if (authStorage) {
       try {
         const authData = JSON.parse(authStorage);
-        const token = authData?.state?.jwt;
+        // NOTE: Zustand persists token as `state.token` (not `state.jwt`)
+        const token = authData?.state?.token ?? authData?.state?.jwt;
+        const username = authData?.state?.user?.username;
 
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
+        }
+        // X-Username header lets the server map the Strapi JWT → Neon DB user
+        if (username) {
+          config.headers['X-Username'] = username;
         }
       } catch (error) {
         console.error('Failed to parse auth storage:', error);
