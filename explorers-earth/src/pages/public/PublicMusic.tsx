@@ -6,7 +6,7 @@ import PlaylistCard, { PlaylistCardContent, PlaylistCardHeader, PlaylistCardTitl
 import { EarthLoader } from "../../components/EarthLoader";
 import PlaylistTable from "../../components/playlist-table";
 import SearchSongs from "../../components/search-songs";
-import { Music2, Volume2, History, Search, Share2, Copy, AlertCircle } from "lucide-react";
+import { Music2, Volume2, History, Search, Share2, Copy } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 import { apiRequest } from "../../lib/queryClient";
 import Accordion, { AccordionContent, AccordionItem, AccordionTrigger } from "../../components/ui/accordion";
@@ -561,68 +561,20 @@ export default function PublicMusic() {
               onValueChange={setAccordionValue}
             >
               <AccordionItem value="search">
-                <AccordionTrigger value="search" disabled={shouldDisableSearch}>
+                <AccordionTrigger value="search">
                   <div className="flex items-center gap-2">
-                    <Search className="h-4 w-4" style={{ color: shouldDisableSearch ? '#ef4444' : '#d1d5db' }} />
-                    Search
-                    {shouldDisableSearch && (
-                      <span className="ml-2 px-2 py-0.5 text-xs bg-red-500/20 text-red-400 rounded">
-                        {!hasActiveNonExpiredPlan ? 'No Active Plan' : 'Limit Reached'}
-                      </span>
-                    )}
+                    <Search className="h-4 w-4" style={{ color: '#d1d5db' }} />
+                    Add Songs
                   </div>
                 </AccordionTrigger>
                 <AccordionContent value="search">
                   <PlaylistCard className="mt-4 border-none bg-black text-white">
-                    <PlaylistCardHeader>
-                      <PlaylistCardTitle className="text-white">Request a Song</PlaylistCardTitle>
-                      <PlaylistCardDescription className="text-gray-300">
-                        {!hasActiveNonExpiredPlan
-                          ? "No active subscription plan available"
-                          : isLimitReached
-                            ? `Song request limit reached (${songRequestsCount}/${songsQuota})`
-                            : "Search and add songs to the playlist"
-                        }
-                      </PlaylistCardDescription>
-                    </PlaylistCardHeader>
                     <PlaylistCardContent>
-                      {/* Show warning message but still allow YouTube URL feature */}
-                      {!hasActiveNonExpiredPlan && (
-                        <div className="p-6 bg-red-500/10 border border-red-500/30 rounded-lg mb-4">
-                          <div className="flex items-start gap-3">
-                            <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
-                            <div>
-                              <h4 className="text-red-400 font-semibold mb-1">No Active Subscription Plan</h4>
-                              <p className="text-gray-300 text-sm">
-                                Search functionality is disabled because there's no active subscription plan.
-                                However, you can still add songs using YouTube URLs (free and unlimited).
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      {isLimitReached && hasActiveNonExpiredPlan && (
-                        <div className="p-6 bg-red-500/10 border border-red-500/30 rounded-lg mb-4">
-                          <div className="flex items-start gap-3">
-                            <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
-                            <div>
-                              <h4 className="text-red-400 font-semibold mb-1">Song Request Limit Reached</h4>
-                              <p className="text-gray-300 text-sm">
-                                You have reached your song request limit of {songsQuota} songs.
-                                However, you can still add songs using YouTube URLs (free and unlimited).
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      {/* Always render SearchSongs - it handles its own disabled state for search, but YouTube URL is always enabled */}
                       <SearchSongs
                         guestUrl={guestUrl}
                         disabled={shouldDisableSearch}
                         onSongsAddedCallback={async () => {
-                          // Refetch song limits after songs are added
                           await refetchSongLimits();
-                          // Close the accordion after songs are added
                           setAccordionValue("");
                         }}
                       />
