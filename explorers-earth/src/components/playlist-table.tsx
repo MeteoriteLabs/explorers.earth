@@ -23,7 +23,6 @@ interface PlaylistTableProps {
   isHistory?: boolean;
   currentPlayingSong?: Song;
   guestUrl?: string;
-  onPlaySong?: (song: Song) => void;
   onAddToQueue?: (song: Song) => void;
   onDeleteSong?: (songId: number) => void;
   onDeleteMultiple?: (songIds: number[]) => void;
@@ -39,7 +38,6 @@ export default function PlaylistTable({
   showReorderControls = true,
   isHistory = false,
   currentPlayingSong,
-  onPlaySong,
   onAddToQueue,
   onDeleteSong,
   onDeleteMultiple,
@@ -201,17 +199,6 @@ export default function PlaylistTable({
 
                 {/* Actions */}
                 <div className="flex items-center gap-2">
-                  {/* Play song */}
-                  {onPlaySong && song.id !== currentPlayingSong?.id && (
-                    <button
-                      onClick={() => onPlaySong(song)}
-                      className="px-2 py-1.5 rounded-md transition-all duration-300 flex items-center justify-center bg-dashboard-accent/70 hover:bg-dashboard-accent"
-                      title="Play this song"
-                    >
-                      <Play className="h-3.5 w-3.5 text-white" />
-                    </button>
-                  )}
-
                   {/* Reorder controls */}
                   {showReorderControls && !isHistory && (
                     <div className="flex flex-col">

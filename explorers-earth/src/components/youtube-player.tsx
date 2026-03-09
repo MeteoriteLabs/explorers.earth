@@ -2,12 +2,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import ReactPlayer from 'react-player';
 import { Song } from '../types/music';
-import {
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
-  SkipForward,
+import { 
+  Play, 
+  Pause, 
+  Volume2, 
+  VolumeX, 
+  SkipForward, 
   SkipBack,
   Shuffle,
   Repeat,
@@ -69,17 +69,6 @@ export default function YoutubePlayer({
   const playerStateUpdateThrottle = 200;
   const progressPollInterval = useRef<NodeJS.Timeout | null>(null);
 
-  // Safe wrapper to call getInternalPlayer
-  const getInternalPlayer = useCallback(() => {
-    if (!playerRef.current) return null;
-    if (typeof playerRef.current.getInternalPlayer !== 'function') return null;
-    try {
-      return playerRef.current.getInternalPlayer();
-    } catch {
-      return null;
-    }
-  }, []);
-
   // Format time helper function
   const formatTime = (timeInSeconds: number): string => {
     if (!timeInSeconds || isNaN(timeInSeconds)) return '00:00';
@@ -107,9 +96,10 @@ export default function YoutubePlayer({
             lastPlayerStateUpdate.current = now;
 
             if (playerRef.current && playerReady) {
-              const player = getInternalPlayer();
+              const player = playerRef.current.getInternalPlayer();
               if (player && typeof player.playVideo === 'function' && typeof player.pauseVideo === 'function') {
                 try {
+                  const playing = (message.payload as any)?.playing ?? false;
                   if (playing) {
                     player.playVideo();
                   } else {
@@ -157,9 +147,9 @@ export default function YoutubePlayer({
 
   useEffect(() => {
     localStorage.setItem('youtube_volume', volume.toString());
-
+    
     // Broadcast volume change event to persistent player
-    const event = new CustomEvent('volume-change', {
+    const event = new CustomEvent('volume-change', { 
       detail: { volume }
     });
     window.dispatchEvent(event);
@@ -179,25 +169,40 @@ export default function YoutubePlayer({
       clearInterval(progressPollInterval.current);
     }
 
+    console.log('🔄 Starting progress polling');
+    
     progressPollInterval.current = setInterval(() => {
+      // Don't require playerReady - just check if player exists and is playing
       if (playerRef.current && isPlaying && !seeking) {
         try {
-          const player = getInternalPlayer();
+          const player = playerRef.current.getInternalPlayer();
+          console.log('🔄 Polling - Player object:', player ? 'exists' : 'null');
+          
           if (player && typeof player.getCurrentTime === 'function' && typeof player.getDuration === 'function') {
             const current = player.getCurrentTime();
             const dur = player.getDuration();
+            
+            console.log('🔄 Polling - Current:', current, 'Duration:', dur);
+            
             if (dur > 0 && !isNaN(dur) && !isNaN(current)) {
               setDuration(dur);
               setCurrentTime(current);
               setPlayed(current / dur);
+              console.log('✅ Progress updated - Duration:', dur, 'Current:', current, 'Played:', (current/dur * 100).toFixed(1) + '%');
+            } else {
+              console.log('⚠️ Invalid values - dur:', dur, 'current:', current);
             }
+          } else {
+            console.log('⚠️ Player methods not available');
           }
-        } catch {
-          // silently ignore - player may not be ready yet
+        } catch (err) {
+          console.error('❌ Polling error:', err);
         }
+      } else {
+        console.log('⚠️ Polling skipped - playerRef:', !!playerRef.current, 'isPlaying:', isPlaying, 'seeking:', seeking);
       }
     }, 500);
-  }, [isPlaying, seeking, getInternalPlayer]);
+  }, [isPlaying, seeking]);
 
   // Stop manual progress polling
   const stopProgressPolling = useCallback(() => {
@@ -217,78 +222,99 @@ export default function YoutubePlayer({
 
   // Player ready handler
   const handlePlayerReady = useCallback(() => {
+    console.log('✅ YouTube player ready');
     setIsLoading(false);
     setError(null);
     setPlayerReady(true);
     playerErrorRetries.current = 0;
-
+    
     // Try multiple times to get duration with increasing delays
     const attemptDurationLoad = (attempt = 1) => {
-      if (attempt > 10) return;
-
+      if (attempt > 10) {
+        console.error('❌ Failed to load duration after 10 attempts');
+        return;
+      }
+      
       setTimeout(() => {
         if (playerRef.current) {
           try {
-            const player = getInternalPlayer();
-            if (!player) {
-              attemptDurationLoad(attempt + 1);
-              return;
-            }
-
-            // Set volume
-            if (typeof player.setVolume === 'function') {
-              player.setVolume(volume);
-            }
-
-            // Get duration
-            if (typeof player.getDuration === 'function') {
-              const dur = player.getDuration();
-              if (dur && dur > 0 && !isNaN(dur)) {
-                setDuration(dur);
-
-                // Start polling once we have duration
-                startProgressPolling();
-
-                // Sync play state
-                const savedPlayState = localStorage.getItem('youtube_autoplay');
-                const shouldPlay = savedPlayState === null ? defaultAutoplay : savedPlayState === 'true';
-
-                if (shouldPlay && typeof player.playVideo === 'function') {
-                  player.playVideo();
-                  setIsPlaying(true);
-                } else if (!shouldPlay && typeof player.pauseVideo === 'function') {
-                  player.pauseVideo();
-                  setIsPlaying(false);
+            const player = playerRef.current.getInternalPlayer();
+            console.log(`🔍 Attempt ${attempt} - Internal player:`, player ? 'exists' : 'null');
+            
+            if (player) {
+              console.log(`🔍 Attempt ${attempt} - Player methods:`, {
+                getCurrentTime: typeof player.getCurrentTime,
+                getDuration: typeof player.getDuration,
+                setVolume: typeof player.setVolume,
+                playVideo: typeof player.playVideo,
+                pauseVideo: typeof player.pauseVideo
+              });
+              
+              // Set volume
+              if (typeof player.setVolume === 'function') {
+                player.setVolume(volume);
+                console.log(`🔍 Attempt ${attempt} - Volume set to:`, volume);
+              }
+              
+              // Get duration
+              if (typeof player.getDuration === 'function') {
+                const dur = player.getDuration();
+                console.log(`🔍 Attempt ${attempt} - Duration:`, dur);
+                
+                if (dur && dur > 0 && !isNaN(dur)) {
+                  console.log(`✅ Duration loaded on attempt ${attempt}:`, dur);
+                  setDuration(dur);
+                  
+                  // Start polling once we have duration
+                  startProgressPolling();
+                  
+                  // Sync play state
+                  const savedPlayState = localStorage.getItem('youtube_autoplay');
+                  const shouldPlay = savedPlayState === null ? defaultAutoplay : savedPlayState === 'true';
+                  
+                  if (shouldPlay && typeof player.playVideo === 'function') {
+                    player.playVideo();
+                    setIsPlaying(true);
+                  } else if (!shouldPlay && typeof player.pauseVideo === 'function') {
+                    player.pauseVideo();
+                    setIsPlaying(false);
+                  }
+                  
+                  broadcastPlayerState(shouldPlay);
+                  
+                  if (onPlayStateChange) {
+                    onPlayStateChange(shouldPlay);
+                  }
+                  
+                  return; // Success, stop trying
+                } else {
+                  console.log(`⚠️ Attempt ${attempt} - Invalid duration, retrying...`);
+                  attemptDurationLoad(attempt + 1);
                 }
-
-                broadcastPlayerState(shouldPlay);
-
-                if (onPlayStateChange) {
-                  onPlayStateChange(shouldPlay);
-                }
-
-                return; // Success, stop trying
               } else {
+                console.log(`⚠️ Attempt ${attempt} - getDuration not available, retrying...`);
                 attemptDurationLoad(attempt + 1);
               }
             } else {
+              console.log(`⚠️ Attempt ${attempt} - Player not available, retrying...`);
               attemptDurationLoad(attempt + 1);
             }
-          } catch {
+          } catch (error) {
+            console.error(`❌ Attempt ${attempt} - Error:`, error);
             attemptDurationLoad(attempt + 1);
           }
         }
       }, attempt * 500); // Exponential backoff: 500ms, 1s, 1.5s, 2s, etc.
     };
-
+    
     // Start attempting to load duration
     attemptDurationLoad(1);
-  }, [volume, defaultAutoplay, onPlayStateChange, startProgressPolling, getInternalPlayer]);
-
+  }, [volume, defaultAutoplay, onPlayStateChange, startProgressPolling]);
+  
   // Handle YouTube specific errors
   const handleYouTubeError = useCallback((error: any) => {
     console.error('YouTube player error:', error);
-
+    
     const errorMessages: Record<number, string> = {
       2: 'Invalid video ID',
       5: 'HTML5 player error',
@@ -296,12 +322,12 @@ export default function YoutubePlayer({
       101: 'Video playback not allowed',
       150: 'Video playback not allowed'
     };
-
+    
     let errorCode = 0;
     if (typeof error === 'object' && error !== null && 'data' in error) {
       errorCode = (error as any).data;
     }
-
+    
     const errorMessage = errorMessages[errorCode] || 'Unknown YouTube error';
     handleError(new Error(errorMessage));
   }, []);
@@ -343,12 +369,12 @@ export default function YoutubePlayer({
     setPlayed(newPlayed);
     setCurrentTime(duration * newPlayed);
     setSeeking(true);
-
+    
     // Clear any existing timeout
     if (seekTimeoutRef.current) {
       clearTimeout(seekTimeoutRef.current);
     }
-
+    
     // Use a debounce to detect when user stops dragging
     seekTimeoutRef.current = setTimeout(async () => {
       setSeeking(false);
@@ -389,9 +415,19 @@ export default function YoutubePlayer({
   const handleError = useCallback(async (error: any) => {
     console.error('Player error:', error);
 
+    if (error?.target) {
+      console.log('Video element error details:', {
+        code: error.target.error?.code,
+        message: error.target.error?.message,
+        networkState: error.target.networkState,
+        readyState: error.target.readyState
+      });
+    }
+
     // Try to recover by reloading
     if (playerRef.current && playerErrorRetries.current < MAX_RETRIES) {
       playerErrorRetries.current++;
+      console.log(`Retrying playback (attempt ${playerErrorRetries.current} of ${MAX_RETRIES})`);
 
       try {
         setIsLoading(true);
@@ -401,7 +437,7 @@ export default function YoutubePlayer({
 
         await new Promise(resolve => setTimeout(resolve, 2000));
 
-        const player = getInternalPlayer();
+        const player = playerRef.current.getInternalPlayer();
         if (player && typeof player.loadVideoById === 'function' && currentSong?.youtubeId) {
           player.loadVideoById(currentSong.youtubeId);
           setError(null);
@@ -436,22 +472,22 @@ export default function YoutubePlayer({
         toast("Failed to skip to next song. Please try again.", { variant: "destructive" });
       }
     }
-  }, [autoplay, currentSong, onSongFinished, toast, stopProgressPolling, getInternalPlayer]);
+  }, [autoplay, currentSong, onSongFinished, toast, stopProgressPolling]);
 
   // Player control handlers
   const handlePlayPause = useCallback(() => {
     if (!playerReady) return;
-
+    
     const newPlayingState = !isPlaying;
     setIsPlaying(newPlayingState);
     broadcastPlayerState(newPlayingState);
-
+    
     if (newPlayingState) {
       startProgressPolling();
     } else {
       stopProgressPolling();
     }
-
+    
     if (onPlayStateChange) {
       onPlayStateChange(newPlayingState);
     }
@@ -508,12 +544,12 @@ export default function YoutubePlayer({
     const now = Date.now();
     if (now - lastPlayerStateUpdate.current > playerStateUpdateThrottle) {
       localStorage.setItem('youtube_autoplay', playing.toString());
-
-      const event = new CustomEvent('player-state-change', {
+      
+      const event = new CustomEvent('player-state-change', { 
         detail: { playing }
       });
       window.dispatchEvent(event);
-
+      
       if (showAutoplayControl) {
         try {
           sendMessage({
@@ -525,7 +561,7 @@ export default function YoutubePlayer({
           console.error('Error broadcasting player state to guests:', err);
         }
       }
-
+      
       lastPlayerStateUpdate.current = now;
     }
   }, [showAutoplayControl, sendMessage]);
@@ -536,6 +572,7 @@ export default function YoutubePlayer({
       try {
         const newCurrentSong = await fetchCurrentSong();
         if (newCurrentSong && (!currentSong || newCurrentSong.youtubeId !== currentSong.youtubeId)) {
+          console.log('New song detected:', newCurrentSong.title);
           setIsLoading(true);
           setError(null);
           setIsPlaying(autoplay);
@@ -564,9 +601,12 @@ export default function YoutubePlayer({
 
   // Start/stop polling based on playing state
   useEffect(() => {
+    // Start polling as soon as video is playing, don't wait for playerReady
     if (isPlaying) {
+      console.log('▶️ Video is playing, starting progress polling');
       startProgressPolling();
     } else {
+      console.log('⏸️ Video not playing, stopping progress polling');
       stopProgressPolling();
     }
   }, [isPlaying, startProgressPolling, stopProgressPolling]);
@@ -574,33 +614,40 @@ export default function YoutubePlayer({
   // Aggressive duration loading - keep trying until we get it
   useEffect(() => {
     if (!currentSong || duration > 0) return;
-
+    
+    console.log('🔍 Duration still 0, starting aggressive polling...');
+    
     const durationInterval = setInterval(() => {
       if (playerRef.current && duration === 0) {
         try {
-          const player = getInternalPlayer();
+          const player = playerRef.current.getInternalPlayer();
           if (player && typeof player.getDuration === 'function') {
             const dur = player.getDuration();
+            console.log('🔍 Aggressive polling - Duration check:', dur);
             if (dur && dur > 0 && !isNaN(dur)) {
+              console.log('✅ Duration finally loaded via aggressive polling:', dur);
               setDuration(dur);
             }
           }
-        } catch {
-          // silently ignore
+        } catch (err) {
+          console.log('🔍 Aggressive polling error:', err);
         }
       }
     }, 300);
-
+    
     // Stop trying after 30 seconds
     const timeout = setTimeout(() => {
       clearInterval(durationInterval);
+      if (duration === 0) {
+        console.error('❌ Failed to load duration after 30 seconds');
+      }
     }, 30000);
-
+    
     return () => {
       clearInterval(durationInterval);
       clearTimeout(timeout);
     };
-  }, [currentSong, duration, getInternalPlayer]);
+  }, [currentSong, duration]);
 
   if (!currentSong) {
     return (
@@ -651,39 +698,47 @@ export default function YoutubePlayer({
           onProgress={handleProgress as any}
           onDuration={(dur: number) => {
             if (dur && dur > 0 && !isNaN(dur)) {
+              console.log('✅ onDuration fired:', dur);
               setDuration(dur);
             }
           }}
           onReady={handlePlayerReady}
           onStart={() => {
+            console.log('✅ onStart fired');
             setIsLoading(false);
           }}
           onPlay={() => {
+            console.log('✅ onPlay fired');
             setIsPlaying(true);
             setIsLoading(false);
-
+            
+            // If onReady never fired, set player ready now
             if (!playerReady) {
+              console.log('⚠️ onReady never fired, setting playerReady from onPlay');
               setPlayerReady(true);
             }
-
+            
             // Try to get duration when play starts as another fallback
             if (playerRef.current && duration === 0) {
               try {
-                const player = getInternalPlayer();
+                const player = playerRef.current.getInternalPlayer();
                 if (player && typeof player.getDuration === 'function') {
                   const dur = player.getDuration();
+                  console.log('🎬 onPlay - Checking duration:', dur);
                   if (dur && dur > 0 && !isNaN(dur)) {
+                    console.log('✅ Duration set from onPlay:', dur);
                     setDuration(dur);
                   }
                 }
-              } catch {
-                // silently ignore
+              } catch (err) {
+                console.error('Error getting duration in onPlay:', err);
               }
             }
-
+            
             startProgressPolling();
           }}
           onPause={() => {
+            console.log('✅ onPause fired');
             setIsPlaying(false);
             stopProgressPolling();
           }}
@@ -730,7 +785,7 @@ export default function YoutubePlayer({
           className={`px-3 py-2 rounded-md transition-all duration-300 ${
             shuffle ? 'text-blue-400 bg-blue-100' : 'text-gray-300 hover:bg-gray-700'
           }`}
-          style={{
+          style={{ 
             backgroundColor: shuffle ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
             color: shuffle ? '#60a5fa' : '#d1d5db'
           }}
@@ -776,7 +831,7 @@ export default function YoutubePlayer({
           className={`px-3 py-2 rounded-md transition-all duration-300 ${
             repeatMode !== 'none' ? 'text-blue-400 bg-blue-100' : 'text-gray-300 hover:bg-gray-700'
           }`}
-          style={{
+          style={{ 
             backgroundColor: repeatMode !== 'none' ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
             color: repeatMode !== 'none' ? '#60a5fa' : '#d1d5db'
           }}
