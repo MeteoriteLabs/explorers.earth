@@ -2818,8 +2818,8 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
         console.log('✅ Delete song - JWT validated for Strapi user:', decoded.id);
 
-        // Look up Neon DB user by username
-        const username = req.query.username as string;
+        // Look up Neon DB user - check X-Username header first, then query param
+        const username = (req.headers['x-username'] as string) || (req.query.username as string);
         if (!username) {
           return res.status(400).json({ message: "Username required with JWT auth" });
         }
@@ -2872,7 +2872,10 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
         if (decoded.exp && decoded.exp < Date.now() / 1000) {
           return res.status(401).json({ message: "Unauthorized - Token expired" });
         }
-        const username = req.body.username || (req.query.username as string);
+        // Look up Neon DB user - check X-Username header first, then body/query
+        const username = (req.headers['x-username'] as string)
+          || req.body.username
+          || (req.query.username as string);
         if (!username) {
           return res.status(400).json({ message: "Username required with JWT auth" });
         }
@@ -4316,8 +4319,8 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
         console.log('✅ Delete song - JWT validated for Strapi user:', decoded.id);
 
-        // Look up Neon DB user by username
-        const username = req.query.username as string;
+        // Look up Neon DB user - check X-Username header first, then query param
+        const username = (req.headers['x-username'] as string) || (req.query.username as string);
         if (!username) {
           return res.status(400).json({ message: "Username required with JWT auth" });
         }
@@ -4370,7 +4373,10 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
         if (decoded.exp && decoded.exp < Date.now() / 1000) {
           return res.status(401).json({ message: "Unauthorized - Token expired" });
         }
-        const username = req.body.username || (req.query.username as string);
+        // Look up Neon DB user - check X-Username header first, then body/query
+        const username = (req.headers['x-username'] as string)
+          || req.body.username
+          || (req.query.username as string);
         if (!username) {
           return res.status(400).json({ message: "Username required with JWT auth" });
         }

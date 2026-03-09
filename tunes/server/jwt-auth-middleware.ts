@@ -42,17 +42,17 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     try {
       // Decode JWT (validation against secret can be added later)
       decoded = jwt.decode(token) as JWTPayload;
-      
+
       if (!decoded || !decoded.id) {
         throw new Error('Invalid token payload');
       }
-      
+
       // Check token expiration
       if (decoded.exp && decoded.exp < Date.now() / 1000) {
         console.log('❌ JWT token expired');
         return res.status(401).json({ message: 'Unauthorized - Token expired' });
       }
-      
+
       console.log('✅ JWT validated for Strapi user ID:', decoded.id);
     } catch (error) {
       console.error('❌ Failed to decode JWT:', error);
@@ -62,15 +62,16 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     // JWT is valid - now we need to map Strapi user to Neon DB user
     // The Strapi JWT only contains the numeric ID, not username
     // We need to look up the user in Neon DB
-    
-    // Strategy: Look for username in query params or body
-    // Since we sync Strapi users to Neon DB by username, we can use that
-    let username = req.query.username as string | undefined;
-    
+
+    // No username provided - mark as JWT authenticated but without Neon user
+    // Strategy: Look for username in X-Username header first (preferred), then query params or body
+    let username = (req.headers['x-username'] as string | undefined)
+      || (req.query.username as string | undefined);
+
     if (!username && req.body && req.body.username) {
       username = req.body.username;
     }
-    
+
     if (username) {
       // Verify the username exists in Neon DB
       try {
@@ -90,13 +91,13 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
         return res.status(500).json({ message: 'Error validating user' });
       }
     }
-    
+
     // No username provided - mark as JWT authenticated but without Neon user
     // Routes can decide if they need the full user or just authentication
     console.log('⚠️ JWT valid but no username provided for Neon DB lookup');
     (req as any).jwtAuthenticated = true;
     (req as any).strapiUserId = decoded.id;
-    
+
     next();
   } catch (error) {
     console.error('❌ Auth middleware error:', error);

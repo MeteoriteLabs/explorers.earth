@@ -59,7 +59,7 @@ app.use((req, res, next) => {
     // Allow necessary headers
     res.header(
       "Access-Control-Allow-Headers",
-      "Origin, X-Requested-With, Content-Type, Accept, Cookie, Authorization, X-CSRF-Token"
+      "Origin, X-Requested-With, Content-Type, Accept, Cookie, Authorization, X-CSRF-Token, X-Username"
     );
     // Allow necessary methods
     res.header(

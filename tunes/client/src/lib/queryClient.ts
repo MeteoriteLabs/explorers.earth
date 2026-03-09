@@ -1,6 +1,18 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getCsrfToken } from "./csrf";
 
+/** Read the logged-in username from the persisted Zustand auth store in localStorage. */
+function getAuthUsername(): string | null {
+  try {
+    const raw = localStorage.getItem('auth-storage');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.state?.user?.username ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = await res.text();
@@ -35,6 +47,12 @@ export async function apiRequest(
   const token = localStorage.getItem('qrtoken');
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  // Add username so the server can map the Strapi JWT to the Neon DB user
+  const authUsername = getAuthUsername();
+  if (authUsername) {
+    headers["X-Username"] = authUsername;
   }
 
   // Add CSRF token using our standardized function
@@ -75,7 +93,7 @@ export async function apiRequest(
         // Add jitter (plus or minus 30%) to prevent synchronized retries from multiple clients
         const jitterFactor = 0.7 + (Math.random() * 0.6); // 0.7-1.3
         const delay = Math.min(baseDelay * jitterFactor, 10000); // Cap at 10 seconds
-        
+
         console.log(`Waiting ${Math.round(delay)}ms before retry attempt ${retryCount + 1}`);
         await new Promise(resolve => setTimeout(resolve, delay));
         return apiRequest(method, url, data, retryCount + 1, maxRetries);
@@ -99,7 +117,7 @@ export async function apiRequest(
         const baseDelay = 1000 * Math.pow(2, retryCount);
         const jitterFactor = 0.7 + (Math.random() * 0.6); // 0.7-1.3
         const delay = Math.min(baseDelay * jitterFactor, 8000); // Cap at 8 seconds
-        
+
         console.log(`Waiting ${Math.round(delay)}ms before retry attempt ${retryCount + 1} for network error`);
         await new Promise(resolve => setTimeout(resolve, delay));
         return apiRequest(method, url, data, retryCount + 1, maxRetries);
@@ -111,7 +129,7 @@ export async function apiRequest(
         throw friendlyError;
       }
     }
-    
+
     // Re-throw the error after all retries have been exhausted
     throw error;
   }
@@ -130,88 +148,94 @@ const isAuthRelatedPage = () => {
 
 export const getQueryFn: <T>(options: GetQueryFnOptions) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior, shouldLog = () => true }) =>
-  async ({ queryKey }) => {
-    const url = queryKey[0] as string;
-    const isUserEndpoint = url === '/api/user';
-    const authPage = isAuthRelatedPage();
+    async ({ queryKey }) => {
+      const url = queryKey[0] as string;
+      const isUserEndpoint = url === '/api/user';
+      const authPage = isAuthRelatedPage();
 
-    // Skip logging entirely for auth checking on auth pages
-    if (!isUserEndpoint || !authPage) {
-      if (shouldLog(200, url)) {
-        console.log('Making API request:', url);
-      }
-    }
-
-    try {
-      // Initialize headers with Accept
-      const headers: HeadersInit = {
-        "Accept": "application/json",
-      };
-      
-      // Add JWT token from localStorage (Strapi auth)
-      const token = localStorage.getItem('qrtoken');
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-      
-      // Add CSRF token to headers using our helper function
-      const csrfToken = getCsrfToken();
-      
-      if (csrfToken) {
-        headers["X-CSRF-Token"] = csrfToken;
-      }
-      
-      const res = await fetch(url, {
-        credentials: "include",
-        mode: "cors",
-        headers
-      });
-
-      // Handle 503 Service Unavailable with exponential backoff
-      if (res.status === 503) {
-        console.warn(`Server returned 503 for ${url}. This will be retried automatically.`);
-        // Let the retry logic handle it
-        const error = new Error("Service Unavailable");
-        (error as any).status = 503;
-        throw error;
+      // Skip logging entirely for auth checking on auth pages
+      if (!isUserEndpoint || !authPage) {
+        if (shouldLog(200, url)) {
+          console.log('Making API request:', url);
+        }
       }
 
-      if (res.status === 401) {
-        // Silently handle expected auth check failures
-        if (isUserEndpoint && authPage) {
-          return null;
+      try {
+        // Initialize headers with Accept
+        const headers: HeadersInit = {
+          "Accept": "application/json",
+        };
+
+        // Add JWT token from localStorage (Strapi auth)
+        const token = localStorage.getItem('qrtoken');
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
         }
 
-        if (shouldLog(401, url)) {
-          console.log('Unauthorized request:', url);
+        // Add username so the server can map the Strapi JWT to the Neon DB user
+        const authUsername = getAuthUsername();
+        if (authUsername) {
+          headers["X-Username"] = authUsername;
         }
 
-        if (unauthorizedBehavior === "returnNull") {
-          return null;
-        } else {
-          const error = new Error("Unauthorized");
-          (error as any).status = 401;
+        // Add CSRF token to headers using our helper function
+        const csrfToken = getCsrfToken();
+
+        if (csrfToken) {
+          headers["X-CSRF-Token"] = csrfToken;
+        }
+
+        const res = await fetch(url, {
+          credentials: "include",
+          mode: "cors",
+          headers
+        });
+
+        // Handle 503 Service Unavailable with exponential backoff
+        if (res.status === 503) {
+          console.warn(`Server returned 503 for ${url}. This will be retried automatically.`);
+          // Let the retry logic handle it
+          const error = new Error("Service Unavailable");
+          (error as any).status = 503;
           throw error;
         }
-      }
 
-      await throwIfResNotOk(res);
-      return await res.json();
-    } catch (error) {
-      // Only log unexpected errors
-      const isAuthError = error instanceof Error && error.message === "Unauthorized";
-      const isProfileEndpoint = url === '/api/user/profile';
-      
-      // Don't log auth errors for profile or user endpoints during auth transitions
-      if (!(isAuthError && (isUserEndpoint || isProfileEndpoint))) {
-        console.error('API request failed:', error);
-      } else {
-        // For debugging: show a more subtle message for expected auth errors
-        console.debug('Auth-related request failed (expected):', url);
+        if (res.status === 401) {
+          // Silently handle expected auth check failures
+          if (isUserEndpoint && authPage) {
+            return null;
+          }
+
+          if (shouldLog(401, url)) {
+            console.log('Unauthorized request:', url);
+          }
+
+          if (unauthorizedBehavior === "returnNull") {
+            return null;
+          } else {
+            const error = new Error("Unauthorized");
+            (error as any).status = 401;
+            throw error;
+          }
+        }
+
+        await throwIfResNotOk(res);
+        return await res.json();
+      } catch (error) {
+        // Only log unexpected errors
+        const isAuthError = error instanceof Error && error.message === "Unauthorized";
+        const isProfileEndpoint = url === '/api/user/profile';
+
+        // Don't log auth errors for profile or user endpoints during auth transitions
+        if (!(isAuthError && (isUserEndpoint || isProfileEndpoint))) {
+          console.error('API request failed:', error);
+        } else {
+          // For debugging: show a more subtle message for expected auth errors
+          console.debug('Auth-related request failed (expected):', url);
+        }
+        throw error;
       }
-      throw error;
-    }
-  };
+    };
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -228,18 +252,18 @@ export const queryClient = new QueryClient({
       }),
       retry: (failureCount, error: any, context) => {
         // Don't retry expected auth failures
-        if (error instanceof Error && 
-            error.message === "Unauthorized" && 
-            isAuthRelatedPage()) {
+        if (error instanceof Error &&
+          error.message === "Unauthorized" &&
+          isAuthRelatedPage()) {
           return false;
         }
-        
+
         // Retry server errors (like 503 Service Unavailable) more aggressively
         if (error && error.status >= 500 && error.status < 600) {
           console.warn(`Retrying server error (${error.status}) for ${context?.queryKey}. Attempt ${failureCount + 1}`);
           return failureCount < 5; // More retries for server errors
         }
-        
+
         // For network errors and other errors
         return failureCount < 3;
       },
@@ -247,13 +271,13 @@ export const queryClient = new QueryClient({
         // Implement exponential backoff with jitter for retries
         const baseDelay = 500; // Start with 500ms
         const maxDelay = 10000; // Cap at 10 seconds
-        
+
         // Calculate delay with exponential backoff: 500ms, 1000ms, 2000ms, etc.
         const delay = Math.min(
           Math.pow(2, attemptIndex) * baseDelay,
           maxDelay
         );
-        
+
         // Add jitter to prevent request thundering herd
         const jitter = delay * (0.5 + Math.random() * 0.5);
         return jitter;
