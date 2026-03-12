@@ -428,7 +428,7 @@ const AddPlaceOverlay = memo(
                                 </div>
 
                                 {/* ── Nearby Suggestions ── */}
-                                <div className="add-place-suggestions-section">
+                                <div className="add-place-suggestions-section" data-walkthrough="suggestion-button">
                                     <h3 className="add-place-suggestions-title">Nearby Suggestions</h3>
                                     <TopPlacesByCategory
                                         key={`overlay-${selectedCity?.documentId || "loc"}-${topPlacesKey}`}

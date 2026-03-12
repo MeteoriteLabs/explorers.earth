@@ -32,32 +32,30 @@ export const useProfileWalkthrough = (
   const stepsRef = useRef<Step[]>([]); // Track current steps for closures
   const spotlightClickedRef = useRef(false); // Track if user clicked on spotlight
 
-  // Determine which fields are missing
-  const missingFields = useMemo(() => {
-    const hasProfilePicture =
-      profileData?.profilePicture && profileData.profilePicture.trim() !== "";
-    const hasCoverImage =
-      profileData?.coverImage && profileData.coverImage.trim() !== "";
-    const hasAccountName =
-      profileData?.accountName && profileData.accountName.trim() !== "";
-    const hasBio = profileData?.bio && profileData.bio.trim() !== "";
-
-    // Check for at least 2 social media links
+  // Stable primitive values extracted from profileData for memo dependencies
+  const profilePicture = profileData?.profilePicture ?? "";
+  const coverImage = profileData?.coverImage ?? "";
+  const accountName = profileData?.accountName ?? "";
+  const bio = profileData?.bio ?? "";
+  // Stable string representation of social links count for memo dep
+  const socialLinksCount = useMemo(() => {
     const socialMedia = profileData?.socialMedia || {};
-    const socialLinksCount = Object.values(socialMedia).filter(
+    return Object.values(socialMedia).filter(
       (platform: any) =>
         platform?.link && typeof platform.link === "string" && platform.link.trim() !== ""
     ).length;
-    const hasAtLeastTwoSocialLinks = socialLinksCount >= 2;
+  }, [profileData?.socialMedia]);
 
+  // Determine which fields are missing — depends only on stable primitives
+  const missingFields = useMemo(() => {
     return {
-      profilePicture: !hasProfilePicture,
-      coverImage: !hasCoverImage,
-      accountName: !hasAccountName,
-      bio: !hasBio,
-      socialMedia: !hasAtLeastTwoSocialLinks,
+      profilePicture: !profilePicture || profilePicture.trim() === "",
+      coverImage: !coverImage || coverImage.trim() === "",
+      accountName: !accountName || accountName.trim() === "",
+      bio: !bio || bio.trim() === "",
+      socialMedia: socialLinksCount < 2,
     };
-  }, [profileData]);
+  }, [profilePicture, coverImage, accountName, bio, socialLinksCount]);
 
   // Filter steps to only show remaining required fields
   const steps: Step[] = useMemo(() => {
@@ -130,57 +128,80 @@ export const useProfileWalkthrough = (
     return filtered;
   }, [missingFields]);
 
-  // Check if tour should start from navigation state (after steps are calculated)
+  // Ref to persist the "start tour" intent even after location state is cleared.
+  // Using a ref (not state) so it can be read synchronously in effects/timers.
+  const pendingStartTourRef = useRef(false);
+  // Ref to track if a polling loop is currently active, so we don't start two at once.
+  const tourPollingActiveRef = useRef(false);
+
+  // ─── Effect 1: Capture the navigation intent immediately ───────────────────
+  // This runs as soon as location.state?.startTour appears. We save to a ref
+  // and clear the history state so it doesn't retrigger on re-renders.
   useEffect(() => {
-    // Don't start if already skipped or finished
-    if (hasBeenSkippedOrFinishedRef.current) {
-      return;
-    }
-
-    if (location.state?.startTour && steps.length > 0) {
-      // Clear the state immediately to prevent restart on re-render
+    if (location.state?.startTour && !hasBeenSkippedOrFinishedRef.current) {
+      pendingStartTourRef.current = true;
       window.history.replaceState({}, document.title);
+    }
+  }, [location.state?.startTour]);
 
-      // Wait for DOM to be ready and check if target elements exist
-      let attempts = 0;
-      const maxAttempts = 10; // Maximum 2 seconds of waiting
+  // ─── Effect 2: Start the tour once steps + DOM are both ready ──────────────
+  // Watches steps.length. Whenever it becomes > 0 and we have a pending intent,
+  // we start a polling loop to wait for the DOM target to appear then launch.
+  useEffect(() => {
+    // Nothing to do if no pending intent or tour already active
+    if (!pendingStartTourRef.current || steps.length === 0) return;
+    if (hasBeenSkippedOrFinishedRef.current) return;
+    // Don't start a second polling loop if one is already running
+    if (tourPollingActiveRef.current) return;
 
-      const startWalkthrough = () => {
-        // Check again if skipped/finished before starting
-        if (hasBeenSkippedOrFinishedRef.current) {
-          return;
-        }
+    tourPollingActiveRef.current = true;
+    // Consume the intent now — before any async work — so we don't double-start
+    pendingStartTourRef.current = false;
 
-        attempts++;
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 20; // 20 × 200ms = 4 seconds max wait
 
-        // Check if first step target element exists
-        const firstStepTarget = steps[0]?.target;
-        let element = null;
-        if (firstStepTarget && typeof firstStepTarget === 'string') {
-          element = document.querySelector(firstStepTarget);
-        }
+    const tryStart = () => {
+      if (cancelled || hasBeenSkippedOrFinishedRef.current) {
+        tourPollingActiveRef.current = false;
+        return;
+      }
 
-        if (element) {
-          // Start walkthrough smoothly - set stepIndex first, then run
-          setStepIndex(0);
-          // Add 1-2 second delay before showing first step to prevent overwhelming user
-          setTimeout(() => {
+      attempts++;
+      const firstTarget = steps[0]?.target;
+      const element =
+        firstTarget && typeof firstTarget === 'string'
+          ? document.querySelector(firstTarget)
+          : null;
+
+      if (element) {
+        // Target found — reset state cleanly and start the tour
+        tourPollingActiveRef.current = false;
+        setStepIndex(0);
+        setTimeout(() => {
+          if (!cancelled && !hasBeenSkippedOrFinishedRef.current) {
             setRun(true);
-          }, 900);
-        } else if (attempts < maxAttempts) {
-          // If target doesn't exist yet, wait a bit more
-          setTimeout(startWalkthrough, 200);
-        } else {
-          console.warn('Walkthrough target not found after', maxAttempts, 'attempts');
-        }
-      };
+          }
+        }, 700);
+      } else if (attempts < maxAttempts) {
+        setTimeout(tryStart, 200);
+      } else {
+        tourPollingActiveRef.current = false;
+        console.warn('[Walkthrough] Target element not found after max attempts:', firstTarget);
+      }
+    };
 
-      // Initial delay to ensure DOM is ready
-      setTimeout(startWalkthrough, 500);
-    } else if (location.state?.startTour && steps.length === 0) {
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state?.startTour, steps.length]);
+    // Small initial delay to let React finish painting the DOM
+    setTimeout(tryStart, 400);
+
+    // Cleanup: if the component unmounts or steps change again before we start,
+    // cancel the in-flight polling loop
+    return () => {
+      cancelled = true;
+      tourPollingActiveRef.current = false;
+    };
+  }, [steps.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset stepIndex when steps change (e.g., after completing a field)
   // CRITICAL: Don't reset stepIndex automatically - let it progress naturally

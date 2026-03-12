@@ -990,6 +990,12 @@ export function debugSSOStatus(): void {
 /**
  * Handle post-login actions for LocalTunes
  * Syncs the user with LocalTunes Neon DB and updates public profile link
+ * 
+ * This runs AFTER onboarding is complete (AuthSyncManager skips /onboarding).
+ * The sync endpoint is idempotent: it creates the Neon user if missing, or
+ * returns the existing one. The guestUrl safety-net below handles accounts
+ * that may have missed writing guestUrl during onboarding (e.g. network error).
+ * 
  * @param user - Strapi user object
  * @param apolloClient - Apollo Client instance for GraphQL operations
  */
@@ -1008,18 +1014,22 @@ export async function handlePostLoginSync(user: any, apolloClient?: ApolloClient
     if (result.success) {
       console.log('✅ Post-login sync successful');
 
-      // Auto-update public profile link if guestUrl is present and apolloClient is available
+      // Safety-net: if guestUrl came back AND apolloClient is available,
+      // check if localtunes_public is already set in Strapi. If not, write it now.
+      // This handles accounts that missed guestUrl during onboarding (e.g. older
+      // accounts, or a network failure during the onboarding sync).
       if (result.user?.guestUrl && apolloClient) {
-        console.log('🔗 GuestUrl available from sync, checking if public link needs update...');
+        const userDocumentId = user.documentId || user.id;
+        console.log('🔗 [Safety-net] Checking if guestUrl needs to be saved to account...');
         try {
-          // We can use the existing function in this file
           await autoUpdateLocalTunesPublicLink(
             apolloClient,
-            user.documentId || user.id,
+            userDocumentId,
             result.user.guestUrl
           );
+          // autoUpdateLocalTunesPublicLink already skips if field is set — no duplicate writes
         } catch (linkError) {
-          console.error('Failed to auto-update public link during post-login sync:', linkError);
+          console.error('Failed to apply guestUrl safety-net during post-login sync:', linkError);
         }
       }
     } else {
