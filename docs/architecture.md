@@ -1,0 +1,129 @@
+# Architecture
+
+## Repository Layout
+
+```
+explorers.earth-main/
+├── package.json                 # Monorepo root — concurrently runs both apps
+├── CLAUDE.md                    # AI agent context (root)
+├── docs/                        # This documentation
+├── explorers-earth/             # Frontend SPA — location sharing platform
+│   ├── CLAUDE.md                # AI context for this app
+│   ├── src/
+│   │   ├── features/            # Feature-based modules
+│   │   ├── components/          # Shared UI components
+│   │   ├── store/               # Zustand stores
+│   │   ├── services/            # API service layer
+│   │   ├── hooks/               # Custom React hooks
+│   │   ├── routes/              # React Router config
+│   │   └── i18n/                # Internationalization
+│   ├── netlify.toml             # Deployment config
+│   └── package.json
+├── tunes/                       # Full-stack — music playlist platform
+│   ├── CLAUDE.md                # AI context for this app
+│   ├── client/src/              # React frontend
+│   │   ├── pages/               # Route pages
+│   │   ├── components/ui/       # shadcn/ui components
+│   │   ├── hooks/               # Custom hooks (WebSocket, etc.)
+│   │   └── stores/              # Zustand + TanStack Query
+│   ├── server/                  # Express.js backend
+│   │   ├── routes/              # API route handlers
+│   │   ├── services/            # Business logic services
+│   │   ├── auth.ts              # Passport.js authentication
+│   │   ├── jwt-auth-middleware.ts # JWT validation for cross-app SSO
+│   │   ├── legacy-routes.ts     # Legacy routes with multi-auth fallback
+│   │   ├── storage.ts           # Database access layer
+│   │   └── swagger.ts           # OpenAPI spec
+│   ├── shared/
+│   │   └── schema.ts            # Drizzle ORM schema (DB source of truth)
+│   └── package.json
+├── explorers environment/       # Legacy environment config (not actively used)
+└── tunes environment/           # Legacy environment config (not actively used)
+```
+
+## App Relationships
+
+The two apps are **independent** — they have separate codebases, separate tech stacks, and deploy independently. They share:
+
+- A monorepo root with `concurrently` to run both dev servers
+- Similar frontend technology choices (React 18, TypeScript, Zustand, Tailwind CSS, Vite)
+- A **deep cross-app SSO integration**: explorers-earth embeds a full music dashboard from tunes, using JWT-based SSO to authenticate users across apps. The flow uses Strapi JWT tokens + `X-Username` header mapping to link Strapi users to tunes Neon DB users. Key files: `explorers-earth/src/lib/apiClient.ts`, `explorers-earth/src/services/ssoService.ts`, `tunes/server/jwt-auth-middleware.ts`
+
+## explorers-earth Architecture
+
+```
+Browser
+  └── React SPA (Vite)
+        ├── Apollo Client ──── GraphQL ────→ Strapi CMS (external)
+        ├── REST (Axios) ──────────────────→ Strapi CMS (uploads)
+        ├── Google Maps API ───────────────→ Google Cloud
+        └── localTunesService ─────────────→ tunes API
+```
+
+**Frontend-only SPA** with no backend code. All data lives in an external Strapi CMS accessed via GraphQL. Authentication uses JWT tokens from Strapi, with Google OAuth as an alternative.
+
+**Feature module pattern**: Each major feature (Authentication, Profile, Favorites, Guides, etc.) is a self-contained module under `src/features/` with its own components, hooks, and logic.
+
+**State management**: Three layers — Zustand for client state (auth, UI), Apollo Client for server state (GraphQL cache), and React Query for additional async operations.
+
+## tunes Architecture
+
+```
+Browser
+  └── React SPA (Vite)
+        ├── REST API (fetch) ──┐
+        └── Socket.IO ────────┤
+                               ▼
+                         Express.js Server
+                           ├── Passport.js (auth)
+                           ├── Socket.IO (real-time)
+                           ├── Route handlers
+                           ├── Service layer
+                           └── Drizzle ORM
+                                 │
+                                 ▼
+                            PostgreSQL
+
+External APIs:
+  ├── YouTube Data API v3 (song search)
+  ├── Spotify API (playlist import)
+  ├── Razorpay (payments)
+  ├── AWS SES (email)
+  └── Google Gemini (AI)
+```
+
+**Full-stack monolith**: Express.js serves both the API and the Vite-built frontend from a single port (5000). In development, Vite middleware handles HMR.
+
+**Backend layering**:
+- **Routes** (`server/routes/`) — HTTP endpoint definitions, input validation
+- **Controllers** (`server/controllers/`) — Optional business logic orchestration
+- **Services** (`server/services/`) — External API integrations (email, Gemini, Spotify)
+- **Storage** (`server/storage.ts`) — All database queries via Drizzle ORM
+
+**Real-time**: Socket.IO manages WebSocket connections. Each authenticated user joins a "room" keyed by their user ID. Playlist changes, song status updates, and guest activity are broadcast to all connected clients in the room.
+
+**Session-based auth**: Unlike explorers-earth's JWT approach, tunes uses Passport.js with express-session backed by PostgreSQL. Sessions persist for 7 days via cookies.
+
+## Authentication Comparison
+
+| Aspect | explorers-earth | tunes |
+|--------|----------------|-------|
+| Strategy | JWT (stateless) | Session (stateful) |
+| Storage | localStorage | PostgreSQL + cookie |
+| Provider | Strapi CMS | Passport.js local |
+| Social login | Google OAuth | N/A (email verification + OTP) |
+| Session duration | Token expiry | 7-day cookie |
+| Protected routes | `ProtectedRoute` component | `requireAuth` middleware |
+
+## Shared Patterns
+
+Both apps follow these conventions:
+
+- **React 18** with functional components and hooks
+- **TypeScript** with strict mode
+- **Zustand** for client-side global state
+- **Tailwind CSS** for utility-first styling
+- **Vite** as the build tool with HMR in development
+- **Radix UI** primitives for accessible UI components
+- **Framer Motion** for animations
+- **Zod** for runtime schema validation
