@@ -87,7 +87,7 @@ External:
 | 1 | `tunes/package.json` | Remove `@neondatabase/serverless` + `ws`. Add `pg` + `@types/pg`. Add `db:generate` and `db:migrate` scripts |
 | 2 | `tunes/server/db.ts` | Full rewrite: Neon driver → standard `pg` + `drizzle-orm/node-postgres` |
 | 3 | `tunes/docker-compose.yml` | Production hardening: memory limits (via `mem_limit`/`cpus`), healthcheck, Postgres tuning, log limits, localhost port, backup volume. Rename DB from `cosmic` to `tunes`. Rename volume `postgres-data` → `postgres-data-v2` |
-| 4 | `tunes/Dockerfile` | Add `COPY migrations ./migrations` to runner stage so migration SQL files are available in the production image |
+| 4 | `tunes/Dockerfile` | Add `COPY migrations ./migrations` and `COPY shared ./shared` to runner stage so migration SQL files and schema are available in the production image |
 | 5 | `tunes/.github/workflows/main.yml` | App-only rebuild (never stop DB). Add migration step + backup cron. Correct execution order: build → start → migrate |
 | 6 | `tunes/.env.example` | Replace Neon connection string with local DB variables |
 | 7 | `tunes/scripts/create-system-settings-table.ts` | Delete (obsolete — uses Neon imports, replaced by drizzle-kit) |
@@ -96,7 +96,7 @@ External:
 | 10 | `CLAUDE.md` (root) | Update `db:push` reference to `db:generate` + `db:migrate` |
 | 11 | `package.json` (root) | Update/add `db:generate` and `db:migrate` scripts |
 
-**Note**: `tunes/Dockerfile` was not in the original plan. Added after review found that the runner stage does not copy the `migrations/` folder.
+**Note**: `tunes/Dockerfile` was not in the original plan. Added after review found that the runner stage does not copy the `migrations/` or `shared/` folders.
 
 ---
 
@@ -213,9 +213,9 @@ The following issues were found during code review and corrected in this spec:
 **Problem**: `deploy.resources.limits` only enforces in Docker Swarm mode. Plain `docker compose up` ignores them silently.
 **Fix**: Use `mem_limit` and `cpus` properties instead — these work with standard docker compose.
 
-### Issue 2: Dockerfile doesn't copy `migrations/` folder
-**Problem**: The runner stage in `tunes/Dockerfile` copies `drizzle.config.ts` but NOT `migrations/`. Migration SQL files won't be available in the production container.
-**Fix**: Add `COPY --from=builder /app/migrations ./migrations` to the Dockerfile runner stage. Added as a new file to modify (was not in original plan).
+### Issue 2: Dockerfile doesn't copy `migrations/` or `shared/` folders
+**Problem**: The runner stage in `tunes/Dockerfile` copies `drizzle.config.ts` but NOT `migrations/` or `shared/`. Migration SQL files and the schema file (referenced by `drizzle.config.ts` as `./shared/schema.ts`) won't be available in the production container.
+**Fix**: Add `COPY --from=builder /app/migrations ./migrations` and `COPY --from=builder /app/shared ./shared` to the Dockerfile runner stage. Added as a new file to modify (was not in original plan).
 
 ### Issue 3: Migration execution order was wrong
 **Problem**: Original plan ran `drizzle-kit migrate` before starting the new app container. But `drizzle-kit migrate` needs `DATABASE_URL` env var, which is only injected when the container starts via `docker compose up`.
@@ -228,6 +228,14 @@ The following issues were found during code review and corrected in this spec:
 ### Issue 5: Docker Compose variable substitution needs .env to exist
 **Problem**: `DATABASE_URL=postgresql://${DB_USER:-tunes}:${DB_PASS}@db:5432/${DB_NAME:-tunes}` — if `.env` doesn't define `DB_PASS`, it expands to empty string.
 **Fix**: CI/CD workflow always creates `.env` from GitHub secrets before running docker compose. The `:-tunes` default values handle `DB_USER` and `DB_NAME`. `DB_PASS` has no default intentionally (forces use of GitHub secret, never a default password).
+
+### Issue 6: Dockerfile doesn't copy `shared/` folder
+**Problem**: The runner stage copies `drizzle.config.ts` but NOT `shared/`. `drizzle.config.ts` references `./shared/schema.ts` as the schema source. Without it, `drizzle-kit migrate` fails at runtime because it can't resolve the schema.
+**Fix**: Add `COPY --from=builder /app/shared ./shared` to the Dockerfile runner stage alongside the `migrations/` copy. Added to T5.
+
+### Issue 7: `drizzle-kit` in devDependencies but needed at runtime
+**Problem**: `drizzle-kit` is in `devDependencies` but `drizzle-kit migrate` runs inside the production container during CI/CD deploys. This works today because the Dockerfile runs `npm ci` without `--omit=dev`, so ALL dependencies (including devDependencies) are installed in the image.
+**Fix**: No immediate change needed — it works as-is. Added as gotcha #11 in GOTCHAS.md. If someone optimizes the Docker image to exclude devDependencies (`npm ci --omit=dev`), migrations will break. Could move `drizzle-kit` to `dependencies` for safety, but that's a minor concern.
 
 ---
 

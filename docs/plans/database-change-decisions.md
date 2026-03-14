@@ -155,18 +155,19 @@
 
 ---
 
-## Decision: Add `migrations/` COPY to Dockerfile
+## Decision: Add `migrations/` and `shared/` COPY to Dockerfile
 
 **Date**: 2026-03-15
-**Context**: Code review found that `tunes/Dockerfile` runner stage copies `drizzle.config.ts` but NOT the `migrations/` folder. Without migration files, `drizzle-kit migrate` would find nothing to apply in production.
+**Context**: Code review found that `tunes/Dockerfile` runner stage copies `drizzle.config.ts` but NOT the `migrations/` folder or `shared/` folder. Without migration files, `drizzle-kit migrate` would find nothing to apply. Without `shared/schema.ts`, `drizzle.config.ts` would fail because it references `./shared/schema.ts` as the schema source.
 
-**Choice made**: Add `COPY --from=builder /app/migrations ./migrations` to the runner stage. This was NOT in the original plan — discovered during review.
+**Choice made**: Add both `COPY --from=builder /app/migrations ./migrations` and `COPY --from=builder /app/shared ./shared` to the runner stage. This was NOT in the original plan — discovered during review.
 
 **Rejected alternatives**:
 - **Run migrations in builder stage**: Would require `DATABASE_URL` at build time (not available — it's a runtime env var).
 - **Mount migrations as a Docker volume**: Adds complexity and coupling between host filesystem and container.
+- **Inline schema path in drizzle.config.ts**: Would require changing how drizzle resolves schema — unnecessary complexity.
 
-**Agent assumed**: Would have missed this entirely without the review. The Dockerfile looked complete because `drizzle.config.ts` was copied — but the SQL migration files were not.
+**Agent assumed**: Would have missed this entirely without the review. The Dockerfile looked complete because `drizzle.config.ts` was copied — but neither the SQL migration files nor the schema file it depends on were copied.
 
 ---
 
@@ -183,3 +184,18 @@
 - **Separate migration container**: Add a one-shot container to docker-compose that runs migrations. Clean but adds infrastructure complexity.
 
 **Agent assumed**: Would have put migrations before app start (the "logical" order). Review caught the env var dependency.
+
+---
+
+## Decision: Manual verification only (no automated tests)
+
+**Date**: 2026-03-15
+**Context**: The project has zero automated tests — no test runner, no test files, no test framework. Verification of the database switch needs to be thorough but can only be manual.
+
+**Choice made**: Comprehensive 5-phase manual verification checklist in T13: static checks → local Docker build → functional testing → infrastructure verification → cleanup verification. Covers user registration, playlist CRUD, song queue, WebSocket real-time updates, session persistence, backup validation, and CI/CD deploy testing.
+
+**Rejected alternatives**:
+- **Add automated tests first**: Would be ideal but significantly increases scope. The database switch is already a large change — adding a test framework simultaneously increases risk.
+- **Skip functional testing**: Unacceptable — driver swap could have subtle compatibility issues (e.g., type coercion differences between Neon Pool and pg.Pool).
+
+**Agent assumed**: Would have recommended adding at least integration tests before making the switch. User confirmed manual verification is sufficient for now — adding tests is a separate future task.
