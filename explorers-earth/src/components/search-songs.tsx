@@ -28,6 +28,8 @@ interface SearchSongsProps {
   onSongsAddedCallback?: () => void;
   disabled?: boolean;
   onAddSongs?: (songs: Song[]) => void;
+  /** When set, playlist imports go to this saved playlist instead of the main queue */
+  playlistId?: number;
 }
 
 const MODES: { key: SearchMode; label: string; icon: React.ReactNode; placeholder: string; hint: string }[] = [
@@ -63,6 +65,7 @@ export default function SearchSongs({
   onSongsAddedCallback,
   disabled = false,
   onAddSongs,
+  playlistId,
 }: SearchSongsProps) {
   const [mode, setMode] = useState<SearchMode>('search');
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -257,9 +260,18 @@ export default function SearchSongs({
       }
       setIsActioning(true);
       try {
-        const data = isYT
-          ? await youtubeAPI.importYouTubePlaylist(val, guestUrl)
-          : await youtubeAPI.importSpotifyPlaylist(val, guestUrl);
+        let data: any;
+        if (playlistId) {
+          // Import directly into the saved playlist — do NOT touch the main queue
+          data = isYT
+            ? await youtubeAPI.importYouTubePlaylistToPlaylist(val, playlistId)
+            : await youtubeAPI.importSpotifyPlaylistToPlaylist(val, playlistId);
+        } else {
+          // Import into the main queue (guest page or master add-songs section)
+          data = isYT
+            ? await youtubeAPI.importYouTubePlaylist(val, guestUrl)
+            : await youtubeAPI.importSpotifyPlaylist(val, guestUrl);
+        }
         const addedCount = isYT
           ? (Number((data as any)?.videosAdded) || 0)
           : (Number((data as any)?.songsAdded) || 0);
@@ -283,7 +295,7 @@ export default function SearchSongs({
         setIsActioning(false);
       }
     }
-  }, [mode, inputValue, guestUrl, onAddSongs, onSongsAdded, onSongsAddedCallback, searchMutation, toast]);
+  }, [mode, inputValue, guestUrl, playlistId, onAddSongs, onSongsAdded, onSongsAddedCallback, searchMutation, toast]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') handleAction();

@@ -348,14 +348,14 @@ const Profile = memo(() => {
   // ✅ VISIBILITY FIX: Get account data from GraphQL response, not separate axios call
   const account = data?.usersPermissionsUser?.accounts?.[0];
 
-  // Prepare profile data for walkthrough
-  const profileData = {
+  // Prepare profile data for walkthrough — memoized to prevent new object on every render
+  const profileData = useMemo(() => ({
     profilePicture: uploadedImage || account?.profile_picture?.url || "",
     coverImage: uploadedBackground || account?.bg_picture?.url || "",
     accountName: account?.Account_Name || "",
     bio: account?.Bio || "",
     socialMedia: account?.social_media || {},
-  };
+  }), [uploadedImage, uploadedBackground, account?.profile_picture?.url, account?.bg_picture?.url, account?.Account_Name, account?.Bio, account?.social_media]);
 
   // Initialize walkthrough hook
   const {

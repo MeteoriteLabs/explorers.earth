@@ -465,6 +465,13 @@ export const useRecommendationsWalkthrough = (
       const nextSelector = steps[nextIndex]?.target as string;
       console.log(`🔍 Checking for next element: ${nextSelector}`);
 
+      // Open or close modal based on step index for preview mode
+      if (nextIndex === 1) {
+        window.dispatchEvent(new CustomEvent('openWalkthroughModal'));
+      } else if (nextIndex === 2) {
+        window.dispatchEvent(new CustomEvent('closeWalkthroughModal'));
+      }
+
       // Update stepIndex immediately to advance
       setStepIndex(nextIndex);
 
@@ -513,6 +520,13 @@ export const useRecommendationsWalkthrough = (
       // Update ref and save to sessionStorage immediately
       stepIndexRef.current = prevIndex;
       sessionStorage.setItem(WALKTHROUGH_CURRENT_STEP_KEY, prevIndex.toString());
+
+      // Open or close modal based on step index for preview mode
+      if (prevIndex === 1) {
+        window.dispatchEvent(new CustomEvent('openWalkthroughModal'));
+      } else if (prevIndex === 0) {
+        window.dispatchEvent(new CustomEvent('closeWalkthroughModal'));
+      }
 
       const prevSelector = steps[prevIndex]?.target as string;
       setRun(false);

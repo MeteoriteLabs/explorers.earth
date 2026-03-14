@@ -27,7 +27,7 @@ const LOCAL_TUNES_API_URL = import.meta.env.VITE_LOCAL_TUNES_API_URL || 'https:/
 // Create axios instance for Local Tunes API
 const localTunesClient = axios.create({
   baseURL: LOCAL_TUNES_API_URL,
-  timeout: 10000,
+  timeout: 60000, // 60s default; playlist imports use a longer timeout (see importYouTubePlaylist / importSpotifyPlaylist)
   headers: {
     'Content-Type': 'application/json',
   },
@@ -506,15 +506,69 @@ export const youtubeAPI = {
     const params = guestUrl ? `?guestUrl=${encodeURIComponent(guestUrl)}` : '';
     return localTunesRequest('POST', `/api/youtube/video-from-url${params}`, { url });
   },
-  // Import YouTube playlist
-  importYouTubePlaylist: (url: string, guestUrl?: string) => {
+  // Import YouTube playlist — uses a 5-minute timeout because large playlists can take a long time
+  importYouTubePlaylist: async (url: string, guestUrl?: string) => {
     const params = guestUrl ? `?guestUrl=${encodeURIComponent(guestUrl)}` : '';
-    return localTunesRequest('POST', `/api/playlist/import-youtube${params}`, { url });
+    try {
+      const response = await localTunesClient.request({
+        method: 'POST',
+        url: `/api/playlist/import-youtube${params}`,
+        data: { url },
+        timeout: 300000, // 5 minutes
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Local Tunes API POST /api/playlist/import-youtube failed:', error);
+      throw error;
+    }
   },
-  // Import Spotify playlist
-  importSpotifyPlaylist: (url: string, guestUrl?: string) => {
+  // Import Spotify playlist — uses a 5-minute timeout because large playlists can take a long time
+  importSpotifyPlaylist: async (url: string, guestUrl?: string) => {
     const params = guestUrl ? `?guestUrl=${encodeURIComponent(guestUrl)}` : '';
-    return localTunesRequest('POST', `/api/playlist/import-spotify${params}`, { url });
+    try {
+      const response = await localTunesClient.request({
+        method: 'POST',
+        url: `/api/playlist/import-spotify${params}`,
+        data: { url },
+        timeout: 300000, // 5 minutes
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Local Tunes API POST /api/playlist/import-spotify failed:', error);
+      throw error;
+    }
+  },
+
+  // Import YouTube playlist INTO a specific saved playlist (not the main queue)
+  importYouTubePlaylistToPlaylist: async (url: string, playlistId: number) => {
+    try {
+      const response = await localTunesClient.request({
+        method: 'POST',
+        url: `/api/playlists/${playlistId}/import-youtube`,
+        data: { url },
+        timeout: 300000, // 5 minutes
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Local Tunes API POST /api/playlists/${playlistId}/import-youtube failed:`, error);
+      throw error;
+    }
+  },
+
+  // Import Spotify playlist INTO a specific saved playlist (not the main queue)
+  importSpotifyPlaylistToPlaylist: async (url: string, playlistId: number) => {
+    try {
+      const response = await localTunesClient.request({
+        method: 'POST',
+        url: `/api/playlists/${playlistId}/import-spotify`,
+        data: { url },
+        timeout: 300000, // 5 minutes
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Local Tunes API POST /api/playlists/${playlistId}/import-spotify failed:`, error);
+      throw error;
+    }
   },
 };
 

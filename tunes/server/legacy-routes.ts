@@ -449,7 +449,8 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
           return res.status(401).json({ message: "Unauthorized - Token expired" });
         }
         // Need username to map JWT → Neon DB user
-        const username = (req.query.username as string) || req.body.username;
+        // Check query param, body, and X-Username header (sent by the frontend axios interceptor)
+        const username = (req.query.username as string) || req.body.username || (req.headers['x-username'] as string);
         if (!username) {
           return res.status(401).json({ message: "Unauthorized - Username required" });
         }
@@ -564,7 +565,8 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
         if (decoded.exp && decoded.exp < Date.now() / 1000) {
           return res.status(401).json({ message: "Unauthorized - Token expired" });
         }
-        const username = (req.query.username as string) || req.body.username;
+        // Check query param, body, and X-Username header (sent by the frontend axios interceptor)
+        const username = (req.query.username as string) || req.body.username || (req.headers['x-username'] as string);
         if (!username) {
           return res.status(401).json({ message: "Unauthorized - Username required" });
         }
@@ -673,7 +675,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
         const decoded = jwt.decode(token) as any;
         if (!decoded || !decoded.id) return res.status(401).json({ message: "Unauthorized - Invalid token" });
         if (decoded.exp && decoded.exp < Date.now() / 1000) return res.status(401).json({ message: "Unauthorized - Token expired" });
-        const username = (req.query.username as string) || req.body.username;
+        const username = (req.query.username as string) || req.body.username || (req.headers['x-username'] as string);
         if (!username) return res.status(401).json({ message: "Username required with JWT auth" });
         const user = await storage.getUserByUsername(username);
         if (!user) return res.status(404).json({ message: "User not found" });
@@ -785,7 +787,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
         const decoded = jwt.decode(token) as any;
         if (!decoded || !decoded.id) return res.status(401).json({ message: "Unauthorized - Invalid token" });
         if (decoded.exp && decoded.exp < Date.now() / 1000) return res.status(401).json({ message: "Unauthorized - Token expired" });
-        const username = (req.query.username as string) || req.body.username;
+        const username = (req.query.username as string) || req.body.username || (req.headers['x-username'] as string);
         if (!username) return res.status(401).json({ message: "Username required with JWT auth" });
         const user = await storage.getUserByUsername(username);
         if (!user) return res.status(404).json({ message: "User not found" });

@@ -321,6 +321,20 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
     }
   }, [stepIndex, run, advanceToNextStepRef]);
 
+  // Auto-open AddPlaceOverlay for Walkthrough Step 2 (Suggestions)
+  useEffect(() => {
+    const handleOpen = () => setShowAddPlaceOverlay(true);
+    const handleClose = () => setShowAddPlaceOverlay(false);
+
+    window.addEventListener('openWalkthroughModal', handleOpen);
+    window.addEventListener('closeWalkthroughModal', handleClose);
+
+    return () => {
+      window.removeEventListener('openWalkthroughModal', handleOpen);
+      window.removeEventListener('closeWalkthroughModal', handleClose);
+    };
+  }, []);
+
   // ⭐ Expose walkthrough control globally for other components
 
 

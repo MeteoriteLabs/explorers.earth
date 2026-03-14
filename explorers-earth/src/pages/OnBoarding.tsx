@@ -1145,6 +1145,10 @@ const OnBoarding = () => {
         }
       }
 
+      // Resolved username — may be updated below if user changed it during onboarding.
+      // Declared here so it's accessible in the LocalTunes sync step after account creation.
+      let usernameToUse = formData.username || storedUsername || "user";
+
       // Create account only if it doesn't exist
       if (!accountDocId) {
 
@@ -1168,7 +1172,6 @@ const OnBoarding = () => {
         }
 
         // Check if username was changed during onboarding and update user record if needed
-        let usernameToUse = formData.username || storedUsername || "user";
 
         if (formData.username && formData.username !== storedUsername) {
           try {
@@ -1287,53 +1290,56 @@ const OnBoarding = () => {
         console.log('Using existing account, skipping account creation');
       }
 
-      // Step 1: Register on Local Tunes (if user opted in)
-      console.log('Step 1: Registering on Local Tunes...');
+      // Step 1: Sync with LocalTunes (create Neon user or fetch existing)
+      // IMPORTANT: This runs AFTER the Strapi account is created, so guestUrl
+      // can be written back to the account immediately. AuthSyncManager is
+      // blocked on /onboarding so this is the FIRST time the sync fires.
+      console.log('Step 1: Syncing with LocalTunes...');
 
       if (formData.localTunesConsent && isLocalTunesEnabled()) {
-        console.log('Syncing user with LocalTunes...');
-
         try {
-          // Sync user with LocalTunes (creates user in Neon DB if not exists)
+          // Use usernameToUse (the final resolved username after any edits)
+          // This must match what was saved to the Strapi account record.
           const localTunesResult = await syncLocalTunesUser({
             id: authUser.documentId,
-            username: authUser.username,
+            username: usernameToUse,
             email: authUser.email
           });
 
-          // Log the sync result
           console.log('LocalTunes sync result:', localTunesResult);
 
           if (localTunesResult.success) {
-            console.log('LocalTunes account synced successfully');
+            console.log('✅ LocalTunes account synced successfully');
             toast.success('LocalTunes account connected successfully!');
-            // Store result for reference if needed
             setLocalTunesRegistrationResult(localTunesResult.user);
 
-            // Auto-update public profile link if guestUrl is present
-            if (localTunesResult.user?.guestUrl) {
-              console.log('Updating public profile link with guestUrl:', localTunesResult.user.guestUrl);
+            // Write guestUrl back to Strapi account immediately.
+            // accountDocId is guaranteed to exist at this point (just created above).
+            // We use authUser.documentId (Strapi user, not account) for the lookup.
+            const guestUrl = localTunesResult.user?.guestUrl;
+            if (guestUrl && accountDocId) {
+              console.log('🔗 Writing guestUrl to Strapi account:', guestUrl);
               try {
                 await autoUpdateLocalTunesPublicLink(
                   apolloClient,
                   authUser.documentId,
-                  localTunesResult.user.guestUrl
+                  guestUrl
                 );
-                console.log('Public profile link updated');
+                console.log('✅ guestUrl saved to account:', guestUrl);
               } catch (linkError) {
-                console.error('Failed to auto-update public link:', linkError);
-                // Don't fail the flow for this
+                console.error('❌ Failed to save guestUrl to account:', linkError);
+                // Non-fatal — user can reconnect from Settings
               }
+            } else if (!guestUrl) {
+              console.warn('⚠️ LocalTunes sync succeeded but no guestUrl in response');
             }
           } else {
-            console.warn('LocalTunes sync warning:', localTunesResult.message);
-            // Don't error out, just warn
+            console.warn('⚠️ LocalTunes sync warning:', localTunesResult.message);
+            // Non-fatal — flow continues without LocalTunes connection
           }
         } catch (localTunesError: any) {
-          console.error('LocalTunes sync failed:', localTunesError);
-          // Show the actual error message to the user
-          const errorMessage = localTunesError?.message || 'LocalTunes connection failed';
-          toast.warning(`LocalTunes connection issue: ${errorMessage}`);
+          console.error('❌ LocalTunes sync failed:', localTunesError);
+          toast.warning(`LocalTunes connection issue: ${localTunesError?.message || 'unknown error'}`);
           setLocalTunesRegistrationResult(null);
         }
       }
