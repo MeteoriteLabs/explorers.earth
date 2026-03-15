@@ -76,10 +76,6 @@ const MusicPage = () => {
   // Phase 1: sync with tunes Neon DB and fetch dashboard data when connected
   const tunesDashboard = useTunesDashboard();
 
-  const handleGoToLocalTunes = () => {
-    window.open(`${import.meta.env.VITE_LOCAL_TUNES_API_URL}/auth?tab=login`, '_blank');
-  };
-
   const handleConnectLocalTunes = async () => {
     if (!authUser) {
       toast.error('User information not available');

@@ -451,7 +451,6 @@ export default function YoutubePlayer({
         */}
         <ReactPlayer
           ref={(node: any) => { playerRef.current = node; }}
-          // @ts-expect-error — v3 uses src, v2 used url
           src={`https://www.youtube.com/watch?v=${currentSong.youtubeId}`}
           width="100%"
           height="100%"

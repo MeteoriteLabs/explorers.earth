@@ -35,7 +35,6 @@ const ACCENT = '#22c55e'; // Tailwind green-500 — matches dashboard-accent
 
 export default function PlaylistTable({
   songs,
-  showControls = true,
   showAddToQueue = false,
   showReorderControls = true,
   isHistory = false,
@@ -43,7 +42,6 @@ export default function PlaylistTable({
   onPlaySong,
   onAddToQueue,
   onDeleteSong,
-  onDeleteMultiple,
   onReorderSongs,
 }: PlaylistTableProps) {
   const [currentPage, setCurrentPage] = useState(1);

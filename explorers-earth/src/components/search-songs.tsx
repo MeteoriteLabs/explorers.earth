@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { youtubeAPI } from '../lib/apiClient';
 import { useToast } from '../hooks/useToast';
-import { isYouTubeUrl, isYouTubeMusicPlaylist, isSpotifyPlaylist } from '../utils/youtubeUtils';
+import { isYouTubeUrl } from '../utils/youtubeUtils';
 
 type SearchMode = 'search' | 'url' | 'import';
 
