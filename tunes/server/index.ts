@@ -140,8 +140,9 @@ app.use((req, res, next) => {
     }
 
     // Get port and host from environment variables with defaults
+    // In Render and Docker, apps MUST listen on 0.0.0.0, not localhost
     const port = parseInt(process.env.PORT || '5000', 10);
-    const host = process.env.HOST;
+    const host = process.env.HOST || '0.0.0.0';
 
     server.listen(port, host, () => {
       console.log(`\n=== Server Started ===`);
