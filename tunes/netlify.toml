@@ -6,7 +6,7 @@
 # Proxy all API requests to the Render backend explicitly
 [[redirects]]
   from = "/api/*"
-  to = "https://tunes-api.onrender.com/api/:splat"
+  to = "https://tunes-backend-mtd4.onrender.com/api/:splat"
   status = 200
   force = true
 
