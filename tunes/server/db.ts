@@ -1,37 +1,41 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
+import { Pool as NeonPool, neonConfig } from '@neondatabase/serverless';
+import { drizzle as drizzleNeon } from 'drizzle-orm/neon-serverless';
 import ws from "ws";
+
+import pg from 'pg';
+import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres';
+
 import * as schema from "@shared/schema";
 import dotenv from 'dotenv';
 
 // Load environment variables first
 dotenv.config();
 
-neonConfig.webSocketConstructor = ws;
-
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
-}
-
-console.log("Attempting to connect to database with URL:", process.env.DATABASE_URL.substring(0, 15) + "...[REDACTED]");
-
-let pool: Pool;
-let db: ReturnType<typeof drizzle>;
+let pool: any;
+let db: any;
 
 try {
-  pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const isNeon = process.env.DATABASE_URL?.includes('neon.tech');
+  console.log(`Connecting to database... (Is Neon: ${!!isNeon})`);
+  
+  if (isNeon) {
+    // Neon PostgreSQL setup
+    neonConfig.webSocketConstructor = ws;
+    pool = new NeonPool({ connectionString: process.env.DATABASE_URL });
+    db = drizzleNeon({ client: pool, schema });
+  } else {
+    // Local PostgreSQL setup
+    pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+    db = drizzlePg(pool, { schema }); // Using new drizzle signature
+  }
   
   // Test the connection
-  pool.on('error', (err) => {
+  pool.on('error', (err: any) => {
     console.error('Unexpected error on idle database client', err);
     process.exit(-1);
   });
   
-  console.log("Database pool created successfully");
-  db = drizzle({ client: pool, schema });
-  console.log("Drizzle ORM initialized");
+  console.log("Database initialized successfully");
 } catch (error) {
   console.error("Failed to initialize database connection:", error);
   throw error;
