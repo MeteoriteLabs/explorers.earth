@@ -8,7 +8,7 @@ tunes is a songs recommendation platform that transforms music sharing across di
 - **Backend**: Express.js + TypeScript, Socket.IO, Passport.js
 - **Database**: PostgreSQL + Drizzle ORM
 - **Integrations**: YouTube Data API, Spotify, Razorpay, AWS SES, Google Gemini
-
+ 
  ## Quick Start
 
 ```bash
