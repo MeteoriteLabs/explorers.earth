@@ -22,7 +22,7 @@ jobs:
           username: root
           key: ${{ secrets.TUNES_DEPLOY_KEY }}
           port: 22
-          source: "."
+          source: "tunes/*"
           target: "/root/tunes"
           overwrite: true
           rm: true
