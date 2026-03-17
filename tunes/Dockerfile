@@ -1,9 +1,9 @@
-FROM node:18-alpine AS base
+# ── Stage 1: Base with Puppeteer system dependencies ──────────────────────
+FROM node:20-alpine AS base
 
-# Set working directory
 WORKDIR /app
 
-# Install dependencies for Puppeteer
+# Install system libraries required by Puppeteer/Chromium
 RUN apk add --no-cache \
       chromium \
       nss \
@@ -12,46 +12,62 @@ RUN apk add --no-cache \
       ca-certificates \
       ttf-freefont
 
-# Tell Puppeteer to skip downloading Chrome. We'll be using the installed package.
+# Tell Puppeteer to use the system-installed Chromium instead of downloading its own
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
-# Separate layer for dependencies
+# ── Stage 2: Install all dependencies (including devDeps for the build) ────
 FROM base AS deps
+
 COPY package.json package-lock.json ./
 RUN npm ci --legacy-peer-deps
 
-# Build the application
+# ── Stage 3: Build ────────────────────────────────────────────────────────
 FROM deps AS builder
 
-# Accept VITE_ build args - these are embedded into the frontend bundle at build time
+# VITE_ vars must be available at build time — they are embedded into the
+# frontend bundle by Vite. They come in as Docker build-args from CI/CD.
 ARG VITE_API_URL
 ARG VITE_REST_API_URL
 ARG VITE_PUBLIC_ACCESS_TOKEN
+ARG VITE_CLARITY_PROJECT_ID
 
-# Set them as ENV so Vite can read them during build
-ENV VITE_API_URL=$VITE_API_URL
-ENV VITE_REST_API_URL=$VITE_REST_API_URL
-ENV VITE_PUBLIC_ACCESS_TOKEN=$VITE_PUBLIC_ACCESS_TOKEN
+ENV VITE_API_URL=$VITE_API_URL \
+    VITE_REST_API_URL=$VITE_REST_API_URL \
+    VITE_PUBLIC_ACCESS_TOKEN=$VITE_PUBLIC_ACCESS_TOKEN \
+    VITE_CLARITY_PROJECT_ID=$VITE_CLARITY_PROJECT_ID
 
 COPY . .
+
+# Build produces:
+#   dist/public  → static frontend (served by Express serveStatic())
+#   dist/server  → compiled Node.js server (entry: dist/server/index.js)
 RUN npm run build
 
-# Production image
+# ── Stage 4: Production runner ────────────────────────────────────────────
 FROM base AS runner
+
 ENV NODE_ENV=production
 
-# Copy production dependencies and build output
-COPY --from=deps /app/node_modules ./node_modules
+# Install ONLY production dependencies (no devDeps, smaller image)
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --legacy-peer-deps
+
+# Copy built artifacts from the builder stage
 COPY --from=builder /app/dist ./dist
+
+# Copy static public assets (favicons, apple-touch-icon, etc.) that Express
+# serves directly from the filesystem via express.static('public')
 COPY --from=builder /app/public ./public
 
-# Copy necessary config files
-COPY package.json ./
-COPY drizzle.config.ts ./
+# Config files needed at runtime
+COPY package.json drizzle.config.ts ./
 
-# Expose application port
-EXPOSE 5001
+# Application listens on port 5000 (configurable via PORT env var)
+EXPOSE 5000
 
-# Set the default command
+# Healthcheck so Docker / Traefik knows when the service is healthy
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget -qO- http://localhost:5000/api/health 2>/dev/null || exit 1
+
 CMD ["node", "dist/server/index.js"]
