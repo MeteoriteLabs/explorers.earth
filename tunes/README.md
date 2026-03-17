@@ -9,7 +9,7 @@ tunes is a songs recommendation platform that transforms music sharing across di
 - **Database**: PostgreSQL + Drizzle ORM
 - **Integrations**: YouTube Data API, Spotify, Razorpay, AWS SES, Google Gemini
 
-## Quick Start
+ ## Quick Start
 
 ```bash
 # Install dependencies
