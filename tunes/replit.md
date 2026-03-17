@@ -101,8 +101,7 @@ Cosmic is a full-stack collaborative playlist management platform that enables v
 
 test
 
-## Changelog
-- June 20, 2025. Initial setup
+
 
 ## User Preferences
 
