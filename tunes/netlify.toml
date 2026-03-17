@@ -1,0 +1,17 @@
+[build]
+  base = "tunes"
+  command = "npm run build"
+  publish = "dist/public"
+
+# Proxy all API requests to the Render backend explicitly
+[[redirects]]
+  from = "/api/*"
+  to = "https://tunes-backend-mtd4.onrender.com/api/:splat"
+  status = 200
+  force = true
+
+# Fallback for React Router (Single Page Application routing)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

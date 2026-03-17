@@ -75,6 +75,7 @@
     "openai": "^4.85.4",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
+    "pg": "^8.20.0",
     "puppeteer": "^24.37.3",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
