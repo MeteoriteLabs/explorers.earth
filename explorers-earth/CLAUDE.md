@@ -127,4 +127,4 @@ See `docs/environment-variables.md` for the complete list. Key variables:
 
 ## Deployment
 
-Netlify. Config in `netlify.toml`. Build: `npm run build` (runs generate-static + tsc + vite build).
+Netlify. Config in `netlify.toml`. Build: `npm run build` (runs generate-static + tsc + vite build)
