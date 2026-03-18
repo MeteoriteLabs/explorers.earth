@@ -864,6 +864,7 @@ const PublicHome = memo(() => {
     locationNote: selectedCityName
       ? `Explore ${placesCount} curated places in ${selectedCityName} recommended by ${profileName}`
       : `Browse all ${totalRecommendations} recommendations by ${profileName} across ${cityNames.length} locations`,
+    coordinates: mapPreviewData.coordinates.length > 0 ? mapPreviewData.center : undefined,
   });
 
   return (

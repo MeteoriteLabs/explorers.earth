@@ -6,6 +6,7 @@ import LandingHeader from "../features/LandingPage/components/LandingHeader";
 import Footer from "../features/LandingPage/components/Footer";
 import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
+import { createWebPageGEOData } from "../utils/geoHelpers";
 
 // Decorative background pattern components
 const CompassIcon = () => (
@@ -79,6 +80,14 @@ export default function Contact() {
         canonical={createCanonicalUrl("/contact")}
         type="website"
         noIndex={false}
+        enableGEO={true}
+        geoData={createWebPageGEOData({
+          pageType: 'contact',
+          title: 'Contact | explorers',
+          description: 'Get in touch with the explorers team for support, feedback, or partnership inquiries.',
+          keywords: ['contact explorers', 'support', 'get in touch', 'customer service'],
+          purpose: 'Reach out to the explorers team for questions, support, or collaboration opportunities',
+        })}
       />
 
       <div

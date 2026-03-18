@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "wouter";
 import { Song, User, Playlist } from "@shared/schema";
+import SEO from "@/components/SEO";
+import { createVenueGEOData } from "@/utils/geoHelpers";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MusicLoader } from "@/components/ui/music-loader";
@@ -469,6 +471,15 @@ export default function PlaylistPage() {
     }
   };
 
+  const venueGeoData = useMemo(() => {
+    if (!playlist?.user) return undefined;
+    return createVenueGEOData({
+      venueName: playlist.user.venueName,
+      guestUrl: guestUrl || '',
+      displayName: playlist.user.username,
+    });
+  }, [playlist?.user?.venueName, playlist?.user?.username, guestUrl]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -496,6 +507,15 @@ export default function PlaylistPage() {
 
   return (
     <div className="min-h-screen">
+      <SEO
+        title={`${playlist.user.venueName} - Live Playlist | Local Tunes`}
+        description={`Listen to music and request songs at ${playlist.user.venueName}. Interactive playlist powered by Local Tunes.`}
+        keywords={[playlist.user.venueName, 'live playlist', 'song request', 'venue music', 'collaborative playlist']}
+        canonical={`/playlist/${guestUrl}`}
+        url={`/playlist/${guestUrl}`}
+        enableGEO={true}
+        geoData={venueGeoData}
+      />
       {/* Brand Header */}
       <div className="bg-background/80 backdrop-blur-sm border-b border-border/40 py-4 px-4 sm:px-6 fixed top-0 left-0 right-0 z-50">
         <div className="container mx-auto flex items-center justify-between">

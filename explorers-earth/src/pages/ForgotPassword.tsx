@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
+
 import { isManualAuthEnabled } from "../config/featureFlags";
 import { useEffect } from "react";
 

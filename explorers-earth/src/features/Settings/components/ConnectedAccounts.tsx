@@ -370,7 +370,7 @@ const ConnectedAccounts = memo(({ }: ConnectedAccountsProps) => {
                     type="url"
                     value={localTunesPublicLink}
                     onChange={(e) => setLocalTunesPublicLink(e.target.value)}
-                    placeholder="https://localtunes.com/profile/yourusername"
+                    placeholder="https://localtunes.earth/profile/yourusername"
                     disabled={!!currentLocalTunesPublicLink}
                     className={`flex-1 px-3 py-2 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${currentLocalTunesPublicLink
                       ? 'bg-gray-800 border-gray-600 cursor-not-allowed opacity-60'

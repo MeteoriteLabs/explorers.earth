@@ -5,6 +5,7 @@ import LandingHeader from "../features/LandingPage/components/LandingHeader";
 import Footer from "../features/LandingPage/components/Footer";
 import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
+import { createWebPageGEOData } from "../utils/geoHelpers";
 
 export default function About() {
   const { t } = useTranslation();
@@ -25,6 +26,14 @@ export default function About() {
         canonical={createCanonicalUrl("/about")}
         type="website"
         noIndex={false}
+        enableGEO={true}
+        geoData={createWebPageGEOData({
+          pageType: 'about',
+          title: 'About | explorers',
+          description: 'Learn about explorers, the platform that helps local experts share their favorite places through QR codes and digital links.',
+          keywords: ['about explorers', 'local recommendations platform', 'QR code sharing', 'place discovery'],
+          purpose: 'Learn about the explorers platform, its mission, and how it connects people with authentic local experiences',
+        })}
       />
 
       <div className="min-h-screen w-full overflow-x-hidden">
