@@ -5,7 +5,7 @@ Real-time collaborative music playlist management platform for venues. Venue own
 ## Tech Stack
 
 **Frontend**: React 18 + TypeScript, Vite 5.4, shadcn/ui + Radix UI, TanStack Query v5, Zustand, Socket.IO client, YouTube IFrame Player, Tailwind CSS, Wouter (routing)
-
+ 
 **Backend**: Express.js 4.21 + TypeScript, Socket.IO 4.8 (WebSocket), Passport.js (auth), express-session + connect-pg-simple (sessions)
 
 **Database**: PostgreSQL + Drizzle ORM 0.39 (@neondatabase/serverless for connection)
