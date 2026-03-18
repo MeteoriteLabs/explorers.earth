@@ -53,8 +53,8 @@ jobs:
           username: ${{ secrets.EXPLORERS_DEPLOY_USER }}
           key: ${{ secrets.EXPLORERS_DEPLOY_KEY }}
           script: |
-            rm -rf /home/deployuser/localqr-frontend/*
-            mkdir -p /home/deployuser/localqr-frontend
+            rm -rf /home/deployuser/explorers-frontend/*
+            mkdir -p /home/deployuser/explorers-frontend
 
       - name: Upload build
         uses: appleboy/scp-action@v1.0.0
@@ -64,7 +64,7 @@ jobs:
           key: ${{ secrets.EXPLORERS_DEPLOY_KEY }}
           port: ${{ secrets.DEPLOY_PORT }}
           source: "explorers-earth/dist/"
-          target: "/home/deployuser/localqr-frontend"
+          target: "/home/deployuser/explorers-frontend"
 
       - name: Reload Nginx
         uses: appleboy/ssh-action@v1.2.2
