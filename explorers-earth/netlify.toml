@@ -1,12 +1,12 @@
 [[redirects]]
-  from = "https://explorers.netlify.app/graphql"
-  to = "https://api.explorers.earth/graphql"
+  from = "/graphql"
+  to = "https://api.localqr.earth/graphql"
   status = 200
   force = true
 
 [[redirects]]
   from = "/api/*"
-  to = "https://api.explorers.earth/api/:splat"
+  to = "https://api.localqr.earth/api/:splat"
   status = 200
   force = true
 
