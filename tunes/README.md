@@ -10,7 +10,7 @@ tunes is a songs recommendation platform that transforms music sharing across di
 - **Integrations**: YouTube Data API, Spotify, Razorpay, AWS SES, Google Gemini
  
  ## Quick Start 
-
+ 
 ```bash
 # Install dependencies
 npm install
