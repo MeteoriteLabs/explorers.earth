@@ -24,7 +24,7 @@ jobs:
           key: ${{ secrets.TUNES_DEPLOY_KEY }}
           port: 22
           source: "tunes"
-          target: "/home/deploy"
+          target: "/home/deploy/tunes"
           overwrite: true
           rm: true
 
@@ -41,7 +41,7 @@ jobs:
 
             echo "✅ Connected to server"
 
-            cd /home/deploy/tunes
+            cd /home/deploy/tunes/tunes
 
             echo "🔁 Recreating .env file"
             cat > .env <<EOF
