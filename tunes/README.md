@@ -1,7 +1,7 @@
 # tunes — Collaborative Playlist Management Platform
 
 tunes is a songs recommendation platform that transforms music sharing across diverse social and venue settings, creating immersive and interactive music experiences. The platform features responsive design, persistent user sessions, advanced music control capabilities with YouTube integration, and comprehensive administrative tools.
-
+ 
 ## Tech Stack
 
 - **Frontend**: React 18 + TypeScript, TanStack Query v5, shadcn/ui, Socket.IO, Tailwind CSS
