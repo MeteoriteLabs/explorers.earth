@@ -19,7 +19,7 @@ jobs:
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.TUNES_DEPLOY_HOST }}
-          username: root
+          username: deploy
           key: ${{ secrets.TUNES_DEPLOY_KEY }}
           port: 22
           source: "tunes/*"
