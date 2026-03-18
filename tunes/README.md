@@ -5,7 +5,7 @@ tunes is a songs recommendation platform that transforms music sharing across di
 ## Tech Stack
 
 - **Frontend**: React 18 + TypeScript, TanStack Query v5, shadcn/ui, Socket.IO, Tailwind CSS
-- **Backend**: Express.js + TypeScript, Socket.IO, Passport.js
+- **Backend**: Express.js + TypeScript, Socket.IO, Passport.js 
 - **Database**: PostgreSQL + Drizzle ORM
 - **Integrations**: YouTube Data API, Spotify, Razorpay, AWS SES, Google Gemini
  
