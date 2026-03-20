@@ -140,8 +140,10 @@ const Login = () => {
   };
 
   const handleGoogleSignIn = () => {
-    window.location.href = `${import.meta.env.VITE_REST_API_URL
-      }/connect/google`;
+    // VITE_REST_API_URL = https://api.localqr.earth/api (already includes /api)
+    // Strapi's OAuth entry-point is at /api/connect/google
+    const backendBase = import.meta.env.VITE_REST_API_URL || "https://api.localqr.earth/api";
+    window.location.href = `${backendBase}/connect/google`;
   };
 
   // Generate GEO data for login page
