@@ -19,6 +19,12 @@
  * │           └── activities/
  * │               └── {placeId}/
  * │                   └── [activity photo files]
+ * ├── movies/
+ * │   └── {movieListId}/
+ * │       ├── cover/
+ * │       │   └── [list cover image]
+ * │       └── {tmdbId}/
+ * │           └── [movie recommendation media files]
  * └── {recommendationListId}/
  *     └── {placeId}/
  *         └── [recommendation image files]
@@ -177,6 +183,47 @@ export const generateActivityPhotoPath = (
   const sanitizedPlaceId = sanitizeIdentifier(placeId);
 
   return `${sanitizedUsername}/guides/sections/${sanitizedSectionId}/activities/${sanitizedPlaceId}/${filename}`;
+};
+
+/**
+ * Generates structured path for movie list/movie image uploads
+ * Uses unified structure: {username}/movies/{movieListId}/{tmdbId}/{filename}
+ * @param username - User's username
+ * @param movieListId - Unique ID of the movie list
+ * @param tmdbId - TMDB ID of the movie
+ * @param filename - Generated filename
+ * @returns Structured path for movie uploads
+ */
+export const generateMovieUploadPath = (
+  username: string,
+  movieListId: string,
+  tmdbId: string,
+  filename: string
+): string => {
+  const sanitizedUsername = sanitizeUsername(username);
+  const sanitizedListId = sanitizeIdentifier(movieListId);
+  const sanitizedMovieId = sanitizeIdentifier(tmdbId);
+
+  return `${sanitizedUsername}/movies/${sanitizedListId}/${sanitizedMovieId}/${filename}`;
+};
+
+/**
+ * Generates structured path for movie list cover image uploads
+ * Uses unified structure: {username}/movies/{movieListId}/cover/{filename}
+ * @param username - User's username
+ * @param movieListId - Unique ID of the movie list
+ * @param filename - Generated filename
+ * @returns Structured path for movie list cover uploads
+ */
+export const generateMovieListCoverPath = (
+  username: string,
+  movieListId: string,
+  filename: string
+): string => {
+  const sanitizedUsername = sanitizeUsername(username);
+  const sanitizedListId = sanitizeIdentifier(movieListId);
+
+  return `${sanitizedUsername}/movies/${sanitizedListId}/cover/${filename}`;
 };
 
 /**

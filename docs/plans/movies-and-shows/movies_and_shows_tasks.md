@@ -58,7 +58,7 @@ Phase F: Polish & Test (T14-T16) — i18n, responsive QA, manual testing
 - **Subtasks:**
   - Define `RecommendedMovie` collection fields, types, constraints
   - Define movie list collection fields (new or extended `RecommendationList`)
-  - Define category/subcategory additions for Movies & Shows
+  - Define Movie_Category collection fields for Movies & Shows
   - Document relations between collections
   - Document field-level notes for Strapi admin creation
 

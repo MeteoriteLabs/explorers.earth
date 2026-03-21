@@ -128,7 +128,7 @@ As a visitor, I want to browse movies by genre across all the creator's lists.
 See `movies_and_shows_schema.md` for complete field-level detail.
 
 - **Movie List collection** — list name, description, cover image, slug, visibility, account relation, movie relations, pin order settings
-- **RecommendedMovie collection** — TMDB metadata (tmdb_id, title, year, poster, genres, director, runtime, rating, media_type), creator's note, where to watch (JSON), is_pinned, pin_order, media uploads, list relation, category/subcategory relations
+- **RecommendedMovie collection** — TMDB metadata (tmdb_id, title, year, poster, genres, director, runtime, rating, media_type), creator's note, where to watch (JSON), is_pinned, pin_order, media uploads, list relation, Movie_Category relation
 
 ## API Summary
 

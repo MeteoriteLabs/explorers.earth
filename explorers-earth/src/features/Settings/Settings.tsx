@@ -132,7 +132,7 @@ const Settings = memo(() => {
   };
 
   // Function to update tab visibility with optimistic UI
-  const handleTabVisibilityUpdate = async (tabType: 'public_profile' | 'public_recommendations' | 'public_music' | 'public_guides', isVisible: boolean) => {
+  const handleTabVisibilityUpdate = async (tabType: 'public_profile' | 'public_recommendations' | 'public_music' | 'public_guides' | 'public_movie', isVisible: boolean) => {
     const currentAccount = currentUserAccountData?.accounts[0];
     if (!currentAccount?.documentId) {
       toast.error("Account not found");
@@ -736,6 +736,37 @@ const Settings = memo(() => {
                             checked={getTabVisibility('public_guides')}
                             onChange={(e) => {
                               handleTabVisibilityUpdate('public_guides', e.target.checked);
+                            }}
+                          />
+                          <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Movies & Shows Tab Toggle */}
+                    <div className="flex items-center justify-between p-4 bg-dashboard-muted rounded-lg border border-white/10">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h4 className="text-white font-medium font-poppins">Movies & Shows Tab</h4>
+                          <p className="text-white/60 text-sm font-poppins">Show your curated movies and TV shows on your public profile</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {tabVisibilityLoading['public_movie'] && (
+                          <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                        )}
+                        <label className={`relative inline-flex items-center ${tabVisibilityLoading['public_movie'] ? 'pointer-events-none opacity-70' : 'cursor-pointer'}`}>
+                          <input
+                            type="checkbox"
+                            className="sr-only peer"
+                            checked={getTabVisibility('public_movie')}
+                            onChange={(e) => {
+                              handleTabVisibilityUpdate('public_movie', e.target.checked);
                             }}
                           />
                           <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>

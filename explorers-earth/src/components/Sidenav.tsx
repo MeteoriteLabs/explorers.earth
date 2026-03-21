@@ -11,6 +11,7 @@ import Profile from "../assets/icons/Profile";
 import Analytics from "../assets/icons/Analytics";
 import MusicNote from "../assets/icons/MusicNote";
 import Button from "./ui/Button";
+import { Film } from "lucide-react";
 import SunIcon from "../assets/icons/SunIcon";
 import MoonIcon from "../assets/icons/MoonIcon";
 import SwitchButton from "./ui/SwitchButton";
@@ -179,6 +180,14 @@ const Sidebar = () => {
           Icon={TravelGuideIcon}
           title={"Guides"}
           to="/guides"
+        />
+        {/* Movies & Shows */}
+        <SidebarItem
+          isOpen={isOpen}
+          /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+          Icon={({ fill }: any) => <Film size={18} color={fill ?? 'var(--dash-icon-primary)'} fill="none" />}
+          title={"Movies"}
+          to="/recommendations/movies"
         />
         {/* Music button - show for all users */}
         <SidebarItem

@@ -150,13 +150,9 @@ query MoviesByList(
       is_pinned
       pin_order
       display_order
-      recommendation_category {
+      movie_category {
         documentId
-        category_name
-      }
-      recommendation_sub_category {
-        documentId
-        sub_category_name
+        genre_name
       }
       Media {
         documentId
@@ -216,13 +212,9 @@ interface RecommendedMovie {
   is_pinned: boolean;
   pin_order: number | null;
   display_order: number;
-  recommendation_category: {
+  movie_category: {
     documentId: string;
-    category_name: string;
-  } | null;
-  recommendation_sub_category: {
-    documentId: string;
-    sub_category_name: string;
+    genre_name: string;
   } | null;
   Media: Array<{
     documentId: string;
@@ -333,13 +325,9 @@ interface RecommendedMovie {
     List_Name: string;
     slug: string;
   };
-  recommendation_category: {
+  movie_category: {
     documentId: string;
-    category_name: string;
-  } | null;
-  recommendation_sub_category: {
-    documentId: string;
-    sub_category_name: string;
+    genre_name: string;
   } | null;
 }
 ```
@@ -858,8 +846,7 @@ mutation CreateRecommendedMovie(
   $display_order: Int!
   $media_details: JSON
   $movie_list: ID!
-  $recommendation_category: ID
-  $recommendation_sub_category: ID
+  $movie_category: ID
 ) {
   createRecommendedMovie(
     data: {
@@ -883,8 +870,7 @@ mutation CreateRecommendedMovie(
       display_order: $display_order
       media_details: $media_details
       movie_list: $movie_list
-      recommendation_category: $recommendation_category
-      recommendation_sub_category: $recommendation_sub_category
+      movie_category: $movie_category
     }
   ) {
     documentId
@@ -920,8 +906,7 @@ interface CreateRecommendedMovieInput {
   display_order: number;
   media_details?: Record<string, unknown>;  // JSON
   movie_list: string;         // MovieList documentId
-  recommendation_category?: string;
-  recommendation_sub_category?: string;
+  movie_category?: string;
 }
 
 interface WatchProvider {
@@ -960,8 +945,7 @@ mutation UpdateRecommendedMovie(
   $pin_order: Int
   $display_order: Int
   $media_details: JSON
-  $recommendation_category: ID
-  $recommendation_sub_category: ID
+  $movie_category: ID
 ) {
   updateRecommendedMovie(
     documentId: $documentId
@@ -972,8 +956,7 @@ mutation UpdateRecommendedMovie(
       pin_order: $pin_order
       display_order: $display_order
       media_details: $media_details
-      recommendation_category: $recommendation_category
-      recommendation_sub_category: $recommendation_sub_category
+      movie_category: $movie_category
     }
   ) {
     documentId
@@ -995,8 +978,7 @@ interface UpdateRecommendedMovieInput {
   pin_order?: number | null;
   display_order?: number;
   media_details?: Record<string, unknown>;
-  recommendation_category?: string | null;
-  recommendation_sub_category?: string | null;
+  movie_category?: string | null;
 }
 ```
 

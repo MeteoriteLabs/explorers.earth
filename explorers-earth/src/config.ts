@@ -21,3 +21,25 @@ export const GOOGLE_PLACES_API_BASE_URL =
 
 export const GOOGLE_GEOCODING_BASE_URL =
   "https://maps.googleapis.com/maps/api/geocode/json";
+
+// ─── TMDB (The Movie Database) config ──────────────────────
+export const TMDB_API_BASE = "https://api.themoviedb.org/3";
+export const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p";
+
+// Poster widths available on TMDB CDN
+export const TMDB_POSTER_SIZE = {
+  xs: "w92",
+  sm: "w185",
+  md: "w342",
+  lg: "w500",
+  xl: "w780",
+  original: "original",
+} as const;
+
+// Backdrop widths available on TMDB CDN
+export const TMDB_BACKDROP_SIZE = {
+  sm: "w300",
+  md: "w780",
+  lg: "w1280",
+  original: "original",
+} as const;

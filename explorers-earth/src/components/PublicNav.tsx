@@ -4,6 +4,7 @@ import DirectionBoard from "../assets/icons/DirectionBoard";
 import Profile from "../assets/icons/Profile";
 import MusicNote from "../assets/icons/MusicNote";
 import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
+import { Film } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { getPublicAccountBasicQuery } from "../features/PublicHome/api/query";
@@ -57,6 +58,13 @@ const PublicNav = memo(() => {
   const showProfileTab = accountData?.public_profile === "Yes" || accountData?.public_profile === "No" ? accountData?.public_profile === "Yes" : true; // Default to show if not set
   const showMusicTab = accountData?.public_music === "Yes" || accountData?.public_music === "No" ? accountData?.public_music === "Yes" : false; // Default to hide if not set
   const showGuidesTab = accountData?.public_guides === "Yes"; // Only show when explicitly "Yes"
+  const showMoviesTab = accountData?.public_movie === "Yes"; // Only show when explicitly "Yes"
+
+  // Helper function to check if current path is for movies
+  const isMoviesPath = (currentPath: string) => {
+    const normalizedPath = normalizePath(currentPath);
+    return normalizedPath.includes('/movies');
+  };
 
   // Helper function to check if current path is for guides
   const isGuidesPath = (currentPath: string) => {
@@ -95,6 +103,12 @@ const PublicNav = memo(() => {
       text: "Profile",
       path: `/${username}`,
     }] : []),
+    // Only add movies tab if visibility is enabled
+    ...(showMoviesTab ? [{
+      icon: <Film size={18} color={isMoviesPath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
+      text: "Movies",
+      path: `/${username}/movies`,
+    }] : []),
     // Only add music tab if visibility is enabled
     ...(showMusicTab ? [{
       icon: <MusicNote fill={isMusicPath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
@@ -113,6 +127,7 @@ const PublicNav = memo(() => {
           const isActive = isPathMatch(location.pathname, item.path) ||
             (item.path.includes('/places') && isPlacesPath(location.pathname)) ||
             (item.path.includes('/music') && isMusicPath(location.pathname)) ||
+            (item.path.includes('/movies') && isMoviesPath(location.pathname)) ||
             (item.path.includes('/guides') && isGuidesPath(location.pathname));
 
           return (

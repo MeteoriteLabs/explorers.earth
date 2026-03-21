@@ -20,6 +20,7 @@ import {
   GuideDetailsPage,
   GuideSectionFormPage,
 } from "../features/Guides";
+import { MoviesHome, MovieListView } from "../features/Movies";
 
 // Import layouts
 import DashboardLayout from "../layouts/DashboardLayout";
@@ -46,6 +47,8 @@ const ProtectedRoutes = ({
       <Route path="guides/:guideId/sections/:sectionId/edit" element={<GuideSectionFormPage />} />
       <Route path="music" element={<Music />} />
       <Route path="instagram" element={<Instagram />} />
+      <Route path="recommendations/movies" element={<MoviesHome />} />
+      <Route path="recommendations/movies/:listId" element={<MovieListView />} />
       <Route path=":listId/new" element={<AddRecommendation />} />
       <Route
         path="guides/:guideId/edit"
@@ -76,6 +79,8 @@ const ProtectedRoutes = ({
       <Route path=":placeId/edit" element={<AddRecommendation type="edit" />} />
       <Route path="music" element={<Music />} />
       <Route path="instagram" element={<Instagram />} />
+      <Route path="recommendations/movies" element={<MoviesHome />} />
+      <Route path="recommendations/movies/:listId" element={<MovieListView />} />
     </Route>
   );
 

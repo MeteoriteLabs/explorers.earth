@@ -69,6 +69,7 @@ export const accountsDetailQuery = gql`
       public_profile
       public_recommendations
       public_music
+      public_movie
       public_guides
       recommendation_lists(pagination: { limit: 100 })  {
         documentId
@@ -115,6 +116,7 @@ export const accountsDetailsByPlace = gql`
       public_profile
       public_recommendations
       public_music
+      public_movie
       public_guides
       recommendation_lists(filters: $listFilters) {
         List_Name
@@ -222,6 +224,7 @@ export const getPublicAccountBasicQuery = gql`
       public_profile
       public_recommendations
       public_music
+      public_movie
       public_guides
     }
   }
@@ -253,6 +256,7 @@ export const getPublicProfileDataQuery = gql`
       public_profile
       public_recommendations
       public_music
+      public_movie
       public_guides
     }
   }
@@ -283,6 +287,7 @@ export const getAccountsDataQuery = gql`
       public_profile
       public_recommendations
       public_music
+      public_movie
       public_guides
     }
   }

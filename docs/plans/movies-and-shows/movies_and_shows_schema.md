@@ -10,7 +10,10 @@ Depends on: movies_and_shows_decisions.md
 
 # Movies & Shows — Strapi Schema
 
-Complete data model for the Movies & Shows feature. These collections need to be created in the Strapi admin panel.
+Complete data model for the Movies & Shows feature. These collections need to be created in the Strapi admin panel (Content-Type Builder). 
+
+> [!IMPORTANT]
+> Since we use a unified S3 storage logic, remember to always use the `path` parameter when uploading media. See **Storage Logic** sections below.
 
 ---
 
@@ -27,7 +30,7 @@ Complete data model for the Movies & Shows feature. These collections need to be
 |---|---|---|---|---|
 | `List_Name` | Short text | Yes | — | Display name of the list (e.g., "Mind-Bending Sci-Fi") |
 | `list_description` | Long text | No | — | Creator's description of what this list is about |
-| `slug` | UID (from List_Name) | Yes | Auto | URL-safe slug for shareable links. Auto-generated from List_Name, editable. Must be unique per user. |
+| `slug` | Short Text | Yes | Auto | URL-safe slug for shareable links. Auto-generated from List_Name, editable. Must be unique per user. |
 | `Visibility` | Boolean | Yes | `false` | Published (true) = visible on public page. Draft (false) = hidden. |
 | `cover_image` | Media (single) | No | — | Cover image for the list. Falls back to first movie's poster if not set. |
 | `display_order` | Integer | No | `0` | Order position on the public page. Lower = higher on page. |
@@ -36,9 +39,9 @@ Complete data model for the Movies & Shows feature. These collections need to be
 | `recommended_movies` | Relation (One-to-Many) | No | — | Movies in this list. One MovieList has many RecommendedMovies. |
 
 ### Notes for Strapi Admin
-- `slug` should use Strapi's UID field type linked to `List_Name`
 - `account` relation connects to the existing Account/User collection
 - Enable Draft & Publish system if desired, or use the `Visibility` boolean (matching existing `RecommendationList` pattern)
+- **Manual Path Configuration**: For `cover_image`, use the path: `{username}/movies/{movieListId}/cover/`
 - Add API permissions for authenticated (CRUD) and public (find, findOne) access
 
 ---
@@ -55,7 +58,7 @@ Complete data model for the Movies & Shows feature. These collections need to be
 | Field Name | Type | Required | Default | Description |
 |---|---|---|---|---|
 | **TMDB Metadata** | | | | |
-| `tmdb_id` | Integer | Yes | — | TMDB unique identifier for the movie/show |
+| `tmdb_id` | Short text | Yes | — | TMDB unique identifier for the movie/show |
 | `media_type` | Enumeration [`movie`, `tv`] | Yes | — | Whether this is a movie or TV series |
 | `title` | Short text | Yes | — | Movie/show title |
 | `original_title` | Short text | No | — | Original language title (if different) |
@@ -75,12 +78,11 @@ Complete data model for the Movies & Shows feature. These collections need to be
 | `pin_order` | Integer | No | `null` | Order within Top Picks (null if not pinned). Lower = earlier in Top Picks row. |
 | `display_order` | Integer | No | `0` | Order within the list. Lower = earlier position. |
 | **Media** | | | | |
-| `Media` | Media (multiple) | No | — | Creator's uploaded photos/videos (max 10) |
+| `Media` | Media (multiple) | No | — | Creator's uploaded photos/videos (max 10). Stored in S3 via Strapi upload endpoint at `{username}/movies/{movieListId}/{tmdbId}/{filename}` |
 | `media_details` | JSON | No | — | Structured media metadata: `{ "imageDetails": [...], "thumbnail": "url" }`. Matches existing RecommendedPlace pattern. |
 | **Relations** | | | | |
 | `movie_list` | Relation (Many-to-One) | Yes | — | The MovieList this movie belongs to. Many RecommendedMovies belong to one MovieList. |
-| `recommendation_category` | Relation (Many-to-One) | No | — | Links to existing RecommendationCategory (auto-matched to "Entertainment" or a new "Movies & Shows" category) |
-| `recommendation_sub_category` | Relation (Many-to-One) | No | — | Links to existing RecommendationSubCategory (e.g., "Sci-Fi", "Drama", "Documentary") |
+| `movie_category` | Relation | No | — | Links to the new Movie_Category collection (replaces older generic recommendation category logic). |
 
 ### Notes for Strapi Admin
 - `tmdb_id` + `movie_list` combination should be unique (prevent duplicate movies in same list)
@@ -88,24 +90,30 @@ Complete data model for the Movies & Shows feature. These collections need to be
 - `watch_providers` is a JSON field. Each object contains the platform name, logo path, deep link URL, and TMDB provider ID.
 - `poster_path` and `backdrop_path` store only the TMDB path, NOT the full URL. The frontend builds the full URL using the TMDB image CDN base URL + desired size + path. This allows serving different image sizes for different contexts.
 - `media_details` JSON structure matches the existing `RecommendedPlace.media_details` pattern for consistency.
+- **S3 Storage Logic**: All media files must be uploaded with the specific `path` parameter to ensure organization:
+  - `MovieList` cover: `{username}/movies/{movieListId}/cover/{filename}`
+  - `RecommendedMovie` media: `{username}/movies/{movieListId}/{tmdbId}/{filename}`
 - Add API permissions for authenticated (CRUD) and public (find, findOne) access.
 
 ---
 
-## Category Additions
+## Collection 3: Movie_Category
 
-### Option A: Use Existing "Entertainment" Category
-The existing `RecommendationCategory` collection has an "Entertainment" category. Movies could use this.
+**Purpose:** A dedicated category collection for the Movies & Shows feature, replacing the previous system of using general recommendation categories.
 
-### Option B: Create New "Movies & Shows" Category (Recommended)
-Create a new entry in the existing `RecommendationCategory` collection:
+**API ID (singular):** `movie-category`
+**API ID (plural):** `movie-categories`
 
-| Field | Value |
-|---|---|
-| `Category_Name` | Movies & Shows |
-| Sub-categories | Action, Adventure, Animation, Comedy, Crime, Documentary, Drama, Family, Fantasy, History, Horror, Music, Mystery, Romance, Science Fiction, Thriller, War, Western, Reality, Talk Show |
+### Fields
 
-**Recommendation:** Option B. A dedicated "Movies & Shows" category keeps movie sub-categories separate from place sub-categories (the existing "Entertainment" category has place-oriented subs like "amusement_park", "movie_theater", "museum").
+| Field Name | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `genre_name` | Text | Yes | — | The name of the movie or show genre (e.g., "Action", "Science Fiction", "Drama") |
+| `recommended_movie` | Relation | No | — | Relates to the RecommendedMovie collection |
+
+### Notes for Strapi Admin
+- This completely replaces the previous logic of using the generic `RecommendationCategory` or `RecommendationSubCategory`.
+- Keeps movies & shows categorized cleanly without polluting place-related recommendations.
 
 ---
 
@@ -118,9 +126,7 @@ Account (existing)
     │              │
     │              ├── 1:N ── RecommendedMovie
     │              │              │
-    │              │              ├── N:1 ── RecommendationCategory (existing)
-    │              │              │
-    │              │              └── N:1 ── RecommendationSubCategory (existing)
+    │              │              └── Relation ── Movie_Category
     │              │
     │              └── (cover_image: Media)
     │
@@ -157,6 +163,6 @@ Genre card backdrop: w780
 
 ## Migration Notes
 
-- No migration of existing data required. This is entirely new collections.
+- No migration of existing data required. These are entirely new collections.
 - No changes to existing `RecommendationList`, `RecommendedPlace`, or any other existing collection.
-- The new `MovieList` and `RecommendedMovie` collections are independent — they share the `Account` relation and the `RecommendationCategory`/`RecommendationSubCategory` relations with existing collections, but no data dependencies.
+- The new `MovieList`, `RecommendedMovie`, and `Movie_Category` collections are completely independent. They only share the `Account` relation with existing collections, keeping the movies & shows feature cleanly separated from places.
