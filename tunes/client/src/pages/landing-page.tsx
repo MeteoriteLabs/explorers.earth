@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
+import SEO from "@/components/SEO";
+import { createLandingGEOData } from "@/utils/geoHelpers";
 import { Brand } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import PlayerMockup from "../components/player-mockup";
@@ -249,8 +251,18 @@ function ExplorersEarthHero() {
 export default function LandingPage() {
   const [activeTab, setActiveTab] = useState<'hosts' | 'guests'>('hosts');
   
+  const geoData = createLandingGEOData();
+
   return (
     <div className="min-h-screen bg-[#121212]">
+      <SEO
+        title="Local Tunes - Create and Share Live Playlists with Your Guests"
+        description="Transform your venue with interactive music experiences. Let guests contribute to playlists in real-time, perfect for bars, restaurants, cafes, and events."
+        canonical="/"
+        url="/"
+        enableGEO={true}
+        geoData={geoData}
+      />
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#121212]/90 backdrop-blur-sm border-b border-border/40">
         <div className="container mx-auto px-4 sm:px-6 py-4">

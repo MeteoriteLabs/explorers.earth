@@ -6,6 +6,7 @@ import RichTextContent from "../features/LandingPage/components/RichTextContent"
 import { LoadingSpinner } from "../features/LandingPage/components/LoadingSpinner";
 import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
+import { createWebPageGEOData } from "../utils/geoHelpers";
 
 export default function Privacy() {
   const { t } = useTranslation();
@@ -48,6 +49,14 @@ export default function Privacy() {
         canonical={createCanonicalUrl("/privacy")}
         type="website"
         noIndex={false}
+        enableGEO={true}
+        geoData={createWebPageGEOData({
+          pageType: 'privacy',
+          title: 'Privacy Policy | explorers',
+          description: 'explorers privacy policy detailing how user data is collected, stored, and protected on our location-based recommendation platform.',
+          keywords: ['privacy policy', 'data protection', 'user privacy', 'GDPR', 'CCPA'],
+          purpose: 'Understand how explorers collects, uses, and protects your personal data and privacy rights',
+        })}
       />
 
       <StaticPageLayout title={t("legal.privacy.title")}>

@@ -6,6 +6,7 @@ import RichTextContent from "../features/LandingPage/components/RichTextContent"
 import { LoadingSpinner } from "../features/LandingPage/components/LoadingSpinner";
 import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
+import { createWebPageGEOData } from "../utils/geoHelpers";
 
 export default function Cookies() {
   const { t } = useTranslation();
@@ -36,6 +37,14 @@ export default function Cookies() {
         canonical={createCanonicalUrl("/cookies")}
         type="website"
         noIndex={false}
+        enableGEO={true}
+        geoData={createWebPageGEOData({
+          pageType: 'cookies',
+          title: 'Cookie Policy | explorers',
+          description: 'explorers cookie policy explaining how cookies are used to enhance the user experience and what tracking data is collected.',
+          keywords: ['cookie policy', 'cookies', 'web tracking', 'cookie preferences', 'cookie consent'],
+          purpose: 'Understand how explorers uses cookies and manage your cookie preferences',
+        })}
       />
 
       <StaticPageLayout title={t("legal.cookies.title")}>
