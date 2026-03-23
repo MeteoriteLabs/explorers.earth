@@ -27,7 +27,16 @@ export const MOVIE_LISTS_BY_ACCOUNT = gql`
         media_type
         title
         poster_path
+        backdrop_path
+        year
+        runtime
+        genres
+        overview
+        tmdb_rating
+        watch_providers
+        cast_details
         is_pinned
+        pin_order
       }
       account {
         documentId

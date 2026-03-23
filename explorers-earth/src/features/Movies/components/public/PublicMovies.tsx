@@ -1,12 +1,14 @@
 import { useState, useMemo } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { deduplicateMovies } from "../../utils/movieHelpers";
-import { Film, Share2, ArrowLeft } from "lucide-react";
+import { Film, Share2 } from "lucide-react";
 import { PUBLIC_MOVIE_DATA } from "../../api/query";
 import { toast } from "sonner";
 import type { RecommendedMovie, MovieList } from "../../types";
 import MovieCarouselRow from "./MovieCarouselRow";
+import TopPicksHero from "./TopPicksHero";
+import TopPicksMobileHero from "./TopPicksMobileHero";
 import MovieDetailModal from "./MovieDetailModal";
 import GenreBrowse from "./GenreBrowse";
 
@@ -79,8 +81,6 @@ const PublicMovies = () => {
     }
   };
 
-  const totalMovies = allMovies.length;
-
   return (
     <div className="min-h-screen bg-[#0d1117] text-white">
       {/* Fixed Header */}
@@ -121,39 +121,8 @@ const PublicMovies = () => {
         </div>
       </div>
 
-      {/* Header */}
-      <div className="relative mt-14">
-        {/* Background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-950/40 to-[#0d1117] pointer-events-none h-48" />
-
-        <div className="relative max-w-5xl mx-auto px-4 pt-6 pb-4">
-          <Link
-            to={`/${username}`}
-            className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white/80 transition-colors mb-6"
-          >
-            <ArrowLeft size={14} /> {creatorName}
-          </Link>
-
-          {/* Creator info */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4 relative">
-            <div className="flex-1">
-              <h1 className="text-xl md:text-2xl font-poppins font-bold text-white mb-1">
-                {creatorName}'s Movies
-              </h1>
-              {!loading ? (
-                <p className="text-gray-400 font-poppins text-xs md:text-sm">
-                  {totalMovies} movie{totalMovies !== 1 ? "s" : ""} · {lists.length} list{lists.length !== 1 ? "s" : ""}
-                </p>
-              ) : (
-                <div className="h-3 w-32 bg-white/5 animate-pulse rounded" />
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Content */}
-      <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16">
+      <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16 pt-20">
         {loading ? (
           <div className="space-y-10 mt-4">
             {[1, 2, 3].map(i => (
@@ -181,14 +150,21 @@ const PublicMovies = () => {
               </div>
             ) : (
               <>
-                {/* Top Picks carousel */}
+                {/* Top Picks Hero (Large Screens) & Carousel (Mobile) */}
                 {topPicks.length > 0 && (
                   <div className="mt-4">
-                    <MovieCarouselRow
-                      title="⭐ Top Picks"
-                      movies={topPicks}
-                      onMovieClick={handleMovieClick}
-                    />
+                    <div className="hidden lg:block">
+                      <TopPicksHero 
+                        movies={topPicks} 
+                        onMovieClick={handleMovieClick} 
+                      />
+                    </div>
+                    <div className="block lg:hidden">
+                      <TopPicksMobileHero
+                        movies={topPicks}
+                        onMovieClick={handleMovieClick}
+                      />
+                    </div>
                   </div>
                 )}
 

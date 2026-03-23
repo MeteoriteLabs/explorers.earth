@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,6 +15,11 @@ import { deduplicateMovies } from "../../utils/movieHelpers";
 import { generateSlug, buildPosterUrl } from "../../utils/movieHelpers";
 import { gql } from "@apollo/client";
 import { getCurrentDomain } from "../../../../utils/getCurrentDomain";
+import TopPicksHero from "../public/TopPicksHero";
+import TopPicksMobileHero from "../public/TopPicksMobileHero";
+import TopPicksManager from "./TopPicksManager";
+import MovieDetailModal from "../public/MovieDetailModal";
+import type { RecommendedMovie } from "../../types";
 
 // Query to get account documentId
 const MY_ACCOUNT = gql`
@@ -298,6 +303,8 @@ const MoviesHome = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showManageTopPicks, setShowManageTopPicks] = useState(false);
+  const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   // Get account documentId
@@ -317,6 +324,19 @@ const MoviesHome = () => {
   const [updateMovieList] = useMutation(UPDATE_MOVIE_LIST);
 
   const lists: MovieList[] = data?.movieLists ?? [];
+
+  const allMovies = useMemo(() => {
+    if (!lists) return [];
+    return lists.flatMap(l => l.recommended_movies || []);
+  }, [lists]);
+
+  const topPicks = useMemo(() => {
+    return deduplicateMovies(allMovies.filter((m: any) => m.is_pinned)).sort((a: any, b: any) => (a.pin_order || 999) - (b.pin_order || 999));
+  }, [allMovies]);
+
+  const handleMovieClick = (movie: any) => {
+    setSelectedMovie(movie);
+  };
 
   const handleToggleVisibility = async (documentId: string, currentVisibility: boolean) => {
     setTogglingId(documentId);
@@ -378,7 +398,30 @@ const MoviesHome = () => {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <>
+          {/* Top Picks Section explicitly requested by user */}
+          {topPicks.length > 0 && (
+            <div className="mb-8">
+              <div className="hidden lg:block">
+                <TopPicksHero 
+                  movies={topPicks} 
+                  onMovieClick={handleMovieClick} 
+                  showManageButton={true}
+                  onManageClick={() => setShowManageTopPicks(true)}
+                />
+              </div>
+              <div className="block lg:hidden">
+                <TopPicksMobileHero
+                  movies={topPicks}
+                  onMovieClick={handleMovieClick}
+                  showManageButton={true}
+                  onManageClick={() => setShowManageTopPicks(true)}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {lists.map(list => (
             <MovieListCard
               key={list.documentId}
@@ -398,6 +441,7 @@ const MoviesHome = () => {
             <span className="text-sm">Add new list</span>
           </motion.button>
         </div>
+        </>
       )}
 
       {/* Create list modal */}
@@ -409,6 +453,24 @@ const MoviesHome = () => {
           currentListCount={lists.length}
           onCreated={() => refetch()}
           username={user?.username || ""}
+        />
+      )}
+
+      {showManageTopPicks && (
+        <TopPicksManager
+          movies={topPicks}
+          allMovies={deduplicateMovies(allMovies)}
+          onClose={() => setShowManageTopPicks(false)}
+          onRefetch={() => refetch()}
+          listId=""
+        />
+      )}
+
+      {selectedMovie && (
+        <MovieDetailModal
+          open={!!selectedMovie}
+          movie={selectedMovie}
+          onClose={() => setSelectedMovie(null)}
         />
       )}
     </div>
