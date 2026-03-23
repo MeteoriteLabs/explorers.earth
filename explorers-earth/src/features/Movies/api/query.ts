@@ -81,6 +81,7 @@ export const MOVIES_BY_LIST = gql`
         overview
         season_count
         user_recommendation_note
+        user_rating
         watch_providers
         is_pinned
         pin_order
@@ -122,6 +123,7 @@ export const MOVIE_DETAILS = gql`
       overview
       season_count
       user_recommendation_note
+      user_rating
       watch_providers
       is_pinned
       pin_order
@@ -164,8 +166,9 @@ export const PINNED_MOVIES = gql`
       media_type
       title
       poster_path
-      backdrop_path
+       backdrop_path
       tmdb_rating
+      user_rating
       year
       is_pinned
       pin_order
@@ -201,6 +204,7 @@ export const MOVIES_BY_GENRE = gql`
       title
       poster_path
       tmdb_rating
+      user_rating
       genres
       overview
       year
@@ -247,6 +251,7 @@ export const MOVIE_LIST_BY_SLUG = gql`
         year
         genres
         tmdb_rating
+        user_rating
         overview
         watch_providers
         is_pinned
@@ -295,6 +300,7 @@ export const PUBLIC_MOVIE_DATA = gql`
         title
         poster_path
         tmdb_rating
+        user_rating
         genres
         year
         is_pinned

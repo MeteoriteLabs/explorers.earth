@@ -141,8 +141,10 @@ const NoteStep = ({
   setExistingSnapshots,
   newSnapshots,
   setNewSnapshots,
+  userRating,
+  setUserRating,
 }: {
-  selectedResult: TMDBSearchResult;
+  selectedResult: TMDBSearchResult | any;
   note: string;
   setNote: (v: string) => void;
   watchProviders: WatchProvider[];
@@ -151,6 +153,8 @@ const NoteStep = ({
   setExistingSnapshots: (fn: (prev: { id: string; url: string }[]) => { id: string; url: string }[]) => void;
   newSnapshots: File[];
   setNewSnapshots: (fn: (prev: File[]) => File[]) => void;
+  userRating: number | null;
+  setUserRating: (v: number | null) => void;
 }) => {
   const [loadingProviders, setLoadingProviders] = useState(false);
   const [providerError, setProviderError] = useState<string | null>(null);
@@ -209,8 +213,25 @@ const NoteStep = ({
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Why do you recommend this? What makes it special?"
-          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50 transition-colors resize-none"
+          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50 transition-colors resize-none mb-3"
         />
+
+        {/* User Rating */}
+        <div className="mt-4">
+          <label className="text-xs text-white/50 uppercase tracking-wider mb-2 block">Your Rating</label>
+          <div className="flex gap-1.5">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                type="button"
+                onClick={() => setUserRating(star)}
+                className={`p-1 transition-all hover:scale-110 active:scale-95 ${userRating && userRating >= star ? "text-yellow-400" : "text-white/20 hover:text-white/40"}`}
+              >
+                <Star size={24} fill={userRating && userRating >= star ? "currentColor" : "none"} />
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Watch providers */}
@@ -311,8 +332,9 @@ const NoteStep = ({
 const AddMovie = ({ listId, mode, movie, onClose, onSaved }: AddMovieProps) => {
   const { user, token } = useAuthStore();
   const [step, setStep] = useState<"search" | "note">(mode === "edit" ? "note" : "search");
-  const [selectedResult, setSelectedResult] = useState<TMDBSearchResult | null>(null);
+  const [selectedResult, setSelectedResult] = useState<TMDBSearchResult | null>(mode === "edit" ? movie as any : null);
   const [note, setNote] = useState(extractNoteText(movie?.user_recommendation_note) ?? "");
+  const [userRating, setUserRating] = useState<number | null>(movie?.user_rating ?? null);
   const [watchProviders, setWatchProviders] = useState<WatchProvider[]>(movie?.watch_providers ?? []);
   const [existingSnapshots, setExistingSnapshots] = useState<{ id: string; url: string }[]>(movie?.media_details?.imageDetails || []);
   const [newSnapshots, setNewSnapshots] = useState<File[]>([]);
@@ -384,6 +406,7 @@ const AddMovie = ({ listId, mode, movie, onClose, onSaved }: AddMovieProps) => {
           variables: {
             documentId: movie.documentId,
             user_recommendation_note: note ? [{ type: "paragraph", children: [{ type: "text", text: note }] }] : null,
+            user_rating: userRating,
             watch_providers: watchProviders,
             movie_categories: categoryIds,
             media_details: finalMediaDetails,
@@ -531,6 +554,7 @@ const AddMovie = ({ listId, mode, movie, onClose, onSaved }: AddMovieProps) => {
             overview: selectedResult.overview || null,
             season_count: seasonCount,
             user_recommendation_note: note ? [{ type: "paragraph", children: [{ type: "text", text: note }] }] : null,
+            user_rating: userRating,
             watch_providers: watchProviders,
             is_pinned: false,
             display_order: 0,
@@ -615,6 +639,8 @@ const AddMovie = ({ listId, mode, movie, onClose, onSaved }: AddMovieProps) => {
               setExistingSnapshots={setExistingSnapshots as any}
               newSnapshots={newSnapshots}
               setNewSnapshots={setNewSnapshots as any}
+              userRating={userRating}
+              setUserRating={setUserRating}
             />
           )}
         </div>

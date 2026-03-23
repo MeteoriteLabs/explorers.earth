@@ -140,6 +140,7 @@ interface FormState {
   overview: string;
   genres: string;
   note: string;
+  userRating: number | null;
   categoryIds: string[];
 }
 
@@ -170,7 +171,7 @@ const AddMoviePage = () => {
   const [form, setForm] = useState<FormState>({
     title: "", originalTitle: "", year: "", director: "",
     runtime: "", seasonCount: "", rating: "", overview: "",
-    genres: "", note: "", categoryIds: [],
+    genres: "", note: "", userRating: null, categoryIds: [],
   });
 
   const { data: categoriesData } = useQuery(MOVIE_CATEGORIES, {
@@ -227,6 +228,7 @@ const AddMoviePage = () => {
       overview: movie.overview ?? "",
       genres: genreNames.join(", "),
       note: extractNoteText(movie.user_recommendation_note) ?? "",
+      userRating: movie.user_rating ?? null,
       categoryIds: movie.movie_categories?.map((c: any) => c.documentId) || [],
     });
     setFormReady(true);
@@ -267,6 +269,7 @@ const AddMoviePage = () => {
           overview: d.overview || "",
           genres: d.genres.map((g) => g.name).join(", "),
           note: "",
+          userRating: null,
           categoryIds: [],
         });
       } else {
@@ -286,6 +289,7 @@ const AddMoviePage = () => {
           overview: d.overview || "",
           genres: d.genres.map((g) => g.name).join(", "),
           note: "",
+          userRating: null,
           categoryIds: [],
         });
       }
@@ -305,6 +309,7 @@ const AddMoviePage = () => {
         overview: result.overview || "",
         genres: "",
         note: "",
+        userRating: null,
         categoryIds: [],
       });
     } finally {
@@ -322,7 +327,7 @@ const AddMoviePage = () => {
     setWatchProviders([]);
     setExistingSnapshots([]);
     setNewSnapshots([]);
-    setForm({ title: "", originalTitle: "", year: "", director: "", runtime: "", seasonCount: "", rating: "", overview: "", genres: "", note: "", categoryIds: [] });
+    setForm({ title: "", originalTitle: "", year: "", director: "", runtime: "", seasonCount: "", rating: "", overview: "", genres: "", note: "", userRating: null, categoryIds: [] });
   };
 
   const fetchProviders = async (id?: number, type?: "movie" | "tv", silent = false) => {
@@ -406,6 +411,7 @@ const AddMoviePage = () => {
             user_recommendation_note: form.note
               ? [{ type: "paragraph", children: [{ type: "text", text: form.note }] }]
               : null,
+            user_rating: form.userRating,
             watch_providers: watchProviders,
             movie_categories: form.categoryIds,
             media_details: finalMediaDetails,
@@ -510,6 +516,7 @@ const AddMoviePage = () => {
             user_recommendation_note: form.note
               ? [{ type: "paragraph", children: [{ type: "text", text: form.note }] }]
               : null,
+            user_rating: form.userRating,
             watch_providers: watchProviders,
             is_pinned: false,
             display_order: 0,
@@ -807,6 +814,23 @@ const AddMoviePage = () => {
                     onChange={(val) => setForm((f) => ({ ...f, note: val }))}
                     placeholder="Why do you recommend this? What makes it special?"
                   />
+                </div>
+              </div>
+
+              {/* User Rating */}
+              <div className="mt-4">
+                <label className="text-sm font-semibold text-dashboard mb-2 block">Your Rating</label>
+                <div className="flex gap-1.5">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, userRating: star }))}
+                      className={`p-1 transition-all hover:scale-110 active:scale-95 ${form.userRating && form.userRating >= star ? "text-yellow-400" : "text-white/20 hover:text-white/40"}`}
+                    >
+                      <Star size={24} fill={form.userRating && form.userRating >= star ? "currentColor" : "none"} />
+                    </button>
+                  ))}
                 </div>
               </div>
 

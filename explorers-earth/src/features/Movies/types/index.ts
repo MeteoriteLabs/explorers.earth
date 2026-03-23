@@ -37,6 +37,7 @@ export interface RecommendedMovie {
   overview: string | null;
   season_count: number | null;
   user_recommendation_note: any; // Blocks JSON
+  user_rating?: number | null;
   watch_providers: WatchProvider[];
   is_pinned: boolean;
   pin_order: number | null;

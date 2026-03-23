@@ -98,6 +98,7 @@ export const CREATE_RECOMMENDED_MOVIE = gql`
     $overview: String
     $season_count: Int
     $user_recommendation_note: JSON
+    $user_rating: Int
     $watch_providers: JSON!
     $is_pinned: Boolean!
     $pin_order: Int
@@ -123,6 +124,7 @@ export const CREATE_RECOMMENDED_MOVIE = gql`
         overview: $overview
         season_count: $season_count
         user_recommendation_note: $user_recommendation_note
+        user_rating: $user_rating
         watch_providers: $watch_providers
         is_pinned: $is_pinned
         pin_order: $pin_order
@@ -150,6 +152,7 @@ export const UPDATE_RECOMMENDED_MOVIE = gql`
   mutation UpdateRecommendedMovie(
     $documentId: ID!
     $user_recommendation_note: JSON
+    $user_rating: Int
     $watch_providers: JSON
     $is_pinned: Boolean
     $pin_order: Int
@@ -162,6 +165,7 @@ export const UPDATE_RECOMMENDED_MOVIE = gql`
       documentId: $documentId
       data: {
         user_recommendation_note: $user_recommendation_note
+        user_rating: $user_rating
         watch_providers: $watch_providers
         is_pinned: $is_pinned
         pin_order: $pin_order
