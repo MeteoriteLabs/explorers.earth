@@ -80,7 +80,7 @@ const CreateListModal = ({
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 md:p-6"
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4 md:p-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -207,7 +207,7 @@ const MovieListCard = ({
   return (
     <motion.div
       onClick={onOpen}
-      className="bg-dashboard-sidebar border border-dashboard-border rounded-2xl p-5 hover:border-gray-500 cursor-pointer transition-all group"
+      className="bg-dashboard-sidebar border border-white/5 md:border-dashboard-border/30 rounded-2xl p-5 hover:border-white/15 cursor-pointer transition-all group"
       whileHover={{ y: -2 }}
       transition={{ type: "spring", stiffness: 300 }}
     >
@@ -333,7 +333,7 @@ const MoviesHome = () => {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="px-6 pt-8 pb-24 md:p-6 md:pb-6 max-w-4xl mx-auto">
       {/* Page header */}
       <div className="flex items-center justify-between mb-8">
         <div>

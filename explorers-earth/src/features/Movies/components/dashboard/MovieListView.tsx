@@ -265,7 +265,7 @@ const MovieListView = () => {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-3xl mx-auto">
+    <div className="px-4 pt-8 pb-24 md:p-6 md:pb-6 max-w-3xl mx-auto">
       {/* Header */}
       <div className="flex items-start gap-3 mb-6">
         <button onClick={() => navigate("/recommendations/movies")} className="text-white/50 hover:text-white mt-0.5 transition-colors">

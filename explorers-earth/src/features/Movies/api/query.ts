@@ -21,7 +21,7 @@ export const MOVIE_LISTS_BY_ACCOUNT = gql`
       }
       display_order
       top_picks_heading
-      recommended_movies {
+      recommended_movies(pagination: { limit: 200 }) {
         documentId
         tmdb_id
         media_type
@@ -76,6 +76,8 @@ export const MOVIES_BY_LIST = gql`
         is_pinned
         pin_order
         display_order
+        cast_details
+        media_details
         movie_categories {
           documentId
           genre_name
@@ -116,6 +118,7 @@ export const MOVIE_DETAILS = gql`
       pin_order
       display_order
       media_details
+      cast_details
       Media {
         documentId
         url
@@ -157,6 +160,8 @@ export const PINNED_MOVIES = gql`
       year
       is_pinned
       pin_order
+      cast_details
+      media_details
       movie_list {
         documentId
         List_Name
@@ -190,6 +195,8 @@ export const MOVIES_BY_GENRE = gql`
       genres
       overview
       year
+      cast_details
+      media_details
       movie_list {
         documentId
         List_Name
@@ -221,7 +228,7 @@ export const MOVIE_LIST_BY_SLUG = gql`
       }
       display_order
       top_picks_heading
-      recommended_movies(sort: ["display_order:asc"]) {
+      recommended_movies(sort: ["display_order:asc"], pagination: { limit: 200 }) {
         documentId
         tmdb_id
         media_type
@@ -236,6 +243,8 @@ export const MOVIE_LIST_BY_SLUG = gql`
         is_pinned
         pin_order
         user_recommendation_note
+        cast_details
+        media_details
         Media {
           documentId
           url
@@ -270,7 +279,7 @@ export const PUBLIC_MOVIE_DATA = gql`
         url
       }
       top_picks_heading
-      recommended_movies(sort: ["is_pinned:desc", "pin_order:asc", "display_order:asc"]) {
+      recommended_movies(sort: ["is_pinned:desc", "pin_order:asc", "display_order:asc"], pagination: { limit: 200 }) {
         documentId
         tmdb_id
         media_type
@@ -288,6 +297,8 @@ export const PUBLIC_MOVIE_DATA = gql`
         runtime
         season_count
         backdrop_path
+        cast_details
+        media_details
         Media {
           url
         }

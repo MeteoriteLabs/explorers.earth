@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Clock, User, ExternalLink, Share2, Tv, ChevronLeft, ChevronRight } from "lucide-react";
 import type { RecommendedMovie, TMDBCastMember } from "../../types";
-import tmdbService from "../../../../services/tmdbService";
 import { buildPosterUrl, buildBackdropUrl, buildLogoUrl, formatRating, formatRuntime, getGenreNames, extractNoteText } from "../../utils/movieHelpers";
 
 interface MovieDetailModalProps {
@@ -19,11 +18,19 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
   const [cast, setCast] = useState<TMDBCastMember[]>([]);
   const contentRef = useRef<HTMLDivElement>(null);
   const castScrollRef = useRef<HTMLDivElement>(null);
+  const snapshotsScrollRef = useRef<HTMLDivElement>(null);
 
   const scrollCast = (dir: "left" | "right") => {
     if (castScrollRef.current) {
       const amount = dir === "left" ? -250 : 250;
       castScrollRef.current.scrollBy({ left: amount, behavior: "smooth" });
+    }
+  };
+
+  const scrollSnapshots = (dir: "left" | "right") => {
+    if (snapshotsScrollRef.current) {
+      const amount = dir === "left" ? -300 : 300;
+      snapshotsScrollRef.current.scrollBy({ left: amount, behavior: "smooth" });
     }
   };
 
@@ -34,20 +41,19 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
       return;
     }
     if (movie) {
-      const fetchCast = async () => {
-        try {
-          if (movie.media_type === "Movie") {
-            const data = await tmdbService.getMovieDetails(Number(movie.tmdb_id));
-            setCast(data.credits?.cast?.slice(0, 10) || []);
-          } else {
-            const data = await tmdbService.getTVDetails(Number(movie.tmdb_id));
-            setCast(data.credits?.cast?.slice(0, 10) || []);
-          }
-        } catch (e) {
-          console.error("Failed to fetch cast:", e);
-        }
-      };
-      fetchCast();
+      // Cast is now directly embedded inside the Strapi response JSON structure!
+      // We map the structure (CastDetail) to the state shape we need (TMDBCastMember)
+      if (movie.cast_details && Array.isArray(movie.cast_details)) {
+        const mappedCast = movie.cast_details.map((c: any, index: number) => ({
+          id: index, // Since our DB doesn't inherently need TMDB ID for display, using index mapping works if ID is missing
+          name: c.original_name,
+          character: c.character,
+          profile_path: c.profile_url // In the UI, if `c.profile_url` starts with http, we shouldn't prepend image.tmdb.org
+        }));
+        setCast(mappedCast);
+      } else {
+        setCast([]);
+      }
     }
   }, [open, movie]);
 
@@ -97,7 +103,7 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
         <>
           {/* Backdrop */}
           <motion.div
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -105,7 +111,7 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
           />
 
           {/* Modal panel wrapper */}
-          <div className="fixed inset-0 pt-12 md:pt-8 flex items-end justify-center z-50 pointer-events-none">
+          <div className="fixed inset-0 pt-[88px] md:pt-8 flex items-end justify-center z-[60] pointer-events-none">
             <motion.div
               className="relative bg-[#0d1117] rounded-t-2xl w-full h-full md:max-w-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-2xl ring-1 ring-white/10 hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pointer-events-auto"
               initial={{ y: "100%", opacity: 0 }}
@@ -138,7 +144,7 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
               </div>
 
               {/* Content area */}
-              <div ref={contentRef} className="flex-1 pb-6 w-full">
+              <div ref={contentRef} className="flex-1 pb-24 md:pb-6 w-full">
                 <div className="flex gap-4 px-5 -mt-16 relative z-10">
                   {/* Poster */}
                   <div className="flex-shrink-0 w-28 rounded-xl overflow-hidden ring-2 ring-white/10 shadow-2xl">
@@ -232,7 +238,11 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                             <div key={c.id} className="flex flex-col flex-shrink-0 w-20 gap-1 rounded-xl">
                               <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 border border-white/10 bg-[#1a2332]">
                                 {c.profile_path ? (
-                                  <img src={`https://image.tmdb.org/t/p/w185${c.profile_path}`} className="w-full h-full object-cover" alt="" />
+                                  <img 
+                                    src={c.profile_path.startsWith('http') ? c.profile_path : (c.profile_path.startsWith('/') ? `${import.meta.env.VITE_REST_API_URL?.replace('/api', '') || 'http://localhost:1337'}${c.profile_path}` : `https://image.tmdb.org/t/p/w185${c.profile_path}`)} 
+                                    className="w-full h-full object-cover" 
+                                    alt="" 
+                                  />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center text-white/20">
                                     <User size={24} />
@@ -246,6 +256,40 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                         </div>
                         <button
                           onClick={() => scrollCast("right")}
+                          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-black/60 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-black/80 transition-all -mr-2 backdrop-blur-sm"
+                        >
+                          <ChevronRight size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Manual Snapshots */}
+                  {movie.media_details?.imageDetails && movie.media_details.imageDetails.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">
+                        Snapshots from {movie.media_type === "TV" ? "Show" : "Movie"}
+                      </p>
+                      <div className="relative group">
+                        <button
+                          onClick={() => scrollSnapshots("left")}
+                          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-black/60 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-black/80 transition-all -ml-2 backdrop-blur-sm"
+                        >
+                          <ChevronLeft size={16} />
+                        </button>
+                        <div ref={snapshotsScrollRef} className="flex overflow-x-auto pb-4 -mx-5 px-5 gap-3 hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                          {movie.media_details.imageDetails.map((snap: any) => (
+                            <div key={snap.id} className="flex-shrink-0 w-56 aspect-video rounded-xl overflow-hidden border border-white/10 bg-[#1a2332]">
+                              <img 
+                                src={snap.url.startsWith('http') ? snap.url : (snap.url.startsWith('/') ? `${import.meta.env.VITE_REST_API_URL?.replace('/api', '') || 'http://localhost:1337'}${snap.url}` : snap.url)} 
+                                className="w-full h-full object-cover" 
+                                alt="Snapshot" 
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => scrollSnapshots("right")}
                           className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-black/60 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-black/80 transition-all -mr-2 backdrop-blur-sm"
                         >
                           <ChevronRight size={16} />

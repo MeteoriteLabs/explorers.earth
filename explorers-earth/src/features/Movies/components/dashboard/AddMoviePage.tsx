@@ -3,17 +3,24 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@apollo/client";
 import {
   ArrowLeft, Film, Star, Tv, Clock,
-  Loader2, Check, Search, X, CheckCircle2,
+  Loader2, Check, Search, X, CheckCircle2, User, Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTMDBSearch } from "../../hooks/useTMDBSearch";
 import tmdbService from "../../../../services/tmdbService";
 import { CREATE_RECOMMENDED_MOVIE, UPDATE_RECOMMENDED_MOVIE } from "../../api/mutation";
 import { MOVIE_CATEGORIES, MOVIES_BY_LIST } from "../../api/query";
-import type { TMDBSearchResult, WatchProvider } from "../../types";
+import type { TMDBSearchResult, WatchProvider, TMDBCastMember } from "../../types";
 import {
   buildPosterUrl, buildBackdropUrl, extractYear, extractNoteText, getGenreNames,
 } from "../../utils/movieHelpers";
+import axios from "axios";
+import useAuthStore from "../../../../store/store";
+import {
+  generateMovieUploadPath,
+  generateRandomFileName,
+  sanitizeUsername,
+} from "../../../../utils/uploadPathGenerator";
 import TiptapEditor from "../../../Favorites/components/TiptapEditor";
 
 const FALLBACK_POSTER = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='150' viewBox='0 0 100 150'><rect width='100' height='150' fill='%230d1117'/></svg>`;
@@ -140,6 +147,7 @@ interface FormState {
 // Main Page — handles both create & edit
 // ──────────────────────────────────────────────
 const AddMoviePage = () => {
+  const { user, token } = useAuthStore();
   // listId is always present; movieId only in edit mode
   const { listId, movieId } = useParams<{ listId: string; movieId?: string }>();
   const navigate = useNavigate();
@@ -154,6 +162,9 @@ const AddMoviePage = () => {
   const [loadingProviders, setLoadingProviders] = useState(false);
   const [saving, setSaving] = useState(false);
   const [rawGenres, setRawGenres] = useState<{ id: number; name: string }[]>([]);
+  const [castMembers, setCastMembers] = useState<TMDBCastMember[]>([]);
+  const [existingSnapshots, setExistingSnapshots] = useState<{ id: string; url: string }[]>([]);
+  const [newSnapshots, setNewSnapshots] = useState<File[]>([]);
   const [formReady, setFormReady] = useState(!isEdit); // in create mode form is ready immediately
 
   const [form, setForm] = useState<FormState>({
@@ -187,6 +198,23 @@ const AddMoviePage = () => {
     setWatchProviders(movie.watch_providers ?? []);
 
     const genreNames = getGenreNames(movie.genres);
+
+    if (movie.cast_details && Array.isArray(movie.cast_details)) {
+      setCastMembers(movie.cast_details.map((c: any, index: number) => ({
+        id: index,
+        name: c.original_name,
+        character: c.character,
+        profile_path: c.profile_url
+      })));
+    } else {
+      setCastMembers([]);
+    }
+
+    if (movie.media_details?.imageDetails) {
+      setExistingSnapshots(movie.media_details.imageDetails);
+    } else {
+      setExistingSnapshots([]);
+    }
 
     setForm({
       title: movie.title ?? "",
@@ -227,6 +255,7 @@ const AddMoviePage = () => {
         setPosterPath(d.poster_path);
         setBackdropPath(d.backdrop_path);
         setRawGenres(d.genres);
+        setCastMembers(d.credits?.cast?.slice(0, 10) || []);
         setForm({
           title: d.title,
           originalTitle: d.original_title,
@@ -245,6 +274,7 @@ const AddMoviePage = () => {
         setPosterPath(d.poster_path);
         setBackdropPath(d.backdrop_path);
         setRawGenres(d.genres);
+        setCastMembers(d.credits?.cast?.slice(0, 10) || []);
         setForm({
           title: d.name,
           originalTitle: d.original_name,
@@ -263,6 +293,7 @@ const AddMoviePage = () => {
       setPosterPath(result.poster_path);
       setBackdropPath(result.backdrop_path);
       setRawGenres([]);
+      setCastMembers([]);
       setForm({
         title: result.title || result.name || "",
         originalTitle: "",
@@ -287,7 +318,10 @@ const AddMoviePage = () => {
     setPosterPath(null);
     setBackdropPath(null);
     setRawGenres([]);
+    setCastMembers([]);
     setWatchProviders([]);
+    setExistingSnapshots([]);
+    setNewSnapshots([]);
     setForm({ title: "", originalTitle: "", year: "", director: "", runtime: "", seasonCount: "", rating: "", overview: "", genres: "", note: "", categoryIds: [] });
   };
 
@@ -314,6 +348,56 @@ const AddMoviePage = () => {
     if (!form.title.trim()) { toast.error("Title is required."); return; }
     setSaving(true);
     try {
+      let uploadedImageDetails = [...existingSnapshots];
+
+      if (newSnapshots.length > 0) {
+        toast.loading("Uploading snapshots...", { id: "upload-snapshots" });
+        try {
+          const manualUploads = await Promise.all(
+            newSnapshots.map(async (file, idx) => {
+              const usernameStr = sanitizeUsername(user?.username || "user");
+              // Safely extract TMDB id
+              const tmdbIdStr = isEdit && movieId 
+                ? (listData?.movieLists?.[0]?.recommended_movies?.find((m: any) => m.documentId === movieId)?.tmdb_id || "unknown")
+                : String(selected?.id || "unknown");
+              
+              const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+              const randomFileName = generateRandomFileName(safeName);
+              const fullS3Path = generateMovieUploadPath(usernameStr, listId, tmdbIdStr, randomFileName);
+              const directoryPath = fullS3Path.substring(0, fullS3Path.lastIndexOf('/'));
+              
+              const formData = new FormData();
+              formData.append("files", file, randomFileName);
+              formData.append("path", directoryPath);
+
+              const uploadRes = await axios.post(
+                `${import.meta.env.VITE_REST_API_URL}/upload`,
+                formData,
+                {
+                  headers: {
+                    "Content-Type": "multipart/form-data",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                  },
+                }
+              );
+              
+              if (uploadRes.data?.[0]?.url) {
+                return { id: `snap_${Date.now()}_${idx}`, url: uploadRes.data[0].url };
+              }
+              return null;
+            })
+          );
+          
+          uploadedImageDetails = [...uploadedImageDetails, ...manualUploads.filter(Boolean) as { id: string; url: string }[]];
+          toast.success("Snapshots uploaded successfully!", { id: "upload-snapshots" });
+        } catch (err: any) {
+           toast.error("Failed to upload some manual snapshots.", { id: "upload-snapshots" });
+           throw new Error("Snapshot upload failed"); 
+        }
+      }
+
+      const finalMediaDetails = uploadedImageDetails.length > 0 ? { imageDetails: uploadedImageDetails } : null;
+
       if (isEdit && movieId) {
         // Edit mode — update only editable fields
         await updateMovie({
@@ -324,12 +408,90 @@ const AddMoviePage = () => {
               : null,
             watch_providers: watchProviders,
             movie_categories: form.categoryIds,
+            media_details: finalMediaDetails,
           },
           refetchQueries: [MOVIES_BY_LIST],
         });
         toast.success("Movie updated!");
       } else {
         if (!selected) return;
+
+        let finalPosterPath = posterPath;
+        let finalBackdropPath = backdropPath;
+
+        const uploadImageToS3 = async (urlPath: string, type: string) => {
+          if (!urlPath) return urlPath;
+          
+          let fullUrl = "";
+          if (type === 'poster') {
+             fullUrl = buildPosterUrl(urlPath, "original");
+          } else if (type === 'backdrop') {
+             fullUrl = buildBackdropUrl(urlPath, "original");
+          } else {
+             // For cast profiles
+             fullUrl = buildPosterUrl(urlPath, "w185");
+          }
+
+          try {
+            toast.loading(`Uploading ${type}...`, { id: `upload-${type}` });
+            const tmdbRes = await axios.get(fullUrl, { responseType: 'blob' });
+            const blob = tmdbRes.data;
+            const fileType = blob.type || "image/jpeg";
+            
+            const usernameStr = sanitizeUsername(user?.username || "user");
+            const tmdbIdStr = String(selected.id);
+            const randomFileName = generateRandomFileName(`${type}.jpg`);
+            const fullS3Path = generateMovieUploadPath(usernameStr, listId, tmdbIdStr, randomFileName);
+            const directoryPath = fullS3Path.substring(0, fullS3Path.lastIndexOf('/'));
+
+            const formData = new FormData();
+            formData.append("files", new File([blob], randomFileName, { type: fileType }));
+            formData.append("path", directoryPath);
+
+            const uploadRes = await axios.post(
+              `${import.meta.env.VITE_REST_API_URL}/upload`,
+              formData,
+              {
+                headers: {
+                  "Content-Type": "multipart/form-data",
+                  ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+              }
+            );
+
+            toast.success(`${type} uploaded successfully!`, { id: `upload-${type}` });
+            if (uploadRes.data?.[0]?.url) {
+              return uploadRes.data[0].url;
+            }
+          } catch (err: any) {
+            console.error(`CATCH ERROR while uploading ${type}:`, err);
+            toast.error(`Error uploading ${type} to S3.`, { id: `upload-${type}` });
+            throw new Error(`Failed to upload ${type} to S3: ` + err.message);
+          }
+          return urlPath; // fallback
+        };
+
+        if (finalPosterPath) {
+          finalPosterPath = await uploadImageToS3(finalPosterPath, 'poster');
+        }
+        if (finalBackdropPath) {
+          finalBackdropPath = await uploadImageToS3(finalBackdropPath, 'backdrop');
+        }
+
+        const castDetailsJSON = await Promise.all(
+          castMembers.map(async (member) => {
+            let uploadedUrl = member.profile_path;
+            if (uploadedUrl) {
+              uploadedUrl = await uploadImageToS3(uploadedUrl, `cast_${member.id}`);
+            }
+            return {
+              original_name: member.name,
+              character: member.character,
+              profile_url: uploadedUrl
+            };
+          })
+        );
+
         await createMovie({
           variables: {
             tmdb_id: String(selected.id),
@@ -337,8 +499,8 @@ const AddMoviePage = () => {
             title: form.title,
             original_title: form.originalTitle || null,
             year: form.year || null,
-            poster_path: posterPath,
-            backdrop_path: backdropPath,
+            poster_path: finalPosterPath,
+            backdrop_path: finalBackdropPath,
             genres: rawGenres.length > 0 ? rawGenres : [],
             director: form.director || null,
             runtime: form.runtime ? parseInt(form.runtime) : null,
@@ -356,7 +518,8 @@ const AddMoviePage = () => {
               const matchedCategory = categories.find((c: any) => c.genre_name.toLowerCase() === tmdbGenre.name.toLowerCase());
               return matchedCategory ? matchedCategory.documentId : null;
             }).filter(Boolean),
-            media_details: null,
+            media_details: finalMediaDetails,
+            cast_details: castDetailsJSON.length > 0 ? castDetailsJSON : null,
           },
           refetchQueries: [MOVIES_BY_LIST],
         });
@@ -562,6 +725,34 @@ const AddMoviePage = () => {
                 />
               </div>
 
+              {/* Cast Members Preview */}
+              {castMembers.length > 0 && (
+                <div>
+                  <p className="text-sm font-semibold text-white/90 mb-2 block">Top Cast</p>
+                  <div className="flex overflow-x-auto pb-4 gap-3 hide-scrollbar scrollbar-hide">
+                    {castMembers.map(c => (
+                      <div key={c.id} className="flex flex-col flex-shrink-0 w-20 gap-1 rounded-xl">
+                        <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 border border-dashboard-border bg-dashboard-muted">
+                          {c.profile_path ? (
+                            <img 
+                              src={c.profile_path.startsWith('http') ? c.profile_path : (c.profile_path.startsWith('/') ? `${import.meta.env.VITE_REST_API_URL?.replace('/api', '') || 'http://localhost:1337'}${c.profile_path}` : `https://image.tmdb.org/t/p/w185${c.profile_path}`)} 
+                              className="w-full h-full object-cover" 
+                              alt="" 
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-white/20">
+                              <User size={24} />
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-xs text-center leading-tight mt-1 text-white truncate">{c.name}</span>
+                        <span className="text-[10px] text-center text-white/40 leading-tight truncate">{c.character}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Overview */}
               <div>
                 <label className="text-sm font-semibold text-white/90 mb-2 block">Overview</label>
@@ -616,6 +807,68 @@ const AddMoviePage = () => {
                     onChange={(val) => setForm((f) => ({ ...f, note: val }))}
                     placeholder="Why do you recommend this? What makes it special?"
                   />
+                </div>
+              </div>
+
+              {/* Snapshots Upload */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-sm font-semibold text-dashboard">Manual Snapshots from {mediaType === "tv" ? "Show" : "Movie"} (Optional)</label>
+                </div>
+                <div className="flex flex-col gap-3">
+                  {/* Existing Snapshots */}
+                  {existingSnapshots.length > 0 && (
+                    <div className="flex flex-wrap gap-3 mb-2">
+                      {existingSnapshots.map((snap) => (
+                        <div key={snap.id} className="relative w-24 h-24 rounded-xl overflow-hidden shadow-sm group">
+                          <img src={snap.url.startsWith('http') ? snap.url : (snap.url.startsWith('/') ? `${import.meta.env.VITE_REST_API_URL?.replace('/api', '') || 'http://localhost:1337'}${snap.url}` : snap.url)} className="w-full h-full object-cover" alt="Snapshot" />
+                          <button
+                            type="button"
+                            onClick={() => setExistingSnapshots(prev => prev.filter(s => s.id !== snap.id))}
+                            className="absolute top-1 right-1 bg-black/60 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* New Snapshots Preview */}
+                  {newSnapshots.length > 0 && (
+                    <div className="flex flex-wrap gap-3 mb-2">
+                      {newSnapshots.map((file, i) => (
+                        <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden shadow-sm group border border-white/10">
+                          <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" alt="New Snapshot preview" />
+                          <button
+                            type="button"
+                            onClick={() => setNewSnapshots(prev => prev.filter((_, idx) => idx !== i))}
+                            className="absolute top-1 right-1 bg-black/60 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Upload Button */}
+                  <label className="w-full md:w-auto self-start cursor-pointer flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 border-dashed rounded-xl px-5 py-3 text-sm text-white/70 transition-colors">
+                    <Upload size={16} className="text-white/50" />
+                    <span>Upload Images</span>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          const filesArr = Array.from(e.target.files);
+                          setNewSnapshots(prev => [...prev, ...filesArr]);
+                        }
+                      }}
+                    />
+                  </label>
                 </div>
               </div>
 

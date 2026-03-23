@@ -1,9 +1,10 @@
 import { useState, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { deduplicateMovies } from "../../utils/movieHelpers";
 import { Film, Share2, ArrowLeft } from "lucide-react";
 import { PUBLIC_MOVIE_DATA } from "../../api/query";
+import { toast } from "sonner";
 import type { RecommendedMovie, MovieList } from "../../types";
 import MovieCarouselRow from "./MovieCarouselRow";
 import MovieDetailModal from "./MovieDetailModal";
@@ -30,6 +31,7 @@ const ACCOUNT_BY_USERNAME = gql`
 
 const PublicMovies = () => {
   const { username } = useParams<{ username: string }>();
+  const navigate = useNavigate();
   const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -41,7 +43,6 @@ const PublicMovies = () => {
 
   const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
   const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
-  const creatorPhoto = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.profile_picture?.url;
 
   // Step 2: Fetch movie data
   const { data: movieData, loading: moviesLoading } = useQuery(PUBLIC_MOVIE_DATA, {
@@ -82,13 +83,50 @@ const PublicMovies = () => {
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-white">
+      {/* Fixed Header */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
+        <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
+          <span
+            className="text-white font-bold text-2xl cursor-pointer"
+            onClick={() => navigate("/")}
+          >
+            explorers.earth
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={handleShare}
+              className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
+              aria-label="Share"
+            >
+              <Share2 size={16} />
+            </button>
+            <button
+              onClick={async () => {
+                const shareUrl = window.location.href;
+                try {
+                  await navigator.clipboard.writeText(shareUrl);
+                  toast.success("Link copied!");
+                } catch (error) {
+                  console.error("Failed to copy text:", error);
+                }
+              }}
+              className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
+              aria-label="Copy Link"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Header */}
-      <div className="relative">
+      <div className="relative mt-14">
         {/* Background gradient */}
         <div className="absolute inset-0 bg-gradient-to-b from-blue-950/40 to-[#0d1117] pointer-events-none h-48" />
 
         <div className="relative max-w-5xl mx-auto px-4 pt-6 pb-4">
-          {/* Back link */}
           <Link
             to={`/${username}`}
             className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white/80 transition-colors mb-6"
@@ -97,34 +135,25 @@ const PublicMovies = () => {
           </Link>
 
           {/* Creator info */}
-          <div className="flex items-center gap-4">
-            {creatorPhoto ? (
-              <img src={creatorPhoto} alt={creatorName} className="w-14 h-14 rounded-full object-cover ring-2 ring-blue-500/30" />
-            ) : (
-              <div className="w-14 h-14 rounded-full bg-blue-900/40 flex items-center justify-center ring-2 ring-blue-500/30">
-                <Film size={24} className="text-blue-400" />
-              </div>
-            )}
-            <div>
-              <h1 className="text-2xl font-bold text-white">{creatorName}'s Movies</h1>
-              {!loading && (
-                <p className="text-sm text-white/40 mt-0.5">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4 relative">
+            <div className="flex-1">
+              <h1 className="text-xl md:text-2xl font-poppins font-bold text-white mb-1">
+                {creatorName}'s Movies
+              </h1>
+              {!loading ? (
+                <p className="text-gray-400 font-poppins text-xs md:text-sm">
                   {totalMovies} movie{totalMovies !== 1 ? "s" : ""} · {lists.length} list{lists.length !== 1 ? "s" : ""}
                 </p>
+              ) : (
+                <div className="h-3 w-32 bg-white/5 animate-pulse rounded" />
               )}
             </div>
-            <button
-              onClick={handleShare}
-              className="ml-auto flex items-center gap-1.5 text-sm text-white/50 hover:text-white/80 px-3 py-1.5 rounded-lg hover:bg-white/8 border border-white/10 transition-all"
-            >
-              <Share2 size={14} /> Share
-            </button>
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="max-w-5xl mx-auto px-4 pb-16">
+      <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16">
         {loading ? (
           <div className="space-y-10 mt-4">
             {[1, 2, 3].map(i => (
@@ -170,6 +199,7 @@ const PublicMovies = () => {
                       <MovieCarouselRow
                         key={list.documentId}
                         title={list.List_Name}
+                        description={list.list_description ?? undefined}
                         movies={deduplicateMovies(list.recommended_movies)}
                         onMovieClick={handleMovieClick}
                         seeAllLink={`/${username}/movies/${list.slug}`}

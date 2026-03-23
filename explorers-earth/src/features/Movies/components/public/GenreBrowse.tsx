@@ -1,6 +1,7 @@
+import { useRef, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, ChevronLeft } from "lucide-react";
 import { genreToSlug, extractUniqueGenres } from "../../utils/movieHelpers";
 import type { RecommendedMovie } from "../../types";
 
@@ -22,6 +23,30 @@ const GENRE_GRADIENTS = [
 ];
 
 const GenreBrowse = ({ movies, username }: GenreBrowseProps) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  const updateScrollButtons = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 5);
+    }
+  };
+
+  useEffect(() => {
+    updateScrollButtons();
+    const timeoutMsg = setTimeout(updateScrollButtons, 500);
+    return () => clearTimeout(timeoutMsg);
+  }, [movies]);
+
+  const handleScrollClick = (direction: 'left' | 'right') => {
+    if (scrollRef.current) {
+      const scrollAmount = direction === 'left' ? -400 : 400;
+      scrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
   const allGenreArrays = movies.map(m => m.genres);
   const genres = extractUniqueGenres(allGenreArrays);
 
@@ -42,14 +67,41 @@ const GenreBrowse = ({ movies, username }: GenreBrowseProps) => {
   if (visibleGenres.length === 0) return null;
 
   return (
-    <section className="mt-10">
+    <section className="mt-10 mb-8">
       <h2 className="text-lg font-semibold text-white mb-4 px-4 md:px-0">Browse by Genre</h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 px-4 md:px-0">
+      <div className="relative group">
+        {canScrollLeft && (
+          <button
+            onClick={() => handleScrollClick('left')}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-black/80 hover:bg-black text-white rounded-r-xl p-3 shadow-2xl opacity-0 group-hover:opacity-100 transition-all backdrop-blur-md hidden md:flex items-center justify-center -ml-4"
+            aria-label="Scroll left"
+          >
+            <ChevronLeft size={28} className="drop-shadow-lg" />
+          </button>
+        )}
+
+        {canScrollRight && (
+          <button
+            onClick={() => handleScrollClick('right')}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-black/80 hover:bg-black text-white rounded-l-xl p-3 shadow-2xl opacity-0 group-hover:opacity-100 transition-all backdrop-blur-md hidden md:flex items-center justify-center -mr-4"
+            aria-label="Scroll right"
+          >
+            <ChevronRight size={28} className="drop-shadow-lg" />
+          </button>
+        )}
+
+        <div
+          ref={scrollRef}
+          onScroll={updateScrollButtons}
+          className="flex gap-3 overflow-x-auto scrollbar-hide px-4 md:px-0 pb-4"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
         {visibleGenres.map((genre, i) => {
           const gradient = GENRE_GRADIENTS[i % GENRE_GRADIENTS.length];
           return (
             <motion.div
               key={genre}
+              className="flex-shrink-0 w-40"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               transition={{ type: "spring", stiffness: 300 }}
@@ -71,6 +123,7 @@ const GenreBrowse = ({ movies, username }: GenreBrowseProps) => {
             </motion.div>
           );
         })}
+        </div>
       </div>
     </section>
   );

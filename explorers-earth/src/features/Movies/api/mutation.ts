@@ -105,6 +105,7 @@ export const CREATE_RECOMMENDED_MOVIE = gql`
     $media_details: JSON
     $movie_list: ID!
     $movie_categories: [ID]
+    $cast_details: JSON
   ) {
     createRecommendedMovie(
       data: {
@@ -129,6 +130,7 @@ export const CREATE_RECOMMENDED_MOVIE = gql`
         media_details: $media_details
         movie_list: $movie_list
         movie_categories: $movie_categories
+        cast_details: $cast_details
       }
     ) {
       documentId
@@ -154,6 +156,7 @@ export const UPDATE_RECOMMENDED_MOVIE = gql`
     $display_order: Int
     $media_details: JSON
     $movie_categories: [ID]
+    $cast_details: JSON
   ) {
     updateRecommendedMovie(
       documentId: $documentId
@@ -165,6 +168,7 @@ export const UPDATE_RECOMMENDED_MOVIE = gql`
         display_order: $display_order
         media_details: $media_details
         movie_categories: $movie_categories
+        cast_details: $cast_details
       }
     ) {
       documentId

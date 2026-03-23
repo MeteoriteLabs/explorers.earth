@@ -52,6 +52,13 @@ export interface RecommendedMovie {
     documentId: string;
     genre_name: string;
   }[] | null;
+  cast_details?: CastDetail[] | null;
+}
+
+export interface CastDetail {
+  original_name: string;
+  character: string;
+  profile_url: string | null;
 }
 
 export interface MovieCategory {
