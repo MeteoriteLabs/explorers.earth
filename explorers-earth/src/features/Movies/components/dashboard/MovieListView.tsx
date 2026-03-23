@@ -4,8 +4,9 @@ import { useQuery, useMutation } from "@apollo/client";
 import { AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Plus, Star, MoreHorizontal, Trash2, Edit,
-  Eye, EyeOff, Film, Copy, Loader2, Check, Clock, ChevronRight, Tv
+  Eye, EyeOff, Film, Copy, Loader2, Check, Clock, ChevronRight, Tv, Share2, Download
 } from "lucide-react";
+import Accordion from "../../../../components/ui/Accordian";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -25,7 +26,6 @@ import {
   extractNoteText,
   deduplicateMovies,
 } from "../../utils/movieHelpers";
-import AddMovie from "./AddMovie";
 import TopPicksManager from "./TopPicksManager";
 import MovieDetailModal from "../public/MovieDetailModal";
 
@@ -97,8 +97,8 @@ const MovieRow = ({
           )}
         </div>
         {extractNoteText(movie.user_recommendation_note) && (
-          <p className="text-xs text-dashboard-light/60 mt-0.5 line-clamp-1">
-            {extractNoteText(movie.user_recommendation_note)}
+          <p className="text-xs text-dashboard-muted mt-1 line-clamp-1 italic">
+            {extractNoteText(movie.user_recommendation_note).replace(/<[^>]+>/g, '')}
           </p>
         )}
       </div>
@@ -156,14 +156,13 @@ const MovieListView = () => {
   const { listId } = useParams<{ listId: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"recommendations" | "manage">("recommendations");
-  const [showAddMovie, setShowAddMovie] = useState(false);
-  const [editingMovie, setEditingMovie] = useState<RecommendedMovie | null>(null);
   const [showTopPicks, setShowTopPicks] = useState(false);
   const [pinningId, setPinningId] = useState<string | null>(null);
   const [showDeleteListModal, setShowDeleteListModal] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isEditingList, setIsEditingList] = useState(false);
 
   const { data, loading, refetch } = useQuery(MOVIES_BY_LIST, {
     variables: { movieListDocumentId: listId, page: 0, pageSize: 100 },
@@ -332,7 +331,7 @@ const MovieListView = () => {
 
           {/* Add movie button */}
           <button
-            onClick={() => { setEditingMovie(null); setShowAddMovie(true); }}
+            onClick={() => navigate(`/recommendations/movies/${listId}/add`)}
             className="w-full mb-4 flex items-center justify-center gap-2 py-3 border-2 border-dashed border-white/10 rounded-xl text-sm text-white/40 hover:text-white/70 hover:border-blue-500/30 transition-all"
           >
             <Plus size={16} /> Add Movie or Show
@@ -351,7 +350,7 @@ const MovieListView = () => {
                 <MovieRow
                   key={movie.documentId}
                   movie={movie}
-                  onEdit={() => { setEditingMovie(movie); setShowAddMovie(true); }}
+                  onEdit={() => navigate(`/recommendations/movies/${listId}/edit/${movie.documentId}`)}
                   onDelete={() => handleDeleteMovie(movie.documentId)}
                   onPinToggle={() => handlePinToggle(movie)}
                   onRowClick={() => { setSelectedMovie(movie); setModalOpen(true); }}
@@ -365,97 +364,148 @@ const MovieListView = () => {
 
       {/* Tab: Manage */}
       {activeTab === "manage" && (
-        <div className="space-y-5">
-          {/* Share URL */}
-          <div className="bg-dashboard-muted rounded-xl p-4">
-            <p className="text-xs text-dashboard-light uppercase tracking-wider mb-2">Share URL</p>
-            <div className="flex items-center gap-2">
-              <input
-                readOnly
-                value={shareUrl}
-                className="flex-1 bg-dashboard-sidebar px-3 py-2 rounded-lg text-sm text-dashboard truncate border border-dashboard-border"
-              />
-              <button
-                onClick={handleCopyUrl}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border transition-all ${
-                  copied
-                    ? "border-green-500/40 text-green-400 bg-green-500/10"
-                    : "border-dashboard-border text-dashboard hover:bg-white/5"
-                }`}
-              >
-                {copied ? <Check size={14} /> : <Copy size={14} />}
-                {copied ? "Copied" : "Copy"}
-              </button>
-            </div>
-          </div>
+        <div className="mb-0 md:mt-2 md:w-[90%] md:mx-auto">
+          <div className="bg-transparent rounded-lg p-6 space-y-4 border border-white/10">
+            {/* Manage Accordion */}
+            <Accordion heading="Manage" defaultOpen={true}>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => setShowDeleteListModal(true)}
+                  className="flex flex-row text-center gap-2 items-center rounded-md font-poppins w-full text-sm border border-white px-4 py-3 hover:border-gray-500 text-white hover:text-gray-500 justify-center font-medium transition-all duration-300"
+                >
+                  <Trash2 size={16} />
+                  <span>Delete</span>
+                </button>
+                {isEditingList ? (
+                  <div className="bg-dashboard-sidebar border border-white/10 rounded-lg p-5 space-y-4 mt-2 mb-2 text-left">
+                    <div>
+                      <label className="text-xs text-white/50 mb-1.5 block uppercase tracking-wider">List Name</label>
+                      <input
+                        defaultValue={list?.List_Name}
+                        onBlur={async (e) => {
+                          if (e.target.value && e.target.value !== list?.List_Name) {
+                            await updateList({ variables: { documentId: list?.documentId, List_Name: e.target.value }, refetchQueries: [MOVIES_BY_LIST] });
+                            toast.success("List name updated.");
+                          }
+                        }}
+                        className="w-full bg-dashboard-muted border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-white/30 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-white/50 mb-1.5 block uppercase tracking-wider">Description</label>
+                      <textarea
+                        defaultValue={list?.list_description ?? ""}
+                        rows={3}
+                        onBlur={async (e) => {
+                          if (e.target.value !== (list?.list_description ?? "")) {
+                            await updateList({ variables: { documentId: list?.documentId, list_description: e.target.value }, refetchQueries: [MOVIES_BY_LIST] });
+                            toast.success("Description updated.");
+                          }
+                        }}
+                        className="w-full bg-dashboard-muted border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white resize-none focus:outline-none focus:border-white/30 transition-colors"
+                      />
+                    </div>
+                    <button onClick={() => setIsEditingList(false)} className="w-full py-2 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-lg flex justify-center text-sm mt-3 transition-colors">Done Editing</button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsEditingList(true)}
+                    className="flex flex-row text-center gap-2 items-center rounded-md font-poppins w-full text-sm border border-white px-4 py-3 hover:border-gray-500 text-white hover:text-gray-500 justify-center font-medium transition-all duration-300"
+                  >
+                    <Edit size={16} />
+                    <span>Edit</span>
+                  </button>
+                )}
 
-          {/* QR Code */}
-          {list?.Visibility && shareUrl && (
-            <div className="bg-dashboard-muted rounded-xl p-4 flex flex-col items-center">
-              <p className="text-xs text-dashboard-light uppercase tracking-wider mb-3 self-start">QR Code</p>
-              <div className="bg-white p-3 rounded-xl">
-                <QRCodeSVG value={shareUrl} size={140} />
+                <button
+                  onClick={handleToggleVisibility}
+                  className={`flex flex-row gap-2 items-center rounded-md font-poppins w-full text-sm border px-4 py-3 justify-center font-medium transition-all duration-300 ${
+                    list?.Visibility
+                      ? "border-green-500 text-green-500"
+                      : "border-dashboard-danger text-dashboard-danger"
+                  }`}
+                >
+                  {list?.Visibility ? <Eye size={16} /> : <EyeOff size={16} className="text-dashboard-danger" />}
+                  <span>{list?.Visibility ? "Published" : "Draft"}</span>
+                </button>
               </div>
-            </div>
-          )}
+            </Accordion>
 
-          {/* List settings */}
-          <div className="bg-dashboard-muted rounded-xl p-4 space-y-3">
-            <p className="text-xs text-dashboard-light uppercase tracking-wider">List Settings</p>
-            <div>
-              <label className="text-xs text-white/50 mb-1 block">List Name</label>
-              <input
-                defaultValue={list?.List_Name}
-                onBlur={async (e) => {
-                  if (e.target.value && e.target.value !== list?.List_Name) {
-                    await updateList({ variables: { documentId: list?.documentId, List_Name: e.target.value }, refetchQueries: [MOVIES_BY_LIST] });
-                    toast.success("List name updated.");
-                  }
-                }}
-                className="w-full bg-dashboard-sidebar border border-dashboard-border rounded-lg px-3 py-2 text-sm text-dashboard"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-white/50 mb-1 block">Description</label>
-              <textarea
-                defaultValue={list?.list_description ?? ""}
-                rows={3}
-                onBlur={async (e) => {
-                  if (e.target.value !== (list?.list_description ?? "")) {
-                    await updateList({ variables: { documentId: list?.documentId, list_description: e.target.value }, refetchQueries: [MOVIES_BY_LIST] });
-                    toast.success("Description updated.");
-                  }
-                }}
-                className="w-full bg-dashboard-sidebar border border-dashboard-border rounded-lg px-3 py-2 text-sm text-dashboard resize-none"
-              />
-            </div>
-          </div>
+            {/* My QR Accordion */}
+            <Accordion heading="My QR" defaultOpen={true}>
+              <div className={`relative pb-2 ${!list?.Visibility ? "blur-sm pointer-events-none" : ""}`}>
+                {!list?.Visibility && (
+                  <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-auto">
+                    <span className="bg-dashboard-muted px-4 py-2 rounded-lg text-sm text-white/90 shadow-2xl border border-white/20 backdrop-blur-md">Publish list to share QR</span>
+                  </div>
+                )}
+                
+                <div className="flex justify-center items-center my-6">
+                  <div className="flex relative flex-col justify-between items-center h-[16rem] w-[14rem] p-6 bg-black border border-white text-white rounded-lg">
+                    <div className="absolute bottom-0 left-0 w-full h-1/2 rounded-b-lg bg-gradient-to-t from-blue-900/40 to-transparent pointer-events-none" />
+                    <p className="text-sm tracking-wide font-medium z-10 text-center leading-snug">My Recommendations</p>
+                    <div className="z-10 items-center flex flex-col pt-1">
+                      <div className="p-2 bg-white rounded-lg shadow-md mb-3">
+                        <QRCodeSVG value={shareUrl} size={90} />
+                      </div>
+                      <p className="bg-gray-200 text-black px-4 py-1.5 font-poppins rounded-full text-[11px] font-semibold whitespace-nowrap">
+                        Travel like a local
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
-          {/* Danger zone */}
-          <div className="bg-red-950/20 border border-red-900/30 rounded-xl p-4">
-            <p className="text-xs text-red-400/70 uppercase tracking-wider mb-2">Danger Zone</p>
-            <button
-              onClick={() => setShowDeleteListModal(true)}
-              className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors"
-            >
-              <Trash2 size={14} /> Delete this list
-            </button>
+                <div className="flex items-center justify-center gap-8 mt-5 mb-1 pt-4 border-t border-white/5">
+                  <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => {
+                    if (navigator.share) {
+                      navigator.share({ title: list?.List_Name, url: shareUrl });
+                    } else {
+                      handleCopyUrl();
+                    }
+                  }}>
+                    <button className="p-0 bg-transparent rounded-full flex items-center justify-center">
+                      <Share2 size={22} className="text-white" strokeWidth={1.5} />
+                    </button>
+                    <span className="font-poppins text-white text-xs">Share Link</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={handleCopyUrl}>
+                    <button className="p-0 bg-transparent rounded-full flex items-center justify-center">
+                      {copied ? <Check size={22} className="text-white" strokeWidth={1.5} /> : <Copy size={22} className="text-white" strokeWidth={1.5} />}
+                    </button>
+                    <span className="font-poppins text-white text-xs whitespace-nowrap">{copied ? "Copied" : "Copy Link"}</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => {
+                     // trigger download
+                     const svg = document.querySelector('svg');
+                     if (svg) {
+                       const svgData = new XMLSerializer().serializeToString(svg);
+                       const canvas = document.createElement("canvas");
+                       const ctx = canvas.getContext("2d");
+                       const img = new Image();
+                       img.onload = () => {
+                         canvas.width = img.width;
+                         canvas.height = img.height;
+                         ctx?.drawImage(img, 0, 0);
+                         const pngFile = canvas.toDataURL("image/png");
+                         const a = document.createElement("a");
+                         a.download = `QR_${list?.List_Name || "List"}.png`;
+                         a.href = pngFile;
+                         a.click();
+                       };
+                       img.src = "data:image/svg+xml;base64," + btoa(svgData);
+                     }
+                  }}>
+                    <button className="p-0 bg-transparent rounded-full flex items-center justify-center">
+                      <Download size={22} className="text-white" strokeWidth={1.5} />
+                    </button>
+                    <span className="font-poppins text-white text-xs">Download QR</span>
+                  </div>
+                </div>
+              </div>
+            </Accordion>
           </div>
         </div>
       )}
-
-      {/* Add/Edit Movie overlay */}
-      <AnimatePresence>
-        {showAddMovie && listId && (
-          <AddMovie
-            listId={listId}
-            mode={editingMovie ? "edit" : "create"}
-            movie={editingMovie}
-            onClose={() => { setShowAddMovie(false); setEditingMovie(null); }}
-            onSaved={() => { refetch(); setShowAddMovie(false); setEditingMovie(null); }}
-          />
-        )}
-      </AnimatePresence>
 
       {/* Top Picks Manager */}
       <AnimatePresence>
@@ -473,13 +523,13 @@ const MovieListView = () => {
       {/* Delete list confirm modal */}
       {showDeleteListModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="bg-[#161b27] rounded-2xl border border-white/10 p-6 w-full max-w-sm">
-            <h3 className="text-lg font-semibold text-white mb-2">Delete List?</h3>
-            <p className="text-sm text-white/50 mb-5">
+          <div className="bg-dashboard-card rounded-2xl border border-dashboard-border p-6 w-full max-w-sm">
+            <h3 className="text-lg font-semibold text-dashboard mb-2">Delete List?</h3>
+            <p className="text-sm text-dashboard-muted mb-5">
               This will permanently delete "{list?.List_Name}" and all its movies. This cannot be undone.
             </p>
             <div className="flex gap-3">
-              <button onClick={() => setShowDeleteListModal(false)} className="flex-1 py-2.5 rounded-lg border border-white/10 text-sm text-white/60">
+              <button onClick={() => setShowDeleteListModal(false)} className="flex-1 py-2.5 rounded-lg border border-dashboard-border text-sm text-dashboard-muted hover:text-dashboard transition-colors">
                 Cancel
               </button>
               <button

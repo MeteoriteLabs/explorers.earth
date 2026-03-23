@@ -14,6 +14,7 @@ import type { MovieList } from "../../types";
 import { deduplicateMovies } from "../../utils/movieHelpers";
 import { generateSlug, buildPosterUrl } from "../../utils/movieHelpers";
 import { gql } from "@apollo/client";
+import { getCurrentDomain } from "../../../../utils/getCurrentDomain";
 
 // Query to get account documentId
 const MY_ACCOUNT = gql`
@@ -34,19 +35,22 @@ const CreateListModal = ({
   accountDocumentId,
   currentListCount,
   onCreated,
+  username,
 }: {
   open: boolean;
   onClose: () => void;
   accountDocumentId: string;
   currentListCount: number;
   onCreated: () => void;
+  username: string;
 }) => {
   const [createMovieList, { loading }] = useMutation(CREATE_MOVIE_LIST);
 
   const formik = useFormik({
-    initialValues: { List_Name: "", list_description: "" },
+    initialValues: { List_Name: "", list_description: "", slug: "" },
     validationSchema: Yup.object({
       List_Name: Yup.string().required("List name is required").max(100),
+      slug: Yup.string().required("List URL is required").max(100),
     }),
     onSubmit: async (values, { resetForm }) => {
       try {
@@ -54,7 +58,7 @@ const CreateListModal = ({
           variables: {
             List_Name: values.List_Name,
             list_description: values.list_description || null,
-            slug: generateSlug(values.List_Name),
+            slug: values.slug || generateSlug(values.List_Name),
             Visibility: false,
             display_order: currentListCount,
             account: accountDocumentId,
@@ -76,78 +80,103 @@ const CreateListModal = ({
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 md:p-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
       >
         <motion.div
-          className="bg-[#161b27] rounded-2xl border border-white/10 p-6 w-full max-w-md shadow-2xl"
+          className="bg-dashboard-sidebar rounded-xl border border-dashboard-border p-6 md:p-8 w-full max-w-2xl shadow-2xl"
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           onClick={e => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-semibold text-white">Create New List</h2>
-            <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
-              <X size={18} />
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-bold text-dashboard">Create New List</h2>
+            <button onClick={onClose} className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-dashboard-muted hover:text-dashboard transition-colors">
+              <X size={16} />
             </button>
           </div>
 
-          <form onSubmit={formik.handleSubmit} className="space-y-4">
+          <form onSubmit={formik.handleSubmit} className="space-y-5">
             <div>
-              <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">
-                List Name <span className="text-red-400">*</span>
+              <label className="text-sm font-semibold text-dashboard mb-2 block">
+                List Name
               </label>
               <input
                 type="text"
                 name="List_Name"
-                placeholder='e.g. "Mind-Bending Sci-Fi"'
+                placeholder="Enter List Name (e.g. Mind-Bending Sci-Fi)"
                 value={formik.values.List_Name}
-                onChange={formik.handleChange}
+                onChange={(e) => {
+                  formik.handleChange(e);
+                  formik.setFieldValue("slug", generateSlug(e.target.value));
+                }}
                 onBlur={formik.handleBlur}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50 transition-colors"
+                className="w-full bg-dashboard-muted border border-dashboard-border rounded-lg px-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent transition-colors"
               />
               {formik.touched.List_Name && formik.errors.List_Name && (
                 <p className="text-xs text-red-400 mt-1">{formik.errors.List_Name}</p>
               )}
-              {formik.values.List_Name && (
-                <p className="text-xs text-white/30 mt-1">
-                  Slug: {generateSlug(formik.values.List_Name)}
-                </p>
-              )}
             </div>
 
             <div>
-              <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">
-                Description (optional)
+              <label className="text-sm font-semibold text-dashboard mb-2 block">
+                Description
               </label>
               <textarea
                 name="list_description"
-                placeholder="What is this list about?"
-                rows={3}
+                placeholder="Enter a note or description for this list"
+                rows={4}
                 value={formik.values.list_description}
                 onChange={formik.handleChange}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50 transition-colors resize-none"
+                className="w-full bg-dashboard-muted border border-dashboard-border rounded-lg px-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent transition-colors resize-none"
               />
             </div>
 
-            <div className="flex gap-3 pt-1">
+            <div>
+              <label className="text-sm font-semibold text-dashboard mb-2 block">
+                List URL
+              </label>
+              <div className="flex w-full md:flex-row flex-col md:items-center">
+                <label className="w-full md:w-auto text-sm font-medium text-dashboard mr-2 shrink-0 mb-2 md:mb-0">
+                  {getCurrentDomain()}/{username}/
+                </label>
+                <input
+                  type="text"
+                  name="slug"
+                  placeholder="Enter the name to create a shareable link"
+                  value={formik.values.slug}
+                  onChange={(e) => {
+                    formik.handleChange(e);
+                    // Ensure slug format (lowercase, no spaces)
+                    formik.setFieldValue("slug", generateSlug(e.target.value));
+                  }}
+                  onBlur={formik.handleBlur}
+                  className="w-full bg-dashboard-muted border border-dashboard-border rounded-lg px-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent transition-colors"
+                />
+              </div>
+              {formik.touched.slug && formik.errors.slug && (
+                <p className="text-xs text-red-400 mt-1">{formik.errors.slug}</p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-dashboard-border">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-2.5 rounded-lg border border-white/10 text-sm text-white/60 hover:bg-white/5 transition-colors"
+                className="px-6 py-2.5 rounded-lg bg-[#ef4444] hover:bg-[#dc2626] text-sm text-white font-medium transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-sm text-white font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                className="px-6 py-2.5 rounded-lg bg-[#3b82f6] hover:bg-[#2563eb] text-sm text-white font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
               >
-                {loading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                {loading && <Loader2 size={14} className="animate-spin" />}
                 Create List
               </button>
             </div>
@@ -177,21 +206,25 @@ const MovieListCard = ({
 
   return (
     <motion.div
-      className="bg-[#161b27] border border-white/8 rounded-2xl p-5 hover:border-blue-500/30 transition-all group"
+      onClick={onOpen}
+      className="bg-dashboard-sidebar border border-dashboard-border rounded-2xl p-5 hover:border-gray-500 cursor-pointer transition-all group"
       whileHover={{ y: -2 }}
       transition={{ type: "spring", stiffness: 300 }}
     >
       {/* Card header */}
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex-1 min-w-0">
-          <h3 className="text-base font-semibold text-white truncate">{list.List_Name}</h3>
+          <h3 className="text-base font-semibold text-dashboard truncate">{list.List_Name}</h3>
           {list.list_description && (
-            <p className="text-xs text-white/40 mt-0.5 line-clamp-2">{list.list_description}</p>
+            <p className="text-xs text-dashboard-muted mt-0.5 line-clamp-2">{list.list_description}</p>
           )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
-            onClick={() => onToggleVisibility(list.documentId, list.Visibility)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleVisibility(list.documentId, list.Visibility);
+            }}
             disabled={togglingId === list.documentId || movieCount === 0}
             className={`text-xs px-2.5 py-1 rounded-full border flex items-center gap-1 transition-all ${
               list.Visibility
@@ -228,18 +261,18 @@ const MovieListCard = ({
           ))}
           {movieCount > 5 && (
             <div className="w-12 rounded-md flex items-center justify-center bg-white/5 flex-shrink-0 aspect-[2/3]">
-              <span className="text-xs text-white/40">+{movieCount - 5}</span>
+              <span className="text-xs text-dashboard-muted">+{movieCount - 5}</span>
             </div>
           )}
         </div>
       ) : (
-        <div className="h-16 rounded-lg bg-white/3 border border-dashed border-white/10 flex items-center justify-center mb-4">
-          <p className="text-xs text-white/30">No movies yet</p>
+        <div className="h-16 rounded-lg bg-white/3 border border-dashed border-dashboard-border flex items-center justify-center mb-4">
+          <p className="text-xs text-dashboard-muted">No movies yet</p>
         </div>
       )}
 
       {/* Stats row */}
-      <div className="flex items-center justify-between text-xs text-white/40">
+      <div className="flex items-center justify-between text-xs text-dashboard-muted">
         <div className="flex items-center gap-3">
           <span>{movieCount} movie{movieCount !== 1 ? "s" : ""}</span>
           {pinnedCount > 0 && (
@@ -248,12 +281,11 @@ const MovieListCard = ({
             </span>
           )}
         </div>
-        <button
-          onClick={onOpen}
-          className="flex items-center gap-1 text-blue-400 hover:text-blue-300 transition-colors font-medium"
+        <span
+          className="flex items-center gap-1 text-blue-400 group-hover:text-blue-300 transition-colors font-medium"
         >
           Open <ChevronRight size={13} />
-        </button>
+        </span>
       </div>
     </motion.div>
   );
@@ -359,7 +391,7 @@ const MoviesHome = () => {
           {/* Add new list card */}
           <motion.button
             onClick={() => setShowCreateModal(true)}
-            className="border-2 border-dashed border-white/10 rounded-2xl p-5 flex flex-col items-center justify-center gap-2 text-white/30 hover:text-white/60 hover:border-white/20 transition-all duration-200 min-h-[160px]"
+            className="border-2 border-dashed border-dashboard-border rounded-2xl p-5 flex flex-col items-center justify-center gap-2 text-dashboard-muted hover:text-dashboard hover:border-dashboard-border transition-all duration-200 min-h-[160px]"
             whileHover={{ scale: 1.01 }}
           >
             <Plus size={24} />
@@ -376,6 +408,7 @@ const MoviesHome = () => {
           accountDocumentId={accountDocumentId}
           currentListCount={lists.length}
           onCreated={() => refetch()}
+          username={user?.username || ""}
         />
       )}
     </div>

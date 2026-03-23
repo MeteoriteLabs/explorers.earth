@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useMutation, useQuery } from "@apollo/client";
 import {
-  X, Search, Film, Star, Loader2, ChevronDown,
+  X, Search, Film, Star, Loader2,
   CheckCircle2, Tv, Clock
 } from "lucide-react";
 import { toast } from "sonner";
@@ -129,22 +129,17 @@ const NoteStep = ({
   setNote,
   watchProviders,
   setWatchProviders,
-  categoryId,
-  setCategoryId,
 }: {
   selectedResult: TMDBSearchResult;
   note: string;
   setNote: (v: string) => void;
   watchProviders: WatchProvider[];
   setWatchProviders: (p: WatchProvider[]) => void;
-  categoryId: string;
-  setCategoryId: (v: string) => void;
 }) => {
   const [loadingProviders, setLoadingProviders] = useState(false);
   const [providerError, setProviderError] = useState<string | null>(null);
 
-  const { data: categoriesData } = useQuery(MOVIE_CATEGORIES);
-  const categories = categoriesData?.movieCategories ?? [];
+
 
   const title = selectedResult.title || selectedResult.name || "";
   const year = extractYear(selectedResult.release_date || selectedResult.first_air_date);
@@ -188,25 +183,7 @@ const NoteStep = ({
         <CheckCircle2 size={18} className="text-green-400 ml-auto flex-shrink-0" />
       </div>
 
-      {/* Category selector */}
-      {categories.length > 0 && (
-        <div className="mb-4">
-          <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Genre / Category (optional)</label>
-          <div className="relative">
-            <select
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
-            >
-              <option value="">— No category —</option>
-              {categories.map((c: any) => (
-                <option key={c.documentId} value={c.documentId}>{c.genre_name}</option>
-              ))}
-            </select>
-            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
-          </div>
-        </div>
-      )}
+
 
       {/* Note */}
       <div className="mb-4">
@@ -261,8 +238,11 @@ const AddMovie = ({ listId, mode, movie, onClose, onSaved }: AddMovieProps) => {
   const [selectedResult, setSelectedResult] = useState<TMDBSearchResult | null>(null);
   const [note, setNote] = useState(extractNoteText(movie?.user_recommendation_note) ?? "");
   const [watchProviders, setWatchProviders] = useState<WatchProvider[]>(movie?.watch_providers ?? []);
-  const [categoryId, setCategoryId] = useState(movie?.movie_categories?.[0]?.documentId ?? "");
+  const [categoryIds] = useState<string[]>(movie?.movie_categories?.map((c: any) => c.documentId) ?? []);
   const [saving, setSaving] = useState(false);
+
+  const { data: categoriesData } = useQuery(MOVIE_CATEGORIES);
+  const categories = categoriesData?.movieCategories ?? [];
 
   const [createMovie] = useMutation(CREATE_RECOMMENDED_MOVIE);
   const [updateMovie] = useMutation(UPDATE_RECOMMENDED_MOVIE);
@@ -281,7 +261,7 @@ const AddMovie = ({ listId, mode, movie, onClose, onSaved }: AddMovieProps) => {
             documentId: movie.documentId,
             user_recommendation_note: note ? [{ type: "paragraph", children: [{ type: "text", text: note }] }] : null,
             watch_providers: watchProviders,
-            movie_categories: categoryId ? [categoryId] : [],
+            movie_categories: categoryIds,
           },
         });
         toast.success("Movie updated!");
@@ -338,7 +318,10 @@ const AddMovie = ({ listId, mode, movie, onClose, onSaved }: AddMovieProps) => {
             is_pinned: false,
             display_order: 0,
             movie_list: listId,
-            movie_categories: categoryId ? [categoryId] : [],
+            movie_categories: genres.map(tmdbGenre => {
+              const matchedCategory = categories.find((c: any) => c.genre_name.toLowerCase() === tmdbGenre.name.toLowerCase());
+              return matchedCategory ? matchedCategory.documentId : null;
+            }).filter(Boolean),
             media_details: null,
           },
         });
@@ -410,8 +393,6 @@ const AddMovie = ({ listId, mode, movie, onClose, onSaved }: AddMovieProps) => {
               setNote={setNote}
               watchProviders={watchProviders}
               setWatchProviders={setWatchProviders}
-              categoryId={categoryId}
-              setCategoryId={setCategoryId}
             />
           )}
         </div>

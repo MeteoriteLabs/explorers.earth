@@ -18,6 +18,14 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
   const [dragStartY, setDragStartY] = useState<number | null>(null);
   const [cast, setCast] = useState<TMDBCastMember[]>([]);
   const contentRef = useRef<HTMLDivElement>(null);
+  const castScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollCast = (dir: "left" | "right") => {
+    if (castScrollRef.current) {
+      const amount = dir === "left" ? -250 : 250;
+      castScrollRef.current.scrollBy({ left: amount, behavior: "smooth" });
+    }
+  };
 
   useEffect(() => {
     if (!open) {
@@ -96,18 +104,16 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
             onClick={onClose}
           />
 
-          {/* Modal panel */}
-          <motion.div
-            className="fixed inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center z-50 md:p-6"
-            initial={{ y: "100%", opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: "100%", opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
-          >
-            <div
-              className="relative bg-[#0d1117] md:rounded-2xl w-full max-w-2xl max-h-[92vh] md:max-h-[85vh] overflow-hidden flex flex-col shadow-2xl ring-1 ring-white/10"
+          {/* Modal panel wrapper */}
+          <div className="fixed inset-0 pt-12 md:pt-8 flex items-end justify-center z-50 pointer-events-none">
+            <motion.div
+              className="relative bg-[#0d1117] rounded-t-2xl w-full h-full md:max-w-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-2xl ring-1 ring-white/10 hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pointer-events-auto"
+              initial={{ y: "100%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "100%", opacity: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Backdrop hero */}
@@ -132,7 +138,7 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
               </div>
 
               {/* Content area */}
-              <div ref={contentRef} className="flex-1 overflow-y-auto">
+              <div ref={contentRef} className="flex-1 pb-6 w-full">
                 <div className="flex gap-4 px-5 -mt-16 relative z-10">
                   {/* Poster */}
                   <div className="flex-shrink-0 w-28 rounded-xl overflow-hidden ring-2 ring-white/10 shadow-2xl">
@@ -206,7 +212,7 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                   {noteText && (
                     <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
                       <p className="text-xs font-semibold text-blue-400 mb-1.5 uppercase tracking-wider">Creator's Note</p>
-                      <p className="text-sm text-white/80 leading-relaxed">{noteText}</p>
+                      <div className="text-sm text-white/80 leading-relaxed [&_p]:mb-2 [&_p]:last:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h1]:text-lg [&_h2]:text-md [&_h3]:text-base font-normal max-w-none" dangerouslySetInnerHTML={{ __html: noteText }} />
                     </div>
                   )}
 
@@ -214,22 +220,36 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                   {cast.length > 0 && (
                     <div>
                       <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">Cast</p>
-                      <div className="flex overflow-x-auto pb-4 -mx-5 px-5 gap-3 hide-scrollbar">
-                        {cast.map(c => (
-                          <div key={c.id} className="flex flex-col flex-shrink-0 w-20 gap-1 rounded-xl">
-                            <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 border border-white/10 bg-[#1a2332]">
-                              {c.profile_path ? (
-                                <img src={`https://image.tmdb.org/t/p/w185${c.profile_path}`} className="w-full h-full object-cover" alt="" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-white/20">
-                                  <User size={24} />
-                                </div>
-                              )}
+                      <div className="relative group">
+                        <button
+                          onClick={() => scrollCast("left")}
+                          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-black/60 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-black/80 transition-all -ml-2 backdrop-blur-sm"
+                        >
+                          <ChevronLeft size={16} />
+                        </button>
+                        <div ref={castScrollRef} className="flex overflow-x-auto pb-4 -mx-5 px-5 gap-3 hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                          {cast.map(c => (
+                            <div key={c.id} className="flex flex-col flex-shrink-0 w-20 gap-1 rounded-xl">
+                              <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 border border-white/10 bg-[#1a2332]">
+                                {c.profile_path ? (
+                                  <img src={`https://image.tmdb.org/t/p/w185${c.profile_path}`} className="w-full h-full object-cover" alt="" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-white/20">
+                                    <User size={24} />
+                                  </div>
+                                )}
+                              </div>
+                              <span className="text-xs text-center leading-tight mt-1 text-white/90">{c.name}</span>
+                              <span className="text-[10px] text-center text-white/40 leading-tight">{c.character}</span>
                             </div>
-                            <span className="text-xs text-center leading-tight mt-1 text-white/90">{c.name}</span>
-                            <span className="text-[10px] text-center text-white/40 leading-tight">{c.character}</span>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => scrollCast("right")}
+                          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-black/60 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-black/80 transition-all -mr-2 backdrop-blur-sm"
+                        >
+                          <ChevronRight size={16} />
+                        </button>
                       </div>
                     </div>
                   )}
@@ -319,8 +339,8 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                   <Share2 size={14} /> Share
                 </button>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>
