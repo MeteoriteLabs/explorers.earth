@@ -1,16 +1,16 @@
 # tunes — Collaborative Playlist Management Platform
 
 tunes is a songs recommendation platform that transforms music sharing across diverse social and venue settings, creating immersive and interactive music experiences. The platform features responsive design, persistent user sessions, advanced music control capabilities with YouTube integration, and comprehensive administrative tools.
-
+ 
 ## Tech Stack
 
 - **Frontend**: React 18 + TypeScript, TanStack Query v5, shadcn/ui, Socket.IO, Tailwind CSS
-- **Backend**: Express.js + TypeScript, Socket.IO, Passport.js
+- **Backend**: Express.js + TypeScript, Socket.IO, Passport.js 
 - **Database**: PostgreSQL + Drizzle ORM
 - **Integrations**: YouTube Data API, Spotify, Razorpay, AWS SES, Google Gemini
-
-## Quick Start
-
+ 
+ ## Quick Start 
+ 
 ```bash
 # Install dependencies
 npm install

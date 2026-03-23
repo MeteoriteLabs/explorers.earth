@@ -125,6 +125,6 @@ See `docs/environment-variables.md` for the complete list. Key variables:
 - `VITE_GOOGLE_MAPS_API_KEY` — Google Maps
 - `VITE_LOCAL_TUNES_API_URL` — Local Tunes integration endpoint
 
-## Deployment
+## Deployment strategy
 
-Netlify. Config in `netlify.toml`. Build: `npm run build` (runs generate-static + tsc + vite build).
+Netlify. Config in `netlify.toml`. Build: `npm run build` (runs generate-static + tsc + vite build)
