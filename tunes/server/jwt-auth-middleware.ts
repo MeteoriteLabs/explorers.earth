@@ -40,8 +40,8 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     // Decode and validate JWT
     let decoded: JWTPayload;
     try {
-      // Decode JWT (validation against secret can be added later)
-      decoded = jwt.decode(token) as JWTPayload;
+      // Verify JWT signature and decode
+      decoded = jwt.verify(token, STRAPI_JWT_SECRET) as JWTPayload;
 
       if (!decoded || !decoded.id) {
         throw new Error('Invalid token payload');
@@ -120,7 +120,7 @@ export function requireAnyAuth(req: Request, res: Response, next: NextFunction) 
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
     try {
-      const decoded = jwt.decode(token);
+      const decoded = jwt.verify(token, STRAPI_JWT_SECRET);
       if (decoded) {
         (req as any).jwtAuthenticated = true;
         return next();

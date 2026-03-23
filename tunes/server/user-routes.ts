@@ -101,7 +101,7 @@ export function setupUserRoutes(app: Express) {
       const token = req.headers.authorization.substring(7);
       try {
         // Decode JWT to validate
-        const decoded = jwt.decode(token) as any;
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret') as any;
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -254,7 +254,7 @@ export function setupUserRoutes(app: Express) {
       const token = req.headers.authorization.substring(7);
       try {
         // Decode JWT to validate
-        const decoded = jwt.decode(token) as any;
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret') as any;
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
