@@ -69,14 +69,14 @@ As a creator, I want to create a named movie list (e.g., "Mind-Bending Sci-Fi") 
 As a creator, I want to search for a movie or TV show and add it to my list with my personal note.
 - Full-page overlay with TMDB search
 - Search results show: poster, title, year, director/creator, genres, rating, runtime
-- After selection: auto-filled details, personal note (optional), where to watch (auto from TMDB), pin checkbox, media upload
+- After selection: auto-filled details, personal note (rich text), where to watch (auto from TMDB), pin checkbox, manual snapshot upload (S3), user rating (1-5 stars)
 - Submit saves all metadata to Strapi
 
 **US-4: Manage Movies in List**
 As a creator, I want to view, edit, delete, reorder, and pin movies within a list.
-- Table/list rows with poster thumbnail, title, year, genre, rating, note preview
+- Table/list rows with poster thumbnail, title, year, genre, TMDB rating, User rating, note preview
 - Pin toggle (⭐) per row
-- ⋮ menu: Edit, Delete, Move to another list
+- ⋮ menu: Edit, Delete
 - Drag handles for reorder
 - Sort presets: Custom, Rating, Year, Recently added
 
@@ -127,8 +127,8 @@ As a visitor, I want to browse movies by genre across all the creator's lists.
 
 See `movies_and_shows_schema.md` for complete field-level detail.
 
-- **Movie List collection** — list name, description, cover image, slug, visibility, account relation, movie relations, pin order settings
-- **RecommendedMovie collection** — TMDB metadata (tmdb_id, title, year, poster, genres, director, runtime, rating, media_type), creator's note, where to watch (JSON), is_pinned, pin_order, media uploads, list relation, Movie_Category relation
+- **Movie List collection** — list name, description, cover image, slug, visibility, account relation, movie relations, pin order settings, top picks heading
+- **RecommendedMovie collection** — TMDB metadata (tmdb_id, title, year, poster, genres, director, runtime, rating, media_type), creator's note, user rating (1-5 stars), where to watch (JSON), is_pinned, pin_order, manual media snapshots, list relation, Movie_Categories relation, cast details
 
 ## API Summary
 
@@ -158,8 +158,10 @@ See `movies_and_shows_api_contract.md` for complete request/response shapes.
 - [ ] Clicking Movies opens the Movies home view
 - [ ] Creator can create a new movie list with name, description, optional cover
 - [ ] Creator can add a movie via TMDB search with auto-filled metadata
-- [ ] Personal note is optional during add
+- [ ] Personal note is rich text format
 - [ ] Where to Watch platforms are auto-populated from TMDB
+- [ ] User can manually upload snapshots directly to S3
+- [ ] User can provide a 1-5 star user rating
 - [ ] Creator can pin movies to Top Picks (max 15) via star toggle
 - [ ] Creator can drag-to-reorder movies within a list
 - [ ] Creator can drag-to-reorder pinned items in Top Picks manager

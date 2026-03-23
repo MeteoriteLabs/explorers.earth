@@ -143,6 +143,7 @@ query MoviesByList(
       director
       runtime
       tmdb_rating
+      user_rating
       overview
       season_count
       user_recommendation_note
@@ -150,10 +151,11 @@ query MoviesByList(
       is_pinned
       pin_order
       display_order
-      movie_category {
+      movie_categories {
         documentId
         genre_name
       }
+      cast_details
       Media {
         documentId
         url
@@ -208,14 +210,16 @@ interface RecommendedMovie {
   overview: string | null;
   season_count: number | null;
   user_recommendation_note: string | null;
+  user_rating: number | null;
   watch_providers: WatchProvider[];
   is_pinned: boolean;
   pin_order: number | null;
   display_order: number;
-  movie_category: {
+  movie_categories: Array<{
     documentId: string;
     genre_name: string;
-  } | null;
+  }>;
+  cast_details: unknown | null;
   Media: Array<{
     documentId: string;
     url: string;
@@ -251,6 +255,7 @@ query MovieDetails($documentId: ID!) {
     director
     runtime
     tmdb_rating
+    user_rating
     overview
     season_count
     user_recommendation_note
@@ -259,6 +264,7 @@ query MovieDetails($documentId: ID!) {
     pin_order
     display_order
     media_details
+    cast_details
     Media {
       documentId
       url
@@ -307,6 +313,7 @@ interface RecommendedMovie {
   director: string | null;
   runtime: number | null;
   tmdb_rating: number | null;
+  user_rating: number | null;
   overview: string | null;
   season_count: number | null;
   user_recommendation_note: string | null;
@@ -315,6 +322,7 @@ interface RecommendedMovie {
   pin_order: number | null;
   display_order: number;
   media_details: Record<string, unknown>;
+  cast_details: unknown | null;
   Media: Array<{
     documentId: string;
     url: string;
@@ -325,10 +333,10 @@ interface RecommendedMovie {
     List_Name: string;
     slug: string;
   };
-  movie_category: {
+  movie_categories: Array<{
     documentId: string;
     genre_name: string;
-  } | null;
+  }>;
 }
 ```
 
@@ -356,6 +364,7 @@ query PinnedMovies($accountDocumentId: ID!) {
     poster_path
     backdrop_path
     tmdb_rating
+    user_rating
     is_pinned
     pin_order
     movie_list {
@@ -385,6 +394,7 @@ interface PinnedMoviesResponse {
     poster_path: string | null;
     backdrop_path: string | null;
     tmdb_rating: number | null;
+    user_rating: number | null;
     is_pinned: boolean;
     pin_order: number | null;
     movie_list: {
@@ -422,6 +432,7 @@ query MoviesByGenre($accountDocumentId: ID!, $genre: String!) {
     title
     poster_path
     tmdb_rating
+    user_rating
     genres
     overview
     year
@@ -452,6 +463,7 @@ interface MoviesByGenreResponse {
     title: string;
     poster_path: string | null;
     tmdb_rating: number | null;
+    user_rating: number | null;
     genres: string[];
     overview: string | null;
     year: string | null;
@@ -500,6 +512,7 @@ query MovieListBySlug($slug: String!, $username: String!) {
       year
       genres
       tmdb_rating
+      user_rating
       overview
       watch_providers
       is_pinned
@@ -545,6 +558,7 @@ interface MovieListBySlugResponse {
       year: string | null;
       genres: string[];
       tmdb_rating: number | null;
+      user_rating: number | null;
       overview: string | null;
       watch_providers: WatchProvider[];
       is_pinned: boolean;
@@ -589,6 +603,7 @@ query PublicMovieData($accountDocumentId: ID!) {
       title
       poster_path
       tmdb_rating
+      user_rating
       genres
       is_pinned
       pin_order
@@ -633,6 +648,7 @@ interface PublicMovieDataResponse {
       title: string;
       poster_path: string | null;
       tmdb_rating: number | null;
+      user_rating: number | null;
       genres: string[];
       is_pinned: boolean;
       pin_order: number | null;
@@ -839,14 +855,16 @@ mutation CreateRecommendedMovie(
   $tmdb_rating: Decimal
   $overview: String
   $season_count: Int
-  $user_recommendation_note: String
+  $user_recommendation_note: JSON
+  $user_rating: Int
   $watch_providers: JSON!
   $is_pinned: Boolean!
   $pin_order: Int
   $display_order: Int!
   $media_details: JSON
+  $cast_details: JSON
   $movie_list: ID!
-  $movie_category: ID
+  $movie_categories: [ID]
 ) {
   createRecommendedMovie(
     data: {
@@ -864,13 +882,15 @@ mutation CreateRecommendedMovie(
       overview: $overview
       season_count: $season_count
       user_recommendation_note: $user_recommendation_note
+      user_rating: $user_rating
       watch_providers: $watch_providers
       is_pinned: $is_pinned
       pin_order: $pin_order
       display_order: $display_order
       media_details: $media_details
+      cast_details: $cast_details
       movie_list: $movie_list
-      movie_category: $movie_category
+      movie_categories: $movie_categories
     }
   ) {
     documentId
@@ -899,14 +919,16 @@ interface CreateRecommendedMovieInput {
   tmdb_rating?: number;       // 0-10
   overview?: string;
   season_count?: number;      // TV only
-  user_recommendation_note?: string;
+  user_recommendation_note?: unknown;
+  user_rating?: number;
   watch_providers: WatchProvider[];  // JSON array
   is_pinned: boolean;
   pin_order?: number;
   display_order: number;
   media_details?: Record<string, unknown>;  // JSON
+  cast_details?: unknown; // JSON
   movie_list: string;         // MovieList documentId
-  movie_category?: string;
+  movie_categories?: string[];
 }
 
 interface WatchProvider {
@@ -939,24 +961,26 @@ interface CreateRecommendedMovieResponse {
 ```graphql
 mutation UpdateRecommendedMovie(
   $documentId: ID!
-  $user_recommendation_note: String
+  $user_recommendation_note: JSON
+  $user_rating: Int
   $watch_providers: JSON
   $is_pinned: Boolean
   $pin_order: Int
   $display_order: Int
   $media_details: JSON
-  $movie_category: ID
+  $movie_categories: [ID]
 ) {
   updateRecommendedMovie(
     documentId: $documentId
     data: {
       user_recommendation_note: $user_recommendation_note
+      user_rating: $user_rating
       watch_providers: $watch_providers
       is_pinned: $is_pinned
       pin_order: $pin_order
       display_order: $display_order
       media_details: $media_details
-      movie_category: $movie_category
+      movie_categories: $movie_categories
     }
   ) {
     documentId
@@ -972,13 +996,14 @@ mutation UpdateRecommendedMovie(
 ```typescript
 interface UpdateRecommendedMovieInput {
   documentId: string;
-  user_recommendation_note?: string;
+  user_recommendation_note?: unknown;
+  user_rating?: number;
   watch_providers?: WatchProvider[];
   is_pinned?: boolean;
   pin_order?: number | null;
   display_order?: number;
   media_details?: Record<string, unknown>;
-  movie_category?: string | null;
+  movie_categories?: string[];
 }
 ```
 

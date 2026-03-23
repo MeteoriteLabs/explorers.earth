@@ -32,7 +32,7 @@ src/features/Movies/
 │   │   ├── MovieRow.tsx              — Draggable movie row in list
 │   │   ├── MovieListManage.tsx       — Settings, QR, delete, sharing
 │   │   ├── CreateMovieListModal.tsx  — Create new list modal
-│   │   ├── AddMovie.tsx              — Add/edit movie modal (TMDB search)
+│   │   ├── AddMoviePage.tsx          — Page to add/edit movie in list (TMDB search)
 │   │   ├── TMDBSearch.tsx            — TMDB autocomplete search component
 │   │   ├── WatchProviders.tsx        — Watch provider selection chips
 │   │   └── TopPicksManager.tsx       — Pin/feature top picks manager
@@ -72,7 +72,7 @@ src/features/Movies/
 - `MovieRow.tsx`: Individual draggable movie row with poster, title, year, genres, rating, note, action menu
 - `MovieListManage.tsx`: Settings panel with share URL, QR code, list settings, delete option
 - `CreateMovieListModal.tsx`: Form to create new list (name, description, category/genre)
-- `AddMovie.tsx`: Modal to add/edit movie in list (TMDB search, details form, watch providers, notes)
+- `AddMoviePage.tsx`: Dedicated page to add/edit movie in list (TMDB search, rich text notes, snapshots, user ratings)
 - `TMDBSearch.tsx`: Search input with debounce, autocomplete dropdown showing movies/shows
 - `WatchProviders.tsx`: Toggleable chip group for where to watch (Netflix, Hulu, etc.)
 - `TopPicksManager.tsx`: Manage pinned movies across all lists, drag-to-reorder
@@ -124,10 +124,13 @@ export interface Movie {
   backdropUrl: string;
   runtime?: number;
   director?: string;
-  creatorNote: string;
+  user_recommendation_note?: any;
+  user_rating?: number | null;
   watchProviders: WatchProvider[];
   isPinned: boolean;
   order: number;
+  cast_details?: any;
+  movie_categories?: any[];
   createdAt: string;
 }
 
@@ -254,9 +257,9 @@ Routes are added to existing routing files without modifying other routes:
 
 <Route path="/recommendations/movies/:listId" element={<ProtectedRoute><DashboardLayout currentCategory="movies"><MovieListView /></DashboardLayout></ProtectedRoute>} />
 
-<Route path="/recommendations/movies/:listId/new-movie" element={<ProtectedRoute><AddMovie mode="create" /></ProtectedRoute>} />
+<Route path="/recommendations/movies/:listId/new-movie" element={<ProtectedRoute><DashboardLayout currentCategory="movies"><AddMoviePage mode="create" /></DashboardLayout></ProtectedRoute>} />
 
-<Route path="/recommendations/movies/:listId/:movieId/edit" element={<ProtectedRoute><AddMovie mode="edit" /></ProtectedRoute>} />
+<Route path="/recommendations/movies/:listId/:movieId/edit" element={<ProtectedRoute><DashboardLayout currentCategory="movies"><AddMoviePage mode="edit" /></DashboardLayout></ProtectedRoute>} />
 
 <Route path="/recommendations/movies/top-picks" element={<ProtectedRoute><DashboardLayout currentCategory="movies"><TopPicksManager /></DashboardLayout></ProtectedRoute>} />
 ```
@@ -345,7 +348,7 @@ export const useMovieStore = create<MovieStore>((set) => ({...}));
 ### Local Component State
 
 - **TMDB search results**: State in `useTMDBSearch` hook (ephemeral, cleared on blur)
-- **Form state**: Formik (in `AddMovie`, `CreateMovieListModal`)
+- **Form state**: Local state managed dynamically in `AddMoviePage`
 - **Drag-and-drop reorder**: Local state in `MovieListView`, saved via mutation on drop
 - **Modal open/close**: Local `useState` in parent component
 
@@ -523,12 +526,12 @@ MovieListView
     └── AddMovieButton
 ```
 
-### Dashboard: Add/Edit Movie
+### Dashboard: Add/Edit Movie Page
 
 ```
-AddMovie (modal overlay, mode: "create" | "edit")
+AddMoviePage (Full page, mode: "create" | "edit")
 ├── BackNavigation / CloseButton
-├── TMDBSearch
+├── TMDBSearch (Inline search)
 │   ├── SearchInput
 │   ├── LoadingSpinner (debounced)
 │   └── SearchResultRow[]
@@ -536,17 +539,17 @@ AddMovie (modal overlay, mode: "create" | "edit")
 │       ├── Title + Year + MediaType
 │       ├── Rating badge
 │       └── SelectButton
-├── SelectedMovieCard (auto-filled post-selection)
-│   ├── Large poster
+├── SelectedMovie Preview Auto-filled
+│   ├── Large poster / Backdrop strip
 │   ├── Title + Year
-│   ├── Genres (chips)
+│   ├── Genres
 │   ├── Rating + Runtime + Director
-│   └── Synopsis (if available)
-├── Form
-│   ├── NoteField (textarea, "Why do I love this?")
-│   ├── WatchProviders (chip group, multi-select)
-│   ├── PinAsTopPickCheckbox
-│   └── CreatorPhotosUpload (optional, multi-upload)
+│   └── Synopsis / Cast Overview
+├── Details Form
+│   ├── NoteField (TiptapEditor, "Why do I love this?")
+│   ├── UserRating (1-5 Interactive star selector)
+│   ├── WatchProviders (chip group)
+│   └── CreatorPhotosUpload (optional, multi-upload snapshots directly to S3)
 └── SubmitButtons (Save | Cancel)
 ```
 

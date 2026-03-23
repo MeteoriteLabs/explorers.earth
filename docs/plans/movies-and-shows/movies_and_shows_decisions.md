@@ -311,3 +311,27 @@ Every architectural and design decision for this feature, with context, alternat
 **Impact on implementation:** Two-tab layout matching existing `Favorites` page pattern. Manage tab renders URL, QR, settings, delete.
 
 **Impact on future work:** Same two-tab pattern for all future categories.
+
+---
+
+## D16: Snapshot Uploads (Direct S3 vs Strapi Plugin)
+
+**Decision:** The application uploads manual snapshots directly to S3 utilizing a structured path format via a custom backend endpoint and saves the URLs in `media_details`.
+
+**Context:** Users originally were locked to using the standard Strapi Media Library for every single item ever uploaded. This caused visual clutter in the backend and restricted complex user-specific path segmentation.
+
+**Rationale:** Utilizing direct uploads to an established directory structure (`{username}/movies/{listId}/{tmdbId}/{filename}`) vastly improves S3 bucket navigability and keeps the application purely managing references as strings. 
+
+**Impact on implementation:** A custom endpoint in the Strapi backend receives multi-part form data and streams it directly to S3. `AddMoviePage` builds paths and triggers `axios.post` manually.
+
+---
+
+## D17: Tiptap Editor & User Ratings
+
+**Decision:** Creator notes are stored explicitly as Tiptap JSON format blocks, and a `user_rating` field (1-5 integer) exists explicitly independent of the TMDB ratings.
+
+**Context:** Simple textareas lacked formatting (bold, italic, bullets) which are important for engaging reviews. Additionally, creators frequently desired a way to provide their *own* quick review score overriding or complementing the global TMDB score.
+
+**Rationale:** `user_recommendation_note` expects Tiptap blocks. The new `user_rating` field stores a precise 1-5 integer that translates visually to our yellow glowing star interface in the Dashboard (`AddMoviePage`) and Public Profile (`MovieDetailModal`).
+
+**Impact on implementation:** `user_rating` added to schema and GraphQL types. Form blocks replaced standard textareas with `TiptapEditor`.

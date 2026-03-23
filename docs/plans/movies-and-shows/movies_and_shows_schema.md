@@ -72,8 +72,10 @@ Complete data model for the Movies & Shows feature. These collections need to be
 | `overview` | Long text | No | — | TMDB synopsis/description |
 | `season_count` | Integer | No | — | Number of seasons (TV only, null for movies) |
 | **Creator Content** | | | | |
-| `user_recommendation_note` | Rich text | No | — | Creator's personal recommendation note. Rich text for formatting. |
-| `watch_providers` | JSON | No | `[]` | Streaming platforms array: `[{ "provider_name": "Netflix", "logo_path": "/path.jpg", "link": "https://...", "provider_id": 8 }]` |
+| `user_recommendation_note` | Rich text | No | — | Creator's personal recommendation note. Blocks/Rich text for formatting. |
+| `user_rating` | Integer | No | — | User's 1-5 star rating |
+| `cast_details` | JSON | No | `[]` | Array of cast details: `[{ "original_name": "Matthew McConaughey", "character": "Cooper", "profile_url": "..." }]` |
+| `watch_providers` | JSON | No | `[]` | Streaming platforms array: `[{ "provider_name": "Netflix", "logo_path": "/path.jpg" }]` |
 | `is_pinned` | Boolean | No | `false` | Whether this movie is pinned to Top Picks |
 | `pin_order` | Integer | No | `null` | Order within Top Picks (null if not pinned). Lower = earlier in Top Picks row. |
 | `display_order` | Integer | No | `0` | Order within the list. Lower = earlier position. |
@@ -82,7 +84,7 @@ Complete data model for the Movies & Shows feature. These collections need to be
 | `media_details` | JSON | No | — | Structured media metadata: `{ "imageDetails": [...], "thumbnail": "url" }`. Matches existing RecommendedPlace pattern. |
 | **Relations** | | | | |
 | `movie_list` | Relation (Many-to-One) | Yes | — | The MovieList this movie belongs to. Many RecommendedMovies belong to one MovieList. |
-| `movie_category` | Relation | No | — | Links to the new Movie_Category collection (replaces older generic recommendation category logic). |
+| `movie_categories` | Relation (Many-to-Many) | No | — | Links to the Movie_Category collection representing matched TMDB genres. |
 
 ### Notes for Strapi Admin
 - `tmdb_id` + `movie_list` combination should be unique (prevent duplicate movies in same list)

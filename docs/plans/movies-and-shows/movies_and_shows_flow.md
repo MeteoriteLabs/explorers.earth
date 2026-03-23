@@ -61,13 +61,14 @@ Depends on: movies_and_shows_prd.md
       - Large poster image
       - Title, year, rating, genres, director, runtime
       - Change Selection link (back to search)
-   2. Personal note field (optional textarea)
-   3. Where to Watch section:
+   2. Personal note field (Tiptap rich text block)
+   3. User Rating (interactive 1-5 star selector)
+   4. Where to Watch section:
       - Auto-populated streaming platforms from TMDB
       - Toggleable chips for each platform
-   4. "Add to Top Picks" checkbox
-   5. Media upload section (optional, up to 10 files)
-   6. Creator clicks "Add to List"
+   5. "Add to Top Picks" checkbox
+   6. Manual Snapshot Upload (optional, multi-upload directly to S3)
+   7. Creator clicks "Add to List"
 
 4. **System Actions:**
    - Creates RecommendedMovie in Strapi with all metadata
@@ -211,7 +212,8 @@ Depends on: movies_and_shows_prd.md
    - Large poster image
    - Title, year, rating, genres, director, runtime
    - "Series" indicator + season count (TV shows only)
-   - Creator's note (visually highlighted section)
+   - Creator's note (visually highlighted block formatted via Tiptap)
+   - Creator's rating (1-5 glowing yellow stars)
    - Where to Watch section:
      - Streaming platform badges (tappable)
      - Tapping badge opens streaming service in new tab
