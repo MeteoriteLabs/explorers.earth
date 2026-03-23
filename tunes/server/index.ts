@@ -21,7 +21,7 @@ app.set("trust proxy", true);
 // Basic middleware setup
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser(process.env.COOKIE_SECRET || 'cosmic-cookie-secret'));
+app.use(cookieParser(process.env.COOKIE_SECRET || 'dev-only-cookie-secret'));
 
 // Serve favicon and related files directly from root and public directories
 // This ensures maximum browser compatibility for favicon display
