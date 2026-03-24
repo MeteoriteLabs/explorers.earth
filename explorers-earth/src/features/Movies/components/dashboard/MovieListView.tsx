@@ -297,15 +297,15 @@ const MovieListView = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-dashboard-muted p-1 rounded-xl">
+      <div className="flex mb-6 bg-white p-1 rounded-full max-w-[320px] mx-auto shadow-sm">
         {(["recommendations", "manage"] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-2 text-sm font-medium rounded-lg capitalize transition-all ${
+            className={`flex-1 py-2 px-4 text-sm font-semibold rounded-full capitalize transition-all duration-300 ${
               activeTab === tab
-                ? "bg-dashboard-sidebar text-dashboard shadow-sm"
-                : "text-dashboard-light hover:text-dashboard"
+                ? "bg-[#60A5FA] text-white shadow"
+                : "text-blue-900 bg-transparent hover:bg-blue-50/50"
             }`}
           >
             {tab}

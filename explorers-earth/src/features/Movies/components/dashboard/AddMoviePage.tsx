@@ -576,7 +576,7 @@ const AddMoviePage = () => {
       </div>
 
       {/* Single-column form */}
-      <div className="max-w-2xl mx-auto px-6 py-8 space-y-5">
+      <div className="max-w-2xl mx-auto px-6 pt-8 pb-28 md:pb-8 space-y-5">
 
         {/* Search — only in create mode */}
         {!isEdit && (
@@ -820,8 +820,8 @@ const AddMoviePage = () => {
               {/* User Rating */}
               <div className="mt-4">
                 <label className="text-sm font-semibold text-dashboard mb-2 block">Your Rating</label>
-                <div className="flex gap-1.5">
-                  {[1, 2, 3, 4, 5].map((star) => (
+                <div className="flex gap-1.5 flex-wrap">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
                     <button
                       key={star}
                       type="button"

@@ -90,10 +90,10 @@ const TopPicksMobileHero = ({ movies, onMovieClick, showManageButton = false, on
                 {showManageButton && diff === 0 && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onManageClick?.(); }}
-                    className="ml-auto bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/20 rounded-lg px-3 py-1.5 flex items-center gap-1.5 shadow-lg text-white transition-all active:scale-95"
+                    className="ml-auto bg-yellow-400 hover:bg-yellow-300 rounded-full px-4 py-1.5 flex items-center gap-1.5 shadow-[0_0_15px_rgba(250,204,21,0.4)] text-black transition-all active:scale-95 border border-yellow-300"
                   >
-                    <Star size={12} className="text-yellow-400" fill="currentColor" />
-                    <span className="text-[10px] font-black text-white uppercase tracking-wider">Manage</span>
+                    <Star size={13} className="text-black" fill="currentColor" />
+                    <span className="text-[11px] font-black uppercase tracking-wider">Manage</span>
                   </button>
                 )}
               </div>

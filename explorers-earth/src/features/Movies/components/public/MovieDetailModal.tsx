@@ -226,8 +226,8 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                   {movie.user_rating && (
                     <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 flex items-center justify-between">
                       <p className="text-xs font-semibold text-yellow-500 uppercase tracking-wider">Creator's Rating</p>
-                      <div className="flex gap-1">
-                        {[1, 2, 3, 4, 5].map(star => (
+                      <div className="flex gap-1 flex-wrap justify-end">
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(star => (
                           <Star 
                             key={star} 
                             size={16} 

@@ -98,9 +98,9 @@ const TopPicksHero = ({ movies, onMovieClick, showManageButton = false, onManage
       {showManageButton && (
         <button
           onClick={onManageClick}
-          className="absolute z-50 top-6 right-6 lg:top-8 lg:right-8 bg-black/60 hover:bg-black/90 backdrop-blur-md text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-2xl flex items-center gap-2 border border-white/20 transition-all hover:scale-105"
+          className="absolute z-50 top-6 right-6 lg:top-8 lg:right-8 bg-yellow-400 hover:bg-yellow-300 text-black px-5 py-2.5 rounded-full text-sm font-black shadow-[0_0_20px_rgba(250,204,21,0.4)] flex items-center gap-2 border border-yellow-300 transition-all hover:scale-105"
         >
-          <Star size={14} className="text-yellow-400" fill="currentColor" />
+          <Star size={16} className="text-black" fill="currentColor" />
           Manage Top Picks
         </button>
       )}

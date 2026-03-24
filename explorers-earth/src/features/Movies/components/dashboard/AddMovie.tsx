@@ -219,8 +219,8 @@ const NoteStep = ({
         {/* User Rating */}
         <div className="mt-4">
           <label className="text-xs text-white/50 uppercase tracking-wider mb-2 block">Your Rating</label>
-          <div className="flex gap-1.5">
-            {[1, 2, 3, 4, 5].map((star) => (
+          <div className="flex gap-1.5 flex-wrap">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
               <button
                 key={star}
                 type="button"
