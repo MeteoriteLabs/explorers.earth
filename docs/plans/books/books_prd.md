@@ -69,8 +69,8 @@ As a creator, I want to create a named book list (e.g., "Life-Changing Reads", "
 As a creator, I want to search for a book and add it to my list with my personal note.
 - Full-page overlay with Google Books search
 - Search results show: cover thumbnail, title, author(s), year, publisher, subjects, page count, description
-- After selection: auto-filled details, personal note (rich text), where to buy (Google Books link + optional manual links), pin checkbox, manual photo upload (S3), user rating (1-5 stars)
-- Submit saves all metadata to Strapi
+  - After selection: auto-filled details, personal note (rich text), user rating (1-10 stars, matching Movies & Shows consistent UX), where to buy, optional media upload, and pin to Top Reads
+  - Submit saves all metadata to Strapi
 
 **US-4: Manage Books in List**
 As a creator, I want to view, edit, delete, reorder, and pin books within a list.
@@ -128,7 +128,7 @@ As a visitor, I want to browse books by subject across all the creator's lists.
 See `books_schema.md` for complete field-level detail.
 
 - **BookList collection** — list name, description, cover image, slug, visibility, account relation, book relations, display order, top reads heading
-- **RecommendedBook collection** — Google Books metadata (volume_id, title, authors, year, cover_url, subjects, publisher, page_count, google_rating, description, isbn), creator's note, user rating (1-5 stars), buy links (JSON), is_pinned, pin_order, display_order, manual media snapshots, list relation, Book_Category relation
+- **RecommendedBook collection** — Google Books metadata (volume_id, title, authors, cover_url, subjects, publisher, page_count, google_rating, description, isbn), creator's note (Tiptap blocks), user_rating (1-10 integer, matching Movies & Shows), buy_links (JSON), is_pinned, pin_order, display_order, media snapshots, list relation, Book_Category relation
 
 ## API Summary
 
@@ -163,7 +163,7 @@ See `books_api_contract.md` for complete request/response shapes.
 - [ ] Google Books buy link is auto-populated if available
 - [ ] Creator can manually add or edit buy links
 - [ ] User can manually upload photos directly to S3
-- [ ] User can provide a 1-5 star user rating
+- [ ] User can provide a 1-10 star user rating (consistent with Movies & Shows)
 - [ ] Creator can pin books to Top Reads (max 15) via star toggle
 - [ ] Creator can drag-to-reorder books within a list
 - [ ] Creator can drag-to-reorder pinned items in Top Reads manager

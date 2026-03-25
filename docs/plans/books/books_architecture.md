@@ -73,10 +73,10 @@ src/features/Books/
 - `AddBookPage.tsx`: Dedicated page to add/edit book (Google Books search, rich text notes, buy links, photos, user ratings)
 - `GoogleBooksSearch.tsx`: Search input with debounce, autocomplete dropdown showing books with covers/authors
 - `BuyLinks.tsx`: Editable list of buy/find links (Google Books auto-added + manual entries)
-- `TopReadsManager.tsx`: Manage pinned books across all lists, drag-to-reorder
+- `TopReadsManager.tsx`: Dedicated manager page at `/recommendations/books/top-reads`. Also usable as a slide-up modal (matching the `TopPicksManager` pattern from Movies) — the component is instantiated as a modal from BooksHome in some contexts.
 
 **components/public/**
-- `PublicBooks.tsx`: Public landing page for a creator's books (featured lists, carousels, subject browse)
+- `PublicBooks.tsx`: Public landing page for a creator's books (featured lists, carousels, subject browse). Top Reads are displayed in a carousel row, not a cinematic hero, due to portrait cover aspect ratios.
 - `BookCarouselRow.tsx`: Horizontal scrollable carousel of book cover cards
 - `BookCoverCard.tsx`: Compact cover card with image, title, author, rating badge (tappable)
 - `BookCoverSkeleton.tsx`: Placeholder skeleton for loading state
@@ -133,7 +133,7 @@ export interface Book {
   preview_link: string | null;
   // Creator content
   user_recommendation_note: any;
-  user_rating: number | null;
+  user_rating: number | null;       // 1-10 integer (matching Movies & Shows)
   buy_links: BuyLink[];
   is_pinned: boolean;
   pin_order: number | null;

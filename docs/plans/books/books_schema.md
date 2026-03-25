@@ -78,7 +78,7 @@ Complete data model for the Books feature. These collections need to be created 
 | `preview_link` | Short text | No | — | Google Books preview/about page URL |
 | **Creator Content** | | | | |
 | `user_recommendation_note` | Rich text | No | — | Creator's personal recommendation note. Tiptap/Blocks format. |
-| `user_rating` | Integer | No | — | User's 1-5 star rating |
+| `user_rating` | Integer | No | — | User's 1-10 rating (consistent with Movies & Shows feature) |
 | `buy_links` | JSON | No | `[]` | Array of buy/find link objects: `[{ "name": "Google Books", "url": "...", "logo": "google-books" }, { "name": "Amazon", "url": "...", "logo": "amazon" }]` |
 | `is_pinned` | Boolean | No | `false` | Whether this book is pinned to Top Reads |
 | `pin_order` | Integer | No | `null` | Order within Top Reads (null if not pinned). Lower = earlier. |

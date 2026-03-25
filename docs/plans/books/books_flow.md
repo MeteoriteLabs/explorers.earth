@@ -62,7 +62,7 @@ Depends on: books_prd.md
       - Google Books rating (if available)
       - "Change Selection" link (back to search)
    2. Personal note field (Tiptap rich text)
-   3. User Rating (interactive 1-5 star selector)
+   3. User Rating (interactive 1-10 star selector, matching Movies & Shows)
    4. Where to Buy section:
       - Auto-populated Google Books buy link (if available)
       - Creator can manually add additional links (Amazon, library, etc.)

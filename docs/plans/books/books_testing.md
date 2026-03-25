@@ -158,7 +158,7 @@ Before each test session, clear test book lists:
 **Steps:**
 1. With Atomic Habits selected, scroll to note field
 2. Type a personal note: "This book completely changed how I think about habits."
-3. Select 5-star user rating (click 5th star)
+3. Select 10-star user rating (click 10th star)
 4. Verify Google Books buy link is auto-added in "Where to Find" section (if available)
 5. Click "Add to Top Reads" checkbox
 6. Click "Add to List"

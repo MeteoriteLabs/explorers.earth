@@ -3,7 +3,7 @@ Feature: movies-and-shows
 Doc type: architecture
 Status: draft
 Created: 2026-03-20
-Last updated: 2026-03-20
+Last updated: 2026-03-25
 Updated by: agent
 Depends on: movies_and_shows_schema.md, movies_and_shows_api_contract.md
 ---
@@ -27,20 +27,17 @@ src/features/Movies/
 │   └── mutation.ts           — GraphQL mutations (CRUD operations)
 ├── components/
 │   ├── dashboard/            — Creator dashboard (protected routes)
-│   │   ├── MoviesHome.tsx            — Main movies dashboard view
-│   │   ├── MovieListView.tsx         — Single list detail + movie management
-│   │   ├── MovieRow.tsx              — Draggable movie row in list
-│   │   ├── MovieListManage.tsx       — Settings, QR, delete, sharing
-│   │   ├── CreateMovieListModal.tsx  — Create new list modal
-│   │   ├── AddMoviePage.tsx          — Page to add/edit movie in list (TMDB search)
-│   │   ├── TMDBSearch.tsx            — TMDB autocomplete search component
-│   │   ├── WatchProviders.tsx        — Watch provider selection chips
-│   │   └── TopPicksManager.tsx       — Pin/feature top picks manager
+│   │   ├── MoviesHome.tsx            — Main movies dashboard view (includes inline CreateListModal)
+│   │   ├── MovieListView.tsx         — Single list detail + all tabs (Recommendations + Manage)
+│   │   ├── AddMoviePage.tsx          — Page to add/edit movie in list (includes inline TMDB search)
+│   │   └── TopPicksManager.tsx       — Pin/feature top picks manager (slide-up modal)
 │   └── public/               — Visitor-facing components
 │       ├── PublicMovies.tsx          — Public movies landing page
 │       ├── MovieCarouselRow.tsx      — Horizontal scrollable poster carousel
 │       ├── MoviePosterCard.tsx       — Poster + metadata compact card
 │       ├── MoviePosterSkeleton.tsx   — Loading skeleton
+│       ├── TopPicksHero.tsx          — Desktop cinematic backdrop hero (auto-cycling slideshow)
+│       ├── TopPicksMobileHero.tsx    — Mobile swipe poster stack carousel
 │       ├── MovieDetailModal.tsx      — Slide-up movie detail view
 │       ├── PublicMovieList.tsx       — List grid page for single list
 │       ├── PublicMovieGenre.tsx      — Genre grid page
@@ -67,18 +64,16 @@ src/features/Movies/
 - `mutation.ts`: GraphQL mutations (createMovieList, updateMovieList, deleteMovieList, createMovie, updateMovie, deleteMovie, pinMovie, reorderMovies, publishList)
 
 **components/dashboard/**
-- `MoviesHome.tsx`: Dashboard landing page showing creator's lists, top picks strip, create list button
-- `MovieListView.tsx`: Detailed view of single list with Recommendations and Manage tabs
-- `MovieRow.tsx`: Individual draggable movie row with poster, title, year, genres, rating, note, action menu
-- `MovieListManage.tsx`: Settings panel with share URL, QR code, list settings, delete option
-- `CreateMovieListModal.tsx`: Form to create new list (name, description, category/genre)
-- `AddMoviePage.tsx`: Dedicated page to add/edit movie in list (TMDB search, rich text notes, snapshots, user ratings)
-- `TMDBSearch.tsx`: Search input with debounce, autocomplete dropdown showing movies/shows
-- `WatchProviders.tsx`: Toggleable chip group for where to watch (Netflix, Hulu, etc.)
-- `TopPicksManager.tsx`: Manage pinned movies across all lists, drag-to-reorder
+- `MoviesHome.tsx`: Dashboard landing showing creator's lists, cinematic Top Picks Hero (desktop) / swipe carousel (mobile) for pinned movies, create list button, `MovieListCard` sub-component (inline), `CreateListModal` sub-component (inline). The hero shows a "Manage Top Picks" button that opens `TopPicksManager`.
+- `MovieListView.tsx`: Detailed view of single list. Contains two tabs — **Recommendations** (movie rows with pin toggle, ⋮ menu: Edit/Delete, movie row click opens `MovieDetailModal`) and **Manage** (accordion-based layout: `Manage` accordion with Delete/Edit/Publish controls; `My QR` accordion with branded QR card + Share/Copy/Download buttons). All logic is inline — no separate `MovieRow.tsx` or `MovieListManage.tsx` files.
+- `AddMoviePage.tsx`: Full-page add/edit flow. **Inline `InlineSearch` sub-component** handles TMDB search (no separate `TMDBSearch.tsx` file). After selection, shows: backdrop+poster strip, form fields (title, year, director, runtime, TMDB rating, genres, overview, cast preview), watch providers (auto-fetched, displayed as chips — no separate `WatchProviders.tsx` file), Tiptap editor for note, 1-10 star rating selector, snapshot upload.
+- `TopPicksManager.tsx`: Slide-up bottom-sheet modal (not a route page). Shows pinned movies list (ordered, minus to unpin) and unpinned movies list (tap to add). Save button batches mutations.
 
 **components/public/**
 - `PublicMovies.tsx`: Public landing page for a creator's movies (featured lists, carousels, genre browse)
+- `MovieCarouselRow.tsx`: Horizontal scrollable carousel of movie poster cards with title/year
+- `TopPicksHero.tsx`: **Desktop-only** (`hidden lg:block`) cinematic backdrop hero. Full `60vh` backdrop image with Framer Motion cross-fade. Auto-cycles through pinned movies every 5s. Left side: title, metadata, genres, "See Details" button. Right side: scrollable thumbnail filmstrip (16:9 aspect, active one highlighted). Optional "Manage Top Picks" button in top-right corner.
+- `TopPicksMobileHero.tsx`: **Mobile-only** (`block lg:hidden`) swipe carousel. Full-height poster card stack \u2014 active card fills screen, next 2 fanned behind it with perspective depth. Auto-cycles every 4s. Drag-to-swipe with `PanInfo` velocity detection. "See Details" full-width button at bottom. Optional "Manage" pill button at top-right of active card.
 - `MovieCarouselRow.tsx`: Horizontal scrollable carousel of movie poster cards with title/year
 - `MoviePosterCard.tsx`: Compact poster card with image, title, year, rating badge (tappable)
 - `MoviePosterSkeleton.tsx`: Placeholder skeleton for loading state

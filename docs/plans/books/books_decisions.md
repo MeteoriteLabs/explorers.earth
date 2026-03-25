@@ -279,6 +279,6 @@ Every architectural and design decision for this feature, with context, alternat
 
 **Context:** Same rationale as Movies D17. Rich text for engaging notes. Creator's personal 1-5 star rating adds their subjective voice alongside the book metadata.
 
-**Rationale:** `user_recommendation_note` expects Tiptap blocks. `user_rating` stores a 1-5 integer that renders as glowing yellow stars in the UI, matching the Movies & Shows implementation. Google Books returns a `averageRating` (out of 5) which we store separately as `google_rating` for reference.
+**Rationale:** `user_recommendation_note` expects Tiptap blocks. `user_rating` stores a 1-10 integer that renders as glowing yellow stars in the UI, **matching the Movies & Shows implementation exactly** (1-10 star selector, not 1-5). Google Books returns a `averageRating` (out of 5) which we store separately as `google_rating` for reference.
 
 **Impact on implementation:** `user_rating` and `google_rating` added to schema. Form uses `TiptapEditor` component (same as Movies).

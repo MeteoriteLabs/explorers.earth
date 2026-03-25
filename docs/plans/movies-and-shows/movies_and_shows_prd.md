@@ -3,7 +3,7 @@ Feature: movies-and-shows
 Doc type: prd
 Status: draft
 Created: 2026-03-20
-Last updated: 2026-03-20
+Last updated: 2026-03-25
 Updated by: agent
 Depends on: movies_and_shows_decisions.md
 ---
@@ -69,8 +69,8 @@ As a creator, I want to create a named movie list (e.g., "Mind-Bending Sci-Fi") 
 As a creator, I want to search for a movie or TV show and add it to my list with my personal note.
 - Full-page overlay with TMDB search
 - Search results show: poster, title, year, director/creator, genres, rating, runtime
-- After selection: auto-filled details, personal note (rich text), where to watch (auto from TMDB), pin checkbox, manual snapshot upload (S3), user rating (1-5 stars)
-- Submit saves all metadata to Strapi
+  - After selection: auto-filled details, personal note (rich text, Tiptap), where to watch (auto from TMDB), pin checkbox, manual snapshot upload (S3), user rating (1-10 stars)
+  - Submit: poster + backdrop + cast profile images all downloaded from TMDB and uploaded to S3 at save time. Metadata saved to Strapi.
 
 **US-4: Manage Movies in List**
 As a creator, I want to view, edit, delete, reorder, and pin movies within a list.
@@ -101,8 +101,10 @@ As a creator, I want to get a shareable URL and QR code for any movie list.
 
 **US-8: Browse Movie Recommendations**
 As a visitor, I want to see a creator's movie recommendations organized in themed rows that I can scroll through.
-- Netflix/IMDb-style horizontal carousel rows
-- Top Picks row first (if exists), then published lists, then genre browse
+- **Desktop**: Top Picks section renders as a full-screen cinematic backdrop hero (`TopPicksHero`) — auto-rotating slideshow with backdrop image, title, metadata, and a thumbnail filmstrip on the right. Cycles through picks every 5s.
+- **Mobile**: Top Picks renders as a swipe carousel (`TopPicksMobileHero`) — full-height poster card stack with drag-to-swipe and auto-cycle every 4s.
+- Carousel rows per published list below.
+- Genre browse section at bottom.
 - Poster cards with rating badge overlay + title below
 
 **US-9: View Movie Details**
@@ -127,8 +129,8 @@ As a visitor, I want to browse movies by genre across all the creator's lists.
 
 See `movies_and_shows_schema.md` for complete field-level detail.
 
-- **Movie List collection** — list name, description, cover image, slug, visibility, account relation, movie relations, pin order settings, top picks heading
-- **RecommendedMovie collection** — TMDB metadata (tmdb_id, title, year, poster, genres, director, runtime, rating, media_type), creator's note, user rating (1-5 stars), where to watch (JSON), is_pinned, pin_order, manual media snapshots, list relation, Movie_Categories relation, cast details
+- **Movie List collection** — list name, description, cover image, slug, visibility, account relation, movie relations, display_order, top picks heading
+- **RecommendedMovie collection** — TMDB metadata (tmdb_id, title, year, poster_path + backdrop_path stored as **S3 URLs**, genres JSON, director, runtime, tmdb_rating, media_type, overview, original_title, season_count, cast_details JSON), creator's note (Tiptap blocks), user_rating (1-10 integer), watch_providers JSON, is_pinned, pin_order, display_order, media_details JSON (media snapshots), list relation, Movie_Categories relation
 
 ## API Summary
 
@@ -146,9 +148,9 @@ See `movies_and_shows_api_contract.md` for complete request/response shapes.
 - **Cover image fallback:** If no cover image uploaded, use the first movie's poster as the list cover.
 - **Genre extraction:** Genres come from TMDB metadata stored in each movie. Genre browse section aggregates across all published lists. Only genres with at least 1 movie are shown.
 - **Streaming platform data:** Stored at save time using creator's region. Not dynamically updated. Creator can manually edit.
-- **Media upload:** Reuse existing media upload patterns (max 10 files, device + Google Images). Stored in S3 with structured paths.
-- **List ordering on public page:** Creator-defined via drag-and-drop in Manage. Stored as an order field on the list entity.
-- **Poster images:** Stored as TMDB CDN URLs in Strapi (not downloaded and re-hosted). TMDB CDN is reliable and free.
+- **Media upload:** Snapshots can be manually uploaded from device (S3). **At save time for create mode**, TMDB poster, backdrop, and all cast member profile images are downloaded from TMDB CDN and re-uploaded to S3 — so all images are self-hosted. Structured S3 paths: `{username}/movies/{listId}/{tmdbId}/{filename}`.
+- **List ordering on public page:** Creator-defined via drag-and-drop in Manage. Stored as `display_order` integer field on the list entity.
+- **Poster/backdrop images:** Downloaded from TMDB and stored in S3 at create time (not pointing to TMDB CDN directly on public pages).
 
 ## Acceptance Criteria
 
@@ -161,13 +163,13 @@ See `movies_and_shows_api_contract.md` for complete request/response shapes.
 - [ ] Personal note is rich text format
 - [ ] Where to Watch platforms are auto-populated from TMDB
 - [ ] User can manually upload snapshots directly to S3
-- [ ] User can provide a 1-5 star user rating
+- [ ] User can provide a 1-10 star user rating
 - [ ] Creator can pin movies to Top Picks (max 15) via star toggle
 - [ ] Creator can drag-to-reorder movies within a list
 - [ ] Creator can drag-to-reorder pinned items in Top Picks manager
 - [ ] Creator can customize Top Picks display name
 - [ ] Creator can toggle list between Published and Draft
-- [ ] Manage tab shows shareable URL and QR code
+- [ ] Manage tab has Manage Accordion (delete, edit, publish toggle) and My QR Accordion (QR card with share/copy/download)
 - [ ] Creator can edit and delete movies
 - [ ] Creator can edit list name, description, cover, slug
 - [ ] Creator can delete a list (with confirmation)
@@ -175,8 +177,8 @@ See `movies_and_shows_api_contract.md` for complete request/response shapes.
 
 ### Public Page
 - [ ] Public movies page loads at `/:username/movies`
-- [ ] Header shows "[Creator]'s Movies · [count] movies"
-- [ ] Top Picks carousel row appears first (if pinned items exist)
+- [ ] Fixed top bar shows `explorers.earth` brand + Share and Copy Link buttons
+- [ ] Top Picks section appears first: desktop shows cinematic backdrop hero (`TopPicksHero`) with auto-cycling slideshow; mobile shows swipe poster carousel (`TopPicksMobileHero`)
 - [ ] Published lists appear as horizontal carousel rows in creator-defined order
 - [ ] Poster cards show poster image with rating badge overlay + title below
 - [ ] TV shows display a "Series" badge
