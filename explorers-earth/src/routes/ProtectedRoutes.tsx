@@ -22,6 +22,7 @@ import {
   GuideSectionFormPage,
 } from "../features/Guides";
 import { MoviesHome, MovieListView, AddMoviePage } from "../features/Movies";
+import { BooksHome, BookListView, AddBookPage } from "../features/Books";
 
 // Import layouts
 import DashboardLayout from "../layouts/DashboardLayout";
@@ -54,6 +55,10 @@ const ProtectedRoutes = ({
       <Route path="recommendations/movies/:listId" element={<MovieListView />} />
       <Route path="recommendations/movies/:listId/add" element={<AddMoviePage />} />
       <Route path="recommendations/movies/:listId/edit/:movieId" element={<AddMoviePage />} />
+      <Route path="recommendations/books" element={<BooksHome />} />
+      <Route path="recommendations/books/:listId" element={<BookListView />} />
+      <Route path="recommendations/books/:listId/add" element={<AddBookPage />} />
+      <Route path="recommendations/books/:listId/edit/:bookId" element={<AddBookPage />} />
       <Route path=":listId/new" element={<AddRecommendation />} />
       <Route
         path="guides/:guideId/edit"
@@ -90,6 +95,10 @@ const ProtectedRoutes = ({
       <Route path="recommendations/movies/:listId" element={<MovieListView />} />
       <Route path="recommendations/movies/:listId/add" element={<AddMoviePage />} />
       <Route path="recommendations/movies/:listId/edit/:movieId" element={<AddMoviePage />} />
+      <Route path="recommendations/books" element={<BooksHome />} />
+      <Route path="recommendations/books/:listId" element={<BookListView />} />
+      <Route path="recommendations/books/:listId/add" element={<AddBookPage />} />
+      <Route path="recommendations/books/:listId/edit/:bookId" element={<AddBookPage />} />
     </Route>
   );
 

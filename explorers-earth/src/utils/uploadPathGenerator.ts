@@ -227,6 +227,47 @@ export const generateMovieListCoverPath = (
 };
 
 /**
+ * Generates structured path for book list/book image uploads
+ * Uses unified structure: {username}/books/{bookListId}/{volumeId}/{filename}
+ * @param username - User's username
+ * @param bookListId - Unique ID of the book list
+ * @param volumeId - Google Books Volume ID
+ * @param filename - Generated filename
+ * @returns Structured path for book uploads
+ */
+export const generateBookUploadPath = (
+  username: string,
+  bookListId: string,
+  volumeId: string,
+  filename: string
+): string => {
+  const sanitizedUsername = sanitizeUsername(username);
+  const sanitizedListId = sanitizeIdentifier(bookListId);
+  const sanitizedVolumeId = sanitizeIdentifier(volumeId);
+
+  return `${sanitizedUsername}/books/${sanitizedListId}/${sanitizedVolumeId}/${filename}`;
+};
+
+/**
+ * Generates structured path for book list cover image uploads
+ * Uses unified structure: {username}/books/{bookListId}/cover/{filename}
+ * @param username - User's username
+ * @param bookListId - Unique ID of the book list
+ * @param filename - Generated filename
+ * @returns Structured path for book list cover uploads
+ */
+export const generateBookListCoverPath = (
+  username: string,
+  bookListId: string,
+  filename: string
+): string => {
+  const sanitizedUsername = sanitizeUsername(username);
+  const sanitizedListId = sanitizeIdentifier(bookListId);
+
+  return `${sanitizedUsername}/books/${sanitizedListId}/cover/${filename}`;
+};
+
+/**
  * Sanitizes username for safe path usage
  * @param username - Raw username
  * @returns Sanitized username safe for file paths

@@ -9,7 +9,7 @@ import Home from "../../assets/icons/Home";
 
 interface TabVisibilityGuardProps {
     /** Which tab visibility field to check */
-    tabField: "public_profile" | "public_recommendations" | "public_music" | "public_guides" | "public_movie";
+    tabField: "public_profile" | "public_recommendations" | "public_music" | "public_guides" | "public_movie" | "public_books";
     /** Default visibility if the field is not set */
     defaultVisible?: boolean;
     /** The content to render if the tab is enabled */
@@ -64,6 +64,7 @@ const TabVisibilityGuard = memo(({ tabField, defaultVisible = true, children }: 
             { field: "public_recommendations", path: `/${username}/places`, default: true },
             { field: "public_guides", path: `/${username}/guides`, default: false },
             { field: "public_movie", path: `/${username}/movies`, default: false },
+            { field: "public_books", path: `/${username}/books`, default: false },
             { field: "public_music", path: `/${username}/music`, default: false },
             { field: "public_profile", path: `/${username}`, default: true },
         ];

@@ -12,6 +12,7 @@ import PublicGuideDetailPage from "../features/PublicHome/components/PublicGuide
 import { UsernameValidator } from "./validators";
 import TabVisibilityGuard from "./validators/TabVisibilityGuard";
 import { PublicMovies, PublicMovieList, PublicMovieGenre } from "../features/Movies";
+import { PublicBooks, PublicBookList, PublicBookSubject } from "../features/Books";
 
 // Import layout
 import PublicLayout from "../layouts/PublicLayout";
@@ -80,6 +81,25 @@ const PublicRoutes = [
       <Route path=":listSlug" element={
         <TabVisibilityGuard tabField="public_movie" defaultVisible={false}>
           <PublicMovieList />
+        </TabVisibilityGuard>
+      } />
+    </Route>
+
+    {/* Books public routes */}
+    <Route path="books">
+      <Route index element={
+        <TabVisibilityGuard tabField="public_books" defaultVisible={false}>
+          <PublicBooks />
+        </TabVisibilityGuard>
+      } />
+      <Route path="subject/:subjectSlug" element={
+        <TabVisibilityGuard tabField="public_books" defaultVisible={false}>
+          <PublicBookSubject />
+        </TabVisibilityGuard>
+      } />
+      <Route path=":listSlug" element={
+        <TabVisibilityGuard tabField="public_books" defaultVisible={false}>
+          <PublicBookList />
         </TabVisibilityGuard>
       } />
     </Route>

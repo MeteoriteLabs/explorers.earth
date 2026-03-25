@@ -31,6 +31,7 @@ const DashboardRouteValidator = ({
       /^\/guides\/[^\/]+\/sections\/new$/, // Add section: /guides/:guideId/sections/new
       /^\/guides\/[^\/]+\/sections\/[^\/]+\/edit$/, // Edit section: /guides/:guideId/sections/:sectionId/edit
       /^\/recommendations\/movies(\/.*)?$/, // All movies & shows routes
+      /^\/recommendations\/books(\/.*)?$/, // All books routes
       /^\/[^\/]+\/new$/, // Dynamic routes like /:listId/new
       /^\/[^\/]+\/edit$/, // Dynamic routes like /:placeId/edit
     ];

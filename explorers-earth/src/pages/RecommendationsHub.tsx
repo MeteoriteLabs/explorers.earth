@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Compass, Film, ChevronRight } from "lucide-react";
+import { Compass, Film, BookOpen, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 
 const RecommendationsHub = () => {
@@ -56,6 +56,30 @@ const RecommendationsHub = () => {
           <div className="flex-1 relative z-10">
             <h2 className="text-xl font-bold text-dashboard mb-1">Movies & Shows</h2>
             <p className="text-xs text-dashboard-muted pr-4">Share your watchlists and top film picks</p>
+          </div>
+          
+          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors relative z-10 shrink-0">
+            <ChevronRight size={16} className="text-dashboard-muted group-hover:text-dashboard transition-colors" />
+          </div>
+        </motion.button>
+
+        {/* Books Card */}
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={() => navigate("/recommendations/books")}
+          className="flex items-center p-5 bg-gradient-to-br from-amber-900/20 to-dashboard-sidebar border border-amber-500/10 hover:border-amber-500/30 rounded-3xl shadow-lg relative overflow-hidden group text-left transition-all"
+        >
+          <div className="absolute -top-4 -right-4 p-4 opacity-[0.03] group-hover:opacity-10 transform group-hover:scale-110 transition-all duration-500">
+            <BookOpen size={120} />
+          </div>
+          
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400/20 to-orange-500/20 text-amber-400 flex items-center justify-center mr-5 shrink-0 shadow-inner border border-amber-400/20">
+            <BookOpen size={28} />
+          </div>
+          
+          <div className="flex-1 relative z-10">
+            <h2 className="text-xl font-bold text-dashboard mb-1">Books</h2>
+            <p className="text-xs text-dashboard-muted pr-4">Review and catalog your favorite reading material</p>
           </div>
           
           <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors relative z-10 shrink-0">
