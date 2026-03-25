@@ -17,6 +17,8 @@ const DashboardRouteValidator = ({
       /^\/home$/,
       /^\/profile$/,
       /^\/recommendations$/,
+      /^\/hub$/,
+      /^\/recommendations\/places$/,
       /^\/analytics$/,
       /^\/settings$/,
       /^\/music$/,

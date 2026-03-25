@@ -9,6 +9,7 @@ import Favorites from "../pages/Favorites";
 import Analytics from "../pages/Analytics";
 import SettingsPage from "../pages/SettingsPage";
 import Home from "../pages/Home";
+import RecommendationsHub from "../pages/RecommendationsHub";
 import Music from "../pages/Music";
 import Instagram from "../pages/Instagram";
 import SubscriptionPlans from "../pages/SubscriptionPlans";
@@ -36,7 +37,9 @@ const ProtectedRoutes = ({
   const desktopRoutes = (
     <Route key="desktop-routes" path="/*" element={<DashboardLayout />}>
       <Route path="profile" element={<Profile />} />
+      <Route path="hub" element={<RecommendationsHub />} />
       <Route path="recommendations" element={<Favorites />} />
+      <Route path="recommendations/places" element={<Favorites />} />
       <Route path="analytics" element={<Analytics />} />
       <Route path="settings" element={<SettingsPage />} />
       <Route path="home" element={<Home />} />
@@ -64,7 +67,9 @@ const ProtectedRoutes = ({
   const mobileRoutes = (
     <Route key="mobile-routes" path="/*" element={<MobileLayout />}>
       <Route path="profile" element={<Profile />} />
+      <Route path="hub" element={<RecommendationsHub />} />
       <Route path="recommendations" element={<Favorites />} />
+      <Route path="recommendations/places" element={<Favorites />} />
       <Route path="analytics" element={<Analytics />} />
       <Route path="settings" element={<SettingsPage />} />
       <Route path="home" element={<Home />} />
