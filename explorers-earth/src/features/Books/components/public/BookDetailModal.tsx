@@ -76,8 +76,8 @@ const BookDetailModal = ({ book, open, onClose }: BookDetailModalProps) => {
             onClick={onClose}
           />
 
-          {/* Modal */}
-          <div className="fixed inset-0 pt-[88px] md:pt-8 flex items-end justify-center z-[60] pointer-events-none">
+          {/* Modal Overlay Container */}
+          <div className="fixed inset-0 pt-[88px] md:pt-8 flex items-end justify-center z-[70] pointer-events-none">
             <motion.div
               className="relative bg-[#0d1117] rounded-t-2xl w-full h-full md:max-w-2xl overflow-y-auto overflow-x-hidden flex flex-col shadow-2xl ring-1 ring-white/10 hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pointer-events-auto"
               initial={{ y: "100%", opacity: 0 }}
@@ -95,22 +95,22 @@ const BookDetailModal = ({ book, open, onClose }: BookDetailModalProps) => {
                 {/* Drag handle (mobile) */}
                 <div className="absolute top-3 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-white/30 md:hidden" />
 
-                {/* Close button */}
-                <button
-                  onClick={onClose}
-                  className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white/80 hover:text-white transition-all"
-                >
-                  <X size={16} />
-                </button>
-
                 {/* Background cover art (blurred) */}
                 {coverUrl && (
                   <img
                     src={coverUrl}
                     alt=""
-                    className="absolute inset-0 w-full h-full object-cover opacity-20 blur-xl scale-110"
+                    className="absolute inset-0 w-full h-full object-cover opacity-20 blur-xl scale-110 pointer-events-none"
                   />
                 )}
+
+                {/* Close button - Moved after image to be on top */}
+                <button
+                  onClick={onClose}
+                  className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white/80 hover:text-white transition-all z-20 pointer-events-auto"
+                >
+                  <X size={16} />
+                </button>
               </div>
 
               {/* Content area */}
@@ -122,7 +122,14 @@ const BookDetailModal = ({ book, open, onClose }: BookDetailModalProps) => {
                       src={thumbnailUrl}
                       alt={book.title}
                       className="w-full aspect-[2/3] object-cover"
-                      onError={(e) => { (e.currentTarget as HTMLImageElement).src = FALLBACK; }}
+                      onError={(e) => { 
+                        const target = e.currentTarget as HTMLImageElement;
+                        if (target.src === book.cover_url_large && book.cover_url) {
+                          target.src = buildCoverUrl(book.cover_url);
+                        } else {
+                          target.src = FALLBACK;
+                        }
+                      }}
                     />
                   </div>
 
@@ -147,8 +154,8 @@ const BookDetailModal = ({ book, open, onClose }: BookDetailModalProps) => {
                       </span>
                     )}
                     {googleRating && (
-                      <span className="flex items-center gap-1 text-amber-400 font-semibold">
-                        <Star size={12} fill="currentColor" /> {googleRating} <span className="text-white/30 font-normal text-xs">Google</span>
+                      <span className="flex items-center gap-1 text-white/50 font-medium">
+                        <Star size={12} fill="currentColor" className="text-amber-400" /> {googleRating}
                       </span>
                     )}
                     {pageCount && (
@@ -278,17 +285,6 @@ const BookDetailModal = ({ book, open, onClose }: BookDetailModalProps) => {
                   )}
 
                   {/* Preview link */}
-                  {book.preview_link && (
-                    <a
-                      href={book.preview_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-sm text-amber-400 hover:text-amber-300 transition-colors"
-                    >
-                      <BookOpen size={14} /> Preview on Google Books
-                    </a>
-                  )}
-
                   {/* Source list */}
                   {book.book_list && (
                     <p className="text-xs text-white/30">

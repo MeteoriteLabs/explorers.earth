@@ -25,14 +25,27 @@ export const BOOK_LISTS_BY_ACCOUNT = gql`
         documentId
         volume_id
         title
+        subtitle
         authors
         year
         cover_url
         cover_url_large
+        subjects
+        publisher
+        page_count
         google_rating
         user_rating
+        description
+        user_recommendation_note
+        buy_links
         is_pinned
         pin_order
+        media_details
+        Media {
+          documentId
+          url
+          caption
+        }
       }
       account {
         documentId
@@ -160,15 +173,27 @@ export const PINNED_BOOKS = gql`
       documentId
       volume_id
       title
+      subtitle
       authors
       year
       cover_url
       cover_url_large
+      subjects
+      publisher
+      page_count
       google_rating
       user_rating
+      description
+      user_recommendation_note
+      buy_links
       is_pinned
       pin_order
       media_details
+      Media {
+        documentId
+        url
+        caption
+      }
       book_list {
         documentId
         List_Name

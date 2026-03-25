@@ -63,6 +63,7 @@ export const accountQuery = gql`
       public_music
       public_movie
       public_guides
+      public_books
     }
   }
 `;
@@ -77,6 +78,7 @@ export const updateAccountMutation = gql`
       public_recommendations
       public_music
       public_movie
+      public_books
     }
   }
 `;
@@ -90,6 +92,7 @@ export const updateTabVisibilityMutation = gql`
       public_music
       public_movie
       public_guides
+      public_books
     }
   }
 `;

@@ -20,7 +20,7 @@ const TopReadsMobileHero = ({ books, onBookClick, showManageButton = false, onMa
       setActiveIndex((prev) => (prev + 1) % books.length);
     }, 4000);
     return () => clearInterval(interval);
-  }, [books.length]);
+  }, [books?.length]);
 
   if (!books || books.length === 0) return null;
 
@@ -66,15 +66,22 @@ const TopReadsMobileHero = ({ books, onBookClick, showManageButton = false, onMa
               dragConstraints={{ left: 0, right: 0 }}
               dragElastic={0.8}
               onDragEnd={handleDragEnd}
-              className={`absolute inset-0 h-full rounded-2xl overflow-hidden shadow-2xl bg-[#1a2332] border border-white/10 ${diff === 0 ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'}`}
+              className={`absolute inset-0 h-full rounded-r-2xl overflow-hidden shadow-2xl bg-[#1a2332] border border-white/10 ${diff === 0 ? 'cursor-grab active:cursor-grabbing book-tilt' : 'pointer-events-none opacity-40'} transition-all duration-500`}
               onClick={() => diff === 0 && onBookClick(book)}
+              style={{ perspective: "1000px" }}
             >
               <img 
-                src={coverUrl || "https://images.unsplash.com/photo-1512820790803-83ca734da794"} 
+                src={coverUrl} 
                 alt={book.title}
                 className="w-full h-full object-cover select-none pointer-events-none"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = "https://images.unsplash.com/photo-1512820790803-83ca734da794";
+                }}
               />
               
+              {/* Spine Effect */}
+              <div className="absolute inset-y-0 left-0 w-[12%] bg-gradient-to-r from-black/80 via-black/20 to-transparent pointer-events-none z-10" />
+
               <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/10 pointer-events-none" />
               
               <div className="absolute top-5 left-6 right-5 flex justify-between items-start pointer-events-auto z-20">

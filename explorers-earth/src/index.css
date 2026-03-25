@@ -451,6 +451,52 @@ body[data-sidebar-open="false"] .dashboard-content {
     font-size: 0.875rem !important;
     cursor: pointer !important;
   }
+
+  /* 3D Effects for Books */
+  .book-perspective {
+    perspective: 1500px;
+  }
+  .book-static-tilt {
+    transform: rotateY(-18deg) rotateX(2deg);
+    transform-origin: left;
+    filter: drop-shadow(4px 4px 8px rgba(0,0,0,0.4));
+  }
+  .book-tilt {
+    transform: rotateY(-35deg) scale(1.02);
+    transform-origin: left;
+    filter: drop-shadow(15px 15px 30px rgba(0,0,0,0.6));
+  }
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+  .book-pages-stack {
+    background: linear-gradient(
+      to right,
+      #d1d1d1 0%,
+      #ffffff 15%,
+      #e0e0e0 30%,
+      #ffffff 45%,
+      #e0e0e0 60%,
+      #ffffff 75%,
+      #e0e0e0 90%,
+      #ffffff 100%
+    );
+    background-size: 3px 100%;
+  }
+
+  /* Refined Curled Corner */
+  .book-corner-curl {
+    clip-path: polygon(0 0, 100% 0, 100% 90%, 90% 100%, 0 100%);
+  }
+
+  .book-perspective {
+    perspective: 2000px;
+  }
+
+  .book-static-tilt {
+    transform: rotateY(-22deg) rotateX(2deg) rotateZ(0deg);
+    transform-origin: left center;
+  }
 }
 
 /* Make placeholder text lighter than regular input text.

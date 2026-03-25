@@ -14,16 +14,8 @@ interface TopReadsHeroProps {
 const TopReadsHero = ({ books, onBookClick, showManageButton = false, onManageClick }: TopReadsHeroProps) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
-  
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
-
-  if (!books || books.length === 0) return null;
-
-  const activeBook = books[activeIndex];
-  const coverUrl = buildCoverUrl(activeBook.cover_url_large || activeBook.cover_url);
-  const authors = formatAuthors(activeBook.authors);
-  const subjects = activeBook.subjects?.slice(0, 3) || [];
 
   const updateScrollButtons = () => {
     if (scrollRef.current) {
@@ -47,12 +39,12 @@ const TopReadsHero = ({ books, onBookClick, showManageButton = false, onManageCl
   }, [activeIndex]);
 
   useEffect(() => {
-    if (books.length <= 1) return;
+    if (!books || books.length <= 1) return;
     const interval = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % books.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, [books.length]);
+  }, [books?.length]);
 
   const handleScrollClick = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
@@ -60,6 +52,13 @@ const TopReadsHero = ({ books, onBookClick, showManageButton = false, onManageCl
       scrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
     }
   };
+
+  if (!books || books.length === 0) return null;
+
+  const activeBook = books[activeIndex];
+  const coverUrl = buildCoverUrl(activeBook.cover_url_large || activeBook.cover_url);
+  const authors = formatAuthors(activeBook.authors);
+  const subjects = activeBook.subjects?.slice(0, 3) || [];
 
   return (
     <div className="relative w-full h-[60vh] min-h-[500px] max-h-[700px] rounded-2xl overflow-hidden bg-black shadow-2xl group/hero mb-12">
@@ -77,20 +76,42 @@ const TopReadsHero = ({ books, onBookClick, showManageButton = false, onManageCl
           {/* Main Full-Cover Background */}
           <div className="absolute inset-0">
             <img
-              src={coverUrl || "https://images.unsplash.com/photo-1512820790803-83ca734da794"}
+              src={coverUrl}
               alt=""
               className="w-full h-full object-cover transform scale-110 blur-md opacity-60"
+              onError={(e) => {
+                const target = e.currentTarget as HTMLImageElement;
+                if (target.src === activeBook.cover_url_large && activeBook.cover_url) {
+                  target.src = buildCoverUrl(activeBook.cover_url);
+                } else {
+                  target.src = "https://images.unsplash.com/photo-1512820790803-83ca734da794";
+                }
+              }}
             />
             {/* The sharp cover centered or to the right */}
             <div className="absolute inset-0 flex items-center justify-end pr-[10%] lg:pr-[15%]">
-               <motion.div 
-                 initial={{ scale: 0.9, opacity: 0, x: 50 }}
-                 animate={{ scale: 1, opacity: 1, x: 0 }}
-                 transition={{ delay: 0.2, duration: 0.6 }}
-                 className="h-[85%] aspect-[2/3] shadow-[0_0_100px_rgba(0,0,0,0.9)] rounded-lg overflow-hidden border border-white/10 hidden md:block"
-               >
-                 <img src={coverUrl} alt={activeBook.title} className="w-full h-full object-cover" />
-               </motion.div>
+                <motion.div 
+                  initial={{ scale: 0.9, opacity: 0, x: 50 }}
+                  animate={{ scale: 1, opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2, duration: 0.6 }}
+                  className="h-[85%] aspect-[2/3] book-perspective hidden md:block"
+                >
+                  <div className="relative w-full h-full rounded-r-lg overflow-hidden shadow-[20px_20px_60px_rgba(0,0,0,0.8)] border-l-[1px] border-white/10 group-hover:book-tilt transition-transform duration-700">
+                    <img 
+                      src={coverUrl} 
+                      alt={activeBook.title} 
+                      className="w-full h-full object-cover" 
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = "https://images.unsplash.com/photo-1512820790803-83ca734da794";
+                      }}
+                    />
+                    
+                    {/* Spine Effect */}
+                    <div className="absolute inset-y-0 left-0 w-[10%] bg-gradient-to-r from-black/80 via-black/20 to-transparent" />
+                    {/* Page Depth */}
+                    <div className="absolute inset-y-0 right-0 w-[4px] bg-white/10 border-l border-black/20" />
+                  </div>
+                </motion.div>
             </div>
           </div>
           
@@ -198,19 +219,24 @@ const TopReadsHero = ({ books, onBookClick, showManageButton = false, onManageCl
               >
                 {books.map((book, index) => {
                   const isSelected = index === activeIndex;
-                  const thumbUrl = buildCoverUrl(book.cover_url);
+                  const thumbUrl = buildCoverUrl(book.cover_url_large || book.cover_url);
                   return (
                     <button
                       key={`thumb-${book.documentId}`}
                       onClick={(e) => { e.stopPropagation(); setActiveIndex(index); }}
-                      className={`relative flex-shrink-0 w-20 aspect-[2/3] rounded-md overflow-hidden transition-all duration-300 ${isSelected ? 'ring-2 ring-white scale-110 z-10 shadow-2xl' : 'opacity-50 hover:opacity-100 hover:scale-105 filter brightness-75 hover:brightness-100'}`}
+                      className={`relative flex-shrink-0 w-20 aspect-[2/3] book-perspective transition-all duration-300 ${isSelected ? 'scale-110 z-10' : 'opacity-50 hover:opacity-100 hover:scale-105 filter brightness-75 hover:brightness-100'}`}
                     >
-                      <img 
-                        src={thumbUrl || "https://images.unsplash.com/photo-1512820790803-83ca734da794"} 
-                        alt={book.title}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/20" />
+                      <div className={`relative w-full h-full rounded-r-sm overflow-hidden shadow-xl ${isSelected ? 'ring-1 ring-white/50 book-tilt' : ''} transition-all duration-500`}>
+                        <img 
+                          src={thumbUrl} 
+                          alt={book.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = "https://images.unsplash.com/photo-1512820790803-83ca734da794"; }}
+                        />
+                        <div className="absolute inset-0 bg-black/20" />
+                        {/* Thumbnail Spine */}
+                        <div className="absolute inset-y-0 left-0 w-[15%] bg-gradient-to-r from-black/60 to-transparent" />
+                      </div>
                     </button>
                   );
                 })}

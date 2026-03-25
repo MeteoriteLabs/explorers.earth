@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, gql } from "@apollo/client";
-import { Share2, Copy, Check, BookOpen } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { PUBLIC_BOOK_DATA } from "../../api/query";
 import { deduplicateBooks } from "../../utils/bookHelpers";
@@ -9,6 +9,9 @@ import type { RecommendedBook, BookList } from "../../types";
 import BookCarouselRow from "./BookCarouselRow";
 import BookDetailModal from "./BookDetailModal";
 import SubjectBrowse from "./SubjectBrowse";
+import TopReadsHero from "./TopReadsHero";
+import TopReadsMobileHero from "./TopReadsMobileHero";
+import useDeviceDetection from "../../../../hooks/useDeviceDetection";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsername($username: String!) {
@@ -25,6 +28,7 @@ const ACCOUNT_BY_USERNAME = gql`
 
 const PublicBooks = () => {
   const { username } = useParams<{ username: string }>();
+  const { isDesktop } = useDeviceDetection();
 
   const { data: userLookup } = useQuery(ACCOUNT_BY_USERNAME, {
     variables: { username },
@@ -37,7 +41,6 @@ const PublicBooks = () => {
     open: false,
     book: null,
   });
-  const [copied, setCopied] = useState(false);
 
   const { data, loading } = useQuery(PUBLIC_BOOK_DATA, {
     variables: { accountDocumentId },
@@ -66,8 +69,6 @@ const PublicBooks = () => {
       try { await navigator.share({ title: `${username}'s Books`, url }); } catch { /* ignore */ }
     } else {
       await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
       toast.success("Link copied!");
     }
   };
@@ -80,82 +81,100 @@ const PublicBooks = () => {
   const hasContent = lists.length > 0;
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Top bar */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/8">
-        <div className="flex items-center justify-between px-4 py-3 max-w-6xl mx-auto">
-          <img src="/logo.svg" alt="explorers.earth" className="h-6 opacity-70" />
-          <div className="flex items-center gap-2">
+    <div className="h-full bg-black min-h-screen overflow-auto preview-scroll pb-20">
+      {/* Fixed Header */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
+        <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6 text-white">
+          <span
+            className="text-white font-bold text-2xl cursor-pointer"
+            onClick={() => window.location.href = "/"}
+          >
+            explorers.earth
+          </span>
+          <div className="flex gap-2">
             <button
               onClick={handleShare}
-              className="flex items-center gap-1.5 text-xs text-white/60 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/8 transition-all"
+              className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
+              aria-label="Share"
             >
-              {copied ? <Check size={13} /> : <Copy size={13} />}
-              {copied ? "Copied!" : "Copy Link"}
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
             </button>
             <button
-              onClick={handleShare}
-              className="flex items-center gap-1.5 text-xs text-white/60 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/8 transition-all"
+              onClick={async () => {
+                const url = window.location.href;
+                try {
+                  await navigator.clipboard.writeText(url);
+                  toast.success("Link copied!");
+                } catch (error) {
+                  console.error("Failed to copy text:", error);
+                }
+              }}
+              className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
+              aria-label="Copy Link"
             >
-              <Share2 size={13} /> Share
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
             </button>
           </div>
         </div>
       </div>
 
-      <div className="pt-14 pb-20 px-4 md:px-8 max-w-6xl mx-auto">
-        {/* Page headline */}
-        <div className="py-6 md:py-8 mb-4">
-          <h1 className="text-2xl md:text-3xl font-bold text-white">
-            <span className="text-amber-400">📚</span> Books
-          </h1>
-          {!loading && hasContent && (
-            <p className="text-white/50 text-sm mt-1">
-              {allBooks.length} book recommendation{allBooks.length !== 1 ? "s" : ""} across {lists.length} list{lists.length !== 1 ? "s" : ""}
-            </p>
-          )}
-        </div>
-
-        {/* Top Reads row */}
+      <div className="mt-14 pt-6 pb-20">
+        {/* Top Reads Hero Section */}
         {(loading || topReads.length > 0) && (
-          <BookCarouselRow
-            title="Top Reads"
-            books={topReads}
-            loading={loading}
-            onBookClick={handleBookClick}
-          />
-        )}
-
-        {/* Per-list carousel rows */}
-        {lists.map((list) => (
-          <BookCarouselRow
-            key={list.documentId}
-            title={list.List_Name}
-            description={list.list_description}
-            books={list.recommended_books}
-            seeAllLink={`/${username}/books/${list.slug}`}
-            onBookClick={handleBookClick}
-          />
-        ))}
-
-        {/* Subject browse */}
-        {allSubjects.length > 0 && (
-          <SubjectBrowse
-            subjects={allSubjects}
-            username={username!}
-          />
-        )}
-
-        {/* Empty state */}
-        {!loading && !hasContent && (
-          <div className="text-center py-32">
-            <BookOpen size={56} className="text-white/15 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-white/40 mb-2">No books yet</h2>
-            <p className="text-white/25 text-sm">
-              Check back soon for book recommendations.
-            </p>
+          <div className="mb-0">
+             {isDesktop ? (
+                <TopReadsHero 
+                  books={topReads} 
+                  onBookClick={handleBookClick}
+                  showManageButton={false}
+                />
+             ) : (
+                <TopReadsMobileHero 
+                  books={topReads} 
+                  onBookClick={handleBookClick}
+                  showManageButton={false}
+                />
+             )}
           </div>
         )}
+
+        {/* List Content */}
+        <div className="px-4 md:px-8 max-w-6xl mx-auto -mt-6">
+          {/* Per-list carousel rows */}
+          {lists.map((list) => (
+            <BookCarouselRow
+              key={list.documentId}
+              title={list.List_Name}
+              description={list.list_description}
+              books={list.recommended_books}
+              seeAllLink={`/${username}/books/${list.slug}`}
+              onBookClick={handleBookClick}
+            />
+          ))}
+
+          {/* Subject browse */}
+          {allSubjects.length > 0 && (
+            <SubjectBrowse
+              subjects={allSubjects}
+              username={username!}
+            />
+          )}
+
+          {/* Empty state */}
+          {!loading && !hasContent && (
+            <div className="text-center py-32">
+              <BookOpen size={56} className="text-white/15 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-white/40 mb-2">No books yet</h2>
+              <p className="text-white/25 text-sm">
+                Check back soon for book recommendations.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Book detail modal */}

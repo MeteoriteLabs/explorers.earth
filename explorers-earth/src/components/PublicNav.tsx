@@ -4,7 +4,7 @@ import DirectionBoard from "../assets/icons/DirectionBoard";
 import Profile from "../assets/icons/Profile";
 import MusicNote from "../assets/icons/MusicNote";
 import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
-import { Film } from "lucide-react";
+import { Film, BookOpen } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { getPublicAccountBasicQuery } from "../features/PublicHome/api/query";
@@ -59,11 +59,18 @@ const PublicNav = memo(() => {
   const showMusicTab = accountData?.public_music === "Yes" || accountData?.public_music === "No" ? accountData?.public_music === "Yes" : false; // Default to hide if not set
   const showGuidesTab = accountData?.public_guides === "Yes"; // Only show when explicitly "Yes"
   const showMoviesTab = accountData?.public_movie === "Yes"; // Only show when explicitly "Yes"
+  const showBooksTab = accountData?.public_books === "Yes"; // Only show when explicitly "Yes"
 
   // Helper function to check if current path is for movies
   const isMoviesPath = (currentPath: string) => {
     const normalizedPath = normalizePath(currentPath);
     return normalizedPath.includes('/movies');
+  };
+
+  // Helper function to check if current path is for books
+  const isBooksPath = (currentPath: string) => {
+    const normalizedPath = normalizePath(currentPath);
+    return normalizedPath.includes('/books');
   };
 
   // Helper function to check if current path is for guides
@@ -115,6 +122,12 @@ const PublicNav = memo(() => {
       text: "Music",
       path: `/${username}/music`,
     }] : []),
+    // Only add books tab if visibility is enabled
+    ...(showBooksTab ? [{
+      icon: <BookOpen size={18} color={isBooksPath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
+      text: "Books",
+      path: `/${username}/books`,
+    }] : []),
   ];
 
 
@@ -128,6 +141,7 @@ const PublicNav = memo(() => {
             (item.path.includes('/places') && isPlacesPath(location.pathname)) ||
             (item.path.includes('/music') && isMusicPath(location.pathname)) ||
             (item.path.includes('/movies') && isMoviesPath(location.pathname)) ||
+            (item.path.includes('/books') && isBooksPath(location.pathname)) ||
             (item.path.includes('/guides') && isGuidesPath(location.pathname));
 
           return (

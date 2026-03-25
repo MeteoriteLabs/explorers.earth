@@ -29,120 +29,169 @@ const MY_ACCOUNT = gql`
   }
 `;
 
+import { useFormik } from "formik";
+import * as Yup from "yup";
+import { getCurrentDomain } from "../../../../utils/getCurrentDomain";
+import { AnimatePresence } from "framer-motion";
+
 // ─────────────────────────────────────────────────────────────
 // Inline Create List Modal
 // ─────────────────────────────────────────────────────────────
-interface CreateListModalProps {
-  accountDocumentId: string;
-  existingCount: number;
+const CreateListModal = ({
+  open,
+  onClose,
+  accountDocumentId,
+  currentListCount,
+  onCreated,
+  username,
+}: {
+  open: boolean;
   onClose: () => void;
+  accountDocumentId: string;
+  currentListCount: number;
   onCreated: () => void;
-}
+  username: string;
+}) => {
+  const [createBookList, { loading }] = useMutation(CREATE_BOOK_LIST);
 
-const CreateListModal = ({ accountDocumentId, existingCount, onClose, onCreated }: CreateListModalProps) => {
-  const { user } = useAuthStore();
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [createBookList] = useMutation(CREATE_BOOK_LIST);
+  const formik = useFormik({
+    initialValues: { List_Name: "", list_description: "", slug: "" },
+    validationSchema: Yup.object({
+      List_Name: Yup.string().required("List name is required").max(100),
+      slug: Yup.string().required("List URL is required").max(100),
+    }),
+    onSubmit: async (values, { resetForm }) => {
+      try {
+        await createBookList({
+          variables: {
+            List_Name: values.List_Name,
+            list_description: values.list_description || null,
+            slug: values.slug || generateSlug(values.List_Name),
+            visibility: false,
+            display_order: currentListCount,
+            account: accountDocumentId,
+          },
+          refetchQueries: [BOOK_LISTS_BY_ACCOUNT],
+        });
+        toast.success("Book list created!");
+        resetForm();
+        onCreated();
+        onClose();
+      } catch (e) {
+        toast.error("Failed to create list. Please try again.");
+      }
+    },
+  });
 
-  const slug = generateSlug(name);
-
-  const handleCreate = async () => {
-    if (!name.trim()) return;
-    setSaving(true);
-    try {
-      await createBookList({
-        variables: {
-          List_Name: name.trim(),
-          list_description: description.trim() || null,
-          slug,
-          visibility: false,
-          display_order: existingCount,
-          account: accountDocumentId,
-        },
-        refetchQueries: [BOOK_LISTS_BY_ACCOUNT],
-      });
-      toast.success("Book list created!");
-      onCreated();
-      onClose();
-    } catch {
-      toast.error("Failed to create list. Please try again.");
-    } finally {
-      setSaving(false);
-    }
-  };
+  if (!open) return null;
 
   return (
-    <motion.div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4 md:p-6"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      onClick={onClose}
-    >
+    <AnimatePresence>
       <motion.div
-        className="bg-dashboard-sidebar rounded-xl border border-dashboard-border p-6 md:p-8 w-full max-w-2xl shadow-2xl"
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4 md:p-6"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
       >
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-bold text-dashboard">Create New Book List</h2>
-          <button onClick={onClose} className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-dashboard-muted hover:text-dashboard transition-colors">
-            <X size={16} />
-          </button>
-        </div>
+        <motion.div
+          className="bg-dashboard-sidebar rounded-xl border border-dashboard-border p-6 md:p-8 w-full max-w-2xl shadow-2xl"
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.95, opacity: 0 }}
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-bold text-dashboard">Create New List</h2>
+            <button onClick={onClose} className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-dashboard-muted hover:text-dashboard transition-colors">
+              <X size={16} />
+            </button>
+          </div>
 
-        <div className="space-y-5">
-          <div>
-            <label className="text-sm font-semibold text-dashboard mb-2 block">List Name</label>
-            <input
-              autoFocus
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. My Favorite Science Fiction"
-              className="w-full bg-dashboard-muted border border-dashboard-border rounded-lg px-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-amber-500 transition-colors"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-semibold text-dashboard mb-2 block">Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="What's this list about?"
-              rows={3}
-              className="w-full bg-dashboard-muted border border-dashboard-border rounded-lg px-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-amber-500 transition-colors resize-none"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-semibold text-dashboard mb-2 block">List URL</label>
-            <div className="flex items-center gap-2 text-xs text-dashboard-muted overflow-hidden">
-              <span className="truncate">/{user?.username}/{slug}</span>
+          <form onSubmit={formik.handleSubmit} className="space-y-5">
+            <div>
+              <label className="text-sm font-semibold text-dashboard mb-2 block">
+                List Name
+              </label>
+              <input
+                type="text"
+                name="List_Name"
+                placeholder="Enter List Name (e.g. My Favorite Science Fiction)"
+                value={formik.values.List_Name}
+                onChange={(e) => {
+                  formik.handleChange(e);
+                  formik.setFieldValue("slug", generateSlug(e.target.value));
+                }}
+                onBlur={formik.handleBlur}
+                className="w-full bg-dashboard-muted border border-dashboard-border rounded-lg px-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent transition-colors"
+              />
+              {formik.touched.List_Name && formik.errors.List_Name && (
+                <p className="text-xs text-red-400 mt-1">{formik.errors.List_Name}</p>
+              )}
             </div>
-          </div>
 
-          <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-dashboard-border">
-            <button
-              onClick={onClose}
-              className="px-6 py-2.5 rounded-lg bg-[#ef4444] hover:bg-[#dc2626] text-sm text-white font-medium transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleCreate}
-              disabled={saving || !name.trim()}
-              className="px-6 py-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-sm text-white font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-            >
-              {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-              Create List
-            </button>
-          </div>
-        </div>
+            <div>
+              <label className="text-sm font-semibold text-dashboard mb-2 block">
+                Description
+              </label>
+              <textarea
+                name="list_description"
+                placeholder="Enter a note or description for this list"
+                rows={4}
+                value={formik.values.list_description}
+                onChange={formik.handleChange}
+                className="w-full bg-dashboard-muted border border-dashboard-border rounded-lg px-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent transition-colors resize-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-semibold text-dashboard mb-2 block">
+                List URL
+              </label>
+              <div className="flex w-full md:flex-row flex-col md:items-center">
+                <label className="w-full md:w-auto text-sm font-medium text-dashboard mr-2 shrink-0 mb-2 md:mb-0">
+                  {getCurrentDomain()}/{username}/
+                </label>
+                <input
+                  type="text"
+                  name="slug"
+                  placeholder="Enter the name to create a shareable link"
+                  value={formik.values.slug}
+                  onChange={(e) => {
+                    formik.handleChange(e);
+                    // Ensure slug format (lowercase, no spaces)
+                    formik.setFieldValue("slug", generateSlug(e.target.value));
+                  }}
+                  onBlur={formik.handleBlur}
+                  className="w-full bg-dashboard-muted border border-dashboard-border rounded-lg px-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent transition-colors"
+                />
+              </div>
+              {formik.touched.slug && formik.errors.slug && (
+                <p className="text-xs text-red-400 mt-1">{formik.errors.slug}</p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-dashboard-border">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-6 py-2.5 rounded-lg bg-[#ef4444] hover:bg-[#dc2626] text-sm text-white font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-6 py-2.5 rounded-lg bg-[#3b82f6] hover:bg-[#2563eb] text-sm text-white font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {loading && <Loader2 size={14} className="animate-spin" />}
+                Create List
+              </button>
+            </div>
+          </form>
+        </motion.div>
       </motion.div>
-    </motion.div>
+    </AnimatePresence>
   );
 };
 
@@ -393,12 +442,14 @@ const BooksHome = () => {
       )}
 
       {/* Modals */}
-      {showCreateModal && accountDocumentId && (
+      {accountDocumentId && (
         <CreateListModal
-          accountDocumentId={accountDocumentId}
-          existingCount={lists.length}
+          open={showCreateModal}
           onClose={() => setShowCreateModal(false)}
+          accountDocumentId={accountDocumentId}
+          currentListCount={lists.length}
           onCreated={() => refetch()}
+          username={user?.username || ""}
         />
       )}
 

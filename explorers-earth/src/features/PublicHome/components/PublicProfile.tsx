@@ -155,6 +155,7 @@ const PublicProfile = memo(() => {
         const showRecommendations = accountData.public_recommendations === "Yes" || (!accountData.public_recommendations || accountData.public_recommendations === undefined);
         const showGuides = accountData.public_guides === "Yes";
         const showMovies = accountData.public_movie === "Yes";
+        const showBooks = accountData.public_books === "Yes";
         const showMusic = accountData.public_music === "Yes";
 
         if (showRecommendations) {
@@ -163,6 +164,8 @@ const PublicProfile = memo(() => {
           navigate(`/${username}/guides`, { replace: true });
         } else if (showMovies) {
           navigate(`/${username}/movies`, { replace: true });
+        } else if (showBooks) {
+          navigate(`/${username}/books`, { replace: true });
         } else if (showMusic) {
           navigate(`/${username}/music`, { replace: true });
         }
