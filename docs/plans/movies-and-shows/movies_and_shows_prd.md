@@ -3,9 +3,9 @@ Feature: movies-and-shows
 Doc type: prd
 Status: draft
 Created: 2026-03-20
-Last updated: 2026-03-25
+Last updated: 2026-03-26
 Updated by: agent
-Depends on: movies_and_shows_decisions.md
+Depends on: movies_and_shows_decisions.md, UI_UX_Implementation.md
 ---
 
 # Movies & Shows — Product Requirements Document
@@ -19,6 +19,14 @@ Enable creators, influencers, and businesses on explorers.earth to curate and sh
 **For whom:** Creators and influencers who want to build a comprehensive taste profile. Their audiences who want trusted, personal recommendations (not algorithmic suggestions).
 
 **Why now:** This is the first category expansion beyond Places, establishing the architectural pattern for Books, Music, Products, and other categories to follow. Movies & Shows is a strong first expansion — universally relevant, rich visual content (posters), and a free, excellent API (TMDB).
+
+## UI/UX Implementation Standards
+To ensure 90%+ implementation accuracy and dashboard consistency:
+- **Blue Branding**: Use `var(--dash-accent)` for all primary dashboard actions (blue theme).
+- **Mobile Safety**: Add `pb-32` or `pb-40` to main containers to prevent content overlap with the fixed footer navigation.
+- **Interactive**: Use the standard `Switch` component for visibility toggles.
+- **Clickability**: Hero cards must be fully clickable.
+- Refer to [UI_UX_Implementation.md](./UI_UX_Implementation.md) for detailed CSS and component rules.
 
 ## Scope
 

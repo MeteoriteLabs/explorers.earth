@@ -3,9 +3,9 @@ Feature: books
 Doc type: prd
 Status: draft
 Created: 2026-03-25
-Last updated: 2026-03-25
+Last updated: 2026-03-26
 Updated by: agent
-Depends on: books_decisions.md
+Depends on: books_decisions.md, UI_UX_Implementation.md
 ---
 
 # Books — Product Requirements Document
@@ -19,6 +19,14 @@ Enable creators, influencers, and businesses on explorers.earth to curate and sh
 **For whom:** Creators, authors, educators, and influencers who want to build a comprehensive taste profile. Their audiences who want trusted, personal book recommendations — not algorithmic Goodreads suggestions.
 
 **Why now:** Movies & Shows established the architectural pattern (separate collection, carousel public page, Google Books replaces TMDB). Books is the second category expansion, validating and stress-testing the pattern before Music, Games, and Products follow.
+
+## UI/UX Implementation Standards
+To ensure 90%+ implementation accuracy and dashboard consistency:
+- **Blue Branding**: Use `var(--dash-accent)` for all primary dashboard actions (blue theme).
+- **Mobile Safety**: Add `pb-32` or `pb-40` to main containers to prevent content overlap with the fixed footer navigation.
+- **Interactive**: Use the standard `Switch` component for visibility toggles.
+- **Clickability**: Hero cards must be fully clickable.
+- Refer to [UI_UX_Implementation.md](./UI_UX_Implementation.md) for detailed CSS and component rules.
 
 ## Scope
 

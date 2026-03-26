@@ -3,9 +3,9 @@ Feature: movies-and-shows
 Doc type: architecture
 Status: draft
 Created: 2026-03-20
-Last updated: 2026-03-25
+Last updated: 2026-03-26
 Updated by: agent
-Depends on: movies_and_shows_schema.md, movies_and_shows_api_contract.md
+Depends on: movies_and_shows_schema.md, movies_and_shows_api_contract.md, UI_UX_Implementation.md
 ---
 
 # Movies & Shows Feature Architecture
@@ -15,6 +15,12 @@ Depends on: movies_and_shows_schema.md, movies_and_shows_api_contract.md
 The Movies & Shows feature extends explorers.earth with creator-managed movie and TV show recommendations. Creators can curate custom lists, add personal notes, mark top picks, and share with visitors. Visitors browse public lists by creator, genre, or featured recommendations.
 
 This document defines the technical architecture, component hierarchy, state management, and integration points.
+
+### UI/UX Standards
+All components must adhere to the [UI/UX Implementation Guide](./UI_UX_Implementation.md). Key constraints include:
+- **Dashboard Blue**: Always use the standard blue accent variables (`var(--dash-accent)`).
+- **Mobile Layout**: Add `pb-32` or `pb-40` to main containers to prevent action buttons from being hidden behind the fixed dashboard footer.
+- **Switch Toggles**: Use the `Switch` component for Published/Draft toggles.
 
 ## 1. Feature Module Structure
 

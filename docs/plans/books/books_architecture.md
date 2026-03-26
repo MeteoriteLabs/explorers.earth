@@ -3,9 +3,9 @@ Feature: books
 Doc type: architecture
 Status: draft
 Created: 2026-03-25
-Last updated: 2026-03-25
+Last updated: 2026-03-26
 Updated by: agent
-Depends on: books_schema.md, books_api_contract.md
+Depends on: books_schema.md, books_api_contract.md, UI_UX_Implementation.md
 ---
 
 # Books Feature Architecture
@@ -15,6 +15,12 @@ Depends on: books_schema.md, books_api_contract.md
 The Books feature extends explorers.earth with creator-managed book recommendations. Creators curate custom lists, add personal notes and ratings, mark top reads, and share with visitors. Visitors browse public lists by creator, subject, or featured recommendations.
 
 This document follows the exact same pattern established by the Movies & Shows feature.
+
+### UI/UX Standards
+All components must adhere to the [UI/UX Implementation Guide](./UI_UX_Implementation.md). Key constraints include:
+- **Blue Theme**: Always use dashboard blue accent variables (`var(--dash-accent)`).
+- **Layout**: Add `pb-32` or `pb-40` to main containers to prevent content being hidden behind fixed dashboard navigation.
+- **Interactive**: Use the `Switch` component for Published/Draft toggles.
 
 ## 1. Feature Module Structure
 
