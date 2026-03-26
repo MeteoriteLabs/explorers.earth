@@ -87,15 +87,7 @@ const TopPicksMobileHero = ({ movies, onMovieClick, showManageButton = false, on
                   <h2 className="text-lg font-bold text-white tracking-tight">Top Picks</h2>
                 </div>
 
-                {showManageButton && diff === 0 && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onManageClick?.(); }}
-                    className="ml-auto bg-yellow-400 hover:bg-yellow-300 rounded-full px-4 py-1.5 flex items-center gap-1.5 shadow-[0_0_15px_rgba(250,204,21,0.4)] text-black transition-all active:scale-95 border border-yellow-300"
-                  >
-                    <Star size={13} className="text-black" fill="currentColor" />
-                    <span className="text-[11px] font-black uppercase tracking-wider">Manage</span>
-                  </button>
-                )}
+                {/* Manage button moved to bottom z-index:20 */}
               </div>
               
               {/* Title & Metadata */}
@@ -113,15 +105,27 @@ const TopPicksMobileHero = ({ movies, onMovieClick, showManageButton = false, on
                 </div>
                 
                 <div className="flex items-center gap-3 mt-4 pointer-events-auto">
-                  <button 
-                    className="flex-1 bg-white hover:bg-gray-200 text-black font-bold py-3 px-4 rounded-full flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onMovieClick(movie);
-                    }}
-                  >
-                    <Play size={18} fill="currentColor" /> See Details
-                  </button>
+                  {showManageButton ? (
+                    <button 
+                      className="flex-1 bg-dashboard-accent hover:opacity-90 text-white font-bold py-3 px-4 rounded-full flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onManageClick?.();
+                      }}
+                    >
+                      <Star size={18} fill="currentColor" /> Manage Top Picks
+                    </button>
+                  ) : (
+                    <button 
+                      className="flex-1 bg-dashboard-accent hover:opacity-90 text-white font-bold py-3 px-4 rounded-full flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onMovieClick(movie);
+                      }}
+                    >
+                      <Play size={18} fill="currentColor" /> See Details
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.div>

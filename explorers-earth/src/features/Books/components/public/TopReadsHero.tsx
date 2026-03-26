@@ -129,15 +129,7 @@ const TopReadsHero = ({ books, onBookClick, showManageButton = false, onManageCl
         </h2>
       </div>
 
-      {showManageButton && (
-        <button
-          onClick={onManageClick}
-          className="absolute z-50 top-6 right-6 lg:top-8 lg:right-8 bg-amber-500 hover:bg-amber-400 text-black px-5 py-2.5 rounded-full text-sm font-black shadow-[0_0_20px_rgba(245,158,11,0.5)] flex items-center gap-2 border border-amber-400 transition-all hover:scale-105"
-        >
-          <Star size={16} className="text-black" fill="currentColor" />
-          Manage Top Reads
-        </button>
-      )}
+      {/* Manage Button moved to bottom left for dashboard */}
 
       {/* Main Content Area - Increased Left Padding */}
       <div className="absolute inset-0 flex flex-col justify-end p-10 md:p-16 z-20">
@@ -179,13 +171,23 @@ const TopReadsHero = ({ books, onBookClick, showManageButton = false, onManageCl
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
               className="flex items-center gap-4 mt-4"
             >
-              <button 
-                onClick={() => onBookClick(activeBook)}
-                className="flex items-center gap-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold py-4 px-10 rounded-xl shadow-2xl shadow-amber-500/20 transition-all hover:scale-105 active:scale-95"
-              >
-                <BookOpen size={20} />
-                See Details
-              </button>
+              {showManageButton ? (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onManageClick?.(); }}
+                  className="flex items-center gap-2 bg-dashboard-accent hover:opacity-90 text-white font-bold py-4 px-10 rounded-xl shadow-2xl shadow-blue-500/20 transition-all hover:scale-105 active:scale-95"
+                >
+                  <Star size={20} fill="currentColor" />
+                  Manage Top Reads
+                </button>
+              ) : (
+                <button 
+                  onClick={() => onBookClick(activeBook)}
+                  className="flex items-center gap-2 bg-dashboard-accent hover:opacity-90 text-white font-bold py-4 px-10 rounded-xl shadow-2xl shadow-blue-500/20 transition-all hover:scale-105 active:scale-95"
+                >
+                  <BookOpen size={20} />
+                  See Details
+                </button>
+              )}
             </motion.div>
           </div>
 

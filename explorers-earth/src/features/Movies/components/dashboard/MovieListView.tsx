@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@apollo/client";
 import { AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Plus, Star, MoreHorizontal, Trash2, Edit,
-  Eye, EyeOff, Film, Copy, Loader2, Check, Clock, ChevronRight, Tv, Share2, Download
+  Film, Copy, Loader2, Check, Clock, ChevronRight, Tv, Share2, Download
 } from "lucide-react";
 import Accordion from "../../../../components/ui/Accordian";
 import { toast } from "sonner";
@@ -28,6 +28,7 @@ import {
 } from "../../utils/movieHelpers";
 import TopPicksManager from "./TopPicksManager";
 import MovieDetailModal from "../public/MovieDetailModal";
+import Switch from "../../../../components/ui/Switch";
 
 const VITE_BASE_URL = import.meta.env.VITE_BASE_URL || "https://explorers.earth";
 
@@ -282,18 +283,12 @@ const MovieListView = () => {
             )}
           </div>
         </div>
-        {/* Publish toggle */}
-        <button
-          onClick={handleToggleVisibility}
-          className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all flex-shrink-0 ${
-            list?.Visibility
-              ? "border-green-500/40 text-green-400 bg-green-500/10"
-              : "border-white/15 text-white/40 hover:border-white/25"
-          }`}
-        >
-          {list?.Visibility ? <Eye size={11} /> : <EyeOff size={11} />}
-          {list?.Visibility ? "Published" : "Draft"}
-        </button>
+        {/* Publish toggle switch */}
+        <Switch
+          checked={list?.Visibility ?? false}
+          onChange={handleToggleVisibility}
+          label={list?.Visibility ? "Published" : "Draft"}
+        />
       </div>
 
       {/* Tabs */}
@@ -417,17 +412,13 @@ const MovieListView = () => {
                   </button>
                 )}
 
-                <button
-                  onClick={handleToggleVisibility}
-                  className={`flex flex-row gap-2 items-center rounded-md font-poppins w-full text-sm border px-4 py-3 justify-center font-medium transition-all duration-300 ${
-                    list?.Visibility
-                      ? "border-green-500 text-green-500"
-                      : "border-dashboard-danger text-dashboard-danger"
-                  }`}
-                >
-                  {list?.Visibility ? <Eye size={16} /> : <EyeOff size={16} className="text-dashboard-danger" />}
-                  <span>{list?.Visibility ? "Published" : "Draft"}</span>
-                </button>
+                <div className={`p-4 rounded-xl border transition-all mt-2 ${list?.Visibility ? "border-green-500/30 bg-green-500/5" : "border-white/10"}`}>
+                  <Switch
+                    checked={list?.Visibility ?? false}
+                    onChange={handleToggleVisibility}
+                    label={list?.Visibility ? "Published (Visible to public)" : "Draft (Private)"}
+                  />
+                </div>
               </div>
             </Accordion>
 

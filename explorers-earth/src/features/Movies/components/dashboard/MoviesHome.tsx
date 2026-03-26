@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Film, Eye, EyeOff, Star, ChevronRight, Loader2, X } from "lucide-react";
+import { Plus, Film, Star, ChevronRight, Loader2, X } from "lucide-react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ import TopPicksMobileHero from "../public/TopPicksMobileHero";
 import TopPicksManager from "./TopPicksManager";
 import MovieDetailModal from "../public/MovieDetailModal";
 import type { RecommendedMovie } from "../../types";
+import Switch from "../../../../components/ui/Switch";
 
 // Query to get account documentId
 const MY_ACCOUNT = gql`
@@ -225,21 +226,12 @@ const MovieListCard = ({
           )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleVisibility(list.documentId, list.Visibility);
-            }}
+          <Switch
+            checked={list.Visibility}
+            onChange={() => onToggleVisibility(list.documentId, list.Visibility)}
             disabled={togglingId === list.documentId || movieCount === 0}
-            className={`text-xs px-2.5 py-1 rounded-full border flex items-center gap-1 transition-all ${
-              list.Visibility
-                ? "border-green-500/40 text-green-400 bg-green-500/10"
-                : "border-white/15 text-white/40"
-            } disabled:opacity-40`}
-          >
-            {list.Visibility ? <Eye size={11} /> : <EyeOff size={11} />}
-            {list.Visibility ? "Published" : "Draft"}
-          </button>
+            label={list.Visibility ? "Published" : "Draft"}
+          />
         </div>
       </div>
 

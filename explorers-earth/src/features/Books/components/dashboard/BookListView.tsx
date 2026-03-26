@@ -3,9 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, Plus, Star, MoreVertical, Eye, EyeOff, Trash2,
-  Loader2, BookOpen, Pencil, ChevronDown, ChevronUp,
-  Link2, Copy, Check, Bookmark, BookMarked, ChevronRight, Share2, Download, Clock
+  ArrowLeft, Plus, Star, MoreVertical, Trash2,
+  Loader2, BookOpen, Pencil, Copy, Check, BookMarked, ChevronRight, Share2, Download
 } from "lucide-react";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
@@ -20,6 +19,7 @@ import { deduplicateBooks, buildCoverUrl, formatAuthors, extractNoteText } from 
 import type { RecommendedBook, BookList } from "../../types";
 import BookDetailModal from "../public/BookDetailModal";
 import TopReadsManager from "./TopReadsManager";
+import Switch from "../../../../components/ui/Switch";
 
 const VITE_BASE_URL = import.meta.env.VITE_BASE_URL || window.location.origin;
 
@@ -251,17 +251,13 @@ const ManageTab = ({ list, onRefetch }: ManageTabProps) => {
               </button>
             )}
 
-            <button
-              onClick={handleToggleVisibility}
-              className={`flex flex-row gap-2 items-center rounded-md font-poppins w-full text-sm border px-4 py-3 justify-center font-medium transition-all duration-300 ${
-                list.visibility
-                  ? "border-green-500 text-green-500 hover:bg-green-500/5"
-                  : "border-red-400 text-red-400 hover:bg-red-400/5"
-              }`}
-            >
-              {list.visibility ? <Eye size={16} /> : <EyeOff size={16} />}
-              <span>{list.visibility ? "Published" : "Draft"}</span>
-            </button>
+            <div className={`p-4 rounded-xl border transition-all mt-2 ${list.visibility ? "border-green-500/30 bg-green-500/5" : "border-white/10"}`}>
+              <Switch
+                checked={list.visibility}
+                onChange={handleToggleVisibility}
+                label={list.visibility ? "Published (Visible to public)" : "Draft (Private)"}
+              />
+            </div>
           </div>
         </Accordion>
 
@@ -470,18 +466,12 @@ const BookListView = () => {
             )}
           </div>
         </div>
-        {/* Publish toggle badge */}
-        <button
-          onClick={handleToggleVisibility}
-          className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all flex-shrink-0 ${
-            list?.visibility
-              ? "border-green-500/40 text-green-400 bg-green-500/10"
-              : "border-white/15 text-white/40 hover:border-white/25"
-          }`}
-        >
-          {list?.visibility ? <Eye size={11} /> : <EyeOff size={11} />}
-          {list?.visibility ? "Published" : "Draft"}
-        </button>
+        {/* Publish toggle switch */}
+        <Switch
+          checked={list?.visibility ?? false}
+          onChange={handleToggleVisibility}
+          label={list?.visibility ? "Published" : "Draft"}
+        />
       </div>
 
       {/* Tabs */}

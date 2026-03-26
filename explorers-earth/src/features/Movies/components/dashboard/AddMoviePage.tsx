@@ -576,7 +576,7 @@ const AddMoviePage = () => {
       </div>
 
       {/* Single-column form */}
-      <div className="max-w-2xl mx-auto px-6 pt-8 pb-28 md:pb-8 space-y-5">
+      <div className="max-w-2xl mx-auto px-6 pt-8 pb-40 md:pb-8 space-y-5">
 
         {/* Search — only in create mode */}
         {!isEdit && (
@@ -904,14 +904,14 @@ const AddMoviePage = () => {
                   <button
                     type="button"
                     onClick={() => navigate(`/recommendations/movies/${listId}`)}
-                    className="px-6 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-sm text-white font-medium transition-colors"
+                    className="px-6 py-3 rounded-xl bg-dashboard-muted hover:bg-white/10 text-sm text-white font-medium transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleSave}
                     disabled={saving || !form.title.trim()}
-                    className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-sm text-white font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                    className="flex-1 py-3 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
                   >
                     {saving ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
                     {isEdit ? "Save Changes" : "Add to List"}

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import { motion } from "framer-motion";
 import {
-  BookOpen, Plus, Eye, EyeOff, Star, ChevronRight,
+  BookOpen, Plus, Star, ChevronRight,
   Loader2, X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -17,6 +17,7 @@ import TopReadsHero from "../public/TopReadsHero";
 import TopReadsMobileHero from "../public/TopReadsMobileHero";
 import TopReadsManager from "./TopReadsManager";
 import BookDetailModal from "../public/BookDetailModal";
+import Switch from "../../../../components/ui/Switch";
 
 // Query to get exact account documentId from the usersPermissionsUser relation
 const MY_ACCOUNT = gql`
@@ -229,21 +230,12 @@ const BookListCard = ({
           )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleVisibility(list.documentId, list.visibility);
-            }}
+          <Switch
+            checked={list.visibility}
+            onChange={() => onToggleVisibility(list.documentId, list.visibility)}
             disabled={togglingId === list.documentId || bookCount === 0}
-            className={`text-xs px-2.5 py-1 rounded-full border flex items-center gap-1 transition-all ${
-              list.visibility
-                ? "border-green-500/40 text-green-400 bg-green-500/10"
-                : "border-white/15 text-white/40"
-            } disabled:opacity-40`}
-          >
-            {list.visibility ? <Eye size={11} /> : <EyeOff size={11} />}
-            {list.visibility ? "Published" : "Draft"}
-          </button>
+            label={list.visibility ? "Published" : "Draft"}
+          />
         </div>
       </div>
 
@@ -358,7 +350,7 @@ const BooksHome = () => {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-dashboard flex items-center gap-2">
-            <BookOpen size={24} className="text-amber-500" /> Books
+            <BookOpen size={24} className="text-dashboard-accent" /> Books
           </h1>
           <p className="text-sm text-dashboard-light mt-1">
             {lists.length > 0 ? `${lists.length} list${lists.length !== 1 ? "s" : ""}` : "Curate and share your book recommendations"}
@@ -366,7 +358,7 @@ const BooksHome = () => {
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-sm text-white font-medium transition-colors shadow-lg shadow-amber-900/30"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-colors shadow-lg shadow-blue-900/30"
         >
           <Plus size={16} /> New List
         </button>
@@ -389,7 +381,7 @@ const BooksHome = () => {
           </p>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-sm text-white font-medium transition-colors"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-colors"
           >
             <Plus size={16} /> Create First List
           </button>

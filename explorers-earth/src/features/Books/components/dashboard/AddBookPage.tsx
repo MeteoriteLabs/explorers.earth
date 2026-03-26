@@ -17,7 +17,7 @@ import { deduplicateBooks } from "../../utils/bookHelpers";
 import type { RecommendedBook, BuyLink } from "../../types";
 import TiptapEditor from "../../../Favorites/components/TiptapEditor";
 import axios from "axios";
-import { sanitizeUsername } from "../../../../utils/uploadPathGenerator";
+
 
 // ─────────────────────────────────────────────────────────────
 // S3 upload helper (reused pattern from Movies)
@@ -227,7 +227,6 @@ const AddBookPage = () => {
           const coverFilename = generateRandomFileName("cover", "jpg");
           const thumbFilename = generateRandomFileName("thumb", "jpg");
           const fullCoverPath = generateBookUploadPath(username || "user", listId, selectedBook.volume_id, coverFilename);
-          const fullThumbPath = generateBookUploadPath(username || "user", listId, selectedBook.volume_id, thumbFilename);
           const directoryPath = fullCoverPath.substring(0, fullCoverPath.lastIndexOf('/'));
 
           const TOKEN = import.meta.env.VITE_FULL_ACCESS_TOKEN;
@@ -326,7 +325,7 @@ const AddBookPage = () => {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-2xl mx-auto">
+    <div className="p-4 md:p-8 pb-32 max-w-2xl mx-auto">
       {/* Back nav */}
       <button
         onClick={() => navigate(`/recommendations/books/${listId}`)}
@@ -580,14 +579,14 @@ const AddBookPage = () => {
               <button
                 type="button"
                 onClick={() => navigate(`/recommendations/books/${listId}`)}
-                className="px-6 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-sm text-white font-medium transition-colors"
+                className="px-6 py-3 rounded-xl bg-dashboard-muted hover:bg-white/10 text-sm text-white font-medium transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving || (!selectedBook && !isEdit)}
-                className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-sm text-gray-900 font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                className="flex-1 py-3 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 {saving || uploadingCover ? (
                   <>

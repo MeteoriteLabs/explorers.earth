@@ -95,15 +95,7 @@ const TopPicksHero = ({ movies, onMovieClick, showManageButton = false, onManage
       </div>
 
       {/* Manage Top Picks Button (Always visible on Dashboard top right) */}
-      {showManageButton && (
-        <button
-          onClick={onManageClick}
-          className="absolute z-50 top-6 right-6 lg:top-8 lg:right-8 bg-yellow-400 hover:bg-yellow-300 text-black px-5 py-2.5 rounded-full text-sm font-black shadow-[0_0_20px_rgba(250,204,21,0.4)] flex items-center gap-2 border border-yellow-300 transition-all hover:scale-105"
-        >
-          <Star size={16} className="text-black" fill="currentColor" />
-          Manage Top Picks
-        </button>
-      )}
+      {/* Manage Button moved to bottom left for dashboard */}
 
       {/* Main Content Area */}
       <div className="absolute inset-0 flex flex-col justify-end p-8 md:p-12 z-10">
@@ -145,13 +137,23 @@ const TopPicksHero = ({ movies, onMovieClick, showManageButton = false, onManage
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
               className="flex items-center gap-4 mt-2"
             >
-              <button 
-                onClick={() => onMovieClick(activeMovie)}
-                className="flex items-center gap-2 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-bold py-3 px-8 rounded-lg shadow-xl shadow-pink-500/20 transition-all hover:scale-105"
-              >
-                <Play size={20} fill="currentColor" />
-                See Details
-              </button>
+              {showManageButton ? (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onManageClick?.(); }}
+                  className="flex items-center gap-2 bg-dashboard-accent hover:opacity-90 text-white font-bold py-3 px-8 rounded-lg shadow-xl shadow-blue-500/20 transition-all hover:scale-105"
+                >
+                  <Star size={20} fill="currentColor" />
+                  Manage Top Picks
+                </button>
+              ) : (
+                <button 
+                  onClick={() => onMovieClick(activeMovie)}
+                  className="flex items-center gap-2 bg-dashboard-accent hover:opacity-90 text-white font-bold py-3 px-8 rounded-lg shadow-xl shadow-blue-500/20 transition-all hover:scale-105"
+                >
+                  <Play size={20} fill="currentColor" />
+                  See Details
+                </button>
+              )}
             </motion.div>
           </div>
 
