@@ -11,7 +11,7 @@ import Profile from "../assets/icons/Profile";
 import Analytics from "../assets/icons/Analytics";
 import MusicNote from "../assets/icons/MusicNote";
 import Button from "./ui/Button";
-import { Film, BookOpen } from "lucide-react";
+import { Film, BookOpen, Gamepad2 } from "lucide-react";
 import SunIcon from "../assets/icons/SunIcon";
 import MoonIcon from "../assets/icons/MoonIcon";
 import SwitchButton from "./ui/SwitchButton";
@@ -196,6 +196,14 @@ const Sidebar = () => {
           Icon={({ fill }: any) => <BookOpen size={18} color={fill ?? 'var(--dash-icon-primary)'} fill="none" />}
           title={"Books"}
           to="/recommendations/books"
+        />
+        {/* Games */}
+        <SidebarItem
+          isOpen={isOpen}
+          /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+          Icon={({ fill }: any) => <Gamepad2 size={18} color={fill ?? 'var(--dash-icon-primary)'} fill="none" />}
+          title={"Games"}
+          to="/recommendations/games"
         />
         {/* Music button - show for all users */}
         <SidebarItem

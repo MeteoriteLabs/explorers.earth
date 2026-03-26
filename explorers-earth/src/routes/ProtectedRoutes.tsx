@@ -23,6 +23,7 @@ import {
 } from "../features/Guides";
 import { MoviesHome, MovieListView, AddMoviePage } from "../features/Movies";
 import { BooksHome, BookListView, AddBookPage } from "../features/Books";
+import { GamesHome, GameListView, AddGamePage } from "../features/Games";
 
 // Import layouts
 import DashboardLayout from "../layouts/DashboardLayout";
@@ -59,6 +60,10 @@ const ProtectedRoutes = ({
       <Route path="recommendations/books/:listId" element={<BookListView />} />
       <Route path="recommendations/books/:listId/add" element={<AddBookPage />} />
       <Route path="recommendations/books/:listId/edit/:bookId" element={<AddBookPage />} />
+      <Route path="recommendations/games" element={<GamesHome />} />
+      <Route path="recommendations/games/:listId" element={<GameListView />} />
+      <Route path="recommendations/games/:listId/add" element={<AddGamePage />} />
+      <Route path="recommendations/games/:listId/edit/:gameId" element={<AddGamePage />} />
       <Route path=":listId/new" element={<AddRecommendation />} />
       <Route
         path="guides/:guideId/edit"
@@ -99,6 +104,10 @@ const ProtectedRoutes = ({
       <Route path="recommendations/books/:listId" element={<BookListView />} />
       <Route path="recommendations/books/:listId/add" element={<AddBookPage />} />
       <Route path="recommendations/books/:listId/edit/:bookId" element={<AddBookPage />} />
+      <Route path="recommendations/games" element={<GamesHome />} />
+      <Route path="recommendations/games/:listId" element={<GameListView />} />
+      <Route path="recommendations/games/:listId/add" element={<AddGamePage />} />
+      <Route path="recommendations/games/:listId/edit/:gameId" element={<AddGamePage />} />
     </Route>
   );
 

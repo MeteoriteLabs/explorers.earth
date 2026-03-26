@@ -72,6 +72,7 @@ export const accountsDetailQuery = gql`
       public_movie
       public_books
       public_guides
+      public_games
       recommendation_lists(pagination: { limit: 100 })  {
         documentId
         List_Name
@@ -120,6 +121,7 @@ export const accountsDetailsByPlace = gql`
       public_movie
       public_books
       public_guides
+      public_games
       recommendation_lists(filters: $listFilters) {
         List_Name
         Visibility
@@ -229,6 +231,7 @@ export const getPublicAccountBasicQuery = gql`
       public_movie
       public_books
       public_guides
+      public_games
     }
   }
 `;
@@ -262,6 +265,7 @@ export const getPublicProfileDataQuery = gql`
       public_movie
       public_books
       public_guides
+      public_games
     }
   }
 `;
@@ -294,6 +298,7 @@ export const getAccountsDataQuery = gql`
       public_movie
       public_books
       public_guides
+      public_games
     }
   }
 `;

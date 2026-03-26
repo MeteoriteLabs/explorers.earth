@@ -268,6 +268,47 @@ export const generateBookListCoverPath = (
 };
 
 /**
+ * Generates structured path for game list cover image uploads
+ * Uses unified structure: {username}/games/{gameListId}/cover/{filename}
+ * @param username - User's username
+ * @param gameListId - Unique ID of the game list
+ * @param filename - Generated filename
+ * @returns Structured path for game list cover uploads
+ */
+export const generateGameListCoverPath = (
+  username: string,
+  gameListId: string,
+  filename: string
+): string => {
+  const sanitizedUsername = sanitizeUsername(username);
+  const sanitizedListId = sanitizeIdentifier(gameListId);
+
+  return `${sanitizedUsername}/games/${sanitizedListId}/cover/${filename}`;
+};
+
+/**
+ * Generates structured path for game list/game image uploads
+ * Uses unified structure: {username}/games/{gameListId}/{igdbId}/{filename}
+ * @param username - User's username
+ * @param gameListId - Unique ID of the game list
+ * @param igdbId - IGDB ID
+ * @param filename - Generated filename
+ * @returns Structured path for game uploads
+ */
+export const generateGameUploadPath = (
+  username: string,
+  gameListId: string,
+  igdbId: string,
+  filename: string
+): string => {
+  const sanitizedUsername = sanitizeUsername(username);
+  const sanitizedListId = sanitizeIdentifier(gameListId);
+  const sanitizedIgdbId = sanitizeIdentifier(igdbId);
+
+  return `${sanitizedUsername}/games/${sanitizedListId}/${sanitizedIgdbId}/${filename}`;
+};
+
+/**
  * Sanitizes username for safe path usage
  * @param username - Raw username
  * @returns Sanitized username safe for file paths

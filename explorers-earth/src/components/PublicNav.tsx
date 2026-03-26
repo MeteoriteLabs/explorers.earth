@@ -4,7 +4,7 @@ import DirectionBoard from "../assets/icons/DirectionBoard";
 import Profile from "../assets/icons/Profile";
 import MusicNote from "../assets/icons/MusicNote";
 import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
-import { Film, BookOpen } from "lucide-react";
+import { Film, BookOpen, Gamepad2 } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { getPublicAccountBasicQuery } from "../features/PublicHome/api/query";
@@ -60,6 +60,7 @@ const PublicNav = memo(() => {
   const showGuidesTab = accountData?.public_guides === "Yes"; // Only show when explicitly "Yes"
   const showMoviesTab = accountData?.public_movie === "Yes"; // Only show when explicitly "Yes"
   const showBooksTab = accountData?.public_books === "Yes"; // Only show when explicitly "Yes"
+  const showGamesTab = accountData?.public_games === "Yes" || accountData?.public_games === "No" ? accountData?.public_games === "Yes" : true; // Default to show if not set
 
   // Helper function to check if current path is for movies
   const isMoviesPath = (currentPath: string) => {
@@ -71,6 +72,12 @@ const PublicNav = memo(() => {
   const isBooksPath = (currentPath: string) => {
     const normalizedPath = normalizePath(currentPath);
     return normalizedPath.includes('/books');
+  };
+
+  // Helper function to check if current path is for games
+  const isGamesPath = (currentPath: string) => {
+    const normalizedPath = normalizePath(currentPath);
+    return normalizedPath.includes('/games');
   };
 
   // Helper function to check if current path is for guides
@@ -128,6 +135,12 @@ const PublicNav = memo(() => {
       text: "Books",
       path: `/${username}/books`,
     }] : []),
+    // Only add games tab if visibility is enabled
+    ...(showGamesTab ? [{
+      icon: <Gamepad2 size={18} color={isGamesPath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
+      text: "Games",
+      path: `/${username}/games`,
+    }] : []),
   ];
 
 
@@ -142,6 +155,7 @@ const PublicNav = memo(() => {
             (item.path.includes('/music') && isMusicPath(location.pathname)) ||
             (item.path.includes('/movies') && isMoviesPath(location.pathname)) ||
             (item.path.includes('/books') && isBooksPath(location.pathname)) ||
+            (item.path.includes('/games') && isGamesPath(location.pathname)) ||
             (item.path.includes('/guides') && isGuidesPath(location.pathname));
 
           return (
