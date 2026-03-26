@@ -168,11 +168,16 @@ const ManageTab = ({ list, onRefetch }: ManageTabProps) => {
   };
 
   const handleToggleVisibility = async () => {
+    if (!list) return;
+    if (!list.visibility && list.recommended_books?.length === 0) {
+      toast.error("Add at least one book before publishing.");
+      return;
+    }
     try {
       await updateBookList({
         variables: { documentId: list.documentId, visibility: !list.visibility },
       });
-      toast.success(list.visibility ? "List set to Draft" : "List published!");
+      toast.success(list.visibility ? "List set to Draft." : "List published!");
       onRefetch();
     } catch {
       toast.error("Failed to update visibility.");
@@ -410,11 +415,15 @@ const BookListView = () => {
 
   const handleToggleVisibility = async () => {
     if (!list) return;
+    if (!list.visibility && books.length === 0) {
+      toast.error("Add at least one book before publishing.");
+      return;
+    }
     try {
       await updateBookList({
         variables: { documentId: list.documentId, visibility: !list.visibility },
       });
-      toast.success(list.visibility ? "List set to Draft" : "List published!");
+      toast.success(list.visibility ? "List set to Draft." : "List published!");
       refetch();
     } catch {
       toast.error("Failed to update visibility.");

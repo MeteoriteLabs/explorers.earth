@@ -363,18 +363,18 @@ const AddGamePage = () => {
 
   return (
     <div className="min-h-screen text-dashboard">
-      <div className="border-b border-dashboard-border px-6 py-4 flex items-center gap-3 sticky top-0 bg-dashboard-bg z-40">
+      <div className="border-b border-dashboard-border px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 sticky top-[72px] md:top-0 bg-dashboard-bg z-40 w-full">
         <button
           onClick={() => navigate(`/recommendations/games/${listId}`)}
-          className="text-white/40 hover:text-white transition-colors"
+          className="text-white/40 hover:text-white transition-colors flex-shrink-0"
         >
           <ArrowLeft size={20} />
         </button>
-        <div className="flex-1">
-          <h1 className="text-base font-semibold text-dashboard">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-sm md:text-base font-semibold text-dashboard truncate">
             {isEdit ? "Edit Game" : "Add Game"}
           </h1>
-          <p className="text-xs text-dashboard-muted mt-0.5">
+          <p className="text-[10px] md:text-xs text-dashboard-muted mt-0.5 truncate">
             {isEdit
               ? "Update the details and save your changes"
               : selectedGame
@@ -394,10 +394,10 @@ const AddGamePage = () => {
         ) : (
           <div className="space-y-6">
             <div className="bg-dashboard-sidebar rounded-2xl overflow-hidden border border-dashboard-border shadow-xl">
-              <div className="flex p-5 gap-5">
-                <div className="w-24 md:w-32 flex-shrink-0 shadow-lg rounded-lg overflow-hidden relative bg-white/5">
+              <div className="flex flex-col sm:flex-row p-4 md:p-5 gap-4 md:gap-5">
+                <div className="w-24 md:w-32 flex-shrink-0 mx-auto sm:mx-0 shadow-lg rounded-lg overflow-hidden relative bg-white/5">
                   {(selectedGame.cover_url_large || selectedGame.cover_url) ? (
-                    <img src={selectedGame.cover_url_large || selectedGame.cover_url!} alt={selectedGame.title} className="w-full object-cover" />
+                    <img src={selectedGame.cover_url_large || selectedGame.cover_url!} alt={selectedGame.title} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full aspect-[3/4] flex items-center justify-center">
                       <Gamepad2 size={24} className="text-white/20" />
@@ -409,7 +409,7 @@ const AddGamePage = () => {
                     </div>
                   )}
                 </div>
-                <div className="flex-1 min-w-0 py-1">
+                <div className="flex-1 min-w-0 py-1 text-center sm:text-left">
                   <h2 className="text-xl font-bold text-white leading-tight mb-1">{selectedGame.title}</h2>
                   <p className="text-sm text-dashboard-muted mb-2">
                     {selectedGame.developer}
@@ -436,7 +436,7 @@ const AddGamePage = () => {
               <div className="space-y-6">
                 <div>
                   <label className="text-sm font-semibold text-dashboard mb-3 block">My Rating (Optional)</label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-1 md:gap-2">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
                       <button
                         key={star}
@@ -444,7 +444,7 @@ const AddGamePage = () => {
                         onClick={() => setUserRating(star === userRating ? null : star)}
                         className={`p-1 transition-all hover:scale-110 active:scale-95 ${userRating && userRating >= star ? "text-yellow-400" : "text-white/20 hover:text-white/40"}`}
                       >
-                        <Star size={24} fill={userRating && userRating >= star ? "currentColor" : "none"} />
+                        <Star size={20} className="md:w-6 md:h-6" fill={userRating && userRating >= star ? "currentColor" : "none"} />
                       </button>
                     ))}
                   </div>
@@ -466,7 +466,7 @@ const AddGamePage = () => {
 
                 <div>
                   <label className="text-sm font-semibold text-dashboard mb-3 block">My Thoughts</label>
-                  <div className="focus-within:border-dashboard-accent transition-colors">
+                  <div className="focus-within:border-dashboard-accent transition-colors max-w-full overflow-hidden">
                     <TiptapEditor
                       value={note || ""}
                       onChange={(val) => setNote(val)}

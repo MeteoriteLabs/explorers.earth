@@ -140,10 +140,14 @@ const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () => void 
 
   const handleToggleVisibility = async () => {
     try {
+      if (!list.Visibility && list.recommended_games?.length === 0) {
+        toast.error("Add at least one game before publishing.");
+        return;
+      }
       await updateGameList({
         variables: { documentId: list.documentId, Visibility: !list.Visibility },
       });
-      toast.success(list.Visibility ? "List set to Draft" : "List published!");
+      toast.success(list.Visibility ? "List set to Draft." : "List published!");
       onRefetch();
     } catch {
       toast.error("Failed to update visibility.");
@@ -243,15 +247,15 @@ const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () => void 
             )}
             
             <div className="flex justify-center items-center my-6">
-              <div className="flex relative flex-col justify-between items-center h-[16rem] w-[14rem] p-6 bg-black border border-white/20 text-white rounded-2xl shadow-2xl">
-                <div className="absolute bottom-0 left-0 w-full h-1/2 rounded-b-2xl bg-gradient-to-t from-amber-600/20 to-transparent pointer-events-none" />
+              <div className="flex relative flex-col justify-between items-center h-[16rem] w-[14rem] p-6 bg-black border border-white text-white rounded-lg">
+                <div className="absolute bottom-0 left-0 w-full h-1/2 rounded-b-lg bg-gradient-to-t from-amber-600/20 to-transparent pointer-events-none" />
                 <p className="text-sm tracking-wide font-medium z-10 text-center leading-snug">My Games</p>
                 <div className="z-10 items-center flex flex-col pt-1">
-                  <div className="p-2 bg-white rounded-xl shadow-md mb-3">
+                  <div className="p-2 bg-white rounded-lg shadow-md mb-3">
                     <QRCodeSVG id="game-qr" value={shareUrl} size={90} />
                   </div>
-                  <p className="bg-amber-100 text-amber-900 px-4 py-1.5 font-poppins rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">
-                    Curated Picks
+                  <p className="bg-amber-100 text-amber-900 px-4 py-1.5 font-poppins rounded-full text-[11px] font-semibold whitespace-nowrap">
+                    Travel like a local
                   </p>
                 </div>
               </div>
@@ -383,11 +387,15 @@ const GameListView = () => {
           checked={list?.Visibility ?? false}
           onChange={async () => {
             if (!list) return;
+            if (!list.Visibility && games.length === 0) {
+              toast.error("Add at least one game before publishing.");
+              return;
+            }
             try {
               await updateGameList({
                 variables: { documentId: list.documentId, Visibility: !list.Visibility },
               });
-              toast.success(list.Visibility ? "List set to Draft" : "List published!");
+              toast.success(list.Visibility ? "List set to Draft." : "List published!");
               refetch();
             } catch {
               toast.error("Failed to update visibility.");

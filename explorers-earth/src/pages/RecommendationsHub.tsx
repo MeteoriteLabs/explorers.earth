@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Compass, Film, BookOpen, ChevronRight } from "lucide-react";
+import { Compass, Film, BookOpen, Gamepad2, Music, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 
 const RecommendationsHub = () => {
@@ -10,7 +10,7 @@ const RecommendationsHub = () => {
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2 tracking-tight text-dashboard">Recommendations</h1>
         <p className="text-sm text-dashboard-muted leading-relaxed">
-          Manage and share your curated lists of favorite locations and films.
+          Manage and share your curated lists of locations, movies, books, games and music.
         </p>
       </div>
 
@@ -80,6 +80,54 @@ const RecommendationsHub = () => {
           <div className="flex-1 relative z-10">
             <h2 className="text-xl font-bold text-dashboard mb-1">Books</h2>
             <p className="text-xs text-dashboard-muted pr-4">Review and catalog your favorite reading material</p>
+          </div>
+          
+          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors relative z-10 shrink-0">
+            <ChevronRight size={16} className="text-dashboard-muted group-hover:text-dashboard transition-colors" />
+          </div>
+        </motion.button>
+
+        {/* Games Card */}
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={() => navigate("/recommendations/games")}
+          className="flex items-center p-5 bg-gradient-to-br from-indigo-900/20 to-dashboard-sidebar border border-indigo-500/10 hover:border-indigo-500/30 rounded-3xl shadow-lg relative overflow-hidden group text-left transition-all"
+        >
+          <div className="absolute -top-4 -right-4 p-4 opacity-[0.03] group-hover:opacity-10 transform group-hover:scale-110 transition-all duration-500">
+            <Gamepad2 size={120} />
+          </div>
+          
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-400/20 to-cyan-500/20 text-indigo-400 flex items-center justify-center mr-5 shrink-0 shadow-inner border border-indigo-400/20">
+            <Gamepad2 size={28} />
+          </div>
+          
+          <div className="flex-1 relative z-10">
+            <h2 className="text-xl font-bold text-dashboard mb-1">Games</h2>
+            <p className="text-xs text-dashboard-muted pr-4">Keep track of your gaming catalog and achievements</p>
+          </div>
+          
+          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors relative z-10 shrink-0">
+            <ChevronRight size={16} className="text-dashboard-muted group-hover:text-dashboard transition-colors" />
+          </div>
+        </motion.button>
+
+        {/* Music Card */}
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={() => navigate("/music")}
+          className="flex items-center p-5 bg-gradient-to-br from-pink-900/20 to-dashboard-sidebar border border-pink-500/10 hover:border-pink-500/30 rounded-3xl shadow-lg relative overflow-hidden group text-left transition-all"
+        >
+          <div className="absolute -top-4 -right-4 p-4 opacity-[0.03] group-hover:opacity-10 transform group-hover:scale-110 transition-all duration-500">
+            <Music size={120} />
+          </div>
+          
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-400/20 to-rose-500/20 text-pink-400 flex items-center justify-center mr-5 shrink-0 shadow-inner border border-pink-400/20">
+            <Music size={28} />
+          </div>
+          
+          <div className="flex-1 relative z-10">
+            <h2 className="text-xl font-bold text-dashboard mb-1">Music</h2>
+            <p className="text-xs text-dashboard-muted pr-4">Create and share your favorite playlists and artists</p>
           </div>
           
           <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors relative z-10 shrink-0">
