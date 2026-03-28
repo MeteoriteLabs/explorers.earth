@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import useDeviceDetection from "../../hooks/useDeviceDetection";
 
 interface DashboardRouteValidatorProps {
   children: React.ReactNode;
@@ -10,6 +11,7 @@ const DashboardRouteValidator = ({
 }: DashboardRouteValidatorProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isDesktop } = useDeviceDetection();
 
   useEffect(() => {
     // Define valid dashboard route patterns
@@ -17,7 +19,7 @@ const DashboardRouteValidator = ({
       /^\/home$/,
       /^\/profile$/,
       /^\/recommendations$/,
-      /^\/hub$/,
+      ...(!isDesktop ? [/^\/hub$/] : []),
       /^\/recommendations\/places$/,
       /^\/analytics$/,
       /^\/settings$/,

@@ -1,7 +1,9 @@
 import { memo, useEffect, useRef, useState } from "react";
 import useAuthStore from "../store/store";
 import Button from "./ui/Button";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import useDeviceDetection from "../hooks/useDeviceDetection";
+import Down from "../assets/icons/Down";
 import { gql, useQuery } from "@apollo/client";
 import { toast } from "sonner";
 import MenuIcon from "../assets/icons/MenuIcon";
@@ -30,6 +32,14 @@ const getCurrentAccountDataQuery = gql`
   }
 `;
 
+const recommendationCategories = [
+  { id: 'places', name: 'Places', path: '/recommendations/places' },
+  { id: 'movies', name: 'Movies & Shows', path: '/recommendations/movies' },
+  { id: 'books', name: 'Books', path: '/recommendations/books' },
+  { id: 'games', name: 'Games', path: '/recommendations/games' },
+  { id: 'music', name: 'Music', path: '/music' },
+];
+
 const Header = memo(() => {
   const [showMenu, setShowMenu] = useState<boolean>(false);
   const [showMobileMenu, setShowMobileMenu] = useState<boolean>(false);
@@ -43,6 +53,19 @@ const Header = memo(() => {
   const { t } = useTranslation();
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const { theme, toggleTheme } = useDashboardTheme();
+  const location = useLocation();
+  const { isDesktop } = useDeviceDetection();
+  const [showCategoryMenu, setShowCategoryMenu] = useState(false);
+  const categoryMenuRef = useRef<HTMLDivElement>(null);
+
+  const currentCategory = recommendationCategories.find(cat => {
+    // Exact match for /recommendations as Places
+    if (cat.id === 'places' && location.pathname === '/recommendations') return true;
+    // Prefix match for all categories
+    return location.pathname.startsWith(cat.path);
+  });
+
+  const isRecommendationPage = !!currentCategory;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -51,6 +74,9 @@ const Header = memo(() => {
       }
       if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
         setShowMobileMenu(false);
+      }
+      if (categoryMenuRef.current && !categoryMenuRef.current.contains(event.target as Node)) {
+        setShowCategoryMenu(false);
       }
     };
 
@@ -90,16 +116,64 @@ const Header = memo(() => {
     <div className="bg-dashboard-sidebar w-full z-[100] md:px-6 p-4 fixed top-0 left-0 right-0 md:relative md:border-b md:border-dashboard">
       <div className="flex flex-row rounded-xl items-center justify-between md:p-[10px]">
         <div className="logo-container">
-          <img
-            src="/logo.svg"
-            alt="explorers.earth"
-            className={`object-contain cursor-pointer header-logo ${theme === 'dark' ? 'header-logo-dark' : 'header-logo-light'}`}
-            onClick={() => navigate(isAuthenticated ? "/home" : "/")}
-            style={{
-              height: "48px",
-              width: "auto",
-            }}
-          />
+          {!isDesktop && isRecommendationPage ? (
+            <div className="relative" ref={categoryMenuRef}>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowCategoryMenu(!showCategoryMenu)}
+                className="flex items-center gap-2 text-white font-bold text-lg bg-dashboard-muted px-4 py-2 rounded-xl border border-dashboard/50"
+              >
+                <span className="truncate max-w-[150px]">{currentCategory.name}</span>
+                <motion.div
+                  animate={{ rotate: showCategoryMenu ? 180 : 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Down stroke="white" />
+                </motion.div>
+              </motion.button>
+
+              <AnimatePresence>
+                {showCategoryMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute top-14 left-0 w-56 bg-dashboard-sidebar rounded-xl shadow-dashboard-elevated border border-dashboard overflow-hidden z-[110]"
+                  >
+                    <div className="py-2">
+                      {recommendationCategories.map((cat) => (
+                        <button
+                          key={cat.id}
+                          className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors ${
+                            (location.pathname.startsWith(cat.path) || (cat.id === 'places' && location.pathname === '/recommendations'))
+                              ? "bg-dashboard-accent/20 text-dashboard-accent"
+                              : "text-white hover:bg-dashboard-muted"
+                          }`}
+                          onClick={() => {
+                            navigate(cat.path);
+                            setShowCategoryMenu(false);
+                          }}
+                        >
+                          {cat.name}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <img
+              src="/logo.svg"
+              alt="explorers.earth"
+              className={`object-contain cursor-pointer header-logo ${theme === 'dark' ? 'header-logo-dark' : 'header-logo-light'}`}
+              onClick={() => navigate(isAuthenticated ? "/home" : "/")}
+              style={{
+                height: "48px",
+                width: "auto",
+              }}
+            />
+          )}
         </div>
 
         <div

@@ -8,12 +8,13 @@ import NavButton from "./ui/NavButton";
 import DirectionBoard from "../assets/icons/DirectionBoard";
 import Analytics from "../assets/icons/Analytics";
 import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
+import Heart from "../assets/icons/Heart";
 
 const navItems = [
   { id: "home", icon: Home, text: "Home", path: "/home" },
   {
     id: "recommendations",
-    icon: DirectionBoard,
+    icon: Heart,
     text: "Recommendation",
     path: "/hub",
   },
@@ -105,7 +106,7 @@ const Navbar = () => {
             iconElement = renderHomeIcon(isActive);
           } else if (item.id === "recommendations") {
             iconElement = (
-              <DirectionBoard
+              <Heart
                 fill={isActive ? "var(--dash-accent)" : "#F2F2F2"}
               />
             );

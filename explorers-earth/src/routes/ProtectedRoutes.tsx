@@ -39,7 +39,6 @@ const ProtectedRoutes = ({
   const desktopRoutes = (
     <Route key="desktop-routes" path="/*" element={<DashboardLayout />}>
       <Route path="profile" element={<Profile />} />
-      <Route path="hub" element={<RecommendationsHub />} />
       <Route path="recommendations" element={<Favorites />} />
       <Route path="recommendations/places" element={<Favorites />} />
       <Route path="analytics" element={<Analytics />} />
