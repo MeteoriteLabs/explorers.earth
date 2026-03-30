@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, Reorder } from "framer-motion";
 import { useMutation } from "@apollo/client";
-import { X, Star, GripVertical, Minus, Loader2 } from "lucide-react";
+import { X, Star, Minus, Loader2, ChevronUp, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { UPDATE_RECOMMENDED_MOVIE } from "../../api/mutation";
 import type { RecommendedMovie } from "../../types";
@@ -40,6 +40,43 @@ const TopPicksManager = ({
       return;
     }
     setPinnedMovies(prev => [...prev, movie]);
+  };
+
+  const handleMoveUp = (index: number) => {
+    if (index === 0) return;
+    setPinnedMovies(prev => {
+      const next = [...prev];
+      [next[index - 1], next[index]] = [next[index], next[index - 1]];
+      syncOrder(next);
+      return next;
+    });
+  };
+
+  const handleMoveDown = (index: number) => {
+    if (index === pinnedMovies.length - 1) return;
+    setPinnedMovies(prev => {
+      const next = [...prev];
+      [next[index + 1], next[index]] = [next[index], next[index + 1]];
+      syncOrder(next);
+      return next;
+    });
+  };
+
+  const syncOrder = async (orderToSync: RecommendedMovie[]) => {
+    try {
+      for (let i = 0; i < orderToSync.length; i++) {
+        await updateMovie({
+          variables: {
+            documentId: orderToSync[i].documentId,
+            is_pinned: true,
+            pin_order: i,
+          },
+        });
+      }
+      onRefetch();
+    } catch {
+      toast.error("Failed to auto-save new order.");
+    }
   };
 
   const handleSave = async () => {
@@ -117,28 +154,49 @@ const TopPicksManager = ({
                 No top picks selected. Add some below.
               </p>
             ) : (
-              <div className="space-y-1">
+              <Reorder.Group axis="y" values={pinnedMovies} onReorder={setPinnedMovies} className="space-y-1">
                 {pinnedMovies.map((movie, i) => (
-                  <div key={movie.documentId} className="flex items-center gap-2 py-2 border-b border-white/5 last:border-0">
-                    <GripVertical size={14} className="text-white/20 flex-shrink-0" />
+                  <Reorder.Item
+                    key={movie.documentId}
+                    value={movie}
+                    onDragEnd={() => syncOrder(pinnedMovies)}
+                    className="flex items-center gap-2 py-2 border-b border-white/5 last:border-0 bg-[#0d1117] cursor-grab active:cursor-grabbing"
+                  >
+                    <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleMoveUp(i); }}
+                        disabled={i === 0}
+                        className="text-white/20 hover:text-white disabled:opacity-0 transition-colors p-0.5"
+                      >
+                        <ChevronUp size={12} />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleMoveDown(i); }}
+                        disabled={i === pinnedMovies.length - 1}
+                        className="text-white/20 hover:text-white disabled:opacity-0 transition-colors p-0.5"
+                      >
+                        <ChevronDown size={12} />
+                      </button>
+                    </div>
                     <span className="text-xs text-white/30 w-4 text-center">{i + 1}</span>
-                    <div className="w-8 h-12 flex-shrink-0 rounded overflow-hidden bg-white/5">
+                    <div className="w-8 h-12 flex-shrink-0 rounded overflow-hidden bg-white/5 pointer-events-none">
                       {movie.poster_path ? (
                         <img src={buildPosterUrl(movie.poster_path, "w92")} alt="" className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full bg-blue-950/30" />
                       )}
                     </div>
-                    <p className="text-sm text-white flex-1 min-w-0 truncate">{movie.title}</p>
+                    <p className="text-sm text-white flex-1 min-w-0 truncate pointer-events-none">{movie.title}</p>
                     <button
-                      onClick={() => handleUnpin(movie)}
-                      className="text-white/30 hover:text-red-400 transition-colors flex-shrink-0"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => { e.stopPropagation(); handleUnpin(movie); }}
+                      className="text-white/30 hover:text-red-400 transition-colors flex-shrink-0 mx-2"
                     >
-                      <Minus size={14} />
+                      <Minus size={16} />
                     </button>
-                  </div>
+                  </Reorder.Item>
                 ))}
-              </div>
+              </Reorder.Group>
             )}
           </div>
 
