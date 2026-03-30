@@ -101,54 +101,73 @@ const PublicNav = memo(() => {
   const navItems = [
     // Only add recommendations tab if visibility is enabled
     ...(showRecommendationsTab ? [{
+      id: 'public_recommendations',
       icon: <DirectionBoard fill={isPlacesPath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
       text: "Recommendations",
       path: `/${username}/places`,
     }] : []),
     // Only add guides tab if visibility is enabled
     ...(showGuidesTab ? [{
+      id: 'public_guides',
       icon: <TravelGuideIcon fill={isGuidesPath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
       text: "Guides",
       path: `/${username}/guides`,
     }] : []),
     // Only add profile tab if visibility is enabled
     ...(showProfileTab ? [{
+      id: 'public_profile',
       icon: <Profile fill={isPathMatch(location.pathname, `/${username}`) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
       text: "Profile",
       path: `/${username}`,
     }] : []),
     // Only add movies tab if visibility is enabled
     ...(showMoviesTab ? [{
+      id: 'public_movie',
       icon: <Film size={18} color={isMoviesPath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
       text: "Movies",
       path: `/${username}/movies`,
     }] : []),
     // Only add music tab if visibility is enabled
     ...(showMusicTab ? [{
+      id: 'public_music',
       icon: <MusicNote fill={isMusicPath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
       text: "Music",
       path: `/${username}/music`,
     }] : []),
     // Only add books tab if visibility is enabled
     ...(showBooksTab ? [{
+      id: 'public_books',
       icon: <BookOpen size={18} color={isBooksPath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
       text: "Books",
       path: `/${username}/books`,
     }] : []),
     // Only add games tab if visibility is enabled
     ...(showGamesTab ? [{
+      id: 'public_games',
       icon: <Gamepad2 size={18} color={isGamesPath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
       text: "Games",
       path: `/${username}/games`,
     }] : []),
   ];
 
+  // Filter based on user's pinned tabs preference if defined, otherwise show first 5 enabled ones
+  const pinnedTabs = accountData?.pinned_nav_tabs;
+  let finalNavItems = navItems;
+
+  if (pinnedTabs && Array.isArray(pinnedTabs) && pinnedTabs.length > 0) {
+    // Keep only the tabs that are pinned, respecting their order or just filtering existing array
+    finalNavItems = navItems.filter(item => pinnedTabs.includes(item.id));
+  }
+  
+  // Enforce Max 5 limit
+  finalNavItems = finalNavItems.slice(0, 5);
+
 
 
   return (
     <div className="fixed bottom-0 md:bottom-2 md:rounded-lg z-50 w-full md:w-[33%]  md:translate-x-[102%]  bg-[#2a2a2a] text-white flex md:flex-row md:justify-center md:items-center justify-center p-1  shadow-md">
       <div className="flex mx-[1.5rem] md:border-0 flex-row justify-around w-full">
-        {navItems.map((item, index) => {
+        {finalNavItems.map((item, index) => {
           // Check if current path matches the nav item path
           const isActive = isPathMatch(location.pathname, item.path) ||
             (item.path.includes('/places') && isPlacesPath(location.pathname)) ||

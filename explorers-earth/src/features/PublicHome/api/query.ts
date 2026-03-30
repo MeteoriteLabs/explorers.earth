@@ -73,6 +73,7 @@ export const accountsDetailQuery = gql`
       public_books
       public_guides
       public_games
+      pinned_nav_tabs
       recommendation_lists(pagination: { limit: 100 })  {
         documentId
         List_Name
@@ -122,6 +123,7 @@ export const accountsDetailsByPlace = gql`
       public_books
       public_guides
       public_games
+      pinned_nav_tabs
       recommendation_lists(filters: $listFilters) {
         List_Name
         Visibility
@@ -232,6 +234,7 @@ export const getPublicAccountBasicQuery = gql`
       public_books
       public_guides
       public_games
+      pinned_nav_tabs
     }
   }
 `;
@@ -266,6 +269,7 @@ export const getPublicProfileDataQuery = gql`
       public_books
       public_guides
       public_games
+      pinned_nav_tabs
     }
   }
 `;
@@ -299,6 +303,7 @@ export const getAccountsDataQuery = gql`
       public_books
       public_guides
       public_games
+      pinned_nav_tabs
     }
   }
 `;
