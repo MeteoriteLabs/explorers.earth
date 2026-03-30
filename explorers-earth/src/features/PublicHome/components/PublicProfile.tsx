@@ -183,6 +183,17 @@ const PublicProfile = memo(() => {
 
 
 
+  // Determine availability of categories
+  const hasRecommendations = !!(
+    accountData?.public_recommendations === "Yes" || 
+    accountData?.public_recommendations === undefined || 
+    accountData?.public_recommendations === null ||
+    accountData?.public_music === "Yes" ||
+    accountData?.public_movie === "Yes" ||
+    accountData?.public_books === "Yes" ||
+    accountData?.public_games === "Yes"
+  );
+
   // Determine availability of business details & gallery (safe before data loaded)
   const hasBusinessDetails = !!(
     businessLocationData &&
@@ -206,14 +217,14 @@ const PublicProfile = memo(() => {
 
   // Ensure activeTab remains valid if data availability changes
   useEffect(() => {
-    if (activeTab === "gallery" && !hasGalleryContent && hasBusinessDetails) {
+    if (activeTab === "recommendations" && !hasRecommendations) {
+      setActiveTab("gallery"); // fallback to gallery since hasGalleryContent is always true
+    } else if (activeTab === "gallery" && !hasGalleryContent && hasBusinessDetails) {
       setActiveTab("business");
-    }
-    if (activeTab === "business" && !hasBusinessDetails && hasGalleryContent) {
+    } else if (activeTab === "business" && !hasBusinessDetails && hasGalleryContent) {
       setActiveTab("gallery");
     }
-    // recommendations tab is always available, no fallback needed
-  }, [activeTab, hasGalleryContent, hasBusinessDetails]);
+  }, [activeTab, hasGalleryContent, hasBusinessDetails, hasRecommendations]);
 
   if (loading)
     return (
@@ -821,22 +832,24 @@ const PublicProfile = memo(() => {
             <div className="bg-black rounded-lg p-4">
               {/* Tab List */}
               <div className="flex w-full justify-center gap-8 border-b border-gray-800 px-2 md:px-0 overflow-x-auto scrollbar-hide">
-                {/* Recommendations tab — always first */}
-                <button
-                  className={`py-2 text-xs font-poppins font-medium tracking-wide transition-colors border-b-2 focus:outline-none ${activeTab === "recommendations"
-                    ? "border-[hsl(var(--blue-cta))] text-white"
-                    : "border-transparent text-gray-400 hover:text-gray-200"
-                    }`}
-                  aria-selected={activeTab === "recommendations"}
-                  onClick={() => setActiveTab("recommendations")}
-                >
-                  <span className="flex items-center justify-center gap-1">
-                    <svg viewBox="0 0 24 24" fill={activeTab === "recommendations" ? "currentColor" : "none"} stroke="currentColor" strokeWidth={activeTab === "recommendations" ? 0 : 1.8} className="size-5 transition-all" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-                    </svg>
-                    <span className="sr-only">Recommendations</span>
-                  </span>
-                </button>
+                {/* Recommendations tab — conditionally rendered */}
+                {hasRecommendations && (
+                  <button
+                    className={`py-2 text-xs font-poppins font-medium tracking-wide transition-colors border-b-2 focus:outline-none ${activeTab === "recommendations"
+                      ? "border-[hsl(var(--blue-cta))] text-white"
+                      : "border-transparent text-gray-400 hover:text-gray-200"
+                      }`}
+                    aria-selected={activeTab === "recommendations"}
+                    onClick={() => setActiveTab("recommendations")}
+                  >
+                    <span className="flex items-center justify-center gap-1">
+                      <svg viewBox="0 0 24 24" fill={activeTab === "recommendations" ? "currentColor" : "none"} stroke="currentColor" strokeWidth={activeTab === "recommendations" ? 0 : 1.8} className="size-5 transition-all" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                      </svg>
+                      <span className="sr-only">Recommendations</span>
+                    </span>
+                  </button>
+                )}
 
                 {/* Gallery tab */}
                 <button
@@ -875,7 +888,7 @@ const PublicProfile = memo(() => {
               <div className="relative mt-6 pb-20 md:pb-20">
 
                 {/* ── Recommendations Tab ── */}
-                {activeTab === "recommendations" && (
+                {activeTab === "recommendations" && hasRecommendations && (
                   <div role="tabpanel">
                     <ProfileRecommendationsTab
                       accountData={accountData}
