@@ -405,7 +405,7 @@ const GameListView = () => {
         />
       </div>
 
-      <div className="flex mb-6 bg-white p-1 rounded-full max-w-[320px] mx-auto shadow-sm">
+      <div className="flex mb-6 bg-white rounded-full max-w-[320px] mx-auto shadow-sm">
         {(["recommendations", "manage"] as const).map((tab) => (
           <button
             key={tab}
