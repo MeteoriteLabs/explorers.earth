@@ -22,9 +22,6 @@ import AppleMusic from "../../../assets/icons/AppleMusic";
 import TiktokIcon from "../../../assets/icons/TiktokIcon";
 import SnapchatIcon from "../../../assets/icons/SnapchatIcon";
 import MusicNote from "../../../assets/icons/MusicNote";
-import DirectionBoard from "../../../assets/icons/DirectionBoard";
-import TravelGuideIcon from "../../../assets/icons/TravelGuideIcon";
-import { Film, BookOpen, Gamepad2 } from "lucide-react";
 import { IMAGE_CONFIG } from "../../../config";
 import FeedLayout from "../../../components/ui/FeedLayout";
 import FeedIcon from "../../../assets/icons/FeedIcon";
@@ -749,7 +746,7 @@ const PublicProfile = memo(() => {
           </div>
         </div>
         <div className="md:max-w-5xl px-6 md:mx-auto">
-          <div className="mt-8 max-w-3xl md:flex flex-col item-center justify-center mx-auto">
+          <div className="mt-2 max-w-3xl md:flex flex-col item-center justify-center mx-auto">
             <div className="bg-black rounded-lg p-4">
               <div
                 className="text-gray-300 font-poppins text-xs"
@@ -758,77 +755,8 @@ const PublicProfile = memo(() => {
             </div>
           </div>
 
-          {/* Explore Categories (shows all enabled categories) */}
-          <div className="mt-4 max-w-3xl mx-auto">
-            <h3 className="text-white text-sm font-poppins font-semibold mb-3">Explore Collections</h3>
-            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-              {/* Recommendations */}
-              {(accountData?.public_recommendations === "Yes" || (!accountData?.public_recommendations || accountData?.public_recommendations === undefined)) ? (
-                <button 
-                  onClick={() => navigate(`/${username}/places`)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-900 border border-gray-800 rounded-full hover:bg-gray-800 transition-colors whitespace-nowrap"
-                >
-                  <DirectionBoard fill="#fff" />
-                  <span className="text-white text-xs font-poppins font-medium">Places</span>
-                </button>
-              ) : null}
-              {/* Guides */}
-              {accountData?.public_guides === "Yes" && (
-                <button 
-                  onClick={() => navigate(`/${username}/guides`)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-900 border border-gray-800 rounded-full hover:bg-gray-800 transition-colors whitespace-nowrap"
-                >
-                  <TravelGuideIcon fill="#fff" />
-                  <span className="text-white text-xs font-poppins font-medium">Guides</span>
-                </button>
-              )}
-              {/* Movies */}
-              {accountData?.public_movie === "Yes" && (
-                <button 
-                  onClick={() => navigate(`/${username}/movies`)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-900 border border-gray-800 rounded-full hover:bg-gray-800 transition-colors whitespace-nowrap"
-                >
-                  <Film size={16} color="#fff" />
-                  <span className="text-white text-xs font-poppins font-medium">Movies</span>
-                </button>
-              )}
-              {/* Music */}
-              {accountData?.public_music === "Yes" && (
-                <button 
-                  onClick={() => navigate(`/${username}/music`)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-900 border border-gray-800 rounded-full hover:bg-gray-800 transition-colors whitespace-nowrap"
-                >
-                  <MusicNote fill="#fff" />
-                  <span className="text-white text-xs font-poppins font-medium">Music</span>
-                </button>
-              )}
-              {/* Books */}
-              {accountData?.public_books === "Yes" && (
-                <button 
-                  onClick={() => navigate(`/${username}/books`)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-900 border border-gray-800 rounded-full hover:bg-gray-800 transition-colors whitespace-nowrap"
-                >
-                  <BookOpen size={16} color="#fff" />
-                  <span className="text-white text-xs font-poppins font-medium">Books</span>
-                </button>
-              )}
-              {/* Games */}
-              {(accountData?.public_games === "Yes" || (!accountData?.public_games || accountData?.public_games === undefined)) ? (
-                <button 
-                  onClick={() => navigate(`/${username}/games`)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-900 border border-gray-800 rounded-full hover:bg-gray-800 transition-colors whitespace-nowrap"
-                >
-                  <Gamepad2 size={16} color="#fff" />
-                  <span className="text-white text-xs font-poppins font-medium">Games</span>
-                </button>
-              ) : null}
-            </div>
-          </div>
-
-          {/* Phone number text removed per new requirements (icon only in social section) */}
-
           {/* Tabs: Recommendations (heart) | Gallery (feed) | Address (location) */}
-          <div className="mt-10 max-w-5xl mx-auto">
+          <div className="mt-1 max-w-5xl mx-auto">
             <div className="bg-black rounded-lg p-4">
               {/* Tab List */}
               <div className="flex w-full justify-center gap-8 border-b border-gray-800 px-2 md:px-0 overflow-x-auto scrollbar-hide">
