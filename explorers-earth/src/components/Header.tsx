@@ -1,13 +1,12 @@
 import { memo, useEffect, useRef, useState } from "react";
 import useAuthStore from "../store/store";
-import Button from "./ui/Button";
 import { useNavigate, useLocation } from "react-router-dom";
 import useDeviceDetection from "../hooks/useDeviceDetection";
 import Down from "../assets/icons/Down";
 import { gql, useQuery } from "@apollo/client";
 import { toast } from "sonner";
-import MenuIcon from "../assets/icons/MenuIcon";
 import CrossIcon from "../assets/icons/CrossIcon";
+import Profile from "../assets/icons/Profile";
 import { useTranslation } from "react-i18next";
 import SettingsIcon from "../assets/icons/SettingsIcon";
 import LogoutIcon from "../assets/icons/LogoutIcon";
@@ -15,6 +14,7 @@ import SunIcon from "../assets/icons/SunIcon";
 import MoonIcon from "../assets/icons/MoonIcon";
 import SwitchButton from "./ui/SwitchButton";
 import { motion, AnimatePresence } from "framer-motion";
+import { useMutation } from "@apollo/client";
 import { isManualAuthEnabled } from "../config/featureFlags";
 import { useDashboardTheme } from "../contexts/DashboardThemeContext";
 
@@ -27,7 +27,25 @@ const getCurrentAccountDataQuery = gql`
         }
         Account_Name
         documentId
+        public_recommendations
+        public_movie
+        public_books
+        public_games
+        public_music
       }
+    }
+  }
+`;
+
+const updateTabVisibilityMutation = gql`
+  mutation UpdateTabVisibility($documentId: ID!, $data: AccountInput!) {
+    updateAccount(documentId: $documentId, data: $data) {
+      documentId
+      public_recommendations
+      public_movie
+      public_books
+      public_games
+      public_music
     }
   }
 `;
@@ -41,7 +59,6 @@ const recommendationCategories = [
 ];
 
 const Header = memo(() => {
-  const [showMenu, setShowMenu] = useState<boolean>(false);
   const [showMobileMenu, setShowMobileMenu] = useState<boolean>(false);
   const { isAuthenticated, user, logout } = useAuthStore();
   const { data } = useQuery(getCurrentAccountDataQuery, {
@@ -49,7 +66,6 @@ const Header = memo(() => {
     skip: !user?.documentId,
   });
   const navigate = useNavigate();
-  const menuRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const { theme, toggleTheme } = useDashboardTheme();
@@ -67,11 +83,52 @@ const Header = memo(() => {
 
   const isRecommendationPage = !!currentCategory;
 
+  const [updateTabVisibility] = useMutation(updateTabVisibilityMutation);
+
+  const handleVisibilityToggle = async () => {
+    if (!currentCategory || !accountData?.[0]?.documentId) return;
+
+    const fieldMapping: Record<string, string> = {
+      places: 'public_recommendations',
+      movies: 'public_movie',
+      books: 'public_books',
+      games: 'public_games',
+      music: 'public_music'
+    };
+
+    const field = fieldMapping[currentCategory.id];
+    const currentValue = accountData[0][field];
+    const newValue = currentValue === "Yes" ? "No" : "Yes";
+
+    try {
+      await updateTabVisibility({
+        variables: {
+          documentId: accountData[0].documentId,
+          data: { [field]: newValue }
+        },
+        optimisticResponse: {
+          updateAccount: {
+            __typename: 'Account',
+            documentId: accountData[0].documentId,
+            [field]: newValue,
+            // Add other fields to satisfy the query selection set
+            public_recommendations: field === 'public_recommendations' ? newValue : accountData[0].public_recommendations,
+            public_movie: field === 'public_movie' ? newValue : accountData[0].public_movie,
+            public_books: field === 'public_books' ? newValue : accountData[0].public_books,
+            public_games: field === 'public_games' ? newValue : accountData[0].public_games,
+            public_music: field === 'public_music' ? newValue : accountData[0].public_music,
+          }
+        }
+      });
+      toast.success(`${currentCategory.name} visibility updated to ${newValue === "Yes" ? "Public" : "Private"}`);
+    } catch (error) {
+      console.error("Error updating visibility:", error);
+      toast.error("Failed to update visibility");
+    }
+  };
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowMenu(false);
-      }
       if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
         setShowMobileMenu(false);
       }
@@ -112,55 +169,99 @@ const Header = memo(() => {
 
   const accountData = data?.usersPermissionsUser?.accounts;
 
+  if (isDesktop) {
+    if (!isAuthenticated || !isRecommendationPage || !currentCategory) return null;
+    return (
+      <div className="flex flex-row items-center justify-end p-4 md:px-6">
+        <div className="flex items-center gap-3 bg-dashboard-muted/50 px-4 py-2 rounded-xl border border-dashboard/800">
+           <div className="flex flex-col">
+              <span className="text-xs font-bold text-white">Public Visibility</span>
+              <span className="text-[10px] text-white/50">{currentCategory.name}</span>
+           </div>
+           <SwitchButton
+            isChecked={accountData?.[0]?.[{
+              places: 'public_recommendations',
+              movies: 'public_movie',
+              books: 'public_books',
+              games: 'public_games',
+              music: 'public_music'
+            }[currentCategory.id] as string] === "Yes"}
+            onChange={handleVisibilityToggle}
+            variant="blue"
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-dashboard-sidebar w-full z-[100] md:px-6 p-4 fixed top-0 left-0 right-0 md:relative md:border-b md:border-dashboard">
       <div className="flex flex-row rounded-xl items-center justify-between md:p-[10px]">
-        <div className="logo-container">
-          {!isDesktop && isRecommendationPage ? (
-            <div className="relative" ref={categoryMenuRef}>
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowCategoryMenu(!showCategoryMenu)}
-                className="flex items-center gap-2 text-white font-bold text-lg bg-dashboard-muted px-4 py-2 rounded-xl border border-dashboard/50"
-              >
-                <span className="truncate max-w-[150px]">{currentCategory.name}</span>
-                <motion.div
-                  animate={{ rotate: showCategoryMenu ? 180 : 0 }}
-                  transition={{ duration: 0.2 }}
+        <div className="logo-container md:hidden">
+          {!isDesktop && isRecommendationPage && currentCategory ? (
+            <div className="flex items-center gap-3">
+              <div className="relative" ref={categoryMenuRef}>
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowCategoryMenu(!showCategoryMenu)}
+                  className="flex items-center gap-2 text-white font-bold text-lg bg-dashboard-muted px-4 py-2 rounded-xl border border-dashboard/800"
                 >
-                  <Down stroke="white" />
-                </motion.div>
-              </motion.button>
-
-              <AnimatePresence>
-                {showCategoryMenu && (
+                  <span className="truncate max-w-[150px]">{currentCategory.name}</span>
                   <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute top-14 left-0 w-56 bg-dashboard-sidebar rounded-xl shadow-dashboard-elevated border border-dashboard overflow-hidden z-[110]"
+                    animate={{ rotate: showCategoryMenu ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
                   >
-                    <div className="py-2">
-                      {recommendationCategories.map((cat) => (
-                        <button
-                          key={cat.id}
-                          className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors ${
-                            (location.pathname.startsWith(cat.path) || (cat.id === 'places' && location.pathname === '/recommendations'))
-                              ? "bg-dashboard-accent/20 text-dashboard-accent"
-                              : "text-white hover:bg-dashboard-muted"
-                          }`}
-                          onClick={() => {
-                            navigate(cat.path);
-                            setShowCategoryMenu(false);
-                          }}
-                        >
-                          {cat.name}
-                        </button>
-                      ))}
-                    </div>
+                    <Down stroke="white" />
                   </motion.div>
-                )}
-              </AnimatePresence>
+                </motion.button>
+
+                <AnimatePresence>
+                  {showCategoryMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute top-14 left-0 w-56 bg-dashboard-sidebar rounded-xl shadow-dashboard-elevated border border-dashboard overflow-hidden z-[110]"
+                    >
+                      <div className="py-2">
+                        {recommendationCategories.map((cat) => (
+                          <button
+                            key={cat.id}
+                            className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors ${
+                              (location.pathname.startsWith(cat.path) || (cat.id === 'places' && location.pathname === '/recommendations'))
+                                ? "bg-dashboard-accent/20 text-dashboard-accent"
+                                : "text-white hover:bg-dashboard-muted"
+                            }`}
+                            onClick={() => {
+                              navigate(cat.path);
+                              setShowCategoryMenu(false);
+                            }}
+                          >
+                            {cat.name}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {isAuthenticated && (
+                <div className="flex flex-col items-center gap-0.5">
+                  <SwitchButton
+                    isChecked={accountData?.[0]?.[{
+                      places: 'public_recommendations',
+                      movies: 'public_movie',
+                      books: 'public_books',
+                      games: 'public_games',
+                      music: 'public_music'
+                    }[currentCategory.id] as string] === "Yes"}
+                    onChange={handleVisibilityToggle}
+                    variant="blue"
+                  />
+                  <span className="text-[10px] text-white/50 font-medium">Public</span>
+                </div>
+              )}
             </div>
           ) : (
             <img
@@ -192,136 +293,42 @@ const Header = memo(() => {
           {showMobileMenu ? (
             <CrossIcon stroke="white" />
           ) : (
-            <MenuIcon stroke="white" />
-          )}
-        </div>
-
-        <div className="hidden md:flex flex-row items-center gap-4">
-          {isAuthenticated ? (
-            <div className="relative md:pr-6" ref={menuRef}>
+            isAuthenticated ? (
               <img
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  e.nativeEvent.stopImmediatePropagation();
-                  setShowMenu((prev) => !prev);
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                className="h-12 w-12 cursor-pointer rounded-full"
+                className="h-10 w-10 cursor-pointer rounded-full border-2 border-dashboard/800"
                 src={
                   accountData?.[0]?.profile_picture?.url ||
                   "https://api.dicebear.com/9.x/shapes/svg?seed=Leah"
                 }
                 alt="profile"
               />
+            ) : (
+              <div className="bg-dashboard-muted p-2 rounded-xl border border-dashboard/800">
+                <Profile fill="white" />
+              </div>
+            )
+          )}
+        </div>
 
-              <AnimatePresence>
-                {showMenu && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                    transition={{ duration: 0.2, ease: "easeOut" }}
-                    className="absolute top-16 right-0 w-56 bg-dashboard-sidebar rounded-xl shadow-dashboard-elevated border border-dashboard overflow-hidden z-[100]"
-                  >
-                    {/* User Info Section */}
-                    <div className="px-4 py-3 bg-dashboard-muted border-b border-dashboard">
-                      <div className="flex items-center gap-3">
-                        <img
-                          className="h-10 w-10 rounded-full ring-2 ring-dashboard-accent"
-                          src={
-                            accountData?.[0]?.profile_picture?.url ||
-                            "https://api.dicebear.com/9.x/shapes/svg?seed=Leah"
-                          }
-                          alt="profile"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-white truncate">
-                            {user?.username || accountData?.[0]?.Account_Name || "User"}
-                          </p>
-                          <p className="text-xs text-[hsl(var(--text-light))]">Account Settings</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Menu Items */}
-                    <div className="py-2">
-                      {/* Theme Toggle */}
-                      <div className="w-full flex items-center justify-between px-4 py-3">
-                        <div className="flex items-center gap-2.5">
-                          {theme === 'dark' ? (
-                            <SunIcon fill="var(--dash-icon-primary)" />
-                          ) : (
-                            <MoonIcon fill="var(--dash-icon-primary)" />
-                          )}
-                          <span className="text-sm font-medium text-dashboard">
-                            {theme === 'dark' ? t("sidebar.lightMode") : t("sidebar.darkMode")}
-                          </span>
-                        </div>
-                        <SwitchButton
-                          isChecked={theme === 'dark'}
-                          onChange={toggleTheme}
-                          variant="blue"
-                        />
-                      </div>
-
-                      <motion.button
-                        whileHover={{ backgroundColor: "#374151" }}
-                        whileTap={{ scale: 0.98 }}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-left text-[hsl(var(--text-light))] hover:text-white transition-colors"
-                        onClick={() => {
-                          navigate("/settings");
-                          setShowMenu(false);
-                        }}
-                      >
-                        <div className="w-5 h-5 text-[hsl(var(--muted-foreground))]">
-                          <SettingsIcon fill="currentColor" />
-                        </div>
-                        <span className="font-medium">Settings</span>
-                      </motion.button>
-
-                      <motion.button
-                        whileHover={{ backgroundColor: "#7f1d1d" }}
-                        whileTap={{ scale: 0.98 }}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-left text-[hsl(var(--destructive))] hover:text-[hsl(var(--destructive))]/80 transition-colors"
-                        onClick={() => {
-                          handleLogout();
-                          setShowMenu(false);
-                        }}
-                      >
-                        <div className="w-5 h-5 text-[hsl(var(--destructive))]">
-                          <LogoutIcon size="20" />
-                        </div>
-                        <span className="font-medium">Logout</span>
-                      </motion.button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ) : (
-            <>
-              {/* MANUAL AUTH DISABLED - Hide register button when OAuth-only mode */}
-              <Button
-                btnText={"Login"}
-                variant="primary"
-                type="button"
-                size="xsmall"
-                onClickHandler={() => navigate("/login")}
+        <div className="hidden md:flex flex-row items-center gap-4">
+          {isAuthenticated && isRecommendationPage && currentCategory && (
+            <div className="flex items-center gap-3 bg-dashboard-muted/50 px-4 py-2 rounded-xl border border-dashboard/800 mr-2">
+               <div className="flex flex-col">
+                  <span className="text-xs font-bold text-white">Public Visibility</span>
+                  <span className="text-[10px] text-white/50">{currentCategory.name}</span>
+               </div>
+               <SwitchButton
+                isChecked={accountData?.[0]?.[{
+                  places: 'public_recommendations',
+                  movies: 'public_movie',
+                  books: 'public_books',
+                  games: 'public_games',
+                  music: 'public_music'
+                }[currentCategory.id] as string] === "Yes"}
+                onChange={handleVisibilityToggle}
+                variant="blue"
               />
-              {isManualAuthEnabled() && (
-                <Button
-                  btnText={"Register"}
-                  variant="primary"
-                  type="button"
-                  size="xsmall"
-                  onClickHandler={() => navigate("/register")}
-                />
-              )}
-            </>
+            </div>
           )}
         </div>
       </div>
