@@ -683,7 +683,51 @@ const Settings = memo(() => {
             <Accordion heading="Public Profile Settings" defaultOpen={false}>
               <div className="bg-dashboard-sidebar rounded-xl p-6">
                 <div className="space-y-6">
-                  <div>
+                  {/* Pinned Navigation Tabs Selector */}
+                  <div className="mb-4">
+                    <div className="flex flex-col mb-4">
+                      <h3 className="text-white font-semibold font-poppins text-lg mb-1">Pinned Navigation Tabs</h3>
+                      <p className="text-white/70 text-sm font-poppins">Select up to 5 enabled tabs to show on your public profile's bottom navigation. Click a tab to pin or unpin it.</p>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      {Object.entries({
+                        public_profile: "Profile",
+                        public_recommendations: "Recommendations", 
+                        public_music: "Music",
+                        public_guides: "Guides",
+                        public_movie: "Movies & Shows",
+                        public_books: "Books",
+                        public_games: "Games"
+                      }).map(([key, label]) => {
+                        const isEnabled = getTabVisibility(key);
+                        if (!isEnabled) return null;
+                        const pinned = isTabPinned(key);
+                        
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => handleNavPinUpdate(key, !pinned)}
+                            disabled={tabVisibilityLoading[`pin_${key}`]}
+                            className={`relative px-4 py-2 rounded-full text-sm font-poppins font-medium transition-all ${
+                              pinned 
+                                ? 'bg-[hsl(var(--blue-cta))] text-white border border-[hsl(var(--blue-cta))]' 
+                                : 'bg-dashboard-muted text-dashboard-light hover:text-white border border-white/10 hover:border-white/30'
+                            } ${tabVisibilityLoading[`pin_${key}`] ? 'opacity-70 cursor-not-allowed' : ''}`}
+                          >
+                            {tabVisibilityLoading[`pin_${key}`] && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-full">
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              </div>
+                            )}
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-white/10">
                     <h3 className="text-white font-semibold font-poppins mb-2 text-lg">
                       Tab Visibility
                     </h3>
@@ -917,49 +961,7 @@ const Settings = memo(() => {
                       </div>
                     </div>
 
-                    {/* Navigation Tabs Selector */}
-                    <div className="mt-8 pt-6 border-t border-white/10">
-                      <div className="flex flex-col mb-4">
-                        <h4 className="text-white font-medium font-poppins text-md mb-1">Pinned Navigation Tabs</h4>
-                        <p className="text-white/60 text-sm font-poppins">Select up to 5 enabled tabs to show on your public profile's bottom navigation. Click a tab to pin or unpin it.</p>
-                      </div>
-                      <div className="flex flex-wrap gap-3">
-                        {Object.entries({
-                          public_profile: "Profile",
-                          public_recommendations: "Recommendations", 
-                          public_music: "Music",
-                          public_guides: "Guides",
-                          public_movie: "Movies & Shows",
-                          public_books: "Books",
-                          public_games: "Games"
-                        }).map(([key, label]) => {
-                          const isEnabled = getTabVisibility(key);
-                          if (!isEnabled) return null;
-                          const pinned = isTabPinned(key);
-                          
-                          return (
-                            <button
-                              key={key}
-                              type="button"
-                              onClick={() => handleNavPinUpdate(key, !pinned)}
-                              disabled={tabVisibilityLoading[`pin_${key}`]}
-                              className={`relative px-4 py-2 rounded-full text-sm font-poppins font-medium transition-all ${
-                                pinned 
-                                  ? 'bg-[hsl(var(--blue-cta))] text-white border border-[hsl(var(--blue-cta))]' 
-                                  : 'bg-dashboard-muted text-dashboard-light hover:text-white border border-white/10 hover:border-white/30'
-                              } ${tabVisibilityLoading[`pin_${key}`] ? 'opacity-70 cursor-not-allowed' : ''}`}
-                            >
-                              {tabVisibilityLoading[`pin_${key}`] && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-full">
-                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                </div>
-                              )}
-                              {label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
+
                   </div>
                 </div>
               </div>
