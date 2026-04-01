@@ -1248,18 +1248,16 @@ input {
     padding-right: 1rem;
   }
 
-  /* Center logo on mobile by adjusting parent flex container */
+  /* Left align header content on mobile */
   .bg-dashboard-sidebar>div.flex.flex-row {
-    justify-content: center;
+    justify-content: space-between !important;
     position: relative;
   }
 
-  /* Logo container sizing on small screens - centered */
+  /* Logo container sizing on small screens - left aligned */
   .logo-container {
-    width: 60%;
-    max-width: 60%;
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
   }
 

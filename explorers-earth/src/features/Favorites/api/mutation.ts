@@ -170,3 +170,11 @@ export const findClaimablePlaceProfileByPlaceIdQuery = gql`
     }
   }
 `;
+export const updateAccountVisibility = gql`
+  mutation UpdateAccountVisibility($documentId: ID!, $data: AccountInput!) {
+    updateAccount(documentId: $documentId, data: $data) {
+      documentId
+      public_recommendations
+    }
+  }
+`;

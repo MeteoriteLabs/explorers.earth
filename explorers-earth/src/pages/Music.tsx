@@ -31,6 +31,11 @@ const getUserAccountQuery = gql`
         documentId
         localtunes_integrated
         localtunes_public
+        public_music
+        public_recommendations
+        public_movie
+        public_books
+        public_games
       }
     }
   }
@@ -42,6 +47,7 @@ const updateAccountMutation = gql`
       documentId
       localtunes_integrated
       localtunes_public
+      public_music
     }
   }
 `;
@@ -72,9 +78,38 @@ const MusicPage = () => {
   const localTunesIntegratedValue = userData?.usersPermissionsUser?.accounts?.[0]?.localtunes_integrated;
   const localTunesConnected = localTunesIntegratedValue === "Yes";
   const accountDocumentId = userData?.usersPermissionsUser?.accounts?.[0]?.documentId;
-
   // Phase 1: sync with tunes Neon DB and fetch dashboard data when connected
   const tunesDashboard = useTunesDashboard();
+
+  const handleVisibilityToggle = async () => {
+    if (!accountDocumentId) return;
+
+    const accountData = userData?.usersPermissionsUser?.accounts?.[0];
+    const currentValue = accountData?.public_music;
+    const newValue = currentValue === "Yes" ? "No" : "Yes";
+
+    try {
+      await updateAccount({
+        variables: {
+          documentId: accountDocumentId,
+          data: { public_music: newValue }
+        },
+        optimisticResponse: {
+          updateAccount: {
+            __typename: 'Account',
+            documentId: accountDocumentId,
+            public_music: newValue,
+            localtunes_integrated: accountData.localtunes_integrated,
+            localtunes_public: accountData.localtunes_public
+          }
+        }
+      });
+      toast.success(`Music visibility updated to ${newValue === "Yes" ? "Public" : "Private"}`);
+    } catch (error) {
+       console.error("Error updating visibility:", error);
+       toast.error("Failed to update visibility");
+    }
+  };
 
   const handleConnectLocalTunes = async () => {
     if (!authUser) {
@@ -294,7 +329,11 @@ const MusicPage = () => {
             {/* Main Content */}
             {localTunesConnected ? (
               /* Full-width embedded dashboard */
-              <MusicDashboard data={tunesDashboard} />
+              <MusicDashboard 
+                data={tunesDashboard} 
+                isPublic={userData?.usersPermissionsUser?.accounts?.[0]?.public_music === "Yes"}
+                onVisibilityToggle={handleVisibilityToggle}
+              />
             ) : (
               /* Two-column connect view */
               <div className="bg-dashboard-sidebar rounded-xl p-4">

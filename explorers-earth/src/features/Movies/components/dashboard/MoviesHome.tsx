@@ -14,6 +14,7 @@ import type { MovieList } from "../../types";
 import { deduplicateMovies } from "../../utils/movieHelpers";
 import { generateSlug, buildPosterUrl } from "../../utils/movieHelpers";
 import { gql } from "@apollo/client";
+import SwitchButton from "../../../../components/ui/SwitchButton";
 import { getCurrentDomain } from "../../../../utils/getCurrentDomain";
 import TopPicksHero from "../public/TopPicksHero";
 import TopPicksMobileHero from "../public/TopPicksMobileHero";
@@ -29,6 +30,7 @@ const MY_ACCOUNT = gql`
       accounts {
         documentId
         Account_Name
+        public_movie
       }
     }
   }
@@ -315,6 +317,53 @@ const MoviesHome = () => {
 
   const [updateMovieList] = useMutation(UPDATE_MOVIE_LIST);
 
+  const [updateAccountVisibility] = useMutation(gql`
+    mutation UpdateMovieVisibility($documentId: ID!, $data: AccountInput!) {
+      updateAccount(documentId: $documentId, data: $data) {
+        documentId
+        public_recommendations
+        public_movie
+        public_books
+        public_games
+        public_music
+      }
+    }
+  `);
+
+  const handleVisibilityToggle = async () => {
+    const acc = accountData?.usersPermissionsUser?.accounts?.[0];
+    if (!acc?.documentId) return;
+
+    const currentValue = acc.public_movie;
+    const newValue = currentValue === "Yes" ? "No" : "Yes";
+
+    try {
+      await updateAccountVisibility({
+        variables: {
+          documentId: acc.documentId,
+          data: { public_movie: newValue }
+        },
+        optimisticResponse: {
+          updateAccount: {
+            __typename: 'Account',
+            documentId: acc.documentId,
+            public_movie: newValue,
+            // Including others to satisfy selection set if needed, though usually optimistic only needs the field being updated
+            public_recommendations: acc.public_recommendations,
+            public_books: acc.public_books,
+            public_games: acc.public_games,
+            public_music: acc.public_music
+          }
+        },
+        refetchQueries: [{ query: MY_ACCOUNT, variables: { documentId: user?.documentId } }]
+      });
+      toast.success(`Movies visibility updated to ${newValue === "Yes" ? "Public" : "Private"}`);
+    } catch (error) {
+      console.error("Error updating visibility:", error);
+      toast.error("Failed to update visibility");
+    }
+  };
+
   const lists: MovieList[] = data?.movieLists ?? [];
 
   const allMovies = useMemo(() => {
@@ -345,24 +394,28 @@ const MoviesHome = () => {
   };
 
   return (
-    <div className="px-6 pt-8 pb-24 md:p-6 md:pb-6 max-w-4xl mx-auto">
-      {/* Page header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-dashboard flex items-center gap-2">
-            <Film size={24} className="text-blue-400" />
-            Movies & Shows
-          </h1>
-          <p className="text-sm text-dashboard-light mt-1">
-            {lists.length > 0 ? `${lists.length} list${lists.length !== 1 ? "s" : ""}` : "Start curating your movie lists"}
-          </p>
-        </div>
+    <div className="px-2 md:px-6 pt-2 pb-24 md:pb-6 max-w-4xl mx-auto">
+      {/* Action Header Row */}
+      <div className="flex items-center justify-between bg-dashboard-sidebar/40 px-3 py-3 rounded-2xl mb-2">
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-sm text-white font-medium transition-colors shadow-lg shadow-blue-900/30"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30"
         >
-          <Plus size={16} /> New List
+          <Plus size={18} />
+          <span>New List</span>
         </button>
+
+        <div className="flex items-center gap-3 bg-dashboard-muted/50 pl-3 pr-0 md:px-4 py-2 rounded-xl">
+          <div className="flex flex-col">
+            <span className="text-[10px] md:text-xs font-bold text-white leading-tight">Public Visibility</span>
+            <span className="text-[9px] md:text-[10px] text-white/50 leading-tight">Movies & Shows</span>
+          </div>
+          <SwitchButton
+            isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_movie === "Yes"}
+            onChange={handleVisibilityToggle}
+            variant="blue"
+          />
+        </div>
       </div>
 
       {/* Loading state */}

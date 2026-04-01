@@ -170,28 +170,7 @@ const Header = memo(() => {
   const accountData = data?.usersPermissionsUser?.accounts;
 
   if (isDesktop) {
-    if (!isAuthenticated || !isRecommendationPage || !currentCategory) return null;
-    return (
-      <div className="flex flex-row items-center justify-end p-4 md:px-6">
-        <div className="flex items-center gap-3 bg-dashboard-muted/50 px-4 py-2 rounded-xl border border-dashboard/800">
-           <div className="flex flex-col">
-              <span className="text-xs font-bold text-white">Public Visibility</span>
-              <span className="text-[10px] text-white/50">{currentCategory.name}</span>
-           </div>
-           <SwitchButton
-            isChecked={accountData?.[0]?.[{
-              places: 'public_recommendations',
-              movies: 'public_movie',
-              books: 'public_books',
-              games: 'public_games',
-              music: 'public_music'
-            }[currentCategory.id] as string] === "Yes"}
-            onChange={handleVisibilityToggle}
-            variant="blue"
-          />
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -204,14 +183,15 @@ const Header = memo(() => {
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setShowCategoryMenu(!showCategoryMenu)}
-                  className="flex items-center gap-2 text-white font-bold text-lg bg-dashboard-muted px-4 py-2 rounded-xl border border-dashboard/800"
+                  className="flex items-center gap-1.5 text-white font-black text-2xl bg-transparent px-0 py-1"
                 >
-                  <span className="truncate max-w-[150px]">{currentCategory.name}</span>
+                  <span className="truncate max-w-[280px]">{currentCategory.name}</span>
                   <motion.div
                     animate={{ rotate: showCategoryMenu ? 180 : 0 }}
                     transition={{ duration: 0.2 }}
+                    className="flex items-center justify-center mt-1"
                   >
-                    <Down stroke="white" />
+                    <Down stroke="white" width={20} height={20} strokeWidth={3} />
                   </motion.div>
                 </motion.button>
 
@@ -246,22 +226,6 @@ const Header = memo(() => {
                 </AnimatePresence>
               </div>
 
-              {isAuthenticated && (
-                <div className="flex flex-col items-center gap-0.5">
-                  <SwitchButton
-                    isChecked={accountData?.[0]?.[{
-                      places: 'public_recommendations',
-                      movies: 'public_movie',
-                      books: 'public_books',
-                      games: 'public_games',
-                      music: 'public_music'
-                    }[currentCategory.id] as string] === "Yes"}
-                    onChange={handleVisibilityToggle}
-                    variant="blue"
-                  />
-                  <span className="text-[10px] text-white/50 font-medium">Public</span>
-                </div>
-              )}
             </div>
           ) : (
             <img
@@ -311,25 +275,6 @@ const Header = memo(() => {
         </div>
 
         <div className="hidden md:flex flex-row items-center gap-4">
-          {isAuthenticated && isRecommendationPage && currentCategory && (
-            <div className="flex items-center gap-3 bg-dashboard-muted/50 px-4 py-2 rounded-xl border border-dashboard/800 mr-2">
-               <div className="flex flex-col">
-                  <span className="text-xs font-bold text-white">Public Visibility</span>
-                  <span className="text-[10px] text-white/50">{currentCategory.name}</span>
-               </div>
-               <SwitchButton
-                isChecked={accountData?.[0]?.[{
-                  places: 'public_recommendations',
-                  movies: 'public_movie',
-                  books: 'public_books',
-                  games: 'public_games',
-                  music: 'public_music'
-                }[currentCategory.id] as string] === "Yes"}
-                onChange={handleVisibilityToggle}
-                variant="blue"
-              />
-            </div>
-          )}
         </div>
       </div>
 
