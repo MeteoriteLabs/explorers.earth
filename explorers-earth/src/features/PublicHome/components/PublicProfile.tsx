@@ -512,14 +512,14 @@ const PublicProfile = memo(() => {
         {/* Profile Content */}
 
         {/* Profile Picture */}
-        <div className="relative h-72 md:h-72 lg:px-60 md:rounded-b-2xl">
+        <div className="relative h-56 md:h-72 lg:px-60 md:rounded-b-2xl overflow-hidden">
           <img
             src={
               accountData?.bg_picture?.url ||
               IMAGE_CONFIG.defaultImages.background
             }
             alt="Cover"
-            className="w-full h-full object-cover md:rounded-b-2xl"
+            className="w-full h-full object-cover md:rounded-b-2xl object-[center_25%]"
             loading="eager"
             decoding="async"
           />
@@ -757,7 +757,7 @@ const PublicProfile = memo(() => {
 
           {/* Tabs: Recommendations (heart) | Gallery (feed) | Address (location) */}
           <div className="mt-1 max-w-5xl mx-auto">
-            <div className="bg-black rounded-lg p-4">
+            <div className="bg-black rounded-lg px-0 py-4 md:p-4">
               {/* Tab List */}
               <div className="flex w-full justify-center gap-8 border-b border-gray-800 px-2 md:px-0 overflow-x-auto scrollbar-hide">
                 {/* Recommendations tab — conditionally rendered */}
