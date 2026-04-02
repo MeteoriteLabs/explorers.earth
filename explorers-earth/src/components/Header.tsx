@@ -118,7 +118,7 @@ const Header = memo(() => {
 
 
   return (
-    <div className="bg-dashboard-sidebar w-full z-[100] md:px-6 px-4 py-4 md:py-2 fixed top-0 left-0 right-0 md:relative md:border-b md:border-dashboard">
+    <div className="dashboard-header bg-dashboard-sidebar md:px-6 px-4 py-4 md:py-2 border-b border-dashboard">
       <div className="flex flex-row rounded-xl items-center justify-between md:justify-center md:p-[4px]">
         <div className="logo-container">
           {(isRecommendationPage && currentCategory) ? (

@@ -36,7 +36,7 @@ const GuidesPage: React.FC = () => {
     budgetType: null,
   });
   const [showFilters, setShowFilters] = useState(false);
-  const [isMultiCityFilter, setIsMultiCityFilter] = useState<boolean>(true);
+  const [isMultiCityFilter, setIsMultiCityFilter] = useState<boolean>(false);
   const [selectedLocation, setSelectedLocation] = useState<string>("");
 
   // Get account documentId

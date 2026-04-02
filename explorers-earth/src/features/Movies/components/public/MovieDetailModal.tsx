@@ -103,7 +103,7 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
         <>
           {/* Backdrop */}
           <motion.div
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60]"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[150]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -111,7 +111,7 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
           />
 
           {/* Modal panel wrapper */}
-          <div className="fixed inset-0 pt-[88px] md:pt-8 flex items-end justify-center z-[60] pointer-events-none">
+          <div className="fixed inset-0 pt-[88px] md:pt-8 flex items-end justify-center z-[150] pointer-events-none">
             <motion.div
               className="relative bg-[#0d1117] rounded-t-2xl w-full h-full md:max-w-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-2xl ring-1 ring-white/10 hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pointer-events-auto"
               initial={{ y: "100%", opacity: 0 }}

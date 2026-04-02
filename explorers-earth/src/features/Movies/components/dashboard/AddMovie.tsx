@@ -580,7 +580,7 @@ const AddMovie = ({ listId, mode, movie, onClose, onSaved }: AddMovieProps) => {
 
   return (
     <motion.div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end md:items-center justify-center p-0 md:p-4"
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[150] flex items-end md:items-center justify-center p-0 md:p-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}

@@ -59,7 +59,7 @@ function ConfirmModal({
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 p-4">
       <div className="bg-gray-900 border border-white/10 rounded-xl p-6 max-w-sm w-full shadow-2xl">
         <h3 className="text-white font-semibold mb-2">{title}</h3>
         <p className="text-gray-400 text-sm mb-5">{description}</p>
