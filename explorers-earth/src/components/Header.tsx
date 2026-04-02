@@ -234,7 +234,7 @@ const Header = memo(() => {
               className={`object-contain cursor-pointer header-logo ${theme === 'dark' ? 'header-logo-dark' : 'header-logo-light'}`}
               onClick={() => navigate(isAuthenticated ? "/home" : "/")}
               style={{
-                height: "48px",
+                height: "36px",
                 width: "auto",
               }}
             />
