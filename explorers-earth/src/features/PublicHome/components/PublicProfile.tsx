@@ -497,33 +497,21 @@ const PublicProfile = memo(() => {
           </div>
         </div>
 
-        {/* Cover Image */}
-        <div className="bg-[hsl(var(--blue-cta))] mt-14">
-          <span className="font-poppins text-white  p-1 text-center flex items-center justify-center">
-            Create Your
-            <a href="/">
-              <b className="px-2 font-medium hover:text-gray-300 hover:underline">
-                Free explorers
-              </b>
-            </a>
-          </span>
-        </div>
-
         {/* Profile Content */}
 
         {/* Profile Picture */}
-        <div className="relative h-56 md:h-72 lg:px-60 md:rounded-b-2xl overflow-hidden">
+        <div className="relative h-56 md:h-72 lg:px-60 overflow-hidden">
           <img
             src={
               accountData?.bg_picture?.url ||
               IMAGE_CONFIG.defaultImages.background
             }
             alt="Cover"
-            className="w-full h-full object-cover md:rounded-b-2xl object-[center_25%]"
+            className="w-full h-full object-cover object-[center_25%]"
             loading="eager"
             decoding="async"
           />
-          <div className="absolute inset-0 bg-black/50 md:rounded-b-2xl"></div>
+          <div className="absolute inset-0 bg-black/50"></div>
         </div>
         <div className="absolute top-[10rem] md:top-40 left-0 w-full m-auto pointer-events-none">
           <div className="relative -mt-14 mb-4 pointer-events-auto">
@@ -745,9 +733,9 @@ const PublicProfile = memo(() => {
               )}
           </div>
         </div>
-        <div className="md:max-w-5xl px-6 md:mx-auto">
+        <div className="md:max-w-5xl px-6 md:px-6 md:mx-auto">
           <div className="mt-2 max-w-3xl md:flex flex-col item-center justify-center mx-auto">
-            <div className="bg-black rounded-lg p-4">
+            <div className="bg-black rounded-none md:rounded-lg p-4">
               <div
                 className="text-gray-300 font-poppins text-xs"
                 dangerouslySetInnerHTML={{ __html: accountData?.Bio || "" }}
@@ -830,7 +818,7 @@ const PublicProfile = memo(() => {
                   <div role="tabpanel" aria-hidden={false}>
                     <div className="w-full">
                       <div className="max-w-4xl mx-auto px-1 md:px-4">
-                        <div className="bg-black rounded-lg p-1 md:p-4">
+                        <div className="bg-black rounded-none md:rounded-lg p-1 md:p-4">
                           {hasGallery ? (
                             <MemoizedFeedLayout
                               images={memoizedFeedImages}
@@ -865,7 +853,7 @@ const PublicProfile = memo(() => {
                   businessLocationData && (
                     <div role="tabpanel" aria-hidden={false}>
                       <div className="max-w-3xl flex flex-col item-center justify-center mx-auto">
-                        <div className="bg-black rounded-lg p-4">
+                        <div className="bg-black rounded-none md:rounded-lg p-4">
                           {(businessLocationData.title ||
                             businessLocationData.businessTitle ||
                             businessLocationData.address ||
