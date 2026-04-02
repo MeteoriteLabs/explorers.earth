@@ -757,7 +757,7 @@ const PublicProfile = memo(() => {
 
           {/* Tabs: Recommendations (heart) | Gallery (feed) | Address (location) */}
           <div className="mt-1 max-w-5xl mx-auto">
-            <div className="bg-black rounded-lg px-0 py-4 md:p-4">
+            <div className="bg-black rounded-lg px-0 md:p-4">
               {/* Tab List */}
               <div className="flex w-full justify-center gap-8 border-b border-gray-800 px-2 md:px-0 overflow-x-auto scrollbar-hide">
                 {/* Recommendations tab — conditionally rendered */}
@@ -813,7 +813,7 @@ const PublicProfile = memo(() => {
               </div>
 
               {/* Tab Panels */}
-              <div className="relative mt-6 pb-20 md:pb-20">
+              <div className="relative mt-2 pb-20 md:pb-20">
 
                 {/* ── Recommendations Tab ── */}
                 {activeTab === "recommendations" && hasRecommendations && (
