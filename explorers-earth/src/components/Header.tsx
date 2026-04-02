@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState } from "react";
 import useAuthStore from "../store/store";
 import { useNavigate, useLocation } from "react-router-dom";
-import useDeviceDetection from "../hooks/useDeviceDetection";
+
 import Down from "../assets/icons/Down";
 import { gql, useQuery } from "@apollo/client";
 import { toast } from "sonner";
@@ -14,7 +14,6 @@ import SunIcon from "../assets/icons/SunIcon";
 import MoonIcon from "../assets/icons/MoonIcon";
 import SwitchButton from "./ui/SwitchButton";
 import { motion, AnimatePresence } from "framer-motion";
-import { useMutation } from "@apollo/client";
 import { isManualAuthEnabled } from "../config/featureFlags";
 import { useDashboardTheme } from "../contexts/DashboardThemeContext";
 
@@ -37,18 +36,7 @@ const getCurrentAccountDataQuery = gql`
   }
 `;
 
-const updateTabVisibilityMutation = gql`
-  mutation UpdateTabVisibility($documentId: ID!, $data: AccountInput!) {
-    updateAccount(documentId: $documentId, data: $data) {
-      documentId
-      public_recommendations
-      public_movie
-      public_books
-      public_games
-      public_music
-    }
-  }
-`;
+
 
 const recommendationCategories = [
   { id: 'places', name: 'Places', path: '/recommendations/places' },
@@ -70,7 +58,7 @@ const Header = memo(() => {
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const { theme, toggleTheme } = useDashboardTheme();
   const location = useLocation();
-  const { isDesktop } = useDeviceDetection();
+
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
   const categoryMenuRef = useRef<HTMLDivElement>(null);
 
@@ -83,49 +71,7 @@ const Header = memo(() => {
 
   const isRecommendationPage = !!currentCategory;
 
-  const [updateTabVisibility] = useMutation(updateTabVisibilityMutation);
 
-  const handleVisibilityToggle = async () => {
-    if (!currentCategory || !accountData?.[0]?.documentId) return;
-
-    const fieldMapping: Record<string, string> = {
-      places: 'public_recommendations',
-      movies: 'public_movie',
-      books: 'public_books',
-      games: 'public_games',
-      music: 'public_music'
-    };
-
-    const field = fieldMapping[currentCategory.id];
-    const currentValue = accountData[0][field];
-    const newValue = currentValue === "Yes" ? "No" : "Yes";
-
-    try {
-      await updateTabVisibility({
-        variables: {
-          documentId: accountData[0].documentId,
-          data: { [field]: newValue }
-        },
-        optimisticResponse: {
-          updateAccount: {
-            __typename: 'Account',
-            documentId: accountData[0].documentId,
-            [field]: newValue,
-            // Add other fields to satisfy the query selection set
-            public_recommendations: field === 'public_recommendations' ? newValue : accountData[0].public_recommendations,
-            public_movie: field === 'public_movie' ? newValue : accountData[0].public_movie,
-            public_books: field === 'public_books' ? newValue : accountData[0].public_books,
-            public_games: field === 'public_games' ? newValue : accountData[0].public_games,
-            public_music: field === 'public_music' ? newValue : accountData[0].public_music,
-          }
-        }
-      });
-      toast.success(`${currentCategory.name} visibility updated to ${newValue === "Yes" ? "Public" : "Private"}`);
-    } catch (error) {
-      console.error("Error updating visibility:", error);
-      toast.error("Failed to update visibility");
-    }
-  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -169,15 +115,13 @@ const Header = memo(() => {
 
   const accountData = data?.usersPermissionsUser?.accounts;
 
-  if (isDesktop) {
-    return null;
-  }
+
 
   return (
-    <div className="bg-dashboard-sidebar w-full z-[100] md:px-6 p-4 fixed top-0 left-0 right-0 md:relative md:border-b md:border-dashboard">
-      <div className="flex flex-row rounded-xl items-center justify-between md:p-[10px]">
-        <div className="logo-container md:hidden">
-          {!isDesktop && isRecommendationPage && currentCategory ? (
+    <div className="bg-dashboard-sidebar w-full z-[100] md:px-6 px-4 py-4 md:py-2 fixed top-0 left-0 right-0 md:relative md:border-b md:border-dashboard">
+      <div className="flex flex-row rounded-xl items-center justify-between md:justify-center md:p-[4px]">
+        <div className="logo-container">
+          {(isRecommendationPage && currentCategory) ? (
             <div className="flex items-center gap-3">
               <div className="relative" ref={categoryMenuRef}>
                 <motion.button
@@ -191,7 +135,7 @@ const Header = memo(() => {
                     transition={{ duration: 0.2 }}
                     className="flex items-center justify-center mt-1"
                   >
-                    <Down stroke="white" width={20} height={20} strokeWidth={3} />
+                    <Down stroke="white" />
                   </motion.div>
                 </motion.button>
 
@@ -242,7 +186,7 @@ const Header = memo(() => {
         </div>
 
         <div
-          className="md:hidden"
+          className="flex items-center md:hidden"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -286,7 +230,7 @@ const Header = memo(() => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="md:hidden absolute right-4 top-16 w-64 bg-dashboard-sidebar rounded-xl shadow-dashboard-elevated border border-dashboard overflow-hidden z-[100]"
+            className="absolute right-4 top-16 w-64 bg-dashboard-sidebar rounded-xl shadow-dashboard-elevated border border-dashboard overflow-hidden z-[100]"
           >
             {isAuthenticated ? (
               <>

@@ -606,14 +606,6 @@ const Favorites = memo(() => {
                   {/* Section 1: Top Row with Add Button and Visibility Toggle */}
                   <div className="pt-2 px-2 md:px-0">
                     <div className="flex items-center justify-between bg-dashboard-sidebar/40 px-3 py-3 rounded-2xl mb-2">
-                      <button
-                        onClick={() => setIsLocationModalOpen(true)}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30"
-                      >
-                         <Plus size={18} />
-                         <span>{t("dashboard.recommendations.locationButton")}</span>
-                      </button>
-
                       <div className="flex items-center gap-3 bg-dashboard-muted/50 pl-3 pr-0 md:px-4 py-2 rounded-xl">
                         <div className="flex flex-col">
                           <span className="text-[10px] md:text-xs font-bold text-white leading-tight">Public Visibility</span>
@@ -625,6 +617,14 @@ const Favorites = memo(() => {
                           variant="blue"
                         />
                       </div>
+
+                      <button
+                        onClick={() => setIsLocationModalOpen(true)}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30"
+                      >
+                         <Plus size={18} />
+                         <span>{t("dashboard.recommendations.locationButton")}</span>
+                      </button>
                     </div>
                   </div>
 

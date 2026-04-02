@@ -511,17 +511,6 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle }: M
     <div className="space-y-4">
       {/* ── Top Row with Add Button and Visibility Toggle ─────────────────── */}
       <div className="flex items-center justify-between bg-dashboard-sidebar/40 px-3 py-3 rounded-xl mb-2">
-        <button
-          onClick={() => {
-            setActiveTab('playlists');
-            setShowNewPlaylistInput(true);
-          }}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30"
-        >
-           <Plus size={18} />
-           <span>New Playlist</span>
-        </button>
-
         <div className="flex items-center gap-3 bg-dashboard-muted/50 pl-3 pr-0 md:px-4 py-2 rounded-xl">
           <div className="flex flex-col">
             <span className="text-[10px] md:text-xs font-bold text-white leading-tight">Public Visibility</span>
@@ -533,6 +522,17 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle }: M
             variant="blue"
           />
         </div>
+
+        <button
+          onClick={() => {
+            setActiveTab('playlists');
+            setShowNewPlaylistInput(true);
+          }}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30"
+        >
+           <Plus size={18} />
+           <span>New Playlist</span>
+        </button>
       </div>
 
       {/* ── Add Songs — always visible at top ─────────────────────────────── */}
