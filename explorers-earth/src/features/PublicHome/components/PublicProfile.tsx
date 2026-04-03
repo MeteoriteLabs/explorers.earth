@@ -37,6 +37,7 @@ import { createCanonicalUrl } from "../../../utils/getCurrentDomain";
 import { createProfileGEOData } from "../../../utils/geoHelpers";
 import { extractUtmParamsFromCurrentUrl, createUtmParams } from "../../../utils/urlHelpers";
 import { toast } from "sonner";
+import ProfileRecommendationsTab from "./ProfileRecommendationsTab";
 
 // Memoized FeedLayout to prevent unnecessary re-renders
 const MemoizedFeedLayout = memo(FeedLayout);
@@ -154,12 +155,21 @@ const PublicProfile = memo(() => {
         // Redirect to the first available enabled tab
         const showRecommendations = accountData.public_recommendations === "Yes" || (!accountData.public_recommendations || accountData.public_recommendations === undefined);
         const showGuides = accountData.public_guides === "Yes";
+        const showMovies = accountData.public_movie === "Yes";
+        const showBooks = accountData.public_books === "Yes";
+        const showGames = accountData.public_games === "Yes";
         const showMusic = accountData.public_music === "Yes";
 
         if (showRecommendations) {
           navigate(`/${username}/places`, { replace: true });
         } else if (showGuides) {
           navigate(`/${username}/guides`, { replace: true });
+        } else if (showMovies) {
+          navigate(`/${username}/movies`, { replace: true });
+        } else if (showBooks) {
+          navigate(`/${username}/books`, { replace: true });
+        } else if (showGames) {
+          navigate(`/${username}/games`, { replace: true });
         } else if (showMusic) {
           navigate(`/${username}/music`, { replace: true });
         }
@@ -169,6 +179,17 @@ const PublicProfile = memo(() => {
   }, [loading, accountData, username, navigate]);
 
 
+
+  // Determine availability of categories
+  const hasRecommendations = !!(
+    accountData?.public_recommendations === "Yes" || 
+    accountData?.public_recommendations === undefined || 
+    accountData?.public_recommendations === null ||
+    accountData?.public_music === "Yes" ||
+    accountData?.public_movie === "Yes" ||
+    accountData?.public_books === "Yes" ||
+    accountData?.public_games === "Yes"
+  );
 
   // Determine availability of business details & gallery (safe before data loaded)
   const hasBusinessDetails = !!(
@@ -188,17 +209,19 @@ const PublicProfile = memo(() => {
   const hasGalleryContent = true; // Always show gallery tab, even if empty
 
   // Tab state must be declared before any early returns to preserve hook order
-  const [activeTab, setActiveTab] = useState<"gallery" | "business">("gallery");
+  // "recommendations" is the default and first tab
+  const [activeTab, setActiveTab] = useState<"recommendations" | "gallery" | "business">("recommendations");
 
   // Ensure activeTab remains valid if data availability changes
   useEffect(() => {
-    if (activeTab === "gallery" && !hasGalleryContent && hasBusinessDetails) {
+    if (activeTab === "recommendations" && !hasRecommendations) {
+      setActiveTab("gallery"); // fallback to gallery since hasGalleryContent is always true
+    } else if (activeTab === "gallery" && !hasGalleryContent && hasBusinessDetails) {
       setActiveTab("business");
-    }
-    if (activeTab === "business" && !hasBusinessDetails && hasGalleryContent) {
+    } else if (activeTab === "business" && !hasBusinessDetails && hasGalleryContent) {
       setActiveTab("gallery");
     }
-  }, [activeTab, hasGalleryContent, hasBusinessDetails]);
+  }, [activeTab, hasGalleryContent, hasBusinessDetails, hasRecommendations]);
 
   if (loading)
     return (
@@ -474,38 +497,26 @@ const PublicProfile = memo(() => {
           </div>
         </div>
 
-        {/* Cover Image */}
-        <div className="bg-[hsl(var(--blue-cta))] mt-14">
-          <span className="font-poppins text-white  p-1 text-center flex items-center justify-center">
-            Create Your
-            <a href="/">
-              <b className="px-2 font-medium hover:text-gray-300 hover:underline">
-                Free explorers
-              </b>
-            </a>
-          </span>
-        </div>
-
         {/* Profile Content */}
 
         {/* Profile Picture */}
-        <div className="relative h-72 md:h-72 lg:px-60 md:rounded-b-2xl">
+        <div className="relative h-56 md:h-72 lg:px-60 overflow-hidden">
           <img
             src={
               accountData?.bg_picture?.url ||
               IMAGE_CONFIG.defaultImages.background
             }
             alt="Cover"
-            className="w-full h-full object-cover md:rounded-b-2xl"
+            className="w-full h-full object-cover object-[center_25%]"
             loading="eager"
             decoding="async"
           />
-          <div className="absolute inset-0 bg-black/50 md:rounded-b-2xl"></div>
+          <div className="absolute inset-0 bg-black/50"></div>
         </div>
-        <div className="absolute top-[10rem] md:top-40 left-0 w-full m-auto pointer-events-none">
-          <div className="relative -mt-14 mb-4 pointer-events-auto">
+        <div className="relative -mt-20 md:-mt-14 w-full m-auto pointer-events-none z-10">
+          <div className="relative mb-2 pointer-events-auto">
             <div
-              className="w-[7rem] h-[7rem] mx-auto rounded-full border-4 border-[hsl(var(--evergreen))] overflow-hidden cursor-pointer"
+              className="w-[7rem] h-[7rem] mx-auto rounded-full border-4 border-[hsl(var(--evergreen))] overflow-hidden cursor-pointer bg-black"
               onClick={handleImageClick}
             >
               <img
@@ -522,13 +533,13 @@ const PublicProfile = memo(() => {
             <h2 className="text-sm font-poppins font-semibold text-white">
               {accountData?.Account_Name}
             </h2>
-            <div className="text-white text-xs font-poppins">
+            <div className="text-white text-xs font-poppins mt-0.5">
               {accountData?.Primary_Address?.address}
             </div>
           </div>
 
           {/* Social Links */}
-          <div className="flex items-center justify-center gap-10 mt-3 pb-4 pointer-events-auto">
+          <div className="flex items-center justify-center gap-10 mt-2.5 mb-1 pointer-events-auto empty:hidden">
             {accountData?.social_media?.instagram?.link &&
               accountData?.social_media?.instagram?.visibility && (
                 <a
@@ -722,198 +733,210 @@ const PublicProfile = memo(() => {
               )}
           </div>
         </div>
-        <div className="md:max-w-5xl px-6 md:mx-auto">
-          <div className="mt-8 max-w-3xl md:flex flex-col item-center justify-center mx-auto">
-            <div className="bg-black rounded-lg p-4">
+        <div className="md:max-w-5xl px-6 md:px-6 md:mx-auto">
+          <div className="mt-0 max-w-3xl md:flex flex-col item-center justify-center mx-auto">
+            <div className="bg-black rounded-none md:rounded-lg p-2">
               <div
-                className="text-gray-300 font-poppins text-xs"
+                className="text-gray-300 font-poppins text-xs line-clamp-3 break-words overflow-hidden text-ellipsis"
                 dangerouslySetInnerHTML={{ __html: accountData?.Bio || "" }}
               />
             </div>
           </div>
 
-          {/* Phone number text removed per new requirements (icon only in social section) */}
+          {/* Tabs: Recommendations (heart) | Gallery (feed) | Address (location) */}
+          <div className="mt-1 max-w-5xl mx-auto">
+            <div className="bg-black rounded-lg px-0 md:p-4">
+              {/* Tab List */}
+              <div className="flex w-full justify-center gap-8 border-b border-gray-800 px-2 md:px-0 overflow-x-auto scrollbar-hide">
+                {/* Recommendations tab — conditionally rendered */}
+                {hasRecommendations && (
+                  <button
+                    className={`py-2 text-xs font-poppins font-medium tracking-wide transition-colors border-b-2 focus:outline-none ${activeTab === "recommendations"
+                      ? "border-[hsl(var(--blue-cta))] text-white"
+                      : "border-transparent text-gray-400 hover:text-gray-200"
+                      }`}
+                    aria-selected={activeTab === "recommendations"}
+                    onClick={() => setActiveTab("recommendations")}
+                  >
+                    <span className="flex items-center justify-center gap-1">
+                      <svg viewBox="0 0 24 24" fill={activeTab === "recommendations" ? "currentColor" : "none"} stroke="currentColor" strokeWidth={activeTab === "recommendations" ? 0 : 1.8} className="size-5 transition-all" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                      </svg>
+                      <span className="sr-only">Recommendations</span>
+                    </span>
+                  </button>
+                )}
 
-          {/* Tabs for Business Details & Gallery */}
-          {(hasBusinessDetails || hasGalleryContent) && (
-            <div className="mt-10 max-w-5xl mx-auto">
-              <div className="bg-black rounded-lg p-4">
-                {/* Tab List */}
-                {(hasBusinessDetails && hasGalleryContent) ? (
-                  <div className="flex w-full justify-center gap-8 border-b border-gray-800 px-2 md:px-0 overflow-x-auto scrollbar-hide">
-                    <button
-                      className={`py-2 text-xs font-poppins font-medium tracking-wide transition-colors border-b-2 focus:outline-none ${activeTab === "gallery"
-                        ? "border-[hsl(var(--blue-cta))] text-white"
-                        : "border-transparent text-gray-400 hover:text-gray-200"
-                        }`}
-                      aria-selected={activeTab === "gallery"}
-                      onClick={() => {
-                        setActiveTab("gallery");
-                      }}
-                    >
-                      <span className="flex items-center justify-center gap-1">
-                        <FeedIcon className="size-5" />
-                        <span className="sr-only">Gallery</span>
-                      </span>
-                    </button>
-                    <button
-                      className={`py-2 text-xs font-poppins font-medium tracking-wide transition-colors border-b-2 focus:outline-none ${activeTab === "business"
-                        ? "border-[hsl(var(--blue-cta))] text-white"
-                        : "border-transparent text-gray-400 hover:text-gray-200"
-                        }`}
-                      aria-selected={activeTab === "business"}
-                      onClick={() => {
-                        setActiveTab("business");
-                      }}
-                    >
-                      <span className="flex items-center justify-center gap-1">
-                        <Location className="size-5" />
-                        <span className="sr-only">Business Details</span>
-                      </span>
-                    </button>
-                  </div>
-                ) : hasGalleryContent ? (
-                  <div className="flex w-full justify-center gap-8 border-b border-gray-800 px-2 md:px-0 overflow-x-auto scrollbar-hide">
-                    <button
-                      className={`py-2 text-xs font-poppins font-medium tracking-wide transition-colors border-b-2 focus:outline-none ${activeTab === "gallery"
-                        ? "border-[hsl(var(--blue-cta))] text-white"
-                        : "border-transparent text-gray-400 hover:text-gray-200"
-                        }`}
-                      aria-selected={activeTab === "gallery"}
-                      onClick={() => setActiveTab("gallery")}
-                    >
-                      <span className="flex items-center justify-center gap-1">
-                        <FeedIcon className="size-5" />
-                        <span className="sr-only">Gallery</span>
-                      </span>
-                    </button>
-                  </div>
-                ) : null}
+                {/* Gallery tab */}
+                <button
+                  className={`py-2 text-xs font-poppins font-medium tracking-wide transition-colors border-b-2 focus:outline-none ${activeTab === "gallery"
+                    ? "border-[hsl(var(--blue-cta))] text-white"
+                    : "border-transparent text-gray-400 hover:text-gray-200"
+                    }`}
+                  aria-selected={activeTab === "gallery"}
+                  onClick={() => setActiveTab("gallery")}
+                >
+                  <span className="flex items-center justify-center gap-1">
+                    <FeedIcon className="size-5" />
+                    <span className="sr-only">Gallery</span>
+                  </span>
+                </button>
 
-                {/* Panels */}
-                <div className="relative mt-6 pb-20 md:pb-20">
-                  {activeTab === "gallery" && (
+                {/* Address tab — only if business details exist */}
+                {hasBusinessDetails && (
+                  <button
+                    className={`py-2 text-xs font-poppins font-medium tracking-wide transition-colors border-b-2 focus:outline-none ${activeTab === "business"
+                      ? "border-[hsl(var(--blue-cta))] text-white"
+                      : "border-transparent text-gray-400 hover:text-gray-200"
+                      }`}
+                    aria-selected={activeTab === "business"}
+                    onClick={() => setActiveTab("business")}
+                  >
+                    <span className="flex items-center justify-center gap-1">
+                      <Location className="size-5" />
+                      <span className="sr-only">Business Details</span>
+                    </span>
+                  </button>
+                )}
+              </div>
+
+              {/* Tab Panels */}
+              <div className="relative mt-2 pb-20 md:pb-20">
+
+                {/* ── Recommendations Tab ── */}
+                {activeTab === "recommendations" && hasRecommendations && (
+                  <div role="tabpanel">
+                    <ProfileRecommendationsTab
+                      accountData={accountData}
+                      username={username || ""}
+                    />
+                  </div>
+                )}
+
+                {/* ── Gallery Tab ── */}
+                {activeTab === "gallery" && (
+                  <div role="tabpanel" aria-hidden={false}>
+                    <div className="w-full">
+                      <div className="max-w-4xl mx-auto px-1 md:px-4">
+                        <div className="bg-black rounded-none md:rounded-lg p-1 md:p-4">
+                          {hasGallery ? (
+                            <MemoizedFeedLayout
+                              images={memoizedFeedImages}
+                              className="w-full always-show-overlays"
+                              autoDetectDimensions={false}
+                              rowHeight={200}
+                              margin={1}
+                              onImageClick={handleMediaClick}
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center justify-center py-12 px-4">
+                              <div className="w-16 h-16 mb-4 rounded-full bg-gray-800 flex items-center justify-center">
+                                <FeedIcon className="size-8 text-gray-400" />
+                              </div>
+                              <h3 className="text-lg font-poppins font-semibold text-white mb-2">
+                                No Photos Yet
+                              </h3>
+                              <p className="text-sm text-gray-400 text-center max-w-sm">
+                                This user hasn't shared any photos in their feed yet. Check back later for updates!
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Business / Address Tab ── */}
+                {activeTab === "business" &&
+                  hasBusinessDetails &&
+                  businessLocationData && (
                     <div role="tabpanel" aria-hidden={false}>
-                      <div className="w-full">
-                        <div className="max-w-4xl mx-auto px-1 md:px-4">
-                          <div className="bg-black rounded-lg p-1 md:p-4">
-                            {hasGallery ? (
-                              <MemoizedFeedLayout
-                                images={memoizedFeedImages}
-                                className="w-full always-show-overlays"
-                                autoDetectDimensions={false}
-                                rowHeight={200}
-                                margin={1}
-                                onImageClick={handleMediaClick}
-                              />
-                            ) : (
-                              <div className="flex flex-col items-center justify-center py-12 px-4">
-                                <div className="w-16 h-16 mb-4 rounded-full bg-gray-800 flex items-center justify-center">
-                                  <FeedIcon className="size-8 text-gray-400" />
-                                </div>
-                                <h3 className="text-lg font-poppins font-semibold text-white mb-2">
-                                  No Photos Yet
-                                </h3>
-                                <p className="text-sm text-gray-400 text-center max-w-sm">
-                                  This user hasn't shared any photos in their feed yet. Check back later for updates!
-                                </p>
+                      <div className="max-w-3xl flex flex-col item-center justify-center mx-auto">
+                        <div className="bg-black rounded-none md:rounded-lg p-4">
+                          {(businessLocationData.title ||
+                            businessLocationData.businessTitle ||
+                            businessLocationData.address ||
+                            businessLocationData.businessAddress) && (
+                              <div className="mb-6">
+                                {(businessLocationData.title ||
+                                  businessLocationData.businessTitle) && (
+                                    <h2 className="text-lg font-poppins font-semibold text-white mb-2">
+                                      {businessLocationData.title ||
+                                        businessLocationData.businessTitle}
+                                    </h2>
+                                  )}
+                                {(businessLocationData.address ||
+                                  businessLocationData.businessAddress) && (
+                                    <p className="text-gray-300 font-poppins text-sm">
+                                      {businessLocationData.address ||
+                                        businessLocationData.businessAddress}
+                                    </p>
+                                  )}
                               </div>
                             )}
-                          </div>
+                          {(businessLocationData.about ||
+                            businessLocationData.businessDescription) && (
+                              <div className="mb-6">
+                                <h3 className="text-sm font-poppins font-semibold text-white mb-2">
+                                  About
+                                </h3>
+                                <div
+                                  className="text-gray-300 font-poppins text-xs leading-relaxed"
+                                  dangerouslySetInnerHTML={{
+                                    __html:
+                                      businessLocationData.about ||
+                                      businessLocationData.businessDescription,
+                                  }}
+                                />
+                              </div>
+                            )}
+                          {(businessLocationData.contact ||
+                            businessLocationData.businessContact ||
+                            businessLocationData.website ||
+                            businessLocationData.businessWebsite) && (
+                              <div className="mb-6 space-y-2">
+                                {(businessLocationData.contact ||
+                                  businessLocationData.businessContact) && (
+                                    <div className="flex items-center gap-2">
+                                      <MobileIcon fill="white" />
+                                      <a
+                                        href={`tel:${businessLocationData.contact ||
+                                          businessLocationData.businessContact
+                                          }`}
+                                        className="text-gray-300 font-poppins text-sm hover:text-white transition-colors"
+                                      >
+                                        {businessLocationData.contact ||
+                                          businessLocationData.businessContact}
+                                      </a>
+                                    </div>
+                                  )}
+                                {(businessLocationData.website ||
+                                  businessLocationData.businessWebsite) && (
+                                    <div className="flex items-center gap-2">
+                                      <BoldLinkIcon color="white" />
+                                      <a
+                                        href={
+                                          businessLocationData.website ||
+                                          businessLocationData.businessWebsite
+                                        }
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-gray-300 font-poppins text-sm hover:text-white transition-colors"
+                                      >
+                                        Visit Website
+                                      </a>
+                                    </div>
+                                  )}
+                              </div>
+                            )}
                         </div>
                       </div>
                     </div>
                   )}
-                  {activeTab === "business" &&
-                    hasBusinessDetails &&
-                    businessLocationData && (
-                      <div role="tabpanel" aria-hidden={false}>
-                        <div className="max-w-3xl flex flex-col item-center justify-center mx-auto">
-                          <div className="bg-black rounded-lg p-4">
-                            {(businessLocationData.title ||
-                              businessLocationData.businessTitle ||
-                              businessLocationData.address ||
-                              businessLocationData.businessAddress) && (
-                                <div className="mb-6">
-                                  {(businessLocationData.title ||
-                                    businessLocationData.businessTitle) && (
-                                      <h2 className="text-lg font-poppins font-semibold text-white mb-2">
-                                        {businessLocationData.title ||
-                                          businessLocationData.businessTitle}
-                                      </h2>
-                                    )}
-                                  {(businessLocationData.address ||
-                                    businessLocationData.businessAddress) && (
-                                      <p className="text-gray-300 font-poppins text-sm">
-                                        {businessLocationData.address ||
-                                          businessLocationData.businessAddress}
-                                      </p>
-                                    )}
-                                </div>
-                              )}
-                            {(businessLocationData.about ||
-                              businessLocationData.businessDescription) && (
-                                <div className="mb-6">
-                                  <h3 className="text-sm font-poppins font-semibold text-white mb-2">
-                                    About
-                                  </h3>
-                                  <div
-                                    className="text-gray-300 font-poppins text-xs leading-relaxed"
-                                    dangerouslySetInnerHTML={{
-                                      __html:
-                                        businessLocationData.about ||
-                                        businessLocationData.businessDescription,
-                                    }}
-                                  />
-                                </div>
-                              )}
-                            {(businessLocationData.contact ||
-                              businessLocationData.businessContact ||
-                              businessLocationData.website ||
-                              businessLocationData.businessWebsite) && (
-                                <div className="mb-6 space-y-2">
-                                  {(businessLocationData.contact ||
-                                    businessLocationData.businessContact) && (
-                                      <div className="flex items-center gap-2">
-                                        <MobileIcon fill="white" />
-                                        <a
-                                          href={`tel:${businessLocationData.contact ||
-                                            businessLocationData.businessContact
-                                            }`}
-                                          className="text-gray-300 font-poppins text-sm hover:text-white transition-colors"
-                                        >
-                                          {businessLocationData.contact ||
-                                            businessLocationData.businessContact}
-                                        </a>
-                                      </div>
-                                    )}
-                                  {(businessLocationData.website ||
-                                    businessLocationData.businessWebsite) && (
-                                      <div className="flex items-center gap-2">
-                                        <BoldLinkIcon color="white" />
-                                        <a
-                                          href={
-                                            businessLocationData.website ||
-                                            businessLocationData.businessWebsite
-                                          }
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="text-gray-300 font-poppins text-sm hover:text-white transition-colors"
-                                        >
-                                          Visit Website
-                                        </a>
-                                      </div>
-                                    )}
-                                </div>
-                              )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                </div>
               </div>
             </div>
-          )}
+          </div>
 
 
         </div>

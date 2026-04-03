@@ -7,6 +7,7 @@ import Modal from "../components/ui/Modal";
 import { AddIcon } from "../assets/icons/AddIcon";
 import LinksAndQR from "../features/Favorites/components/LinksAndQR";
 import AddLocationModal from "../components/ui/AddLocationModal";
+import { Plus } from "lucide-react";
 import { useMutation, useQuery } from "@apollo/client";
 import { toast } from "sonner";
 import {
@@ -17,7 +18,8 @@ import { EarthLoader } from "../components/EarthLoader";
 import { useCreateLocation } from "../features/Favorites/hooks/useCreateLocation";
 import { useMenuItems } from "../features/Favorites/hooks/useMenuItems";
 import { KeyValuePair } from "../features/Favorites/components/RecommendForm";
-import { updateRecommendedListMutation } from "../features/Favorites/api/mutation";
+import { updateRecommendedListMutation, updateAccountVisibility } from "../features/Favorites/api/mutation";
+import SwitchButton from "../components/ui/SwitchButton";
 import useAuthStore from "../store/store";
 import { useCityStore } from "../store/useCityStore";
 import axios from "axios";
@@ -129,6 +131,37 @@ const Favorites = memo(() => {
     refetchQueries: [recommendationListQuery],
     fetchPolicy: "network-only",
   });
+
+  const [updateVisibility] = useMutation(updateAccountVisibility);
+
+  const handleVisibilityToggle = async () => {
+    const accountData = accountById?.usersPermissionsUser?.accounts?.[0];
+    if (!accountData?.documentId) return;
+
+    const currentValue = accountData.public_recommendations;
+    const newValue = currentValue === "Yes" ? "No" : "Yes";
+
+    try {
+      await updateVisibility({
+        variables: {
+          documentId: accountData.documentId,
+          data: { public_recommendations: newValue }
+        },
+        optimisticResponse: {
+          updateAccount: {
+            __typename: 'Account',
+            documentId: accountData.documentId,
+            public_recommendations: newValue
+          }
+        },
+        refetchQueries: [{ query: accountDataQuery, variables: { documentId: user?.documentId } }]
+      });
+      toast.success(`Public visibility updated to ${newValue === "Yes" ? "Public" : "Private"}`);
+    } catch (error) {
+      console.error("Error updating visibility:", error);
+      toast.error("Failed to update visibility");
+    }
+  };
 
   useEffect(() => {
     if (selectedCity?.documentId) {
@@ -570,74 +603,34 @@ const Favorites = memo(() => {
             <>
               {filteredCities.length > 0 ? (
                 <>
-                  {/* Section 1: Any content above the recommendation list - Scrolls normally */}
-                  <div className="pt-4 md:pt-7">
-                    {/* Add any header content here if needed */}
+                  {/* Section 1: Top Row with Add Button and Visibility Toggle */}
+                  <div className="pt-2 px-2 md:px-0">
+                    <div className="flex items-center justify-between bg-dashboard-sidebar/40 px-3 py-3 rounded-2xl mb-2">
+                      <div className="flex flex-col items-start gap-1.5 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
+                        <span className="text-[10px] md:text-xs font-bold text-white leading-tight whitespace-nowrap">Public Visibility</span>
+                        <SwitchButton
+                          isChecked={accountById?.usersPermissionsUser?.accounts?.[0]?.public_recommendations === "Yes"}
+                          onChange={handleVisibilityToggle}
+                          variant="blue"
+                        />
+                      </div>
+
+                      <button
+                        onClick={() => setIsLocationModalOpen(true)}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30"
+                      >
+                         <Plus size={18} />
+                         <span>{t("dashboard.recommendations.locationButton")}</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Section 2: Recommendation List - Becomes sticky at top on mobile only */}
-                  <div className="md:static sticky top-16 p-2 z-30 bg-dashboard-bg">
+                  <div className="md:static sticky top-0 p-2 z-30 bg-dashboard-bg">
                     <div className="flex items-center pl-0 pr-2 md:px-4">
-                      {/* Fixed Add Location Button - Doesn't scroll */}
-                      <div className="flex-shrink-0 ml-0 mr-4 md:ml-2 md:mr-8">
-                        <motion.div
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.95 }}
-                          whileDrag={{ scale: 0.9, rotate: 10 }}
-                          drag
-                          dragConstraints={{
-                            left: 0,
-                            right: 0,
-                            top: 0,
-                            bottom: 0,
-                          }}
-                          className="flex flex-col items-center justify-center cursor-pointer relative pt-8"
-                          onClick={() => setIsLocationModalOpen(true)}
-                        >
-                          {/* Animated Add Location Icon */}
-                          <motion.div
-                            animate={{
-                              y: [0, -8, 0],
-                              scale: [1, 1.05, 1]
-                            }}
-                            transition={{
-                              duration: 2,
-                              repeat: Infinity,
-                              ease: "easeInOut"
-                            }}
-                            className="flex items-center justify-center text-dashboard-accent"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              className="w-12 h-12 md:w-[4.5rem] md:h-[4.5rem] drop-shadow-md"
-                            >
-                              <path
-                                d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"
-                                fill="currentColor"
-                                stroke="#ffffff"
-                                strokeWidth="2"
-                                strokeLinejoin="round"
-                              />
-                              <path
-                                d="M16 9h-3V6h-2v3H8v2h3v3h2v-3h3V9z"
-                                fill="#ffffff"
-                              />
-                            </svg>
-                          </motion.div>
-                          <span className="text-xs md:text-sm font-poppins text-dashboard mt-1 md:mt-2 md:whitespace-nowrap text-center">
-                            {t("dashboard.recommendations.locationButton").split(" ").map((word, idx) => (
-                              <span key={idx} className={idx === 0 ? "block md:inline" : "block md:inline md:ml-1"}>
-                                {word}
-                              </span>
-                            ))}
-                          </span>
-                        </motion.div>
-                      </div>
-
                       {/* Scrollable Cities Container - Only cities scroll */}
                       <motion.div
-                        className="overflow-x-auto whitespace-nowrap flex gap-7 md:gap-14 flex-1 pt-8 pl-4 pr-4"
+                        className="overflow-x-auto whitespace-nowrap flex gap-7 md:gap-14 flex-1 pt-4 pb-4 pl-4 pr-4"
                         style={{ scrollbarWidth: "none", overflowY: "hidden" }}
                         initial={{ x: 0 }}
                         animate={{ x: [0, -40, 0] }}
@@ -672,7 +665,7 @@ const Favorites = memo(() => {
                               animate={{
                                 y:
                                   selectedCity?.documentId === city.documentId
-                                    ? -20
+                                    ? -15
                                     : 0,
                               }}
                               transition={{ type: "spring", stiffness: 200 }}
@@ -681,7 +674,7 @@ const Favorites = memo(() => {
                                 referrerPolicy="no-referrer"
                                 src={city?.List_Name_Details?.thumbnail}
                                 alt={city.List_Name || ""}
-                                className={`w-16 p-[0.1rem] h-16 md:w-20 md:h-20 rounded-full aspect-square object-cover ${selectedCity?.documentId === city.documentId
+                                className={`w-14 p-[0.1rem] h-14 md:w-20 md:h-20 rounded-full aspect-square object-cover ${selectedCity?.documentId === city.documentId
                                   ? city.Visibility
                                     ? "border-[hsl(var(--status-published))] border-[3px]"
                                     : "border-[hsl(var(--status-draft))] border-[3px]"
@@ -689,18 +682,17 @@ const Favorites = memo(() => {
                                   }`}
                               />
                               <p
-                                className={`text-sm text-white font-poppins mt-1 ${selectedCity?.documentId === city.documentId
-                                  ? "text-center"
-                                  : "truncate w-20 text-center"
+                                className={`text-[11px] md:text-sm text-white font-poppins mt-2 ${selectedCity?.documentId === city.documentId
+                                  ? "text-center font-semibold"
+                                  : "truncate w-20 text-center opacity-70"
                                   }`}
                               >
                                 {city.List_Name}
                               </p>
                               {city?.Visibility === false &&
                                 selectedCity?.documentId === city.documentId && (
-                                  <span className="font-poppins text-xs text-[hsl(var(--blue-cta))] bg-[hsl(var(--blue-cta))]/10 border border-[hsl(var(--blue-cta))]/30 rounded-2xl px-3 py-1.5">
-                                    {selectedCity?.Visibility === false &&
-                                      t("dashboard.recommendations.draftLabel")}
+                                  <span className="font-poppins text-[9px] md:text-xs text-[hsl(var(--blue-cta))] bg-[hsl(var(--blue-cta))]/10 border border-[hsl(var(--blue-cta))]/30 rounded-2xl px-2 py-1 mt-1">
+                                    {t("dashboard.recommendations.draftLabel")}
                                   </span>
                                 )}
                             </motion.div>
@@ -708,9 +700,9 @@ const Favorites = memo(() => {
                         )}
                       </motion.div>
                     </div>
-                    <div className="flex items-center justify-end w-full px-4 pt-2 pb-1 md:pt-0 md:pb-2 relative z-40">
+                    <div className="flex items-center justify-end w-full px-4 pt-1 pb-1 md:pt-0 md:pb-2 relative z-40">
                       <button
-                        className="text-white font-poppins text-xs md:text-sm transition-all duration-300 flex items-center justify-center gap-2 font-normal md:font-medium hover:text-gray-200 px-1 relative z-50 pointer-events-auto"
+                        className="text-white/60 font-poppins text-[10px] md:text-sm transition-all duration-300 flex items-center justify-center gap-2 font-normal md:font-medium hover:text-white px-1 relative z-50 pointer-events-auto"
                         onClick={() => setShowAllPlaces(true)}
                       >
                         {t("dashboard.recommendations.viewAll")}

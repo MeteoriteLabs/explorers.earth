@@ -108,6 +108,19 @@ const getPublicTabFields = (t: any) => [
     heading: t('dashboard.profile.publicProfile.sections.profileInformation'), // Bio section
     formFields: [
       { name: "bio", label: t('dashboard.profile.publicProfile.fields.bio'), type: "textarea", as: "textarea" },
+      {
+        name: "accountName",
+        label: t('dashboard.profile.account.fields.accountName'),
+        type: "text",
+        isRequired: true,
+      },
+      {
+        name: "primaryAddressCombined",
+        label: t('dashboard.profile.publicProfile.fields.primaryAddress'),
+        type: "primaryAddressCombined",
+        isRequired: true,
+        hasCurrLocation: true,
+      },
     ],
   },
   {
@@ -216,13 +229,6 @@ const getPublicTabFields = (t: any) => [
         type: "businessLocation",
         isRequired: false,
       },
-      {
-        name: "primaryAddressCombined",
-        label: t('dashboard.profile.publicProfile.fields.primaryAddress'),
-        type: "primaryAddressCombined",
-        isRequired: true,
-        hasCurrLocation: true,
-      },
     ],
   },
   {
@@ -245,12 +251,6 @@ const getAccountTabFields = (t: any) => [
     heading: t('dashboard.profile.account.sections.account'), // Private account credentials and identification
     formFields: [
       { name: "username", label: t('dashboard.profile.account.fields.username'), type: "text", isRequired: true },
-      {
-        name: "accountName",
-        label: t('dashboard.profile.account.fields.accountName'),
-        type: "text",
-        isRequired: true,
-      },
       {
         name: "accountType",
         label: t('dashboard.profile.publicProfile.fields.accountType'),

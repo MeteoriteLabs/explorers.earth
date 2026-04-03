@@ -8,14 +8,15 @@ import NavButton from "./ui/NavButton";
 import DirectionBoard from "../assets/icons/DirectionBoard";
 import Analytics from "../assets/icons/Analytics";
 import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
+import Heart from "../assets/icons/Heart";
 
 const navItems = [
   { id: "home", icon: Home, text: "Home", path: "/home" },
   {
     id: "recommendations",
-    icon: DirectionBoard,
+    icon: Heart,
     text: "Recommendation",
-    path: "/recommendations",
+    path: "/hub",
   },
   {
     id: "guides",
@@ -53,7 +54,10 @@ const Navbar = () => {
   };
 
   // Helper function to check if paths match (ignoring trailing slashes)
-  const isPathMatch = (currentPath: string, targetPath: string) => {
+  const isPathMatch = (currentPath: string, targetPath: string, itemId: string) => {
+    if (itemId === "recommendations") {
+      return currentPath.startsWith("/hub") || currentPath.startsWith("/recommendations");
+    }
     const normalizedCurrent = normalizePath(currentPath);
     const normalizedTarget = normalizePath(targetPath);
     return normalizedCurrent === normalizedTarget;
@@ -95,14 +99,14 @@ const Navbar = () => {
     <div className="fixed bottom-0 md:bottom-2 md:rounded-lg z-50 w-full md:w-[33%] bg-dashboard-sidebar backdrop-blur-lg text-dashboard flex md:flex-row md:justify-center md:items-center justify-center py-2 px-2 md:p-1 shadow-lg border-t md:border-t-0 border-dashboard/50">
       <div className="flex flex-row justify-between gap-1 w-full max-w-md mx-auto">
         {allNavItems.map((item) => {
-          const isActive = !(item as any).isExternal && isPathMatch(location.pathname, item.path);
+          const isActive = !(item as any).isExternal && isPathMatch(location.pathname, item.path, item.id);
 
           let iconElement;
           if (item.id === "home") {
             iconElement = renderHomeIcon(isActive);
           } else if (item.id === "recommendations") {
             iconElement = (
-              <DirectionBoard
+              <Heart
                 fill={isActive ? "var(--dash-accent)" : "#F2F2F2"}
               />
             );

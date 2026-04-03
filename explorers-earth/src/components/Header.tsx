@@ -1,17 +1,20 @@
 import { memo, useEffect, useRef, useState } from "react";
 import useAuthStore from "../store/store";
-import Button from "./ui/Button";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+
+import Down from "../assets/icons/Down";
 import { gql, useQuery } from "@apollo/client";
 import { toast } from "sonner";
-import MenuIcon from "../assets/icons/MenuIcon";
 import CrossIcon from "../assets/icons/CrossIcon";
+import Profile from "../assets/icons/Profile";
+import HomeIcon from "../assets/icons/Home";
 import { useTranslation } from "react-i18next";
 import SettingsIcon from "../assets/icons/SettingsIcon";
 import LogoutIcon from "../assets/icons/LogoutIcon";
 import SunIcon from "../assets/icons/SunIcon";
 import MoonIcon from "../assets/icons/MoonIcon";
 import SwitchButton from "./ui/SwitchButton";
+import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 import { motion, AnimatePresence } from "framer-motion";
 import { isManualAuthEnabled } from "../config/featureFlags";
 import { useDashboardTheme } from "../contexts/DashboardThemeContext";
@@ -25,13 +28,27 @@ const getCurrentAccountDataQuery = gql`
         }
         Account_Name
         documentId
+        public_recommendations
+        public_movie
+        public_books
+        public_games
+        public_music
       }
     }
   }
 `;
 
+
+
+const recommendationCategories = [
+  { id: 'places', name: 'Places', path: '/recommendations/places' },
+  { id: 'movies', name: 'Movies & Shows', path: '/recommendations/movies' },
+  { id: 'books', name: 'Books', path: '/recommendations/books' },
+  { id: 'games', name: 'Games', path: '/recommendations/games' },
+  { id: 'music', name: 'Music', path: '/music' },
+];
+
 const Header = memo(() => {
-  const [showMenu, setShowMenu] = useState<boolean>(false);
   const [showMobileMenu, setShowMobileMenu] = useState<boolean>(false);
   const { isAuthenticated, user, logout } = useAuthStore();
   const { data } = useQuery(getCurrentAccountDataQuery, {
@@ -39,18 +56,32 @@ const Header = memo(() => {
     skip: !user?.documentId,
   });
   const navigate = useNavigate();
-  const menuRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const { theme, toggleTheme } = useDashboardTheme();
+  const location = useLocation();
+
+  const [showCategoryMenu, setShowCategoryMenu] = useState(false);
+  const categoryMenuRef = useRef<HTMLDivElement>(null);
+
+  const currentCategory = recommendationCategories.find(cat => {
+    // Exact match for /recommendations as Places
+    if (cat.id === 'places' && location.pathname === '/recommendations') return true;
+    // Prefix match for all categories
+    return location.pathname.startsWith(cat.path);
+  });
+
+  const isRecommendationPage = !!currentCategory;
+
+
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowMenu(false);
-      }
       if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
         setShowMobileMenu(false);
+      }
+      if (categoryMenuRef.current && !categoryMenuRef.current.contains(event.target as Node)) {
+        setShowCategoryMenu(false);
       }
     };
 
@@ -86,24 +117,105 @@ const Header = memo(() => {
 
   const accountData = data?.usersPermissionsUser?.accounts;
 
+
+
+  // Define named pages with icons for large-screen header display
+  const namedPages = [
+    { path: '/home', exact: true, label: 'Home', icon: <HomeIcon /> },
+    { path: '/profile', exact: true, label: 'Profile', icon: <Profile fill="white" /> },
+    { path: '/settings', exact: true, label: 'Settings', icon: <SettingsIcon fill="white" /> },
+    { path: '/guides', exact: false, label: 'Guides', icon: <TravelGuideIcon fill="white" /> },
+  ];
+
+  const currentNamedPage = namedPages.find(p =>
+    p.exact ? location.pathname === p.path : location.pathname.startsWith(p.path)
+  );
+
   return (
-    <div className="bg-dashboard-sidebar w-full z-[100] md:px-6 p-4 fixed top-0 left-0 right-0 md:relative md:border-b md:border-dashboard">
-      <div className="flex flex-row rounded-xl items-center justify-between md:p-[10px]">
+    <div className="dashboard-header bg-dashboard-sidebar md:px-6 px-4 py-4 md:py-2 border-b border-dashboard">
+      <div className="flex flex-row rounded-xl items-center justify-between md:justify-center md:p-[4px]">
         <div className="logo-container">
-          <img
-            src="/logo.svg"
-            alt="explorers.earth"
-            className={`object-contain cursor-pointer header-logo ${theme === 'dark' ? 'header-logo-dark' : 'header-logo-light'}`}
-            onClick={() => navigate(isAuthenticated ? "/home" : "/")}
-            style={{
-              height: "48px",
-              width: "auto",
-            }}
-          />
+          {(isRecommendationPage && currentCategory) ? (
+            <div className="flex items-center gap-3">
+              <div className="relative" ref={categoryMenuRef}>
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowCategoryMenu(!showCategoryMenu)}
+                  className="flex items-center gap-1.5 text-white font-black text-2xl bg-transparent px-0 py-1"
+                >
+                  <span className="truncate max-w-[280px]">{currentCategory.name}</span>
+                  <motion.div
+                    animate={{ rotate: showCategoryMenu ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex items-center justify-center mt-1"
+                  >
+                    <Down stroke="white" />
+                  </motion.div>
+                </motion.button>
+
+                <AnimatePresence>
+                  {showCategoryMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute top-14 left-0 w-56 bg-dashboard-sidebar rounded-xl shadow-dashboard-elevated border border-dashboard overflow-hidden z-[110]"
+                    >
+                      <div className="py-2">
+                        {recommendationCategories.map((cat) => (
+                          <button
+                            key={cat.id}
+                            className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors ${
+                              (location.pathname.startsWith(cat.path) || (cat.id === 'places' && location.pathname === '/recommendations'))
+                                ? "bg-dashboard-accent/20 text-dashboard-accent"
+                                : "text-white hover:bg-dashboard-muted"
+                            }`}
+                            onClick={() => {
+                              navigate(cat.path);
+                              setShowCategoryMenu(false);
+                            }}
+                          >
+                            {cat.name}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+            </div>
+          ) : currentNamedPage ? (
+            <>
+              {/* Mobile: show logo; Desktop: show page name + icon */}
+              <img
+                src="/logo.svg"
+                alt="explorers.earth"
+                className={`md:hidden object-contain cursor-pointer header-logo ${theme === 'dark' ? 'header-logo-dark' : 'header-logo-light'}`}
+                onClick={() => navigate(isAuthenticated ? "/home" : "/")}
+                style={{ height: "36px", width: "auto" }}
+              />
+              <div className="hidden md:flex items-center gap-2.5">
+                <span className="flex items-center justify-center opacity-90">{currentNamedPage.icon}</span>
+                <span className="text-white font-black text-2xl font-poppins">{currentNamedPage.label}</span>
+              </div>
+            </>
+          ) : (
+            <img
+              src="/logo.svg"
+              alt="explorers.earth"
+              className={`object-contain cursor-pointer header-logo ${theme === 'dark' ? 'header-logo-dark' : 'header-logo-light'}`}
+              onClick={() => navigate(isAuthenticated ? "/home" : "/")}
+              style={{
+                height: "36px",
+                width: "auto",
+              }}
+            />
+          )}
         </div>
 
         <div
-          className="md:hidden"
+          className="flex items-center md:hidden"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -118,137 +230,24 @@ const Header = memo(() => {
           {showMobileMenu ? (
             <CrossIcon stroke="white" />
           ) : (
-            <MenuIcon stroke="white" />
-          )}
-        </div>
-
-        <div className="hidden md:flex flex-row items-center gap-4">
-          {isAuthenticated ? (
-            <div className="relative md:pr-6" ref={menuRef}>
+            isAuthenticated ? (
               <img
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  e.nativeEvent.stopImmediatePropagation();
-                  setShowMenu((prev) => !prev);
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                className="h-12 w-12 cursor-pointer rounded-full"
+                className="h-10 w-10 cursor-pointer rounded-full border-2 border-dashboard/800"
                 src={
                   accountData?.[0]?.profile_picture?.url ||
                   "https://api.dicebear.com/9.x/shapes/svg?seed=Leah"
                 }
                 alt="profile"
               />
-
-              <AnimatePresence>
-                {showMenu && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                    transition={{ duration: 0.2, ease: "easeOut" }}
-                    className="absolute top-16 right-0 w-56 bg-dashboard-sidebar rounded-xl shadow-dashboard-elevated border border-dashboard overflow-hidden z-[100]"
-                  >
-                    {/* User Info Section */}
-                    <div className="px-4 py-3 bg-dashboard-muted border-b border-dashboard">
-                      <div className="flex items-center gap-3">
-                        <img
-                          className="h-10 w-10 rounded-full ring-2 ring-dashboard-accent"
-                          src={
-                            accountData?.[0]?.profile_picture?.url ||
-                            "https://api.dicebear.com/9.x/shapes/svg?seed=Leah"
-                          }
-                          alt="profile"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-white truncate">
-                            {user?.username || accountData?.[0]?.Account_Name || "User"}
-                          </p>
-                          <p className="text-xs text-[hsl(var(--text-light))]">Account Settings</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Menu Items */}
-                    <div className="py-2">
-                      {/* Theme Toggle */}
-                      <div className="w-full flex items-center justify-between px-4 py-3">
-                        <div className="flex items-center gap-2.5">
-                          {theme === 'dark' ? (
-                            <SunIcon fill="var(--dash-icon-primary)" />
-                          ) : (
-                            <MoonIcon fill="var(--dash-icon-primary)" />
-                          )}
-                          <span className="text-sm font-medium text-dashboard">
-                            {theme === 'dark' ? t("sidebar.lightMode") : t("sidebar.darkMode")}
-                          </span>
-                        </div>
-                        <SwitchButton
-                          isChecked={theme === 'dark'}
-                          onChange={toggleTheme}
-                          variant="blue"
-                        />
-                      </div>
-
-                      <motion.button
-                        whileHover={{ backgroundColor: "#374151" }}
-                        whileTap={{ scale: 0.98 }}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-left text-[hsl(var(--text-light))] hover:text-white transition-colors"
-                        onClick={() => {
-                          navigate("/settings");
-                          setShowMenu(false);
-                        }}
-                      >
-                        <div className="w-5 h-5 text-[hsl(var(--muted-foreground))]">
-                          <SettingsIcon fill="currentColor" />
-                        </div>
-                        <span className="font-medium">Settings</span>
-                      </motion.button>
-
-                      <motion.button
-                        whileHover={{ backgroundColor: "#7f1d1d" }}
-                        whileTap={{ scale: 0.98 }}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-left text-[hsl(var(--destructive))] hover:text-[hsl(var(--destructive))]/80 transition-colors"
-                        onClick={() => {
-                          handleLogout();
-                          setShowMenu(false);
-                        }}
-                      >
-                        <div className="w-5 h-5 text-[hsl(var(--destructive))]">
-                          <LogoutIcon size="20" />
-                        </div>
-                        <span className="font-medium">Logout</span>
-                      </motion.button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ) : (
-            <>
-              {/* MANUAL AUTH DISABLED - Hide register button when OAuth-only mode */}
-              <Button
-                btnText={"Login"}
-                variant="primary"
-                type="button"
-                size="xsmall"
-                onClickHandler={() => navigate("/login")}
-              />
-              {isManualAuthEnabled() && (
-                <Button
-                  btnText={"Register"}
-                  variant="primary"
-                  type="button"
-                  size="xsmall"
-                  onClickHandler={() => navigate("/register")}
-                />
-              )}
-            </>
+            ) : (
+              <div className="bg-dashboard-muted p-2 rounded-xl border border-dashboard/800">
+                <Profile fill="white" />
+              </div>
+            )
           )}
+        </div>
+
+        <div className="hidden md:flex flex-row items-center gap-4">
         </div>
       </div>
 
@@ -260,7 +259,7 @@ const Header = memo(() => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="md:hidden absolute right-4 top-16 w-64 bg-dashboard-sidebar rounded-xl shadow-dashboard-elevated border border-dashboard overflow-hidden z-[100]"
+            className="absolute right-4 top-16 w-64 bg-dashboard-sidebar rounded-xl shadow-dashboard-elevated border border-dashboard overflow-hidden z-[100]"
           >
             {isAuthenticated ? (
               <>

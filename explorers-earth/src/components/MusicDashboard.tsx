@@ -21,6 +21,7 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react';
+import SwitchButton from './ui/SwitchButton';
 import PlaylistTable from './playlist-table';
 import SearchSongs from './search-songs';
 import YoutubePlayer from './youtube-player';
@@ -32,6 +33,8 @@ import type { Song } from '../types/music';
 
 interface MusicDashboardProps {
   data: TunesDashboardData;
+  isPublic?: boolean;
+  onVisibilityToggle?: () => void;
 }
 
 type MainTab = 'queue' | 'guest-controls' | 'recently-played' | 'playlists';
@@ -56,7 +59,7 @@ function ConfirmModal({
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 p-4">
       <div className="bg-gray-900 border border-white/10 rounded-xl p-6 max-w-sm w-full shadow-2xl">
         <h3 className="text-white font-semibold mb-2">{title}</h3>
         <p className="text-gray-400 text-sm mb-5">{description}</p>
@@ -82,7 +85,7 @@ function ConfirmModal({
   );
 }
 
-export default function MusicDashboard({ data }: MusicDashboardProps) {
+export default function MusicDashboard({ data, isPublic, onVisibilityToggle }: MusicDashboardProps) {
   const { localUser, guestUrl, playlists, playlist, isLoading, error } = data;
   const queryClient = useQueryClient();
   const hasAutoStarted = useRef(false);
@@ -505,7 +508,29 @@ export default function MusicDashboard({ data }: MusicDashboardProps) {
   ];
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      {/* ── Top Row with Add Button and Visibility Toggle ─────────────────── */}
+      <div className="flex items-center justify-between bg-dashboard-sidebar/40 px-3 py-3 rounded-xl mb-2">
+        <div className="flex flex-col items-start gap-1.5 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
+          <span className="text-[10px] md:text-xs font-bold text-white leading-tight whitespace-nowrap">Public Visibility</span>
+          <SwitchButton
+            isChecked={isPublic === true}
+            onChange={onVisibilityToggle || (() => {})}
+            variant="blue"
+          />
+        </div>
+
+        <button
+          onClick={() => {
+            setActiveTab('playlists');
+            setShowNewPlaylistInput(true);
+          }}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap"
+        >
+           <Plus size={18} />
+           <span>New Playlist</span>
+        </button>
+      </div>
 
       {/* ── Add Songs — always visible at top ─────────────────────────────── */}
       <div className="bg-black/20 rounded-xl p-4">

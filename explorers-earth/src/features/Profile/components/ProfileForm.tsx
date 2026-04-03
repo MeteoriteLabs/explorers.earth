@@ -365,10 +365,13 @@ const ProfileForm: FC<ProfileFormProps> = memo(
       }
     };
 
-    const handleSameAsAddressChange = (checked: boolean) => {
+    const handleSameAsAddressChange = (checked: boolean, values: any) => {
       setSameAsAddress(checked);
       if (checked) {
-        setPrimaryAddressCombined(address);
+        const city = values.city || "";
+        const country = values.country || "";
+        const combined = city && country ? `${city}, ${country}` : city || country;
+        setPrimaryAddressCombined(combined);
       }
       // Mark form as dirty when user changes same as address (only after initialization)
       if (isFormInitialized) {
@@ -1004,7 +1007,7 @@ const ProfileForm: FC<ProfileFormProps> = memo(
                                     id="same-as-address"
                                     checked={sameAsAddress}
                                     onChange={(e) =>
-                                      handleSameAsAddressChange(e.target.checked)
+                                      handleSameAsAddressChange(e.target.checked, values)
                                     }
                                     className="accent-[hsl(var(--blue-cta))]"
                                   />

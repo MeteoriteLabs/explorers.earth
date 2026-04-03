@@ -87,7 +87,7 @@ const Settings = memo(() => {
   const [addReasonForLeaving] = useMutation(addReasonForLeavingMutation);
   const [updateTabVisibility] = useMutation(updateTabVisibilityMutation);
   // Optimistic UI state for tab visibility toggles
-  const [tabVisibilityOverrides, setTabVisibilityOverrides] = useState<Record<string, boolean>>({});
+  const [tabVisibilityOverrides, setTabVisibilityOverrides] = useState<Record<string, any>>({});
   const [tabVisibilityLoading, setTabVisibilityLoading] = useState<Record<string, boolean>>({});
 
   const { data } = useQuery(providerQuery, {
@@ -126,30 +126,102 @@ const Settings = memo(() => {
   // Helper to get the effective toggle value (optimistic override > server data)
   const getTabVisibility = (tabType: string): boolean => {
     if (tabType in tabVisibilityOverrides) {
-      return tabVisibilityOverrides[tabType];
+      return tabVisibilityOverrides[tabType] as boolean;
     }
     return currentUserAccountData?.accounts[0]?.[tabType] === "Yes";
   };
 
-  // Function to update tab visibility with optimistic UI
-  const handleTabVisibilityUpdate = async (tabType: 'public_profile' | 'public_recommendations' | 'public_music' | 'public_guides', isVisible: boolean) => {
+  const getPinnedNavTabs = (): string[] => {
+    if ('pinned_nav_tabs' in tabVisibilityOverrides) {
+      return tabVisibilityOverrides['pinned_nav_tabs'] || [];
+    }
+    return currentUserAccountData?.accounts[0]?.pinned_nav_tabs || [];
+  };
+
+  const isTabPinned = (tabType: string): boolean => {
+    return getPinnedNavTabs().includes(tabType);
+  };
+
+  const handleNavPinUpdate = async (tabType: string, isPinned: boolean) => {
     const currentAccount = currentUserAccountData?.accounts[0];
     if (!currentAccount?.documentId) {
       toast.error("Account not found");
       return;
     }
 
-    // Optimistic: toggle immediately + show loading
-    setTabVisibilityOverrides(prev => ({ ...prev, [tabType]: isVisible }));
-    setTabVisibilityLoading(prev => ({ ...prev, [tabType]: true }));
+    let currentPinned = getPinnedNavTabs();
+
+    if (isPinned) {
+      if (currentPinned.length >= 5) {
+        toast.error("You can only select up to 5 tabs for the navigation menu");
+        return;
+      }
+      currentPinned = [...currentPinned, tabType];
+    } else {
+      currentPinned = currentPinned.filter(t => t !== tabType);
+    }
+
+    setTabVisibilityOverrides(prev => ({ ...prev, pinned_nav_tabs: currentPinned }));
+    setTabVisibilityLoading(prev => ({ ...prev, [`pin_${tabType}`]: true }));
 
     try {
       await updateTabVisibility({
         variables: {
           documentId: currentAccount.documentId,
           data: {
-            [tabType]: isVisible ? "Yes" : "No"
+            pinned_nav_tabs: currentPinned
           }
+        }
+      });
+      toast.success("Navigation tabs updated successfully");
+      await refetchAccountData();
+    } catch (error) {
+      console.error("Error updating pinned tabs:", error);
+      toast.error("Failed to update navigation menu settings");
+    } finally {
+      setTabVisibilityOverrides(prev => {
+        const next = { ...prev };
+        delete next['pinned_nav_tabs'];
+        return next;
+      });
+      setTabVisibilityLoading(prev => ({ ...prev, [`pin_${tabType}`]: false }));
+    }
+  };
+
+  // Function to update tab visibility with optimistic UI
+  const handleTabVisibilityUpdate = async (tabType: string, isVisible: boolean) => {
+    const currentAccount = currentUserAccountData?.accounts[0];
+    if (!currentAccount?.documentId) {
+      toast.error("Account not found");
+      return;
+    }
+
+    // Automatically unpin the tab if it is being hidden
+    let newPinnedTabs = getPinnedNavTabs();
+    let unpinned = false;
+    if (!isVisible && newPinnedTabs.includes(tabType)) {
+      newPinnedTabs = newPinnedTabs.filter(t => t !== tabType);
+      unpinned = true;
+    }
+
+    // Optimistic: toggle immediately + show loading
+    setTabVisibilityOverrides(prev => ({ 
+      ...prev, 
+      [tabType]: isVisible,
+      ...(unpinned ? { pinned_nav_tabs: newPinnedTabs } : {}) 
+    }));
+    setTabVisibilityLoading(prev => ({ ...prev, [tabType]: true }));
+
+    try {
+      const updateData: any = { [tabType]: isVisible ? "Yes" : "No" };
+      if (unpinned) {
+        updateData.pinned_nav_tabs = newPinnedTabs;
+      }
+
+      await updateTabVisibility({
+        variables: {
+          documentId: currentAccount.documentId,
+          data: updateData
         }
       });
 
@@ -159,6 +231,7 @@ const Settings = memo(() => {
       setTabVisibilityOverrides(prev => {
         const next = { ...prev };
         delete next[tabType];
+        if (unpinned) delete next['pinned_nav_tabs'];
         return next;
       });
     } catch (error) {
@@ -168,6 +241,7 @@ const Settings = memo(() => {
       setTabVisibilityOverrides(prev => {
         const next = { ...prev };
         delete next[tabType];
+        if (unpinned) delete next['pinned_nav_tabs'];
         return next;
       });
     } finally {
@@ -467,16 +541,6 @@ const Settings = memo(() => {
   return (
     <div className="dashboard-theme min-h-screen bg-dashboard-bg">
       <div className="bg-dashboard-bg w-full h-full mx-auto max-w-3xl min-h-screen px-4 md:px-6 pt-8 md:pt-5 pb-24 md:pb-6">
-        {/* Header Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white font-poppins mb-2">
-            {t("settings.title")}
-          </h1>
-          <p className="text-white/70 font-poppins text-sm">
-            {t("settings.subtitle")}
-          </p>
-        </div>
-
         {/* Tab Switcher - Sticky positioning below header on scroll */}
         <div className="z-[50] sticky top-[73px] md:top-0 w-full -mx-4 md:-mx-6 mb-6 bg-dashboard-bg py-2">
           <div className="flex items-center justify-center bg-white font-poppins rounded-3xl mx-auto w-fit">
@@ -609,7 +673,51 @@ const Settings = memo(() => {
             <Accordion heading="Public Profile Settings" defaultOpen={false}>
               <div className="bg-dashboard-sidebar rounded-xl p-6">
                 <div className="space-y-6">
-                  <div>
+                  {/* Pinned Navigation Tabs Selector */}
+                  <div className="mb-4">
+                    <div className="flex flex-col mb-4">
+                      <h3 className="text-white font-semibold font-poppins text-lg mb-1">Pinned Navigation Tabs</h3>
+                      <p className="text-white/70 text-sm font-poppins">Select up to 5 enabled tabs to show on your public profile's bottom navigation. Click a tab to pin or unpin it.</p>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      {Object.entries({
+                        public_profile: "Profile",
+                        public_recommendations: "Recommendations", 
+                        public_music: "Music",
+                        public_guides: "Guides",
+                        public_movie: "Movies & Shows",
+                        public_books: "Books",
+                        public_games: "Games"
+                      }).map(([key, label]) => {
+                        const isEnabled = getTabVisibility(key);
+                        if (!isEnabled) return null;
+                        const pinned = isTabPinned(key);
+                        
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => handleNavPinUpdate(key, !pinned)}
+                            disabled={tabVisibilityLoading[`pin_${key}`]}
+                            className={`relative px-4 py-2 rounded-full text-sm font-poppins font-medium transition-all ${
+                              pinned 
+                                ? 'bg-[hsl(var(--blue-cta))] text-white border border-[hsl(var(--blue-cta))]' 
+                                : 'bg-dashboard-muted text-dashboard-light hover:text-white border border-white/10 hover:border-white/30'
+                            } ${tabVisibilityLoading[`pin_${key}`] ? 'opacity-70 cursor-not-allowed' : ''}`}
+                          >
+                            {tabVisibilityLoading[`pin_${key}`] && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-full">
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              </div>
+                            )}
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-white/10">
                     <h3 className="text-white font-semibold font-poppins mb-2 text-lg">
                       Tab Visibility
                     </h3>
@@ -629,24 +737,25 @@ const Settings = memo(() => {
                         </div>
                         <div>
                           <h4 className="text-white font-medium font-poppins">Profile Tab</h4>
-                          <p className="text-white/60 text-sm font-poppins">Show your name, social links, photos, and videos on your public profile</p>
+                          <p className="hidden sm:block text-white/60 text-sm font-poppins">Show your name, social links, photos, and videos on your public profile</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {tabVisibilityLoading['public_profile'] && (
-                          <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                        )}
-                        <label className={`relative inline-flex items-center ${tabVisibilityLoading['public_profile'] ? 'pointer-events-none opacity-70' : 'cursor-pointer'}`}>
-                          <input
-                            type="checkbox"
-                            className="sr-only peer"
-                            checked={getTabVisibility('public_profile')}
-                            onChange={(e) => {
-                              handleTabVisibilityUpdate('public_profile', e.target.checked);
-                            }}
-                          />
-                          <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
+                      <div className="flex flex-col items-end gap-3">
+                        <div className="flex items-center gap-2">
+                          
+                          {tabVisibilityLoading['public_profile'] && (
+                            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                          )}
+                          <label className={`relative inline-flex items-center ${tabVisibilityLoading['public_profile'] ? 'pointer-events-none opacity-70' : 'cursor-pointer'}`}>
+                            <input
+                              type="checkbox"
+                              className="sr-only peer"
+                              checked={getTabVisibility('public_profile')}
+                              onChange={(e) => handleTabVisibilityUpdate('public_profile', e.target.checked)}
+                            />
+                            <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                          </label>
+                        </div>
                       </div>
                     </div>
 
@@ -660,24 +769,25 @@ const Settings = memo(() => {
                         </div>
                         <div>
                           <h4 className="text-white font-medium font-poppins">Recommendation Tab</h4>
-                          <p className="text-white/60 text-sm font-poppins">Show recommendations and business details on your public profile</p>
+                          <p className="hidden sm:block text-white/60 text-sm font-poppins">Show recommendations and business details on your public profile</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {tabVisibilityLoading['public_recommendations'] && (
-                          <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                        )}
-                        <label className={`relative inline-flex items-center ${tabVisibilityLoading['public_recommendations'] ? 'pointer-events-none opacity-70' : 'cursor-pointer'}`}>
-                          <input
-                            type="checkbox"
-                            className="sr-only peer"
-                            checked={getTabVisibility('public_recommendations')}
-                            onChange={(e) => {
-                              handleTabVisibilityUpdate('public_recommendations', e.target.checked);
-                            }}
-                          />
-                          <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
+                      <div className="flex flex-col items-end gap-3">
+                        <div className="flex items-center gap-2">
+                          
+                          {tabVisibilityLoading['public_recommendations'] && (
+                            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                          )}
+                          <label className={`relative inline-flex items-center ${tabVisibilityLoading['public_recommendations'] ? 'pointer-events-none opacity-70' : 'cursor-pointer'}`}>
+                            <input
+                              type="checkbox"
+                              className="sr-only peer"
+                              checked={getTabVisibility('public_recommendations')}
+                              onChange={(e) => handleTabVisibilityUpdate('public_recommendations', e.target.checked)}
+                            />
+                            <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                          </label>
+                        </div>
                       </div>
                     </div>
 
@@ -691,24 +801,25 @@ const Settings = memo(() => {
                         </div>
                         <div>
                           <h4 className="text-white font-medium font-poppins">Music Tab</h4>
-                          <p className="text-white/60 text-sm font-poppins">Show music preferences and playlists on your public profile</p>
+                          <p className="hidden sm:block text-white/60 text-sm font-poppins">Show music preferences and playlists on your public profile</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {tabVisibilityLoading['public_music'] && (
-                          <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                        )}
-                        <label className={`relative inline-flex items-center ${tabVisibilityLoading['public_music'] ? 'pointer-events-none opacity-70' : 'cursor-pointer'}`}>
-                          <input
-                            type="checkbox"
-                            className="sr-only peer"
-                            checked={getTabVisibility('public_music')}
-                            onChange={(e) => {
-                              handleTabVisibilityUpdate('public_music', e.target.checked);
-                            }}
-                          />
-                          <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
+                      <div className="flex flex-col items-end gap-3">
+                        <div className="flex items-center gap-2">
+                          
+                          {tabVisibilityLoading['public_music'] && (
+                            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                          )}
+                          <label className={`relative inline-flex items-center ${tabVisibilityLoading['public_music'] ? 'pointer-events-none opacity-70' : 'cursor-pointer'}`}>
+                            <input
+                              type="checkbox"
+                              className="sr-only peer"
+                              checked={getTabVisibility('public_music')}
+                              onChange={(e) => handleTabVisibilityUpdate('public_music', e.target.checked)}
+                            />
+                            <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                          </label>
+                        </div>
                       </div>
                     </div>
 
@@ -722,26 +833,125 @@ const Settings = memo(() => {
                         </div>
                         <div>
                           <h4 className="text-white font-medium font-poppins">Guides Tab</h4>
-                          <p className="text-white/60 text-sm font-poppins">Show guides and travel recommendations on your public profile</p>
+                          <p className="hidden sm:block text-white/60 text-sm font-poppins">Show guides and travel recommendations on your public profile</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {tabVisibilityLoading['public_guides'] && (
-                          <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                        )}
-                        <label className={`relative inline-flex items-center ${tabVisibilityLoading['public_guides'] ? 'pointer-events-none opacity-70' : 'cursor-pointer'}`}>
-                          <input
-                            type="checkbox"
-                            className="sr-only peer"
-                            checked={getTabVisibility('public_guides')}
-                            onChange={(e) => {
-                              handleTabVisibilityUpdate('public_guides', e.target.checked);
-                            }}
-                          />
-                          <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
+                      <div className="flex flex-col items-end gap-3">
+                        <div className="flex items-center gap-2">
+                          
+                          {tabVisibilityLoading['public_guides'] && (
+                            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                          )}
+                          <label className={`relative inline-flex items-center ${tabVisibilityLoading['public_guides'] ? 'pointer-events-none opacity-70' : 'cursor-pointer'}`}>
+                            <input
+                              type="checkbox"
+                              className="sr-only peer"
+                              checked={getTabVisibility('public_guides')}
+                              onChange={(e) => handleTabVisibilityUpdate('public_guides', e.target.checked)}
+                            />
+                            <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                          </label>
+                        </div>
                       </div>
                     </div>
+
+                    {/* Movies & Shows Tab Toggle */}
+                    <div className="flex items-center justify-between p-4 bg-dashboard-muted rounded-lg border border-white/10">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h4 className="text-white font-medium font-poppins">Movies & Shows Tab</h4>
+                          <p className="hidden sm:block text-white/60 text-sm font-poppins">Show your curated movies and TV shows on your public profile</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-3">
+                        <div className="flex items-center gap-2">
+                          
+                          {tabVisibilityLoading['public_movie'] && (
+                            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                          )}
+                          <label className={`relative inline-flex items-center ${tabVisibilityLoading['public_movie'] ? 'pointer-events-none opacity-70' : 'cursor-pointer'}`}>
+                            <input
+                              type="checkbox"
+                              className="sr-only peer"
+                              checked={getTabVisibility('public_movie')}
+                              onChange={(e) => handleTabVisibilityUpdate('public_movie', e.target.checked)}
+                            />
+                            <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Books Tab Toggle */}
+                    <div className="flex items-center justify-between p-4 bg-dashboard-muted rounded-lg border border-white/10">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h4 className="text-white font-medium font-poppins">Books Tab</h4>
+                          <p className="hidden sm:block text-white/60 text-sm font-poppins">Show your curated book recommendations on your public profile</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-3">
+                        <div className="flex items-center gap-2">
+                          
+                          {tabVisibilityLoading['public_books'] && (
+                            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                          )}
+                          <label className={`relative inline-flex items-center ${tabVisibilityLoading['public_books'] ? 'pointer-events-none opacity-70' : 'cursor-pointer'}`}>
+                            <input
+                              type="checkbox"
+                              className="sr-only peer"
+                              checked={getTabVisibility('public_books')}
+                              onChange={(e) => handleTabVisibilityUpdate('public_books', e.target.checked)}
+                            />
+                            <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Games Tab Toggle */}
+                    <div className="flex items-center justify-between p-4 bg-dashboard-muted rounded-lg border border-white/10">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h4 className="text-white font-medium font-poppins">Games Tab</h4>
+                          <p className="hidden sm:block text-white/60 text-sm font-poppins">Show your curated game lists on your public profile</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-3">
+                        <div className="flex items-center gap-2">
+                          
+                          {tabVisibilityLoading['public_games'] && (
+                            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                          )}
+                          <label className={`relative inline-flex items-center ${tabVisibilityLoading['public_games'] ? 'pointer-events-none opacity-70' : 'cursor-pointer'}`}>
+                            <input
+                              type="checkbox"
+                              className="sr-only peer"
+                              checked={getTabVisibility('public_games')}
+                              onChange={(e) => handleTabVisibilityUpdate('public_games', e.target.checked)}
+                            />
+                            <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+
                   </div>
                 </div>
               </div>

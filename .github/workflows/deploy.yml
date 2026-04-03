@@ -9,9 +9,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  # GITHUB_REPOSITORY is "owner/repo" — we derive lowercase image names from it
-  TUNES_IMAGE: ghcr.io/${{ github.repository_owner }}/tunes
-  EXPLORERS_IMAGE: ghcr.io/${{ github.repository_owner }}/explorers-earth
 
 jobs:
   # ────────────────────────────────────────────────────────────────────────────
@@ -28,6 +25,12 @@ jobs:
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set lowercase image names
+        run: |
+          OWNER_LC=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
+          echo "TUNES_IMAGE=ghcr.io/${OWNER_LC}/tunes" >> $GITHUB_ENV
+          echo "EXPLORERS_IMAGE=ghcr.io/${OWNER_LC}/explorers-earth" >> $GITHUB_ENV
 
       - name: 🔑 Log in to GitHub Container Registry
         uses: docker/login-action@v3

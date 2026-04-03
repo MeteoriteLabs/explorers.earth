@@ -9,6 +9,7 @@ import Favorites from "../pages/Favorites";
 import Analytics from "../pages/Analytics";
 import SettingsPage from "../pages/SettingsPage";
 import Home from "../pages/Home";
+import RecommendationsHub from "../pages/RecommendationsHub";
 import Music from "../pages/Music";
 import Instagram from "../pages/Instagram";
 import SubscriptionPlans from "../pages/SubscriptionPlans";
@@ -20,6 +21,9 @@ import {
   GuideDetailsPage,
   GuideSectionFormPage,
 } from "../features/Guides";
+import { MoviesHome, MovieListView, AddMoviePage } from "../features/Movies";
+import { BooksHome, BookListView, AddBookPage } from "../features/Books";
+import { GamesHome, GameListView, AddGamePage } from "../features/Games";
 
 // Import layouts
 import DashboardLayout from "../layouts/DashboardLayout";
@@ -36,6 +40,7 @@ const ProtectedRoutes = ({
     <Route key="desktop-routes" path="/*" element={<DashboardLayout />}>
       <Route path="profile" element={<Profile />} />
       <Route path="recommendations" element={<Favorites />} />
+      <Route path="recommendations/places" element={<Favorites />} />
       <Route path="analytics" element={<Analytics />} />
       <Route path="settings" element={<SettingsPage />} />
       <Route path="home" element={<Home />} />
@@ -46,6 +51,18 @@ const ProtectedRoutes = ({
       <Route path="guides/:guideId/sections/:sectionId/edit" element={<GuideSectionFormPage />} />
       <Route path="music" element={<Music />} />
       <Route path="instagram" element={<Instagram />} />
+      <Route path="recommendations/movies" element={<MoviesHome />} />
+      <Route path="recommendations/movies/:listId" element={<MovieListView />} />
+      <Route path="recommendations/movies/:listId/add" element={<AddMoviePage />} />
+      <Route path="recommendations/movies/:listId/edit/:movieId" element={<AddMoviePage />} />
+      <Route path="recommendations/books" element={<BooksHome />} />
+      <Route path="recommendations/books/:listId" element={<BookListView />} />
+      <Route path="recommendations/books/:listId/add" element={<AddBookPage />} />
+      <Route path="recommendations/books/:listId/edit/:bookId" element={<AddBookPage />} />
+      <Route path="recommendations/games" element={<GamesHome />} />
+      <Route path="recommendations/games/:listId" element={<GameListView />} />
+      <Route path="recommendations/games/:listId/add" element={<AddGamePage />} />
+      <Route path="recommendations/games/:listId/edit/:gameId" element={<AddGamePage />} />
       <Route path=":listId/new" element={<AddRecommendation />} />
       <Route
         path="guides/:guideId/edit"
@@ -59,7 +76,9 @@ const ProtectedRoutes = ({
   const mobileRoutes = (
     <Route key="mobile-routes" path="/*" element={<MobileLayout />}>
       <Route path="profile" element={<Profile />} />
+      <Route path="hub" element={<RecommendationsHub />} />
       <Route path="recommendations" element={<Favorites />} />
+      <Route path="recommendations/places" element={<Favorites />} />
       <Route path="analytics" element={<Analytics />} />
       <Route path="settings" element={<SettingsPage />} />
       <Route path="home" element={<Home />} />
@@ -76,6 +95,18 @@ const ProtectedRoutes = ({
       <Route path=":placeId/edit" element={<AddRecommendation type="edit" />} />
       <Route path="music" element={<Music />} />
       <Route path="instagram" element={<Instagram />} />
+      <Route path="recommendations/movies" element={<MoviesHome />} />
+      <Route path="recommendations/movies/:listId" element={<MovieListView />} />
+      <Route path="recommendations/movies/:listId/add" element={<AddMoviePage />} />
+      <Route path="recommendations/movies/:listId/edit/:movieId" element={<AddMoviePage />} />
+      <Route path="recommendations/books" element={<BooksHome />} />
+      <Route path="recommendations/books/:listId" element={<BookListView />} />
+      <Route path="recommendations/books/:listId/add" element={<AddBookPage />} />
+      <Route path="recommendations/books/:listId/edit/:bookId" element={<AddBookPage />} />
+      <Route path="recommendations/games" element={<GamesHome />} />
+      <Route path="recommendations/games/:listId" element={<GameListView />} />
+      <Route path="recommendations/games/:listId/add" element={<AddGamePage />} />
+      <Route path="recommendations/games/:listId/edit/:gameId" element={<AddGamePage />} />
     </Route>
   );
 

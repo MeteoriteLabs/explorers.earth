@@ -98,6 +98,9 @@ Cosmic is a full-stack collaborative playlist management platform that enables v
 - **Input Validation**: Zod schema validation throughout
 - **SQL Injection Prevention**: Parameterized queries via Drizzle ORM
 
+
+test
+
 ## Changelog
 - June 20, 2025. Initial setup
 

@@ -5,6 +5,7 @@ export const accountDataQuery = gql`
     usersPermissionsUser(documentId: $documentId) {
       accounts {
         documentId
+        public_recommendations
       }
     }
   }

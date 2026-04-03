@@ -38,28 +38,28 @@ const SwitchButton: FC<SwitchButtonProps> = memo(
           className="sr-only"
         />
         <div
-          className={`w-11 h-6 rounded-full transition-all duration-300 border ${
+          className={`w-11 h-6 rounded-full transition-all duration-300 ${
             disabled
-              ? "opacity-50 border-gray-500 bg-gray-600"
+              ? "opacity-50 bg-gray-600"
               : variant === "blue"
               ? isChecked
-                ? "border-[var(--dash-accent)] bg-[var(--dash-accent)] hover:opacity-90"
-                : "border-gray-400 bg-gray-600 hover:border-gray-300"
+                ? "bg-[var(--dash-accent)] hover:opacity-90"
+                : "bg-gray-600"
               : variant === "purple"
               ? isChecked
-                ? "border-[hsl(var(--blue-cta))] bg-[hsl(var(--blue-cta))] hover:opacity-90"
-                : "border-gray-400 bg-gray-600 hover:border-gray-300"
+                ? "bg-[hsl(var(--blue-cta))] hover:opacity-90"
+                : "bg-gray-600"
               : variant === "green"
               ? isChecked
                 ? theme === "dark"
-                  ? "border-[var(--dash-accent)] bg-[var(--dash-accent)] hover:opacity-90"
-                  : "border-gray-300 bg-evergreen hover:opacity-90"
-                : "border-gray-400 bg-gray-600 hover:border-gray-300"
+                  ? "bg-[var(--dash-accent)] hover:opacity-90"
+                  : "bg-evergreen hover:opacity-90"
+                : "bg-gray-600"
               : variant === "dark"
               ? isChecked
-                ? "border-white bg-white hover:opacity-90"
-                : "border-gray-400 bg-gray-600 hover:border-gray-300"
-              : "border-black"
+                ? "bg-white hover:opacity-90"
+                : "bg-gray-600"
+              : "bg-black"
           }`}
         />
         <span

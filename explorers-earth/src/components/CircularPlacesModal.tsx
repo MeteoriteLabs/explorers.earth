@@ -204,7 +204,7 @@ const CircularPlacesModal: FC<CircularPlacesModalProps> = ({
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60]"
+        className="fixed inset-0 bg-black/60 flex items-center justify-center z-[150]"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

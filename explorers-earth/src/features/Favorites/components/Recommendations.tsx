@@ -955,10 +955,10 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
       )}
 
       {isExpanded.visible && (
-        <div className="fixed inset-0 bg-dashboard-overlay backdrop-blur-md z-[60]"></div>
+        <div className="fixed inset-0 bg-dashboard-overlay backdrop-blur-md z-[150]"></div>
       )}
       <div
-        className={`fixed md:max-w-4xl md:mx-auto inset-x-0 bottom-0 top-24 md:top-12 z-[70] transition-transform duration-300 ease-in-out ${isExpanded.visible ? "translate-y-0" : "translate-y-full"
+        className={`fixed md:max-w-4xl md:mx-auto inset-x-0 bottom-0 top-24 md:top-12 z-[150] transition-transform duration-300 ease-in-out ${isExpanded.visible ? "translate-y-0" : "translate-y-full"
           }`}
         style={{ height: "100%" }}
       >
