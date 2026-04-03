@@ -7,12 +7,14 @@ import { gql, useQuery } from "@apollo/client";
 import { toast } from "sonner";
 import CrossIcon from "../assets/icons/CrossIcon";
 import Profile from "../assets/icons/Profile";
+import HomeIcon from "../assets/icons/Home";
 import { useTranslation } from "react-i18next";
 import SettingsIcon from "../assets/icons/SettingsIcon";
 import LogoutIcon from "../assets/icons/LogoutIcon";
 import SunIcon from "../assets/icons/SunIcon";
 import MoonIcon from "../assets/icons/MoonIcon";
 import SwitchButton from "./ui/SwitchButton";
+import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 import { motion, AnimatePresence } from "framer-motion";
 import { isManualAuthEnabled } from "../config/featureFlags";
 import { useDashboardTheme } from "../contexts/DashboardThemeContext";
@@ -117,6 +119,18 @@ const Header = memo(() => {
 
 
 
+  // Define named pages with icons for large-screen header display
+  const namedPages = [
+    { path: '/home', exact: true, label: 'Home', icon: <HomeIcon /> },
+    { path: '/profile', exact: true, label: 'Profile', icon: <Profile fill="white" /> },
+    { path: '/settings', exact: true, label: 'Settings', icon: <SettingsIcon fill="white" /> },
+    { path: '/guides', exact: false, label: 'Guides', icon: <TravelGuideIcon fill="white" /> },
+  ];
+
+  const currentNamedPage = namedPages.find(p =>
+    p.exact ? location.pathname === p.path : location.pathname.startsWith(p.path)
+  );
+
   return (
     <div className="dashboard-header bg-dashboard-sidebar md:px-6 px-4 py-4 md:py-2 border-b border-dashboard">
       <div className="flex flex-row rounded-xl items-center justify-between md:justify-center md:p-[4px]">
@@ -171,6 +185,21 @@ const Header = memo(() => {
               </div>
 
             </div>
+          ) : currentNamedPage ? (
+            <>
+              {/* Mobile: show logo; Desktop: show page name + icon */}
+              <img
+                src="/logo.svg"
+                alt="explorers.earth"
+                className={`md:hidden object-contain cursor-pointer header-logo ${theme === 'dark' ? 'header-logo-dark' : 'header-logo-light'}`}
+                onClick={() => navigate(isAuthenticated ? "/home" : "/")}
+                style={{ height: "36px", width: "auto" }}
+              />
+              <div className="hidden md:flex items-center gap-2.5">
+                <span className="flex items-center justify-center opacity-90">{currentNamedPage.icon}</span>
+                <span className="text-white font-black text-2xl font-poppins">{currentNamedPage.label}</span>
+              </div>
+            </>
           ) : (
             <img
               src="/logo.svg"

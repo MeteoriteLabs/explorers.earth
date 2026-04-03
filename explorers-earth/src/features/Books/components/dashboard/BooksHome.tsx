@@ -396,11 +396,8 @@ const BooksHome = () => {
     <div className="px-2 md:px-6 pt-2 pb-24 md:pb-6 max-w-4xl mx-auto">
       {/* Action Header Row */}
       <div className="flex items-center justify-between bg-dashboard-sidebar/40 px-3 py-3 rounded-2xl mb-2">
-        <div className="flex items-center gap-3 bg-dashboard-muted/50 pl-3 pr-0 md:px-4 py-2 rounded-xl">
-          <div className="flex flex-col">
-            <span className="text-[10px] md:text-xs font-bold text-white leading-tight">Public Visibility</span>
-            <span className="text-[9px] md:text-[10px] text-white/50 leading-tight">Books</span>
-          </div>
+        <div className="flex flex-col items-start gap-1.5 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
+          <span className="text-[10px] md:text-xs font-bold text-white leading-tight whitespace-nowrap">Public Visibility</span>
           <SwitchButton
             isChecked={myAccountData?.usersPermissionsUser?.accounts?.[0]?.public_books === "Yes"}
             onChange={handleVisibilityToggle}
@@ -410,7 +407,7 @@ const BooksHome = () => {
 
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap"
         >
           <Plus size={18} />
           <span>New List</span>

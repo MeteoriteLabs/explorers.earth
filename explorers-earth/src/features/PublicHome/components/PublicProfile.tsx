@@ -513,10 +513,10 @@ const PublicProfile = memo(() => {
           />
           <div className="absolute inset-0 bg-black/50"></div>
         </div>
-        <div className="absolute top-[10rem] md:top-40 left-0 w-full m-auto pointer-events-none">
-          <div className="relative -mt-14 mb-4 pointer-events-auto">
+        <div className="relative -mt-20 md:-mt-14 w-full m-auto pointer-events-none z-10">
+          <div className="relative mb-2 pointer-events-auto">
             <div
-              className="w-[7rem] h-[7rem] mx-auto rounded-full border-4 border-[hsl(var(--evergreen))] overflow-hidden cursor-pointer"
+              className="w-[7rem] h-[7rem] mx-auto rounded-full border-4 border-[hsl(var(--evergreen))] overflow-hidden cursor-pointer bg-black"
               onClick={handleImageClick}
             >
               <img
@@ -533,13 +533,13 @@ const PublicProfile = memo(() => {
             <h2 className="text-sm font-poppins font-semibold text-white">
               {accountData?.Account_Name}
             </h2>
-            <div className="text-white text-xs font-poppins">
+            <div className="text-white text-xs font-poppins mt-0.5">
               {accountData?.Primary_Address?.address}
             </div>
           </div>
 
           {/* Social Links */}
-          <div className="flex items-center justify-center gap-10 mt-3 pb-4 pointer-events-auto">
+          <div className="flex items-center justify-center gap-10 mt-2.5 mb-1 pointer-events-auto empty:hidden">
             {accountData?.social_media?.instagram?.link &&
               accountData?.social_media?.instagram?.visibility && (
                 <a
@@ -734,10 +734,10 @@ const PublicProfile = memo(() => {
           </div>
         </div>
         <div className="md:max-w-5xl px-6 md:px-6 md:mx-auto">
-          <div className="mt-2 max-w-3xl md:flex flex-col item-center justify-center mx-auto">
-            <div className="bg-black rounded-none md:rounded-lg p-4">
+          <div className="mt-0 max-w-3xl md:flex flex-col item-center justify-center mx-auto">
+            <div className="bg-black rounded-none md:rounded-lg p-2">
               <div
-                className="text-gray-300 font-poppins text-xs"
+                className="text-gray-300 font-poppins text-xs line-clamp-3 break-words overflow-hidden text-ellipsis"
                 dangerouslySetInnerHTML={{ __html: accountData?.Bio || "" }}
               />
             </div>

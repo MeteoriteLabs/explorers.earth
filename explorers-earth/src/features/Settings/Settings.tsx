@@ -541,16 +541,6 @@ const Settings = memo(() => {
   return (
     <div className="dashboard-theme min-h-screen bg-dashboard-bg">
       <div className="bg-dashboard-bg w-full h-full mx-auto max-w-3xl min-h-screen px-4 md:px-6 pt-8 md:pt-5 pb-24 md:pb-6">
-        {/* Header Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white font-poppins mb-2">
-            {t("settings.title")}
-          </h1>
-          <p className="text-white/70 font-poppins text-sm">
-            {t("settings.subtitle")}
-          </p>
-        </div>
-
         {/* Tab Switcher - Sticky positioning below header on scroll */}
         <div className="z-[50] sticky top-[73px] md:top-0 w-full -mx-4 md:-mx-6 mb-6 bg-dashboard-bg py-2">
           <div className="flex items-center justify-center bg-white font-poppins rounded-3xl mx-auto w-fit">
