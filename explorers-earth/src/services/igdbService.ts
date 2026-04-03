@@ -32,9 +32,6 @@ export interface MappedGame {
 const CLIENT_ID = import.meta.env.VITE_IGDB_CLIENT_ID || "";
 const CLIENT_SECRET = import.meta.env.VITE_IGDB_CLIENT_SECRET || "";
 
-// Using a free CORS proxy to bypass browser restrictions
-const CORS_PROXY = "https://corsproxy.io/?";
-
 class IgdbService {
   private igdbToken: string | null = null;
   private tokenExpiresAt: number = 0;
@@ -49,8 +46,8 @@ class IgdbService {
     }
 
     try {
-      const authUrl = `https://id.twitch.tv/oauth2/token?client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}&grant_type=client_credentials`;
-      const response = await axios.post(CORS_PROXY + encodeURIComponent(authUrl));
+      const authUrl = `/twitch-api/oauth2/token?client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}&grant_type=client_credentials`;
+      const response = await axios.post(authUrl);
       
       this.igdbToken = response.data.access_token;
       // Buffer by 10 minutes
@@ -114,10 +111,10 @@ class IgdbService {
 
   private async fetchIgdb(bodyContent: string): Promise<any> {
     const token = await this.getAccessToken();
-    const targetUrl = "https://api.igdb.com/v4/games";
+    const targetUrl = "/igdb-api/v4/games";
     
-    // Some proxies require passing headers differently, corsproxy.io forwards them automatically
-    const response = await axios.post(CORS_PROXY + encodeURIComponent(targetUrl), bodyContent, {
+    // Using relative URL which hits the Netlify/Vite proxy
+    const response = await axios.post(targetUrl, bodyContent, {
       headers: {
         "Client-ID": CLIENT_ID,
         "Authorization": `Bearer ${token}`,

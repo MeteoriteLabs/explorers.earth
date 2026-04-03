@@ -11,6 +11,18 @@
   force = true
 
 [[redirects]]
+  from = "/twitch-api/*"
+  to = "https://id.twitch.tv/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/igdb-api/*"
+  to = "https://api.igdb.com/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/"
   status = 200

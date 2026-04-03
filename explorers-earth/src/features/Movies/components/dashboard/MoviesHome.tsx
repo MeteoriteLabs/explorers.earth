@@ -77,8 +77,12 @@ const CreateListModal = ({
         resetForm();
         onCreated();
         onClose();
-      } catch (e) {
-        toast.error("Failed to create list. Please try again.");
+      } catch (e: any) {
+        if (e.message && e.message.includes("must be unique")) {
+          formik.setFieldError("slug", "This URL is already taken. Please try another one.");
+        } else {
+          toast.error("Failed to create list. Please try again.");
+        }
       }
     },
   });
