@@ -135,7 +135,7 @@ const InlineSearch = ({ onSelect }: InlineSearchProps) => {
 const AddBookPage = () => {
   const { listId, bookId } = useParams<{ listId: string; bookId?: string }>();
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, token } = useAuthStore();
   const isEdit = Boolean(bookId);
 
   // Form state
@@ -229,7 +229,7 @@ const AddBookPage = () => {
           const fullCoverPath = generateBookUploadPath(username || "user", listId, selectedBook.volume_id, coverFilename);
           const directoryPath = fullCoverPath.substring(0, fullCoverPath.lastIndexOf('/'));
 
-          const TOKEN = import.meta.env.VITE_FULL_ACCESS_TOKEN;
+          const TOKEN = token;
           const qrtoken = localStorage.getItem('qrtoken');
           const PROXY_BASE = import.meta.env.VITE_INSTAGRAM_API_URL || 'http://localhost:5000';
 
@@ -264,7 +264,7 @@ const AddBookPage = () => {
         const filename = generateRandomFileName(file.name);
         const fullPath = generateBookUploadPath(username || "user", listId, selectedBook.volume_id, filename);
         const dirPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
-        const TOKEN = import.meta.env.VITE_FULL_ACCESS_TOKEN;
+        const TOKEN = token;
         const url = await uploadFileToStrapi(file, dirPath, TOKEN);
         uploadedSnapshots.push({ id: filename, url });
       }

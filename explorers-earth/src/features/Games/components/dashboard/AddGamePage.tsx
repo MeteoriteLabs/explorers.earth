@@ -128,7 +128,7 @@ const InlineSearch = ({ onSelect }: InlineSearchProps) => {
 const AddGamePage = () => {
   const { listId, gameId } = useParams<{ listId: string; gameId?: string }>();
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, token } = useAuthStore();
   const isEdit = Boolean(gameId);
 
   const [selectedGame, setSelectedGame] = useState<MappedGame | null>(null);
@@ -218,7 +218,7 @@ const AddGamePage = () => {
     try {
       let finalCoverUrl = selectedGame.cover_url;
       let finalThumbnailUrl = selectedGame.cover_url_large;
-      const TOKEN = import.meta.env.VITE_FULL_ACCESS_TOKEN;
+      const TOKEN = token;
 
       // Function to download image as blob through a reliable proxy or direct fetch
       const downloadImageBlob = async (url: string) => {
@@ -299,7 +299,7 @@ const AddGamePage = () => {
         const filename = generateRandomFileName(file.name);
         const fullPath = generateGameUploadPath(username || "user", listId, String(selectedGame.igdb_id), filename);
         const dirPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
-        const TOKEN = import.meta.env.VITE_FULL_ACCESS_TOKEN;
+        const TOKEN = token;
         const url = await uploadFileToStrapi(file, dirPath, TOKEN);
         uploadedSnapshots.push({ id: filename, url });
       }
