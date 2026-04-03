@@ -5,7 +5,6 @@ import Profile from "../assets/icons/Profile";
 import SettingsIcon from "../assets/icons/SettingsIcon";
 import MusicNote from "../assets/icons/MusicNote";
 import NavButton from "./ui/NavButton";
-import DirectionBoard from "../assets/icons/DirectionBoard";
 import Analytics from "../assets/icons/Analytics";
 import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 import Heart from "../assets/icons/Heart";
