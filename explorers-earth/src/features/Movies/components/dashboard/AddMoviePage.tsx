@@ -554,7 +554,7 @@ const AddMoviePage = () => {
   return (
     <div className="min-h-screen text-dashboard">
       {/* Sticky header */}
-      <div className="border-b border-dashboard-border px-6 py-4 flex items-center gap-3 sticky top-0 bg-dashboard-bg z-10">
+      <div className="border-b border-dashboard-border px-6 py-4 flex items-center gap-3 sticky sticky-top-offset bg-dashboard-bg z-10">
         <button
           onClick={() => navigate(`/recommendations/movies/${listId}`)}
           className="text-white/40 hover:text-white transition-colors"

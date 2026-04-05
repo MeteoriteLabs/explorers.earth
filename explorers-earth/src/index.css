@@ -729,6 +729,22 @@ body.hide-dashboard-header .dashboard-header {
   transform: translateY(-100%);
 }
 
+/* Responsive Sticky Top for page-level headers that need to offset the global header */
+.sticky-top-offset {
+  top: 72px;
+  transition: top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (min-width: 768px) {
+  .sticky-top-offset {
+    top: 54px;
+  }
+}
+
+body.hide-dashboard-header .sticky-top-offset {
+  top: 0 !important;
+}
+
 /* Header sidebar-aware positioning */
 @media (min-width: 768px) {
   .dashboard-header {

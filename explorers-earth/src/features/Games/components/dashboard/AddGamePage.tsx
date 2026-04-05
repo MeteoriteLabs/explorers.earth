@@ -370,7 +370,7 @@ const AddGamePage = () => {
 
   return (
     <div className="min-h-screen text-dashboard">
-      <div className="border-b border-dashboard-border px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 sticky top-[72px] md:top-0 bg-dashboard-bg z-40 w-full">
+      <div className="border-b border-dashboard-border px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 sticky sticky-top-offset bg-dashboard-bg z-40 w-full">
         <button
           onClick={() => navigate(`/recommendations/games/${listId}`)}
           className="text-white/40 hover:text-white transition-colors flex-shrink-0"

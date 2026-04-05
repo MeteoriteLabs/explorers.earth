@@ -332,25 +332,32 @@ const AddBookPage = () => {
   };
 
   return (
-    <div className="p-4 md:p-8 pb-32 max-w-2xl mx-auto">
-      {/* Back nav */}
-      <button
-        onClick={() => navigate(`/recommendations/books/${listId}`)}
-        className="flex items-center gap-2 text-sm text-white/50 hover:text-white mb-5 transition-colors"
-      >
-        <ArrowLeft size={16} /> Back to list
-      </button>
+    <div className="min-h-screen text-dashboard pb-32">
+       {/* Sticky header */}
+       <div className="border-b border-dashboard-border px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 sticky sticky-top-offset bg-dashboard-bg z-40 w-full mb-6">
+         <button
+           onClick={() => navigate(`/recommendations/books/${listId}`)}
+           className="text-white/40 hover:text-white transition-colors"
+         >
+           <ArrowLeft size={20} />
+         </button>
+         <div className="flex-1">
+           <h1 className="text-base font-semibold text-dashboard">
+             {isEdit ? "Edit Book" : "Add a Book"}
+           </h1>
+           <p className="text-xs text-dashboard-muted mt-0.5">
+              {isEdit ? "Update the details and save your changes" : selectedBook ? "Edit the details below before saving" : "Find a book using Google Books"}
+           </p>
+         </div>
+       </div>
 
-      <h1 className="text-xl font-bold text-white mb-6">
-        {isEdit ? "Edit Book" : "Add a Book"}
-      </h1>
-
-      {/* Step 1: Search */}
-      {!isEdit && (
-        <div className="mb-6 bg-dashboard-sidebar border border-dashboard-border rounded-2xl p-5">
-          <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-4">
-            Find a Book
-          </p>
+      <div className="max-w-2xl mx-auto px-4 md:px-0">
+        {/* Step 1: Search */}
+        {!isEdit && (
+          <div className="mb-6 bg-dashboard-sidebar border border-dashboard-border rounded-2xl p-5">
+            <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-4">
+              Find a Book
+            </p>
           {selectedBook ? (
             <div className="flex items-center gap-3">
               <div className="w-12 h-16 rounded-lg overflow-hidden bg-white/5 flex-shrink-0">
@@ -611,6 +618,7 @@ const AddBookPage = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };
