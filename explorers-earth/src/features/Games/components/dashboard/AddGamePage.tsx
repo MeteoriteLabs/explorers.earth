@@ -296,12 +296,19 @@ const AddGamePage = () => {
 
       // 3. Handle user manual photo uploads
       for (const file of newSnapshots) {
-        const filename = generateRandomFileName(file.name);
-        const fullPath = generateGameUploadPath(username || "user", listId, String(selectedGame.igdb_id), filename);
-        const dirPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
-        const TOKEN = token;
-        const url = await uploadFileToStrapi(file, dirPath, TOKEN);
-        uploadedSnapshots.push({ id: filename, url });
+        try {
+          const filename = generateRandomFileName(file.name);
+          const fullPath = generateGameUploadPath(username || "user", listId, String(selectedGame.igdb_id), filename);
+          const dirPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
+          const TOKEN = token;
+          const url = await uploadFileToStrapi(file, dirPath, TOKEN);
+          if (url) {
+            uploadedSnapshots.push({ id: filename, url });
+          }
+        } catch (err) {
+          console.error("Manual game snapshot upload failed:", err);
+          toast.error(`Failed to upload snapshot: ${file.name}`);
+        }
       }
 
       const mediaDetails = uploadedSnapshots.length > 0 ? { imageDetails: uploadedSnapshots } : null;

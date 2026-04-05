@@ -261,12 +261,19 @@ const AddBookPage = () => {
       // Upload manual snapshots
       const uploadedSnapshots: { id: string; url: string }[] = [...existingSnapshots];
       for (const file of newSnapshots) {
-        const filename = generateRandomFileName(file.name);
-        const fullPath = generateBookUploadPath(username || "user", listId, selectedBook.volume_id, filename);
-        const dirPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
-        const TOKEN = token;
-        const url = await uploadFileToStrapi(file, dirPath, TOKEN);
-        uploadedSnapshots.push({ id: filename, url });
+        try {
+          const filename = generateRandomFileName(file.name);
+          const fullPath = generateBookUploadPath(username || "user", listId, selectedBook.volume_id, filename);
+          const dirPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
+          const TOKEN = token;
+          const url = await uploadFileToStrapi(file, dirPath, TOKEN);
+          if (url) {
+            uploadedSnapshots.push({ id: filename, url });
+          }
+        } catch (err) {
+          console.error("Manual book snapshot upload failed:", err);
+          toast.error(`Failed to upload snapshot: ${file.name}`);
+        }
       }
 
       const mediaDetails = uploadedSnapshots.length > 0 ? { imageDetails: uploadedSnapshots } : null;

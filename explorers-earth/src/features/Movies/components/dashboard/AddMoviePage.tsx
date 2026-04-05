@@ -360,44 +360,49 @@ const AddMoviePage = () => {
         try {
           const manualUploads = await Promise.all(
             newSnapshots.map(async (file, idx) => {
-              const usernameStr = sanitizeUsername(user?.username || "user");
-              // Safely extract TMDB id
-              const tmdbIdStr = isEdit && movieId 
-                ? (listData?.movieLists?.[0]?.recommended_movies?.find((m: any) => m.documentId === movieId)?.tmdb_id || "unknown")
-                : String(selected?.id || "unknown");
-              
-              const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-              const randomFileName = generateRandomFileName(safeName);
-              const fullS3Path = generateMovieUploadPath(usernameStr, listId, tmdbIdStr, randomFileName);
-              const directoryPath = fullS3Path.substring(0, fullS3Path.lastIndexOf('/'));
-              
-              const formData = new FormData();
-              formData.append("files", file, randomFileName);
-              formData.append("path", directoryPath);
+              try {
+                const usernameStr = sanitizeUsername(user?.username || "user");
+                // Safely extract TMDB id
+                const tmdbIdStr = isEdit && movieId 
+                  ? (listData?.movieLists?.[0]?.recommended_movies?.find((m: any) => m.documentId === movieId)?.tmdb_id || "unknown")
+                  : String(selected?.id || "unknown");
+                
+                const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+                const randomFileName = generateRandomFileName(safeName);
+                const fullS3Path = generateMovieUploadPath(usernameStr, listId, tmdbIdStr, randomFileName);
+                const directoryPath = fullS3Path.substring(0, fullS3Path.lastIndexOf('/'));
+                
+                const formData = new FormData();
+                formData.append("files", file, randomFileName);
+                formData.append("path", directoryPath);
 
-              const uploadRes = await axios.post(
-                `${import.meta.env.VITE_REST_API_URL}/upload`,
-                formData,
-                {
-                  headers: {
-                    "Content-Type": "multipart/form-data",
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                  },
+                const uploadRes = await axios.post(
+                  `${import.meta.env.VITE_REST_API_URL}/upload`,
+                  formData,
+                  {
+                    headers: {
+                      "Content-Type": "multipart/form-data",
+                      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                  }
+                );
+                
+                if (uploadRes.data?.[0]?.url) {
+                  return { id: `snap_${Date.now()}_${idx}`, url: uploadRes.data[0].url };
                 }
-              );
-              
-              if (uploadRes.data?.[0]?.url) {
-                return { id: `snap_${Date.now()}_${idx}`, url: uploadRes.data[0].url };
+                return null;
+              } catch (e) {
+                console.error("Manual snapshot upload failed:", e);
+                return null;
               }
-              return null;
             })
           );
           
           uploadedImageDetails = [...uploadedImageDetails, ...manualUploads.filter(Boolean) as { id: string; url: string }[]];
-          toast.success("Snapshots uploaded successfully!", { id: "upload-snapshots" });
+          toast.success("Snapshots process completed!", { id: "upload-snapshots" });
         } catch (err: any) {
-           toast.error("Failed to upload some manual snapshots.", { id: "upload-snapshots" });
-           throw new Error("Snapshot upload failed"); 
+           toast.error("Failed to process some manual snapshots.", { id: "upload-snapshots" });
+           // We don't throw here to allow form submission to proceed
         }
       }
 
@@ -430,9 +435,9 @@ const AddMoviePage = () => {
           
           let fullUrl = "";
           if (type === 'poster') {
-             fullUrl = buildPosterUrl(urlPath, "original");
+             fullUrl = buildPosterUrl(urlPath, "w780");
           } else if (type === 'backdrop') {
-             fullUrl = buildBackdropUrl(urlPath, "original");
+             fullUrl = buildBackdropUrl(urlPath, "w1280");
           } else {
              // For cast profiles
              fullUrl = buildPosterUrl(urlPath, "w185");
@@ -471,8 +476,9 @@ const AddMoviePage = () => {
             }
           } catch (err: any) {
             console.error(`CATCH ERROR while uploading ${type}:`, err);
-            toast.error(`Error uploading ${type} to S3.`, { id: `upload-${type}` });
-            throw new Error(`Failed to upload ${type} to S3: ` + err.message);
+            toast.error(`Error uploading ${type} to S3. Falling back to TMDB URL.`, { id: `upload-${type}` });
+            // Instead of throwing, we return the original TMDB URL as a fallback
+            return fullUrl;
           }
           return urlPath; // fallback
         };
