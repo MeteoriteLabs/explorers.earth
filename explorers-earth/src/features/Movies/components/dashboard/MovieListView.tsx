@@ -3,9 +3,10 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import { AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, Plus, Star, MoreHorizontal, Trash2, Edit,
+  ArrowLeft, Star, MoreHorizontal, Trash2, Edit,
   Film, Copy, Loader2, Check, Clock, ChevronRight, Tv, Share2, Download
 } from "lucide-react";
+import { AddIcon } from "../../../../assets/icons/AddIcon";
 import Accordion from "../../../../components/ui/Accordian";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
@@ -324,12 +325,12 @@ const MovieListView = () => {
             </button>
           )}
 
-          {/* Add movie button */}
+          {/* Add Movie or Show button - highlighted CTA */}
           <button
             onClick={() => navigate(`/recommendations/movies/${listId}/add`)}
-            className="w-full mb-4 flex items-center justify-center gap-2 py-3 border-2 border-dashed border-white/10 rounded-xl text-sm text-white/40 hover:text-white/70 hover:border-blue-500/30 transition-all"
+            className="w-full mb-6 flex items-center justify-center gap-3 py-4 bg-dashboard-accent hover:opacity-90 text-white rounded-2xl text-sm font-bold transition-all shadow-lg shadow-blue-900/40 border border-white/10"
           >
-            <Plus size={16} /> Add Movie or Show
+            <AddIcon size="5" /> Add Movie or Show
           </button>
 
           {/* Movie list */}

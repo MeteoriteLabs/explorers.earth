@@ -14,7 +14,7 @@ import { createCanonicalUrl } from "../../utils/getCurrentDomain";
 import useAuthStore from "../../store/store";
 import type { Guide } from "./types";
 import SwitchButton from "../../components/ui/SwitchButton";
-import { Plus } from "lucide-react";
+import { AddIcon } from "../../assets/icons/AddIcon";
 
 interface FilterState {
   guideType: string | null;
@@ -462,12 +462,12 @@ const GuidesPage: React.FC = () => {
           <div className="mb-4 md:mb-6">
             <div className="flex items-center justify-between bg-dashboard-sidebar/40 px-3 py-3 rounded-2xl">
               <div className="flex flex-col items-start gap-1.5 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
-                <span className="text-[10px] md:text-xs font-bold text-white leading-tight whitespace-nowrap">Public Visibility</span>
                 <SwitchButton
                   isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_guides === "Yes"}
                   onChange={handleVisibilityToggle}
                   variant="blue"
                 />
+                <span className="text-[10px] md:text-xs text-white leading-tight whitespace-nowrap">Public Visibility</span>
               </div>
 
               <div className="flex items-center justify-end w-full">
@@ -515,7 +515,7 @@ const GuidesPage: React.FC = () => {
                   onClick={() => navigate("/guides/new")}
                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap"
                 >
-                  <Plus size={18} />
+                  <AddIcon size="5" />
                   <span className="hidden sm:inline">Create Guide</span>
                   <span className="sm:hidden">Create</span>
                 </button>

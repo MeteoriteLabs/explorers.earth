@@ -17,11 +17,11 @@ import {
   MoreVertical,
   Pencil,
   Trash2 as TrashIcon,
-  Plus,
   Eye,
   EyeOff,
 } from 'lucide-react';
 import SwitchButton from './ui/SwitchButton';
+import { AddIcon } from '../assets/icons/AddIcon';
 import PlaylistTable from './playlist-table';
 import SearchSongs from './search-songs';
 import YoutubePlayer from './youtube-player';
@@ -512,12 +512,12 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle }: M
       {/* ── Top Row with Add Button and Visibility Toggle ─────────────────── */}
       <div className="flex items-center justify-between bg-dashboard-sidebar/40 px-3 py-3 rounded-xl mb-2">
         <div className="flex flex-col items-start gap-1.5 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
-          <span className="text-[10px] md:text-xs font-bold text-white leading-tight whitespace-nowrap">Public Visibility</span>
           <SwitchButton
             isChecked={isPublic === true}
             onChange={onVisibilityToggle || (() => {})}
             variant="blue"
           />
+          <span className="text-[10px] md:text-xs text-white leading-tight whitespace-nowrap">Public Visibility</span>
         </div>
 
         <button
@@ -527,7 +527,7 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle }: M
           }}
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap"
         >
-           <Plus size={18} />
+           <AddIcon size="5" />
            <span>New Playlist</span>
         </button>
       </div>
@@ -583,44 +583,42 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle }: M
         </div>
       )}
 
-      {/* ── Tab-based layout ─────────────────────────────────────────────────── */}
-      <div className="bg-black/20 rounded-xl overflow-hidden">
-        {/* Tab strip */}
-        <div className="flex items-stretch border-b border-white/10">
-          {/* Scrollable tab buttons */}
-          <div
-            className="flex overflow-x-auto flex-1"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
+      {/* ── Tab Switcher ────────────────────────────────────────────────────── */}
+      <div className="flex p-1 bg-white rounded-full max-w-lg mx-auto shadow-sm my-6">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 text-[10px] sm:text-xs font-bold rounded-full transition-all duration-300 ${
+              activeTab === tab.id
+                ? "bg-dashboard-accent text-white shadow-md"
+                : "text-blue-900 hover:bg-blue-50/50"
+            }`}
           >
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1 px-2.5 sm:px-4 py-3 text-[11px] sm:text-xs font-medium whitespace-nowrap transition-colors border-b-2 flex-shrink-0
-                  ${activeTab === tab.id
-                    ? 'border-dashboard-accent text-dashboard-accent bg-white/5'
-                    : 'border-transparent text-gray-400 hover:text-white hover:bg-white/5'
-                  }`}
-              >
-                {tab.icon}
-                <span>{tab.shortLabel}</span>
-                {tab.id === 'queue' && (currentlyPlaying || songs.length > 0) && (
-                  <span className="text-gray-500 text-[10px]">
-                    {currentlyPlaying ? `${songs.length + 1}` : songs.length}
-                  </span>
-                )}
-                {tab.id === 'recently-played' && playedSongs.length > 0 && (
-                  <span className="text-gray-500 text-[10px]">{playedSongs.length}</span>
-                )}
-                {tab.id === 'playlists' && playlists && playlists.length > 0 && (
-                  <span className="text-gray-500 text-[10px]">{playlists.length}</span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
+            {tab.icon}
+            <span className="whitespace-nowrap">{tab.shortLabel}</span>
+            {tab.id === "queue" && (currentlyPlaying || songs.length > 0) && (
+              <span className={`text-[10px] ${activeTab === "queue" ? "text-white/70" : "text-blue-900/50"}`}>
+                {currentlyPlaying ? `${songs.length + 1}` : songs.length}
+              </span>
+            )}
+            {tab.id === "recently-played" && playedSongs.length > 0 && (
+              <span className={`text-[10px] ${activeTab === "recently-played" ? "text-white/70" : "text-blue-900/50"}`}>
+                {playedSongs.length}
+              </span>
+            )}
+            {tab.id === "playlists" && playlists && playlists.length > 0 && (
+              <span className={`text-[10px] ${activeTab === "playlists" ? "text-white/70" : "text-blue-900/50"}`}>
+                {playlists.length}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
 
-        {/* Tab content */}
+      {/* ── Tab Content ────────────────────────────────────────────────────── */}
+      <div className="bg-black/20 rounded-xl overflow-hidden min-h-[300px]">
+        {/* Tab content wrapper */}
         <div className="p-4">
 
           {/* ── Queue tab ──────────────────────────────────────────────────── */}
@@ -749,9 +747,9 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle }: M
                 {showNewPlaylistInput ? null : (
                   <button
                     onClick={() => setShowNewPlaylistInput(true)}
-                    className="flex items-center gap-1 text-xs text-dashboard-accent hover:opacity-80 transition-opacity"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-dashboard-accent hover:opacity-90 text-[10px] sm:text-xs text-white font-medium transition-all shadow-md shadow-blue-900/30 whitespace-nowrap"
                   >
-                    <Plus className="w-3 h-3" />
+                    <AddIcon size="3.5" />
                     New Playlist
                   </button>
                 )}
@@ -831,13 +829,13 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle }: M
                           <button
                             key={pl.id}
                             onClick={() => setActivePlaylistTab(pl.id.toString())}
-                            className={`px-3 py-1 text-xs whitespace-nowrap rounded transition-colors ${isActive
-                              ? 'bg-dashboard-accent text-white'
-                              : 'text-gray-400 hover:text-white hover:bg-white/10'
+                            className={`px-3 py-1.5 text-xs whitespace-nowrap rounded-xl transition-all ${isActive
+                              ? 'bg-white/10 text-white font-semibold'
+                              : 'text-gray-400 hover:text-white hover:bg-white/5'
                               }`}
                           >
                             {pl.name}
-                            <span className="ml-1 opacity-60">({pl.songs?.length ?? 0})</span>
+                            <span className="ml-1 opacity-50 font-normal">({pl.songs?.length ?? 0})</span>
                           </button>
                         );
                       })}
@@ -966,33 +964,33 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle }: M
                             )}
 
                             {/* Action buttons */}
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-row items-center gap-3 pt-2">
                               <button
                                 onClick={() => setPlaylistToReplace({ id: p.id, songs: p.songs ?? [], type: 'play' })}
                                 disabled={!p.songs?.length}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-dashboard-accent text-white hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
+                                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                               >
-                                <PlayCircle className="w-3.5 h-3.5" />
-                                Play Playlist
+                                <PlayCircle className="w-4 h-4" />
+                                <span>Play</span>
                               </button>
                               <button
                                 onClick={() => setPlaylistToReplace({ id: p.id, songs: p.songs ?? [], type: 'shuffle' })}
                                 disabled={!p.songs?.length}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                               >
-                                <Shuffle className="w-3.5 h-3.5" />
-                                Shuffle
+                                <Shuffle className="w-4 h-4" />
+                                <span>Shuffle</span>
                               </button>
                               <button
                                 onClick={() => addPlaylistToQueueMutation.mutate(p.songs ?? [])}
                                 disabled={!p.songs?.length || addPlaylistToQueueMutation.isPending}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                               >
                                 {addPlaylistToQueueMutation.isPending
-                                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                  : <Plus className="w-3.5 h-3.5" />
+                                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                                  : <AddIcon size="4" />
                                 }
-                                Add to Queue
+                                <span>Add to Queue</span>
                               </button>
                             </div>
 

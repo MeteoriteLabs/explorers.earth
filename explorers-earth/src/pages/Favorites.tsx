@@ -7,7 +7,6 @@ import Modal from "../components/ui/Modal";
 import { AddIcon } from "../assets/icons/AddIcon";
 import LinksAndQR from "../features/Favorites/components/LinksAndQR";
 import AddLocationModal from "../components/ui/AddLocationModal";
-import { Plus } from "lucide-react";
 import { useMutation, useQuery } from "@apollo/client";
 import { toast } from "sonner";
 import {
@@ -607,20 +606,20 @@ const Favorites = memo(() => {
                   <div className="pt-2 px-2 md:px-0">
                     <div className="flex items-center justify-between bg-dashboard-sidebar/40 px-3 py-3 rounded-2xl mb-2">
                       <div className="flex flex-col items-start gap-1.5 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
-                        <span className="text-[10px] md:text-xs font-bold text-white leading-tight whitespace-nowrap">Public Visibility</span>
                         <SwitchButton
                           isChecked={accountById?.usersPermissionsUser?.accounts?.[0]?.public_recommendations === "Yes"}
                           onChange={handleVisibilityToggle}
                           variant="blue"
                         />
+                        <span className="text-[10px] md:text-xs text-white leading-tight whitespace-nowrap">Public Visibility</span>
                       </div>
 
                       <button
                         onClick={() => setIsLocationModalOpen(true)}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30"
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap"
                       >
-                         <Plus size={18} />
-                         <span>{t("dashboard.recommendations.locationButton")}</span>
+                        <AddIcon size="5" />
+                        <span>{t("dashboard.recommendations.locationButton")}</span>
                       </button>
                     </div>
                   </div>

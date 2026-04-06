@@ -499,47 +499,67 @@ const PublicProfile = memo(() => {
 
         {/* Profile Content */}
 
-        {/* Profile Picture */}
-        <div className="relative h-56 md:h-72 lg:px-60 overflow-hidden">
-          <img
-            src={
-              accountData?.bg_picture?.url ||
-              IMAGE_CONFIG.defaultImages.background
-            }
-            alt="Cover"
-            className="w-full h-full object-cover object-[center_25%]"
-            loading="eager"
-            decoding="async"
-          />
-          <div className="absolute inset-0 bg-black/50"></div>
-        </div>
-        <div className="relative -mt-20 md:-mt-14 w-full m-auto pointer-events-none z-10">
-          <div className="relative mb-2 pointer-events-auto">
-            <div
-              className="w-[7rem] h-[7rem] mx-auto rounded-full border-4 border-[hsl(var(--evergreen))] overflow-hidden cursor-pointer bg-black"
-              onClick={handleImageClick}
-            >
-              <img
-                src={
-                  accountData?.profile_picture?.url ||
-                  IMAGE_CONFIG.defaultImages.profile
-                }
-                alt="Profile"
-                className="w-full h-full object-cover"
-              />
-            </div>
-          </div>
-          <div className="text-center pointer-events-none select-none">
-            <h2 className="text-sm font-poppins font-semibold text-white">
-              {accountData?.Account_Name}
-            </h2>
-            <div className="text-white text-xs font-poppins mt-0.5">
-              {accountData?.Primary_Address?.address}
-            </div>
+        {/* Profile Header Section with Background Cover */}
+        <div className="relative overflow-hidden bg-black pb-0">
+          {/* Cover Photo Background with Rounded Bottom and Fade */}
+          <div className="absolute inset-x-0 top-0 h-[380px] md:h-[420px] overflow-hidden z-0 rounded-b-[2rem] md:rounded-none bg-black">
+            <img
+              src={
+                accountData?.bg_picture?.url ||
+                IMAGE_CONFIG.defaultImages.background
+              }
+              alt="Cover"
+              className="w-full h-full object-cover object-[center_32%] scale-105"
+              loading="eager"
+            />
+            {/* Cinematic top-to-bottom dimming - Base layer */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/20 to-black/80 z-0" />
+            
+            {/* Smooth blur-from-bottom effect for high-end look */}
+            <div 
+              className="absolute inset-x-0 bottom-0 h-[70%] backdrop-blur-md bg-black/10 z-0"
+              style={{
+                WebkitMaskImage: 'linear-gradient(to top, black 30%, transparent 100%)',
+                maskImage: 'linear-gradient(to top, black 30%, transparent 100%)'
+              }}
+            />
+            
+            {/* Deep bottom shadow for final transition to bio */}
+            <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black via-black/40 to-transparent z-0" />
           </div>
 
-          {/* Social Links */}
-          <div className="flex items-center justify-center gap-10 mt-2.5 mb-1 pointer-events-auto empty:hidden">
+          {/* Profile Header Content (Profile Pic, Name, Social Icons) */}
+          <div className="relative z-10 pt-24 md:pt-32 pb-0 md:pb-4 text-center px-4">
+            {/* Profile Picture */}
+            <div className="relative mb-2 px-4">
+              <div
+                className="w-[7.5rem] h-[7.5rem] mx-auto rounded-full border-4 border-[hsl(var(--evergreen))] overflow-hidden cursor-pointer shadow-xl bg-black"
+                onClick={handleImageClick}
+              >
+                <img
+                  src={
+                    accountData?.profile_picture?.url ||
+                    IMAGE_CONFIG.defaultImages.profile
+                  }
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+
+            {/* Name & Location */}
+            <div className="text-center px-6">
+              <h1 className="text-base font-poppins font-bold text-white tracking-tight drop-shadow-md">
+                {accountData?.Account_Name}
+              </h1>
+              <div className="flex items-center justify-center gap-1.5 text-white/90 text-xs font-poppins mt-0.5 drop-shadow-sm">
+                <Location className="w-3 h-3 text-white/70" />
+                <span>{accountData?.Primary_Address?.address}</span>
+              </div>
+            </div>
+
+            {/* Social Links */}
+            <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 px-6 mt-4 mb-2 empty:hidden">
             {accountData?.social_media?.instagram?.link &&
               accountData?.social_media?.instagram?.visibility && (
                 <a
@@ -731,7 +751,11 @@ const PublicProfile = memo(() => {
                   <MusicNote fill="white" />
                 </a>
               )}
+              {/* End of Social Links */}
+            </div>
+            {/* End of Profile Header Content */}
           </div>
+          {/* End of Profile Header Section */}
         </div>
         <div className="md:max-w-5xl px-6 md:px-6 md:mx-auto">
           <div className="mt-0 max-w-3xl md:flex flex-col item-center justify-center mx-auto">

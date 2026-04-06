@@ -1,11 +1,10 @@
-import { memo, useState, useEffect, useRef, useMemo } from "react";
+import { memo, useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import ProfileForm from "../features/Profile/components/ProfileForm";
 import { useQuery } from "@apollo/client";
 import useAuthStore from "../store/store";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import Button from "../components/ui/Button";
 import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
 import { profileDataQuery } from "../features/Profile/api/query";
@@ -39,7 +38,6 @@ import {
   sanitizeUsername,
 } from "../utils/uploadPathGenerator";
 import SnapchatIcon from "../assets/icons/SnapchatIcon";
-import LinkTo from "../assets/icons/LinkTo";
 import { IMAGE_CONFIG } from "../config";
 import UsernameChangeConfirmationModal from "../components/ui/UsernameChangeConfirmationModal";
 import UnsavedChangesModal from "../components/ui/UnsavedChangesModal";
@@ -284,7 +282,6 @@ const getAccountTabFields = (t: any) => [
 
 const Profile = memo(() => {
   const { t } = useTranslation();
-  const profileBannerRef = useRef<HTMLDivElement>(null);
   const [showPreview, setShowPreview] = useState<boolean>(false);
   // local state for account details
   // ✅ VISIBILITY FIX: Remove redundant account state - use GraphQL data directly
@@ -1675,17 +1672,13 @@ const Profile = memo(() => {
       />
       <div className="bg-dashboard-bg md:px-6 md:py-2 md:pt-0">
         <div className="bg-dashboard-bg md:py-2 md:pt-0">
-          {/* Mobile: Add top padding to prevent content from being clipped under fixed header */}
-          {/* MobileLayout already adds pt-16 (64px), header is ~75px, so we add pt-4 (16px) for total ~80px clearance */}
-          {/* Desktop: No extra padding needed as header is relative */}
-          <div className="pb-4 md:mb-0 w-full min-h-screen flex flex-col gap-4 pt-4 md:pt-6">
-            {/* Profile Banner Wrapper - with padding */}
-            <div className="px-2 sm:px-4 md:px-6 w-full">
-              <div
-                ref={profileBannerRef}
-                className={`relative flex flex-col sm:flex-row justify-between md:h-48 w-full max-w-3xl mx-auto md:items-center gap-4 sm:gap-6 rounded-xl p-3 sm:p-4 transition-all duration-300 ${uploadedBackground ? "" : "bg-dashboard-bg"
-                  } ${false ? 'opacity-0 pointer-events-none invisible' : 'opacity-100 visible'
-                  }`}
+          {/* Mobile: Remove top padding to allow header to sit flush with top nav if needed, or adjust for cinematic look */}
+          <div className="pb-4 md:mb-0 w-full min-h-screen flex flex-col gap-0 pt-0 md:pt-0">
+            {/* Header Section - Width matched to accordions */}
+            <div className="relative max-w-3xl mx-auto w-full mt-4 overflow-hidden rounded-xl bg-black transition-all duration-300">
+              {/* Cover Photo Background with Cinematic Effects */}
+              <div 
+                className="absolute inset-0 h-full w-full overflow-hidden z-0"
                 style={{
                   backgroundImage: uploadedBackground
                     ? `url('${uploadedBackground}')`
@@ -1696,63 +1689,69 @@ const Profile = memo(() => {
                   backgroundPosition: "center",
                 }}
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-black/10 via-black/5 to-black/20 z-0 rounded-xl"></div>
-                <div className="relative md:w-36 md:h-36 w-24 h-24 mx-auto ">
-                  <img
-                    src={
-                      uploadedImage ||
-                      data?.usersPermissionsUser?.accounts?.[0]?.profile_picture
-                        ?.url ||
-                      "https://api.dicebear.com/9.x/shapes/svg?seed=Leah"
-                    }
-                    alt={t('dashboard.profile.common.profile')}
-                    className="w-full h-full object-cover rounded-full shadow-md"
-                  />
+                {/* Cinematic top-to-bottom dimming - Base layer */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/80 z-0" />
+                
+                {/* Smooth blur-from-bottom effect */}
+                <div 
+                  className="absolute inset-x-0 bottom-0 h-[70%] backdrop-blur-md bg-black/10 z-0"
+                  style={{
+                    WebkitMaskImage: 'linear-gradient(to top, black 30%, transparent 100%)',
+                    maskImage: 'linear-gradient(to top, black 30%, transparent 100%)'
+                  }}
+                />
+                
+                {/* Deep bottom shadow for final transition */}
+                <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black via-black/60 to-transparent z-0" />
+              </div>
 
-                  <div className="absolute -bottom-1 -right-1" data-walkthrough="profile-picture">
+              {/* Header Content - Centered Profile Picture & Edit Buttons */}
+              <div className="relative z-10 pt-16 md:pt-20 pb-8 text-center px-4">
+                <div className="relative w-28 h-28 md:w-36 md:h-36 mx-auto mb-4 group">
+                  <div className="w-full h-full ring-4 ring-[hsl(var(--evergreen))] rounded-full overflow-hidden bg-black shadow-2xl">
+                    <img
+                      src={
+                        uploadedImage ||
+                        data?.usersPermissionsUser?.accounts?.[0]?.profile_picture?.url ||
+                        "https://api.dicebear.com/9.x/shapes/svg?seed=Leah"
+                      }
+                      alt={t('dashboard.profile.common.profile')}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  
+                  {/* Profile Picture Edit Button - Bottom Right */}
+                  <div className="absolute bottom-1 right-1 z-20" data-walkthrough="profile-picture">
                     <ImageCropper
                       onFileUpload={handleImageUpload}
                       cropType="profileCrop"
-                      buttonTitle="Edit Profile Picture"
                     />
                   </div>
                 </div>
 
-                <div className="absolute -bottom-3 -right-2 md:-right-3" data-walkthrough="cover-image">
+                {/* Background Edit Button - Bottom Right of the entire banner */}
+                <div className="absolute bottom-4 right-4 z-20" data-walkthrough="cover-image">
                   <ImageCropper
                     onFileUpload={handleBackgroundUpload}
                     cropType="backgroundCrop"
-                    buttonTitle="Edit Background"
+                    buttonTitle={t('dashboard.profile.common.editBackground')}
                   />
                 </div>
 
-                <div className="absolute top-4 right-2 md:right-4 flex flex-row justify-end items-end">
-                  <Button
-                    type="button"
-                    size="small"
-                    endIcon={<LinkTo stroke={"white"} size={"18px"} />}
-                    variant="ghost"
-                    className="bg-gradient-to-r from-[hsl(var(--blue-cta))]/20 via-[hsl(var(--blue-cta))]/30 to-[hsl(var(--blue-final))]/20 backdrop-blur-xl border border-[hsl(var(--blue-cta))]/40 shadow-lg shadow-[hsl(var(--blue-cta))]/20 rounded-full !p-2"
-                    onClickHandler={() => {
-                      const username = user?.username;
-                      if (!username) return;
-                      window.open(
-                        `${window.location.origin}/${username}`,
-                        "_blank",
-                        "noopener,noreferrer"
-                      );
-                    }}
-                    data-tooltip-id="view-public-profile-tooltip"
-                    data-tooltip-content={t("dashboard.home.viewPublicProfileTooltip")}
-                    data-tooltip-place="left"
-                  />
+                {/* Name & Location Preview */}
+                <div className="text-center mt-2">
+                   <h1 className="text-lg font-poppins font-bold text-white drop-shadow-lg">
+                     {account?.Account_Name || user?.username}
+                   </h1>
+                   <p className="text-[10px] font-poppins text-white/80 mt-0.5 drop-shadow-md">
+                     {account?.Primary_Address?.address}
+                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Tab Switcher - Seamless sticky positioning on all screen sizes */}
-            <div className={`z-[90] sticky top-[73px] md:top-0 w-full mb-2 bg-dashboard-bg py-2 shadow-sm transition-all duration-300 ${false ? 'opacity-0 pointer-events-none invisible' : 'opacity-100 visible'}}
-              `}>
+            {/* Tab Switcher - Seamless sticky positioning - Sticks to extreme top when header scrolls */}
+            <div className={`z-[90] sticky sticky-top-offset w-full bg-dashboard-bg py-4 shadow-sm transition-all duration-300 ${false ? 'opacity-0 pointer-events-none invisible' : 'opacity-100 visible'}`}>
               <div className="flex items-center justify-center mx-auto bg-white font-poppins rounded-3xl w-fit" data-walkthrough="public-profile-tab">
                 {[
                   { key: "publicProfile", label: t('dashboard.profile.tabs.publicProfile') },

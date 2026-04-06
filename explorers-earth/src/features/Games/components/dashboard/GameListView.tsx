@@ -3,9 +3,10 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, Plus, Star, MoreVertical, Trash2,
+  ArrowLeft, Star, MoreVertical, Trash2,
   Loader2, Gamepad2, Pencil, Copy, Check, ChevronRight
 } from "lucide-react";
+import { AddIcon } from "../../../../assets/icons/AddIcon";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import Accordion from "../../../../components/ui/Accordian";
@@ -433,11 +434,12 @@ const GameListView = () => {
              </button>
           )}
 
+          {/* Add Game button - highlighted CTA */}
           <button
             onClick={() => navigate(`/recommendations/games/${listId}/add`)}
-            className="w-full mb-4 flex items-center justify-center gap-2 py-3 border-2 border-dashed border-white/10 rounded-xl text-sm text-white/40 hover:text-white/70 hover:border-amber-500/30 transition-all font-medium"
+            className="w-full mb-6 flex items-center justify-center gap-3 py-4 bg-dashboard-accent hover:opacity-90 text-white rounded-2xl text-sm font-bold transition-all shadow-lg shadow-blue-900/40 border border-white/10"
           >
-            <Plus size={16} /> Add Game
+            <AddIcon size="5" /> Add Game
           </button>
 
           {games.length === 0 ? (

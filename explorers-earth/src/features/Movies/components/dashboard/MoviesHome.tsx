@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Film, Star, ChevronRight, Loader2, X } from "lucide-react";
+import { AddIcon } from "../../../../assets/icons/AddIcon";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { toast } from "sonner";
@@ -402,19 +403,19 @@ const MoviesHome = () => {
       {/* Action Header Row */}
       <div className="flex items-center justify-between bg-dashboard-sidebar/40 px-3 py-3 rounded-2xl mb-2">
         <div className="flex flex-col items-start gap-1.5 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
-          <span className="text-[10px] md:text-xs font-bold text-white leading-tight whitespace-nowrap">Public Visibility</span>
           <SwitchButton
             isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_movie === "Yes"}
             onChange={handleVisibilityToggle}
             variant="blue"
           />
+          <span className="text-[10px] md:text-xs text-white leading-tight whitespace-nowrap">Public Visibility</span>
         </div>
 
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap"
         >
-          <Plus size={18} />
+          <AddIcon size="5" />
           <span>New List</span>
         </button>
       </div>
