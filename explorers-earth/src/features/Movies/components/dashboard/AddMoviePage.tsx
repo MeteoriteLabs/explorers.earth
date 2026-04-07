@@ -58,7 +58,6 @@ const InlineSearch = ({
 
   return (
     <div className="mb-6">
-      <label className="text-sm font-semibold text-white/90 mb-2 block">Search TMDB</label>
       <div className="relative">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
         <input
@@ -554,7 +553,7 @@ const AddMoviePage = () => {
   return (
     <div className="min-h-screen text-dashboard">
       {/* Sticky header */}
-      <div className="border-b border-dashboard-border px-6 py-4 flex items-center gap-3 sticky sticky-top-offset bg-dashboard-bg z-10">
+      <div className="border-b border-dashboard-border px-4 md:px-6 py-3 flex items-center gap-3 sticky top-0 bg-dashboard-bg z-40 w-full">
         <button
           onClick={() => navigate(`/recommendations/movies/${listId}`)}
           className="text-white/40 hover:text-white transition-colors"
@@ -582,7 +581,7 @@ const AddMoviePage = () => {
       </div>
 
       {/* Single-column form */}
-      <div className="max-w-2xl mx-auto px-6 pt-8 pb-40 md:pb-8 space-y-5">
+      <div className="max-w-2xl mx-auto px-6 pt-6 pb-40 md:pb-8 space-y-5">
 
         {/* Search — only in create mode */}
         {!isEdit && (
@@ -804,7 +803,7 @@ const AddMoviePage = () => {
                 )}
               </div>
 
-              <div className="border-t border-dashboard-border pt-1">
+              <div className="mb-4 bg-dashboard-sidebar border border-dashboard-border rounded-2xl p-4">
                 <p className="text-xs text-dashboard-muted uppercase tracking-wider mb-4 font-medium">Your Details</p>
               </div>
 

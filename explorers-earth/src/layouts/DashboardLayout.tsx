@@ -57,7 +57,7 @@ const DashboardLayout = () => {
             <Header />
             <div 
               ref={scrollContainerRef}
-              className="flex-1 overflow-auto pt-[72px] md:pt-[54px]"
+              className="flex-1 overflow-auto pt-[64px] md:pt-[54px]"
               onScroll={handleScroll}
             >
               <Outlet />

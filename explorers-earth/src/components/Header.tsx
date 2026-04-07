@@ -132,8 +132,8 @@ const Header = memo(() => {
   );
 
   return (
-    <div className="dashboard-header bg-dashboard-sidebar md:px-6 px-4 py-4 md:py-2 border-b border-dashboard">
-      <div className="flex flex-row rounded-xl items-center justify-between md:justify-center md:p-[4px]">
+    <div className="dashboard-header bg-dashboard-sidebar md:px-6 px-4 h-[64px] md:h-[54px] flex items-center border-b border-dashboard">
+      <div className="flex flex-row rounded-xl items-center justify-between md:justify-center md:p-[4px] w-full">
         <div className="logo-container">
           {(isRecommendationPage && currentCategory) ? (
             <div className="flex items-center gap-3">
@@ -259,7 +259,7 @@ const Header = memo(() => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute right-4 top-16 w-64 bg-dashboard-sidebar rounded-xl shadow-dashboard-elevated border border-dashboard overflow-hidden z-[100]"
+            className="absolute right-4 top-[64px] w-64 bg-dashboard-sidebar rounded-xl shadow-dashboard-elevated border border-dashboard overflow-hidden z-[100]"
           >
             {isAuthenticated ? (
               <>

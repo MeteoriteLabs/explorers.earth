@@ -31,13 +31,14 @@ import Gmail from "../assets/icons/Gmail";
 import LinkedinIcon from "../assets/icons/LinkedinIcon";
 import AppleMusic from "../assets/icons/AppleMusic";
 import TiktokIcon from "../assets/icons/TiktokIcon";
+import SnapchatIcon from "../assets/icons/SnapchatIcon";
+import LinkTo from "../assets/icons/LinkTo";
 import { Tooltip } from "react-tooltip";
 import {
   generateProfileUploadPath,
   generateRandomFileName,
   sanitizeUsername,
 } from "../utils/uploadPathGenerator";
-import SnapchatIcon from "../assets/icons/SnapchatIcon";
 import { IMAGE_CONFIG } from "../config";
 import UsernameChangeConfirmationModal from "../components/ui/UsernameChangeConfirmationModal";
 import UnsavedChangesModal from "../components/ui/UnsavedChangesModal";
@@ -298,6 +299,25 @@ const Profile = memo(() => {
   const [isUploading, setIsUploading] = useState(false);
   // local state for form submission
   const [isFormSubmitting, setIsFormSubmitting] = useState(false);
+
+  // local state for "View Public Profile" tooltip auto-show
+  const [isTooltipOpen, setIsTooltipOpen] = useState<boolean | undefined>(undefined);
+
+  useEffect(() => {
+    // Check if user has already seen the tooltip
+    const hasSeenTooltip = localStorage.getItem("hasSeenPublicProfileTooltip");
+    if (!hasSeenTooltip) {
+      // Small delay to ensure everything is rendered
+      const timer = setTimeout(() => {
+        setIsTooltipOpen(true);
+        // Save to localStorage so it doesn't show again
+        localStorage.setItem("hasSeenPublicProfileTooltip", "true");
+        // Hide after 6 seconds and restore uncontrolled state
+        setTimeout(() => setIsTooltipOpen(undefined), 6000);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   // Enhanced setPlaces that also updates form fields
   const setPlaces = (places: Places, setFieldValue?: (field: string, value: any) => void) => {
@@ -1738,6 +1758,19 @@ const Profile = memo(() => {
                   />
                 </div>
 
+                {/* View Public Profile Navigation Button - Top Right */}
+                <div className="absolute top-4 right-4 z-20">
+                  <button
+                    type="button"
+                    onClick={() => window.open(createCanonicalUrl(`/${initialValues.username}`), "_blank")}
+                    className="p-2.5 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full border border-white/20 transition-all duration-300 group shadow-lg flex items-center justify-center hover:scale-110 active:scale-95"
+                    data-tooltip-id="view-public-profile-tooltip"
+                    data-tooltip-content={t('dashboard.profile.common.viewPublicProfile')}
+                  >
+                    <LinkTo size="20px" stroke="white" />
+                  </button>
+                </div>
+
                 {/* Name & Location Preview */}
                 <div className="text-center mt-2">
                    <h1 className="text-lg font-poppins font-bold text-white drop-shadow-lg">
@@ -1751,7 +1784,7 @@ const Profile = memo(() => {
             </div>
 
             {/* Tab Switcher - Seamless sticky positioning - Sticks to extreme top when header scrolls */}
-            <div className={`z-[90] sticky sticky-top-offset w-full bg-dashboard-bg py-4 shadow-sm transition-all duration-300 ${false ? 'opacity-0 pointer-events-none invisible' : 'opacity-100 visible'}`}>
+            <div className={`z-[90] sticky sticky-top-offset w-full bg-dashboard-bg py-2 shadow-sm transition-all duration-300 ${false ? 'opacity-0 pointer-events-none invisible' : 'opacity-100 visible'}`}>
               <div className="flex items-center justify-center mx-auto bg-white font-poppins rounded-3xl w-fit" data-walkthrough="public-profile-tab">
                 {[
                   { key: "publicProfile", label: t('dashboard.profile.tabs.publicProfile') },
@@ -2019,7 +2052,10 @@ const Profile = memo(() => {
       {/* Tooltip for View Public Profile button */}
       <Tooltip
         id="view-public-profile-tooltip"
-        place="left"
+        place="bottom"
+        content={t('dashboard.profile.common.viewPublicProfile')}
+        isOpen={isTooltipOpen}
+        className="!bg-gray-800 !text-white !border !border-gray-600 !rounded-lg !px-2 !py-1"
         style={{ fontSize: "12px", zIndex: 9999 }}
       />
     </>

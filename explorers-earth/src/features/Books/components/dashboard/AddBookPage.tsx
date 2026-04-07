@@ -334,7 +334,7 @@ const AddBookPage = () => {
   return (
     <div className="min-h-screen text-dashboard pb-32">
        {/* Sticky header */}
-       <div className="border-b border-dashboard-border px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 sticky sticky-top-offset bg-dashboard-bg z-40 w-full mb-6">
+       <div className="border-b border-dashboard-border px-4 md:px-6 py-3 flex items-center gap-3 sticky top-0 bg-dashboard-bg z-40 w-full">
          <button
            onClick={() => navigate(`/recommendations/books/${listId}`)}
            className="text-white/40 hover:text-white transition-colors"
@@ -351,13 +351,10 @@ const AddBookPage = () => {
          </div>
        </div>
 
-      <div className="max-w-2xl mx-auto px-4 md:px-0">
+      <div className="max-w-2xl mx-auto px-4 pt-4 md:px-0">
         {/* Step 1: Search */}
         {!isEdit && (
-          <div className="mb-6 bg-dashboard-sidebar border border-dashboard-border rounded-2xl p-5">
-            <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-4">
-              Find a Book
-            </p>
+          <div className="mb-4 bg-dashboard-sidebar border border-dashboard-border rounded-2xl p-4">
           {selectedBook ? (
             <div className="flex items-center gap-3">
               <div className="w-12 h-16 rounded-lg overflow-hidden bg-white/5 flex-shrink-0">

@@ -737,7 +737,7 @@ body.hide-dashboard-header .dashboard-content > div.overflow-auto {
 
 /* Responsive Sticky Top for page-level headers that need to offset the global header */
 .sticky-top-offset {
-  top: 0;
+  top: 64px;
   transition: top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 

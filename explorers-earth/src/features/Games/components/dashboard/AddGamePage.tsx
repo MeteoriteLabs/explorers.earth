@@ -370,7 +370,7 @@ const AddGamePage = () => {
 
   return (
     <div className="min-h-screen text-dashboard">
-      <div className="border-b border-dashboard-border px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 sticky sticky-top-offset bg-dashboard-bg z-40 w-full">
+      <div className="border-b border-dashboard-border px-4 md:px-6 py-3 flex items-center gap-3 sticky top-0 bg-dashboard-bg z-40 w-full">
         <button
           onClick={() => navigate(`/recommendations/games/${listId}`)}
           className="text-white/40 hover:text-white transition-colors flex-shrink-0"
@@ -391,11 +391,9 @@ const AddGamePage = () => {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-6 pt-8 pb-32 space-y-6">
+      <div className="max-w-2xl mx-auto px-6 pt-4 pb-32 space-y-6">
         {!selectedGame ? (
-          <div className="bg-dashboard-sidebar rounded-2xl p-6 border border-dashboard-border shadow-2xl">
-            <h2 className="text-lg font-bold text-white mb-1">Find a Game</h2>
-            <p className="text-sm text-dashboard-muted mb-6">Search the IGDB database by title.</p>
+          <div className="bg-dashboard-sidebar rounded-2xl p-4 border border-dashboard-border shadow-2xl space-y-4">
             <InlineSearch onSelect={handleSelectGame} />
           </div>
         ) : (
