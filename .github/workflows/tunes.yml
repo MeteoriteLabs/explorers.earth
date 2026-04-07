@@ -15,30 +15,33 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # 🚀 Upload code (FIXED: no nested folders)
       - name: Upload Code to Hetzner
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.TUNES_DEPLOY_HOST }}
-          username: root
+          username: deploy
           key: ${{ secrets.TUNES_DEPLOY_KEY }}
           port: 22
-          source: "."
-          target: "/root/tunes"
+          source: "tunes"
+          target: "/home/deploy/tunes"
           overwrite: true
           rm: true
 
+      # 🚀 Run deployment
       - name: Run Docker Compose on Server
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.TUNES_DEPLOY_HOST }}
-          username: root
+          username: deploy
           key: ${{ secrets.TUNES_DEPLOY_KEY }}
           port: 22
           script: |
             set -e
 
             echo "✅ Connected to server"
-            cd /root/tunes
+
+            cd /home/deploy/tunes/tunes
 
             echo "🔁 Recreating .env file"
             cat > .env <<EOF
@@ -80,6 +83,7 @@ jobs:
             EOF
 
             echo "🐳 Restarting docker containers..."
+
             docker compose down
             docker compose up -d --build
 

@@ -6,6 +6,7 @@ import RichTextContent from "../features/LandingPage/components/RichTextContent"
 import { LoadingSpinner } from "../features/LandingPage/components/LoadingSpinner";
 import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
+import { createWebPageGEOData } from "../utils/geoHelpers";
 
 export default function Terms() {
   const { t } = useTranslation();
@@ -36,6 +37,14 @@ export default function Terms() {
         canonical={createCanonicalUrl("/terms")}
         type="website"
         noIndex={false}
+        enableGEO={true}
+        geoData={createWebPageGEOData({
+          pageType: 'terms',
+          title: 'Terms & Conditions | explorers',
+          description: 'explorers terms and conditions outlining the service agreement, user rights, and responsibilities for using the QR code recommendation platform.',
+          keywords: ['terms of service', 'user agreement', 'service terms', 'legal terms'],
+          purpose: 'Review the terms and conditions governing use of the explorers platform and services',
+        })}
       />
 
       <StaticPageLayout title={t("legal.terms.title")}>

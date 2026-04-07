@@ -5,8 +5,8 @@ import { Loader2, Globe } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 
-// Google Maps API Key
-const GOOGLE_MAPS_API_KEY = 'AIzaSyCzyV5ZVD4y5NuHtLJ-oA0mNRQMZz3e9r8';
+// Google Maps API Key from environment
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 
 interface WorldMapProps {
   regionalStats: Record<string, { hostCount: number; guestCount?: number; songRequestCount?: number }>;

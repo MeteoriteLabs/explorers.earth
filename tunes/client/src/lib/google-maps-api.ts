@@ -1,5 +1,5 @@
 // Google Maps API integration
-const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCzyV5ZVD4y5NuHtLJ-oA0mNRQMZz3e9r8';
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 
 // Function to generate Google Maps script with API key
 export const getGoogleMapsScript = () => {

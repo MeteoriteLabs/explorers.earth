@@ -14,6 +14,14 @@
     <priority>1.0</priority>
   </url>
 
+  <!-- About Page -->
+  <url>
+    <loc>https://explorers.earth/about</loc>
+    <lastmod>2026-03-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
   <!-- Legal & Information Pages -->
   <url>
     <loc>https://explorers.earth/contact</loc>
@@ -90,12 +98,3 @@
   </url>
 
 </urlset>
-
-<!--
-DYNAMIC SITEMAP GENERATION:
-For production, extend this script to:
-1. Connect to your database
-2. Query for all public users and places
-3. Generate URLs dynamically
-4. Include proper lastmod timestamps from database
--->

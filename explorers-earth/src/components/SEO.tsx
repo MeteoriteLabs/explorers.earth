@@ -21,6 +21,9 @@ export interface SEOProps {
   // GEO Enhancement Props (optional for backward compatibility)
   geoData?: GEOData;
   enableGEO?: boolean;
+
+  // Breadcrumb navigation for search results
+  breadcrumbs?: Array<{ name: string; url: string }>;
 }
 
 // Default fallback values - using dynamic URLs
@@ -178,6 +181,7 @@ const SEO: React.FC<SEOProps> = ({
   noFollow = false,
   geoData,
   enableGEO = false,
+  breadcrumbs,
 }) => {
 
 
@@ -361,6 +365,22 @@ const SEO: React.FC<SEOProps> = ({
             uniqueAspects: geoData.enrichedContent.uniqueAspects,
             userExperience: geoData.enrichedContent.userExperience,
             recommendations: geoData.enrichedContent.recommendations
+          })}
+        </script>
+      )}
+
+      {/* Breadcrumb Navigation Schema */}
+      {breadcrumbs && breadcrumbs.length > 0 && (
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: breadcrumbs.map((crumb, i) => ({
+              "@type": "ListItem",
+              position: i + 1,
+              name: crumb.name,
+              item: `${getBaseUrl()}${crumb.url}`,
+            })),
           })}
         </script>
       )}

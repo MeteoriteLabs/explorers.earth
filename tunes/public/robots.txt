@@ -2,15 +2,14 @@
 User-agent: *
 Allow: /
 
-# Disallow admin routes
+# Disallow admin and protected routes
 Disallow: /admin/
 Disallow: /api/
 Disallow: /settings/
+Disallow: /dashboard/
 
-# Don't crawl specific files
+# Don't crawl JSON data files
 Disallow: /*.json$
-Disallow: /*.js$
-Disallow: /*.css$
 
 # Point to sitemap
-Sitemap: https://localtunes.com/sitemap.xml
+Sitemap: https://localtunes.earth/sitemap.xml

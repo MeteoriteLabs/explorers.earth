@@ -232,9 +232,12 @@ function checkSSOCookie(req: Request, res: Response, next: NextFunction) {
 }
 
 export function setupAuth(app: Express) {
-  // Ensure required secrets are available
-  const sessionSecret = process.env.SESSION_SECRET || 'cosmic-session-secret';
-  const cookieSecret = process.env.COOKIE_SECRET || 'cosmic-cookie-secret';
+  // Ensure required secrets are available — fail hard in production
+  if (process.env.NODE_ENV === 'production' && (!process.env.SESSION_SECRET || !process.env.COOKIE_SECRET)) {
+    throw new Error('SESSION_SECRET and COOKIE_SECRET environment variables must be set in production');
+  }
+  const sessionSecret = process.env.SESSION_SECRET || 'dev-only-session-secret';
+  const cookieSecret = process.env.COOKIE_SECRET || 'dev-only-cookie-secret';
 
   // Determine the correct domain for cookies based on the request
   const getDomainFromReq = (req: any): string | undefined => {
