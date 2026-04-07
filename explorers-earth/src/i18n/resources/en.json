@@ -1175,6 +1175,7 @@
         "fetching": "Fetching...",
         "selectAll": "Select all",
         "clearSelection": "Clear selection",
+        "viewPublicProfile": "Navigate to Public Profile",
         "error": "An error occurred while loading your profile. Please try again later.",
         "errors": {
           "noFileProvided": "No file provided for upload",

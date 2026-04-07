@@ -41,7 +41,7 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed w-full inset-0 bg-dashboard-overlay backdrop-blur-sm z-50 flex items-center justify-center">
+    <div className="fixed w-full inset-0 bg-dashboard-overlay backdrop-blur-sm z-[150] flex items-center justify-center">
       <div
         className="relative rounded-lg max-h-[calc(100vh-2rem)] max-w-[calc(100vw-2rem)] flex flex-col items-center"
         style={{ width: "90vw", height: "90vh" }}

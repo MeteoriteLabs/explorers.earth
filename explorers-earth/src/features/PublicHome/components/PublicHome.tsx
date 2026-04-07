@@ -1034,14 +1034,14 @@ const PublicHome = memo(() => {
             </div>
 
             {/* Profile Section with Google Maps - Mobile Layout */}
-            <div className="md:hidden w-full mb-2 mt-14 px-3">
-              <div className="relative bg-dashboard-sidebar backdrop-blur-sm border rounded-[2rem] overflow-hidden shadow-dashboard-elevated" style={{ borderColor: '#3C4E40' }}>
+            <div className="md:hidden w-full mb-2 mt-14 px-0">
+              <div className="relative bg-dashboard-sidebar backdrop-blur-sm border rounded-none overflow-hidden shadow-dashboard-elevated" style={{ borderColor: '#3C4E40' }}>
                 {/* Google Maps Banner - Map Preview */}
                 <div
-                  className="relative flex flex-col justify-center items-center h-36 w-full overflow-hidden rounded-t-[2rem]"
+                  className="relative flex flex-col justify-center items-center h-36 w-full overflow-hidden rounded-none"
                 >
                   {/* Map Preview */}
-                  <div className="absolute inset-0 z-0 pointer-events-auto overflow-hidden rounded-t-[2rem]">
+                  <div className="absolute inset-0 z-0 pointer-events-auto overflow-hidden rounded-none">
                     {!mapLoading && mapPreviewData.coordinates.length > 0 ? (
                       <Map
                         defaultCenter={mapPreviewData.center}
@@ -1078,7 +1078,7 @@ const PublicHome = memo(() => {
                   </div>
 
                   {/* Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-black/10 via-black/5 to-black/20 z-0 rounded-t-[2rem] pointer-events-none"></div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-black/10 via-black/5 to-black/20 z-0 rounded-none pointer-events-none"></div>
 
                   {/* Expand Button */}
                   <button
@@ -1519,10 +1519,10 @@ const PublicHome = memo(() => {
                 )}
 
                 {isExpanded.visible && (
-                  <div className="fixed inset-0 bg-black md:bg-opacity-40 md:backdrop-blur-md z-[60]"></div>
+                  <div className="fixed inset-0 bg-black md:bg-opacity-40 md:backdrop-blur-md z-[150]"></div>
                 )}
                 <div
-                  className={`fixed md:max-w-4xl md:mx-auto inset-x-0 bottom-0 top-0 z-[60] transition-transform duration-300 ease-in-out overflow-x-hidden ${isExpanded.visible ? "translate-y-0" : "translate-y-full"
+                  className={`fixed md:max-w-4xl md:mx-auto inset-x-0 bottom-0 top-0 z-[150] transition-transform duration-300 ease-in-out overflow-x-hidden ${isExpanded.visible ? "translate-y-0" : "translate-y-full"
                     }`}
                 >
                   {isExpanded.visible && (() => {

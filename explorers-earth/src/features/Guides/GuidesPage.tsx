@@ -5,6 +5,7 @@ import Button from "../../components/ui/Button";
 import GuideCard from "./components/GuideCard";
 import { GET_GUIDES_QUERY, GET_USER_ACCOUNT_QUERY } from "./api/queries";
 import { DELETE_GUIDE_MUTATION, UPDATE_GUIDE_MUTATION } from "./api/mutations";
+import { updateTabVisibilityMutation } from "../../features/Settings/api/mutation";
 import GuideCardSkeleton from "../../components/ui/GuideCardSkeleton";
 import Modal from "../../components/ui/Modal";
 import { toast } from "sonner";
@@ -12,8 +13,8 @@ import SEO from "../../components/SEO";
 import { createCanonicalUrl } from "../../utils/getCurrentDomain";
 import useAuthStore from "../../store/store";
 import type { Guide } from "./types";
-import { AddIcon } from "../../assets/icons/AddIcon";
 import SwitchButton from "../../components/ui/SwitchButton";
+import { AddIcon } from "../../assets/icons/AddIcon";
 
 interface FilterState {
   guideType: string | null;
@@ -36,7 +37,7 @@ const GuidesPage: React.FC = () => {
     budgetType: null,
   });
   const [showFilters, setShowFilters] = useState(false);
-  const [isMultiCityFilter, setIsMultiCityFilter] = useState<boolean>(true);
+  const [isMultiCityFilter, setIsMultiCityFilter] = useState<boolean>(false);
   const [selectedLocation, setSelectedLocation] = useState<string>("");
 
   // Get account documentId
@@ -88,6 +89,35 @@ const GuidesPage: React.FC = () => {
       },
     }
   );
+
+  // Update tab visibility mutation
+  const [updateTabVisibility] = useMutation(updateTabVisibilityMutation, {
+    onCompleted: (data) => {
+      const isPublic = data.updateAccount.public_guides === "Yes";
+      toast.success(`Public visibility updated to ${isPublic ? "Public" : "Private"}`);
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Failed to update public visibility: ${error.message}`);
+    }
+  });
+
+  const handleVisibilityToggle = () => {
+    if (!accountData?.usersPermissionsUser?.accounts?.[0]) return;
+    
+    const account = accountData.usersPermissionsUser.accounts[0];
+    const currentVisibility = account.public_guides;
+    const newVisibility = currentVisibility === "Yes" ? "No" : "Yes";
+    
+    updateTabVisibility({
+      variables: {
+        documentId: account.documentId,
+        data: {
+          public_guides: newVisibility,
+        }
+      }
+    });
+  };
 
   const allGuides: Guide[] = guidesData?.guides || [];
 
@@ -427,34 +457,35 @@ const GuidesPage: React.FC = () => {
         author={username}
       />
       <div className="dashboard-theme bg-dashboard-bg min-h-screen">
-        <div className="w-full h-full mx-auto max-w-5xl px-4 md:px-6 pt-12 md:pt-10 pb-16 md:pb-6">
-          {/* Header */}
-          <div className="mb-6">
-            <div className="flex flex-col gap-4">
-              <div>
-                <h1 className="text-dashboard text-3xl font-poppins font-bold">
-                  My Guides
-                </h1>
-                <p className="text-dashboard-light font-poppins text-sm mt-1">
-                  Create and manage your personalized guides
-                </p>
+        <div className="w-full h-full mx-auto max-w-5xl px-4 md:px-6 pt-2 md:pt-4 pb-16 md:pb-6">
+          {/* Header row with Add Button and Visibility Toggle (matches Recommendations) */}
+          <div className="mb-4 md:mb-6">
+            <div className="flex items-center justify-between bg-dashboard-sidebar/40 px-3 py-3 rounded-2xl">
+              <div className="flex flex-col items-start gap-1.5 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
+                <SwitchButton
+                  isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_guides === "Yes"}
+                  onChange={handleVisibilityToggle}
+                  variant="blue"
+                />
+                <span className="text-[10px] md:text-xs text-white leading-tight whitespace-nowrap">Public Visibility</span>
               </div>
-              <div className="flex items-center justify-between w-full">
+
+              <div className="flex items-center justify-end w-full">
                 {/* Filter button - only show when there are guides */}
                 {!isLoading && allGuides.length > 0 ? (
-                  <div className="flex items-center gap-2 md:gap-3">
+                  <div className="flex items-center gap-2 md:gap-3 mr-3">
                     <button
                       onClick={() => setShowFilters(!showFilters)}
-                      className={`relative p-2 md:px-4 md:py-2 rounded-lg transition-colors flex items-center justify-center gap-2 ${hasActiveFilters
-                        ? "bg-dashboard-accent hover:bg-dashboard-accent/90 text-white"
-                        : "bg-dashboard-sidebar hover:bg-dashboard-card text-dashboard border border-dashboard"
+                      className={`relative p-2 md:px-4 md:py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 ${hasActiveFilters
+                        ? "bg-dashboard-accent hover:opacity-90 text-white shadow-lg shadow-blue-900/30"
+                        : "bg-dashboard-sidebar hover:bg-dashboard-card text-dashboard border border-dashboard shadow-md"
                         }`}
                       title="Filters"
                     >
                       <svg className="w-5 h-5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                       </svg>
-                      <span className="hidden md:inline font-poppins text-sm">Filters</span>
+                      <span className="hidden md:inline font-poppins text-sm font-medium">Filters</span>
                       {hasActiveFilters && (
                         <>
                           <span className="md:hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
@@ -480,12 +511,14 @@ const GuidesPage: React.FC = () => {
                 )}
 
                 {/* Create Guide Button */}
-                <Button
-                  onClickHandler={() => navigate("/guides/new")}
-                  variant="primary"
-                  btnText="Create Guide"
-                  endIcon={<AddIcon size="5" />}
-                />
+                <button
+                  onClick={() => navigate("/guides/new")}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap"
+                >
+                  <AddIcon size="5" />
+                  <span className="hidden sm:inline">Create Guide</span>
+                  <span className="sm:hidden">Create</span>
+                </button>
               </div>
             </div>
 

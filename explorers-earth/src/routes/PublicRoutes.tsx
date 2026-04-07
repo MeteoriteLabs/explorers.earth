@@ -11,6 +11,9 @@ import PublicGuides from "../features/PublicHome/components/PublicGuides";
 import PublicGuideDetailPage from "../features/PublicHome/components/PublicGuideDetailPage";
 import { UsernameValidator } from "./validators";
 import TabVisibilityGuard from "./validators/TabVisibilityGuard";
+import { PublicMovies, PublicMovieList, PublicMovieGenre } from "../features/Movies";
+import { PublicBooks, PublicBookList, PublicBookSubject } from "../features/Books";
+import { PublicGames, PublicGamesList, PublicGamesGenre } from "../features/Games";
 
 // Import layout
 import PublicLayout from "../layouts/PublicLayout";
@@ -63,6 +66,63 @@ const PublicRoutes = [
       } />
     </Route>
     <Route path="community" element={<Community />} />
+
+    {/* Movies & Shows public routes */}
+    <Route path="movies">
+      <Route index element={
+        <TabVisibilityGuard tabField="public_movie" defaultVisible={false}>
+          <PublicMovies />
+        </TabVisibilityGuard>
+      } />
+      <Route path="genre/:genreSlug" element={
+        <TabVisibilityGuard tabField="public_movie" defaultVisible={false}>
+          <PublicMovieGenre />
+        </TabVisibilityGuard>
+      } />
+      <Route path=":listSlug" element={
+        <TabVisibilityGuard tabField="public_movie" defaultVisible={false}>
+          <PublicMovieList />
+        </TabVisibilityGuard>
+      } />
+    </Route>
+
+    {/* Books public routes */}
+    <Route path="books">
+      <Route index element={
+        <TabVisibilityGuard tabField="public_books" defaultVisible={false}>
+          <PublicBooks />
+        </TabVisibilityGuard>
+      } />
+      <Route path="subject/:subjectSlug" element={
+        <TabVisibilityGuard tabField="public_books" defaultVisible={false}>
+          <PublicBookSubject />
+        </TabVisibilityGuard>
+      } />
+      <Route path=":listSlug" element={
+        <TabVisibilityGuard tabField="public_books" defaultVisible={false}>
+          <PublicBookList />
+        </TabVisibilityGuard>
+      } />
+    </Route>
+
+    {/* Games public routes */}
+    <Route path="games">
+      <Route index element={
+        <TabVisibilityGuard tabField="public_games" defaultVisible={true}>
+          <PublicGames />
+        </TabVisibilityGuard>
+      } />
+      <Route path="genre/:genreSlug" element={
+        <TabVisibilityGuard tabField="public_games" defaultVisible={true}>
+          <PublicGamesGenre />
+        </TabVisibilityGuard>
+      } />
+      <Route path=":listSlug" element={
+        <TabVisibilityGuard tabField="public_games" defaultVisible={true}>
+          <PublicGamesList />
+        </TabVisibilityGuard>
+      } />
+    </Route>
   </Route>,
 ];
 

@@ -786,15 +786,14 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
             </div>
 
             {/* Add Place button - right aligned */}
-            <Button
-              btnText={t("dashboard.recommendations.recommendButton")}
-              variant="primary"
-              type="button"
-              size="xsmall"
-              endIcon={<AddIcon size="6" />}
-              onClickHandler={() => setShowAddPlaceOverlay(true)}
+            <button
+              onClick={() => setShowAddPlaceOverlay(true)}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap"
               data-walkthrough="add-place"
-            />
+            >
+              <AddIcon size="5" />
+              <span>{t("dashboard.recommendations.recommendButton")}</span>
+            </button>
           </div>
 
         </div>
@@ -955,10 +954,10 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
       )}
 
       {isExpanded.visible && (
-        <div className="fixed inset-0 bg-dashboard-overlay backdrop-blur-md z-[60]"></div>
+        <div className="fixed inset-0 bg-dashboard-overlay backdrop-blur-md z-[150]"></div>
       )}
       <div
-        className={`fixed md:max-w-4xl md:mx-auto inset-x-0 bottom-0 top-24 md:top-12 z-[70] transition-transform duration-300 ease-in-out ${isExpanded.visible ? "translate-y-0" : "translate-y-full"
+        className={`fixed md:max-w-4xl md:mx-auto inset-x-0 bottom-0 top-24 md:top-12 z-[150] transition-transform duration-300 ease-in-out ${isExpanded.visible ? "translate-y-0" : "translate-y-full"
           }`}
         style={{ height: "100%" }}
       >

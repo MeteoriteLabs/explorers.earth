@@ -7,6 +7,7 @@ export const GET_USER_ACCOUNT_QUERY = gql`
       accounts {
         documentId
         Account_Name
+        public_guides
       }
     }
   }

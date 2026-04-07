@@ -1,12 +1,15 @@
-const Down = ({ stroke }: { stroke?: string }) => {
+import { memo } from "react";
+
+const Down = memo(({ stroke }: { stroke?: string }) => {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"
-      strokeWidth="1.5"
-      stroke={`${stroke ? stroke : "currentColor"}`}
-      className="size-6"
+      strokeWidth="2.5"
+      stroke={stroke || "currentColor"}
+      width="16"
+      height="16"
     >
       <path
         strokeLinecap="round"
@@ -15,6 +18,6 @@ const Down = ({ stroke }: { stroke?: string }) => {
       />
     </svg>
   );
-};
+});
 
 export default Down;
