@@ -32,6 +32,14 @@ function generateSitemap() {
     <priority>1.0</priority>
   </url>
 
+  <!-- About Page -->
+  <url>
+    <loc>${BASE_URL}/about</loc>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
   <!-- Legal & Information Pages -->
   <url>
     <loc>${BASE_URL}/contact</loc>
@@ -84,39 +92,10 @@ function generateSitemap() {
     <priority>0.4</priority>
   </url>
 
-  <!-- Example dynamic routes - In production, these would be generated from database -->
-  <url>
-    <loc>${BASE_URL}/example-user</loc>
-    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
+  <!-- Dynamic user profile URLs are served by the tunes backend at /api/explorers-sitemap.xml -->
+  <!-- Nginx proxies /sitemap.xml to that endpoint in production -->
 
-  <!-- Example place routes -->
-  <url>
-    <loc>${BASE_URL}/example-user/places</loc>
-    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <url>
-    <loc>${BASE_URL}/example-user/places/map</loc>
-    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-</urlset>
-
-<!--
-DYNAMIC SITEMAP GENERATION:
-For production, extend this script to:
-1. Connect to your database
-2. Query for all public users and places
-3. Generate URLs dynamically
-4. Include proper lastmod timestamps from database
--->`;
+</urlset>`;
 
   return sitemapContent;
 }
@@ -132,6 +111,7 @@ User-agent: *
 
 # PUBLIC ROUTES - Allow crawling for SEO and discoverability
 Allow: /
+Allow: /about
 Allow: /contact
 Allow: /privacy
 Allow: /cookies

@@ -1,9 +1,11 @@
+# ─── GraphQL proxy (production backend) ───────────────────────────────────────
 [[redirects]]
   from = "/graphql"
   to = "https://api.localqr.earth/graphql"
   status = 200
-  force = true
+  force  = true
 
+# ─── Legacy Netlify-app URL (keep for backward compat) ────────────────────────
 [[redirects]]
   from = "/api/*"
   to = "https://api.localqr.earth/api/:splat"
@@ -20,13 +22,25 @@
   from = "/igdb-api/*"
   to = "https://api.igdb.com/:splat"
   status = 200
-  force = true
+  force  = true
 
+# ─── REST API proxy — forward /api/* to Strapi backend ────────────────────────
+# IMPORTANT: /auth/callback is a FRONTEND route. It must NOT be proxied.
+# Netlify processes redirects top-to-bottom; the catch-all SPA rule below
+# will serve /auth/callback from the React bundle.
 [[redirects]]
-  from = "/*"
-  to = "/"
+  from   = "/api/*"
+  to     = "https://api.localqr.earth/api/:splat"
+  status = 200
+  force  = true
+
+# ─── SPA catch-all — serve index.html for all unmatched paths ─────────────────
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
   status = 200
 
+# ─── Build settings ───────────────────────────────────────────────────────────
 [build]
   command = "npm install && npm run build"
   publish = "dist"

@@ -5,7 +5,7 @@ Real-time collaborative music playlist management platform for venues. Venue own
 ## Tech Stack
 
 **Frontend**: React 18 + TypeScript, Vite 5.4, shadcn/ui + Radix UI, TanStack Query v5, Zustand, Socket.IO client, YouTube IFrame Player, Tailwind CSS, Wouter (routing)
-
+ 
 **Backend**: Express.js 4.21 + TypeScript, Socket.IO 4.8 (WebSocket), Passport.js (auth), express-session + connect-pg-simple (sessions)
 
 **Database**: PostgreSQL + Drizzle ORM 0.39 (@neondatabase/serverless for connection)
@@ -136,7 +136,7 @@ npm run db:push          # Push schema to database
 1. Define event handler in `server/routes/playlistRoutes.ts` (socket.on)
 2. Add client handler in `client/src/hooks/use-websocket.tsx`
 
-## Environment Variables
+## Environment Variables for tunes
 
 See `docs/environment-variables.md`. Key variables:
 - `DATABASE_URL` — PostgreSQL connection string
