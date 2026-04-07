@@ -244,6 +244,7 @@ const Auth = () => {
               googleButtonLabel={t("auth.signUpWithGoogle")}
               isRegistration={true}
               enablePasswordValidation={true}
+              turnstileSiteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
               children={
                 <div className="flex flex-col items-center gap-2">
                   <div className="flex justify-center items-center gap-1">
