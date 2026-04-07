@@ -529,7 +529,7 @@ const PublicProfile = memo(() => {
           </div>
 
           {/* Profile Header Content (Profile Pic, Name, Social Icons) */}
-          <div className="relative z-10 pt-24 md:pt-32 pb-0 md:pb-4 text-center px-4">
+          <div className="relative z-10 pt-16 md:pt-32 pb-0 md:pb-4 text-center px-4">
             {/* Profile Picture */}
             <div className="relative mb-2 px-4">
               <div

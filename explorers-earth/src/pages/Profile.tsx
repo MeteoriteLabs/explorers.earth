@@ -1780,6 +1780,52 @@ const Profile = memo(() => {
                      {account?.Primary_Address?.address}
                    </p>
                 </div>
+
+                {/* Social Links Preview */}
+                <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 px-6 mt-4 mb-2 empty:hidden">
+                  {account?.social_media?.instagram?.link && account?.social_media?.instagram?.visibility && (
+                    <div className="scale-[0.85]"><InstagramIcon color="white" /></div>
+                  )}
+                  {account?.mobile_number_visibility && account?.mobile_number && (
+                    <div className="scale-[0.85]"><MobileIcon fill="white" /></div>
+                  )}
+                  {account?.social_media?.whatsapp?.link && account?.social_media?.whatsapp?.visibility && (
+                    <div className="scale-[0.85]"><WhatsappIcon fill="white" /></div>
+                  )}
+                  {account?.social_media?.youtube?.link && account?.social_media?.youtube?.visibility && (
+                    <div className="scale-[0.85]"><YoutubeIcon color="white" /></div>
+                  )}
+                  {account?.social_media?.X?.link && account?.social_media?.X?.visibility && (
+                    <div className="scale-[0.85]"><TwitterIcon color="white" /></div>
+                  )}
+                  {account?.social_media?.spotify?.link && account?.social_media?.spotify?.visibility && (
+                    <div className="scale-[0.85]"><Spotify color="white" /></div>
+                  )}
+                  {account?.social_media?.website?.link && account?.social_media?.website?.visibility && (
+                    <div className="scale-[0.85]"><LinkIcon color="white" /></div>
+                  )}
+                  {account?.social_media?.facebook?.link && account?.social_media?.facebook?.visibility && (
+                    <div className="scale-[0.85]"><FacebookIcon color="white" /></div>
+                  )}
+                  {account?.social_media?.youtubeMusic?.link && account?.social_media?.youtubeMusic?.visibility && (
+                    <div className="scale-[0.85]"><YoutubeMusic color="white" /></div>
+                  )}
+                  {account?.social_media?.gmail?.link && account?.social_media?.gmail?.visibility && (
+                    <div className="scale-[0.85]"><Gmail color="white" /></div>
+                  )}
+                  {account?.social_media?.linkedin?.link && account?.social_media?.linkedin?.visibility && (
+                    <div className="scale-[0.85]"><LinkedinIcon color="white" /></div>
+                  )}
+                  {account?.social_media?.appleMusic?.link && account?.social_media?.appleMusic?.visibility && (
+                    <div className="scale-[0.85]"><AppleMusic color="white" /></div>
+                  )}
+                  {account?.social_media?.tiktok?.link && account?.social_media?.tiktok?.visibility && (
+                    <div className="scale-[0.85]"><TiktokIcon color="white" /></div>
+                  )}
+                  {account?.social_media?.snapchat?.link && account?.social_media?.snapchat?.visibility && (
+                    <div className="scale-[0.85]"><SnapchatIcon color="white" /></div>
+                  )}
+                </div>
               </div>
             </div>
 

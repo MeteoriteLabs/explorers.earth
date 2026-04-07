@@ -584,31 +584,31 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle }: M
       )}
 
       {/* ── Tab Switcher ────────────────────────────────────────────────────── */}
-      <div className="flex p-1 bg-white rounded-full max-w-lg mx-auto shadow-sm my-6">
+      <div className="flex items-center justify-center mx-auto bg-white rounded-3xl w-fit shadow-sm my-6">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 text-[10px] sm:text-xs font-bold rounded-full transition-all duration-300 ${
+            className={`flex items-center justify-center gap-1.5 px-3 md:px-4 py-2 text-[10px] sm:text-xs font-medium transition-all duration-300 whitespace-nowrap ${
               activeTab === tab.id
-                ? "bg-dashboard-accent text-white shadow-md"
-                : "text-blue-900 hover:bg-blue-50/50"
+                ? "bg-dashboard-accent rounded-2xl text-white shadow-md"
+                : "bg-white rounded-2xl text-black hover:bg-gray-50"
             }`}
           >
             {tab.icon}
-            <span className="whitespace-nowrap">{tab.shortLabel}</span>
+            <span>{tab.shortLabel}</span>
             {tab.id === "queue" && (currentlyPlaying || songs.length > 0) && (
-              <span className={`text-[10px] ${activeTab === "queue" ? "text-white/70" : "text-blue-900/50"}`}>
+              <span className={`text-[10px] ${activeTab === "queue" ? "text-white/70" : "text-black/50"}`}>
                 {currentlyPlaying ? `${songs.length + 1}` : songs.length}
               </span>
             )}
             {tab.id === "recently-played" && playedSongs.length > 0 && (
-              <span className={`text-[10px] ${activeTab === "recently-played" ? "text-white/70" : "text-blue-900/50"}`}>
+              <span className={`text-[10px] ${activeTab === "recently-played" ? "text-white/70" : "text-black/50"}`}>
                 {playedSongs.length}
               </span>
             )}
             {tab.id === "playlists" && playlists && playlists.length > 0 && (
-              <span className={`text-[10px] ${activeTab === "playlists" ? "text-white/70" : "text-blue-900/50"}`}>
+              <span className={`text-[10px] ${activeTab === "playlists" ? "text-white/70" : "text-black/50"}`}>
                 {playlists.length}
               </span>
             )}
