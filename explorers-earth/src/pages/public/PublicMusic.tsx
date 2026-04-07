@@ -20,6 +20,7 @@ import { getPublicAccountBasicQuery } from "../../features/PublicHome/api/query"
 import { getSongLimits, getUserSubscriptionPlans, getSubscriptionPlanById } from "../../services/subscriptionService";
 import SEO from "../../components/SEO";
 import { createCanonicalUrl } from "../../utils/getCurrentDomain";
+import { useTrackAnalytics, createAnalyticsOptions } from "../../services/analyticsService";
 
 const POLLING_INTERVAL = 1000;
 
@@ -89,6 +90,8 @@ export default function PublicMusic() {
   });
 
   const userDocumentId = userData?.usersPermissionsUsers?.[0]?.documentId;
+  // Resolve account documentId for analytics (account != user)
+  const accountDocumentId = accountData?.accounts?.[0]?.documentId;
 
   // Fetch user subscription plans to get plan_id from backend API
   const { data: subscriptionData } = useReactQuery({
@@ -130,6 +133,11 @@ export default function PublicMusic() {
   const songRequestsCount = songLimitsData?.[0]?.song_requests || 0;
   const songsQuota = planDetailsData?.songs_quota || 0;
   const isLimitReached = Number(songsQuota) > 0 && Number(songRequestsCount) >= Number(songsQuota);
+
+  // Initialize analytics — auto-tracks the page view once accountId resolves
+  const analytics = useTrackAnalytics(
+    createAnalyticsOptions.music(accountDocumentId || '', username)
+  );
 
   // Check if there's an active non-expired subscription plan
   const checkActiveSubscription = () => {
@@ -316,6 +324,12 @@ export default function PublicMusic() {
 
     try {
       await addSongToQueueMutation.mutateAsync(song);
+      // Track successful song request — key engagement metric
+      analytics.trackClick('song-request', {
+        title: song.title,
+        artist: song.artist,
+        youtubeId: song.youtubeId,
+      });
       // Refetch song limits after adding song
       await refetchSongLimits();
     } catch (error) {
@@ -353,6 +367,7 @@ export default function PublicMusic() {
       console.log('Share API not available, falling back to copy');
       handleCopyLink();
     }
+    analytics.trackClick('share-button', { context: 'music-header' });
   };
 
   const handleCopyLink = async () => {
@@ -370,6 +385,7 @@ export default function PublicMusic() {
       await navigator.clipboard.writeText(shareUrl);
       console.log('Copy successful');
       toast("Music page link copied to clipboard");
+      analytics.trackClick('copy-link', { context: 'music-header' });
     } catch (error) {
       console.error('Copy failed:', error);
       toast("Could not copy the music page link", { variant: "destructive" });
