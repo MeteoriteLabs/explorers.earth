@@ -140,9 +140,9 @@ const Login = () => {
   };
 
   const handleGoogleSignIn = () => {
-    // VITE_REST_API_URL = https://api.localqr.earth/api (already includes /api)
-    // Strapi's OAuth entry-point is at /api/connect/google
-    const backendBase = import.meta.env.VITE_REST_API_URL || "https://api.localqr.earth/api";
+    // Initiation must happen on the backend domain (api.localqr.earth)
+    // so the session cookie is correctly bound for the Google callback.
+    const backendBase = "https://api.localqr.earth/api";
     window.location.href = `${backendBase}/connect/google`;
   };
 
