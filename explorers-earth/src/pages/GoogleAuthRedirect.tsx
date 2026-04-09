@@ -6,7 +6,7 @@ import { EarthLoader } from "../components/EarthLoader";
 import { storeUserCredentials } from "../utils/sessionCredentials";
 
 /**
- * GoogleAuthRedirect — handles /api/connect/google/callback
+ * GoogleAuthRedirect — handles /google-auth/callback
  *
  * Strapi OAuth flow for production (explorers.earth):
  *
@@ -20,7 +20,7 @@ import { storeUserCredentials } from "../utils/sessionCredentials";
  *
  *  4. Strapi validates the Google code, creates/finds the user, mints a JWT,
  *     then redirects the browser to the configured "front-end URL":
- *     https://explorers.earth/api/connect/google/callback?access_token=<JWT>
+ *     https://explorers.earth/google-auth/callback?access_token=<JWT>
  *     ↑ the access_token here IS the Strapi JWT — NOT a Google token.
  *
  *  5. This component reads that JWT, fetches the user profile, stores
