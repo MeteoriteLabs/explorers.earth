@@ -85,10 +85,21 @@ const GoogleAuthRedirect = () => {
           return;
         }
 
-        setAuthStatus("Setting up your account...");
+        // Handle successful login with the final Strapi JWT (not the Google token)
+        loginState({
+          user: response.data,
+          token: finalJwt,
+          documentId: response.data.documentId ?? String(response.data.id),
+        });
+
+        // Add a small delay for state update before redirect
+        setAuthStatus("Login successful! Redirecting...");
+        setTimeout(() => {
+          navigate("/home");
+        }, 1500);
 
         const userData = {
-          token: strapiJwt,
+          token: finalJwt,
           documentId: user.documentId ?? String(user.id),
           blocked: user.blocked ?? false,
           id: user.id,
@@ -103,15 +114,11 @@ const GoogleAuthRedirect = () => {
           password: "google_auth_user",
         });
 
-        // Persist token and update global auth state
-        localStorage.setItem("qrtoken", strapiJwt);
-        loginState(userData);
-
-        setAuthStatus("Redirecting...");
-        await new Promise((resolve) => setTimeout(resolve, 400));
-
-        // ProtectedRoute handles the onboarding check from here
-        navigate("/home");
+        // Persist the final Strapi JWT
+        localStorage.setItem("qrtoken", finalJwt);
+        
+        // The earlier loginState call on line 89 already handled the global state update.
+        // Redirect is handled by the setTimeout on line 97.
       } catch (error) {
         console.error("[GoogleAuthRedirect] Error fetching user profile:", error);
         if (error instanceof AxiosError && error.response) {
