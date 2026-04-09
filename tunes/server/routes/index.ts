@@ -48,14 +48,20 @@ export function registerRoutes(app: Express, _storage: IStorage): Server {
         return res.status(500).json({ error: "STRAPI_URL not configured" });
       }
 
-      console.log(`📡 Proxying GraphQL request to: ${strapiUrl}/graphql`);
+      const authHeader = req.headers.authorization;
+      const finalToken = authHeader || (strapiToken ? `Bearer ${strapiToken}` : undefined);
+      
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      
+      if (finalToken) {
+        headers["Authorization"] = finalToken;
+      }
 
       const response = await fetch(`${strapiUrl}/graphql`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": req.headers.authorization || `Bearer ${strapiToken || ""}`,
-        },
+        headers,
         body: JSON.stringify(req.body),
       });
 
