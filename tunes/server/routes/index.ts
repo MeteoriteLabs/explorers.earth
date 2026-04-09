@@ -37,6 +37,38 @@ export function registerRoutes(app: Express, _storage: IStorage): Server {
   setupGoogleOAuthRoutes(app);
   setupAuthBridgeRoutes(app);
   setupSeoRoutes(app);
+  
+  // GraphQL Proxy for Strapi
+  app.post("/graphql", async (req, res) => {
+    try {
+      const strapiUrl = process.env.STRAPI_URL;
+      const strapiToken = process.env.STRAPI_ACCESS_TOKEN;
+      
+      if (!strapiUrl) {
+        return res.status(500).json({ error: "STRAPI_URL not configured" });
+      }
+
+      console.log(`📡 Proxying GraphQL request to: ${strapiUrl}/graphql`);
+
+      const response = await fetch(`${strapiUrl}/graphql`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": req.headers.authorization || `Bearer ${strapiToken || ""}`,
+        },
+        body: JSON.stringify(req.body),
+      });
+
+      const data = await response.json();
+      res.status(response.status).json(data);
+    } catch (error) {
+      console.error("❌ GraphQL Proxy Error:", error);
+      res.status(500).json({ 
+        error: "GraphQL Proxy Error", 
+        message: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
 
   return server;
 }
