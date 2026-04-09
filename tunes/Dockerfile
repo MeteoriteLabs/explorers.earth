@@ -49,6 +49,7 @@ COPY --from=builder /app/public ./public
 # Copy necessary config files
 COPY package.json ./
 COPY drizzle.config.ts ./
+COPY shared ./shared
 
 # Expose application port
 EXPOSE 5000
