@@ -52,10 +52,10 @@ const GoogleAuthRedirect = () => {
       try {
         setAuthStatus("Verifying your account...");
 
-        // Fetch the user's profile with the Strapi JWT
-        // VITE_REST_API_URL = https://api.localqr.earth/api (already includes /api)
-        const backendBase = import.meta.env.VITE_REST_API_URL || "https://api.localqr.earth/api";
-        const response = await axios.get(`${backendBase}/users/me`, {
+        console.log("[GoogleAuthRedirect] Attempting profile fetch with JWT:", strapiJwt?.substring(0, 10) + "...");
+
+        // Use the relative path to go through the Nginx proxy (avoids CORS issues)
+        const response = await axios.get("/api/users/me", {
           headers: {
             Authorization: `Bearer ${strapiJwt}`,
           },
