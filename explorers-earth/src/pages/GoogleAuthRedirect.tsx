@@ -52,12 +52,27 @@ const GoogleAuthRedirect = () => {
       try {
         setAuthStatus("Verifying your account...");
 
-        console.log("[GoogleAuthRedirect] Attempting profile fetch with JWT:", strapiJwt?.substring(0, 10) + "...");
+        let finalJwt = strapiJwt;
 
-        // Use the relative path to go through the Nginx proxy (avoids CORS issues)
+        // If the token is a Google Access Token (starts with ya29), exchange it for a Strapi JWT
+        if (strapiJwt && strapiJwt.startsWith('ya29')) {
+          console.log("[GoogleAuthRedirect] Google token detected. Exchanging for Strapi JWT...");
+          const exchangeResponse = await axios.get(`https://api.localqr.earth/api/auth/google/callback?access_token=${strapiJwt}`);
+          
+          if (exchangeResponse.data && exchangeResponse.data.jwt) {
+            finalJwt = exchangeResponse.data.jwt;
+            console.log("[GoogleAuthRedirect] Exchange successful!");
+          } else {
+            throw new Error("Failed to exchange Google token for Strapi JWT");
+          }
+        }
+
+        console.log("[GoogleAuthRedirect] Fetching profile with JWT:", finalJwt?.substring(0, 10) + "...");
+
+        // Use the relative path to go through the Nginx proxy
         const response = await axios.get("/api/users/me", {
           headers: {
-            Authorization: `Bearer ${strapiJwt}`,
+            Authorization: `Bearer ${finalJwt}`,
           },
         });
 
