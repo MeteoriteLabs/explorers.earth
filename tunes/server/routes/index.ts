@@ -49,7 +49,11 @@ export function registerRoutes(app: Express, _storage: IStorage): Server {
       }
 
       const authHeader = req.headers.authorization;
-      const finalToken = authHeader || (strapiToken ? `Bearer ${strapiToken}` : undefined);
+      const isAuthOperation = req.body?.query?.includes("login") || req.body?.query?.includes("register");
+      
+      const finalToken = isAuthOperation 
+        ? undefined 
+        : (authHeader || (strapiToken ? `Bearer ${strapiToken}` : undefined));
       
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
