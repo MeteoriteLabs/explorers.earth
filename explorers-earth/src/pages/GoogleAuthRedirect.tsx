@@ -56,8 +56,9 @@ const GoogleAuthRedirect = () => {
 
         // If the token is a Google Access Token (starts with ya29), exchange it for a Strapi JWT
         if (strapiJwt && strapiJwt.startsWith('ya29')) {
-          console.log("[GoogleAuthRedirect] Google token detected. Exchanging for Strapi JWT...");
-          const exchangeResponse = await axios.get(`https://api.localqr.earth/api/auth/google/callback?access_token=${strapiJwt}`);
+          console.log("[GoogleAuthRedirect] Google token detected. Exchanging for Strapi JWT via proxy...");
+          // Use relative path to avoid CORS errors
+          const exchangeResponse = await axios.get(`/api/auth/google/callback?access_token=${strapiJwt}`);
           
           if (exchangeResponse.data && exchangeResponse.data.jwt) {
             finalJwt = exchangeResponse.data.jwt;
