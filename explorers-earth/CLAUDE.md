@@ -1,6 +1,6 @@
 # explorers-earth
 
-Location recommendation and QR code sharing platform. Users create curated lists of favorite places, generate QR codes, and share them socially.
+Multi-media recommendation and QR code sharing platform. Users create curated lists of favorite places, movies, books, and games, generate QR codes, and share them socially.
 
 ## Tech Stack
 
@@ -10,7 +10,8 @@ Location recommendation and QR code sharing platform. Users create curated lists
 - React Router DOM 7.12
 - Google Maps API (@react-google-maps/api, @vis.gl/react-google-maps)
 - i18n (react-i18next)
-- Formik + Yup (forms)
+- Formik/React Hook Form + Yup/Zod (forms)
+- Cloudflare Turnstile (@marsidev/react-turnstile) for bot protection
 - qrcode.react (QR generation)
 
 ## Backend
@@ -28,6 +29,9 @@ src/
 │   ├── Authentication/ # Login, register, password reset, Google OAuth, onboarding
 │   ├── Profile/        # User profiles, photos, bio, social links
 │   ├── Favorites/      # Location recommendations, ratings, notes
+│   ├── Movies/         # Curated lists of favorite movies
+│   ├── Books/          # Curated lists of favorite books
+│   ├── Games/          # Curated lists of favorite games
 │   ├── Guides/         # AI-powered guide generation
 │   ├── Analytics/      # Usage tracking and dashboards
 │   ├── Settings/       # User preferences and account settings
