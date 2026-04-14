@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { deduplicateMovies } from "../../utils/movieHelpers";
@@ -11,6 +11,7 @@ import TopPicksHero from "./TopPicksHero";
 import TopPicksMobileHero from "./TopPicksMobileHero";
 import MovieDetailModal from "./MovieDetailModal";
 import GenreBrowse from "./GenreBrowse";
+import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
 
 // We need account documentId from username — reuse existing user query pattern
 import { gql } from "@apollo/client";
@@ -55,6 +56,11 @@ const PublicMovies = () => {
   const loading = userLoading || moviesLoading;
   const lists: MovieList[] = movieData?.movieLists ?? [];
 
+  // Step 3: Initialize analytics — auto-tracks the page view once accountId resolves
+  const analytics = useTrackAnalytics(
+    createAnalyticsOptions.movies(accountDocumentId || '', username)
+  );
+
   // Collect all movies across all published lists
   const allMovies = useMemo(() => {
     return deduplicateMovies(lists.flatMap(list => list.recommended_movies ?? []));
@@ -67,10 +73,17 @@ const PublicMovies = () => {
       .sort((a, b) => (a.pin_order ?? 999) - (b.pin_order ?? 999));
   }, [allMovies]);
 
-  const handleMovieClick = (movie: RecommendedMovie) => {
+  const handleMovieClick = useCallback((movie: RecommendedMovie) => {
     setSelectedMovie(movie);
     setModalOpen(true);
-  };
+    // Track which movie was clicked — sends Recommendation_Id to Strapi
+    analytics.trackClick('movie-card', {
+      id: movie.documentId,
+      title: movie.title,
+      mediaType: movie.media_type || 'movie',
+      listName: movie.movie_list?.List_Name,
+    });
+  }, [analytics]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -79,6 +92,7 @@ const PublicMovies = () => {
     } else {
       await navigator.clipboard.writeText(url);
     }
+    analytics.trackClick('share-button', { context: 'movies-header' });
   };
 
   return (
@@ -109,6 +123,7 @@ const PublicMovies = () => {
                 } catch (error) {
                   console.error("Failed to copy text:", error);
                 }
+                analytics.trackClick('copy-link', { context: 'movies-header' });
               }}
               className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
               aria-label="Copy Link"

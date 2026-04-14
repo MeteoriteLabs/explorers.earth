@@ -350,6 +350,13 @@ const PublicGuides = memo(() => {
 
   // Handle guide click - navigate to guide detail page
   const handleGuideClick = (guide: Guide) => {
+    // Track guide card click for analytics
+    analytics.trackClick('guide-card', {
+      id: guide.documentId,
+      title: guide.Title,
+      guideType: guide.Guide_Type,
+      category: Array.isArray(guide.Category) ? guide.Category[0] : guide.Category,
+    });
     // Use slug if available, otherwise use documentId as fallback
     const slug = guide.slug || toUrlSlug(guide.Title) || guide.documentId;
     navigate(`/${username}/guides/${slug}`);

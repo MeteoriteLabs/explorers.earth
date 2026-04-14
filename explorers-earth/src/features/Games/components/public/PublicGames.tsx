@@ -11,6 +11,7 @@ import TopGamesHero from "./TopGamesHero";
 import TopGamesMobileHero from "./TopGamesMobileHero";
 import GameDetailModal from "./GameDetailModal";
 import GenreBrowse from "./GenreBrowse";
+import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsername($username: String!) {
@@ -54,6 +55,11 @@ const PublicGames = () => {
   const loading = userLoading || gamesLoading;
   const lists: GameList[] = data?.gameLists ?? [];
 
+  // Initialize analytics — auto-tracks the page view once accountId resolves
+  const analytics = useTrackAnalytics(
+    createAnalyticsOptions.games(accountDocumentId || '', username)
+  );
+
   const allGames = useMemo(() => {
     return deduplicateGames(lists.flatMap((l) => l.recommended_games ?? []));
   }, [lists]);
@@ -66,7 +72,14 @@ const PublicGames = () => {
 
   const handleGameClick = useCallback((game: RecommendedGame) => {
     setModalState({ open: true, game });
-  }, []);
+    // Track which game was clicked — sends Recommendation_Id to Strapi
+    analytics.trackClick('game-card', {
+      id: game.documentId,
+      title: game.title,
+      genres: game.genres?.join(', '),
+      listName: game.game_list?.List_Name,
+    });
+  }, [analytics]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -75,6 +88,7 @@ const PublicGames = () => {
     } else {
       await navigator.clipboard.writeText(url);
     }
+    analytics.trackClick('share-button', { context: 'games-header' });
   };
 
   return (
@@ -105,6 +119,7 @@ const PublicGames = () => {
                 } catch (error) {
                   console.error("Failed to copy text:", error);
                 }
+                analytics.trackClick('copy-link', { context: 'games-header' });
               }}
               className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
               aria-label="Copy Link"

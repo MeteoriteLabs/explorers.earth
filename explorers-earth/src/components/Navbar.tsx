@@ -95,7 +95,7 @@ const Navbar = () => {
   ];
 
   return (
-    <div className="fixed bottom-0 md:bottom-2 md:rounded-lg z-50 w-full md:w-[33%] bg-dashboard-sidebar backdrop-blur-lg text-dashboard flex md:flex-row md:justify-center md:items-center justify-center py-2 px-2 md:p-1 shadow-lg border-t md:border-t-0 border-dashboard/50">
+    <div className="fixed bottom-0 left-0 right-0 md:bottom-2 md:left-1/2 md:-translate-x-1/2 md:rounded-lg z-50 w-full md:w-[450px] bg-dashboard-sidebar backdrop-blur-lg text-dashboard flex md:flex-row md:justify-center md:items-center justify-center py-2 px-2 md:p-1 shadow-lg border-t md:border-t-0 border-dashboard/50">
       <div className="flex flex-row justify-between gap-1 w-full max-w-md mx-auto">
         {allNavItems.map((item) => {
           const isActive = !(item as any).isExternal && isPathMatch(location.pathname, item.path, item.id);

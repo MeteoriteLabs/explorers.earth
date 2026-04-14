@@ -10,6 +10,10 @@ import LocationEngagementChart from './charts/LocationEngagementChart';
 import RecommendedPlacesChart from './charts/RecommendedPlacesChart';
 import SocialMediaInteractionChart from './charts/SocialMediaInteractionChart';
 import WorldMapChart from './charts/WorldMapChart';
+import ContentEngagementChart from './charts/ContentEngagementChart';
+import PageViewsTrendChart from './charts/PageViewsTrendChart';
+import MediaItemChart from './charts/MediaItemChart';
+import GuidesChart from './charts/GuidesChart';
 import { batchResolveIPsToCountries } from '../utils/geolocationService';
 
 // Time filter types
@@ -59,7 +63,7 @@ const AnalyticsDashboard: React.FC = () => {
   // Fetch analytics data from Strapi
   const { data, loading, error } = useQuery(GET_PUBLIC_PAGE_ANALYTICS, {
     errorPolicy: 'all', // Return data even if there are errors
-    fetchPolicy: 'cache-first', // Use cached data when available
+    fetchPolicy: 'cache-and-network', // Always fetch fresh data while showing cached instantly
     skip: !isAuthenticated || !user?.documentId || !token, // Skip query if not authenticated
   });
 
@@ -708,6 +712,100 @@ const AnalyticsDashboard: React.FC = () => {
             <SocialMediaInteractionChart
               rawAnalyticsData={filteredRawAnalyticsData}
             />
+          </div>
+
+          {/* Content Page Performance — unified overview */}
+          <div className="dt-surface p-6 rounded-lg">
+            <div className="mb-4">
+              <h2 className="dt-heading">Content Page Performance</h2>
+              <p className="dt-subtext">
+                Views &amp; click-throughs across Music, Movies, Books, Games and Guides pages.
+              </p>
+            </div>
+            <ContentEngagementChart events={filteredEvents} />
+          </div>
+
+          {/* Movies — dedicated section */}
+          <div className="dt-surface p-6 rounded-lg">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="text-xl">🎬</span>
+              <div>
+                <h2 className="dt-heading">Movies &amp; Shows</h2>
+                <p className="dt-subtext">Which movies visitors opened from your public movies page.</p>
+              </div>
+            </div>
+            <MediaItemChart
+              events={filteredEvents}
+              pageName="public-movies"
+              pageLabel="Movies"
+              elementPrefix="movie-card"
+              color="#60a5fa"
+              icon="🎬"
+              itemLabel="movie"
+            />
+          </div>
+
+          {/* Books — dedicated section */}
+          <div className="dt-surface p-6 rounded-lg">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="text-xl">📚</span>
+              <div>
+                <h2 className="dt-heading">Books</h2>
+                <p className="dt-subtext">Which books visitors opened from your public books page.</p>
+              </div>
+            </div>
+            <MediaItemChart
+              events={filteredEvents}
+              pageName="public-books"
+              pageLabel="Books"
+              elementPrefix="book-card"
+              color="#f59e0b"
+              icon="📚"
+              itemLabel="book"
+            />
+          </div>
+
+          {/* Games — dedicated section */}
+          <div className="dt-surface p-6 rounded-lg">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="text-xl">🎮</span>
+              <div>
+                <h2 className="dt-heading">Games</h2>
+                <p className="dt-subtext">Which games visitors opened from your public games page.</p>
+              </div>
+            </div>
+            <MediaItemChart
+              events={filteredEvents}
+              pageName="public-games"
+              pageLabel="Games"
+              elementPrefix="game-card"
+              color="#34d399"
+              icon="🎮"
+              itemLabel="game"
+            />
+          </div>
+
+          {/* Guides — dedicated section */}
+          <div className="dt-surface p-6 rounded-lg">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="text-xl">🗺️</span>
+              <div>
+                <h2 className="dt-heading">Travel Guides</h2>
+                <p className="dt-subtext">Views and guide opens from your public guides page.</p>
+              </div>
+            </div>
+            <GuidesChart events={filteredEvents} />
+          </div>
+
+          {/* Daily Views Trend by Section */}
+          <div className="dt-surface p-6 rounded-lg">
+            <div className="mb-4">
+              <h2 className="dt-heading">Daily Views Trend by Section</h2>
+              <p className="dt-subtext">
+                How each content section (Places, Music, Movies, Books, Games, Guides) is trending over time.
+              </p>
+            </div>
+            <PageViewsTrendChart events={filteredEvents} />
           </div>
         </div>
       </div>

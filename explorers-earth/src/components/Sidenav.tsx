@@ -74,6 +74,11 @@ const Sidebar = () => {
     const sidebarWidth = isOpen ? '256px' : '64px';
     document.documentElement.style.setProperty('--sidebar-width', sidebarWidth);
     document.body.setAttribute('data-sidebar-open', isOpen.toString());
+
+    return () => {
+      document.documentElement.style.removeProperty('--sidebar-width');
+      document.body.removeAttribute('data-sidebar-open');
+    };
   }, [isOpen]);
 
   const handleLogout = async () => {
