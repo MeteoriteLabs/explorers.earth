@@ -38,7 +38,7 @@ const AuthRoutes = [
   <Route key="terms" path="/terms" element={<Terms />} />,
   <Route
     key="google-callback"
-    path="/api/connect/google/callback"
+    path="/google-auth/callback"
     element={<GoogleAuthRedirect />}
   />,
 ];

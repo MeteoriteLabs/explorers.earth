@@ -49,9 +49,10 @@ COPY --from=builder /app/public ./public
 # Copy necessary config files
 COPY package.json ./
 COPY drizzle.config.ts ./
+COPY shared ./shared
 
 # Expose application port
-EXPOSE 5001
+EXPOSE 5000
 
 # Set the default command
 CMD ["node", "dist/server/index.js"]

@@ -143,8 +143,8 @@ app.use((req, res, next) => {
     // In Render and Docker, apps MUST listen on 0.0.0.0
     // We hardcode 0.0.0.0 to prevent accidental HOST=localhost values from breaking deployments
     const port = parseInt(process.env.PORT || '5000', 10);
-    // const host = '0.0.0.0';
-    const host = 'localhost';
+    // const host = 'localhost';
+    const host = '0.0.0.0';
 
     server.listen(port, host, () => {
       console.log(`\n=== Server Started ===`);

@@ -6,7 +6,7 @@ import { EarthLoader } from "../components/EarthLoader";
 import { storeUserCredentials } from "../utils/sessionCredentials";
 
 /**
- * GoogleAuthRedirect — handles /api/connect/google/callback
+ * GoogleAuthRedirect — handles /google-auth/callback
  *
  * Strapi OAuth flow for production (explorers.earth):
  *
@@ -20,7 +20,7 @@ import { storeUserCredentials } from "../utils/sessionCredentials";
  *
  *  4. Strapi validates the Google code, creates/finds the user, mints a JWT,
  *     then redirects the browser to the configured "front-end URL":
- *     https://explorers.earth/api/connect/google/callback?access_token=<JWT>
+ *     https://explorers.earth/google-auth/callback?access_token=<JWT>
  *     ↑ the access_token here IS the Strapi JWT — NOT a Google token.
  *
  *  5. This component reads that JWT, fetches the user profile, stores
@@ -52,12 +52,28 @@ const GoogleAuthRedirect = () => {
       try {
         setAuthStatus("Verifying your account...");
 
-        // Fetch the user's profile with the Strapi JWT
-        // VITE_REST_API_URL = https://api.localqr.earth/api (already includes /api)
-        const backendBase = import.meta.env.VITE_REST_API_URL || "https://api.localqr.earth/api";
-        const response = await axios.get(`${backendBase}/users/me`, {
+        let finalJwt = strapiJwt;
+
+        // If the token is a Google Access Token (starts with ya29), exchange it for a Strapi JWT
+        if (strapiJwt && strapiJwt.startsWith('ya29')) {
+          console.log("[GoogleAuthRedirect] Google token detected. Exchanging for Strapi JWT via proxy...");
+          // Use relative path to avoid CORS errors
+          const exchangeResponse = await axios.get(`/api/auth/google/callback?access_token=${strapiJwt}`);
+          
+          if (exchangeResponse.data && exchangeResponse.data.jwt) {
+            finalJwt = exchangeResponse.data.jwt;
+            console.log("[GoogleAuthRedirect] Exchange successful!");
+          } else {
+            throw new Error("Failed to exchange Google token for Strapi JWT");
+          }
+        }
+
+        console.log("[GoogleAuthRedirect] Fetching profile with JWT:", finalJwt?.substring(0, 10) + "...");
+
+        // Use the relative path to go through the Nginx proxy
+        const response = await axios.get("/api/users/me", {
           headers: {
-            Authorization: `Bearer ${strapiJwt}`,
+            Authorization: `Bearer ${finalJwt}`,
           },
         });
 
@@ -69,33 +85,31 @@ const GoogleAuthRedirect = () => {
           return;
         }
 
-        setAuthStatus("Setting up your account...");
-
-        const userData = {
-          token: strapiJwt,
+        // Handle successful login with the final Strapi JWT (not the Google token)
+        loginState({
+          token: finalJwt,
           documentId: user.documentId ?? String(user.id),
           blocked: user.blocked ?? false,
-          id: user.id,
+          id: String(user.id),
           email: user.email,
           username: user.username,
-        };
+        });
 
         // Store credentials (Google users have no plaintext password)
         storeUserCredentials({
-          username: userData.username,
-          email: userData.email,
+          username: user.username,
+          email: user.email,
           password: "google_auth_user",
         });
 
-        // Persist token and update global auth state
-        localStorage.setItem("qrtoken", strapiJwt);
-        loginState(userData);
+        // Persist the final Strapi JWT
+        localStorage.setItem("qrtoken", finalJwt);
 
-        setAuthStatus("Redirecting...");
-        await new Promise((resolve) => setTimeout(resolve, 400));
-
-        // ProtectedRoute handles the onboarding check from here
-        navigate("/home");
+        // Add a small delay for state update before redirect
+        setAuthStatus("Login successful! Redirecting...");
+        setTimeout(() => {
+          navigate("/home");
+        }, 1500);
       } catch (error) {
         console.error("[GoogleAuthRedirect] Error fetching user profile:", error);
         if (error instanceof AxiosError && error.response) {
