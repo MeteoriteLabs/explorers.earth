@@ -23,12 +23,14 @@ export default defineConfig({
        '/api': {
         //  target: 'http://13.126.235.177:1337',
          target: 'http://77.42.95.255:1337',
+        //  target: 'http://localhost:1337',
          changeOrigin: true,
          secure: false,
        },
        '/graphql': {
         //  target: 'http://13.126.235.177:1337',
          target: 'http://77.42.95.255:1337',
+        //  target: 'http://localhost:1337',
          changeOrigin: true,
          secure: false,
        },
