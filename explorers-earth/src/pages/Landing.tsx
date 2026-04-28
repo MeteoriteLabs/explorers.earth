@@ -1,5 +1,6 @@
 import LandingHeader from '../features/LandingPage/components/LandingHeader';
 import Hero from '../features/LandingPage/components/Hero';
+import BentoGridSection from '../features/LandingPage/components/BentoGrid/BentoGridSection';
 import CreateCustomize from '../features/LandingPage/components/CreateCustomize';
 import ShareAnywhere from '../features/LandingPage/components/ShareAnywhere';
 import Analytics from '../features/LandingPage/components/Analytics';
@@ -82,6 +83,7 @@ export default function Landing() {
       <div className="min-h-screen w-full overflow-x-hidden max-w-[100vw]">
         <LandingHeader />
         <Hero />
+        <BentoGridSection />
         <CreateCustomize />
         <ShareAnywhere />
         <Analytics />
