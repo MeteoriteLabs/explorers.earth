@@ -14,7 +14,7 @@
   },
   "hero": {
     "headline": "All your recommendations - one link, one QR",
-    "subtext": "Used by explorers worldwide. One link for everything you recommend - places, guides, music and more.",
+    "subtext": "Used by explorers worldwide. One link for everything you recommend - places, guides, movies, shows, music, books, games and more.",
     "inputLabel": "Claim your explorers URL:",
     "inputPlaceholder": "yourname",
     "ctaButton": "Claim Your explorers",
@@ -26,7 +26,7 @@
       "subtext": "Collect everything you'd normally share across messages, notes, or conversations — and bring it together in one place.\n\nOrganize your recommendations by city, journey, theme, or moment, and update them anytime as your perspective evolves.",
       "bulletPoints": {
         "addSpots": {
-          "title": "Add places, experiences, routes, sounds, and notes",
+          "title": "Add places, experiences, routes, sounds, movies, shows, books, games, and notes",
           "description": ""
         },
         "organize": {
