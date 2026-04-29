@@ -9,46 +9,46 @@ import GuidesMockup from './mockups/GuidesMockup';
 
 export default function BentoGridSection() {
   return (
-    <section className="w-full py-20 px-4 dashboard-theme bg-dashboard-bg">
-      <div className="max-w-7xl mx-auto">
+    <section className="w-full py-20 px-4 dashboard-theme bg-[#0F1419]">
+      <div className="max-w-6xl mx-auto">
 
-        <div className="text-center mb-16">
-          <h2 className="dt-heading text-3xl md:text-5xl font-bold mb-4">
-            Everything you need in <span className="text-dashboard-accent">one place</span>.
+        <div className="text-center mb-14">
+          <h2 className="text-white text-3xl md:text-5xl font-bold mb-4">
+            Everything you need in{' '}
+            <span className="text-[#3498DB]">one place</span>.
           </h2>
-          <p className="dt-subtext text-lg max-w-2xl mx-auto">
+          <p className="text-gray-400 text-lg max-w-2xl mx-auto">
             Interactive walkthroughs of every feature — exactly as they appear in your dashboard.
           </p>
         </div>
 
-        {/* Row 1: Places (large) + Music + Games */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-4">
-          <BentoCard className="lg:col-span-3 min-h-[520px]">
+        {/* Uniform 3×2 grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <BentoCard className="h-[480px]">
             <PlacesMockup />
           </BentoCard>
 
-          <div className="lg:col-span-2 grid grid-rows-2 gap-4">
-            <BentoCard className="min-h-[250px]">
-              <MusicMockup />
-            </BentoCard>
-            <BentoCard className="min-h-[250px]">
-              <GamesMockup />
-            </BentoCard>
-          </div>
-        </div>
+          <BentoCard className="h-[480px]">
+            <MusicMockup />
+          </BentoCard>
 
-        {/* Row 2: Books + Movies + Guides */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <BentoCard className="min-h-[420px]">
+          <BentoCard className="h-[480px]">
+            <GamesMockup />
+          </BentoCard>
+
+          <BentoCard className="h-[480px]">
             <BooksMockup />
           </BentoCard>
-          <BentoCard className="min-h-[420px]">
+
+          <BentoCard className="h-[480px]">
             <MoviesMockup />
           </BentoCard>
-          <BentoCard className="min-h-[420px]">
+
+          <BentoCard className="h-[480px]">
             <GuidesMockup />
           </BentoCard>
         </div>
+
       </div>
     </section>
   );
