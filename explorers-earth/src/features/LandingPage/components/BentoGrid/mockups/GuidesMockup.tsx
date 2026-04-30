@@ -14,20 +14,22 @@ const STAGE_DURATIONS = [2000, 1200, 600, 2500, 2500];
 
 const guideCards = [
   {
-    title: 'Tokyo 7-Day Itinerary',
+    title: 'Kyoto 7-Day Itinerary',
     type: 'Itinerary',
     days: 7,
-    location: 'Tokyo, Japan',
+    location: 'Kyoto, Japan',
     tag: 'Published',
     color: 'bg-red-900/20',
+    img: '/landing/Kyoto.jpg',
   },
   {
-    title: 'Rome Hidden Gems',
+    title: 'Bali Hidden Gems',
     type: 'Theme',
-    days: 4,
-    location: 'Rome, Italy',
+    days: 5,
+    location: 'Bali, Indonesia',
     tag: 'Draft',
     color: 'bg-amber-900/20',
+    img: '/landing/Bali.jpg',
   },
 ];
 
@@ -35,32 +37,35 @@ const GuideCardView = ({ card, hovered }: { card: typeof guideCards[0]; hovered?
   <motion.div
     animate={hovered ? { y: -3, borderColor: 'rgba(255,255,255,0.2)' } : { y: 0, borderColor: 'rgba(255,255,255,0.05)' }}
     transition={{ type: 'spring', stiffness: 300 }}
-    className={`${card.color} rounded-2xl p-4 border cursor-pointer`}
+    className={`${card.color} rounded-2xl border overflow-hidden cursor-pointer`}
     style={{ borderColor: 'rgba(255,255,255,0.05)' }}
   >
-    <div className="flex items-start justify-between mb-3">
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 mb-1">
-          <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-medium ${card.tag === 'Published' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>{card.tag}</span>
-          <span className="text-[8px] text-gray-500 bg-white/5 px-1.5 py-0.5 rounded-full">{card.type}</span>
-        </div>
-        <h3 className="text-xs font-semibold text-white truncate">{card.title}</h3>
-        <p className="text-[9px] text-gray-400 flex items-center gap-1 mt-0.5">
-          <MapPin size={8} /> {card.location} • {card.days} days
-        </p>
+    {/* Cover image */}
+    <div className="h-20 relative overflow-hidden">
+      <img src={card.img} alt={card.title} className="w-full h-full object-cover" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+      <div className="absolute bottom-2 left-2 flex gap-1">
+        <span className={`text-[7px] px-1.5 py-0.5 rounded-full font-medium ${card.tag === 'Published' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>{card.tag}</span>
+        <span className="text-[7px] text-gray-400 bg-black/40 px-1.5 py-0.5 rounded-full">{card.type}</span>
       </div>
     </div>
-    <div className="flex items-center justify-between mt-2">
-      <div className="flex items-center gap-1.5">
-        {hovered && (
-          <>
-            <div className="p-1 rounded-md bg-white/5 text-gray-400"><Pencil size={9} /></div>
-            <div className="p-1 rounded-md bg-white/5 text-gray-400"><Eye size={9} /></div>
-            <div className="p-1 rounded-md bg-white/5 text-red-400"><Trash2 size={9} /></div>
-          </>
-        )}
+    <div className="p-3">
+      <h3 className="text-xs font-semibold text-white truncate">{card.title}</h3>
+      <p className="text-[9px] text-gray-400 flex items-center gap-1 mt-0.5">
+        <MapPin size={8} /> {card.location} • {card.days} days
+      </p>
+      <div className="flex items-center justify-between mt-2">
+        <div className="flex items-center gap-1.5">
+          {hovered && (
+            <>
+              <div className="p-1 rounded-md bg-white/5 text-gray-400"><Pencil size={9} /></div>
+              <div className="p-1 rounded-md bg-white/5 text-gray-400"><Eye size={9} /></div>
+              <div className="p-1 rounded-md bg-white/5 text-red-400"><Trash2 size={9} /></div>
+            </>
+          )}
+        </div>
+        <span className="flex items-center gap-0.5 text-dashboard-accent text-[9px] font-medium">Open <ChevronRight size={9} /></span>
       </div>
-      <span className="flex items-center gap-0.5 text-dashboard-accent text-[9px] font-medium">Open <ChevronRight size={9} /></span>
     </div>
   </motion.div>
 );
@@ -135,17 +140,24 @@ export default function GuidesMockup() {
                     key="new-card"
                     initial={{ opacity: 0, scale: 0.92 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="bg-blue-900/20 rounded-2xl p-4 border"
+                    className="rounded-2xl border overflow-hidden bg-blue-900/20"
                     style={{ borderColor: 'rgba(52,152,219,0.4)' }}
                   >
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span className="text-[8px] px-1.5 py-0.5 rounded-full font-medium bg-gray-500/20 text-gray-400">Draft</span>
-                      <span className="text-[8px] text-gray-500 bg-white/5 px-1.5 py-0.5 rounded-full">Itinerary</span>
+                    {/* Cover */}
+                    <div className="h-20 relative overflow-hidden">
+                      <img src="/landing/Eiffel_Tower.jpg" alt="Paris" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                      <div className="absolute bottom-2 left-2 flex gap-1">
+                        <span className="text-[7px] px-1.5 py-0.5 rounded-full font-medium bg-gray-500/20 text-gray-400">Draft</span>
+                        <span className="text-[7px] text-gray-400 bg-black/40 px-1.5 py-0.5 rounded-full">Itinerary</span>
+                      </div>
                     </div>
-                    <h3 className="text-xs font-semibold text-white truncate">Paris Weekend Guide</h3>
-                    <p className="text-[9px] text-gray-400 flex items-center gap-1 mt-0.5">
-                      <MapPin size={8} /> Paris, France • 3 days
-                    </p>
+                    <div className="p-3">
+                      <h3 className="text-xs font-semibold text-white truncate">Paris Weekend Guide</h3>
+                      <p className="text-[9px] text-gray-400 flex items-center gap-1 mt-0.5">
+                        <MapPin size={8} /> Paris, France • 3 days
+                      </p>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>

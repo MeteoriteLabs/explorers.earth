@@ -11,9 +11,9 @@ import { AddIcon } from '../../../../../assets/icons/AddIcon';
 const STAGE_DURATIONS = [2500, 400, 2500, 400];
 
 const songs = [
-  { title: 'Midnight City Explorer', artist: 'Lofi Beats', thumb: 'bg-purple-900/60' },
-  { title: 'Ocean Drive', artist: 'Synthwave', thumb: 'bg-blue-900/60' },
-  { title: 'Café Racer', artist: 'Jazz Hop', thumb: 'bg-amber-900/60' },
+  { title: 'Anti-Hero', artist: 'Taylor Swift', img: '/landing/Taylor_Swift_Music.jpg' },
+  { title: 'Cruel Summer', artist: 'Taylor Swift', img: '/landing/Taylor_Swift_Music.jpg' },
+  { title: 'Shake It Off', artist: 'Taylor Swift', img: '/landing/Taylor_Swift_Music.jpg' },
 ];
 
 export default function MusicMockup() {
@@ -73,7 +73,9 @@ export default function MusicMockup() {
 
       {/* ── Now Playing ── */}
       <div className="bg-black/20 rounded-xl p-3 flex items-center gap-3">
-        <div className={`w-10 h-10 rounded shrink-0 ${songs[0].thumb}`} />
+        <div className="w-10 h-10 rounded shrink-0 overflow-hidden">
+          <img src={songs[0].img} alt={songs[0].title} className="w-full h-full object-cover" />
+        </div>
         <div className="flex-1 min-w-0">
           <p className="text-white text-xs font-medium truncate">{songs[0].title}</p>
           <p className="text-gray-400 text-[9px] truncate">{songs[0].artist}</p>
@@ -109,7 +111,9 @@ export default function MusicMockup() {
               <motion.div key="queue" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 {/* Now Playing row */}
                 <div className="flex items-center gap-2 p-2 mb-2 bg-green-500/10 border border-green-500/20 rounded-lg">
-                  <div className={`w-8 h-8 rounded shrink-0 ${songs[0].thumb}`} />
+                  <div className="w-8 h-8 rounded shrink-0 overflow-hidden">
+                    <img src={songs[0].img} alt={songs[0].title} className="w-full h-full object-cover" />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[8px] text-green-400 mb-0.5">Now Playing</p>
                     <p className="text-[10px] text-white font-medium truncate">{songs[0].title}</p>
@@ -120,7 +124,9 @@ export default function MusicMockup() {
                 {songs.slice(1).map((s, i) => (
                   <div key={i} className="flex items-center gap-2 p-2 mb-1 rounded-lg hover:bg-white/5 group">
                     <GripVertical className="w-3 h-3 text-gray-600 shrink-0" />
-                    <div className={`w-7 h-7 rounded shrink-0 ${s.thumb}`} />
+                    <div className="w-7 h-7 rounded shrink-0 overflow-hidden">
+                      <img src={s.img} alt={s.title} className="w-full h-full object-cover" />
+                    </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[10px] text-white font-medium truncate">{s.title}</p>
                       <p className="text-[9px] text-gray-400 truncate">{s.artist}</p>
