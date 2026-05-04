@@ -31,6 +31,24 @@ const guideCards = [
     color: 'bg-amber-900/20',
     img: '/landing/Bali.jpg',
   },
+  {
+    title: 'Paris Weekend Break',
+    type: 'Itinerary',
+    days: 3,
+    location: 'Paris, France',
+    tag: 'Published',
+    color: 'bg-green-900/20',
+    img: '/landing/Paris.jpg',
+  },
+  {
+    title: 'Louvre Art Guide',
+    type: 'Theme',
+    days: 1,
+    location: 'Paris, France',
+    tag: 'Draft',
+    color: 'bg-blue-900/20',
+    img: '/landing/Louvre_Museum.jpg',
+  },
 ];
 
 const GuideCardView = ({ card, hovered }: { card: typeof guideCards[0]; hovered?: boolean }) => (
@@ -102,26 +120,12 @@ export default function GuidesMockup() {
   }, [stage]);
 
   return (
-    <div className="flex-1 flex flex-col bg-[#0F1419] h-full overflow-hidden select-none pointer-events-none">
-      {/* ── Header Row (exact match to GuidesPage) ── */}
-      <div className="flex items-center justify-between bg-dashboard-sidebar/40 px-3 py-2.5 rounded-2xl mb-3 mx-3 mt-3">
-        <div className="flex flex-col items-start gap-1 bg-dashboard-muted/50 px-2.5 py-2 rounded-xl">
-          <div className="w-8 h-4 bg-dashboard-accent rounded-full flex items-center px-0.5">
-            <div className="w-3 h-3 rounded-full bg-white ml-auto shadow" />
-          </div>
-          <span className="text-[8px] text-white leading-tight">Public Visibility</span>
-        </div>
-
-        <motion.div
-          animate={stage === 2 ? { scale: 0.93, opacity: 0.8 } : { scale: 1, opacity: 1 }}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-dashboard-accent text-[10px] text-white font-medium shadow-lg shadow-blue-900/30"
-        >
-          <AddIcon size="3.5" />
-          <span>Create Guide</span>
-        </motion.div>
-      </div>
-
-      <div className="px-3 flex-1 overflow-hidden">
+    <div className="flex-1 flex flex-col bg-[#0F1419] h-full overflow-hidden select-none pointer-events-none relative">
+      <motion.div
+        animate={{ y: (stage === 1) ? -80 : 0 }}
+        transition={{ duration: 1.5, ease: 'easeInOut' }}
+        className="px-3 pt-4 flex-1 flex flex-col pb-24"
+      >
         <AnimatePresence mode="wait">
           {stage !== 3 ? (
             /* ── Guide Cards Grid ── */
@@ -213,7 +217,7 @@ export default function GuidesMockup() {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
     </div>
   );
 }

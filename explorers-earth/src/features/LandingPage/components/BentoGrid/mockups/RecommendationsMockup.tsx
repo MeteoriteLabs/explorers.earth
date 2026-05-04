@@ -151,51 +151,74 @@ export default function RecommendationsMockup() {
         })}
       </div>
 
-      {/* Header row */}
-      <div className="flex items-center justify-between bg-[#1a1f2e]/60 px-3 py-2 rounded-2xl mb-3 mx-3 shrink-0">
-        <div className="flex flex-col items-start gap-1 bg-white/5 px-2 py-1.5 rounded-xl">
-          <div className="w-7 h-3.5 bg-[#3498DB] rounded-full flex items-center px-0.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-white ml-auto shadow" />
-          </div>
-          <span className="text-[7px] text-white/60">Public Visibility</span>
-        </div>
+      <div className="px-3 pt-3 flex-1 overflow-hidden relative">
         <motion.div
-          animate={showModal ? { scale: 0.94, opacity: 0.7 } : { scale: 1, opacity: 1 }}
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[9px] text-white font-medium shadow-lg"
-          style={{ backgroundColor: '#3498DB' }}
+          animate={{ y: (phase >= 4 && phase <= 6) ? -120 : 0 }}
+          transition={{ duration: 1.5, ease: 'easeInOut' }}
+          className="flex flex-col h-full overflow-y-auto overflow-x-hidden hide-scrollbar pb-24"
         >
-          <AddIcon size="3" /><span>New List</span>
-        </motion.div>
-      </div>
-
-      <div className="px-3 flex-1 overflow-hidden">
-        <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait">
 
           {/* Home: list cards */}
           {!inListView && (
-            <motion.div key={`home-${catIdx}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-2 gap-2">
-              <div className="bg-[#1a1f2e] border rounded-xl overflow-hidden" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-                <div className="flex gap-0.5 h-16">
-                  {cat.imgs.map((img, i) => (
-                    <div key={i} className="flex-1 overflow-hidden first:rounded-tl-xl last:rounded-tr-xl">
-                      <img src={img} alt="" className="w-full h-full object-cover" />
-                    </div>
-                  ))}
-                </div>
-                <div className="p-2">
-                  <div className="flex items-center justify-between mb-1 gap-1">
-                    <h3 className="text-[9px] font-semibold text-white truncate flex-1">Top Picks</h3>
-                    <span className="text-[7px] text-green-400 font-medium shrink-0">Published</span>
+            <motion.div key={`home-${catIdx}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-[#1a1f2e] border rounded-xl overflow-hidden" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                  <div className="flex gap-0.5 h-16">
+                    {cat.imgs.map((img, i) => (
+                      <div key={i} className="flex-1 overflow-hidden first:rounded-tl-xl last:rounded-tr-xl">
+                        <img src={img} alt="" className="w-full h-full object-cover" />
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex items-center justify-between text-[7px] text-gray-500">
-                    <span>6 {cat.listLabel}</span>
-                    <span style={{ color: '#3498DB' }} className="flex items-center gap-0.5">Open <ChevronRight size={8} /></span>
+                  <div className="p-2">
+                    <div className="flex items-center justify-between mb-1 gap-1">
+                      <h3 className="text-[9px] font-semibold text-white truncate flex-1">Top Picks</h3>
+                      <span className="text-[7px] text-green-400 font-medium shrink-0">Published</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[7px] text-gray-500">
+                      <span>6 {cat.listLabel}</span>
+                      <span style={{ color: '#3498DB' }} className="flex items-center gap-0.5">Open <ChevronRight size={8} /></span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-[#1a1f2e] border rounded-xl overflow-hidden opacity-80" style={{ borderColor: 'rgba(255,255,255,0.03)' }}>
+                  <div className="flex gap-0.5 h-16">
+                    {cat.imgs.map((img, i) => (
+                      <div key={`dup-${i}`} className="flex-1 overflow-hidden first:rounded-tl-xl last:rounded-tr-xl opacity-50">
+                         <img src={img} alt="" className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="p-2">
+                    <div className="flex items-center justify-between mb-1 gap-1">
+                      <h3 className="text-[9px] font-semibold text-white truncate flex-1">Wishlist</h3>
+                    </div>
+                    <div className="flex items-center justify-between text-[7px] text-gray-500">
+                      <span>12 {cat.listLabel}</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="border-2 border-dashed border-white/10 rounded-xl p-2 flex flex-col items-center justify-center gap-1 text-gray-500 min-h-[80px]">
-                <Plus size={14} /><span className="text-[8px]">Add new list</span>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-[#1a1f2e] border rounded-xl overflow-hidden opacity-80" style={{ borderColor: 'rgba(255,255,255,0.03)' }}>
+                  <div className="flex gap-0.5 h-16 bg-white/5">
+                  </div>
+                  <div className="p-2">
+                    <div className="flex items-center justify-between mb-1 gap-1">
+                      <h3 className="text-[9px] font-semibold text-white truncate flex-1">Archived</h3>
+                    </div>
+                    <div className="flex items-center justify-between text-[7px] text-gray-500">
+                      <span>2 {cat.listLabel}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-2 border-dashed border-white/10 rounded-xl p-2 flex flex-col items-center justify-center gap-1 text-gray-500 min-h-[80px]">
+                  <Plus size={14} /><span className="text-[8px]">Add new list</span>
+                </div>
               </div>
             </motion.div>
           )}
@@ -338,7 +361,8 @@ export default function RecommendationsMockup() {
               </AnimatePresence>
             </motion.div>
           )}
-        </AnimatePresence>
+          </AnimatePresence>
+        </motion.div>
       </div>
 
       {/* Create list modal */}

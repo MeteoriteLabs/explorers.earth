@@ -31,6 +31,9 @@ const placeCategories = ['View all', 'Landmarks', 'Culture', 'Food'];
 const existingPlaces = [
   { name: 'Eiffel Tower', category: 'Landmarks', img: '/landing/Eiffel_Tower.jpg' },
   { name: 'Louvre Museum', category: 'Culture', img: '/landing/Louvre_Museum.jpg' },
+  { name: 'Montmartre', category: 'Districts', img: '/landing/Paris.jpg' },
+  { name: 'Sainte-Chapelle', category: 'Culture', img: '/landing/Louvre_Museum.jpg' },
+  { name: 'Arc de Triomphe', category: 'Landmarks', img: '/landing/Eiffel_Tower.jpg' },
 ];
 
 export default function PlacesMockup() {
@@ -95,40 +98,12 @@ export default function PlacesMockup() {
   const showManageQR = stage === 13;
 
   return (
-    <div className="flex-1 flex flex-col bg-[#0F1419] h-full overflow-hidden select-none pointer-events-none">
-      {/* ── Header Row — always shown ── */}
-      <div className="flex items-center justify-between bg-[#1a1f2e]/60 px-3 py-2.5 rounded-2xl mb-4 mx-3 mt-3 shrink-0">
-        <div className="flex flex-col items-start gap-1 bg-white/5 px-2.5 py-1.5 rounded-xl">
-          <div className="w-8 h-4 bg-[#3498DB] rounded-full flex items-center px-0.5">
-            <div className="w-3 h-3 rounded-full bg-white ml-auto shadow" />
-          </div>
-          <span className="text-[8px] text-white/60 leading-tight">Public Visibility</span>
-        </div>
-
-        <AnimatePresence mode="wait">
-          {!inLocationView ? (
-            <motion.div
-              key="add-location"
-              animate={showAddLocationModal ? { scale: 0.94, opacity: 0.7 } : { scale: 1, opacity: 1 }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#3498DB] text-[10px] text-white font-medium shadow-lg"
-            >
-              <AddIcon size="3.5" /><span>Add Location</span>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="add-place"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={showAddPlaceModal ? { opacity: 0.7, scale: 0.94 } : { opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#3498DB] text-[10px] text-white font-medium shadow-lg"
-            >
-              <AddIcon size="3.5" /><span>Add Place</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      <div className="px-3 flex-1 overflow-hidden">
+    <div className="flex-1 flex flex-col bg-[#0F1419] h-full overflow-hidden select-none pointer-events-none relative">
+      <motion.div
+        animate={{ y: (stage === 7 || stage === 8) ? -120 : 0 }}
+        transition={{ duration: 1.5, ease: 'easeInOut' }}
+        className="px-3 pt-4 flex-1 flex flex-col pb-24"
+      >
         <AnimatePresence mode="wait">
 
           {/* ══ HOME VIEW ══ */}
@@ -455,7 +430,7 @@ export default function PlacesMockup() {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
 
       {/* ══ Add Location Modal (stages 2-4) ══ */}
       <AnimatePresence>
