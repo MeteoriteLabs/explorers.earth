@@ -1,198 +1,250 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Plus, Star, ChevronRight, X, Loader2, Search } from 'lucide-react';
-import { AddIcon } from '../../../../../assets/icons/AddIcon';
+import { BookOpen, ChevronRight } from 'lucide-react';
 
-const STAGES = [2000, 1200, 500, 2000, 800, 500, 2500, 1000, 2000];
+// 3-phase automated walkthrough:
+// Phase 0 (3s)   — Hero section + list cards overview (static)
+// Phase 1 (3.5s) — Drill into "Top Reads" list → 2-col item grid, Recommendations tab active
+// Phase 2 (3.5s) — Switch to Manage tab → control dashboard
+// → loop
+
+const PHASE_DURATIONS = [3000, 3500, 3500];
+
+const TOP_PICK = {
+  title: 'Rich Dad Poor Dad',
+  year: '1997',
+  genres: ['Finance', 'Self-Help'],
+  img: '/landing/Kyoto.jpg',
+  poster: '/landing/Kyoto.jpg',
+};
+
+const LISTS = [
+  {
+    name: 'Top Reads',
+    count: 7,
+    status: 'Published',
+    items: [
+      { name: 'Rich Dad Poor Dad', meta: 'Kiyosaki', img: '/landing/Kyoto.jpg' },
+      { name: 'Psychology of Money', meta: 'Morgan Housel', img: '/landing/Bali.jpg' },
+      { name: 'Atomic Habits', meta: 'James Clear', img: '/landing/Paris.jpg' },
+      { name: 'Deep Work', meta: 'Cal Newport', img: '/landing/Eiffel_Tower.jpg' },
+    ],
+  },
+  {
+    name: 'Travel Reads',
+    count: 0,
+    status: 'Draft',
+    items: [],
+  },
+  {
+    name: 'Wishlist',
+    count: 12,
+    status: 'Public',
+    items: [
+      { name: 'Dune', meta: 'Frank Herbert', img: '/landing/Louvre_Museum.jpg' },
+      { name: 'Foundation', meta: 'Isaac Asimov', img: '/landing/Bali.jpg' },
+    ],
+  },
+];
+
+const MANAGE_ACTIONS = [
+  { label: 'Edit List', color: 'blue',  icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' },
+  { label: 'Share',    color: 'green', icon: 'M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z' },
+  { label: 'Draft',   color: 'amber', icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10' },
+  { label: 'Delete',  color: 'red',   icon: 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16' },
+];
 
 export default function BooksMockup() {
-  const [stage, setStage] = useState(0);
-  const [typedListName, setTypedListName] = useState('');
-  const [typedSearch, setTypedSearch] = useState('');
-  const [bookAdded, setBookAdded] = useState(false);
+  const [phase, setPhase] = useState(0);
 
   useEffect(() => {
-    let t: ReturnType<typeof setTimeout>;
-    const next = (stage + 1) % STAGES.length;
-    t = setTimeout(() => {
-      if (next === 0) { setTypedListName(''); setTypedSearch(''); setBookAdded(false); }
-      setStage(next);
-    }, STAGES[stage]);
+    const t = setTimeout(() => setPhase(p => (p + 1) % PHASE_DURATIONS.length), PHASE_DURATIONS[phase]);
     return () => clearTimeout(t);
-  }, [stage]);
+  }, [phase]);
 
-  useEffect(() => {
-    if (stage !== 3) return;
-    const target = 'My Science Fiction';
-    let i = typedListName.length;
-    const iv = setInterval(() => { i++; setTypedListName(target.slice(0, i)); if (i >= target.length) clearInterval(iv); }, 70);
-    return () => clearInterval(iv);
-  }, [stage]);
-
-  useEffect(() => {
-    if (stage !== 6) return;
-    const target = 'Dune';
-    let i = 0;
-    const iv = setInterval(() => { i++; setTypedSearch(target.slice(0, i)); if (i >= target.length) clearInterval(iv); }, 100);
-    return () => clearInterval(iv);
-  }, [stage]);
-
-  useEffect(() => { if (stage === 7) setBookAdded(true); }, [stage]);
-
-  const showModal = stage >= 2 && stage <= 4;
-  const showListView = stage >= 5;
+  const activeList = LISTS[0];
 
   return (
-    <div className="flex-1 flex flex-col bg-[#0F1419] h-full overflow-hidden select-none pointer-events-none">
-      {/* Header */}
-      <div className="flex items-center justify-between bg-[#1a1f2e]/60 px-3 py-2.5 rounded-2xl mb-3 mx-3 mt-3">
-        <div className="flex flex-col items-start gap-1 bg-white/5 px-2.5 py-1.5 rounded-xl">
-          <div className="w-8 h-4 bg-[#3498DB] rounded-full flex items-center px-0.5">
-            <div className="w-3 h-3 rounded-full bg-white ml-auto shadow" />
-          </div>
-          <span className="text-[8px] text-white/60 leading-tight">Public Visibility</span>
-        </div>
-        <motion.div
-          animate={showModal ? { scale: 0.94, opacity: 0.7 } : { scale: 1, opacity: 1 }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#3498DB] text-[10px] text-white font-medium shadow-lg"
-        >
-          <AddIcon size="3.5" /><span>New List</span>
-        </motion.div>
-      </div>
+    <div className="flex-1 flex flex-col bg-[#0F1419] h-full overflow-hidden select-none pointer-events-none font-poppins">
+      <AnimatePresence mode="wait">
 
-      <div className="px-3 flex-1 overflow-hidden">
-        <AnimatePresence mode="wait">
-          {!showListView && (
-            <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-2 gap-2.5">
-              <motion.div
-                animate={stage === 1 ? { y: -3, borderColor: 'rgba(255,255,255,0.2)' } : { y: 0, borderColor: 'rgba(255,255,255,0.05)' }}
-                className="bg-[#1a1f2e] border rounded-xl p-2.5 cursor-pointer"
-                style={{ borderColor: 'rgba(255,255,255,0.05)' }}
-              >
-                <div className="flex items-center justify-between mb-2 gap-1">
-                  <h3 className="text-[10px] font-semibold text-white truncate flex-1">Top Reads</h3>
-                  <span className="text-[7px] text-green-400 font-medium shrink-0">Published</span>
-                </div>
-                <div className="flex gap-1 mb-2">
-                  {['bg-amber-900/60','bg-blue-900/60','bg-green-900/60','bg-red-900/60'].map((c,i) => (
-                    <div key={i} className={`w-7 ${c} rounded-sm overflow-hidden`}><div className="aspect-[2/3]" /></div>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between text-[8px] text-gray-500">
-                  <div className="flex items-center gap-1.5">
-                    <span>7 books</span>
-                    <span className="flex items-center gap-0.5 text-amber-500/60"><Star size={7} fill="currentColor" /> 2</span>
+        {/* ── Phase 0: Hero + list overview ── */}
+        {phase === 0 && (
+          <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}
+            className="flex-1 overflow-y-auto hide-scrollbar pb-16">
+
+            {/* Hero */}
+            <section className="relative w-full h-[190px] bg-black overflow-hidden mb-4 shadow-2xl">
+              <img src={TOP_PICK.img} alt={TOP_PICK.title} className="w-full h-full object-cover opacity-60" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0F1419] via-[#0F1419]/40 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#0F1419]/80 to-transparent" />
+              <div className="absolute top-3 left-4">
+                <span className="text-[8px] font-black text-yellow-400 uppercase tracking-widest flex items-center gap-1">
+                  <span className="w-0.5 h-3 bg-yellow-400 rounded-full inline-block" />Top Pick
+                </span>
+              </div>
+              <div className="absolute inset-0 p-3 flex flex-col justify-end">
+                <div className="flex items-end gap-2.5">
+                  <div className="flex-1 min-w-0">
+                    <h1 className="text-sm font-black text-white leading-tight mb-1 drop-shadow-lg">{TOP_PICK.title}</h1>
+                    <div className="flex items-center gap-1 text-[7px] text-white/70 font-bold uppercase tracking-widest mb-2">
+                      <span>{TOP_PICK.year}</span><span className="text-white/30">•</span>
+                      <span>{TOP_PICK.genres.join(' / ')}</span>
+                    </div>
+                    <button className="flex items-center gap-1 bg-[#3498DB] text-white text-[7px] font-black py-1 px-2 rounded-md shadow-lg">
+                      <BookOpen size={7} /> See Details
+                    </button>
                   </div>
-                  <span className="text-amber-500 flex items-center gap-0.5 font-semibold">Open <ChevronRight size={9} /></span>
-                </div>
-              </motion.div>
-
-              <div className="bg-[#1a1f2e] border rounded-xl p-2.5" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-                <div className="flex items-center justify-between mb-2 gap-1">
-                  <h3 className="text-[10px] font-semibold text-white truncate flex-1">Travel Reads</h3>
-                  <span className="text-[7px] text-gray-500 shrink-0">Draft</span>
-                </div>
-                <div className="h-10 rounded-md bg-white/5 border border-dashed border-white/10 flex items-center justify-center mb-2">
-                  <span className="text-[8px] text-gray-500">No books yet</span>
-                </div>
-                <div className="flex items-center justify-between text-[8px] text-gray-500">
-                  <span>0 books</span>
-                  <span className="text-amber-500 flex items-center gap-0.5 font-semibold">Open <ChevronRight size={9} /></span>
+                  <div className="shrink-0 w-12 aspect-[2/3] rounded-md border border-white/20 overflow-hidden shadow-2xl">
+                    <img src={TOP_PICK.poster} alt="poster" className="w-full h-full object-cover" />
+                  </div>
                 </div>
               </div>
+            </section>
 
-              <div className="border-2 border-dashed border-white/10 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 text-gray-500 min-h-[80px]">
-                <Plus size={16} /><span className="text-[9px] font-semibold">Add new list</span>
-              </div>
-            </motion.div>
-          )}
-
-          {showListView && (
-            <motion.div key="listview" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="flex flex-col gap-2.5">
-              <div className="flex items-center gap-2">
-                <BookOpen size={14} className="text-amber-500" />
-                <span className="text-xs font-semibold text-white">My Science Fiction</span>
-                <span className="text-[8px] text-gray-500 ml-auto">0 books</span>
-              </div>
-
-              <div className="bg-[#1a1f2e] border border-white/10 rounded-xl p-2.5">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Search size={10} className="text-amber-500" />
-                  <span className="text-[9px] text-white font-medium">Add Books</span>
-                </div>
-                <div className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1.5 text-[9px] text-white flex items-center">
-                  {typedSearch || <span className="text-gray-500">Search by title or author…</span>}
-                  {stage === 6 && <motion.span animate={{ opacity:[0,1,0] }} transition={{ repeat:Infinity, duration:0.7 }} className="inline-block w-px h-2.5 bg-amber-500 ml-0.5" />}
-                </div>
-                <AnimatePresence>
-                  {typedSearch.length >= 2 && (
-                    <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-2 space-y-1.5">
-                      {['Dune', 'Dune Messiah'].map((name, i) => (
-                        <div key={i} className={`flex items-center gap-2 p-1.5 rounded-lg ${i === 0 && stage >= 7 ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-white/5'}`}>
-                          <div className={`w-6 ${i === 0 ? 'bg-amber-900/60' : 'bg-orange-900/60'} rounded-sm shrink-0`}><div className="aspect-[2/3]" /></div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[9px] text-white font-medium truncate">{name}</p>
-                            <p className="text-[7px] text-gray-500">Frank Herbert</p>
-                          </div>
-                          <div className={`shrink-0 text-[7px] px-1.5 py-0.5 rounded font-medium ${i === 0 && stage >= 7 ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                            {i === 0 && stage >= 7 ? '✓ Added' : '+ Add'}
-                          </div>
+            {/* Lists */}
+            <div className="px-3 space-y-2">
+              {LISTS.map((list) => (
+                <div key={list.name} className="bg-[#1a1f2e] border border-white/5 rounded-xl p-2.5">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-0.5 h-3 bg-amber-400 rounded-full" />
+                      <h3 className="text-[10px] font-black text-white">{list.name}</h3>
+                    </div>
+                    <span className={`text-[7px] font-bold px-1.5 py-0.5 rounded-full ${
+                      list.status === 'Published' ? 'text-green-400 bg-green-500/10' :
+                      list.status === 'Draft' ? 'text-gray-400 bg-white/5' :
+                      'text-blue-400 bg-blue-500/10'
+                    }`}>{list.status}</span>
+                  </div>
+                  {list.items.length > 0 ? (
+                    <div className="flex gap-1 mb-2">
+                      {list.items.slice(0, 4).map((it, i) => (
+                        <div key={i} className="w-7 rounded-sm overflow-hidden aspect-[2/3] bg-white/10 shrink-0">
+                          <img src={it.img} alt={it.name} className="w-full h-full object-cover" />
                         </div>
                       ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              <AnimatePresence>
-                {bookAdded && (
-                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-[#1a1f2e] border border-white/10 rounded-xl p-2.5">
-                    <p className="text-[8px] text-gray-500 mb-1.5">In this list</p>
-                    <div className="flex gap-1.5 items-center">
-                      <div className="w-8 bg-amber-900/60 rounded-sm"><div className="aspect-[2/3]" /></div>
-                      <div>
-                        <p className="text-[9px] text-white font-medium">Dune</p>
-                        <p className="text-[7px] text-gray-500">Frank Herbert</p>
-                      </div>
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      <AnimatePresence>
-        {showModal && (
-          <motion.div className="absolute inset-0 bg-black/70 backdrop-blur-sm z-20 flex items-center justify-center p-3"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <motion.div className="bg-[#1a1f2e] rounded-xl border border-white/10 p-4 w-full shadow-2xl"
-              initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.92, opacity: 0 }}>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-xs font-bold text-white">Create New List</h2>
-                <X size={12} className="text-gray-400" />
-              </div>
-              <div className="space-y-2">
-                <div>
-                  <label className="text-[9px] font-semibold text-white mb-1 block">List Name</label>
-                  <div className="bg-black/30 border border-white/10 rounded-lg px-2.5 py-1.5 text-[9px] text-white min-h-[26px]">
-                    {typedListName || <span className="text-gray-500">e.g. My Favorite Science Fiction</span>}
-                    {stage === 3 && <motion.span animate={{ opacity:[0,1,0] }} transition={{ repeat:Infinity, duration:0.7 }} className="inline-block w-px h-2.5 bg-[#3498DB] ml-0.5 align-middle" />}
+                  ) : (
+                    <div className="h-8 rounded-md bg-white/5 border border-dashed border-white/10 flex items-center justify-center mb-2">
+                      <span className="text-[7px] text-gray-500">No books yet</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-[8px] text-gray-500">{list.count} books</span>
+                    <span className="text-[8px] text-amber-400 flex items-center gap-0.5 font-bold">Open <ChevronRight size={8} /></span>
                   </div>
                 </div>
-                <div>
-                  <label className="text-[9px] font-semibold text-white mb-1 block">Description</label>
-                  <div className="bg-black/30 border border-white/10 rounded-lg px-2.5 py-1.5 text-[9px] text-gray-500 h-12">Optional…</div>
-                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── Phase 1 & 2: List detail ── */}
+        {(phase === 1 || phase === 2) && (
+          <motion.div key="detail" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}
+            className="flex-1 flex flex-col overflow-hidden">
+
+            {/* Header */}
+            <div className="px-3 py-2.5 flex items-center gap-2 shrink-0 border-b border-white/5">
+              <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                <ChevronRight size={10} className="text-white rotate-180" />
               </div>
-              <div className="flex justify-end gap-1.5 pt-2.5 mt-2.5 border-t border-white/10">
-                <button className="px-3 py-1 rounded-lg bg-red-500 text-[9px] text-white">Cancel</button>
-                <button className="px-3 py-1 rounded-lg bg-blue-500 text-[9px] text-white flex items-center gap-1">
-                  {stage === 4 && <Loader2 size={9} className="animate-spin" />}Create List
-                </button>
+              <BookOpen size={12} className="text-amber-400 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h2 className="text-[10px] font-black text-white truncate">{activeList.name}</h2>
+                <p className="text-[7px] text-white/40 uppercase tracking-widest font-bold">{activeList.count} books • Books</p>
               </div>
-            </motion.div>
+            </div>
+
+            {/* Tab switcher */}
+            <div className="px-3 py-2 flex items-center justify-center shrink-0">
+              <div className="flex items-center bg-white rounded-3xl shadow-sm p-0.5">
+                {(['recommendations', 'manage'] as const).map(tab => (
+                  <button key={tab} className={`px-3 py-1 text-[8px] font-black rounded-2xl transition-all duration-300 ${
+                    (tab === 'recommendations' && phase === 1) || (tab === 'manage' && phase === 2)
+                      ? 'bg-[#3498DB] text-white shadow-md' : 'text-black'
+                  }`}>
+                    {tab === 'recommendations' ? 'Recommendations' : 'Manage'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <AnimatePresence mode="wait">
+              {/* Phase 1: 2-col item grid */}
+              {phase === 1 && (
+                <motion.div key="items" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="flex-1 overflow-y-auto hide-scrollbar px-3 pb-4">
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {activeList.items.map((it, i) => (
+                      <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
+                        className="bg-[#1a1f2e] rounded-xl overflow-hidden border border-white/5 shadow-lg">
+                        <div className="aspect-[4/3] relative overflow-hidden">
+                          <img src={it.img} alt={it.name} className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                          <div className="absolute bottom-1.5 left-2 right-2">
+                            <p className="text-[8px] font-black text-white leading-tight truncate drop-shadow">{it.name}</p>
+                          </div>
+                        </div>
+                        <div className="px-2 py-1.5">
+                          <p className="text-[7px] text-white/40 uppercase tracking-widest font-bold truncate">{it.meta}</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Phase 2: Manage dashboard */}
+              {phase === 2 && (
+                <motion.div key="manage" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="flex-1 px-3 py-3 space-y-3 overflow-y-auto hide-scrollbar">
+                  <div>
+                    <p className="text-[10px] font-black text-white uppercase tracking-tight">Manage List</p>
+                    <p className="text-[7px] text-white/40 uppercase tracking-[0.2em] font-bold mt-0.5">{activeList.name} • {activeList.count} books</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {MANAGE_ACTIONS.map(({ label, color, icon }) => (
+                      <motion.div key={label} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                        className={`${color === 'red' ? 'bg-red-500/10 border-red-500/20' : 'bg-[#1a1f2e] border-white/5'} border rounded-xl p-3 flex flex-col items-center gap-2 shadow-lg`}>
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center ${
+                          color === 'blue' ? 'bg-blue-500/10 text-blue-400' :
+                          color === 'green' ? 'bg-green-500/10 text-green-400' :
+                          color === 'amber' ? 'bg-amber-500/10 text-amber-400' :
+                          'bg-red-500/20 text-red-400'}`}>
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
+                          </svg>
+                        </div>
+                        <span className={`text-[8px] font-black uppercase tracking-tight ${color === 'red' ? 'text-red-400' : 'text-white'}`}>{label}</span>
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 flex items-center justify-between">
+                    <div>
+                      <span className="text-[9px] font-black text-white uppercase block">Visibility</span>
+                      <span className="text-[7px] text-white/40 font-bold uppercase tracking-widest">Live on profile</span>
+                    </div>
+                    <div className="w-7 h-4 bg-blue-500 rounded-full relative shrink-0">
+                      <div className="absolute right-0.5 top-0.5 bottom-0.5 aspect-square bg-white rounded-full shadow-sm" />
+                    </div>
+                  </div>
+
+                  <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3 flex items-center gap-2.5">
+                    <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 shrink-0">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                    </div>
+                    <div>
+                      <span className="text-[8px] font-black text-green-400 uppercase block">Published</span>
+                      <span className="text-[7px] text-white/40 font-bold uppercase tracking-widest">Visible to all explorers</span>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>

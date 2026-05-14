@@ -73,15 +73,7 @@ const GuideCardView = ({ card, hovered }: { card: typeof guideCards[0]; hovered?
         <MapPin size={8} /> {card.location} • {card.days} days
       </p>
       <div className="flex items-center justify-between mt-2">
-        <div className="flex items-center gap-1.5">
-          {hovered && (
-            <>
-              <div className="p-1 rounded-md bg-white/5 text-gray-400"><Pencil size={9} /></div>
-              <div className="p-1 rounded-md bg-white/5 text-gray-400"><Eye size={9} /></div>
-              <div className="p-1 rounded-md bg-white/5 text-red-400"><Trash2 size={9} /></div>
-            </>
-          )}
-        </div>
+        <div className="flex items-center gap-1.5" />
         <span className="flex items-center gap-0.5 text-dashboard-accent text-[9px] font-medium">Open <ChevronRight size={9} /></span>
       </div>
     </div>

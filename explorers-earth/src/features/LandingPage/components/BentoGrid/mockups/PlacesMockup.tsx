@@ -143,7 +143,40 @@ export default function PlacesMockup() {
                 </AnimatePresence>
               </div>
 
-              <div className="text-[8px] text-gray-500 text-right">View all</div>
+              {/* My Recommendations section header */}
+              <div className="flex items-center justify-between mt-2">
+                <h3 className="text-white text-xs font-bold">My Recommendations</h3>
+                <span className="text-[8px] text-blue-400 font-medium">View all</span>
+              </div>
+
+              {/* Category chips */}
+              <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar">
+                {placeCategories.map(cat => (
+                  <div key={cat} className={`px-2.5 py-1 rounded-lg text-[9px] font-medium whitespace-nowrap ${cat === activeCat ? 'bg-blue-500 text-white' : 'bg-white/5 text-gray-400'}`}>
+                    {cat}
+                  </div>
+                ))}
+              </div>
+
+              {/* Grid of place cards to match public profile grid */}
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                {existingPlaces.slice(0, 4).map((p, i) => (
+                  <motion.div key={i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1 }} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-lg group">
+                    <div className="h-20 relative overflow-hidden">
+                      <img src={p.img} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                      <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 bg-black/40 backdrop-blur-md px-1 py-0.5 rounded-full border border-white/10">
+                        <span className="text-[7px] text-white font-bold">4.8</span>
+                        <svg className="w-1.5 h-1.5 text-amber-400 fill-amber-400" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                      </div>
+                    </div>
+                    <div className="p-2">
+                      <p className="text-white text-[9px] font-bold leading-tight truncate">{p.name}</p>
+                      <p className="text-gray-500 text-[7px] mt-0.5 uppercase tracking-wide">{p.category}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
             </motion.div>
           )}
 
@@ -329,98 +362,72 @@ export default function PlacesMockup() {
                   </motion.div>
                 )}
 
-                {/* Manage tab — stage 8: place list */}
-                {activeLocTab === 'manage' && !showManageQR && (
-                  <motion.div key="manage" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    <p className="text-[8px] text-gray-500 mb-3">Manage places in Paris</p>
-                    <div className="space-y-1.5">
-                      {existingPlaces.map((place, i) => (
-                        <div key={i} className="flex items-center gap-2 bg-[#1a1f2e] rounded-xl p-2 border border-white/5">
-                          <img src={place.img} alt={place.name} className="w-8 h-8 rounded-lg object-cover shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[9px] text-white font-medium truncate">{place.name}</p>
-                            <p className="text-[7px] text-gray-500">{place.category}</p>
+                {/* Manage tab — management controls */}
+                {activeLocTab === 'manage' && (
+                  <motion.div key="manage" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+                    {/* Manage Section */}
+                    <div className="bg-[#1a1f2e] border border-white/5 rounded-xl overflow-hidden shadow-xl">
+                      <div className="px-4 py-3 flex items-center justify-between border-b border-white/5">
+                        <span className="text-[10px] font-bold text-white">Manage</span>
+                        <ChevronRight size={14} className="text-white/40 rotate-90" />
+                      </div>
+                      <div className="p-3 space-y-2">
+                        <button className="w-full py-2.5 rounded-lg border border-white/10 flex items-center justify-center gap-2 text-white/80 hover:bg-white/5 transition-colors">
+                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                           <span className="text-[9px] font-bold tracking-tight">Delete</span>
+                        </button>
+                        <button className="w-full py-2.5 rounded-lg border border-white/10 flex items-center justify-center gap-2 text-white/80 hover:bg-white/5 transition-colors">
+                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                           <span className="text-[9px] font-bold tracking-tight">Edit</span>
+                        </button>
+                        <button className="w-full py-2.5 rounded-lg border border-green-500/30 bg-green-500/5 flex items-center justify-center gap-2 text-green-400 hover:bg-green-500/10 transition-colors">
+                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                           <span className="text-[9px] font-bold tracking-tight">Published</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* My QR Section */}
+                    <div className="bg-[#1a1f2e] border border-white/5 rounded-xl overflow-hidden shadow-xl">
+                      <div className="px-4 py-3 flex items-center justify-between border-b border-white/5">
+                        <span className="text-[10px] font-bold text-white">My QR</span>
+                        <ChevronRight size={14} className="text-white/40 rotate-90" />
+                      </div>
+                      <div className="p-4 flex flex-col items-center">
+                        <div className="relative w-36 aspect-[3/4] bg-white rounded-xl overflow-hidden shadow-2xl flex flex-col">
+                           <div className="h-2/5 bg-black p-3 flex flex-col items-center justify-center">
+                              <span className="text-[8px] font-black text-white tracking-tighter uppercase text-center">My Recommendations</span>
+                           </div>
+                           <div className="flex-1 bg-white p-2 flex items-center justify-center relative">
+                              <div className="w-16 h-16 bg-black p-1 flex items-center justify-center rounded-md">
+                                <div className="grid grid-cols-5 gap-px w-full h-full">
+                                  {Array.from({length:25}).map((_,i) => {
+                                    const filled = [0,1,2,3,4,5,9,10,14,15,19,20,21,22,23,24,6,12,18].includes(i);
+                                    return <div key={i} className={`rounded-[1.5px] ${filled ? 'bg-white' : 'bg-transparent'}`} />;
+                                  })}
+                                </div>
+                              </div>
+                              {/* Bottom preview part of the image in screenshot */}
+                              <div className="absolute inset-x-0 bottom-0 h-4 bg-gradient-to-t from-black/10 to-transparent" />
+                           </div>
+                           <div className="p-1.5 bg-gray-50 flex items-center justify-center">
+                              <span className="text-[6px] font-black text-gray-500 uppercase tracking-widest">Travel like a local</span>
+                           </div>
+                        </div>
+
+                        <div className="flex items-center gap-6 mt-5">
+                          <div className="flex flex-col items-center gap-1">
+                             <svg className="w-3.5 h-3.5 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                             <span className="text-[7px] font-bold text-white/40">Share Link</span>
                           </div>
-                          <ChevronRight size={10} className="text-gray-500 shrink-0" />
-                        </div>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* ★ Stage 11: Detailed place card */}
-                {activeLocTab === 'recommendations' && showDetailCard && (
-                  <motion.div key="detail" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                    className="bg-[#1a1f2e] border border-white/10 rounded-2xl overflow-hidden">
-                    {/* Hero image */}
-                    <div className="h-28 relative">
-                      <img src="/landing/Eiffel_Tower.jpg" alt="Eiffel Tower" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                      <div className="absolute bottom-2 left-2 flex gap-1">
-                        <span className="text-[7px] bg-[#3498DB] text-white px-1.5 py-0.5 rounded font-medium">Landmarks</span>
-                        <span className="text-[7px] bg-green-500/20 text-green-400 border border-green-500/30 px-1.5 py-0.5 rounded font-medium">✓ Visited</span>
-                      </div>
-                    </div>
-                    <div className="p-3 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <h4 className="text-[10px] font-bold text-white">Eiffel Tower</h4>
-                          <p className="text-[7px] text-gray-500 mt-0.5 flex items-center gap-1">
-                            <MapPin size={7} />Champ de Mars, Paris, France
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-0.5 shrink-0 bg-amber-500/10 border border-amber-500/20 rounded-lg px-1.5 py-1">
-                          <svg className="w-2.5 h-2.5 text-amber-400 fill-amber-400" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                          <span className="text-[8px] text-amber-400 font-semibold">4.9</span>
-                        </div>
-                      </div>
-                      <div className="text-[7px] text-gray-400 leading-relaxed line-clamp-2">
-                        Iron lattice tower on the Champ de Mars — the most visited monument in the world and symbol of Paris.
-                      </div>
-                      <div className="flex gap-1.5 pt-1">
-                        <div className="flex-1 bg-[#3498DB] text-center text-[7px] text-white py-1 rounded-lg font-medium">View Details</div>
-                        <div className="flex-1 bg-white/5 text-center text-[7px] text-gray-300 py-1 rounded-lg font-medium border border-white/10">Share</div>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* ★ Stage 12: Manage — QR + shareable link */}
-                {activeLocTab === 'manage' && showManageQR && (
-                  <motion.div key="manage-qr" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="flex flex-col gap-2.5">
-                    {/* Shareable link bar */}
-                    <div className="bg-[#1a1f2e] border border-white/10 rounded-xl p-2.5">
-                      <p className="text-[7px] text-gray-500 mb-1.5 uppercase tracking-wide font-semibold">Shareable Link</p>
-                      <div className="flex items-center gap-1.5 bg-black/30 border border-white/10 rounded-lg px-2 py-1.5">
-                        <span className="flex-1 text-[7px] text-gray-300 font-mono truncate">explorers.earth/alex/lucknow</span>
-                        <div className="flex gap-1 shrink-0">
-                          {['Copy','Open','Share'].map((lbl, i) => (
-                            <div key={lbl} className="w-5 h-5 rounded bg-[#3498DB] flex items-center justify-center">
-                              {i === 0 && <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>}
-                              {i === 1 && <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>}
-                              {i === 2 && <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* QR Code */}
-                    <div className="bg-[#1a1f2e] border border-white/10 rounded-xl p-2.5 flex items-center gap-3">
-                      <div className="shrink-0 w-14 h-14 bg-white rounded-lg p-1 flex items-center justify-center">
-                        <div className="grid grid-cols-5 gap-px w-full h-full">
-                          {Array.from({length:25}).map((_,i) => {
-                            const filled = [0,1,2,3,4,5,9,10,14,15,19,20,21,22,23,24,6,12,18].includes(i);
-                            return <div key={i} className={`rounded-[1px] ${filled ? 'bg-black' : 'bg-transparent'}`} />;
-                          })}
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[9px] text-white font-semibold">QR Code</p>
-                        <p className="text-[7px] text-gray-500 mt-0.5 leading-relaxed">Scan to open your Lucknow recommendations page</p>
-                        <div className="mt-1.5 flex gap-1">
-                          <div className="text-[7px] bg-[#3498DB]/20 text-[#3498DB] border border-[#3498DB]/30 rounded px-1.5 py-0.5 font-medium">Download</div>
+                          <div className="flex flex-col items-center gap-1">
+                             <svg className="w-3.5 h-3.5 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                             <span className="text-[7px] font-bold text-white/40">Copy Link</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-1">
+                             <svg className="w-3.5 h-3.5 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                             <span className="text-[7px] font-bold text-white/40">Download QR</span>
+                          </div>
                         </div>
                       </div>
                     </div>

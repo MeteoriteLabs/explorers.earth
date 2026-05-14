@@ -61,17 +61,6 @@ export default function MusicMockup() {
         transition={{ duration: 1.5, ease: 'easeInOut' }}
         className="flex flex-col space-y-3 flex-1"
       >
-        {/* ── Add Songs section ── */}
-        <div className="bg-black/20 rounded-xl p-3 shrink-0">
-          <div className="flex items-center gap-2 mb-2">
-            <Search className="w-3.5 h-3.5 text-dashboard-accent" />
-            <p className="text-white text-xs font-semibold">Add Songs</p>
-          </div>
-          <div className="w-full bg-dashboard-muted border border-white/10 rounded-lg px-3 py-1.5 text-[10px] text-gray-500 flex items-center gap-2">
-            <Search className="w-3 h-3 text-gray-500" />
-            Search YouTube for a song…
-          </div>
-        </div>
 
         {/* ── Video Player (Now Playing) ── */}
         <div className="bg-black/40 rounded-xl overflow-hidden shrink-0 border border-[#3498DB]/20 shadow-[0_0_15px_rgba(52,152,219,0.1)] relative">
