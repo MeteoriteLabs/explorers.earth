@@ -12,6 +12,7 @@ import SubjectBrowse from "./SubjectBrowse";
 import TopReadsHero from "./TopReadsHero";
 import TopReadsMobileHero from "./TopReadsMobileHero";
 import useDeviceDetection from "../../../../hooks/useDeviceDetection";
+import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsername($username: String!) {
@@ -48,6 +49,11 @@ const PublicBooks = () => {
     fetchPolicy: "cache-and-network",
   });
 
+  // Initialize analytics — auto-tracks the page view once accountId resolves
+  const analytics = useTrackAnalytics(
+    createAnalyticsOptions.books(accountDocumentId || '', username)
+  );
+
   const lists: BookList[] = (data?.bookLists ?? []).map((l: BookList) => ({
     ...l,
     recommended_books: deduplicateBooks(l.recommended_books),
@@ -61,7 +67,14 @@ const PublicBooks = () => {
 
   const handleBookClick = useCallback((book: RecommendedBook) => {
     setModalState({ open: true, book });
-  }, []);
+    // Track which book was clicked — sends Recommendation_Id to Strapi
+    analytics.trackClick('book-card', {
+      id: book.documentId,
+      title: book.title,
+      authors: book.authors?.join(', '),
+      listName: book.book_list?.List_Name,
+    });
+  }, [analytics]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -71,6 +84,7 @@ const PublicBooks = () => {
       await navigator.clipboard.writeText(url);
       toast.success("Link copied!");
     }
+    analytics.trackClick('share-button', { context: 'books-header' });
   };
 
   // Subjects for browse (aggregate across all books)
@@ -110,6 +124,7 @@ const PublicBooks = () => {
                 } catch (error) {
                   console.error("Failed to copy text:", error);
                 }
+                analytics.trackClick('copy-link', { context: 'books-header' });
               }}
               className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
               aria-label="Copy Link"

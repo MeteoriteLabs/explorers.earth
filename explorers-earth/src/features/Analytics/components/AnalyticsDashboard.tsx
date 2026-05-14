@@ -10,6 +10,11 @@ import LocationEngagementChart from './charts/LocationEngagementChart';
 import RecommendedPlacesChart from './charts/RecommendedPlacesChart';
 import SocialMediaInteractionChart from './charts/SocialMediaInteractionChart';
 import WorldMapChart from './charts/WorldMapChart';
+import ContentEngagementChart from './charts/ContentEngagementChart';
+import PageViewsTrendChart from './charts/PageViewsTrendChart';
+import MediaListEngagementChart from './charts/MediaListEngagementChart';
+import MediaItemsInListChart from './charts/MediaItemsInListChart';
+import GuidesChart from './charts/GuidesChart';
 import { batchResolveIPsToCountries } from '../utils/geolocationService';
 
 // Time filter types
@@ -59,7 +64,7 @@ const AnalyticsDashboard: React.FC = () => {
   // Fetch analytics data from Strapi
   const { data, loading, error } = useQuery(GET_PUBLIC_PAGE_ANALYTICS, {
     errorPolicy: 'all', // Return data even if there are errors
-    fetchPolicy: 'cache-first', // Use cached data when available
+    fetchPolicy: 'cache-and-network', // Always fetch fresh data while showing cached instantly
     skip: !isAuthenticated || !user?.documentId || !token, // Skip query if not authenticated
   });
 
@@ -708,6 +713,163 @@ const AnalyticsDashboard: React.FC = () => {
             <SocialMediaInteractionChart
               rawAnalyticsData={filteredRawAnalyticsData}
             />
+          </div>
+
+          {/* Content Page Performance — unified overview */}
+          <div className="dt-surface p-6 rounded-lg">
+            <div className="mb-4">
+              <h2 className="dt-heading">Content Page Performance</h2>
+              <p className="dt-subtext">
+                Views &amp; click-throughs across Music, Movies, Books, Games and Guides pages.
+              </p>
+            </div>
+            <ContentEngagementChart events={filteredEvents} />
+          </div>
+
+          {/* ───────────── MOVIES ───────────── */}
+
+          {/* Movies — Section 1: Engagement with Movie Lists */}
+          <div className="dt-surface p-6 rounded-lg">
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xl">🎬</span>
+                <h2 className="dt-heading">Engagement with Movie Lists</h2>
+              </div>
+              <p className="dt-subtext">Track views &amp; clicks over time for each of your movie lists.</p>
+            </div>
+            <MediaListEngagementChart
+              events={filteredEvents}
+              pageName="public-movies"
+              pageLabel="Movies"
+              elementPrefix="movie-card"
+              color="#60a5fa"
+              icon="🎬"
+            />
+          </div>
+
+          {/* Movies — Section 2: Movies within a list (pie chart) */}
+          <div className="dt-surface p-6 rounded-lg">
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xl">🎬</span>
+                <h2 className="dt-heading">Movies Clicked within a List</h2>
+              </div>
+              <p className="dt-subtext">Select a list to see which movies visitors clicked most.</p>
+            </div>
+            <MediaItemsInListChart
+              events={filteredEvents}
+              pageName="public-movies"
+              pageLabel="Movies"
+              itemLabel="movie"
+              elementPrefix="movie-card"
+              color="#60a5fa"
+              icon="🎬"
+            />
+          </div>
+
+          {/* ───────────── BOOKS ───────────── */}
+
+          {/* Books — Section 1: Engagement with Book Lists */}
+          <div className="dt-surface p-6 rounded-lg">
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xl">📚</span>
+                <h2 className="dt-heading">Engagement with Book Lists</h2>
+              </div>
+              <p className="dt-subtext">Track views &amp; clicks over time for each of your book lists.</p>
+            </div>
+            <MediaListEngagementChart
+              events={filteredEvents}
+              pageName="public-books"
+              pageLabel="Books"
+              elementPrefix="book-card"
+              color="#f59e0b"
+              icon="📚"
+            />
+          </div>
+
+          {/* Books — Section 2: Books within a list (pie chart) */}
+          <div className="dt-surface p-6 rounded-lg">
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xl">📚</span>
+                <h2 className="dt-heading">Books Clicked within a List</h2>
+              </div>
+              <p className="dt-subtext">Select a list to see which books visitors clicked most.</p>
+            </div>
+            <MediaItemsInListChart
+              events={filteredEvents}
+              pageName="public-books"
+              pageLabel="Books"
+              itemLabel="book"
+              elementPrefix="book-card"
+              color="#f59e0b"
+              icon="📚"
+            />
+          </div>
+
+          {/* ───────────── GAMES ───────────── */}
+
+          {/* Games — Section 1: Engagement with Game Lists */}
+          <div className="dt-surface p-6 rounded-lg">
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xl">🎮</span>
+                <h2 className="dt-heading">Engagement with Game Lists</h2>
+              </div>
+              <p className="dt-subtext">Track views &amp; clicks over time for each of your game lists.</p>
+            </div>
+            <MediaListEngagementChart
+              events={filteredEvents}
+              pageName="public-games"
+              pageLabel="Games"
+              elementPrefix="game-card"
+              color="#34d399"
+              icon="🎮"
+            />
+          </div>
+
+          {/* Games — Section 2: Games within a list (pie chart) */}
+          <div className="dt-surface p-6 rounded-lg">
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xl">🎮</span>
+                <h2 className="dt-heading">Games Clicked within a List</h2>
+              </div>
+              <p className="dt-subtext">Select a list to see which games visitors clicked most.</p>
+            </div>
+            <MediaItemsInListChart
+              events={filteredEvents}
+              pageName="public-games"
+              pageLabel="Games"
+              itemLabel="game"
+              elementPrefix="game-card"
+              color="#34d399"
+              icon="🎮"
+            />
+          </div>
+
+          {/* Guides — dedicated section */}
+          <div className="dt-surface p-6 rounded-lg">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="text-xl">🗺️</span>
+              <div>
+                <h2 className="dt-heading">Travel Guides</h2>
+                <p className="dt-subtext">Views and guide opens from your public guides page.</p>
+              </div>
+            </div>
+            <GuidesChart events={filteredEvents} />
+          </div>
+
+          {/* Daily Views Trend by Section */}
+          <div className="dt-surface p-6 rounded-lg">
+            <div className="mb-4">
+              <h2 className="dt-heading">Daily Views Trend by Section</h2>
+              <p className="dt-subtext">
+                How each content section (Places, Music, Movies, Books, Games, Guides) is trending over time.
+              </p>
+            </div>
+            <PageViewsTrendChart events={filteredEvents} />
           </div>
         </div>
       </div>

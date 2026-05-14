@@ -83,7 +83,13 @@
 
 /* Set default sidebar width on root for immediate availability */
 :root {
-  --sidebar-width: 256px;
+  --sidebar-width: 0px;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --sidebar-width: 256px;
+  }
 }
 
 /* =============================================
@@ -772,12 +778,17 @@ body.hide-dashboard-header .sticky-top-offset {
 }
 
 /* Ensure navbar/footer stays fixed at bottom and is not affected by sticky elements */
+@media (max-width: 767px) {
+  .bg-dashboard-sidebar.fixed.bottom-0 {
+    left: 0 !important;
+    right: 0 !important;
+  }
+}
+
 .bg-dashboard-sidebar.fixed.bottom-0 {
   position: fixed !important;
   bottom: 0 !important;
   z-index: 50 !important;
-  transform: none !important;
-  will-change: auto !important;
 }
 
 .input-animated:focus {
