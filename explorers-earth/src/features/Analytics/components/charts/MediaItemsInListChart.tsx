@@ -30,7 +30,7 @@ const PIE_COLORS = [
 ];
 
 const MediaItemsInListChart: React.FC<MediaItemsInListChartProps> = ({
-  events, pageName, pageLabel, itemLabel, elementPrefix, color, icon,
+  events, pageName, pageLabel, itemLabel, elementPrefix, icon,
 }) => {
   const [selectedList, setSelectedList] = useState<string>('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);

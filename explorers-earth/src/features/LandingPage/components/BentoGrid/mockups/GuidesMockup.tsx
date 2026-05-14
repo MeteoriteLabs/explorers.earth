@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Loader2, ChevronRight, Pencil, Trash2, Eye } from 'lucide-react';
-import { AddIcon } from '../../../../../assets/icons/AddIcon';
+import { MapPin, Loader2, ChevronRight } from 'lucide-react';
 
 // Stages:
 // 0: Home — show guide cards list

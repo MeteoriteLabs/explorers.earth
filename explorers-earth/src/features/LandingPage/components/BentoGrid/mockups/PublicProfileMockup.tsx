@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Heart, Image, Grid3x3, Film, BookOpen, Gamepad2, Music, Navigation, BookMarked, User, Music2, Gamepad, Globe, ExternalLink, ChevronRight, Star, Search, Plus, Instagram, ListMusic, RotateCcw, Smartphone } from 'lucide-react';
+import { Heart, Image, Grid3x3, Film, BookOpen, Gamepad2, Navigation, BookMarked, User, Music2, Gamepad, Globe, ExternalLink, ChevronRight, Star, Search, Instagram, ListMusic, RotateCcw, Smartphone } from 'lucide-react';
 
 // Phase A — via Instagram link:
 //  0: Instagram profile (link visible)          2800ms
@@ -811,30 +811,6 @@ function FooterNav({active}:{active:string}) {
     </div>
   );
 }
-
-const MUSIC_DATA = {
-  label: 'Music',
-  accentColor: '#a855f7',
-  topPick: {
-    title: 'Anti-Hero',
-    year: '2022',
-    genres: ['Synth-pop', 'Pop'],
-    summary: 'Anti-Hero is a song by American singer-songwriter Taylor Swift and the lead single from her tenth studio album, Midnights (2022).',
-    img: '/landing/Paris.jpg',
-    poster: '/landing/Paris.jpg'
-  },
-  lists: [
-    {
-      name: 'Taylor Swift Eras',
-      items: [
-        { name: 'Anti-Hero', meta: 'Midnights', img: '/landing/Paris.jpg' },
-        { name: 'Cruel Summer', meta: 'Lover', img: '/landing/Bali.jpg' },
-        { name: 'Cardigan', meta: 'Folklore', img: '/landing/Kyoto.jpg' },
-        { name: 'Willow', meta: 'Evermore', img: '/landing/Paris.jpg' },
-      ]
-    }
-  ]
-};
 
 const MOVIES_DATA = {
   label: 'Movies',

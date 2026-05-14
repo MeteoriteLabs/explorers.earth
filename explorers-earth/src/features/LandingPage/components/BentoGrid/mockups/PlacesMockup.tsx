@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Plus, ChevronRight, X, Loader2, Search, Navigation } from 'lucide-react';
-import { AddIcon } from '../../../../../assets/icons/AddIcon';
+import { MapPin, ChevronRight, X, Loader2, Search, Navigation } from 'lucide-react';
 
 // Stage 0:  Home — city circles + visibility toggle            (2500ms)
 // Stage 1:  Hover Paris circle                                 (1000ms)
@@ -94,8 +93,6 @@ export default function PlacesMockup() {
   const showAddPlaceModal = stage === 10;
   const inLocationView = stage >= 6;
   const showOpenedCard = stage === 8;   // ★ Eiffel Tower detail open from grid
-  const showDetailCard = stage === 12;  // Musée d'Orsay detail after adding
-  const showManageQR = stage === 13;
 
   return (
     <div className="flex-1 flex flex-col bg-[#0F1419] h-full overflow-hidden select-none pointer-events-none relative">

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Gamepad2, BookOpen, Film, ChevronRight, Star, MoreHorizontal, Plus, Share2, Copy, Download, ChevronDown, Tv } from 'lucide-react';
+import { Gamepad2, BookOpen, Film, ChevronRight, Star, Plus, ChevronDown } from 'lucide-react';
 
 // 3-phase walkthrough cycling across Games → Books → Movies
 // Phase 0 (3s)   — Hero + list cards overview (static)
