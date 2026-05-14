@@ -211,7 +211,7 @@ const MediaListEngagementChart: React.FC<MediaListEngagementChartProps> = ({
                   borderRadius: '8px',
                   fontSize: '12px',
                 }}
-                labelFormatter={(l: string) => `Date: ${l}`}
+                labelFormatter={(l) => `Date: ${l}`}
               />
               <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
               <Line type="monotone" dataKey="views" stroke={color} strokeWidth={2} dot={{ r: 3 }} name="Page Views" />
@@ -236,7 +236,7 @@ const MediaListEngagementChart: React.FC<MediaListEngagementChartProps> = ({
               />
               <Tooltip
                 contentStyle={{ backgroundColor: 'var(--color-surface, #1e293b)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '12px' }}
-                formatter={(v: number) => [`${v} click${v !== 1 ? 's' : ''}`, 'Clicks']}
+                formatter={(v) => [`${v} click${v !== 1 ? 's' : ''}`, 'Clicks']}
               />
               <Bar dataKey="Clicks" radius={[0, 4, 4, 0]}>
                 {listClicksData.map((_, i) => (

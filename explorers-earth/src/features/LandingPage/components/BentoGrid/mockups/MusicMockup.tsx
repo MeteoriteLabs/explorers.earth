@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ListMusic, Settings2, History, Library, Search, Play, Pause, Trash2, GripVertical, Music2 } from 'lucide-react';
-import { AddIcon } from '../../../../../assets/icons/AddIcon';
+import { ListMusic, Settings2, History, Library, Play, Pause, Trash2, GripVertical, Music2 } from 'lucide-react';
 
 // Stages:
 // 0: Queue tab (scroll top)

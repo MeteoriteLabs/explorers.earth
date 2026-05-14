@@ -1,4 +1,3 @@
-import React from 'react';
 import BentoCard from './BentoCard';
 import PlacesMockup from './mockups/PlacesMockup';
 import MusicMockup from './mockups/MusicMockup';
