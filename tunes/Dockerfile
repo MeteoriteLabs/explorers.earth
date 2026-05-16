@@ -1,6 +1,6 @@
 FROM node:18-alpine AS base
 
-# Set working directory
+# Set working directory here
 WORKDIR /app
 
 # Install dependencies for Puppeteer
