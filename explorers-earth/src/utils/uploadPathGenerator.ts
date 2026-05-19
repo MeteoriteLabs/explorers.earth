@@ -63,7 +63,7 @@ export const generateRandomFileName = (originalName?: string, extension?: string
   }
 
   if (originalName) {
-    const ext = originalName.split('.').pop() || 'jpg';
+    const ext = originalName.includes('.') ? originalName.split('.').pop() : 'jpg';
     return `${timestamp}-${randomId}.${ext}`;
   }
 
