@@ -166,7 +166,7 @@ const PublicBooks = () => {
               title={list.List_Name}
               description={list.list_description}
               books={list.recommended_books}
-              seeAllLink={`/${username}/books/${list.slug}`}
+              seeAllLink={`/${username}/books/${list.slug.replace(/^books-/, "")}`}
               onBookClick={handleBookClick}
             />
           ))}

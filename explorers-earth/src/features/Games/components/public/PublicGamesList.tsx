@@ -17,8 +17,11 @@ const PublicGamesList = () => {
     game: null,
   });
 
+  // Stored slugs are prefixed with 'games-' for global uniqueness.
+  // The URL only contains the short form (e.g. 'favorites'), so we prepend the prefix here.
+  const dbSlug = listSlug ? (listSlug.startsWith("games-") ? listSlug : `games-${listSlug}`) : "";
   const { data, loading } = useQuery(GAME_LIST_BY_SLUG, {
-    variables: { slug: listSlug, username },
+    variables: { slug: dbSlug, username },
     skip: !listSlug || !username,
   });
 

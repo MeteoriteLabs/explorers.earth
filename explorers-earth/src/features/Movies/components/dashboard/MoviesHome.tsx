@@ -62,12 +62,15 @@ const CreateListModal = ({
       slug: Yup.string().required("List URL is required").max(100),
     }),
     onSubmit: async (values, { resetForm }) => {
+      // Prefix with category to guarantee global uniqueness across all list types
+      const rawSlug = values.slug || generateSlug(values.List_Name);
+      const prefixedSlug = rawSlug.startsWith("movies-") ? rawSlug : `movies-${rawSlug}`;
       try {
         await createMovieList({
           variables: {
             List_Name: values.List_Name,
             list_description: values.list_description || null,
-            slug: values.slug || generateSlug(values.List_Name),
+            slug: prefixedSlug,
             Visibility: false,
             display_order: currentListCount,
             account: accountDocumentId,
@@ -155,7 +158,7 @@ const CreateListModal = ({
               </label>
               <div className="flex w-full md:flex-row flex-col md:items-center">
                 <label className="w-full md:w-auto text-sm font-medium text-dashboard mr-2 shrink-0 mb-2 md:mb-0">
-                  {getCurrentDomain()}/{username}/
+                  {getCurrentDomain()}/{username}/movies/
                 </label>
                 <input
                   type="text"

@@ -65,12 +65,15 @@ const CreateListModal = ({
       slug: Yup.string().required("List URL is required").max(100),
     }),
     onSubmit: async (values, { resetForm }) => {
+      // Prefix with category to guarantee global uniqueness across all list types
+      const rawSlug = values.slug || generateSlug(values.List_Name);
+      const prefixedSlug = rawSlug.startsWith("books-") ? rawSlug : `books-${rawSlug}`;
       try {
         await createBookList({
           variables: {
             List_Name: values.List_Name,
             list_description: values.list_description || null,
-            slug: values.slug || generateSlug(values.List_Name),
+            slug: prefixedSlug,
             visibility: false,
             display_order: currentListCount,
             account: accountDocumentId,
@@ -81,8 +84,12 @@ const CreateListModal = ({
         resetForm();
         onCreated();
         onClose();
-      } catch (e) {
-        toast.error("Failed to create list. Please try again.");
+      } catch (e: any) {
+        if (e.message && e.message.includes("must be unique")) {
+          formik.setFieldError("slug", "This URL is already taken. Please try another one.");
+        } else {
+          toast.error("Failed to create list. Please try again.");
+        }
       }
     },
   });
@@ -154,7 +161,7 @@ const CreateListModal = ({
               </label>
               <div className="flex w-full md:flex-row flex-col md:items-center">
                 <label className="w-full md:w-auto text-sm font-medium text-dashboard mr-2 shrink-0 mb-2 md:mb-0">
-                  {getCurrentDomain()}/{username}/
+                  {getCurrentDomain()}/{username}/books/
                 </label>
                 <input
                   type="text"

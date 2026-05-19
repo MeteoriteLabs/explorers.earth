@@ -58,12 +58,15 @@ const CreateListModal = ({
       slug: Yup.string().required("List URL is required").max(100),
     }),
     onSubmit: async (values, { resetForm }) => {
+      // Prefix with category to guarantee global uniqueness across all list types
+      const rawSlug = values.slug || generateSlug(values.List_Name);
+      const prefixedSlug = rawSlug.startsWith("games-") ? rawSlug : `games-${rawSlug}`;
       try {
         await createGameList({
           variables: {
             List_Name: values.List_Name,
             list_description: values.list_description || null,
-            slug: values.slug || generateSlug(values.List_Name),
+            slug: prefixedSlug,
             Visibility: false,
             display_order: currentListCount,
             account: accountDocumentId,
@@ -74,8 +77,12 @@ const CreateListModal = ({
         resetForm();
         onCreated();
         onClose();
-      } catch (e) {
-        toast.error("Failed to create list. Please try again.");
+      } catch (e: any) {
+        if (e.message && e.message.includes("must be unique")) {
+          formik.setFieldError("slug", "This URL is already taken. Please try another one.");
+        } else {
+          toast.error("Failed to create list. Please try again.");
+        }
       }
     },
   });

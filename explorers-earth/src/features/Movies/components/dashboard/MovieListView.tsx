@@ -181,8 +181,9 @@ const MovieListView = () => {
   const movies = deduplicateMovies(list?.recommended_movies as RecommendedMovie[]);
   const pinnedCount = movies.filter(m => m.is_pinned).length;
 
-  // Public share URL
-  const shareUrl = list ? `${VITE_BASE_URL}/${list.account?.username || ""}/movies/${list.slug}` : "";
+  // Strip the category prefix from the stored slug to get the clean URL segment
+  const publicSlug = list?.slug ? list.slug.replace(/^movies-/, "") : "";
+  const shareUrl = list ? `${VITE_BASE_URL}/${list.account?.username || ""}/movies/${publicSlug}` : "";
 
   const handleToggleVisibility = async () => {
     if (!list) return;

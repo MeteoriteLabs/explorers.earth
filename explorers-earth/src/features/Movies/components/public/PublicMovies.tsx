@@ -193,7 +193,7 @@ const PublicMovies = () => {
                         description={list.list_description ?? undefined}
                         movies={deduplicateMovies(list.recommended_movies)}
                         onMovieClick={handleMovieClick}
-                        seeAllLink={`/${username}/movies/${list.slug}`}
+                        seeAllLink={`/${username}/movies/${list.slug.replace(/^movies-/, "")}`}
                       />
                     )
                   ))}

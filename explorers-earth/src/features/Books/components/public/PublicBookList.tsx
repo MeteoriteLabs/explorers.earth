@@ -16,8 +16,11 @@ const PublicBookList = () => {
     book: null,
   });
 
+  // Stored slugs are prefixed with 'books-' for global uniqueness.
+  // The URL only contains the short form (e.g. 'favorites'), so we prepend the prefix here.
+  const dbSlug = listSlug ? (listSlug.startsWith("books-") ? listSlug : `books-${listSlug}`) : "";
   const { data, loading } = useQuery(BOOK_LIST_BY_SLUG, {
-    variables: { slug: listSlug, username },
+    variables: { slug: dbSlug, username },
     skip: !listSlug || !username,
     fetchPolicy: "cache-and-network",
   });

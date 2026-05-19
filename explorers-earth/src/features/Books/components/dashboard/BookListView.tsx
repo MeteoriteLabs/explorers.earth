@@ -160,7 +160,9 @@ const ManageTab = ({ list, onRefetch }: ManageTabProps) => {
   const [updateBookList] = useMutation(UPDATE_BOOK_LIST);
   const [deleteBookList] = useMutation(DELETE_BOOK_LIST);
 
-  const shareUrl = `${VITE_BASE_URL}/${list.account?.username ?? "user"}/books/${list.slug}`;
+  // Strip the category prefix from the stored slug to get the clean URL segment
+  const publicSlug = list.slug ? list.slug.replace(/^books-/, "") : "";
+  const shareUrl = `${VITE_BASE_URL}/${list.account?.username ?? "user"}/books/${publicSlug}`;
 
   const handleCopyUrl = async () => {
     await navigator.clipboard.writeText(shareUrl);

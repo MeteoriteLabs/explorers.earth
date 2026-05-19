@@ -131,7 +131,9 @@ const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () => void 
   const [updateGameList] = useMutation(UPDATE_GAME_LIST);
   const [deleteGameList] = useMutation(DELETE_GAME_LIST);
 
-  const shareUrl = `${VITE_BASE_URL}/${list.account?.username ?? "user"}/games/${list.slug}`;
+  // Strip the category prefix from the stored slug to get the clean URL segment
+  const publicSlug = list.slug ? list.slug.replace(/^games-/, "") : "";
+  const shareUrl = `${VITE_BASE_URL}/${list.account?.username ?? "user"}/games/${publicSlug}`;
 
   const handleCopyUrl = async () => {
     await navigator.clipboard.writeText(shareUrl);

@@ -189,7 +189,7 @@ const PublicGames = () => {
                         description={list.list_description ?? undefined}
                         games={deduplicateGames(list.recommended_games)}
                         onGameClick={handleGameClick}
-                        seeAllLink={`/${username}/games/${list.slug}`}
+                        seeAllLink={`/${username}/games/${list.slug.replace(/^games-/, "")}`}
                       />
                     )
                   ))}

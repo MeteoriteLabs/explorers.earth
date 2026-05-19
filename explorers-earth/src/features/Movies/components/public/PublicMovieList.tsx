@@ -16,8 +16,11 @@ const PublicMovieList = () => {
   const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
+  // Stored slugs are prefixed with 'movies-' for global uniqueness.
+  // The URL only contains the short form (e.g. 'favorites'), so we prepend the prefix here.
+  const dbSlug = listSlug ? (listSlug.startsWith("movies-") ? listSlug : `movies-${listSlug}`) : "";
   const { data, loading, error } = useQuery(MOVIE_LIST_BY_SLUG, {
-    variables: { slug: listSlug, username },
+    variables: { slug: dbSlug, username },
     skip: !username || !listSlug,
   });
 
