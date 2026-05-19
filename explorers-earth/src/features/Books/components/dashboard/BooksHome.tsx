@@ -302,18 +302,20 @@ const BooksHome = () => {
   const [selectedBook, setSelectedBook] = useState<RecommendedBook | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  const { data: myAccountData } = useQuery(MY_ACCOUNT, {
+  const { data: myAccountData, loading: accountLoading } = useQuery(MY_ACCOUNT, {
     variables: { documentId: user?.documentId },
     skip: !user?.documentId,
   });
 
   const accountDocumentId: string = myAccountData?.usersPermissionsUser?.accounts?.[0]?.documentId || "";
 
-  const { data, loading, refetch } = useQuery(BOOK_LISTS_BY_ACCOUNT, {
+  const { data, loading: listsLoading, refetch } = useQuery(BOOK_LISTS_BY_ACCOUNT, {
     variables: { accountDocumentId },
     skip: !accountDocumentId,
     fetchPolicy: "cache-and-network",
   });
+
+  const loading = accountLoading || listsLoading;
 
   const [updateBookList] = useMutation(UPDATE_BOOK_LIST);
 

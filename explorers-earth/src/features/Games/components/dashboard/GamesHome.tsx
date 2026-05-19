@@ -289,17 +289,19 @@ const GamesHome = () => {
   const [selectedGame, setSelectedGame] = useState<RecommendedGame | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  const { data: accountData } = useQuery(MY_ACCOUNT, {
+  const { data: accountData, loading: accountLoading } = useQuery(MY_ACCOUNT, {
     variables: { documentId: user?.documentId },
     skip: !user?.documentId,
   });
   const accountDocumentId = accountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
 
-  const { data, loading, refetch } = useQuery(GAME_LISTS_BY_ACCOUNT, {
+  const { data, loading: listsLoading, refetch } = useQuery(GAME_LISTS_BY_ACCOUNT, {
     variables: { accountDocumentId },
     skip: !accountDocumentId,
     fetchPolicy: "cache-and-network",
   });
+
+  const loading = accountLoading || listsLoading;
 
   const [updateGameList] = useMutation(UPDATE_GAME_LIST);
 
