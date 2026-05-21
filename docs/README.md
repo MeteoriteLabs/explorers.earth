@@ -27,10 +27,11 @@ Comprehensive documentation for the explorers.earth monorepo containing two appl
 ### explorers-earth (Location Sharing Platform)
 
 - [Overview](explorers-earth/overview.md) — Features, frontend architecture, routing
+- [Media Features](explorers-earth/media-features.md) — Movies, Books, Games — APIs, slug prefixing strategy, architecture
 - [Strapi API Reference](explorers-earth/strapi-api.md) — CMS API endpoints (REST docs + GraphQL playground)
 - [Deployment](explorers-earth/deployment.md) — Netlify configuration and production builds
-- [Integrations](explorers-earth/integrations.md) — Google Maps, Strapi CMS, OAuth, Analytics
-- [State Management](explorers-earth/state-management.md) — Zustand, Apollo Client, React Query patterns
+- [Integrations](explorers-earth/integrations.md) — Google Maps, Strapi CMS, OAuth, Analytics, TMDB, IGDB, Google Books
+- [State Management](explorers-earth/state-management.md) — Zustand, Apollo Client, React Query, custom hooks
 
 ### tunes (Music Playlist Platform)
 
