@@ -56,6 +56,7 @@ Comprehensive documentation for the explorers.earth monorepo containing two appl
 For AI agents (Claude Code, Cursor, etc.), start with:
 - Root: [`/CLAUDE.md`](../CLAUDE.md) — Monorepo overview, key file locations, commands
 - Per-project: [`/explorers-earth/CLAUDE.md`](../explorers-earth/CLAUDE.md) and [`/tunes/CLAUDE.md`](../tunes/CLAUDE.md)
+- Superpower Skills: Battle-tested instructions at `D:\superpowers\skills\` (referenced in root and per-project CLAUDE.md files) to guide planning, TDD, debugging, and verification.
 
 ## API Documentation
 

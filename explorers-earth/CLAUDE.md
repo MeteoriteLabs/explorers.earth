@@ -171,3 +171,8 @@ npm run test:local-tunes
 ```
 
 Test files live in `__tests__/` subdirectories throughout `src/`. Global setup is in `src/test/setup.ts`. Vitest is configured in `vite.config.ts` under the `test` key.
+
+## Superpower Skills
+
+Your personal library of proven techniques, patterns, and tools is at `D:\superpowers\skills\`.
+Before executing any tasks, always check for relevant skills under the `D:\superpowers\skills\` directory. For instructions on finding and executing skills, refer to `D:\superpowers\skills\using-superpowers\SKILL.md`. Always run verification commands and apply TDD/plan-writing skills where applicable.
