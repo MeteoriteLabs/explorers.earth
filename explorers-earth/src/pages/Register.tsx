@@ -166,8 +166,11 @@ const Auth = () => {
   };
 
   const handleGoogleSignUp = () => {
-    window.location.href = `${import.meta.env.VITE_REST_API_URL
-      }/connect/google`;
+    // Use the same hardcoded absolute backend URL as Login.tsx.
+    // VITE_REST_API_URL can be a relative path (/api) in some build configs,
+    // which would produce an invalid OAuth initiation URL.
+    const backendBase = "https://api.localqr.earth/api";
+    window.location.href = `${backendBase}/connect/google`;
   };
 
   // Generate GEO data for register page
