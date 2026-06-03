@@ -169,8 +169,10 @@ const Auth = () => {
     // Use the same hardcoded absolute backend URL as Login.tsx.
     // VITE_REST_API_URL can be a relative path (/api) in some build configs,
     // which would produce an invalid OAuth initiation URL.
+    // prompt=select_account forces Google to show the account chooser even when
+    // the user already has an active Google session in the same browser window.
     const backendBase = "https://api.localqr.earth/api";
-    window.location.href = `${backendBase}/connect/google`;
+    window.location.href = `${backendBase}/connect/google?prompt=select_account`;
   };
 
   // Generate GEO data for register page

@@ -142,8 +142,12 @@ const Login = () => {
   const handleGoogleSignIn = () => {
     // Initiation must happen on the backend domain (api.localqr.earth)
     // so the session cookie is correctly bound for the Google callback.
+    // prompt=select_account forces Google to always show the account chooser,
+    // even when the user has an active Google session in the same browser window.
+    // Without this, logging out of the app and clicking "Sign in" again would
+    // silently re-authenticate with the previous Google account.
     const backendBase = "https://api.localqr.earth/api";
-    window.location.href = `${backendBase}/connect/google`;
+    window.location.href = `${backendBase}/connect/google?prompt=select_account`;
   };
 
   // Generate GEO data for login page
