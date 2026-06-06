@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
@@ -16,6 +16,7 @@ const ReactivateConfirm = () => {
 
   const [status, setStatus] = useState<Status>("loading");
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const hasVerified = useRef(false);
 
   useEffect(() => {
     const token = searchParams.get("token");
@@ -25,6 +26,11 @@ const ReactivateConfirm = () => {
       setStatus("error");
       return;
     }
+
+    if (hasVerified.current) {
+      return;
+    }
+    hasVerified.current = true;
 
     const verify = async () => {
       try {
