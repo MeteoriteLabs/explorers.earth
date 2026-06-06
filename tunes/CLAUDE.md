@@ -55,11 +55,13 @@ server/
 │   ├── strapiRoutes.ts         # Strapi CMS sync
 │   ├── subscriptionRoutes.ts   # Subscription management
 │   ├── pageRoutes.ts           # CMS page content
+│   ├── reactivationRoutes.ts   # Account reactivation endpoints
 │   └── legacyRemainingRoutes.ts # Consolidated legacy endpoints
 ├── controllers/                # Business logic controllers
 ├── services/
 │   ├── email-service.ts        # AWS SES email delivery
 │   ├── gemini-service.ts       # Google Gemini AI
+│   ├── reactivation-service.ts # Account reactivation logic/service
 │   ├── spotify-playlist-import.ts # Spotify playlist import
 │   ├── strapi-service.ts       # Strapi CMS integration
 │   ├── system-settings-service.ts # App-wide config
@@ -101,6 +103,7 @@ npm run db:push          # Push schema to database
 - **Session auth**: Passport.js local strategy (username/password, scrypt hashing), express-session with PostgreSQL store, 7-day cookie
 - **JWT auth**: `jwt-auth-middleware.ts` validates Strapi JWT tokens for cross-app SSO from explorers-earth. Maps Strapi user → Neon DB user via `X-Username` header
 - Email verification with tokens + OTP support
+- Self-service account reactivation via magic link email (24-hour expiration token, self-seeding template)
 - Role-based: admin (isAdmin flag), venue owner, guest (via URL)
 - Protected routes: `requireAuth` / `requireAnyAuth` middleware (supports both session and JWT)
 - CORS: `ALLOWED_ORIGINS` env var controls allowed origins, `X-CSRF-Token` and `X-Username` headers supported

@@ -605,6 +605,12 @@ const Settings = memo(() => {
                       <p className="text-red-400 text-sm font-poppins">
                         {t("settings.account.deactivateAccount.description")}
                       </p>
+                      <p className="text-white/40 text-xs font-poppins mt-1">
+                        {t("settings.account.deactivateAccount.reactivationHint")}{" "}
+                        <a href="/reactivate" className="text-dashboard-accent/70 hover:text-dashboard-accent underline transition-colors duration-200">
+                          {t("settings.account.deactivateAccount.reactivationLink")}
+                        </a>
+                      </p>
                     </div>
                     <div className="sm:flex-shrink-0">
                       <Button

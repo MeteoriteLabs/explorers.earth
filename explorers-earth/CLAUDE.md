@@ -46,6 +46,8 @@ src/
 │   └── ui/             # Radix UI primitive wrappers
 ├── pages/              # Route-level page components
 │   ├── Music.tsx       # Music page (renders MusicDashboard)
+│   ├── ReactivateAccount.tsx # Request account reactivation magic link page
+│   ├── ReactivateConfirm.tsx # Confirm account reactivation page
 │   └── public/         # Public (unauthenticated) pages
 ├── hooks/              # Custom hooks
 │   ├── useTunesDashboard.ts    # Local Tunes data fetching + user sync
@@ -104,6 +106,7 @@ explorers-earth has deep integration with tunes via SSO:
 - `apiClient.ts` sends JWT + `X-Username` header for Strapi → Neon DB user mapping
 - `useTunesDashboard.ts` syncs Strapi user with tunes DB and fetches playlist data
 - `MusicDashboard.tsx` renders embedded music player with queue, playlists, guest controls
+- **Account Reactivation Flow**: `ReactivateAccount.tsx` and `ReactivateConfirm.tsx` pages handle unblocking deactivated Strapi accounts by calling tunes endpoints (`/api/user/request-reactivation` and `/api/user/reactivate`).
 
 ## Common Tasks
 

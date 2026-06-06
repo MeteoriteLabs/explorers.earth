@@ -33,6 +33,7 @@ const Login = () => {
   // Track complete login flow including SSO
   const [isCompletingLogin, setIsCompletingLogin] = useState(false);
   const [loginStatus, setLoginStatus] = useState<string>('');
+  const [blockedAccount, setBlockedAccount] = useState(false);
 
   // Create validation schema that updates when language changes
   const validationSchema = useMemo(() => {
@@ -122,6 +123,13 @@ const Login = () => {
             errorMessage = t("toast.error.tooManyAttempts");
           } else if (serverError.toLowerCase().includes("account locked")) {
             errorMessage = t("toast.error.accountLocked");
+          } else if (
+            serverError.toLowerCase().includes("blocked") ||
+            serverError.toLowerCase().includes("banned")
+          ) {
+            // Account is deactivated — show reactivation banner instead of a toast
+            setBlockedAccount(true);
+            return; // skip the generic toast below
           } else if (serverError.toLowerCase().includes("account suspended")) {
             errorMessage = t("toast.error.accountSuspended");
           } else if (serverError.toLowerCase().includes("session expired")) {
@@ -223,6 +231,20 @@ const Login = () => {
               isRegistration={false}
               children={
                 <div className="flex flex-col items-center gap-2 mt-2">
+                  {/* Blocked / Deactivated account banner */}
+                  {blockedAccount && (
+                    <div className="w-full rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-center mb-1">
+                      <p className="text-amber-400 text-sm font-medium">
+                        {t("auth.blockedAccount.message")}
+                      </p>
+                      <a
+                        href="/reactivate"
+                        className="inline-block mt-2 text-sm font-semibold text-amber-300 underline hover:text-amber-200 transition-colors"
+                      >
+                        {t("auth.blockedAccount.reactivateLink")}
+                      </a>
+                    </div>
+                  )}
                   <div className="flex justify-center items-center gap-1">
                     <p className="text-xs">{t("auth.newToExplorers")}</p>
                     <a

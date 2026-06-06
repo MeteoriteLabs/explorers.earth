@@ -605,6 +605,10 @@
     "newToExplorers": "New to explorers?",
     "forgotPassword": "Forgot Password?",
     "claimAccount": "Claim Account?",
+    "blockedAccount": {
+      "message": "This account has been deactivated.",
+      "reactivateLink": "Click here to reactivate your account →"
+    },
     "status": {
       "authenticating": "Authenticating...",
       "syncingLocalTunes": "Syncing with LocalTunes..."
@@ -1645,7 +1649,9 @@
         "confirmButton": "Deactivate My Account",
         "deactivatedButton": "Deactivated",
         "successMessage": "Account deactivated successfully",
-        "activatedMessage": "Account activated successfully"
+        "activatedMessage": "Account activated successfully",
+        "reactivationHint": "You can reactivate your account later using your email.",
+        "reactivationLink": "Learn how →"
       },
       "deleteAccount": {
         "text": "Delete your account?",
@@ -1695,6 +1701,22 @@
       "searchPlaceholder": "Search languages...",
       "noLanguagesFound": "No languages found"
     }
+  },
+  "reactivateAccount": {
+    "title": "Reactivate Your Account",
+    "subtitle": "Enter the email address associated with your deactivated account and we'll send you a reactivation link.",
+    "emailPlaceholder": "Enter your email address",
+    "sendButton": "Send Reactivation Link",
+    "resendButton": "Resend Link",
+    "resendIn": "Resend in",
+    "emailSent": "Check your inbox!",
+    "emailSentDescription": "We've sent a reactivation link to your email address. The link expires in 24 hours. Check your spam folder if you don't see it.",
+    "backToLogin": "Back to Login",
+    "confirmTitle": "Account Reactivated!",
+    "confirmDescription": "Your account has been successfully reactivated. You can now sign in with your credentials.",
+    "confirmError": "Invalid or Expired Link",
+    "goToLogin": "Go to Login",
+    "tryAgain": "Request New Link"
   },
   "seo": {
     "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
