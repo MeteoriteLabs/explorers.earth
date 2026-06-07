@@ -1,442 +1,35 @@
-﻿{
-  "header": {
-    "nav": {
-      "howItWorks": "Paano Ito Gumagana",
-      "whoIsFor": "Para Kanino",
-      "faq": "Mga Madalas na Tanong",
-      "about": "Tungkol",
-      "contact": "Makipag-ugnayan"
-    },
-    "auth": {
-      "login": "Mag-login",
-      "signUp": "Mag-sign Up"
-    }
-  },
-  "hero": {
-    "headline": "Lahat ng inyong mga rekomendasyon, ibinahagi sa pamamagitan ng isang simpleng link o QR",
-    "subtext": "Mula sa mga lugar hanggang sa mga tunog, ruta, at kuwento — ibahagi ang alam ninyo at gusto.",
-    "inputLabel": "I-reserve ang inyong explorers URL:",
-    "inputPlaceholder": "yourname",
-    "ctaButton": "I-reserve ang inyong explorers",
-    "signupPrompt": "Mag-sign up ngayon para makuha ang inyo"
-  },
-  "sections": {
-    "createCustomize": {
-      "headline": "Gumawa at i-customize ang inyong explorers sa loob ng ilang minuto",
-      "subtext": "Magdagdag ng mga paboritong lugar, ayusin ayon sa lungsod o paksa, at i-generate agad ang inyong QR.",
-      "bulletPoints": {
-        "addSpots": {
-          "title": "Magdagdag ng mga paboritong lugar",
-          "description": "Gumawa ng listahan kasama ang inyong must-visit"
-        },
-        "organize": {
-          "title": "Ayusin ayon sa lungsod o paksa",
-          "description": "Gumawa ng mga kategorya na may kahulugan para sa inyong audience"
-        },
-        "generate": {
-          "title": "I-generate agad ang inyong link at QR",
-          "description": "Ang inyong customized QR ay handa na sa loob ng ilang segundo"
-        },
-        "share": {
-          "title": "Ibahagi nang digital o sa pamamagitan ng QR sa totoong mundo",
-          "description": ""
-        }
-      },
-      "mockup": {
-        "title": "Aking mga Rekomendasyon",
-        "addPlace": "Magdagdag ng Lugar"
-      }
-    },
-    "shareAnywhere": {
-      "headline": "Ibahagi sa social media, storefront, o mga pader ng lungsod",
-      "subtext": "Idagdag sa inyong Instagram bio, i-print sa menu, o isama sa mga welcome book — ang inyong gabay, laging handa.",
-      "scanText": "I-scan para sa mga lokal na rekomendasyon",
-      "storefrontText": "Perpekto para sa storefront display",
-      "instagramTitle": "Idagdag sa inyong Instagram bio",
-      "instagramDesc": "Ibahagi agad sa inyong mga followers",
-      "menuTitle": "I-print sa menu",
-      "menuDesc": "Mga pisikal na contact point na ginawang madali",
-      "welcomeTitle": "Isama sa mga welcome book",
-      "welcomeDesc": "Perpekto para sa mga host at guide",
-      "cafeMenu": "Menu ng Cafe",
-      "tokyoFoodGuide": "Ang aking Tokyo food guide explorers.earth/jane"
-    },
-    "analytics": {
-      "headline": "I-track ang mga click, referral, at engagement",
-      "subtext": "Tingnan kung ano ang gumagana, sino ang nag-scan, at aling mga lugar ang nakakakuha ng pinakamaraming pagmamahal — sa real time.",
-      "workingTitle": "Tingnan kung ano ang gumagana",
-      "workingDesc": "I-track ang popularity ng inyong mga rekomendasyon",
-      "scanningTitle": "Sino ang nag-scan",
-      "scanningDesc": "I-monitor ang QR scanning at mga update",
-      "spotsTitle": "Mga top performing spots",
-      "spotsDesc": "Data-driven insights para sa mas magandang curation",
-      "dashboardTitle": "Dashboard ng Analytics",
-      "last30Days": "Huling 30 araw",
-      "totalScans": "Kabuuang Scans",
-      "engagement": "Engagement",
-      "referrals": "Mga Referral"
-    },
-    "referEarn": {
-      "headline": "Magbahagi, mag-refer, at kumita",
-      "subtext": "I-convert ang inyong mga rekomendasyon sa passive rewards — kumuha ng credit kapag ginagamit ng iba ang inyong QR.",
-      "comingSoon": "Referral rewards program (malapit na)",
-      "rewardsTitle": "Kumuha ng mga Reward",
-      "rewardsDesc": "Kumuha ng pera kapag ginagamit ng mga tao ang inyong mga rekomendasyon",
-      "earnedThisMonth": "Nakita sa buwang ito",
-      "passiveTitle": "I-convert ang mga rekomendasyon sa passive rewards",
-      "networkTitle": "Magtayo ng inyong network at kumita nang automatic"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Makinig habang nag-e-explore kayo",
-      "body": "Ang pag-e-explore ay hindi lamang visual. Ang tunog ay nagdadala ng memorya, konteksto, at emosyon.\n\nBinibigyang-daan ng LocalTunes na kolektahin at ibahagi ang mga soundtrack para sa mga lugar, paglalakbay, at mood — maging ito ay musika na natuklasan sa daan o mga tunog na nagbibigay-kahulugan sa isang lugar para sa inyo.\n\nWalang putol na nakakonekta sa inyong Explorer profile.",
-      "exploreButton": "I-explore ang Tunes",
-      "featuresHeading": "Malakas na Features",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Real-time na Pakikipagtulungan",
-          "description": "Hayaan ang mga bisita na magdagdag ng mga kanta sa inyong playlist agad habang pinapanatili ninyo ang buong kontrol sa kung ano ang tumutugtog."
-        },
-        "qrCodeSharing": {
-          "title": "QR Code Sharing",
-          "description": "Ibahagi ang inyong karanasan sa musika sa pamamagitan ng simpleng QR code scan - walang apps o downloads na kailangan."
-        },
-        "youtubeIntegration": {
-          "title": "YouTube Integration",
-          "description": "Walang putol na isama sa YouTube upang ma-access ang milyun-milyong kanta at lumikha ng perpektong kapaligiran."
-        },
-        "voteLikeSystem": {
-          "title": "Vote & Like System",
-          "description": "Maaaring bumoto ang mga bisita para sa kanilang mga paboritong kanta upang maimpluwensyahan ang playlist queue sa real-time."
-        },
-        "silentParties": {
-          "title": "Silent Parties",
-          "description": "Mag-host ng natatanging silent parties kung saan lahat ay nakikinig sa pamamagitan ng kanilang sariling headphones."
-        },
-        "karaokeReady": {
-          "title": "Handa para sa Karaoke",
-          "description": "Perpekto para sa mga gabi ng karaoke na may collaborative playlists at real-time na song requests."
-        }
-      },
-      "venueHeading": "Perpekto para sa Bawat Venue",
-      "venues": {
-        "barsPubs": "Mga Bar & Pub",
-        "restaurants": "Mga Restaurant",
-        "coffeeShops": "Mga Coffee Shop",
-        "eventsWeddings": "Mga Event & Kasal",
-        "retailStores": "Mga Retail Store",
-        "gymsFitness": "Mga Gym & Fitness"
-      },
-      "closingStatement": "Ang Tunes ay <strong>libre</strong> na i-explore, at para sa paid features maaari kayong mag-upgrade pagkatapos."
-    },
-    "whoIsFor": {
-      "headline": "Para kanino ang explorers.earth?",
-      "subtext": "Ang explorers.earth ay para sa sinumang naniniwala na ang pagbabahagi ay isang responsibilidad — hindi isang broadcast.",
-      "cards": {
-        "individuals": {
-          "title": "Mga Indibidwal",
-          "oneLiner": "Ibahagi ang personal o lokal na rekomendasyon.",
-          "items": {
-            "traveler": {
-              "label": "Traveler",
-              "oneLiner": "Mga taong nagbabahagi ng mga lugar na paglalakbay"
-            },
-            "local": {
-              "label": "Lokal",
-              "oneLiner": "Mga lokal na nagbabahagi ng mga tip sa kapitbahayan"
-            },
-            "family": {
-              "label": "Pamilya",
-              "oneLiner": "Mga pamilya na nagbabahagi ng mga kapaki-pakinabang na lugar"
-            },
-            "student": {
-              "label": "Mag-aaral",
-              "oneLiner": "Mga mag-aaral na nagbabahagi ng mga lugar sa campus/malapit"
-            },
-            "nomad": {
-              "label": "Nomad",
-              "oneLiner": "Mga nomad na naglilista ng mga lugar na friendly sa trabaho"
-            },
-            "emergencySharer": {
-              "label": "Emergency Sharer",
-              "oneLiner": "Mga emergency sharer na nagpo-post ng mahahalagang lugar"
-            }
-          }
-        },
-        "creators": {
-          "title": "Mga Creator",
-          "oneLiner": "Ibahagi ang mga curated na listahan sa inyong audience.",
-          "items": {
-            "influencer": {
-              "label": "Influencer",
-              "oneLiner": "Mga influencer na nagbabahagi ng top picks"
-            },
-            "blogger": {
-              "label": "Blogger",
-              "oneLiner": "Mga blogger na nagcu-curate ng nakasulat na gabay"
-            },
-            "vlogger": {
-              "label": "Vlogger",
-              "oneLiner": "Mga vlogger na nagbabahagi ng visual journeys"
-            },
-            "reviewer": {
-              "label": "Reviewer",
-              "oneLiner": "Mga reviewer na naglilista ng best-rated na lugar"
-            },
-            "photographer": {
-              "label": "Photographer",
-              "oneLiner": "Mga photographer na nagbabahagi ng photo spots"
-            },
-            "educator": {
-              "label": "Educator",
-              "oneLiner": "Mga educator na nagbabahagi ng learning guides"
-            },
-            "communityLeader": {
-              "label": "Community Leader",
-              "oneLiner": "Mga community leader na nagcu-curate ng kapaki-pakinabang na listahan"
-            }
-          }
-        },
-        "hospitality": {
-          "title": "Hospitality",
-          "oneLiner": "Mag-alok sa mga bisita ng curated na lokal na insights.",
-          "items": {
-            "hotel": {
-              "label": "Hotel",
-              "oneLiner": "Mga hotel na nag-aalok ng lokal na guidebooks"
-            },
-            "airbnb": {
-              "label": "Airbnb",
-              "oneLiner": "Mga host na nagbabahagi ng mga paborito sa kapitbahayan"
-            },
-            "hostel": {
-              "label": "Hostel",
-              "oneLiner": "Mga hostel na nagbabahagi ng backpacker tips"
-            },
-            "homestay": {
-              "label": "Homestay",
-              "oneLiner": "Mga homestay na nag-aalok ng family-oriented guides"
-            },
-            "resort": {
-              "label": "Resort",
-              "oneLiner": "Mga resort na nagbibigay ng activity lists"
-            },
-            "pgColiving": {
-              "label": "PG/Coliving",
-              "oneLiner": "PG/Coliving na nagpapakita ng mahahalagang lugar na malapit"
-            }
-          }
-        },
-        "businesses": {
-          "title": "Mga Negosyo",
-          "oneLiner": "Gabayan ang mga customer gamit ang kapaki-pakinabang na rekomendasyon.",
-          "items": {
-            "restaurant": {
-              "label": "Restaurant",
-              "oneLiner": "Mga restaurant na nagbabahagi ng must-try dishes"
-            },
-            "cafe": {
-              "label": "Café",
-              "oneLiner": "Mga café na nagha-highlight ng paboritong menu items"
-            },
-            "retailShop": {
-              "label": "Retail Shop",
-              "oneLiner": "Mga shop na nagbabahagi ng product recommendations"
-            },
-            "gym": {
-              "label": "Gym",
-              "oneLiner": "Mga gym na nagmumungkahi ng lokal na wellness spots"
-            },
-            "spa": {
-              "label": "Spa",
-              "oneLiner": "Mga spa na naglilista ng relaxation options na malapit"
-            },
-            "salon": {
-              "label": "Salon",
-              "oneLiner": "Mga salon na nag-aalok ng beauty guides"
-            },
-            "clinic": {
-              "label": "Clinic",
-              "oneLiner": "Mga clinic na nagbabahagi ng health-related locations"
-            },
-            "boutique": {
-              "label": "Boutique",
-              "oneLiner": "Mga boutique na naglilista ng curated finds"
-            }
-          }
-        },
-        "organizations": {
-          "title": "Mga Organisasyon",
-          "oneLiner": "Magbigay ng curated guides at resources.",
-          "items": {
-            "airline": {
-              "label": "Airline",
-              "oneLiner": "Mga airline na nagbabahagi ng city guides"
-            },
-            "agency": {
-              "label": "Agency",
-              "oneLiner": "Mga travel agency na naglilista ng must-visits"
-            },
-            "university": {
-              "label": "University",
-              "oneLiner": "Mga university na nagbabahagi ng campus essentials"
-            },
-            "corporate": {
-              "label": "Corporate",
-              "oneLiner": "Mga corporate na naglilista ng malapit na resources"
-            },
-            "airport": {
-              "label": "Airport",
-              "oneLiner": "Mga airport na nag-aalok ng terminals + city tips"
-            },
-            "railway": {
-              "label": "Railway",
-              "oneLiner": "Mga railway na nagbabahagi ng platform info"
-            },
-            "ngo": {
-              "label": "NGO",
-              "oneLiner": "Mga NGO na nagbabahagi ng community resources"
-            },
-            "government": {
-              "label": "Government",
-              "oneLiner": "Mga department na nagha-highlight ng public services"
-            }
-          }
-        }
-      },
-      "useCases": {
-        "travelers": "Mga Traveler",
-        "travelersDesc": "Ibahagi ang mga natuklasang gems kasama ang mga kapwa explorer",
-        "influencers": "Mga Influencer",
-        "influencersDesc": "I-monetize ang lokal na kaalaman at magtayo ng komunidad",
-        "airbnbHosts": "Mga Airbnb Host",
-        "airbnbHostsDesc": "Pahusayin ang guest experience sa lokal na insights",
-        "hotels": "Mga Hotel",
-        "hotelsDesc": "Magbigay ng curated na lokal na rekomendasyon",
-        "restaurants": "Mga Restaurant",
-        "restaurantsDesc": "Cross-promotion sa ibang lokal na negosyo",
-        "cafes": "Mga Cafe",
-        "cafesDesc": "Ibahagi ang mga paboritong lugar ng kapitbahayan sa mga customer",
-        "localGuides": "Mga Lokal na Guide",
-        "localGuidesDesc": "I-scale ang inyong expertise lampas sa individual tours",
-        "creators": "Mga Creator",
-        "creatorsDesc": "Magdagdag ng value lampas sa content sa actionable tips",
-        "tourOperators": "Mga Tour Operator",
-        "tourOperatorsDesc": "I-expand ang mga experience lampas sa scheduled tours",
-        "anyBusiness": "Anumang Negosyo",
-        "anyBusinessDesc": "Magtayo ng komunidad at customer loyalty"
-      }
-    },
-    "testimonials": {
-      "headline": "Minamahal ng mga traveler, creator, at host",
-      "subtext": "Tingnan kung paano ginagamit ng mga tao sa buong mundo ang explorers para ibahagi ang pinakamahalagang bagay.",
-      "scrollLeft": "I-scroll ang mga testimonial sa kaliwa",
-      "scrollRight": "I-scroll ang mga testimonial sa kanan",
-      "items": [
-        {
-          "id": "1",
-          "name": "Marcus Chen",
-          "role": "Travel Blogger",
-          "location": "San Francisco",
-          "quote": "Binago ng explorers ang paraan ng pagbabahagi ko ng aking kaalaman sa paglalakbay. Gustung-gusto ng aking mga tagasunod ang mabilis na pag-access sa aking mga kuratong rekomendasyon!"
-        },
-        {
-          "id": "2",
-          "name": "Sarah Johnson",
-          "role": "Airbnb Host",
-          "location": "Barcelona",
-          "quote": "Talagang gustung-gusto ng aking mga bisita ang personalized na QR code sa kanilang welcome kit. Naging signature touch ko na ito!"
-        },
-        {
-          "id": "3",
-          "name": "Alex Rodriguez",
-          "role": "May-ari ng Restawran",
-          "location": "Mexico City",
-          "quote": "Ibinabahagi namin ang aming explorers sa mga customer upang magrekomenda ng iba pang lokal na lugar. Nakalikha ito ng kamangha-manghang mga koneksyon sa komunidad."
-        },
-        {
-          "id": "4",
-          "name": "Emma Thompson",
-          "role": "Tour Guide",
-          "location": "London",
-          "quote": "Tumutulong ang explorers sa akin na palawakin ang aking kadalubhasaan sa labas ng mga oras ng tour. Maa-access ng mga customer ang aking mga rekomendasyon anumang oras!"
-        }
-      ]
-    },
-    "faq": {
-      "headline": "May mga tanong?",
-      "subtext": "Nasagot na namin ang pinakakaraniwang mga bagay na tinatanong ng mga tao bago magsimula.",
-      "loading": "Naglo-load ang FAQ...",
-      "error": "Error sa pag-load ng FAQ. Pakisubukan ulit mamaya."
-    },
-    "features": {
-      "title": "Binuo upang manatili sa labas ng daan",
-      "subtitle": "Mga simpleng, maingat na feature na nagpapatingkad sa inyong mga rekomendasyon.",
-      "simpleLinks": {
-        "title": "Simpleng link at QR sharing"
-      },
-      "livingGuides": {
-        "title": "Buhay, na-e-edit na mga gabay"
-      },
-      "locationAware": {
-        "title": "Location-aware na mga rekomendasyon"
-      },
-      "soundPlaylists": {
-        "title": "Opsyonal na tunog at playlist"
-      },
-      "privacyFirst": {
-        "title": "Privacy-first sa pamamagitan ng disenyo"
-      },
-      "communityDriven": {
-        "title": "Community-driven na pagtuklas"
-      }
-    },
-    "finalCTA": {
-      "headline": "Simulan ang pagbabahagi ng inyong mundo ngayon",
-      "subtext": "I-reserve ang inyong libreng explorers at i-convert ang inyong lokal na insights sa shareable na mga gabay.",
-      "ctaButton": "I-reserve ang inyong explorers – Libre Magpakailanman",
-      "disclaimer": "Hindi kailangan ng credit card • Setup sa 2 minuto",
-      "creating": "Ginagawa ang inyong explorers..."
-    }
-  },
+{
   "about": {
-    "title": "Mga Explorer ng Daigdig",
-    "subtitle": {
-      "line1": "Isang pandaigdigang komunidad ng mga taong nag-e-explore nang may pag-aalaga — para sa mga tao, kultura, at planeta na ibinabahagi natin.",
-      "line2": "Ang pag-e-explore, para sa amin, ay hindi tungkol sa kung gaano kalayo tayo pumupunta.",
-      "line3": "Tungkol ito sa kung gaano tayo kalalim na kumonekta."
-    },
+    "closing": "Kung curious kayo.\nKung maingat kayo.\nKung handa kayong magbagal at tumingin nang mas malapit —\nnasa inyo na dito.",
     "section1": {
-      "title": "ANO ANG PINANINIWALAAN NATIN",
       "line1": "Ang pag-e-explore ay nagsisimula sa kamalayan.",
       "line2": "Sa pagpansin sa kung ano ang dinadaanan ng iba.",
       "line3": "Sa pagpili na gumalaw nang may pag-iisip, hindi mabilis.",
-      "line4": "Nabubuhay tayo nang sandali sa isang sinaunang planeta —\nnagdaragdag ng ilang sinasadyang marka sa isang kuwento\nna nagsimula nang matagal bago tayo\nat magpapatuloy nang matagal pagkatapos nating umalis."
+      "line4": "Nabubuhay tayo nang sandali sa isang sinaunang planeta —\nnagdaragdag ng ilang sinasadyang marka sa isang kuwento\nna nagsimula nang matagal bago tayo\nat magpapatuloy nang matagal pagkatapos nating umalis.",
+      "title": "ANO ANG PINANINIWALAAN NATIN"
     },
     "section2": {
-      "title": "PAANO NATIN NAKIKITA ANG PAG-E-EXPLORE",
       "line1": "Ang pag-e-explore ay hindi sinusukat sa milya.",
       "line2": "Sinusukat ito sa kahulugan.",
-      "line3": "Nabubuhay ito sa pagbagal, pagbibigay-pansin,\nat paggalang sa bawat lugar na tinatapakan natin —\nisang kalye, isang daan sa bundok, isang mesa ng kape,\no isang sandali na ibinahagi sa isang bagong tao."
+      "line3": "Nabubuhay ito sa pagbagal, pagbibigay-pansin,\nat paggalang sa bawat lugar na tinatapakan natin —\nisang kalye, isang daan sa bundok, isang mesa ng kape,\no isang sandali na ibinahagi sa isang bagong tao.",
+      "title": "PAANO NATIN NAKIKITA ANG PAG-E-EXPLORE"
     },
     "section3": {
-      "title": "ANO ANG BINUBUO NATIN",
-      "line1": "Ang explorers ay isang lugar para sa:",
       "item1": "Mga gabay na hinubog ng tunay na karanasan",
       "item2": "Mga lugar, paglalakbay, tunog, at kuwento na karapat-dapat tandaan",
       "item3": "Mga komunidad na itinayo sa mga tao — hindi sa metrics ng popularidad",
+      "line1": "Ang explorers ay isang lugar para sa:",
       "line2": "Tumutulong ang teknolohiya na makakonekta tayo.",
-      "line3": "Binibigyan ito ng layunin ng mga tao."
+      "line3": "Binibigyan ito ng layunin ng mga tao.",
+      "title": "ANO ANG BINUBUO NATIN"
     },
     "section4": {
-      "title": "PAGKAKABILANG",
       "line1": "Ang mga Explorer ng Daigdig ay hindi isang club.",
       "line2": "Hindi ito isang label.",
-      "line3": "Ito ay isang ibinahaging mindset —\nisang tahimik na pag-unawa sa kung paano tayo gumagalaw sa mundo."
+      "line3": "Ito ay isang ibinahaging mindset —\nisang tahimik na pag-unawa sa kung paano tayo gumagalaw sa mundo.",
+      "title": "PAGKAKABILANG"
     },
-    "closing": "Kung curious kayo.\nKung maingat kayo.\nKung handa kayong magbagal at tumingin nang mas malapit —\nnasa inyo na dito.",
     "seo": {
-      "title": "Mga Explorer ng Daigdig | Tungkol sa Amin",
       "description": "Isang pandaigdigang komunidad ng mga taong nag-e-explore nang may pag-aalaga — para sa mga tao, kultura, at planeta na ibinabahagi natin. Ang pag-e-explore ay hindi tungkol sa distansya, tungkol ito sa lalim.",
       "keywords": [
         "mga explorer ng daigdig",
@@ -448,19 +41,477 @@
         "tungkol sa travel app",
         "community-driven na mga rekomendasyon",
         "tunay na lokal na karanasan",
-        "pangkat ng mga explorer"
-      ]
+        "pangkat ng mga explorer",
+        "local discovery platform",
+        "share local places",
+        "travel technology",
+        "local recommendations app",
+        "explorers story",
+        "who we are explorers"
+      ],
+      "title": "Mga Explorer ng Daigdig | Tungkol sa Amin"
+    },
+    "subtitle": {
+      "line1": "Isang pandaigdigang komunidad ng mga taong nag-e-explore nang may pag-aalaga — para sa mga tao, kultura, at planeta na ibinabahagi natin.",
+      "line2": "Ang pag-e-explore, para sa amin, ay hindi tungkol sa kung gaano kalayo tayo pumupunta.",
+      "line3": "Tungkol ito sa kung gaano tayo kalalim na kumonekta."
+    },
+    "title": "Mga Explorer ng Daigdig"
+  },
+  "analytics": {
+    "dashboard": {
+      "charts": {
+        "locationEngagement": {
+          "allLocations": "Lahat ng Lokasyon",
+          "location": "Lokasyon",
+          "locationViews": "{{location}} ({{count}} views)",
+          "noLocationData": "Walang location view data available",
+          "selectLocation": "Pumili ng Lokasyon:",
+          "selectLocationPlaceholder": "Pumili ng Lokasyon",
+          "stats": {
+            "avgViews": "Average Views/Lokasyon",
+            "totalLocations": "Kabuuang Lokasyon",
+            "totalViews": "Kabuuang Views"
+          },
+          "subtitle": "Subaybayan ang views para sa iba't ibang lokasyon sa paglipas ng panahon",
+          "title": "Engagement sa Lokasyon",
+          "tooltip": {
+            "date": "Petsa: {{date}}",
+            "locationViews": "{{location}}: {{value}} views"
+          },
+          "unknownLocation": "Hindi Kilalang Lokasyon"
+        },
+        "recommendedPlaces": {
+          "analyticsSummary": "Buod ng Analytics:",
+          "locationPlaces": "{{location}} ({{count}} lugar)",
+          "noClicksMessage": "Walang recommendation clicks na nahanap para sa napiling lokasyon. Lilitaw ang recommendation data kapag nag-click ang mga user sa place cards sa inyong location pages.",
+          "noDataMessage": "Walang recommendation click data available para sa napiling panahon.",
+          "noRecommendationData": "Walang Recommendation Data",
+          "recordsWithRecommendations": "• {{count}} records na may Recommendation ID",
+          "selectLocation": "Pumili ng Lokasyon:",
+          "selectLocationPlaceholder": "Pumili ng Lokasyon",
+          "selectLocationPrompt": "Pakipili ng lokasyon para makita ang recommendation data.",
+          "stats": {
+            "avgClicks": "Average Clicks/Lugar",
+            "placesShown": "Mga Lugar na Ipinakita",
+            "totalClicks": "Kabuuang Clicks"
+          },
+          "subtitle": "Subaybayan ang clicks sa mga inirerekomendang lugar ayon sa lokasyon",
+          "title": "Engagement sa mga Inirerekomendang Lugar",
+          "tooltip": {
+            "category": "Kategorya: {{category}}",
+            "clicks": "Clicks: {{count}}",
+            "place": "{{place}}"
+          },
+          "totalClickEvents": "• {{count}} kabuuang click events",
+          "uniqueRecommendations": "• {{count}} natatanging recommendations",
+          "unknownCategory": "Hindi Kilalang Kategorya",
+          "unknownLocation": "Hindi Kilalang Lokasyon",
+          "unknownPlace": "Hindi Kilalang Lugar"
+        },
+        "socialMedia": {
+          "analyticsSummary": "Buod ng Analytics:",
+          "noDataMessage": "Walang social media click data available mula sa inyong public profile page.",
+          "noDataTitle": "Walang Social Media Interaction Data",
+          "stats": {
+            "avgClicks": "Average Clicks/Platform",
+            "platforms": "Mga Platform",
+            "totalClicks": "Kabuuang Clicks"
+          },
+          "subtitle": "Subaybayan ang clicks sa social media links mula sa inyong public profile sa lahat ng platforms",
+          "title": "Interaksyon sa Social Media",
+          "tooltip": {
+            "clicks": "Clicks: {{count}}",
+            "platform": "{{platform}}"
+          },
+          "totalSocialClicks": "• {{count}} kabuuang social media clicks",
+          "trackingNote": "• Tumutrack lamang ng clicks mula sa public-profile page",
+          "uniquePlatforms": "• {{count}} natatanging platforms",
+          "willAppear": "Lilitaw ang social media interaction data kapag nag-click ang mga user sa inyong social media links."
+        },
+        "topCountries": {
+          "analyticsSummary": "Buod ng Analytics:",
+          "countryDataUnavailable": "Hindi Available ang Country Data",
+          "eventsPending": "• {{count}} events na pending geolocation",
+          "eventsWithCountry": "• {{count}} events na may country data",
+          "failedToResolve": "Nabigo na i-resolve ang country data. Pakisubukan ulit mamaya.",
+          "geolocationIssue": "Suliranin sa Geolocation:",
+          "legend": "Views",
+          "retryGeolocation": "Ulitin ang Geolocation",
+          "title": "Top 3 Bansa ayon sa Views",
+          "tooltip": {
+            "country": "Bansa: {{country}}",
+            "views": "Views: {{count}}"
+          },
+          "totalViewEvents": "• {{count}} kabuuang view events",
+          "unableToResolve": "Hindi ma-resolve ang IP addresses sa mga bansa sa ngayon. Maaaring dahil sa network restrictions o service limitations.",
+          "willAppear": "Lilitaw ang country data nang automatic kapag available na ang IP geolocation services."
+        },
+        "trafficSource": {
+          "allSources": "Lahat ng Sources",
+          "analyticsSummary": "Buod ng Analytics:",
+          "direct": "Direkta",
+          "directTraffic": "• {{count}} direktang traffic events",
+          "eventsWithUTM": "• {{count}} events na may UTM source",
+          "instagram": "Instagram",
+          "noTrafficData": "Walang Traffic Data Available",
+          "noViewEvents": "Walang view events na nahanap na may traffic source information.",
+          "qrCode": "QR Code",
+          "selectSource": "Pumili ng Traffic Source:",
+          "subtitle": "Subaybayan kung paano nag-iiba ang traffic mula sa iba't ibang sources sa paglipas ng panahon",
+          "title": "Traffic Source sa Paglipas ng Panahon",
+          "tooltip": {
+            "sourceCount": "{{source}}: {{count}}"
+          },
+          "totalViewEvents": "• {{count}} kabuuang view events",
+          "twitter": "Twitter",
+          "whatsapp": "WhatsApp",
+          "willAppear": "Lilitaw ang traffic source data kapag bumisita ang mga user sa inyong pages na may UTM parameters."
+        },
+        "worldMap": {
+          "analyticsSummary": "Buod ng Analytics:",
+          "countriesWithViews": "{{count}} bansa na may views",
+          "eventsPending": "• {{count}} events na pending geolocation",
+          "eventsWithCountry": "• {{count}} events na may country data",
+          "failedToResolve": "Nabigo na i-resolve ang country data. Pakisubukan ulit mamaya.",
+          "legend": {
+            "high": "Mataas",
+            "highest": "Pinakamataas",
+            "low": "Mababa",
+            "medium": "Katamtaman",
+            "views": "Views:"
+          },
+          "noGeographicData": "Walang Geographic Data Available",
+          "subtitle": "Interactive world map na nagpapakita ng view distribution sa iba't ibang bansa mula sa public pages",
+          "title": "Pamahagi ng Global View",
+          "tooltip": {
+            "country": "{{country}}",
+            "views": "{{views}} views"
+          },
+          "totalViewEvents": "• {{count}} kabuuang view events",
+          "unableToResolve": "Hindi ma-resolve ang IP addresses sa mga bansa sa ngayon. Maaaring dahil sa network restrictions o service limitations.",
+          "willAppear": "Lilitaw ang country data nang automatic kapag available na ang IP geolocation services."
+        }
+      },
+      "comingSoon": {
+        "filterTip": "<strong>Tip:</strong> Kapag available na ang analytics, makakapag-filter kayo ayon sa panahon (ngayon, huling 7 araw, huling 30 araw, o custom range) para makita ang inyong data.",
+        "message": "Ang analytics ay magiging available sa <strong>{{days}} araw{{daysPlural}}</strong> pagkatapos ng account creation.",
+        "tip": "Samantala, simulan ninyong ibahagi ang inyong QR codes para mag-generate ng data para sa analytics!",
+        "title": "Analytics Malapit na",
+        "whyWait": {
+          "reasons": {
+            "accuracy": "• Sinisiguro ang data accuracy at pumipigil sa spam",
+            "insights": "• Nagbibigay ng reliable analytics insights",
+            "interactions": "• Nagbibigay ng panahon para sa meaningful user interactions"
+          },
+          "title": "Bakit kailangan maghintay?"
+        }
+      },
+      "dateRange": {
+        "from": "Mula:",
+        "to": "Hanggang:"
+      },
+      "emptyState": {
+        "customRange": {
+          "bothMissing": "Pakipili ang parehong start at end dates para sa custom range para makita ang analytics data.",
+          "endMissing": "Pakipili ng end date para sa custom range para makita ang analytics data.",
+          "startMissing": "Pakipili ng start date para sa custom range para makita ang analytics data."
+        },
+        "howToStart": {
+          "askFriends": "• Hilingin sa mga kaibigan na i-scan ang inyong QR codes",
+          "includeQR": "• Isama ang QR codes sa inyong marketing materials",
+          "shareQR": "• Ibahagi ang inyong QR codes sa social media",
+          "title": "Para makita ang analytics:",
+          "viewProfile": "• Tingnan ang inyong public profile pages"
+        },
+        "noDataForPeriod": {
+          "custom": "Walang analytics data available para sa custom range ({{startDate}} hanggang {{endDate}}). Pakipili ng ibang time range para makita ang inyong data.",
+          "default": "Walang analytics data available para sa napiling time range. Pakipili ng ibang time range para makita ang inyong data.",
+          "last30days": "Walang analytics data available para sa huling 30 araw. Pakipili ng ibang time range para makita ang inyong data.",
+          "last7days": "Walang analytics data available para sa huling 7 araw. Pakipili ng ibang time range para makita ang inyong data.",
+          "today": "Walang analytics data available para sa ngayon. Pakipili ng ibang time range para makita ang inyong data."
+        },
+        "noDataMessage": "Walang analytics data na nahanap para sa inyong account. Lilitaw ang analytics dito kapag nagsimula nang mag-view at makipag-interact ang mga tao sa inyong QR codes.",
+        "title": "Walang Analytics Data"
+      },
+      "error": {
+        "errorLabel": "Error:",
+        "message": "Hindi ma-fetch ang analytics data. Pakisubukan ulit mamaya.",
+        "title": "Error sa Pag-load ng Analytics"
+      },
+      "loading": {
+        "loadingData": "Naglo-load ng analytics data...",
+        "resolvingCountry": "Nireresolve ang country data..."
+      },
+      "subtitle": "Subaybayan ang performance ng inyong QR code at user engagement",
+      "summaryCards": {
+        "totalClicks": "Kabuuang Clicks",
+        "totalLinkViews": "Kabuuang Link Views",
+        "totalQRViews": "Kabuuang QR Views",
+        "totalViews": "Kabuuang Views"
+      },
+      "timeFilter": {
+        "custom": "Custom na Saklaw",
+        "last30days": "Huling 30 Araw",
+        "last7days": "Huling 7 Araw",
+        "selectPeriod": "Pumili ng Panahon",
+        "today": "Ngayon"
+      },
+      "timePeriod": "Panahon:",
+      "title": "Dashboard ng Analytics"
     }
   },
+  "auth": {
+    "acceptTerms": "I accept the",
+    "alreadyHaveAccount": "May account na ba kayo?",
+    "blockedAccount": {
+      "message": "This account has been deactivated.",
+      "reactivateLink": "Click here to reactivate your account →"
+    },
+    "claimAccount": "Claim Account?",
+    "confirmPassword": "Kumpirmahin ang Password",
+    "confirmPasswordPlaceholder": "Ilagay ulit ang inyong password",
+    "email": "Email",
+    "emailPlaceholder": "Ilagay ang inyong email",
+    "forgotPassword": "Nakalimutan ang password?",
+    "login": "Mag-log in",
+    "loginSubtitle": "Pakimag-log in upang magpatuloy sa inyong account",
+    "loginTitle": "Mag-log in",
+    "newToExplorers": "New to explorers?",
+    "onboarding": {
+      "accountDetails": {
+        "accountType": "Uri ng Account",
+        "bio": "Bio",
+        "bioPlaceholder": "Sabihin mo sa amin ang tungkol sa iyong sarili",
+        "business": "Business",
+        "creator": "Creator",
+        "description": "Sabihin mo sa amin ang tungkol sa iyong sarili",
+        "displayName": "Pangalan ng Display",
+        "displayNamePlaceholder": "Ilagay ang inyong pangalan ng display",
+        "next": "Susunod",
+        "personal": "Personal",
+        "title": "Mga Detalye ng Account",
+        "username": "Username",
+        "usernameDescription": "Ang inyong username ay bahagi ng inyong public profile link at QR codes. Halimbawa: explorers.earth/bhavya",
+        "usernamePlaceholder": "Ilagay ang inyong username"
+      },
+      "addressDetails": {
+        "address": "Address",
+        "addressPlaceholder": "Ilagay ang inyong address",
+        "back": "Bumalik",
+        "city": "Lungsod",
+        "cityPlaceholder": "Ilagay ang lungsod",
+        "confirmDetails": "Kumpirmahin ang mga Detalye",
+        "country": "Bansa",
+        "countryPlaceholder": "Ilagay ang bansa",
+        "description": "Saan kayo matatagpuan?",
+        "detectLocation": "Detect my current location",
+        "postalCode": "Postal Code",
+        "postalCodePlaceholder": "Ilagay ang postal code",
+        "primaryAddress": "Primary Address",
+        "primaryAddressDescription": "ipinapakita sa public profile (lungsod at bansa)",
+        "primaryAddressPlaceholder": "Ilagay ang primary address",
+        "sameAsAddress": "Katulad ng Address",
+        "state": "Estado",
+        "statePlaceholder": "Ilagay ang estado",
+        "streetName": "Pangalan ng Kalye",
+        "streetNamePlaceholder": "Ilagay ang pangalan ng kalye",
+        "title": "Mga Detalye ng Address"
+      },
+      "contactDetails": {
+        "back": "Bumalik",
+        "description": "Idagdag ang inyong mobile number para sa verification",
+        "mobileNumber": "Mobile Number",
+        "mobileNumberPlaceholder": "Ilagay ang inyong mobile number",
+        "next": "Susunod",
+        "title": "Mga Detalye ng Contact"
+      }
+    },
+    "or": "o",
+    "password": "Password",
+    "passwordPlaceholder": "Ilagay ang inyong password",
+    "register": "Mag-register",
+    "resetPassword": {
+      "confirmPasswordPlaceholder": "Confirm your password",
+      "newPasswordPlaceholder": "Enter new password"
+    },
+    "signInWithGoogle": "Mag-log in gamit ang Google",
+    "signup": "Mag-sign up",
+    "signupSubtitle": "Mag-sign up upang masiyahan sa mga feature ng explorers",
+    "signUpWithGoogle": "Mag-sign up gamit ang Google",
+    "status": {
+      "authenticating": "Authenticating...",
+      "syncingLocalTunes": "Syncing with LocalTunes..."
+    },
+    "termsAndConditions": "Terms and Conditions",
+    "username": "Username",
+    "usernameOrEmail": "Username o email",
+    "usernameOrEmailPlaceholder": "Ilagay ang inyong username o email",
+    "usernamePlaceholder": "Ilagay ang inyong username",
+    "validations": {
+      "accountName": {
+        "invalidChars": "Ang Account Name ay maaari lamang maglaman ng mga titik, espasyo, apostrophe, gitling, at tuldok",
+        "maxLength": "Ang pangalan ng account ay hindi dapat lumampas sa 50 character",
+        "minLength": "Ang pangalan ng account ay dapat na hindi bababa sa 2 character",
+        "noNumbers": "Ang pangalan ng account ay hindi maaaring maglaman ng mga numero",
+        "required": "Ang Account Name ay kinakailangan"
+      },
+      "accountType": {
+        "business": "Business",
+        "creator": "Creator",
+        "invalid": "Hindi wastong uri ng account",
+        "personal": "Personal",
+        "required": "Ang Account Type ay kinakailangan"
+      },
+      "confirmPassword": {
+        "confirmRequired": "Ang pagkumpirma ng password ay kinakailangan",
+        "match": "Ang mga password ay tumugma",
+        "mustMatch": "Passwords do not match",
+        "required": "Pakikonpirma ang inyong password"
+      },
+      "email": {
+        "alreadyExists": "Ang email ay mayroon na",
+        "invalid": "Hindi wastong email",
+        "invalidFormat": "Ang format ng email ay hindi wasto",
+        "required": "Kinakailangan ang email"
+      },
+      "forgotPassword": {
+        "backToLogin": "Bumalik sa Login",
+        "description": "Ipasok ang inyong email address at ipapadala namin sa inyo ang reset link.",
+        "emailLabel": "Email address",
+        "emailPlaceholder": "Ipasok ang inyong email",
+        "failedToSend": "Nabigo sa pagpapadala ng reset link. Subukan ulit mamaya.",
+        "resetLinkSent": "Ang password reset link ay naipadala sa inyong email!",
+        "sendResetLink": "Ipadala ang Reset Link",
+        "somethingWentWrong": "May mali!",
+        "title": "Nakalimutan ang Password?"
+      },
+      "general": {
+        "fillRequiredFields": "Pakipunan ang lahat ng kinakailangang field",
+        "somethingWentWrong": "May mali, pakisubukan ulit"
+      },
+      "login": {
+        "accountNotFound": "Hindi nahanap ang account",
+        "incorrectPassword": "Maling password",
+        "invalidCredentials": "Hindi wastong username/email o password",
+        "tooManyAttempts": "Masyadong maraming nabigong pagtatangka",
+        "usernameOrEmailRequired": "Ang username o email ay kinakailangan"
+      },
+      "onboarding": {
+        "addressRequired": "Kailangan ang address",
+        "bioMaxLength": "Ang bio ay hindi dapat lumampas sa 250 karakter",
+        "bioRequired": "Kailangan ang bio",
+        "cityRequired": "Kailangan ang lungsod",
+        "countryRequired": "Kailangan ang bansa",
+        "displayNameMaxLength": "Ang pangalan ng display ay hindi dapat lumampas sa 50 karakter",
+        "displayNameMinLength": "Ang pangalan ng display ay dapat na hindi bababa sa 2 karakter",
+        "displayNameRequired": "Kailangan ang pangalan ng display",
+        "emailAddressRequired": "Kailangan ang email address",
+        "invalidUsername": "Di-wastong username",
+        "mobileNumberInvalid": "Pakipasok ang isang wastong mobile number",
+        "mobileNumberLength": "Ang mobile number ay dapat na 10 digit",
+        "mobileNumberRequired": "Kailangan ang mobile number",
+        "postalCodeRequired": "Kailangan ang postal code",
+        "primaryAddressRequired": "Kailangan ang primary address",
+        "profileImageAlt": "Profile",
+        "resetLinkSentSuccess": "Matagumpay na naipadala ang reset link!",
+        "stateRequired": "Kailangan ang estado"
+      },
+      "password": {
+        "considerLonger": "Consider using a longer password with more variety for better security",
+        "fair": "Katamtaman",
+        "good": "Mabuti",
+        "lowercaseRequired": "Ang password ay dapat maglaman ng hindi bababa sa isang maliit na titik (a-z)",
+        "maxLength": "Ang password ay hindi dapat lumampas sa 32 karakter",
+        "medium": "Katamtaman",
+        "meetsAllRequirements": "Password meets all requirements",
+        "minLength": "Ang password ay dapat na hindi bababa sa 6 karakter",
+        "moreSecure": "Ang mga password na may 10 o higit pang karakter ay mas ligtas",
+        "numberRequired": "Ang password ay dapat maglaman ng hindi bababa sa isang numero (0-9)",
+        "required": "Kinakailangan ang password",
+        "sameAsCurrent": "New password cannot be the same as your current password",
+        "specialCharRequired": "Ang password ay dapat maglaman ng hindi bababa sa isang espesyal na karakter (!@#$%^&*().,?\":{}|<>)",
+        "strength": "Lakas ng password",
+        "strong": "Malakas",
+        "tooCommon": "This password is too common. Please choose a more unique password",
+        "uppercaseRequired": "Ang password ay dapat maglaman ng hindi bababa sa isang malaking titik (A-Z)",
+        "veryStrong": "Napakalakas",
+        "veryWeak": "Napakahina",
+        "weak": "Mahina"
+      },
+      "primaryAddress": {
+        "required": "Primary Address is required"
+      },
+      "resetLinkSent": {
+        "description": "Tingnan ang inyong inbox para sa password reset link.",
+        "resending": "Pinapadala ulit...",
+        "resendMail": "Ipadala ulit ang Email",
+        "resendWithCooldown": "Ipadala ulit ang Email ({{cooldown}}s)",
+        "title": "Naipadala ang Email!"
+      },
+      "resetPassword": {
+        "confirmPassword": "Confirm Password",
+        "confirmPasswordPlaceholder": "Confirm your password",
+        "newPassword": "New Password",
+        "newPasswordPlaceholder": "Enter new password"
+      },
+      "socialMedia": {
+        "appleMusic": "Please enter a valid Apple Music URL",
+        "email": "Please enter a valid email address",
+        "facebook": "Please enter a valid Facebook profile URL",
+        "instagram": "Please enter a valid Instagram profile URL",
+        "linkedin": "Please enter a valid LinkedIn profile URL",
+        "mobile": "Please enter a valid mobile number (e.g., +1234567890)",
+        "snapchat": "Please enter a valid Snapchat username",
+        "spotify": "Please enter a valid Spotify URL",
+        "tiktok": "Please enter a valid TikTok profile URL",
+        "website": "Please enter a valid website URL",
+        "whatsapp": "Enter a valid WhatsApp contact: phone (+1234567890) or wa.me/api.whatsapp.com link",
+        "x": "Please enter a valid X (Twitter) profile URL",
+        "youtube": "Please enter a valid YouTube channel URL (e.g., youtube.com/@username)",
+        "youtubeMusic": "Please enter a valid YouTube Music channel URL"
+      },
+      "termsAccepted": {
+        "required": "You must accept the Terms and Conditions to continue"
+      },
+      "username": {
+        "alreadyExists": "Ang username ay mayroon na",
+        "available": "Ang username ay available",
+        "cannotBeAllNumbers": "Ang username ay hindi maaaring lahat ay numero",
+        "cannotStartEndHyphen": "Ang username ay hindi maaaring magsimula o magtapos sa gitling",
+        "checkingAvailability": "Sinusuri ang availability...",
+        "inappropriateContent": "Ang username ay naglalaman ng hindi naaangkop na nilalaman",
+        "invalidChars": "Ang username ay maaari lamang maglaman ng maliliit na titik (a-z), numero (0-9), at gitling (-)",
+        "maxLength": "Ang username ay hindi dapat lumampas sa 30 karakter",
+        "minLength": "Ang username ay dapat na hindi bababa sa 3 karakter",
+        "mustStartWithLetter": "Ang username ay dapat magsimula sa titik (a-z)",
+        "noConsecutiveHyphens": "Ang username ay hindi maaaring maglaman ng magkakasunod na gitling",
+        "required": "Kinakailangan ang username",
+        "reservedWords": "This username contains reserved words and cannot be used",
+        "suggestedAlternatives": "Suggested alternatives:",
+        "willBeConvertedLowercase": "Ang username ay mako-convert sa maliliit na titik",
+        "willConvertToLowercase": "Ang username ay mako-convert sa lowercase"
+      }
+    }
+  },
+  "common": {
+    "cancel": "Kanselahin",
+    "error": "May naganap na error. Subukan ulit mamaya.",
+    "hidePassword": "Hide password",
+    "loading": "Naglo-load...",
+    "noResults": "Walang nahanap na resulta",
+    "retry": "Subukan Muli",
+    "showPassword": "Show password",
+    "signInWithGoogle": "Mag-sign in gamit ang Google",
+    "signUpWithGoogle": "Mag-sign up gamit ang Google",
+    "submit": "Ipadala"
+  },
   "contact": {
-    "title": "Makipag-ugnayan tayo.",
-    "subtitle": "May tanong man kayo, ideya, o gusto lang mag-hello — gusto naming marinig kayo.",
-    "getInTouch": "Makipag-ugnayan",
-    "email": "hello@explorers.earth",
-    "responseTime": "Sumasagot kami sa loob ng 24-48 oras",
     "closingMessage": "Maliit kaming team na may malaking vision — mahalaga sa amin ang inyong mga iniisip. Makipag-ugnayan at magtayo tayo ng isang bagay na lokal at global.",
+    "email": "hello@explorers.earth",
+    "getInTouch": "Makipag-ugnayan",
+    "responseTime": "Sumasagot kami sa loob ng 24-48 oras",
     "seo": {
-      "title": "Makipag-ugnayan sa explorers | Support, Tulong, at Partnership Requests.",
       "description": "Makipag-ugnayan sa explorers para sa support, partnership opportunities, o mga tanong. Tumutulong ang aming help center sa account access, lokal na rekomendasyon, at technical issues. Makipag-ugnayan sa amin para sa mabilis at friendly na mga sagot at collaboration.",
       "keywords": [
         "makipag-ugnayan explorers",
@@ -484,389 +535,412 @@
         "QR code support",
         "tulong lokal na rekomendasyon",
         "partnership requests"
-      ]
-    }
+      ],
+      "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+      "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
+      "title": "Makipag-ugnayan sa explorers | Support, Tulong, at Partnership Requests."
+    },
+    "subtitle": "May tanong man kayo, ideya, o gusto lang mag-hello — gusto naming marinig kayo.",
+    "title": "Makipag-ugnayan tayo."
   },
   "cookieConsent": {
-    "title": "🍪 Mga Kagustuhan sa Cookie",
-    "description": "Gumagamit kami ng cookies upang mapabuti ang inyong karanasan sa pag-browse, magbigay ng personalized na nilalaman, at pag-aralan ang trapiko. Maaari ninyong pamahalaan ang mga kagustuhan anumang oras.",
     "acceptAll": "✅ Tanggapin ang Lahat ng Cookies",
-    "customize": "⚙️ I-customize",
-    "rejectNonEssential": "❌ Tanggihan ang Hindi Mahalaga",
-    "preferencesTitle": "Mga Kagustuhan sa Cookie",
-    "essentialCookies": {
-      "title": "Mahahalagang Cookies",
-      "description": "Kailangan para sa website na gumana nang maayos",
-      "alwaysOn": "Laging Naka-on"
-    },
-    "analyticsCookies": {
-      "title": "Analytics Cookies",
-      "description": "Tumutulong sa amin na maintindihan kung paano nakikipag-ugnayan ang mga bisita sa aming website"
-    },
-    "marketingCookies": {
-      "title": "Marketing Cookies",
-      "description": "Ginagamit upang maghatid ng personalized na mga advertisement"
-    },
-    "savePreferences": "I-save ang Mga Kagustuhan",
     "acceptAllButton": "Tanggapin ang Lahat",
+    "analyticsCookies": {
+      "description": "Tumutulong sa amin na maintindihan kung paano nakikipag-ugnayan ang mga bisita sa aming website",
+      "title": "Analytics Cookies"
+    },
     "closeBanner": "Isara ang banner",
-    "goBack": "Bumalik"
+    "customize": "⚙️ I-customize",
+    "description": "Gumagamit kami ng cookies upang mapabuti ang inyong karanasan sa pag-browse, magbigay ng personalized na nilalaman, at pag-aralan ang trapiko. Maaari ninyong pamahalaan ang mga kagustuhan anumang oras.",
+    "essentialCookies": {
+      "alwaysOn": "Laging Naka-on",
+      "description": "Kailangan para sa website na gumana nang maayos",
+      "title": "Mahahalagang Cookies"
+    },
+    "goBack": "Bumalik",
+    "marketingCookies": {
+      "description": "Ginagamit upang maghatid ng personalized na mga advertisement",
+      "title": "Marketing Cookies"
+    },
+    "preferencesTitle": "Mga Kagustuhan sa Cookie",
+    "rejectNonEssential": "❌ Tanggihan ang Hindi Mahalaga",
+    "savePreferences": "I-save ang Mga Kagustuhan",
+    "title": "🍪 Mga Kagustuhan sa Cookie"
   },
-  "footer": {
-    "tagline": "Hayaan ang inyong mga rekomendasyon na mag-travel sa mundo.",
-    "email": "hello@explorers.earth",
-    "sections": {
-      "product": "Produkto",
-      "contact": "Makipag-ugnayan",
-      "legal": "Legal"
-    },
-    "links": {
-      "howItWorks": "Paano Ito Gumagana",
-      "faq": "Mga Madalas na Tanong",
-      "about": "Tungkol",
-      "contact": "Makipag-ugnayan",
-      "terms": "Mga Tuntunin at Kondisyon",
-      "privacy": "Privacy Policy",
-      "cookies": "Cookie Policy"
-    },
-    "copyright": "© 2025 explorers. Lahat ng karapatan ay nakalaan.",
-    "madeWithLove": "Ginawa nang may pagmamahal sa mundo"
-  },
-  "legal": {
-    "terms": {
-      "title": "Mga Tuntunin at Kondisyon",
-      "loading": "Naglo-load ang mga tuntunin at kondisyon...",
-      "error": "Error sa pag-load ng mga tuntunin at kondisyon. Pakisubukan ulit mamaya."
-    },
-    "privacy": {
-      "title": "Privacy Policy",
-      "loading": "Naglo-load ang privacy policy...",
-      "error": "Error sa pag-load ng privacy policy. Pakisubukan ulit mamaya."
-    },
-    "cookies": {
-      "title": "Cookie Policy",
-      "loading": "Naglo-load ang cookie policy...",
-      "error": "Error sa pag-load ng cookie policy. Pakisubukan ulit mamaya."
-    }
-  },
-  "languageModal": {
-    "title": "Pumili ng Wika",
-    "searchPlaceholder": "Maghanap ng mga wika...",
-    "close": "Isara"
-  },
-  "auth": {
-    "signup": "Mag-sign up",
-    "signupSubtitle": "Mag-sign up upang masiyahan sa mga feature ng explorers",
-    "username": "Username",
-    "usernamePlaceholder": "Ilagay ang inyong username",
-    "email": "Email",
-    "emailPlaceholder": "Ilagay ang inyong email",
-    "password": "Password",
-    "passwordPlaceholder": "Ilagay ang inyong password",
-    "confirmPassword": "Kumpirmahin ang Password",
-    "confirmPasswordPlaceholder": "Ilagay ulit ang inyong password",
-    "register": "Mag-register",
-    "or": "o",
-    "signUpWithGoogle": "Mag-sign up gamit ang Google",
-    "alreadyHaveAccount": "May account na ba kayo?",
-    "login": "Mag-log in",
-    "loginTitle": "Mag-log in",
-    "loginSubtitle": "Pakimag-log in upang magpatuloy sa inyong account",
-    "usernameOrEmail": "Username o email",
-    "usernameOrEmailPlaceholder": "Ilagay ang inyong username o email",
-    "signInWithGoogle": "Mag-log in gamit ang Google",
-    "newToexplorers": "Bago sa explorers?",
-    "forgotPassword": "Nakalimutan ang password?",
-    "validations": {
-      "username": {
-        "required": "Kinakailangan ang username",
-        "minLength": "Ang username ay dapat na hindi bababa sa 3 karakter",
-        "maxLength": "Ang username ay hindi dapat lumampas sa 30 karakter",
-        "invalidChars": "Ang username ay maaari lamang maglaman ng maliliit na titik (a-z), numero (0-9), at gitling (-)",
-        "mustStartWithLetter": "Ang username ay dapat magsimula sa titik (a-z)",
-        "cannotStartEndHyphen": "Ang username ay hindi maaaring magsimula o magtapos sa gitling",
-        "noConsecutiveHyphens": "Ang username ay hindi maaaring maglaman ng magkakasunod na gitling",
-        "cannotBeAllNumbers": "Ang username ay hindi maaaring lahat ay numero",
-        "reservedWords": "This username contains reserved words and cannot be used",
-        "inappropriateContent": "Ang username ay naglalaman ng hindi naaangkop na nilalaman",
-        "alreadyExists": "Ang username ay mayroon na",
-        "suggestedAlternatives": "Suggested alternatives:",
-        "willBeConvertedLowercase": "Ang username ay mako-convert sa maliliit na titik",
-        "checkingAvailability": "Sinusuri ang availability...",
-        "available": "Ang username ay available",
-        "willConvertToLowercase": "Ang username ay mako-convert sa lowercase"
-      },
-      "email": {
-        "required": "Kinakailangan ang email",
-        "invalidFormat": "Ang format ng email ay hindi wasto",
-        "alreadyExists": "Ang email ay mayroon na",
-        "invalid": "Hindi wastong email"
-      },
-      "password": {
-        "required": "Kinakailangan ang password",
-        "minLength": "Ang password ay dapat na hindi bababa sa 6 karakter",
-        "uppercaseRequired": "Ang password ay dapat maglaman ng hindi bababa sa isang malaking titik (A-Z)",
-        "numberRequired": "Ang password ay dapat maglaman ng hindi bababa sa isang numero (0-9)",
-        "specialCharRequired": "Ang password ay dapat maglaman ng hindi bababa sa isang espesyal na karakter (!@#$%^&*().,?\":{}|<>)",
-        "strength": "Lakas ng password",
-        "weak": "Mahina",
-        "medium": "Katamtaman",
-        "strong": "Malakas",
-        "maxLength": "Ang password ay hindi dapat lumampas sa 32 karakter",
-        "lowercaseRequired": "Ang password ay dapat maglaman ng hindi bababa sa isang maliit na titik (a-z)",
-        "tooCommon": "This password is too common. Please choose a more unique password",
-        "sameAsCurrent": "New password cannot be the same as your current password",
-        "considerLonger": "Consider using a longer password with more variety for better security",
-        "moreSecure": "Ang mga password na may 10 o higit pang karakter ay mas ligtas",
-        "veryWeak": "Napakahina",
-        "fair": "Katamtaman",
-        "good": "Mabuti",
-        "veryStrong": "Napakalakas"
-      },
-      "confirmPassword": {
-        "required": "Pakikonpirma ang inyong password",
-        "mustMatch": "Passwords do not match",
-        "confirmRequired": "Ang pagkumpirma ng password ay kinakailangan",
-        "match": "Ang mga password ay tumugma"
-      },
-      "login": {
-        "usernameOrEmailRequired": "Ang username o email ay kinakailangan",
-        "invalidCredentials": "Hindi wastong username/email o password",
-        "accountNotFound": "Hindi nahanap ang account",
-        "tooManyAttempts": "Masyadong maraming nabigong pagtatangka",
-        "incorrectPassword": "Maling password"
-      },
-      "general": {
-        "fillRequiredFields": "Pakipunan ang lahat ng kinakailangang field",
-        "somethingWentWrong": "May mali, pakisubukan ulit"
-      },
-      "forgotPassword": {
-        "title": "Nakalimutan ang Password?",
-        "description": "Ipasok ang inyong email address at ipapadala namin sa inyo ang reset link.",
-        "emailLabel": "Email address",
-        "emailPlaceholder": "Ipasok ang inyong email",
-        "sendResetLink": "Ipadala ang Reset Link",
-        "backToLogin": "Bumalik sa Login",
-        "resetLinkSent": "Ang password reset link ay naipadala sa inyong email!",
-        "failedToSend": "Nabigo sa pagpapadala ng reset link. Subukan ulit mamaya.",
-        "somethingWentWrong": "May mali!"
-      },
-      "accountName": {
-        "required": "Ang Account Name ay kinakailangan",
-        "minLength": "Ang pangalan ng account ay dapat na hindi bababa sa 2 character",
-        "maxLength": "Ang pangalan ng account ay hindi dapat lumampas sa 50 character",
-        "invalidChars": "Ang Account Name ay maaari lamang maglaman ng mga titik, espasyo, apostrophe, gitling, at tuldok",
-        "noNumbers": "Ang pangalan ng account ay hindi maaaring maglaman ng mga numero"
-      },
-      "accountType": {
-        "required": "Ang Account Type ay kinakailangan",
-        "invalid": "Hindi wastong uri ng account"
-      },
-      "onboarding": {
-        "displayNameRequired": "Kailangan ang pangalan ng display",
-        "displayNameMinLength": "Ang pangalan ng display ay dapat na hindi bababa sa 2 karakter",
-        "displayNameMaxLength": "Ang pangalan ng display ay hindi dapat lumampas sa 50 karakter",
-        "bioRequired": "Kailangan ang bio",
-        "bioMaxLength": "Ang bio ay hindi dapat lumampas sa 250 karakter",
-        "mobileNumberRequired": "Kailangan ang mobile number",
-        "mobileNumberInvalid": "Pakipasok ang isang wastong mobile number",
-        "mobileNumberLength": "Ang mobile number ay dapat na 10 digit",
-        "addressRequired": "Kailangan ang address",
-        "cityRequired": "Kailangan ang lungsod",
-        "stateRequired": "Kailangan ang estado",
-        "countryRequired": "Kailangan ang bansa",
-        "postalCodeRequired": "Kailangan ang postal code",
-        "primaryAddressRequired": "Kailangan ang primary address",
-        "emailAddressRequired": "Kailangan ang email address",
-        "resetLinkSentSuccess": "Matagumpay na naipadala ang reset link!",
-        "invalidUsername": "Di-wastong username",
-        "profileImageAlt": "Profile"
-      },
-      "resetPassword": {
-        "newPassword": "New Password",
-        "confirmPassword": "Confirm Password"
-      },
-      "resetLinkSent": {
-        "title": "Naipadala ang Email!",
-        "description": "Tingnan ang inyong inbox para sa password reset link.",
-        "resending": "Pinapadala ulit...",
-        "resendWithCooldown": "Ipadala ulit ang Email ({{cooldown}}s)",
-        "resendMail": "Ipadala ulit ang Email"
-      }
-    },
-    "onboarding": {
-      "accountDetails": {
-        "title": "Mga Detalye ng Account",
-        "description": "Sabihin mo sa amin ang tungkol sa iyong sarili",
-        "displayName": "Pangalan ng Display",
-        "displayNamePlaceholder": "Ilagay ang inyong pangalan ng display",
-        "username": "Username",
-        "usernamePlaceholder": "Ilagay ang inyong username",
-        "usernameDescription": "Ang inyong username ay bahagi ng inyong public profile link at QR codes. Halimbawa: explorers.earth/bhavya",
-        "bio": "Bio",
-        "bioPlaceholder": "Sabihin mo sa amin ang tungkol sa iyong sarili",
-        "accountType": "Uri ng Account",
-        "personal": "Personal",
-        "creator": "Creator",
-        "business": "Business",
-        "next": "Susunod"
-      },
-      "contactDetails": {
-        "title": "Mga Detalye ng Contact",
-        "description": "Idagdag ang inyong mobile number para sa verification",
-        "mobileNumber": "Mobile Number",
-        "mobileNumberPlaceholder": "Ilagay ang inyong mobile number",
-        "next": "Susunod",
-        "back": "Bumalik"
-      },
-      "addressDetails": {
-        "title": "Mga Detalye ng Address",
-        "description": "Saan kayo matatagpuan?",
-        "address": "Address",
-        "addressPlaceholder": "Ilagay ang inyong address",
-        "streetName": "Pangalan ng Kalye",
-        "streetNamePlaceholder": "Ilagay ang pangalan ng kalye",
-        "city": "Lungsod",
-        "cityPlaceholder": "Ilagay ang lungsod",
-        "state": "Estado",
-        "statePlaceholder": "Ilagay ang estado",
-        "country": "Bansa",
-        "countryPlaceholder": "Ilagay ang bansa",
-        "postalCode": "Postal Code",
-        "postalCodePlaceholder": "Ilagay ang postal code",
-        "primaryAddress": "Primary Address",
-        "primaryAddressDescription": "ipinapakita sa public profile (lungsod at bansa)",
-        "primaryAddressPlaceholder": "Ilagay ang primary address",
-        "sameAsAddress": "Katulad ng Address",
-        "confirmDetails": "Kumpirmahin ang mga Detalye",
-        "back": "Bumalik"
-      }
-    },
-    "resetPassword": {
-      "newPasswordPlaceholder": "Enter new password",
-      "confirmPasswordPlaceholder": "Confirm your password"
-    }
-  },
-  "common": {
-    "loading": "Naglo-load...",
-    "error": "May naganap na error. Subukan ulit mamaya.",
-    "retry": "Subukan Muli",
-    "noResults": "Walang nahanap na resulta",
-    "submit": "Ipadala",
-    "signInWithGoogle": "Mag-sign in gamit ang Google",
-    "signUpWithGoogle": "Mag-sign up gamit ang Google",
-    "cancel": "Kanselahin"
+  "countries": {
+    "AE": "United Arab Emirates",
+    "AF": "Afghanistan",
+    "AG": "Antigua and Barbuda",
+    "AL": "Albania",
+    "AM": "Armenia",
+    "AO": "Angola",
+    "AR": "Argentina",
+    "AT": "Austria",
+    "AU": "Australia",
+    "AZ": "Azerbaijan",
+    "BA": "Bosnia and Herzegovina",
+    "BB": "Barbados",
+    "BD": "Bangladesh",
+    "BE": "Belgium",
+    "BF": "Burkina Faso",
+    "BG": "Bulgaria",
+    "BH": "Bahrain",
+    "BI": "Burundi",
+    "BJ": "Benin",
+    "BN": "Brunei",
+    "BO": "Bolivia",
+    "BR": "Brazil",
+    "BS": "Bahamas",
+    "BT": "Bhutan",
+    "BW": "Botswana",
+    "BY": "Belarus",
+    "BZ": "Belize",
+    "CA": "Canada",
+    "CD": "Democratic Republic of the Congo",
+    "CF": "Central African Republic",
+    "CG": "Republic of the Congo",
+    "CH": "Switzerland",
+    "CI": "Ivory Coast",
+    "CL": "Chile",
+    "CM": "Cameroon",
+    "CN": "China",
+    "CO": "Colombia",
+    "CR": "Costa Rica",
+    "CU": "Cuba",
+    "CV": "Cape Verde",
+    "CY": "Cyprus",
+    "CZ": "Czech Republic",
+    "DE": "Germany",
+    "DJ": "Djibouti",
+    "DK": "Denmark",
+    "DM": "Dominica",
+    "DO": "Dominican Republic",
+    "DZ": "Algeria",
+    "EC": "Ecuador",
+    "EE": "Estonia",
+    "EG": "Egypt",
+    "ER": "Eritrea",
+    "ES": "Spain",
+    "ET": "Ethiopia",
+    "FI": "Finland",
+    "FJ": "Fiji",
+    "FK": "Falkland Islands",
+    "FM": "Micronesia",
+    "FR": "France",
+    "GA": "Gabon",
+    "GB": "United Kingdom",
+    "GD": "Grenada",
+    "GE": "Georgia",
+    "GF": "French Guiana",
+    "GH": "Ghana",
+    "GM": "Gambia",
+    "GN": "Guinea",
+    "GQ": "Equatorial Guinea",
+    "GR": "Greece",
+    "GT": "Guatemala",
+    "GW": "Guinea-Bissau",
+    "GY": "Guyana",
+    "HK": "Hong Kong",
+    "HN": "Honduras",
+    "HR": "Croatia",
+    "HT": "Haiti",
+    "HU": "Hungary",
+    "ID": "Indonesia",
+    "IE": "Ireland",
+    "IL": "Israel",
+    "IN": "India",
+    "IQ": "Iraq",
+    "IR": "Iran",
+    "IS": "Iceland",
+    "IT": "Italy",
+    "JM": "Jamaica",
+    "JO": "Jordan",
+    "JP": "Japan",
+    "KE": "Kenya",
+    "KG": "Kyrgyzstan",
+    "KH": "Cambodia",
+    "KI": "Kiribati",
+    "KM": "Comoros",
+    "KN": "Saint Kitts and Nevis",
+    "KP": "North Korea",
+    "KR": "South Korea",
+    "KW": "Kuwait",
+    "KZ": "Kazakhstan",
+    "LA": "Laos",
+    "LB": "Lebanon",
+    "LC": "Saint Lucia",
+    "LK": "Sri Lanka",
+    "LR": "Liberia",
+    "LS": "Lesotho",
+    "LT": "Lithuania",
+    "LU": "Luxembourg",
+    "LV": "Latvia",
+    "LY": "Libya",
+    "MA": "Morocco",
+    "MD": "Moldova",
+    "ME": "Montenegro",
+    "MG": "Madagascar",
+    "MH": "Marshall Islands",
+    "MK": "North Macedonia",
+    "ML": "Mali",
+    "MM": "Myanmar",
+    "MN": "Mongolia",
+    "MO": "Macau",
+    "MR": "Mauritania",
+    "MT": "Malta",
+    "MU": "Mauritius",
+    "MV": "Maldives",
+    "MW": "Malawi",
+    "MX": "Mexico",
+    "MY": "Malaysia",
+    "MZ": "Mozambique",
+    "NA": "Namibia",
+    "NC": "New Caledonia",
+    "NE": "Niger",
+    "NG": "Nigeria",
+    "NI": "Nicaragua",
+    "NL": "Netherlands",
+    "NO": "Norway",
+    "NP": "Nepal",
+    "NR": "Nauru",
+    "NZ": "New Zealand",
+    "OM": "Oman",
+    "PA": "Panama",
+    "PE": "Peru",
+    "PF": "French Polynesia",
+    "PG": "Papua New Guinea",
+    "PH": "Philippines",
+    "PK": "Pakistan",
+    "PL": "Poland",
+    "PR": "Puerto Rico",
+    "PS": "Palestine",
+    "PT": "Portugal",
+    "PW": "Palau",
+    "PY": "Paraguay",
+    "QA": "Qatar",
+    "RO": "Romania",
+    "RS": "Serbia",
+    "RU": "Russia",
+    "RW": "Rwanda",
+    "SA": "Saudi Arabia",
+    "SB": "Solomon Islands",
+    "SC": "Seychelles",
+    "SD": "Sudan",
+    "SE": "Sweden",
+    "SG": "Singapore",
+    "SI": "Slovenia",
+    "SK": "Slovakia",
+    "SL": "Sierra Leone",
+    "SN": "Senegal",
+    "SO": "Somalia",
+    "SR": "Suriname",
+    "SS": "South Sudan",
+    "ST": "São Tomé and Príncipe",
+    "SV": "El Salvador",
+    "SY": "Syria",
+    "SZ": "Eswatini",
+    "TD": "Chad",
+    "TG": "Togo",
+    "TH": "Thailand",
+    "TJ": "Tajikistan",
+    "TL": "East Timor",
+    "TM": "Turkmenistan",
+    "TN": "Tunisia",
+    "TO": "Tonga",
+    "TR": "Turkey",
+    "TT": "Trinidad and Tobago",
+    "TV": "Tuvalu",
+    "TW": "Taiwan",
+    "TZ": "Tanzania",
+    "UA": "Ukraine",
+    "UG": "Uganda",
+    "US": "United States",
+    "UY": "Uruguay",
+    "UZ": "Uzbekistan",
+    "VC": "Saint Vincent and the Grenadines",
+    "VE": "Venezuela",
+    "VN": "Vietnam",
+    "VU": "Vanuatu",
+    "WS": "Samoa",
+    "XK": "Kosovo",
+    "YE": "Yemen",
+    "ZA": "South Africa",
+    "ZM": "Zambia",
+    "ZW": "Zimbabwe"
   },
   "dashboard": {
     "home": {
-      "welcomeBack": "Maligayang pagbabalik",
-      "profile": "Profile",
-      "myRecommendations": "Aking mga Rekomendasyon",
       "activePlaces": "mga aktibong lugar",
-      "setupProfile": "I-setup ang Inyong Profile",
+      "addLocation": "Add Location",
+      "addLocationLabel": "Add",
+      "addRecommendations": "Magdagdag ng mga Rekomendasyon",
       "draft": "Draft",
+      "error": {
+        "message": "An error occurred while loading your data",
+        "retry": "Retry",
+        "title": "Error loading data"
+      },
+      "loginRequired": {
+        "message": "You need to be logged in to view your dashboard.",
+        "title": "Please log in to continue"
+      },
+      "mobile": "Mobile",
+      "myRecommendations": "Aking mga Rekomendasyon",
+      "profile": "Profile",
+      "seo": {
+        "description": "Welcome back, {{username}}! Access your explorers dashboard to manage your personalized QR codes, explore your curated recommendations, and share your favorite places with others easily.",
+        "keywords": {
+          "curatedPlacesManagement": "curated places management",
+          "explorersDashboard": "explorers dashboard",
+          "explorersHome": "explorers home",
+          "locationSharingDashboard": "location sharing dashboard",
+          "personalDashboard": "personal dashboard",
+          "personalizedRecommendationsDashboard": "personalized recommendations dashboard",
+          "qrCodeManagement": "QR code management",
+          "qrCodeSharingPlatform": "QR code sharing platform",
+          "qrRecommendations": "QR recommendations",
+          "recommendationManagement": "recommendation management",
+          "travelGuideDashboard": "travel guide dashboard",
+          "userDashboard": "user dashboard",
+          "userProfileManagement": "user profile management"
+        },
+        "title": "{{username}}'s Dashboard - explorers"
+      },
+      "setupProfile": "I-setup ang Inyong Profile",
+      "shareButtons": {
+        "instagram": "Instagram",
+        "twitter": "Twitter",
+        "whatsapp": "WhatsApp"
+      },
       "startCurating": "Simulan ang pag-curate ng inyong mga rekomendasyon at ibahagi sa mundo!",
-      "addRecommendations": "Magdagdag ng mga Rekomendasyon"
+      "viewPublicProfileTooltip": "View your public profile as seen by others",
+      "welcomeBack": "Maligayang pagbabalik"
     },
-    "shareModal": {
-      "copyLink": "Kopyahin ang link",
-      "copied": "Nakopya na!",
-      "linkCopiedToast": "Nakopya na ang link!!"
-    },
-    "recommendations": {
-      "locationButton": "Lokasyon",
-      "viewAll": "Tingnan lahat",
-      "recommendationsTab": "Mga Rekumendasyonn",
-      "manageTab": "Pamahalaan",
-      "manageHeading": "Pamahalaan",
-      "deleteAction": "Tanggalin",
-      "editAction": "I-edit",
-      "publishedStatus": "Nai-publish",
-      "draftStatus": "Draft",
-      "myRecommendationsHeading": "Aking Mga Rekumendaysyon",
-      "myQRHeading": "Aking QR",
-      "myRecommendationsQR": "Aking Mga Rekumendaysyon",
-      "travelLikeLocal": "Maglakbay tulad ng lokal",
-      "shareLink": "Ibahagi ang Link",
-      "copyLink": "Kopyahin ang Link",
-      "downloadQR": "I-download ang QR",
-      "emptyState": {
-        "title": "Walang Available na Mga Rekomendasyon",
-        "subtitle": "Simulan ang pagdadagdag ng inyong mga paboritong lugar sa listahang ito"
-      },
-      "draftLabel": "Draft",
-      "recommendButton": "Irekomenda",
-      "exploreSection": {
-        "heading": "Tuklasin gamit ang explorers",
-        "addButton": "Idagdag"
-      },
-      "locationLabels": {
-        "currentLocation": "Kasalukuyang Lokasyon",
-        "selectedLocation": "Napiling Lokasyon"
-      },
-      "categories": {
-        "foodDrinks": "Pagkain at Inumin",
-        "lodging": "Tirahan",
-        "healthWellness": "Kalusugan at Kapakanan",
-        "shopping": "Shopping",
-        "entertainment": "Aliw",
-        "transportation": "Transportasyon",
-        "services": "Mga Serbisyo",
-        "tourism": "Turismo",
-        "naturalFeatures": "Likas na Katangian"
-      },
-      "locationForm": {
-        "labels": {
-          "searchLocation": "Maghanap ng Lokasyon",
-          "recommendationSocialLink": "Social Link ng Rekomendasyon",
-          "note": "Tala",
-          "placeUrl": "URL ng Lugar"
+    "profile": {
+      "account": {
+        "fields": {
+          "accountName": "Pangalan ng Account",
+          "address": "Address",
+          "city": "Lungsod",
+          "country": "Bansa",
+          "postalCode": "Postal Code",
+          "state": "Estado",
+          "streetName": "Pangalan ng Kalye",
+          "username": "Username"
         },
-        "placeholders": {
-          "searchLocation": "Ilagay ang lungsod, estado, o bansa (hal. Paris)",
-          "recommendationSocialLink": "Ilagay ang URL (Youtube / Instagram)",
-          "note": "Ilagay ang tala na nauugnay sa inyong rekomendasyon",
-          "placeUrl": "Ilagay ang pangalan upang makagawa ng maipapamahe na link"
-        },
-        "buttons": {
-          "addLocation": "Magdagdag ng Lokasyon",
-          "updateLocation": "I-update ang Lokasyon"
+        "sections": {
+          "account": "Account",
+          "billingAddress": "Billing Address"
         }
       },
-      "toastMessages": {
-        "listCreated": "Recommendation List Created Successfully!!!",
-        "listPublished": "Recommendation list Published successfully!",
-        "listUnpublished": "Recommendation list Unpublished successfully!",
-        "listPublishError": "List Should have atleast one Recommended Place to be Published",
-        "listVisibilityError": "Failed to update recommendation list visibility.",
-        "qrDownloadSuccess": "QR code downloaded successfully!",
-        "qrDownloadError": "Failed to download QR code. Please try again.",
-        "linkCopied": "Link copied to clipboard!",
-        "linkCopyError": "Failed to copy link. Please try again.",
-        "qrNotReady": "QR code not ready for download"
+      "accountSetup": {
+        "complete": "Kumpleto",
+        "footerMessage": "Kumpletuhin ang parehong hakbang upang ma-unlock ang inyong buong dashboard experience",
+        "profileSetupCompleted": "Natapos ang setup ng profile",
+        "profileSetupIncomplete": "Magdagdag ng larawan ng profile, bio, at social links",
+        "progress": "Pag-unlad",
+        "recommendationsSetupCompleted": "Natapos ang setup ng mga rekomendasyon",
+        "recommendationsSetupIncomplete": "Magdagdag ng mga lokasyon, lugar, at i-publish ang inyong unang listahan",
+        "setupButton": "Setup",
+        "title": "Kumpletuhin ang Setup ng Inyong Account"
       },
-      "placesModal": {
-        "placesCount": "{{visible}} out of {{total}} places",
-        "scrollToLoadMore": "Scroll to load more places"
+      "common": {
+        "add": "Idagdag",
+        "clearSelection": "Linisin ang pagpili",
+        "confirm": "Kumpirmahin",
+        "cover": "Takip",
+        "editImage": "I-edit ang Larawan",
+        "error": "May naganap na error habang naglo-load ng inyong profile. Subukan ulit mamaya.",
+        "errors": {
+          "failedToGetAccountId": "Nabigo ang pagkuha ng account ID para sa upload",
+          "noFileProvided": "Walang file na ibinigay para sa upload",
+          "uploadResponseMissingFileData": "Ang response ng upload ay walang file data"
+        },
+        "failedToSaveChanges": "Nabigo ang pag-save ng mga pagbabago. Subukan ulit.",
+        "failedToSaveImagesToFeed": "Nabigo ang pag-save ng mga larawan sa feed",
+        "failedToUpdateProfile": "Nabigo ang pag-update ng profile. Subukan ulit.",
+        "failedToUploadFiles": "Nabigo ang pag-upload ng mga file. Subukan ulit.",
+        "failedToUploadImages": "Nabigo ang pag-upload ng mga larawan. Subukan ulit.",
+        "feedImage": "Larawan ng feed",
+        "fetching": "Kumukuha...",
+        "hidden": "Nakatago",
+        "importedImage": "na-import na larawan",
+        "mobileNumber": "Numero ng mobile",
+        "mobileNumberPlaceholder": "Numero ng mobile",
+        "networkError": "Error sa network: Pakitignan ang inyong koneksyon at subukan ulit.",
+        "primaryAddress": "Primary Address",
+        "profile": "Profile",
+        "saveAndPublish": "I-save at I-publish",
+        "saveAndPublishFailed": "Nabigo ang pag-save at pag-publish. Subukan ulit.",
+        "savedAndPublishedSuccessfully": "Matagumpay na na-save at na-publish",
+        "saveToFeed": "I-save sa Feed",
+        "selectAll": "Piliin lahat",
+        "somethingWentWrong": "May naganap na mali. Subukan ulit.",
+        "unexpectedError": "May naganap na hindi inaasahang error. Subukan ulit.",
+        "video": "Video",
+        "viewPublicProfile": "Navigate to Public Profile",
+        "visible": "Nakikita",
+        "whatsappNumber": "Numero ng WhatsApp"
       },
-      "noRecommendationsYet": "Walang pa ring mga rekomendasyon!!",
-      "setupProfileBeforeRecommendations": "I-setup ang inyong profile bago gumawa ng mga rekomendasyon!!",
-      "startAddingPlaces": "Simulan ang pagdadagdag ng inyong mga paboritong lugar at ibahagi sa iba.",
-      "startRecommending": "Simulan ang Pagrekomenda",
+      "publicProfile": {
+        "accountTypes": {
+          "business": "Negosyo",
+          "creator": "Creator",
+          "personal": "Personal"
+        },
+        "businessLocation": {
+          "about": "Tungkol",
+          "contact": "Kontak",
+          "title": "Pamagat",
+          "website": "Website"
+        },
+        "fields": {
+          "about": "Tungkol",
+          "accountType": "Uri ng Account",
+          "addLocation": "Idagdag ang inyong lokasyon",
+          "addLocationInformation": "Magdagdag ng Impormasyon sa Lokasyon",
+          "appleMusic": "Apple Music",
+          "bio": "Bio",
+          "businessLocation": "Idagdag ang inyong lokasyon. Ang mga ito ay lalabas bilang mga tampok na lokasyon sa inyong pampublikong profile",
+          "contact": "Kontak",
+          "facebook": "Facebook",
+          "feed": "Mag-upload ng mga larawan o video ng inyong lokasyon, produkto, serbisyo, o karanasan. Ang mga larawang ito ay ipapakita sa inyong gallery sa inyong pampublikong profile",
+          "gmail": "Gmail",
+          "instagram": "Instagram",
+          "linkedin": "Linkedin",
+          "mobile": "Mobile",
+          "primaryAddress": "Primary Address - Ipinapakita sa pampublikong profile (lungsod at bansa)",
+          "sameAsAddress": "Katulad ng address",
+          "searchAddress": "Maghanap ng inyong address...",
+          "snapchat": "Snapchat",
+          "socialMedia": "Social Media",
+          "spotify": "Spotify",
+          "tiktok": "Tiktok",
+          "title": "Pamagat",
+          "website": "Website",
+          "whatsapp": "Whatsapp",
+          "x": "X",
+          "youtube": "Youtube",
+          "youtubeMusic": "Youtube Music"
+        },
+        "sections": {
+          "feed": "Feed",
+          "howToReachUs": "Paano Makipag-ugnayan sa Amin",
+          "howToReachUsDescription": "Gamitin ang seksyong ito upang ibahagi ang mga detalye ng lokasyon ng inyong negosyo.",
+          "profileInformation": "Bio",
+          "publicAddress": "Pampublikong Address",
+          "socialMedia": "Mga Social Link",
+          "socialMediaSubtitle": "Mga link at impormasyon sa social media"
+        }
+      },
+      "tabs": {
+        "account": "Account",
+        "publicProfile": "Pampublikong Profile"
+      }
+    },
+    "recommendations": {
       "addRecommendationForm": {
-        "searchField": {
-          "label": "Search Recommendation with Google"
-        },
-        "mainInput": {
-          "placeholder": "Enter your Recommendation"
-        },
-        "taggableFields": {
-          "title": "Title",
-          "address": "Address",
-          "category": "Category",
-          "contactNumber": "Contact Number",
-          "socialLink": "Social Link"
-        },
         "accordionSection": {
           "heading": "Your Recommendation Details",
           "recommendationLink": {
@@ -878,1072 +952,1215 @@
             "placeholder": "Why would you recommend?"
           }
         },
-        "fileUpload": {
-          "text": "Attach Image/Video",
-          "subtext": "optional"
-        },
         "actionButton": {
           "text": "Add recommendation"
         },
-        "taggableFieldsPlaceholders": {
-          "title": "Enter the title",
-          "address": "Enter the address of the Place",
-          "category": "Enter a Category",
-          "contactNumber": "Enter Contact Number",
-          "socialLink": "Enter the Social Link (Place)"
-        },
-        "validationMessages": {
-          "titleRequired": "Title is required",
-          "addressRequired": "Address is required",
-          "categoryRequired": "Category is required"
-        },
-        "mapModal": {
-          "cancelButton": "Cancel",
-          "addRecommendationButton": "Add Recommendation",
-          "updateRecommendationButton": "Update Recommendation"
+        "deleteRecommendation": "Delete Recommendation",
+        "deleteRecommendationModal": {
+          "cancel": "Kanselahin",
+          "message": "Sigurado ka bang gusto mong tanggalin ang rekomendasyong ito? Hindi na mababalik ang aksyong ito.",
+          "title": "Kumpirmahin ang pagtanggal"
         },
         "fetchingImages": "Kumukuha ng mga larawan…",
-        "recommendationType": {
-          "place": "Lugar",
-          "person": "Tao",
-          "label": "Uri ng Rekomendasyon"
+        "fileUpload": {
+          "subtext": "optional",
+          "text": "Attach Image/Video"
         },
         "imagePreview": {
           "alt": "Preview",
-          "deleteTooltip": "Tanggalin",
-          "setThumbnailTooltip": "Itakda bilang Thumbnail",
-          "confirmDeleteTitle": "Kumpirmahin ang Pagtanggal",
-          "confirmDeleteMessage": "Sigurado ka bang gusto mong tanggalin ang Larawang ito mula sa Koleksyon?",
           "cancel": "Kanselahin",
-          "confirm": "Kumpirmahin"
+          "confirm": "Kumpirmahin",
+          "confirmDeleteMessage": "Sigurado ka bang gusto mong tanggalin ang Larawang ito mula sa Koleksyon?",
+          "confirmDeleteTitle": "Kumpirmahin ang Pagtanggal",
+          "deleteTooltip": "Tanggalin",
+          "setThumbnailTooltip": "Itakda bilang Thumbnail"
         },
-        "deleteRecommendationModal": {
-          "title": "Kumpirmahin ang pagtanggal",
-          "message": "Sigurado ka bang gusto mong tanggalin ang rekomendasyong ito? Hindi na mababalik ang aksyong ito.",
-          "cancel": "Kanselahin"
-        }
-      }
-    },
-    "profile": {
-      "tabs": {
-        "publicProfile": "Pampublikong Profile",
-        "account": "Account"
-      },
-      "publicProfile": {
-        "sections": {
-          "profileInformation": "Bio",
-          "socialMedia": "Mga Social Link",
-          "publicAddress": "Pampublikong Address",
-          "howToReachUs": "Paano Makipag-ugnayan sa Amin",
-          "howToReachUsDescription": "Gamitin ang seksyong ito upang ibahagi ang mga detalye ng lokasyon ng inyong negosyo.",
-          "feed": "Feed",
-          "socialMediaSubtitle": "Mga link at impormasyon sa social media"
+        "mainInput": {
+          "placeholder": "Enter your Recommendation"
         },
-        "fields": {
-          "accountType": "Uri ng Account",
-          "bio": "Bio",
-          "socialMedia": "Social Media",
-          "instagram": "Instagram",
-          "whatsapp": "Whatsapp",
-          "mobile": "Mobile",
-          "youtube": "Youtube",
-          "x": "X",
-          "spotify": "Spotify",
-          "website": "Website",
-          "facebook": "Facebook",
-          "youtubeMusic": "Youtube Music",
-          "gmail": "Gmail",
-          "linkedin": "Linkedin",
-          "appleMusic": "Apple Music",
-          "tiktok": "Tiktok",
-          "snapchat": "Snapchat",
-          "businessLocation": "Idagdag ang inyong lokasyon. Ang mga ito ay lalabas bilang mga tampok na lokasyon sa inyong pampublikong profile",
-          "primaryAddress": "Primary Address - Ipinapakita sa pampublikong profile (lungsod at bansa)",
-          "feed": "Mag-upload ng mga larawan o video ng inyong lokasyon, produkto, serbisyo, o karanasan. Ang mga larawang ito ay ipapakita sa inyong gallery sa inyong pampublikong profile",
-          "title": "Pamagat",
-          "contact": "Kontak",
-          "about": "Tungkol",
-          "addLocation": "Idagdag ang inyong lokasyon",
-          "addLocationInformation": "Magdagdag ng Impormasyon sa Lokasyon",
-          "searchAddress": "Maghanap ng inyong address...",
-          "sameAsAddress": "Katulad ng address"
+        "mapModal": {
+          "addRecommendationButton": "Add Recommendation",
+          "cancelButton": "Cancel",
+          "setLocationButton": "Set Location",
+          "updateRecommendationButton": "Update Recommendation"
         },
-        "accountTypes": {
-          "personal": "Personal",
-          "creator": "Creator",
-          "business": "Negosyo"
+        "recommendationType": {
+          "label": "Uri ng Rekomendasyon",
+          "person": "Tao",
+          "place": "Lugar"
         },
-        "businessLocation": {
-          "title": "Pamagat",
-          "contact": "Kontak",
-          "website": "Website",
-          "about": "Tungkol"
-        }
-      },
-      "account": {
-        "sections": {
-          "account": "Account",
-          "billingAddress": "Billing Address"
+        "searchField": {
+          "label": "Search Recommendation with Google"
         },
-        "fields": {
-          "username": "Username",
-          "accountName": "Pangalan ng Account",
+        "searchLocation": {
+          "label": "Search a location",
+          "placeholder": "Type and select a place",
+          "searchPlace": "Search for a place"
+        },
+        "taggableFields": {
           "address": "Address",
-          "streetName": "Pangalan ng Kalye",
-          "state": "Estado",
-          "city": "Lungsod",
-          "country": "Bansa",
-          "postalCode": "Postal Code",
-          "addressPlaceholder": "Ilagay ang inyong address",
-          "detectLocation": "Tuklasin ang aking kasalukuyang lokasyon"
+          "category": "Category",
+          "contactName": "Contact Name",
+          "contactNumber": "Contact Number",
+          "personName": "Person's Name",
+          "socialLink": "Social Link",
+          "title": "Title"
+        },
+        "taggableFieldsPlaceholders": {
+          "address": "Enter the address of the Place",
+          "category": "Enter a Category",
+          "contactName": "Enter the contact person's name",
+          "contactNumber": "Enter Contact Number",
+          "personName": "Enter person's full name",
+          "socialLink": "Enter the Social Link (Place)",
+          "title": "Enter the title"
+        },
+        "validationMessages": {
+          "addressRequired": "Address is required",
+          "categoryRequired": "Category is required",
+          "socialUrlInvalid": "Please enter a valid Instagram or LinkedIn URL",
+          "socialUrlRequired": "Instagram or LinkedIn URL is required for person recommendations",
+          "titleRequired": "Title is required"
         }
       },
-      "common": {
-        "visible": "Nakikita",
-        "hidden": "Nakatago",
-        "mobileNumber": "Numero ng mobile",
-        "mobileNumberPlaceholder": "Numero ng mobile",
-        "whatsappNumber": "Numero ng WhatsApp",
-        "primaryAddress": "Primary Address",
-        "editImage": "I-edit ang Larawan",
-        "confirm": "Kumpirmahin",
-        "add": "Idagdag",
-        "video": "Video",
-        "feedImage": "Larawan ng feed",
-        "importedImage": "na-import na larawan",
-        "cover": "Takip",
-        "profile": "Profile",
-        "saveAndPublish": "I-save at I-publish",
-        "saveToFeed": "I-save sa Feed",
-        "savedAndPublishedSuccessfully": "Matagumpay na na-save at na-publish",
-        "saveAndPublishFailed": "Nabigo ang pag-save at pag-publish. Subukan ulit.",
-        "failedToSaveChanges": "Nabigo ang pag-save ng mga pagbabago. Subukan ulit.",
-        "networkError": "Error sa network: Pakitignan ang inyong koneksyon at subukan ulit.",
-        "unexpectedError": "May naganap na hindi inaasahang error. Subukan ulit.",
-        "somethingWentWrong": "May naganap na mali. Subukan ulit.",
-        "failedToUploadFiles": "Nabigo ang pag-upload ng mga file. Subukan ulit.",
-        "failedToUploadImages": "Nabigo ang pag-upload ng mga larawan. Subukan ulit.",
-        "failedToSaveImagesToFeed": "Nabigo ang pag-save ng mga larawan sa feed",
-        "failedToUpdateProfile": "Nabigo ang pag-update ng profile. Subukan ulit.",
-        "fetching": "Kumukuha...",
-        "selectAll": "Piliin lahat",
-        "clearSelection": "Linisin ang pagpili",
-        "error": "May naganap na error habang naglo-load ng inyong profile. Subukan ulit mamaya.",
-        "errors": {
-          "noFileProvided": "Walang file na ibinigay para sa upload",
-          "failedToGetAccountId": "Nabigo ang pagkuha ng account ID para sa upload",
-          "uploadResponseMissingFileData": "Ang response ng upload ay walang file data"
+      "cancel": "Cancel",
+      "categories": {
+        "entertainment": "Aliw",
+        "foodDrinks": "Pagkain at Inumin",
+        "healthWellness": "Kalusugan at Kapakanan",
+        "lodging": "Tirahan",
+        "naturalFeatures": "Likas na Katangian",
+        "services": "Mga Serbisyo",
+        "shopping": "Shopping",
+        "tourism": "Turismo",
+        "transportation": "Transportasyon"
+      },
+      "confirm": "Confirm",
+      "confirmDeletion": "Confirm Deletion",
+      "copyLink": "Kopyahin ang Link",
+      "deleteAction": "Tanggalin",
+      "deleteListConfirmation": "Are you sure you want to delete this list? This action cannot be undone and will remove all",
+      "deleteListConfirmationBelow": "in the field below:",
+      "deleteListConfirmationDelete": "'delete'",
+      "deleteListConfirmationPlaces": "associated places.",
+      "deleteListConfirmationType": "To confirm, type",
+      "deleteSuccess": {
+        "success": "Recommended Place Deleted Successfully.",
+        "unpublished": "Recommended Place Deleted Successfully. List automatically unpublished due to no recommendations."
+      },
+      "downloadQR": "I-download ang QR",
+      "draftLabel": "Draft",
+      "draftStatus": "Draft",
+      "editAction": "I-edit",
+      "emptyState": {
+        "subtitle": "Simulan ang pagdadagdag ng inyong mga paboritong lugar sa listahang ito",
+        "title": "Walang Available na Mga Rekomendasyon"
+      },
+      "exploreSection": {
+        "addButton": "Idagdag",
+        "heading": "Tuklasin gamit ang explorers"
+      },
+      "loading": {
+        "message": "Please wait while we fetch your recommendations",
+        "title": "Loading Recommendations..."
+      },
+      "locationButton": "Lokasyon",
+      "locationForm": {
+        "buttons": {
+          "addLocation": "Magdagdag ng Lokasyon",
+          "updateLocation": "I-update ang Lokasyon"
+        },
+        "labels": {
+          "note": "Tala",
+          "placeUrl": "URL ng Lugar",
+          "recommendationSocialLink": "Social Link ng Rekomendasyon",
+          "searchLocation": "Maghanap ng Lokasyon"
+        },
+        "placeholders": {
+          "note": "Ilagay ang tala na nauugnay sa inyong rekomendasyon",
+          "placeUrl": "Ilagay ang pangalan upang makagawa ng maipapamahe na link",
+          "recommendationSocialLink": "Ilagay ang URL (Youtube / Instagram)",
+          "searchLocation": "Ilagay ang lungsod, estado, o bansa (hal. Paris)"
         }
       },
-      "accountSetup": {
-        "title": "Kumpletuhin ang Setup ng Inyong Account",
-        "progress": "Pag-unlad",
-        "complete": "Kumpleto",
-        "profileSetupCompleted": "Natapos ang setup ng profile",
-        "profileSetupIncomplete": "Magdagdag ng larawan ng profile, bio, at social links",
-        "recommendationsSetupCompleted": "Natapos ang setup ng mga rekomendasyon",
-        "recommendationsSetupIncomplete": "Magdagdag ng mga lokasyon, lugar, at i-publish ang inyong unang listahan",
-        "setupButton": "Setup",
-        "footerMessage": "Kumpletuhin ang parehong hakbang upang ma-unlock ang inyong buong dashboard experience"
-      }
-    }
-  },
-  "toast": {
-    "success": {
-      "loginSuccessful": "Matagumpay na pag-login!",
-      "registrationSuccessful": "Matagumpay na pagpaparehistro!",
-      "passwordResetSuccessful": "Matagumpay na pag-reset ng password!",
-      "emailVerificationSent": "Naipadala ang email verification!",
-      "resetLinkSent": "Naipadala ang password reset link sa inyong email!",
-      "resetLinkResent": "Naipadala ulit ang reset link!",
-      "profileImageUpdated": "Matagumpay na na-update ang larawan ng profile!",
-      "backgroundImageUpdated": "Matagumpay na na-update ang larawan sa background!",
-      "recommendedListUpdated": "Matagumpay na na-update ang Listahan ng Rekomendasyon!!!",
-      "accountCreated": "Matagumpay na nagawa ang account!",
-      "usernameUpdated": "Matagumpay na na-update ang username!",
-      "profileUpdated": "Matagumpay na na-update ang profile!",
-      "settingsSaved": "Matagumpay na na-save ang settings!",
-      "dataSaved": "Matagumpay na na-save ang data!",
-      "changesSaved": "Matagumpay na na-save ang mga pagbabago!",
-      "fileUploaded": "Matagumpay na na-upload ang file!",
-      "imageUploaded": "Matagumpay na na-upload ang larawan!",
-      "linkCopied": "Nakopya ang link sa clipboard!",
-      "emailSent": "Matagumpay na naipadala ang email!",
-      "notificationSent": "Matagumpay na naipadala ang notification!",
-      "actionCompleted": "Matagumpay na natapos ang aksyon!",
-      "formSubmitted": "Matagumpay na naipadala ang form!",
-      "onboardingCompleted": "Matagumpay na natapos ang onboarding!",
-      "welcomeMessage": "Maligayang pagdating sa explorers!",
-      "accountActivated": "Matagumpay na na-activate ang account!",
-      "emailVerified": "Matagumpay na na-verify ang email!",
-      "passwordChanged": "Matagumpay na nabago ang password!",
-      "usernameChanged": "Matagumpay na nabago ang username!",
-      "profileCompleted": "Matagumpay na natapos ang profile!",
-      "setupCompleted": "Matagumpay na natapos ang setup!",
-      "loggedOutSuccessfully": "Matagumpay na nag-logout!"
+      "locationLabels": {
+        "currentLocation": "Kasalukuyang Lokasyon",
+        "selectedLocation": "Napiling Lokasyon"
+      },
+      "manageHeading": "Pamahalaan",
+      "manageTab": "Pamahalaan",
+      "myQRHeading": "Aking QR",
+      "myRecommendationsHeading": "Aking Mga Rekumendaysyon",
+      "myRecommendationsQR": "Aking Mga Rekumendaysyon",
+      "noRecommendationsYet": "Walang pa ring mga rekomendasyon!!",
+      "placesModal": {
+        "placesCount": "{{visible}} out of {{total}} places",
+        "scrollToLoadMore": "Scroll to load more places"
+      },
+      "profileButton": "Profile",
+      "publishedStatus": "Nai-publish",
+      "recommendationsTab": "Mga Rekumendasyonn",
+      "recommendButton": "Irekomenda",
+      "setupProfileBeforeRecommendations": "I-setup ang inyong profile bago gumawa ng mga rekomendasyon!!",
+      "shareLink": "Ibahagi ang Link",
+      "startAddingPlaces": "Simulan ang pagdadagdag ng inyong mga paboritong lugar at ibahagi sa iba.",
+      "startRecommending": "Simulan ang Pagrekomenda",
+      "toastMessages": {
+        "linkCopied": "Link copied to clipboard!",
+        "linkCopyError": "Failed to copy link. Please try again.",
+        "listCreated": "Recommendation List Created Successfully!!!",
+        "listPublished": "Recommendation list Published successfully!",
+        "listPublishError": "List Should have atleast one Recommended Place to be Published",
+        "listUnpublished": "Recommendation list Unpublished successfully!",
+        "listVisibilityError": "Failed to update recommendation list visibility.",
+        "qrDownloadError": "Failed to download QR code. Please try again.",
+        "qrDownloadSuccess": "QR code downloaded successfully!",
+        "qrNotReady": "QR code not ready for download"
+      },
+      "travelLikeLocal": "Maglakbay tulad ng lokal",
+      "typeDeleteToConfirm": "Type 'delete' to confirm",
+      "viewAll": "Tingnan lahat"
     },
-    "error": {
-      "loginFailed": "Hindi matagumpay ang pag-login. Pakitignan ang inyong credentials.",
-      "registrationFailed": "Hindi matagumpay ang pagpaparehistro. Subukan ulit.",
-      "passwordResetFailed": "Hindi matagumpay ang pag-reset ng password. Subukan ulit.",
-      "emailVerificationFailed": "Hindi matagumpay ang email verification. Subukan ulit.",
-      "resetLinkFailed": "Hindi matagumpay ang pagpapadala ng reset link. Subukan mamaya.",
-      "resetLinkResendFailed": "Hindi matagumpay ang pagpapadala ulit. Subukan mamaya.",
-      "profileImageUpdateFailed": "Hindi matagumpay ang pag-upload ng profile image. Subukan ulit.",
-      "backgroundImageUpdateFailed": "Hindi matagumpay ang pag-upload ng background image. Subukan ulit.",
-      "recommendedListUpdateFailed": "Error sa Pag-update ng Listahan ng Rekomendasyon!!!",
-      "accountCreationFailed": "Hindi matagumpay ang paggawa ng account. Subukan ulit.",
-      "usernameUpdateFailed": "Hindi matagumpay ang pag-update ng username. Subukan ulit.",
-      "profileUpdateFailed": "Hindi matagumpay ang pag-update ng profile. Subukan ulit.",
-      "settingsSaveFailed": "Hindi matagumpay ang pag-save ng settings. Subukan ulit.",
-      "dataSaveFailed": "Hindi matagumpay ang pag-save ng data. Subukan ulit.",
-      "changesSaveFailed": "Hindi matagumpay ang pag-save ng mga pagbabago. Subukan ulit.",
-      "fileUploadFailed": "Hindi matagumpay ang pag-upload ng file. Subukan ulit.",
-      "imageUploadFailed": "Hindi matagumpay ang pag-upload ng larawan. Subukan ulit.",
-      "linkCopyFailed": "Hindi matagumpay ang pag-kopya ng link. Subukan ulit.",
-      "emailSendFailed": "Hindi matagumpay ang pagpapadala ng email. Subukan ulit.",
-      "notificationSendFailed": "Hindi matagumpay ang pagpapadala ng notification. Subukan ulit.",
-      "actionFailed": "Hindi matagumpay ang aksyon. Subukan ulit.",
-      "formSubmissionFailed": "Hindi matagumpay ang pagpapadala ng form. Subukan ulit.",
-      "onboardingFailed": "Hindi matagumpay ang onboarding. Subukan ulit.",
-      "accountActivationFailed": "Hindi matagumpay ang pag-activate ng account. Subukan ulit.",
-      "passwordChangeFailed": "Hindi matagumpay ang pagbabago ng password. Subukan ulit.",
-      "usernameChangeFailed": "Hindi matagumpay ang pagbabago ng username. Subukan ulit.",
-      "profileCompletionFailed": "Hindi matagumpay ang pagkumpleto ng profile. Subukan ulit.",
-      "setupFailed": "Hindi matagumpay ang setup. Subukan ulit.",
-      "networkError": "Error sa network. Pakitignan ang inyong connection.",
-      "serverError": "Error sa server. Subukan mamaya.",
-      "validationError": "Error sa validation. Pakitignan ang inyong input.",
-      "permissionDenied": "Tinanggihan ang pahintulot. Makipag-ugnayan sa support.",
-      "sessionExpired": "Nag-expire na ang session. Mag-login ulit.",
-      "invalidCredentials": "Hindi wasto ang credentials. Pakitignan ang inyong input.",
-      "emailNotFound": "Hindi nahanap ang email. Subukan ulit.",
-      "usernameAlreadyExists": "Umiiral na ang username. Pumili ng iba.",
-      "emailAlreadyExists": "Umiiral na ang email. Gumamit ng ibang email.",
-      "invalidEmailFormat": "Hindi wasto ang email format. Maglagay ng wastong email.",
-      "passwordTooWeak": "Masyadong mahina ang password. Pumili ng mas malakas na password.",
-      "passwordsDoNotMatch": "Hindi nagtugma ang mga password. Subukan ulit.",
-      "requiredFieldMissing": "Kulang ang required field. Punan ang lahat ng required fields.",
-      "invalidInput": "Hindi wasto ang input. Pakitignan ang inyong data.",
-      "fileTooLarge": "Masyadong malaki ang file. Pumili ng mas maliit na file.",
-      "unsupportedFileType": "Hindi suportado ang file type. Pumili ng ibang file.",
-      "uploadLimitExceeded": "Na-exceed ang upload limit. Subukan ulit mamaya.",
-      "operationTimeout": "Nag-timeout ang operasyon. Subukan ulit.",
-      "serviceUnavailable": "Hindi available ang service. Subukan ulit mamaya.",
-      "maintenanceMode": "Nasa maintenance ang service. Subukan ulit mamaya.",
-      "rateLimitExceeded": "Masyadong maraming request. Subukan mamaya.",
-      "quotaExceeded": "Na-exceed ang quota. Subukan ulit mamaya.",
-      "accessDenied": "Tinanggihan ang access. Walang pahintulot na gawin ang aksyon na ito.",
-      "resourceNotFound": "Hindi nahanap ang resource. Pakitignan ang inyong request.",
-      "conflictError": "Error sa conflict. Umiiral na ang resource.",
-      "preconditionFailed": "Hindi matagumpay ang precondition. Pakitignan ang inyong request.",
-      "tooManyAttempts": "Masyadong maraming pagtatangka. Subukan mamaya.",
-      "accountLocked": "Naka-lock ang account. Makipag-ugnayan sa support.",
-      "accountSuspended": "Na-suspend ang account. Makipag-ugnayan sa support.",
-      "accountDeleted": "Nadelete ang account. Makipag-ugnayan sa support.",
-      "emailNotVerified": "Hindi pa na-verify ang email. I-verify muna ang inyong email.",
-      "phoneNotVerified": "Hindi pa na-verify ang phone number. I-verify muna ang inyong phone.",
-      "twoFactorRequired": "Kailangan ang two-factor authentication.",
-      "twoFactorFailed": "Hindi matagumpay ang two-factor authentication. Subukan ulit.",
-      "captchaFailed": "Hindi matagumpay ang captcha verification. Subukan ulit.",
-      "invalidToken": "Hindi wasto ang token. Subukan ulit.",
-      "expiredToken": "Nag-expire na ang token. Subukan ulit.",
-      "invalidCode": "Hindi wasto ang code. Pakitignan ang inyong input.",
-      "expiredCode": "Nag-expire na ang code. Humingi ng bago.",
-      "codeLimitExceeded": "Na-exceed ang code limit. Subukan ulit mamaya.",
-      "invalidUsername": "Hindi wasto ang username. Pakitignan ang inyong input.",
-      "usernameTooShort": "Masyadong maikli ang username. Pumili ng mas mahaba.",
-      "usernameTooLong": "Masyadong mahaba ang username. Pumili ng mas maikli.",
-      "usernameInvalidChars": "May invalid characters ang username. Gumamit lang ng letters, numbers, at hyphens.",
-      "usernameReserved": "Reserved ang username. Pumili ng iba.",
-      "usernameProfanity": "May inappropriate content ang username. Pumili ng iba.",
-      "primaryAddressRequired": "Kailangan ang primary address",
-      "addressRequired": "Kailangan ang address",
-      "cityRequired": "Kailangan ang city",
-      "stateRequired": "Kailangan ang state",
-      "countryRequired": "Kailangan ang country",
-      "postalCodeRequired": "Kailangan ang postal code",
-      "mobileNumberRequired": "Kailangan ang mobile number",
-      "mobileNumberInvalid": "Hindi wasto ang mobile number format",
-      "mobileNumberTooShort": "Masyadong maikli ang mobile number",
-      "mobileNumberTooLong": "Masyadong mahaba ang mobile number",
-      "bioRequired": "Kailangan ang bio",
-      "bioTooLong": "Masyadong mahaba ang bio. Panatilihin sa ilalim ng 250 characters",
-      "displayNameRequired": "Kailangan ang display name",
-      "displayNameTooShort": "Masyadong maikli ang display name",
-      "displayNameTooLong": "Masyadong mahaba ang display name",
-      "accountTypeRequired": "Kailangan ang account type",
-      "invalidAccountType": "Hindi wasto ang napiling account type",
-      "imageRequired": "Kailangan ang image",
-      "imageTooLarge": "Masyadong malaki ang image. Pumili ng mas maliit na image",
-      "unsupportedImageFormat": "Hindi suportado ang image format. Gumamit ng JPG, PNG, o GIF",
-      "imageProcessingFailed": "Hindi matagumpay ang image processing. Subukan ulit",
-      "imageCorrupted": "Nacorrupt ang image. Pumili ng ibang image",
-      "imageDimensionsInvalid": "Hindi wasto ang image dimensions. Pumili ng ibang image",
-      "imageSizeInvalid": "Hindi wasto ang image size. Pumili ng ibang image",
-      "imageFormatInvalid": "Hindi wasto ang image format. Pumili ng ibang image",
-      "imageQualityTooLow": "Masyadong mababa ang image quality. Pumili ng mas mataas na quality",
-      "imageTooSmall": "Masyadong maliit ang image. Pumili ng mas malaki",
-      "imageTooBig": "Masyadong malaki ang image. Pumili ng mas maliit",
-      "imageAspectRatioInvalid": "Hindi wasto ang image aspect ratio. Pumili ng ibang image",
-      "imageColorSpaceInvalid": "Hindi wasto ang image color space. Pumili ng ibang image",
-      "imageMetadataInvalid": "Hindi wasto ang image metadata. Pumili ng ibang image",
-      "imageSecurityViolation": "May violation sa image security. Pumili ng ibang image",
-      "imageVirusDetected": "May virus na natuklasan sa image. Pumili ng ibang image",
-      "imageMalwareDetected": "May malware na natuklasan sa image. Pumili ng ibang image",
-      "imageSpamDetected": "May spam na natuklasan sa image. Pumili ng ibang image",
-      "imageContentInappropriate": "Hindi angkop ang content ng image. Pumili ng ibang image",
-      "imageContentViolent": "Marahas ang content ng image. Pumili ng ibang image",
-      "imageContentSexual": "May sexual content ang image. Pumili ng ibang image",
-      "imageContentHateful": "May mapoot na content ang image. Pumili ng ibang image",
-      "imageContentDiscriminatory": "May discriminatory content ang image. Pumili ng ibang image",
-      "imageContentOffensive": "May nakakasakit na content ang image. Pumili ng ibang image",
-      "imageContentAbusive": "May abusive content ang image. Pumili ng ibang image",
-      "imageContentHarassing": "May harassing content ang image. Pumili ng ibang image",
-      "imageContentThreatening": "May threatening content ang image. Pumili ng ibang image",
-      "imageContentDangerous": "Mapanganib ang content ng image. Pumili ng ibang image",
-      "imageContentIllegal": "Illegal ang content ng image. Pumili ng ibang image",
-      "imageContentCopyright": "Nilalabag ng image content ang copyright. Pumili ng ibang image",
-      "imageContentTrademark": "Nilalabag ng image content ang trademark. Pumili ng ibang image",
-      "imageContentPrivacy": "Nilalabag ng image content ang privacy. Pumili ng ibang image",
-      "imageContentConsent": "Walang consent ang image content. Pumili ng ibang image",
-      "imageContentMinors": "May involvement ng minors ang image content. Pumili ng ibang image",
-      "imageContentAnimals": "May involvement ng animal cruelty ang image content. Pumili ng ibang image",
-      "imageContentEnvironment": "Nakakasira sa kapaligiran ang image content. Pumili ng ibang image",
-      "imageContentHealth": "Nakakasira sa kalusugan ang image content. Pumili ng ibang image",
-      "imageContentSafety": "Nakakasira sa kaligtasan ang image content. Pumili ng ibang image",
-      "imageContentSecurity": "Nakakasira sa seguridad ang image content. Pumili ng ibang image",
-      "imageContentIntegrity": "Nakakasira sa integridad ang image content. Pumili ng ibang image",
-      "imageContentReputation": "Nakakasira sa reputasyon ang image content. Pumili ng ibang image",
-      "imageContentBrand": "Nakakasira sa brand ang image content. Pumili ng ibang image",
-      "imageContentBusiness": "Nakakasira sa negosyo ang image content. Pumili ng ibang image",
-      "imageContentPersonal": "Nakakasira sa personal interests ang image content. Pumili ng ibang image",
-      "imageContentProfessional": "Nakakasira sa professional interests ang image content. Pumili ng ibang image",
-      "imageContentAcademic": "Nakakasira sa academic interests ang image content. Pumili ng ibang image",
-      "imageContentCultural": "Nakakasira sa cultural interests ang image content. Pumili ng ibang image",
-      "imageContentReligious": "Nakakasira sa religious interests ang image content. Pumili ng ibang image",
-      "imageContentPolitical": "Nakakasira sa political interests ang image content. Pumili ng ibang image",
-      "imageContentSocial": "Nakakasira sa social interests ang image content. Pumili ng ibang image",
-      "imageContentEconomic": "Nakakasira sa economic interests ang image content. Pumili ng ibang image",
-      "imageContentLegal": "Nakakasira sa legal interests ang image content. Pumili ng ibang image",
-      "imageContentEthical": "Nakakasira sa ethical interests ang image content. Pumili ng ibang image",
-      "imageContentMoral": "Nakakasira sa moral interests ang image content. Pumili ng ibang image",
-      "imageContentSpiritual": "Nakakasira sa spiritual interests ang image content. Pumili ng ibang image",
-      "imageContentPhilosophical": "Nakakasira sa philosophical interests ang image content. Pumili ng ibang image",
-      "imageContentScientific": "Nakakasira sa scientific interests ang image content. Pumili ng ibang image",
-      "imageContentTechnical": "Nakakasira sa technical interests ang image content. Pumili ng ibang image",
-      "imageContentArtistic": "Nakakasira sa artistic interests ang image content. Pumili ng ibang image",
-      "imageContentCreative": "Nakakasira sa creative interests ang image content. Pumili ng ibang image",
-      "imageContentIntellectual": "Nakakasira sa intellectual interests ang image content. Pumili ng ibang image",
-      "imageContentEducational": "Nakakasira sa educational interests ang image content. Pumili ng ibang image",
-      "imageContentInformational": "Nakakasira sa informational interests ang image content. Pumili ng ibang image",
-      "imageContentNews": "Nakakasira sa news interests ang image content. Pumili ng ibang image",
-      "imageContentMedia": "Nakakasira sa media interests ang image content. Pumili ng ibang image",
-      "imageContentEntertainment": "Nakakasira sa entertainment interests ang image content. Pumili ng ibang image",
-      "imageContentSports": "Nakakasira sa sports interests ang image content. Pumili ng ibang image",
-      "imageContentRecreation": "Nakakasira sa recreation interests ang image content. Pumili ng ibang image",
-      "imageContentLeisure": "Nakakasira sa leisure interests ang image content. Pumili ng ibang image",
-      "imageContentHobby": "Nakakasira sa hobby interests ang image content. Pumili ng ibang image",
-      "imageContentInterest": "Nakakasira sa interest interests ang image content. Pumili ng ibang image",
-      "imageContentPassion": "Nakakasira sa passion interests ang image content. Pumili ng ibang image",
-      "imageContentLove": "Nakakasira sa love interests ang image content. Pumili ng ibang image",
-      "imageContentHate": "Nakakasira sa hate interests ang image content. Pumili ng ibang image",
-      "imageContentAnger": "Nakakasira sa anger interests ang image content. Pumili ng ibang image",
-      "imageContentFear": "Nakakasira sa fear interests ang image content. Pumili ng ibang image",
-      "imageContentSadness": "Nakakasira sa sadness interests ang image content. Pumili ng ibang image",
-      "imageContentJoy": "Nakakasira sa joy interests ang image content. Pumili ng ibang image",
-      "imageContentHappiness": "Nakakasira sa happiness interests ang image content. Pumili ng ibang image",
-      "imageContentExcitement": "Nakakasira sa excitement interests ang image content. Pumili ng ibang image",
-      "imageContentSurprise": "Nakakasira sa surprise interests ang image content. Pumili ng ibang image",
-      "imageContentDisgust": "Nakakasira sa disgust interests ang image content. Pumili ng ibang image",
-      "imageContentShame": "Nakakasira sa shame interests ang image content. Pumili ng ibang image",
-      "imageContentGuilt": "Nakakasira sa guilt interests ang image content. Pumili ng ibang image",
-      "imageContentPride": "Nakakasira sa pride interests ang image content. Pumili ng ibang image",
-      "imageContentEnvy": "Nakakasira sa envy interests ang image content. Pumili ng ibang image",
-      "imageContentJealousy": "Nakakasira sa jealousy interests ang image content. Pumili ng ibang image",
-      "imageContentGreed": "Nakakasira sa greed interests ang image content. Pumili ng ibang image",
-      "imageContentLust": "Nakakasira sa lust interests ang image content. Pumili ng ibang image",
-      "imageContentGluttony": "Nakakasira sa gluttony interests ang image content. Pumili ng ibang image",
-      "imageContentSloth": "Nakakasira sa sloth interests ang image content. Pumili ng ibang image",
-      "imageContentWrath": "Nakakasira sa wrath interests ang image content. Pumili ng ibang image"
-    },
-    "warning": {
-      "usernameCooldown": "Naka-lock pansamantala ang username change dahil sa cooldown period",
-      "passwordWeak": "Mahina ang password. Isipin ang paggamit ng mas malakas na password",
-      "emailNotVerified": "Hindi pa na-verify ang email. I-verify ang inyong email",
-      "phoneNotVerified": "Hindi pa na-verify ang phone number. I-verify ang inyong phone",
-      "profileIncomplete": "Hindi kumpleto ang profile. Kumpletuhin ang inyong profile",
-      "settingsNotSaved": "Hindi na-save ang settings. I-save ang inyong settings",
-      "dataNotSaved": "Hindi na-save ang data. I-save ang inyong data",
-      "changesNotSaved": "Hindi na-save ang mga pagbabago. I-save ang inyong mga pagbabago",
-      "fileNotUploaded": "Hindi na-upload ang file. I-upload ang inyong file",
-      "imageNotUploaded": "Hindi na-upload ang image. I-upload ang inyong image",
-      "linkNotCopied": "Hindi nakopya ang link. Kopyahin ang inyong link",
-      "emailNotSent": "Hindi naipadala ang email. Ipadala ang inyong email",
-      "notificationNotSent": "Hindi naipadala ang notification. Ipadala ang inyong notification",
-      "actionNotCompleted": "Hindi natapos ang aksyon. Tapusin ang inyong aksyon",
-      "formNotSubmitted": "Hindi naipadala ang form. Ipadala ang inyong form",
-      "onboardingNotCompleted": "Hindi natapos ang onboarding. Kumpletuhin ang inyong onboarding",
-      "accountNotActivated": "Hindi na-activate ang account. I-activate ang inyong account",
-      "passwordNotChanged": "Hindi nabago ang password. Baguhin ang inyong password",
-      "usernameNotChanged": "Hindi nabago ang username. Baguhin ang inyong username",
-      "profileNotCompleted": "Hindi natapos ang profile. Kumpletuhin ang inyong profile",
-      "setupNotCompleted": "Hindi natapos ang setup. Kumpletuhin ang inyong setup",
-      "networkSlow": "Mabagal ang network. Pakitignan ang inyong connection",
-      "serverSlow": "Mabagal ang server. Subukan ulit mamaya",
-      "validationPending": "Naghihintay pa ang validation. Maghintay",
-      "permissionPending": "Naghihintay pa ang permission. Maghintay",
-      "sessionExpiring": "Nag-expire na ang session. Mag-login ulit",
-      "credentialsExpiring": "Nag-expire na ang credentials. I-update ang inyong credentials",
-      "emailExpiring": "Nag-expire na ang email. I-update ang inyong email",
-      "phoneExpiring": "Nag-expire na ang phone. I-update ang inyong phone",
-      "profileExpiring": "Nag-expire na ang profile. I-update ang inyong profile",
-      "settingsExpiring": "Nag-expire na ang settings. I-update ang inyong settings",
-      "dataExpiring": "Nag-expire na ang data. I-update ang inyong data",
-      "changesExpiring": "Nag-expire na ang mga pagbabago. I-update ang inyong mga pagbabago",
-      "fileExpiring": "Nag-expire na ang file. I-update ang inyong file",
-      "imageExpiring": "Nag-expire na ang image. I-update ang inyong image",
-      "linkExpiring": "Nag-expire na ang link. I-update ang inyong link",
-      "notificationExpiring": "Nag-expire na ang notification. I-update ang inyong notification",
-      "actionExpiring": "Nag-expire na ang aksyon. I-update ang inyong aksyon",
-      "formExpiring": "Nag-expire na ang form. I-update ang inyong form",
-      "onboardingExpiring": "Nag-expire na ang onboarding. I-update ang inyong onboarding",
-      "accountExpiring": "Nag-expire na ang account. I-update ang inyong account",
-      "passwordExpiring": "Nag-expire na ang password. I-update ang inyong password",
-      "usernameExpiring": "Nag-expire na ang username. I-update ang inyong username",
-      "setupExpiring": "Nag-expire na ang setup. I-update ang inyong setup"
-    },
-    "info": {
-      "loading": "Naglo-load...",
-      "processing": "Nagpo-proseso...",
-      "saving": "Nagse-save...",
-      "uploading": "Nag-u-upload...",
-      "downloading": "Nagda-download...",
-      "connecting": "Kumukonekta...",
-      "disconnecting": "Nagdi-disconnect...",
-      "sending": "Nagpapadala...",
-      "receiving": "Tumatanggap...",
-      "updating": "Nag-u-update...",
-      "refreshing": "Nagre-refresh...",
-      "synchronizing": "Nagse-sync...",
-      "validating": "Nagva-validate...",
-      "verifying": "Nagve-verify...",
-      "checking": "Nagche-check...",
-      "searching": "Naghahanap...",
-      "filtering": "Nagfi-filter...",
-      "sorting": "Nagsu-sort...",
-      "organizing": "Nago-organize...",
-      "arranging": "Naga-arrange...",
-      "configuring": "Nagco-configure...",
-      "setting": "Nagse-set...",
-      "adjusting": "Nag-a-adjust...",
-      "modifying": "Nagmo-modify...",
-      "changing": "Nagba-bago...",
-      "switching": "Nagsu-switch...",
-      "toggling": "Nagto-toggle...",
-      "enabling": "Nag-e-enable...",
-      "disabling": "Nagdi-disable...",
-      "activating": "Nag-a-activate...",
-      "deactivating": "Nagde-deactivate...",
-      "starting": "Nagsi-start...",
-      "stopping": "Nagsi-stop...",
-      "pausing": "Nagpa-pause...",
-      "resuming": "Nagre-resume...",
-      "restarting": "Nagre-restart...",
-      "resetting": "Nagre-reset...",
-      "clearing": "Nagcle-clear...",
-      "deleting": "Nagde-delete...",
-      "removing": "Nagre-remove...",
-      "adding": "Nagda-dagdag...",
-      "inserting": "Nagi-insert...",
-      "creating": "Naggagawa...",
-      "building": "Nagtatayo...",
-      "constructing": "Nagtayo...",
-      "generating": "Naggene-generate...",
-      "producing": "Naggawa...",
-      "making": "Gumagawa...",
-      "preparing": "Naghahanda...",
-      "readying": "Naghahanda...",
-      "initializing": "Nagi-initialize...",
-      "launching": "Naglalaunch...",
-      "opening": "Nagbubukas...",
-      "closing": "Nagsasara...",
-      "shutting": "Nagsasara...",
-      "ending": "Natatapos...",
-      "finishing": "Natatapos...",
-      "completing": "Natatapos...",
-      "finalizing": "Nagfi-finalize...",
-      "concluding": "Nakokonklusyon...",
-      "terminating": "Nagte-terminate...",
-      "canceling": "Nagra-cancel...",
-      "aborting": "Nagra-abort...",
-      "interrupting": "Nagi-interrupt...",
-      "halting": "Humihinto...",
-      "freezing": "Nagyeyelo...",
-      "unfreezing": "Nagtutunaw...",
-      "thawing": "Nagtutunaw...",
-      "melting": "Nagtutunaw...",
-      "cooling": "Pumapalamig...",
-      "heating": "Umuinit...",
-      "warming": "Umuinit...",
-      "chilling": "Pumapalamig...",
-      "renewing": "Nare-renew...",
-      "restoring": "Nagre-restore...",
-      "recovering": "Nagre-recover...",
-      "repairing": "Nagre-repair...",
-      "fixing": "Nagfi-fix...",
-      "correcting": "Nagco-correct...",
-      "tuning": "Nagtu-tune...",
-      "optimizing": "Nago-optimize...",
-      "improving": "Nag-i-improve...",
-      "enhancing": "Nag-e-enhance...",
-      "upgrading": "Nagu-upgrade...",
-      "modernizing": "Nagmo-modernize..."
+    "shareModal": {
+      "copied": "Nakopya na!",
+      "copyLink": "Kopyahin ang link",
+      "linkCopiedToast": "Nakopya na ang link!!"
     }
   },
   "emailVerification": {
-    "title": "Verify Your Email",
-    "description": "We've sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
+    "backToLogin": "Back to Login",
     "checkEmail": "Check your email",
+    "checkSpam": "Please check your spam folder or try again.",
+    "clickLink": "Click the link in the email to verify your account.",
+    "contactSupport": "Contact Support",
+    "description": "We've sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
+    "didntReceive": "Didn't receive the email?",
+    "emailAddress": "Email Address",
     "emailSent": "Verification email sent!",
+    "expiresIn": "This link expires in 24 hours.",
+    "needHelp": "Need help?",
     "resendEmail": "Resend Email",
     "resendIn": "Resend in",
     "seconds": "seconds",
-    "didntReceive": "Didn't receive the email?",
-    "checkSpam": "Please check your spam folder or try again.",
-    "backToLogin": "Back to Login",
-    "emailAddress": "Email Address",
-    "verificationSent": "Verification email sent to:",
-    "clickLink": "Click the link in the email to verify your account.",
-    "expiresIn": "This link expires in 24 hours.",
-    "needHelp": "Need help?",
-    "contactSupport": "Contact Support"
+    "title": "Verify Your Email",
+    "verificationSent": "Verification email sent to:"
   },
-  "settings": {
-    "title": "Mga Setting",
-    "account": {
-      "heading": "Account",
-      "security": {
-        "title": "Account at Security"
+  "footer": {
+    "copyright": "© 2025 explorers. Lahat ng karapatan ay nakalaan.",
+    "email": "hello@explorers.earth",
+    "links": {
+      "about": "Tungkol",
+      "contact": "Makipag-ugnayan",
+      "cookies": "Cookie Policy",
+      "faq": "Mga Madalas na Tanong",
+      "howItWorks": "Paano Ito Gumagana",
+      "privacy": "Privacy Policy",
+      "terms": "Mga Tuntunin at Kondisyon"
+    },
+    "madeWithLove": "Ginawa nang may pagmamahal sa mundo",
+    "sections": {
+      "contact": "Makipag-ugnayan",
+      "legal": "Legal",
+      "product": "Produkto"
+    },
+    "tagline": "Hayaan ang inyong mga rekomendasyon na mag-travel sa mundo."
+  },
+  "header": {
+    "auth": {
+      "login": "Mag-login",
+      "signUp": "Mag-sign Up"
+    },
+    "nav": {
+      "about": "Tungkol",
+      "contact": "Makipag-ugnayan",
+      "faq": "Mga Madalas na Tanong",
+      "howItWorks": "Paano Ito Gumagana",
+      "whoIsFor": "Para Kanino"
+    }
+  },
+  "hero": {
+    "ctaButton": "I-reserve ang inyong explorers",
+    "headline": "Lahat ng inyong mga rekomendasyon, ibinahagi sa pamamagitan ng isang simpleng link o QR",
+    "inputLabel": "I-reserve ang inyong explorers URL:",
+    "inputPlaceholder": "yourname",
+    "signupPrompt": "Mag-sign up ngayon para makuha ang inyo",
+    "subtext": "Mula sa mga lugar hanggang sa mga tunog, ruta, at kuwento — ibahagi ang alam ninyo at gusto."
+  },
+  "languageModal": {
+    "close": "Isara",
+    "searchPlaceholder": "Maghanap ng mga wika...",
+    "title": "Pumili ng Wika"
+  },
+  "legal": {
+    "cookies": {
+      "error": "Error sa pag-load ng cookie policy. Pakisubukan ulit mamaya.",
+      "loading": "Naglo-load ang cookie policy...",
+      "title": "Cookie Policy"
+    },
+    "privacy": {
+      "error": "Error sa pag-load ng privacy policy. Pakisubukan ulit mamaya.",
+      "loading": "Naglo-load ang privacy policy...",
+      "title": "Privacy Policy"
+    },
+    "terms": {
+      "error": "Error sa pag-load ng mga tuntunin at kondisyon. Pakisubukan ulit mamaya.",
+      "loading": "Naglo-load ang mga tuntunin at kondisyon...",
+      "title": "Mga Tuntunin at Kondisyon"
+    }
+  },
+  "modal": {
+    "unsavedChanges": {
+      "cancel": "Cancel",
+      "discard": "Discard",
+      "message": "You have unsaved changes that will be lost if you navigate away. What would you like to do?",
+      "save": "Save",
+      "title": "Unsaved Changes"
+    },
+    "usernameChange": {
+      "cancel": "Cancel",
+      "confirm": "Change Username",
+      "cooldownPrefix": "You will be able to change your username again in",
+      "cooldownSuffix": "after this update.",
+      "day": "1 day",
+      "days": "days",
+      "description": "Your username is used in your profile and recommendation list links:",
+      "listLabel": "List:",
+      "minute": "1 minute",
+      "profileLabel": "Profile:",
+      "title": "Username Change Confirmation",
+      "warning": "Any QR codes or links with your old username will no longer work — you'll need to update and re-share them."
+    }
+  },
+  "reactivateAccount": {
+    "backToLogin": "Back to Login",
+    "confirmDescription": "Your account has been successfully reactivated. You can now sign in with your credentials.",
+    "confirmError": "Invalid or Expired Link",
+    "confirmTitle": "Account Reactivated!",
+    "emailPlaceholder": "Enter your email address",
+    "emailSent": "Check your inbox!",
+    "emailSentDescription": "We've sent a reactivation link to your email address. The link expires in 24 hours. Check your spam folder if you don't see it.",
+    "goToLogin": "Go to Login",
+    "resendButton": "Resend Link",
+    "resendIn": "Resend in",
+    "sendButton": "Send Reactivation Link",
+    "subtitle": "Enter the email address associated with your deactivated account and we'll send you a reactivation link.",
+    "title": "Reactivate Your Account",
+    "tryAgain": "Request New Link"
+  },
+  "sections": {
+    "analytics": {
+      "dashboardTitle": "Dashboard ng Analytics",
+      "engagement": "Engagement",
+      "headline": "I-track ang mga click, referral, at engagement",
+      "last30Days": "Huling 30 araw",
+      "referrals": "Mga Referral",
+      "scanningDesc": "I-monitor ang QR scanning at mga update",
+      "scanningTitle": "Sino ang nag-scan",
+      "spotsDesc": "Data-driven insights para sa mas magandang curation",
+      "spotsTitle": "Mga top performing spots",
+      "subtext": "Tingnan kung ano ang gumagana, sino ang nag-scan, at aling mga lugar ang nakakakuha ng pinakamaraming pagmamahal — sa real time.",
+      "totalScans": "Kabuuang Scans",
+      "workingDesc": "I-track ang popularity ng inyong mga rekomendasyon",
+      "workingTitle": "Tingnan kung ano ang gumagana"
+    },
+    "createCustomize": {
+      "bulletPoints": {
+        "addSpots": {
+          "description": "Gumawa ng listahan kasama ang inyong must-visit",
+          "title": "Magdagdag ng mga paboritong lugar"
+        },
+        "generate": {
+          "description": "Ang inyong customized QR ay handa na sa loob ng ilang segundo",
+          "title": "I-generate agad ang inyong link at QR"
+        },
+        "organize": {
+          "description": "Gumawa ng mga kategorya na may kahulugan para sa inyong audience",
+          "title": "Ayusin ayon sa lungsod o paksa"
+        },
+        "share": {
+          "description": "",
+          "title": "Ibahagi nang digital o sa pamamagitan ng QR sa totoong mundo"
+        }
       },
-      "changePassword": {
-        "text": "Palitan ang password?",
-        "button": "Palitan ang Password",
-        "modalTitle": "Palitan ang Password",
-        "currentPassword": "Kasalukuyang password",
-        "newPassword": "Bagong password",
-        "confirmPassword": "Kumpirmahin ang bagong password",
-        "updateButton": "I-update ang Password",
-        "currentPasswordPlaceholder": "Ilagay ang inyong kasalukuyang password",
-        "newPasswordPlaceholder": "Ilagay ang bagong password",
-        "confirmPasswordPlaceholder": "Ulit-ulitin ang bagong password",
-        "successMessage": "Matagumpay na na-update ang password. Ireredirect kayo sa login para sa security.",
-        "redirectMessage": "Nireredirect sa login para sa security...",
-        "description": "I-update ang inyong password upang mapanatiling ligtas ang inyong account"
+      "headline": "Gumawa at i-customize ang inyong explorers sa loob ng ilang minuto",
+      "mockup": {
+        "addPlace": "Magdagdag ng Lugar",
+        "title": "Aking mga Rekomendasyon"
       },
-      "deactivateAccount": {
-        "text": "I-deactivate ang inyong account?",
-        "button": "I-deactivate ang Account",
-        "modalTitle": "I-deactivate ang inyong account?",
-        "modalDescription": "Sigurado ba kayong gusto ninyong i-deactivate ang inyong account?",
-        "enterUsername": "Ilagay ang inyong username",
-        "enterPassword": "Ilagay ang inyong password",
-        "usernamePlaceholder": "Ilagay ang inyong username",
-        "passwordPlaceholder": "Ilagay ang inyong kasalukuyang password",
-        "confirmButton": "I-deactivate ang Aking Account",
-        "deactivatedButton": "Na-deactivate",
-        "successMessage": "Matagumpay na na-deactivate ang account",
-        "activatedMessage": "Matagumpay na na-activate ang account",
-        "description": "Pansamantalang i-deactivate ang inyong account"
+      "subtext": "Magdagdag ng mga paboritong lugar, ayusin ayon sa lungsod o paksa, at i-generate agad ang inyong QR."
+    },
+    "faq": {
+      "error": "Error sa pag-load ng FAQ. Pakisubukan ulit mamaya.",
+      "headline": "May mga tanong?",
+      "loading": "Naglo-load ang FAQ...",
+      "subtext": "Nasagot na namin ang pinakakaraniwang mga bagay na tinatanong ng mga tao bago magsimula."
+    },
+    "features": {
+      "communityDriven": {
+        "title": "Community-driven na pagtuklas"
       },
-      "deleteAccount": {
-        "text": "Tanggalin ang inyong account?",
-        "button": "Tanggalin ang Account",
-        "step1": {
-          "modalTitle": "Tanggalin ang inyong account?",
-          "modalDescription": "Sigurado ba kayong gusto ninyong tanggalin ang inyong account? Hindi na ito maibabalik.",
-          "modalDescription2": "Kung gusto ninyong itago ang inyong data, pwede ninyong i-deactivate na lang ang account.",
-          "deactivateInsteadButton": "I-deactivate na lang ang account",
-          "continueButton": "Ipagpatuloy ang pagtanggal"
+      "livingGuides": {
+        "title": "Buhay, na-e-edit na mga gabay"
+      },
+      "locationAware": {
+        "title": "Location-aware na mga rekomendasyon"
+      },
+      "privacyFirst": {
+        "title": "Privacy-first sa pamamagitan ng disenyo"
+      },
+      "simpleLinks": {
+        "title": "Simpleng link at QR sharing"
+      },
+      "soundPlaylists": {
+        "title": "Opsyonal na tunog at playlist"
+      },
+      "subtitle": "Mga simpleng, maingat na feature na nagpapatingkad sa inyong mga rekomendasyon.",
+      "title": "Binuo upang manatili sa labas ng daan"
+    },
+    "finalCTA": {
+      "creating": "Ginagawa ang inyong explorers...",
+      "ctaButton": "I-reserve ang inyong explorers – Libre Magpakailanman",
+      "disclaimer": "Hindi kailangan ng credit card • Setup sa 2 minuto",
+      "headline": "Simulan ang pagbabahagi ng inyong mundo ngayon",
+      "subtext": "I-reserve ang inyong libreng explorers at i-convert ang inyong lokal na insights sa shareable na mga gabay."
+    },
+    "localTunes": {
+      "body": "Ang pag-e-explore ay hindi lamang visual. Ang tunog ay nagdadala ng memorya, konteksto, at emosyon.\n\nBinibigyang-daan ng LocalTunes na kolektahin at ibahagi ang mga soundtrack para sa mga lugar, paglalakbay, at mood — maging ito ay musika na natuklasan sa daan o mga tunog na nagbibigay-kahulugan sa isang lugar para sa inyo.\n\nWalang putol na nakakonekta sa inyong Explorer profile.",
+      "closingStatement": "Ang Tunes ay <strong>libre</strong> na i-explore, at para sa paid features maaari kayong mag-upgrade pagkatapos.",
+      "exploreButton": "I-explore ang Tunes",
+      "features": {
+        "karaokeReady": {
+          "description": "Perpekto para sa mga gabi ng karaoke na may collaborative playlists at real-time na song requests.",
+          "title": "Handa para sa Karaoke"
         },
-        "step2": {
-          "modalTitle": "Ilagay ang inyong mga detalye",
-          "enterUsername": "Ilagay ang inyong username",
-          "enterPassword": "Ilagay ang inyong password",
-          "confirmPassword": "Kumpirmahin ang inyong password",
-          "usernamePlaceholder": "Ilagay ang inyong username",
-          "passwordPlaceholder": "Ilagay ang inyong password",
-          "confirmPasswordPlaceholder": "Kumpirmahin ang inyong password",
-          "continueButton": "Magpatuloy"
+        "qrCodeSharing": {
+          "description": "Ibahagi ang inyong karanasan sa musika sa pamamagitan ng simpleng QR code scan - walang apps o downloads na kailangan.",
+          "title": "QR Code Sharing"
         },
-        "step3": {
-          "modalTitle": "Bakit kayo aalis?",
-          "reasonPlaceholder": "Pakisabi sa amin ang dahilan ng pag-alis...",
-          "continueButton": "Magpatuloy"
+        "realtimeCollaboration": {
+          "description": "Hayaan ang mga bisita na magdagdag ng mga kanta sa inyong playlist agad habang pinapanatili ninyo ang buong kontrol sa kung ano ang tumutugtog.",
+          "title": "Real-time na Pakikipagtulungan"
         },
-        "step4": {
-          "modalTitle": "Kumpirmahin ang pagtanggal",
-          "confirmText": "I-type ang 'CONFIRM DELETE' para magpatuloy",
-          "confirmPlaceholder": "I-type ang 'CONFIRM DELETE' para kumpirmahin",
-          "deleteButton": "Tanggalin ang Aking Account",
-          "confirmationRequired": "Pakitype ang 'CONFIRM DELETE' para kumpirmahin.",
-          "reasonRequired": "Pakibigay ang dahilan ng pag-alis.",
-          "successMessage": "Matagumpay na natanggal ang account."
+        "silentParties": {
+          "description": "Mag-host ng natatanging silent parties kung saan lahat ay nakikinig sa pamamagitan ng kanilang sariling headphones.",
+          "title": "Silent Parties"
         },
-        "description": "Permanenteng tanggalin ang inyong account at lahat ng data"
+        "voteLikeSystem": {
+          "description": "Maaaring bumoto ang mga bisita para sa kanilang mga paboritong kanta upang maimpluwensyahan ang playlist queue sa real-time.",
+          "title": "Vote & Like System"
+        },
+        "youtubeIntegration": {
+          "description": "Walang putol na isama sa YouTube upang ma-access ang milyun-milyong kanta at lumikha ng perpektong kapaligiran.",
+          "title": "YouTube Integration"
+        }
+      },
+      "featuresHeading": "Malakas na Features",
+      "mainHeading": "Tunes",
+      "title": "Makinig habang nag-e-explore kayo",
+      "venueHeading": "Perpekto para sa Bawat Venue",
+      "venues": {
+        "barsPubs": "Mga Bar & Pub",
+        "coffeeShops": "Mga Coffee Shop",
+        "eventsWeddings": "Mga Event & Kasal",
+        "gymsFitness": "Mga Gym & Fitness",
+        "restaurants": "Mga Restaurant",
+        "retailStores": "Mga Retail Store"
       }
     },
-    "languagePreference": {
-      "heading": "Pagpipilian ng Wika",
-      "selectLanguage": "Piliin ang inyong wika",
-      "availableLanguages": "Pumili mula sa 47 available na wika",
-      "currentLanguage": "Kasalukuyan: {{flag}} {{name}}",
-      "languageChanged": "Napalitan ang wika sa {{name}}",
-      "description": "Piliin ang inyong gustong wika para sa interface. Babaguhin nito ang wika ng lahat ng teksto, mga button at menu sa buong aplikasyon."
+    "referEarn": {
+      "comingSoon": "Referral rewards program (malapit na)",
+      "earnedThisMonth": "Nakita sa buwang ito",
+      "headline": "Magbahagi, mag-refer, at kumita",
+      "networkTitle": "Magtayo ng inyong network at kumita nang automatic",
+      "passiveTitle": "I-convert ang mga rekomendasyon sa passive rewards",
+      "rewardsDesc": "Kumuha ng pera kapag ginagamit ng mga tao ang inyong mga rekomendasyon",
+      "rewardsTitle": "Kumuha ng mga Reward",
+      "subtext": "I-convert ang inyong mga rekomendasyon sa passive rewards — kumuha ng credit kapag ginagamit ng iba ang inyong QR."
     },
-    "subtitle": "Pamahalaan ang mga setting at kagustuhan ng inyong account"
-  },
-    "seo": {
-      "title": "Contact explorers | Support, Help and Partnership enquiries.",
-      "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
-      "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-      "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
-      "keywords": [
-        "contact explorers",
-        "explorers support",
-        "get in touch explorers",
-        "customer service travel app",
-        "partnership inquiry explorers",
-        "help center local recommendations",
-        "technical support explorers",
-        "travel app customer service",
-        "feedback location sharing",
-        "account assistance explorers",
-        "business collaboration explorers",
-        "report problem explorers",
-        "share local recommendations support",
-        "find explorers contact",
-        "customer service",
-        "explorers team",
-        "help center",
-        "contact support",
-        "QR code support",
-        "local recommendations help",
-        "partnership inquiries"
-      ]
+    "shareAnywhere": {
+      "cafeMenu": "Menu ng Cafe",
+      "headline": "Ibahagi sa social media, storefront, o mga pader ng lungsod",
+      "instagramDesc": "Ibahagi agad sa inyong mga followers",
+      "instagramTitle": "Idagdag sa inyong Instagram bio",
+      "menuDesc": "Mga pisikal na contact point na ginawang madali",
+      "menuTitle": "I-print sa menu",
+      "profileCarouselCaption": "Instagram & TikTok profiles",
+      "qrEverywhereDesc": "Perfect for Every Venue",
+      "qrEverywhereTitle": "Add the QR link everywhere",
+      "scanText": "I-scan para sa mga lokal na rekomendasyon",
+      "storefrontText": "Perpekto para sa storefront display",
+      "subtext": "Idagdag sa inyong Instagram bio, i-print sa menu, o isama sa mga welcome book — ang inyong gabay, laging handa.",
+      "tokyoFoodGuide": "Ang aking Tokyo food guide explorers.earth/jane",
+      "welcomeDesc": "Perpekto para sa mga host at guide",
+      "welcomeTitle": "Isama sa mga welcome book"
     },
-  "sidebar": {
-    "home": "Home",
-    "profile": "Profile",
-    "recommendations": "Mga Rekomendasyon",
-    "settings": "Mga Setting",
-    "logout": "Mag-logout",
-    "analytics": "Analytics",
-    "loading": "Naglo-load...",
-    "clickToOpenMenu": "I-click upang buksan ang menu"
-  },
-  "analytics": {
-    "dashboard": {
-      "title": "Dashboard ng Analytics",
-      "subtitle": "Subaybayan ang performance ng inyong QR code at user engagement",
-      "timePeriod": "Panahon:",
-      "timeFilter": {
-        "today": "Ngayon",
-        "last7days": "Huling 7 Araw",
-        "last30days": "Huling 30 Araw",
-        "custom": "Custom na Saklaw",
-        "selectPeriod": "Pumili ng Panahon"
-      },
-      "dateRange": {
-        "from": "Mula:",
-        "to": "Hanggang:"
-      },
-      "summaryCards": {
-        "totalViews": "Kabuuang Views",
-        "totalClicks": "Kabuuang Clicks",
-        "totalQRViews": "Kabuuang QR Views",
-        "totalLinkViews": "Kabuuang Link Views"
-      },
-      "loading": {
-        "loadingData": "Naglo-load ng analytics data...",
-        "resolvingCountry": "Nireresolve ang country data..."
-      },
-      "error": {
-        "title": "Error sa Pag-load ng Analytics",
-        "message": "Hindi ma-fetch ang analytics data. Pakisubukan ulit mamaya.",
-        "errorLabel": "Error:"
-      },
-      "comingSoon": {
-        "title": "Analytics Malapit na",
-        "message": "Ang analytics ay magiging available sa <strong>{{days}} araw{{daysPlural}}</strong> pagkatapos ng account creation.",
-        "whyWait": {
-          "title": "Bakit kailangan maghintay?",
-          "reasons": {
-            "accuracy": "• Sinisiguro ang data accuracy at pumipigil sa spam",
-            "interactions": "• Nagbibigay ng panahon para sa meaningful user interactions",
-            "insights": "• Nagbibigay ng reliable analytics insights"
-          }
+    "testimonials": {
+      "headline": "Minamahal ng mga traveler, creator, at host",
+      "items": [
+        {
+          "id": "1",
+          "location": "San Francisco",
+          "name": "Marcus Chen",
+          "quote": "Binago ng explorers ang paraan ng pagbabahagi ko ng aking kaalaman sa paglalakbay. Gustung-gusto ng aking mga tagasunod ang mabilis na pag-access sa aking mga kuratong rekomendasyon!",
+          "role": "Travel Blogger"
         },
-        "tip": "Samantala, simulan ninyong ibahagi ang inyong QR codes para mag-generate ng data para sa analytics!",
-        "filterTip": "<strong>Tip:</strong> Kapag available na ang analytics, makakapag-filter kayo ayon sa panahon (ngayon, huling 7 araw, huling 30 araw, o custom range) para makita ang inyong data."
-      },
-      "emptyState": {
-        "title": "Walang Analytics Data",
-        "noDataMessage": "Walang analytics data na nahanap para sa inyong account. Lilitaw ang analytics dito kapag nagsimula nang mag-view at makipag-interact ang mga tao sa inyong QR codes.",
-        "customRange": {
-          "bothMissing": "Pakipili ang parehong start at end dates para sa custom range para makita ang analytics data.",
-          "startMissing": "Pakipili ng start date para sa custom range para makita ang analytics data.",
-          "endMissing": "Pakipili ng end date para sa custom range para makita ang analytics data."
+        {
+          "id": "2",
+          "location": "Barcelona",
+          "name": "Sarah Johnson",
+          "quote": "Talagang gustung-gusto ng aking mga bisita ang personalized na QR code sa kanilang welcome kit. Naging signature touch ko na ito!",
+          "role": "Airbnb Host"
         },
-        "noDataForPeriod": {
-          "today": "Walang analytics data available para sa ngayon. Pakipili ng ibang time range para makita ang inyong data.",
-          "last7days": "Walang analytics data available para sa huling 7 araw. Pakipili ng ibang time range para makita ang inyong data.",
-          "last30days": "Walang analytics data available para sa huling 30 araw. Pakipili ng ibang time range para makita ang inyong data.",
-          "custom": "Walang analytics data available para sa custom range ({{startDate}} hanggang {{endDate}}). Pakipili ng ibang time range para makita ang inyong data.",
-          "default": "Walang analytics data available para sa napiling time range. Pakipili ng ibang time range para makita ang inyong data."
+        {
+          "id": "3",
+          "location": "Mexico City",
+          "name": "Alex Rodriguez",
+          "quote": "Ibinabahagi namin ang aming explorers sa mga customer upang magrekomenda ng iba pang lokal na lugar. Nakalikha ito ng kamangha-manghang mga koneksyon sa komunidad.",
+          "role": "May-ari ng Restawran"
         },
-        "howToStart": {
-          "title": "Para makita ang analytics:",
-          "shareQR": "• Ibahagi ang inyong QR codes sa social media",
-          "includeQR": "• Isama ang QR codes sa inyong marketing materials",
-          "askFriends": "• Hilingin sa mga kaibigan na i-scan ang inyong QR codes",
-          "viewProfile": "• Tingnan ang inyong public profile pages"
+        {
+          "id": "4",
+          "location": "London",
+          "name": "Emma Thompson",
+          "quote": "Tumutulong ang explorers sa akin na palawakin ang aking kadalubhasaan sa labas ng mga oras ng tour. Maa-access ng mga customer ang aking mga rekomendasyon anumang oras!",
+          "role": "Tour Guide"
+        },
+        {
+          "id": "5",
+          "location": "Sydney, Australia",
+          "name": "James Wilson",
+          "quote": "As a travel influencer, explorers makes it so easy to share my favorite spots with my audience. The QR code feature is brilliant!",
+          "role": "Travel Influencer"
+        },
+        {
+          "id": "6",
+          "location": "Paris, France",
+          "name": "Sophie Martin",
+          "quote": "I use explorers to create walking tours for my clients. They can scan the QR and explore at their own pace!",
+          "role": "Local Guide"
+        }
+      ],
+      "scrollLeft": "I-scroll ang mga testimonial sa kaliwa",
+      "scrollRight": "I-scroll ang mga testimonial sa kanan",
+      "subtext": "Tingnan kung paano ginagamit ng mga tao sa buong mundo ang explorers para ibahagi ang pinakamahalagang bagay."
+    },
+    "whoIsFor": {
+      "cards": {
+        "businesses": {
+          "items": {
+            "boutique": {
+              "label": "Boutique",
+              "oneLiner": "Mga boutique na naglilista ng curated finds"
+            },
+            "cafe": {
+              "label": "Café",
+              "oneLiner": "Mga café na nagha-highlight ng paboritong menu items"
+            },
+            "clinic": {
+              "label": "Clinic",
+              "oneLiner": "Mga clinic na nagbabahagi ng health-related locations"
+            },
+            "gym": {
+              "label": "Gym",
+              "oneLiner": "Mga gym na nagmumungkahi ng lokal na wellness spots"
+            },
+            "restaurant": {
+              "label": "Restaurant",
+              "oneLiner": "Mga restaurant na nagbabahagi ng must-try dishes"
+            },
+            "retailShop": {
+              "label": "Retail Shop",
+              "oneLiner": "Mga shop na nagbabahagi ng product recommendations"
+            },
+            "salon": {
+              "label": "Salon",
+              "oneLiner": "Mga salon na nag-aalok ng beauty guides"
+            },
+            "spa": {
+              "label": "Spa",
+              "oneLiner": "Mga spa na naglilista ng relaxation options na malapit"
+            }
+          },
+          "oneLiner": "Gabayan ang mga customer gamit ang kapaki-pakinabang na rekomendasyon.",
+          "title": "Mga Negosyo"
+        },
+        "creators": {
+          "items": {
+            "blogger": {
+              "label": "Blogger",
+              "oneLiner": "Mga blogger na nagcu-curate ng nakasulat na gabay"
+            },
+            "communityLeader": {
+              "label": "Community Leader",
+              "oneLiner": "Mga community leader na nagcu-curate ng kapaki-pakinabang na listahan"
+            },
+            "educator": {
+              "label": "Educator",
+              "oneLiner": "Mga educator na nagbabahagi ng learning guides"
+            },
+            "influencer": {
+              "label": "Influencer",
+              "oneLiner": "Mga influencer na nagbabahagi ng top picks"
+            },
+            "photographer": {
+              "label": "Photographer",
+              "oneLiner": "Mga photographer na nagbabahagi ng photo spots"
+            },
+            "reviewer": {
+              "label": "Reviewer",
+              "oneLiner": "Mga reviewer na naglilista ng best-rated na lugar"
+            },
+            "vlogger": {
+              "label": "Vlogger",
+              "oneLiner": "Mga vlogger na nagbabahagi ng visual journeys"
+            }
+          },
+          "oneLiner": "Ibahagi ang mga curated na listahan sa inyong audience.",
+          "title": "Mga Creator"
+        },
+        "hospitality": {
+          "items": {
+            "airbnb": {
+              "label": "Airbnb",
+              "oneLiner": "Mga host na nagbabahagi ng mga paborito sa kapitbahayan"
+            },
+            "homestay": {
+              "label": "Homestay",
+              "oneLiner": "Mga homestay na nag-aalok ng family-oriented guides"
+            },
+            "hostel": {
+              "label": "Hostel",
+              "oneLiner": "Mga hostel na nagbabahagi ng backpacker tips"
+            },
+            "hotel": {
+              "label": "Hotel",
+              "oneLiner": "Mga hotel na nag-aalok ng lokal na guidebooks"
+            },
+            "pgColiving": {
+              "label": "PG/Coliving",
+              "oneLiner": "PG/Coliving na nagpapakita ng mahahalagang lugar na malapit"
+            },
+            "resort": {
+              "label": "Resort",
+              "oneLiner": "Mga resort na nagbibigay ng activity lists"
+            }
+          },
+          "oneLiner": "Mag-alok sa mga bisita ng curated na lokal na insights.",
+          "title": "Hospitality"
+        },
+        "individuals": {
+          "items": {
+            "emergencySharer": {
+              "label": "Emergency Sharer",
+              "oneLiner": "Mga emergency sharer na nagpo-post ng mahahalagang lugar"
+            },
+            "family": {
+              "label": "Pamilya",
+              "oneLiner": "Mga pamilya na nagbabahagi ng mga kapaki-pakinabang na lugar"
+            },
+            "local": {
+              "label": "Lokal",
+              "oneLiner": "Mga lokal na nagbabahagi ng mga tip sa kapitbahayan"
+            },
+            "nomad": {
+              "label": "Nomad",
+              "oneLiner": "Mga nomad na naglilista ng mga lugar na friendly sa trabaho"
+            },
+            "student": {
+              "label": "Mag-aaral",
+              "oneLiner": "Mga mag-aaral na nagbabahagi ng mga lugar sa campus/malapit"
+            },
+            "traveler": {
+              "label": "Traveler",
+              "oneLiner": "Mga taong nagbabahagi ng mga lugar na paglalakbay"
+            }
+          },
+          "oneLiner": "Ibahagi ang personal o lokal na rekomendasyon.",
+          "title": "Mga Indibidwal"
+        },
+        "organizations": {
+          "items": {
+            "agency": {
+              "label": "Agency",
+              "oneLiner": "Mga travel agency na naglilista ng must-visits"
+            },
+            "airline": {
+              "label": "Airline",
+              "oneLiner": "Mga airline na nagbabahagi ng city guides"
+            },
+            "airport": {
+              "label": "Airport",
+              "oneLiner": "Mga airport na nag-aalok ng terminals + city tips"
+            },
+            "corporate": {
+              "label": "Corporate",
+              "oneLiner": "Mga corporate na naglilista ng malapit na resources"
+            },
+            "government": {
+              "label": "Government",
+              "oneLiner": "Mga department na nagha-highlight ng public services"
+            },
+            "ngo": {
+              "label": "NGO",
+              "oneLiner": "Mga NGO na nagbabahagi ng community resources"
+            },
+            "railway": {
+              "label": "Railway",
+              "oneLiner": "Mga railway na nagbabahagi ng platform info"
+            },
+            "university": {
+              "label": "University",
+              "oneLiner": "Mga university na nagbabahagi ng campus essentials"
+            }
+          },
+          "oneLiner": "Magbigay ng curated guides at resources.",
+          "title": "Mga Organisasyon"
         }
       },
-      "charts": {
-        "topCountries": {
-          "title": "Top 3 Bansa ayon sa Views",
-          "retryGeolocation": "Ulitin ang Geolocation",
-          "geolocationIssue": "Suliranin sa Geolocation:",
-          "countryDataUnavailable": "Hindi Available ang Country Data",
-          "unableToResolve": "Hindi ma-resolve ang IP addresses sa mga bansa sa ngayon. Maaaring dahil sa network restrictions o service limitations.",
-          "failedToResolve": "Nabigo na i-resolve ang country data. Pakisubukan ulit mamaya.",
-          "analyticsSummary": "Buod ng Analytics:",
-          "totalViewEvents": "• {{count}} kabuuang view events",
-          "eventsWithCountry": "• {{count}} events na may country data",
-          "eventsPending": "• {{count}} events na pending geolocation",
-          "willAppear": "Lilitaw ang country data nang automatic kapag available na ang IP geolocation services.",
-          "tooltip": {
-            "country": "Bansa: {{country}}",
-            "views": "Views: {{count}}"
-          },
-          "legend": "Views"
-        },
-        "worldMap": {
-          "title": "Pamahagi ng Global View",
-          "subtitle": "Interactive world map na nagpapakita ng view distribution sa iba't ibang bansa mula sa public pages",
-          "noGeographicData": "Walang Geographic Data Available",
-          "unableToResolve": "Hindi ma-resolve ang IP addresses sa mga bansa sa ngayon. Maaaring dahil sa network restrictions o service limitations.",
-          "failedToResolve": "Nabigo na i-resolve ang country data. Pakisubukan ulit mamaya.",
-          "analyticsSummary": "Buod ng Analytics:",
-          "totalViewEvents": "• {{count}} kabuuang view events",
-          "eventsWithCountry": "• {{count}} events na may country data",
-          "eventsPending": "• {{count}} events na pending geolocation",
-          "willAppear": "Lilitaw ang country data nang automatic kapag available na ang IP geolocation services.",
-          "tooltip": {
-            "country": "{{country}}",
-            "views": "{{views}} views"
-          },
-          "countriesWithViews": "{{count}} bansa na may views",
-          "legend": {
-            "views": "Views:",
-            "low": "Mababa",
-            "medium": "Katamtaman",
-            "high": "Mataas",
-            "highest": "Pinakamataas"
-          }
-        },
-        "trafficSource": {
-          "title": "Traffic Source sa Paglipas ng Panahon",
-          "subtitle": "Subaybayan kung paano nag-iiba ang traffic mula sa iba't ibang sources sa paglipas ng panahon",
-          "selectSource": "Pumili ng Traffic Source:",
-          "allSources": "Lahat ng Sources",
-          "direct": "Direkta",
-          "qrCode": "QR Code",
-          "instagram": "Instagram",
-          "whatsapp": "WhatsApp",
-          "twitter": "Twitter",
-          "noTrafficData": "Walang Traffic Data Available",
-          "noViewEvents": "Walang view events na nahanap na may traffic source information.",
-          "analyticsSummary": "Buod ng Analytics:",
-          "totalViewEvents": "• {{count}} kabuuang view events",
-          "eventsWithUTM": "• {{count}} events na may UTM source",
-          "directTraffic": "• {{count}} direktang traffic events",
-          "willAppear": "Lilitaw ang traffic source data kapag bumisita ang mga user sa inyong pages na may UTM parameters.",
-          "tooltip": {
-            "sourceCount": "{{source}}: {{count}}"
-          }
-        },
-        "locationEngagement": {
-          "title": "Engagement sa Lokasyon",
-          "subtitle": "Subaybayan ang views para sa iba't ibang lokasyon sa paglipas ng panahon",
-          "selectLocation": "Pumili ng Lokasyon:",
-          "allLocations": "Lahat ng Lokasyon",
-          "selectLocationPlaceholder": "Pumili ng Lokasyon",
-          "locationViews": "{{location}} ({{count}} views)",
-          "noLocationData": "Walang location view data available",
-          "unknownLocation": "Hindi Kilalang Lokasyon",
-          "location": "Lokasyon",
-          "tooltip": {
-            "date": "Petsa: {{date}}",
-            "locationViews": "{{location}}: {{value}} views"
-          },
-          "stats": {
-            "totalLocations": "Kabuuang Lokasyon",
-            "totalViews": "Kabuuang Views",
-            "avgViews": "Average Views/Lokasyon"
-          }
-        },
-        "recommendedPlaces": {
-          "title": "Engagement sa mga Inirerekomendang Lugar",
-          "subtitle": "Subaybayan ang clicks sa mga inirerekomendang lugar ayon sa lokasyon",
-          "selectLocation": "Pumili ng Lokasyon:",
-          "selectLocationPlaceholder": "Pumili ng Lokasyon",
-          "locationPlaces": "{{location}} ({{count}} lugar)",
-          "noRecommendationData": "Walang Recommendation Data",
-          "noDataMessage": "Walang recommendation click data available para sa napiling panahon.",
-          "analyticsSummary": "Buod ng Analytics:",
-          "totalClickEvents": "• {{count}} kabuuang click events",
-          "recordsWithRecommendations": "• {{count}} records na may Recommendation ID",
-          "uniqueRecommendations": "• {{count}} natatanging recommendations",
-          "selectLocationPrompt": "Pakipili ng lokasyon para makita ang recommendation data.",
-          "noClicksMessage": "Walang recommendation clicks na nahanap para sa napiling lokasyon. Lilitaw ang recommendation data kapag nag-click ang mga user sa place cards sa inyong location pages.",
-          "unknownPlace": "Hindi Kilalang Lugar",
-          "unknownCategory": "Hindi Kilalang Kategorya",
-          "unknownLocation": "Hindi Kilalang Lokasyon",
-          "tooltip": {
-            "place": "{{place}}",
-            "category": "Kategorya: {{category}}",
-            "clicks": "Clicks: {{count}}"
-          },
-          "stats": {
-            "placesShown": "Mga Lugar na Ipinakita",
-            "totalClicks": "Kabuuang Clicks",
-            "avgClicks": "Average Clicks/Lugar"
-          }
-        },
-        "socialMedia": {
-          "title": "Interaksyon sa Social Media",
-          "subtitle": "Subaybayan ang clicks sa social media links mula sa inyong public profile sa lahat ng platforms",
-          "noDataTitle": "Walang Social Media Interaction Data",
-          "noDataMessage": "Walang social media click data available mula sa inyong public profile page.",
-          "analyticsSummary": "Buod ng Analytics:",
-          "totalSocialClicks": "• {{count}} kabuuang social media clicks",
-          "uniquePlatforms": "• {{count}} natatanging platforms",
-          "trackingNote": "• Tumutrack lamang ng clicks mula sa public-profile page",
-          "willAppear": "Lilitaw ang social media interaction data kapag nag-click ang mga user sa inyong social media links.",
-          "tooltip": {
-            "platform": "{{platform}}",
-            "clicks": "Clicks: {{count}}"
-          },
-          "stats": {
-            "platforms": "Mga Platform",
-            "totalClicks": "Kabuuang Clicks",
-            "avgClicks": "Average Clicks/Platform"
-          }
-        }
+      "headline": "Para kanino ang explorers.earth?",
+      "subtext": "Ang explorers.earth ay para sa sinumang naniniwala na ang pagbabahagi ay isang responsibilidad — hindi isang broadcast.",
+      "useCases": {
+        "airbnbHosts": "Mga Airbnb Host",
+        "airbnbHostsDesc": "Pahusayin ang guest experience sa lokal na insights",
+        "anyBusiness": "Anumang Negosyo",
+        "anyBusinessDesc": "Magtayo ng komunidad at customer loyalty",
+        "cafes": "Mga Cafe",
+        "cafesDesc": "Ibahagi ang mga paboritong lugar ng kapitbahayan sa mga customer",
+        "creators": "Mga Creator",
+        "creatorsDesc": "Magdagdag ng value lampas sa content sa actionable tips",
+        "hotels": "Mga Hotel",
+        "hotelsDesc": "Magbigay ng curated na lokal na rekomendasyon",
+        "influencers": "Mga Influencer",
+        "influencersDesc": "I-monetize ang lokal na kaalaman at magtayo ng komunidad",
+        "localGuides": "Mga Lokal na Guide",
+        "localGuidesDesc": "I-scale ang inyong expertise lampas sa individual tours",
+        "restaurants": "Mga Restaurant",
+        "restaurantsDesc": "Cross-promotion sa ibang lokal na negosyo",
+        "tourOperators": "Mga Tour Operator",
+        "tourOperatorsDesc": "I-expand ang mga experience lampas sa scheduled tours",
+        "travelers": "Mga Traveler",
+        "travelersDesc": "Ibahagi ang mga natuklasang gems kasama ang mga kapwa explorer"
       }
     }
   },
-  "countries": {
-    "US": "United States",
-    "IN": "India",
-    "GB": "United Kingdom",
-    "CA": "Canada",
-    "AU": "Australia",
-    "DE": "Germany",
-    "FR": "France",
-    "IT": "Italy",
-    "ES": "Spain",
-    "BR": "Brazil",
-    "MX": "Mexico",
-    "JP": "Japan",
-    "CN": "China",
-    "RU": "Russia",
-    "KR": "South Korea",
-    "NL": "Netherlands",
-    "SE": "Sweden",
-    "NO": "Norway",
-    "DK": "Denmark",
-    "FI": "Finland",
-    "CH": "Switzerland",
-    "AT": "Austria",
-    "BE": "Belgium",
-    "PL": "Poland",
-    "CZ": "Czech Republic",
-    "HU": "Hungary",
-    "RO": "Romania",
-    "BG": "Bulgaria",
-    "GR": "Greece",
-    "PT": "Portugal",
-    "IE": "Ireland",
-    "IS": "Iceland",
-    "LU": "Luxembourg",
-    "MT": "Malta",
-    "CY": "Cyprus",
-    "EE": "Estonia",
-    "LV": "Latvia",
-    "LT": "Lithuania",
-    "SI": "Slovenia",
-    "SK": "Slovakia",
-    "HR": "Croatia",
-    "BA": "Bosnia and Herzegovina",
-    "RS": "Serbia",
-    "ME": "Montenegro",
-    "MK": "North Macedonia",
-    "AL": "Albania",
-    "XK": "Kosovo",
-    "MD": "Moldova",
-    "UA": "Ukraine",
-    "BY": "Belarus",
-    "GE": "Georgia",
-    "AM": "Armenia",
-    "AZ": "Azerbaijan",
-    "KZ": "Kazakhstan",
-    "UZ": "Uzbekistan",
-    "KG": "Kyrgyzstan",
-    "TJ": "Tajikistan",
-    "TM": "Turkmenistan",
-    "AF": "Afghanistan",
-    "PK": "Pakistan",
-    "BD": "Bangladesh",
-    "LK": "Sri Lanka",
-    "MV": "Maldives",
-    "NP": "Nepal",
-    "BT": "Bhutan",
-    "MM": "Myanmar",
-    "TH": "Thailand",
-    "LA": "Laos",
-    "KH": "Cambodia",
-    "VN": "Vietnam",
-    "MY": "Malaysia",
-    "SG": "Singapore",
-    "BN": "Brunei",
-    "ID": "Indonesia",
-    "PH": "Philippines",
-    "TL": "East Timor",
-    "MN": "Mongolia",
-    "KP": "North Korea",
-    "TW": "Taiwan",
-    "HK": "Hong Kong",
-    "MO": "Macau",
-    "SA": "Saudi Arabia",
-    "AE": "United Arab Emirates",
-    "QA": "Qatar",
-    "KW": "Kuwait",
-    "BH": "Bahrain",
-    "OM": "Oman",
-    "YE": "Yemen",
-    "IQ": "Iraq",
-    "IR": "Iran",
-    "SY": "Syria",
-    "LB": "Lebanon",
-    "JO": "Jordan",
-    "IL": "Israel",
-    "PS": "Palestine",
-    "TR": "Turkey",
-    "EG": "Egypt",
-    "LY": "Libya",
-    "TN": "Tunisia",
-    "DZ": "Algeria",
-    "MA": "Morocco",
-    "SD": "Sudan",
-    "SS": "South Sudan",
-    "ET": "Ethiopia",
-    "ER": "Eritrea",
-    "DJ": "Djibouti",
-    "SO": "Somalia",
-    "KE": "Kenya",
-    "UG": "Uganda",
-    "TZ": "Tanzania",
-    "RW": "Rwanda",
-    "BI": "Burundi",
-    "MW": "Malawi",
-    "ZM": "Zambia",
-    "ZW": "Zimbabwe",
-    "BW": "Botswana",
-    "NA": "Namibia",
-    "ZA": "South Africa",
-    "LS": "Lesotho",
-    "SZ": "Eswatini",
-    "MG": "Madagascar",
-    "MU": "Mauritius",
-    "SC": "Seychelles",
-    "KM": "Comoros",
-    "MZ": "Mozambique",
-    "AO": "Angola",
-    "CD": "Democratic Republic of the Congo",
-    "CG": "Republic of the Congo",
-    "CF": "Central African Republic",
-    "TD": "Chad",
-    "CM": "Cameroon",
-    "NG": "Nigeria",
-    "NE": "Niger",
-    "ML": "Mali",
-    "BF": "Burkina Faso",
-    "CI": "Ivory Coast",
-    "GH": "Ghana",
-    "TG": "Togo",
-    "BJ": "Benin",
-    "SN": "Senegal",
-    "GM": "Gambia",
-    "GW": "Guinea-Bissau",
-    "GN": "Guinea",
-    "SL": "Sierra Leone",
-    "LR": "Liberia",
-    "MR": "Mauritania",
-    "CV": "Cape Verde",
-    "ST": "São Tomé and Príncipe",
-    "GQ": "Equatorial Guinea",
-    "GA": "Gabon",
-    "AR": "Argentina",
-    "BO": "Bolivia",
-    "CL": "Chile",
-    "CO": "Colombia",
-    "EC": "Ecuador",
-    "FK": "Falkland Islands",
-    "GF": "French Guiana",
-    "GY": "Guyana",
-    "PY": "Paraguay",
-    "PE": "Peru",
-    "SR": "Suriname",
-    "UY": "Uruguay",
-    "VE": "Venezuela",
-    "CU": "Cuba",
-    "JM": "Jamaica",
-    "HT": "Haiti",
-    "DO": "Dominican Republic",
-    "PR": "Puerto Rico",
-    "TT": "Trinidad and Tobago",
-    "BB": "Barbados",
-    "LC": "Saint Lucia",
-    "VC": "Saint Vincent and the Grenadines",
-    "GD": "Grenada",
-    "AG": "Antigua and Barbuda",
-    "KN": "Saint Kitts and Nevis",
-    "DM": "Dominica",
-    "BS": "Bahamas",
-    "BZ": "Belize",
-    "GT": "Guatemala",
-    "SV": "El Salvador",
-    "HN": "Honduras",
-    "NI": "Nicaragua",
-    "CR": "Costa Rica",
-    "PA": "Panama",
-    "NZ": "New Zealand",
-    "FJ": "Fiji",
-    "PG": "Papua New Guinea",
-    "SB": "Solomon Islands",
-    "VU": "Vanuatu",
-    "NC": "New Caledonia",
-    "PF": "French Polynesia",
-    "WS": "Samoa",
-    "TO": "Tonga",
-    "KI": "Kiribati",
-    "TV": "Tuvalu",
-    "NR": "Nauru",
-    "PW": "Palau",
-    "FM": "Micronesia",
-    "MH": "Marshall Islands"
+  "seo": {
+    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+  },
+  "settings": {
+    "account": {
+      "changePassword": {
+        "accountDetailsRequired": "Enter your account Details to proceed further!!",
+        "accountDocumentIdNotFound": "Could not find account documentId. Please check your username or try again.",
+        "button": "Palitan ang Password",
+        "confirmPassword": "Kumpirmahin ang bagong password",
+        "confirmPasswordPlaceholder": "Ulit-ulitin ang bagong password",
+        "currentPassword": "Kasalukuyang password",
+        "currentPasswordPlaceholder": "Ilagay ang inyong kasalukuyang password",
+        "currentPasswordRequired": "Please enter your current password.",
+        "deleteAccountFailed": "Failed to delete account.",
+        "description": "I-update ang inyong password upang mapanatiling ligtas ang inyong account",
+        "invalidPassword": "Invalid password. Please check your password and try again.",
+        "modalTitle": "Palitan ang Password",
+        "newPassword": "Bagong password",
+        "newPasswordPlaceholder": "Ilagay ang bagong password",
+        "passwordRequiredForDeletion": "Password is required to delete account.",
+        "redirectMessage": "Nireredirect sa login para sa security...",
+        "saveReasonFailed": "Failed to save reason. Try again.",
+        "successMessage": "Matagumpay na na-update ang password. Ireredirect kayo sa login para sa security.",
+        "text": "Palitan ang password?",
+        "updateAccountStatusFailed": "Failed to update account status.",
+        "updateButton": "I-update ang Password"
+      },
+      "deactivateAccount": {
+        "activatedMessage": "Matagumpay na na-activate ang account",
+        "button": "I-deactivate ang Account",
+        "confirmButton": "I-deactivate ang Aking Account",
+        "deactivatedButton": "Na-deactivate",
+        "description": "Pansamantalang i-deactivate ang inyong account",
+        "enterPassword": "Ilagay ang inyong password",
+        "enterUsername": "Ilagay ang inyong username",
+        "modalDescription": "Sigurado ba kayong gusto ninyong i-deactivate ang inyong account?",
+        "modalTitle": "I-deactivate ang inyong account?",
+        "passwordPlaceholder": "Ilagay ang inyong kasalukuyang password",
+        "reactivationHint": "You can reactivate your account later using your email.",
+        "reactivationLink": "Learn how →",
+        "successMessage": "Matagumpay na na-deactivate ang account",
+        "text": "I-deactivate ang inyong account?",
+        "usernamePlaceholder": "Ilagay ang inyong username"
+      },
+      "deleteAccount": {
+        "button": "Tanggalin ang Account",
+        "description": "Permanenteng tanggalin ang inyong account at lahat ng data",
+        "step1": {
+          "continueButton": "Ipagpatuloy ang pagtanggal",
+          "deactivateInsteadButton": "I-deactivate na lang ang account",
+          "modalDescription": "Sigurado ba kayong gusto ninyong tanggalin ang inyong account? Hindi na ito maibabalik.",
+          "modalDescription2": "Kung gusto ninyong itago ang inyong data, pwede ninyong i-deactivate na lang ang account.",
+          "modalTitle": "Tanggalin ang inyong account?"
+        },
+        "step2": {
+          "confirmPassword": "Kumpirmahin ang inyong password",
+          "confirmPasswordPlaceholder": "Kumpirmahin ang inyong password",
+          "continueButton": "Magpatuloy",
+          "enterPassword": "Ilagay ang inyong password",
+          "enterUsername": "Ilagay ang inyong username",
+          "modalTitle": "Ilagay ang inyong mga detalye",
+          "passwordPlaceholder": "Ilagay ang inyong password",
+          "usernamePlaceholder": "Ilagay ang inyong username"
+        },
+        "step3": {
+          "continueButton": "Magpatuloy",
+          "modalTitle": "Bakit kayo aalis?",
+          "reasonPlaceholder": "Pakisabi sa amin ang dahilan ng pag-alis..."
+        },
+        "step4": {
+          "confirmationRequired": "Pakitype ang 'CONFIRM DELETE' para kumpirmahin.",
+          "confirmPlaceholder": "I-type ang 'CONFIRM DELETE' para kumpirmahin",
+          "confirmText": "I-type ang 'CONFIRM DELETE' para magpatuloy",
+          "confirmTextValue": "CONFIRM DELETE",
+          "deleteButton": "Tanggalin ang Aking Account",
+          "modalTitle": "Kumpirmahin ang pagtanggal",
+          "reasonRequired": "Pakibigay ang dahilan ng pag-alis.",
+          "successMessage": "Matagumpay na natanggal ang account."
+        },
+        "text": "Tanggalin ang inyong account?"
+      },
+      "heading": "Account",
+      "security": {
+        "title": "Account at Security"
+      }
+    },
+    "languagePreference": {
+      "availableLanguages": "Pumili mula sa 47 available na wika",
+      "currentLanguage": "Kasalukuyan: {{flag}} {{name}}",
+      "description": "Piliin ang inyong gustong wika para sa interface. Babaguhin nito ang wika ng lahat ng teksto, mga button at menu sa buong aplikasyon.",
+      "heading": "Pagpipilian ng Wika",
+      "languageChanged": "Napalitan ang wika sa {{name}}",
+      "noLanguagesFound": "No languages found",
+      "searchPlaceholder": "Search languages...",
+      "selectLanguage": "Piliin ang inyong wika"
+    },
+    "subtitle": "Pamahalaan ang mga setting at kagustuhan ng inyong account",
+    "title": "Mga Setting"
+  },
+  "sidebar": {
+    "analytics": "Analytics",
+    "clickToOpenMenu": "I-click upang buksan ang menu",
+    "darkMode": "Dark Mode",
+    "home": "Home",
+    "lightMode": "Light Mode",
+    "loading": "Naglo-load...",
+    "logout": "Mag-logout",
+    "music": "Music",
+    "places": "Places",
+    "profile": "Profile",
+    "recommendations": "Mga Rekomendasyon",
+    "settings": "Mga Setting"
+  },
+  "toast": {
+    "error": {
+      "accessDenied": "Tinanggihan ang access. Walang pahintulot na gawin ang aksyon na ito.",
+      "accountActivationFailed": "Hindi matagumpay ang pag-activate ng account. Subukan ulit.",
+      "accountAlreadyExists": "Account already exists. Redirecting to home...",
+      "accountCreationFailed": "Hindi matagumpay ang paggawa ng account. Subukan ulit.",
+      "accountDeleted": "Nadelete ang account. Makipag-ugnayan sa support.",
+      "accountExistsRefresh": "Account already exists. Please refresh the page.",
+      "accountLocked": "Naka-lock ang account. Makipag-ugnayan sa support.",
+      "accountSuspended": "Na-suspend ang account. Makipag-ugnayan sa support.",
+      "accountTypeRequired": "Kailangan ang account type",
+      "actionFailed": "Hindi matagumpay ang aksyon. Subukan ulit.",
+      "addressRequired": "Kailangan ang address",
+      "allFilesAlreadyUploaded": "All selected files are already uploaded!",
+      "alreadyExists": "Already Exist!!",
+      "backgroundImageUpdateFailed": "Hindi matagumpay ang pag-upload ng background image. Subukan ulit.",
+      "bioRequired": "Kailangan ang bio",
+      "bioTooLong": "Masyadong mahaba ang bio. Panatilihin sa ilalim ng 250 characters",
+      "captchaFailed": "Hindi matagumpay ang captcha verification. Subukan ulit.",
+      "changesSaveFailed": "Hindi matagumpay ang pag-save ng mga pagbabago. Subukan ulit.",
+      "cityRequired": "Kailangan ang city",
+      "codeLimitExceeded": "Na-exceed ang code limit. Subukan ulit mamaya.",
+      "conflictError": "Error sa conflict. Umiiral na ang resource.",
+      "countryRequired": "Kailangan ang country",
+      "dataSaveFailed": "Hindi matagumpay ang pag-save ng data. Subukan ulit.",
+      "displayNameRequired": "Kailangan ang display name",
+      "displayNameTooLong": "Masyadong mahaba ang display name",
+      "displayNameTooShort": "Masyadong maikli ang display name",
+      "duplicateFilesSkipped": "{{count}} duplicate file(s) were skipped.",
+      "emailAlreadyExists": "Umiiral na ang email. Gumamit ng ibang email.",
+      "emailConfirmationSendingFailed": "Account created successfully, but failed to send confirmation email. Please try resending from the verification page.",
+      "emailNotFound": "Hindi nahanap ang email. Subukan ulit.",
+      "emailNotVerified": "Hindi pa na-verify ang email. I-verify muna ang inyong email.",
+      "emailSendFailed": "Hindi matagumpay ang pagpapadala ng email. Subukan ulit.",
+      "emailVerificationFailed": "Hindi matagumpay ang email verification. Subukan ulit.",
+      "errorCroppingImage": "Error Cropping the Image.",
+      "errorLoadingCategories": "Error Loading Categories!!!",
+      "errorValidatingFiles": "An error occurred while validating files",
+      "expiredCode": "Nag-expire na ang code. Humingi ng bago.",
+      "expiredToken": "Nag-expire na ang token. Subukan ulit.",
+      "failedToDeleteRecommendationList": "Failed to delete recommendation list. Please try again.",
+      "failedToFetchImages": "Failed to fetch images",
+      "failedToFetchNearbyPlaces": "Failed to fetch nearby places. Please try again.",
+      "failedToUpdatePassword": "Failed to update password.",
+      "fetchedImages": "Fetched {{count}} image(s)",
+      "fileTooLarge": "Masyadong malaki ang file. Pumili ng mas maliit na file.",
+      "fileUploadFailed": "Hindi matagumpay ang pag-upload ng file. Subukan ulit.",
+      "fileValidationError": "An error occurred while validating files",
+      "fileValidationErrorWithName": "{{fileName}}: {{error}}",
+      "formSubmissionFailed": "Hindi matagumpay ang pagpapadala ng form. Subukan ulit.",
+      "graphQLErrorOccurred": "GraphQL error occurred",
+      "imageAspectRatioInvalid": "Hindi wasto ang image aspect ratio. Pumili ng ibang image",
+      "imageColorSpaceInvalid": "Hindi wasto ang image color space. Pumili ng ibang image",
+      "imageContentAbusive": "May abusive content ang image. Pumili ng ibang image",
+      "imageContentAcademic": "Nakakasira sa academic interests ang image content. Pumili ng ibang image",
+      "imageContentAnger": "Nakakasira sa anger interests ang image content. Pumili ng ibang image",
+      "imageContentAnimals": "May involvement ng animal cruelty ang image content. Pumili ng ibang image",
+      "imageContentArtistic": "Nakakasira sa artistic interests ang image content. Pumili ng ibang image",
+      "imageContentBrand": "Nakakasira sa brand ang image content. Pumili ng ibang image",
+      "imageContentBusiness": "Nakakasira sa negosyo ang image content. Pumili ng ibang image",
+      "imageContentConsent": "Walang consent ang image content. Pumili ng ibang image",
+      "imageContentCopyright": "Nilalabag ng image content ang copyright. Pumili ng ibang image",
+      "imageContentCreative": "Nakakasira sa creative interests ang image content. Pumili ng ibang image",
+      "imageContentCultural": "Nakakasira sa cultural interests ang image content. Pumili ng ibang image",
+      "imageContentDangerous": "Mapanganib ang content ng image. Pumili ng ibang image",
+      "imageContentDiscriminatory": "May discriminatory content ang image. Pumili ng ibang image",
+      "imageContentDisgust": "Nakakasira sa disgust interests ang image content. Pumili ng ibang image",
+      "imageContentEconomic": "Nakakasira sa economic interests ang image content. Pumili ng ibang image",
+      "imageContentEducational": "Nakakasira sa educational interests ang image content. Pumili ng ibang image",
+      "imageContentEntertainment": "Nakakasira sa entertainment interests ang image content. Pumili ng ibang image",
+      "imageContentEnvironment": "Nakakasira sa kapaligiran ang image content. Pumili ng ibang image",
+      "imageContentEnvy": "Nakakasira sa envy interests ang image content. Pumili ng ibang image",
+      "imageContentEthical": "Nakakasira sa ethical interests ang image content. Pumili ng ibang image",
+      "imageContentExcitement": "Nakakasira sa excitement interests ang image content. Pumili ng ibang image",
+      "imageContentFear": "Nakakasira sa fear interests ang image content. Pumili ng ibang image",
+      "imageContentGluttony": "Nakakasira sa gluttony interests ang image content. Pumili ng ibang image",
+      "imageContentGreed": "Nakakasira sa greed interests ang image content. Pumili ng ibang image",
+      "imageContentGuilt": "Nakakasira sa guilt interests ang image content. Pumili ng ibang image",
+      "imageContentHappiness": "Nakakasira sa happiness interests ang image content. Pumili ng ibang image",
+      "imageContentHarassing": "May harassing content ang image. Pumili ng ibang image",
+      "imageContentHate": "Nakakasira sa hate interests ang image content. Pumili ng ibang image",
+      "imageContentHateful": "May mapoot na content ang image. Pumili ng ibang image",
+      "imageContentHealth": "Nakakasira sa kalusugan ang image content. Pumili ng ibang image",
+      "imageContentHobby": "Nakakasira sa hobby interests ang image content. Pumili ng ibang image",
+      "imageContentIllegal": "Illegal ang content ng image. Pumili ng ibang image",
+      "imageContentInappropriate": "Hindi angkop ang content ng image. Pumili ng ibang image",
+      "imageContentInformational": "Nakakasira sa informational interests ang image content. Pumili ng ibang image",
+      "imageContentIntegrity": "Nakakasira sa integridad ang image content. Pumili ng ibang image",
+      "imageContentIntellectual": "Nakakasira sa intellectual interests ang image content. Pumili ng ibang image",
+      "imageContentInterest": "Nakakasira sa interest interests ang image content. Pumili ng ibang image",
+      "imageContentJealousy": "Nakakasira sa jealousy interests ang image content. Pumili ng ibang image",
+      "imageContentJoy": "Nakakasira sa joy interests ang image content. Pumili ng ibang image",
+      "imageContentLegal": "Nakakasira sa legal interests ang image content. Pumili ng ibang image",
+      "imageContentLeisure": "Nakakasira sa leisure interests ang image content. Pumili ng ibang image",
+      "imageContentLove": "Nakakasira sa love interests ang image content. Pumili ng ibang image",
+      "imageContentLust": "Nakakasira sa lust interests ang image content. Pumili ng ibang image",
+      "imageContentMedia": "Nakakasira sa media interests ang image content. Pumili ng ibang image",
+      "imageContentMinors": "May involvement ng minors ang image content. Pumili ng ibang image",
+      "imageContentMoral": "Nakakasira sa moral interests ang image content. Pumili ng ibang image",
+      "imageContentNews": "Nakakasira sa news interests ang image content. Pumili ng ibang image",
+      "imageContentOffensive": "May nakakasakit na content ang image. Pumili ng ibang image",
+      "imageContentPassion": "Nakakasira sa passion interests ang image content. Pumili ng ibang image",
+      "imageContentPersonal": "Nakakasira sa personal interests ang image content. Pumili ng ibang image",
+      "imageContentPhilosophical": "Nakakasira sa philosophical interests ang image content. Pumili ng ibang image",
+      "imageContentPolitical": "Nakakasira sa political interests ang image content. Pumili ng ibang image",
+      "imageContentPride": "Nakakasira sa pride interests ang image content. Pumili ng ibang image",
+      "imageContentPrivacy": "Nilalabag ng image content ang privacy. Pumili ng ibang image",
+      "imageContentProfessional": "Nakakasira sa professional interests ang image content. Pumili ng ibang image",
+      "imageContentRecreation": "Nakakasira sa recreation interests ang image content. Pumili ng ibang image",
+      "imageContentReligious": "Nakakasira sa religious interests ang image content. Pumili ng ibang image",
+      "imageContentReputation": "Nakakasira sa reputasyon ang image content. Pumili ng ibang image",
+      "imageContentSadness": "Nakakasira sa sadness interests ang image content. Pumili ng ibang image",
+      "imageContentSafety": "Nakakasira sa kaligtasan ang image content. Pumili ng ibang image",
+      "imageContentScientific": "Nakakasira sa scientific interests ang image content. Pumili ng ibang image",
+      "imageContentSecurity": "Nakakasira sa seguridad ang image content. Pumili ng ibang image",
+      "imageContentSexual": "May sexual content ang image. Pumili ng ibang image",
+      "imageContentShame": "Nakakasira sa shame interests ang image content. Pumili ng ibang image",
+      "imageContentSloth": "Nakakasira sa sloth interests ang image content. Pumili ng ibang image",
+      "imageContentSocial": "Nakakasira sa social interests ang image content. Pumili ng ibang image",
+      "imageContentSpiritual": "Nakakasira sa spiritual interests ang image content. Pumili ng ibang image",
+      "imageContentSports": "Nakakasira sa sports interests ang image content. Pumili ng ibang image",
+      "imageContentSurprise": "Nakakasira sa surprise interests ang image content. Pumili ng ibang image",
+      "imageContentTechnical": "Nakakasira sa technical interests ang image content. Pumili ng ibang image",
+      "imageContentThreatening": "May threatening content ang image. Pumili ng ibang image",
+      "imageContentTrademark": "Nilalabag ng image content ang trademark. Pumili ng ibang image",
+      "imageContentViolent": "Marahas ang content ng image. Pumili ng ibang image",
+      "imageContentWrath": "Nakakasira sa wrath interests ang image content. Pumili ng ibang image",
+      "imageCorrupted": "Nacorrupt ang image. Pumili ng ibang image",
+      "imageDimensionsInvalid": "Hindi wasto ang image dimensions. Pumili ng ibang image",
+      "imageFormatInvalid": "Hindi wasto ang image format. Pumili ng ibang image",
+      "imageMalwareDetected": "May malware na natuklasan sa image. Pumili ng ibang image",
+      "imageMetadataInvalid": "Hindi wasto ang image metadata. Pumili ng ibang image",
+      "imageProcessingFailed": "Hindi matagumpay ang image processing. Subukan ulit",
+      "imageQualityTooLow": "Masyadong mababa ang image quality. Pumili ng mas mataas na quality",
+      "imageRequired": "Kailangan ang image",
+      "imageSecurityViolation": "May violation sa image security. Pumili ng ibang image",
+      "imageSizeInvalid": "Hindi wasto ang image size. Pumili ng ibang image",
+      "imageSpamDetected": "May spam na natuklasan sa image. Pumili ng ibang image",
+      "imageTooBig": "Masyadong malaki ang image. Pumili ng mas maliit",
+      "imageTooLarge": "Masyadong malaki ang image. Pumili ng mas maliit na image",
+      "imageTooSmall": "Masyadong maliit ang image. Pumili ng mas malaki",
+      "imageUploadFailed": "Hindi matagumpay ang pag-upload ng larawan. Subukan ulit.",
+      "imageVirusDetected": "May virus na natuklasan sa image. Pumili ng ibang image",
+      "invalidAccountType": "Hindi wasto ang napiling account type",
+      "invalidCode": "Hindi wasto ang code. Pakitignan ang inyong input.",
+      "invalidCredentials": "Hindi wasto ang credentials. Pakitignan ang inyong input.",
+      "invalidEmailFormat": "Hindi wasto ang email format. Maglagay ng wastong email.",
+      "invalidInput": "Hindi wasto ang input. Pakitignan ang inyong data.",
+      "invalidToken": "Hindi wasto ang token. Subukan ulit.",
+      "invalidUsername": "Hindi wasto ang username. Pakitignan ang inyong input.",
+      "invalidUsernameWithError": "Invalid username: {{error}}",
+      "linkCopyFailed": "Hindi matagumpay ang pag-kopya ng link. Subukan ulit.",
+      "locationAlreadyExists": "This location already exists!",
+      "loginFailed": "Hindi matagumpay ang pag-login. Pakitignan ang inyong credentials.",
+      "maintenanceMode": "Nasa maintenance ang service. Subukan ulit mamaya.",
+      "mobileNumberInvalid": "Hindi wasto ang mobile number format",
+      "mobileNumberRequired": "Kailangan ang mobile number",
+      "mobileNumberTooLong": "Masyadong mahaba ang mobile number",
+      "mobileNumberTooShort": "Masyadong maikli ang mobile number",
+      "networkError": "Error sa network. Pakitignan ang inyong connection.",
+      "noImagesFoundForPlace": "No images found for this place",
+      "notificationSendFailed": "Hindi matagumpay ang pagpapadala ng notification. Subukan ulit.",
+      "noValidFilesSelected": "No valid files selected. Supported formats: {{formats}}",
+      "onboardingAlreadyCompleted": "Onboarding already completed. Redirecting to home...",
+      "onboardingCompletedAnotherTab": "Onboarding completed in another tab. Redirecting...",
+      "onboardingFailed": "Hindi matagumpay ang onboarding. Subukan ulit.",
+      "onboardingInProgress": "Onboarding is already in progress in another tab.",
+      "operationTimeout": "Nag-timeout ang operasyon. Subukan ulit.",
+      "passwordChangeFailed": "Hindi matagumpay ang pagbabago ng password. Subukan ulit.",
+      "passwordResetFailed": "Hindi matagumpay ang pag-reset ng password. Subukan ulit.",
+      "passwordsDoNotMatch": "Hindi nagtugma ang mga password. Subukan ulit.",
+      "passwordTooWeak": "Masyadong mahina ang password. Pumili ng mas malakas na password.",
+      "permissionDenied": "Tinanggihan ang pahintulot. Makipag-ugnayan sa support.",
+      "phoneNotVerified": "Hindi pa na-verify ang phone number. I-verify muna ang inyong phone.",
+      "placeAlreadyExists": "This place already exists in your recommendation list!",
+      "pleaseSelectListFirst": "Please select a recommendation list first",
+      "pleaseSelectLocation": "Please select a location from the search results",
+      "postalCodeRequired": "Kailangan ang postal code",
+      "preconditionFailed": "Hindi matagumpay ang precondition. Pakitignan ang inyong request.",
+      "primaryAddressRequired": "Kailangan ang primary address",
+      "profileCompletionFailed": "Hindi matagumpay ang pagkumpleto ng profile. Subukan ulit.",
+      "profileImageUpdateFailed": "Hindi matagumpay ang pag-upload ng profile image. Subukan ulit.",
+      "profileUpdateFailed": "Hindi matagumpay ang pag-update ng profile. Subukan ulit.",
+      "quotaExceeded": "Na-exceed ang quota. Subukan ulit mamaya.",
+      "rateLimitExceeded": "Masyadong maraming request. Subukan mamaya.",
+      "recommendedListUpdateFailed": "Error sa Pag-update ng Listahan ng Rekomendasyon!!!",
+      "registrationFailed": "Hindi matagumpay ang pagpaparehistro. Subukan ulit.",
+      "requiredFieldMissing": "Kulang ang required field. Punan ang lahat ng required fields.",
+      "resetLinkFailed": "Hindi matagumpay ang pagpapadala ng reset link. Subukan mamaya.",
+      "resetLinkResendFailed": "Hindi matagumpay ang pagpapadala ulit. Subukan mamaya.",
+      "resourceNotFound": "Hindi nahanap ang resource. Pakitignan ang inyong request.",
+      "searchAndSelectPlaceFirst": "Search and select a place first",
+      "selectAtLeastOneImage": "Select at least one image",
+      "selectPlaceFromSuggestions": "Select the Place from google suggestions",
+      "selectValidCategory": "Select a Valid Category",
+      "serverError": "Error sa server. Subukan mamaya.",
+      "serviceUnavailable": "Hindi available ang service. Subukan ulit mamaya.",
+      "sessionExpired": "Nag-expire na ang session. Mag-login ulit.",
+      "settingsSaveFailed": "Hindi matagumpay ang pag-save ng settings. Subukan ulit.",
+      "setupFailed": "Hindi matagumpay ang setup. Subukan ulit.",
+      "somethingWentWrong": "Something Went Wrong!!",
+      "stateRequired": "Kailangan ang state",
+      "submissionInProgress": "Please wait, submission is already in progress.",
+      "tooManyAttempts": "Masyadong maraming pagtatangka. Subukan mamaya.",
+      "twoFactorFailed": "Hindi matagumpay ang two-factor authentication. Subukan ulit.",
+      "twoFactorRequired": "Kailangan ang two-factor authentication.",
+      "unsupportedFileType": "Hindi suportado ang file type. Pumili ng ibang file.",
+      "unsupportedImageFormat": "Hindi suportado ang image format. Gumamit ng JPG, PNG, o GIF",
+      "updateFailedWithError": "Update failed: {{error}}",
+      "uploadLimitExceeded": "Na-exceed ang upload limit. Subukan ulit mamaya.",
+      "usernameAlreadyExists": "Umiiral na ang username. Pumili ng iba.",
+      "usernameChangeFailed": "Hindi matagumpay ang pagbabago ng username. Subukan ulit.",
+      "usernameInvalidChars": "May invalid characters ang username. Gumamit lang ng letters, numbers, at hyphens.",
+      "usernameProfanity": "May inappropriate content ang username. Pumili ng iba.",
+      "usernameReserved": "Reserved ang username. Pumili ng iba.",
+      "usernameTooLong": "Masyadong mahaba ang username. Pumili ng mas maikli.",
+      "usernameTooShort": "Masyadong maikli ang username. Pumili ng mas mahaba.",
+      "usernameUpdateFailed": "Hindi matagumpay ang pag-update ng username. Subukan ulit.",
+      "validationError": "Error sa validation. Pakitignan ang inyong input.",
+      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!"
+    },
+    "info": {
+      "aborting": "Nagra-abort...",
+      "accountAlreadyExists": "Account already exists. Redirecting to home...",
+      "activating": "Nag-a-activate...",
+      "adding": "Nagda-dagdag...",
+      "adjusting": "Nag-a-adjust...",
+      "arranging": "Naga-arrange...",
+      "building": "Nagtatayo...",
+      "canceling": "Nagra-cancel...",
+      "changing": "Nagba-bago...",
+      "checking": "Nagche-check...",
+      "chilling": "Pumapalamig...",
+      "clearing": "Nagcle-clear...",
+      "closing": "Nagsasara...",
+      "completing": "Natatapos...",
+      "concluding": "Nakokonklusyon...",
+      "configuring": "Nagco-configure...",
+      "connecting": "Kumukonekta...",
+      "constructing": "Nagtayo...",
+      "cooling": "Pumapalamig...",
+      "correcting": "Nagco-correct...",
+      "creating": "Naggagawa...",
+      "deactivating": "Nagde-deactivate...",
+      "deleting": "Nagde-delete...",
+      "disabling": "Nagdi-disable...",
+      "disconnecting": "Nagdi-disconnect...",
+      "downloading": "Nagda-download...",
+      "enabling": "Nag-e-enable...",
+      "ending": "Natatapos...",
+      "enhancing": "Nag-e-enhance...",
+      "filtering": "Nagfi-filter...",
+      "finalizing": "Nagfi-finalize...",
+      "finishing": "Natatapos...",
+      "fixing": "Nagfi-fix...",
+      "freezing": "Nagyeyelo...",
+      "generating": "Naggene-generate...",
+      "halting": "Humihinto...",
+      "heating": "Umuinit...",
+      "improving": "Nag-i-improve...",
+      "initializing": "Nagi-initialize...",
+      "inserting": "Nagi-insert...",
+      "interrupting": "Nagi-interrupt...",
+      "launching": "Naglalaunch...",
+      "loading": "Naglo-load...",
+      "making": "Gumagawa...",
+      "melting": "Nagtutunaw...",
+      "modernizing": "Nagmo-modernize...",
+      "modifying": "Nagmo-modify...",
+      "opening": "Nagbubukas...",
+      "optimizing": "Nago-optimize...",
+      "organizing": "Nago-organize...",
+      "pausing": "Nagpa-pause...",
+      "preparing": "Naghahanda...",
+      "processing": "Nagpo-proseso...",
+      "producing": "Naggawa...",
+      "readying": "Naghahanda...",
+      "receiving": "Tumatanggap...",
+      "recovering": "Nagre-recover...",
+      "refreshing": "Nagre-refresh...",
+      "removing": "Nagre-remove...",
+      "renewing": "Nare-renew...",
+      "repairing": "Nagre-repair...",
+      "resetting": "Nagre-reset...",
+      "restarting": "Nagre-restart...",
+      "restoring": "Nagre-restore...",
+      "resuming": "Nagre-resume...",
+      "saving": "Nagse-save...",
+      "searching": "Naghahanap...",
+      "sending": "Nagpapadala...",
+      "setting": "Nagse-set...",
+      "shutting": "Nagsasara...",
+      "sorting": "Nagsu-sort...",
+      "starting": "Nagsi-start...",
+      "stopping": "Nagsi-stop...",
+      "switching": "Nagsu-switch...",
+      "synchronizing": "Nagse-sync...",
+      "terminating": "Nagte-terminate...",
+      "thawing": "Nagtutunaw...",
+      "toggling": "Nagto-toggle...",
+      "tuning": "Nagtu-tune...",
+      "unfreezing": "Nagtutunaw...",
+      "updating": "Nag-u-update...",
+      "upgrading": "Nagu-upgrade...",
+      "uploading": "Nag-u-upload...",
+      "validating": "Nagva-validate...",
+      "verifying": "Nagve-verify...",
+      "warming": "Umuinit..."
+    },
+    "success": {
+      "accountActivated": "Matagumpay na na-activate ang account!",
+      "accountCreated": "Matagumpay na nagawa ang account!",
+      "actionCompleted": "Matagumpay na natapos ang aksyon!",
+      "backgroundImageUpdated": "Matagumpay na na-update ang larawan sa background!",
+      "changesSaved": "Matagumpay na na-save ang mga pagbabago!",
+      "dataSaved": "Matagumpay na na-save ang data!",
+      "emailSent": "Matagumpay na naipadala ang email!",
+      "emailVerificationSent": "Naipadala ang email verification!",
+      "emailVerified": "Matagumpay na na-verify ang email!",
+      "filesAddedSuccessfully": "{{count}} file(s) added successfully!",
+      "filesReadyForUpload": "{{count}} {{fileText}} ready for upload",
+      "fileUploaded": "Matagumpay na na-upload ang file!",
+      "formSubmitted": "Matagumpay na naipadala ang form!",
+      "imagesUploadedToFeed": "Added {{count}} image(s) to feed",
+      "imageUploaded": "Matagumpay na na-upload ang larawan!",
+      "instagramLinkCopied": "Instagram link copied! You can now paste it in your Instagram story or post.",
+      "itemRemovedFromFeed": "Removed {{itemType}} from feed",
+      "linkCopied": "Nakopya ang link sa clipboard!",
+      "loggedOutSuccessfully": "Matagumpay na nag-logout!",
+      "loginSuccessful": "Matagumpay na pag-login!",
+      "mediaRemovedSuccessfully": "Media removed successfully!",
+      "notificationSent": "Matagumpay na naipadala ang notification!",
+      "onboardingCompleted": "Matagumpay na natapos ang onboarding!",
+      "passwordChanged": "Matagumpay na nabago ang password!",
+      "passwordResetSuccessful": "Matagumpay na pag-reset ng password!",
+      "profileCompleted": "Matagumpay na natapos ang profile!",
+      "profileImageUpdated": "Matagumpay na na-update ang larawan ng profile!",
+      "profileUpdated": "Matagumpay na na-update ang profile!",
+      "profileUpdatedSuccessfully": "Profile updated successfully!",
+      "recommendationCreatedSuccessfully": "Recommendation Created Successfully!!!",
+      "recommendationUpdatedSuccessfully": "Recommendation Updated Successfully!!!",
+      "recommendedCityDeleted": "Recommended City Deleted Successfully!!",
+      "recommendedListUpdated": "Matagumpay na na-update ang Listahan ng Rekomendasyon!!!",
+      "registrationSuccessful": "Matagumpay na pagpaparehistro!",
+      "resetLinkResent": "Naipadala ulit ang reset link!",
+      "resetLinkSent": "Naipadala ang password reset link sa inyong email!",
+      "settingsSaved": "Matagumpay na na-save ang settings!",
+      "setupCompleted": "Matagumpay na natapos ang setup!",
+      "uploadingImagesToFeed": "Uploading selected images to your feed...",
+      "usernameChanged": "Matagumpay na nabago ang username!",
+      "usernameUpdated": "Matagumpay na na-update ang username!",
+      "welcomeMessage": "Maligayang pagdating sa explorers!"
+    },
+    "warning": {
+      "accountExpiring": "Nag-expire na ang account. I-update ang inyong account",
+      "accountNotActivated": "Hindi na-activate ang account. I-activate ang inyong account",
+      "actionExpiring": "Nag-expire na ang aksyon. I-update ang inyong aksyon",
+      "actionNotCompleted": "Hindi natapos ang aksyon. Tapusin ang inyong aksyon",
+      "changesExpiring": "Nag-expire na ang mga pagbabago. I-update ang inyong mga pagbabago",
+      "changesNotSaved": "Hindi na-save ang mga pagbabago. I-save ang inyong mga pagbabago",
+      "credentialsExpiring": "Nag-expire na ang credentials. I-update ang inyong credentials",
+      "dataExpiring": "Nag-expire na ang data. I-update ang inyong data",
+      "dataNotSaved": "Hindi na-save ang data. I-save ang inyong data",
+      "emailExpiring": "Nag-expire na ang email. I-update ang inyong email",
+      "emailNotSent": "Hindi naipadala ang email. Ipadala ang inyong email",
+      "emailNotVerified": "Hindi pa na-verify ang email. I-verify ang inyong email",
+      "fileExpiring": "Nag-expire na ang file. I-update ang inyong file",
+      "fileNotUploaded": "Hindi na-upload ang file. I-upload ang inyong file",
+      "formExpiring": "Nag-expire na ang form. I-update ang inyong form",
+      "formNotSubmitted": "Hindi naipadala ang form. Ipadala ang inyong form",
+      "imageExpiring": "Nag-expire na ang image. I-update ang inyong image",
+      "imageNotUploaded": "Hindi na-upload ang image. I-upload ang inyong image",
+      "linkExpiring": "Nag-expire na ang link. I-update ang inyong link",
+      "linkNotCopied": "Hindi nakopya ang link. Kopyahin ang inyong link",
+      "networkSlow": "Mabagal ang network. Pakitignan ang inyong connection",
+      "notificationExpiring": "Nag-expire na ang notification. I-update ang inyong notification",
+      "notificationNotSent": "Hindi naipadala ang notification. Ipadala ang inyong notification",
+      "onboardingExpiring": "Nag-expire na ang onboarding. I-update ang inyong onboarding",
+      "onboardingNotCompleted": "Hindi natapos ang onboarding. Kumpletuhin ang inyong onboarding",
+      "passwordExpiring": "Nag-expire na ang password. I-update ang inyong password",
+      "passwordNotChanged": "Hindi nabago ang password. Baguhin ang inyong password",
+      "passwordWeak": "Mahina ang password. Isipin ang paggamit ng mas malakas na password",
+      "permissionPending": "Naghihintay pa ang permission. Maghintay",
+      "phoneExpiring": "Nag-expire na ang phone. I-update ang inyong phone",
+      "phoneNotVerified": "Hindi pa na-verify ang phone number. I-verify ang inyong phone",
+      "profileExpiring": "Nag-expire na ang profile. I-update ang inyong profile",
+      "profileIncomplete": "Hindi kumpleto ang profile. Kumpletuhin ang inyong profile",
+      "profileNotCompleted": "Hindi natapos ang profile. Kumpletuhin ang inyong profile",
+      "serverSlow": "Mabagal ang server. Subukan ulit mamaya",
+      "sessionExpiring": "Nag-expire na ang session. Mag-login ulit",
+      "settingsExpiring": "Nag-expire na ang settings. I-update ang inyong settings",
+      "settingsNotSaved": "Hindi na-save ang settings. I-save ang inyong settings",
+      "setupExpiring": "Nag-expire na ang setup. I-update ang inyong setup",
+      "setupNotCompleted": "Hindi natapos ang setup. Kumpletuhin ang inyong setup",
+      "usernameCooldown": "Naka-lock pansamantala ang username change dahil sa cooldown period",
+      "usernameCooldownDays": "You can change your username after {{days}} day(s) ({{date}})",
+      "usernameCooldownHours": "You can change your username in {{hours}} hour(s) (after {{time}})",
+      "usernameCooldownMinutes": "You can change your username in {{minutes}} minute(s) (after {{time}})",
+      "usernameCooldownReady": "You can change your username now",
+      "usernameCooldownUnknown": "You can change your username now",
+      "usernameExpiring": "Nag-expire na ang username. I-update ang inyong username",
+      "usernameNotChanged": "Hindi nabago ang username. Baguhin ang inyong username",
+      "validationPending": "Naghihintay pa ang validation. Maghintay"
+    }
   }
 }

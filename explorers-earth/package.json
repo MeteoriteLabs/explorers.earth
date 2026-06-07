@@ -10,7 +10,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "remove-white-bg": "node scripts/remove-white-background.js",
-    "test:local-tunes": "node scripts/test-local-tunes-integration.js"
+    "test:local-tunes": "node scripts/test-local-tunes-integration.js",
+    "i18n:sync": "node scripts/sync-i18n.js",
+    "i18n:check": "node scripts/check-i18n.js"
   },
   "dependencies": {
     "@apollo/client": "^3.12.2",
