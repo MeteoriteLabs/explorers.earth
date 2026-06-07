@@ -236,7 +236,8 @@ const MovieListCard = ({
           <Switch
             checked={list.Visibility}
             onChange={() => onToggleVisibility(list.documentId, list.Visibility)}
-            disabled={togglingId === list.documentId || movieCount === 0}
+            disabled={movieCount === 0}
+            loading={togglingId === list.documentId}
             label={list.Visibility ? "Published" : "Draft"}
           />
         </div>
@@ -385,10 +386,24 @@ const MoviesHome = () => {
   };
 
   const handleToggleVisibility = async (documentId: string, currentVisibility: boolean) => {
+    const list = lists.find(l => l.documentId === documentId);
+    if (!list) return;
     setTogglingId(documentId);
     try {
       await updateMovieList({
         variables: { documentId, Visibility: !currentVisibility },
+        optimisticResponse: {
+          updateMovieList: {
+            __typename: "MovieList",
+            documentId: list.documentId,
+            List_Name: list.List_Name,
+            list_description: list.list_description,
+            slug: list.slug,
+            Visibility: !currentVisibility,
+            display_order: list.display_order,
+            top_picks_heading: list.top_picks_heading || null,
+          }
+        },
         refetchQueries: [MOVIE_LISTS_BY_ACCOUNT],
       });
     } catch {

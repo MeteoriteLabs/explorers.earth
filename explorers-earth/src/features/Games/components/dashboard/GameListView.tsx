@@ -128,7 +128,7 @@ const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () => void 
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [updateGameList] = useMutation(UPDATE_GAME_LIST);
+  const [updateGameList, { loading: isUpdating }] = useMutation(UPDATE_GAME_LIST);
   const [deleteGameList] = useMutation(DELETE_GAME_LIST);
 
   const shareUrl = `${VITE_BASE_URL}/${list.account?.username ?? "user"}/games/${list.slug}`;
@@ -147,6 +147,18 @@ const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () => void 
       }
       await updateGameList({
         variables: { documentId: list.documentId, Visibility: !list.Visibility },
+        optimisticResponse: {
+          updateGameList: {
+            __typename: "GameList",
+            documentId: list.documentId,
+            List_Name: list.List_Name,
+            list_description: list.list_description,
+            slug: list.slug,
+            Visibility: !list.Visibility,
+            display_order: list.display_order,
+            top_picks_heading: list.top_picks_heading || null,
+          }
+        }
       });
       toast.success(list.Visibility ? "List set to Draft." : "List published!");
       onRefetch();
@@ -227,10 +239,11 @@ const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () => void 
               </button>
             )}
 
-            <div className={`p-4 rounded-xl border transition-all mt-2 ${list.Visibility ? "border-green-500/30 bg-green-500/5" : "border-white/10"}`}>
+            <div className={`p-4 rounded-xl border transition-all mt-2 ${list.Visibility ? "border-green-500/30 bg-green-500/5" : "border-white/10"} flex justify-center items-center`}>
               <Switch
                 checked={list.Visibility}
                 onChange={handleToggleVisibility}
+                loading={isUpdating}
                 label={list.Visibility ? "Published (Visible to public)" : "Draft (Private)"}
               />
             </div>
@@ -304,7 +317,7 @@ const GameListView = () => {
 
   const [toggleGamePin] = useMutation(TOGGLE_GAME_PIN);
   const [deleteRecommendedGame] = useMutation(DELETE_RECOMMENDED_GAME);
-  const [updateGameList] = useMutation(UPDATE_GAME_LIST);
+  const [updateGameList, { loading: isUpdating }] = useMutation(UPDATE_GAME_LIST);
 
   const rawList = data?.gameLists?.[0];
   const games: RecommendedGame[] = deduplicateGames(rawList?.recommended_games);
@@ -339,6 +352,35 @@ const GameListView = () => {
       toast.error("Failed to update pin.");
     } finally {
       setPinningId(null);
+    }
+  };
+
+  const handleToggleVisibility = async () => {
+    if (!list) return;
+    if (!list.Visibility && games.length === 0) {
+      toast.error("Add at least one game before publishing.");
+      return;
+    }
+    try {
+      await updateGameList({
+        variables: { documentId: list.documentId, Visibility: !list.Visibility },
+        optimisticResponse: {
+          updateGameList: {
+            __typename: "GameList",
+            documentId: list.documentId,
+            List_Name: list.List_Name,
+            list_description: list.list_description,
+            slug: list.slug,
+            Visibility: !list.Visibility,
+            display_order: list.display_order,
+            top_picks_heading: list.top_picks_heading || null,
+          }
+        }
+      });
+      toast.success(list.Visibility ? "List set to Draft." : "List published!");
+      refetch();
+    } catch {
+      toast.error("Failed to update visibility.");
     }
   };
 
@@ -386,22 +428,8 @@ const GameListView = () => {
         </div>
         <Switch
           checked={list?.Visibility ?? false}
-          onChange={async () => {
-            if (!list) return;
-            if (!list.Visibility && games.length === 0) {
-              toast.error("Add at least one game before publishing.");
-              return;
-            }
-            try {
-              await updateGameList({
-                variables: { documentId: list.documentId, Visibility: !list.Visibility },
-              });
-              toast.success(list.Visibility ? "List set to Draft." : "List published!");
-              refetch();
-            } catch {
-              toast.error("Failed to update visibility.");
-            }
-          }}
+          onChange={handleToggleVisibility}
+          loading={isUpdating}
           label={list?.Visibility ? "Published" : "Draft"}
         />
       </div>

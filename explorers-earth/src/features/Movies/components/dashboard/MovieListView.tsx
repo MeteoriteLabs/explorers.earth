@@ -174,7 +174,7 @@ const MovieListView = () => {
 
   const [togglePin] = useMutation(TOGGLE_MOVIE_PIN);
   const [deleteMovie] = useMutation(DELETE_RECOMMENDED_MOVIE);
-  const [updateList] = useMutation(UPDATE_MOVIE_LIST);
+  const [updateList, { loading: isUpdating }] = useMutation(UPDATE_MOVIE_LIST);
   const [deleteList, { loading: deletingList }] = useMutation(DELETE_MOVIE_LIST);
 
   const list = data?.movieLists?.[0];
@@ -190,11 +190,27 @@ const MovieListView = () => {
       toast.error("Add at least one movie before publishing.");
       return;
     }
-    await updateList({
-      variables: { documentId: list.documentId, Visibility: !list.Visibility },
-      refetchQueries: [MOVIES_BY_LIST],
-    });
-    toast.success(list.Visibility ? "List set to draft." : "List published!");
+    try {
+      await updateList({
+        variables: { documentId: list.documentId, Visibility: !list.Visibility },
+        optimisticResponse: {
+          updateMovieList: {
+            __typename: "MovieList",
+            documentId: list.documentId,
+            List_Name: list.List_Name,
+            list_description: list.list_description,
+            slug: list.slug,
+            Visibility: !list.Visibility,
+            display_order: list.display_order,
+            top_picks_heading: list.top_picks_heading || null,
+          }
+        },
+        refetchQueries: [MOVIES_BY_LIST],
+      });
+      toast.success(list.Visibility ? "List set to draft." : "List published!");
+    } catch {
+      toast.error("Failed to update visibility.");
+    }
   };
 
   const handlePinToggle = async (movie: RecommendedMovie) => {
@@ -288,6 +304,7 @@ const MovieListView = () => {
         <Switch
           checked={list?.Visibility ?? false}
           onChange={handleToggleVisibility}
+          loading={isUpdating}
           label={list?.Visibility ? "Published" : "Draft"}
         />
       </div>
@@ -413,10 +430,11 @@ const MovieListView = () => {
                   </button>
                 )}
 
-                <div className={`p-4 rounded-xl border transition-all mt-2 ${list?.Visibility ? "border-green-500/30 bg-green-500/5" : "border-white/10"}`}>
+                <div className={`p-4 rounded-xl border transition-all mt-2 ${list?.Visibility ? "border-green-500/30 bg-green-500/5" : "border-white/10"} flex justify-center items-center`}>
                   <Switch
                     checked={list?.Visibility ?? false}
                     onChange={handleToggleVisibility}
+                    loading={isUpdating}
                     label={list?.Visibility ? "Published (Visible to public)" : "Draft (Private)"}
                   />
                 </div>

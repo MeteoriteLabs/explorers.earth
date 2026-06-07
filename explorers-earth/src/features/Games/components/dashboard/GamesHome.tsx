@@ -226,7 +226,8 @@ const GameListCard = ({
           <Switch
             checked={list.Visibility}
             onChange={() => onToggleVisibility(list.documentId, list.Visibility)}
-            disabled={togglingId === list.documentId || gameCount === 0}
+            disabled={gameCount === 0}
+            loading={togglingId === list.documentId}
             label={list.Visibility ? "Published" : "Draft"}
           />
         </div>
@@ -362,10 +363,24 @@ const GamesHome = () => {
   }, [allGames]);
 
   const handleToggleVisibility = async (documentId: string, currentVisibility: boolean) => {
+    const list = lists.find(l => l.documentId === documentId);
+    if (!list) return;
     setTogglingId(documentId);
     try {
       await updateGameList({
         variables: { documentId, Visibility: !currentVisibility },
+        optimisticResponse: {
+          updateGameList: {
+            __typename: "GameList",
+            documentId: list.documentId,
+            List_Name: list.List_Name,
+            list_description: list.list_description,
+            slug: list.slug,
+            Visibility: !currentVisibility,
+            display_order: list.display_order,
+            top_picks_heading: list.top_picks_heading || null,
+          }
+        },
         refetchQueries: [GAME_LISTS_BY_ACCOUNT],
       });
     } catch {

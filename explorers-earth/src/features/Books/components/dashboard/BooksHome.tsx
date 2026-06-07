@@ -236,7 +236,8 @@ const BookListCard = ({
           <Switch
             checked={list.visibility}
             onChange={() => onToggleVisibility(list.documentId, list.visibility)}
-            disabled={togglingId === list.documentId || bookCount === 0}
+            disabled={bookCount === 0}
+            loading={togglingId === list.documentId}
             label={list.visibility ? "Published" : "Draft"}
           />
         </div>
@@ -380,10 +381,24 @@ const BooksHome = () => {
   };
 
   const handleToggleVisibility = async (documentId: string, currentVisibility: boolean) => {
+    const list = lists.find(l => l.documentId === documentId);
+    if (!list) return;
     setTogglingId(documentId);
     try {
       await updateBookList({
         variables: { documentId, visibility: !currentVisibility },
+        optimisticResponse: {
+          updateBookList: {
+            __typename: "BookList",
+            documentId: list.documentId,
+            List_Name: list.List_Name,
+            list_description: list.list_description,
+            slug: list.slug,
+            visibility: !currentVisibility,
+            display_order: list.display_order,
+            top_reads_heading: list.top_reads_heading || null,
+          }
+        },
         refetchQueries: [BOOK_LISTS_BY_ACCOUNT],
       });
     } catch {

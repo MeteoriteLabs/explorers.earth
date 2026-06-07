@@ -157,7 +157,7 @@ const ManageTab = ({ list, onRefetch }: ManageTabProps) => {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [updateBookList] = useMutation(UPDATE_BOOK_LIST);
+  const [updateBookList, { loading: isUpdating }] = useMutation(UPDATE_BOOK_LIST);
   const [deleteBookList] = useMutation(DELETE_BOOK_LIST);
 
   const shareUrl = `${VITE_BASE_URL}/${list.account?.username ?? "user"}/books/${list.slug}`;
@@ -177,6 +177,18 @@ const ManageTab = ({ list, onRefetch }: ManageTabProps) => {
     try {
       await updateBookList({
         variables: { documentId: list.documentId, visibility: !list.visibility },
+        optimisticResponse: {
+          updateBookList: {
+            __typename: "BookList",
+            documentId: list.documentId,
+            List_Name: list.List_Name,
+            list_description: list.list_description,
+            slug: list.slug,
+            visibility: !list.visibility,
+            display_order: list.display_order,
+            top_reads_heading: list.top_reads_heading || null,
+          }
+        }
       });
       toast.success(list.visibility ? "List set to Draft." : "List published!");
       onRefetch();
@@ -257,10 +269,11 @@ const ManageTab = ({ list, onRefetch }: ManageTabProps) => {
               </button>
             )}
 
-            <div className={`p-4 rounded-xl border transition-all mt-2 ${list.visibility ? "border-green-500/30 bg-green-500/5" : "border-white/10"}`}>
+            <div className={`p-4 rounded-xl border transition-all mt-2 ${list.visibility ? "border-green-500/30 bg-green-500/5" : "border-white/10"} flex justify-center items-center`}>
               <Switch
                 checked={list.visibility}
                 onChange={handleToggleVisibility}
+                loading={isUpdating}
                 label={list.visibility ? "Published (Visible to public)" : "Draft (Private)"}
               />
             </div>
@@ -376,7 +389,7 @@ const BookListView = () => {
 
   const [toggleBookPin] = useMutation(TOGGLE_BOOK_PIN);
   const [deleteRecommendedBook] = useMutation(DELETE_RECOMMENDED_BOOK);
-  const [updateBookList] = useMutation(UPDATE_BOOK_LIST);
+  const [updateBookList, { loading: isUpdating }] = useMutation(UPDATE_BOOK_LIST);
 
   const rawList = data?.bookLists?.[0];
   const books: RecommendedBook[] = deduplicateBooks(rawList?.recommended_books);
@@ -423,6 +436,18 @@ const BookListView = () => {
     try {
       await updateBookList({
         variables: { documentId: list.documentId, visibility: !list.visibility },
+        optimisticResponse: {
+          updateBookList: {
+            __typename: "BookList",
+            documentId: list.documentId,
+            List_Name: list.List_Name,
+            list_description: list.list_description,
+            slug: list.slug,
+            visibility: !list.visibility,
+            display_order: list.display_order,
+            top_reads_heading: list.top_reads_heading || null,
+          }
+        }
       });
       toast.success(list.visibility ? "List set to Draft." : "List published!");
       refetch();
@@ -480,6 +505,7 @@ const BookListView = () => {
         <Switch
           checked={list?.visibility ?? false}
           onChange={handleToggleVisibility}
+          loading={isUpdating}
           label={list?.visibility ? "Published" : "Draft"}
         />
       </div>
