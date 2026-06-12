@@ -50,7 +50,7 @@ const BookRow = ({
 
   return (
     <div
-      className="group flex items-center gap-3 py-3 border-b border-dashboard-border last:border-0 hover:bg-white/5 cursor-pointer rounded-lg px-2 -mx-2 transition-colors"
+      className="group flex items-center gap-3 p-3 bg-white/[0.03] border border-white/[0.05] hover:border-white/[0.08] hover:bg-white/[0.06] cursor-pointer rounded-xl transition-all mb-2"
       onClick={() => onClick(book)}
     >
       {/* Cover */}
@@ -486,20 +486,17 @@ const BookListView = () => {
   return (
     <div className="px-4 pt-8 pb-24 md:p-6 md:pb-6 max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-start gap-3 mb-6">
-        <button onClick={() => navigate("/recommendations/books")} className="text-white/50 hover:text-white mt-0.5 transition-colors">
-          <ArrowLeft size={20} />
-        </button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-bold text-white truncate">{list?.List_Name}</h1>
-          <div className="flex items-center gap-3 mt-1 flex-wrap text-xs text-white/40">
-            <span>{books.length} book{books.length !== 1 ? "s" : ""}</span>
-            {pinnedCount > 0 && (
-              <span className="flex items-center gap-1 text-amber-400/80 font-medium">
-                <Star size={10} fill="currentColor" /> {pinnedCount}/15 pinned
-              </span>
-            )}
-          </div>
+      <div className="flex items-center justify-between mb-6">
+        {/* Left: Back and Title info */}
+        <div className="flex flex-col items-start">
+          <button
+            onClick={() => navigate("/recommendations/books")}
+            className="text-[10px] text-white/50 hover:text-white mb-1 transition-colors flex items-center gap-1 font-semibold uppercase tracking-wider"
+          >
+            <ArrowLeft size={10} />
+            <span>Back</span>
+          </button>
+          <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight leading-tight">{list?.List_Name}</h1>
         </div>
         {/* Publish toggle switch */}
         <Switch
@@ -511,15 +508,15 @@ const BookListView = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex mb-6 bg-white rounded-full max-w-[320px] mx-auto shadow-sm">
+      <div className="flex mb-6 bg-white rounded-full p-[2px] w-fit mx-auto shadow-sm">
         {(["recommendations", "manage"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-2 px-4 text-sm font-semibold rounded-full capitalize transition-all duration-300 ${
+            className={`px-4 py-1.5 text-[11px] md:text-xs font-semibold rounded-full capitalize transition-all duration-200 ${
               activeTab === tab
-                ? "bg-[#60A5FA] text-white shadow"
-                : "text-blue-900 bg-transparent hover:bg-blue-50/50"
+                ? "bg-dashboard-accent text-white shadow"
+                : "text-[#0f172a] bg-transparent hover:opacity-80"
             }`}
           >
             {tab}
@@ -534,12 +531,12 @@ const BookListView = () => {
           {pinnedCount > 0 && (
             <button
                onClick={() => setShowTopReadsManager(true)}
-               className="w-full mb-4 flex items-center justify-between px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-sm hover:bg-amber-500/15 transition-colors"
+               className="w-full mb-4 flex items-center justify-between px-4 py-3 bg-[#fbbf24]/5 border border-[#fbbf24]/25 rounded-xl text-sm hover:bg-[#fbbf24]/10 text-[#fbbf24] transition-all font-semibold"
              >
-               <span className="flex items-center gap-2 text-amber-400">
+               <span className="flex items-center gap-2">
                  <Star size={14} fill="currentColor" /> Manage Top Reads ({pinnedCount}/15)
                </span>
-               <ChevronRight size={14} className="text-amber-400/60" />
+               <ChevronRight size={14} className="opacity-80" />
              </button>
           )}
 

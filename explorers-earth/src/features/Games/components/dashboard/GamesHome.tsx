@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, gql } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Gamepad2, Star, ChevronRight, Loader2, X } from "lucide-react";
+import { Plus, Gamepad2, Star, ChevronRight, Loader2, X, ChevronDown } from "lucide-react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { toast } from "sonner";
@@ -289,6 +289,7 @@ const GamesHome = () => {
   const [showManageTopGames, setShowManageTopGames] = useState(false);
   const [selectedGame, setSelectedGame] = useState<RecommendedGame | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const { data: accountData } = useQuery(MY_ACCOUNT, {
     variables: { documentId: user?.documentId },
@@ -392,17 +393,20 @@ const GamesHome = () => {
 
   return (
     <div className="px-2 md:px-6 pt-2 pb-24 md:pb-6 max-w-4xl mx-auto">
-      {/* Action Header Row */}
-      <div className="flex items-center justify-between bg-dashboard-sidebar/40 px-3 py-3 rounded-2xl mb-2">
-        <div className="flex flex-col items-start gap-1.5 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
+      {/* Desktop view header */}
+      <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4">
+        {/* Left: Public switch */}
+        <div className="flex items-center gap-2 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
           <SwitchButton
             isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_games === "Yes"}
             onChange={handleVisibilityToggle}
             variant="blue"
           />
-          <span className="text-[10px] md:text-xs text-white leading-tight whitespace-nowrap">Public Visibility</span>
+          <span className="text-[10px] md:text-xs text-[#4ade80] font-semibold leading-tight whitespace-nowrap">
+            Public Visibility
+          </span>
         </div>
-
+        {/* Right: New list btn */}
         <button
           onClick={() => setShowCreateModal(true)}
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap"
@@ -410,6 +414,44 @@ const GamesHome = () => {
           <AddIcon size="5" />
           <span>New List</span>
         </button>
+      </div>
+
+      {/* Mobile view header (split action button with visibility dropdown) */}
+      <div className="md:hidden relative mb-4 w-full">
+        <div className="flex w-full rounded-2xl overflow-hidden border border-white/10 shadow-lg shadow-blue-900/15">
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex-1 bg-dashboard-accent hover:opacity-90 text-xs font-bold text-white py-3 px-4 text-left flex items-center gap-1.5 transition-all"
+          >
+            <AddIcon size="4" />
+            <span>New List</span>
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setDropdownOpen(!dropdownOpen);
+            }}
+            className="bg-dashboard-accent border-l border-white/20 px-3 flex items-center justify-center cursor-pointer transition-all hover:opacity-90"
+          >
+            <ChevronDown size={14} className={`transform transition-transform duration-200 ${dropdownOpen ? "rotate-180" : ""}`} />
+          </button>
+        </div>
+        {/* Dropdown panel */}
+        {dropdownOpen && (
+          <div className="absolute top-[calc(100%+6px)] right-0 left-0 p-3.5 z-50 border border-dashboard-accent/30 rounded-2xl bg-dashboard-sidebar/95 backdrop-blur-md shadow-xl flex justify-between items-center">
+            <span className="text-[11px] text-white/90 font-semibold">Manage Public Visibility</span>
+            <div className="flex items-center gap-2">
+              <span className={`text-[10px] font-bold uppercase ${accountData?.usersPermissionsUser?.accounts?.[0]?.public_games === "Yes" ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+                {accountData?.usersPermissionsUser?.accounts?.[0]?.public_games === "Yes" ? "Pub" : "Draft"}
+              </span>
+              <SwitchButton
+                isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_games === "Yes"}
+                onChange={handleVisibilityToggle}
+                variant="blue"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Loading state */}
@@ -472,7 +514,7 @@ const GamesHome = () => {
             {/* Add new list card */}
             <motion.button
               onClick={() => setShowCreateModal(true)}
-              className="border-2 border-dashed border-dashboard-border rounded-2xl p-5 flex flex-col items-center justify-center gap-2 text-dashboard-muted hover:text-dashboard hover:border-dashboard-border transition-all duration-200 min-h-[160px]"
+              className="border-[2.2px] border-dashed border-dashboard-border rounded-2xl p-5 flex flex-col items-center justify-center gap-2 text-dashboard-muted hover:text-white hover:border-dashboard-accent hover:bg-dashboard-accent/5 transition-all duration-300 min-h-[160px]"
               whileHover={{ scale: 1.01 }}
             >
               <Plus size={24} />
