@@ -382,7 +382,7 @@ const GuidesAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
           <text x="50" y="28" fill="currentColor" fontSize="8" fontWeight="bold" textAnchor="middle">N</text>
         </svg>
       </motion.div>
-      <svg className="absolute inset-0 w-full h-full opacity-20 pointer-events-none" style={{ y: yTranslate }}>
+      <motion.svg className="absolute inset-0 w-full h-full opacity-20 pointer-events-none" style={{ y: yTranslate }}>
         <motion.path
           d="M -20 80 Q 20 20, 60 70 T 120 30"
           fill="none"
@@ -394,7 +394,7 @@ const GuidesAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
         />
         <circle cx="30" cy="40" r="3" fill="#f59e0b" className="animate-pulse" />
         <circle cx="70" cy="65" r="3" fill="#f59e0b" className="animate-pulse" />
-      </svg>
+      </motion.svg>
       <FloatingItem x={20} delay={3} duration={22}><MapPin size={14} /></FloatingItem>
     </div>
   );

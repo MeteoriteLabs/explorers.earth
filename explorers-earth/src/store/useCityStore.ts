@@ -22,6 +22,9 @@ export interface selectedCity {
   documentId?: string;
   Visibility?: boolean;
   createdAt?: string;
+  is_pinned?: boolean;
+  pin_order?: number | null;
+  display_order?: number;
   List_Name_Details?: {
     note?: string;
     thumbnail?: string;

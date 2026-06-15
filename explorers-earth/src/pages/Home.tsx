@@ -45,7 +45,6 @@ import { toast } from "sonner";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { GOOGLE_PLACES_API_BASE_URL } from "../config";
-import { htmlToBlocks } from "../utils/strapiBlocksConverter";
 
 // Modals
 import AddLocationModal from "../components/ui/AddLocationModal";
@@ -53,11 +52,9 @@ import { CreateMovieListModal } from "../features/Movies/components/dashboard/Mo
 import { CreateBookListModal } from "../features/Books/components/dashboard/BooksHome";
 import { CreateGameListModal } from "../features/Games/components/dashboard/GamesHome";
 import { CreateGuideModal } from "../features/Guides";
-import AddressInput from "../features/Profile/components/AddressInput";
 
 // Mutations & queries
 import { createRecommendationLinkMutation } from "../features/Favorites/api/mutation";
-import { CREATE_GUIDE_MUTATION } from "../features/Guides/api/mutations";
 import { localTunesRequest } from "../lib/apiClient";
 
 // S3 upload helpers

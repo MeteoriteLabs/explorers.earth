@@ -646,14 +646,16 @@ const MapView = memo(() => {
 
         {/* Collapsible Wrapper for Category Filter and Place Cards */}
         <div
-          className={`bg-black/30 backdrop-blur-sm py-4 absolute bottom-20 left-0 right-0 z-50 transition-transform duration-300 ease-in-out ${isCollapsed ? "translate-y-full" : "translate-y-0"
-            }`}
+          className="bg-[#0d1117]/90 border-t border-white/10 backdrop-blur-md py-4 absolute bottom-20 left-0 right-0 z-50 transition-transform duration-300 ease-in-out rounded-t-2xl shadow-2xl"
+          style={{
+            transform: isCollapsed ? "translateY(calc(100% - 48px))" : "translateY(0)"
+          }}
         >
-          {/* Toggle Button */}
+          {/* Toggle Button / Drag Handle */}
           <div className="flex justify-center mb-2">
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="bg-black/80 backdrop-blur-sm border border-gray-700 rounded-full p-2 text-white hover:bg-black/90 transition-colors duration-200"
+              className="bg-gray-800 hover:bg-gray-700 border border-white/15 rounded-full p-2 text-white transition-colors duration-200 cursor-pointer flex items-center justify-center"
               aria-label={isCollapsed ? "Expand filters and cards" : "Collapse filters and cards"}
             >
               {isCollapsed ? <UpArrow /> : <Down />}
@@ -662,11 +664,11 @@ const MapView = memo(() => {
 
           {/* Category Filter */}
           <div
-            className="w-full flex flex-row gap-2 items-center flex-nowrap whitespace-nowrap py-4 overflow-x-auto"
+            className="w-full flex flex-row gap-2 items-center flex-nowrap whitespace-nowrap py-2 overflow-x-auto scrollbar-hide"
             style={{ scrollbarWidth: "none" }}
           >
             {categories && categories.length > 0 ? (
-              <div className="flex px-2 gap-3">
+              <div className="flex px-4 gap-2">
                 <Button
                   btnText={"All Categories"}
                   type="button"
@@ -690,15 +692,15 @@ const MapView = memo(() => {
                 ))}
               </div>
             ) : (
-              <div className="flex px-2">
-                <span className="text-white text-sm">No categories available</span>
+              <div className="flex px-4">
+                <span className="text-white/40 text-xs font-poppins">No categories available</span>
               </div>
             )}
           </div>
 
           {/* Place Cards */}
           <div
-            className="p-2 flex gap-5 overflow-x-auto"
+            className="p-4 flex gap-4 overflow-x-auto scrollbar-hide"
             style={{ scrollbarWidth: "none" }}
           >
             {filteredPlaces.map(
@@ -712,15 +714,17 @@ const MapView = memo(() => {
                 },
                 index: number
               ) => (
-                <Card
-                  key={index}
-                  title={place?.Title}
-                  image={place?.Media?.[0]?.url}
-                  rating={place?.Rating}
-                  reviews={place?.Rating_Count}
-                  cardType={"map"}
-                  onClickhandler={() => handleCardClick(place?.Geometry)}
-                />
+                <div key={index} className="w-[135px] md:w-[155px] flex-shrink-0">
+                  <Card
+                    title={place?.Title}
+                    image={place?.Media?.[0]?.url}
+                    rating={place?.Rating}
+                    reviews={place?.Rating_Count}
+                    cardType={"default"}
+                    recommendationType="place"
+                    onClickhandler={() => handleCardClick(place?.Geometry)}
+                  />
+                </div>
               )
             )}
           </div>

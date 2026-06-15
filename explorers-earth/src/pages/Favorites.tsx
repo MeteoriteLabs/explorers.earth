@@ -1,6 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import Tab from "../components/ui/Tab";
 import Recommendations from "../features/Favorites/components/Recommendations";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
@@ -28,7 +27,6 @@ import CircularPlacesModal from "../components/CircularPlacesModal";
 import WorldIcon from "../assets/icons/WorldIcon";
 import { useNavigate, useLocation } from "react-router-dom";
 import SEO from "../components/SEO";
-import ImageWithFallback from "../components/ui/ImageWithFallback";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
 import { useRecommendationsWalkthrough } from "../hooks/useRecommendationsWalkthrough";
 import Joyride from "react-joyride";

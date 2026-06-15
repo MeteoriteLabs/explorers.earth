@@ -1,5 +1,4 @@
 import { FC, memo, useState } from "react";
-import { useTranslation } from "react-i18next";
 import DownloadIcon from "../../../assets/icons/DownloadIcon";
 import WhatsappIcon from "../../../assets/icons/WhatsappIcon";
 import InstagramIcon from "../../../assets/icons/InstagramIcon";
@@ -12,10 +11,8 @@ import DeleteIcon from "../../../assets/icons/DeleteIcon";
 import EditIcon from "../../../assets/icons/EditIcon";
 import EyeOffIcon from "../../../assets/icons/EyeOffIcon";
 import EyeOnIcon from "../../../assets/icons/EyeOnIcon";
-import Button from "../../../components/ui/Button";
 import { useMenuItems } from "../hooks/useMenuItems";
 import { OperationVariables, ApolloQueryResult } from "@apollo/client";
-import Accordion from "../../../components/ui/Accordian";
 import QRSticker from "./QRSticker";
 import TwitterIcon from "../../../assets/icons/TwitterIcon";
 import ShareModal from "../../../components/ShareModal";
@@ -59,7 +56,6 @@ const LinksAndQR: FC<LinksAndQRProps> = memo(
     handleConfirmDeleteModal,
     setIsLocationModalOpen,
   }) => {
-    const { t } = useTranslation();
     const [showShareModal, setShowShareModal] = useState<boolean>(false);
     const { selectedCity } = useCityStore();
     // user object from the state

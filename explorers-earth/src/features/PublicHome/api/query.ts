@@ -94,6 +94,9 @@ export const accountsDetailQuery = gql`
             url
           }
           Place_Details
+          Recommendation_Type
+          Contact_Name
+          media_details
         }
       }
     }

@@ -260,7 +260,19 @@ const GuideDetailsPage = () => {
 
   // SEO data for guide page
   const guideTitle = guide.Title || "Travel Guide";
-  const guideDescription = guide.Description || "";
+  
+  // Convert description to string if it is Strapi rich text block format
+  const guideDescriptionText = (() => {
+    if (!guide.Description) return "";
+    if (typeof guide.Description === "string") return guide.Description;
+    if (Array.isArray(guide.Description)) {
+      return guide.Description
+        .map((block: any) => block.children?.map((child: any) => child.text).join(" ") || "")
+        .join(" ");
+    }
+    return "";
+  })();
+
   const guideType = guide.Guide_Type || "";
   const guideCategory = guide.Category || "";
   const bestTimeToVisit = guide.Best_Time_To_Visit || "";
@@ -285,7 +297,7 @@ const GuideDetailsPage = () => {
   }
 
   const pageTitle = `${guideTitle}${citiesText ? ` - ${citiesText}` : ""} | Travel Guide | explorers`;
-  const metaDescription = guideDescription || `Explore ${guideTitle}, ${isItineraryBased ? "an itinerary-based" : "a"} travel guide${citiesText ? ` covering ${citiesText}` : ""}${guideCategory ? ` in ${guideCategory} category` : ""}. Discover curated travel recommendations, ${sectionsCount > 0 ? `${sectionsCount} detailed sections including ` : ""}journey plans, accommodations, transportation, budget tips${bestTimeToVisit ? `, and best time to visit: ${bestTimeToVisit}` : ""}, and local insights.`;
+  const metaDescription = guideDescriptionText || `Explore ${guideTitle}, ${isItineraryBased ? "an itinerary-based" : "a"} travel guide${citiesText ? ` covering ${citiesText}` : ""}${guideCategory ? ` in ${guideCategory} category` : ""}. Discover curated travel recommendations, ${sectionsCount > 0 ? `${sectionsCount} detailed sections including ` : ""}journey plans, accommodations, transportation, budget tips${bestTimeToVisit ? `, and best time to visit: ${bestTimeToVisit}` : ""}, and local insights.`;
 
   const guideKeywords = [
     guideTitle,

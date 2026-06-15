@@ -13,7 +13,6 @@ import {
 import { useTranslation } from "react-i18next";
 import Button from "../../../components/ui/Button";
 import { AddIcon } from "../../../assets/icons/AddIcon";
-import Card from "../../../components/ui/Card";
 import { useMutation, useQuery } from "@apollo/client";
 import { toast } from "sonner";
 import {
@@ -39,7 +38,6 @@ import { useCityStore } from "../../../store/useCityStore";
 import useSetupStore from "../../../store/useSetupStore";
 import TopPlacesByCategory from "./TopPlacesByCategory";
 import { motion, AnimatePresence } from "framer-motion";
-import SwitchButton from "../../../components/ui/SwitchButton";
 import { useMenuItems } from "../hooks/useMenuItems";
 // ⭐ Walkthrough Hook
 import { useRecommendationsWalkthrough } from "../../../hooks/useRecommendationsWalkthrough";
@@ -317,7 +315,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
 
   // Use the existing menu items hook for draft/publish functionality
   // Must be called AFTER walkthrough hook to access advanceToNextStepRef
-  const { handleRecommendationListVisibility, isPublished } = useMenuItems({
+  useMenuItems({
     refetchCities: refetchCitiesInternal,
     setShowConfirmDeleteModal: () => { }, // Not needed in this component
     advanceToNextStepRef: advanceToNextStepRef,

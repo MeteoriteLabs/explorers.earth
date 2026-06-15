@@ -1,8 +1,6 @@
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
-import { motion, AnimatePresence, PanInfo } from "framer-motion";
-import { Star, Play, ChevronLeft, ChevronRight } from "lucide-react";
 import Button from "../../components/ui/Button";
 import GuideCard from "./components/GuideCard";
 import TopPicksHero from "./components/TopPicksHero";
@@ -43,7 +41,6 @@ const GuidesPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [isMultiCityFilter, setIsMultiCityFilter] = useState<boolean>(false);
   const [selectedLocation, setSelectedLocation] = useState<string>("");
-  const [activePinnedIndex, setActivePinnedIndex] = useState<number>(0);
   const [isManageModalOpen, setIsManageModalOpen] = useState<boolean>(false);
   const [mobileDropdownOpen, setMobileDropdownOpen] = useState<boolean>(false);
 
@@ -587,27 +584,6 @@ const GuidesPage: React.FC = () => {
     }
   };
 
-  const renderGuideDescription = (description: any) => {
-    if (!description) return "No description provided.";
-
-    if (typeof description === "string") {
-      return description;
-    }
-
-    if (Array.isArray(description)) {
-      return description
-        .map((block: any) => {
-          if (block.type === "paragraph") {
-            return block.children?.map((child: any) => child.text).join(" ");
-          }
-          return "";
-        })
-        .filter(Boolean)
-        .join(" ");
-    }
-
-    return "No description provided.";
-  };
 
   const guidesCount = guides.length;
   const username = user?.username || "User";
