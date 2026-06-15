@@ -463,18 +463,26 @@ const GuidesPage: React.FC = () => {
   });
 
   const handleToggleVisibility = (documentId: string, currentVisibility: boolean) => {
+    const guide = allGuides.find((g) => g.documentId === documentId);
+    const nextVisibility = !currentVisibility;
+    
+    const updateData: any = { Visibility: nextVisibility };
+    if (!nextVisibility && guide?.is_pinned) {
+      updateData.is_pinned = false;
+      updateData.pin_order = null;
+    }
+
     updateGuide({
       variables: {
         documentId,
-        data: {
-          Visibility: !currentVisibility
-        }
+        data: updateData
       },
       optimisticResponse: {
         updateGuide: {
           __typename: "Guide",
           documentId,
-          Visibility: !currentVisibility,
+          Visibility: nextVisibility,
+          ...( (!nextVisibility && guide?.is_pinned) ? { is_pinned: false, pin_order: null } : {} )
         }
       }
     });
@@ -488,6 +496,10 @@ const GuidesPage: React.FC = () => {
     let pinOrder = null;
 
     if (nextPinnedValue) {
+      if (!guide.Visibility) {
+        toast.error("Only published guides can be pinned as Top Picks");
+        return;
+      }
       const maxPinOrder = pinnedGuides.reduce((max: number, g: any) => {
         const po = g.pin_order || 0;
         return po > max ? po : max;
@@ -516,6 +528,11 @@ const GuidesPage: React.FC = () => {
   const handleModalPinToggle = async (guide: any, nextPinnedValue: boolean) => {
     const docId = guide.documentId;
     if (!docId) return;
+
+    if (nextPinnedValue && !guide.Visibility) {
+      toast.error("Only published guides can be pinned as Top Picks");
+      return;
+    }
 
     let pinOrder = null;
     if (nextPinnedValue) {
@@ -1325,9 +1342,16 @@ const GuidesPage: React.FC = () => {
                             </div>
 
                             <button
-                              onClick={() => handleModalPinToggle(guide, true)}
-                              className="text-xs bg-white/5 text-white/70 hover:bg-white/15 px-2.5 py-1.5 rounded-lg font-bold border border-white/10 transition-colors cursor-pointer flex items-center gap-1"
-                              title="Pin to Top Picks"
+                              onClick={() => {
+                                if (!guide.Visibility) {
+                                  toast.error("Only published guides can be pinned as Top Picks");
+                                  return;
+                                }
+                                handleModalPinToggle(guide, true);
+                              }}
+                              disabled={!guide.Visibility}
+                              className="text-xs bg-white/5 text-white/70 hover:bg-white/15 px-2.5 py-1.5 rounded-lg font-bold border border-white/10 transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                              title={!guide.Visibility ? "Only published guides can be pinned" : "Pin to Top Picks"}
                             >
                               <svg className="w-3.5 h-3.5 text-white/55" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                 <path d="M19 12H5l4-4V3h6v5l4 4z" />

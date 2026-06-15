@@ -5,8 +5,9 @@ import {
   MapPin, Music, Film, BookOpen, Gamepad2,
   ChevronRight
 } from "lucide-react";
+import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 
-type CategoryKey = "places" | "music" | "movies" | "books" | "games";
+type CategoryKey = "places" | "music" | "movies" | "books" | "games" | "guides";
 
 interface CategoryConfig {
   key: CategoryKey;
@@ -57,6 +58,14 @@ const CATEGORIES: CategoryConfig[] = [
     description: "Gaming favorites and latest discoveries in the digital world",
     color: "pink",
     path: "/recommendations/games"
+  },
+  { 
+    key: "guides",  
+    label: "Guides",        
+    icon: TravelGuideIcon, 
+    description: "Explore curated travel itineraries, maps, and local guides for your next trip",
+    color: "amber",
+    path: "/guides"
   },
 ];
 
@@ -327,6 +336,70 @@ const GamesAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
   );
 };
 
+const GuidesAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
+  const containerRef = useRef(null);
+  const { scrollYProgress } = useScroll({ target: containerRef, offset: ["start end", "end start"] });
+  const yTranslate = useTransform(scrollYProgress, [0, 1], ["0px", "15px"]);
+  return (
+    <div ref={containerRef} className="absolute inset-0 bg-slate-950 overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-b from-amber-600/30 via-slate-950/20 to-slate-950 opacity-100" />
+      <motion.div
+        className="absolute right-[8%] top-1/2 -translate-y-1/2 pointer-events-none z-10"
+        initial={{ rotate: 0, scale: 1 }}
+        animate={{
+          rotate: isHovering ? 90 : 0,
+          scale: isHovering ? 1.05 : 1,
+          opacity: isHovering ? 0.8 : 0.5
+        }}
+        transition={{ duration: 0.8, ease: "easeInOut" }}
+      >
+        <svg width="85" height="85" viewBox="0 0 100 100" className="text-white/40">
+          <circle cx="50" cy="50" r="45" stroke="currentColor" strokeWidth="1" fill="none" />
+          <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="0.5" fill="none" strokeDasharray="2 2" />
+          {[...Array(8)].map((_, i) => (
+            <line
+              key={i}
+              x1="50"
+              y1="8"
+              x2="50"
+              y2="14"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              transform={`rotate(${i * 45} 50 50)`}
+            />
+          ))}
+          <motion.polygon
+            points="50,18 54,50 50,82 46,50"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            animate={{
+              rotate: isHovering ? [0, 12, -8, 4, 0] : [0, 3, -3, 0]
+            }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            style={{ transformOrigin: "50px 50px" }}
+          />
+          <text x="50" y="28" fill="currentColor" fontSize="8" fontWeight="bold" textAnchor="middle">N</text>
+        </svg>
+      </motion.div>
+      <svg className="absolute inset-0 w-full h-full opacity-20 pointer-events-none" style={{ y: yTranslate }}>
+        <motion.path
+          d="M -20 80 Q 20 20, 60 70 T 120 30"
+          fill="none"
+          stroke="#f59e0b"
+          strokeWidth="2"
+          strokeDasharray="4 6"
+          animate={{ strokeDashoffset: isHovering ? -20 : -10 }}
+          transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+        />
+        <circle cx="30" cy="40" r="3" fill="#f59e0b" className="animate-pulse" />
+        <circle cx="70" cy="65" r="3" fill="#f59e0b" className="animate-pulse" />
+      </svg>
+      <FloatingItem x={20} delay={3} duration={22}><MapPin size={14} /></FloatingItem>
+    </div>
+  );
+};
+
 const CategoryBackground = ({ category, isHovering }: { category: CategoryKey, isHovering: boolean }) => {
   switch (category) {
     case "places": return <PlacesAnimatedBackground />;
@@ -334,6 +407,7 @@ const CategoryBackground = ({ category, isHovering }: { category: CategoryKey, i
     case "movies": return <MoviesAnimatedBackground isHovering={isHovering} />;
     case "books":  return <BooksAnimatedBackground isHovering={isHovering} />;
     case "games":  return <GamesAnimatedBackground isHovering={isHovering} />;
+    case "guides": return <GuidesAnimatedBackground isHovering={isHovering} />;
     default:       return null;
   }
 };
@@ -371,6 +445,7 @@ const getHexColor = (color: string) => {
     case "blue":    return "#3b82f6";
     case "orange":  return "#f97316";
     case "pink":    return "#ec4899";
+    case "amber":   return "#f59e0b";
     default:        return "#ffffff";
   }
 };
@@ -459,6 +534,19 @@ const RecommendationCard = ({ cat }: { cat: CategoryConfig }) => {
             <motion.div key={i} className="h-[1px] w-full bg-amber-200/40" animate={{ opacity: isHovering ? [0.4, 0.9, 0.4] : 0.4 }} transition={{ duration: 2, repeat: Infinity, delay: i * 0.2 }} />
           ))}
           <div className="h-0.5 w-full bg-amber-600/40" style={{ width: isHovering ? "100%" : "40px", transition: "width 0.8s" }} />
+        </div>
+      ) : cat.key === "guides" ? (
+        <div className="absolute bottom-0 left-0 right-0 h-4 flex items-center opacity-70 z-30 overflow-hidden pointer-events-none px-4">
+          <motion.div className="w-full h-[2px] bg-amber-500/20 rounded-full relative">
+            <motion.div 
+              className="absolute inset-y-0 left-0 bg-amber-500 shadow-[0_0_10px_#f59e0b]" 
+              animate={{ 
+                left: isHovering ? ["0%", "85%", "0%"] : ["10%", "40%", "10%"] 
+              }} 
+              transition={{ duration: isHovering ? 2 : 4, repeat: Infinity, ease: "easeInOut" }} 
+              style={{ width: "15%" }}
+            />
+          </motion.div>
         </div>
       ) : cat.key === "games" ? (
         <div className="absolute bottom-0 left-0 right-0 h-5 flex items-center opacity-70 z-30 overflow-hidden pointer-events-none px-2">

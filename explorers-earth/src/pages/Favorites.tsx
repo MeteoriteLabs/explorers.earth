@@ -196,6 +196,43 @@ const Favorites = memo(() => {
     }
   };
 
+  const handleCityVisibilityToggle = async () => {
+    if (!selectedCity?.documentId) return;
+    const currentValue = !!selectedCity.Visibility;
+    const nextValue = !currentValue;
+
+    const updateData: any = { Visibility: nextValue };
+    if (!nextValue && selectedCity.is_pinned) {
+      updateData.is_pinned = false;
+      updateData.pin_order = null;
+    }
+
+    try {
+      const response = await updateRecommendedList({
+        variables: {
+          documentId: selectedCity.documentId,
+          data: updateData,
+        },
+      });
+
+      if (response.data?.updateRecommendationList) {
+        const updatedData = response.data.updateRecommendationList;
+        setSelectedCity({
+          ...selectedCity,
+          Visibility: updatedData.Visibility,
+          is_pinned: updatedData.is_pinned,
+          pin_order: updatedData.pin_order,
+        });
+      }
+
+      await refetchCities();
+      toast.success(`${selectedCity.List_Name} is now ${nextValue ? "Public" : "Draft"}`);
+    } catch (error) {
+      console.error("Error updating list visibility:", error);
+      toast.error("Failed to update visibility");
+    }
+  };
+
   useEffect(() => {
     if (selectedCity?.documentId) {
       setTimeout(() => {
@@ -521,6 +558,11 @@ const Favorites = memo(() => {
     const docId = city.documentId;
     if (!docId) return;
 
+    if (nextPinnedValue && !city.Visibility) {
+      toast.error("Only published locations can be pinned");
+      return;
+    }
+
     let pinOrder = null;
     if (nextPinnedValue) {
       const maxPinOrder = pinnedCities.reduce((max: number, c: any) => {
@@ -744,14 +786,31 @@ const Favorites = memo(() => {
                       const docId = city.documentId;
                       if (docId) {
                         const currentValue = city.Visibility;
+                        const nextValue = !currentValue;
+                        const updateData: any = { Visibility: nextValue };
+                        
+                        if (!nextValue && city.is_pinned) {
+                          updateData.is_pinned = false;
+                          updateData.pin_order = null;
+                        }
+
                         updateRecommendedList({
                           variables: {
                             documentId: docId,
-                            data: { Visibility: !currentValue }
+                            data: updateData
                           }
-                        }).then(() => {
+                        }).then((response) => {
+                          if (selectedCity?.documentId === docId && response.data?.updateRecommendationList) {
+                            const updatedData = response.data.updateRecommendationList;
+                            setSelectedCity({
+                              ...selectedCity,
+                              Visibility: updatedData.Visibility,
+                              is_pinned: updatedData.is_pinned,
+                              pin_order: updatedData.pin_order,
+                            });
+                          }
                           refetchCities();
-                          toast.success(`${city.List_Name} is now ${!currentValue ? "Public" : "Draft"}`);
+                          toast.success(`${city.List_Name} is now ${nextValue ? "Public" : "Draft"}`);
                         }).catch(() => {
                           toast.error("Failed to update visibility");
                         });
@@ -766,6 +825,10 @@ const Favorites = memo(() => {
                   {/* Pin/Unpin toggle */}
                   <button
                     onClick={() => {
+                      if (!city.Visibility && !city.is_pinned) {
+                        toast.error("Only published locations can be pinned");
+                        return;
+                      }
                       setActiveDropdownListId(null);
                       const docId = city.documentId;
                       if (docId) {
@@ -797,7 +860,9 @@ const Favorites = memo(() => {
                         });
                       }
                     }}
-                    className="px-3 py-1.5 text-[10px] text-left hover:bg-white/10 text-white flex items-center gap-1.5 cursor-pointer border-none bg-transparent w-full"
+                    disabled={!city.Visibility && !city.is_pinned}
+                    title={!city.Visibility && !city.is_pinned ? "Only published locations can be pinned" : undefined}
+                    className="px-3 py-1.5 text-[10px] text-left hover:bg-white/10 text-white flex items-center gap-1.5 cursor-pointer border-none bg-transparent w-full disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <PushPinIcon pinned={city.is_pinned} />
                     {city.is_pinned ? "Unpin Pick" : "Pin Top Pick"}
@@ -999,9 +1064,9 @@ const Favorites = memo(() => {
 
                                   {/* Top Picks Heading */}
                                   <div className="absolute top-8 left-8 md:top-10 md:left-10 z-50 pointer-events-none flex flex-col gap-1">
-                                    <h2 className="text-lg md:text-xl font-bold text-white flex items-center drop-shadow-lg">
+                                    <h2 className="text-lg md:text-xl font-bold text-white flex items-center drop-shadow-lg font-poppins">
                                       <span className="w-1.5 h-5 bg-yellow-400 mr-2.5 rounded-full inline-block"></span>
-                                      Top Picks
+                                      Featured
                                     </h2>
                                   </div>
 
@@ -1149,7 +1214,7 @@ const Favorites = memo(() => {
                                     <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-auto z-20">
                                       <div className="flex items-center pointer-events-none drop-shadow-md">
                                         <span className="w-1.5 h-5 bg-yellow-400 mr-2 rounded-full inline-block"></span>
-                                        <h2 className="text-lg font-bold text-white tracking-tight">Top Picks</h2>
+                                        <h2 className="text-lg font-bold text-white tracking-tight font-poppins">Featured</h2>
                                       </div>
                                     </div>
                                     
@@ -1265,7 +1330,7 @@ const Favorites = memo(() => {
                           </span>
                           <SwitchButton
                             isChecked={selectedCity?.Visibility || false}
-                            onChange={handleVisibilityToggle}
+                            onChange={handleCityVisibilityToggle}
                             variant="green"
                             disabled={!selectedCity?.recommended_places?.length}
                           />
@@ -1567,9 +1632,16 @@ const Favorites = memo(() => {
 
                           {/* Pin action button */}
                           <button
-                            onClick={() => handleModalPinToggle(city, true)}
-                            className="text-xs bg-white/5 text-white/70 hover:bg-white/15 px-2.5 py-1.5 rounded-lg font-bold border border-white/10 transition-colors cursor-pointer flex items-center gap-1"
-                            title="Pin to Top Picks"
+                            onClick={() => {
+                              if (!city.Visibility) {
+                                toast.error("Only published locations can be pinned");
+                                return;
+                              }
+                              handleModalPinToggle(city, true);
+                            }}
+                            disabled={!city.Visibility}
+                            className="text-xs bg-white/5 text-white/70 hover:bg-white/15 px-2.5 py-1.5 rounded-lg font-bold border border-white/10 transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                            title={!city.Visibility ? "Only published locations can be pinned" : "Pin to Top Picks"}
                           >
                             <svg className="w-3 h-3 text-white/55" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                               <path d="M19 12H5l4-4V3h6v5l4 4z" />

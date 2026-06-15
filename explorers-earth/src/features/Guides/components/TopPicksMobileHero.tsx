@@ -93,7 +93,7 @@ const TopPicksMobileHero = ({ guides, onGuideClick, showManageButton = false, on
               <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-auto z-20">
                 <div className="flex items-center pointer-events-none drop-shadow-md">
                   <span className="w-1 h-5 bg-yellow-400 mr-2 rounded-full inline-block"></span>
-                  <h2 className="text-lg font-bold text-white tracking-tight">Top Picks</h2>
+                  <h2 className="text-lg font-bold text-white tracking-tight font-poppins">Featured</h2>
                 </div>
               </div>
               

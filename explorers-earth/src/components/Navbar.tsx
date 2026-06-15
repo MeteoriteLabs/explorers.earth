@@ -12,28 +12,22 @@ import Heart from "../assets/icons/Heart";
 const navItems = [
   { id: "home", icon: Home, text: "Home", path: "/home" },
   {
+    id: "profile",
+    icon: Profile,
+    text: "Profile",
+    path: "/profile",
+  },
+  {
     id: "recommendations",
     icon: Heart,
     text: "Recommendation",
     path: "/hub",
   },
   {
-    id: "guides",
-    icon: TravelGuideIcon,
-    text: "Guides",
-    path: "/guides",
-  },
-  {
     id: "analytics",
     icon: Analytics,
     text: "Analytics",
     path: "/analytics",
-  },
-  {
-    id: "profile",
-    icon: Profile,
-    text: "Profile",
-    path: "/profile",
   },
   {
     id: "settings",
@@ -80,19 +74,8 @@ const Navbar = () => {
     );
   };
 
-  // Create dynamic nav items including Music for all users
-  // Insert Music before Settings
-  const allNavItems = [
-    ...navItems.slice(0, 3), // Home, Recommendations, Profile
-    // Add Music button for all users
-    { 
-      id: "music", 
-      icon: MusicNote, 
-      text: "Music", 
-      path: "/music"
-    },
-    ...navItems.slice(3), // Settings
-  ];
+  // Navigation items for the bottom navigation bar
+  const allNavItems = navItems;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 md:bottom-2 md:left-1/2 md:-translate-x-1/2 md:rounded-lg z-50 w-full md:w-[450px] bg-dashboard-sidebar backdrop-blur-lg text-dashboard flex md:flex-row md:justify-center md:items-center justify-center py-2 px-2 md:p-1 shadow-lg border-t md:border-t-0 border-dashboard/50">

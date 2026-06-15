@@ -9,6 +9,8 @@ interface MenuItem {
   icon?: ReactElement;
   label?: string;
   action: () => void;
+  disabled?: boolean;
+  title?: string;
 }
 
 interface CardProps {
@@ -180,9 +182,12 @@ const Card: FC<CardProps> = memo(
                 {menuItems?.map((item, index) => (
                   <button
                     key={index}
-                    className="flex w-full items-center gap-2 mb-2 text-sm text-dashboard hover:bg-dashboard-muted rounded px-2 py-1 whitespace-nowrap"
+                    disabled={item.disabled}
+                    title={item.title}
+                    className="flex w-full items-center gap-2 mb-2 text-sm text-dashboard hover:bg-dashboard-muted rounded px-2 py-1 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed border-none bg-transparent text-left"
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (item.disabled) return;
                       item.action();
                       setShowMenu(false);
                     }}

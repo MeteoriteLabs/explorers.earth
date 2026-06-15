@@ -119,9 +119,9 @@ const TopPicksHero = ({ guides, onGuideClick, showManageButton = false, onManage
 
       {/* Top Picks Heading */}
       <div className="absolute top-8 left-8 md:top-12 md:left-12 z-50 pointer-events-none flex flex-col gap-1">
-        <h2 className="text-xl md:text-2xl font-bold text-white flex items-center drop-shadow-lg">
+        <h2 className="text-xl md:text-2xl font-bold text-white flex items-center drop-shadow-lg font-poppins">
           <span className="w-1.5 h-6 bg-yellow-400 mr-2.5 rounded-full inline-block"></span>
-          Top Picks
+          Featured
         </h2>
       </div>
 

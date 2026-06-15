@@ -107,6 +107,8 @@ const GuideCard: FC<GuideCardProps> = memo(
             ),
             label: guide.is_pinned ? "Unpin Pick" : "Pin Top Pick",
             action: () => onTogglePin && onTogglePin(guide.documentId),
+            disabled: !guide.Visibility && !guide.is_pinned,
+            title: !guide.Visibility && !guide.is_pinned ? "Only published guides can be pinned" : undefined,
           },
           {
             icon: <EditIcon />,

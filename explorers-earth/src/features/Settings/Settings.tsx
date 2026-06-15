@@ -88,7 +88,8 @@ const Settings = memo(() => {
   // Optimistic UI state for tab visibility toggles
   const [tabVisibilityOverrides, setTabVisibilityOverrides] = useState<Record<string, any>>({});
   const [tabVisibilityLoading, setTabVisibilityLoading] = useState<Record<string, boolean>>({});
-  const [tabVisibilitySectionOpen, setTabVisibilitySectionOpen] = useState<boolean>(false);
+  const [publicVisibilitySectionOpen, setPublicVisibilitySectionOpen] = useState<boolean>(false);
+  const [pinnedNavTabsSectionOpen, setPinnedNavTabsSectionOpen] = useState<boolean>(false);
   const [languageSectionOpen, setLanguageSectionOpen] = useState<boolean>(false);
   const [connectedAccountsSectionOpen, setConnectedAccountsSectionOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -554,9 +555,9 @@ const Settings = memo(() => {
       <div className="bg-dashboard-bg w-full h-full mx-auto max-w-3xl min-h-screen px-4 md:px-6 pt-8 md:pt-5 pb-24 md:pb-6">
 
         {/* Tab Switcher - Command Palette Pill Style */}
-        <div className="z-[50] sticky top-[73px] md:top-0 w-full -mx-4 md:-mx-6 mb-5 bg-dashboard-bg py-2 px-4 md:px-6">
+        <div className="w-full mb-6 flex justify-center">
           <div
-            className="flex items-center bg-white font-poppins rounded-[24px] mx-auto w-fit"
+            className="flex items-center bg-white font-poppins rounded-[24px]"
             style={{ padding: '2px' }}
           >
             <button
@@ -609,7 +610,8 @@ const Settings = memo(() => {
             {/* ── QUICK ACCESS section ── */}
             {((data?.usersPermissionsUser?.provider !== 'google' && matchesSearch("change password security last changed")) ||
               matchesSearch("language preference display english locale translation") ||
-              matchesSearch("tab visibility profile control navigation pin")) && (
+              matchesSearch("public visibility tab visibility profile control display") ||
+              matchesSearch("pinned navigation tabs profile control navigation pin menu")) && (
               <>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1 font-poppins">Quick Access</p>
                 <div
@@ -664,131 +666,223 @@ const Settings = memo(() => {
                       </button>
 
                       {languageSectionOpen && (
-                        <div className="border-t border-white/5 px-4 pb-4 bg-white/[0.01]">
+                        <div
+                          ref={(el) => {
+                            if (el && !el.dataset.scrolled) {
+                              el.dataset.scrolled = 'true';
+                              setTimeout(() => {
+                                const rect = el.getBoundingClientRect();
+                                const isMobile = window.innerWidth < 768;
+                                const bottomOffset = isMobile ? 80 : 20;
+                                const cutoff = window.innerHeight - bottomOffset;
+                                if (rect.bottom > cutoff) {
+                                  const scrollOffset = rect.bottom - cutoff + 20;
+                                  window.scrollBy({ top: scrollOffset, behavior: 'smooth' });
+                                }
+                              }, 100);
+                            }
+                          }}
+                          className="border-t border-white/5 px-4 pb-4 bg-white/[0.01]"
+                        >
                           <LanguageSelector />
                         </div>
                       )}
                     </>
                   )}
 
-                  {/* Tab Visibility row */}
-                  {matchesSearch("tab visibility profile control navigation pin") && (
+                  {/* Public Visibility row */}
+                  {matchesSearch("public visibility tab visibility profile control display") && (
                     <>
                       <button
                         type="button"
-                        onClick={() => setTabVisibilitySectionOpen(prev => !prev)}
+                        onClick={() => setPublicVisibilitySectionOpen(prev => !prev)}
                         className="w-full flex items-center gap-3 px-4 py-3 border-t border-white/5 hover:bg-white/5 transition-colors duration-150 group text-left"
                       >
                         <span className="text-base leading-none">👁️</span>
                         <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold text-white font-poppins">Tab Visibility</div>
+                          <div className="text-xs font-semibold text-white font-poppins">Public Visibility</div>
                           <div className="text-[10px] text-white/40 font-poppins mt-0.5">Profile · Control which tabs appear on your public profile</div>
                         </div>
                         <svg
                           width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" viewBox="0 0 24 24"
-                          className={`flex-shrink-0 transition-transform duration-200 ${tabVisibilitySectionOpen ? 'rotate-90' : ''}`}
+                          className={`flex-shrink-0 transition-transform duration-200 ${publicVisibilitySectionOpen ? 'rotate-90' : ''}`}
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                         </svg>
                       </button>
 
-                      {/* Tab Visibility expanded panel */}
-                      {tabVisibilitySectionOpen && (
-                        <div className="border-t border-white/5 px-4 py-4 space-y-4 bg-white/[0.01]">
-                          {/* Pinned Navigation Tabs */}
-                          <div>
-                            <p className="text-xs font-semibold text-white font-poppins mb-1">Pinned Navigation Tabs</p>
-                            <p className="text-[10px] text-white/50 font-poppins mb-3">Select up to 5 enabled tabs to pin to your public profile's navigation.</p>
-                            <div className="flex flex-wrap gap-2">
-                              {Object.entries({
-                                public_profile: 'Profile',
-                                public_recommendations: 'Recommendations',
-                                public_music: 'Music',
-                                public_guides: 'Guides',
-                                public_movie: 'Movies & Shows',
-                                public_books: 'Books',
-                                public_games: 'Games',
-                              }).map(([key, label]) => {
-                                const isEnabled = getTabVisibility(key);
-                                if (!isEnabled) return null;
-                                const pinned = isTabPinned(key);
-                                return (
-                                  <button
-                                    key={key}
-                                    type="button"
-                                    onClick={() => handleNavPinUpdate(key, !pinned)}
-                                    disabled={tabVisibilityLoading[`pin_${key}`]}
-                                    className={`relative px-3 py-1.5 rounded-full text-xs font-poppins font-semibold transition-all ${
-                                      pinned
-                                        ? 'bg-[hsl(var(--blue-cta))] text-white border border-[hsl(var(--blue-cta))]'
-                                        : 'bg-white/5 text-white/60 border border-white/10 hover:border-white/30 hover:text-white'
-                                    } ${tabVisibilityLoading[`pin_${key}`] ? 'opacity-60 cursor-not-allowed' : ''}`}
-                                  >
-                                    {tabVisibilityLoading[`pin_${key}`] && (
-                                      <span className="absolute inset-0 flex items-center justify-center">
-                                        <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                      </span>
-                                    )}
-                                    {label}
-                                  </button>
-                                );
-                              })}
+                      {/* Public Visibility expanded panel */}
+                      {publicVisibilitySectionOpen && (
+                        <div
+                          ref={(el) => {
+                            if (el && !el.dataset.scrolled) {
+                              el.dataset.scrolled = 'true';
+                              setTimeout(() => {
+                                const rect = el.getBoundingClientRect();
+                                const isMobile = window.innerWidth < 768;
+                                const bottomOffset = isMobile ? 80 : 20;
+                                const cutoff = window.innerHeight - bottomOffset;
+                                if (rect.bottom > cutoff) {
+                                  const scrollOffset = rect.bottom - cutoff + 20;
+                                  window.scrollBy({ top: scrollOffset, behavior: 'smooth' });
+                                }
+                              }, 100);
+                            }
+                          }}
+                          className="border-t border-white/5 px-4 py-4 space-y-2 bg-white/[0.01]"
+                        >
+                          {[
+                            { key: 'public_profile', label: 'Profile Tab', icon: (
+                              <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" /></svg>
+                            )},
+                            { key: 'public_recommendations', label: 'Recommendations Tab', icon: (
+                              <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
+                            )},
+                            { key: 'public_music', label: 'Music Tab', icon: (
+                              <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                            )},
+                            { key: 'public_guides', label: 'Guides Tab', icon: (
+                              <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" /></svg>
+                            )},
+                            { key: 'public_movie', label: 'Movies & Shows Tab', icon: (
+                              <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" /></svg>
+                            )},
+                            { key: 'public_books', label: 'Books Tab', icon: (
+                              <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                            )},
+                            { key: 'public_games', label: 'Games Tab', icon: (
+                              <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                            )},
+                          ].map(({ key, label, icon }) => (
+                            <div key={key} className="flex items-center justify-between py-1.5">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                                  {icon}
+                                </div>
+                                <span className="text-xs text-white font-poppins">{label}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {tabVisibilityLoading[key] && (
+                                  <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                                )}
+                                <label className={`relative inline-flex items-center ${
+                                  tabVisibilityLoading[key] ? 'pointer-events-none opacity-70' : 'cursor-pointer'
+                                }`}>
+                                  <input
+                                    type="checkbox"
+                                    className="sr-only peer"
+                                    checked={getTabVisibility(key)}
+                                    onChange={(e) => handleTabVisibilityUpdate(key, e.target.checked)}
+                                  />
+                                  <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
+                                </label>
+                              </div>
                             </div>
-                          </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
 
-                          {/* Per-tab visibility toggles */}
-                          <div className="pt-3 border-t border-white/5">
-                            <p className="text-xs font-semibold text-white font-poppins mb-3">Tab Visibility</p>
-                            <div className="space-y-2">
-                              {[
-                                { key: 'public_profile', label: 'Profile Tab', icon: (
-                                  <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" /></svg>
-                                )},
-                                { key: 'public_recommendations', label: 'Recommendations Tab', icon: (
-                                  <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
-                                )},
-                                { key: 'public_music', label: 'Music Tab', icon: (
-                                  <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                                )},
-                                { key: 'public_guides', label: 'Guides Tab', icon: (
-                                  <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" /></svg>
-                                )},
-                                { key: 'public_movie', label: 'Movies & Shows Tab', icon: (
-                                  <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" /></svg>
-                                )},
-                                { key: 'public_books', label: 'Books Tab', icon: (
-                                  <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-                                )},
-                                { key: 'public_games', label: 'Games Tab', icon: (
-                                  <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
-                                )},
-                              ].map(({ key, label, icon }) => (
+                  {/* Pinned Navigation Tabs row */}
+                  {matchesSearch("pinned navigation tabs profile control navigation pin menu") && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setPinnedNavTabsSectionOpen(prev => !prev)}
+                        className="w-full flex items-center gap-3 px-4 py-3 border-t border-white/5 hover:bg-white/5 transition-colors duration-150 group text-left"
+                      >
+                        <span className="text-base leading-none">📌</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold text-white font-poppins">Pinned Navigation Tabs</div>
+                          <div className="text-[10px] text-white/40 font-poppins mt-0.5">Navigation · Select up to 5 enabled tabs to pin to your public profile's navigation</div>
+                        </div>
+                        <svg
+                          width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" viewBox="0 0 24 24"
+                          className={`flex-shrink-0 transition-transform duration-200 ${pinnedNavTabsSectionOpen ? 'rotate-90' : ''}`}
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+
+                      {/* Pinned Navigation Tabs expanded panel */}
+                      {pinnedNavTabsSectionOpen && (
+                        <div
+                          ref={(el) => {
+                            if (el && !el.dataset.scrolled) {
+                              el.dataset.scrolled = 'true';
+                              setTimeout(() => {
+                                const rect = el.getBoundingClientRect();
+                                const isMobile = window.innerWidth < 768;
+                                const bottomOffset = isMobile ? 80 : 20;
+                                const cutoff = window.innerHeight - bottomOffset;
+                                if (rect.bottom > cutoff) {
+                                  const scrollOffset = rect.bottom - cutoff + 20;
+                                  window.scrollBy({ top: scrollOffset, behavior: 'smooth' });
+                                }
+                              }, 100);
+                            }
+                          }}
+                          className="border-t border-white/5 px-4 py-4 space-y-3 bg-white/[0.01]"
+                        >
+                          <p className="text-[10px] text-white/50 font-poppins mb-1">Select up to 5 enabled tabs to pin to your public profile's navigation.</p>
+                          <div className="space-y-2">
+                            {[
+                              { key: 'public_profile', label: 'Profile Tab', icon: (
+                                <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" /></svg>
+                              )},
+                              { key: 'public_recommendations', label: 'Recommendations Tab', icon: (
+                                <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
+                              )},
+                              { key: 'public_music', label: 'Music Tab', icon: (
+                                <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                              )},
+                              { key: 'public_guides', label: 'Guides Tab', icon: (
+                                <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385a7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10a7.968 7.968 0 00-14.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" /></svg>
+                              )},
+                              { key: 'public_movie', label: 'Movies & Shows Tab', icon: (
+                                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" /></svg>
+                              )},
+                              { key: 'public_books', label: 'Books Tab', icon: (
+                                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                              )},
+                              { key: 'public_games', label: 'Games Tab', icon: (
+                                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                              )},
+                            ].map(({ key, label, icon }) => {
+                              const isEnabled = getTabVisibility(key);
+                              const isPinned = isTabPinned(key);
+                              return (
                                 <div key={key} className="flex items-center justify-between py-1.5">
                                   <div className="flex items-center gap-2">
-                                    <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${isEnabled ? 'bg-white/10' : 'bg-white/5 opacity-40'}`}>
                                       {icon}
                                     </div>
-                                    <span className="text-xs text-white font-poppins">{label}</span>
+                                    <span className={`text-xs font-poppins ${isEnabled ? 'text-white' : 'text-white/40'}`}>
+                                      {label}
+                                      {!isEnabled && <span className="text-[9px] text-white/35 ml-1.5 font-normal font-poppins">(Visibility off)</span>}
+                                    </span>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    {tabVisibilityLoading[key] && (
+                                    {tabVisibilityLoading[`pin_${key}`] && (
                                       <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
                                     )}
                                     <label className={`relative inline-flex items-center ${
-                                      tabVisibilityLoading[key] ? 'pointer-events-none opacity-70' : 'cursor-pointer'
+                                      tabVisibilityLoading[`pin_${key}`] || !isEnabled ? 'pointer-events-none opacity-50' : 'cursor-pointer'
                                     }`}>
                                       <input
                                         type="checkbox"
                                         className="sr-only peer"
-                                        checked={getTabVisibility(key)}
-                                        onChange={(e) => handleTabVisibilityUpdate(key, e.target.checked)}
+                                        checked={isPinned}
+                                        disabled={!isEnabled || tabVisibilityLoading[`pin_${key}`]}
+                                        onChange={(e) => handleNavPinUpdate(key, e.target.checked)}
                                       />
                                       <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
                                     </label>
                                   </div>
                                 </div>
-                              ))}
-                            </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -825,7 +919,24 @@ const Settings = memo(() => {
                   </button>
 
                   {connectedAccountsSectionOpen && (
-                    <div className="border-t border-white/5 px-2 py-2 bg-white/[0.01]">
+                    <div
+                      ref={(el) => {
+                        if (el && !el.dataset.scrolled) {
+                          el.dataset.scrolled = 'true';
+                          setTimeout(() => {
+                            const rect = el.getBoundingClientRect();
+                            const isMobile = window.innerWidth < 768;
+                            const bottomOffset = isMobile ? 80 : 20;
+                            const cutoff = window.innerHeight - bottomOffset;
+                            if (rect.bottom > cutoff) {
+                              const scrollOffset = rect.bottom - cutoff + 20;
+                              window.scrollBy({ top: scrollOffset, behavior: 'smooth' });
+                            }
+                          }, 100);
+                        }
+                      }}
+                      className="border-t border-white/5 px-2 py-2 bg-white/[0.01]"
+                    >
                       <ConnectedAccounts />
                     </div>
                   )}
