@@ -6,6 +6,9 @@ export const recommendationListQuery = gql`
       documentId
       List_Name
       Visibility
+      is_pinned
+      pin_order
+      display_order
       account {
         documentId
       }
@@ -78,6 +81,9 @@ export const accountsDetailQuery = gql`
         documentId
         List_Name
         Visibility
+        is_pinned
+        pin_order
+        display_order
         List_Name_Details
         recommended_places {
           recommendation_category {
@@ -125,8 +131,12 @@ export const accountsDetailsByPlace = gql`
       public_games
       pinned_nav_tabs
       recommendation_lists(filters: $listFilters) {
+        documentId
         List_Name
         Visibility
+        is_pinned
+        pin_order
+        display_order
         recommended_places {
           recommendation_category {
             Category_Name

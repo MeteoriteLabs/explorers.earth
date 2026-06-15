@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Travel Guides Mockup — explorers.earth</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ============ RESET & BASE ============ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Poppins', system-ui, sans-serif;
+      background: #0d0f12;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* ============ PREVIEW MASTER HEADER ============ */
+    .preview-header {
+      width: 100%;
+      max-width: 800px;
+      padding: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 2rem;
+    }
+    .preview-info h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: white;
+    }
+    .preview-info p {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      margin-top: 0.25rem;
+    }
+    .badge {
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      display: inline-block;
+    }
+    .badge-approved {
+      background: rgba(74, 222, 128, 0.15);
+      color: #4ade80;
+    }
+    .badge-new {
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
+      margin-left: 0.25rem;
+    }
+    .view-controls {
+      display: flex;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 3px;
+      border-radius: 8px;
+      gap: 2px;
+    }
+    .control-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Poppins', sans-serif;
+      transition: all 0.2s ease;
+    }
+    .control-btn.active {
+      background: #3B82F6;
+      color: white;
+    }
+
+    /* ============ MAIN LAYOUT PREVIEW VIEWS ============ */
+    .preview-main {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      width: 100%;
+      flex-grow: 1;
+      padding-bottom: 3rem;
+      transition: all 0.3s ease;
+    }
+
+    /* Device Frame View Mode */
+    .preview-main.device-view .phone-wrapper {
+      width: 375px;
+      height: 720px;
+      border: 12px solid #1e293b;
+      border-radius: 40px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      background: #090b0d;
+      overflow: hidden;
+      position: relative;
+    }
+    .preview-main.device-view .phone-frame-inner {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+    .preview-main.device-view .phone-frame-inner::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Full Responsive View Mode */
+    .preview-main.full-view {
+      padding: 0 1.5rem 3rem;
+      max-width: 1200px;
+      width: 100%;
+    }
+    .preview-main.full-view .phone-wrapper {
+      width: 100%;
+      background: #090b0d;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    .preview-main.full-view .phone-frame-inner {
+      width: 100%;
+      padding: 2rem;
+      max-width: 768px;
+      margin: 0 auto;
+    }
+
+    /* ============ DESIGN TOKENS ============ */
+    :root {
+      --dash-bg:         #2E4032; /* Forest Green base background */
+      --dash-sidebar-bg: #223126; /* Container/Header background */
+      --dash-accent:     #3B82F6; /* Interactive blue accent */
+      --dash-border:     #3C4E40;
+      --dash-text:       #FFFFFF;
+      --blue-cta:        #3B82F6;
+      --blue-final:      #2563EB;
+      --green-highlight: #4ADE80;
+    }
+
+    /* ============ MOCKUP COMPONENT STYLES ============ */
+    .phone-frame {
+      min-height: 100%;
+      padding-bottom: 2rem;
+      transition: background 0.2s ease;
+      background: var(--dash-bg);
+      position: relative;
+      color: white;
+    }
+
+    /* ============ FROSTED CARD ============ */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    /* Theme Switcher buttons styles */
+    .theme-btn {
+      border: 1px solid transparent;
+      color: #64748b;
+      background: none;
+      padding: 0.4rem 1rem;
+      font-size: 0.75rem;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    /* Switch Component */
+    .mini-switch {
+      width: 32px;
+      height: 18px;
+      background: #3B82F6;
+      border-radius: 99px;
+      position: relative;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .mini-switch::after {
+      content: '';
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: white;
+      border-radius: 50%;
+      top: 3px;
+      right: 3px;
+      transition: transform 0.2s, right 0.2s;
+    }
+    .mini-switch.off {
+      background: rgba(255,255,255,0.15);
+    }
+    .mini-switch.off::after {
+      right: 17px;
+    }
+
+    /* Custom scrollbar hide helper */
+    .scroll-hide::-webkit-scrollbar {
+      display: none;
+    }
+    .scroll-hide {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Toggle header rows based on view mode */
+    .preview-main.device-view .desktop-only-header-row {
+      display: none !important;
+    }
+    .preview-main.device-view .mobile-only-header-row {
+      display: block !important;
+    }
+
+    .preview-main.full-view .desktop-only-header-row {
+      display: flex !important;
+    }
+    .preview-main.full-view .mobile-only-header-row {
+      display: none !important;
+    }
+
+    /* ============ CARD THREE-DOTS MENU ============ */
+    .options-dropdown {
+      position: absolute;
+      right: 0.5rem;
+      top: 2.2rem;
+      background: rgba(17, 22, 34, 0.98);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 0.35rem;
+      z-index: 100;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+      display: none;
+      min-width: 110px;
+    }
+    .options-dropdown.active {
+      display: block;
+    }
+    .options-dropdown button {
+      background: transparent;
+      border: none;
+      color: rgba(255,255,255,0.8);
+      font-size: 0.62rem;
+      padding: 0.3rem 0.5rem;
+      width: 100%;
+      text-align: left;
+      cursor: pointer;
+      font-family: 'Poppins', sans-serif;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .options-dropdown button:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: white;
+    }
+
+    /* Grid columns on large screen */
+    .preview-main.full-view #guides-grid-container {
+      grid-template-columns: repeat(3, 1fr) !important;
+    }
+  </style>
+
+</head>
+<body>
+
+  <!-- ====== PREVIEW MASTER HEADER ====== -->
+  <div class="preview-header">
+    <div class="preview-info">
+      <h1>Travel Guides Mockup <span class="badge badge-approved">Approved</span><span class="badge badge-new">New</span></h1>
+      <p>Dashboard mockup with a featured guide hero, filtering and responsive headers.</p>
+    </div>
+    
+    <div style="display:flex; flex-direction:column; gap:0.5rem; align-items:flex-end;">
+      <!-- Layout Controls -->
+      <div class="view-controls">
+        <button id="btn-device" class="control-btn active" onclick="setViewMode('device')">📱 Phone</button>
+        <button id="btn-full" class="control-btn" onclick="setViewMode('full')">🖥️ Full View</button>
+      </div>
+
+      <!-- Theme Controls -->
+      <div style="display: flex; gap: 0.35rem;">
+        <button onclick="setTheme('green')" class="theme-btn" id="btn-theme-green" style="border: 1px solid var(--dash-accent); color: white; background: var(--dash-sidebar-bg);">🌲 Green</button>
+        <button onclick="setTheme('dark')" class="theme-btn" id="btn-theme-dark">🖤 Dark</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== MAIN PREVIEW CONTAINER ====== -->
+  <div class="preview-main device-view" id="preview-main-container">
+    <div class="phone-wrapper">
+      <div class="phone-frame-inner">
+        <div class="phone-frame">
+          
+          <!-- ====== TOP HEADER BAR ====== -->
+          <div style="background:var(--dash-sidebar-bg); border-bottom:1px solid var(--dash-border); padding:0.8rem 1rem; display:flex; align-items:center; justify-content:center; position:relative; height:48px; flex-shrink:0; z-index:20;">
+            <div style="display:flex; align-items:center; gap:0.35rem; cursor:pointer;">
+              <span style="font-size:0.95rem; font-weight:800; color:white; letter-spacing:0.02em;">My Travel Guides</span>
+              <svg width="10" height="10" fill="none" stroke="white" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+            </div>
+          </div>
+
+          <!-- ====== DASHBOARD PAGE CONTENTS ====== -->
+          <div style="padding: 0.75rem;">
+            
+            <!-- LARGE SCREEN (DESKTOP) HEADER ROW -->
+            <div class="desktop-only-header-row" style="display:none; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+              <!-- Left: Public Visibility switcher -->
+              <div style="display:flex; align-items:center; gap:0.4rem;">
+                <span id="pub-visibility-desktop-label" style="font-size:0.58rem; color:#4ade80; font-weight:600;">Public Visibility</span>
+                <div class="mini-switch" id="pub-visibility-desktop-toggle" onclick="toggleVisibilitySwitch('pub-visibility-desktop-toggle', 'pub-visibility-desktop-label')"></div>
+              </div>
+              <!-- Right: Create Guide button -->
+              <button style="background:var(--blue-cta); border:none; border-radius:20px; font-size:0.68rem; font-weight:700; color:white; padding:0.35rem 0.8rem; display:flex; align-items:center; gap:0.25rem; cursor:pointer; font-family:'Poppins',sans-serif; transition:background 0.2s;" onmouseover="this.style.background='var(--blue-final)'" onmouseout="this.style.background='var(--blue-cta)'">
+                <svg width="10" height="10" fill="none" stroke="white" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                Create Guide
+              </button>
+            </div>
+
+            <!-- MOBILE SCREEN HEADER ROW (SPLIT BUTTON) -->
+            <div class="mobile-only-header-row" style="position:relative; margin-bottom:0.75rem; width:100%; display:none;">
+              <div style="display:flex; width:100%; border-radius:20px; overflow:hidden; border:1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 12px rgba(59,130,246,0.15);">
+                <button style="flex:1; background:var(--blue-cta); border:none; font-size:0.68rem; font-weight:700; color:white; padding:0.4rem 0.8rem; text-align:left; display:flex; align-items:center; gap:0.25rem; cursor:pointer; font-family:'Poppins',sans-serif; transition:background 0.2s;" onmouseover="this.style.background='var(--blue-final)'" onmouseout="this.style.background='var(--blue-cta)'">
+                  <svg width="10" height="10" fill="none" stroke="white" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                  Create Guide
+                </button>
+                <button onclick="event.stopPropagation(); toggleDropdown('mobile-split-dropdown')" style="background:var(--blue-cta); border:none; border-left:1px solid rgba(255,255,255,0.2); width:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.2s;" onmouseover="this.style.background='var(--blue-final)'" onmouseout="this.style.background='var(--blue-cta)'">
+                  <svg width="9" height="9" fill="none" stroke="white" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+              </div>
+              
+              <!-- Dropdown panel inside mobile button -->
+              <div id="mobile-split-dropdown" class="glass-card" style="display:none; position:absolute; top:calc(100% + 5px); right:0; left:0; padding:0.55rem 0.75rem; z-index:50; border:1px solid rgba(59,130,246,0.25); border-radius:12px; background:rgba(15,22,36,0.95); box-shadow:0 8px 20px rgba(0,0,0,0.55);">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span style="font-size:0.65rem; color:rgba(255,255,255,0.85); font-weight:600;">Manage Public Visibility</span>
+                  <div style="display:flex; align-items:center; gap:0.4rem;">
+                    <span id="pub-visibility-mobile-label" style="font-size:0.55rem; color:#4ade80; font-weight:700; text-transform:uppercase;">Pub</span>
+                    <div class="mini-switch" id="pub-visibility-mobile-toggle" onclick="toggleVisibilitySwitch('pub-visibility-mobile-toggle', 'pub-visibility-mobile-label')"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ====== FEATURED HERO SECTION ====== -->
+            <div class="glass-card" style="border-radius:20px; overflow:hidden; position:relative; min-height:260px; display:flex; flex-direction:column; justify-content:flex-end; padding:1.25rem; margin-bottom:1rem; background:linear-gradient(180deg, rgba(13,15,18,0.1) 0%, rgba(13,15,18,0.95) 90%), url('https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=600') center/cover no-repeat; box-shadow: 0 10px 25px rgba(0,0,0,0.55); border: 1.5px solid rgba(255,255,255,0.08);">
+              <!-- Top pick / Featured badge -->
+              <div style="position:absolute; top:1.25rem; left:1.25rem; display:flex; align-items:center; gap:0.35rem;">
+                <div style="width:3px; height:12px; background:#fbbf24; border-radius:2px;"></div>
+                <span style="font-size:0.68rem; font-weight:800; color:white; text-transform:uppercase; letter-spacing:0.06em;">Featured Guide</span>
+              </div>
+              
+              <!-- Inset Thumbnail at bottom right -->
+              <div style="position:absolute; bottom:1.25rem; right:1.25rem; width:64px; height:44px; border-radius:6px; border:1.5px solid white; overflow:hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.6); flex-shrink:0;">
+                <div style="width:100%; height:100%; background:url('https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=600') center/cover no-repeat;"></div>
+              </div>
+
+              <!-- Main details -->
+              <div style="max-width:78%;">
+                <h2 style="font-size:1.4rem; font-weight:900; color:white; line-height:1.15; margin-bottom:0.4rem; letter-spacing:-0.01em;">Kyoto &amp; Osaka: A First-Timer's 7-Day Guide</h2>
+                <div style="display:flex; align-items:center; gap:0.3rem; font-size:0.58rem; color:rgba(255,255,255,0.65); font-weight:600; margin-bottom:0.5rem; flex-wrap:wrap;">
+                  <span>7 Days</span>
+                  <span>•</span>
+                  <span>Itinerary</span>
+                  <span>•</span>
+                  <span>Japan | Culture &amp; Nature</span>
+                </div>
+                <p style="font-size:0.63rem; color:rgba(255,255,255,0.5); line-height:1.35; margin-bottom:0.8rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">Explore the historic shrines of Kyoto, trek through Fushimi Inari, and indulge in Osaka's neon street-food valleys. Includes maps and local transit tricks.</p>
+                <button style="background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.2); border-radius:8px; padding:0.4rem 0.8rem; font-size:0.65rem; font-weight:700; color:white; display:flex; align-items:center; gap:0.25rem; cursor:pointer; font-family:'Poppins',sans-serif; transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">
+                  <span>★</span> Manage Featured
+                </button>
+              </div>
+            </div>
+
+            <!-- ====== SEARCH & FILTER BAR ====== -->
+            <div style="display:flex; align-items:center; gap:0.4rem; margin-bottom:0.75rem;">
+              <!-- Search bar -->
+              <div style="flex:1; display:flex; align-items:center; gap:0.35rem; background:rgba(255,255,255,0.04); border:1px solid var(--dash-border); border-radius:12px; padding:0.35rem 0.55rem; height:36px;">
+                <svg width="13" height="13" fill="none" stroke="rgba(255,255,255,0.4)" viewBox="0 0 24 24" style="flex-shrink:0;">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <input type="text" placeholder="Search guides, cities..." style="background:transparent; border:none; color:white; font-size:0.68rem; font-family:'Poppins',sans-serif; width:100%; outline:none;" />
+              </div>
+              
+              <!-- Filter toggle button -->
+              <button onclick="toggleFilters()" id="btn-filters" style="background:rgba(255,255,255,0.04); border:1px solid var(--dash-border); border-radius:12px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:rgba(255,255,255,0.8); position:relative; transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.04)'">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                </svg>
+                <!-- Indicator dot -->
+                <div id="filter-active-dot" style="position:absolute; top:4px; right:4px; width:6px; height:6px; background:#fbbf24; border-radius:50%; display:none;"></div>
+              </button>
+            </div>
+
+            <!-- DESKTOP INLINE FILTER PANEL -->
+            <div id="desktop-filter-panel" style="display:none; background:var(--dash-sidebar-bg); border:1px solid var(--dash-border); border-radius:14px; padding:0.75rem; margin-bottom:1rem; margin-top:-0.25rem;">
+              <div style="display:grid; grid-cols:1; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap:0.5rem;">
+                <div>
+                  <label style="font-size:0.55rem; color:rgba(255,255,255,0.5); font-weight:600; display:block; margin-bottom:0.2rem;">Guide Type</label>
+                  <select onchange="applyFilters()" id="f-type-desk" style="width:100%; background:rgba(0,0,0,0.2); border:1px solid var(--dash-border); border-radius:6px; color:white; font-size:0.58rem; padding:0.25rem; font-family:'Poppins'; outline:none;">
+                    <option value="">All Types</option>
+                    <option value="Itinerary">Itinerary</option>
+                    <option value="Theme-Based">Theme-Based</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:0.55rem; color:rgba(255,255,255,0.5); font-weight:600; display:block; margin-bottom:0.2rem;">Category</label>
+                  <select onchange="applyFilters()" id="f-cat-desk" style="width:100%; background:rgba(0,0,0,0.2); border:1px solid var(--dash-border); border-radius:6px; color:white; font-size:0.58rem; padding:0.25rem; font-family:'Poppins'; outline:none;">
+                    <option value="">All Categories</option>
+                    <option value="Food">Food</option>
+                    <option value="Culture">Culture</option>
+                    <option value="Nature">Nature</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:0.55rem; color:rgba(255,255,255,0.5); font-weight:600; display:block; margin-bottom:0.2rem;">Duration</label>
+                  <select onchange="applyFilters()" id="f-days-desk" style="width:100%; background:rgba(0,0,0,0.2); border:1px solid var(--dash-border); border-radius:6px; color:white; font-size:0.58rem; padding:0.25rem; font-family:'Poppins'; outline:none;">
+                    <option value="">All Durations</option>
+                    <option value="2">2 Days</option>
+                    <option value="3">3 Days</option>
+                    <option value="7">7 Days</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:0.55rem; color:rgba(255,255,255,0.5); font-weight:600; display:block; margin-bottom:0.2rem;">Budget</label>
+                  <select onchange="applyFilters()" id="f-budget-desk" style="width:100%; background:rgba(0,0,0,0.2); border:1px solid var(--dash-border); border-radius:6px; color:white; font-size:0.58rem; padding:0.25rem; font-family:'Poppins'; outline:none;">
+                    <option value="">All Budgets</option>
+                    <option value="Budget">Budget</option>
+                    <option value="Mid-Range">Mid-Range</option>
+                    <option value="Luxury">Luxury</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:0.55rem; color:rgba(255,255,255,0.5); font-weight:600; display:block; margin-bottom:0.2rem;">Multi-City</label>
+                  <div style="display:flex; align-items:center; gap:0.35rem; height:24px;">
+                    <div class="mini-switch off" id="f-multi-desk" onclick="toggleFilterSwitch('f-multi-desk')"></div>
+                    <span style="font-size:0.55rem; color:rgba(255,255,255,0.65);">Only Multi-City</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ====== GUIDES GRID/LIST CARDS ====== -->
+            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap:0.75rem;" id="guides-grid-container">
+              
+              <!-- Guide Card 1: Kyoto -->
+              <div class="glass-card" style="border-radius:16px; overflow:hidden; position:relative; display:flex; flex-direction:column; min-height:190px; cursor:pointer;" onclick="console.log('Open guide 1')">
+                <!-- Cover Image Area -->
+                <div style="height:100px; background:url('https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=600') center/cover no-repeat; border-bottom:1px solid var(--dash-border); position:relative;">
+                  <!-- Public status indicator -->
+                  <div style="position:absolute; top:0.5rem; left:0.5rem; background:rgba(74, 222, 128, 0.2); backdrop-filter:blur(4px); border:1px solid rgba(74, 222, 128, 0.4); border-radius:4px; padding:0.15rem 0.35rem; display:flex; align-items:center; gap:0.15rem;">
+                    <div style="width:4px; height:4px; background:#4ade80; border-radius:50%;"></div>
+                    <span style="font-size:0.52rem; font-weight:700; color:#4ade80; text-transform:uppercase;">Public</span>
+                  </div>
+                  <!-- Three-dot menu button -->
+                  <button onclick="event.stopPropagation(); toggleOptionsDropdown('opt-menu-1')" style="position:absolute; top:0.5rem; right:0.5rem; width:22px; height:22px; border-radius:50%; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; cursor:pointer; color:white;">
+                    <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
+                  </button>
+                  <!-- Card dropdown options -->
+                  <div id="opt-menu-1" class="options-dropdown">
+                    <button onclick="event.stopPropagation(); changeGuideStatus('opt-menu-1', 'draft', 1)"><svg width="8" height="8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 002.828-2.828m0 0a4 4 0 01-2.828 2.828m2.828-2.828l-8.485 8.485"/></svg> Make Draft</button>
+                    <button onclick="event.stopPropagation(); alert('Edit Guide 1')"><svg width="8" height="8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg> Edit</button>
+                    <button onclick="event.stopPropagation(); alert('Delete Guide 1')" style="color:#f87171;"><svg width="8" height="8" fill="none" stroke="red" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg> Delete</button>
+                  </div>
+                </div>
+                <!-- Details Area -->
+                <div style="padding:0.6rem; display:flex; flex-direction:column; justify-content:space-between; flex-grow:1;">
+                  <div>
+                    <h3 style="font-size:0.68rem; font-weight:700; color:white; line-height:1.2; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-bottom:0.2rem;">Kyoto &amp; Osaka: A First-Timer's 7-Day Guide</h3>
+                    <div style="font-size:0.5rem; color:rgba(255,255,255,0.45); font-weight:500;">★ 4.9 · 7 Days</div>
+                  </div>
+                  <div style="margin-top:0.4rem; display:flex; flex-wrap:wrap; gap:0.15rem;">
+                    <span style="font-size:0.48rem; background:rgba(255,255,255,0.06); padding:0.1rem 0.25rem; border-radius:4px; color:rgba(255,255,255,0.7);">Kyoto</span>
+                    <span style="font-size:0.48rem; background:rgba(255,255,255,0.06); padding:0.1rem 0.25rem; border-radius:4px; color:rgba(255,255,255,0.7);">Osaka</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Guide Card 2: Paris -->
+              <div class="glass-card" style="border-radius:16px; overflow:hidden; position:relative; display:flex; flex-direction:column; min-height:190px; cursor:pointer;" onclick="console.log('Open guide 2')">
+                <!-- Cover Image Area -->
+                <div style="height:100px; background:url('https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=600') center/cover no-repeat; border-bottom:1px solid var(--dash-border); position:relative;">
+                  <!-- Public status indicator -->
+                  <div style="position:absolute; top:0.5rem; left:0.5rem; background:rgba(74, 222, 128, 0.2); backdrop-filter:blur(4px); border:1px solid rgba(74, 222, 128, 0.4); border-radius:4px; padding:0.15rem 0.35rem; display:flex; align-items:center; gap:0.15rem;">
+                    <div style="width:4px; height:4px; background:#4ade80; border-radius:50%;"></div>
+                    <span style="font-size:0.52rem; font-weight:700; color:#4ade80; text-transform:uppercase;">Public</span>
+                  </div>
+                  <!-- Three-dot menu button -->
+                  <button onclick="event.stopPropagation(); toggleOptionsDropdown('opt-menu-2')" style="position:absolute; top:0.5rem; right:0.5rem; width:22px; height:22px; border-radius:50%; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; cursor:pointer; color:white;">
+                    <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
+                  </button>
+                  <!-- Card dropdown options -->
+                  <div id="opt-menu-2" class="options-dropdown">
+                    <button onclick="event.stopPropagation(); changeGuideStatus('opt-menu-2', 'draft', 2)"><svg width="8" height="8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 002.828-2.828m0 0a4 4 0 01-2.828 2.828m2.828-2.828l-8.485 8.485"/></svg> Make Draft</button>
+                    <button onclick="event.stopPropagation(); alert('Edit Guide 2')"><svg width="8" height="8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg> Edit</button>
+                    <button onclick="event.stopPropagation(); alert('Delete Guide 2')" style="color:#f87171;"><svg width="8" height="8" fill="none" stroke="red" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg> Delete</button>
+                  </div>
+                </div>
+                <!-- Details Area -->
+                <div style="padding:0.6rem; display:flex; flex-direction:column; justify-content:space-between; flex-grow:1;">
+                  <div>
+                    <h3 style="font-size:0.68rem; font-weight:700; color:white; line-height:1.2; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-bottom:0.2rem;">Paris for Foodies: 48h Gastronomy Tour</h3>
+                    <div style="font-size:0.5rem; color:rgba(255,255,255,0.45); font-weight:500;">★ 4.8 · 2 Days</div>
+                  </div>
+                  <div style="margin-top:0.4rem; display:flex; flex-wrap:wrap; gap:0.15rem;">
+                    <span style="font-size:0.48rem; background:rgba(255,255,255,0.06); padding:0.1rem 0.25rem; border-radius:4px; color:rgba(255,255,255,0.7);">Paris</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Guide Card 3: Iceland -->
+              <div class="glass-card" style="border-radius:16px; overflow:hidden; position:relative; display:flex; flex-direction:column; min-height:190px; cursor:pointer;" onclick="console.log('Open guide 3')">
+                <!-- Cover Image Area -->
+                <div style="height:100px; background:url('https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?q=80&w=600') center/cover no-repeat; border-bottom:1px solid var(--dash-border); position:relative;">
+                  <!-- Draft status indicator -->
+                  <div style="position:absolute; top:0.5rem; left:0.5rem; background:rgba(248, 113, 113, 0.2); backdrop-filter:blur(4px); border:1px solid rgba(248, 113, 113, 0.4); border-radius:4px; padding:0.15rem 0.35rem; display:flex; align-items:center; gap:0.15rem;">
+                    <div style="width:4px; height:4px; background:#f87171; border-radius:50%;"></div>
+                    <span style="font-size:0.52rem; font-weight:700; color:#f87171; text-transform:uppercase;">Draft</span>
+                  </div>
+                  <!-- Three-dot menu button -->
+                  <button onclick="event.stopPropagation(); toggleOptionsDropdown('opt-menu-3')" style="position:absolute; top:0.5rem; right:0.5rem; width:22px; height:22px; border-radius:50%; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; cursor:pointer; color:white;">
+                    <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
+                  </button>
+                  <!-- Card dropdown options -->
+                  <div id="opt-menu-3" class="options-dropdown">
+                    <button onclick="event.stopPropagation(); changeGuideStatus('opt-menu-3', 'public', 3)"><svg width="8" height="8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg> Make Public</button>
+                    <button onclick="event.stopPropagation(); alert('Edit Guide 3')"><svg width="8" height="8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg> Edit</button>
+                    <button onclick="event.stopPropagation(); alert('Delete Guide 3')" style="color:#f87171;"><svg width="8" height="8" fill="none" stroke="red" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg> Delete</button>
+                  </div>
+                </div>
+                <!-- Details Area -->
+                <div style="padding:0.6rem; display:flex; flex-direction:column; justify-content:space-between; flex-grow:1;">
+                  <div>
+                    <h3 style="font-size:0.68rem; font-weight:700; color:white; line-height:1.2; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-bottom:0.2rem;">Ultimate Iceland Ring Road Adventure</h3>
+                    <div style="font-size:0.5rem; color:rgba(255,255,255,0.45); font-weight:500;">★ 4.7 · 10 Days</div>
+                  </div>
+                  <div style="margin-top:0.4rem; display:flex; flex-wrap:wrap; gap:0.15rem;">
+                    <span style="font-size:0.48rem; background:rgba(255,255,255,0.06); padding:0.1rem 0.25rem; border-radius:4px; color:rgba(255,255,255,0.7);">Iceland</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Dotted Card: Create Guide -->
+              <div style="border:2.2px dashed rgba(255, 255, 255, 0.12); border-radius:16px; min-height:190px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.35rem; padding:1rem; cursor:pointer; background:transparent; transition:all 0.2s;" onmouseover="this.style.borderColor='var(--blue-cta)'; this.style.background='rgba(59,130,246,0.02)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.12)'; this.style.background='transparent'">
+                <span style="font-size:1.5rem; color:rgba(255,255,255,0.3); font-weight:300; line-height:1;">+</span>
+                <span style="font-size:0.68rem; color:rgba(255,255,255,0.45); font-weight:600;">Create Guide</span>
+              </div>
+
+            </div>
+
+            <!-- Bottom Spacer -->
+            <div style="height:60px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== MOBILE SIDEBAR FILTERS (DRAWER) ====== -->
+  <div id="mobile-filter-backdrop" onclick="toggleFilters()" style="display:none; position:fixed; inset:0; bg:black; background:rgba(0,0,0,0.6); z-index:10000; opacity:0; transition:opacity 0.25s ease-out;"></div>
+  <div id="mobile-filter-sidebar" style="position:fixed; top:0; left:0; height:100%; width:280px; background:var(--dash-sidebar-bg); z-index:10001; box-shadow:8px 0 24px rgba(0,0,0,0.5); transform:translateX(-100%); transition:transform 0.25s cubic-bezier(0.16, 1, 0.3, 1); display:flex; flex-direction:column; border-right:1px solid var(--dash-border);">
+    <div style="padding:1rem; border-bottom:1px solid var(--dash-border); display:flex; justify-content:space-between; align-items:center;">
+      <h2 style="font-size:0.9rem; font-weight:700; color:white;">Filters</h2>
+      <button onclick="toggleFilters()" style="background:transparent; border:none; color:rgba(255,255,255,0.6); cursor:pointer; font-size:1.1rem;">&times;</button>
+    </div>
+    <div style="padding:1rem; flex-grow:1; display:flex; flex-direction:column; gap:1rem; overflow-y:auto;">
+      <div>
+        <label style="font-size:0.65rem; color:rgba(255,255,255,0.5); font-weight:600; display:block; margin-bottom:0.3rem;">Guide Type</label>
+        <select onchange="applyFilters()" id="f-type-mob" style="width:100%; background:rgba(0,0,0,0.25); border:1px solid var(--dash-border); border-radius:8px; color:white; font-size:0.75rem; padding:0.5rem; font-family:'Poppins'; outline:none;">
+          <option value="">All Types</option>
+          <option value="Itinerary">Itinerary</option>
+          <option value="Theme-Based">Theme-Based</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:0.65rem; color:rgba(255,255,255,0.5); font-weight:600; display:block; margin-bottom:0.3rem;">Category</label>
+        <select onchange="applyFilters()" id="f-cat-mob" style="width:100%; background:rgba(0,0,0,0.25); border:1px solid var(--dash-border); border-radius:8px; color:white; font-size:0.75rem; padding:0.5rem; font-family:'Poppins'; outline:none;">
+          <option value="">All Categories</option>
+          <option value="Food">Food</option>
+          <option value="Culture">Culture</option>
+          <option value="Nature">Nature</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:0.65rem; color:rgba(255,255,255,0.5); font-weight:600; display:block; margin-bottom:0.3rem;">Duration</label>
+        <select onchange="applyFilters()" id="f-days-mob" style="width:100%; background:rgba(0,0,0,0.25); border:1px solid var(--dash-border); border-radius:8px; color:white; font-size:0.75rem; padding:0.5rem; font-family:'Poppins'; outline:none;">
+          <option value="">All Durations</option>
+          <option value="2">2 Days</option>
+          <option value="3">3 Days</option>
+          <option value="7">7 Days</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:0.65rem; color:rgba(255,255,255,0.5); font-weight:600; display:block; margin-bottom:0.3rem;">Budget</label>
+        <select onchange="applyFilters()" id="f-budget-mob" style="width:100%; background:rgba(0,0,0,0.25); border:1px solid var(--dash-border); border-radius:8px; color:white; font-size:0.75rem; padding:0.5rem; font-family:'Poppins'; outline:none;">
+          <option value="">All Budgets</option>
+          <option value="Budget">Budget</option>
+          <option value="Mid-Range">Mid-Range</option>
+          <option value="Luxury">Luxury</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:0.65rem; color:rgba(255,255,255,0.5); font-weight:600; display:block; margin-bottom:0.3rem;">Multi-City</label>
+        <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.25rem;">
+          <div class="mini-switch off" id="f-multi-mob" onclick="toggleFilterSwitch('f-multi-mob')"></div>
+          <span style="font-size:0.7rem; color:rgba(255,255,255,0.75);">Only Multi-City</span>
+        </div>
+      </div>
+    </div>
+    <div style="padding:1rem; border-top:1px solid var(--dash-border);">
+      <button onclick="clearAllFilters()" style="width:100%; background:rgba(248,113,113,0.15); border:1px solid rgba(248,113,113,0.4); border-radius:8px; color:#f87171; padding:0.55rem; font-size:0.7rem; font-weight:700; cursor:pointer; font-family:'Poppins';">Clear Filters</button>
+    </div>
+  </div>
+
+  <!-- ====== INTERACTIVE SCRIPTS ====== -->
+  <script>
+    // ===== Global States =====
+    let currentViewMode = 'device';
+    let filtersOpen = false;
+
+    // ===== Viewport View Mode Toggles =====
+    function setViewMode(mode) {
+      currentViewMode = mode;
+      const container = document.getElementById('preview-main-container');
+      const btnDevice = document.getElementById('btn-device');
+      const btnFull = document.getElementById('btn-full');
+      const desktopFilter = document.getElementById('desktop-filter-panel');
+      
+      if (mode === 'device') {
+        container.classList.remove('full-view');
+        container.classList.add('device-view');
+        btnDevice.classList.add('active');
+        btnFull.classList.remove('active');
+        desktopFilter.style.display = 'none'; // hide desktop inline filters in mobile
+      } else {
+        container.classList.remove('device-view');
+        container.classList.add('full-view');
+        btnFull.classList.add('active');
+        btnDevice.classList.remove('active');
+        // If filters were open, show the inline panel
+        if (filtersOpen) {
+          desktopFilter.style.display = 'block';
+        }
+      }
+    }
+
+    // ===== Dropdown Display Switcher =====
+    function toggleDropdown(dropdownId) {
+      const dropdown = document.getElementById(dropdownId);
+      if (!dropdown) return;
+      dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    }
+
+    // ===== Card Options Dropdown =====
+    function toggleOptionsDropdown(menuId) {
+      // Close other menus first
+      const allMenus = document.querySelectorAll('.options-dropdown');
+      allMenus.forEach(m => {
+        if (m.id !== menuId) m.classList.remove('active');
+      });
+      
+      const menu = document.getElementById(menuId);
+      if (menu) menu.classList.toggle('active');
+    }
+
+    // Close options dropdowns and mobile split dropdown when clicking elsewhere
+    document.addEventListener('click', (e) => {
+      // Chevron split dropdown
+      const splitDrop = document.getElementById('mobile-split-dropdown');
+      if (splitDrop && splitDrop.style.display === 'block') {
+        const btn = splitDrop.previousElementSibling;
+        if (btn && !splitDrop.contains(e.target) && !btn.contains(e.target)) {
+          splitDrop.style.display = 'none';
+        }
+      }
+
+      // Three-dot menus
+      const openMenus = document.querySelectorAll('.options-dropdown.active');
+      openMenus.forEach(menu => {
+        const btn = menu.previousElementSibling;
+        if (btn && !menu.contains(e.target) && !btn.contains(e.target)) {
+          menu.classList.remove('active');
+        }
+      });
+    });
+
+    // ===== Toggle Switches with Label Syncing =====
+    function toggleVisibilitySwitch(switchId, labelId) {
+      const sw = document.getElementById(switchId);
+      if (!sw) return;
+      
+      sw.classList.toggle('off');
+      const isOff = sw.classList.contains('off');
+      
+      // Update both desktop and mobile labels/switches in sync
+      const labels = ['pub-visibility-desktop-label', 'pub-visibility-mobile-label'];
+      const switches = ['pub-visibility-desktop-toggle', 'pub-visibility-mobile-toggle'];
+      
+      switches.forEach((sId, index) => {
+        const otherSw = document.getElementById(sId);
+        const otherLbl = document.getElementById(labels[index]);
+        
+        if (otherSw) {
+          if (isOff) otherSw.classList.add('off');
+          else otherSw.classList.remove('off');
+        }
+        
+        if (otherLbl) {
+          otherLbl.textContent = isOff ? 'Draft' : 'Public';
+          otherLbl.style.color = isOff ? '#f87171' : '#4ade80';
+        }
+      });
+    }
+
+    // ===== Toggle Filter Switches =====
+    function toggleFilterSwitch(switchId) {
+      const sw = document.getElementById(switchId);
+      if (sw) {
+        sw.classList.toggle('off');
+        
+        // Sync filter switch between mobile and desktop versions
+        const isOff = sw.classList.contains('off');
+        const otherId = switchId === 'f-multi-desk' ? 'f-multi-mob' : 'f-multi-desk';
+        const otherSw = document.getElementById(otherId);
+        if (otherSw) {
+          if (isOff) otherSw.classList.add('off');
+          else otherSw.classList.remove('off');
+        }
+        applyFilters();
+      }
+    }
+
+    // ===== Toggle Filters Panel (Inline vs Sidebar) =====
+    function toggleFilters() {
+      filtersOpen = !filtersOpen;
+      const desktopPanel = document.getElementById('desktop-filter-panel');
+      const btnFilters = document.getElementById('btn-filters');
+      
+      if (currentViewMode === 'device') {
+        // Mobile Sidebar Drawer
+        const backdrop = document.getElementById('mobile-filter-backdrop');
+        const sidebar = document.getElementById('mobile-filter-sidebar');
+        
+        if (filtersOpen) {
+          backdrop.style.display = 'block';
+          setTimeout(() => {
+            backdrop.style.opacity = '1';
+            sidebar.style.transform = 'translateX(0)';
+          }, 10);
+        } else {
+          sidebar.style.transform = 'translateX(-100%)';
+          backdrop.style.opacity = '0';
+          setTimeout(() => {
+            backdrop.style.display = 'none';
+          }, 250);
+        }
+        desktopPanel.style.display = 'none';
+      } else {
+        // Desktop Inline Panel
+        desktopPanel.style.display = filtersOpen ? 'block' : 'none';
+      }
+      
+      // Toggle button active visual styling
+      if (btnFilters) {
+        if (filtersOpen) {
+          btnFilters.style.background = 'var(--dash-accent)';
+          btnFilters.style.borderColor = 'var(--dash-accent)';
+          btnFilters.style.color = 'white';
+        } else {
+          btnFilters.style.background = 'rgba(255,255,255,0.04)';
+          btnFilters.style.borderColor = 'var(--dash-border)';
+          btnFilters.style.color = 'rgba(255,255,255,0.8)';
+        }
+      }
+    }
+
+    // ===== Change status of card via dropdown =====
+    function changeGuideStatus(menuId, targetStatus, cardIndex) {
+      const menu = document.getElementById(menuId);
+      if (menu) menu.classList.remove('active');
+      
+      const card = menu.closest('.glass-card');
+      const headerArea = card.firstElementChild;
+      
+      if (targetStatus === 'draft') {
+        headerArea.innerHTML = `
+          <div style="position:absolute; top:0.5rem; left:0.5rem; background:rgba(248, 113, 113, 0.2); backdrop-filter:blur(4px); border:1px solid rgba(248, 113, 113, 0.4); border-radius:4px; padding:0.15rem 0.35rem; display:flex; align-items:center; gap:0.15rem;">
+            <div style="width:4px; height:4px; background:#f87171; border-radius:50%;"></div>
+            <span style="font-size:0.52rem; font-weight:700; color:#f87171; text-transform:uppercase;">Draft</span>
+          </div>
+          <button onclick="event.stopPropagation(); toggleOptionsDropdown('${menuId}')" style="position:absolute; top:0.5rem; right:0.5rem; width:22px; height:22px; border-radius:50%; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; cursor:pointer; color:white;">
+            <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
+          </button>
+          <div id="${menuId}" class="options-dropdown">
+            <button onclick="event.stopPropagation(); changeGuideStatus('${menuId}', 'public', ${cardIndex})"><svg width="8" height="8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg> Make Public</button>
+            <button onclick="event.stopPropagation(); alert('Edit Guide ${cardIndex}')"><svg width="8" height="8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg> Edit</button>
+            <button onclick="event.stopPropagation(); alert('Delete Guide ${cardIndex}')" style="color:#f87171;"><svg width="8" height="8" fill="none" stroke="red" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg> Delete</button>
+          </div>
+        `;
+      } else {
+        headerArea.innerHTML = `
+          <div style="position:absolute; top:0.5rem; left:0.5rem; background:rgba(74, 222, 128, 0.2); backdrop-filter:blur(4px); border:1px solid rgba(74, 222, 128, 0.4); border-radius:4px; padding:0.15rem 0.35rem; display:flex; align-items:center; gap:0.15rem;">
+            <div style="width:4px; height:4px; background:#4ade80; border-radius:50%;"></div>
+            <span style="font-size:0.52rem; font-weight:700; color:#4ade80; text-transform:uppercase;">Public</span>
+          </div>
+          <button onclick="event.stopPropagation(); toggleOptionsDropdown('${menuId}')" style="position:absolute; top:0.5rem; right:0.5rem; width:22px; height:22px; border-radius:50%; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; cursor:pointer; color:white;">
+            <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
+          </button>
+          <div id="${menuId}" class="options-dropdown">
+            <button onclick="event.stopPropagation(); changeGuideStatus('${menuId}', 'draft', ${cardIndex})"><svg width="8" height="8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 002.828-2.828m0 0a4 4 0 01-2.828 2.828m2.828-2.828l-8.485 8.485"/></svg> Make Draft</button>
+            <button onclick="event.stopPropagation(); alert('Edit Guide ${cardIndex}')"><svg width="8" height="8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg> Edit</button>
+            <button onclick="event.stopPropagation(); alert('Delete Guide ${cardIndex}')" style="color:#f87171;"><svg width="8" height="8" fill="none" stroke="red" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg> Delete</button>
+          </div>
+        `;
+      }
+    }
+
+    // ===== Mock Filtering Functionality =====
+    function applyFilters() {
+      // Get values based on active mode
+      let type, cat, days, budget, isMulti;
+      
+      if (currentViewMode === 'device') {
+        type = document.getElementById('f-type-mob').value;
+        cat = document.getElementById('f-cat-mob').value;
+        days = document.getElementById('f-days-mob').value;
+        budget = document.getElementById('f-budget-mob').value;
+        isMulti = !document.getElementById('f-multi-mob').classList.contains('off');
+      } else {
+        type = document.getElementById('f-type-desk').value;
+        cat = document.getElementById('f-cat-desk').value;
+        days = document.getElementById('f-days-desk').value;
+        budget = document.getElementById('f-budget-desk').value;
+        isMulti = !document.getElementById('f-multi-desk').classList.contains('off');
+      }
+
+      // Check if any filter is active
+      const hasActive = type || cat || days || budget || isMulti;
+      document.getElementById('filter-active-dot').style.display = hasActive ? 'block' : 'none';
+
+      // Sync select boxes between mobile/desktop
+      if (currentViewMode === 'device') {
+        document.getElementById('f-type-desk').value = type;
+        document.getElementById('f-cat-desk').value = cat;
+        document.getElementById('f-days-desk').value = days;
+        document.getElementById('f-budget-desk').value = budget;
+      } else {
+        document.getElementById('f-type-mob').value = type;
+        document.getElementById('f-cat-mob').value = cat;
+        document.getElementById('f-days-mob').value = days;
+        document.getElementById('f-budget-mob').value = budget;
+      }
+    }
+
+    function clearAllFilters() {
+      document.getElementById('f-type-mob').value = "";
+      document.getElementById('f-cat-mob').value = "";
+      document.getElementById('f-days-mob').value = "";
+      document.getElementById('f-budget-mob').value = "";
+      document.getElementById('f-multi-mob').classList.add('off');
+      
+      document.getElementById('f-type-desk').value = "";
+      document.getElementById('f-cat-desk').value = "";
+      document.getElementById('f-days-desk').value = "";
+      document.getElementById('f-budget-desk').value = "";
+      document.getElementById('f-multi-desk').classList.add('off');
+      
+      applyFilters();
+      toggleFilters(); // close drawer
+    }
+
+    // ===== Theme Settings =====
+    const themes = {
+      green: {
+        '--dash-bg': '#2E4032',
+        '--dash-sidebar-bg': '#223126',
+        '--dash-accent': '#3B82F6',
+        '--dash-border': '#3C4E40',
+        '--blue-cta': '#3B82F6',
+        '--blue-final': '#2563EB',
+      },
+      dark: {
+        '--dash-bg': '#0F1419',
+        '--dash-sidebar-bg': '#161B26',
+        '--dash-accent': '#60A5FA',
+        '--dash-border': '#283147',
+        '--blue-cta': '#3B82F6',
+        '--blue-final': '#2563EB',
+      }
+    };
+
+    window.setTheme = function(themeName) {
+      const theme = themes[themeName];
+      if (!theme) return;
+      
+      const root = document.documentElement;
+      Object.keys(theme).forEach(key => {
+        root.style.setProperty(key, theme[key]);
+      });
+
+      const btnGreen = document.getElementById('btn-theme-green');
+      const btnDark = document.getElementById('btn-theme-dark');
+      if (btnGreen && btnDark) {
+        if (themeName === 'green') {
+          btnGreen.style.borderColor = 'var(--dash-accent)';
+          btnGreen.style.color = 'white';
+          btnGreen.style.background = 'var(--dash-sidebar-bg)';
+          
+          btnDark.style.borderColor = 'transparent';
+          btnDark.style.color = '#64748b';
+          btnDark.style.background = 'none';
+        } else {
+          btnDark.style.borderColor = 'var(--dash-accent)';
+          btnDark.style.color = 'white';
+          btnDark.style.background = 'var(--dash-sidebar-bg)';
+          
+          btnGreen.style.borderColor = 'transparent';
+          btnGreen.style.color = '#64748b';
+          btnGreen.style.background = 'none';
+        }
+      }
+    };
+  </script>
+</body>
+</html>

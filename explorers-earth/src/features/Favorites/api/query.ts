@@ -19,6 +19,9 @@ export const recommendationListQuery = gql`
       List_Name
       Visibility
       createdAt
+      is_pinned
+      pin_order
+      display_order
       account {
         documentId
       }
@@ -26,6 +29,7 @@ export const recommendationListQuery = gql`
       Instagram_Media_URL
       recommended_places {
         documentId
+        media_details
       }
     }
   }

@@ -123,113 +123,147 @@ const LinksAndQR: FC<LinksAndQRProps> = memo(
         ? generateRecommendationQRUrl(user.username, selectedCity.slug, qrUtmParams)
         : `${url}/${user?.username}`;
 
+    const [manageOpen, setManageOpen] = useState<boolean>(true);
+    const [qrOpen, setQrOpen] = useState<boolean>(true);
+
     return (
-      <div className="mb-0 md:mt-6 md:w-3/4 md:mx-auto">
-        <div className="bg-transparent rounded-lg p-6 space-y-4 border border-white">
+      <div className="mb-0 md:mt-4 max-w-[600px] mx-auto w-full">
+        <div className="bg-black/15 rounded-2xl p-4 md:p-6 space-y-4 border border-dashboard-border">
           {/* Manage Accordion */}
-          <Accordion
-            heading={t("dashboard.recommendations.manageHeading")}
-            defaultOpen={true}
-          >
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={handleConfirmDeleteModal}
-                className="flex flex-row text-center gap-2 items-center rounded-md focus:outline-none transition-all duration-300 font-poppins w-full text-sm border border-white px-4 py-3 hover:border-gray-500 text-white hover:text-gray-500 justify-center font-medium"
+          <div className="acc-item border border-dashboard-border bg-white/[0.02] rounded-xl overflow-hidden">
+            <button
+              onClick={() => setManageOpen(!manageOpen)}
+              className="w-full bg-none border-none py-3 px-4 text-white text-xs font-bold font-poppins flex justify-between items-center cursor-pointer hover:bg-white/[0.04]"
+            >
+              <span>Manage</span>
+              <svg
+                className={`transform transition-transform duration-200 ${manageOpen ? "rotate-180" : ""}`}
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                <DeleteIcon />{" "}
-                <span className="font-poppins">
-                  {t("dashboard.recommendations.deleteAction")}
-                </span>
-              </button>
-              <button
-                onClick={handleEditRecommendedList}
-                className="flex flex-row text-center gap-2 items-center rounded-md focus:outline-none transition-all duration-300 font-poppins w-full text-sm border border-white px-4 py-3 hover:border-gray-500 text-white hover:text-gray-500 justify-center font-medium"
-              >
-                <EditIcon color="var(--dash-text)" />
-                <span className="font-poppins">
-                  {t("dashboard.recommendations.editAction")}
-                </span>
-              </button>
-              <button
-                onClick={handleRecommendationListVisibility}
-                className={`flex flex-row gap-2 items-center rounded-md focus:outline-none transition-all duration-300 font-poppins w-full text-sm border ${
-                  isPublished
-                    ? "border-[hsl(var(--status-published))] text-[hsl(var(--status-published))]"
-                    : "border-dashboard-danger text-dashboard-danger"
-                } justify-center font-medium px-4 py-3`}
-              >
-                {isPublished ? (
-                  <EyeOnIcon stroke="hsl(var(--status-published))" size="5" />
-                ) : (
-                  <EyeOffIcon stroke="var(--dash-danger)" size="5" />
-                )}
-                <span className="font-poppins">
-                  {isPublished
-                    ? t("dashboard.recommendations.publishedStatus")
-                    : t("dashboard.recommendations.draftStatus")}
-                </span>
-              </button>
-            </div>
-          </Accordion>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            
+            {manageOpen && (
+              <div className="border-t border-dashboard-border bg-black/10 p-4 flex flex-col gap-3">
+                {/* Delete button */}
+                <button
+                  onClick={handleConfirmDeleteModal}
+                  className="w-full bg-transparent border border-white/20 hover:border-white/40 hover:bg-white/5 text-white rounded-lg py-2.5 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all"
+                >
+                  <DeleteIcon stroke="currentColor" />
+                  <span>Delete</span>
+                </button>
+
+                {/* Edit button */}
+                <button
+                  onClick={handleEditRecommendedList}
+                  className="w-full bg-transparent border border-white/20 hover:border-white/40 hover:bg-white/5 text-white rounded-lg py-2.5 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all"
+                >
+                  <EditIcon color="currentColor" />
+                  <span>Edit</span>
+                </button>
+
+                {/* Published/Draft button toggle */}
+                <button
+                  onClick={handleRecommendationListVisibility}
+                  className={`w-full bg-transparent border rounded-lg py-2.5 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                    isPublished
+                      ? "border-[#10B981] hover:bg-[#10B981]/5 text-[#10B981] hover:border-[#34d399] hover:text-[#34d399]"
+                      : "border-[#f87171] hover:bg-[#f87171]/5 text-[#f87171] hover:border-[#f87171] hover:text-[#f87171]"
+                  }`}
+                >
+                  {isPublished ? (
+                    <>
+                      <EyeOnIcon stroke="currentColor" size="4" />
+                      <span>Published</span>
+                    </>
+                  ) : (
+                    <>
+                      <EyeOffIcon stroke="currentColor" size="4" />
+                      <span>Draft</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* QR Accordion */}
-          <Accordion
-            heading={t("dashboard.recommendations.myQRHeading")}
-            defaultOpen={true}
+          <div
+            className="acc-item border bg-white/[0.02] rounded-xl overflow-hidden transition-colors"
+            style={{ borderColor: "var(--dash-accent)" }}
           >
-            <div className={`relative ${!isPublished && "blur"}`}>
-              <div className="flex justify-center items-center my-4">
-                <QRSticker
-                  qrRef={qrRef}
-                  qrCodeUrl={qrCodeUrl}
-                />
-              </div>
+            <button
+              onClick={() => setQrOpen(!qrOpen)}
+              className="w-full bg-none border-none py-3 px-4 text-white text-xs font-bold font-poppins flex justify-between items-center cursor-pointer hover:bg-white/[0.04]"
+            >
+              <span>My QR</span>
+              <svg
+                className={`transform transition-transform duration-200 ${qrOpen ? "rotate-180" : ""}`}
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
 
-              <div className="flex items-center justify-center gap-4">
-                <div className="flex flex-row gap-5 items-center h-full">
-                  <div className="flex flex-col justify-center items-center" data-walkthrough="share-button">
-                    <Button
-                      startIcon={<ShareIcon color="white" />}
-                      variant="ghost"
-                      onClickHandler={() => setShowShareModal(true)}
-                    />
-                    <span className="font-poppins text-white text-xs">
-                      {t("dashboard.recommendations.shareLink")}
-                    </span>
+            {qrOpen && (
+              <div className="border-t border-dashboard-border bg-black/10 p-4">
+                <div className={`relative ${!isPublished && "blur-sm opacity-60 pointer-events-none"}`}>
+                  <div className="flex justify-center items-center my-4">
+                    <QRSticker qrRef={qrRef} qrCodeUrl={qrCodeUrl} />
                   </div>
-                  <div className="flex flex-col items-center">
-                    <Button
-                      startIcon={<BoldLinkIcon color="white" />}
-                      variant="ghost"
-                      onClickHandler={handleCopyLink}
-                    />
-                    <span className="font-poppins text-white text-xs">
-                      {t("dashboard.recommendations.copyLink")}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <Button
-                      startIcon={<DownloadIcon />}
-                      variant="ghost"
-                      onClickHandler={handleDownloadQR}
-                    />
-                    <span className="font-poppins text-white text-xs">
-                      {t("dashboard.recommendations.downloadQR")}
-                    </span>
+
+                  <div className="flex justify-around items-center w-full mt-6 py-2 border-t border-white/5">
+                    {/* Share Link */}
+                    <div
+                      onClick={() => setShowShareModal(true)}
+                      className="flex flex-col items-center gap-1.5 cursor-pointer text-white/80 hover:text-white transition-colors"
+                      data-walkthrough="share-button"
+                    >
+                      <ShareIcon color="currentColor" />
+                      <span className="font-poppins text-[10px] font-semibold">Share Link</span>
+                    </div>
+
+                    {/* Copy Link */}
+                    <div
+                      onClick={handleCopyLink}
+                      className="flex flex-col items-center gap-1.5 cursor-pointer text-white/80 hover:text-white transition-colors"
+                    >
+                      <BoldLinkIcon color="currentColor" />
+                      <span className="font-poppins text-[10px] font-semibold">Copy Link</span>
+                    </div>
+
+                    {/* Download QR */}
+                    <div
+                      onClick={handleDownloadQR}
+                      className="flex flex-col items-center gap-1.5 cursor-pointer text-white/80 hover:text-white transition-colors"
+                    >
+                      <DownloadIcon />
+                      <span className="font-poppins text-[10px] font-semibold">Download QR</span>
+                    </div>
                   </div>
                 </div>
 
-              <ShareModal
-                shareButtons={shareButtons}
-                isOpen={showShareModal}
-                onClose={() => setShowShareModal(false)}
-                url={qrCodeUrl}
-                utmParams={qrUtmParams}
-                backgroundImage={selectedCity?.List_Name_Details?.thumbnail}
-              />
+                <ShareModal
+                  shareButtons={shareButtons}
+                  isOpen={showShareModal}
+                  onClose={() => setShowShareModal(false)}
+                  url={qrCodeUrl}
+                  utmParams={qrUtmParams}
+                  backgroundImage={selectedCity?.List_Name_Details?.thumbnail}
+                />
               </div>
-            </div>
-          </Accordion>
+            )}
+          </div>
         </div>
       </div>
     );
