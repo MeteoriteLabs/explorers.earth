@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import useAuthStore from "../store/store";
 import Button from "../components/ui/Button";
 import ShareIcon from "../assets/icons/ShareIcon";
-import { useQuery } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client";
 import { getCurrentDomain } from "../utils/getCurrentDomain";
 import { EarthLoader } from "../components/EarthLoader";
 import MobileIcon from "../assets/icons/MobileIcon";
@@ -39,6 +39,63 @@ import { GAME_LISTS_BY_ACCOUNT } from "../features/Games/api/query";
 import { useTunesDashboard } from "../hooks/useTunesDashboard";
 import { GET_PUBLIC_PAGE_ANALYTICS } from "../features/Analytics/api/queries";
 
+import { useQueryClient } from "@tanstack/react-query";
+import { X, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import axios from "axios";
+import { motion, AnimatePresence } from "framer-motion";
+import { GOOGLE_PLACES_API_BASE_URL } from "../config";
+import { htmlToBlocks } from "../utils/strapiBlocksConverter";
+
+// Modals
+import AddLocationModal from "../components/ui/AddLocationModal";
+import { CreateMovieListModal } from "../features/Movies/components/dashboard/MoviesHome";
+import { CreateBookListModal } from "../features/Books/components/dashboard/BooksHome";
+import { CreateGameListModal } from "../features/Games/components/dashboard/GamesHome";
+import { CreateGuideModal } from "../features/Guides";
+import AddressInput from "../features/Profile/components/AddressInput";
+
+// Mutations & queries
+import { createRecommendationLinkMutation } from "../features/Favorites/api/mutation";
+import { CREATE_GUIDE_MUTATION } from "../features/Guides/api/mutations";
+import { localTunesRequest } from "../lib/apiClient";
+
+// S3 upload helpers
+import {
+  generateLocationThumbnailPath,
+  generateRandomFileName,
+  sanitizeUsername,
+} from "../utils/uploadPathGenerator";
+
+
+const resolveCoverUrl = (
+  path: string | null | undefined,
+  type?: "movie" | "book" | "game" | "place" | "guide" | "music"
+): string | undefined => {
+  if (!path || path === "null" || path === "undefined") return undefined;
+
+  // If it's already a full URL, return it
+  if (path.startsWith("http")) return path;
+
+  // If it starts with /uploads/ (local Strapi upload), prepend backend URL
+  if (path.startsWith("/uploads/")) {
+    const backendUrl = import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337";
+    return `${backendUrl}${path}`;
+  }
+
+  // If it's a movie poster from TMDB (starts with / but not /uploads/)
+  if (type === "movie") {
+    return `https://image.tmdb.org/t/p/w185${path.startsWith("/") ? path : `/${path}`}`;
+  }
+
+  // If it starts with / but not /uploads/ for other types, check if we should prepend backend URL anyway
+  if (path.startsWith("/")) {
+    const backendUrl = import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337";
+    return `${backendUrl}${path}`;
+  }
+
+  return path;
+};
 
 const Home = memo(() => {
   const { t } = useTranslation();
@@ -58,6 +115,17 @@ const Home = memo(() => {
   const [showGuideShareModals, setShowGuideShareModals] = useState<{ [key: string]: boolean }>({});
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"places" | "movies" | "books" | "games" | "music" | "guides">("places");
+
+  // Inline Modal Creation States
+  const [showCreatePlacesModal, setShowCreatePlacesModal] = useState<boolean>(false);
+  const [showCreateMoviesModal, setShowCreateMoviesModal] = useState<boolean>(false);
+  const [showCreateBooksModal, setShowCreateBooksModal] = useState<boolean>(false);
+  const [showCreateGamesModal, setShowCreateGamesModal] = useState<boolean>(false);
+  const [showCreateMusicModal, setShowCreateMusicModal] = useState<boolean>(false);
+  const [showCreateGuidesModal, setShowCreateGuidesModal] = useState<boolean>(false);
+
+  const queryClient = useQueryClient();
+  const [createRecommendationLink] = useMutation(createRecommendationLinkMutation);
 
   // Create UTM parameters for sharing
   const profileUtmParams = createUtmParams.directShare();
@@ -85,7 +153,7 @@ const Home = memo(() => {
     skip: !user?.username, // Skip query if user is not authenticated
   });
 
-  const { data: userLists } = useQuery(recommendationListQuery, {
+  const { data: userLists, refetch: refetchUserLists } = useQuery(recommendationListQuery, {
     variables: {
       filters: {
         account: {
@@ -109,7 +177,7 @@ const Home = memo(() => {
   const accountDocumentId = accountDataForGuides?.usersPermissionsUser?.accounts?.[0]?.documentId;
 
   // Fetch movie lists
-  const { data: movieListsData } = useQuery(MOVIE_LISTS_BY_ACCOUNT, {
+  const { data: movieListsData, refetch: refetchMovies } = useQuery(MOVIE_LISTS_BY_ACCOUNT, {
     variables: { accountDocumentId },
     skip: !accountDocumentId || !user?.username,
     fetchPolicy: "network-only",
@@ -117,7 +185,7 @@ const Home = memo(() => {
   const movieLists = movieListsData?.movieLists || [];
 
   // Fetch book lists
-  const { data: bookListsData } = useQuery(BOOK_LISTS_BY_ACCOUNT, {
+  const { data: bookListsData, refetch: refetchBooks } = useQuery(BOOK_LISTS_BY_ACCOUNT, {
     variables: { accountDocumentId },
     skip: !accountDocumentId || !user?.username,
     fetchPolicy: "network-only",
@@ -125,7 +193,7 @@ const Home = memo(() => {
   const bookLists = bookListsData?.bookLists || [];
 
   // Fetch game lists
-  const { data: gameListsData } = useQuery(GAME_LISTS_BY_ACCOUNT, {
+  const { data: gameListsData, refetch: refetchGames } = useQuery(GAME_LISTS_BY_ACCOUNT, {
     variables: { accountDocumentId },
     skip: !accountDocumentId || !user?.username,
     fetchPolicy: "network-only",
@@ -514,12 +582,124 @@ const Home = memo(() => {
 
 
   const handleAddNewItem = () => {
-    if (activeTab === "places") navigate("/recommendations");
-    else if (activeTab === "movies") navigate("/recommendations/movies");
-    else if (activeTab === "books") navigate("/recommendations/books");
-    else if (activeTab === "games") navigate("/recommendations/games");
-    else if (activeTab === "music") navigate("/music");
-    else if (activeTab === "guides") navigate("/guides/new");
+    if (activeTab === "places") setShowCreatePlacesModal(true);
+    else if (activeTab === "movies") setShowCreateMoviesModal(true);
+    else if (activeTab === "books") setShowCreateBooksModal(true);
+    else if (activeTab === "games") setShowCreateGamesModal(true);
+    else if (activeTab === "music") setShowCreateMusicModal(true);
+    else if (activeTab === "guides") setShowCreateGuidesModal(true);
+  };
+
+  const handlePlacesSubmit = async (values: any) => {
+    const toastId = toast.loading("Creating Places list and uploading location image...");
+    try {
+      const placeDetails = await axios.get(
+        `${GOOGLE_PLACES_API_BASE_URL}/${
+          values.placeId
+        }?fields=id,displayName,primaryType,primaryTypeDisplayName,priceRange,rating,userRatingCount,location,photos&key=${
+          import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+        }`
+      );
+      const photoReferences = placeDetails.data.photos?.map(
+        (photo: { name: string }) => photo.name.split(`${values.placeId}/`)[1]
+      ) || [];
+
+      let photoUrl: string | undefined;
+
+      // Only upload to S3 if photos are available
+      if (photoReferences.length > 0) {
+        const googlePhotoResponse = await fetch(
+          `${GOOGLE_PLACES_API_BASE_URL}/${values.placeId}/${
+            photoReferences[0]
+          }/media?maxWidthPx=400&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`,
+          { redirect: "follow" }
+        );
+        
+        if (googlePhotoResponse.ok) {
+          const imageBlob = await googlePhotoResponse.blob();
+          const username = sanitizeUsername(user?.username || "user");
+          const randomFileName = generateRandomFileName(
+            `${values.listName || "location"}.jpg`
+          );
+          const structuredPath = generateLocationThumbnailPath(username);
+
+          const formData = new FormData();
+          formData.append(
+            "files",
+            new File([imageBlob], randomFileName, { type: imageBlob.type })
+          );
+          formData.append("path", structuredPath);
+
+          const token = useAuthStore.getState().token;
+          const uploadResponse = await axios.post(
+            `${import.meta.env.VITE_REST_API_URL}/upload`,
+            formData,
+            {
+              headers: {
+                "Content-Type": "multipart/form-data",
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              },
+            }
+          );
+
+          const uploadedImage = uploadResponse.data?.[0];
+          if (uploadedImage?.url) {
+            photoUrl = uploadedImage.url;
+          }
+        }
+      }
+
+      // Calculate display_order (max + 1)
+      const existingLists = listNames || [];
+      let nextDisplayOrder = 1;
+      if (existingLists.length > 0) {
+        const orders = existingLists
+          .map((l: any) => l.display_order)
+          .filter((o: any) => typeof o === "number");
+        if (orders.length > 0) {
+          nextDisplayOrder = Math.max(...orders) + 1;
+        } else {
+          nextDisplayOrder = existingLists.length + 1;
+        }
+      }
+
+      const response = await createRecommendationLink({
+        variables: {
+          data: {
+            Instagram_Media_URL: values.recommendationSocialLink,
+            List_Name: values.listName,
+            Visibility: false,
+            List_Name_Details: {
+              note: values.note,
+              thumbnail: photoUrl,
+              location: placeDetails?.data?.location,
+              place_id: values.placeId,
+            },
+            slug: toUrlSlug(values.listName),
+            account: accountDocumentId,
+            display_order: nextDisplayOrder,
+            is_pinned: false,
+          },
+        },
+      });
+
+      if (response.data) {
+        const { data: refetched } = await refetchUserLists();
+        const updatedCity = refetched?.recommendationLists?.find(
+          (list: any) => list.List_Name === values.listName
+        );
+
+        if (updatedCity) {
+          setSelectedCity(updatedCity);
+        }
+        toast.success("Places list created successfully!", { id: toastId });
+        setShowCreatePlacesModal(false);
+        navigate('/recommendations');
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to create places list", { id: toastId });
+    }
   };
 
   const getAddButtonStyles = (_cat?: any) => {
@@ -747,7 +927,7 @@ const Home = memo(() => {
                           {filteredListNames.map((item: any, index: number) => {
                             const isPub = item.Visibility;
                             const statusColor = isPub ? "var(--status-pub)" : "var(--status-draft)";
-                            const poster = item.List_Name_Details?.thumbnail;
+                            const poster = resolveCoverUrl(item.List_Name_Details?.thumbnail, "place");
                             return (
                               <div
                                 key={item.documentId || index}
@@ -847,7 +1027,7 @@ const Home = memo(() => {
                             const isPub = item.Visibility;
                             const statusColor = isPub ? "var(--status-pub)" : "var(--status-draft)";
                             const firstMoviePoster = item.recommended_movies?.[0]?.poster_path;
-                            const poster = item.cover_image?.url || (firstMoviePoster ? `https://image.tmdb.org/t/p/w185${firstMoviePoster}` : undefined);
+                            const poster = resolveCoverUrl(firstMoviePoster || item.cover_image?.url, "movie");
                             return (
                               <div
                                 key={item.documentId || index}
@@ -857,7 +1037,7 @@ const Home = memo(() => {
                                 <div className="flex-shrink-0">
                                   <div className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center text-2xl bg-dashboard-muted" style={{ border: `3px solid ${statusColor}` }}>
                                     {poster ? (
-                                      <img src={poster} alt={item.List_Name} className="w-full h-full object-cover" />
+                                      <ImageWithFallback src={poster} alt={item.List_Name} className="w-full h-full object-cover" />
                                     ) : (
                                       "🎬"
                                     )}
@@ -911,7 +1091,7 @@ const Home = memo(() => {
                             const isPub = item.visibility;
                             const statusColor = isPub ? "var(--status-pub)" : "var(--status-draft)";
                             const firstBookCover = item.recommended_books?.[0]?.cover_url;
-                            const poster = item.cover_image?.url || firstBookCover;
+                            const poster = resolveCoverUrl(firstBookCover || item.cover_image?.url, "book");
                             return (
                               <div
                                 key={item.documentId || index}
@@ -921,7 +1101,7 @@ const Home = memo(() => {
                                 <div className="flex-shrink-0">
                                   <div className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center text-2xl bg-dashboard-muted" style={{ border: `3px solid ${statusColor}` }}>
                                     {poster ? (
-                                      <img src={poster} alt={item.List_Name} className="w-full h-full object-cover" />
+                                      <ImageWithFallback src={poster} alt={item.List_Name} className="w-full h-full object-cover" />
                                     ) : (
                                       "📚"
                                     )}
@@ -975,7 +1155,7 @@ const Home = memo(() => {
                             const isPub = item.Visibility;
                             const statusColor = isPub ? "var(--status-pub)" : "var(--status-draft)";
                             const firstGameCover = item.recommended_games?.[0]?.cover_url;
-                            const poster = item.cover_image?.url || firstGameCover;
+                            const poster = resolveCoverUrl(firstGameCover || item.cover_image?.url, "game");
                             return (
                               <div
                                 key={item.documentId || index}
@@ -985,7 +1165,7 @@ const Home = memo(() => {
                                 <div className="flex-shrink-0">
                                   <div className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center text-2xl bg-dashboard-muted" style={{ border: `3px solid ${statusColor}` }}>
                                     {poster ? (
-                                      <img src={poster} alt={item.List_Name} className="w-full h-full object-cover" />
+                                      <ImageWithFallback src={poster} alt={item.List_Name} className="w-full h-full object-cover" />
                                     ) : (
                                       "🎮"
                                     )}
@@ -1038,7 +1218,7 @@ const Home = memo(() => {
                           {filteredMusicPlaylists.map((item: any, index: number) => {
                             const isPub = item.isVisibleToGuests;
                             const statusColor = isPub ? "var(--status-pub)" : "var(--status-draft)";
-                            const poster = item.songs?.[0]?.thumbnailUrl;
+                            const poster = resolveCoverUrl(item.songs?.[0]?.thumbnailUrl, "music");
                             return (
                               <div
                                 key={item.id || index}
@@ -1048,7 +1228,7 @@ const Home = memo(() => {
                                 <div className="flex-shrink-0">
                                   <div className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center text-2xl bg-dashboard-muted" style={{ border: `3px solid ${statusColor}` }}>
                                     {poster ? (
-                                      <img src={poster} alt={item.name} className="w-full h-full object-cover" />
+                                      <ImageWithFallback src={poster} alt={item.name} className="w-full h-full object-cover" />
                                     ) : (
                                       "🎵"
                                     )}
@@ -1101,7 +1281,7 @@ const Home = memo(() => {
                           {filteredGuides.map((guide: Guide, index: number) => {
                             const isPub = guide.Visibility;
                             const statusColor = isPub ? "var(--status-pub)" : "var(--status-draft)";
-                            const poster = guide?.Guide_Media?.[0]?.url;
+                            const poster = resolveCoverUrl(guide?.Guide_Media?.[0]?.url, "guide");
                             return (
                               <div
                                 key={guide.documentId || index}
@@ -1226,8 +1406,214 @@ const Home = memo(() => {
           )}
         </div>
       </div>
+
+      {/* Inline Creation Modals */}
+      {showCreatePlacesModal && (
+        <AddLocationModal
+          isOpen={showCreatePlacesModal}
+          onClose={() => setShowCreatePlacesModal(false)}
+          onSubmit={handlePlacesSubmit}
+          existingPlaces={listNames || []}
+        />
+      )}
+
+      {showCreateMoviesModal && accountDocumentId && (
+        <CreateMovieListModal
+          open={showCreateMoviesModal}
+          onClose={() => setShowCreateMoviesModal(false)}
+          accountDocumentId={accountDocumentId}
+          currentListCount={movieLists.length}
+          onCreated={(newId) => {
+            refetchMovies();
+            if (newId) {
+              navigate(`/recommendations/movies/${newId}`);
+            } else {
+              navigate(`/recommendations/movies`);
+            }
+          }}
+          username={user?.username || ""}
+        />
+      )}
+
+      {showCreateBooksModal && accountDocumentId && (
+        <CreateBookListModal
+          open={showCreateBooksModal}
+          onClose={() => setShowCreateBooksModal(false)}
+          accountDocumentId={accountDocumentId}
+          currentListCount={bookLists.length}
+          onCreated={(newId) => {
+            refetchBooks();
+            if (newId) {
+              navigate(`/recommendations/books/${newId}`);
+            } else {
+              navigate(`/recommendations/books`);
+            }
+          }}
+          username={user?.username || ""}
+        />
+      )}
+
+      {showCreateGamesModal && accountDocumentId && (
+        <CreateGameListModal
+          open={showCreateGamesModal}
+          onClose={() => setShowCreateGamesModal(false)}
+          accountDocumentId={accountDocumentId}
+          currentListCount={gameLists.length}
+          onCreated={(newId) => {
+            refetchGames();
+            if (newId) {
+              navigate(`/recommendations/games/${newId}`);
+            } else {
+              navigate(`/recommendations/games`);
+            }
+          }}
+          username={user?.username || ""}
+        />
+      )}
+
+      {showCreateMusicModal && (
+        <CreatePlaylistModal
+          open={showCreateMusicModal}
+          onClose={() => setShowCreateMusicModal(false)}
+          username={user?.username || ""}
+          onCreated={async () => {
+            await queryClient.invalidateQueries({ queryKey: ['tunes-playlists', user?.username] });
+            navigate("/music");
+          }}
+        />
+      )}
+
+      {showCreateGuidesModal && (
+        <CreateGuideModal
+          open={showCreateGuidesModal}
+          onClose={() => setShowCreateGuidesModal(false)}
+          onCreated={(newId) => {
+            refetchGuides();
+            if (newId) {
+              navigate(`/guides/${newId}`);
+            } else {
+              navigate(`/guides`);
+            }
+          }}
+        />
+      )}
     </>
   );
 });
+
+// ─────────────────────────────────────────────────────────────
+// Music Playlist Creation Modal Component
+// ─────────────────────────────────────────────────────────────
+const CreatePlaylistModal = ({
+  open,
+  onClose,
+  onCreated,
+  username,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: (newId?: string) => void;
+  username: string;
+}) => {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setLoading(true);
+    try {
+      const res = await localTunesRequest('POST', '/api/playlists', {
+        name,
+        description: description || undefined,
+        username,
+      });
+      toast.success("Playlist created");
+      onCreated(res?.id?.toString());
+      onClose();
+    } catch {
+      toast.error("Failed to create playlist");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[150] flex items-center justify-center p-4 md:p-6"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      >
+        <motion.div
+          className="bg-dashboard-sidebar rounded-xl border border-dashboard-border p-6 md:p-8 w-full max-w-xl shadow-2xl"
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.95, opacity: 0 }}
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-bold text-white font-poppins">Create New Playlist</h2>
+            <button onClick={onClose} className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors border-none cursor-pointer">
+              <X size={16} />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="text-xs font-semibold text-white/70 mb-2 block font-poppins">
+                Playlist Name
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter Playlist Name"
+                className="w-full bg-dashboard-muted border border-dashboard-border rounded-lg px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-dashboard-accent transition-colors"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-white/70 mb-2 block font-poppins">
+                Description
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Enter a description for this playlist"
+                rows={4}
+                className="w-full bg-dashboard-muted border border-dashboard-border rounded-lg px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-dashboard-accent transition-colors resize-none font-poppins"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-dashboard-border">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-6 py-2.5 rounded-lg bg-[#ef4444] hover:bg-[#dc2626] text-sm text-white font-medium transition-colors cursor-pointer border-none"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-6 py-2.5 rounded-lg bg-[#3b82f6] hover:bg-[#2563eb] text-sm text-white font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer border-none"
+              >
+                {loading && <Loader2 size={14} className="animate-spin" />}
+                Create Playlist
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
 
 export default Home;

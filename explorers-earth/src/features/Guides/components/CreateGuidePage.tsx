@@ -22,9 +22,14 @@ import {
   type LocationImageResult
 } from "../services/locationImageService";
 import { enrichAIPlaces, extractLocationContext } from "../services/placeEnrichmentService";
+import { motion, AnimatePresence } from "framer-motion";
+import { X } from "lucide-react";
 
 interface CreateGuidePageProps {
   type?: "create" | "edit";
+  isModal?: boolean;
+  onClose?: () => void;
+  onCreated?: (newId?: string) => void;
 }
 
 // Location mode type
@@ -66,7 +71,12 @@ interface GuideFormData {
   guideMedia: File | null;
 }
 
-const CreateGuidePage = ({ type = "create" }: CreateGuidePageProps) => {
+const CreateGuidePage = ({
+  type = "create",
+  isModal = false,
+  onClose,
+  onCreated,
+}: CreateGuidePageProps) => {
   const navigate = useNavigate();
   const { guideId } = useParams();
   const { user } = useAuthStore();
@@ -669,12 +679,20 @@ const CreateGuidePage = ({ type = "create" }: CreateGuidePageProps) => {
 
       // Navigate to guide details page
       if (type === "create" && resultDocumentId) {
-        navigate(`/guides/${resultDocumentId}`);
+        if (isModal && onCreated) {
+          onCreated(resultDocumentId);
+        } else {
+          navigate(`/guides/${resultDocumentId}`);
+        }
       } else if (type === "edit" && guideId) {
-        navigate(`/guides/${guideId}`, {
-          replace: true,
-          state: { refetch: Date.now() },
-        });
+        if (isModal && onClose) {
+          onClose();
+        } else {
+          navigate(`/guides/${guideId}`, {
+            replace: true,
+            state: { refetch: Date.now() },
+          });
+        }
       }
     } catch (err: any) {
       console.error(
@@ -869,7 +887,11 @@ const CreateGuidePage = ({ type = "create" }: CreateGuidePageProps) => {
 
   // Handle cancel
   const handleCancel = () => {
-    navigate(type === "edit" && guideId ? `/guides/${guideId}` : "/guides");
+    if (isModal && onClose) {
+      onClose();
+    } else {
+      navigate(type === "edit" && guideId ? `/guides/${guideId}` : "/guides");
+    }
   };
 
   // Show loading state while fetching guide data in edit mode
@@ -888,20 +910,28 @@ const CreateGuidePage = ({ type = "create" }: CreateGuidePageProps) => {
   }
 
   return (
-    <div className="dashboard-theme bg-dashboard-bg min-h-screen px-4 pb-4 md:pt-10">
-      <div className="flex relative flex-col mb-10 items-center justify-center min-h-[calc(100vh-8rem)] max-w-full gap-4">
+    <div className={isModal ? "dashboard-theme w-full" : "dashboard-theme bg-dashboard-bg min-h-screen px-4 pb-4 md:pt-10"}>
+      <div className={isModal ? "flex relative flex-col max-w-full gap-4 w-full" : "flex relative flex-col mb-10 items-center justify-center min-h-[calc(100vh-8rem)] max-w-full gap-4"}>
         {/* Header with Back Button */}
-        <div className="flex flex-row gap-2 md:gap-4 md:w-[70%] w-full md:justify-between justify-between md:mt-0 mt-4 mx-4 md:mx-0 items-center">
-          <Button
-            size="xsmall"
-            variant="ghost"
-            onClickHandler={handleCancel}
-            startIcon={<BackIcon stroke="var(--dash-accent)" size="size-5 md:size-6" />}
-          />
+        <div className="flex flex-row gap-2 md:gap-4 w-full md:justify-between justify-between items-center mb-4">
+          {!isModal && (
+            <Button
+              size="xsmall"
+              variant="ghost"
+              onClickHandler={handleCancel}
+              startIcon={<BackIcon stroke="var(--dash-accent)" size="size-5 md:size-6" />}
+            />
+          )}
           <h1 className="text-dashboard text-lg md:text-2xl font-poppins font-bold">
             {type === "edit" ? "Edit Guide" : "Create New Guide"}
           </h1>
-          <div className="w-10"></div> {/* Spacer for centering */}
+          {isModal ? (
+            <button onClick={handleCancel} className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors border-none cursor-pointer">
+              <X size={16} />
+            </button>
+          ) : (
+            <div className="w-10"></div>
+          )}
         </div>
 
         {/* Render appropriate step */}
@@ -930,7 +960,7 @@ const CreateGuidePage = ({ type = "create" }: CreateGuidePageProps) => {
             locationType={formData.locationMode}
             fromLocation={formData.fromLocation?.name || formData.fromLocationDisplayValue}
             toLocation={formData.toLocation?.name || formData.toLocationDisplayValue}
-            intermediateCities={formData.intermediateCities.map(city => city.place?.name || city.displayValue)}
+            intermediateCities={formData.intermediateCities.map((city) => city.place?.name || city.displayValue)}
             onBack={handleStep2Back}
             onNext={handleStep2Next}
             onAIGenerate={type === "create" ? handleAIGeneration : undefined}
@@ -958,3 +988,46 @@ const CreateGuidePage = ({ type = "create" }: CreateGuidePageProps) => {
 };
 
 export default CreateGuidePage;
+
+export const CreateGuideModal = ({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: (newId?: string) => void;
+}) => {
+  if (!open) return null;
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[150] overflow-y-auto">
+        <div className="flex min-h-full items-center justify-center p-4 text-center">
+          <motion.div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+          />
+
+          <motion.div
+            className="bg-dashboard-sidebar rounded-xl border border-dashboard-border p-6 md:p-8 w-full max-w-4xl shadow-2xl relative z-10 my-8 text-left overflow-y-auto max-h-[90vh]"
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CreateGuidePage
+              isModal={true}
+              onClose={onClose}
+              onCreated={onCreated}
+              type="create"
+            />
+          </motion.div>
+        </div>
+      </div>
+    </AnimatePresence>
+  );
+};

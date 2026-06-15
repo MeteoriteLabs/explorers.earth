@@ -21,7 +21,7 @@ export const MOVIE_LISTS_BY_ACCOUNT = gql`
       }
       display_order
       top_picks_heading
-      recommended_movies(pagination: { limit: 200 }) {
+      recommended_movies(sort: ["display_order:asc"], pagination: { limit: 200 }) {
         documentId
         tmdb_id
         media_type

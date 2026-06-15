@@ -34,7 +34,7 @@ const MY_ACCOUNT = gql`
 `;
 
 // Create List Modal
-const CreateListModal = ({
+export const CreateGameListModal = ({
   open,
   onClose,
   accountDocumentId,
@@ -46,7 +46,7 @@ const CreateListModal = ({
   onClose: () => void;
   accountDocumentId: string;
   currentListCount: number;
-  onCreated: () => void;
+  onCreated: (newId?: string) => void;
   username: string;
 }) => {
   const [createGameList, { loading }] = useMutation(CREATE_GAME_LIST);
@@ -59,7 +59,7 @@ const CreateListModal = ({
     }),
     onSubmit: async (values, { resetForm }) => {
       try {
-        await createGameList({
+        const result = await createGameList({
           variables: {
             List_Name: values.List_Name,
             list_description: values.list_description || null,
@@ -72,7 +72,7 @@ const CreateListModal = ({
         });
         toast.success("Game list created!");
         resetForm();
-        onCreated();
+        onCreated(result?.data?.createGameList?.documentId);
         onClose();
       } catch (e) {
         toast.error("Failed to create list. Please try again.");
@@ -526,7 +526,7 @@ const GamesHome = () => {
 
       {/* Modals */}
       {accountDocumentId && (
-        <CreateListModal
+        <CreateGameListModal
           open={showCreateModal}
           onClose={() => setShowCreateModal(false)}
           accountDocumentId={accountDocumentId}

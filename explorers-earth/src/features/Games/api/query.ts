@@ -21,7 +21,7 @@ export const GAME_LISTS_BY_ACCOUNT = gql`
       }
       display_order
       top_picks_heading
-      recommended_games(pagination: { limit: 200 }) {
+      recommended_games(sort: ["display_order:asc"], pagination: { limit: 200 }) {
         documentId
         igdb_id
         title

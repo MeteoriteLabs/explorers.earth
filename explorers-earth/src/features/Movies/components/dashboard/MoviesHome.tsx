@@ -38,7 +38,7 @@ const MY_ACCOUNT = gql`
 `;
 
 // Create List Modal
-const CreateListModal = ({
+export const CreateMovieListModal = ({
   open,
   onClose,
   accountDocumentId,
@@ -50,7 +50,7 @@ const CreateListModal = ({
   onClose: () => void;
   accountDocumentId: string;
   currentListCount: number;
-  onCreated: () => void;
+  onCreated: (newId?: string) => void;
   username: string;
 }) => {
   const [createMovieList, { loading }] = useMutation(CREATE_MOVIE_LIST);
@@ -63,7 +63,7 @@ const CreateListModal = ({
     }),
     onSubmit: async (values, { resetForm }) => {
       try {
-        await createMovieList({
+        const result = await createMovieList({
           variables: {
             List_Name: values.List_Name,
             list_description: values.list_description || null,
@@ -76,7 +76,7 @@ const CreateListModal = ({
         });
         toast.success("Movie list created!");
         resetForm();
-        onCreated();
+        onCreated(result?.data?.createMovieList?.documentId);
         onClose();
       } catch (e: any) {
         if (e.message && e.message.includes("must be unique")) {
@@ -550,7 +550,7 @@ const MoviesHome = () => {
 
       {/* Create list modal */}
       {accountDocumentId && (
-        <CreateListModal
+        <CreateMovieListModal
           open={showCreateModal}
           onClose={() => setShowCreateModal(false)}
           accountDocumentId={accountDocumentId}

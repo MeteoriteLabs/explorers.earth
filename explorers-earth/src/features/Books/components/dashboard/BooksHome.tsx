@@ -41,7 +41,7 @@ import { AnimatePresence } from "framer-motion";
 // ─────────────────────────────────────────────────────────────
 // Inline Create List Modal
 // ─────────────────────────────────────────────────────────────
-const CreateListModal = ({
+export const CreateBookListModal = ({
   open,
   onClose,
   accountDocumentId,
@@ -53,7 +53,7 @@ const CreateListModal = ({
   onClose: () => void;
   accountDocumentId: string;
   currentListCount: number;
-  onCreated: () => void;
+  onCreated: (newId?: string) => void;
   username: string;
 }) => {
   const [createBookList, { loading }] = useMutation(CREATE_BOOK_LIST);
@@ -66,7 +66,7 @@ const CreateListModal = ({
     }),
     onSubmit: async (values, { resetForm }) => {
       try {
-        await createBookList({
+        const result = await createBookList({
           variables: {
             List_Name: values.List_Name,
             list_description: values.list_description || null,
@@ -79,7 +79,7 @@ const CreateListModal = ({
         });
         toast.success("Book list created!");
         resetForm();
-        onCreated();
+        onCreated(result?.data?.createBookList?.documentId);
         onClose();
       } catch (e) {
         toast.error("Failed to create list. Please try again.");
@@ -543,7 +543,7 @@ const BooksHome = () => {
 
       {/* Modals */}
       {accountDocumentId && (
-        <CreateListModal
+        <CreateBookListModal
           open={showCreateModal}
           onClose={() => setShowCreateModal(false)}
           accountDocumentId={accountDocumentId}

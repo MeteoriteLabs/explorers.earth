@@ -21,7 +21,7 @@ export const BOOK_LISTS_BY_ACCOUNT = gql`
       }
       display_order
       top_reads_heading
-      recommended_books(pagination: { limit: 200 }) {
+      recommended_books(sort: ["display_order:asc"], pagination: { limit: 200 }) {
         documentId
         volume_id
         title
