@@ -72,7 +72,6 @@ const MovieCarouselRow = memo(({
         </div>
 
         <div className="flex flex-col items-end pt-1 flex-shrink-0">
-          <span className="text-sm text-white/40 mb-1">{!loading ? `${movies.length} movie${movies.length !== 1 ? "s" : ""}` : ""}</span>
           {seeAllLink && !loading && movies.length > 0 && (
             <Link
               to={seeAllLink}

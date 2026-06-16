@@ -68,9 +68,6 @@ const BookCarouselRow = memo(({
         </div>
 
         <div className="flex flex-col items-end pt-1 flex-shrink-0">
-          <span className="text-sm text-white/40 mb-1">
-            {!loading ? `${books.length} book${books.length !== 1 ? "s" : ""}` : ""}
-          </span>
           {seeAllLink && !loading && books.length > 0 && (
             <Link to={seeAllLink} className="text-xs font-semibold text-amber-400 hover:text-amber-300 transition-colors uppercase tracking-wider">
               See all
