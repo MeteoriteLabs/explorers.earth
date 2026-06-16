@@ -14,7 +14,6 @@ import Button from "../../../components/ui/Button";
 import SwitchButton from "../../../components/ui/SwitchButton";
 import { toast } from "sonner";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
-import { Play, Star } from "lucide-react";
 
 interface FilterState {
   guideType: string | null;

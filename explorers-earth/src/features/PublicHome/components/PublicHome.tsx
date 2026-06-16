@@ -32,7 +32,7 @@ import {
   createUtmParams,
 } from "../../../utils/urlHelpers";
 import Location from "../../../assets/icons/Location";
-import { Share2, Copy, Star, Play } from "lucide-react";
+import { Share2, Copy } from "lucide-react";
 import { AdvancedMarker, Map, Pin, useMap } from "@vis.gl/react-google-maps";
 import { getPlaceCoordinatesQuery } from "../api/query";
 import { toast } from "sonner";
@@ -1074,7 +1074,7 @@ const PublicHome = memo(() => {
                                     key={`marker-${idx}-${place.Geometry.lat}-${place.Geometry.lng}`}
                                     position={place.Geometry}
                                     onClick={(e) => {
-                                      e.stopPropagating?.();
+                                      e.domEvent?.stopPropagation();
                                       setIsExpanded({
                                         visible: true,
                                         documentId: place.documentId,
@@ -1285,7 +1285,7 @@ const PublicHome = memo(() => {
                                         key={`marker-${idx}-${place.Geometry.lat}-${place.Geometry.lng}`}
                                         position={place.Geometry}
                                         onClick={(e) => {
-                                          e.stopPropagating?.();
+                                          e.domEvent?.stopPropagation();
                                           setIsExpanded({
                                             visible: true,
                                             documentId: place.documentId,
@@ -1451,7 +1451,7 @@ const PublicHome = memo(() => {
                                           place?.Place_Details?.Photos?.[0] ||
                                           IMAGE_CONFIG.defaultImages.place)
                                     }
-                                    title={isPersonType ? place.Contact_Name : place.Place_Details?.Title}
+                                    title={isPersonType ? (place.Contact_Name || "") : (place.Place_Details?.Title || "")}
                                     rating={!isPersonType ? place.Place_Details?.Rating : undefined}
                                     reviews={!isPersonType ? place.Place_Details?.Rating_Count : undefined}
                                   />
@@ -1540,7 +1540,7 @@ const PublicHome = memo(() => {
                                         place?.Place_Details?.Photos?.[0] ||
                                         IMAGE_CONFIG.defaultImages.place)
                                   }
-                                  title={isPersonType ? place.Contact_Name : place.Place_Details?.Title}
+                                  title={isPersonType ? (place.Contact_Name || "") : (place.Place_Details?.Title || "")}
                                   rating={!isPersonType ? place.Place_Details?.Rating : undefined}
                                   reviews={!isPersonType ? place.Place_Details?.Rating_Count : undefined}
                                 />
