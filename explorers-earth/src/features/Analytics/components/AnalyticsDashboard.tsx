@@ -1,8 +1,6 @@
 import React, { useMemo, useEffect, useState, useRef } from 'react';
 import { useQuery, gql } from '@apollo/client';
 import { GET_PUBLIC_PAGE_ANALYTICS, AnalyticsEvent, PublicPageAnalyticsData } from '../api/queries';
-import useAuthStore from '../../../store/store';
-import { EarthLoader } from "../../../components/EarthLoader";
 import { useTranslation } from 'react-i18next';
 import TopCountriesChart from './charts/TopCountriesChart';
 import TrafficSourceChart from './charts/TrafficSourceChart';
@@ -332,11 +330,59 @@ const AnalyticsDashboard: React.FC = () => {
     };
   }, [filteredEvents]);
 
-  // Loading state - only block for initial data fetch, not country resolution
+  // Loading state — render structured shimmer skeleton instead of a spinner
   if (loading) {
     return (
-      <div className="bg-dashboard-bg min-h-screen flex items-center justify-center">
-        <EarthLoader context="general" size="small" />
+      <div className="bg-dashboard-bg min-h-screen">
+        <div className="dashboard-theme p-4 sm:p-6 space-y-6">
+
+          {/* Header shimmer */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <div className="flex flex-col gap-2">
+              <div className="h-6 w-44 rounded bg-white/8 skeleton-shimmer relative overflow-hidden" />
+              <div className="h-4 w-72 rounded bg-white/5 skeleton-shimmer relative overflow-hidden" />
+            </div>
+            {/* Time filter placeholder */}
+            <div className="h-9 w-44 rounded-lg bg-white/8 skeleton-shimmer relative overflow-hidden" />
+          </div>
+
+          {/* 4 Stat cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[0, 1, 2, 3].map(i => (
+              <div key={i} className="relative rounded-lg bg-dashboard-muted p-4 overflow-hidden border border-white/4 min-w-[150px]">
+                <div className="absolute inset-0 skeleton-shimmer" />
+                <div className="h-3 w-20 rounded bg-white/8 mb-3" />
+                <div className="h-7 w-14 rounded bg-white/10" />
+              </div>
+            ))}
+          </div>
+
+          {/* Chart placeholders */}
+          {[280, 220, 200, 200].map((h, i) => (
+            <div
+              key={i}
+              className="relative rounded-lg bg-dashboard-muted overflow-hidden border border-white/4"
+              style={{ height: `${h}px` }}
+            >
+              <div className="absolute inset-0 skeleton-shimmer" />
+              {/* Chart title */}
+              <div className="absolute top-5 left-5 flex flex-col gap-2">
+                <div className="h-4 w-40 rounded bg-white/8" />
+                <div className="h-3 w-60 rounded bg-white/5" />
+              </div>
+              {/* Fake bar/line graph shapes */}
+              <div className="absolute bottom-6 left-5 right-5 flex items-end gap-3 h-24">
+                {[60, 85, 45, 100, 70, 55, 90, 40, 75, 65].slice(0, i === 0 ? 10 : 6).map((pct, j) => (
+                  <div
+                    key={j}
+                    className="flex-1 rounded-t bg-white/8"
+                    style={{ height: `${pct}%` }}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

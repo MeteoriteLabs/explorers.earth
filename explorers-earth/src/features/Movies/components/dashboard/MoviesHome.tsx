@@ -23,6 +23,7 @@ import TopPicksManager from "./TopPicksManager";
 import MovieDetailModal from "../public/MovieDetailModal";
 import type { RecommendedMovie } from "../../types";
 import Switch from "../../../../components/ui/Switch";
+import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 
 // Query to get account documentId
 const MY_ACCOUNT = gql`
@@ -478,11 +479,38 @@ const MoviesHome = () => {
       </div>
 
       {/* Loading state */}
-      {loading && lists.length === 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="bg-dashboard-muted rounded-2xl h-52 animate-pulse" />
-          ))}
+      {(loading || !accountDocumentId) && lists.length === 0 ? (
+        <div className="space-y-6">
+          {/* Hero skeleton — Desktop */}
+          <div className="hidden lg:block">
+            <HeroSkeleton accentColor="yellow" variant="dashboard" showThumbnails />
+          </div>
+          {/* Hero skeleton — Mobile */}
+          <div className="lg:hidden">
+            <HeroSkeleton accentColor="yellow" variant="dashboard" mobile />
+          </div>
+          {/* List card skeletons */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="relative bg-dashboard-muted rounded-2xl h-[168px] overflow-hidden border border-white/4">
+                <div className="absolute inset-0 skeleton-shimmer" />
+                {/* Card header */}
+                <div className="absolute top-5 left-5 right-5 flex justify-between">
+                  <div className="flex flex-col gap-2">
+                    <div className="h-4 w-36 rounded bg-white/8" />
+                    <div className="h-3 w-48 rounded bg-white/5" />
+                  </div>
+                  <div className="h-6 w-20 rounded-full bg-white/8" />
+                </div>
+                {/* Preview covers */}
+                <div className="absolute bottom-5 left-5 flex gap-1.5">
+                  {[0,1,2,3,4].map(j => (
+                    <div key={j} className="w-10 aspect-[2/3] rounded bg-white/8" />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ) : lists.length === 0 ? (
         /* Empty state */

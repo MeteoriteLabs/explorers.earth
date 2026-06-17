@@ -9,6 +9,7 @@ import { GET_GUIDES_QUERY, GET_USER_ACCOUNT_QUERY } from "./api/queries";
 import { DELETE_GUIDE_MUTATION, UPDATE_GUIDE_MUTATION } from "./api/mutations";
 import { updateTabVisibilityMutation } from "../../features/Settings/api/mutation";
 import GuideCardSkeleton from "../../components/ui/GuideCardSkeleton";
+import HeroSkeleton from "../../components/ui/HeroSkeleton";
 import Modal from "../../components/ui/Modal";
 import { toast } from "sonner";
 import SEO from "../../components/SEO";
@@ -1103,61 +1104,78 @@ const GuidesPage: React.FC = () => {
 
           {/* Guides Grid */}
           {!error && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-16 md:mb-0">
-              {isLoading ? (
-                // Skeleton cards — sit directly in the grid, match guide card proportions
-                <GuideCardSkeleton count={6} variant="dashboard" />
-              ) : allGuides.length > 0 ? (
-                <>
-                  {guides.length > 0 ? (
-                    guides.map((guide) => (
-                      <GuideCard
-                        key={guide.documentId}
-                        guide={guide}
-                        onClickHandler={handleGuideClick}
-                        onEdit={handleEditGuide}
-                        onDelete={handleDeleteGuide}
-                        onToggleVisibility={handleToggleVisibility}
-                        onTogglePin={handleTogglePin}
-                      />
-                    ))
-                  ) : (
-                    <div className="col-span-1 md:col-span-2 flex items-center justify-center p-8 bg-dashboard-sidebar/20 border border-dashboard border-dashed rounded-xl min-h-[150px]">
-                      <p className="text-sm font-poppins text-white/50 text-center">
-                        No guides match your filter criteria. Try clearing some filters.
-                      </p>
-                    </div>
-                  )}
-                  {/* Add Guide Dotted Card */}
-                  <div
-                    onClick={() => navigate("/guides/new")}
-                    className="border-2 border-dashed border-dashboard-border rounded-xl flex flex-col items-center justify-center gap-1.5 p-4 cursor-pointer hover:border-dashboard-accent hover:bg-dashboard-accent/5 transition-all duration-300 aspect-[16/9] md:aspect-[4/3] max-w-none w-full"
-                  >
-                    <span className="text-2xl text-white/30 font-light">+</span>
-                    <span className="text-xs md:text-sm text-white/45 font-semibold whitespace-nowrap">Create Guide</span>
+            <>
+              {/* ── Hero skeleton — shown while loading and no pinned data yet ── */}
+              {isLoading && pinnedGuides.length === 0 && (
+                <div className="mb-8">
+                  {/* Desktop */}
+                  <div className="hidden md:block">
+                    <HeroSkeleton accentColor="yellow" variant="dashboard" showThumbnails />
                   </div>
-                </>
-              ) : (
-                <div className="col-span-1 md:col-span-3 flex flex-col items-center justify-center min-h-[50vh]">
-                  <div className="bg-dashboard-modal p-6 rounded-lg border border-dashboard-accent shadow-dashboard-elevated text-center">
-                    <h1 className="text-white font-poppins font-semibold text-lg md:text-xl mb-2">
-                      No Guides Yet
-                    </h1>
-                    <p className="text-gray-300 font-poppins text-sm md:text-base mb-4">
-                      Create your first travel guide to get started!
-                    </p>
-                    <div className="flex justify-center">
-                      <Button
-                        onClickHandler={() => navigate("/guides/new")}
-                        variant="primary"
-                        btnText="Create Your First Guide"
-                      />
-                    </div>
+                  {/* Mobile */}
+                  <div className="md:hidden">
+                    <HeroSkeleton accentColor="yellow" variant="dashboard" mobile />
                   </div>
                 </div>
               )}
-            </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-16 md:mb-0">
+                {isLoading ? (
+                  // Skeleton cards — sit directly in the grid, match guide card proportions
+                  <GuideCardSkeleton count={6} variant="dashboard" />
+                ) : allGuides.length > 0 ? (
+                  <>
+                    {guides.length > 0 ? (
+                      guides.map((guide) => (
+                        <GuideCard
+                          key={guide.documentId}
+                          guide={guide}
+                          onClickHandler={handleGuideClick}
+                          onEdit={handleEditGuide}
+                          onDelete={handleDeleteGuide}
+                          onToggleVisibility={handleToggleVisibility}
+                          onTogglePin={handleTogglePin}
+                        />
+                      ))
+                    ) : (
+                      <div className="col-span-1 md:col-span-2 flex items-center justify-center p-8 bg-dashboard-sidebar/20 border border-dashboard border-dashed rounded-xl min-h-[150px]">
+                        <p className="text-sm font-poppins text-white/50 text-center">
+                          No guides match your filter criteria. Try clearing some filters.
+                        </p>
+                      </div>
+                    )}
+                    {/* Add Guide Dotted Card */}
+                    <div
+                      onClick={() => navigate("/guides/new")}
+                      className="border-2 border-dashed border-dashboard-border rounded-xl flex flex-col items-center justify-center gap-1.5 p-4 cursor-pointer hover:border-dashboard-accent hover:bg-dashboard-accent/5 transition-all duration-300 aspect-[16/9] md:aspect-[4/3] max-w-none w-full"
+                    >
+                      <span className="text-2xl text-white/30 font-light">+</span>
+                      <span className="text-xs md:text-sm text-white/45 font-semibold whitespace-nowrap">Create Guide</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="col-span-1 md:col-span-3 flex flex-col items-center justify-center min-h-[50vh]">
+                    <div className="bg-dashboard-modal p-6 rounded-lg border border-dashboard-accent shadow-dashboard-elevated text-center">
+                      <h1 className="text-white font-poppins font-semibold text-lg md:text-xl mb-2">
+                        No Guides Yet
+                      </h1>
+                      <p className="text-gray-300 font-poppins text-sm md:text-base mb-4">
+                        Create your first travel guide to get started!
+                      </p>
+                      <div className="flex justify-center">
+                        <Button
+                          onClickHandler={() => navigate("/guides/new")}
+                          variant="primary"
+                          btnText="Create Your First Guide"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
           )}
+
 
           {/* Delete Confirmation Modal */}
           {showDeleteModal && (

@@ -8,6 +8,7 @@ import {
   getUserMobileStatusQuery,
 } from "../../api/query";
 import RecommendationCardSkeleton from "../../../../components/ui/RecommendationCardSkeleton";
+import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import Button from "../../../../components/ui/Button";
 import InstagramIcon from "../../../../assets/icons/InstagramIcon";
 import BoldLinkIcon from "../../../../assets/icons/BoldLinkIcon";
@@ -395,36 +396,17 @@ const PlaceDetails = memo(() => {
       <div className="relative pb-28 md:pb-4 bg-black min-h-screen">
         {loading ? (
           <>
-            {/* Skeleton header area */}
-            <div className="relative rounded-b-xl bg-[#1a1a1a] overflow-hidden">
-              <div className="skeleton-shimmer absolute inset-0" />
-              <div className="relative z-20 flex flex-col items-center py-10">
-                {/* Profile picture skeleton */}
-                <div className="w-24 h-24 rounded-full bg-white/5" />
-                {/* Name skeleton */}
-                <div className="h-4 w-32 rounded bg-white/5 mt-3" />
-                {/* Type skeleton */}
-                <div className="h-3 w-20 rounded bg-white/5 mt-2" />
-                {/* Social icons skeleton */}
-                <div className="flex gap-6 mt-4">
-                  <div className="w-6 h-6 rounded-full bg-white/5" />
-                  <div className="w-6 h-6 rounded-full bg-white/5" />
-                  <div className="w-6 h-6 rounded-full bg-white/5" />
-                </div>
+            {/* ── Hero skeleton — Desktop ── */}
+            <div className="hidden md:block w-full mb-6 mt-4 px-4">
+              <div className="max-w-5xl mx-auto">
+                <HeroSkeleton accentColor="blue" showThumbnails={false} />
               </div>
             </div>
-
-            {/* Skeleton city carousel */}
-            <div className="my-6 flex justify-center gap-6 px-4">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex flex-col items-center gap-2">
-                  <div className="w-16 h-16 rounded-full bg-[#1a1a1a] skeleton-shimmer relative overflow-hidden" />
-                  <div className="h-3 w-14 rounded bg-[#1a1a1a]" />
-                </div>
-              ))}
+            {/* ── Hero skeleton — Mobile ── */}
+            <div className="md:hidden w-full mb-4 mt-4">
+              <HeroSkeleton accentColor="blue" mobile showThumbnails={false} />
             </div>
-
-            {/* Skeleton recommendation cards grid */}
+            {/* ── Card grid skeleton ── */}
             <div className="md:max-w-5xl md:mx-auto">
               <div className="p-4 mt-6 grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
                 <RecommendationCardSkeleton count={6} />

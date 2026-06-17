@@ -2,6 +2,7 @@ import { memo, useMemo, useState, useEffect } from "react";
 import { useQuery } from "@apollo/client";
 import { useParams, useNavigate } from "react-router-dom";
 import GuideCardSkeleton from "../../../components/ui/GuideCardSkeleton";
+import HeroSkeleton from "../../../components/ui/HeroSkeleton";
 import PublicGuideCard from "../../Guides/components/PublicGuideCard";
 import { GET_PUBLIC_GUIDES_QUERY } from "../../Guides/api/queries";
 import { getPublicAccountBasicQuery } from "../api/query";
@@ -549,6 +550,28 @@ const PublicGuides = memo(() => {
         {/* Guides Content */}
         <div className="md:max-w-5xl md:mx-auto">
           
+          {/* ── LOADING SKELETON: shown while account/guides queries resolve ── */}
+          {loading && (
+            <>
+              {/* Hero skeleton — Desktop */}
+              <div className="hidden md:block w-full mb-6 mt-4 px-4">
+                <div className="max-w-4xl mx-auto">
+                  <HeroSkeleton accentColor="yellow" showThumbnails />
+                </div>
+              </div>
+              {/* Hero skeleton — Mobile */}
+              <div className="md:hidden w-full mb-4 mt-4 px-4">
+                <HeroSkeleton accentColor="yellow" mobile />
+              </div>
+              {/* Guide card grid skeleton */}
+              <div className="px-4 md:max-w-5xl md:mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-4">
+                  <GuideCardSkeleton count={6} variant="public" />
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Featured Guides Slideshow Hero (only shown if pinned guides exist) */}
           {!error && !loading && pinnedGuides.length > 0 && (
             <>
