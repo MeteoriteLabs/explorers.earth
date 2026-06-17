@@ -104,6 +104,16 @@ cd explorers-earth && npm run build
 - After login, the dashboard should load with an empty playlist queue
 - API docs are available at `http://localhost:5000/api-docs` (Swagger UI)
 
+## Agentic Environments (Superpower Skills)
+
+If you are developing this project using an AI agent (such as Claude Code, Cursor, or Gemini CLI) and the personal skills library is configured at `D:\superpowers\skills\`, you **must** use the superpower skills to guide your workflow.
+
+Refer to the superpowers skills library to enforce best practices for:
+- **Planning**: Use `writing-plans` and `executing-plans` to create and track implementation progress.
+- **TDD (Test-Driven Development)**: Follow `test-driven-development` strictly to write tests before implementation.
+- **Verification**: Use `verification-before-completion` to run checks and gather evidence before declaring a task complete.
+- **Debugging**: Use `systematic-debugging` to trace and isolate root causes of issues.
+
 ## What's Next
 
 - [Architecture](architecture.md) — Understand the codebase structure
