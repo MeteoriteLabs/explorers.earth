@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, gql } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -286,6 +286,7 @@ const GameListCard = ({
 const GamesHome = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showManageTopGames, setShowManageTopGames] = useState(false);
   const [selectedGame, setSelectedGame] = useState<RecommendedGame | null>(null);
@@ -303,6 +304,12 @@ const GamesHome = () => {
     skip: !accountDocumentId,
     fetchPolicy: "cache-and-network",
   });
+
+  useEffect(() => {
+    if (!loading) {
+      (window as any).__dashboardLoaded = true;
+    }
+  }, [loading]);
 
   const [updateGameList] = useMutation(UPDATE_GAME_LIST);
 

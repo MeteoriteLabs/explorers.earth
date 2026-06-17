@@ -76,11 +76,18 @@ const UsernameValidator = ({ children }: UsernameValidatorProps) => {
     }
   }, [data, loading, error, username, navigate, location.pathname]);
 
+  useEffect(() => {
+    (window as any).__publicProfileLoaded = false;
+    return () => {
+      (window as any).__publicProfileLoaded = false;
+    };
+  }, []);
+
   // Show loading while checking username
   if (loading) {
     return (
-      <div className="bg-black">
-        <EarthLoader context="general" />
+      <div className="bg-black min-h-screen">
+        <EarthLoader context="general" size="default" />
       </div>
     );
   }

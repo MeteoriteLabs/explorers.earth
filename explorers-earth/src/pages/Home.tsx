@@ -94,6 +94,52 @@ const resolveCoverUrl = (
   return path;
 };
 
+const HomeSkeleton = memo(() => {
+  return (
+    <div className="bg-dashboard-bg min-h-screen px-2 md:px-6 pt-2 pb-24 md:pb-6 max-w-4xl mx-auto space-y-6">
+      {/* Header Bar Shimmer */}
+      <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl border border-white/5">
+        <div className="h-6 w-32 bg-white/5 rounded-xl skeleton-shimmer" />
+        <div className="h-10 w-40 bg-white/10 rounded-xl skeleton-shimmer" />
+      </div>
+
+      {/* Main Globe Card Area Placeholder */}
+      <div className="relative w-full h-[55vh] min-h-[350px] max-h-[500px] rounded-2xl bg-white/5 overflow-hidden border border-white/5 shadow-2xl">
+        <div className="absolute inset-0 skeleton-shimmer" />
+        <div className="absolute bottom-6 left-6 right-6 space-y-3">
+          <div className="h-6 w-2/3 bg-white/15 rounded skeleton-shimmer" />
+          <div className="h-4 w-1/2 bg-white/10 rounded skeleton-shimmer" />
+        </div>
+      </div>
+
+      {/* Setup banner shimmer */}
+      <div className="h-24 w-full bg-white/5 rounded-2xl skeleton-shimmer border border-white/5" />
+
+      {/* Tab Switcher Shimmer */}
+      <div className="flex items-center justify-center mx-auto bg-white/5 border border-white/5 rounded-3xl w-fit p-1 gap-2">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="h-8 w-16 md:w-20 bg-white/10 rounded-2xl skeleton-shimmer" />
+        ))}
+      </div>
+
+      {/* List items placeholders */}
+      <div className="space-y-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="bg-dashboard-sidebar border border-dashboard rounded-2xl p-4 flex items-center gap-4 h-24">
+            <div className="w-14 h-14 rounded-full bg-white/10 skeleton-shimmer flex-shrink-0" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 w-1/3 bg-white/10 rounded skeleton-shimmer" />
+              <div className="h-3 w-1/4 bg-white/5 rounded skeleton-shimmer" />
+            </div>
+            <div className="w-16 h-8 rounded-full bg-white/10 skeleton-shimmer" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+HomeSkeleton.displayName = "HomeSkeleton";
+
 const Home = memo(() => {
   const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
@@ -102,6 +148,7 @@ const Home = memo(() => {
   const location = useLocation();
   const [showProfileShareModal, setShowProfileShareModal] =
     useState<boolean>(false);
+
   const [showRecommendationsShareModal, setShowRecommendationsShareModal] =
     useState<boolean>(false);
   const [showCategoryShareModal, setShowCategoryShareModal] =
@@ -149,6 +196,12 @@ const Home = memo(() => {
     fetchPolicy: "network-only",
     skip: !user?.username, // Skip query if user is not authenticated
   });
+
+  useEffect(() => {
+    if (!loading && !dashboardStatusLoading) {
+      (window as any).__dashboardLoaded = true;
+    }
+  }, [loading, dashboardStatusLoading]);
 
   const { data: userLists, refetch: refetchUserLists } = useQuery(recommendationListQuery, {
     variables: {
@@ -501,9 +554,12 @@ const Home = memo(() => {
 
   // Show loading state if any critical query is loading
   if (loading || dashboardStatusLoading) {
+    if ((window as any).__dashboardLoaded) {
+      return <HomeSkeleton />;
+    }
     return (
       <div className="flex items-center justify-center min-h-screen bg-dashboard-bg">
-        <EarthLoader context="general" size="small" />
+        <EarthLoader context="general" size="default" />
       </div>
     );
   }

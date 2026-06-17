@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Song, PlaylistResponse } from "../../types/music";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
@@ -6,7 +6,7 @@ import PlaylistCard, { PlaylistCardContent } from "../../components/ui/PlaylistC
 import { EarthLoader } from "../../components/EarthLoader";
 import PlaylistTable from "../../components/playlist-table";
 import SearchSongs from "../../components/search-songs";
-import { Music2, Volume2, History, Search, Share2, Copy, Shuffle, SkipBack, Play, Pause, SkipForward, Repeat } from "lucide-react";
+import { Music2, Volume2, History, Share2, Copy, ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 import { apiRequest } from "../../lib/queryClient";
 import Tabs, { TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
@@ -25,7 +25,6 @@ import "./PublicMusic.css";
 
 const POLLING_INTERVAL = 1000;
 
-
 const GET_USER_BY_USERNAME_QUERY = gql`
   query UsersPermissionsUser($filters: UsersPermissionsUserFiltersInput) {
     usersPermissionsUsers(filters: $filters) {
@@ -34,6 +33,63 @@ const GET_USER_BY_USERNAME_QUERY = gql`
     }
   }
 `;
+
+const MusicSkeleton = () => {
+  return (
+    <div className="min-h-screen bg-black text-white pt-20 px-4 md:px-6 pb-20">
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* 1. Search Bar Skeleton */}
+        <div className="bg-[#111] border border-white/[0.08] rounded-[14px] p-4 space-y-2.5">
+          <div className="h-4 w-36 bg-white/10 rounded skeleton-shimmer" />
+          <div className="h-10 w-full bg-black border border-gray-800 rounded-lg skeleton-shimmer" />
+          <div className="h-3 w-40 bg-white/5 rounded skeleton-shimmer" />
+        </div>
+        
+        {/* 2. Title Label */}
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-white/10 skeleton-shimmer" />
+          <div className="h-3.5 w-24 bg-white/10 rounded skeleton-shimmer" />
+        </div>
+
+        {/* 3. Hero Card Skeleton (Responsive) */}
+        {/* Mobile View Hero Skeleton */}
+        <div className="md:hidden w-full h-[300px] rounded-[18px] bg-[#0a0a0a] border border-white/10 shadow-lg relative overflow-hidden">
+          <div className="absolute inset-0 skeleton-shimmer" />
+          <div className="absolute bottom-4 left-4 right-4 space-y-2">
+            <div className="h-4 w-20 bg-white/15 rounded skeleton-shimmer" />
+            <div className="h-6 w-3/4 bg-white/20 rounded skeleton-shimmer" />
+            <div className="h-3.5 w-1/2 bg-white/10 rounded skeleton-shimmer" />
+          </div>
+        </div>
+
+        {/* Desktop View Hero Skeleton */}
+        <div className="hidden md:block w-full h-[440px] rounded-[18px] bg-[#0a0a0a] border border-white/10 shadow-lg relative overflow-hidden">
+          <div className="absolute inset-0 skeleton-shimmer" />
+          <div className="absolute bottom-8 left-8 space-y-2.5">
+            <div className="h-5 w-24 bg-white/15 rounded skeleton-shimmer" />
+            <div className="h-8 w-[320px] bg-white/20 rounded-lg skeleton-shimmer" />
+            <div className="h-4 w-40 bg-white/10 rounded skeleton-shimmer" />
+          </div>
+        </div>
+
+        {/* 4. Accordion List Skeletons */}
+        <div className="space-y-3 pt-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-[#111] border border-white/[0.08] rounded-[14px] h-[54px] px-4 flex items-center justify-between">
+              <div className="flex items-center gap-3 w-1/2">
+                <div className="w-8 h-8 rounded-lg bg-white/5 skeleton-shimmer" />
+                <div className="h-4 w-28 bg-white/10 rounded skeleton-shimmer" />
+                <div className="h-3.5 w-16 bg-white/5 rounded-full skeleton-shimmer" />
+              </div>
+              <div className="w-4 h-4 rounded-full bg-white/5 skeleton-shimmer" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 export default function PublicMusic() {
   const { username } = useParams<{ username: string }>();
@@ -50,6 +106,18 @@ export default function PublicMusic() {
     playlists: false,
     device: false
   });
+  const desktopQueueScrollRef = useRef<HTMLDivElement>(null);
+
+  const handleScrollQueue = (direction: 'left' | 'right') => {
+    if (desktopQueueScrollRef.current) {
+      const scrollAmount = 144 + 14; // card width (w-36 = 144px) + gap (gap-3.5 = 14px)
+      desktopQueueScrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
 
   // First, fetch account data to get Local Tunes link
   const { data: accountData, loading: accountLoading } = useApolloQuery(getPublicAccountBasicQuery, {
@@ -422,10 +490,19 @@ export default function PublicMusic() {
   // 3. guestUrl is set and playlist is being fetched
   const isPageLoading = accountLoading || (!accountLoading && !guestUrl && !error) || isLoading;
 
+  useEffect(() => {
+    if (!isPageLoading) {
+      (window as any).__publicProfileLoaded = true;
+    }
+  }, [isPageLoading]);
+
   if (isPageLoading) {
+    if ((window as any).__publicProfileLoaded) {
+      return <MusicSkeleton />;
+    }
     return (
       <div className="bg-black min-h-screen">
-        <EarthLoader context="profile" />
+        <EarthLoader context="profile" size="default" />
       </div>
     );
   }
@@ -670,57 +747,15 @@ export default function PublicMusic() {
                           </div>
 
                           {/* Song Info (Title & Artist) */}
-                          <div className="relative z-20 px-6 text-center mt-2">
-                            <h2 className="text-xl font-poppins font-black text-white leading-tight truncate drop-shadow-md select-none">
-                              {card.title}
-                            </h2>
+                          <div className="relative z-20 px-6 text-center mt-2 pb-8 w-full overflow-hidden">
+                            <div className="marquee-container mx-auto max-w-full">
+                              <h2 className="text-xl font-poppins font-black text-white leading-tight drop-shadow-md select-none marquee-content">
+                                {card.title}
+                              </h2>
+                            </div>
                             <p className="text-xs text-gray-400 font-medium tracking-wide mt-1 truncate">
                               by {card.artist}
                             </p>
-                          </div>
-
-                          {/* Controls Row */}
-                          <div className="relative z-20 flex items-center justify-center gap-5 my-4 px-6">
-                            <button className="text-gray-500 hover:text-white transition-colors p-1 player-control-btn" aria-label="Shuffle">
-                              <Shuffle className="h-4 w-4" />
-                            </button>
-                            <button className="text-gray-400 hover:text-white transition-colors p-1 player-control-btn" aria-label="Previous">
-                              <SkipBack className="h-5 w-5" />
-                            </button>
-                            <button 
-                              className="h-12 w-12 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 shadow-lg border-none"
-                              style={{ background: 'var(--primary, #2563eb)' }}
-                              aria-label={card.type === 'now-playing' ? "Pause" : "Play"}
-                            >
-                              {card.type === 'now-playing' ? (
-                                <Pause className="h-5 w-5 text-white" fill="white" />
-                              ) : (
-                                <Play className="h-5 w-5 text-white ml-0.5" fill="white" />
-                              )}
-                            </button>
-                            <button className="text-gray-400 hover:text-white transition-colors p-1 player-control-btn" aria-label="Next">
-                              <SkipForward className="h-5 w-5" />
-                            </button>
-                            <button className="text-gray-500 hover:text-white transition-colors p-1 player-control-btn" aria-label="Repeat">
-                              <Repeat className="h-4 w-4" />
-                            </button>
-                          </div>
-
-                          {/* Progress Bar Row */}
-                          <div className="relative z-20 px-8 pb-6 w-full flex flex-col gap-2">
-                            <div className="flex justify-between items-center text-[10px] text-gray-500 font-semibold select-none">
-                              <span>1:24</span>
-                              <span>3:40</span>
-                            </div>
-                            <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden relative">
-                              <div 
-                                className="h-full rounded-full" 
-                                style={{ 
-                                  width: card.type === 'now-playing' ? '40%' : '0%', 
-                                  background: 'var(--primary, #2563eb)' 
-                                }} 
-                              />
-                            </div>
                           </div>
                         </motion.div>
                       );
@@ -743,7 +778,7 @@ export default function PublicMusic() {
               {/* DESKTOP VIEW (banner + strip) */}
               <div className="hidden md:block w-full mb-12 mt-4 px-4">
                 <div
-                  className="relative w-full h-[65vh] min-h-[520px] max-h-[720px] rounded-2xl overflow-hidden shadow-2xl group/hero max-w-4xl mx-auto border border-white/[0.08] hover:border-white/25 transition-all duration-300 select-none flex flex-col justify-between p-8"
+                  className="relative w-full h-[75vh] min-h-[620px] max-h-[820px] rounded-2xl overflow-hidden shadow-2xl group/hero max-w-4xl mx-auto border border-white/[0.08] hover:border-white/25 transition-all duration-300 select-none flex flex-col justify-between p-8"
                   style={{
                     background: 'linear-gradient(135deg, #181c2b 0%, #0d0e15 50%, #050608 100%)',
                   }}
@@ -793,121 +828,110 @@ export default function PublicMusic() {
                     </div>
 
                     {/* Metadata */}
-                    <div className="text-center mt-4 max-w-[80%]">
-                      <h4 className="text-2xl font-bold text-white tracking-wide truncate font-poppins">
-                        {activeCard?.title}
-                      </h4>
+                    <div className="text-center mt-4 max-w-[80%] w-full overflow-hidden flex flex-col items-center">
+                      <div className="marquee-container w-full">
+                        <h4 className="text-2xl font-bold text-white tracking-wide font-poppins marquee-content">
+                          {activeCard?.title}
+                        </h4>
+                      </div>
                       <p className="text-sm text-gray-400 font-poppins mt-1 truncate">
                         by {activeCard?.artist}
                       </p>
                     </div>
-
-                    {/* Controls Row */}
-                    <div className="flex items-center justify-center gap-6 mt-4 w-full">
-                      <button className="text-gray-500 hover:text-white transition-colors p-1 player-control-btn" aria-label="Shuffle">
-                        <Shuffle className="h-4 w-4" />
-                      </button>
-                      <button className="text-gray-400 hover:text-white transition-colors p-1 player-control-btn" aria-label="Previous">
-                        <SkipBack className="h-5 w-5" />
-                      </button>
-                      <button 
-                        className="h-12 w-12 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 shadow-md border-none"
-                        style={{ background: 'var(--primary, #2563eb)' }}
-                        aria-label={activeCard?.type === 'now-playing' ? "Pause" : "Play"}
-                      >
-                        {activeCard?.type === 'now-playing' ? (
-                          <Pause className="h-5 w-5 text-white" fill="white" />
-                        ) : (
-                          <Play className="h-5 w-5 text-white ml-0.5" fill="white" />
-                        )}
-                      </button>
-                      <button className="text-gray-400 hover:text-white transition-colors p-1 player-control-btn" aria-label="Next">
-                        <SkipForward className="h-5 w-5" />
-                      </button>
-                      <button className="text-gray-500 hover:text-white transition-colors p-1 player-control-btn" aria-label="Repeat">
-                        <Repeat className="h-4 w-4" />
-                      </button>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div className="w-[60%] max-w-xl mt-5 flex flex-col gap-2">
-                      <div className="flex justify-between items-center text-[10px] text-gray-500 font-semibold select-none">
-                        <span>1:24</span>
-                        <span>3:40</span>
-                      </div>
-                      <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden relative">
-                        <div 
-                          className="h-full rounded-full" 
-                          style={{ 
-                            width: activeCard?.type === 'now-playing' ? '40%' : '0%', 
-                            background: 'var(--primary, #2563eb)' 
-                          }} 
-                        />
-                      </div>
-                    </div>
                   </div>
 
                   {/* Bottom row containing desktop queue cards */}
-                  <div className="relative z-20 flex justify-end items-end w-full">
-                    {/* Desktop Queue Cards (w-36 aspect-video rounded-md) */}
-                    <div className="desktop-queue-strip flex gap-3.5">
-                      {desktopQueueSlots.map((slot, idx) => {
-                        const song = slot.song;
-                        const hasSong = !!song;
-                        const bgImage = song?.thumbnailUrl || '';
-                        const isSelected = activeHeroIndex === slot.targetIndex;
-                        return (
-                          <div
-                            className="queue-thumb-wrapper relative w-36 aspect-video flex-shrink-0 animate-fade-in"
-                            key={idx}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (hasSong) {
-                                setActiveHeroIndex(slot.targetIndex);
-                              }
-                            }}
-                          >
-                            <span className="queue-thumb-label absolute font-semibold text-[10px] text-white bg-black/60 px-1.5 py-0.5 rounded top-1.5 left-1.5 z-10">
-                              {slot.label}
-                            </span>
-                            <button
-                              className={`relative w-full h-full rounded-md overflow-hidden transition-all duration-300 border cursor-pointer ${
-                                hasSong
-                                  ? (isSelected
-                                    ? 'border-white ring-2 ring-white scale-110 shadow-2xl z-10'
-                                    : 'border-white/10 opacity-70 hover:opacity-100 hover:scale-105')
-                                  : 'border-white/5 opacity-30 cursor-default'
-                              }`}
+                  <div className="relative z-20 flex justify-end items-end w-full mt-4">
+                    <div className="flex items-center gap-2">
+                      {desktopQueueSlots.length > 2 && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleScrollQueue('left');
+                          }}
+                          className="p-1.5 hover:bg-white/10 text-white/60 hover:text-white rounded-full transition-colors cursor-pointer flex-shrink-0"
+                          aria-label="Scroll left"
+                        >
+                          <ChevronLeft className="h-5 w-5" />
+                        </button>
+                      )}
+                      
+                      <div 
+                        ref={desktopQueueScrollRef}
+                        className="desktop-queue-strip flex gap-3 overflow-x-auto scrollbar-none scroll-smooth select-none py-1 px-2"
+                        style={{ width: '316px' }}
+                      >
+                        {desktopQueueSlots.map((slot, idx) => {
+                          const song = slot.song;
+                          const hasSong = !!song;
+                          const bgImage = song?.thumbnailUrl || '';
+                          const isSelected = activeHeroIndex === slot.targetIndex;
+                          return (
+                            <div
+                              className="queue-thumb-wrapper relative w-36 h-[81px] flex-shrink-0 animate-fade-in"
+                              key={idx}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (hasSong) {
+                                  setActiveHeroIndex(slot.targetIndex);
+                                }
+                              }}
                             >
-                              {hasSong ? (
-                                <>
-                                  <img
-                                    src={bgImage}
-                                    alt={song.title}
-                                    className="w-full h-full object-cover"
-                                  />
-                                  <div className="absolute inset-0 bg-black/20" />
-                                  {slot.targetIndex === 0 && (
-                                    <div className="absolute inset-0 flex items-center justify-center bg-black/45 backdrop-blur-[2px] transition-all">
-                                      <div className="eq-bars thumbnail-eq">
-                                        <div className="eq-bar"></div>
-                                        <div className="eq-bar"></div>
-                                        <div className="eq-bar"></div>
-                                        <div className="eq-bar"></div>
-                                        <div className="eq-bar"></div>
+                              <span className="queue-thumb-label absolute font-semibold text-[10px] text-white bg-black/60 px-1.5 py-0.5 rounded top-1.5 left-1.5 z-10">
+                                {slot.label}
+                              </span>
+                              <button
+                                className={`relative w-full h-full rounded-md overflow-hidden transition-all duration-300 border cursor-pointer ${
+                                  hasSong
+                                    ? (isSelected
+                                      ? 'border-white ring-2 ring-white scale-105 shadow-2xl z-10'
+                                      : 'border-white/10 opacity-70 hover:opacity-100 hover:scale-105')
+                                    : 'border-white/5 opacity-30 cursor-default'
+                                }`}
+                              >
+                                {hasSong ? (
+                                  <>
+                                    <img
+                                      src={bgImage}
+                                      alt={song.title}
+                                      className="w-full h-full object-cover"
+                                    />
+                                    <div className="absolute inset-0 bg-black/20" />
+                                    {slot.targetIndex === 0 && (
+                                      <div className="absolute inset-0 flex items-center justify-center bg-black/45 backdrop-blur-[2px] transition-all">
+                                        <div className="eq-bars thumbnail-eq">
+                                          <div className="eq-bar"></div>
+                                          <div className="eq-bar"></div>
+                                          <div className="eq-bar"></div>
+                                          <div className="eq-bar"></div>
+                                          <div className="eq-bar"></div>
+                                        </div>
                                       </div>
-                                    </div>
-                                  )}
-                                </>
-                              ) : (
-                                <div className="w-full h-full bg-gray-900 flex items-center justify-center">
-                                  <Music2 className="h-5 w-5 text-gray-600" />
-                                </div>
-                              )}
-                            </button>
-                          </div>
-                        );
-                      })}
+                                    )}
+                                  </>
+                                ) : (
+                                  <div className="w-full h-full bg-gray-900 flex items-center justify-center">
+                                    <Music2 className="h-5 w-5 text-gray-600" />
+                                  </div>
+                                )}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {desktopQueueSlots.length > 2 && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleScrollQueue('right');
+                          }}
+                          className="p-1.5 hover:bg-white/10 text-white/60 hover:text-white rounded-full transition-colors cursor-pointer flex-shrink-0"
+                          aria-label="Scroll right"
+                        >
+                          <ChevronRight className="h-5 w-5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

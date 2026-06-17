@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTunesDashboard } from "../hooks/useTunesDashboard";
 import { gql, useQuery, useMutation } from "@apollo/client";
 import { toast } from "sonner";
@@ -52,9 +52,63 @@ const updateAccountMutation = gql`
   }
 `;
 
+const MusicSkeleton = () => {
+  return (
+    <div className="dashboard-theme min-h-screen bg-dashboard-bg text-white pt-6 px-4 md:px-6 pb-20">
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Action bar skeleton */}
+        <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4 border border-white/5">
+          <div className="h-8 w-32 bg-white/5 rounded-xl skeleton-shimmer" />
+          <div className="h-10 w-40 bg-white/10 rounded-xl skeleton-shimmer" />
+        </div>
+
+        {/* 1. Search Bar Skeleton */}
+        <div className="bg-dashboard-sidebar border border-white/5 rounded-[14px] p-4 space-y-2.5">
+          <div className="h-4 w-36 bg-white/10 rounded skeleton-shimmer" />
+          <div className="h-10 w-full bg-dashboard-bg border border-white/5 rounded-lg skeleton-shimmer" />
+        </div>
+        
+        {/* 2. Music Player area skeleton */}
+        <div className="bg-dashboard-sidebar border border-white/5 rounded-[14px] p-4 h-24 flex items-center gap-4">
+          <div className="w-14 h-14 rounded bg-white/10 skeleton-shimmer flex-shrink-0" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 w-1/3 bg-white/10 rounded skeleton-shimmer" />
+            <div className="h-3 w-1/4 bg-white/5 rounded skeleton-shimmer" />
+          </div>
+          <div className="w-10 h-10 rounded-full bg-white/10 skeleton-shimmer" />
+        </div>
+
+        {/* 3. Tab selectors */}
+        <div className="flex items-center justify-center mx-auto bg-white/5 border border-white/5 rounded-3xl w-fit p-1 gap-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-8 w-16 md:w-20 bg-white/10 rounded-2xl skeleton-shimmer" />
+          ))}
+        </div>
+
+        {/* 4. Queue / List Skeletons */}
+        <div className="space-y-3 pt-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-dashboard-sidebar border border-white/5 rounded-[14px] h-[54px] px-4 flex items-center justify-between">
+              <div className="flex items-center gap-3 w-1/2">
+                <div className="w-10 h-10 rounded bg-white/5 skeleton-shimmer" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-3 w-3/4 bg-white/10 rounded skeleton-shimmer" />
+                  <div className="h-2 w-1/2 bg-white/5 rounded skeleton-shimmer" />
+                </div>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-white/5 skeleton-shimmer" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const MusicPage = () => {
   const { user: authUser } = useAuthStore();
   const [isConnecting, setIsConnecting] = useState(false);
+
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -67,6 +121,12 @@ const MusicPage = () => {
     skip: !authUser?.documentId,
     fetchPolicy: 'cache-and-network'
   });
+
+  useEffect(() => {
+    if (!accountLoading) {
+      (window as any).__dashboardLoaded = true;
+    }
+  }, [accountLoading]);
 
   // Mutation to update localtunes_integrated field
   const [updateAccount] = useMutation(updateAccountMutation);
@@ -277,9 +337,12 @@ const MusicPage = () => {
   }
 
   if (accountLoading) {
+    if ((window as any).__dashboardLoaded) {
+      return <MusicSkeleton />;
+    }
     return (
       <div className="flex items-center justify-center min-h-screen bg-dashboard-bg">
-        <EarthLoader context="general" size="small" />
+        <EarthLoader context="general" size="default" />
       </div>
     );
   }

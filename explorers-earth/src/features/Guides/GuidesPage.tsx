@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import Button from "../../components/ui/Button";
@@ -128,6 +128,12 @@ const GuidesPage: React.FC = () => {
 
   // True when data is still being fetched (either account or guides query)
   const isLoading = accountLoading || loading || (!accountDocumentId && !accountData);
+
+  useEffect(() => {
+    if (!isLoading) {
+      (window as any).__dashboardLoaded = true;
+    }
+  }, [isLoading]);
 
   // Helper function to extract location names from Place_Details
   const extractLocationNames = (guide: Guide): string[] => {

@@ -230,8 +230,30 @@
     .np-badge svg { width: 9px; height: 9px; }
     .np-card-title {
       font-family: 'Poppins', sans-serif; font-size: 1.25rem; font-weight: 900;
-      color: white; line-height: 1.15; white-space: nowrap;
-      overflow: hidden; text-overflow: ellipsis;
+      color: white; line-height: 1.15;
+    }
+    /* Horizontal scrolling marquee for song names */
+    .marquee-container {
+      overflow: hidden;
+      white-space: nowrap;
+      width: 100%;
+      position: relative;
+      box-sizing: border-box;
+      mask-image: linear-gradient(to right, transparent, black 15px, black 90%, transparent);
+      -webkit-mask-image: linear-gradient(to right, transparent, black 15px, black 90%, transparent);
+    }
+    .marquee-content {
+      display: inline-block;
+      padding-left: 100%;
+      animation: marquee-scroll 18s linear infinite;
+    }
+    @keyframes marquee-scroll {
+      0% {
+        transform: translate3d(0, 0, 0);
+      }
+      100% {
+        transform: translate3d(-100%, 0, 0);
+      }
     }
     .np-card-artist { font-size: 0.72rem; color: var(--primary); font-weight: 600; margin-top: 2px; }
     .eq-bars { display: flex; align-items: flex-end; gap: 2px; margin-top: 0.5rem; }
@@ -266,7 +288,7 @@
     .desktop-np-card {
       position: relative;
       width: 100%;
-      height: 400px;
+      height: 440px;
       border-radius: 18px;
       overflow: hidden;
       background: #0a0a0a;
@@ -290,18 +312,48 @@
     .desktop-np-content .np-card-title { font-size: 2rem; }
     .desktop-np-content .np-card-artist { font-size: 0.85rem; }
 
-    /* Queue thumbnails strip — bottom-right overlay */
-    .desktop-queue-strip {
+    /* Queue thumbnails strip — bottom-right overlay carousel */
+    .desktop-queue-container {
       position: absolute;
       right: 2rem;
       bottom: 2rem;
       display: flex;
-      gap: 0.65rem;
+      align-items: center;
+      gap: 8px;
       z-index: 10;
+    }
+    .desktop-queue-strip {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      scroll-behavior: smooth;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      width: 184px; /* 2 cards + gap + padding */
+      padding: 4px 6px;
+    }
+    .desktop-queue-strip::-webkit-scrollbar {
+      display: none;
+    }
+    .desktop-chevron-btn {
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px;
+      border-radius: 50%;
+      transition: background 0.2s, color 0.2s;
+    }
+    .desktop-chevron-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
     }
     .queue-thumb-btn {
       width: 80px;
-      aspect-ratio: 16/9;
+      height: 45px;
       border-radius: 8px;
       overflow: hidden;
       border: 2px solid transparent;
@@ -326,7 +378,7 @@
       padding: 1px 5px; border-radius: 3px;
       top: 3px; left: 3px;
     }
-    .queue-thumb-wrapper { position: relative; width: 80px; aspect-ratio: 16/9; flex-shrink: 0; }
+    .queue-thumb-wrapper { position: relative; width: 80px; height: 45px; flex-shrink: 0; }
 
     /* Unused mini-card styles kept for phone view */
     .queue-mini-card {
@@ -528,7 +580,9 @@
                         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
                         Now Playing
                       </div>
-                      <div class="np-card-title">Never Gonna Give You Up</div>
+                      <div class="marquee-container">
+                        <div class="np-card-title marquee-content">Never Gonna Give You Up</div>
+                      </div>
                       <div class="np-card-artist">Rick Astley</div>
                       <div class="eq-bars">
                         <div class="eq-bar"></div><div class="eq-bar"></div>
@@ -544,7 +598,9 @@
                     <div class="mobile-np-card-gradient"></div>
                     <div class="mobile-np-card-content">
                       <div class="np-badge" style="background:rgba(255,255,255,0.15); color:rgba(255,255,255,0.7);">Up Next</div>
-                      <div class="np-card-title">Gangnam Style</div>
+                      <div class="marquee-container">
+                        <div class="np-card-title marquee-content">Gangnam Style</div>
+                      </div>
                       <div class="np-card-artist">PSY</div>
                     </div>
                   </div>
@@ -555,7 +611,9 @@
                     <div class="mobile-np-card-gradient"></div>
                     <div class="mobile-np-card-content">
                       <div class="np-badge" style="background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.5);">#2 in Queue</div>
-                      <div class="np-card-title">Shape of You</div>
+                      <div class="marquee-container">
+                        <div class="np-card-title marquee-content">Shape of You</div>
+                      </div>
                       <div class="np-card-artist">Ed Sheeran</div>
                     </div>
                   </div>
@@ -565,7 +623,9 @@
                     <div class="mobile-np-card-gradient" style="background:#0a0a0a; position:relative;"></div>
                     <div class="mobile-np-card-content">
                       <div class="np-badge" style="background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.4);">#3 in Queue</div>
-                      <div class="np-card-title">Blinding Lights</div>
+                      <div class="marquee-container">
+                        <div class="np-card-title marquee-content">Blinding Lights</div>
+                      </div>
                       <div class="np-card-artist">The Weeknd</div>
                     </div>
                   </div>
@@ -595,7 +655,9 @@
                       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
                       Now Playing
                     </div>
-                    <div class="np-card-title">Never Gonna Give You Up</div>
+                    <div class="marquee-container" style="max-width: 320px;">
+                      <div class="np-card-title marquee-content">Never Gonna Give You Up</div>
+                    </div>
                     <div class="np-card-artist">Rick Astley</div>
                     <div class="eq-bars" style="margin-top:0.75rem;">
                       <div class="eq-bar"></div><div class="eq-bar"></div>
@@ -605,41 +667,51 @@
                   </div>
 
                   <!-- Queue thumbnails — bottom right -->
-                  <div class="desktop-queue-strip">
+                  <div class="desktop-queue-container">
+                    <button class="desktop-chevron-btn" onclick="scrollMockupQueue('left')" aria-label="Scroll left">
+                      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <polyline points="15 18 9 12 15 6"/>
+                      </svg>
+                    </button>
+                    <div class="desktop-queue-strip" id="mockup-queue-strip">
+                      <div class="queue-thumb-wrapper">
+                        <span class="queue-thumb-label">Up Next</span>
+                        <button class="queue-thumb-btn" style="opacity:0.9; border-color:rgba(255,255,255,0.6);">
+                          <img src="https://img.youtube.com/vi/9bZkp7q19f0/mqdefault.jpg" alt="Gangnam Style" />
+                        </button>
+                      </div>
 
-                    <div class="queue-thumb-wrapper">
-                      <span class="queue-thumb-label">Up Next</span>
-                      <button class="queue-thumb-btn" style="opacity:0.9; border-color:rgba(255,255,255,0.6);">
-                        <img src="https://img.youtube.com/vi/9bZkp7q19f0/mqdefault.jpg" alt="Gangnam Style" />
-                      </button>
+                      <div class="queue-thumb-wrapper">
+                        <span class="queue-thumb-label">#2</span>
+                        <button class="queue-thumb-btn">
+                          <img src="https://img.youtube.com/vi/JGwWNGJdvx8/mqdefault.jpg" alt="Shape of You" />
+                        </button>
+                      </div>
+
+                      <div class="queue-thumb-wrapper">
+                        <span class="queue-thumb-label">#3</span>
+                        <button class="queue-thumb-btn">
+                          <div class="queue-thumb-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                          </div>
+                        </button>
+                      </div>
+
+                      <div class="queue-thumb-wrapper">
+                        <span class="queue-thumb-label">#4</span>
+                        <button class="queue-thumb-btn">
+                          <div class="queue-thumb-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                          </div>
+                        </button>
+                      </div>
                     </div>
-
-                    <div class="queue-thumb-wrapper">
-                      <span class="queue-thumb-label">#2</span>
-                      <button class="queue-thumb-btn">
-                        <img src="https://img.youtube.com/vi/JGwWNGJdvx8/mqdefault.jpg" alt="Shape of You" />
-                      </button>
-                    </div>
-
-                    <div class="queue-thumb-wrapper">
-                      <span class="queue-thumb-label">#3</span>
-                      <button class="queue-thumb-btn">
-                        <div class="queue-thumb-icon">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-                        </div>
-                      </button>
-                    </div>
-
-                    <div class="queue-thumb-wrapper">
-                      <span class="queue-thumb-label">#4</span>
-                      <button class="queue-thumb-btn">
-                        <div class="queue-thumb-icon">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-                        </div>
-                      </button>
-                    </div>
-
-                  </div><!-- /desktop-queue-strip -->
+                    <button class="desktop-chevron-btn" onclick="scrollMockupQueue('right')" aria-label="Scroll right">
+                      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <polyline points="9 18 15 12 9 6"/>
+                      </svg>
+                    </button>
+                  </div>
                 </div><!-- /desktop-np-card -->
 
               </div><!-- /hero-desktop -->
@@ -863,6 +935,18 @@
       document.getElementById('hero-mobile-container').style.display  = 'block';
       document.getElementById('hero-desktop-container').style.display = 'none';
     })();
+
+    /* ─── Mockup Queue scroll switcher ─── */
+    function scrollMockupQueue(direction) {
+      const strip = document.getElementById('mockup-queue-strip');
+      if (strip) {
+        const scrollAmount = 80 + 12; // card width (80px) + gap (12px)
+        strip.scrollBy({
+          left: direction === 'left' ? -scrollAmount : scrollAmount,
+          behavior: 'smooth'
+        });
+      }
+    }
 
     /* ─── Theme switcher ─── */
     const themeTokens = {

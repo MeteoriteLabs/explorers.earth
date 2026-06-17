@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useState, useEffect } from "react";
 import BillingTab from "./components/BillingTab";
 import EyeOffIcon from "../../assets/icons/EyeOffIcon";
 import EyeOnIcon from "../../assets/icons/EyeOnIcon";
@@ -113,7 +113,7 @@ const Settings = memo(() => {
   });
 
   // Query for current user's account data for tab visibility settings
-  const { data: currentUserAccountData, refetch: refetchAccountData } = useQuery(accountQuery, {
+  const { data: currentUserAccountData, refetch: refetchAccountData, loading: settingsLoading } = useQuery(accountQuery, {
     variables: {
       filters: {
         username: {
@@ -123,6 +123,12 @@ const Settings = memo(() => {
     },
     skip: !user?.username,
   });
+
+  useEffect(() => {
+    if (!settingsLoading) {
+      (window as any).__dashboardLoaded = true;
+    }
+  }, [settingsLoading]);
 
   const [deleteAccount] = useMutation(deleteAccountMutation);
   const { t, i18n } = useTranslation();

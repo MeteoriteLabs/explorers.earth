@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import { motion } from "framer-motion";
@@ -299,6 +299,7 @@ const BookListCard = ({
 const BooksHome = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showManageTopReads, setShowManageTopReads] = useState(false);
   const [selectedBook, setSelectedBook] = useState<RecommendedBook | null>(null);
@@ -317,6 +318,12 @@ const BooksHome = () => {
     skip: !accountDocumentId,
     fetchPolicy: "cache-and-network",
   });
+
+  useEffect(() => {
+    if (!loading) {
+      (window as any).__dashboardLoaded = true;
+    }
+  }, [loading]);
 
   const [updateBookList] = useMutation(UPDATE_BOOK_LIST);
 

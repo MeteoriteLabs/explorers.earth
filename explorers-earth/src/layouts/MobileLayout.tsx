@@ -18,6 +18,13 @@ const MobileLayout = () => {
   }, [location.pathname]);
 
   useEffect(() => {
+    (window as any).__dashboardLoaded = false;
+    return () => {
+      (window as any).__dashboardLoaded = false;
+    };
+  }, []);
+
+  useEffect(() => {
     const handleScroll = () => {
       const currentScrollTop = window.pageYOffset || document.documentElement.scrollTop;
       const scrollDelta = currentScrollTop - lastScrollTop.current;

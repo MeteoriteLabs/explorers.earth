@@ -13,6 +13,8 @@ import {
   recommendationListQuery,
 } from "../features/Favorites/api/query";
 import { EarthLoader } from "../components/EarthLoader";
+import HeroSkeleton from "../components/ui/HeroSkeleton";
+import RecommendationCardSkeleton from "../components/ui/RecommendationCardSkeleton";
 import { useCreateLocation } from "../features/Favorites/hooks/useCreateLocation";
 import { useMenuItems } from "../features/Favorites/hooks/useMenuItems";
 import { KeyValuePair } from "../features/Favorites/components/RecommendForm";
@@ -85,9 +87,32 @@ const PushPinIcon = ({ pinned }: { pinned: boolean }) => (
   </svg>
 );
 
+const FavoritesSkeleton = () => {
+  return (
+    <div className="bg-dashboard-bg min-h-screen max-w-6xl mx-auto px-4 pt-0 md:pt-4 pb-4 space-y-6">
+      {/* Action bar skeleton */}
+      <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl border border-white/5">
+        <div className="h-8 w-32 bg-white/5 rounded-xl skeleton-shimmer" />
+        <div className="h-10 w-40 bg-white/10 rounded-xl skeleton-shimmer" />
+      </div>
+
+      {/* Featured list hero skeleton */}
+      <HeroSkeleton accentColor="blue" variant="dashboard" showThumbnails />
+
+      {/* Recommendations grid skeleton */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-4 mt-6">
+        <RecommendationCardSkeleton count={5} variant="dashboard" />
+        {/* Plus card shimmer */}
+        <div className="border-2 border-dashed border-dashboard-border rounded-[14px] h-[150px] skeleton-shimmer" />
+      </div>
+    </div>
+  );
+};
+
 const Favorites = memo(() => {
   const { t } = useTranslation();
   const { selectedCity, setSelectedCity } = useCityStore();
+
   const [showAllPlaces, setShowAllPlaces] = useState<boolean>(false);
   // local state for handling modal
   const [isLocationModalOpen, setIsLocationModalOpen] =
@@ -152,6 +177,12 @@ const Favorites = memo(() => {
     skip: !accountById?.usersPermissionsUser?.accounts?.[0]?.documentId,
     fetchPolicy: "network-only",
   });
+
+  useEffect(() => {
+    if (!loading && accountById) {
+      (window as any).__dashboardLoaded = true;
+    }
+  }, [loading, accountById]);
 
   // // local state for handling current list displayed on the carousel
   // const [selectedCity, setSelectedCity] = useState<selectedCity>(
@@ -914,9 +945,12 @@ const Favorites = memo(() => {
   };
 
   if (isLoading) {
+    if ((window as any).__dashboardLoaded) {
+      return <FavoritesSkeleton />;
+    }
     return (
       <div className="flex items-center justify-center min-h-screen bg-dashboard-bg">
-        <EarthLoader context="recommendations" size="small" />
+        <EarthLoader context="recommendations" size="default" />
       </div>
     );
   }
@@ -958,7 +992,7 @@ const Favorites = memo(() => {
         <div className="bg-dashboard-bg min-h-screen max-w-6xl mx-auto px-4 pt-0 md:pt-4 pb-4">
           {(loading || !accountById) ? (
             <div className="flex items-center justify-center min-h-screen">
-              <EarthLoader context="recommendations" size="small" />
+              <EarthLoader context="recommendations" size="default" />
             </div>
           ) : (
             <>

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { deduplicateMovies } from "../../utils/movieHelpers";
@@ -14,8 +14,6 @@ import GenreBrowse from "./GenreBrowse";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import MoviePosterSkeleton from "./MoviePosterSkeleton";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
-
-// We need account documentId from username — reuse existing user query pattern
 import { gql } from "@apollo/client";
 
 const ACCOUNT_BY_USERNAME = gql`
@@ -56,6 +54,13 @@ const PublicMovies = () => {
   });
 
   const loading = userLoading || moviesLoading;
+
+  useEffect(() => {
+    if (!loading) {
+      (window as any).__publicProfileLoaded = true;
+    }
+  }, [loading]);
+
   const lists: MovieList[] = movieData?.movieLists ?? [];
 
   // Step 3: Initialize analytics — auto-tracks the page view once accountId resolves

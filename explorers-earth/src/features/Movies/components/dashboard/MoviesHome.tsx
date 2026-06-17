@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -303,6 +303,7 @@ const MovieListCard = ({
 const MoviesHome = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showManageTopPicks, setShowManageTopPicks] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
@@ -322,6 +323,12 @@ const MoviesHome = () => {
     skip: !accountDocumentId,
     fetchPolicy: "cache-and-network",
   });
+
+  useEffect(() => {
+    if (!loading) {
+      (window as any).__dashboardLoaded = true;
+    }
+  }, [loading]);
 
   const [updateMovieList] = useMutation(UPDATE_MOVIE_LIST);
 

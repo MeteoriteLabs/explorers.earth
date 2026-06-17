@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, gql } from "@apollo/client";
 import { BookOpen } from "lucide-react";
@@ -49,6 +49,12 @@ const PublicBooks = () => {
     skip: !accountDocumentId,
     fetchPolicy: "cache-and-network",
   });
+
+  useEffect(() => {
+    if (!loading) {
+      (window as any).__publicProfileLoaded = true;
+    }
+  }, [loading]);
 
   // Initialize analytics — auto-tracks the page view once accountId resolves
   const analytics = useTrackAnalytics(

@@ -56,8 +56,6 @@ const MODES: { key: SearchMode; label: string; icon: React.ReactNode; placeholde
   },
 ];
 
-// Single consistent accent for explorers dark UI
-const ACCENT = '#2563eb'; // blue-600
 
 export default function SearchSongs({
   guestUrl,

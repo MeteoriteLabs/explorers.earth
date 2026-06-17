@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, gql } from "@apollo/client";
 import { Gamepad2, Share2 } from "lucide-react";
@@ -53,6 +53,13 @@ const PublicGames = () => {
   });
 
   const loading = userLoading || gamesLoading;
+
+  useEffect(() => {
+    if (!loading) {
+      (window as any).__publicProfileLoaded = true;
+    }
+  }, [loading]);
+
   const lists: GameList[] = data?.gameLists ?? [];
 
   // Initialize analytics — auto-tracks the page view once accountId resolves

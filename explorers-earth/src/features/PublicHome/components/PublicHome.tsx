@@ -152,6 +152,12 @@ const PublicHome = memo(() => {
   });
 
   const [showQR, setShowQR] = useState(false);
+
+  useEffect(() => {
+    if (!loading) {
+      (window as any).__publicProfileLoaded = true;
+    }
+  }, [loading]);
   const [_isQRVisible, setIsQRVisible] = useState(false);
   const accountData = data?.accounts[0];
 

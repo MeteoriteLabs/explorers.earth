@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import MenuIcon from "../assets/icons/MenuIcon";
-import CrossIcon from "../assets/icons/CrossIcon";
 import Home from "../assets/icons/Home";
 import SettingsIcon from "../assets/icons/SettingsIcon";
 import DirectionBoard from "../assets/icons/DirectionBoard";
@@ -11,7 +10,48 @@ import Profile from "../assets/icons/Profile";
 import Analytics from "../assets/icons/Analytics";
 import MusicNote from "../assets/icons/MusicNote";
 import Button from "./ui/Button";
-import { Film, BookOpen, Gamepad2 } from "lucide-react";
+const MovieIcon = ({ fill = "currentColor" }: { fill?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    width="20"
+    height="20"
+  >
+    <path
+      fill={fill}
+      d="M2 3.993A1 1 0 0 1 2.992 3h18.016c.548 0 .992.445.992.993v16.014a1 1 0 0 1-.992.993H2.992A.993.993 0 0 1 2 20.007zM4 5v2h2V5zm14 0v2h2V5zM4 9v2h2V9zm14 0v2h2V9zM4 13v2h2v-2zm14 0v2h2v-2zM4 17v2h2v-2zm14 0v2h2v-2z"
+    />
+  </svg>
+);
+
+const BookIcon = ({ fill = "currentColor" }: { fill?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    width="20"
+    height="20"
+  >
+    <path
+      fill={fill}
+      d="M21 21h-8V6a3 3 0 0 1 3-3h5a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1m-10 0H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a3 3 0 0 1 3 3zm0 0h2v2h-2z"
+    />
+  </svg>
+);
+
+const GameIcon = ({ fill = "currentColor" }: { fill?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    width="20"
+    height="20"
+  >
+    <path
+      fill={fill}
+      d="M17 4a6 6 0 0 1 6 6v4a6 6 0 0 1-6 6H7a6 6 0 0 1-6-6v-4a6 6 0 0 1 6-6zm-7 5H8v2H6v2h1.999L8 15h2l-.001-2H12v-2h-2zm8 4h-2v2h2zm-2-4h-2v2h2z"
+    />
+  </svg>
+);
+
 import SunIcon from "../assets/icons/SunIcon";
 import MoonIcon from "../assets/icons/MoonIcon";
 import SwitchButton from "./ui/SwitchButton";
@@ -119,9 +159,18 @@ const Sidebar = () => {
         } h-screen bg-dashboard-sidebar font-poppins text-dashboard transition-all duration-300 flex flex-col flex-shrink-0 fixed left-0 top-0 z-40`}
     >
       {/* Fixed Header - Logo and Toggle Button */}
-      <div className={`flex w-full py-4 flex-shrink-0 min-h-[72px] ${isOpen ? "items-center justify-between px-3 gap-2" : "flex-col items-center justify-center gap-2 px-4"}`}>
+      <div className={`flex w-full py-4 flex-shrink-0 min-h-[72px] ${isOpen ? "items-center justify-start pl-[20px] pr-3 gap-3" : "flex-col items-center justify-center gap-2 px-4"}`}>
         {isOpen ? (
           <>
+            {/* Toggle Button - On immediate left */}
+            <div className="flex-shrink-0 w-[24px] h-[24px] flex items-center justify-center">
+              <Button
+                startIcon={<MenuIcon stroke="var(--dash-accent)" />}
+                onClickHandler={() => setIsOpen(!isOpen)}
+                variant="icon"
+                size="none"
+              />
+            </div>
             {/* SVG Text - explorers.earth */}
             <div className="flex-shrink-0 flex-1 min-w-0">
               <img
@@ -131,15 +180,6 @@ const Sidebar = () => {
                 style={{
                   filter: "brightness(0) invert(1)",
                 }}
-              />
-            </div>
-            {/* Toggle Button - Fixed position */}
-            <div className="flex-shrink-0 w-[24px] h-[24px] flex items-center justify-center">
-              <Button
-                startIcon={<CrossIcon stroke="var(--dash-accent)" />}
-                onClickHandler={() => setIsOpen(!isOpen)}
-                variant="icon"
-                size="none"
               />
             </div>
           </>
@@ -189,24 +229,21 @@ const Sidebar = () => {
         {/* Movies & Shows */}
         <SidebarItem
           isOpen={isOpen}
-          /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-          Icon={({ fill }: any) => <Film size={18} color={fill ?? 'var(--dash-icon-primary)'} fill="none" />}
+          Icon={MovieIcon}
           title={"Movies"}
           to="/recommendations/movies"
         />
         {/* Books */}
         <SidebarItem
           isOpen={isOpen}
-          /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-          Icon={({ fill }: any) => <BookOpen size={18} color={fill ?? 'var(--dash-icon-primary)'} fill="none" />}
+          Icon={BookIcon}
           title={"Books"}
           to="/recommendations/books"
         />
         {/* Games */}
         <SidebarItem
           isOpen={isOpen}
-          /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-          Icon={({ fill }: any) => <Gamepad2 size={18} color={fill ?? 'var(--dash-icon-primary)'} fill="none" />}
+          Icon={GameIcon}
           title={"Games"}
           to="/recommendations/games"
         />
@@ -254,7 +291,7 @@ const Sidebar = () => {
           </div>
         )}
         <div
-          className={`flex items-center bg-dashboard-muted px-2 py-2 rounded-lg w-full cursor-pointer hover:bg-dashboard-sidebar transition-colors duration-200 ${isOpen ? "justify-start" : "justify-center gap-2"
+          className={`flex items-center bg-dashboard-muted rounded-lg w-full cursor-pointer hover:bg-dashboard-sidebar transition-colors duration-200 ${isOpen ? "px-2 py-2 justify-start" : "p-1 justify-center"
             }`}
           onClick={() => setShowMenu(!showMenu)}
         >
@@ -357,11 +394,12 @@ const SidebarItem = ({
         target="_blank"
         rel="noopener noreferrer"
         onClick={handleClick}
-        className={`relative flex items-center gap-4 px-4 py-3 rounded-lg transition-all dt-interactive ${isOpen && "mx-3"
+        className={`relative flex items-center rounded-lg transition-all dt-interactive ${isOpen ? "gap-4 px-4 py-3 mx-3" : "justify-center py-3 w-full"
           } hover:bg-dashboard-muted`}
         {...(!isOpen ? { "data-tooltip-id": title } : {})}
       >
         <motion.div
+          className="flex-shrink-0 w-6 h-6 flex items-center justify-center"
           whileHover={{ scale: 1.3 }}
           transition={{ type: "spring", stiffness: 120 }}
         >
@@ -390,9 +428,10 @@ const SidebarItem = ({
   return (
     <Link
       to={to}
-      className={`relative flex items-center gap-4 px-4 py-3 rounded-lg transition-all dt-interactive w-full ${isActive
-        ? "bg-dashboard-muted text-dashboard-accent"
-        : "hover:bg-dashboard-muted"
+      className={`relative flex items-center rounded-lg transition-all dt-interactive w-full ${isOpen ? "gap-4 px-4 py-3" : "justify-center py-3"
+        } ${isActive
+          ? "bg-dashboard-muted text-dashboard-accent"
+          : "hover:bg-dashboard-muted"
         }`}
       {...(!isOpen ? { "data-tooltip-id": title } : {})}
     >

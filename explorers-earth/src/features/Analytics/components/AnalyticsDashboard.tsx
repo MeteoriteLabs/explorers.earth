@@ -2,6 +2,7 @@ import React, { useMemo, useEffect, useState, useRef } from 'react';
 import { useQuery, gql } from '@apollo/client';
 import { GET_PUBLIC_PAGE_ANALYTICS, AnalyticsEvent, PublicPageAnalyticsData } from '../api/queries';
 import { useTranslation } from 'react-i18next';
+import useAuthStore from '../../../store/store';
 import TopCountriesChart from './charts/TopCountriesChart';
 import TrafficSourceChart from './charts/TrafficSourceChart';
 import LocationEngagementChart from './charts/LocationEngagementChart';
@@ -83,6 +84,12 @@ const AnalyticsDashboard: React.FC = () => {
   });
 
   const accountDocumentId = accountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
+
+  useEffect(() => {
+    if (!loading) {
+      (window as any).__dashboardLoaded = true;
+    }
+  }, [loading]);
 
   // Calculate date range based on time filter
   const getDateRange = useMemo(() => {

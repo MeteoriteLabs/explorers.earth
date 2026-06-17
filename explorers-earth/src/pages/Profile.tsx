@@ -281,6 +281,38 @@ const getAccountTabFields = (t: any) => [
   },
 ];
 
+const ProfileSkeleton = memo(() => {
+  return (
+    <div className="bg-dashboard-bg md:px-6 md:py-2 md:pt-0 pb-24 md:pb-6 min-h-screen">
+      <div className="pb-4 w-full flex flex-col gap-0 pt-0">
+        {/* Cinematic Header Cover Shimmer */}
+        <div className="relative max-w-3xl mx-auto w-full mt-4 h-[200px] overflow-hidden rounded-xl bg-white/5 border border-white/5 shadow-xl">
+          <div className="absolute inset-0 skeleton-shimmer" />
+          <div className="absolute bottom-4 left-6 flex items-center gap-4">
+            {/* Avatar skeleton */}
+            <div className="w-16 h-16 rounded-full bg-white/10 skeleton-shimmer border-2 border-white/5" />
+            <div className="space-y-1.5">
+              <div className="h-5 w-32 bg-white/10 rounded skeleton-shimmer" />
+              <div className="h-3 w-20 bg-white/5 rounded skeleton-shimmer" />
+            </div>
+          </div>
+        </div>
+
+        {/* Form Fields Accordion Shimmers */}
+        <div className="max-w-3xl mx-auto w-full mt-6 space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-dashboard-sidebar border border-dashboard-border/30 rounded-xl p-4 space-y-3 h-14 flex items-center justify-between">
+              <div className="h-4 w-1/3 bg-white/10 rounded skeleton-shimmer" />
+              <div className="h-4 w-4 bg-white/5 rounded-full skeleton-shimmer" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+});
+ProfileSkeleton.displayName = "ProfileSkeleton";
+
 const Profile = memo(() => {
   const { t } = useTranslation();
   const [showPreview, setShowPreview] = useState<boolean>(false);
@@ -361,6 +393,12 @@ const Profile = memo(() => {
     fetchPolicy: "cache-and-network", // Always fetch fresh data but use cache while loading
     skip: !documentId, // Skip query if documentId is not available
   });
+
+  useEffect(() => {
+    if (!loading) {
+      (window as any).__dashboardLoaded = true;
+    }
+  }, [loading]);
 
   // ✅ VISIBILITY FIX: Get account data from GraphQL response, not separate axios call
   const account = data?.usersPermissionsUser?.accounts?.[0];
@@ -1231,12 +1269,16 @@ const Profile = memo(() => {
 
   // side effects willl be replaced by spinner and toast
   // side effects for query
-  if (loading)
+  if (loading) {
+    if ((window as any).__dashboardLoaded) {
+      return <ProfileSkeleton />;
+    }
     return (
       <div className="flex items-center justify-center min-h-screen bg-dashboard-bg">
-        <EarthLoader context="profile" size="small" />
+        <EarthLoader context="profile" size="default" />
       </div>
     );
+  }
   if (error) return (
     <div className="flex bg-dashboard-bg items-center justify-center min-h-screen">
       <div className="text-dashboard text-center">

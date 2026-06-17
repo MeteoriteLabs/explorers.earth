@@ -91,6 +91,13 @@ const PublicGuides = memo(() => {
   const allGuides: Guide[] = guidesData?.guides || [];
   const account = accountData?.accounts?.[0];
   const loading = accountLoading || guidesLoading;
+
+  useEffect(() => {
+    if (!loading && account) {
+      (window as any).__publicProfileLoaded = true;
+    }
+  }, [loading, account]);
+
   const analytics = useTrackAnalytics({
     accountId: account?.documentId || "",
     pageName: "public-guides",
