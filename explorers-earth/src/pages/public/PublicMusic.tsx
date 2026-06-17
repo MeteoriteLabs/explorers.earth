@@ -6,7 +6,7 @@ import PlaylistCard, { PlaylistCardContent } from "../../components/ui/PlaylistC
 import { EarthLoader } from "../../components/EarthLoader";
 import PlaylistTable from "../../components/playlist-table";
 import SearchSongs from "../../components/search-songs";
-import { Music2, Volume2, History, Search, Share2, Copy } from "lucide-react";
+import { Music2, Volume2, History, Search, Share2, Copy, Shuffle, SkipBack, Play, Pause, SkipForward, Repeat } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 import { apiRequest } from "../../lib/queryClient";
 import Tabs, { TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
@@ -482,12 +482,21 @@ export default function PublicMusic() {
   const activeCard = heroCards[activeHeroIndex] || heroCards[0];
 
 
-  const desktopQueueSlots = [
-    { label: 'Up Next', song: queueSongs?.[0] },
-    { label: '#2', song: queueSongs?.[1] },
-    { label: '#3', song: queueSongs?.[2] },
-    { label: '#4', song: queueSongs?.[3] }
-  ];
+  const desktopQueueSlots = [];
+  if (playlist?.currentlyPlaying) {
+    desktopQueueSlots.push({
+      label: 'Now Playing',
+      song: playlist.currentlyPlaying,
+      targetIndex: 0
+    });
+  }
+  nextQueueItems.forEach((song, idx) => {
+    desktopQueueSlots.push({
+      label: idx === 0 ? 'Up Next' : `#${idx + 1}`,
+      song: song,
+      targetIndex: playlist?.currentlyPlaying ? idx + 1 : idx
+    });
+  });
 
   return (
     <>
@@ -549,262 +558,378 @@ export default function PublicMusic() {
               </button>
             </div>
           </div>
-        </div>
+        </div>        {/* Main Content */}
+        <div className="pt-14 w-full flex flex-col">
+          {/* Search Songs Section - Only show if song requests are allowed */}
+          {playlist?.user?.allowSongRequests && (
+            <div className="max-w-4xl mx-auto px-4 md:px-6 w-full mt-6 mb-4">
+              <SearchSongs
+                guestUrl={guestUrl}
+                disabled={shouldDisableSearch}
+                onSongsAddedCallback={async () => {
+                  await refetchSongLimits();
+                }}
+              />
+            </div>
+          )}
 
-        {/* Main Content */}
-        <div className="max-w-4xl mx-auto pt-20 pb-28 px-4 md:px-6">
-          <div className="page-content">
-            {/* Search Songs Section - Only show if song requests are allowed */}
-            {playlist?.user?.allowSongRequests && (
-              <div className="search-panel">
-                <div className="search-panel-label">
-                  <Search className="h-3.5 w-3.5" style={{ color: 'var(--primary)' }} />
-                  Add a Song to the Queue
-                </div>
-                <SearchSongs
-                  guestUrl={guestUrl}
-                  disabled={shouldDisableSearch}
-                  onSongsAddedCallback={async () => {
-                    await refetchSongLimits();
-                  }}
-                />
-                <div className="search-limit">
-                  <span className="live-dot"></span>
-                  {isLimitReached ? (
-                    "Song requests limit reached"
-                  ) : (
-                    `Song requests open · ${songRequestsCount} of ${songsQuota} used`
-                  )}
-                </div>
-              </div>
-            )}
+          {/* Now Playing Section */}
+          {playlist?.currentlyPlaying ? (
+            <>
+              {/* MOBILE VIEW (stacked swiper) */}
+              <div className="md:hidden w-full mb-4 mt-4 touch-pan-y px-0">
+                <div className="relative w-full h-[65vh] min-h-[480px] max-h-[650px] overflow-x-hidden flex items-center justify-start py-8">
+                  <div className="absolute inset-y-4 left-4 right-14">
+                    {heroCards.map((card, i) => {
+                      const diff = (i - activeHeroIndex + totalCards) % totalCards;
 
-            {/* Now Playing Section */}
-            <div>
-              <div className="now-playing-label">
-                <span className={`live-dot ${playlist?.currentlyPlaying ? '' : 'bg-gray-600 shadow-none animate-none'}`}></span>
-                Now Playing
-              </div>
+                      let position = "hiddenRight";
+                      if (diff === 0) position = "active";
+                      else if (diff === 1) position = "next";
+                      else if (diff === 2) position = "nextNext";
+                      else if (diff === totalCards - 1) position = "hiddenLeft";
 
-              {playlist?.currentlyPlaying ? (
-                <>
-                  {/* MOBILE VIEW (stacked swiper) */}
-                  <div className="hero-mobile">
-                    <div className="relative w-full h-[65vh] min-h-[480px] max-h-[650px] overflow-x-hidden flex items-center justify-start py-8">
-                      <div className="absolute inset-y-4 left-0 right-8">
-                        {heroCards.map((card, i) => {
-                          const diff = (i - activeHeroIndex + totalCards) % totalCards;
+                      const variants = {
+                        active: { x: 0, scale: 1, zIndex: 10, opacity: 1 },
+                        next: { x: "12%", scale: 0.9, zIndex: 5, opacity: 1 },
+                        nextNext: { x: "24%", scale: 0.8, zIndex: 4, opacity: 1 },
+                        hiddenRight: { x: "40%", scale: 0.7, zIndex: 1, opacity: 0 },
+                        hiddenLeft: { x: "-110%", scale: 1, zIndex: 11, opacity: 0 }
+                      };
 
-                          let position = "hiddenRight";
-                          if (diff === 0) position = "active";
-                          else if (diff === 1) position = "next";
-                          else if (diff === 2) position = "nextNext";
-                          else if (diff === totalCards - 1) position = "hiddenLeft";
+                      const handleDragEnd = (_e: any, { offset, velocity }: PanInfo) => {
+                        if (offset.x < -50 || velocity.x < -300) {
+                          setActiveHeroIndex((prev) => (prev + 1) % totalCards);
+                        } else if (offset.x > 50 || velocity.x > 300) {
+                          setActiveHeroIndex((prev) => (prev - 1 + totalCards) % totalCards);
+                        }
+                      };
 
-                          const variants = {
-                            active: { x: 0, scale: 1, zIndex: 10, opacity: 1 },
-                            next: { x: "12%", scale: 0.9, zIndex: 5, opacity: 1 },
-                            nextNext: { x: "24%", scale: 0.8, zIndex: 4, opacity: 1 },
-                            hiddenRight: { x: "40%", scale: 0.7, zIndex: 1, opacity: 0 },
-                            hiddenLeft: { x: "-110%", scale: 1, zIndex: 11, opacity: 0 }
-                          };
+                      const hasThumbnail = !!card.thumbnailUrl;
 
-                          const handleDragEnd = (_e: any, { offset, velocity }: PanInfo) => {
-                            if (offset.x < -50 || velocity.x < -300) {
-                              setActiveHeroIndex((prev) => (prev + 1) % totalCards);
-                            } else if (offset.x > 50 || velocity.x > 300) {
-                              setActiveHeroIndex((prev) => (prev - 1 + totalCards) % totalCards);
-                            }
-                          };
-
-                          const hasThumbnail = !!card.thumbnailUrl;
-
-                          return (
-                            <motion.div
-                              key={i}
-                              variants={variants}
-                              initial={false}
-                              animate={position}
-                              transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
-                              drag={diff === 0 ? "x" : false}
-                              dragConstraints={{ left: 0, right: 0 }}
-                              dragElastic={0.8}
-                              onDragEnd={handleDragEnd}
-                              className={`absolute inset-0 h-full rounded-2xl overflow-hidden shadow-2xl bg-[#1a2332] border border-white/10 ${
-                                diff === 0 ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'
-                              }`}
-                              style={{
-                                backgroundImage: hasThumbnail ? `url('${card.thumbnailUrl}')` : 'none',
-                                backgroundColor: hasThumbnail ? 'transparent' : '#111',
-                                backgroundSize: "cover",
-                                backgroundPosition: "center",
-                              }}
-                            >
-                              {/* Shading overlay */}
-                              <div className="absolute inset-0 bg-gradient-to-b from-black/10 to-black/90 z-10 pointer-events-none" />
-
-                              {/* Top left status/action badge */}
-                              <div className="relative z-20 flex justify-between items-start p-5 w-full">
-                                <div className="px-2.5 py-0.5 rounded-full bg-[#0f1624]/65 backdrop-blur-[3px] border border-white/20 flex items-center justify-center text-[10px] text-white font-bold tracking-wide uppercase font-poppins">
-                                  {card.type === 'now-playing' ? (
-                                    <svg className="mr-1 h-2.5 w-2.5 inline animate-pulse text-[var(--primary)]" viewBox="0 0 24 24" fill="currentColor">
-                                      <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
-                                    </svg>
-                                  ) : null}
-                                  {card.badge}
-                                </div>
-                              </div>
-
-                              {/* Bottom song info or placeholder */}
-                              <div className="absolute bottom-0 left-0 right-0 p-5 flex flex-col gap-1.5 pointer-events-none z-20">
-                                <h2 className="text-3xl font-poppins font-black text-white leading-tight drop-shadow-xl select-none truncate">
-                                  {card.title}
-                                </h2>
-                                <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--primary)] font-semibold tracking-wide mt-1">
-                                  <span>{card.artist}</span>
-                                </div>
-                                {card.type === 'now-playing' && (
-                                  <div className="eq-bars mt-2">
-                                    <div className="eq-bar"></div>
-                                    <div className="eq-bar"></div>
-                                    <div className="eq-bar"></div>
-                                    <div className="eq-bar"></div>
-                                    <div className="eq-bar"></div>
-                                  </div>
-                                )}
-                              </div>
-                            </motion.div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    {totalCards > 1 && (
-                      <div className="mobile-swipe-dots" style={{ marginTop: '0.1rem' }}>
-                        {heroCards.map((_, i) => (
-                          <div
-                            key={i}
-                            className={`swipe-dot ${i === activeHeroIndex ? 'active' : ''}`}
-                            onClick={() => setActiveHeroIndex(i)}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* DESKTOP VIEW (banner + strip) */}
-                  <div className="hero-desktop">
-                    <div
-                      className="desktop-np-card place-rec-card relative w-full h-[400px] rounded-[16px] overflow-hidden flex flex-col justify-between p-6 border border-white/[0.08] shadow-[0_6px_16px_rgba(0,0,0,0.35)] transition-all duration-300 hover:border-white/25 select-none"
-                      style={{
-                        backgroundImage: `url('${activeCard?.thumbnailUrl || ''}')`,
-                        backgroundSize: "cover",
-                        backgroundPosition: "center",
-                      }}
-                      onClick={() => setActiveHeroIndex(0)}
-                    >
-                      {/* Shading overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-b from-black/10 to-black/85 z-10 pointer-events-none" />
-
-                      {/* Top left badge */}
-                      <div className="relative z-20 flex justify-between items-center w-full">
-                        <div className="px-3 py-1 rounded-full bg-[#0f1624]/65 backdrop-blur-[3px] border border-white/20 flex items-center justify-center text-[11px] text-white font-semibold tracking-wide uppercase font-poppins">
-                          {activeCard?.type === 'now-playing' ? (
-                            <svg className="mr-1.5 h-3 w-3 inline animate-pulse" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
-                            </svg>
-                          ) : null}
-                          {activeCard?.badge}
-                        </div>
-                      </div>
-
-                      {/* Bottom row containing song content & desktop queue cards */}
-                      <div className="relative z-20 flex justify-between items-end w-full">
-                        <div className="flex flex-col gap-0.5 max-w-[50%]">
-                          <h4 className="text-xl md:text-2xl font-bold text-white tracking-wide truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)] font-poppins">
-                            {activeCard?.title}
-                          </h4>
-                          <p className="text-sm font-semibold text-[var(--primary)] font-poppins truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]">
-                            {activeCard?.artist}
-                          </p>
-                          {activeCard?.type === 'now-playing' && (
-                            <div className="eq-bars mt-2">
-                              <div className="eq-bar"></div>
-                              <div className="eq-bar"></div>
-                              <div className="eq-bar"></div>
-                              <div className="eq-bar"></div>
-                              <div className="eq-bar"></div>
+                      return (
+                        <motion.div
+                          key={i}
+                          variants={variants}
+                          initial={false}
+                          animate={position}
+                          transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
+                          drag={diff === 0 ? "x" : false}
+                          dragConstraints={{ left: 0, right: 0 }}
+                          dragElastic={0.8}
+                          onDragEnd={handleDragEnd}
+                          className={`absolute inset-0 h-full rounded-2xl overflow-hidden shadow-2xl border border-white/10 flex flex-col justify-between ${
+                            diff === 0 ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'
+                          }`}
+                          style={{
+                            background: 'linear-gradient(135deg, #181c2b 0%, #0d0e15 50%, #050608 100%)',
+                          }}
+                        >
+                          {/* Top left status/action badge */}
+                          <div className="relative z-20 flex justify-between items-start p-5 w-full">
+                            <div className="px-2.5 py-0.5 rounded-full bg-[#0f1624]/65 backdrop-blur-[3px] border border-white/20 flex items-center justify-center text-[10px] text-white font-bold tracking-wide uppercase font-poppins">
+                              {card.type === 'now-playing' ? (
+                                <svg className="mr-1.5 h-2.5 w-2.5 inline animate-pulse text-[var(--primary)]" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+                                </svg>
+                              ) : null}
+                              {card.badge}
                             </div>
-                          )}
-                        </div>
+                          </div>
 
-                        {/* Desktop Queue Cards (w-32 aspect-video rounded-md) */}
-                        <div className="desktop-queue-strip flex gap-3.5 z-20">
-                          {desktopQueueSlots.map((slot, idx) => {
-                            const song = slot.song;
-                            const hasSong = !!song;
-                            const bgImage = song?.thumbnailUrl || '';
-                            const isSelected = activeHeroIndex === idx + 1;
-                            return (
-                              <div
-                                className="queue-thumb-wrapper relative w-32 aspect-video flex-shrink-0"
-                                key={idx}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (hasSong) {
-                                    setActiveHeroIndex(idx + 1);
-                                  }
-                                }}
-                              >
-                                <span className="queue-thumb-label absolute font-semibold text-[10px] text-white bg-black/60 px-1.5 py-0.5 rounded top-1.5 left-1.5 z-10">
-                                  {slot.label}
-                                </span>
-                                <button
-                                  className={`relative w-full h-full rounded-md overflow-hidden transition-all duration-300 border cursor-pointer ${
-                                    hasSong
-                                      ? (isSelected
-                                        ? 'border-white ring-2 ring-white scale-110 shadow-2xl z-10'
-                                        : 'border-white/10 opacity-70 hover:opacity-100 hover:scale-105')
-                                      : 'border-white/5 opacity-30 cursor-default'
-                                  }`}
-                                >
-                                  {hasSong ? (
-                                    <>
-                                      <img
-                                        src={bgImage}
-                                        alt={song.title}
-                                        className="w-full h-full object-cover"
-                                      />
-                                      <div className="absolute inset-0 bg-black/20" />
-                                    </>
-                                  ) : (
-                                    <div className="w-full h-full bg-gray-900 flex items-center justify-center">
-                                      <Music2 className="h-5 w-5 text-gray-600" />
+                          {/* Album Art (Centered Square) */}
+                          <div className="relative z-20 flex-1 flex items-center justify-center px-6 my-2">
+                            <div className={`relative w-[70%] max-w-[240px] aspect-square rounded-2xl overflow-hidden shadow-[0_15px_35px_rgba(0,0,0,0.5)] border border-white/10 bg-gray-900 flex items-center justify-center transition-all duration-500 hover:scale-[1.04] ${
+                              card.type === 'now-playing' ? 'album-art-active' : ''
+                            }`}>
+                              {hasThumbnail ? (
+                                <>
+                                  <img
+                                    src={card.thumbnailUrl}
+                                    alt={card.title}
+                                    className="w-full h-full object-cover select-none pointer-events-none"
+                                  />
+                                  {card.type === 'now-playing' && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/35 backdrop-blur-[1.5px] transition-all">
+                                      <div className="h-16 w-16 rounded-full bg-black/55 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center">
+                                        <div className="eq-bars hero-large-eq">
+                                          <div className="eq-bar"></div>
+                                          <div className="eq-bar"></div>
+                                          <div className="eq-bar"></div>
+                                          <div className="eq-bar"></div>
+                                          <div className="eq-bar"></div>
+                                        </div>
+                                      </div>
                                     </div>
                                   )}
-                                </button>
+                                </>
+                              ) : (
+                                <Music2 className="h-12 w-12 text-gray-700" />
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Song Info (Title & Artist) */}
+                          <div className="relative z-20 px-6 text-center mt-2">
+                            <h2 className="text-xl font-poppins font-black text-white leading-tight truncate drop-shadow-md select-none">
+                              {card.title}
+                            </h2>
+                            <p className="text-xs text-gray-400 font-medium tracking-wide mt-1 truncate">
+                              by {card.artist}
+                            </p>
+                          </div>
+
+                          {/* Controls Row */}
+                          <div className="relative z-20 flex items-center justify-center gap-5 my-4 px-6">
+                            <button className="text-gray-500 hover:text-white transition-colors p-1 player-control-btn" aria-label="Shuffle">
+                              <Shuffle className="h-4 w-4" />
+                            </button>
+                            <button className="text-gray-400 hover:text-white transition-colors p-1 player-control-btn" aria-label="Previous">
+                              <SkipBack className="h-5 w-5" />
+                            </button>
+                            <button 
+                              className="h-12 w-12 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 shadow-lg border-none"
+                              style={{ background: 'var(--primary, #2563eb)' }}
+                              aria-label={card.type === 'now-playing' ? "Pause" : "Play"}
+                            >
+                              {card.type === 'now-playing' ? (
+                                <Pause className="h-5 w-5 text-white" fill="white" />
+                              ) : (
+                                <Play className="h-5 w-5 text-white ml-0.5" fill="white" />
+                              )}
+                            </button>
+                            <button className="text-gray-400 hover:text-white transition-colors p-1 player-control-btn" aria-label="Next">
+                              <SkipForward className="h-5 w-5" />
+                            </button>
+                            <button className="text-gray-500 hover:text-white transition-colors p-1 player-control-btn" aria-label="Repeat">
+                              <Repeat className="h-4 w-4" />
+                            </button>
+                          </div>
+
+                          {/* Progress Bar Row */}
+                          <div className="relative z-20 px-8 pb-6 w-full flex flex-col gap-2">
+                            <div className="flex justify-between items-center text-[10px] text-gray-500 font-semibold select-none">
+                              <span>1:24</span>
+                              <span>3:40</span>
+                            </div>
+                            <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden relative">
+                              <div 
+                                className="h-full rounded-full" 
+                                style={{ 
+                                  width: card.type === 'now-playing' ? '40%' : '0%', 
+                                  background: 'var(--primary, #2563eb)' 
+                                }} 
+                              />
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </div>
+                {totalCards > 1 && (
+                  <div className="mobile-swipe-dots" style={{ marginTop: '0.1rem' }}>
+                    {heroCards.map((_, i) => (
+                      <div
+                        key={i}
+                        className={`swipe-dot ${i === activeHeroIndex ? 'active' : ''}`}
+                        onClick={() => setActiveHeroIndex(i)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* DESKTOP VIEW (banner + strip) */}
+              <div className="hidden md:block w-full mb-12 mt-4 px-4">
+                <div
+                  className="relative w-full h-[65vh] min-h-[520px] max-h-[720px] rounded-2xl overflow-hidden shadow-2xl group/hero max-w-4xl mx-auto border border-white/[0.08] hover:border-white/25 transition-all duration-300 select-none flex flex-col justify-between p-8"
+                  style={{
+                    background: 'linear-gradient(135deg, #181c2b 0%, #0d0e15 50%, #050608 100%)',
+                  }}
+                  onClick={() => setActiveHeroIndex(0)}
+                >
+                  {/* Top left badge */}
+                  <div className="relative z-20 flex justify-between items-center w-full">
+                    <div className="px-3 py-1 rounded-full bg-[#0f1624]/65 backdrop-blur-[3px] border border-white/20 flex items-center justify-center text-[11px] text-white font-semibold tracking-wide uppercase font-poppins">
+                      {activeCard?.type === 'now-playing' ? (
+                        <svg className="mr-1.5 h-3 w-3 inline animate-pulse text-[var(--primary)]" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+                        </svg>
+                      ) : null}
+                      {activeCard?.badge}
+                    </div>
+                  </div>
+
+                  {/* Album Art (Centered Square) */}
+                  <div className="relative z-20 flex-1 flex flex-col items-center justify-center w-full my-4">
+                    <div className={`relative w-64 h-64 lg:w-72 lg:h-72 rounded-2xl overflow-hidden shadow-[0_15px_35px_rgba(0,0,0,0.5)] border border-white/10 bg-gray-900 flex items-center justify-center transition-all duration-500 hover:scale-[1.04] ${
+                      activeCard?.type === 'now-playing' ? 'album-art-active' : ''
+                    }`}>
+                      {activeCard?.thumbnailUrl ? (
+                        <>
+                          <img
+                            src={activeCard.thumbnailUrl}
+                            alt={activeCard.title}
+                            className="w-full h-full object-cover"
+                          />
+                          {activeCard?.type === 'now-playing' && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/35 backdrop-blur-[1.5px] transition-all">
+                              <div className="h-20 w-20 rounded-full bg-black/55 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center">
+                                <div className="eq-bars hero-large-eq">
+                                  <div className="eq-bar"></div>
+                                  <div className="eq-bar"></div>
+                                  <div className="eq-bar"></div>
+                                  <div className="eq-bar"></div>
+                                  <div className="eq-bar"></div>
+                                </div>
                               </div>
-                            );
-                          })}
-                        </div>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <Music2 className="h-16 w-16 text-gray-700" />
+                      )}
+                    </div>
+
+                    {/* Metadata */}
+                    <div className="text-center mt-4 max-w-[80%]">
+                      <h4 className="text-2xl font-bold text-white tracking-wide truncate font-poppins">
+                        {activeCard?.title}
+                      </h4>
+                      <p className="text-sm text-gray-400 font-poppins mt-1 truncate">
+                        by {activeCard?.artist}
+                      </p>
+                    </div>
+
+                    {/* Controls Row */}
+                    <div className="flex items-center justify-center gap-6 mt-4 w-full">
+                      <button className="text-gray-500 hover:text-white transition-colors p-1 player-control-btn" aria-label="Shuffle">
+                        <Shuffle className="h-4 w-4" />
+                      </button>
+                      <button className="text-gray-400 hover:text-white transition-colors p-1 player-control-btn" aria-label="Previous">
+                        <SkipBack className="h-5 w-5" />
+                      </button>
+                      <button 
+                        className="h-12 w-12 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 shadow-md border-none"
+                        style={{ background: 'var(--primary, #2563eb)' }}
+                        aria-label={activeCard?.type === 'now-playing' ? "Pause" : "Play"}
+                      >
+                        {activeCard?.type === 'now-playing' ? (
+                          <Pause className="h-5 w-5 text-white" fill="white" />
+                        ) : (
+                          <Play className="h-5 w-5 text-white ml-0.5" fill="white" />
+                        )}
+                      </button>
+                      <button className="text-gray-400 hover:text-white transition-colors p-1 player-control-btn" aria-label="Next">
+                        <SkipForward className="h-5 w-5" />
+                      </button>
+                      <button className="text-gray-500 hover:text-white transition-colors p-1 player-control-btn" aria-label="Repeat">
+                        <Repeat className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="w-[60%] max-w-xl mt-5 flex flex-col gap-2">
+                      <div className="flex justify-between items-center text-[10px] text-gray-500 font-semibold select-none">
+                        <span>1:24</span>
+                        <span>3:40</span>
+                      </div>
+                      <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden relative">
+                        <div 
+                          className="h-full rounded-full" 
+                          style={{ 
+                            width: activeCard?.type === 'now-playing' ? '40%' : '0%', 
+                            background: 'var(--primary, #2563eb)' 
+                          }} 
+                        />
                       </div>
                     </div>
                   </div>
-                </>
-              ) : (
-                /* No Song Playing State */
-                <div className="desktop-np-card" style={{ height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <div className="empty-state">
-                    <div className="empty-state__icon">
-                      <Music2 className="h-6 w-6 text-gray-500" />
+
+                  {/* Bottom row containing desktop queue cards */}
+                  <div className="relative z-20 flex justify-end items-end w-full">
+                    {/* Desktop Queue Cards (w-36 aspect-video rounded-md) */}
+                    <div className="desktop-queue-strip flex gap-3.5">
+                      {desktopQueueSlots.map((slot, idx) => {
+                        const song = slot.song;
+                        const hasSong = !!song;
+                        const bgImage = song?.thumbnailUrl || '';
+                        const isSelected = activeHeroIndex === slot.targetIndex;
+                        return (
+                          <div
+                            className="queue-thumb-wrapper relative w-36 aspect-video flex-shrink-0 animate-fade-in"
+                            key={idx}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (hasSong) {
+                                setActiveHeroIndex(slot.targetIndex);
+                              }
+                            }}
+                          >
+                            <span className="queue-thumb-label absolute font-semibold text-[10px] text-white bg-black/60 px-1.5 py-0.5 rounded top-1.5 left-1.5 z-10">
+                              {slot.label}
+                            </span>
+                            <button
+                              className={`relative w-full h-full rounded-md overflow-hidden transition-all duration-300 border cursor-pointer ${
+                                hasSong
+                                  ? (isSelected
+                                    ? 'border-white ring-2 ring-white scale-110 shadow-2xl z-10'
+                                    : 'border-white/10 opacity-70 hover:opacity-100 hover:scale-105')
+                                  : 'border-white/5 opacity-30 cursor-default'
+                              }`}
+                            >
+                              {hasSong ? (
+                                <>
+                                  <img
+                                    src={bgImage}
+                                    alt={song.title}
+                                    className="w-full h-full object-cover"
+                                  />
+                                  <div className="absolute inset-0 bg-black/20" />
+                                  {slot.targetIndex === 0 && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/45 backdrop-blur-[2px] transition-all">
+                                      <div className="eq-bars thumbnail-eq">
+                                        <div className="eq-bar"></div>
+                                        <div className="eq-bar"></div>
+                                        <div className="eq-bar"></div>
+                                        <div className="eq-bar"></div>
+                                        <div className="eq-bar"></div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                <div className="w-full h-full bg-gray-900 flex items-center justify-center">
+                                  <Music2 className="h-5 w-5 text-gray-600" />
+                                </div>
+                              )}
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <div className="empty-state__title" style={{ fontSize: '0.85rem', color: 'white', fontWeight: 600 }}>No song playing</div>
-                    <div className="empty-state__desc" style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Music will appear here when the host starts playing</div>
                   </div>
                 </div>
-              )}
+              </div>
+            </>
+          ) : (
+            /* No Song Playing State */
+            <div className="max-w-4xl mx-auto px-4 md:px-6 mb-8 mt-4 w-full">
+              <div className="bg-[#0a0a0a] border border-white/[0.08] rounded-2xl h-[240px] flex items-center justify-center w-full">
+                <div className="empty-state text-center">
+                  <div className="empty-state__icon flex justify-center mb-2">
+                    <Music2 className="h-6 w-6 text-gray-500" />
+                  </div>
+                  <div className="empty-state__title text-white text-sm font-semibold mb-1">No song playing</div>
+                  <div className="empty-state__desc text-gray-500 text-xs">Music will appear here when the host starts playing</div>
+                </div>
+              </div>
             </div>
+          )}
 
-            {/* Accordion Group */}
+          {/* Accordion Group */}
+          <div className="max-w-4xl mx-auto px-4 md:px-6 pb-28 w-full">
             <div className="accordion-group">
               {/* A. Queue Accordion */}
               <div className="accordion">
@@ -996,7 +1121,6 @@ export default function PublicMusic() {
                 </div>
               )}
             </div>
-
           </div>
         </div>
       </div>

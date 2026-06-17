@@ -688,7 +688,7 @@ const PublicGuides = memo(() => {
 
               {/* Carousel Hero Section - Mobile Layout */}
               <div className="md:hidden w-full mb-4 touch-pan-y px-0">
-                <div className="relative w-full h-[65vh] min-h-[480px] max-h-[650px] overflow-x-hidden flex items-center justify-start py-8">
+                <div className="relative w-full h-[65vh] min-h-[480px] max-h-[650px] overflow-x-hidden flex items-center justify-start pt-8 pb-2">
                   <div className="absolute inset-y-4 left-4 right-14">
                     {pinnedGuides.map((guide, i) => {
                       const diff = (i - activeHeroIndex + pinnedGuides.length) % pinnedGuides.length;
@@ -797,10 +797,10 @@ const PublicGuides = memo(() => {
             </>
           )}
 
-          <div className="bg-black rounded-lg p-4 mx-4 mb-2">
+          <div className="bg-black rounded-lg pt-2 px-4 pb-2 mx-4 mb-0">
             
             {/* Header Title & Side-by-side search row */}
-            <div className="flex flex-col gap-3.5 mb-4">
+            <div className="flex flex-col gap-3.5 mb-2">
               <div>
                 <h1 className="text-xl md:text-2xl font-poppins font-bold text-white mb-1">
                   Travel Guides
@@ -1111,7 +1111,7 @@ const PublicGuides = memo(() => {
           {/* Location Tags */}
           {!error && filterOptions.locations.length > 0 && (
             <div className="px-4 mb-2">
-              <div className="overflow-x-auto scrollbar-hide whitespace-nowrap py-3">
+              <div className="overflow-x-auto scrollbar-hide whitespace-nowrap py-1.5">
                 <div className="flex gap-3">
                   <Button
                     btnText="All Locations"

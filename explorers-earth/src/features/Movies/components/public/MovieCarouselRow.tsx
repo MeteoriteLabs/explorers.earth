@@ -75,9 +75,9 @@ const MovieCarouselRow = memo(({
           {seeAllLink && !loading && movies.length > 0 && (
             <Link
               to={seeAllLink}
-              className="text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors uppercase tracking-wider"
+              className="text-xs font-bold text-blue-500 hover:text-blue-400 transition-colors flex items-center gap-0.5"
             >
-              See all
+              See All ➔
             </Link>
           )}
         </div>

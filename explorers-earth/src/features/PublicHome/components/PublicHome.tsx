@@ -32,7 +32,7 @@ import {
   createUtmParams,
 } from "../../../utils/urlHelpers";
 import Location from "../../../assets/icons/Location";
-import { Share2, Copy } from "lucide-react";
+import { Share2, Copy, ArrowLeft } from "lucide-react";
 import { AdvancedMarker, Map, Pin, useMap } from "@vis.gl/react-google-maps";
 import { getPlaceCoordinatesQuery } from "../api/query";
 import { toast } from "sonner";
@@ -1411,13 +1411,22 @@ const PublicHome = memo(() => {
                               <div className="flex flex-col gap-0.5 max-w-[75%]">
                                 <h2
                                   onClick={() => navigate(`/${username}/places/${citySlug}`)}
-                                  className="text-base font-extrabold text-white cursor-pointer hover:text-blue-500 transition-colors duration-200"
+                                  className="text-base font-extrabold text-white cursor-pointer hover:text-blue-500 transition-colors duration-200 flex items-center gap-1.5"
                                 >
-                                  {city.List_Name}
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                    className="w-4 h-4 shrink-0 text-yellow-400"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      clipRule="evenodd"
+                                      d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"
+                                    />
+                                  </svg>
+                                  <span>{city.List_Name}</span>
                                 </h2>
-                                <p className="text-[11px] text-white/50 leading-snug line-clamp-1">
-                                  {getCityNoteHelper(city) || "Curated list of spots."}
-                                </p>
                               </div>
                               <button
                                 onClick={() => navigate(`/${username}/places/${citySlug}`)}
@@ -1473,12 +1482,10 @@ const PublicHome = memo(() => {
                       <div className="flex flex-col border-b border-white/10 pb-4 mb-2">
                         <button
                           onClick={() => navigate(`/${username}/places`)}
-                          className="text-xs font-bold text-white/50 hover:text-white flex items-center gap-1 mb-2 w-fit bg-transparent border-none p-0 cursor-pointer"
+                          className="text-xs font-bold text-white/50 hover:text-white flex items-center gap-1.5 pt-4 mb-2 w-fit bg-transparent border-none p-0 cursor-pointer"
                         >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                          </svg>
-                          Back
+                          <ArrowLeft className="w-3.5 h-3.5" />
+                          {username}'s Places
                         </button>
                         <h2 className="text-2xl font-black text-white leading-tight">
                           {selectedCityName}
