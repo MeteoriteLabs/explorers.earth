@@ -29,6 +29,10 @@ const MY_ACCOUNT = gql`
       accounts {
         documentId
         public_books
+        public_recommendations
+        public_movie
+        public_games
+        public_music
       }
     }
   }

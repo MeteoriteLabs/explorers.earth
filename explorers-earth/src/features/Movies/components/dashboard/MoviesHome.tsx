@@ -33,6 +33,10 @@ const MY_ACCOUNT = gql`
         documentId
         Account_Name
         public_movie
+        public_recommendations
+        public_books
+        public_games
+        public_music
       }
     }
   }
