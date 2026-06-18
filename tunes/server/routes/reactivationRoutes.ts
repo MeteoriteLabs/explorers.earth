@@ -14,12 +14,27 @@ import { requestReactivation, confirmReactivation } from '../services/reactivati
 import rateLimit from 'express-rate-limit';
 
 // Throttle the public reactivation-request endpoint: it sends an email on each
-// call, so cap it to deter inbox flooding / quota abuse. Keyed by client IP.
+// call. Key the limiter on the TARGET email (normalized), NOT the client IP:
+// the app runs with `trust proxy: true`, so an IP-keyed limit is bypassable by
+// rotating X-Forwarded-For. A per-email cap stops inbox flooding of a given
+// address regardless of source IP. Requests with no email skip the limiter and
+// fall through to the route's existing 400 validation.
+export function reactivationRateLimitKey(req: Request): string {
+  const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+  return `reactivation:${email}`;
+}
+
+export function reactivationRateLimitSkip(req: Request): boolean {
+  return typeof req.body?.email !== 'string' || req.body.email.trim() === '';
+}
+
 const reactivationRequestLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5,                   // 5 requests per IP per hour
+  max: 5,                   // 5 requests per email per hour
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: reactivationRateLimitKey,
+  skip: reactivationRateLimitSkip,
   message: {
     message: 'Too many reactivation requests. Please try again later.',
   },
