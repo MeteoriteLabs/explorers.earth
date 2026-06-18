@@ -6,9 +6,16 @@ import '@testing-library/jest-dom';
 import { afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
-// Automatically clean up DOM after each test
+// ── Test env: provide IGDB credentials so igdbService doesn't short-circuit ──
+// igdbService reads these at module load; they must be set before any test
+// file imports it, so this lives in the global setup (runs first).
+vi.stubEnv('VITE_IGDB_CLIENT_ID', 'test-client-id');
+vi.stubEnv('VITE_IGDB_CLIENT_SECRET', 'test-client-secret');
+
+// Automatically clean up DOM and env stubs after each test
 afterEach(() => {
   cleanup();
+  vi.unstubAllEnvs();
 });
 
 // ── localStorage / sessionStorage mock ──────────────────────────────────────

@@ -107,6 +107,9 @@ describe('igdbService', () => {
       (axios.post as any).mockRejectedValue(new Error('Auth failed'));
 
       await expect(igdbService.searchGames('test')).rejects.toThrow(IgdbError);
+      // Credentials are present (stubbed in setup), so the request is actually
+      // attempted and the auth failure is what gets wrapped — not the creds guard.
+      expect(axios.post).toHaveBeenCalled();
     });
   });
 
