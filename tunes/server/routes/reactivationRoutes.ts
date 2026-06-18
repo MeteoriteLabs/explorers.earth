@@ -11,6 +11,19 @@
 
 import type { Express, Request, Response } from 'express';
 import { requestReactivation, confirmReactivation } from '../services/reactivation-service';
+import rateLimit from 'express-rate-limit';
+
+// Throttle the public reactivation-request endpoint: it sends an email on each
+// call, so cap it to deter inbox flooding / quota abuse. Keyed by client IP.
+const reactivationRequestLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,                   // 5 requests per IP per hour
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    message: 'Too many reactivation requests. Please try again later.',
+  },
+});
 
 export function setupReactivationRoutes(app: Express): void {
 
@@ -21,7 +34,7 @@ export function setupReactivationRoutes(app: Express): void {
    * Always returns 200 with a generic message (security best practice).
    * If the email belongs to a blocked account, a reactivation link is sent.
    */
-  app.post('/api/user/request-reactivation', async (req: Request, res: Response) => {
+  app.post('/api/user/request-reactivation', reactivationRequestLimiter, async (req: Request, res: Response) => {
     const { email } = req.body;
 
     if (!email || typeof email !== 'string') {
