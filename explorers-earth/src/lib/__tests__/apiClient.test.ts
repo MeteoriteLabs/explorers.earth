@@ -21,6 +21,15 @@ vi.mock('axios', () => {
 // Have to import after mocking to get the mocked instance
 import localTunesClient from '../apiClient';
 
+// Capture the request interceptor's success handler at module-evaluation time,
+// before any beforeEach can call vi.clearAllMocks() and wipe mock.calls.
+// axios.create is called exactly once during apiClient import, so results[0] exists here.
+const _axiosCreateResults = (axios.create as any).mock.results;
+const _capturedMockInstance =
+  _axiosCreateResults[0]?.value ?? _axiosCreateResults.at?.(-1)?.value;
+const _capturedInterceptorOnFulfilled: (config: any) => any =
+  _capturedMockInstance?.interceptors?.request?.use?.mock?.calls?.[0]?.[0];
+
 describe('apiClient', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -46,6 +55,34 @@ describe('apiClient', () => {
       (localTunesClient.request as any).mockRejectedValueOnce(error);
       
       await expect(localTunesRequest('GET', '/test-url')).rejects.toThrow('Network error');
+    });
+  });
+
+  describe('request interceptor (auth injection)', () => {
+    // _capturedInterceptorOnFulfilled was grabbed at module-evaluation time
+    // (before any beforeEach wipes mock.calls via vi.clearAllMocks()).
+
+    it('adds Authorization and X-Username headers from auth-storage', () => {
+      localStorage.setItem(
+        'auth-storage',
+        JSON.stringify({ state: { token: 'jwt-abc', user: { username: 'alice' } } })
+      );
+
+      // The interceptor's success handler was registered on the mocked instance
+      // at import time; grab it and run it against a bare config.
+      const config = _capturedInterceptorOnFulfilled({ headers: {} });
+
+      expect(config.headers.Authorization).toBe('Bearer jwt-abc');
+      expect(config.headers['X-Username']).toBe('alice');
+    });
+
+    it('omits auth headers when no token is stored', () => {
+      // localStorage is cleared by the parent beforeEach before each test,
+      // so no 'auth-storage' key is present here.
+      const config = _capturedInterceptorOnFulfilled({ headers: {} });
+
+      expect(config.headers.Authorization).toBeUndefined();
+      expect(config.headers['X-Username']).toBeUndefined();
     });
   });
 
