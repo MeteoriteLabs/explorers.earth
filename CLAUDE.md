@@ -95,27 +95,3 @@ See `tunes/shared/schema.ts` for complete schema. See `docs/tunes/database.md` f
 
 Full documentation is in `docs/`. See `docs/README.md` for the index.
 Per-project AI context is in `explorers-earth/CLAUDE.md` and `tunes/CLAUDE.md`.
-
-## Superpower Skills
-
-<available_skills>
-Your personal library of proven techniques, patterns, and tools is at `D:\superpowers\skills\`.
-
-Browse categories: `ls D:\superpowers\skills\`
-Search: `grep -r "keyword" D:\superpowers\skills\ --include="SKILL.md"`
-
-Key instructions: `using-superpowers`
-</available_skills>
-
-<important_info_about_skills>
-AI agents might think they know how to approach tasks, but the superpowers skills library contains battle-tested approaches that prevent common mistakes and enforce TDD, proper verification, and robust planning.
-
-THIS IS EXTREMELY IMPORTANT. BEFORE ANY TASK, CHECK FOR SKILLS!
-
-Process:
-1. Starting work? Check: `ls D:\superpowers\skills/`
-2. Found a relevant skill? READ IT COMPLETELY before proceeding.
-3. Follow the skill's guidance - it prevents known pitfalls and enforces discipline.
-
-If a skill exists for your task and you do not use it, you have failed the execution standards.
-</important_info_about_skills>
