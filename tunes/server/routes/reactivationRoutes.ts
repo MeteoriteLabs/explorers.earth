@@ -13,21 +13,34 @@ import type { Express, Request, Response } from 'express';
 import { requestReactivation, confirmReactivation } from '../services/reactivation-service';
 import rateLimit from 'express-rate-limit';
 
-// Throttle the public reactivation-request endpoint: it sends an email on each
-// call. Key the limiter on the TARGET email (normalized), NOT the client IP:
-// the app runs with `trust proxy: true`, so an IP-keyed limit is bypassable by
-// rotating X-Forwarded-For. A per-email cap stops inbox flooding of a given
-// address regardless of source IP. Requests with no email skip the limiter and
-// fall through to the route's existing 400 validation.
-export function reactivationRateLimitKey(req: Request): string {
-  const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
-  return `reactivation:${email}`;
+// Email validation shared by the route and the rate limiters, so malformed or
+// oversized emails are rejected (400) and never create a rate-limit key or reach
+// Strapi. RFC 5321 caps an address at 254 chars.
+const MAX_EMAIL_LENGTH = 254;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function normalizeReactivationEmail(req: Request): string {
+  return typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
 }
 
+export function isValidReactivationEmail(email: string): boolean {
+  return email.length > 0 && email.length <= MAX_EMAIL_LENGTH && EMAIL_RE.test(email);
+}
+
+// Skip the limiters for anything the route will reject with 400 anyway (missing,
+// blank, oversized, or malformed email). Those responses are cheap and never hit
+// Strapi, so they must not consume rate-limit buckets or create keys.
 export function reactivationRateLimitSkip(req: Request): boolean {
-  return typeof req.body?.email !== 'string' || req.body.email.trim() === '';
+  return !isValidReactivationEmail(normalizeReactivationEmail(req));
 }
 
+// Key the per-email limiter on the normalized email (NOT client IP): the app runs
+// `trust proxy: true`, so an IP key would be bypassable by rotating X-Forwarded-For.
+export function reactivationRateLimitKey(req: Request): string {
+  return `reactivation:${normalizeReactivationEmail(req)}`;
+}
+
+// Per-email cap: stops targeted inbox flooding of ONE address.
 const reactivationRequestLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 5,                   // 5 requests per email per hour
@@ -40,6 +53,25 @@ const reactivationRequestLimiter = rateLimit({
   },
 });
 
+// Global backstop: bounds TOTAL valid reactivation volume per hour regardless of
+// how many distinct emails are used, so a unique-email spray cannot grow memory
+// (rate-limit keys) or amplify Strapi lookups without bound. Constant key (not IP,
+// which is spoofable under trust proxy). Threshold is generous so legitimate (rare)
+// reactivation traffic is never affected; tune REACTIVATION_GLOBAL_MAX if real
+// usage approaches it. Exported for deterministic test reset + assertions.
+export const REACTIVATION_GLOBAL_MAX = 30; // total valid reactivation requests / hour
+export const reactivationGlobalLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: REACTIVATION_GLOBAL_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: () => 'reactivation:global',
+  skip: reactivationRateLimitSkip,
+  message: {
+    message: 'Reactivation is temporarily busy. Please try again later.',
+  },
+});
+
 export function setupReactivationRoutes(app: Express): void {
 
   /**
@@ -49,19 +81,17 @@ export function setupReactivationRoutes(app: Express): void {
    * Always returns 200 with a generic message (security best practice).
    * If the email belongs to a blocked account, a reactivation link is sent.
    */
-  app.post('/api/user/request-reactivation', reactivationRequestLimiter, async (req: Request, res: Response) => {
+  app.post('/api/user/request-reactivation', reactivationGlobalLimiter, reactivationRequestLimiter, async (req: Request, res: Response) => {
     const { email } = req.body;
 
     if (!email || typeof email !== 'string') {
       return res.status(400).json({ message: 'Email is required' });
     }
 
-    // Normalize email
+    // Normalize + validate (shared with the limiter skip). Rejects malformed or
+    // oversized emails before any Strapi work.
     const normalizedEmail = email.trim().toLowerCase();
-
-    // Basic email format check
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(normalizedEmail)) {
+    if (!isValidReactivationEmail(normalizedEmail)) {
       return res.status(400).json({ message: 'Invalid email format' });
     }
 
