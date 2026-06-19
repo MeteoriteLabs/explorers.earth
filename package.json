@@ -12,7 +12,7 @@
     "build:all": "npm run build --prefix tunes && npm run build --prefix explorers-earth"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.2.3"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "^1.5.0"
