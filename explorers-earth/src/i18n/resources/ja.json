@@ -1,1786 +1,2166 @@
-﻿{
-    "header": {
-        "nav": {
-            "howItWorks": "仕組み",
-            "whoIsFor": "対象者",
-            "faq": "よくある質問",
-            "about": "について",
-            "contact": "お問い合わせ"
-        },
-        "auth": {
-            "login": "ログイン",
-            "signUp": "サインアップ"
-        }
+{
+  "about": {
+    "closing": "あなたが好奇心旺盛なら。\nあなたが思慮深いなら。\nあなたが遅くなり、より近くを見ることを望むなら —\nあなたはすでにここに属しています。",
+    "section1": {
+      "line1": "探検は意識から始まります。",
+      "line2": "他の人が見逃していることに気づくことから。",
+      "line3": "速くではなく、思慮深く動くことを選ぶことから。",
+      "line4": "私たちは古代の惑星で短い時間を生きています —\n私たちのずっと前に始まった物語に\nいくつかの意図的な印を加え、\n私たちが去ったずっと後に続く物語に。",
+      "title": "私たちが信じること"
     },
-    "hero": {
-        "headline": "すべての推奨事項を1つのQRとシンプルなリンクで。",
-        "subtext": "場所について知っていることや好きなことを共有し、誰でもどこでも発見できるようにしましょう",
-        "inputLabel": "explorers URLを予約:",
-        "inputPlaceholder": "あなたの名前",
-        "ctaButton": "explorersを予約",
-        "signupPrompt": "今すぐサインアップしてあなたのものを取得"
+    "section2": {
+      "line1": "探検はマイルで測定されません。",
+      "line2": "意味で測定されます。",
+      "line3": "それは、遅くなること、注意を払うこと、\nそして私たちが足を踏み入れるすべての場所を尊重することにあります —\n通り、山道、カフェのテーブル、\nまたは新しい人と共有する瞬間。",
+      "title": "私たちが探検を見る方法"
     },
-    "sections": {
-        "createCustomize": {
-            "headline": "数分でexplorersを作成・カスタマイズ",
-            "subtext": "お気に入りの場所を追加し、都市やテーマ別に整理し、QRを瞬時に生成します。",
-            "bulletPoints": {
-                "addSpots": {
-                    "title": "お気に入りの場所を追加",
-                    "description": "必見の場所でリストを作成"
-                },
-                "organize": {
-                    "title": "都市やテーマ別に整理",
-                    "description": "あなたのオーディエンスに意味のあるカテゴリを作成"
-                },
-                "generate": {
-                    "title": "リンクとQRを瞬時に生成",
-                    "description": "パーソナライズされたQRが数秒で準備完了"
-                },
-                "share": {
-                    "title": "デジタルで、または現実世界でQRコードを通じて共有",
-                    "description": ""
-                }
-            },
-            "mockup": {
-                "title": "私の推奨事項",
-                "addPlace": "場所を追加"
-            }
-        },
-        "shareAnywhere": {
-            "headline": "ソーシャルメディア、店舗の窓、または街の壁で共有",
-            "subtext": "Instagramのbioに追加、メニューに印刷、またはウェルカムブックに含める — あなたのガイド、常に準備完了。",
-            "scanText": "ローカル推奨をスキャン",
-            "storefrontText": "店舗ショーウィンドウに最適",
-            "instagramTitle": "Instagramのbioに追加",
-            "instagramDesc": "フォロワーと即座に共有",
-            "menuTitle": "メニューに印刷",
-            "menuDesc": "物理的な接点を簡単に",
-            "welcomeTitle": "ウェルカムブックに含める",
-            "welcomeDesc": "ホストとガイドに最適",
-            "cafeMenu": "カフェメニュー",
-            "tokyoFoodGuide": "私の東京グルメガイド explorers.earth/jane"
-        },
-        "analytics": {
-            "headline": "クリック、リファラル、エンゲージメントを追跡",
-            "subtext": "何が機能し、誰がスキャンし、どの場所が最も愛されているかをリアルタイムで確認。",
-            "workingTitle": "何が機能するか確認",
-            "workingDesc": "推奨事項の人気を追跡",
-            "scanningTitle": "誰がスキャンしているか",
-            "scanningDesc": "QRスキャンと更新を監視",
-            "spotsTitle": "最高の場所",
-            "spotsDesc": "より良いキュレーションのためのデータ駆動インサイト",
-            "dashboardTitle": "アナリティクスダッシュボード",
-            "last30Days": "過去30日間",
-            "totalScans": "総スキャン数",
-            "engagement": "エンゲージメント",
-            "referrals": "リファラル"
-        },
-        "referEarn": {
-            "headline": "共有、紹介、収益化",
-            "subtext": "推奨事項をパッシブな報酬に変換 — 他の人があなたのQRを使用するときにクレジットを獲得。",
-            "comingSoon": "紹介報酬プログラム（近日公開）",
-            "rewardsTitle": "報酬を獲得",
-            "rewardsDesc": "人々があなたの推奨事項を使用するときに報酬を受け取る",
-            "earnedThisMonth": "今月の収益",
-            "passiveTitle": "推奨事項をパッシブな報酬に変換",
-            "networkTitle": "ネットワークを構築し、自動的に収益化"
-        },
-        "localTunes": {
-            "mainHeading": "Tunes",
-            "title": "探索しながら聞く",
-            "body": "探索は視覚的なものだけではありません。音は記憶、文脈、感情を運びます。\n\nTunesは、場所、旅、気分のためのサウンドトラックを収集して共有することを可能にします — 道で発見した音楽であろうと、場所を定義する音であろうと。\n\nあなたのExplorerプロフィールにシームレスに接続されています。",
-            "exploreButton": "Tunesを探索",
-            "featuresHeading": "強力な機能",
-            "features": {
-                "realtimeCollaboration": {
-                    "title": "リアルタイムコラボレーション",
-                    "description": "ゲストがプレイリストに即座に曲を追加できるようにしながら、再生内容を完全にコントロールできます。"
-                },
-                "qrCodeSharing": {
-                    "title": "QRコード共有",
-                    "description": "シンプルなQRコードスキャンで音楽体験を共有 — アプリやダウンロードは不要です。"
-                },
-                "youtubeIntegration": {
-                    "title": "YouTube統合",
-                    "description": "YouTubeとシームレスに統合して、数百万曲にアクセスし、完璧な雰囲気を作り出します。"
-                },
-                "voteLikeSystem": {
-                    "title": "投票・いいねシステム",
-                    "description": "ゲストはお気に入りの曲に投票して、プレイリストのキューをリアルタイムで影響させることができます。"
-                },
-                "silentParties": {
-                    "title": "サイレントパーティー",
-                    "description": "全員が自分のヘッドフォンで聞くユニークなサイレントパーティーを開催します。"
-                },
-                "karaokeReady": {
-                    "title": "カラオケ対応",
-                    "description": "コラボレーティブなプレイリストとリアルタイムの曲リクエストでカラオケの夜に最適です。"
-                }
-            },
-            "venueHeading": "あらゆる場所に最適",
-            "venues": {
-                "barsPubs": "バー＆パブ",
-                "restaurants": "レストラン",
-                "coffeeShops": "コーヒーショップ",
-                "eventsWeddings": "イベント＆結婚式",
-                "retailStores": "小売店",
-                "gymsFitness": "ジム＆フィットネス"
-            },
-            "closingStatement": "Tunesは\u003cstrong\u003e無料\u003c/strong\u003eで探索でき、有料機能については後でアップグレードできます。"
-        },
-        "whoIsFor": {
-            "headline": "explorers.earthは誰のため？",
-            "subtext": "explorers.earthは、共有が責任であると信じるすべての人のためです — 放送ではありません。",
-            "cards": {
-                "individuals": {
-                    "title": "個人",
-                    "oneLiner": "個人的または地元の推奨事項を共有します。",
-                    "items": {
-                        "traveler": {
-                            "label": "旅行者",
-                            "oneLiner": "旅行スポットを共有する人々"
-                        },
-                        "local": {
-                            "label": "地元の人",
-                            "oneLiner": "近所のヒントを共有する地元の人々"
-                        },
-                        "family": {
-                            "label": "家族",
-                            "oneLiner": "便利な場所を共有する家族"
-                        },
-                        "student": {
-                            "label": "学生",
-                            "oneLiner": "キャンパス/近くのスポットを共有する学生"
-                        },
-                        "nomad": {
-                            "label": "ノマド",
-                            "oneLiner": "仕事に適したスペースをリストするノマド"
-                        },
-                        "emergencySharer": {
-                            "label": "緊急共有者",
-                            "oneLiner": "重要な場所を投稿する緊急共有者"
-                        }
-                    }
-                },
-                "creators": {
-                    "title": "クリエイター",
-                    "oneLiner": "キュレーションされたリストを視聴者と共有します。",
-                    "items": {
-                        "influencer": {
-                            "label": "インフルエンサー",
-                            "oneLiner": "トップピックを共有するインフルエンサー"
-                        },
-                        "blogger": {
-                            "label": "ブロガー",
-                            "oneLiner": "書かれたガイドをキュレーションするブロガー"
-                        },
-                        "vlogger": {
-                            "label": "ブロガー",
-                            "oneLiner": "視覚的な旅を共有するブロガー"
-                        },
-                        "reviewer": {
-                            "label": "レビュアー",
-                            "oneLiner": "最高評価の場所をリストするレビュアー"
-                        },
-                        "photographer": {
-                            "label": "写真家",
-                            "oneLiner": "写真スポットを共有する写真家"
-                        },
-                        "educator": {
-                            "label": "教育者",
-                            "oneLiner": "学習ガイドを共有する教育者"
-                        },
-                        "communityLeader": {
-                            "label": "コミュニティリーダー",
-                            "oneLiner": "有用なリストをキュレーションするコミュニティリーダー"
-                        }
-                    }
-                },
-                "hospitality": {
-                    "title": "ホスピタリティ",
-                    "oneLiner": "ゲストにキュレーションされた地元のインサイトを提供します。",
-                    "items": {
-                        "hotel": {
-                            "label": "ホテル",
-                            "oneLiner": "地元のガイドブックを提供するホテル"
-                        },
-                        "airbnb": {
-                            "label": "Airbnb",
-                            "oneLiner": "近所のお気に入りを共有するホスト"
-                        },
-                        "hostel": {
-                            "label": "ホステル",
-                            "oneLiner": "バックパッカーのヒントを共有するホステル"
-                        },
-                        "homestay": {
-                            "label": "ホームステイ",
-                            "oneLiner": "家族向けガイドを提供するホームステイ"
-                        },
-                        "resort": {
-                            "label": "リゾート",
-                            "oneLiner": "アクティビティリストを提供するリゾート"
-                        },
-                        "pgColiving": {
-                            "label": "PG/コリビング",
-                            "oneLiner": "重要な近隣の場所を示すPG/コリビング"
-                        }
-                    }
-                },
-                "businesses": {
-                    "title": "企業",
-                    "oneLiner": "有用な推奨事項で顧客をガイドします。",
-                    "items": {
-                        "restaurant": {
-                            "label": "レストラン",
-                            "oneLiner": "試すべき料理を共有するレストラン"
-                        },
-                        "cafe": {
-                            "label": "カフェ",
-                            "oneLiner": "お気に入りのメニュー項目を強調するカフェ"
-                        },
-                        "retailShop": {
-                            "label": "小売店",
-                            "oneLiner": "製品推奨事項を共有する店舗"
-                        },
-                        "gym": {
-                            "label": "ジム",
-                            "oneLiner": "地元のウェルネススポットを提案するジム"
-                        },
-                        "spa": {
-                            "label": "スパ",
-                            "oneLiner": "近くのリラクゼーションオプションをリストするスパ"
-                        },
-                        "salon": {
-                            "label": "サロン",
-                            "oneLiner": "美容ガイドを提供するサロン"
-                        },
-                        "clinic": {
-                            "label": "クリニック",
-                            "oneLiner": "健康関連の場所を共有するクリニック"
-                        },
-                        "boutique": {
-                            "label": "ブティック",
-                            "oneLiner": "キュレーションされた発見をリストするブティック"
-                        }
-                    }
-                },
-                "organizations": {
-                    "title": "組織",
-                    "oneLiner": "キュレーションされたガイドとリソースを提供します。",
-                    "items": {
-                        "airline": {
-                            "label": "航空会社",
-                            "oneLiner": "都市ガイドを共有する航空会社"
-                        },
-                        "agency": {
-                            "label": "代理店",
-                            "oneLiner": "必見の場所をリストする旅行代理店"
-                        },
-                        "university": {
-                            "label": "大学",
-                            "oneLiner": "キャンパスの必需品を共有する大学"
-                        },
-                        "corporate": {
-                            "label": "企業",
-                            "oneLiner": "近くのリソースをリストする企業"
-                        },
-                        "airport": {
-                            "label": "空港",
-                            "oneLiner": "ターミナル+都市のヒントを提供する空港"
-                        },
-                        "railway": {
-                            "label": "鉄道",
-                            "oneLiner": "プラットフォーム情報を共有する鉄道"
-                        },
-                        "ngo": {
-                            "label": "NGO",
-                            "oneLiner": "コミュニティリソースを共有するNGO"
-                        },
-                        "government": {
-                            "label": "政府",
-                            "oneLiner": "公共サービスを強調する部門"
-                        }
-                    }
-                }
-            },
-            "useCases": {
-                "travelers": "旅行者",
-                "travelersDesc": "発見した宝石を他の探検家と共有",
-                "influencers": "インフルエンサー",
-                "influencersDesc": "ローカル知識を収益化し、コミュニティを構築",
-                "airbnbHosts": "Airbnbホスト",
-                "airbnbHostsDesc": "ローカルインサイトでゲスト体験を向上",
-                "hotels": "ホテル",
-                "hotelsDesc": "キュレートされたローカル推奨事項を提供",
-                "restaurants": "レストラン",
-                "restaurantsDesc": "他のローカルビジネスとクロスプロモーション",
-                "cafes": "カフェ",
-                "cafesDesc": "顧客と近所のお気に入りを共有",
-                "localGuides": "ローカルガイド",
-                "localGuidesDesc": "個人ツアーを超えて専門知識をスケール",
-                "creators": "クリエイター",
-                "creatorsDesc": "実行可能なヒントでコンテンツを超えた価値を追加",
-                "tourOperators": "ツアーオペレーター",
-                "tourOperatorsDesc": "予定されたツアーを超えて体験を拡張",
-                "anyBusiness": "あらゆるビジネス",
-                "anyBusinessDesc": "コミュニティと顧客ロイヤルティを構築"
-            }
-        },
-        "testimonials": {
-            "headline": "旅行者、クリエイター、ホストに愛されています",
-            "subtext": "世界中の人々がexplorersを使用して最も重要なことを共有する方法をご覧ください。",
-            "scrollLeft": "お客様の声を左にスクロール",
-            "scrollRight": "お客様の声を右にスクロール",
-            "items": [
-                {
-                    "id": "1",
-                    "name": "Marcus Chen",
-                    "role": "旅行ブロガー",
-                    "location": "サンフランシスコ",
-                    "quote": "explorersは私の旅行知識の共有方法を変えました。フォロワーは私のキュレーションされたおすすめへの即座のアクセスを愛しています！"
-                },
-                {
-                    "id": "2",
-                    "name": "Sarah Johnson",
-                    "role": "Airbnbホスト",
-                    "location": "バルセロナ",
-                    "quote": "ゲストはウェルカムキットのパーソナライズされたQRコードを絶対に気に入っています。私のシグネチャータッチになりました！"
-                },
-                {
-                    "id": "3",
-                    "name": "Alex Rodriguez",
-                    "role": "レストランオーナー",
-                    "location": "メキシコシティ",
-                    "quote": "他の地元のスポットを推薦するために、お客様とexplorersを共有しています。素晴らしいコミュニティのつながりが生まれました。"
-                },
-                {
-                    "id": "4",
-                    "name": "Emma Thompson",
-                    "role": "ツアーガイド",
-                    "location": "ロンドン",
-                    "quote": "explorersは私の専門知識をツアー時間を超えて拡張するのに役立ちます。クライアントはいつでも私のおすすめにアクセスできます！"
-                }
-            ]
-        },
-        "faq": {
-            "headline": "質問がありますか？",
-            "subtext": "人々が始める前に最もよく尋ねることをお答えしました。",
-            "loading": "FAQを読み込み中...",
-            "error": "FAQの読み込み中にエラーが発生しました。後でもう一度お試しください。"
-        },
-        "features": {
-            "title": "邪魔にならないように設計",
-            "subtitle": "シンプルで思慮深い機能により、あなたの推奨事項が輝きます。",
-            "simpleLinks": {
-                "title": "シンプルなリンクとQR共有"
-            },
-            "livingGuides": {
-                "title": "ライブで編集可能なガイド"
-            },
-            "locationAware": {
-                "title": "位置情報を考慮した推奨事項"
-            },
-            "soundPlaylists": {
-                "title": "オプションの音声とプレイリスト"
-            },
-            "privacyFirst": {
-                "title": "設計によりプライバシー第一"
-            },
-            "communityDriven": {
-                "title": "コミュニティ主導の発見"
-            }
-        },
-        "finalCTA": {
-            "headline": "今日からあなたの世界を共有し始めましょう",
-            "subtext": "無料のexplorersを予約し、ローカルインサイトを共有可能なガイドに変換しましょう。",
-            "ctaButton": "explorersを予約 – 永久無料",
-            "disclaimer": "クレジットカード不要 • 2分でセットアップ",
-            "creating": "あなたのexplorersを作成中..."
-        }
+    "section3": {
+      "item1": "実際の経験によって形作られたガイド",
+      "item2": "記憶する価値のある場所、旅、音、物語",
+      "item3": "人気指標ではなく、人々に基づいて構築されたコミュニティ",
+      "line1": "explorersは次のための場所です：",
+      "line2": "テクノロジーは私たちをつなげるのに役立ちます。",
+      "line3": "人々がそれに目的を与えます。",
+      "title": "私たちが構築しているもの"
     },
-    "contact": {
-        "title": "つながりましょう。",
-        "subtitle": "質問、アイデア、または単に挨拶したい場合 — お聞かせください。",
-        "getInTouch": "お問い合わせ",
-        "email": "hello@explorers.earth",
-        "responseTime": "24-48時間以内に回答いたします",
-        "closingMessage": "私たちは大きなビジョンを持つ小さなチームです — あなたの考えは私たちにとって重要です。お問い合わせいただき、ローカルでグローバルな何かを一緒に構築しましょう。",
-        "seo": {
-            "title": "Contact explorers | Support, Help and Partnership enquiries.",
-            "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
-            "loginTitle": "Login to explorers | Access Your Personalized Recommendations \u0026 Places",
-            "registerTitle": "Sign Up for explorers | Join the Community \u0026 Share Your Favorite Local Places",
-            "keywords": [
-                "contact explorers",
-                "explorers support",
-                "get in touch explorers",
-                "customer service travel app",
-                "partnership inquiry explorers",
-                "help center local recommendations",
-                "technical support explorers",
-                "travel app customer service",
-                "feedback location sharing",
-                "account assistance explorers",
-                "business collaboration explorers",
-                "report problem explorers",
-                "share local recommendations support",
-                "find explorers contact",
-                "customer service",
-                "explorers team",
-                "help center",
-                "contact support",
-                "QR code support",
-                "local recommendations help",
-                "partnership inquiries"
-            ]
-        }
-    },
-    "about": {
-        "title": "地球の探検者",
-        "subtitle": {
-            "line1": "人々、文化、そして私たちが共有する惑星のために、注意深く探検する人々のグローバルコミュニティ。",
-            "line2": "探検は、私たちにとって、どれだけ遠くに行くかではありません。",
-            "line3": "どれだけ深くつながるかです。"
-        },
-        "section1": {
-            "title": "私たちが信じること",
-            "line1": "探検は意識から始まります。",
-            "line2": "他の人が見逃していることに気づくことから。",
-            "line3": "速くではなく、思慮深く動くことを選ぶことから。",
-            "line4": "私たちは古代の惑星で短い時間を生きています —\n私たちのずっと前に始まった物語に\nいくつかの意図的な印を加え、\n私たちが去ったずっと後に続く物語に。"
-        },
-        "section2": {
-            "title": "私たちが探検を見る方法",
-            "line1": "探検はマイルで測定されません。",
-            "line2": "意味で測定されます。",
-            "line3": "それは、遅くなること、注意を払うこと、\nそして私たちが足を踏み入れるすべての場所を尊重することにあります —\n通り、山道、カフェのテーブル、\nまたは新しい人と共有する瞬間。"
-        },
-        "section3": {
-            "title": "私たちが構築しているもの",
-            "line1": "explorersは次のための場所です：",
-            "item1": "実際の経験によって形作られたガイド",
-            "item2": "記憶する価値のある場所、旅、音、物語",
-            "item3": "人気指標ではなく、人々に基づいて構築されたコミュニティ",
-            "line2": "テクノロジーは私たちをつなげるのに役立ちます。",
-            "line3": "人々がそれに目的を与えます。"
-        },
-        "section4": {
-            "title": "所属",
-            "line1": "地球の探検者はクラブではありません。",
-            "line2": "それはラベルではありません。",
-            "line3": "それは共有されたマインドセットです —\n世界をどのように移動するかについての静かな理解。"
-        },
-        "closing": "あなたが好奇心旺盛なら。\nあなたが思慮深いなら。\nあなたが遅くなり、より近くを見ることを望むなら —\nあなたはすでにここに属しています。",
-        "seo": {
-            "title": "Explorers of Earth | About Us",
-            "description": "A global community of people who explore with care — for people, culture, and the planet we share. Exploration isn\u0027t about distance, it\u0027s about depth.",
-            "keywords": [
-                "explorers of earth",
-                "about explorers",
-                "exploration community",
-                "thoughtful travel",
-                "sustainable exploration",
-                "local recommendations platform",
-                "travel app about",
-                "community-driven recommendations",
-                "authentic local experiences",
-                "explorers team",
-                "local discovery platform",
-                "share local places",
-                "travel technology",
-                "local recommendations app",
-                "explorers story",
-                "who we are explorers"
-            ]
-        }
-    },
-    "cookieConsent": {
-        "title": "🍪 Cookie設定",
-        "description": "閲覧体験を向上させ、パーソナライズされたコンテンツを提供し、トラフィックを分析するためにCookieを使用しています。設定はいつでも管理できます。",
-        "acceptAll": "✅ すべてのCookieを受け入れる",
-        "customize": "⚙️ カスタマイズ",
-        "rejectNonEssential": "❌ 非必須を拒否",
-        "preferencesTitle": "Cookie設定",
-        "essentialCookies": {
-            "title": "必須Cookie",
-            "description": "ウェブサイトが正常に機能するために必要",
-            "alwaysOn": "常にオン"
-        },
-        "analyticsCookies": {
-            "title": "分析Cookie",
-            "description": "訪問者がウェブサイトとどのように対話するかを理解するのに役立ちます"
-        },
-        "marketingCookies": {
-            "title": "マーケティングCookie",
-            "description": "パーソナライズされた広告を配信するために使用されます"
-        },
-        "savePreferences": "設定を保存",
-        "acceptAllButton": "すべて受け入れる",
-        "closeBanner": "バナーを閉じる",
-        "goBack": "戻る"
-    },
-    "footer": {
-        "tagline": "あなたの推奨事項を世界中に旅させましょう。",
-        "email": "hello@explorers.earth",
-        "sections": {
-            "product": "製品",
-            "contact": "お問い合わせ",
-            "legal": "法的"
-        },
-        "links": {
-            "howItWorks": "仕組み",
-            "faq": "よくある質問",
-            "contact": "お問い合わせ",
-            "about": "について",
-            "terms": "利用規約",
-            "privacy": "プライバシーポリシー",
-            "cookies": "クッキーポリシー"
-        },
-        "copyright": "© 2025 explorers。全著作権所有。",
-        "madeWithLove": "地球で愛を込めて作られました"
-    },
-    "legal": {
-        "terms": {
-            "title": "利用規約",
-            "loading": "利用規約を読み込み中...",
-            "error": "利用規約の読み込み中にエラーが発生しました。後でもう一度お試しください。"
-        },
-        "privacy": {
-            "title": "プライバシーポリシー",
-            "loading": "プライバシーポリシーを読み込み中...",
-            "error": "プライバシーポリシーの読み込み中にエラーが発生しました。後でもう一度お試しください。"
-        },
-        "cookies": {
-            "title": "クッキーポリシー",
-            "loading": "クッキーポリシーを読み込み中...",
-            "error": "クッキーポリシーの読み込み中にエラーが発生しました。後でもう一度お試しください。"
-        }
-    },
-    "languageModal": {
-        "title": "言語を選択",
-        "searchPlaceholder": "言語を検索...",
-        "close": "閉じる"
-    },
-    "auth": {
-        "signup": "サインアップ",
-        "signupSubtitle": "explorersの機能をお楽しみください",
-        "username": "ユーザー名",
-        "usernamePlaceholder": "ユーザー名を入力してください",
-        "email": "メールアドレス",
-        "emailPlaceholder": "メールアドレスを入力してください",
-        "password": "パスワード",
-        "passwordPlaceholder": "パスワードを入力してください",
-        "confirmPassword": "パスワード確認",
-        "confirmPasswordPlaceholder": "パスワードを再入力してください",
-        "register": "登録",
-        "or": "または",
-        "signUpWithGoogle": "Googleでサインアップ",
-        "alreadyHaveAccount": "すでにアカウントをお持ちですか？",
-        "login": "ログイン",
-        "loginTitle": "ログイン",
-        "loginSubtitle": "アカウントに続行するにはログインしてください",
-        "usernameOrEmail": "ユーザー名またはメールアドレス",
-        "usernameOrEmailPlaceholder": "ユーザー名またはメールアドレスを入力してください",
-        "signInWithGoogle": "Googleでログイン",
-        "newToexplorers": "explorersは初めてですか？",
-        "forgotPassword": "パスワードをお忘れですか？",
-        "validations": {
-            "username": {
-                "required": "ユーザー名は必須です",
-                "minLength": "ユーザー名は3文字以上である必要があります",
-                "maxLength": "ユーザー名は30文字を超えることはできません",
-                "invalidChars": "ユーザー名には小文字（a-z）、数字（0-9）、ハイフン（-）のみ使用できます",
-                "mustStartWithLetter": "ユーザー名は文字（a-z）で始まる必要があります",
-                "cannotStartEndHyphen": "ユーザー名はハイフンで始まったり終わったりすることはできません",
-                "noConsecutiveHyphens": "ユーザー名に連続するハイフンを含めることはできません",
-                "cannotBeAllNumbers": "ユーザー名は数字のみにすることはできません",
-                "reservedWords": "このユーザー名には予約語が含まれており、使用できません",
-                "inappropriateContent": "ユーザー名に不適切なコンテンツが含まれています",
-                "alreadyExists": "ユーザー名は既に存在します",
-                "suggestedAlternatives": "推奨される代替案：",
-                "willBeConvertedLowercase": "ユーザー名は小文字に変換されます",
-                "checkingAvailability": "利用可能性を確認中...",
-                "available": "ユーザー名は利用可能です",
-                "willConvertToLowercase": "ユーザー名は小文字に変換されます"
-            },
-            "email": {
-                "required": "メールアドレスは必須です",
-                "invalidFormat": "有効なメールアドレスを入力してください",
-                "alreadyExists": "メールアドレスは既に存在します",
-                "invalid": "無効なメールアドレス"
-            },
-            "password": {
-                "required": "パスワードは必須です",
-                "minLength": "パスワードは6文字以上である必要があります",
-                "uppercaseRequired": "パスワードには少なくとも1つの大文字（A-Z）が含まれている必要があります",
-                "numberRequired": "パスワードには少なくとも1つの数字（0-9）が含まれている必要があります",
-                "specialCharRequired": "パスワードには少なくとも1つの特殊文字（!@#$%^\u0026*().,?\": {}|\u003c\u003e)が含まれている必要があります",
-                "strength": "パスワードの強度",
-                "weak": "弱い",
-                "medium": "中程度",
-                "strong": "強い",
-                "maxLength": "パスワードは32文字を超えることはできません",
-                "lowercaseRequired": "パスワードには少なくとも1つの小文字(a-z)が含まれている必要があります",
-                "tooCommon": "このパスワードは一般的すぎます。よりユニークなパスワードを選択してください",
-                "sameAsCurrent": "新しいパスワードは現在のパスワードと同じにすることはできません",
-                "considerLonger": "より良いセキュリティのために、より多様性のある長いパスワードの使用を検討してください",
-                "moreSecure": "10文字以上のパスワードの方が安全です",
-                "veryWeak": "非常に弱い",
-                "fair": "普通",
-                "good": "良い",
-                "veryStrong": "非常に強い"
-            },
-            "confirmPassword": {
-                "required": "パスワードを確認してください",
-                "mustMatch": "パスワードが一致しません",
-                "confirmRequired": "パスワードの確認は必須です",
-                "match": "パスワードが一致します"
-            },
-            "login": {
-                "usernameOrEmailRequired": "ユーザー名またはメールアドレスは必須です",
-                "invalidCredentials": "無効なユーザー名/メールアドレスまたはパスワード",
-                "accountNotFound": "アカウントが見つかりません",
-                "tooManyAttempts": "失敗した試行が多すぎます",
-                "incorrectPassword": "パスワードが正しくありません"
-            },
-            "general": {
-                "fillRequiredFields": "すべての必須フィールドを入力してください",
-                "somethingWentWrong": "何かが間違っています。もう一度お試しください"
-            },
-            "forgotPassword": {
-                "title": "パスワードをお忘れですか？",
-                "description": "メールアドレスを入力すると、リセットリンクをお送りします。",
-                "emailLabel": "メールアドレス",
-                "emailPlaceholder": "メールアドレスを入力してください",
-                "sendResetLink": "リセットリンクを送信",
-                "backToLogin": "ログインに戻る",
-                "resetLinkSent": "パスワードリセットリンクをメールに送信しました！",
-                "failedToSend": "リセットリンクの送信に失敗しました。後でもう一度お試しください。",
-                "somethingWentWrong": "何かが間違っています！"
-            },
-            "accountName": {
-                "required": "アカウント名は必須です",
-                "minLength": "アカウント名は少なくとも2文字である必要があります",
-                "maxLength": "アカウント名は50文字を超えてはいけません",
-                "invalidChars": "アカウント名には文字、スペース、アポストロフィ、ハイフン、ピリオドのみを含めることができます",
-                "noNumbers": "アカウント名には数字を含めることはできません"
-            },
-            "accountType": {
-                "required": "アカウントタイプは必須です",
-                "invalid": "無効なアカウントタイプ"
-            },
-            "primaryAddress": {
-                "required": "主要住所は必須です"
-            },
-            "socialMedia": {
-                "instagram": "有効なInstagramプロフィールURLを入力してください",
-                "whatsapp": "有効なWhatsApp連絡先を入力してください：電話（+1234567890）またはwa.me/api.whatsapp.comリンク",
-                "mobile": "有効な携帯電話番号を入力してください（例：+1234567890）",
-                "youtube": "有効なYouTubeチャンネルURLを入力してください（例：youtube.com/@ユーザー名）",
-                "x": "有効なX（Twitter）プロフィールURLを入力してください",
-                "spotify": "有効なSpotify URLを入力してください",
-                "website": "有効なウェブサイトURLを入力してください",
-                "facebook": "有効なFacebookプロフィールURLを入力してください",
-                "youtubeMusic": "有効なYouTube MusicチャンネルURLを入力してください",
-                "email": "有効なメールアドレスを入力してください",
-                "linkedin": "有効なLinkedInプロフィールURLを入力してください",
-                "appleMusic": "有効なApple Music URLを入力してください",
-                "tiktok": "有効なTikTokプロフィールURLを入力してください",
-                "snapchat": "有効なSnapchatユーザー名を入力してください"
-            },
-            "onboarding": {
-                "displayNameRequired": "表示名が必要です",
-                "displayNameMinLength": "表示名は少なくとも2文字である必要があります",
-                "displayNameMaxLength": "表示名は50文字を超えてはいけません",
-                "bioRequired": "バイオが必要です",
-                "bioMaxLength": "バイオは250文字を超えてはいけません",
-                "mobileNumberRequired": "携帯電話番号が必要です",
-                "mobileNumberInvalid": "有効な携帯電話番号を入力してください",
-                "mobileNumberLength": "携帯電話番号は10桁である必要があります",
-                "addressRequired": "住所が必要です",
-                "cityRequired": "都市が必要です",
-                "stateRequired": "州が必要です",
-                "countryRequired": "国が必要です",
-                "postalCodeRequired": "郵便番号が必要です",
-                "primaryAddressRequired": "主要住所が必要です",
-                "emailAddressRequired": "メールアドレスが必要です",
-                "resetLinkSentSuccess": "リセットリンクが正常に送信されました！",
-                "invalidUsername": "無効なユーザー名",
-                "profileImageAlt": "Profile"
-            },
-            "resetPassword": {
-                "newPassword": "New Password",
-                "confirmPassword": "Confirm Password"
-            },
-            "resetLinkSent": {
-                "title": "メールが送信されました！",
-                "description": "パスワードリセットリンクのために受信トレイを確認してください。",
-                "resending": "再送信中...",
-                "resendWithCooldown": "メール再送信 ({{cooldown}}秒)",
-                "resendMail": "メール再送信"
-            }
-        },
-        "onboarding": {
-            "accountDetails": {
-                "title": "アカウント詳細",
-                "description": "あなたについて教えてください",
-                "displayName": "表示名",
-                "displayNamePlaceholder": "表示名を入力してください",
-                "username": "ユーザー名",
-                "usernamePlaceholder": "ユーザー名を入力してください",
-                "usernameDescription": "ユーザー名は、公開プロフィールリンクとQRコードの一部です。例：explorers.earth/bhavya",
-                "bio": "バイオ",
-                "bioPlaceholder": "あなたについて教えてください",
-                "accountType": "アカウントタイプ",
-                "personal": "個人",
-                "creator": "クリエイター",
-                "business": "ビジネス",
-                "next": "次へ"
-            },
-            "contactDetails": {
-                "title": "連絡先詳細",
-                "description": "確認のために携帯電話番号を追加してください",
-                "mobileNumber": "携帯電話番号",
-                "mobileNumberPlaceholder": "携帯電話番号を入力してください",
-                "next": "次へ",
-                "back": "戻る"
-            },
-            "addressDetails": {
-                "title": "住所詳細",
-                "description": "どこにいますか？",
-                "address": "住所",
-                "addressPlaceholder": "住所を入力してください",
-                "streetName": "通り名",
-                "streetNamePlaceholder": "通り名を入力してください",
-                "city": "都市",
-                "cityPlaceholder": "都市を入力してください",
-                "state": "州",
-                "statePlaceholder": "州を入力してください",
-                "country": "国",
-                "countryPlaceholder": "国を入力してください",
-                "postalCode": "郵便番号",
-                "postalCodePlaceholder": "郵便番号を入力してください",
-                "primaryAddress": "主要住所",
-                "primaryAddressDescription": "公開プロフィールに表示（都市と国）",
-                "primaryAddressPlaceholder": "主要住所を入力してください",
-                "sameAsAddress": "住所と同じ",
-                "confirmDetails": "詳細を確認",
-                "back": "戻る"
-            }
-        },
-        "resetPassword": {
-            "newPasswordPlaceholder": "Enter new password",
-            "confirmPasswordPlaceholder": "Confirm your password"
-        }
-    },
-    "common": {
-        "loading": "読み込み中...",
-        "error": "エラーが発生しました。後でもう一度お試しください。",
-        "retry": "再試行",
-        "noResults": "結果が見つかりません",
-        "submit": "送信",
-        "signInWithGoogle": "Googleでサインイン",
-        "signUpWithGoogle": "Googleでサインアップ",
-        "hidePassword": "パスワードを非表示",
-        "showPassword": "パスワードを表示",
-        "cancel": "キャンセル"
-    },
-    "dashboard": {
-        "home": {
-            "welcomeBack": "おかえりなさい",
-            "profile": "プロフィール",
-            "myRecommendations": "私のおすすめ",
-            "activePlaces": "アクティブな場所",
-            "setupProfile": "プロフィールを設定",
-            "draft": "下書き",
-            "startCurating": "おすすめをキュレーションして世界と共有しましょう！",
-            "addRecommendations": "おすすめを追加"
-        },
-        "shareModal": {
-            "copyLink": "リンクをコピー",
-            "copied": "コピーしました！",
-            "linkCopiedToast": "リンクがコピーされました!!"
-        },
-        "recommendations": {
-            "locationButton": "場所",
-            "viewAll": "すべて表示",
-            "recommendationsTab": "おすすめ",
-            "manageTab": "管理",
-            "manageHeading": "管理",
-            "deleteAction": "削除",
-            "editAction": "編集",
-            "publishedStatus": "公開済み",
-            "draftStatus": "下書き",
-            "myRecommendationsHeading": "私のおすすめ",
-            "myQRHeading": "私のQR",
-            "myRecommendationsQR": "私のおすすめ",
-            "travelLikeLocal": "地元の人のように旅行する",
-            "shareLink": "リンクを共有",
-            "copyLink": "リンクをコピー",
-            "downloadQR": "QRをダウンロード",
-            "emptyState": {
-                "title": "利用可能なおすすめがありません",
-                "subtitle": "このリストにお気に入りの場所を追加し始めましょう"
-            },
-            "draftLabel": "下書き",
-            "recommendButton": "おすすめ",
-            "exploreSection": {
-                "heading": "explorersで探索",
-                "addButton": "追加"
-            },
-            "locationLabels": {
-                "currentLocation": "現在地",
-                "selectedLocation": "選択した場所"
-            },
-            "categories": {
-                "foodDrinks": "飲食",
-                "lodging": "宿泊",
-                "healthWellness": "健康とウェルネス",
-                "shopping": "ショッピング",
-                "entertainment": "エンターテイメント",
-                "transportation": "交通",
-                "services": "サービス",
-                "tourism": "観光",
-                "naturalFeatures": "自然の特徴"
-            },
-            "locationForm": {
-                "labels": {
-                    "searchLocation": "場所を検索",
-                    "recommendationSocialLink": "おすすめソーシャルリンク",
-                    "note": "メモ",
-                    "placeUrl": "場所のURL"
-                },
-                "placeholders": {
-                    "searchLocation": "都市、州、または国を入力（例：パリ）",
-                    "recommendationSocialLink": "URLを入力（Youtube / Instagram）",
-                    "note": "おすすめに関連するメモを入力",
-                    "placeUrl": "共有可能なリンクを作成する名前を入力"
-                },
-                "buttons": {
-                    "addLocation": "場所を追加",
-                    "updateLocation": "場所を更新"
-                }
-            },
-            "toastMessages": {
-                "listCreated": "おすすめリストが正常に作成されました!!!",
-                "listPublished": "おすすめリストが正常に公開されました!",
-                "listUnpublished": "おすすめリストが正常に非公開になりました!",
-                "listPublishError": "公開するにはリストに少なくとも1つのおすすめの場所が必要です",
-                "listVisibilityError": "おすすめリストの表示設定の更新に失敗しました。",
-                "qrDownloadSuccess": "QRコードが正常にダウンロードされました!",
-                "qrDownloadError": "QRコードのダウンロードに失敗しました。もう一度お試しください。",
-                "linkCopied": "リンクがクリップボードにコピーされました!",
-                "linkCopyError": "リンクのコピーに失敗しました。もう一度お試しください。",
-                "qrNotReady": "QRコードがダウンロードの準備ができていません"
-            },
-            "placesModal": {
-                "placesCount": "{{total}}件中{{visible}}件の場所",
-                "scrollToLoadMore": "スクロールしてより多くの場所を読み込む"
-            },
-            "noRecommendationsYet": "まだおすすめがありません!!",
-            "setupProfileBeforeRecommendations": "おすすめを作成する前にプロフィールを設定してください!!",
-            "startAddingPlaces": "お気に入りの場所を追加し始めて、他の人と共有しましょう。",
-            "startRecommending": "おすすめを始める",
-            "addRecommendationForm": {
-                "searchField": {
-                    "label": "Googleでおすすめを検索"
-                },
-                "mainInput": {
-                    "placeholder": "おすすめを入力してください"
-                },
-                "taggableFields": {
-                    "title": "タイトル",
-                    "address": "住所",
-                    "category": "カテゴリー",
-                    "contactNumber": "連絡先番号",
-                    "socialLink": "ソーシャルリンク",
-                    "personName": "人物名"
-                },
-                "accordionSection": {
-                    "heading": "おすすめの詳細",
-                    "recommendationLink": {
-                        "label": "おすすめリンク",
-                        "placeholder": "Instagram リール、YouTube、またはおすすめブログを挿入できます"
-                    },
-                    "whyRecommend": {
-                        "label": "なぜおすすめするのですか？",
-                        "placeholder": "なぜおすすめするのですか？"
-                    }
-                },
-                "fileUpload": {
-                    "text": "画像/動画を添付",
-                    "subtext": "オプション"
-                },
-                "actionButton": {
-                    "text": "おすすめを追加"
-                },
-                "taggableFieldsPlaceholders": {
-                    "title": "タイトルを入力してください",
-                    "address": "場所の住所を入力してください",
-                    "category": "カテゴリーを入力してください",
-                    "contactNumber": "連絡先番号を入力してください",
-                    "socialLink": "ソーシャルリンクを入力してください（場所）",
-                    "personName": "人物のフルネームを入力してください"
-                },
-                "validationMessages": {
-                    "titleRequired": "タイトルは必須です",
-                    "addressRequired": "住所は必須です",
-                    "categoryRequired": "カテゴリは必須です",
-                    "socialUrlRequired": "人物のおすすめにはInstagramまたはLinkedInのURLが必要です",
-                    "socialUrlInvalid": "有効なInstagramまたはLinkedInのURLを入力してください"
-                },
-                "mapModal": {
-                    "cancelButton": "キャンセル",
-                    "addRecommendationButton": "おすすめを追加",
-                    "updateRecommendationButton": "おすすめを更新",
-                    "setLocationButton": "場所を設定"
-                },
-                "deleteRecommendation": "おすすめを削除",
-                "searchLocation": {
-                    "label": "場所を検索",
-                    "searchPlace": "場所を検索",
-                    "placeholder": "入力して場所を選択"
-                },
-                "fetchingImages": "画像を取得中…",
-                "recommendationType": {
-                    "place": "場所",
-                    "person": "人",
-                    "label": "おすすめの種類"
-                },
-                "imagePreview": {
-                    "alt": "プレビュー",
-                    "deleteTooltip": "削除",
-                    "setThumbnailTooltip": "サムネイルとして設定",
-                    "confirmDeleteTitle": "削除の確認",
-                    "confirmDeleteMessage": "この画像をコレクションから削除してもよろしいですか？",
-                    "cancel": "キャンセル",
-                    "confirm": "確認"
-                },
-                "deleteRecommendationModal": {
-                    "title": "削除の確認",
-                    "message": "このおすすめを削除してもよろしいですか？この操作は元に戻せません。",
-                    "cancel": "キャンセル"
-                }
-            }
-        },
-        "profile": {
-            "tabs": {
-                "publicProfile": "公開プロフィール",
-                "account": "アカウント"
-            },
-            "publicProfile": {
-                "sections": {
-                    "profileInformation": "自己紹介",
-                    "socialMedia": "ソーシャルリンク",
-                    "publicAddress": "公開アドレス",
-                    "howToReachUs": "お問い合わせ方法",
-                    "howToReachUsDescription": "このセクションを使用して、ビジネスの場所の詳細を共有してください。",
-                    "feed": "フィード",
-                    "socialMediaSubtitle": "ソーシャルメディアのリンクと情報"
-                },
-                "fields": {
-                    "accountType": "アカウントタイプ",
-                    "bio": "自己紹介",
-                    "socialMedia": "ソーシャルメディア",
-                    "instagram": "Instagram",
-                    "whatsapp": "Whatsapp",
-                    "mobile": "モバイル",
-                    "youtube": "Youtube",
-                    "x": "X",
-                    "spotify": "Spotify",
-                    "website": "ウェブサイト",
-                    "facebook": "Facebook",
-                    "youtubeMusic": "Youtube Music",
-                    "gmail": "Gmail",
-                    "linkedin": "Linkedin",
-                    "appleMusic": "Apple Music",
-                    "tiktok": "Tiktok",
-                    "snapchat": "Snapchat",
-                    "businessLocation": "場所を追加してください。これらは公開プロフィールの特集場所として表示されます",
-                    "primaryAddress": "主要アドレス - 公開プロフィールに表示（都市と国）",
-                    "feed": "場所、製品、サービス、または体験の画像や動画をアップロードしてください。これらの写真は公開プロフィールのギャラリーに表示されます",
-                    "title": "タイトル",
-                    "contact": "連絡先",
-                    "about": "について",
-                    "addLocation": "場所を追加",
-                    "addLocationInformation": "場所情報を追加",
-                    "searchAddress": "住所を検索...",
-                    "sameAsAddress": "住所と同じ"
-                },
-                "accountTypes": {
-                    "personal": "個人",
-                    "creator": "クリエイター",
-                    "business": "ビジネス"
-                },
-                "businessLocation": {
-                    "title": "タイトル",
-                    "contact": "連絡先",
-                    "website": "ウェブサイト",
-                    "about": "について"
-                }
-            },
-            "account": {
-                "sections": {
-                    "account": "アカウント",
-                    "billingAddress": "請求先住所"
-                },
-                "fields": {
-                    "username": "ユーザー名",
-                    "accountName": "アカウント名",
-                    "address": "住所",
-                    "streetName": "通り名",
-                    "state": "都道府県",
-                    "city": "市区町村",
-                    "country": "国",
-                    "postalCode": "郵便番号",
-                    "addressPlaceholder": "住所を入力してください",
-                    "detectLocation": "現在の位置を検出"
-                }
-            },
-            "common": {
-                "visible": "表示",
-                "hidden": "非表示",
-                "mobileNumber": "携帯電話番号",
-                "mobileNumberPlaceholder": "携帯電話番号",
-                "whatsappNumber": "WhatsApp番号",
-                "primaryAddress": "主要アドレス",
-                "editImage": "画像を編集",
-                "confirm": "確認",
-                "add": "追加",
-                "video": "動画",
-                "feedImage": "フィード画像",
-                "importedImage": "インポートされた画像",
-                "cover": "カバー",
-                "profile": "プロフィール",
-                "saveAndPublish": "保存して公開",
-                "saveToFeed": "フィードに保存",
-                "savedAndPublishedSuccessfully": "正常に保存および公開されました",
-                "saveAndPublishFailed": "保存および公開に失敗しました。もう一度お試しください。",
-                "failedToSaveChanges": "変更の保存に失敗しました。もう一度お試しください。",
-                "networkError": "ネットワークエラー：接続を確認して、もう一度お試しください。",
-                "unexpectedError": "予期しないエラーが発生しました。もう一度お試しください。",
-                "somethingWentWrong": "問題が発生しました。もう一度お試しください。",
-                "failedToUploadFiles": "ファイルのアップロードに失敗しました。もう一度お試しください。",
-                "failedToUploadImages": "画像のアップロードに失敗しました。もう一度お試しください。",
-                "failedToSaveImagesToFeed": "画像をフィードに保存できませんでした",
-                "failedToUpdateProfile": "プロフィールの更新に失敗しました。もう一度お試しください。",
-                "fetching": "取得中...",
-                "selectAll": "すべて選択",
-                "clearSelection": "選択をクリア",
-                "error": "プロフィールの読み込み中にエラーが発生しました。後でもう一度お試しください。",
-                "errors": {
-                    "noFileProvided": "アップロード用のファイルが提供されていません",
-                    "failedToGetAccountId": "アップロード用のアカウントIDの取得に失敗しました",
-                    "uploadResponseMissingFileData": "アップロード応答にファイルデータが含まれていません"
-                }
-            },
-            "accountSetup": {
-                "title": "アカウント設定を完了",
-                "progress": "進捗",
-                "complete": "完了",
-                "profileSetupCompleted": "プロフィール設定が完了しました",
-                "profileSetupIncomplete": "プロフィール写真、自己紹介、ソーシャルリンクを追加",
-                "recommendationsSetupCompleted": "おすすめ設定が完了しました",
-                "recommendationsSetupIncomplete": "場所、地点を追加して最初のリストを公開",
-                "setupButton": "設定",
-                "footerMessage": "両方のステップを完了して、完全なダッシュボード体験のロックを解除"
-            }
-        }
-    },
-    "toast": {
-        "success": {
-            "loginSuccessful": "ログインに成功しました！",
-            "registrationSuccessful": "登録に成功しました！",
-            "passwordResetSuccessful": "パスワードのリセットに成功しました！",
-            "emailVerificationSent": "確認メールを送信しました！",
-            "resetLinkSent": "パスワードリセットリンクをメールに送信しました！",
-            "resetLinkResent": "リセットリンクを再送信しました！",
-            "profileImageUpdated": "プロフィール画像が正常に更新されました！",
-            "backgroundImageUpdated": "背景画像が正常に更新されました！",
-            "recommendedListUpdated": "おすすめリストが正常に更新されました！！！",
-            "accountCreated": "アカウントが正常に作成されました！",
-            "usernameUpdated": "ユーザー名が正常に更新されました！",
-            "profileUpdated": "プロフィールが正常に更新されました！",
-            "settingsSaved": "設定が正常に保存されました！",
-            "dataSaved": "データが正常に保存されました！",
-            "changesSaved": "変更が正常に保存されました！",
-            "fileUploaded": "ファイルが正常にアップロードされました！",
-            "imageUploaded": "画像のアップロードに成功しました！",
-            "linkCopied": "リンクをクリップボードにコピーしました！",
-            "emailSent": "メールが正常に送信されました！",
-            "notificationSent": "通知が正常に送信されました！",
-            "actionCompleted": "アクションが正常に完了しました！",
-            "formSubmitted": "フォームが正常に送信されました！",
-            "onboardingCompleted": "オンボーディングが正常に完了しました！",
-            "welcomeMessage": "explorersへようこそ！",
-            "accountActivated": "アカウントが正常にアクティベートされました！",
-            "emailVerified": "メール認証が完了しました！",
-            "passwordChanged": "パスワードが正常に変更されました！",
-            "usernameChanged": "ユーザー名が正常に変更されました！",
-            "profileCompleted": "プロフィールが正常に完了しました！",
-            "setupCompleted": "セットアップが正常に完了しました！",
-            "loggedOutSuccessfully": "正常にログアウトしました！"
-        },
-        "error": {
-            "loginFailed": "ログインに失敗しました。認証情報を確認してください。",
-            "registrationFailed": "登録に失敗しました。再試行してください。",
-            "passwordResetFailed": "パスワードのリセットに失敗しました。再試行してください。",
-            "emailVerificationFailed": "メール確認に失敗しました。再試行してください。",
-            "resetLinkFailed": "リセットリンクの送信に失敗しました。後でもう一度試してください。",
-            "resetLinkResendFailed": "再送信に失敗しました。後でもう一度試してください。",
-            "profileImageUpdateFailed": "プロフィール画像のアップロードに失敗しました。再試行してください。",
-            "backgroundImageUpdateFailed": "背景画像のアップロードに失敗しました。再試行してください。",
-            "recommendedListUpdateFailed": "おすすめリストの更新でエラーが発生しました！！！",
-            "accountCreationFailed": "アカウントの作成に失敗しました。再試行してください。",
-            "usernameUpdateFailed": "ユーザー名の更新に失敗しました。再試行してください。",
-            "profileUpdateFailed": "プロフィールの更新に失敗しました。再試行してください。",
-            "settingsSaveFailed": "設定の保存に失敗しました。再試行してください。",
-            "dataSaveFailed": "データの保存に失敗しました。再試行してください。",
-            "changesSaveFailed": "変更の保存に失敗しました。再試行してください。",
-            "fileUploadFailed": "ファイルのアップロードに失敗しました。再試行してください。",
-            "imageUploadFailed": "画像のアップロードに失敗しました。再試行してください。",
-            "linkCopyFailed": "リンクのコピーに失敗しました。再試行してください。",
-            "emailSendFailed": "メールの送信に失敗しました。再試行してください。",
-            "notificationSendFailed": "通知の送信に失敗しました。再試行してください。",
-            "actionFailed": "アクションに失敗しました。再試行してください。",
-            "formSubmissionFailed": "フォームの送信に失敗しました。再試行してください。",
-            "onboardingFailed": "オンボーディングに失敗しました。再試行してください。",
-            "accountActivationFailed": "アカウントのアクティベーションに失敗しました。再試行してください。",
-            "passwordChangeFailed": "パスワードの変更に失敗しました。再試行してください。",
-            "usernameChangeFailed": "ユーザー名の変更に失敗しました。再試行してください。",
-            "profileCompletionFailed": "プロフィールの完了に失敗しました。再試行してください。",
-            "setupFailed": "セットアップに失敗しました。再試行してください。",
-            "networkError": "ネットワークエラー。接続を確認してください。",
-            "serverError": "サーバーエラー。後でもう一度試してください。",
-            "validationError": "検証エラー。入力内容を確認してください。",
-            "permissionDenied": "アクセスが拒否されました。サポートにお問い合わせください。",
-            "sessionExpired": "セッションが期限切れです。再度ログインしてください。",
-            "invalidCredentials": "無効な認証情報。入力内容を確認してください。",
-            "emailNotFound": "メールが見つかりません。再試行してください。",
-            "usernameAlreadyExists": "ユーザー名は既に存在します。別のものを選択してください。",
-            "emailAlreadyExists": "メールは既に存在します。別のメールを使用してください。",
-            "invalidEmailFormat": "無効なメール形式。有効なメールを入力してください。",
-            "passwordTooWeak": "パスワードが弱すぎます。より強いパスワードを選択してください。",
-            "passwordsDoNotMatch": "パスワードが一致しません。再試行してください。",
-            "requiredFieldMissing": "必須フィールドが不足しています。すべての必須フィールドを入力してください。",
-            "invalidInput": "無効な入力です。データを確認してください。",
-            "fileTooLarge": "ファイルが大きすぎます。より小さなファイルを選択してください。",
-            "unsupportedFileType": "サポートされていないファイルタイプです。別のファイルを選択してください。",
-            "uploadLimitExceeded": "アップロード制限を超えました。後でもう一度試してください。",
-            "operationTimeout": "操作がタイムアウトしました。再試行してください。",
-            "serviceUnavailable": "サービスが利用できません。後でもう一度試してください。",
-            "maintenanceMode": "サービスはメンテナンス中です。後でもう一度試してください。",
-            "rateLimitExceeded": "リクエストが多すぎます。後でもう一度試してください。",
-            "quotaExceeded": "クォータを超えました。後でもう一度試してください。",
-            "accessDenied": "アクセスが拒否されました。このアクションを実行する権限がありません。",
-            "resourceNotFound": "リソースが見つかりません。リクエストを確認してください。",
-            "conflictError": "競合エラー。リソースは既に存在します。",
-            "preconditionFailed": "前提条件が失敗しました。リクエストを確認してください。",
-            "tooManyAttempts": "試行回数が多すぎます。後でもう一度試してください。",
-            "accountLocked": "アカウントがロックされています。サポートにお問い合わせください。",
-            "accountSuspended": "アカウントが停止されています。サポートにお問い合わせください。",
-            "accountDeleted": "アカウントが削除されました。サポートにお問い合わせください。",
-            "emailNotVerified": "メールが確認されていません。まずメールを確認してください。",
-            "phoneNotVerified": "電話番号が確認されていません。まず電話を確認してください。",
-            "twoFactorRequired": "二要素認証が必要です。",
-            "twoFactorFailed": "二要素認証に失敗しました。再試行してください。",
-            "captchaFailed": "キャプチャの確認に失敗しました。再試行してください。",
-            "invalidToken": "無効なトークン。再試行してください。",
-            "expiredToken": "トークンの有効期限が切れています。再試行してください。",
-            "invalidCode": "無効なコードです。入力内容を確認してください。",
-            "expiredCode": "コードの有効期限が切れています。新しいコードをリクエストしてください。",
-            "codeLimitExceeded": "コード制限を超えました。後でもう一度試してください。",
-            "invalidUsername": "無効なユーザー名です。入力内容を確認してください。",
-            "usernameTooShort": "ユーザー名が短すぎます。より長いユーザー名を選択してください。",
-            "usernameTooLong": "ユーザー名が長すぎます。より短いユーザー名を選択してください。",
-            "usernameInvalidChars": "ユーザー名に無効な文字が含まれています。文字、数字、ハイフンのみを使用してください。",
-            "usernameReserved": "ユーザー名は予約されています。別のユーザー名を選択してください。",
-            "usernameProfanity": "ユーザー名に不適切な内容が含まれています。別のユーザー名を選択してください。",
-            "primaryAddressRequired": "プライマリアドレスが必要です",
-            "addressRequired": "住所が必要です",
-            "cityRequired": "都市が必要です",
-            "stateRequired": "都道府県が必要です",
-            "countryRequired": "国が必要です",
-            "postalCodeRequired": "郵便番号が必要です",
-            "mobileNumberRequired": "携帯電話番号が必要です",
-            "mobileNumberInvalid": "無効な携帯電話番号形式",
-            "mobileNumberTooShort": "携帯電話番号が短すぎます",
-            "mobileNumberTooLong": "携帯電話番号が長すぎます",
-            "bioRequired": "自己紹介が必要です",
-            "bioTooLong": "自己紹介が長すぎます。250文字未満にしてください",
-            "displayNameRequired": "表示名が必要です",
-            "displayNameTooShort": "表示名が短すぎます",
-            "displayNameTooLong": "表示名が長すぎます",
-            "accountTypeRequired": "アカウントタイプが必要です",
-            "invalidAccountType": "無効なアカウントタイプが選択されました",
-            "imageRequired": "画像が必要です",
-            "imageTooLarge": "画像が大きすぎます。より小さな画像を選択してください",
-            "unsupportedImageFormat": "サポートされていない画像形式です。JPG、PNG、またはGIFを使用してください",
-            "imageProcessingFailed": "画像処理に失敗しました。再試行してください",
-            "imageCorrupted": "画像が破損しています。別の画像を選択してください",
-            "imageDimensionsInvalid": "画像の寸法が無効です。別の画像を選択してください",
-            "imageSizeInvalid": "画像のサイズが無効です。別の画像を選択してください",
-            "imageFormatInvalid": "画像の形式が無効です。別の画像を選択してください",
-            "imageQualityTooLow": "画像の品質が低すぎます。より高品質な画像を選択してください",
-            "imageTooSmall": "画像が小さすぎます。より大きな画像を選択してください",
-            "imageTooBig": "画像が大きすぎます。より小さな画像を選択してください",
-            "imageAspectRatioInvalid": "画像のアスペクト比が無効です。別の画像を選択してください",
-            "imageColorSpaceInvalid": "画像の色空間が無効です。別の画像を選択してください",
-            "imageMetadataInvalid": "画像のメタデータが無効です。別の画像を選択してください",
-            "imageSecurityViolation": "画像のセキュリティ違反。別の画像を選択してください",
-            "imageVirusDetected": "画像にウイルスが検出されました。別の画像を選択してください",
-            "imageMalwareDetected": "画像にマルウェアが検出されました。別の画像を選択してください",
-            "imageSpamDetected": "画像にスパムが検出されました。別の画像を選択してください",
-            "imageContentInappropriate": "画像の内容が不適切です。別の画像を選択してください",
-            "imageContentViolent": "画像の内容が暴力的です。別の画像を選択してください",
-            "imageContentSexual": "画像の内容が性的です。別の画像を選択してください",
-            "imageContentHateful": "画像の内容が憎悪的です。別の画像を選択してください",
-            "imageContentDiscriminatory": "画像の内容が差別的です。別の画像を選択してください",
-            "imageContentOffensive": "画像の内容が攻撃的です。別の画像を選択してください",
-            "imageContentAbusive": "画像の内容が虐待的です。別の画像を選択してください",
-            "imageContentHarassing": "画像の内容が嫌がらせです。別の画像を選択してください",
-            "imageContentThreatening": "画像の内容が脅迫的です。別の画像を選択してください",
-            "imageContentDangerous": "画像の内容が危険です。別の画像を選択してください",
-            "imageContentIllegal": "画像の内容が違法です。別の画像を選択してください",
-            "imageContentCopyright": "画像の内容が著作権を侵害しています。別の画像を選択してください",
-            "imageContentTrademark": "画像の内容が商標を侵害しています。別の画像を選択してください",
-            "imageContentPrivacy": "画像の内容がプライバシーを侵害しています。別の画像を選択してください",
-            "imageContentConsent": "画像の内容に同意がありません。別の画像を選択してください",
-            "imageContentMinors": "画像の内容に未成年者が含まれています。別の画像を選択してください",
-            "imageContentAnimals": "画像の内容に動物虐待が含まれています。別の画像を選択してください",
-            "imageContentEnvironment": "画像の内容が環境を害します。別の画像を選択してください",
-            "imageContentHealth": "画像の内容が健康を害します。別の画像を選択してください",
-            "imageContentSafety": "画像の内容が安全を害します。別の画像を選択してください",
-            "imageContentSecurity": "画像の内容がセキュリティを害します。別の画像を選択してください",
-            "imageContentIntegrity": "画像の内容が整合性を害します。別の画像を選択してください",
-            "imageContentReputation": "画像の内容が評判を害します。別の画像を選択してください",
-            "imageContentBrand": "画像の内容がブランドを害します。別の画像を選択してください",
-            "imageContentBusiness": "画像の内容がビジネスを害します。別の画像を選択してください",
-            "imageContentPersonal": "画像の内容が個人的な利益を害します。別の画像を選択してください",
-            "imageContentProfessional": "画像の内容が専門的な利益を害します。別の画像を選択してください",
-            "imageContentAcademic": "画像の内容が学術的な利益を害します。別の画像を選択してください",
-            "imageContentCultural": "画像の内容が文化的な利益を害します。別の画像を選択してください",
-            "imageContentReligious": "画像の内容が宗教的な利益を害します。別の画像を選択してください",
-            "imageContentPolitical": "画像の内容が政治的な利益を害します。別の画像を選択してください",
-            "imageContentSocial": "画像の内容が社会的な利益を害します。別の画像を選択してください",
-            "imageContentEconomic": "画像の内容が経済的な利益を害します。別の画像を選択してください",
-            "imageContentLegal": "画像の内容が法的な利益を害します。別の画像を選択してください",
-            "imageContentEthical": "画像の内容が倫理的な利益を害します。別の画像を選択してください",
-            "imageContentMoral": "画像の内容が道徳的な利益を害します。別の画像を選択してください",
-            "imageContentSpiritual": "画像の内容が精神的な利益を害します。別の画像を選択してください",
-            "imageContentPhilosophical": "画像の内容が哲学的な利益を害します。別の画像を選択してください",
-            "imageContentScientific": "画像の内容が科学的な利益を害します。別の画像を選択してください",
-            "imageContentTechnical": "画像の内容が技術的な利益を害します。別の画像を選択してください",
-            "imageContentArtistic": "画像の内容が芸術的な利益を害します。別の画像を選択してください",
-            "imageContentCreative": "画像の内容が創造的な利益を害します。別の画像を選択してください",
-            "imageContentIntellectual": "画像の内容が知的な利益を害します。別の画像を選択してください",
-            "imageContentEducational": "画像の内容が教育的な利益を害します。別の画像を選択してください",
-            "imageContentInformational": "画像の内容が情報的な利益を害します。別の画像を選択してください",
-            "imageContentNews": "画像の内容がニュースの利益を害します。別の画像を選択してください",
-            "imageContentMedia": "画像の内容がメディアの利益を害します。別の画像を選択してください",
-            "imageContentEntertainment": "画像の内容が娯楽の利益を害します。別の画像を選択してください",
-            "imageContentSports": "画像の内容がスポーツの利益を害します。別の画像を選択してください",
-            "imageContentRecreation": "画像の内容がレクリエーションの利益を害します。別の画像を選択してください",
-            "imageContentLeisure": "画像の内容が余暇の利益を害します。別の画像を選択してください",
-            "imageContentHobby": "画像の内容が趣味の利益を害します。別の画像を選択してください",
-            "imageContentInterest": "画像の内容が興味の利益を害します。別の画像を選択してください",
-            "imageContentPassion": "画像の内容が情熱の利益を害します。別の画像を選択してください",
-            "imageContentLove": "画像の内容が愛の利益を害します。別の画像を選択してください",
-            "imageContentHate": "画像の内容が憎しみの利益を害します。別の画像を選択してください",
-            "imageContentAnger": "画像の内容が怒りの利益を害します。別の画像を選択してください",
-            "imageContentFear": "画像の内容が恐怖の利益を害します。別の画像を選択してください",
-            "imageContentSadness": "画像の内容が悲しみの利益を害します。別の画像を選択してください",
-            "imageContentJoy": "画像の内容が喜びの利益を害します。別の画像を選択してください",
-            "imageContentHappiness": "画像の内容が幸福の利益を害します。別の画像を選択してください",
-            "imageContentExcitement": "画像の内容が興奮の利益を害します。別の画像を選択してください",
-            "imageContentSurprise": "画像の内容が驚きの利益を害します。別の画像を選択してください",
-            "imageContentDisgust": "画像の内容が嫌悪の利益を害します。別の画像を選択してください",
-            "imageContentShame": "画像の内容が恥の利益を害します。別の画像を選択してください",
-            "imageContentGuilt": "画像の内容が罪悪感の利益を害します。別の画像を選択してください",
-            "imageContentPride": "画像の内容が誇りの利益を害します。別の画像を選択してください",
-            "imageContentEnvy": "画像の内容が羨望の利益を害します。別の画像を選択してください",
-            "imageContentJealousy": "画像の内容が嫉妬の利益を害します。別の画像を選択してください",
-            "imageContentGreed": "画像の内容が貪欲の利益を害します。別の画像を選択してください",
-            "imageContentLust": "画像の内容が欲望の利益を害します。別の画像を選択してください",
-            "imageContentGluttony": "画像の内容が大食の利益を害します。別の画像を選択してください",
-            "imageContentSloth": "画像の内容が怠惰の利益を害します。別の画像を選択してください",
-            "imageContentWrath": "画像の内容が憤怒の利益を害します。別の画像を選択してください"
-        },
-        "warning": {
-            "usernameCooldown": "クールダウン期間により、ユーザー名の変更が一時的にロックされています",
-            "passwordWeak": "パスワードが弱いです。より強いパスワードの使用を検討してください",
-            "emailNotVerified": "メールが確認されていません。メールを確認してください",
-            "phoneNotVerified": "電話番号が確認されていません。電話を確認してください",
-            "profileIncomplete": "プロフィールが不完全です。プロフィールを完成させてください",
-            "settingsNotSaved": "設定が保存されていません。設定を保存してください",
-            "dataNotSaved": "データが保存されていません。データを保存してください",
-            "changesNotSaved": "変更が保存されていません。変更を保存してください",
-            "fileNotUploaded": "ファイルがアップロードされていません。ファイルをアップロードしてください",
-            "imageNotUploaded": "画像がアップロードされていません。画像をアップロードしてください",
-            "linkNotCopied": "リンクがコピーされていません。リンクをコピーしてください",
-            "emailNotSent": "メールが送信されていません。メールを送信してください",
-            "notificationNotSent": "通知が送信されていません。通知を送信してください",
-            "actionNotCompleted": "アクションが完了していません。アクションを完了してください",
-            "formNotSubmitted": "フォームが送信されていません。フォームを送信してください",
-            "onboardingNotCompleted": "オンボーディングが完了していません。オンボーディングを完了してください",
-            "accountNotActivated": "アカウントがアクティベートされていません。アカウントをアクティベートしてください",
-            "passwordNotChanged": "パスワードが変更されていません。パスワードを変更してください",
-            "usernameNotChanged": "ユーザー名が変更されていません。ユーザー名を変更してください",
-            "profileNotCompleted": "プロフィールが完了していません。プロフィールを完了してください",
-            "setupNotCompleted": "セットアップが完了していません。セットアップを完了してください",
-            "networkSlow": "ネットワークが遅いです。接続を確認してください",
-            "serverSlow": "サーバーが遅いです。後でもう一度試してください",
-            "validationPending": "検証が保留中です。お待ちください",
-            "permissionPending": "許可が保留中です。お待ちください",
-            "sessionExpiring": "セッションが期限切れになっています。再度ログインしてください",
-            "credentialsExpiring": "認証情報が期限切れになっています。認証情報を更新してください",
-            "emailExpiring": "メールが期限切れになっています。メールを更新してください",
-            "phoneExpiring": "電話が期限切れになっています。電話を更新してください",
-            "profileExpiring": "プロフィールが期限切れになっています。プロフィールを更新してください",
-            "settingsExpiring": "設定が期限切れになっています。設定を更新してください",
-            "dataExpiring": "データが期限切れになっています。データを更新してください",
-            "changesExpiring": "変更が期限切れになっています。変更を更新してください",
-            "fileExpiring": "ファイルが期限切れになっています。ファイルを更新してください",
-            "imageExpiring": "画像が期限切れになっています。画像を更新してください",
-            "linkExpiring": "リンクが期限切れになっています。リンクを更新してください",
-            "notificationExpiring": "通知が期限切れになっています。通知を更新してください",
-            "actionExpiring": "アクションが期限切れになっています。アクションを更新してください",
-            "formExpiring": "フォームが期限切れになっています。フォームを更新してください",
-            "onboardingExpiring": "オンボーディングが期限切れになっています。オンボーディングを更新してください",
-            "accountExpiring": "アカウントが期限切れになっています。アカウントを更新してください",
-            "passwordExpiring": "パスワードが期限切れになっています。パスワードを更新してください",
-            "usernameExpiring": "ユーザー名が期限切れになっています。ユーザー名を更新してください",
-            "setupExpiring": "セットアップが期限切れになっています。セットアップを更新してください"
-        },
-        "info": {
-            "loading": "読み込み中...",
-            "processing": "処理中...",
-            "saving": "保存中...",
-            "uploading": "アップロード中...",
-            "downloading": "ダウンロード中...",
-            "connecting": "接続中...",
-            "disconnecting": "切断中...",
-            "sending": "送信中...",
-            "receiving": "受信中...",
-            "updating": "更新中...",
-            "refreshing": "更新中...",
-            "synchronizing": "同期中...",
-            "validating": "検証中...",
-            "verifying": "確認中...",
-            "checking": "確認中...",
-            "searching": "検索中...",
-            "filtering": "フィルタリング中...",
-            "sorting": "並べ替え中...",
-            "organizing": "整理中...",
-            "arranging": "整理中...",
-            "configuring": "設定中...",
-            "setting": "設定中...",
-            "adjusting": "調整中...",
-            "modifying": "変更中...",
-            "changing": "変更中...",
-            "switching": "切り替え中...",
-            "toggling": "切り替え中...",
-            "enabling": "有効化中...",
-            "disabling": "無効化中...",
-            "activating": "アクティベート中...",
-            "deactivating": "非アクティベート中...",
-            "starting": "開始中...",
-            "stopping": "停止中...",
-            "pausing": "一時停止中...",
-            "resuming": "再開中...",
-            "restarting": "再起動中...",
-            "resetting": "リセット中...",
-            "clearing": "クリア中...",
-            "deleting": "削除中...",
-            "removing": "削除中...",
-            "adding": "追加中...",
-            "inserting": "挿入中...",
-            "creating": "作成中...",
-            "building": "構築中...",
-            "constructing": "構築中...",
-            "generating": "生成中...",
-            "producing": "生成中...",
-            "making": "作成中...",
-            "preparing": "準備中...",
-            "readying": "準備中...",
-            "initializing": "初期化中...",
-            "launching": "起動中...",
-            "opening": "開いています...",
-            "closing": "閉じています...",
-            "shutting": "閉じています...",
-            "ending": "終了中...",
-            "finishing": "終了中...",
-            "completing": "完了中...",
-            "finalizing": "最終化中...",
-            "concluding": "終了中...",
-            "terminating": "終了中...",
-            "canceling": "キャンセル中...",
-            "aborting": "中止中...",
-            "interrupting": "中断中...",
-            "halting": "停止中...",
-            "freezing": "凍結中...",
-            "unfreezing": "解凍中...",
-            "thawing": "解凍中...",
-            "melting": "融解中...",
-            "cooling": "冷却中...",
-            "heating": "加熱中...",
-            "warming": "加熱中...",
-            "chilling": "冷却中...",
-            "renewing": "更新中...",
-            "restoring": "復元中...",
-            "recovering": "回復中...",
-            "repairing": "修復中...",
-            "fixing": "修正中...",
-            "correcting": "修正中...",
-            "tuning": "調整中...",
-            "optimizing": "最適化中...",
-            "improving": "改善中...",
-            "enhancing": "強化中...",
-            "upgrading": "アップグレード中...",
-            "modernizing": "近代化中..."
-        }
-    },
-    "emailVerification": {
-        "title": "Verify Your Email",
-        "description": "We\u0027ve sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
-        "checkEmail": "Check your email",
-        "emailSent": "Verification email sent!",
-        "resendEmail": "Resend Email",
-        "resendIn": "Resend in",
-        "seconds": "seconds",
-        "didntReceive": "Didn\u0027t receive the email?",
-        "checkSpam": "Please check your spam folder or try again.",
-        "backToLogin": "Back to Login",
-        "emailAddress": "Email Address",
-        "verificationSent": "Verification email sent to:",
-        "clickLink": "Click the link in the email to verify your account.",
-        "expiresIn": "This link expires in 24 hours.",
-        "needHelp": "Need help?",
-        "contactSupport": "Contact Support"
-    },
-    "settings": {
-        "title": "設定",
-        "account": {
-            "heading": "アカウント",
-            "security": {
-                "title": "アカウントとセキュリティ"
-            },
-            "changePassword": {
-                "text": "パスワードを変更しますか？",
-                "button": "パスワードを変更",
-                "modalTitle": "パスワードを変更",
-                "currentPassword": "現在のパスワード",
-                "newPassword": "新しいパスワード",
-                "confirmPassword": "新しいパスワードを確認",
-                "updateButton": "パスワードを更新",
-                "currentPasswordPlaceholder": "現在のパスワードを入力してください",
-                "newPasswordPlaceholder": "新しいパスワードを入力してください",
-                "confirmPasswordPlaceholder": "新しいパスワードを再入力してください",
-                "successMessage": "パスワードが正常に更新されました。セキュリティのためにログインページにリダイレクトされます。",
-                "redirectMessage": "セキュリティのためにログインページにリダイレクトしています...",
-                "description": "アカウントを安全に保つためにパスワードを更新してください"
-            },
-            "deactivateAccount": {
-                "text": "アカウントを無効にしますか？",
-                "button": "アカウントを無効にする",
-                "modalTitle": "アカウントを無効にしますか？",
-                "modalDescription": "本当にアカウントを無効にしてもよろしいですか？",
-                "enterUsername": "ユーザー名を入力してください",
-                "enterPassword": "パスワードを入力してください",
-                "usernamePlaceholder": "ユーザー名を入力してください",
-                "passwordPlaceholder": "現在のパスワードを入力してください",
-                "confirmButton": "マイアカウントを無効にする",
-                "deactivatedButton": "無効",
-                "successMessage": "アカウントが正常に無効化されました",
-                "activatedMessage": "アカウントが正常に有効化されました",
-                "description": "アカウントを一時的に無効にする"
-            },
-            "deleteAccount": {
-                "text": "アカウントを削除しますか？",
-                "button": "アカウントを削除",
-                "step1": {
-                    "modalTitle": "アカウントを削除しますか？",
-                    "modalDescription": "本当にアカウントを削除してもよろしいですか？この操作は元に戻すことができません。",
-                    "modalDescription2": "データを保持したい場合は、代わりにアカウントを無効にすることができます。",
-                    "deactivateInsteadButton": "代わりにアカウントを無効にする",
-                    "continueButton": "削除を続行"
-                },
-                "step2": {
-                    "modalTitle": "詳細を入力してください",
-                    "enterUsername": "ユーザー名を入力してください",
-                    "enterPassword": "パスワードを入力してください",
-                    "confirmPassword": "パスワードを確認してください",
-                    "usernamePlaceholder": "ユーザー名を入力してください",
-                    "passwordPlaceholder": "パスワードを入力してください",
-                    "confirmPasswordPlaceholder": "パスワードを確認してください",
-                    "continueButton": "続行"
-                },
-                "step3": {
-                    "modalTitle": "なぜ退会されるのですか？",
-                    "reasonPlaceholder": "退会の理由をお聞かせください...",
-                    "continueButton": "続行"
-                },
-                "step4": {
-                    "modalTitle": "削除の確認",
-                    "confirmText": "続行するには\u0027CONFIRM DELETE\u0027と入力してください",
-                    "confirmPlaceholder": "確認のため\u0027CONFIRM DELETE\u0027と入力してください",
-                    "deleteButton": "マイアカウントを削除",
-                    "confirmationRequired": "確認のため\u0027CONFIRM DELETE\u0027と入力してください。",
-                    "reasonRequired": "退会の理由を入力してください。",
-                    "successMessage": "アカウントが正常に削除されました。"
-                },
-                "description": "アカウントとすべてのデータを永続的に削除する"
-            }
-        },
-        "languagePreference": {
-            "heading": "言語設定",
-            "selectLanguage": "言語を選択してください",
-            "availableLanguages": "47の利用可能な言語から選択",
-            "currentLanguage": "現在：{{flag}} {{name}}",
-            "languageChanged": "言語を{{name}}に変更しました",
-            "description": "インターフェースに適した言語を選択してください。これにより、アプリケーション全体のすべてのテキスト、ボタン、メニューの言語が変更されます。"
-        },
-        "subtitle": "アカウントの設定と環境設定を管理する"
+    "section4": {
+      "line1": "地球の探検者はクラブではありません。",
+      "line2": "それはラベルではありません。",
+      "line3": "それは共有されたマインドセットです —\n世界をどのように移動するかについての静かな理解。",
+      "title": "所属"
     },
     "seo": {
-        "loginTitle": "Login to explorers | Access Your Personalized Recommendations \u0026 Places",
-        "registerTitle": "Sign Up for explorers | Join the Community \u0026 Share Your Favorite Local Places"
+      "description": "A global community of people who explore with care — for people, culture, and the planet we share. Exploration isn't about distance, it's about depth.",
+      "keywords": [
+        "explorers of earth",
+        "about explorers",
+        "exploration community",
+        "thoughtful travel",
+        "sustainable exploration",
+        "local recommendations platform",
+        "travel app about",
+        "community-driven recommendations",
+        "authentic local experiences",
+        "explorers team",
+        "local discovery platform",
+        "share local places",
+        "travel technology",
+        "local recommendations app",
+        "explorers story",
+        "who we are explorers"
+      ],
+      "title": "Explorers of Earth | About Us"
     },
-    "sidebar": {
-        "home": "ホーム",
-        "profile": "プロフィール",
-        "recommendations": "おすすめ",
-        "analytics": "分析",
-        "settings": "設定",
-        "logout": "ログアウト",
-        "loading": "読み込み中...",
-        "clickToOpenMenu": "メニューを開くにはクリック"
+    "subtitle": {
+      "line1": "人々、文化、そして私たちが共有する惑星のために、注意深く探検する人々のグローバルコミュニティ。",
+      "line2": "探検は、私たちにとって、どれだけ遠くに行くかではありません。",
+      "line3": "どれだけ深くつながるかです。"
     },
-    "modal": {
-        "unsavedChanges": {
-            "title": "未保存の変更",
-            "message": "未保存の変更があります。移動すると失われます。どうしますか？",
-            "discard": "破棄",
-            "cancel": "キャンセル",
-            "save": "保存"
+    "title": "地球の探検者"
+  },
+  "analytics": {
+    "dashboard": {
+      "charts": {
+        "locationEngagement": {
+          "allLocations": "すべての場所",
+          "location": "場所",
+          "locationViews": "{{location}} ({{count}}回の閲覧)",
+          "noLocationData": "場所の閲覧データが利用できません",
+          "selectLocation": "場所を選択:",
+          "selectLocationPlaceholder": "場所を選択",
+          "stats": {
+            "avgViews": "平均閲覧数/場所",
+            "totalLocations": "総場所数",
+            "totalViews": "総閲覧数"
+          },
+          "subtitle": "時間経過による異なる場所の閲覧を追跡",
+          "title": "場所別エンゲージメント",
+          "tooltip": {
+            "date": "日付: {{date}}",
+            "locationViews": "{{location}}: {{value}}回の閲覧"
+          },
+          "unknownLocation": "不明な場所"
         },
-        "usernameChange": {
-            "title": "ユーザー名変更の確認",
-            "description": "ユーザー名は、プロフィールとおすすめリストのリンクで使用されます：",
-            "profileLabel": "プロフィール：",
-            "listLabel": "リスト：",
-            "warning": "古いユーザー名のQRコードやリンクは機能しなくなります — 更新して再共有する必要があります。",
-            "cooldownPrefix": "この更新後、",
-            "cooldownSuffix": "でユーザー名を再度変更できます。",
-            "minute": "1分",
-            "day": "1日",
-            "days": "日",
-            "cancel": "キャンセル",
-            "confirm": "ユーザー名を変更"
+        "recommendedPlaces": {
+          "analyticsSummary": "分析サマリー:",
+          "locationPlaces": "{{location}} ({{count}}の場所)",
+          "noClicksMessage": "選択した場所のおすすめクリックが見つかりませんでした。ユーザーが場所ページの場所カードをクリックすると、おすすめデータが表示されます。",
+          "noDataMessage": "選択した期間のおすすめクリックデータが利用できません。",
+          "noRecommendationData": "おすすめデータがありません",
+          "recordsWithRecommendations": "• {{count}}のおすすめID付きレコード",
+          "selectLocation": "場所を選択:",
+          "selectLocationPlaceholder": "場所を選択",
+          "selectLocationPrompt": "おすすめデータを表示するには、場所を選択してください。",
+          "stats": {
+            "avgClicks": "平均クリック数/場所",
+            "placesShown": "表示された場所",
+            "totalClicks": "総クリック数"
+          },
+          "subtitle": "場所別のおすすめ場所のクリックを追跡",
+          "title": "おすすめ場所のエンゲージメント",
+          "tooltip": {
+            "category": "カテゴリ: {{category}}",
+            "clicks": "クリック数: {{count}}",
+            "place": "{{place}}"
+          },
+          "totalClickEvents": "• {{count}}の総クリックイベント",
+          "uniqueRecommendations": "• {{count}}の一意のおすすめ",
+          "unknownCategory": "不明なカテゴリ",
+          "unknownLocation": "不明な場所",
+          "unknownPlace": "不明な場所"
+        },
+        "socialMedia": {
+          "analyticsSummary": "分析サマリー:",
+          "noDataMessage": "公開プロフィールページからソーシャルメディアのクリックデータが利用できません。",
+          "noDataTitle": "ソーシャルメディアのインタラクションデータがありません",
+          "stats": {
+            "avgClicks": "平均クリック数/プラットフォーム",
+            "platforms": "プラットフォーム",
+            "totalClicks": "総クリック数"
+          },
+          "subtitle": "すべてのプラットフォームの公開プロフィールからのソーシャルメディアリンクのクリックを追跡",
+          "title": "ソーシャルメディアのインタラクション",
+          "tooltip": {
+            "clicks": "クリック数: {{count}}",
+            "platform": "{{platform}}"
+          },
+          "totalSocialClicks": "• {{count}}の総ソーシャルメディアクリック",
+          "trackingNote": "• 公開プロフィールページからのクリックのみ追跡",
+          "uniquePlatforms": "• {{count}}の一意のプラットフォーム",
+          "willAppear": "ユーザーがソーシャルメディアリンクをクリックすると、ソーシャルメディアのインタラクションデータが表示されます。"
+        },
+        "topCountries": {
+          "analyticsSummary": "分析サマリー:",
+          "countryDataUnavailable": "国データが利用できません",
+          "eventsPending": "• {{count}}のジオロケーション保留中のイベント",
+          "eventsWithCountry": "• {{count}}の国データ付きイベント",
+          "failedToResolve": "国データの解決に失敗しました。後でもう一度お試しください。",
+          "geolocationIssue": "ジオロケーションの問題:",
+          "legend": "閲覧数",
+          "retryGeolocation": "ジオロケーションを再試行",
+          "title": "閲覧数トップ3の国",
+          "tooltip": {
+            "country": "国: {{country}}",
+            "views": "閲覧数: {{count}}"
+          },
+          "totalViewEvents": "• {{count}}の総閲覧イベント",
+          "unableToResolve": "現在、IPアドレスを国に解決できません。これはネットワーク制限またはサービスの制限による可能性があります。",
+          "willAppear": "IPジオロケーションサービスが利用可能になると、国データが自動的に表示されます。"
+        },
+        "trafficSource": {
+          "allSources": "すべてのソース",
+          "analyticsSummary": "分析サマリー:",
+          "direct": "直接",
+          "directTraffic": "• {{count}}の直接トラフィックイベント",
+          "eventsWithUTM": "• {{count}}のUTMソース付きイベント",
+          "instagram": "Instagram",
+          "noTrafficData": "トラフィックデータが利用できません",
+          "noViewEvents": "トラフィックソース情報を含む閲覧イベントが見つかりませんでした。",
+          "qrCode": "QRコード",
+          "selectSource": "トラフィックソースを選択:",
+          "subtitle": "異なるソースからのトラフィックが時間とともにどのように変化するかを追跡",
+          "title": "時間経過によるトラフィックソース",
+          "tooltip": {
+            "sourceCount": "{{source}}: {{count}}"
+          },
+          "totalViewEvents": "• {{count}}の総閲覧イベント",
+          "twitter": "Twitter",
+          "whatsapp": "WhatsApp",
+          "willAppear": "ユーザーがUTMパラメータを含むページを訪問すると、トラフィックソースデータが表示されます。"
+        },
+        "worldMap": {
+          "analyticsSummary": "分析サマリー:",
+          "countriesWithViews": "{{count}}の閲覧がある国",
+          "eventsPending": "• {{count}}のジオロケーション保留中のイベント",
+          "eventsWithCountry": "• {{count}}の国データ付きイベント",
+          "failedToResolve": "国データの解決に失敗しました。後でもう一度お試しください。",
+          "legend": {
+            "high": "高",
+            "highest": "最高",
+            "low": "低",
+            "medium": "中",
+            "views": "閲覧数:"
+          },
+          "noGeographicData": "地理データが利用できません",
+          "subtitle": "公開ページからの各国の閲覧分布を示すインタラクティブな世界地図",
+          "title": "グローバル閲覧分布",
+          "tooltip": {
+            "country": "{{country}}",
+            "views": "{{views}}回の閲覧"
+          },
+          "totalViewEvents": "• {{count}}の総閲覧イベント",
+          "unableToResolve": "現在、IPアドレスを国に解決できません。これはネットワーク制限またはサービスの制限による可能性があります。",
+          "willAppear": "IPジオロケーションサービスが利用可能になると、国データが自動的に表示されます。"
         }
-    },
-    "analytics": {
-        "dashboard": {
-            "title": "分析ダッシュボード",
-            "subtitle": "QRコードのパフォーマンスとユーザーのエンゲージメントを追跡",
-            "timePeriod": "期間:",
-            "timeFilter": {
-                "today": "今日",
-                "last7days": "過去7日間",
-                "last30days": "過去30日間",
-                "custom": "カスタム範囲",
-                "selectPeriod": "期間を選択"
-            },
-            "dateRange": {
-                "from": "開始:",
-                "to": "終了:"
-            },
-            "summaryCards": {
-                "totalViews": "総閲覧数",
-                "totalClicks": "総クリック数",
-                "totalQRViews": "総QR閲覧数",
-                "totalLinkViews": "総リンク閲覧数"
-            },
-            "loading": {
-                "loadingData": "分析データを読み込み中...",
-                "resolvingCountry": "国データを解決中..."
-            },
-            "error": {
-                "title": "分析の読み込みエラー",
-                "message": "分析データを取得できませんでした。後でもう一度お試しください。",
-                "errorLabel": "エラー:"
-            },
-            "comingSoon": {
-                "title": "分析まもなく利用可能",
-                "message": "分析は、アカウント作成から\u003cstrong\u003e{{days}}日{{daysPlural}}\u003c/strong\u003e後に利用可能になります。",
-                "whyWait": {
-                    "title": "なぜ待つのか？",
-                    "reasons": {
-                        "accuracy": "• データの正確性を確保し、スパムを防止",
-                        "interactions": "• 意味のあるユーザーインタラクションの時間を確保",
-                        "insights": "• 信頼性のある分析インサイトを提供"
-                    }
-                },
-                "tip": "その間、QRコードを共有して、分析が利用可能になったときにデータを生成しましょう！",
-                "filterTip": "\u003cstrong\u003eヒント:\u003c/strong\u003e 分析が利用可能になったら、期間（今日、過去7日間、過去30日間、またはカスタム範囲）でフィルタリングしてデータを表示できます。"
-            },
-            "emptyState": {
-                "title": "分析データがありません",
-                "noDataMessage": "アカウントの分析データが見つかりませんでした。人々がQRコードを閲覧し、やり取りを始めると、ここに分析が表示されます。",
-                "customRange": {
-                    "bothMissing": "カスタム範囲の開始日と終了日の両方を選択して、分析データを表示してください。",
-                    "startMissing": "カスタム範囲の開始日を選択して、分析データを表示してください。",
-                    "endMissing": "カスタム範囲の終了日を選択して、分析データを表示してください。"
-                },
-                "noDataForPeriod": {
-                    "today": "今日の分析データは利用できません。別の時間範囲を選択してデータを表示してください。",
-                    "last7days": "過去7日間の分析データは利用できません。別の時間範囲を選択してデータを表示してください。",
-                    "last30days": "過去30日間の分析データは利用できません。別の時間範囲を選択してデータを表示してください。",
-                    "custom": "カスタム範囲（{{startDate}}から{{endDate}}）の分析データは利用できません。別の時間範囲を選択してデータを表示してください。",
-                    "default": "選択した時間範囲の分析データは利用できません。別の時間範囲を選択してデータを表示してください。"
-                },
-                "howToStart": {
-                    "title": "分析を見るには:",
-                    "shareQR": "• ソーシャルメディアでQRコードを共有",
-                    "includeQR": "• マーケティング資料にQRコードを含める",
-                    "askFriends": "• 友人にQRコードをスキャンしてもらう",
-                    "viewProfile": "• 公開プロフィールページを閲覧"
-                }
-            },
-            "charts": {
-                "topCountries": {
-                    "title": "閲覧数トップ3の国",
-                    "retryGeolocation": "ジオロケーションを再試行",
-                    "geolocationIssue": "ジオロケーションの問題:",
-                    "countryDataUnavailable": "国データが利用できません",
-                    "unableToResolve": "現在、IPアドレスを国に解決できません。これはネットワーク制限またはサービスの制限による可能性があります。",
-                    "failedToResolve": "国データの解決に失敗しました。後でもう一度お試しください。",
-                    "analyticsSummary": "分析サマリー:",
-                    "totalViewEvents": "• {{count}}の総閲覧イベント",
-                    "eventsWithCountry": "• {{count}}の国データ付きイベント",
-                    "eventsPending": "• {{count}}のジオロケーション保留中のイベント",
-                    "willAppear": "IPジオロケーションサービスが利用可能になると、国データが自動的に表示されます。",
-                    "tooltip": {
-                        "country": "国: {{country}}",
-                        "views": "閲覧数: {{count}}"
-                    },
-                    "legend": "閲覧数"
-                },
-                "worldMap": {
-                    "title": "グローバル閲覧分布",
-                    "subtitle": "公開ページからの各国の閲覧分布を示すインタラクティブな世界地図",
-                    "noGeographicData": "地理データが利用できません",
-                    "unableToResolve": "現在、IPアドレスを国に解決できません。これはネットワーク制限またはサービスの制限による可能性があります。",
-                    "failedToResolve": "国データの解決に失敗しました。後でもう一度お試しください。",
-                    "analyticsSummary": "分析サマリー:",
-                    "totalViewEvents": "• {{count}}の総閲覧イベント",
-                    "eventsWithCountry": "• {{count}}の国データ付きイベント",
-                    "eventsPending": "• {{count}}のジオロケーション保留中のイベント",
-                    "willAppear": "IPジオロケーションサービスが利用可能になると、国データが自動的に表示されます。",
-                    "tooltip": {
-                        "country": "{{country}}",
-                        "views": "{{views}}回の閲覧"
-                    },
-                    "countriesWithViews": "{{count}}の閲覧がある国",
-                    "legend": {
-                        "views": "閲覧数:",
-                        "low": "低",
-                        "medium": "中",
-                        "high": "高",
-                        "highest": "最高"
-                    }
-                },
-                "trafficSource": {
-                    "title": "時間経過によるトラフィックソース",
-                    "subtitle": "異なるソースからのトラフィックが時間とともにどのように変化するかを追跡",
-                    "selectSource": "トラフィックソースを選択:",
-                    "allSources": "すべてのソース",
-                    "direct": "直接",
-                    "qrCode": "QRコード",
-                    "instagram": "Instagram",
-                    "whatsapp": "WhatsApp",
-                    "twitter": "Twitter",
-                    "noTrafficData": "トラフィックデータが利用できません",
-                    "noViewEvents": "トラフィックソース情報を含む閲覧イベントが見つかりませんでした。",
-                    "analyticsSummary": "分析サマリー:",
-                    "totalViewEvents": "• {{count}}の総閲覧イベント",
-                    "eventsWithUTM": "• {{count}}のUTMソース付きイベント",
-                    "directTraffic": "• {{count}}の直接トラフィックイベント",
-                    "willAppear": "ユーザーがUTMパラメータを含むページを訪問すると、トラフィックソースデータが表示されます。",
-                    "tooltip": {
-                        "sourceCount": "{{source}}: {{count}}"
-                    }
-                },
-                "locationEngagement": {
-                    "title": "場所別エンゲージメント",
-                    "subtitle": "時間経過による異なる場所の閲覧を追跡",
-                    "selectLocation": "場所を選択:",
-                    "allLocations": "すべての場所",
-                    "selectLocationPlaceholder": "場所を選択",
-                    "locationViews": "{{location}} ({{count}}回の閲覧)",
-                    "noLocationData": "場所の閲覧データが利用できません",
-                    "unknownLocation": "不明な場所",
-                    "location": "場所",
-                    "tooltip": {
-                        "date": "日付: {{date}}",
-                        "locationViews": "{{location}}: {{value}}回の閲覧"
-                    },
-                    "stats": {
-                        "totalLocations": "総場所数",
-                        "totalViews": "総閲覧数",
-                        "avgViews": "平均閲覧数/場所"
-                    }
-                },
-                "recommendedPlaces": {
-                    "title": "おすすめ場所のエンゲージメント",
-                    "subtitle": "場所別のおすすめ場所のクリックを追跡",
-                    "selectLocation": "場所を選択:",
-                    "selectLocationPlaceholder": "場所を選択",
-                    "locationPlaces": "{{location}} ({{count}}の場所)",
-                    "noRecommendationData": "おすすめデータがありません",
-                    "noDataMessage": "選択した期間のおすすめクリックデータが利用できません。",
-                    "analyticsSummary": "分析サマリー:",
-                    "totalClickEvents": "• {{count}}の総クリックイベント",
-                    "recordsWithRecommendations": "• {{count}}のおすすめID付きレコード",
-                    "uniqueRecommendations": "• {{count}}の一意のおすすめ",
-                    "selectLocationPrompt": "おすすめデータを表示するには、場所を選択してください。",
-                    "noClicksMessage": "選択した場所のおすすめクリックが見つかりませんでした。ユーザーが場所ページの場所カードをクリックすると、おすすめデータが表示されます。",
-                    "unknownPlace": "不明な場所",
-                    "unknownCategory": "不明なカテゴリ",
-                    "unknownLocation": "不明な場所",
-                    "tooltip": {
-                        "place": "{{place}}",
-                        "category": "カテゴリ: {{category}}",
-                        "clicks": "クリック数: {{count}}"
-                    },
-                    "stats": {
-                        "placesShown": "表示された場所",
-                        "totalClicks": "総クリック数",
-                        "avgClicks": "平均クリック数/場所"
-                    }
-                },
-                "socialMedia": {
-                    "title": "ソーシャルメディアのインタラクション",
-                    "subtitle": "すべてのプラットフォームの公開プロフィールからのソーシャルメディアリンクのクリックを追跡",
-                    "noDataTitle": "ソーシャルメディアのインタラクションデータがありません",
-                    "noDataMessage": "公開プロフィールページからソーシャルメディアのクリックデータが利用できません。",
-                    "analyticsSummary": "分析サマリー:",
-                    "totalSocialClicks": "• {{count}}の総ソーシャルメディアクリック",
-                    "uniquePlatforms": "• {{count}}の一意のプラットフォーム",
-                    "trackingNote": "• 公開プロフィールページからのクリックのみ追跡",
-                    "willAppear": "ユーザーがソーシャルメディアリンクをクリックすると、ソーシャルメディアのインタラクションデータが表示されます。",
-                    "tooltip": {
-                        "platform": "{{platform}}",
-                        "clicks": "クリック数: {{count}}"
-                    },
-                    "stats": {
-                        "platforms": "プラットフォーム",
-                        "totalClicks": "総クリック数",
-                        "avgClicks": "平均クリック数/プラットフォーム"
-                    }
-                }
-            }
+      },
+      "comingSoon": {
+        "filterTip": "<strong>ヒント:</strong> 分析が利用可能になったら、期間（今日、過去7日間、過去30日間、またはカスタム範囲）でフィルタリングしてデータを表示できます。",
+        "message": "分析は、アカウント作成から<strong>{{days}}日{{daysPlural}}</strong>後に利用可能になります。",
+        "tip": "その間、QRコードを共有して、分析が利用可能になったときにデータを生成しましょう！",
+        "title": "分析まもなく利用可能",
+        "whyWait": {
+          "reasons": {
+            "accuracy": "• データの正確性を確保し、スパムを防止",
+            "insights": "• 信頼性のある分析インサイトを提供",
+            "interactions": "• 意味のあるユーザーインタラクションの時間を確保"
+          },
+          "title": "なぜ待つのか？"
         }
+      },
+      "dateRange": {
+        "from": "開始:",
+        "to": "終了:"
+      },
+      "emptyState": {
+        "customRange": {
+          "bothMissing": "カスタム範囲の開始日と終了日の両方を選択して、分析データを表示してください。",
+          "endMissing": "カスタム範囲の終了日を選択して、分析データを表示してください。",
+          "startMissing": "カスタム範囲の開始日を選択して、分析データを表示してください。"
+        },
+        "howToStart": {
+          "askFriends": "• 友人にQRコードをスキャンしてもらう",
+          "includeQR": "• マーケティング資料にQRコードを含める",
+          "shareQR": "• ソーシャルメディアでQRコードを共有",
+          "title": "分析を見るには:",
+          "viewProfile": "• 公開プロフィールページを閲覧"
+        },
+        "noDataForPeriod": {
+          "custom": "カスタム範囲（{{startDate}}から{{endDate}}）の分析データは利用できません。別の時間範囲を選択してデータを表示してください。",
+          "default": "選択した時間範囲の分析データは利用できません。別の時間範囲を選択してデータを表示してください。",
+          "last30days": "過去30日間の分析データは利用できません。別の時間範囲を選択してデータを表示してください。",
+          "last7days": "過去7日間の分析データは利用できません。別の時間範囲を選択してデータを表示してください。",
+          "today": "今日の分析データは利用できません。別の時間範囲を選択してデータを表示してください。"
+        },
+        "noDataMessage": "アカウントの分析データが見つかりませんでした。人々がQRコードを閲覧し、やり取りを始めると、ここに分析が表示されます。",
+        "title": "分析データがありません"
+      },
+      "error": {
+        "errorLabel": "エラー:",
+        "message": "分析データを取得できませんでした。後でもう一度お試しください。",
+        "title": "分析の読み込みエラー"
+      },
+      "loading": {
+        "loadingData": "分析データを読み込み中...",
+        "resolvingCountry": "国データを解決中..."
+      },
+      "subtitle": "QRコードのパフォーマンスとユーザーのエンゲージメントを追跡",
+      "summaryCards": {
+        "totalClicks": "総クリック数",
+        "totalLinkViews": "総リンク閲覧数",
+        "totalQRViews": "総QR閲覧数",
+        "totalViews": "総閲覧数"
+      },
+      "timeFilter": {
+        "custom": "カスタム範囲",
+        "last30days": "過去30日間",
+        "last7days": "過去7日間",
+        "selectPeriod": "期間を選択",
+        "today": "今日"
+      },
+      "timePeriod": "期間:",
+      "title": "分析ダッシュボード"
     }
+  },
+  "auth": {
+    "acceptTerms": "I accept the",
+    "alreadyHaveAccount": "すでにアカウントをお持ちですか？",
+    "blockedAccount": {
+      "message": "This account has been deactivated.",
+      "reactivateLink": "Click here to reactivate your account →"
+    },
+    "claimAccount": "Claim Account?",
+    "confirmPassword": "パスワード確認",
+    "confirmPasswordPlaceholder": "パスワードを再入力してください",
+    "email": "メールアドレス",
+    "emailPlaceholder": "メールアドレスを入力してください",
+    "forgotPassword": "パスワードをお忘れですか？",
+    "login": "ログイン",
+    "loginSubtitle": "アカウントに続行するにはログインしてください",
+    "loginTitle": "ログイン",
+    "newToExplorers": "New to explorers?",
+    "onboarding": {
+      "accountDetails": {
+        "accountType": "アカウントタイプ",
+        "bio": "バイオ",
+        "bioPlaceholder": "あなたについて教えてください",
+        "business": "ビジネス",
+        "creator": "クリエイター",
+        "description": "あなたについて教えてください",
+        "displayName": "表示名",
+        "displayNamePlaceholder": "表示名を入力してください",
+        "next": "次へ",
+        "personal": "個人",
+        "title": "アカウント詳細",
+        "username": "ユーザー名",
+        "usernameDescription": "ユーザー名は、公開プロフィールリンクとQRコードの一部です。例：explorers.earth/bhavya",
+        "usernamePlaceholder": "ユーザー名を入力してください"
+      },
+      "addressDetails": {
+        "address": "住所",
+        "addressPlaceholder": "住所を入力してください",
+        "back": "戻る",
+        "city": "都市",
+        "cityPlaceholder": "都市を入力してください",
+        "confirmDetails": "詳細を確認",
+        "country": "国",
+        "countryPlaceholder": "国を入力してください",
+        "description": "どこにいますか？",
+        "detectLocation": "Detect my current location",
+        "postalCode": "郵便番号",
+        "postalCodePlaceholder": "郵便番号を入力してください",
+        "primaryAddress": "主要住所",
+        "primaryAddressDescription": "公開プロフィールに表示（都市と国）",
+        "primaryAddressPlaceholder": "主要住所を入力してください",
+        "sameAsAddress": "住所と同じ",
+        "state": "州",
+        "statePlaceholder": "州を入力してください",
+        "streetName": "通り名",
+        "streetNamePlaceholder": "通り名を入力してください",
+        "title": "住所詳細"
+      },
+      "contactDetails": {
+        "back": "戻る",
+        "description": "確認のために携帯電話番号を追加してください",
+        "mobileNumber": "携帯電話番号",
+        "mobileNumberPlaceholder": "携帯電話番号を入力してください",
+        "next": "次へ",
+        "title": "連絡先詳細"
+      }
+    },
+    "or": "または",
+    "password": "パスワード",
+    "passwordPlaceholder": "パスワードを入力してください",
+    "register": "登録",
+    "resetPassword": {
+      "confirmPasswordPlaceholder": "Confirm your password",
+      "newPasswordPlaceholder": "Enter new password"
+    },
+    "signInWithGoogle": "Googleでログイン",
+    "signup": "サインアップ",
+    "signupSubtitle": "explorersの機能をお楽しみください",
+    "signUpWithGoogle": "Googleでサインアップ",
+    "status": {
+      "authenticating": "Authenticating...",
+      "syncingLocalTunes": "Syncing with LocalTunes..."
+    },
+    "termsAndConditions": "Terms and Conditions",
+    "username": "ユーザー名",
+    "usernameOrEmail": "ユーザー名またはメールアドレス",
+    "usernameOrEmailPlaceholder": "ユーザー名またはメールアドレスを入力してください",
+    "usernamePlaceholder": "ユーザー名を入力してください",
+    "validations": {
+      "accountName": {
+        "invalidChars": "アカウント名には文字、スペース、アポストロフィ、ハイフン、ピリオドのみを含めることができます",
+        "maxLength": "アカウント名は50文字を超えてはいけません",
+        "minLength": "アカウント名は少なくとも2文字である必要があります",
+        "noNumbers": "アカウント名には数字を含めることはできません",
+        "required": "アカウント名は必須です"
+      },
+      "accountType": {
+        "business": "Business",
+        "creator": "Creator",
+        "invalid": "無効なアカウントタイプ",
+        "personal": "Personal",
+        "required": "アカウントタイプは必須です"
+      },
+      "confirmPassword": {
+        "confirmRequired": "パスワードの確認は必須です",
+        "match": "パスワードが一致します",
+        "mustMatch": "パスワードが一致しません",
+        "required": "パスワードを確認してください"
+      },
+      "email": {
+        "alreadyExists": "メールアドレスは既に存在します",
+        "invalid": "無効なメールアドレス",
+        "invalidFormat": "有効なメールアドレスを入力してください",
+        "required": "メールアドレスは必須です"
+      },
+      "forgotPassword": {
+        "backToLogin": "ログインに戻る",
+        "description": "メールアドレスを入力すると、リセットリンクをお送りします。",
+        "emailLabel": "メールアドレス",
+        "emailPlaceholder": "メールアドレスを入力してください",
+        "failedToSend": "リセットリンクの送信に失敗しました。後でもう一度お試しください。",
+        "resetLinkSent": "パスワードリセットリンクをメールに送信しました！",
+        "sendResetLink": "リセットリンクを送信",
+        "somethingWentWrong": "何かが間違っています！",
+        "title": "パスワードをお忘れですか？"
+      },
+      "general": {
+        "fillRequiredFields": "すべての必須フィールドを入力してください",
+        "somethingWentWrong": "何かが間違っています。もう一度お試しください"
+      },
+      "login": {
+        "accountNotFound": "アカウントが見つかりません",
+        "incorrectPassword": "パスワードが正しくありません",
+        "invalidCredentials": "無効なユーザー名/メールアドレスまたはパスワード",
+        "tooManyAttempts": "失敗した試行が多すぎます",
+        "usernameOrEmailRequired": "ユーザー名またはメールアドレスは必須です"
+      },
+      "onboarding": {
+        "addressRequired": "住所が必要です",
+        "bioMaxLength": "バイオは250文字を超えてはいけません",
+        "bioRequired": "バイオが必要です",
+        "cityRequired": "都市が必要です",
+        "countryRequired": "国が必要です",
+        "displayNameMaxLength": "表示名は50文字を超えてはいけません",
+        "displayNameMinLength": "表示名は少なくとも2文字である必要があります",
+        "displayNameRequired": "表示名が必要です",
+        "emailAddressRequired": "メールアドレスが必要です",
+        "invalidUsername": "無効なユーザー名",
+        "mobileNumberInvalid": "有効な携帯電話番号を入力してください",
+        "mobileNumberLength": "携帯電話番号は10桁である必要があります",
+        "mobileNumberRequired": "携帯電話番号が必要です",
+        "postalCodeRequired": "郵便番号が必要です",
+        "primaryAddressRequired": "主要住所が必要です",
+        "profileImageAlt": "Profile",
+        "resetLinkSentSuccess": "リセットリンクが正常に送信されました！",
+        "stateRequired": "州が必要です"
+      },
+      "password": {
+        "considerLonger": "より良いセキュリティのために、より多様性のある長いパスワードの使用を検討してください",
+        "fair": "普通",
+        "good": "良い",
+        "lowercaseRequired": "パスワードには少なくとも1つの小文字(a-z)が含まれている必要があります",
+        "maxLength": "パスワードは32文字を超えることはできません",
+        "medium": "中程度",
+        "meetsAllRequirements": "Password meets all requirements",
+        "minLength": "パスワードは6文字以上である必要があります",
+        "moreSecure": "10文字以上のパスワードの方が安全です",
+        "numberRequired": "パスワードには少なくとも1つの数字（0-9）が含まれている必要があります",
+        "required": "パスワードは必須です",
+        "sameAsCurrent": "新しいパスワードは現在のパスワードと同じにすることはできません",
+        "specialCharRequired": "パスワードには少なくとも1つの特殊文字（!@#$%^&*().,?\": {}|<>)が含まれている必要があります",
+        "strength": "パスワードの強度",
+        "strong": "強い",
+        "tooCommon": "このパスワードは一般的すぎます。よりユニークなパスワードを選択してください",
+        "uppercaseRequired": "パスワードには少なくとも1つの大文字（A-Z）が含まれている必要があります",
+        "veryStrong": "非常に強い",
+        "veryWeak": "非常に弱い",
+        "weak": "弱い"
+      },
+      "primaryAddress": {
+        "required": "主要住所は必須です"
+      },
+      "resetLinkSent": {
+        "description": "パスワードリセットリンクのために受信トレイを確認してください。",
+        "resending": "再送信中...",
+        "resendMail": "メール再送信",
+        "resendWithCooldown": "メール再送信 ({{cooldown}}秒)",
+        "title": "メールが送信されました！"
+      },
+      "resetPassword": {
+        "confirmPassword": "Confirm Password",
+        "confirmPasswordPlaceholder": "Confirm your password",
+        "newPassword": "New Password",
+        "newPasswordPlaceholder": "Enter new password"
+      },
+      "socialMedia": {
+        "appleMusic": "有効なApple Music URLを入力してください",
+        "email": "有効なメールアドレスを入力してください",
+        "facebook": "有効なFacebookプロフィールURLを入力してください",
+        "instagram": "有効なInstagramプロフィールURLを入力してください",
+        "linkedin": "有効なLinkedInプロフィールURLを入力してください",
+        "mobile": "有効な携帯電話番号を入力してください（例：+1234567890）",
+        "snapchat": "有効なSnapchatユーザー名を入力してください",
+        "spotify": "有効なSpotify URLを入力してください",
+        "tiktok": "有効なTikTokプロフィールURLを入力してください",
+        "website": "有効なウェブサイトURLを入力してください",
+        "whatsapp": "有効なWhatsApp連絡先を入力してください：電話（+1234567890）またはwa.me/api.whatsapp.comリンク",
+        "x": "有効なX（Twitter）プロフィールURLを入力してください",
+        "youtube": "有効なYouTubeチャンネルURLを入力してください（例：youtube.com/@ユーザー名）",
+        "youtubeMusic": "有効なYouTube MusicチャンネルURLを入力してください"
+      },
+      "termsAccepted": {
+        "required": "You must accept the Terms and Conditions to continue"
+      },
+      "username": {
+        "alreadyExists": "ユーザー名は既に存在します",
+        "available": "ユーザー名は利用可能です",
+        "cannotBeAllNumbers": "ユーザー名は数字のみにすることはできません",
+        "cannotStartEndHyphen": "ユーザー名はハイフンで始まったり終わったりすることはできません",
+        "checkingAvailability": "利用可能性を確認中...",
+        "inappropriateContent": "ユーザー名に不適切なコンテンツが含まれています",
+        "invalidChars": "ユーザー名には小文字（a-z）、数字（0-9）、ハイフン（-）のみ使用できます",
+        "maxLength": "ユーザー名は30文字を超えることはできません",
+        "minLength": "ユーザー名は3文字以上である必要があります",
+        "mustStartWithLetter": "ユーザー名は文字（a-z）で始まる必要があります",
+        "noConsecutiveHyphens": "ユーザー名に連続するハイフンを含めることはできません",
+        "required": "ユーザー名は必須です",
+        "reservedWords": "このユーザー名には予約語が含まれており、使用できません",
+        "suggestedAlternatives": "推奨される代替案：",
+        "willBeConvertedLowercase": "ユーザー名は小文字に変換されます",
+        "willConvertToLowercase": "ユーザー名は小文字に変換されます"
+      }
+    }
+  },
+  "common": {
+    "cancel": "キャンセル",
+    "error": "エラーが発生しました。後でもう一度お試しください。",
+    "hidePassword": "パスワードを非表示",
+    "loading": "読み込み中...",
+    "noResults": "結果が見つかりません",
+    "retry": "再試行",
+    "showPassword": "パスワードを表示",
+    "signInWithGoogle": "Googleでサインイン",
+    "signUpWithGoogle": "Googleでサインアップ",
+    "submit": "送信"
+  },
+  "contact": {
+    "closingMessage": "私たちは大きなビジョンを持つ小さなチームです — あなたの考えは私たちにとって重要です。お問い合わせいただき、ローカルでグローバルな何かを一緒に構築しましょう。",
+    "email": "hello@explorers.earth",
+    "getInTouch": "お問い合わせ",
+    "responseTime": "24-48時間以内に回答いたします",
+    "seo": {
+      "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
+      "keywords": [
+        "contact explorers",
+        "explorers support",
+        "get in touch explorers",
+        "customer service travel app",
+        "partnership inquiry explorers",
+        "help center local recommendations",
+        "technical support explorers",
+        "travel app customer service",
+        "feedback location sharing",
+        "account assistance explorers",
+        "business collaboration explorers",
+        "report problem explorers",
+        "share local recommendations support",
+        "find explorers contact",
+        "customer service",
+        "explorers team",
+        "help center",
+        "contact support",
+        "QR code support",
+        "local recommendations help",
+        "partnership inquiries"
+      ],
+      "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+      "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
+      "title": "Contact explorers | Support, Help and Partnership enquiries."
+    },
+    "subtitle": "質問、アイデア、または単に挨拶したい場合 — お聞かせください。",
+    "title": "つながりましょう。"
+  },
+  "cookieConsent": {
+    "acceptAll": "✅ すべてのCookieを受け入れる",
+    "acceptAllButton": "すべて受け入れる",
+    "analyticsCookies": {
+      "description": "訪問者がウェブサイトとどのように対話するかを理解するのに役立ちます",
+      "title": "分析Cookie"
+    },
+    "closeBanner": "バナーを閉じる",
+    "customize": "⚙️ カスタマイズ",
+    "description": "閲覧体験を向上させ、パーソナライズされたコンテンツを提供し、トラフィックを分析するためにCookieを使用しています。設定はいつでも管理できます。",
+    "essentialCookies": {
+      "alwaysOn": "常にオン",
+      "description": "ウェブサイトが正常に機能するために必要",
+      "title": "必須Cookie"
+    },
+    "goBack": "戻る",
+    "marketingCookies": {
+      "description": "パーソナライズされた広告を配信するために使用されます",
+      "title": "マーケティングCookie"
+    },
+    "preferencesTitle": "Cookie設定",
+    "rejectNonEssential": "❌ 非必須を拒否",
+    "savePreferences": "設定を保存",
+    "title": "🍪 Cookie設定"
+  },
+  "countries": {
+    "AE": "United Arab Emirates",
+    "AF": "Afghanistan",
+    "AG": "Antigua and Barbuda",
+    "AL": "Albania",
+    "AM": "Armenia",
+    "AO": "Angola",
+    "AR": "Argentina",
+    "AT": "Austria",
+    "AU": "Australia",
+    "AZ": "Azerbaijan",
+    "BA": "Bosnia and Herzegovina",
+    "BB": "Barbados",
+    "BD": "Bangladesh",
+    "BE": "Belgium",
+    "BF": "Burkina Faso",
+    "BG": "Bulgaria",
+    "BH": "Bahrain",
+    "BI": "Burundi",
+    "BJ": "Benin",
+    "BN": "Brunei",
+    "BO": "Bolivia",
+    "BR": "Brazil",
+    "BS": "Bahamas",
+    "BT": "Bhutan",
+    "BW": "Botswana",
+    "BY": "Belarus",
+    "BZ": "Belize",
+    "CA": "Canada",
+    "CD": "Democratic Republic of the Congo",
+    "CF": "Central African Republic",
+    "CG": "Republic of the Congo",
+    "CH": "Switzerland",
+    "CI": "Ivory Coast",
+    "CL": "Chile",
+    "CM": "Cameroon",
+    "CN": "China",
+    "CO": "Colombia",
+    "CR": "Costa Rica",
+    "CU": "Cuba",
+    "CV": "Cape Verde",
+    "CY": "Cyprus",
+    "CZ": "Czech Republic",
+    "DE": "Germany",
+    "DJ": "Djibouti",
+    "DK": "Denmark",
+    "DM": "Dominica",
+    "DO": "Dominican Republic",
+    "DZ": "Algeria",
+    "EC": "Ecuador",
+    "EE": "Estonia",
+    "EG": "Egypt",
+    "ER": "Eritrea",
+    "ES": "Spain",
+    "ET": "Ethiopia",
+    "FI": "Finland",
+    "FJ": "Fiji",
+    "FK": "Falkland Islands",
+    "FM": "Micronesia",
+    "FR": "France",
+    "GA": "Gabon",
+    "GB": "United Kingdom",
+    "GD": "Grenada",
+    "GE": "Georgia",
+    "GF": "French Guiana",
+    "GH": "Ghana",
+    "GM": "Gambia",
+    "GN": "Guinea",
+    "GQ": "Equatorial Guinea",
+    "GR": "Greece",
+    "GT": "Guatemala",
+    "GW": "Guinea-Bissau",
+    "GY": "Guyana",
+    "HK": "Hong Kong",
+    "HN": "Honduras",
+    "HR": "Croatia",
+    "HT": "Haiti",
+    "HU": "Hungary",
+    "ID": "Indonesia",
+    "IE": "Ireland",
+    "IL": "Israel",
+    "IN": "India",
+    "IQ": "Iraq",
+    "IR": "Iran",
+    "IS": "Iceland",
+    "IT": "Italy",
+    "JM": "Jamaica",
+    "JO": "Jordan",
+    "JP": "Japan",
+    "KE": "Kenya",
+    "KG": "Kyrgyzstan",
+    "KH": "Cambodia",
+    "KI": "Kiribati",
+    "KM": "Comoros",
+    "KN": "Saint Kitts and Nevis",
+    "KP": "North Korea",
+    "KR": "South Korea",
+    "KW": "Kuwait",
+    "KZ": "Kazakhstan",
+    "LA": "Laos",
+    "LB": "Lebanon",
+    "LC": "Saint Lucia",
+    "LK": "Sri Lanka",
+    "LR": "Liberia",
+    "LS": "Lesotho",
+    "LT": "Lithuania",
+    "LU": "Luxembourg",
+    "LV": "Latvia",
+    "LY": "Libya",
+    "MA": "Morocco",
+    "MD": "Moldova",
+    "ME": "Montenegro",
+    "MG": "Madagascar",
+    "MH": "Marshall Islands",
+    "MK": "North Macedonia",
+    "ML": "Mali",
+    "MM": "Myanmar",
+    "MN": "Mongolia",
+    "MO": "Macau",
+    "MR": "Mauritania",
+    "MT": "Malta",
+    "MU": "Mauritius",
+    "MV": "Maldives",
+    "MW": "Malawi",
+    "MX": "Mexico",
+    "MY": "Malaysia",
+    "MZ": "Mozambique",
+    "NA": "Namibia",
+    "NC": "New Caledonia",
+    "NE": "Niger",
+    "NG": "Nigeria",
+    "NI": "Nicaragua",
+    "NL": "Netherlands",
+    "NO": "Norway",
+    "NP": "Nepal",
+    "NR": "Nauru",
+    "NZ": "New Zealand",
+    "OM": "Oman",
+    "PA": "Panama",
+    "PE": "Peru",
+    "PF": "French Polynesia",
+    "PG": "Papua New Guinea",
+    "PH": "Philippines",
+    "PK": "Pakistan",
+    "PL": "Poland",
+    "PR": "Puerto Rico",
+    "PS": "Palestine",
+    "PT": "Portugal",
+    "PW": "Palau",
+    "PY": "Paraguay",
+    "QA": "Qatar",
+    "RO": "Romania",
+    "RS": "Serbia",
+    "RU": "Russia",
+    "RW": "Rwanda",
+    "SA": "Saudi Arabia",
+    "SB": "Solomon Islands",
+    "SC": "Seychelles",
+    "SD": "Sudan",
+    "SE": "Sweden",
+    "SG": "Singapore",
+    "SI": "Slovenia",
+    "SK": "Slovakia",
+    "SL": "Sierra Leone",
+    "SN": "Senegal",
+    "SO": "Somalia",
+    "SR": "Suriname",
+    "SS": "South Sudan",
+    "ST": "São Tomé and Príncipe",
+    "SV": "El Salvador",
+    "SY": "Syria",
+    "SZ": "Eswatini",
+    "TD": "Chad",
+    "TG": "Togo",
+    "TH": "Thailand",
+    "TJ": "Tajikistan",
+    "TL": "East Timor",
+    "TM": "Turkmenistan",
+    "TN": "Tunisia",
+    "TO": "Tonga",
+    "TR": "Turkey",
+    "TT": "Trinidad and Tobago",
+    "TV": "Tuvalu",
+    "TW": "Taiwan",
+    "TZ": "Tanzania",
+    "UA": "Ukraine",
+    "UG": "Uganda",
+    "US": "United States",
+    "UY": "Uruguay",
+    "UZ": "Uzbekistan",
+    "VC": "Saint Vincent and the Grenadines",
+    "VE": "Venezuela",
+    "VN": "Vietnam",
+    "VU": "Vanuatu",
+    "WS": "Samoa",
+    "XK": "Kosovo",
+    "YE": "Yemen",
+    "ZA": "South Africa",
+    "ZM": "Zambia",
+    "ZW": "Zimbabwe"
+  },
+  "dashboard": {
+    "home": {
+      "activePlaces": "アクティブな場所",
+      "addLocation": "Add Location",
+      "addLocationLabel": "Add",
+      "addRecommendations": "おすすめを追加",
+      "draft": "下書き",
+      "error": {
+        "message": "An error occurred while loading your data",
+        "retry": "Retry",
+        "title": "Error loading data"
+      },
+      "loginRequired": {
+        "message": "You need to be logged in to view your dashboard.",
+        "title": "Please log in to continue"
+      },
+      "mobile": "Mobile",
+      "myRecommendations": "私のおすすめ",
+      "profile": "プロフィール",
+      "seo": {
+        "description": "Welcome back, {{username}}! Access your explorers dashboard to manage your personalized QR codes, explore your curated recommendations, and share your favorite places with others easily.",
+        "keywords": {
+          "curatedPlacesManagement": "curated places management",
+          "explorersDashboard": "explorers dashboard",
+          "explorersHome": "explorers home",
+          "locationSharingDashboard": "location sharing dashboard",
+          "personalDashboard": "personal dashboard",
+          "personalizedRecommendationsDashboard": "personalized recommendations dashboard",
+          "qrCodeManagement": "QR code management",
+          "qrCodeSharingPlatform": "QR code sharing platform",
+          "qrRecommendations": "QR recommendations",
+          "recommendationManagement": "recommendation management",
+          "travelGuideDashboard": "travel guide dashboard",
+          "userDashboard": "user dashboard",
+          "userProfileManagement": "user profile management"
+        },
+        "title": "{{username}}'s Dashboard - explorers"
+      },
+      "setupProfile": "プロフィールを設定",
+      "shareButtons": {
+        "instagram": "Instagram",
+        "twitter": "Twitter",
+        "whatsapp": "WhatsApp"
+      },
+      "startCurating": "おすすめをキュレーションして世界と共有しましょう！",
+      "viewPublicProfileTooltip": "View your public profile as seen by others",
+      "welcomeBack": "おかえりなさい"
+    },
+    "profile": {
+      "account": {
+        "fields": {
+          "accountName": "アカウント名",
+          "address": "住所",
+          "city": "市区町村",
+          "country": "国",
+          "postalCode": "郵便番号",
+          "state": "都道府県",
+          "streetName": "通り名",
+          "username": "ユーザー名"
+        },
+        "sections": {
+          "account": "アカウント",
+          "billingAddress": "請求先住所"
+        }
+      },
+      "accountSetup": {
+        "complete": "完了",
+        "footerMessage": "両方のステップを完了して、完全なダッシュボード体験のロックを解除",
+        "profileSetupCompleted": "プロフィール設定が完了しました",
+        "profileSetupIncomplete": "プロフィール写真、自己紹介、ソーシャルリンクを追加",
+        "progress": "進捗",
+        "recommendationsSetupCompleted": "おすすめ設定が完了しました",
+        "recommendationsSetupIncomplete": "場所、地点を追加して最初のリストを公開",
+        "setupButton": "設定",
+        "title": "アカウント設定を完了"
+      },
+      "common": {
+        "add": "追加",
+        "clearSelection": "選択をクリア",
+        "confirm": "確認",
+        "cover": "カバー",
+        "editImage": "画像を編集",
+        "error": "プロフィールの読み込み中にエラーが発生しました。後でもう一度お試しください。",
+        "errors": {
+          "failedToGetAccountId": "アップロード用のアカウントIDの取得に失敗しました",
+          "noFileProvided": "アップロード用のファイルが提供されていません",
+          "uploadResponseMissingFileData": "アップロード応答にファイルデータが含まれていません"
+        },
+        "failedToSaveChanges": "変更の保存に失敗しました。もう一度お試しください。",
+        "failedToSaveImagesToFeed": "画像をフィードに保存できませんでした",
+        "failedToUpdateProfile": "プロフィールの更新に失敗しました。もう一度お試しください。",
+        "failedToUploadFiles": "ファイルのアップロードに失敗しました。もう一度お試しください。",
+        "failedToUploadImages": "画像のアップロードに失敗しました。もう一度お試しください。",
+        "feedImage": "フィード画像",
+        "fetching": "取得中...",
+        "hidden": "非表示",
+        "importedImage": "インポートされた画像",
+        "mobileNumber": "携帯電話番号",
+        "mobileNumberPlaceholder": "携帯電話番号",
+        "networkError": "ネットワークエラー：接続を確認して、もう一度お試しください。",
+        "primaryAddress": "主要アドレス",
+        "profile": "プロフィール",
+        "saveAndPublish": "保存して公開",
+        "saveAndPublishFailed": "保存および公開に失敗しました。もう一度お試しください。",
+        "savedAndPublishedSuccessfully": "正常に保存および公開されました",
+        "saveToFeed": "フィードに保存",
+        "selectAll": "すべて選択",
+        "somethingWentWrong": "問題が発生しました。もう一度お試しください。",
+        "unexpectedError": "予期しないエラーが発生しました。もう一度お試しください。",
+        "video": "動画",
+        "viewPublicProfile": "Navigate to Public Profile",
+        "visible": "表示",
+        "whatsappNumber": "WhatsApp番号"
+      },
+      "publicProfile": {
+        "accountTypes": {
+          "business": "ビジネス",
+          "creator": "クリエイター",
+          "personal": "個人"
+        },
+        "businessLocation": {
+          "about": "について",
+          "contact": "連絡先",
+          "title": "タイトル",
+          "website": "ウェブサイト"
+        },
+        "fields": {
+          "about": "について",
+          "accountType": "アカウントタイプ",
+          "addLocation": "場所を追加",
+          "addLocationInformation": "場所情報を追加",
+          "appleMusic": "Apple Music",
+          "bio": "自己紹介",
+          "businessLocation": "場所を追加してください。これらは公開プロフィールの特集場所として表示されます",
+          "contact": "連絡先",
+          "facebook": "Facebook",
+          "feed": "場所、製品、サービス、または体験の画像や動画をアップロードしてください。これらの写真は公開プロフィールのギャラリーに表示されます",
+          "gmail": "Gmail",
+          "instagram": "Instagram",
+          "linkedin": "Linkedin",
+          "mobile": "モバイル",
+          "primaryAddress": "主要アドレス - 公開プロフィールに表示（都市と国）",
+          "sameAsAddress": "住所と同じ",
+          "searchAddress": "住所を検索...",
+          "snapchat": "Snapchat",
+          "socialMedia": "ソーシャルメディア",
+          "spotify": "Spotify",
+          "tiktok": "Tiktok",
+          "title": "タイトル",
+          "website": "ウェブサイト",
+          "whatsapp": "Whatsapp",
+          "x": "X",
+          "youtube": "Youtube",
+          "youtubeMusic": "Youtube Music"
+        },
+        "sections": {
+          "feed": "フィード",
+          "howToReachUs": "お問い合わせ方法",
+          "howToReachUsDescription": "このセクションを使用して、ビジネスの場所の詳細を共有してください。",
+          "profileInformation": "自己紹介",
+          "publicAddress": "公開アドレス",
+          "socialMedia": "ソーシャルリンク",
+          "socialMediaSubtitle": "ソーシャルメディアのリンクと情報"
+        }
+      },
+      "tabs": {
+        "account": "アカウント",
+        "publicProfile": "公開プロフィール"
+      }
+    },
+    "recommendations": {
+      "addRecommendationForm": {
+        "accordionSection": {
+          "heading": "おすすめの詳細",
+          "recommendationLink": {
+            "label": "おすすめリンク",
+            "placeholder": "Instagram リール、YouTube、またはおすすめブログを挿入できます"
+          },
+          "whyRecommend": {
+            "label": "なぜおすすめするのですか？",
+            "placeholder": "なぜおすすめするのですか？"
+          }
+        },
+        "actionButton": {
+          "text": "おすすめを追加"
+        },
+        "deleteRecommendation": "おすすめを削除",
+        "deleteRecommendationModal": {
+          "cancel": "キャンセル",
+          "message": "このおすすめを削除してもよろしいですか？この操作は元に戻せません。",
+          "title": "削除の確認"
+        },
+        "fetchingImages": "画像を取得中…",
+        "fileUpload": {
+          "subtext": "オプション",
+          "text": "画像/動画を添付"
+        },
+        "imagePreview": {
+          "alt": "プレビュー",
+          "cancel": "キャンセル",
+          "confirm": "確認",
+          "confirmDeleteMessage": "この画像をコレクションから削除してもよろしいですか？",
+          "confirmDeleteTitle": "削除の確認",
+          "deleteTooltip": "削除",
+          "setThumbnailTooltip": "サムネイルとして設定"
+        },
+        "mainInput": {
+          "placeholder": "おすすめを入力してください"
+        },
+        "mapModal": {
+          "addRecommendationButton": "おすすめを追加",
+          "cancelButton": "キャンセル",
+          "setLocationButton": "場所を設定",
+          "updateRecommendationButton": "おすすめを更新"
+        },
+        "recommendationType": {
+          "label": "おすすめの種類",
+          "person": "人",
+          "place": "場所"
+        },
+        "searchField": {
+          "label": "Googleでおすすめを検索"
+        },
+        "searchLocation": {
+          "label": "場所を検索",
+          "placeholder": "入力して場所を選択",
+          "searchPlace": "場所を検索"
+        },
+        "taggableFields": {
+          "address": "住所",
+          "category": "カテゴリー",
+          "contactName": "Contact Name",
+          "contactNumber": "連絡先番号",
+          "personName": "人物名",
+          "socialLink": "ソーシャルリンク",
+          "title": "タイトル"
+        },
+        "taggableFieldsPlaceholders": {
+          "address": "場所の住所を入力してください",
+          "category": "カテゴリーを入力してください",
+          "contactName": "Enter the contact person's name",
+          "contactNumber": "連絡先番号を入力してください",
+          "personName": "人物のフルネームを入力してください",
+          "socialLink": "ソーシャルリンクを入力してください（場所）",
+          "title": "タイトルを入力してください"
+        },
+        "validationMessages": {
+          "addressRequired": "住所は必須です",
+          "categoryRequired": "カテゴリは必須です",
+          "socialUrlInvalid": "有効なInstagramまたはLinkedInのURLを入力してください",
+          "socialUrlRequired": "人物のおすすめにはInstagramまたはLinkedInのURLが必要です",
+          "titleRequired": "タイトルは必須です"
+        }
+      },
+      "cancel": "Cancel",
+      "categories": {
+        "entertainment": "エンターテイメント",
+        "foodDrinks": "飲食",
+        "healthWellness": "健康とウェルネス",
+        "lodging": "宿泊",
+        "naturalFeatures": "自然の特徴",
+        "services": "サービス",
+        "shopping": "ショッピング",
+        "tourism": "観光",
+        "transportation": "交通"
+      },
+      "confirm": "Confirm",
+      "confirmDeletion": "Confirm Deletion",
+      "copyLink": "リンクをコピー",
+      "deleteAction": "削除",
+      "deleteListConfirmation": "Are you sure you want to delete this list? This action cannot be undone and will remove all",
+      "deleteListConfirmationBelow": "in the field below:",
+      "deleteListConfirmationDelete": "'delete'",
+      "deleteListConfirmationPlaces": "associated places.",
+      "deleteListConfirmationType": "To confirm, type",
+      "deleteSuccess": {
+        "success": "Recommended Place Deleted Successfully.",
+        "unpublished": "Recommended Place Deleted Successfully. List automatically unpublished due to no recommendations."
+      },
+      "downloadQR": "QRをダウンロード",
+      "draftLabel": "下書き",
+      "draftStatus": "下書き",
+      "editAction": "編集",
+      "emptyState": {
+        "subtitle": "このリストにお気に入りの場所を追加し始めましょう",
+        "title": "利用可能なおすすめがありません"
+      },
+      "exploreSection": {
+        "addButton": "追加",
+        "heading": "explorersで探索"
+      },
+      "loading": {
+        "message": "Please wait while we fetch your recommendations",
+        "title": "Loading Recommendations..."
+      },
+      "locationButton": "場所",
+      "locationForm": {
+        "buttons": {
+          "addLocation": "場所を追加",
+          "updateLocation": "場所を更新"
+        },
+        "labels": {
+          "note": "メモ",
+          "placeUrl": "場所のURL",
+          "recommendationSocialLink": "おすすめソーシャルリンク",
+          "searchLocation": "場所を検索"
+        },
+        "placeholders": {
+          "note": "おすすめに関連するメモを入力",
+          "placeUrl": "共有可能なリンクを作成する名前を入力",
+          "recommendationSocialLink": "URLを入力（Youtube / Instagram）",
+          "searchLocation": "都市、州、または国を入力（例：パリ）"
+        }
+      },
+      "locationLabels": {
+        "currentLocation": "現在地",
+        "selectedLocation": "選択した場所"
+      },
+      "manageHeading": "管理",
+      "manageTab": "管理",
+      "myQRHeading": "私のQR",
+      "myRecommendationsHeading": "私のおすすめ",
+      "myRecommendationsQR": "私のおすすめ",
+      "noRecommendationsYet": "まだおすすめがありません!!",
+      "placesModal": {
+        "placesCount": "{{total}}件中{{visible}}件の場所",
+        "scrollToLoadMore": "スクロールしてより多くの場所を読み込む"
+      },
+      "profileButton": "Profile",
+      "publishedStatus": "公開済み",
+      "recommendationsTab": "おすすめ",
+      "recommendButton": "おすすめ",
+      "setupProfileBeforeRecommendations": "おすすめを作成する前にプロフィールを設定してください!!",
+      "shareLink": "リンクを共有",
+      "startAddingPlaces": "お気に入りの場所を追加し始めて、他の人と共有しましょう。",
+      "startRecommending": "おすすめを始める",
+      "toastMessages": {
+        "linkCopied": "リンクがクリップボードにコピーされました!",
+        "linkCopyError": "リンクのコピーに失敗しました。もう一度お試しください。",
+        "listCreated": "おすすめリストが正常に作成されました!!!",
+        "listPublished": "おすすめリストが正常に公開されました!",
+        "listPublishError": "公開するにはリストに少なくとも1つのおすすめの場所が必要です",
+        "listUnpublished": "おすすめリストが正常に非公開になりました!",
+        "listVisibilityError": "おすすめリストの表示設定の更新に失敗しました。",
+        "qrDownloadError": "QRコードのダウンロードに失敗しました。もう一度お試しください。",
+        "qrDownloadSuccess": "QRコードが正常にダウンロードされました!",
+        "qrNotReady": "QRコードがダウンロードの準備ができていません"
+      },
+      "travelLikeLocal": "地元の人のように旅行する",
+      "typeDeleteToConfirm": "Type 'delete' to confirm",
+      "viewAll": "すべて表示"
+    },
+    "shareModal": {
+      "copied": "コピーしました！",
+      "copyLink": "リンクをコピー",
+      "linkCopiedToast": "リンクがコピーされました!!"
+    }
+  },
+  "emailVerification": {
+    "backToLogin": "Back to Login",
+    "checkEmail": "Check your email",
+    "checkSpam": "Please check your spam folder or try again.",
+    "clickLink": "Click the link in the email to verify your account.",
+    "contactSupport": "Contact Support",
+    "description": "We've sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
+    "didntReceive": "Didn't receive the email?",
+    "emailAddress": "Email Address",
+    "emailSent": "Verification email sent!",
+    "expiresIn": "This link expires in 24 hours.",
+    "needHelp": "Need help?",
+    "resendEmail": "Resend Email",
+    "resendIn": "Resend in",
+    "seconds": "seconds",
+    "title": "Verify Your Email",
+    "verificationSent": "Verification email sent to:"
+  },
+  "footer": {
+    "copyright": "© 2025 explorers。全著作権所有。",
+    "email": "hello@explorers.earth",
+    "links": {
+      "about": "について",
+      "contact": "お問い合わせ",
+      "cookies": "クッキーポリシー",
+      "faq": "よくある質問",
+      "howItWorks": "仕組み",
+      "privacy": "プライバシーポリシー",
+      "terms": "利用規約"
+    },
+    "madeWithLove": "地球で愛を込めて作られました",
+    "sections": {
+      "contact": "お問い合わせ",
+      "legal": "法的",
+      "product": "製品"
+    },
+    "tagline": "あなたの推奨事項を世界中に旅させましょう。"
+  },
+  "header": {
+    "auth": {
+      "login": "ログイン",
+      "signUp": "サインアップ"
+    },
+    "nav": {
+      "about": "について",
+      "contact": "お問い合わせ",
+      "faq": "よくある質問",
+      "howItWorks": "仕組み",
+      "whoIsFor": "対象者"
+    }
+  },
+  "hero": {
+    "ctaButton": "explorersを予約",
+    "headline": "すべての推奨事項を1つのQRとシンプルなリンクで。",
+    "inputLabel": "explorers URLを予約:",
+    "inputPlaceholder": "あなたの名前",
+    "signupPrompt": "今すぐサインアップしてあなたのものを取得",
+    "subtext": "場所について知っていることや好きなことを共有し、誰でもどこでも発見できるようにしましょう"
+  },
+  "languageModal": {
+    "close": "閉じる",
+    "searchPlaceholder": "言語を検索...",
+    "title": "言語を選択"
+  },
+  "legal": {
+    "cookies": {
+      "error": "クッキーポリシーの読み込み中にエラーが発生しました。後でもう一度お試しください。",
+      "loading": "クッキーポリシーを読み込み中...",
+      "title": "クッキーポリシー"
+    },
+    "privacy": {
+      "error": "プライバシーポリシーの読み込み中にエラーが発生しました。後でもう一度お試しください。",
+      "loading": "プライバシーポリシーを読み込み中...",
+      "title": "プライバシーポリシー"
+    },
+    "terms": {
+      "error": "利用規約の読み込み中にエラーが発生しました。後でもう一度お試しください。",
+      "loading": "利用規約を読み込み中...",
+      "title": "利用規約"
+    }
+  },
+  "modal": {
+    "unsavedChanges": {
+      "cancel": "キャンセル",
+      "discard": "破棄",
+      "message": "未保存の変更があります。移動すると失われます。どうしますか？",
+      "save": "保存",
+      "title": "未保存の変更"
+    },
+    "usernameChange": {
+      "cancel": "キャンセル",
+      "confirm": "ユーザー名を変更",
+      "cooldownPrefix": "この更新後、",
+      "cooldownSuffix": "でユーザー名を再度変更できます。",
+      "day": "1日",
+      "days": "日",
+      "description": "ユーザー名は、プロフィールとおすすめリストのリンクで使用されます：",
+      "listLabel": "リスト：",
+      "minute": "1分",
+      "profileLabel": "プロフィール：",
+      "title": "ユーザー名変更の確認",
+      "warning": "古いユーザー名のQRコードやリンクは機能しなくなります — 更新して再共有する必要があります。"
+    }
+  },
+  "reactivateAccount": {
+    "backToLogin": "Back to Login",
+    "confirmDescription": "Your account has been successfully reactivated. You can now sign in with your credentials.",
+    "confirmError": "Invalid or Expired Link",
+    "confirmTitle": "Account Reactivated!",
+    "emailPlaceholder": "Enter your email address",
+    "emailSent": "Check your inbox!",
+    "emailSentDescription": "We've sent a reactivation link to your email address. The link expires in 24 hours. Check your spam folder if you don't see it.",
+    "goToLogin": "Go to Login",
+    "resendButton": "Resend Link",
+    "resendIn": "Resend in",
+    "sendButton": "Send Reactivation Link",
+    "subtitle": "Enter the email address associated with your deactivated account and we'll send you a reactivation link.",
+    "title": "Reactivate Your Account",
+    "tryAgain": "Request New Link"
+  },
+  "sections": {
+    "analytics": {
+      "dashboardTitle": "アナリティクスダッシュボード",
+      "engagement": "エンゲージメント",
+      "headline": "クリック、リファラル、エンゲージメントを追跡",
+      "last30Days": "過去30日間",
+      "referrals": "リファラル",
+      "scanningDesc": "QRスキャンと更新を監視",
+      "scanningTitle": "誰がスキャンしているか",
+      "spotsDesc": "より良いキュレーションのためのデータ駆動インサイト",
+      "spotsTitle": "最高の場所",
+      "subtext": "何が機能し、誰がスキャンし、どの場所が最も愛されているかをリアルタイムで確認。",
+      "totalScans": "総スキャン数",
+      "workingDesc": "推奨事項の人気を追跡",
+      "workingTitle": "何が機能するか確認"
+    },
+    "createCustomize": {
+      "bulletPoints": {
+        "addSpots": {
+          "description": "必見の場所でリストを作成",
+          "title": "お気に入りの場所を追加"
+        },
+        "generate": {
+          "description": "パーソナライズされたQRが数秒で準備完了",
+          "title": "リンクとQRを瞬時に生成"
+        },
+        "organize": {
+          "description": "あなたのオーディエンスに意味のあるカテゴリを作成",
+          "title": "都市やテーマ別に整理"
+        },
+        "share": {
+          "description": "",
+          "title": "デジタルで、または現実世界でQRコードを通じて共有"
+        }
+      },
+      "headline": "数分でexplorersを作成・カスタマイズ",
+      "mockup": {
+        "addPlace": "場所を追加",
+        "title": "私の推奨事項"
+      },
+      "subtext": "お気に入りの場所を追加し、都市やテーマ別に整理し、QRを瞬時に生成します。"
+    },
+    "faq": {
+      "error": "FAQの読み込み中にエラーが発生しました。後でもう一度お試しください。",
+      "headline": "質問がありますか？",
+      "loading": "FAQを読み込み中...",
+      "subtext": "人々が始める前に最もよく尋ねることをお答えしました。"
+    },
+    "features": {
+      "communityDriven": {
+        "title": "コミュニティ主導の発見"
+      },
+      "livingGuides": {
+        "title": "ライブで編集可能なガイド"
+      },
+      "locationAware": {
+        "title": "位置情報を考慮した推奨事項"
+      },
+      "privacyFirst": {
+        "title": "設計によりプライバシー第一"
+      },
+      "simpleLinks": {
+        "title": "シンプルなリンクとQR共有"
+      },
+      "soundPlaylists": {
+        "title": "オプションの音声とプレイリスト"
+      },
+      "subtitle": "シンプルで思慮深い機能により、あなたの推奨事項が輝きます。",
+      "title": "邪魔にならないように設計"
+    },
+    "finalCTA": {
+      "creating": "あなたのexplorersを作成中...",
+      "ctaButton": "explorersを予約 – 永久無料",
+      "disclaimer": "クレジットカード不要 • 2分でセットアップ",
+      "headline": "今日からあなたの世界を共有し始めましょう",
+      "subtext": "無料のexplorersを予約し、ローカルインサイトを共有可能なガイドに変換しましょう。"
+    },
+    "localTunes": {
+      "body": "探索は視覚的なものだけではありません。音は記憶、文脈、感情を運びます。\n\nTunesは、場所、旅、気分のためのサウンドトラックを収集して共有することを可能にします — 道で発見した音楽であろうと、場所を定義する音であろうと。\n\nあなたのExplorerプロフィールにシームレスに接続されています。",
+      "closingStatement": "Tunesは<strong>無料</strong>で探索でき、有料機能については後でアップグレードできます。",
+      "exploreButton": "Tunesを探索",
+      "features": {
+        "karaokeReady": {
+          "description": "コラボレーティブなプレイリストとリアルタイムの曲リクエストでカラオケの夜に最適です。",
+          "title": "カラオケ対応"
+        },
+        "qrCodeSharing": {
+          "description": "シンプルなQRコードスキャンで音楽体験を共有 — アプリやダウンロードは不要です。",
+          "title": "QRコード共有"
+        },
+        "realtimeCollaboration": {
+          "description": "ゲストがプレイリストに即座に曲を追加できるようにしながら、再生内容を完全にコントロールできます。",
+          "title": "リアルタイムコラボレーション"
+        },
+        "silentParties": {
+          "description": "全員が自分のヘッドフォンで聞くユニークなサイレントパーティーを開催します。",
+          "title": "サイレントパーティー"
+        },
+        "voteLikeSystem": {
+          "description": "ゲストはお気に入りの曲に投票して、プレイリストのキューをリアルタイムで影響させることができます。",
+          "title": "投票・いいねシステム"
+        },
+        "youtubeIntegration": {
+          "description": "YouTubeとシームレスに統合して、数百万曲にアクセスし、完璧な雰囲気を作り出します。",
+          "title": "YouTube統合"
+        }
+      },
+      "featuresHeading": "強力な機能",
+      "mainHeading": "Tunes",
+      "title": "探索しながら聞く",
+      "venueHeading": "あらゆる場所に最適",
+      "venues": {
+        "barsPubs": "バー＆パブ",
+        "coffeeShops": "コーヒーショップ",
+        "eventsWeddings": "イベント＆結婚式",
+        "gymsFitness": "ジム＆フィットネス",
+        "restaurants": "レストラン",
+        "retailStores": "小売店"
+      }
+    },
+    "referEarn": {
+      "comingSoon": "紹介報酬プログラム（近日公開）",
+      "earnedThisMonth": "今月の収益",
+      "headline": "共有、紹介、収益化",
+      "networkTitle": "ネットワークを構築し、自動的に収益化",
+      "passiveTitle": "推奨事項をパッシブな報酬に変換",
+      "rewardsDesc": "人々があなたの推奨事項を使用するときに報酬を受け取る",
+      "rewardsTitle": "報酬を獲得",
+      "subtext": "推奨事項をパッシブな報酬に変換 — 他の人があなたのQRを使用するときにクレジットを獲得。"
+    },
+    "shareAnywhere": {
+      "cafeMenu": "カフェメニュー",
+      "headline": "ソーシャルメディア、店舗の窓、または街の壁で共有",
+      "instagramDesc": "フォロワーと即座に共有",
+      "instagramTitle": "Instagramのbioに追加",
+      "menuDesc": "物理的な接点を簡単に",
+      "menuTitle": "メニューに印刷",
+      "profileCarouselCaption": "Instagram & TikTok profiles",
+      "qrEverywhereDesc": "Perfect for Every Venue",
+      "qrEverywhereTitle": "Add the QR link everywhere",
+      "scanText": "ローカル推奨をスキャン",
+      "storefrontText": "店舗ショーウィンドウに最適",
+      "subtext": "Instagramのbioに追加、メニューに印刷、またはウェルカムブックに含める — あなたのガイド、常に準備完了。",
+      "tokyoFoodGuide": "私の東京グルメガイド explorers.earth/jane",
+      "welcomeDesc": "ホストとガイドに最適",
+      "welcomeTitle": "ウェルカムブックに含める"
+    },
+    "testimonials": {
+      "headline": "旅行者、クリエイター、ホストに愛されています",
+      "items": [
+        {
+          "id": "1",
+          "location": "サンフランシスコ",
+          "name": "Marcus Chen",
+          "quote": "explorersは私の旅行知識の共有方法を変えました。フォロワーは私のキュレーションされたおすすめへの即座のアクセスを愛しています！",
+          "role": "旅行ブロガー"
+        },
+        {
+          "id": "2",
+          "location": "バルセロナ",
+          "name": "Sarah Johnson",
+          "quote": "ゲストはウェルカムキットのパーソナライズされたQRコードを絶対に気に入っています。私のシグネチャータッチになりました！",
+          "role": "Airbnbホスト"
+        },
+        {
+          "id": "3",
+          "location": "メキシコシティ",
+          "name": "Alex Rodriguez",
+          "quote": "他の地元のスポットを推薦するために、お客様とexplorersを共有しています。素晴らしいコミュニティのつながりが生まれました。",
+          "role": "レストランオーナー"
+        },
+        {
+          "id": "4",
+          "location": "ロンドン",
+          "name": "Emma Thompson",
+          "quote": "explorersは私の専門知識をツアー時間を超えて拡張するのに役立ちます。クライアントはいつでも私のおすすめにアクセスできます！",
+          "role": "ツアーガイド"
+        },
+        {
+          "id": "5",
+          "location": "Sydney, Australia",
+          "name": "James Wilson",
+          "quote": "As a travel influencer, explorers makes it so easy to share my favorite spots with my audience. The QR code feature is brilliant!",
+          "role": "Travel Influencer"
+        },
+        {
+          "id": "6",
+          "location": "Paris, France",
+          "name": "Sophie Martin",
+          "quote": "I use explorers to create walking tours for my clients. They can scan the QR and explore at their own pace!",
+          "role": "Local Guide"
+        }
+      ],
+      "scrollLeft": "お客様の声を左にスクロール",
+      "scrollRight": "お客様の声を右にスクロール",
+      "subtext": "世界中の人々がexplorersを使用して最も重要なことを共有する方法をご覧ください。"
+    },
+    "whoIsFor": {
+      "cards": {
+        "businesses": {
+          "items": {
+            "boutique": {
+              "label": "ブティック",
+              "oneLiner": "キュレーションされた発見をリストするブティック"
+            },
+            "cafe": {
+              "label": "カフェ",
+              "oneLiner": "お気に入りのメニュー項目を強調するカフェ"
+            },
+            "clinic": {
+              "label": "クリニック",
+              "oneLiner": "健康関連の場所を共有するクリニック"
+            },
+            "gym": {
+              "label": "ジム",
+              "oneLiner": "地元のウェルネススポットを提案するジム"
+            },
+            "restaurant": {
+              "label": "レストラン",
+              "oneLiner": "試すべき料理を共有するレストラン"
+            },
+            "retailShop": {
+              "label": "小売店",
+              "oneLiner": "製品推奨事項を共有する店舗"
+            },
+            "salon": {
+              "label": "サロン",
+              "oneLiner": "美容ガイドを提供するサロン"
+            },
+            "spa": {
+              "label": "スパ",
+              "oneLiner": "近くのリラクゼーションオプションをリストするスパ"
+            }
+          },
+          "oneLiner": "有用な推奨事項で顧客をガイドします。",
+          "title": "企業"
+        },
+        "creators": {
+          "items": {
+            "blogger": {
+              "label": "ブロガー",
+              "oneLiner": "書かれたガイドをキュレーションするブロガー"
+            },
+            "communityLeader": {
+              "label": "コミュニティリーダー",
+              "oneLiner": "有用なリストをキュレーションするコミュニティリーダー"
+            },
+            "educator": {
+              "label": "教育者",
+              "oneLiner": "学習ガイドを共有する教育者"
+            },
+            "influencer": {
+              "label": "インフルエンサー",
+              "oneLiner": "トップピックを共有するインフルエンサー"
+            },
+            "photographer": {
+              "label": "写真家",
+              "oneLiner": "写真スポットを共有する写真家"
+            },
+            "reviewer": {
+              "label": "レビュアー",
+              "oneLiner": "最高評価の場所をリストするレビュアー"
+            },
+            "vlogger": {
+              "label": "ブロガー",
+              "oneLiner": "視覚的な旅を共有するブロガー"
+            }
+          },
+          "oneLiner": "キュレーションされたリストを視聴者と共有します。",
+          "title": "クリエイター"
+        },
+        "hospitality": {
+          "items": {
+            "airbnb": {
+              "label": "Airbnb",
+              "oneLiner": "近所のお気に入りを共有するホスト"
+            },
+            "homestay": {
+              "label": "ホームステイ",
+              "oneLiner": "家族向けガイドを提供するホームステイ"
+            },
+            "hostel": {
+              "label": "ホステル",
+              "oneLiner": "バックパッカーのヒントを共有するホステル"
+            },
+            "hotel": {
+              "label": "ホテル",
+              "oneLiner": "地元のガイドブックを提供するホテル"
+            },
+            "pgColiving": {
+              "label": "PG/コリビング",
+              "oneLiner": "重要な近隣の場所を示すPG/コリビング"
+            },
+            "resort": {
+              "label": "リゾート",
+              "oneLiner": "アクティビティリストを提供するリゾート"
+            }
+          },
+          "oneLiner": "ゲストにキュレーションされた地元のインサイトを提供します。",
+          "title": "ホスピタリティ"
+        },
+        "individuals": {
+          "items": {
+            "emergencySharer": {
+              "label": "緊急共有者",
+              "oneLiner": "重要な場所を投稿する緊急共有者"
+            },
+            "family": {
+              "label": "家族",
+              "oneLiner": "便利な場所を共有する家族"
+            },
+            "local": {
+              "label": "地元の人",
+              "oneLiner": "近所のヒントを共有する地元の人々"
+            },
+            "nomad": {
+              "label": "ノマド",
+              "oneLiner": "仕事に適したスペースをリストするノマド"
+            },
+            "student": {
+              "label": "学生",
+              "oneLiner": "キャンパス/近くのスポットを共有する学生"
+            },
+            "traveler": {
+              "label": "旅行者",
+              "oneLiner": "旅行スポットを共有する人々"
+            }
+          },
+          "oneLiner": "個人的または地元の推奨事項を共有します。",
+          "title": "個人"
+        },
+        "organizations": {
+          "items": {
+            "agency": {
+              "label": "代理店",
+              "oneLiner": "必見の場所をリストする旅行代理店"
+            },
+            "airline": {
+              "label": "航空会社",
+              "oneLiner": "都市ガイドを共有する航空会社"
+            },
+            "airport": {
+              "label": "空港",
+              "oneLiner": "ターミナル+都市のヒントを提供する空港"
+            },
+            "corporate": {
+              "label": "企業",
+              "oneLiner": "近くのリソースをリストする企業"
+            },
+            "government": {
+              "label": "政府",
+              "oneLiner": "公共サービスを強調する部門"
+            },
+            "ngo": {
+              "label": "NGO",
+              "oneLiner": "コミュニティリソースを共有するNGO"
+            },
+            "railway": {
+              "label": "鉄道",
+              "oneLiner": "プラットフォーム情報を共有する鉄道"
+            },
+            "university": {
+              "label": "大学",
+              "oneLiner": "キャンパスの必需品を共有する大学"
+            }
+          },
+          "oneLiner": "キュレーションされたガイドとリソースを提供します。",
+          "title": "組織"
+        }
+      },
+      "headline": "explorers.earthは誰のため？",
+      "subtext": "explorers.earthは、共有が責任であると信じるすべての人のためです — 放送ではありません。",
+      "useCases": {
+        "airbnbHosts": "Airbnbホスト",
+        "airbnbHostsDesc": "ローカルインサイトでゲスト体験を向上",
+        "anyBusiness": "あらゆるビジネス",
+        "anyBusinessDesc": "コミュニティと顧客ロイヤルティを構築",
+        "cafes": "カフェ",
+        "cafesDesc": "顧客と近所のお気に入りを共有",
+        "creators": "クリエイター",
+        "creatorsDesc": "実行可能なヒントでコンテンツを超えた価値を追加",
+        "hotels": "ホテル",
+        "hotelsDesc": "キュレートされたローカル推奨事項を提供",
+        "influencers": "インフルエンサー",
+        "influencersDesc": "ローカル知識を収益化し、コミュニティを構築",
+        "localGuides": "ローカルガイド",
+        "localGuidesDesc": "個人ツアーを超えて専門知識をスケール",
+        "restaurants": "レストラン",
+        "restaurantsDesc": "他のローカルビジネスとクロスプロモーション",
+        "tourOperators": "ツアーオペレーター",
+        "tourOperatorsDesc": "予定されたツアーを超えて体験を拡張",
+        "travelers": "旅行者",
+        "travelersDesc": "発見した宝石を他の探検家と共有"
+      }
+    }
+  },
+  "seo": {
+    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+  },
+  "settings": {
+    "account": {
+      "changePassword": {
+        "accountDetailsRequired": "Enter your account Details to proceed further!!",
+        "accountDocumentIdNotFound": "Could not find account documentId. Please check your username or try again.",
+        "button": "パスワードを変更",
+        "confirmPassword": "新しいパスワードを確認",
+        "confirmPasswordPlaceholder": "新しいパスワードを再入力してください",
+        "currentPassword": "現在のパスワード",
+        "currentPasswordPlaceholder": "現在のパスワードを入力してください",
+        "currentPasswordRequired": "Please enter your current password.",
+        "deleteAccountFailed": "Failed to delete account.",
+        "description": "アカウントを安全に保つためにパスワードを更新してください",
+        "invalidPassword": "Invalid password. Please check your password and try again.",
+        "modalTitle": "パスワードを変更",
+        "newPassword": "新しいパスワード",
+        "newPasswordPlaceholder": "新しいパスワードを入力してください",
+        "passwordRequiredForDeletion": "Password is required to delete account.",
+        "redirectMessage": "セキュリティのためにログインページにリダイレクトしています...",
+        "saveReasonFailed": "Failed to save reason. Try again.",
+        "successMessage": "パスワードが正常に更新されました。セキュリティのためにログインページにリダイレクトされます。",
+        "text": "パスワードを変更しますか？",
+        "updateAccountStatusFailed": "Failed to update account status.",
+        "updateButton": "パスワードを更新"
+      },
+      "deactivateAccount": {
+        "activatedMessage": "アカウントが正常に有効化されました",
+        "button": "アカウントを無効にする",
+        "confirmButton": "マイアカウントを無効にする",
+        "deactivatedButton": "無効",
+        "description": "アカウントを一時的に無効にする",
+        "enterPassword": "パスワードを入力してください",
+        "enterUsername": "ユーザー名を入力してください",
+        "modalDescription": "本当にアカウントを無効にしてもよろしいですか？",
+        "modalTitle": "アカウントを無効にしますか？",
+        "passwordPlaceholder": "現在のパスワードを入力してください",
+        "reactivationHint": "You can reactivate your account later using your email.",
+        "reactivationLink": "Learn how →",
+        "successMessage": "アカウントが正常に無効化されました",
+        "text": "アカウントを無効にしますか？",
+        "usernamePlaceholder": "ユーザー名を入力してください"
+      },
+      "deleteAccount": {
+        "button": "アカウントを削除",
+        "description": "アカウントとすべてのデータを永続的に削除する",
+        "step1": {
+          "continueButton": "削除を続行",
+          "deactivateInsteadButton": "代わりにアカウントを無効にする",
+          "modalDescription": "本当にアカウントを削除してもよろしいですか？この操作は元に戻すことができません。",
+          "modalDescription2": "データを保持したい場合は、代わりにアカウントを無効にすることができます。",
+          "modalTitle": "アカウントを削除しますか？"
+        },
+        "step2": {
+          "confirmPassword": "パスワードを確認してください",
+          "confirmPasswordPlaceholder": "パスワードを確認してください",
+          "continueButton": "続行",
+          "enterPassword": "パスワードを入力してください",
+          "enterUsername": "ユーザー名を入力してください",
+          "modalTitle": "詳細を入力してください",
+          "passwordPlaceholder": "パスワードを入力してください",
+          "usernamePlaceholder": "ユーザー名を入力してください"
+        },
+        "step3": {
+          "continueButton": "続行",
+          "modalTitle": "なぜ退会されるのですか？",
+          "reasonPlaceholder": "退会の理由をお聞かせください..."
+        },
+        "step4": {
+          "confirmationRequired": "確認のため'CONFIRM DELETE'と入力してください。",
+          "confirmPlaceholder": "確認のため'CONFIRM DELETE'と入力してください",
+          "confirmText": "続行するには'CONFIRM DELETE'と入力してください",
+          "confirmTextValue": "CONFIRM DELETE",
+          "deleteButton": "マイアカウントを削除",
+          "modalTitle": "削除の確認",
+          "reasonRequired": "退会の理由を入力してください。",
+          "successMessage": "アカウントが正常に削除されました。"
+        },
+        "text": "アカウントを削除しますか？"
+      },
+      "heading": "アカウント",
+      "security": {
+        "title": "アカウントとセキュリティ"
+      }
+    },
+    "languagePreference": {
+      "availableLanguages": "47の利用可能な言語から選択",
+      "currentLanguage": "現在：{{flag}} {{name}}",
+      "description": "インターフェースに適した言語を選択してください。これにより、アプリケーション全体のすべてのテキスト、ボタン、メニューの言語が変更されます。",
+      "heading": "言語設定",
+      "languageChanged": "言語を{{name}}に変更しました",
+      "noLanguagesFound": "No languages found",
+      "searchPlaceholder": "Search languages...",
+      "selectLanguage": "言語を選択してください"
+    },
+    "subtitle": "アカウントの設定と環境設定を管理する",
+    "title": "設定"
+  },
+  "sidebar": {
+    "analytics": "分析",
+    "clickToOpenMenu": "メニューを開くにはクリック",
+    "darkMode": "Dark Mode",
+    "home": "ホーム",
+    "lightMode": "Light Mode",
+    "loading": "読み込み中...",
+    "logout": "ログアウト",
+    "music": "Music",
+    "places": "Places",
+    "profile": "プロフィール",
+    "recommendations": "おすすめ",
+    "settings": "設定"
+  },
+  "toast": {
+    "error": {
+      "accessDenied": "アクセスが拒否されました。このアクションを実行する権限がありません。",
+      "accountActivationFailed": "アカウントのアクティベーションに失敗しました。再試行してください。",
+      "accountAlreadyExists": "Account already exists. Redirecting to home...",
+      "accountCreationFailed": "アカウントの作成に失敗しました。再試行してください。",
+      "accountDeleted": "アカウントが削除されました。サポートにお問い合わせください。",
+      "accountExistsRefresh": "Account already exists. Please refresh the page.",
+      "accountLocked": "アカウントがロックされています。サポートにお問い合わせください。",
+      "accountSuspended": "アカウントが停止されています。サポートにお問い合わせください。",
+      "accountTypeRequired": "アカウントタイプが必要です",
+      "actionFailed": "アクションに失敗しました。再試行してください。",
+      "addressRequired": "住所が必要です",
+      "allFilesAlreadyUploaded": "All selected files are already uploaded!",
+      "alreadyExists": "Already Exist!!",
+      "backgroundImageUpdateFailed": "背景画像のアップロードに失敗しました。再試行してください。",
+      "bioRequired": "自己紹介が必要です",
+      "bioTooLong": "自己紹介が長すぎます。250文字未満にしてください",
+      "captchaFailed": "キャプチャの確認に失敗しました。再試行してください。",
+      "changesSaveFailed": "変更の保存に失敗しました。再試行してください。",
+      "cityRequired": "都市が必要です",
+      "codeLimitExceeded": "コード制限を超えました。後でもう一度試してください。",
+      "conflictError": "競合エラー。リソースは既に存在します。",
+      "countryRequired": "国が必要です",
+      "dataSaveFailed": "データの保存に失敗しました。再試行してください。",
+      "displayNameRequired": "表示名が必要です",
+      "displayNameTooLong": "表示名が長すぎます",
+      "displayNameTooShort": "表示名が短すぎます",
+      "duplicateFilesSkipped": "{{count}} duplicate file(s) were skipped.",
+      "emailAlreadyExists": "メールは既に存在します。別のメールを使用してください。",
+      "emailConfirmationSendingFailed": "Account created successfully, but failed to send confirmation email. Please try resending from the verification page.",
+      "emailNotFound": "メールが見つかりません。再試行してください。",
+      "emailNotVerified": "メールが確認されていません。まずメールを確認してください。",
+      "emailSendFailed": "メールの送信に失敗しました。再試行してください。",
+      "emailVerificationFailed": "メール確認に失敗しました。再試行してください。",
+      "errorCroppingImage": "Error Cropping the Image.",
+      "errorLoadingCategories": "Error Loading Categories!!!",
+      "errorValidatingFiles": "An error occurred while validating files",
+      "expiredCode": "コードの有効期限が切れています。新しいコードをリクエストしてください。",
+      "expiredToken": "トークンの有効期限が切れています。再試行してください。",
+      "failedToDeleteRecommendationList": "Failed to delete recommendation list. Please try again.",
+      "failedToFetchImages": "Failed to fetch images",
+      "failedToFetchNearbyPlaces": "Failed to fetch nearby places. Please try again.",
+      "failedToUpdatePassword": "Failed to update password.",
+      "fetchedImages": "Fetched {{count}} image(s)",
+      "fileTooLarge": "ファイルが大きすぎます。より小さなファイルを選択してください。",
+      "fileUploadFailed": "ファイルのアップロードに失敗しました。再試行してください。",
+      "fileValidationError": "An error occurred while validating files",
+      "fileValidationErrorWithName": "{{fileName}}: {{error}}",
+      "formSubmissionFailed": "フォームの送信に失敗しました。再試行してください。",
+      "graphQLErrorOccurred": "GraphQL error occurred",
+      "imageAspectRatioInvalid": "画像のアスペクト比が無効です。別の画像を選択してください",
+      "imageColorSpaceInvalid": "画像の色空間が無効です。別の画像を選択してください",
+      "imageContentAbusive": "画像の内容が虐待的です。別の画像を選択してください",
+      "imageContentAcademic": "画像の内容が学術的な利益を害します。別の画像を選択してください",
+      "imageContentAnger": "画像の内容が怒りの利益を害します。別の画像を選択してください",
+      "imageContentAnimals": "画像の内容に動物虐待が含まれています。別の画像を選択してください",
+      "imageContentArtistic": "画像の内容が芸術的な利益を害します。別の画像を選択してください",
+      "imageContentBrand": "画像の内容がブランドを害します。別の画像を選択してください",
+      "imageContentBusiness": "画像の内容がビジネスを害します。別の画像を選択してください",
+      "imageContentConsent": "画像の内容に同意がありません。別の画像を選択してください",
+      "imageContentCopyright": "画像の内容が著作権を侵害しています。別の画像を選択してください",
+      "imageContentCreative": "画像の内容が創造的な利益を害します。別の画像を選択してください",
+      "imageContentCultural": "画像の内容が文化的な利益を害します。別の画像を選択してください",
+      "imageContentDangerous": "画像の内容が危険です。別の画像を選択してください",
+      "imageContentDiscriminatory": "画像の内容が差別的です。別の画像を選択してください",
+      "imageContentDisgust": "画像の内容が嫌悪の利益を害します。別の画像を選択してください",
+      "imageContentEconomic": "画像の内容が経済的な利益を害します。別の画像を選択してください",
+      "imageContentEducational": "画像の内容が教育的な利益を害します。別の画像を選択してください",
+      "imageContentEntertainment": "画像の内容が娯楽の利益を害します。別の画像を選択してください",
+      "imageContentEnvironment": "画像の内容が環境を害します。別の画像を選択してください",
+      "imageContentEnvy": "画像の内容が羨望の利益を害します。別の画像を選択してください",
+      "imageContentEthical": "画像の内容が倫理的な利益を害します。別の画像を選択してください",
+      "imageContentExcitement": "画像の内容が興奮の利益を害します。別の画像を選択してください",
+      "imageContentFear": "画像の内容が恐怖の利益を害します。別の画像を選択してください",
+      "imageContentGluttony": "画像の内容が大食の利益を害します。別の画像を選択してください",
+      "imageContentGreed": "画像の内容が貪欲の利益を害します。別の画像を選択してください",
+      "imageContentGuilt": "画像の内容が罪悪感の利益を害します。別の画像を選択してください",
+      "imageContentHappiness": "画像の内容が幸福の利益を害します。別の画像を選択してください",
+      "imageContentHarassing": "画像の内容が嫌がらせです。別の画像を選択してください",
+      "imageContentHate": "画像の内容が憎しみの利益を害します。別の画像を選択してください",
+      "imageContentHateful": "画像の内容が憎悪的です。別の画像を選択してください",
+      "imageContentHealth": "画像の内容が健康を害します。別の画像を選択してください",
+      "imageContentHobby": "画像の内容が趣味の利益を害します。別の画像を選択してください",
+      "imageContentIllegal": "画像の内容が違法です。別の画像を選択してください",
+      "imageContentInappropriate": "画像の内容が不適切です。別の画像を選択してください",
+      "imageContentInformational": "画像の内容が情報的な利益を害します。別の画像を選択してください",
+      "imageContentIntegrity": "画像の内容が整合性を害します。別の画像を選択してください",
+      "imageContentIntellectual": "画像の内容が知的な利益を害します。別の画像を選択してください",
+      "imageContentInterest": "画像の内容が興味の利益を害します。別の画像を選択してください",
+      "imageContentJealousy": "画像の内容が嫉妬の利益を害します。別の画像を選択してください",
+      "imageContentJoy": "画像の内容が喜びの利益を害します。別の画像を選択してください",
+      "imageContentLegal": "画像の内容が法的な利益を害します。別の画像を選択してください",
+      "imageContentLeisure": "画像の内容が余暇の利益を害します。別の画像を選択してください",
+      "imageContentLove": "画像の内容が愛の利益を害します。別の画像を選択してください",
+      "imageContentLust": "画像の内容が欲望の利益を害します。別の画像を選択してください",
+      "imageContentMedia": "画像の内容がメディアの利益を害します。別の画像を選択してください",
+      "imageContentMinors": "画像の内容に未成年者が含まれています。別の画像を選択してください",
+      "imageContentMoral": "画像の内容が道徳的な利益を害します。別の画像を選択してください",
+      "imageContentNews": "画像の内容がニュースの利益を害します。別の画像を選択してください",
+      "imageContentOffensive": "画像の内容が攻撃的です。別の画像を選択してください",
+      "imageContentPassion": "画像の内容が情熱の利益を害します。別の画像を選択してください",
+      "imageContentPersonal": "画像の内容が個人的な利益を害します。別の画像を選択してください",
+      "imageContentPhilosophical": "画像の内容が哲学的な利益を害します。別の画像を選択してください",
+      "imageContentPolitical": "画像の内容が政治的な利益を害します。別の画像を選択してください",
+      "imageContentPride": "画像の内容が誇りの利益を害します。別の画像を選択してください",
+      "imageContentPrivacy": "画像の内容がプライバシーを侵害しています。別の画像を選択してください",
+      "imageContentProfessional": "画像の内容が専門的な利益を害します。別の画像を選択してください",
+      "imageContentRecreation": "画像の内容がレクリエーションの利益を害します。別の画像を選択してください",
+      "imageContentReligious": "画像の内容が宗教的な利益を害します。別の画像を選択してください",
+      "imageContentReputation": "画像の内容が評判を害します。別の画像を選択してください",
+      "imageContentSadness": "画像の内容が悲しみの利益を害します。別の画像を選択してください",
+      "imageContentSafety": "画像の内容が安全を害します。別の画像を選択してください",
+      "imageContentScientific": "画像の内容が科学的な利益を害します。別の画像を選択してください",
+      "imageContentSecurity": "画像の内容がセキュリティを害します。別の画像を選択してください",
+      "imageContentSexual": "画像の内容が性的です。別の画像を選択してください",
+      "imageContentShame": "画像の内容が恥の利益を害します。別の画像を選択してください",
+      "imageContentSloth": "画像の内容が怠惰の利益を害します。別の画像を選択してください",
+      "imageContentSocial": "画像の内容が社会的な利益を害します。別の画像を選択してください",
+      "imageContentSpiritual": "画像の内容が精神的な利益を害します。別の画像を選択してください",
+      "imageContentSports": "画像の内容がスポーツの利益を害します。別の画像を選択してください",
+      "imageContentSurprise": "画像の内容が驚きの利益を害します。別の画像を選択してください",
+      "imageContentTechnical": "画像の内容が技術的な利益を害します。別の画像を選択してください",
+      "imageContentThreatening": "画像の内容が脅迫的です。別の画像を選択してください",
+      "imageContentTrademark": "画像の内容が商標を侵害しています。別の画像を選択してください",
+      "imageContentViolent": "画像の内容が暴力的です。別の画像を選択してください",
+      "imageContentWrath": "画像の内容が憤怒の利益を害します。別の画像を選択してください",
+      "imageCorrupted": "画像が破損しています。別の画像を選択してください",
+      "imageDimensionsInvalid": "画像の寸法が無効です。別の画像を選択してください",
+      "imageFormatInvalid": "画像の形式が無効です。別の画像を選択してください",
+      "imageMalwareDetected": "画像にマルウェアが検出されました。別の画像を選択してください",
+      "imageMetadataInvalid": "画像のメタデータが無効です。別の画像を選択してください",
+      "imageProcessingFailed": "画像処理に失敗しました。再試行してください",
+      "imageQualityTooLow": "画像の品質が低すぎます。より高品質な画像を選択してください",
+      "imageRequired": "画像が必要です",
+      "imageSecurityViolation": "画像のセキュリティ違反。別の画像を選択してください",
+      "imageSizeInvalid": "画像のサイズが無効です。別の画像を選択してください",
+      "imageSpamDetected": "画像にスパムが検出されました。別の画像を選択してください",
+      "imageTooBig": "画像が大きすぎます。より小さな画像を選択してください",
+      "imageTooLarge": "画像が大きすぎます。より小さな画像を選択してください",
+      "imageTooSmall": "画像が小さすぎます。より大きな画像を選択してください",
+      "imageUploadFailed": "画像のアップロードに失敗しました。再試行してください。",
+      "imageVirusDetected": "画像にウイルスが検出されました。別の画像を選択してください",
+      "invalidAccountType": "無効なアカウントタイプが選択されました",
+      "invalidCode": "無効なコードです。入力内容を確認してください。",
+      "invalidCredentials": "無効な認証情報。入力内容を確認してください。",
+      "invalidEmailFormat": "無効なメール形式。有効なメールを入力してください。",
+      "invalidInput": "無効な入力です。データを確認してください。",
+      "invalidToken": "無効なトークン。再試行してください。",
+      "invalidUsername": "無効なユーザー名です。入力内容を確認してください。",
+      "invalidUsernameWithError": "Invalid username: {{error}}",
+      "linkCopyFailed": "リンクのコピーに失敗しました。再試行してください。",
+      "locationAlreadyExists": "This location already exists!",
+      "loginFailed": "ログインに失敗しました。認証情報を確認してください。",
+      "maintenanceMode": "サービスはメンテナンス中です。後でもう一度試してください。",
+      "mobileNumberInvalid": "無効な携帯電話番号形式",
+      "mobileNumberRequired": "携帯電話番号が必要です",
+      "mobileNumberTooLong": "携帯電話番号が長すぎます",
+      "mobileNumberTooShort": "携帯電話番号が短すぎます",
+      "networkError": "ネットワークエラー。接続を確認してください。",
+      "noImagesFoundForPlace": "No images found for this place",
+      "notificationSendFailed": "通知の送信に失敗しました。再試行してください。",
+      "noValidFilesSelected": "No valid files selected. Supported formats: {{formats}}",
+      "onboardingAlreadyCompleted": "Onboarding already completed. Redirecting to home...",
+      "onboardingCompletedAnotherTab": "Onboarding completed in another tab. Redirecting...",
+      "onboardingFailed": "オンボーディングに失敗しました。再試行してください。",
+      "onboardingInProgress": "Onboarding is already in progress in another tab.",
+      "operationTimeout": "操作がタイムアウトしました。再試行してください。",
+      "passwordChangeFailed": "パスワードの変更に失敗しました。再試行してください。",
+      "passwordResetFailed": "パスワードのリセットに失敗しました。再試行してください。",
+      "passwordsDoNotMatch": "パスワードが一致しません。再試行してください。",
+      "passwordTooWeak": "パスワードが弱すぎます。より強いパスワードを選択してください。",
+      "permissionDenied": "アクセスが拒否されました。サポートにお問い合わせください。",
+      "phoneNotVerified": "電話番号が確認されていません。まず電話を確認してください。",
+      "placeAlreadyExists": "This place already exists in your recommendation list!",
+      "pleaseSelectListFirst": "Please select a recommendation list first",
+      "pleaseSelectLocation": "Please select a location from the search results",
+      "postalCodeRequired": "郵便番号が必要です",
+      "preconditionFailed": "前提条件が失敗しました。リクエストを確認してください。",
+      "primaryAddressRequired": "プライマリアドレスが必要です",
+      "profileCompletionFailed": "プロフィールの完了に失敗しました。再試行してください。",
+      "profileImageUpdateFailed": "プロフィール画像のアップロードに失敗しました。再試行してください。",
+      "profileUpdateFailed": "プロフィールの更新に失敗しました。再試行してください。",
+      "quotaExceeded": "クォータを超えました。後でもう一度試してください。",
+      "rateLimitExceeded": "リクエストが多すぎます。後でもう一度試してください。",
+      "recommendedListUpdateFailed": "おすすめリストの更新でエラーが発生しました！！！",
+      "registrationFailed": "登録に失敗しました。再試行してください。",
+      "requiredFieldMissing": "必須フィールドが不足しています。すべての必須フィールドを入力してください。",
+      "resetLinkFailed": "リセットリンクの送信に失敗しました。後でもう一度試してください。",
+      "resetLinkResendFailed": "再送信に失敗しました。後でもう一度試してください。",
+      "resourceNotFound": "リソースが見つかりません。リクエストを確認してください。",
+      "searchAndSelectPlaceFirst": "Search and select a place first",
+      "selectAtLeastOneImage": "Select at least one image",
+      "selectPlaceFromSuggestions": "Select the Place from google suggestions",
+      "selectValidCategory": "Select a Valid Category",
+      "serverError": "サーバーエラー。後でもう一度試してください。",
+      "serviceUnavailable": "サービスが利用できません。後でもう一度試してください。",
+      "sessionExpired": "セッションが期限切れです。再度ログインしてください。",
+      "settingsSaveFailed": "設定の保存に失敗しました。再試行してください。",
+      "setupFailed": "セットアップに失敗しました。再試行してください。",
+      "somethingWentWrong": "Something Went Wrong!!",
+      "stateRequired": "都道府県が必要です",
+      "submissionInProgress": "Please wait, submission is already in progress.",
+      "tooManyAttempts": "試行回数が多すぎます。後でもう一度試してください。",
+      "twoFactorFailed": "二要素認証に失敗しました。再試行してください。",
+      "twoFactorRequired": "二要素認証が必要です。",
+      "unsupportedFileType": "サポートされていないファイルタイプです。別のファイルを選択してください。",
+      "unsupportedImageFormat": "サポートされていない画像形式です。JPG、PNG、またはGIFを使用してください",
+      "updateFailedWithError": "Update failed: {{error}}",
+      "uploadLimitExceeded": "アップロード制限を超えました。後でもう一度試してください。",
+      "usernameAlreadyExists": "ユーザー名は既に存在します。別のものを選択してください。",
+      "usernameChangeFailed": "ユーザー名の変更に失敗しました。再試行してください。",
+      "usernameInvalidChars": "ユーザー名に無効な文字が含まれています。文字、数字、ハイフンのみを使用してください。",
+      "usernameProfanity": "ユーザー名に不適切な内容が含まれています。別のユーザー名を選択してください。",
+      "usernameReserved": "ユーザー名は予約されています。別のユーザー名を選択してください。",
+      "usernameTooLong": "ユーザー名が長すぎます。より短いユーザー名を選択してください。",
+      "usernameTooShort": "ユーザー名が短すぎます。より長いユーザー名を選択してください。",
+      "usernameUpdateFailed": "ユーザー名の更新に失敗しました。再試行してください。",
+      "validationError": "検証エラー。入力内容を確認してください。",
+      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!"
+    },
+    "info": {
+      "aborting": "中止中...",
+      "accountAlreadyExists": "Account already exists. Redirecting to home...",
+      "activating": "アクティベート中...",
+      "adding": "追加中...",
+      "adjusting": "調整中...",
+      "arranging": "整理中...",
+      "building": "構築中...",
+      "canceling": "キャンセル中...",
+      "changing": "変更中...",
+      "checking": "確認中...",
+      "chilling": "冷却中...",
+      "clearing": "クリア中...",
+      "closing": "閉じています...",
+      "completing": "完了中...",
+      "concluding": "終了中...",
+      "configuring": "設定中...",
+      "connecting": "接続中...",
+      "constructing": "構築中...",
+      "cooling": "冷却中...",
+      "correcting": "修正中...",
+      "creating": "作成中...",
+      "deactivating": "非アクティベート中...",
+      "deleting": "削除中...",
+      "disabling": "無効化中...",
+      "disconnecting": "切断中...",
+      "downloading": "ダウンロード中...",
+      "enabling": "有効化中...",
+      "ending": "終了中...",
+      "enhancing": "強化中...",
+      "filtering": "フィルタリング中...",
+      "finalizing": "最終化中...",
+      "finishing": "終了中...",
+      "fixing": "修正中...",
+      "freezing": "凍結中...",
+      "generating": "生成中...",
+      "halting": "停止中...",
+      "heating": "加熱中...",
+      "improving": "改善中...",
+      "initializing": "初期化中...",
+      "inserting": "挿入中...",
+      "interrupting": "中断中...",
+      "launching": "起動中...",
+      "loading": "読み込み中...",
+      "making": "作成中...",
+      "melting": "融解中...",
+      "modernizing": "近代化中...",
+      "modifying": "変更中...",
+      "opening": "開いています...",
+      "optimizing": "最適化中...",
+      "organizing": "整理中...",
+      "pausing": "一時停止中...",
+      "preparing": "準備中...",
+      "processing": "処理中...",
+      "producing": "生成中...",
+      "readying": "準備中...",
+      "receiving": "受信中...",
+      "recovering": "回復中...",
+      "refreshing": "更新中...",
+      "removing": "削除中...",
+      "renewing": "更新中...",
+      "repairing": "修復中...",
+      "resetting": "リセット中...",
+      "restarting": "再起動中...",
+      "restoring": "復元中...",
+      "resuming": "再開中...",
+      "saving": "保存中...",
+      "searching": "検索中...",
+      "sending": "送信中...",
+      "setting": "設定中...",
+      "shutting": "閉じています...",
+      "sorting": "並べ替え中...",
+      "starting": "開始中...",
+      "stopping": "停止中...",
+      "switching": "切り替え中...",
+      "synchronizing": "同期中...",
+      "terminating": "終了中...",
+      "thawing": "解凍中...",
+      "toggling": "切り替え中...",
+      "tuning": "調整中...",
+      "unfreezing": "解凍中...",
+      "updating": "更新中...",
+      "upgrading": "アップグレード中...",
+      "uploading": "アップロード中...",
+      "validating": "検証中...",
+      "verifying": "確認中...",
+      "warming": "加熱中..."
+    },
+    "success": {
+      "accountActivated": "アカウントが正常にアクティベートされました！",
+      "accountCreated": "アカウントが正常に作成されました！",
+      "actionCompleted": "アクションが正常に完了しました！",
+      "backgroundImageUpdated": "背景画像が正常に更新されました！",
+      "changesSaved": "変更が正常に保存されました！",
+      "dataSaved": "データが正常に保存されました！",
+      "emailSent": "メールが正常に送信されました！",
+      "emailVerificationSent": "確認メールを送信しました！",
+      "emailVerified": "メール認証が完了しました！",
+      "filesAddedSuccessfully": "{{count}} file(s) added successfully!",
+      "filesReadyForUpload": "{{count}} {{fileText}} ready for upload",
+      "fileUploaded": "ファイルが正常にアップロードされました！",
+      "formSubmitted": "フォームが正常に送信されました！",
+      "imagesUploadedToFeed": "Added {{count}} image(s) to feed",
+      "imageUploaded": "画像のアップロードに成功しました！",
+      "instagramLinkCopied": "Instagram link copied! You can now paste it in your Instagram story or post.",
+      "itemRemovedFromFeed": "Removed {{itemType}} from feed",
+      "linkCopied": "リンクをクリップボードにコピーしました！",
+      "loggedOutSuccessfully": "正常にログアウトしました！",
+      "loginSuccessful": "ログインに成功しました！",
+      "mediaRemovedSuccessfully": "Media removed successfully!",
+      "notificationSent": "通知が正常に送信されました！",
+      "onboardingCompleted": "オンボーディングが正常に完了しました！",
+      "passwordChanged": "パスワードが正常に変更されました！",
+      "passwordResetSuccessful": "パスワードのリセットに成功しました！",
+      "profileCompleted": "プロフィールが正常に完了しました！",
+      "profileImageUpdated": "プロフィール画像が正常に更新されました！",
+      "profileUpdated": "プロフィールが正常に更新されました！",
+      "profileUpdatedSuccessfully": "Profile updated successfully!",
+      "recommendationCreatedSuccessfully": "Recommendation Created Successfully!!!",
+      "recommendationUpdatedSuccessfully": "Recommendation Updated Successfully!!!",
+      "recommendedCityDeleted": "Recommended City Deleted Successfully!!",
+      "recommendedListUpdated": "おすすめリストが正常に更新されました！！！",
+      "registrationSuccessful": "登録に成功しました！",
+      "resetLinkResent": "リセットリンクを再送信しました！",
+      "resetLinkSent": "パスワードリセットリンクをメールに送信しました！",
+      "settingsSaved": "設定が正常に保存されました！",
+      "setupCompleted": "セットアップが正常に完了しました！",
+      "uploadingImagesToFeed": "Uploading selected images to your feed...",
+      "usernameChanged": "ユーザー名が正常に変更されました！",
+      "usernameUpdated": "ユーザー名が正常に更新されました！",
+      "welcomeMessage": "explorersへようこそ！"
+    },
+    "warning": {
+      "accountExpiring": "アカウントが期限切れになっています。アカウントを更新してください",
+      "accountNotActivated": "アカウントがアクティベートされていません。アカウントをアクティベートしてください",
+      "actionExpiring": "アクションが期限切れになっています。アクションを更新してください",
+      "actionNotCompleted": "アクションが完了していません。アクションを完了してください",
+      "changesExpiring": "変更が期限切れになっています。変更を更新してください",
+      "changesNotSaved": "変更が保存されていません。変更を保存してください",
+      "credentialsExpiring": "認証情報が期限切れになっています。認証情報を更新してください",
+      "dataExpiring": "データが期限切れになっています。データを更新してください",
+      "dataNotSaved": "データが保存されていません。データを保存してください",
+      "emailExpiring": "メールが期限切れになっています。メールを更新してください",
+      "emailNotSent": "メールが送信されていません。メールを送信してください",
+      "emailNotVerified": "メールが確認されていません。メールを確認してください",
+      "fileExpiring": "ファイルが期限切れになっています。ファイルを更新してください",
+      "fileNotUploaded": "ファイルがアップロードされていません。ファイルをアップロードしてください",
+      "formExpiring": "フォームが期限切れになっています。フォームを更新してください",
+      "formNotSubmitted": "フォームが送信されていません。フォームを送信してください",
+      "imageExpiring": "画像が期限切れになっています。画像を更新してください",
+      "imageNotUploaded": "画像がアップロードされていません。画像をアップロードしてください",
+      "linkExpiring": "リンクが期限切れになっています。リンクを更新してください",
+      "linkNotCopied": "リンクがコピーされていません。リンクをコピーしてください",
+      "networkSlow": "ネットワークが遅いです。接続を確認してください",
+      "notificationExpiring": "通知が期限切れになっています。通知を更新してください",
+      "notificationNotSent": "通知が送信されていません。通知を送信してください",
+      "onboardingExpiring": "オンボーディングが期限切れになっています。オンボーディングを更新してください",
+      "onboardingNotCompleted": "オンボーディングが完了していません。オンボーディングを完了してください",
+      "passwordExpiring": "パスワードが期限切れになっています。パスワードを更新してください",
+      "passwordNotChanged": "パスワードが変更されていません。パスワードを変更してください",
+      "passwordWeak": "パスワードが弱いです。より強いパスワードの使用を検討してください",
+      "permissionPending": "許可が保留中です。お待ちください",
+      "phoneExpiring": "電話が期限切れになっています。電話を更新してください",
+      "phoneNotVerified": "電話番号が確認されていません。電話を確認してください",
+      "profileExpiring": "プロフィールが期限切れになっています。プロフィールを更新してください",
+      "profileIncomplete": "プロフィールが不完全です。プロフィールを完成させてください",
+      "profileNotCompleted": "プロフィールが完了していません。プロフィールを完了してください",
+      "serverSlow": "サーバーが遅いです。後でもう一度試してください",
+      "sessionExpiring": "セッションが期限切れになっています。再度ログインしてください",
+      "settingsExpiring": "設定が期限切れになっています。設定を更新してください",
+      "settingsNotSaved": "設定が保存されていません。設定を保存してください",
+      "setupExpiring": "セットアップが期限切れになっています。セットアップを更新してください",
+      "setupNotCompleted": "セットアップが完了していません。セットアップを完了してください",
+      "usernameCooldown": "クールダウン期間により、ユーザー名の変更が一時的にロックされています",
+      "usernameCooldownDays": "You can change your username after {{days}} day(s) ({{date}})",
+      "usernameCooldownHours": "You can change your username in {{hours}} hour(s) (after {{time}})",
+      "usernameCooldownMinutes": "You can change your username in {{minutes}} minute(s) (after {{time}})",
+      "usernameCooldownReady": "You can change your username now",
+      "usernameCooldownUnknown": "You can change your username now",
+      "usernameExpiring": "ユーザー名が期限切れになっています。ユーザー名を更新してください",
+      "usernameNotChanged": "ユーザー名が変更されていません。ユーザー名を変更してください",
+      "validationPending": "検証が保留中です。お待ちください"
+    }
+  }
 }

@@ -20,6 +20,13 @@ const DashboardLayout = () => {
     lastScrollTop.current = 0;
   }, [location.pathname]);
 
+  useEffect(() => {
+    (window as any).__dashboardLoaded = false;
+    return () => {
+      (window as any).__dashboardLoaded = false;
+    };
+  }, []);
+
   const handleScroll = () => {
     if (!scrollContainerRef.current) return;
     

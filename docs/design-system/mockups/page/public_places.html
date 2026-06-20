@@ -1,0 +1,1841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Public Places Mockup — explorers.earth</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ============ RESET & BASE ============ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Poppins', system-ui, sans-serif;
+      background: #0d0f12;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* ============ PREVIEW MASTER HEADER ============ */
+    .preview-header {
+      width: 100%;
+      max-width: 800px;
+      padding: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 2rem;
+      z-index: 100;
+    }
+    .preview-info h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: white;
+    }
+    .preview-info p {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      margin-top: 0.25rem;
+    }
+    .badge {
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      display: inline-block;
+    }
+    .badge-approved {
+      background: rgba(74, 222, 128, 0.15);
+      color: #4ade80;
+    }
+    .badge-public {
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
+      margin-left: 0.25rem;
+    }
+    .view-controls {
+      display: flex;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 3px;
+      border-radius: 8px;
+      gap: 2px;
+    }
+    .control-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Poppins', sans-serif;
+      transition: all 0.2s ease;
+    }
+    .control-btn.active {
+      background: #3B82F6;
+      color: white;
+    }
+
+    /* ============ MAIN LAYOUT PREVIEW VIEWS ============ */
+    .preview-main {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      width: 100%;
+      flex-grow: 1;
+      padding-bottom: 3rem;
+      transition: all 0.3s ease;
+    }
+
+    /* Device Frame View Mode */
+    .preview-main.device-view .phone-wrapper {
+      width: 375px;
+      height: 720px;
+      border: 12px solid #1e293b;
+      border-radius: 40px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      background: #0d1117;
+      overflow: hidden;
+      position: relative;
+    }
+    .preview-main.device-view .phone-frame-inner {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+    .preview-main.device-view .phone-frame-inner::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Full Responsive View Mode */
+    .preview-main.full-view {
+      padding: 0 1.5rem 3rem;
+      max-width: 1200px;
+      width: 100%;
+    }
+    .preview-main.full-view .phone-wrapper {
+      width: 100%;
+      background: #0d1117;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    .preview-main.full-view .phone-frame-inner {
+      width: 100%;
+      max-width: 1024px;
+      margin: 0 auto;
+    }
+
+    /* ============ DESIGN TOKENS ============ */
+    :root {
+      --evergreen-glow: rgba(16, 185, 129, 0.2);
+      --dash-bg: #0d1117;
+      --dash-sidebar-bg: #2a2a2a;
+      --dash-accent: #3b82f6;
+      --dash-border: rgba(255,255,255,0.08);
+    }
+
+    /* ============ PUBLIC STYLING ============ */
+    .phone-frame {
+      min-height: 100%;
+      padding-bottom: 5rem;
+      background: #0d1117;
+      position: relative;
+      color: white;
+    }
+
+    /* Fixed App Header */
+    .app-header {
+      position: sticky;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      background: rgba(42, 42, 42, 0.9);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.5rem;
+      z-index: 50;
+    }
+    .app-logo {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: white;
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+    .app-header-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .app-btn {
+      width: 32px;
+      height: 32px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .app-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .media-content {
+      padding: 1rem 1.5rem 4rem;
+    }
+
+    /* ============ HERO CAROUSEL: DESKTOP WORKINGS ============ */
+    .hero-desktop {
+      position: relative;
+      width: 100%;
+      height: 400px;
+      background: black;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+      margin-bottom: 2.5rem;
+      display: none;
+    }
+    .preview-main.full-view .hero-desktop {
+      display: block;
+    }
+    .hero-slide {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.8s ease;
+      z-index: 1;
+    }
+    .hero-slide.active {
+      opacity: 1;
+      z-index: 5;
+    }
+    .hero-slide-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.85;
+    }
+    .hero-gradient-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, black 15%, rgba(0,0,0,0.3) 60%, transparent 100%),
+                  linear-gradient(to right, rgba(0,0,0,0.85) 30%, rgba(0,0,0,0.2) 70%, transparent 100%);
+      z-index: 2;
+    }
+    .hero-details-box {
+      position: absolute;
+      bottom: 2rem;
+      left: 2.5rem;
+      max-width: 45%;
+      z-index: 10;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .hero-tag {
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #fbbf24;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .hero-title {
+      font-size: 2.25rem;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      margin-bottom: 0.25rem;
+    }
+    .hero-meta {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.8);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .hero-desc {
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.65);
+      line-height: 1.45;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+    .hero-action-btn {
+      width: fit-content;
+      background: #3b82f6;
+      border: none;
+      color: white;
+      padding: 0.6rem 1.5rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
+      transition: all 0.2s;
+    }
+    .hero-action-btn:hover {
+      opacity: 0.9;
+      transform: scale(1.03);
+    }
+
+    /* Thumbnail sidebar overlay */
+    .hero-thumbs-sidebar {
+      position: absolute;
+      right: 2rem;
+      bottom: 2rem;
+      display: flex;
+      gap: 0.75rem;
+      z-index: 10;
+    }
+    .hero-thumb-btn {
+      width: 75px;
+      aspect-ratio: 16/9;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 2px solid transparent;
+      opacity: 0.5;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .hero-thumb-btn.active {
+      border-color: white;
+      opacity: 1;
+      transform: scale(1.08);
+    }
+    .hero-thumb-btn img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* ============ HERO CAROUSEL: MOBILE WORKINGS ============ */
+    .hero-mobile {
+      position: relative;
+      width: 100%;
+      height: 320px;
+      margin-bottom: 2rem;
+      display: none;
+    }
+    .preview-main.device-view .hero-mobile {
+      display: block;
+    }
+    .mobile-cards-stack {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    .mobile-hero-card {
+      position: absolute;
+      inset: 0 1rem;
+      height: 100%;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+      background: #1a2332;
+    }
+    .mobile-hero-card.hidden-left {
+      transform: translateX(-110%) scale(0.9);
+      opacity: 0;
+      z-index: 1;
+    }
+    .mobile-hero-card.active {
+      transform: translateX(0) scale(1);
+      opacity: 1;
+      z-index: 10;
+    }
+    .mobile-hero-card.next {
+      transform: translateX(12%) scale(0.9);
+      opacity: 0.8;
+      z-index: 5;
+    }
+    .mobile-hero-card.next-next {
+      transform: translateX(24%) scale(0.8);
+      opacity: 0.4;
+      z-index: 4;
+    }
+    .mobile-hero-card.hidden-right {
+      transform: translateX(40%) scale(0.7);
+      opacity: 0;
+      z-index: 1;
+    }
+
+    .mobile-card-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .mobile-card-gradient {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, black 25%, rgba(0,0,0,0.4) 60%, transparent 100%);
+      z-index: 2;
+    }
+    .mobile-card-details {
+      position: absolute;
+      bottom: 1.25rem;
+      left: 1.25rem;
+      right: 1.25rem;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .mobile-card-title {
+      font-size: 1.5rem;
+      font-weight: 900;
+      color: white;
+      line-height: 1.2;
+      margin-bottom: 0.25rem;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    }
+    .mobile-card-meta {
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.8);
+    }
+    .mobile-card-action {
+      margin-top: 0.75rem;
+      pointer-events: auto;
+      background: #3b82f6;
+      border: none;
+      color: white;
+      padding: 0.5rem 1rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+      width: 100%;
+      cursor: pointer;
+    }
+
+    /* Swipe indicators */
+    .mobile-swipe-indicator {
+      display: flex;
+      justify-content: center;
+      gap: 0.35rem;
+      margin-top: 0.75rem;
+    }
+    .swipe-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.25);
+      cursor: pointer;
+    }
+    .swipe-dot.active {
+      background: #3b82f6;
+      width: 16px;
+      border-radius: 4px;
+    }
+
+    /* ============ LIST CAROUSEL ROW ============ */
+    .carousel-row {
+      margin-bottom: 2rem;
+    }
+    .carousel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 0.75rem;
+    }
+    .carousel-title-group {
+      display: flex;
+      flex-direction: column;
+    }
+    .carousel-title {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: white;
+      cursor: pointer;
+    }
+    .carousel-title:hover {
+      color: #3b82f6;
+    }
+    .carousel-desc {
+      font-size: 0.65rem;
+      color: rgba(255,255,255,0.45);
+      margin-top: 0.1rem;
+    }
+    .carousel-see-all {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #3b82f6;
+      text-decoration: none;
+    }
+    .carousel-cards-scroll {
+      display: flex;
+      gap: 0.75rem;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+      scrollbar-width: none;
+    }
+    .carousel-cards-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* ============ CANONICAL PLACE RECOMMENDATION CARD ============ */
+    .place-rec-card {
+      width: 135px;
+      height: 155px;
+      flex-shrink: 0;
+      border-radius: 16px;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 0.65rem;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background-size: cover;
+      background-position: center;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    @media (min-width: 768px) {
+      .place-rec-card {
+        width: 155px;
+        height: 180px;
+      }
+    }
+    .place-rec-card:hover {
+      transform: scale(1.02);
+      border-color: rgba(255,255,255,0.25);
+    }
+    .place-rec-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.85) 85%);
+      z-index: 1;
+    }
+    .place-rec-top {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
+    .place-direction-badge {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: rgba(15,22,36,0.65);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .place-rec-bottom {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+      width: 100%;
+    }
+    .place-rec-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: white;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.85);
+      line-height: 1.25;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    @media (min-width: 768px) {
+      .place-rec-title {
+        font-size: 0.82rem;
+      }
+    }
+    .place-rec-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      color: white;
+      font-size: 0.58rem;
+      font-weight: 600;
+    }
+    @media (min-width: 768px) {
+      .place-rec-meta {
+        font-size: 0.62rem;
+      }
+    }
+
+    /* ============ STEP 2: PLACE GRID DETAILS ============ */
+    .step-2-view {
+      display: none;
+    }
+    .step-2-header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      margin-bottom: 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 1rem;
+    }
+    .step-2-back {
+      font-size: 0.58rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.5);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      margin-bottom: 0.25rem;
+      width: fit-content;
+      transition: color 0.2s;
+    }
+    .step-2-back:hover {
+      color: white;
+    }
+    .step-2-title {
+      font-size: 1.35rem;
+      font-weight: 900;
+      color: white;
+      line-height: 1.1;
+    }
+    .step-2-desc {
+      font-size: 0.72rem;
+      color: rgba(255, 255, 255, 0.5);
+      line-height: 1.4;
+      margin-top: 0.25rem;
+    }
+    .places-grid-container {
+      display: grid;
+      grid-template-cols: repeat(2, 1fr);
+      gap: 0.5rem;
+      padding-bottom: 3rem;
+    }
+    @media (min-width: 768px) {
+      .places-grid-container {
+        grid-template-cols: repeat(3, 1fr);
+        gap: 0.75rem;
+      }
+    }
+
+    /* ============ DETAIL MODAL ============ */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .modal-box {
+      position: relative;
+      width: 100%;
+      max-width: 500px;
+      background: #1a2332;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+      transform: translateY(20px);
+      transition: transform 0.3s ease;
+    }
+    .modal-overlay.active .modal-box {
+      transform: translateY(0);
+    }
+    .modal-close-btn {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.6);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 10;
+      font-weight: bold;
+    }
+    .modal-backdrop-img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+    }
+    .modal-fade {
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 200px;
+      background: linear-gradient(to top, #1a2332, transparent);
+    }
+    .modal-content {
+      padding: 1.5rem;
+      margin-top: -30px;
+      position: relative;
+      z-index: 5;
+    }
+    .modal-title {
+      font-size: 1.5rem;
+      font-weight: 900;
+      color: white;
+      letter-spacing: -0.01em;
+      line-height: 1.2;
+    }
+    .modal-meta {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.8);
+      margin-top: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .modal-rating {
+      color: #fbbf24;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 0.1rem;
+    }
+    .modal-desc {
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.65);
+      line-height: 1.5;
+      margin: 1rem 0;
+    }
+    .modal-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .modal-primary-btn {
+      width: 100%;
+      background: #3b82f6;
+      border: none;
+      color: white;
+      padding: 0.75rem;
+      font-weight: 700;
+      font-size: 0.78rem;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .modal-secondary-btn {
+      width: 100%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: white;
+      padding: 0.75rem;
+      font-weight: 700;
+      font-size: 0.78rem;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    /* ============ FLOATING ACTION PILL BUTTON ============ */
+    .floating-view-toggle {
+      position: absolute;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 500;
+      pointer-events: none;
+    }
+    .fab-btn {
+      pointer-events: auto;
+      background: #3b82f6;
+      border: none;
+      color: white;
+      padding: 0.6rem 1.25rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.45);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: 'Poppins', sans-serif;
+    }
+    .fab-btn:hover {
+      background: #2563eb;
+      transform: scale(1.03);
+    }
+    .fab-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* ============ HERO MAP WRAPPING ============ */
+    .hero-map-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      display: none;
+    }
+    .hero-map-overlay.active {
+      display: block;
+    }
+    
+    /* Mock Satellite Map Styling */
+    .mock-map {
+      width: 100%;
+      height: 100%;
+      background: #0f1624 url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200') center/cover no-repeat;
+      position: relative;
+    }
+    .mock-map.satellite-style {
+      filter: brightness(0.65) contrast(1.15) saturate(0.85);
+    }
+    
+    /* Map Toggle Buttons inside Hero */
+    .hero-map-toggle {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      z-index: 20;
+      display: flex;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 3px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(4px);
+    }
+    .hero-map-toggle-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.62rem;
+      font-weight: 600;
+      border-radius: 5px;
+      cursor: pointer;
+      font-family: 'Poppins', sans-serif;
+      transition: all 0.2s;
+    }
+    .hero-map-toggle-btn.active {
+      background: #3b82f6;
+      color: white;
+    }
+    
+    /* Map Markers */
+    .map-pin {
+      position: absolute;
+      cursor: pointer;
+      transform: translate(-50%, -100%);
+      transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 10;
+    }
+    .map-pin:hover {
+      transform: translate(-50%, -100%) scale(1.2);
+      z-index: 20;
+    }
+    .pin-body {
+      width: 16px;
+      height: 16px;
+      background: #ef4444; /* default red */
+      border: 2px solid white;
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+      position: relative;
+    }
+    .pin-body::after {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 6px 4.5px 0;
+      border-style: solid;
+      border-color: white transparent;
+    }
+    .map-pin.purple-pin .pin-body {
+      background: #a855f7;
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.8);
+    }
+    .pin-label {
+      position: absolute;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 22, 36, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: white;
+      font-size: 0.55rem;
+      font-weight: 700;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      white-space: nowrap;
+      pointer-events: none;
+      backdrop-filter: blur(2px);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .map-pin:hover .pin-label {
+      opacity: 1;
+    }
+
+    /* ============ FULL-SCREEN MAP VIEW LAYOUT ============ */
+    .step-map-view {
+      display: none;
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 580px;
+    }
+    .step-map-view.active {
+      display: block;
+    }
+    .fullscreen-map {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      inset: 0;
+    }
+    
+    /* Region Filter at Top of Map */
+    .map-top-bar {
+      position: absolute;
+      top: 1rem;
+      left: 0;
+      right: 0;
+      z-index: 30;
+      display: flex;
+      gap: 0.5rem;
+      padding: 0 1rem;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .map-top-bar::-webkit-scrollbar {
+      display: none;
+    }
+    .map-region-btn {
+      background: rgba(15, 22, 36, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      color: rgba(255, 255, 255, 0.7);
+      padding: 0.35rem 0.75rem;
+      font-size: 0.65rem;
+      font-weight: 600;
+      border-radius: 20px;
+      cursor: pointer;
+      font-family: 'Poppins', sans-serif;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .map-region-btn.active {
+      background: #3b82f6;
+      color: white;
+      border-color: #3b82f6;
+      box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+    }
+    
+    /* Bottom Collapsible Tray */
+    .map-bottom-tray {
+      position: absolute;
+      bottom: 0rem;
+      left: 0;
+      right: 0;
+      z-index: 30;
+      background: rgba(13, 17, 23, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px 20px 0 0;
+      padding: 0.75rem 1rem 3.5rem;
+      transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    .map-bottom-tray.collapsed {
+      transform: translateY(calc(100% - 40px - 3.5rem));
+    }
+    .tray-handle {
+      width: 40px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 2px;
+      margin: 0 auto 0.75rem;
+      cursor: pointer;
+    }
+    .tray-categories {
+      display: flex;
+      gap: 0.4rem;
+      margin-bottom: 0.75rem;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .tray-categories::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+
+</head>
+<body>
+
+  <!-- ====== PREVIEW MASTER HEADER ====== -->
+  <header class="preview-header">
+    <div class="preview-info">
+      <h1>Public Places recommendations</h1>
+      <p>
+        Status: <span class="badge badge-approved">Approved</span>
+      </p>
+    </div>
+    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+      <div class="view-controls">
+        <button class="control-btn active" id="btn-device" onclick="setViewMode('device')">📱 Phone</button>
+        <button class="control-btn" id="btn-full" onclick="setViewMode('full')">🖥️ Full View</button>
+      </div>
+      <div class="view-controls">
+        <button class="control-btn active" id="btn-theme-green" onclick="setTheme('green')">🌲 Green Theme</button>
+        <button class="control-btn" id="btn-theme-dark" onclick="setTheme('dark')">🖤 Dark Theme</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ====== MAIN PREVIEW CONTAINER ====== -->
+  <main class="preview-main device-view" id="main-container">
+    <div class="phone-wrapper" style="position: relative;">
+      
+      <!-- ====== FLOATING VIEW TOGGLE FAB BUTTON ====== -->
+      <div class="floating-view-toggle" id="floating-toggle-container">
+        <button class="fab-btn" onclick="toggleMainView()" id="btn-fab-toggle">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+          </svg>
+          <span id="fab-text">Map View</span>
+        </button>
+      </div>
+
+      <div class="phone-frame-inner">
+        <div class="phone-frame">
+
+          <!-- ====== PUBLIC APP HEADER ====== -->
+          <div class="app-header">
+            <span class="app-logo">explorers.earth</span>
+            <div class="app-header-actions">
+              <button class="app-btn" onclick="alert('Shared locations page!')" aria-label="Share">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+              </button>
+              <button class="app-btn" onclick="alert('Copied link to clipboard!')" aria-label="Copy Link">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- ======================================================== -->
+          <!--             STEP 1: PLACES DASHBOARD (HOMEPAGE)          -->
+          <!-- ======================================================== -->
+          <div class="step-1-view" id="view-step1" style="display:block;">
+            
+            <!-- ====== DESKTOP FEATURED HERO BANNER (Top Picks) ====== -->
+            <div class="hero-desktop" id="desktop-hero-container">
+              <div class="hero-slide active" id="d-slide-0">
+                <img src="https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=1200" alt="Paris scenery" class="hero-slide-img" />
+              </div>
+              <div class="hero-slide" id="d-slide-1">
+                <img src="https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=1200" alt="Tokyo scenery" class="hero-slide-img" />
+              </div>
+              <div class="hero-slide" id="d-slide-2">
+                <img src="https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=1200" alt="Bali scenery" class="hero-slide-img" />
+              </div>
+              
+              <!-- Slide 3 (Interactive Map) -->
+              <div class="hero-slide" id="d-slide-3" style="background: #0f1624;">
+                <div class="mock-map satellite-style" style="width: 100%; height: 100%;">
+                  <!-- Eiffel Tower Pin -->
+                  <div class="map-pin" style="top: 35%; left: 30%;" onclick="openPlaceDetails('Eiffel Tower', 'Landmark', '4.7', '12k', 'France', 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=600', 'The iconic iron structure of Paris, offering scenic views across the Champ de Mars.', 'Champ de Mars, 5 Avenue Anatole France, 75007 Paris')">
+                    <div class="pin-body"></div>
+                    <span class="pin-label">Eiffel Tower</span>
+                  </div>
+                  <!-- Senso-ji Temple Pin -->
+                  <div class="map-pin" style="top: 50%; left: 60%;" onclick="openPlaceDetails('Senso-ji Temple', 'Culture', '4.7', '22k', 'Japan', 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=600', 'Tokyo\'s oldest and most iconic Buddhist temple, located in Asakusa.', '2 Chome-3-1 Asakusa, Taito City, Tokyo 111-0032')">
+                    <div class="pin-body"></div>
+                    <span class="pin-label">Senso-ji Temple</span>
+                  </div>
+                  <!-- Uluwatu Temple Pin -->
+                  <div class="map-pin" style="top: 70%; left: 45%;" onclick="openPlaceDetails('Uluwatu Temple', 'Landmark', '4.7', '18k', 'Bali', 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=600', 'A beautiful Balinese sea temple perched on a steep cliff overlooking the Indian Ocean.', 'Pecatu, South Kuta, Badung Regency, Bali, Indonesia')">
+                    <div class="pin-body"></div>
+                    <span class="pin-label">Uluwatu Temple</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="hero-gradient-overlay"></div>
+
+              <div class="hero-details-box">
+                <div class="hero-tag">
+                  <span style="width:2.5px; height:12px; background:#fbbf24; border-radius:2px;"></span>
+                  Top Picks
+                </div>
+                <h1 class="hero-title" id="d-hero-title">Eiffel Tower</h1>
+                <div class="hero-meta">
+                  <span id="d-hero-country">France</span>
+                  <span>•</span>
+                  <span id="d-hero-category">Landmark</span>
+                  <span>•</span>
+                  <span id="d-hero-reviews">★ 4.7 (12k reviews)</span>
+                </div>
+                <p class="hero-desc" id="d-hero-desc">The iconic symbol of Paris, offering panoramic views of the city from its observation platforms. A masterpiece of iron architecture...</p>
+                <button class="hero-action-btn" onclick="openHeroDetail()">
+                  <span>▶</span> See Details
+                </button>
+              </div>
+
+              <!-- Thumbnail Sidebar controls -->
+              <div class="hero-thumbs-sidebar">
+                <button class="hero-thumb-btn active" id="d-thumb-0" onclick="switchHeroActive(0)">
+                  <img src="https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=200" alt="Thumb 1" />
+                </button>
+                <button class="hero-thumb-btn" id="d-thumb-1" onclick="switchHeroActive(1)">
+                  <img src="https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=200" alt="Thumb 2" />
+                </button>
+                <button class="hero-thumb-btn" id="d-thumb-2" onclick="switchHeroActive(2)">
+                  <img src="https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=200" alt="Thumb 3" />
+                </button>
+                <!-- Thumbnail 4 (Map Icon button) -->
+                <button class="hero-thumb-btn" id="d-thumb-3" onclick="switchHeroActive(3)">
+                  <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #1a2332; border: 1px dashed rgba(255,255,255,0.2);">
+                    <svg width="20" height="20" fill="none" stroke="#3b82f6" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                    </svg>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <!-- ====== MOBILE STACKED CARDS HERO ====== -->
+            <div class="hero-mobile">
+              <div class="mobile-cards-stack">
+                
+                <!-- Card 1 (Active) -->
+                <div class="mobile-hero-card active" id="m-card-0" onclick="openHeroDetail()">
+                  <img src="https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=600" alt="Eiffel Tower" class="mobile-card-img" />
+                  <div class="mobile-card-gradient"></div>
+                  <div class="mobile-card-details">
+                    <div class="hero-tag" style="font-size:0.6rem; margin-bottom:0.25rem;">
+                      <span style="width:2px; height:10px; background:#fbbf24; border-radius:1px;"></span>
+                      Top Picks
+                    </div>
+                    <h2 class="mobile-card-title" id="m-title-0">Eiffel Tower</h2>
+                    <div class="mobile-card-meta" id="m-meta-0">France · Landmark · ★ 4.7</div>
+                    <button class="mobile-card-action">See Details</button>
+                  </div>
+                </div>
+
+                <!-- Card 2 (Next) -->
+                <div class="mobile-hero-card next" id="m-card-1">
+                  <img src="https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=600" alt="Senso-ji Temple" class="mobile-card-img" />
+                  <div class="mobile-card-gradient"></div>
+                  <div class="mobile-card-details">
+                    <div class="hero-tag" style="font-size:0.6rem; margin-bottom:0.25rem;">
+                      <span style="width:2px; height:10px; background:#fbbf24; border-radius:1px;"></span>
+                      Top Picks
+                    </div>
+                    <h2 class="mobile-card-title" id="m-title-1">Senso-ji Temple</h2>
+                    <div class="mobile-card-meta" id="m-meta-1">Japan · Culture · ★ 4.7</div>
+                    <button class="mobile-card-action">See Details</button>
+                  </div>
+                </div>
+
+                <!-- Card 3 (NextNext) -->
+                <div class="mobile-hero-card next-next" id="m-card-2">
+                  <img src="https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=600" alt="Uluwatu Temple" class="mobile-card-img" />
+                  <div class="mobile-card-gradient"></div>
+                  <div class="mobile-card-details">
+                    <div class="hero-tag" style="font-size:0.6rem; margin-bottom:0.25rem;">
+                      <span style="width:2px; height:10px; background:#fbbf24; border-radius:1px;"></span>
+                      Top Picks
+                    </div>
+                    <h2 class="mobile-card-title" id="m-title-2">Uluwatu Temple</h2>
+                    <div class="mobile-card-meta" id="m-meta-2">Bali · Landmark · ★ 4.7</div>
+                    <button class="mobile-card-action">See Details</button>
+                  </div>
+                </div>
+
+                <!-- Card 4 (Map Slide) -->
+                <div class="mobile-hero-card" id="m-card-3" style="background: #0f1624;">
+                  <div class="mock-map satellite-style" style="width: 100%; height: 100%;">
+                    <!-- Eiffel Tower Pin -->
+                    <div class="map-pin" style="top: 35%; left: 30%;" onclick="openPlaceDetails('Eiffel Tower', 'Landmark', '4.7', '12k', 'France', 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=600', 'The iconic iron structure of Paris, offering scenic views across the Champ de Mars.', 'Champ de Mars, 5 Avenue Anatole France, 75007 Paris')">
+                      <div class="pin-body"></div>
+                      <span class="pin-label">Eiffel Tower</span>
+                    </div>
+                    <!-- Senso-ji Temple Pin -->
+                    <div class="map-pin" style="top: 50%; left: 60%;" onclick="openPlaceDetails('Senso-ji Temple', 'Culture', '4.7', '22k', 'Japan', 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=600', 'Tokyo\'s oldest and most iconic Buddhist temple, located in Asakusa.', '2 Chome-3-1 Asakusa, Taito City, Tokyo 111-0032')">
+                      <div class="pin-body"></div>
+                      <span class="pin-label">Senso-ji Temple</span>
+                    </div>
+                    <!-- Uluwatu Temple Pin -->
+                    <div class="map-pin" style="top: 70%; left: 45%;" onclick="openPlaceDetails('Uluwatu Temple', 'Landmark', '4.7', '18k', 'Bali', 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=600', 'A beautiful Balinese sea temple perched on a steep cliff overlooking the Indian Ocean.', 'Pecatu, South Kuta, Badung Regency, Bali, Indonesia')">
+                      <div class="pin-body"></div>
+                      <span class="pin-label">Uluwatu Temple</span>
+                    </div>
+                  </div>
+                  <div class="mobile-card-gradient"></div>
+                  <div class="mobile-card-details">
+                    <div class="hero-tag" style="font-size:0.6rem; margin-bottom:0.25rem;">
+                      <span style="width:2px; height:10px; background:#fbbf24; border-radius:1px;"></span>
+                      Interactive Map
+                    </div>
+                    <h2 class="mobile-card-title">Interactive Map</h2>
+                    <div class="mobile-card-meta">All Regions · Satellite View</div>
+                    <button class="mobile-card-action" onclick="toggleMainView()">Open Map View</button>
+                  </div>
+                </div>
+
+              </div>
+              
+              <!-- Swipeindicators -->
+              <div class="mobile-swipe-indicator">
+                <span class="swipe-dot active" id="m-dot-0" onclick="switchHeroActive(0)"></span>
+                <span class="swipe-dot" id="m-dot-1" onclick="switchHeroActive(1)"></span>
+                <span class="swipe-dot" id="m-dot-2" onclick="switchHeroActive(2)"></span>
+                <span class="swipe-dot" id="m-dot-3" onclick="switchHeroActive(3)"></span>
+              </div>
+            </div>
+
+            <!-- ====== CONTENT INTERFACE AREA ====== -->
+            <div class="media-content">
+
+              <!-- Carousel Curation List 1: Paris Essentials -->
+              <div class="carousel-row">
+                <div class="carousel-header">
+                  <div class="carousel-title-group">
+                    <span class="carousel-title" onclick="openLocationPage('Paris Essentials')">Paris Essentials</span>
+                    <span class="carousel-desc">My favorite spots in Paris, including landmarks, cafes, and bakeries</span>
+                  </div>
+                  <a class="carousel-see-all" href="javascript:void(0)" onclick="openLocationPage('Paris Essentials')">See All ➔</a>
+                </div>
+                
+                <div class="carousel-cards-scroll">
+                  <!-- Place Card 1 -->
+                  <div class="place-rec-card" style="background-image: url('https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=400');" onclick="openPlaceDetails('Eiffel Tower', 'Landmark', '4.7', '12k', 'France', 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=600', 'The iconic iron structure of Paris, offering scenic views across the Champ de Mars.', 'Champ de Mars, 5 Avenue Anatole France, 75007 Paris')">
+                    <div class="place-rec-top">
+                      <div class="place-direction-badge">
+                        <svg width="10" height="10" fill="white" viewBox="0 0 24 24" style="transform: rotate(45deg);"><path d="M12 2L2 22l10-6 10 6L12 2z"/></svg>
+                      </div>
+                    </div>
+                    <div class="place-rec-bottom">
+                      <span class="place-rec-title">Eiffel Tower</span>
+                      <div class="place-rec-meta">
+                        <span style="color:#fbbf24;">★</span>
+                        <span>4.7</span>
+                        <span style="color:rgba(255,255,255,0.65); font-weight:500;">(12k)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Place Card 2 -->
+                  <div class="place-rec-card" style="background-image: url('https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=400');" onclick="openPlaceDetails('Pizzeria Popolare', 'Food', '4.7', '43k', 'France', 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=600', 'Extremely popular and authentic Italian trattoria offering delicious Neapolitan pizzas.', '111 Boulevard Réaumur, 75002 Paris')">
+                    <div class="place-rec-top">
+                      <div class="place-direction-badge">
+                        <svg width="10" height="10" fill="white" viewBox="0 0 24 24" style="transform: rotate(45deg);"><path d="M12 2L2 22l10-6 10 6L12 2z"/></svg>
+                      </div>
+                    </div>
+                    <div class="place-rec-bottom">
+                      <span class="place-rec-title">Pizzeria Popolare</span>
+                      <div class="place-rec-meta">
+                        <span style="color:#fbbf24;">★</span>
+                        <span>4.7</span>
+                        <span style="color:rgba(255,255,255,0.65); font-weight:500;">(43k)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Place Card 3 -->
+                  <div class="place-rec-card" style="background-image: url('https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=400');" onclick="openPlaceDetails('Café de Flore', 'Café', '4.2', '8.1k', 'France', 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=600', 'Historic Parisian coffeehouse famous for its classic design and literary clientele.', '172 Boulevard Saint-Germain, 75006 Paris')">
+                    <div class="place-rec-top">
+                      <div class="place-direction-badge">
+                        <svg width="10" height="10" fill="white" viewBox="0 0 24 24" style="transform: rotate(45deg);"><path d="M12 2L2 22l10-6 10 6L12 2z"/></svg>
+                      </div>
+                    </div>
+                    <div class="place-rec-bottom">
+                      <span class="place-rec-title">Café de Flore</span>
+                      <div class="place-rec-meta">
+                        <span style="color:#fbbf24;">★</span>
+                        <span>4.2</span>
+                        <span style="color:rgba(255,255,255,0.65); font-weight:500;">(8.1k)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Carousel Curation List 2: Tokyo Favorites -->
+              <div class="carousel-row">
+                <div class="carousel-header">
+                  <div class="carousel-title-group">
+                    <span class="carousel-title" onclick="openLocationPage('Tokyo Favorites')">Tokyo Favorites</span>
+                    <span class="carousel-desc">A collection of historic sites, shopping streets, and entertainment hubs in Tokyo</span>
+                  </div>
+                  <a class="carousel-see-all" href="javascript:void(0)" onclick="openLocationPage('Tokyo Favorites')">See All ➔</a>
+                </div>
+                
+                <div class="carousel-cards-scroll">
+                  <!-- Place Card 1 -->
+                  <div class="place-rec-card" style="background-image: url('https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=400');" onclick="openPlaceDetails('Senso-ji Temple', 'Culture', '4.7', '22k', 'Japan', 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=600', 'Tokyo\'s oldest and most iconic Buddhist temple, located in Asakusa.', '2 Chome-3-1 Asakusa, Taito City, Tokyo 111-0032')">
+                    <div class="place-rec-top">
+                      <div class="place-direction-badge">
+                        <svg width="10" height="10" fill="white" viewBox="0 0 24 24" style="transform: rotate(45deg);"><path d="M12 2L2 22l10-6 10 6L12 2z"/></svg>
+                      </div>
+                    </div>
+                    <div class="place-rec-bottom">
+                      <span class="place-rec-title">Senso-ji Temple</span>
+                      <div class="place-rec-meta">
+                        <span style="color:#fbbf24;">★</span>
+                        <span>4.7</span>
+                        <span style="color:rgba(255,255,255,0.65); font-weight:500;">(22k)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Place Card 2 -->
+                  <div class="place-rec-card" style="background-image: url('https://images.unsplash.com/photo-1540959733332-eab4deceeaf7?q=80&w=400');" onclick="openPlaceDetails('Shibuya Crossing', 'Landmark', '4.6', '55k', 'Japan', 'https://images.unsplash.com/photo-1540959733332-eab4deceeaf7?q=80&w=600', 'The famous pedestrian scramble crossing in Shibuya, iconic for its bright neon screens.', 'Shibuya Road, Shibuya City, Tokyo 150-0043')">
+                    <div class="place-rec-top">
+                      <div class="place-direction-badge">
+                        <svg width="10" height="10" fill="white" viewBox="0 0 24 24" style="transform: rotate(45deg);"><path d="M12 2L2 22l10-6 10 6L12 2z"/></svg>
+                      </div>
+                    </div>
+                    <div class="place-rec-bottom">
+                      <span class="place-rec-title">Shibuya Crossing</span>
+                      <div class="place-rec-meta">
+                        <span style="color:#fbbf24;">★</span>
+                        <span>4.6</span>
+                        <span style="color:rgba(255,255,255,0.65); font-weight:500;">(55k)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ======================================================== -->
+          <!--             STEP 2: LOCATION PAGE GRID DETAILS           -->
+          <!-- ======================================================== -->
+          <div class="step-2-view" id="view-step2" style="padding: 1rem 1.5rem;">
+            
+            <div class="step-2-header">
+              <!-- Back button directly above title -->
+              <div class="step-2-back" onclick="goToStep1()">
+                <svg width="6" height="6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-top:-0.5px;">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7"/>
+                </svg>
+                <span>Back</span>
+              </div>
+              <h2 class="step-2-title" id="location-page-title">Paris Essentials</h2>
+              <p class="step-2-desc" id="location-page-desc">My favorite spots in Paris, including landmarks, cafes, and bakeries.</p>
+            </div>
+
+            <!-- Place cards grid container -->
+            <div class="places-grid-container" id="step2-places-grid">
+              <!-- Dynamically populated grid place cards -->
+            </div>
+          </div>
+
+          <!-- ======================================================== -->
+          <!--             STEP 3: FULL SCREEN MAP VIEW                 -->
+          <!-- ======================================================== -->
+          <div class="step-map-view" id="view-map">
+            <!-- Full Screen Map Background -->
+            <div class="fullscreen-map mock-map satellite-style" id="fullscreen-map-bg">
+              <!-- Pins will be rendered dynamically by JavaScript based on active region -->
+            </div>
+            
+            <!-- Map Top Bar: Region selectors -->
+            <div class="map-top-bar" id="map-region-selectors">
+              <button class="map-region-btn active" onclick="selectMapRegion('')" id="btn-map-reg-all">All Regions</button>
+              <button class="map-region-btn" onclick="selectMapRegion('Paris Essentials')" id="btn-map-reg-paris">Paris Essentials</button>
+              <button class="map-region-btn" onclick="selectMapRegion('Tokyo Favorites')" id="btn-map-reg-tokyo">Tokyo Favorites</button>
+            </div>
+
+            <!-- Map Bottom Sheet Tray (Collapsible) -->
+            <div class="map-bottom-tray" id="map-tray-container">
+              <!-- Tray Collapsible Handle drag bar -->
+              <div class="tray-handle" onclick="toggleMapTray()"></div>
+              
+              <!-- Category Tags Selector Row -->
+              <div class="tray-categories" id="map-category-selectors">
+                <button class="control-btn active" onclick="selectMapCategory('')" id="btn-map-cat-all" style="padding: 0.3rem 0.65rem; border-radius: 12px; font-size: 0.65rem;">All</button>
+                <button class="control-btn" onclick="selectMapCategory('Landmark')" id="btn-map-cat-landmark" style="padding: 0.3rem 0.65rem; border-radius: 12px; font-size: 0.65rem;">Landmark</button>
+                <button class="control-btn" onclick="selectMapCategory('Food')" id="btn-map-cat-food" style="padding: 0.3rem 0.65rem; border-radius: 12px; font-size: 0.65rem;">Food</button>
+                <button class="control-btn" onclick="selectMapCategory('Café')" id="btn-map-cat-cafe" style="padding: 0.3rem 0.65rem; border-radius: 12px; font-size: 0.65rem;">Café</button>
+                <button class="control-btn" onclick="selectMapCategory('Culture')" id="btn-map-cat-culture" style="padding: 0.3rem 0.65rem; border-radius: 12px; font-size: 0.65rem;">Culture</button>
+              </div>
+
+              <!-- Horizontal Place Cards list -->
+              <div class="carousel-cards-scroll" id="map-tray-cards-list">
+                <!-- Populated dynamically via JS -->
+              </div>
+            </div>
+          </div>
+
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ====== PLACE DETAIL MODAL OVERLAY ====== -->
+  <div class="modal-overlay" id="detail-modal" onclick="closeDetails(event)">
+    <div class="modal-box">
+      <button class="modal-close-btn" onclick="closeDetailsModal()">✕</button>
+      <img src="" alt="Backdrop" class="modal-backdrop-img" id="modal-backdrop" />
+      <div class="modal-fade"></div>
+      <div class="modal-content">
+        <h2 class="modal-title" id="modal-title">Eiffel Tower</h2>
+        <div class="modal-meta">
+          <span class="modal-rating">★ <span id="modal-rate-val">4.7</span></span>
+          <span class="text-white/40">•</span>
+          <span id="modal-cat-val">Landmark</span>
+          <span class="text-white/40">•</span>
+          <span id="modal-country-val">France</span>
+        </div>
+        <p class="modal-desc" id="modal-description">
+          The iconic iron structure of Paris, offering scenic views across the Champ de Mars.
+        </p>
+        <div style="font-size:0.62rem; color:rgba(255,255,255,0.45); margin-bottom: 1rem;">
+          📍 Address: <span id="modal-address-val" style="color:white; font-weight:500;">Champ de Mars, Paris</span>
+        </div>
+        <div class="modal-actions">
+          <button class="modal-primary-btn" onclick="alert('Opening in Maps...')">Open in Google Maps</button>
+          <button class="modal-secondary-btn" onclick="alert('Opening official website...')">Visit Website</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== INTERACTIVE SCRIPTS ====== -->
+  <script>
+    // ===== Active state variables =====
+    let activeHeroIndex = 0;
+    let currentTheme = 'green';
+    
+    // Places list data
+    const locationData = {
+      'Paris Essentials': {
+        desc: 'My favorite spots in Paris, including landmarks, cafes, and bakeries.',
+        places: [
+          { name: 'Eiffel Tower', type: 'Landmark', rating: '4.7', reviews: '12k', country: 'France', img: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=400', desc: 'The iconic iron structure of Paris, offering scenic views across the Champ de Mars.', address: 'Champ de Mars, 5 Avenue Anatole France, 75007 Paris' },
+          { name: 'Pizzeria Popolare', type: 'Food', rating: '4.7', reviews: '43k', country: 'France', img: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=400', desc: 'Extremely popular and authentic Italian trattoria offering delicious Neapolitan pizzas.', address: '111 Boulevard Réaumur, 75002 Paris' },
+          { name: 'Café de Flore', type: 'Café', rating: '4.2', reviews: '8.1k', country: 'France', img: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=400', desc: 'Historic Parisian coffeehouse famous for its classic design and literary clientele.', address: '172 Boulevard Saint-Germain, 75006 Paris' }
+        ]
+      },
+      'Tokyo Favorites': {
+        desc: 'A collection of historic sites, shopping streets, and entertainment hubs in Tokyo.',
+        places: [
+          { name: 'Senso-ji Temple', type: 'Culture', rating: '4.7', reviews: '22k', country: 'Japan', img: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=400', desc: 'Tokyo\'s oldest and most iconic Buddhist temple, located in Asakusa.', address: '2 Chome-3-1 Asakusa, Taito City, Tokyo 111-0032' },
+          { name: 'Shibuya Crossing', type: 'Landmark', rating: '4.6', reviews: '55k', country: 'Japan', img: 'https://images.unsplash.com/photo-1540959733332-eab4deceeaf7?q=80&w=400', desc: 'The famous pedestrian scramble crossing in Shibuya, iconic for its bright neon screens.', address: 'Shibuya Road, Shibuya City, Tokyo 150-0043' }
+        ]
+      }
+    };
+
+    // Hero Picks Data
+    const heroPicks = [
+      {
+        title: 'Eiffel Tower',
+        country: 'France',
+        category: 'Landmark',
+        reviews: '12k',
+        desc: 'The iconic symbol of Paris, offering panoramic views of the city from its observation platforms. A masterpiece of iron architecture...',
+        img: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=1200',
+        rating: '4.7',
+        address: 'Champ de Mars, 5 Avenue Anatole France, 75007 Paris',
+        isMap: false
+      },
+      {
+        title: 'Senso-ji Temple',
+        country: 'Japan',
+        category: 'Culture',
+        reviews: '22k',
+        desc: 'Tokyo\'s oldest and most sacred Buddhist temple. Its towering five-story pagoda and large red lanterns make it a cultural centerpiece...',
+        img: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=1200',
+        rating: '4.7',
+        address: '2 Chome-3-1 Asakusa, Taito City, Tokyo 111-0032',
+        isMap: false
+      },
+      {
+        title: 'Uluwatu Temple',
+        country: 'Bali',
+        category: 'Landmark',
+        reviews: '18k',
+        desc: 'A beautiful Balinese sea temple perched on a steep cliff overlooking the Indian Ocean. Famous for its dramatic cliff views and sunset Kecak dances...',
+        img: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=1200',
+        rating: '4.7',
+        address: 'Pecatu, South Kuta, Badung Regency, Bali, Indonesia',
+        isMap: false
+      },
+      {
+        title: 'Interactive Location Map',
+        country: 'All Regions',
+        category: 'Interactive Map',
+        reviews: '5 spots',
+        desc: 'Explore all recommended locations on the interactive satellite map view. Click any pin to open spot details or expand map.',
+        img: '',
+        rating: 'Satellite',
+        address: 'Satellite View Map',
+        isMap: true
+      }
+    ];
+
+    // ===== Toggle View Mode (Device vs Full) =====
+    function setViewMode(mode) {
+      const main = document.getElementById('main-container');
+      const btnDevice = document.getElementById('btn-device');
+      const btnFull = document.getElementById('btn-full');
+
+      if (mode === 'device') {
+        main.className = 'preview-main device-view';
+        btnDevice.classList.add('active');
+        btnFull.classList.remove('active');
+      } else {
+        main.className = 'preview-main full-view';
+        btnDevice.classList.remove('active');
+        btnFull.classList.add('active');
+      }
+    }
+
+    // ===== Theme Settings =====
+    const themes = {
+      green: {
+        '--theme-border-color': '#10b981',
+        '--evergreen-glow': 'rgba(16, 185, 129, 0.2)'
+      },
+      dark: {
+        '--theme-border-color': '#3b82f6',
+        '--evergreen-glow': 'rgba(59, 130, 246, 0.2)'
+      }
+    };
+
+    function setTheme(themeName) {
+      currentTheme = themeName;
+      const theme = themes[themeName];
+      if (!theme) return;
+      
+      const root = document.documentElement;
+      Object.keys(theme).forEach(key => {
+        root.style.setProperty(key, theme[key]);
+      });
+
+      document.getElementById('btn-theme-green').classList.toggle('active', themeName === 'green');
+      document.getElementById('btn-theme-dark').classList.toggle('active', themeName === 'dark');
+    }
+
+    // ===== Switch Active Hero Slide =====
+    function switchHeroActive(index) {
+      activeHeroIndex = index;
+      const activePick = heroPicks[index];
+
+      // Update desktop text details
+      document.getElementById('d-hero-title').textContent = activePick.title;
+      document.getElementById('d-hero-country').textContent = activePick.country;
+      document.getElementById('d-hero-category').textContent = activePick.category;
+      
+      if (activePick.isMap) {
+        document.getElementById('d-hero-reviews').textContent = `${activePick.reviews}`;
+      } else {
+        document.getElementById('d-hero-reviews').textContent = `★ ${activePick.rating} (${activePick.reviews} reviews)`;
+      }
+      
+      document.getElementById('d-hero-desc').textContent = activePick.desc;
+
+      // Update action button handler
+      const actBtn = document.querySelector('.hero-action-btn');
+      if (actBtn) {
+        if (activePick.isMap) {
+          actBtn.setAttribute('onclick', 'toggleMainView()');
+          actBtn.innerHTML = '<span>🗺️</span> Open Full Map';
+        } else {
+          actBtn.setAttribute('onclick', 'openHeroDetail()');
+          actBtn.innerHTML = '<span>▶</span> See Details';
+        }
+      }
+
+      // Update desktop active slide classes
+      document.querySelectorAll('.hero-slide').forEach((slide, idx) => {
+        slide.classList.toggle('active', idx === index);
+      });
+      document.querySelectorAll('.hero-thumbs-sidebar .hero-thumb-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', idx === index);
+      });
+
+      // Update mobile stacked classes (4 cards stack)
+      document.querySelectorAll('.mobile-hero-card').forEach((card, idx) => {
+        card.className = 'mobile-hero-card';
+        
+        let diff = (idx - index + 4) % 4;
+        if (diff === 0) card.classList.add('active');
+        else if (diff === 1) card.classList.add('next');
+        else if (diff === 2) card.classList.add('next-next');
+        else if (diff === 3) card.classList.add('hidden-left');
+      });
+
+      // Update mobile swipe dots
+      document.querySelectorAll('.swipe-dot').forEach((dot, idx) => {
+        dot.classList.toggle('active', idx === index);
+      });
+    }
+
+
+    // ===== Navigation: Go to Step 2 List Page =====
+    function openLocationPage(listName) {
+      const data = locationData[listName] || { desc: '', places: [] };
+      
+      // Update Step 2 texts
+      document.getElementById('location-page-title').textContent = listName;
+      document.getElementById('location-page-desc').textContent = data.desc;
+
+      // Render Step 2 grid cards
+      const grid = document.getElementById('step2-places-grid');
+      grid.innerHTML = '';
+      data.places.forEach(place => {
+        const card = document.createElement('div');
+        card.className = 'place-rec-card';
+        card.style.backgroundImage = `url('${place.img}')`;
+        card.onclick = () => openPlaceDetails(place.name, place.type, place.rating, place.reviews, place.country, place.img, place.desc, place.address);
+        
+        card.innerHTML = `
+          <div class="place-rec-top">
+            <div class="place-direction-badge">
+              <svg width="10" height="10" fill="white" viewBox="0 0 24 24" style="transform: rotate(45deg);"><path d="M12 2L2 22l10-6 10 6L12 2z"/></svg>
+            </div>
+          </div>
+          <div class="place-rec-bottom">
+            <span class="place-rec-title">${place.name}</span>
+            <div class="place-rec-meta">
+              <span style="color:#fbbf24;">★</span>
+              <span>${place.rating}</span>
+              <span style="color:rgba(255,255,255,0.65); font-weight:500;">(${place.reviews})</span>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      // Switch views
+      document.getElementById('view-step1').style.display = 'none';
+      document.getElementById('view-step2').style.display = 'block';
+
+      // Scroll to top of frame
+      document.querySelector('.phone-frame-inner').scrollTop = 0;
+    }
+
+    function goToStep1() {
+      document.getElementById('view-step1').style.display = 'block';
+      document.getElementById('view-step2').style.display = 'none';
+    }
+
+    // ===== Modal functions =====
+    function openPlaceDetails(title, category, rating, reviews, country, image, overview, address) {
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-rate-val').textContent = rating;
+      document.getElementById('modal-cat-val').textContent = category;
+      document.getElementById('modal-country-val').textContent = country;
+      document.getElementById('modal-description').textContent = overview;
+      document.getElementById('modal-address-val').textContent = address;
+      document.getElementById('modal-backdrop').setAttribute('src', image);
+
+      document.getElementById('detail-modal').classList.add('active');
+    }
+
+    function openHeroDetail() {
+      const pick = heroPicks[activeHeroIndex];
+      openPlaceDetails(pick.title, pick.category, pick.rating, pick.reviews, pick.country, pick.img, pick.desc, pick.address);
+    }
+
+    function closeDetailsModal() {
+      document.getElementById('detail-modal').classList.remove('active');
+    }
+
+    function closeDetails(e) {
+      if (e.target.id === 'detail-modal') {
+        closeDetailsModal();
+      }
+    }
+
+    // ===== Map and FAB Interactivity =====
+    let currentMainView = 'list'; // 'list' or 'map'
+    let currentMapRegion = ''; // '' (All), 'Paris Essentials', 'Tokyo Favorites'
+    let currentMapCategory = ''; // '' (All), 'Landmark', 'Food', 'Café', 'Culture'
+    let mapTrayCollapsed = false;
+
+    const allPlaces = [
+      { name: 'Eiffel Tower', type: 'Landmark', rating: '4.7', reviews: '12k', country: 'France', img: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=400', desc: 'The iconic iron structure of Paris, offering scenic views across the Champ de Mars.', address: 'Champ de Mars, 5 Avenue Anatole France, 75007 Paris', region: 'Paris Essentials', coords: { top: '30%', left: '40%' } },
+      { name: 'Pizzeria Popolare', type: 'Food', rating: '4.7', reviews: '43k', country: 'France', img: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=400', desc: 'Extremely popular and authentic Italian trattoria offering delicious Neapolitan pizzas.', address: '111 Boulevard Réaumur, 75002 Paris', region: 'Paris Essentials', coords: { top: '42%', left: '48%' } },
+      { name: 'Café de Flore', type: 'Café', rating: '4.2', reviews: '8.1k', country: 'France', img: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=400', desc: 'Historic Parisian coffeehouse famous for its classic design and literary clientele.', address: '172 Boulevard Saint-Germain, 75006 Paris', region: 'Paris Essentials', coords: { top: '48%', left: '38%' } },
+      { name: 'Senso-ji Temple', type: 'Culture', rating: '4.7', reviews: '22k', country: 'Japan', img: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=400', desc: 'Tokyo\'s oldest and most iconic Buddhist temple, located in Asakusa.', address: '2 Chome-3-1 Asakusa, Taito City, Tokyo 111-0032', region: 'Tokyo Favorites', coords: { top: '48%', left: '55%' } },
+      { name: 'Shibuya Crossing', type: 'Landmark', rating: '4.6', reviews: '55k', country: 'Japan', img: 'https://images.unsplash.com/photo-1540959733332-eab4deceeaf7?q=80&w=400', desc: 'The famous pedestrian scramble crossing in Shibuya, iconic for its bright neon screens.', address: 'Shibuya Road, Shibuya City, Tokyo 150-0043', region: 'Tokyo Favorites', coords: { top: '56%', left: '52%' } }
+    ];
+
+    function toggleMainView() {
+      const fabBtn = document.getElementById('btn-fab-toggle');
+      const fabText = document.getElementById('fab-text');
+      
+      if (currentMainView === 'list') {
+        currentMainView = 'map';
+        document.getElementById('view-step1').style.display = 'none';
+        document.getElementById('view-step2').style.display = 'none';
+        document.getElementById('view-map').classList.add('active');
+        fabText.textContent = 'List View';
+        fabBtn.querySelector('svg').innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16" />';
+        
+        renderMapContent();
+      } else {
+        currentMainView = 'list';
+        document.getElementById('view-step1').style.display = 'block';
+        document.getElementById('view-map').classList.remove('active');
+        fabText.textContent = 'Map View';
+        fabBtn.querySelector('svg').innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />';
+      }
+      
+      document.querySelector('.phone-frame-inner').scrollTop = 0;
+    }
+
+    function selectMapRegion(region) {
+      currentMapRegion = region;
+      
+      // Update region buttons active styling
+      document.querySelectorAll('.map-region-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.trim() === (region || 'All Regions'));
+      });
+      
+      renderMapContent();
+    }
+
+    function selectMapCategory(category) {
+      currentMapCategory = category;
+      
+      // Update category buttons active styling
+      document.getElementById('btn-map-cat-all').classList.toggle('active', category === '');
+      document.getElementById('btn-map-cat-landmark').classList.toggle('active', category === 'Landmark');
+      document.getElementById('btn-map-cat-food').classList.toggle('active', category === 'Food');
+      document.getElementById('btn-map-cat-cafe').classList.toggle('active', category === 'Café');
+      document.getElementById('btn-map-cat-culture').classList.toggle('active', category === 'Culture');
+      
+      renderMapContent();
+    }
+
+    function toggleMapTray() {
+      mapTrayCollapsed = !mapTrayCollapsed;
+      document.getElementById('map-tray-container').classList.toggle('collapsed', mapTrayCollapsed);
+    }
+
+    function renderMapContent() {
+      const filtered = allPlaces.filter(p => {
+        if (currentMapRegion && p.region !== currentMapRegion) return false;
+        if (currentMapCategory && p.type !== currentMapCategory) return false;
+        return true;
+      });
+
+      // Render Pins
+      const mapBg = document.getElementById('fullscreen-map-bg');
+      mapBg.innerHTML = '';
+      
+      filtered.forEach(p => {
+        const pin = document.createElement('div');
+        pin.className = 'map-pin';
+        pin.style.top = p.coords.top;
+        pin.style.left = p.coords.left;
+        pin.onclick = () => openPlaceDetails(p.name, p.type, p.rating, p.reviews, p.country, p.img, p.desc, p.address);
+        
+        pin.innerHTML = `
+          <div class="pin-body"></div>
+          <span class="pin-label">${p.name}</span>
+        `;
+        mapBg.appendChild(pin);
+      });
+
+      // Render Scroll Cards
+      const cardsList = document.getElementById('map-tray-cards-list');
+      cardsList.innerHTML = '';
+      
+      if (filtered.length === 0) {
+        cardsList.innerHTML = '<div style="color: rgba(255,255,255,0.4); text-align: center; width: 100%; padding: 1.5rem 0; font-size: 0.7rem;">No places match your filters.</div>';
+        return;
+      }
+
+      filtered.forEach(place => {
+        const card = document.createElement('div');
+        card.className = 'place-rec-card';
+        card.style.backgroundImage = `url('${place.img}')`;
+        card.onclick = () => openPlaceDetails(place.name, place.type, place.rating, place.reviews, place.country, place.img, place.desc, place.address);
+        
+        card.innerHTML = `
+          <div class="place-rec-top">
+            <div class="place-direction-badge">
+              <svg width="10" height="10" fill="white" viewBox="0 0 24 24" style="transform: rotate(45deg);"><path d="M12 2L2 22l10-6 10 6L12 2z"/></svg>
+            </div>
+          </div>
+          <div class="place-rec-bottom">
+            <span class="place-rec-title">${place.name}</span>
+            <div class="place-rec-meta">
+              <span style="color:#fbbf24;">★</span>
+              <span>${place.rating}</span>
+              <span style="color:rgba(255,255,255,0.65); font-weight:500;">(${place.reviews})</span>
+            </div>
+          </div>
+        `;
+        cardsList.appendChild(card);
+      });
+    }
+
+    // ===== Auto Rotating Slides timer =====
+    setInterval(() => {
+      let nextIdx = (activeHeroIndex + 1) % 4;
+      switchHeroActive(nextIdx);
+    }, 6000);
+  </script>
+
+</body>
+</html>

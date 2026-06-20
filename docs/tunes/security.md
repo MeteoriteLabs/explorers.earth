@@ -52,6 +52,34 @@ The JWT flow (`server/jwt-auth-middleware.ts`):
 
 **Legacy routes** (`server/legacy-routes.ts`) support a multi-auth fallback chain: session → JWT → query params/body, ensuring backward compatibility during the auth migration.
 
+### Account Reactivation (Self-Service)
+
+For accounts that have been deactivated (the `blocked` flag is set to `true` on the Strapi user), a self-service reactivation flow is available to securely restore access.
+
+#### 1. Request Reactivation
+- **Trigger**: When a deactivated user attempts to log in, the frontend displays a reactivation banner that redirects them to `/reactivate`.
+- **Request Endpoint**: `POST /api/user/request-reactivation`
+  - Accepts `{ email: string }`.
+  - **Security Best Practice**: The endpoint always returns a generic `200 OK` success message (e.g., *"If this email belongs to a deactivated account, a reactivation link has been sent."*) to prevent username/email enumeration.
+- **Token Generation & Storage**:
+  - The backend searches for a blocked user with the given email via the Strapi admin REST API.
+  - If found, a cryptographically secure 32-byte random hex token is generated.
+  - The token is stored in an in-memory `tokenStore` Map mapping the token to `{ strapiUserId, email, expiresAt }` with a **24-hour expiration duration**.
+- **Email Delivery**:
+  - The backend retrieves or auto-seeds an email template named `account_reactivation` in the tunes database.
+  - The verification email containing a magic link (`/reactivate-confirm?token=<token>`) is sent to the user's email via the existing email service (AWS SES or SMTP).
+  - In development environments, the reactivation link is also printed to the server console.
+
+#### 2. Confirm Reactivation
+- **Trigger**: User clicks the magic link in their email and is taken to the `/reactivate-confirm` route on the explorers-earth frontend.
+- **Reactivation Endpoint**: `GET /api/user/reactivate?token=<token>`
+- **Validation**:
+  - The backend validates that the token is present, exists in the `tokenStore`, and has not expired.
+- **Unblocking**:
+  - If valid, the backend updates the Strapi user using the admin REST API (`PUT /api/users/:id`), setting `blocked: false`.
+  - The token is consumed and immediately deleted from the `tokenStore` to prevent replay attacks.
+  - On success, the client is redirected to the login page to sign in.
+
 ### Logout
 
 1. Client calls `POST /api/auth/logout`

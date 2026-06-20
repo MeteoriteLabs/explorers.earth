@@ -43,6 +43,9 @@ export interface Guide {
   account?: {
     documentId: string;
   };
+  is_pinned?: boolean;
+  pin_order?: number;
+  display_order?: number;
   createdAt?: string;
   updatedAt?: string;
 }

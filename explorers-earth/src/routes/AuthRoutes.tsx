@@ -14,6 +14,8 @@ import Privacy from "../pages/Privacy";
 import Cookies from "../pages/Cookies";
 import Terms from "../pages/Terms";
 import ClaimAccount from "../pages/ClaimAccount";
+import ReactivateAccount from "../pages/ReactivateAccount";
+import ReactivateConfirm from "../pages/ReactivateConfirm";
 import GuestRoute from "../components/GuestRoute";
 
 const AuthRoutes = [
@@ -41,6 +43,8 @@ const AuthRoutes = [
     path="/google-auth/callback"
     element={<GoogleAuthRedirect />}
   />,
+  <Route key="reactivate" path="/reactivate" element={<ReactivateAccount />} />,
+  <Route key="reactivate-confirm" path="/reactivate-confirm" element={<ReactivateConfirm />} />,
 ];
 
 export default AuthRoutes;

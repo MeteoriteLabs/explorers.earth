@@ -56,7 +56,7 @@ const MovieRow = ({
   return (
     <div 
       onClick={onRowClick}
-      className="group flex items-center gap-3 py-3 border-b border-dashboard-border last:border-0 hover:bg-white/5 cursor-pointer rounded-lg px-2 -mx-2 transition-colors"
+      className="group flex items-center gap-3 p-3 bg-white/[0.03] border border-white/[0.05] hover:border-white/[0.08] hover:bg-white/[0.06] cursor-pointer rounded-xl transition-all mb-2"
     >
       {/* Poster */}
       <div className="w-10 flex-shrink-0 rounded overflow-hidden bg-white/5">
@@ -74,24 +74,24 @@ const MovieRow = ({
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-sm font-medium text-dashboard truncate">{movie.title}</span>
+          <span className="text-sm font-medium text-white truncate">{movie.title}</span>
           {movie.media_type === "TV" && <Tv size={11} className="text-blue-400 flex-shrink-0" />}
         </div>
-        <div className="flex items-center gap-2 text-xs text-dashboard-light mt-0.5 flex-wrap">
+        <div className="flex items-center gap-2 text-xs text-white/40 mt-0.5 flex-wrap">
           {movie.year && <span>{movie.year}</span>}
-          {genres[0] && <span className="text-dashboard-muted">·</span>}
+          {genres[0] && <span className="text-white/20">·</span>}
           {genres.slice(0, 2).map(g => <span key={g}>{g}</span>)}
           {movie.tmdb_rating != null && (
             <>
-              <span className="text-dashboard-muted">·</span>
-              <span className="flex items-center gap-0.5 text-yellow-400/70">
+              <span className="text-white/20">·</span>
+              <span className="flex items-center gap-0.5 text-amber-400/80">
                 <Star size={9} fill="currentColor" /> {formatRating(movie.tmdb_rating)}
               </span>
             </>
           )}
           {movie.runtime && (
             <>
-              <span className="text-dashboard-muted">·</span>
+              <span className="text-white/20">·</span>
               <span className="flex items-center gap-0.5">
                 <Clock size={9} /> {formatRuntime(movie.runtime)}
               </span>
@@ -99,7 +99,7 @@ const MovieRow = ({
           )}
         </div>
         {extractNoteText(movie.user_recommendation_note) && (
-          <p className="text-xs text-dashboard-muted mt-1 line-clamp-1 italic">
+          <p className="text-xs text-white/30 mt-1 line-clamp-1 italic">
             {extractNoteText(movie.user_recommendation_note).replace(/<[^>]+>/g, '')}
           </p>
         )}
@@ -114,8 +114,8 @@ const MovieRow = ({
           title={movie.is_pinned ? "Unpin from Top Picks" : "Pin to Top Picks"}
           className={`p-1.5 rounded-lg transition-all ${
             movie.is_pinned
-              ? "text-yellow-400 bg-yellow-400/10"
-              : "text-white/30 hover:text-yellow-400 hover:bg-yellow-400/10"
+              ? "text-amber-400 bg-amber-400/10"
+              : "text-white/30 hover:text-amber-400 hover:bg-amber-400/10"
           } disabled:opacity-50`}
         >
           <Star size={14} fill={movie.is_pinned ? "currentColor" : "none"} />
@@ -174,7 +174,7 @@ const MovieListView = () => {
 
   const [togglePin] = useMutation(TOGGLE_MOVIE_PIN);
   const [deleteMovie] = useMutation(DELETE_RECOMMENDED_MOVIE);
-  const [updateList] = useMutation(UPDATE_MOVIE_LIST);
+  const [updateList, { loading: isUpdating }] = useMutation(UPDATE_MOVIE_LIST);
   const [deleteList, { loading: deletingList }] = useMutation(DELETE_MOVIE_LIST);
 
   const list = data?.movieLists?.[0];
@@ -190,11 +190,27 @@ const MovieListView = () => {
       toast.error("Add at least one movie before publishing.");
       return;
     }
-    await updateList({
-      variables: { documentId: list.documentId, Visibility: !list.Visibility },
-      refetchQueries: [MOVIES_BY_LIST],
-    });
-    toast.success(list.Visibility ? "List set to draft." : "List published!");
+    try {
+      await updateList({
+        variables: { documentId: list.documentId, Visibility: !list.Visibility },
+        optimisticResponse: {
+          updateMovieList: {
+            __typename: "MovieList",
+            documentId: list.documentId,
+            List_Name: list.List_Name,
+            list_description: list.list_description,
+            slug: list.slug,
+            Visibility: !list.Visibility,
+            display_order: list.display_order,
+            top_picks_heading: list.top_picks_heading || null,
+          }
+        },
+        refetchQueries: [MOVIES_BY_LIST],
+      });
+      toast.success(list.Visibility ? "List set to draft." : "List published!");
+    } catch {
+      toast.error("Failed to update visibility.");
+    }
   };
 
   const handlePinToggle = async (movie: RecommendedMovie) => {
@@ -269,39 +285,37 @@ const MovieListView = () => {
   return (
     <div className="px-4 pt-8 pb-24 md:p-6 md:pb-6 max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-start gap-3 mb-6">
-        <button onClick={() => navigate("/recommendations/movies")} className="text-white/50 hover:text-white mt-0.5 transition-colors">
-          <ArrowLeft size={20} />
-        </button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-bold text-dashboard truncate">{list?.List_Name}</h1>
-          <div className="flex items-center gap-3 mt-1 flex-wrap text-xs text-dashboard-light">
-            <span>{movies.length} movie{movies.length !== 1 ? "s" : ""}</span>
-            {pinnedCount > 0 && (
-              <span className="flex items-center gap-1 text-yellow-400/70">
-                <Star size={10} fill="currentColor" /> {pinnedCount}/15 pinned
-              </span>
-            )}
-          </div>
+      <div className="flex items-center justify-between mb-6">
+        {/* Left: Back and Title info */}
+        <div className="flex flex-col items-start">
+          <button
+            onClick={() => navigate("/recommendations/movies")}
+            className="text-[10px] text-white/50 hover:text-white mb-1 transition-colors flex items-center gap-1 font-semibold uppercase tracking-wider"
+          >
+            <ArrowLeft size={10} />
+            <span>Back</span>
+          </button>
+          <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight leading-tight">{list?.List_Name}</h1>
         </div>
         {/* Publish toggle switch */}
         <Switch
           checked={list?.Visibility ?? false}
           onChange={handleToggleVisibility}
+          loading={isUpdating}
           label={list?.Visibility ? "Published" : "Draft"}
         />
       </div>
 
       {/* Tabs */}
-      <div className="flex mb-6 bg-white rounded-full max-w-[320px] mx-auto shadow-sm">
+      <div className="flex mb-6 bg-white rounded-full p-[2px] w-fit mx-auto shadow-sm">
         {(["recommendations", "manage"] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-2 px-4 text-sm font-semibold rounded-full capitalize transition-all duration-300 ${
+            className={`px-4 py-1.5 text-[11px] md:text-xs font-semibold rounded-full capitalize transition-all duration-200 ${
               activeTab === tab
-                ? "bg-[#60A5FA] text-white shadow"
-                : "text-blue-900 bg-transparent hover:bg-blue-50/50"
+                ? "bg-dashboard-accent text-white shadow"
+                : "text-[#0f172a] bg-transparent hover:opacity-80"
             }`}
           >
             {tab}
@@ -316,12 +330,12 @@ const MovieListView = () => {
           {pinnedCount > 0 && (
             <button
               onClick={() => setShowTopPicks(true)}
-              className="w-full mb-4 flex items-center justify-between px-4 py-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-sm hover:bg-yellow-500/15 transition-colors"
+              className="w-full mb-4 flex items-center justify-between px-4 py-3 bg-[#fbbf24]/5 border border-[#fbbf24]/25 rounded-xl text-sm hover:bg-[#fbbf24]/10 text-[#fbbf24] transition-all font-semibold"
             >
-              <span className="flex items-center gap-2 text-yellow-400">
+              <span className="flex items-center gap-2">
                 <Star size={14} fill="currentColor" /> Manage Top Picks ({pinnedCount}/15)
               </span>
-              <ChevronRight size={14} className="text-yellow-400/60" />
+              <ChevronRight size={14} className="opacity-80" />
             </button>
           )}
 
@@ -413,10 +427,11 @@ const MovieListView = () => {
                   </button>
                 )}
 
-                <div className={`p-4 rounded-xl border transition-all mt-2 ${list?.Visibility ? "border-green-500/30 bg-green-500/5" : "border-white/10"}`}>
+                <div className={`p-4 rounded-xl border transition-all mt-2 ${list?.Visibility ? "border-green-500/30 bg-green-500/5" : "border-white/10"} flex justify-center items-center`}>
                   <Switch
                     checked={list?.Visibility ?? false}
                     onChange={handleToggleVisibility}
+                    loading={isUpdating}
                     label={list?.Visibility ? "Published (Visible to public)" : "Draft (Private)"}
                   />
                 </div>

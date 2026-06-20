@@ -105,6 +105,16 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle }: M
   const [activePlaylistTab, setActivePlaylistTab] = useState<string>('');
   // New playlist creation
   const [showNewPlaylistInput, setShowNewPlaylistInput] = useState(false);
+  const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    const handleWindowClick = () => {
+      setMobileDropdownOpen(false);
+    };
+    window.addEventListener("click", handleWindowClick);
+    return () => window.removeEventListener("click", handleWindowClick);
+  }, []);
+
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [newPlaylistDescription, setNewPlaylistDescription] = useState('');
   // Inline edit form
@@ -509,27 +519,68 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle }: M
 
   return (
     <div className="space-y-4">
-      {/* ── Top Row with Add Button and Visibility Toggle ─────────────────── */}
-      <div className="flex items-center justify-between bg-dashboard-sidebar/40 px-3 py-3 rounded-xl mb-2">
-        <div className="flex flex-col items-start gap-1.5 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
+      {/* Desktop Screen actions row */}
+      <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4 border border-white/5">
+        <div className="flex items-center gap-2 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
           <SwitchButton
             isChecked={isPublic === true}
             onChange={onVisibilityToggle || (() => {})}
             variant="blue"
           />
-          <span className="text-[10px] md:text-xs text-white leading-tight whitespace-nowrap">Public Visibility</span>
+          <span className="text-[10px] md:text-xs text-white leading-tight whitespace-nowrap font-medium font-poppins">Public Visibility</span>
         </div>
-
         <button
           onClick={() => {
             setActiveTab('playlists');
             setShowNewPlaylistInput(true);
           }}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap cursor-pointer"
         >
-           <AddIcon size="5" />
-           <span>New Playlist</span>
+          <AddIcon size="5" />
+          <span>New Playlist</span>
         </button>
+      </div>
+
+      {/* Mobile actions row (split action button with visibility dropdown) */}
+      <div className="md:hidden relative mb-4 w-full">
+        <div className="flex w-full rounded-2xl overflow-hidden border border-white/10 shadow-lg shadow-blue-900/15">
+          <button
+            onClick={() => {
+              setActiveTab('playlists');
+              setShowNewPlaylistInput(true);
+            }}
+            className="flex-1 bg-dashboard-accent hover:opacity-90 text-xs font-bold text-white py-3 px-4 text-left flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <AddIcon size="4" />
+            <span>New Playlist</span>
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setMobileDropdownOpen(!mobileDropdownOpen);
+            }}
+            className="bg-dashboard-accent border-l border-white/20 px-3 flex items-center justify-center cursor-pointer transition-all hover:opacity-90"
+          >
+            <svg className={`w-3.5 h-3.5 text-white transform transition-transform duration-200 ${mobileDropdownOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+        {mobileDropdownOpen && (
+          <div className="absolute top-[calc(100%+6px)] right-0 left-0 p-3.5 z-[100] border border-dashboard-accent/30 rounded-2xl bg-dashboard-sidebar/95 backdrop-blur-md shadow-xl flex justify-between items-center">
+            <span className="text-[11px] text-white/90 font-semibold font-poppins">Manage Public Visibility</span>
+            <div className="flex items-center gap-2">
+              <span className={`text-[10px] font-bold uppercase ${isPublic ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+                {isPublic ? "Pub" : "Draft"}
+              </span>
+              <SwitchButton
+                isChecked={isPublic === true}
+                onChange={onVisibilityToggle || (() => {})}
+                variant="blue"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Add Songs — always visible at top ─────────────────────────────── */}

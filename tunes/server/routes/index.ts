@@ -17,6 +17,7 @@ import { setupStrapiRoutes } from "./strapiRoutes";
 import { setupYoutubeRoutes } from "./youtubeRoutes";
 import { setupEmailRoutes } from "./emailRoutes";
 import { setupPageRoutes } from "./pageRoutes";
+import { setupReactivationRoutes } from "./reactivationRoutes";
 
 export function registerRoutes(app: Express, _storage: IStorage): Server {
   setupSwagger(app);
@@ -28,6 +29,7 @@ export function registerRoutes(app: Express, _storage: IStorage): Server {
   setupYoutubeRoutes(app);
   setupEmailRoutes(app);
   setupPageRoutes(app);
+  setupReactivationRoutes(app);
 
   setupUserRoutes(app);
   setupPaymentRoutes(app);

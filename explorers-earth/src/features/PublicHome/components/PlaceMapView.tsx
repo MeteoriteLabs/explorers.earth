@@ -1,5 +1,6 @@
 import { AdvancedMarker, Map, MapCameraChangedEvent, Pin } from "@vis.gl/react-google-maps";
-import { memo, useState } from "react";
+import { memo, useState, useCallback, useEffect } from "react";
+import { Maximize2, Minimize2 } from "lucide-react";
 import Button from "../../../components/ui/Button";
 import WhiteMap from "../../../assets/icons/WhiteMap";
 import { useNavigate, useParams } from "react-router-dom";
@@ -39,6 +40,32 @@ const PlaceMapView = memo(() => {
   const [activeMarker, setActiveMarker] = useState<Geometry | null>(null);
   // local state for handle catgeories
   const [selectedCategory, setSelectedCategory] = useState<string>("");
+
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.error("Error attempting to enable fullscreen:", err);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch((err) => {
+          console.error("Error attempting to exit fullscreen:", err);
+        });
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
 
   const handleCameraChanged = (event: MapCameraChangedEvent) => {
     const { detail } = event;
@@ -101,7 +128,7 @@ const PlaceMapView = memo(() => {
     );
 
   return (
-    <div>
+    <div className="relative">
       <Map
         defaultCenter={currentCoords ?? latLngArray[0]}
         center={currentCoords}
@@ -111,6 +138,7 @@ const PlaceMapView = memo(() => {
         style={{ height: "100vh", width: "100%" }}
         scrollwheel={true}
         gestureHandling={"greedy"}
+        fullscreenControl={false}
       >
         {latLngArray.map(
           (coords: { lat: number; lng: number }, index: number) => (
@@ -134,7 +162,31 @@ const PlaceMapView = memo(() => {
           )
         )}
       </Map>
-      <div className="absolute bottom-[18rem] w-full  flex flex-row gap-2 items-center flex-nowrap whitespace-nowrap  py-4 overflow-x-auto " style={{ scrollbarWidth: "none" }}>
+      <div className="absolute top-3 right-3 z-50">
+        <Button
+          startIcon={<WhiteMap />}
+          btnText="List View"
+          variant="primary"
+          size="xsmall"
+          onClickHandler={() =>
+            navigate(`/${username}/places/${place}`)
+          }
+          className="bg-[hsl(var(--blue-cta))] hover:bg-[hsl(var(--blue-final))]"
+        />
+      </div>
+      {/* Fullscreen Button (Four Corners Button - Top Right of Second Row / aligned with MapView) */}
+      <button
+        onClick={toggleFullscreen}
+        className="absolute top-14 right-3 z-50 bg-white hover:bg-gray-100 text-gray-700 p-2.5 rounded-lg shadow-md transition-all duration-200 cursor-pointer flex items-center justify-center border border-gray-200"
+        aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+      >
+        {isFullscreen ? (
+          <Minimize2 className="w-4 h-4 text-gray-700" />
+        ) : (
+          <Maximize2 className="w-4 h-4 text-gray-700" />
+        )}
+      </button>
+      <div className="absolute bottom-[13rem] w-full  flex flex-row gap-2 items-center flex-nowrap whitespace-nowrap  py-4 overflow-x-auto " style={{ scrollbarWidth: "none" }}>
         {categories && categories.length >= 1 && (
           <div className="px-2 flex gap-3">
             <Button
@@ -158,7 +210,7 @@ const PlaceMapView = memo(() => {
         )}
       </div>
       <div
-        className={` absolute bottom-24 left-0 right-0 z-50 p-2 flex gap-4 overflow-x-auto transition-transform duration-300 ease-in-out `}
+        className={` absolute bottom-2 left-0 right-0 z-50 p-2 flex gap-4 overflow-x-auto transition-transform duration-300 ease-in-out `}
         style={{ scrollbarWidth: "none" }}
       >
         {filteredPlaces.map(
@@ -183,18 +235,6 @@ const PlaceMapView = memo(() => {
             />
           )
         )}
-      </div>
-      <div className="fixed bottom-[3.5rem] z-50 md:left-0 flex justify-center w-full">
-        <Button
-          startIcon={<WhiteMap />}
-          btnText="List View"
-          variant="primary"
-          size="xsmall"
-          onClickHandler={() =>
-            navigate(`/${username}/places/${place}`)
-          }
-          className="bg-[hsl(var(--blue-cta))] hover:bg-[hsl(var(--blue-final))]"
-        />
       </div>
     </div>
   );

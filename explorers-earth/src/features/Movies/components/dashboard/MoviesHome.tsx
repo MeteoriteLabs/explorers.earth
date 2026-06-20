@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Film, Star, ChevronRight, Loader2, X } from "lucide-react";
+import { Plus, Film, Star, ChevronRight, Loader2, X, ChevronDown } from "lucide-react";
 import { AddIcon } from "../../../../assets/icons/AddIcon";
 import { useFormik } from "formik";
 import * as Yup from "yup";
@@ -23,6 +23,7 @@ import TopPicksManager from "./TopPicksManager";
 import MovieDetailModal from "../public/MovieDetailModal";
 import type { RecommendedMovie } from "../../types";
 import Switch from "../../../../components/ui/Switch";
+import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 
 // Query to get account documentId
 const MY_ACCOUNT = gql`
@@ -32,13 +33,17 @@ const MY_ACCOUNT = gql`
         documentId
         Account_Name
         public_movie
+        public_recommendations
+        public_books
+        public_games
+        public_music
       }
     }
   }
 `;
 
 // Create List Modal
-const CreateListModal = ({
+export const CreateMovieListModal = ({
   open,
   onClose,
   accountDocumentId,
@@ -50,7 +55,7 @@ const CreateListModal = ({
   onClose: () => void;
   accountDocumentId: string;
   currentListCount: number;
-  onCreated: () => void;
+  onCreated: (newId?: string) => void;
   username: string;
 }) => {
   const [createMovieList, { loading }] = useMutation(CREATE_MOVIE_LIST);
@@ -63,7 +68,7 @@ const CreateListModal = ({
     }),
     onSubmit: async (values, { resetForm }) => {
       try {
-        await createMovieList({
+        const result = await createMovieList({
           variables: {
             List_Name: values.List_Name,
             list_description: values.list_description || null,
@@ -76,7 +81,7 @@ const CreateListModal = ({
         });
         toast.success("Movie list created!");
         resetForm();
-        onCreated();
+        onCreated(result?.data?.createMovieList?.documentId);
         onClose();
       } catch (e: any) {
         if (e.message && e.message.includes("must be unique")) {
@@ -236,7 +241,8 @@ const MovieListCard = ({
           <Switch
             checked={list.Visibility}
             onChange={() => onToggleVisibility(list.documentId, list.Visibility)}
-            disabled={togglingId === list.documentId || movieCount === 0}
+            disabled={movieCount === 0}
+            loading={togglingId === list.documentId}
             label={list.Visibility ? "Published" : "Draft"}
           />
         </div>
@@ -301,10 +307,12 @@ const MovieListCard = ({
 const MoviesHome = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showManageTopPicks, setShowManageTopPicks] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   // Get account documentId
   const { data: accountData } = useQuery(MY_ACCOUNT, {
@@ -319,6 +327,12 @@ const MoviesHome = () => {
     skip: !accountDocumentId,
     fetchPolicy: "cache-and-network",
   });
+
+  useEffect(() => {
+    if (!loading) {
+      (window as any).__dashboardLoaded = true;
+    }
+  }, [loading]);
 
   const [updateMovieList] = useMutation(UPDATE_MOVIE_LIST);
 
@@ -385,10 +399,24 @@ const MoviesHome = () => {
   };
 
   const handleToggleVisibility = async (documentId: string, currentVisibility: boolean) => {
+    const list = lists.find(l => l.documentId === documentId);
+    if (!list) return;
     setTogglingId(documentId);
     try {
       await updateMovieList({
         variables: { documentId, Visibility: !currentVisibility },
+        optimisticResponse: {
+          updateMovieList: {
+            __typename: "MovieList",
+            documentId: list.documentId,
+            List_Name: list.List_Name,
+            list_description: list.list_description,
+            slug: list.slug,
+            Visibility: !currentVisibility,
+            display_order: list.display_order,
+            top_picks_heading: list.top_picks_heading || null,
+          }
+        },
         refetchQueries: [MOVIE_LISTS_BY_ACCOUNT],
       });
     } catch {
@@ -400,17 +428,20 @@ const MoviesHome = () => {
 
   return (
     <div className="px-2 md:px-6 pt-2 pb-24 md:pb-6 max-w-4xl mx-auto">
-      {/* Action Header Row */}
-      <div className="flex items-center justify-between bg-dashboard-sidebar/40 px-3 py-3 rounded-2xl mb-2">
-        <div className="flex flex-col items-start gap-1.5 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
+      {/* Desktop view header */}
+      <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4">
+        {/* Left: Public switch */}
+        <div className="flex items-center gap-2 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
           <SwitchButton
             isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_movie === "Yes"}
             onChange={handleVisibilityToggle}
             variant="blue"
           />
-          <span className="text-[10px] md:text-xs text-white leading-tight whitespace-nowrap">Public Visibility</span>
+          <span className="text-[10px] md:text-xs text-[#4ade80] font-semibold leading-tight whitespace-nowrap">
+            Public Visibility
+          </span>
         </div>
-
+        {/* Right: New list btn */}
         <button
           onClick={() => setShowCreateModal(true)}
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap"
@@ -420,12 +451,77 @@ const MoviesHome = () => {
         </button>
       </div>
 
+      {/* Mobile view header (split action button with visibility dropdown) */}
+      <div className="md:hidden relative mb-4 w-full">
+        <div className="flex w-full rounded-2xl overflow-hidden border border-white/10 shadow-lg shadow-blue-900/15">
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex-1 bg-dashboard-accent hover:opacity-90 text-xs font-bold text-white py-3 px-4 text-left flex items-center gap-1.5 transition-all"
+          >
+            <AddIcon size="4" />
+            <span>New List</span>
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setDropdownOpen(!dropdownOpen);
+            }}
+            className="bg-dashboard-accent border-l border-white/20 px-3 flex items-center justify-center cursor-pointer transition-all hover:opacity-90"
+          >
+            <ChevronDown size={14} className={`transform transition-transform duration-200 ${dropdownOpen ? "rotate-180" : ""}`} />
+          </button>
+        </div>
+        {/* Dropdown panel */}
+        {dropdownOpen && (
+          <div className="absolute top-[calc(100%+6px)] right-0 left-0 p-3.5 z-50 border border-dashboard-accent/30 rounded-2xl bg-dashboard-sidebar/95 backdrop-blur-md shadow-xl flex justify-between items-center">
+            <span className="text-[11px] text-white/90 font-semibold">Manage Public Visibility</span>
+            <div className="flex items-center gap-2">
+              <span className={`text-[10px] font-bold uppercase ${accountData?.usersPermissionsUser?.accounts?.[0]?.public_movie === "Yes" ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+                {accountData?.usersPermissionsUser?.accounts?.[0]?.public_movie === "Yes" ? "Pub" : "Draft"}
+              </span>
+              <SwitchButton
+                isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_movie === "Yes"}
+                onChange={handleVisibilityToggle}
+                variant="blue"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Loading state */}
-      {loading && lists.length === 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="bg-dashboard-muted rounded-2xl h-52 animate-pulse" />
-          ))}
+      {(loading || !accountDocumentId) && lists.length === 0 ? (
+        <div className="space-y-6">
+          {/* Hero skeleton — Desktop */}
+          <div className="hidden lg:block">
+            <HeroSkeleton accentColor="yellow" variant="dashboard" showThumbnails />
+          </div>
+          {/* Hero skeleton — Mobile */}
+          <div className="lg:hidden">
+            <HeroSkeleton accentColor="yellow" variant="dashboard" mobile />
+          </div>
+          {/* List card skeletons */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="relative bg-dashboard-muted rounded-2xl h-[168px] overflow-hidden border border-white/4">
+                <div className="absolute inset-0 skeleton-shimmer" />
+                {/* Card header */}
+                <div className="absolute top-5 left-5 right-5 flex justify-between">
+                  <div className="flex flex-col gap-2">
+                    <div className="h-4 w-36 rounded bg-white/8" />
+                    <div className="h-3 w-48 rounded bg-white/5" />
+                  </div>
+                  <div className="h-6 w-20 rounded-full bg-white/8" />
+                </div>
+                {/* Preview covers */}
+                <div className="absolute bottom-5 left-5 flex gap-1.5">
+                  {[0,1,2,3,4].map(j => (
+                    <div key={j} className="w-10 aspect-[2/3] rounded bg-white/8" />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ) : lists.length === 0 ? (
         /* Empty state */
@@ -481,7 +577,7 @@ const MoviesHome = () => {
           {/* Add new list card */}
           <motion.button
             onClick={() => setShowCreateModal(true)}
-            className="border-2 border-dashed border-dashboard-border rounded-2xl p-5 flex flex-col items-center justify-center gap-2 text-dashboard-muted hover:text-dashboard hover:border-dashboard-border transition-all duration-200 min-h-[160px]"
+            className="border-[2.2px] border-dashed border-dashboard-border rounded-2xl p-5 flex flex-col items-center justify-center gap-2 text-dashboard-muted hover:text-white hover:border-dashboard-accent hover:bg-dashboard-accent/5 transition-all duration-300 min-h-[160px]"
             whileHover={{ scale: 1.01 }}
           >
             <Plus size={24} />
@@ -493,7 +589,7 @@ const MoviesHome = () => {
 
       {/* Create list modal */}
       {accountDocumentId && (
-        <CreateListModal
+        <CreateMovieListModal
           open={showCreateModal}
           onClose={() => setShowCreateModal(false)}
           accountDocumentId={accountDocumentId}

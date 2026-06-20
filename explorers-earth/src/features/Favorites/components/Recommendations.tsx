@@ -8,11 +8,11 @@ import {
   useRef,
   useMemo,
   useCallback,
+  ReactElement,
 } from "react";
 import { useTranslation } from "react-i18next";
 import Button from "../../../components/ui/Button";
 import { AddIcon } from "../../../assets/icons/AddIcon";
-import Card from "../../../components/ui/Card";
 import { useMutation, useQuery } from "@apollo/client";
 import { toast } from "sonner";
 import {
@@ -38,7 +38,6 @@ import { useCityStore } from "../../../store/useCityStore";
 import useSetupStore from "../../../store/useSetupStore";
 import TopPlacesByCategory from "./TopPlacesByCategory";
 import { motion, AnimatePresence } from "framer-motion";
-import SwitchButton from "../../../components/ui/SwitchButton";
 import { useMenuItems } from "../hooks/useMenuItems";
 // ⭐ Walkthrough Hook
 import { useRecommendationsWalkthrough } from "../../../hooks/useRecommendationsWalkthrough";
@@ -117,6 +116,57 @@ type CardDataItem = {
   Recommendation_Type?: "place" | "person";
   Contact_Name?: string;
   documentId: string;
+};
+
+const KebabDropdown: FC<{
+  menuItems: { icon: ReactElement; label: string; action: () => void }[];
+}> = ({ menuItems }) => {
+  const [showMenu, setShowMenu] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    if (showMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showMenu]);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        onClick={() => setShowMenu(!showMenu)}
+        className="w-6 h-6 flex items-center justify-center text-white/80 hover:text-white transition-colors cursor-pointer"
+      >
+        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2 s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+        </svg>
+      </button>
+      {showMenu && (
+        <div className="absolute z-50 right-0 top-full mt-1 bg-dashboard-sidebar shadow-dashboard-elevated rounded-md p-1.5 border border-white/10 min-w-[100px]">
+          {menuItems.map((item, index) => (
+            <button
+              key={index}
+              className="flex w-full items-center gap-2 text-xs text-dashboard hover:bg-dashboard-muted rounded px-2.5 py-1.5 whitespace-nowrap text-left text-white"
+              onClick={() => {
+                item.action();
+                setShowMenu(false);
+              }}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 };
 
 interface RecommendationsProps {
@@ -265,7 +315,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
 
   // Use the existing menu items hook for draft/publish functionality
   // Must be called AFTER walkthrough hook to access advanceToNextStepRef
-  const { handleRecommendationListVisibility, isPublished } = useMenuItems({
+  useMenuItems({
     refetchCities: refetchCitiesInternal,
     setShowConfirmDeleteModal: () => { }, // Not needed in this component
     advanceToNextStepRef: advanceToNextStepRef,
@@ -762,40 +812,15 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
       <div ref={suggestionsContainerRef}>
         {/* Recommend Button and Suggestions Button */}
         <div className="flex flex-col gap-2 py-2">
-          {/* Row 1: Published toggle (left) + Add Place button (right) */}
-          <div className="flex flex-row items-center justify-between gap-4">
-            {/* Toggle Switch - Left aligned */}
-            <div className="flex items-center gap-3" data-walkthrough="togglePublish">
-              <SwitchButton
-                data-switch="published"
-                isChecked={isPublished}
-                onChange={() => {
-                  handleRecommendationListVisibility();
-                  setTimeout(() => {
-                    window.__walkthrough?.markProcessingCompleteRef?.();
-                  }, 150);
-                }}
-                variant="green"
-                disabled={!selectedCity?.recommended_places?.length}
-              />
-              <span className="text-sm font-medium text-dashboard">
-                {isPublished
-                  ? t("dashboard.recommendations.publishedStatus")
-                  : t("dashboard.recommendations.draftStatus")}
-              </span>
-            </div>
-
-            {/* Add Place button - right aligned */}
-            <button
-              onClick={() => setShowAddPlaceOverlay(true)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap"
-              data-walkthrough="add-place"
-            >
-              <AddIcon size="5" />
-              <span>{t("dashboard.recommendations.recommendButton")}</span>
-            </button>
-          </div>
-
+          {/* Stretched Add Place Button */}
+          <button
+            onClick={() => setShowAddPlaceOverlay(true)}
+            className="w-full bg-dashboard-accent hover:opacity-90 text-sm text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/30 cursor-pointer"
+            data-walkthrough="add-place"
+          >
+            <AddIcon size="5" />
+            <span>Add Place</span>
+          </button>
         </div>
 
         {/* Collapsible TopPlaces Section */}
@@ -877,7 +902,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
       </div>
 
       {/* Combined Recommendations Grid - All cards in one section */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 items-center justify-center mt-2 mb-20 md:mb-0">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-4 mt-2 mb-20 md:mb-0">
         {loading && !placesData?.recommendedPlaces?.data?.length ? (
           // Skeleton cards while loading — sit directly in the grid
           <RecommendationCardSkeleton count={6} variant="dashboard" />
@@ -885,47 +910,83 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
           <>
             {allFilteredPlaces?.map((data: CardDataItem, index: number) => {
               const isPersonType = data?.Recommendation_Type === "person";
+              const title = isPersonType ? data.Contact_Name : data.Place_Details?.Title;
+              const rating = !isPersonType ? data?.Place_Details?.Rating : undefined;
+              const reviews = !isPersonType ? data?.Place_Details?.Rating_Count : undefined;
+              const image = isPersonType
+                ? getPersonImageUrl(data)
+                : (data?.media_details?.thumbnail?.url ||
+                  data?.media_details?.imageDetails?.[0]?.url ||
+                  IMAGE_CONFIG.defaultImages.place);
 
               return (
-                <Card
+                <div
                   key={data.documentId || `recommendation-${index}`}
-                  cardType="menuCard"
-                  recommendationType={isPersonType ? "person" : "place"}
-                  menuItems={[
-                    {
-                      icon: <DeleteIcon stroke="var(--dash-danger)" />,
-                      action: () => {
-                        setShowDeleteModal(true);
-                        setDeletedPlaceId(data.documentId);
-                        setImageIds(
-                          data?.media_details?.imageDetails?.map(
-                            (img) => img.id
-                          ) || []
-                        );
-                      },
-                    },
-                    {
-                      icon: <EditIcon />,
-                      action: () => navigate(`/${data.documentId}/edit`),
-                    },
-                  ]}
-                  onClickhandler={() =>
+                  onClick={() =>
                     setIsExpanded({
                       visible: true,
                       documentId: data.documentId,
                     })
                   }
-                  image={
-                    isPersonType
-                      ? getPersonImageUrl(data)
-                      : (data?.media_details?.thumbnail?.url ||
-                        data?.media_details?.imageDetails?.[0]?.url ||
-                        IMAGE_CONFIG.defaultImages.place)
-                  }
-                  title={isPersonType ? data.Contact_Name : data.Place_Details?.Title}
-                  rating={!isPersonType ? data?.Place_Details?.Rating : undefined}
-                  reviews={!isPersonType ? data?.Place_Details?.Rating_Count : undefined}
-                />
+                  className="places-grid-card relative rounded-xl overflow-hidden cursor-pointer shadow-lg transition-transform hover:-translate-y-1 aspect-[4/3] md:aspect-[4/3]"
+                  style={{
+                    background: `linear-gradient(180deg, rgba(13,15,18,0.1) 0%, rgba(13,15,18,0.85) 90%), url('${image}') center/cover no-repeat`,
+                    border: "1px solid var(--dash-border, #3C4E40)",
+                  }}
+                >
+                  {/* Top action row */}
+                  <div className="flex justify-between items-center p-3 relative z-10 w-full">
+                    {/* Direction icon */}
+                    <div className="w-6 h-6 rounded-full bg-white/15 backdrop-blur-md flex items-center justify-center border border-white/25">
+                      <svg width="10" height="10" fill="white" viewBox="0 0 24 24" className="transform rotate-45">
+                        <path d="M12 2L2 22l10-6 10 6L12 2z" fill="white" />
+                      </svg>
+                    </div>
+                    
+                    {/* Kebab trigger menu */}
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="relative"
+                    >
+                      <KebabDropdown
+                        menuItems={[
+                          {
+                            icon: <DeleteIcon stroke="var(--dash-danger)" />,
+                            label: "Delete",
+                            action: () => {
+                              setShowDeleteModal(true);
+                              setDeletedPlaceId(data.documentId);
+                              setImageIds(
+                                data?.media_details?.imageDetails?.map(
+                                  (img) => img.id
+                                ) || []
+                              );
+                            },
+                          },
+                          {
+                            icon: <EditIcon />,
+                            label: "Edit",
+                            action: () => navigate(`/${data.documentId}/edit`),
+                          },
+                        ]}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Bottom Title & Meta info */}
+                  <div className="absolute bottom-0 inset-x-0 p-3 flex flex-col gap-0.5">
+                    <span className="places-grid-card-title font-poppins font-bold text-white text-xs md:text-sm line-clamp-1 leading-snug drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)]">
+                      {title}
+                    </span>
+                    {!isPersonType && (rating !== undefined || reviews !== undefined) && (
+                      <div className="places-grid-card-meta flex items-center gap-1 text-[10px] md:text-xs text-white font-bold drop-shadow-[0_1px_3px_rgba(0,0,0,0.85)]">
+                        <span className="text-dashboard-accent">★</span>
+                        <span>{rating?.toFixed(1) || "0.0"}</span>
+                        <span className="text-white/60 font-medium">({reviews || 0})</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               );
             })}
             <div ref={observerTarget} className="h-10 w-full" />

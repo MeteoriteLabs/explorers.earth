@@ -6,6 +6,7 @@ import { getPublicAccountBasicQuery } from "../../features/PublicHome/api/query"
 import { EarthLoader } from "../../components/EarthLoader";
 import Button from "../../components/ui/Button";
 import Home from "../../assets/icons/Home";
+import HeroSkeleton from "../../components/ui/HeroSkeleton";
 
 interface TabVisibilityGuardProps {
     /** Which tab visibility field to check */
@@ -38,9 +39,18 @@ const TabVisibilityGuard = memo(({ tabField, defaultVisible = true, children }: 
 
     // Show loader while checking visibility
     if (loading) {
+        if ((window as any).__publicProfileLoaded) {
+            return (
+                <div className="bg-black min-h-screen pt-20 px-4 md:px-6">
+                    <div className="max-w-5xl mx-auto">
+                        <HeroSkeleton accentColor="yellow" showThumbnails />
+                    </div>
+                </div>
+            );
+        }
         return (
-            <div className="bg-black min-h-screen flex items-center justify-center">
-                <EarthLoader context="general" size="small" />
+            <div className="bg-black min-h-screen">
+                <EarthLoader context="general" size="default" />
             </div>
         );
     }

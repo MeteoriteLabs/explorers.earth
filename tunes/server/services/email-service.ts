@@ -1,4 +1,3 @@
-import AWS from 'aws-sdk';
 import Handlebars from 'handlebars';
 import { 
   EmailTemplate, InsertEmailTemplate, 
@@ -10,34 +9,18 @@ import crypto from 'crypto';
 import { systemSettingsService } from '../services/system-settings-service';
 
 export class EmailService {
-  private ses: AWS.SES;
   private fromEmail: string;
+  private apiKey: string;
   
   constructor() {
-    // Log which AWS SES environment variables are set for debugging purposes
-    console.log('AWS Config:', {
-      regionSet: !!process.env.AWS_REGION,
-      accessKeySet: !!process.env.AWS_ACCESS_KEY_ID,
-      secretKeySet: !!process.env.AWS_SECRET_ACCESS_KEY,
-      senderEmailSet: !!process.env.AWS_SES_SENDER_EMAIL
+    // Log which Resend environment variables are set for debugging purposes
+    console.log('Resend Config:', {
+      apiKeySet: !!process.env.RESEND_API_KEY,
+      senderEmailSet: !!process.env.RESEND_EMAIL_FROM
     });
 
-    let secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY || '';
-    if (secretAccessKey === '${AWS_SECRET_ACCESS_KEY}' || secretAccessKey === '**AWS_SECRET_ACCESS_KEY**') {
-      console.error('AWS_SECRET_ACCESS_KEY is using a placeholder value, AWS SES will not work properly.');
-    }
-
-    // Initialize AWS SES with credentials from environment variables
-    this.ses = new AWS.SES({
-      region: process.env.AWS_REGION,
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-        secretAccessKey: secretAccessKey
-      }
-    });
-    
-    // Get from email from environment variables
-    this.fromEmail = process.env.AWS_SES_SENDER_EMAIL || 'noreply@example.com';
+    this.apiKey = process.env.RESEND_API_KEY || '';
+    this.fromEmail = process.env.RESEND_EMAIL_FROM || 'noreply@example.com';
   }
   
   /**
@@ -61,28 +44,15 @@ export class EmailService {
   }
   
   /**
-   * Validates that the required AWS SES environment variables are set
+   * Validates that the required Resend environment variables are set
    */
   public validateConfig(): { isValid: boolean; message?: string } {
-    if (!process.env.AWS_REGION) {
-      return { isValid: false, message: 'AWS_REGION environment variable is not set' };
+    if (!process.env.RESEND_API_KEY) {
+      return { isValid: false, message: 'RESEND_API_KEY environment variable is not set' };
     }
     
-    if (!process.env.AWS_ACCESS_KEY_ID) {
-      return { isValid: false, message: 'AWS_ACCESS_KEY_ID environment variable is not set' };
-    }
-    
-    if (!process.env.AWS_SECRET_ACCESS_KEY) {
-      return { isValid: false, message: 'AWS_SECRET_ACCESS_KEY environment variable is not set' };
-    }
-    
-    if (process.env.AWS_SECRET_ACCESS_KEY === '${AWS_SECRET_ACCESS_KEY}' || 
-        process.env.AWS_SECRET_ACCESS_KEY === '**AWS_SECRET_ACCESS_KEY**') {
-      return { isValid: false, message: 'AWS_SECRET_ACCESS_KEY has a placeholder value, please set a valid key' };
-    }
-    
-    if (!process.env.AWS_SES_SENDER_EMAIL) {
-      return { isValid: false, message: 'AWS_SES_SENDER_EMAIL environment variable is not set' };
+    if (!process.env.RESEND_EMAIL_FROM) {
+      return { isValid: false, message: 'RESEND_EMAIL_FROM environment variable is not set' };
     }
     
     return { isValid: true };
@@ -105,7 +75,7 @@ export class EmailService {
     emailLogId?: number;
   }> {
     try {
-      // Validate AWS SES config
+      // Validate Resend config
       const configValidation = this.validateConfig();
       if (!configValidation.isValid) {
         throw new Error(configValidation.message);
@@ -133,59 +103,63 @@ export class EmailService {
         metadata: variables as any
       });
       
-      // Send email via SES
-      const params: AWS.SES.SendEmailRequest = {
-        Source: this.fromEmail,
-        Destination: {
-          ToAddresses: [recipient]
+      // Send email via Resend REST API
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY || this.apiKey}`,
+          'Content-Type': 'application/json'
         },
-        Message: {
-          Subject: {
-            Data: emailSubject,
-            Charset: 'UTF-8'
-          },
-          Body: {
-            Html: {
-              Data: html,
-              Charset: 'UTF-8'
-            },
-            Text: {
-              Data: text,
-              Charset: 'UTF-8'
-            }
+        body: JSON.stringify({
+          from: process.env.RESEND_EMAIL_FROM || this.fromEmail,
+          to: [recipient],
+          subject: emailSubject,
+          html: html,
+          text: text
+        })
+      });
+
+      if (!response.ok) {
+        const responseText = await response.text();
+        let errorMsg = `Resend API Error: ${response.status} ${response.statusText}`;
+        try {
+          const parsed = JSON.parse(responseText);
+          if (parsed && parsed.message) {
+            errorMsg = parsed.message;
           }
-        }
-      };
-      
-      // Send email
-      const result = await this.ses.sendEmail(params).promise();
+        } catch (_) {}
+        throw new Error(errorMsg);
+      }
+
+      const result = await response.json() as any;
       
       // Update log with success status and message ID
       await storage.updateEmailLogStatus(
         emailLog.id,
         'sent',
-        result.MessageId
+        result.id
       );
       
       return {
         success: true,
-        messageId: result.MessageId,
+        messageId: result.id,
         emailLogId: emailLog.id
       };
     } catch (error) {
       console.error('Error sending email:', error);
       
-      // Check if it's a permissions error
+      // Check if it's an authorization/API key issue
       const errorMessage = (error as Error).message;
-      const isPermissionsError = 
-        errorMessage.includes('AccessDenied') || 
-        errorMessage.includes('not authorized to perform');
+      const isAuthError = 
+        errorMessage.includes('Unauthorized') || 
+        errorMessage.includes('Invalid API key') ||
+        errorMessage.includes('401') ||
+        errorMessage.includes('403');
       
       // If email parameters were provided, log the failure
       let emailLogId;
       if (recipient && templateId) {
         try {
-          // Try to get the template to create a log entry
           const template = await storage.getEmailTemplateById(templateId);
           if (template) {
             const emailLog = await storage.createEmailLog({
@@ -204,16 +178,15 @@ export class EmailService {
         }
       }
       
-      // Create a more user-friendly error message for permission issues
       let friendlyErrorMessage = errorMessage;
-      if (isPermissionsError) {
-        friendlyErrorMessage = `AWS SES permissions issue: The AWS user does not have permission to send emails. Please update the IAM policy to include the ses:SendEmail and ses:SendRawEmail permissions.`;
+      if (isAuthError) {
+        friendlyErrorMessage = `Resend authentication issue: Please verify that RESEND_API_KEY is configured correctly and has valid permissions to send emails.`;
       }
       
       return {
         success: false,
         error: friendlyErrorMessage,
-        permissionError: isPermissionsError,
+        permissionError: isAuthError,
         emailLogId
       };
     }
@@ -233,51 +206,21 @@ export class EmailService {
   }
   
   /**
-   * Verifies an email address with Amazon SES
-   * This is required before you can send emails to new addresses in sandbox mode
+   * Mock verifying an email address for Resend compatibility
    */
   public async verifyEmailAddress(email: string): Promise<{ 
     success: boolean; 
     message?: string;
     permissionError?: boolean;
   }> {
-    try {
-      const params: AWS.SES.VerifyEmailIdentityRequest = {
-        EmailAddress: email
-      };
-      
-      await this.ses.verifyEmailIdentity(params).promise();
-      
-      return {
-        success: true,
-        message: `Verification email sent to ${email}. Please check your inbox and follow the instructions.`
-      };
-    } catch (error) {
-      console.error('Error verifying email address:', error);
-      
-      // Check if it's a permissions error
-      const errorMessage = (error as Error).message;
-      const isPermissionsError = 
-        errorMessage.includes('AccessDenied') || 
-        errorMessage.includes('not authorized to perform');
-      
-      if (isPermissionsError) {
-        return {
-          success: false,
-          permissionError: true,
-          message: `AWS SES permissions issue: The AWS user does not have permission to verify email addresses. Please update the IAM policy to include the ses:VerifyEmailIdentity permission.`
-        };
-      }
-      
-      return {
-        success: false,
-        message: `Failed to verify email: ${errorMessage}`
-      };
-    }
+    return {
+      success: true,
+      message: `With Resend, domain & email configuration is handled on the Resend Dashboard (https://resend.com/domains). Please ensure your domain/sender is configured and verified there.`
+    };
   }
   
   /**
-   * Gets the sending quota for the AWS SES account
+   * Mock getting sending quota for Resend compatibility
    */
   public async getSendingQuota(): Promise<{
     max24HourSend: number;
@@ -286,32 +229,11 @@ export class EmailService {
     permissionError?: boolean;
     errorMessage?: string;
   }> {
-    try {
-      const result = await this.ses.getSendQuota().promise();
-      
-      return {
-        max24HourSend: result.Max24HourSend || 0,
-        sentLast24Hours: result.SentLast24Hours || 0,
-        maxSendRate: result.MaxSendRate || 0
-      };
-    } catch (error) {
-      console.error('Error getting SES sending quota:', error);
-      
-      // Check if it's a permissions error
-      const errorMessage = (error as Error).message;
-      const isPermissionsError = 
-        errorMessage.includes('AccessDenied') || 
-        errorMessage.includes('not authorized to perform');
-      
-      // Instead of throwing, return an object with error information
-      return {
-        max24HourSend: 0,
-        sentLast24Hours: 0,
-        maxSendRate: 0,
-        permissionError: isPermissionsError,
-        errorMessage: errorMessage
-      };
-    }
+    return {
+      max24HourSend: 100000,
+      sentLast24Hours: 0,
+      maxSendRate: 10
+    };
   }
 
   /**

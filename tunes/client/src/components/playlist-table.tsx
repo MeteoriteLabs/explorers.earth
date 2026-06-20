@@ -356,130 +356,136 @@ export default function PlaylistTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {displaySongs.map((song, index) => (
-            <TableRow key={song.id} className={song.id === currentPlayingSong?.id ? "bg-primary/5" : undefined}>
-              {showBulkActions && (
-                <TableCell>
-                  <Checkbox
-                    checked={selectedSongs.has(song.id)}
-                    onCheckedChange={(checked) => handleSelectSong(song.id, checked as boolean)}
-                  />
-                </TableCell>
-              )}
-              {showControls && !isHistory && showReorderControls && (
-                <TableCell>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-muted-foreground">
-                      <Grip className="h-4 w-4 cursor-move" />
-                    </span>
-                    <div className="flex flex-col space-y-1">
-                      <div className="p-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8"
-                          onClick={() => handleMoveUp(song.id, index)}
-                          disabled={startIndex + index === 0}
-                        >
-                          <ChevronUp className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="p-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8"
-                          onClick={() => handleMoveDown(song.id, index)}
-                          disabled={startIndex + index >= songs.length - 1}
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
+          {displaySongs.map((song, index) => {
+            const isPlaying = isPlaylist
+              ? song.youtubeId === currentPlayingSong?.youtubeId
+              : song.id === currentPlayingSong?.id;
+
+            return (
+              <TableRow key={song.id} className={isPlaying ? "bg-primary/5" : undefined}>
+                {showBulkActions && (
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedSongs.has(song.id)}
+                      onCheckedChange={(checked) => handleSelectSong(song.id, checked as boolean)}
+                    />
+                  </TableCell>
+                )}
+                {showControls && !isHistory && showReorderControls && (
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-muted-foreground">
+                        <Grip className="h-4 w-4 cursor-move" />
+                      </span>
+                      <div className="flex flex-col space-y-1">
+                        <div className="p-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8"
+                            onClick={() => handleMoveUp(song.id, index)}
+                            disabled={startIndex + index === 0}
+                          >
+                            <ChevronUp className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="p-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8"
+                            onClick={() => handleMoveDown(song.id, index)}
+                            disabled={startIndex + index >= songs.length - 1}
+                          >
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
+                  </TableCell>
+                )}
+                <TableCell>
+                  <div className="flex items-center space-x-3">
+                    <img
+                      src={song.thumbnailUrl}
+                      alt={song.title}
+                      className="h-8 w-8 rounded object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src =
+                          "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M9 18V5l12-2v13'/><circle cx='6' cy='18' r='3'/><circle cx='18' cy='16' r='3'/></svg>";
+                      }}
+                    />
+                    <div className="flex flex-col max-w-[120px] sm:max-w-[200px] md:max-w-[300px]">
+                      <MarqueeText text={song.title} className="font-medium" />
+                      <span className="text-sm text-muted-foreground truncate">{song.artist}</span>
+                    </div>
+                    {isPlaying && (
+                      <span className="ml-2 text-sm text-primary">Now Playing</span>
+                    )}
+                    {!isHistory && !isPlaylist && songs[0]?.id === song.id && !isPlaying && (
+                      <span className="ml-2 text-sm text-primary/80">Next up</span>
+                    )}
                   </div>
                 </TableCell>
-              )}
-              <TableCell>
-                <div className="flex items-center space-x-3">
-                  <img
-                    src={song.thumbnailUrl}
-                    alt={song.title}
-                    className="h-8 w-8 rounded object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src =
-                        "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M9 18V5l12-2v13'/><circle cx='6' cy='18' r='3'/><circle cx='18' cy='16' r='3'/></svg>";
-                    }}
-                  />
-                  <div className="flex flex-col max-w-[120px] sm:max-w-[200px] md:max-w-[300px]">
-                    <MarqueeText text={song.title} className="font-medium" />
-                    <span className="text-sm text-muted-foreground truncate">{song.artist}</span>
+                <TableCell>
+                  <div className="flex items-center space-x-2">
+                    {onPlaySong && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          // For saved playlists (isPlaylist=true), directly play the song
+                          // For other cases (history or main playlist), use the previous behavior
+                          if (isPlaylist) {
+                            onPlaySong(song);
+                          } else if (isHistory && onAddToQueue) {
+                            onAddToQueue(song);
+                          } else if (onPlaySong) {
+                            onPlaySong(song);
+                          }
+                        }}
+                        disabled={isPlaying}
+                      >
+                        <Play className="h-4 w-4" />
+                      </Button>
+                    )}
+
+                    {(isHistory || showAddToQueue || isPlaylist) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (isHistory) {
+                            addToQueueMutation.mutate(song);
+                          } else if (onAddToQueue) {
+                            onAddToQueue(song);
+                          }
+                        }}
+                        disabled={addToQueueMutation.isPending}
+                      >
+                        {addToQueueMutation.isPending && isHistory ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Plus className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
+
+                    {((isHistory && !guestUrl) || (showControls && !guestUrl && !isHistory)) && onDeleteSong && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onDeleteSong(song.id)}
+                        disabled={isPlaying}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
-                  {song.id === currentPlayingSong?.id && (
-                    <span className="ml-2 text-sm text-primary">Now Playing</span>
-                  )}
-                  {!isHistory && !isPlaylist && songs[0]?.id === song.id && song.id !== currentPlayingSong?.id && (
-                    <span className="ml-2 text-sm text-primary/80">Next up</span>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center space-x-2">
-                  {onPlaySong && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        // For saved playlists (isPlaylist=true), directly play the song
-                        // For other cases (history or main playlist), use the previous behavior
-                        if (isPlaylist) {
-                          onPlaySong(song);
-                        } else if (isHistory && onAddToQueue) {
-                          onAddToQueue(song);
-                        } else if (onPlaySong) {
-                          onPlaySong(song);
-                        }
-                      }}
-                      disabled={song.id === currentPlayingSong?.id}
-                    >
-                      <Play className="h-4 w-4" />
-                    </Button>
-                  )}
-
-                  {(isHistory || showAddToQueue || isPlaylist) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        if (isHistory) {
-                          addToQueueMutation.mutate(song);
-                        } else if (onAddToQueue) {
-                          onAddToQueue(song);
-                        }
-                      }}
-                      disabled={addToQueueMutation.isPending}
-                    >
-                      {addToQueueMutation.isPending && isHistory ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Plus className="h-4 w-4" />
-                      )}
-                    </Button>
-                  )}
-
-                  {((isHistory && !guestUrl) || (showControls && !guestUrl && !isHistory)) && onDeleteSong && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onDeleteSong(song.id)}
-                      disabled={song.id === currentPlayingSong?.id}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
 

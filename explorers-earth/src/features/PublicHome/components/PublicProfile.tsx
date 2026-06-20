@@ -42,6 +42,43 @@ import ProfileRecommendationsTab from "./ProfileRecommendationsTab";
 // Memoized FeedLayout to prevent unnecessary re-renders
 const MemoizedFeedLayout = memo(FeedLayout);
 
+const ProfileSkeleton = memo(() => {
+  return (
+    <div className="min-h-screen bg-black text-white pb-20">
+      {/* Cover Photo Shimmer */}
+      <div className="relative h-[380px] md:h-[420px] bg-white/5 skeleton-shimmer w-full rounded-b-[2rem] md:rounded-none overflow-hidden" />
+      
+      {/* Profile Pic, Name, Bio Skeletons */}
+      <div className="relative z-10 -mt-20 text-center px-4">
+        {/* Avatar Circle */}
+        <div className="w-[7.5rem] h-[7.5rem] mx-auto rounded-full border-4 border-gray-800 bg-white/10 skeleton-shimmer overflow-hidden shadow-xl" />
+        
+        {/* Name */}
+        <div className="mt-4 h-6 w-48 bg-white/10 skeleton-shimmer rounded mx-auto" />
+        
+        {/* Location */}
+        <div className="mt-2 h-4 w-32 bg-white/5 skeleton-shimmer rounded mx-auto" />
+        
+        {/* Social Icons */}
+        <div className="flex justify-center gap-4 mt-6">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="w-8 h-8 rounded-full bg-white/5 skeleton-shimmer" />
+          ))}
+        </div>
+        
+        {/* Bio */}
+        <div className="max-w-md mx-auto mt-8 px-6 space-y-2">
+          <div className="h-3 w-full bg-white/5 skeleton-shimmer rounded" />
+          <div className="h-3 w-5/6 bg-white/5 skeleton-shimmer rounded mx-auto" />
+          <div className="h-3 w-2/3 bg-white/5 skeleton-shimmer rounded mx-auto" />
+        </div>
+      </div>
+    </div>
+  );
+});
+
+ProfileSkeleton.displayName = "ProfileSkeleton";
+
 const PublicProfile = memo(() => {
   const { username } = useParams();
   const navigate = useNavigate();
@@ -84,6 +121,13 @@ const PublicProfile = memo(() => {
   });
 
   const accountData = data?.accounts[0];
+
+  // Set public profile loaded when query completes successfully
+  useEffect(() => {
+    if (!loading && accountData) {
+      (window as any).__publicProfileLoaded = true;
+    }
+  }, [loading, accountData]);
 
   // Fetch mobile number ONLY when visibility is explicitly enabled
   // This prevents the mobile number from ever being in the response unless visibility is set
@@ -223,12 +267,16 @@ const PublicProfile = memo(() => {
     }
   }, [activeTab, hasGalleryContent, hasBusinessDetails, hasRecommendations]);
 
-  if (loading)
+  if (loading) {
+    if ((window as any).__publicProfileLoaded) {
+      return <ProfileSkeleton />;
+    }
     return (
       <div className="bg-black min-h-screen">
-        <EarthLoader context="profile" />
+        <EarthLoader context="profile" size="default" />
       </div>
     );
+  }
 
   // Add safety check for accountData
   if (!accountData) {

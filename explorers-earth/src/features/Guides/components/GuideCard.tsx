@@ -12,10 +12,11 @@ interface GuideCardProps {
   onEdit: (documentId: string) => void;
   onDelete: (documentId: string) => void;
   onToggleVisibility?: (documentId: string, currentVisibility: boolean) => void;
+  onTogglePin?: (documentId: string) => void;
 }
 
 const GuideCard: FC<GuideCardProps> = memo(
-  ({ guide, onClickHandler, onEdit, onDelete, onToggleVisibility }) => {
+  ({ guide, onClickHandler, onEdit, onDelete, onToggleVisibility, onTogglePin }) => {
     // Get image from Guide_Media
     const coverImage =
       guide.Guide_Media?.[0]?.url || "https://placehold.co/400x400";
@@ -98,6 +99,18 @@ const GuideCard: FC<GuideCardProps> = memo(
             action: () => onToggleVisibility && onToggleVisibility(guide.documentId, !!guide.Visibility),
           },
           {
+            icon: (
+              <svg className={`w-3.5 h-3.5 transition-colors ${guide.is_pinned ? "text-amber-400 fill-amber-400" : "text-white/45"}`} viewBox="0 0 24 24" fill={guide.is_pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 12H5l4-4V3h6v5l4 4z" />
+                <path d="M12 12v8" />
+              </svg>
+            ),
+            label: guide.is_pinned ? "Unpin Pick" : "Pin Top Pick",
+            action: () => onTogglePin && onTogglePin(guide.documentId),
+            disabled: !guide.Visibility && !guide.is_pinned,
+            title: !guide.Visibility && !guide.is_pinned ? "Only published guides can be pinned" : undefined,
+          },
+          {
             icon: <EditIcon />,
             label: "Edit",
             action: () => onEdit(guide.documentId),
@@ -116,6 +129,7 @@ const GuideCard: FC<GuideCardProps> = memo(
         numberOfDays={guide.Number_Of_Days || null}
         locationTags={locationTags}
         visibility={guide.Visibility}
+        isPinned={guide.is_pinned}
       />
     );
   }

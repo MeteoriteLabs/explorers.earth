@@ -46,14 +46,25 @@ src/
 │   └── ui/             # Radix UI primitive wrappers
 ├── pages/              # Route-level page components
 │   ├── Music.tsx       # Music page (renders MusicDashboard)
+│   ├── ReactivateAccount.tsx # Request account reactivation magic link page
+│   ├── ReactivateConfirm.tsx # Confirm account reactivation page
 │   └── public/         # Public (unauthenticated) pages
 ├── hooks/              # Custom hooks
-│   ├── useTunesDashboard.ts    # Local Tunes data fetching + user sync
-│   ├── useProfileWalkthrough.ts
-│   ├── useRecommendationsWalkthrough.ts
-│   ├── useQRActions.tsx
-│   ├── useAIGuideQuota.ts
-│   └── useToast.ts
+│   ├── useTunesDashboard.ts            # Local Tunes data fetching + user sync
+│   ├── useProfileWalkthrough.ts        # Profile setup guided walkthrough
+│   ├── useRecommendationsWalkthrough.ts # Recommendations guided walkthrough
+│   ├── useQRActions.tsx                # QR code generation, download, sharing
+│   ├── useQRContext.tsx                # QR actions React context provider
+│   ├── useAIGuideQuota.ts              # AI guide generation quota tracking
+│   ├── useDeviceDetection.tsx          # Mobile/tablet/desktop detection
+│   ├── useDistanceValidation.ts        # Location distance validation
+│   ├── useFileUpload.ts                # Image upload flow (crop → compress → REST)
+│   ├── useMediaViewer.ts               # Image/media viewer modal state
+│   ├── usePageTracking.ts              # GA4 page-view tracking
+│   ├── useResponsiveChart.ts           # Chart dimensions from viewport
+│   ├── useToast.ts                     # Toast notifications
+│   ├── useUsernameValidation.ts        # Async username availability check
+│   └── useWebSocket.ts                 # Socket.IO for tunes real-time
 ├── lib/
 │   └── apiClient.ts    # Local Tunes API client (JWT auth, CSRF, retry logic)
 ├── store/              # Zustand global state
@@ -66,11 +77,14 @@ src/
 │   ├── aiGuideService.ts       # AI guide generation
 │   ├── analyticsService.ts     # Analytics tracking
 │   ├── geminiService.ts        # Google Gemini AI integration
+│   ├── googleBooksService.ts   # Google Books API (book search + metadata)
+│   ├── igdbService.ts          # IGDB via Twitch OAuth (game search + metadata)
 │   ├── instagramService.ts     # Instagram integration
 │   ├── localTunesService.ts    # Local Tunes API communication
 │   ├── paymentService.ts       # Payment processing
 │   ├── requestTrackingService.ts # Request tracking
-│   └── subscriptionService.ts  # Subscription management
+│   ├── subscriptionService.ts  # Subscription management
+│   └── tmdbService.ts          # TMDB (movie/show search, metadata, posters)
 ├── utils/              # Utility functions
 ├── types/              # TypeScript type definitions
 ├── routes/             # React Router configuration
@@ -104,6 +118,7 @@ explorers-earth has deep integration with tunes via SSO:
 - `apiClient.ts` sends JWT + `X-Username` header for Strapi → Neon DB user mapping
 - `useTunesDashboard.ts` syncs Strapi user with tunes DB and fetches playlist data
 - `MusicDashboard.tsx` renders embedded music player with queue, playlists, guest controls
+- **Account Reactivation Flow**: `ReactivateAccount.tsx` and `ReactivateConfirm.tsx` pages handle unblocking deactivated Strapi accounts by calling tunes endpoints (`/api/user/request-reactivation` and `/api/user/reactivate`).
 
 ## Common Tasks
 
@@ -132,3 +147,35 @@ See `docs/environment-variables.md` for the complete list. Key variables:
 ## Deployment strategy
 
 Netlify. Config in `netlify.toml`. Build: `npm run build` (runs generate-static + tsc + vite build)
+
+## Testing
+
+```bash
+# Run all unit tests
+npm test
+
+# Watch mode
+npm run test:watch
+
+# Coverage report
+npm run test:coverage
+
+# Interactive Vitest UI
+npm run test:ui
+
+# Type check
+npx tsc -b
+
+# Lint
+npm run lint
+
+# Tunes integration test
+npm run test:local-tunes
+```
+
+Test files live in `__tests__/` subdirectories throughout `src/`. Global setup is in `src/test/setup.ts`. Vitest is configured in `vite.config.ts` under the `test` key.
+
+## Superpower Skills
+
+Your personal library of proven techniques, patterns, and tools is at `D:\superpowers\skills\`.
+Before executing any tasks, always check for relevant skills under the `D:\superpowers\skills\` directory. For instructions on finding and executing skills, refer to `D:\superpowers\skills\using-superpowers\SKILL.md`. Always run verification commands and apply TDD/plan-writing skills where applicable.

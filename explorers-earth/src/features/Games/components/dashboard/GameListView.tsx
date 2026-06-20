@@ -40,7 +40,7 @@ const GameRow = ({ game, onPinToggle, onEdit, onDelete, onClick, isPinning }: Ga
 
   return (
     <div
-      className="group flex items-center gap-3 py-3 border-b border-dashboard-border last:border-0 hover:bg-white/5 cursor-pointer rounded-lg px-2 -mx-2 transition-colors"
+      className="group flex items-center gap-3 p-3 bg-white/[0.03] border border-white/[0.05] hover:border-white/[0.08] hover:bg-white/[0.06] cursor-pointer rounded-xl transition-all mb-2"
       onClick={() => onClick(game)}
     >
       <div className="w-10 h-14 flex-shrink-0 rounded overflow-hidden bg-white/5 shadow-sm">
@@ -128,7 +128,7 @@ const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () => void 
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [updateGameList] = useMutation(UPDATE_GAME_LIST);
+  const [updateGameList, { loading: isUpdating }] = useMutation(UPDATE_GAME_LIST);
   const [deleteGameList] = useMutation(DELETE_GAME_LIST);
 
   const shareUrl = `${VITE_BASE_URL}/${list.account?.username ?? "user"}/games/${list.slug}`;
@@ -147,6 +147,18 @@ const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () => void 
       }
       await updateGameList({
         variables: { documentId: list.documentId, Visibility: !list.Visibility },
+        optimisticResponse: {
+          updateGameList: {
+            __typename: "GameList",
+            documentId: list.documentId,
+            List_Name: list.List_Name,
+            list_description: list.list_description,
+            slug: list.slug,
+            Visibility: !list.Visibility,
+            display_order: list.display_order,
+            top_picks_heading: list.top_picks_heading || null,
+          }
+        }
       });
       toast.success(list.Visibility ? "List set to Draft." : "List published!");
       onRefetch();
@@ -227,10 +239,11 @@ const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () => void 
               </button>
             )}
 
-            <div className={`p-4 rounded-xl border transition-all mt-2 ${list.Visibility ? "border-green-500/30 bg-green-500/5" : "border-white/10"}`}>
+            <div className={`p-4 rounded-xl border transition-all mt-2 ${list.Visibility ? "border-green-500/30 bg-green-500/5" : "border-white/10"} flex justify-center items-center`}>
               <Switch
                 checked={list.Visibility}
                 onChange={handleToggleVisibility}
+                loading={isUpdating}
                 label={list.Visibility ? "Published (Visible to public)" : "Draft (Private)"}
               />
             </div>
@@ -304,7 +317,7 @@ const GameListView = () => {
 
   const [toggleGamePin] = useMutation(TOGGLE_GAME_PIN);
   const [deleteRecommendedGame] = useMutation(DELETE_RECOMMENDED_GAME);
-  const [updateGameList] = useMutation(UPDATE_GAME_LIST);
+  const [updateGameList, { loading: isUpdating }] = useMutation(UPDATE_GAME_LIST);
 
   const rawList = data?.gameLists?.[0];
   const games: RecommendedGame[] = deduplicateGames(rawList?.recommended_games);
@@ -342,6 +355,35 @@ const GameListView = () => {
     }
   };
 
+  const handleToggleVisibility = async () => {
+    if (!list) return;
+    if (!list.Visibility && games.length === 0) {
+      toast.error("Add at least one game before publishing.");
+      return;
+    }
+    try {
+      await updateGameList({
+        variables: { documentId: list.documentId, Visibility: !list.Visibility },
+        optimisticResponse: {
+          updateGameList: {
+            __typename: "GameList",
+            documentId: list.documentId,
+            List_Name: list.List_Name,
+            list_description: list.list_description,
+            slug: list.slug,
+            Visibility: !list.Visibility,
+            display_order: list.display_order,
+            top_picks_heading: list.top_picks_heading || null,
+          }
+        }
+      });
+      toast.success(list.Visibility ? "List set to Draft." : "List published!");
+      refetch();
+    } catch {
+      toast.error("Failed to update visibility.");
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -369,50 +411,33 @@ const GameListView = () => {
 
   return (
     <div className="px-4 pt-8 pb-24 md:p-6 md:pb-6 max-w-3xl mx-auto">
-      <div className="flex items-start gap-3 mb-6">
-        <button onClick={() => navigate("/recommendations/games")} className="text-white/50 hover:text-white mt-0.5 transition-colors">
-          <ArrowLeft size={20} />
-        </button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-bold text-white truncate">{list?.List_Name}</h1>
-          <div className="flex items-center gap-3 mt-1 flex-wrap text-xs text-white/40">
-            <span>{games.length} game{games.length !== 1 ? "s" : ""}</span>
-            {pinnedCount > 0 && (
-              <span className="flex items-center gap-1 text-amber-400/80 font-medium">
-                <Star size={10} fill="currentColor" /> {pinnedCount}/15 pinned
-              </span>
-            )}
-          </div>
+      <div className="flex items-center justify-between mb-6">
+        {/* Left: Back and Title info */}
+        <div className="flex flex-col items-start">
+          <button
+            onClick={() => navigate("/recommendations/games")}
+            className="text-[10px] text-white/50 hover:text-white mb-1 transition-colors flex items-center gap-1 font-semibold uppercase tracking-wider"
+          >
+            <ArrowLeft size={10} />
+            <span>Back</span>
+          </button>
+          <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight leading-tight">{list?.List_Name}</h1>
         </div>
         <Switch
           checked={list?.Visibility ?? false}
-          onChange={async () => {
-            if (!list) return;
-            if (!list.Visibility && games.length === 0) {
-              toast.error("Add at least one game before publishing.");
-              return;
-            }
-            try {
-              await updateGameList({
-                variables: { documentId: list.documentId, Visibility: !list.Visibility },
-              });
-              toast.success(list.Visibility ? "List set to Draft." : "List published!");
-              refetch();
-            } catch {
-              toast.error("Failed to update visibility.");
-            }
-          }}
+          onChange={handleToggleVisibility}
+          loading={isUpdating}
           label={list?.Visibility ? "Published" : "Draft"}
         />
       </div>
 
-      <div className="flex mb-6 bg-white rounded-full max-w-[320px] mx-auto shadow-sm">
+      <div className="flex mb-6 bg-white rounded-full p-[2px] w-fit mx-auto shadow-sm">
         {(["recommendations", "manage"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-2 px-4 text-sm font-semibold rounded-full capitalize transition-all duration-300 ${
-              activeTab === tab ? "bg-[#60A5FA] text-white shadow" : "text-blue-900 bg-transparent hover:bg-blue-50/50"
+            className={`px-4 py-1.5 text-[11px] md:text-xs font-semibold rounded-full capitalize transition-all duration-200 ${
+              activeTab === tab ? "bg-dashboard-accent text-white shadow" : "text-[#0f172a] bg-transparent hover:opacity-80"
             }`}
           >
             {tab}
@@ -425,12 +450,12 @@ const GameListView = () => {
           {pinnedCount > 0 && (
             <button
                onClick={() => setShowTopGamesManager(true)}
-               className="w-full mb-4 flex items-center justify-between px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-sm hover:bg-amber-500/15 transition-colors"
+               className="w-full mb-4 flex items-center justify-between px-4 py-3 bg-[#fbbf24]/5 border border-[#fbbf24]/25 rounded-xl text-sm hover:bg-[#fbbf24]/10 text-[#fbbf24] transition-all font-semibold"
              >
-               <span className="flex items-center gap-2 text-amber-400">
+               <span className="flex items-center gap-2">
                  <Star size={14} fill="currentColor" /> Manage Top Picks ({pinnedCount}/15)
                </span>
-               <ChevronRight size={14} className="text-amber-400/60" />
+               <ChevronRight size={14} className="opacity-80" />
              </button>
           )}
 

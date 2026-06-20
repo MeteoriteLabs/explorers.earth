@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Public Travel Guides Mockup — explorers.earth</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ============ RESET & BASE ============ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Poppins', system-ui, sans-serif;
+      background: #0d0f12;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* ============ PREVIEW MASTER HEADER ============ */
+    .preview-header {
+      width: 100%;
+      max-width: 800px;
+      padding: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 2rem;
+      z-index: 100;
+    }
+    .preview-info h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: white;
+    }
+    .preview-info p {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      margin-top: 0.25rem;
+    }
+    .badge {
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      display: inline-block;
+    }
+    .badge-approved {
+      background: rgba(74, 222, 128, 0.15);
+      color: #4ade80;
+    }
+    .badge-public {
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
+      margin-left: 0.25rem;
+    }
+    .view-controls {
+      display: flex;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 3px;
+      border-radius: 8px;
+      gap: 2px;
+    }
+    .control-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Poppins', sans-serif;
+      transition: all 0.2s ease;
+    }
+    .control-btn.active {
+      background: #3B82F6;
+      color: white;
+    }
+
+    /* ============ MAIN LAYOUT PREVIEW VIEWS ============ */
+    .preview-main {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      width: 100%;
+      flex-grow: 1;
+      padding-bottom: 3rem;
+      transition: all 0.3s ease;
+    }
+
+    /* Device Frame View Mode */
+    .preview-main.device-view .phone-wrapper {
+      width: 375px;
+      height: 720px;
+      border: 12px solid #1e293b;
+      border-radius: 40px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      background: #0d1117;
+      overflow: hidden;
+      position: relative;
+    }
+    .preview-main.device-view .phone-frame-inner {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+    .preview-main.device-view .phone-frame-inner::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Full Responsive View Mode */
+    .preview-main.full-view {
+      padding: 0 1.5rem 3rem;
+      max-width: 1200px;
+      width: 100%;
+    }
+    .preview-main.full-view .phone-wrapper {
+      width: 100%;
+      background: #0d1117;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    .preview-main.full-view .phone-frame-inner {
+      width: 100%;
+      max-width: 1024px;
+      margin: 0 auto;
+    }
+
+    /* ============ DESIGN TOKENS ============ */
+    :root {
+      --dash-bg: #0d1117;
+      --dash-sidebar-bg: #1a2332;
+      --dash-accent: #3b82f6;
+      --dash-border: rgba(255,255,255,0.08);
+    }
+
+    /* ============ PUBLIC WEB STYLE SHEET ============ */
+    .phone-frame {
+      min-height: 100%;
+      padding-bottom: 5rem;
+      background: #0d1117;
+      position: relative;
+      color: white;
+    }
+
+    /* Fixed App Header */
+    .app-header {
+      position: sticky;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      background: rgba(42, 42, 42, 0.9);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.5rem;
+      z-index: 50;
+    }
+    .app-logo {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: white;
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+    .app-header-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .app-btn {
+      width: 32px;
+      height: 32px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .app-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .media-content {
+      padding: 1rem 1.5rem 4rem;
+    }
+
+    /* ============ FEATURED GUIDE HERO ============ */
+    .featured-guide-hero {
+      border-radius: 20px;
+      overflow: hidden;
+      position: relative;
+      min-height: 260px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      background: linear-gradient(180deg, rgba(13,15,18,0.15) 0%, rgba(13,15,18,0.95) 90%), 
+                  url('https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=1200') center/cover no-repeat;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.55);
+      border: 1.5px solid rgba(255,255,255,0.08);
+      cursor: pointer;
+      transition: transform 0.25s;
+    }
+    .featured-guide-hero:hover {
+      transform: scale(1.01);
+    }
+    .featured-badge {
+      position: absolute;
+      top: 1.25rem;
+      left: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .featured-badge-dot {
+      width: 3px;
+      height: 12px;
+      background: #fbbf24;
+      border-radius: 2px;
+    }
+    .featured-badge-label {
+      font-size: 0.68rem;
+      font-weight: 800;
+      color: white;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .featured-hero-details {
+      max-width: 80%;
+    }
+    .featured-hero-title {
+      font-size: 1.4rem;
+      font-weight: 900;
+      color: white;
+      line-height: 1.15;
+      margin-bottom: 0.4rem;
+      letter-spacing: -0.01em;
+    }
+    @media (min-width: 768px) {
+      .featured-hero-title {
+        font-size: 1.85rem;
+      }
+    }
+    .featured-hero-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.58rem;
+      color: rgba(255,255,255,0.65);
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      flex-wrap: wrap;
+    }
+    @media (min-width: 768px) {
+      .featured-hero-meta {
+        font-size: 0.68rem;
+      }
+    }
+    .featured-hero-desc {
+      font-size: 0.68rem;
+      color: rgba(255,255,255,0.5);
+      line-height: 1.35;
+      margin-bottom: 0.8rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    @media (min-width: 768px) {
+      .featured-hero-desc {
+        font-size: 0.78rem;
+        -webkit-line-clamp: 3;
+      }
+    }
+    .featured-hero-btn {
+      background: #3b82f6;
+      border: none;
+      border-radius: 8px;
+      padding: 0.45rem 1rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: white;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+      transition: background 0.2s;
+    }
+    .featured-hero-btn:hover {
+      background: #2563eb;
+    }
+
+    /* ============ SEARCH & FILTER BAR ============ */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-bottom: 1.25rem;
+    }
+    .search-box {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 0.35rem 0.55rem;
+      height: 36px;
+    }
+    .search-input {
+      background: transparent;
+      border: none;
+      color: white;
+      font-size: 0.75rem;
+      font-family: 'Poppins', sans-serif;
+      width: 100%;
+      outline: none;
+    }
+    .filter-toggle-btn {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: rgba(255,255,255,0.8);
+      position: relative;
+      transition: background 0.2s;
+    }
+    .filter-toggle-btn:hover {
+      background: rgba(255,255,255,0.08);
+    }
+    .filter-active-indicator {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 6px;
+      height: 6px;
+      background: #3b82f6;
+      border-radius: 50%;
+      display: none;
+    }
+
+    /* Inline filters for desktop full view */
+    .desktop-filter-panel {
+      background: #1a2332;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 1rem;
+      margin-bottom: 1.25rem;
+      margin-top: -0.75rem;
+      display: none;
+    }
+    .desktop-filter-panel.active {
+      display: block;
+    }
+    .filter-grid {
+      display: grid;
+      grid-template-cols: repeat(4, 1fr);
+      gap: 0.75rem;
+    }
+    .filter-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .filter-label {
+      font-size: 0.62rem;
+      color: rgba(255,255,255,0.5);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .filter-select {
+      width: 100%;
+      background: rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px;
+      color: white;
+      font-size: 0.72rem;
+      padding: 0.35rem 0.5rem;
+      font-family: 'Poppins';
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* ============ GUIDES GRID CARDS ============ */
+    .guides-grid {
+      display: grid;
+      grid-template-cols: repeat(2, 1fr);
+      gap: 0.75rem;
+    }
+    @media (min-width: 768px) {
+      .guides-grid {
+        grid-template-cols: repeat(3, 1fr);
+        gap: 1.25rem;
+      }
+    }
+    
+    /* Guide Card Component */
+    .guide-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 16px;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-height: 200px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      transition: transform 0.25s, border-color 0.25s;
+    }
+    .guide-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+    .guide-card-cover {
+      height: 110px;
+      background-size: cover;
+      background-position: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      position: relative;
+    }
+    .guide-card-details {
+      padding: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      flex-grow: 1;
+    }
+    .guide-card-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: white;
+      line-height: 1.3;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 0.25rem;
+    }
+    @media (min-width: 768px) {
+      .guide-card-title {
+        font-size: 0.82rem;
+      }
+    }
+    .guide-card-meta {
+      font-size: 0.58rem;
+      color: rgba(255,255,255,0.45);
+      font-weight: 500;
+    }
+    .guide-card-tags {
+      margin-top: 0.4rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.2rem;
+    }
+    .guide-tag {
+      font-size: 0.52rem;
+      background: rgba(255,255,255,0.06);
+      padding: 0.15rem 0.35rem;
+      border-radius: 4px;
+      color: rgba(255,255,255,0.75);
+    }
+
+    /* ============ MOBILE SIDEBAR FILTERS (DRAWER) ============ */
+    .mobile-filter-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 10000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease-out;
+    }
+    .mobile-filter-backdrop.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .mobile-filter-sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 280px;
+      background: #111622;
+      z-index: 10001;
+      box-shadow: 8px 0 24px rgba(0,0,0,0.5);
+      transform: translateX(-100%);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid rgba(255,255,255,0.08);
+    }
+    .mobile-filter-sidebar.active {
+      transform: translateX(0);
+    }
+    .sidebar-header {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sidebar-header h2 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: white;
+    }
+    .sidebar-close-btn {
+      background: transparent;
+      border: none;
+      color: rgba(255,255,255,0.6);
+      cursor: pointer;
+      font-size: 1.3rem;
+    }
+    .sidebar-content {
+      padding: 1rem;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+      overflow-y: auto;
+    }
+
+    /* ============ DETAIL MODAL ============ */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .modal-box {
+      position: relative;
+      width: 100%;
+      max-width: 500px;
+      background: #1a2332;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+      transform: translateY(20px);
+      transition: transform 0.3s ease;
+    }
+    .modal-overlay.active .modal-box {
+      transform: translateY(0);
+    }
+    .modal-close-btn {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.6);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 10;
+      font-weight: bold;
+    }
+    .modal-backdrop-img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+    }
+    .modal-fade {
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 200px;
+      background: linear-gradient(to top, #1a2332, transparent);
+    }
+    .modal-content {
+      padding: 1.5rem;
+      margin-top: -30px;
+      position: relative;
+      z-index: 5;
+    }
+    .modal-title {
+      font-size: 1.35rem;
+      font-weight: 900;
+      color: white;
+      letter-spacing: -0.01em;
+      line-height: 1.2;
+    }
+    .modal-meta {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.8);
+      margin-top: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .modal-rating {
+      color: #fbbf24;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 0.1rem;
+    }
+    .modal-desc {
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.65);
+      line-height: 1.5;
+      margin: 1rem 0;
+    }
+    .modal-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .modal-primary-btn {
+      width: 100%;
+      background: #3b82f6;
+      border: none;
+      color: white;
+      padding: 0.75rem;
+      font-weight: 700;
+      font-size: 0.78rem;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ====== PREVIEW MASTER HEADER ====== -->
+  <header class="preview-header">
+    <div class="preview-info">
+      <h1>Public Travel Guides</h1>
+      <p>
+        Status: <span class="badge badge-approved">Approved</span>
+      </p>
+    </div>
+    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+      <div class="view-controls">
+        <button class="control-btn active" id="btn-device" onclick="setViewMode('device')">📱 Phone</button>
+        <button class="control-btn" id="btn-full" onclick="setViewMode('full')">🖥️ Full View</button>
+      </div>
+      <div class="view-controls">
+        <button class="control-btn active" id="btn-theme-green" onclick="setTheme('green')">🌲 Green Theme</button>
+        <button class="control-btn" id="btn-theme-dark" onclick="setTheme('dark')">🖤 Dark Theme</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ====== MAIN PREVIEW CONTAINER ====== -->
+  <main class="preview-main device-view" id="main-container">
+    <div class="phone-wrapper">
+      <div class="phone-frame-inner">
+        <div class="phone-frame">
+
+          <!-- ====== PUBLIC APP HEADER ====== -->
+          <div class="app-header">
+            <span class="app-logo">explorers.earth</span>
+            <div class="app-header-actions">
+              <button class="app-btn" onclick="alert('Shared guides page!')" aria-label="Share">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+              </button>
+              <button class="app-btn" onclick="alert('Copied link to clipboard!')" aria-label="Copy Link">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- ====== MAIN INTERFACE LAYOUT ====== -->
+          <div class="media-content">
+
+            <!-- ====== FEATURED GUIDE HERO BANNER ====== -->
+            <div class="featured-guide-hero" onclick="openFeaturedDetail()">
+              <div class="featured-badge">
+                <div class="featured-badge-dot"></div>
+                <span class="featured-badge-label">Featured Guide</span>
+              </div>
+              <div class="featured-hero-details">
+                <h2 class="featured-hero-title">Kyoto &amp; Osaka: A First-Timer's 7-Day Guide</h2>
+                <div class="featured-hero-meta">
+                  <span>7 Days</span>
+                  <span>•</span>
+                  <span>Itinerary</span>
+                  <span>•</span>
+                  <span>Japan | Culture &amp; Nature</span>
+                </div>
+                <p class="featured-hero-desc">Explore the historic temples of Kyoto, hike through Fushimi Inari, and indulge in Osaka's neon street-food valleys. Includes maps and local transit tricks.</p>
+                <button class="featured-hero-btn">See Guide Details</button>
+              </div>
+            </div>
+
+            <!-- ====== SEARCH & FILTERS BAR ====== -->
+            <div class="filter-bar">
+              <div class="search-box">
+                <svg width="13" height="13" fill="none" stroke="rgba(255,255,255,0.4)" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <input type="text" class="search-input" id="search-input" placeholder="Search guides, cities..." oninput="filterGuides()" />
+              </div>
+              
+              <button class="filter-toggle-btn" onclick="toggleFilters()" aria-label="Filters">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                </svg>
+                <div class="filter-active-indicator" id="filter-indicator"></div>
+              </button>
+            </div>
+
+            <!-- ====== DESKTOP INLINE FILTER PANEL ====== -->
+            <div class="desktop-filter-panel" id="d-filter-panel">
+              <div class="filter-grid">
+                <div class="filter-field">
+                  <label class="filter-label">Guide Type</label>
+                  <select class="filter-select" id="f-type-desk" onchange="filterGuides()">
+                    <option value="">All Types</option>
+                    <option value="Itinerary">Itinerary</option>
+                    <option value="Theme-Based">Theme-Based</option>
+                  </select>
+                </div>
+                <div class="filter-field">
+                  <label class="filter-label">Category</label>
+                  <select class="filter-select" id="f-cat-desk" onchange="filterGuides()">
+                    <option value="">All Categories</option>
+                    <option value="Food">Food</option>
+                    <option value="Culture">Culture</option>
+                    <option value="Nature">Nature</option>
+                  </select>
+                </div>
+                <div class="filter-field">
+                  <label class="filter-label">Duration</label>
+                  <select class="filter-select" id="f-days-desk" onchange="filterGuides()">
+                    <option value="">All Durations</option>
+                    <option value="2">2 Days</option>
+                    <option value="4">4 Days</option>
+                    <option value="7">7 Days</option>
+                  </select>
+                </div>
+                <div class="filter-field">
+                  <label class="filter-label">Budget</label>
+                  <select class="filter-select" id="f-budget-desk" onchange="filterGuides()">
+                    <option value="">All Budgets</option>
+                    <option value="Budget">Budget</option>
+                    <option value="Mid-Range">Mid-Range</option>
+                    <option value="Luxury">Luxury</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- ====== GUIDES CARD GRID ====== -->
+            <div class="guides-grid" id="guides-grid-container">
+              <!-- Dynamically rendered cards -->
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ====== MOBILE FILTER SIDEBAR (DRAWER) ====== -->
+  <div class="mobile-filter-backdrop" id="m-backdrop" onclick="toggleFilters()"></div>
+  <div class="mobile-filter-sidebar" id="m-sidebar">
+    <div class="sidebar-header">
+      <h2>Filters</h2>
+      <button class="sidebar-close-btn" onclick="toggleFilters()">&times;</button>
+    </div>
+    <div class="sidebar-content">
+      <div class="filter-field">
+        <label class="filter-label">Guide Type</label>
+        <select class="filter-select" id="f-type-mob" onchange="syncFilters('mob')">
+          <option value="">All Types</option>
+          <option value="Itinerary">Itinerary</option>
+          <option value="Theme-Based">Theme-Based</option>
+        </select>
+      </div>
+      <div class="filter-field">
+        <label class="filter-label">Category</label>
+        <select class="filter-select" id="f-cat-mob" onchange="syncFilters('mob')">
+          <option value="">All Categories</option>
+          <option value="Food">Food</option>
+          <option value="Culture">Culture</option>
+          <option value="Nature">Nature</option>
+        </select>
+      </div>
+      <div class="filter-field">
+        <label class="filter-label">Duration</label>
+        <select class="filter-select" id="f-days-mob" onchange="syncFilters('mob')">
+          <option value="">All Durations</option>
+          <option value="2">2 Days</option>
+          <option value="4">4 Days</option>
+          <option value="7">7 Days</option>
+        </select>
+      </div>
+      <div class="filter-field">
+        <label class="filter-label">Budget</label>
+        <select class="filter-select" id="f-budget-mob" onchange="syncFilters('mob')">
+          <option value="">All Budgets</option>
+          <option value="Budget">Budget</option>
+          <option value="Mid-Range">Mid-Range</option>
+          <option value="Luxury">Luxury</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== DETAIL MODAL OVERLAY ====== -->
+  <div class="modal-overlay" id="detail-modal" onclick="closeDetails(event)">
+    <div class="modal-box">
+      <button class="modal-close-btn" onclick="closeDetailsModal()">✕</button>
+      <img src="" alt="Backdrop" class="modal-backdrop-img" id="modal-backdrop" />
+      <div class="modal-fade"></div>
+      <div class="modal-content">
+        <h2 class="modal-title" id="modal-title">Kyoto & Osaka Guide</h2>
+        <div class="modal-meta">
+          <span class="modal-rating">★ <span id="modal-rate-val">4.9</span></span>
+          <span class="text-white/40">•</span>
+          <span id="modal-days-val">7 Days</span>
+          <span class="text-white/40">•</span>
+          <span id="modal-cat-val">Culture | Nature</span>
+        </div>
+        <p class="modal-desc" id="modal-description">
+          Detailed Kyoto and Osaka itinerary guide.
+        </p>
+        <div class="modal-actions">
+          <button class="modal-primary-btn" onclick="alert('Navigating to full itinerary...')">Open Full Guide Itinerary</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== INTERACTIVE SCRIPTS ====== -->
+  <script>
+    // ===== Mock Data =====
+    const guidesData = [
+      {
+        title: "Kyoto & Osaka: A First-Timer's 7-Day Guide",
+        type: "Itinerary",
+        category: "Culture",
+        days: 7,
+        budget: "Mid-Range",
+        rating: "4.9",
+        tags: ["Kyoto", "Osaka", "Culture"],
+        img: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=600",
+        desc: "Explore the historic shrines of Kyoto, trek through Fushimi Inari, and indulge in Osaka's neon street-food valleys. Includes maps and local transit tricks."
+      },
+      {
+        title: "Paris for Foodies: 48h Gastronomy Tour",
+        type: "Itinerary",
+        category: "Food",
+        days: 2,
+        budget: "Luxury",
+        rating: "4.8",
+        tags: ["Paris", "Food", "Luxury"],
+        img: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=600",
+        desc: "A handpicked tour of Parisian bakeries, legendary bistros, Michelin-star restaurants, and local cheese markets for an unforgettable gourmet weekend."
+      },
+      {
+        title: "Iceland Ring Road: Ultimate 10-Day Roadtrip",
+        type: "Theme-Based",
+        category: "Nature",
+        days: 7, // clamped for filter demo
+        budget: "Mid-Range",
+        rating: "4.7",
+        tags: ["Iceland", "Nature", "Adventure"],
+        img: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?q=80&w=600",
+        desc: "Drive past volcanic black sands, epic waterfalls, glacier lagoons, and geothermal springs. A comprehensive route map for first-timers."
+      },
+      {
+        title: "Tokyo Neon Streets: 4-Day Photographic Quest",
+        type: "Theme-Based",
+        category: "Culture",
+        days: 4,
+        budget: "Budget",
+        rating: "4.6",
+        tags: ["Tokyo", "Culture", "Photo"],
+        img: "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?q=80&w=600",
+        desc: "Find the most photogenic neon perspectives in Shibuya, Shinjuku, and Akihabara. Perfect for night photography enthusiasts."
+      }
+    ];
+
+    let currentViewMode = 'device';
+    let filtersOpen = false;
+
+    // ===== Toggle View Mode (Device vs Full) =====
+    function setViewMode(mode) {
+      currentViewMode = mode;
+      const main = document.getElementById('main-container');
+      const btnDevice = document.getElementById('btn-device');
+      const btnFull = document.getElementById('btn-full');
+      const dPanel = document.getElementById('d-filter-panel');
+
+      if (mode === 'device') {
+        main.className = 'preview-main device-view';
+        btnDevice.classList.add('active');
+        btnFull.classList.remove('active');
+        dPanel.classList.remove('active'); // Hide desktop panel in mobile
+      } else {
+        main.className = 'preview-main full-view';
+        btnDevice.classList.remove('active');
+        btnFull.classList.add('active');
+        if (filtersOpen) dPanel.classList.add('active'); // show desktop panel in full
+      }
+    }
+
+    // ===== Theme Settings =====
+    const themes = {
+      green: {
+        '--dash-sidebar-bg': '#1a2332',
+        '--dash-accent': '#3b82f6'
+      },
+      dark: {
+        '--dash-sidebar-bg': '#111622',
+        '--dash-accent': '#3b82f6'
+      }
+    };
+
+    function setTheme(themeName) {
+      const theme = themes[themeName];
+      if (!theme) return;
+      
+      const root = document.documentElement;
+      Object.keys(theme).forEach(key => {
+        root.style.setProperty(key, theme[key]);
+      });
+
+      document.getElementById('btn-theme-green').classList.toggle('active', themeName === 'green');
+      document.getElementById('btn-theme-dark').classList.toggle('active', themeName === 'dark');
+    }
+
+    // ===== Toggle Filter Inputs =====
+    function toggleFilters() {
+      if (currentViewMode === 'device') {
+        const sidebar = document.getElementById('m-sidebar');
+        const backdrop = document.getElementById('m-backdrop');
+        sidebar.classList.toggle('active');
+        backdrop.classList.toggle('active');
+      } else {
+        filtersOpen = !filtersOpen;
+        document.getElementById('d-filter-panel').classList.toggle('active', filtersOpen);
+      }
+    }
+
+    // ===== Sync Filter States (Mobile vs Desktop) =====
+    function syncFilters(source) {
+      const typeVal = document.getElementById(source === 'mob' ? 'f-type-mob' : 'f-type-desk').value;
+      const catVal = document.getElementById(source === 'mob' ? 'f-cat-mob' : 'f-cat-desk').value;
+      const daysVal = document.getElementById(source === 'mob' ? 'f-days-mob' : 'f-days-desk').value;
+      const budgetVal = document.getElementById(source === 'mob' ? 'f-budget-mob' : 'f-budget-desk').value;
+
+      const dest = source === 'mob' ? 'desk' : 'mob';
+      document.getElementById('f-type-' + dest).value = typeVal;
+      document.getElementById('f-cat-' + dest).value = catVal;
+      document.getElementById('f-days-' + dest).value = daysVal;
+      document.getElementById('f-budget-' + dest).value = budgetVal;
+
+      filterGuides();
+    }
+
+    // ===== Filter Guides Content =====
+    function filterGuides() {
+      const type = document.getElementById('f-type-desk').value;
+      const cat = document.getElementById('f-cat-desk').value;
+      const days = document.getElementById('f-days-desk').value;
+      const budget = document.getElementById('f-budget-desk').value;
+      const query = document.getElementById('search-input').value.toLowerCase();
+
+      // Check if filters active
+      const filtersActive = type || cat || days || budget;
+      document.getElementById('filter-indicator').style.display = filtersActive ? 'block' : 'none';
+
+      const grid = document.getElementById('guides-grid-container');
+      grid.innerHTML = '';
+
+      const filtered = guidesData.filter(g => {
+        if (type && g.type !== type) return false;
+        if (cat && g.category !== cat) return false;
+        if (days && g.days.toString() !== days) return false;
+        if (budget && g.budget !== budget) return false;
+        if (query && !g.title.toLowerCase().includes(query) && !g.desc.toLowerCase().includes(query)) return false;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        grid.innerHTML = '<div style="grid-column: span 3; text-align: center; color: rgba(255,255,255,0.4); padding: 3rem 0; font-size: 0.8rem;">No guides matches your filters.</div>';
+        return;
+      }
+
+      filtered.forEach(g => {
+        const card = document.createElement('div');
+        card.className = 'guide-card';
+        card.onclick = () => openDetails(g.title, g.rating, g.days, g.category, g.img, g.desc);
+        
+        let tagsHtml = g.tags.map(t => `<span class="guide-tag">${t}</span>`).join('');
+        
+        card.innerHTML = `
+          <div class="guide-card-cover" style="background-image: url('${g.img}');"></div>
+          <div class="guide-card-details">
+            <div>
+              <h3 class="guide-card-title">${g.title}</h3>
+              <span class="guide-card-meta">★ ${g.rating} · ${g.days} Days · ${g.type}</span>
+            </div>
+            <div class="guide-card-tags">
+              ${tagsHtml}
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // ===== Modal functions =====
+    function openDetails(title, rating, days, category, image, overview) {
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-rate-val').textContent = rating;
+      document.getElementById('modal-days-val').textContent = `${days} Days`;
+      document.getElementById('modal-cat-val').textContent = category;
+      document.getElementById('modal-description').textContent = overview;
+      document.getElementById('modal-backdrop').setAttribute('src', image);
+
+      document.getElementById('detail-modal').classList.add('active');
+    }
+
+    function openFeaturedDetail() {
+      const pick = guidesData[0];
+      openDetails(pick.title, pick.rating, pick.days, pick.category, pick.img, pick.desc);
+    }
+
+    function closeDetailsModal() {
+      document.getElementById('detail-modal').classList.remove('active');
+    }
+
+    function closeDetails(e) {
+      if (e.target.id === 'detail-modal') {
+        closeDetailsModal();
+      }
+    }
+
+    // Bind onchange selectors
+    document.querySelectorAll('.desktop-filter-panel select').forEach(sel => {
+      sel.addEventListener('change', () => syncFilters('desk'));
+    });
+
+    // Initial render
+    filterGuides();
+  </script>
+</body>
+</html>

@@ -18,64 +18,73 @@ interface SkeletonCardProps {
 }
 
 /**
- * A single skeleton card that mimics the Card component layout.
+ * A single skeleton card that mimics the new places-grid-card layout:
+ *   – aspect-[4/3] to match both dashboard and public card proportions
+ *   – direction icon (top-left) + kebab trigger (top-right)
+ *   – title line + optional rating row at the bottom
  * Uses a subtle shimmer animation for a premium loading feel.
  */
 const SkeletonCard = memo(({ variant }: SkeletonCardProps) => {
     const isDashboard = variant === "dashboard";
+    const bg = isDashboard ? "var(--dash-muted, #3C4E40)" : "#1a1a1a";
+    const iconBg = isDashboard
+        ? "rgba(255,255,255,0.08)"
+        : "rgba(255,255,255,0.06)";
+    const textBg = isDashboard
+        ? "rgba(255,255,255,0.12)"
+        : "rgba(255,255,255,0.10)";
+    const borderColor = isDashboard
+        ? "rgba(60,78,64,0.6)"
+        : "rgba(255,255,255,0.04)";
 
     return (
         <div
-            className="relative w-full aspect-square md:aspect-[4/3] max-w-[200px] md:max-w-none mx-auto rounded-xl overflow-hidden"
-            style={{
-                background: isDashboard
-                    ? "var(--dash-muted, #3C4E40)"
-                    : "#1a1a1a",
-            }}
+            className="relative w-full aspect-[4/3] max-w-[200px] md:max-w-none mx-auto rounded-xl overflow-hidden"
+            style={{ background: bg, border: `1px solid ${borderColor}` }}
         >
             {/* Shimmer overlay */}
             <div className="absolute inset-0 skeleton-shimmer" />
 
-            {/* Recommendation type icon placeholder */}
-            <div
-                className="absolute z-10 left-2 top-2 w-8 h-8 rounded-full"
-                style={{
-                    background: isDashboard
-                        ? "rgba(255,255,255,0.08)"
-                        : "rgba(255,255,255,0.05)",
-                }}
-            />
+            {/* ── TOP ROW: direction icon (left) + kebab (right) ── */}
+            <div className="absolute top-0 left-0 right-0 flex justify-between items-center p-3 z-10">
+                {/* Direction / navigation icon placeholder */}
+                <div
+                    className="w-6 h-6 rounded-full"
+                    style={{ background: iconBg }}
+                />
+                {/* Kebab dots placeholder */}
+                <div className="flex flex-col gap-[3px] items-center justify-center w-5 h-5">
+                    {[0, 1, 2].map((i) => (
+                        <div
+                            key={i}
+                            className="w-[3px] h-[3px] rounded-full"
+                            style={{ background: iconBg }}
+                        />
+                    ))}
+                </div>
+            </div>
 
-            {/* Bottom content area – mimics gradient + text */}
+            {/* ── BOTTOM GRADIENT + TEXT ── */}
             <div
                 className="absolute bottom-0 left-0 right-0 p-3"
                 style={{
                     background: isDashboard
-                        ? "linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)"
-                        : "linear-gradient(to top, rgba(0,0,0,0.80) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)",
+                        ? "linear-gradient(to top, rgba(0,0,0,0.60) 0%, rgba(0,0,0,0.20) 70%, transparent 100%)"
+                        : "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.45) 65%, transparent 100%)",
                 }}
             >
-                {/* Title placeholder */}
+                {/* Title */}
                 <div
                     className="h-3.5 w-3/4 rounded mb-2"
-                    style={{
-                        background: isDashboard
-                            ? "rgba(255,255,255,0.12)"
-                            : "rgba(255,255,255,0.10)",
-                    }}
+                    style={{ background: textBg }}
                 />
-                {/* Rating row placeholder */}
+                {/* Rating + review count */}
                 <div className="flex items-center gap-1.5">
-                    {[3, 8, 10].map((w, i) => (
+                    {[12, 24, 32].map((w, i) => (
                         <div
                             key={i}
-                            className="h-3 rounded"
-                            style={{
-                                width: `${w * 4}px`,
-                                background: isDashboard
-                                    ? "rgba(255,255,255,0.12)"
-                                    : "rgba(255,255,255,0.10)",
-                            }}
+                            className="h-2.5 rounded"
+                            style={{ width: `${w}px`, background: textBg }}
                         />
                     ))}
                 </div>

@@ -26,16 +26,14 @@ interface UseCreateLocationProps {
     variables?: Partial<OperationVariables> | undefined
   ) => Promise<ApolloQueryResult<unknown>>;
   setIsLoading: (isloading: boolean) => void;
-  cities?: {
-    recommendationLists: { slug: string; List_Name: string }[];
-  };
+  cities?: any;
 }
 
 export const useCreateLocation = ({
   refetchCities,
   setIsLocationModalOpen,
   setIsLoading,
-  cities: _cities,
+  cities,
 }: UseCreateLocationProps) => {
   const { t } = useTranslation();
   const { setSelectedCity } = useCityStore();
@@ -125,6 +123,20 @@ export const useCreateLocation = ({
       photoUrl = uploadedImage.url;
     }
 
+    // Calculate display_order (max + 1)
+    const existingLists = cities?.recommendationLists || [];
+    let nextDisplayOrder = 1;
+    if (existingLists.length > 0) {
+      const orders = existingLists
+        .map((l: any) => l.display_order)
+        .filter((o: any) => typeof o === "number");
+      if (orders.length > 0) {
+        nextDisplayOrder = Math.max(...orders) + 1;
+      } else {
+        nextDisplayOrder = existingLists.length + 1;
+      }
+    }
+
     try {
       setIsLoading(true);
       const response = await createRecommendationLink({
@@ -141,6 +153,8 @@ export const useCreateLocation = ({
             },
             slug: toUrlSlug(values.listName),
             account: accountData?.documentId,
+            display_order: nextDisplayOrder,
+            is_pinned: false,
           },
         },
       });

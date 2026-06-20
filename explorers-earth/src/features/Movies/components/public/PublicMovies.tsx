@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { deduplicateMovies } from "../../utils/movieHelpers";
@@ -11,9 +11,9 @@ import TopPicksHero from "./TopPicksHero";
 import TopPicksMobileHero from "./TopPicksMobileHero";
 import MovieDetailModal from "./MovieDetailModal";
 import GenreBrowse from "./GenreBrowse";
+import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
+import MoviePosterSkeleton from "./MoviePosterSkeleton";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
-
-// We need account documentId from username — reuse existing user query pattern
 import { gql } from "@apollo/client";
 
 const ACCOUNT_BY_USERNAME = gql`
@@ -54,6 +54,13 @@ const PublicMovies = () => {
   });
 
   const loading = userLoading || moviesLoading;
+
+  useEffect(() => {
+    if (!loading) {
+      (window as any).__publicProfileLoaded = true;
+    }
+  }, [loading]);
+
   const lists: MovieList[] = movieData?.movieLists ?? [];
 
   // Step 3: Initialize analytics — auto-tracks the page view once accountId resolves
@@ -140,16 +147,25 @@ const PublicMovies = () => {
       <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16 pt-20">
         {loading ? (
           <div className="space-y-10 mt-4">
-            {[1, 2, 3].map(i => (
-              <section key={i}>
-                <div className="h-5 w-40 bg-white/5 animate-pulse rounded mb-4" />
+            {/* Hero skeleton — Desktop (lg screens) */}
+            <div className="hidden lg:block">
+              <HeroSkeleton accentColor="yellow" showThumbnails />
+            </div>
+            {/* Hero skeleton — Mobile / Tablet */}
+            <div className="lg:hidden">
+              <HeroSkeleton accentColor="yellow" mobile />
+            </div>
+            {/* Carousel row skeletons */}
+            {[1, 2, 3].map((i) => (
+              <section key={i} className="mb-8">
+                {/* Row header */}
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1.5 h-[22px] bg-white/10 rounded-sm flex-shrink-0 skeleton-shimmer relative overflow-hidden" />
+                  <div className="h-5 w-32 bg-white/8 rounded skeleton-shimmer relative overflow-hidden" />
+                </div>
+                {/* Poster strip */}
                 <div className="flex gap-3 overflow-hidden">
-                  {[1, 2, 3, 4, 5].map(j => (
-                    <div key={j} className="w-36 flex-shrink-0">
-                      <div className="aspect-[2/3] rounded-xl bg-white/5 animate-pulse" />
-                      <div className="h-3 mt-2 bg-white/5 animate-pulse rounded w-4/5" />
-                    </div>
-                  ))}
+                  <MoviePosterSkeleton count={5} />
                 </div>
               </section>
             ))}

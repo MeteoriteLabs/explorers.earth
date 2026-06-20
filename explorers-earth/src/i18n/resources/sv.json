@@ -1,1786 +1,2166 @@
-﻿{
-    "header": {
-        "nav": {
-            "howItWorks": "Så fungerar det",
-            "whoIsFor": "För vem",
-            "faq": "Vanliga frågor",
-            "about": "Om oss",
-            "contact": "Kontakt"
-        },
-        "auth": {
-            "login": "Logga in",
-            "signUp": "Registrera dig"
-        }
+{
+  "about": {
+    "closing": "Om du är nyfiken.\nOm du är eftertänksam.\nOm du är villig att sakta ner och titta närmare —\ndu hör redan hit.",
+    "section1": {
+      "line1": "Utforskning börjar med medvetenhet.",
+      "line2": "Med att lägga märke till vad andra passerar förbi.",
+      "line3": "Med att välja att röra sig eftertänksamt, inte snabbt.",
+      "line4": "Vi lever kort på en gammal planet —\nlägger till några avsiktliga märken till en berättelse\nsom började långt före oss\noch kommer att fortsätta långt efter att vi har gått.",
+      "title": "VAD VI TROR"
     },
-    "hero": {
-        "headline": "Alla dina rekommendationer i en QR och enkel länk.",
-        "subtext": "Dela vad du vet och älskar om en plats — och gör den upptäckbar för alla, överallt",
-        "inputLabel": "Reservera din explorers URL:",
-        "inputPlaceholder": "ditt namn",
-        "ctaButton": "Reservera explorers",
-        "signupPrompt": "Registrera dig nu för att få din"
+    "section2": {
+      "line1": "Utforskning mäts inte i mil.",
+      "line2": "Den mäts i betydelse.",
+      "line3": "Den lever i att sakta ner, vara uppmärksam,\noch respektera varje plats vi kliver in på —\nen gata, en bergsstig, ett kafébord,\neller ett ögonblick delat med någon ny.",
+      "title": "HUR VI SER UTFORSKNING"
     },
-    "sections": {
-        "createCustomize": {
-            "headline": "Skapa och anpassa din explorers på minuter",
-            "subtext": "Lägg till dina favoritplatser, organisera efter stad eller tema, och generera din QR direkt.",
-            "bulletPoints": {
-                "addSpots": {
-                    "title": "Lägg till dina favoritplatser",
-                    "description": "Skapa en lista med dina must-visit"
-                },
-                "organize": {
-                    "title": "Organisera efter stad eller tema",
-                    "description": "Skapa kategorier som är meningsfulla för din publik"
-                },
-                "generate": {
-                    "title": "Generera din länk och QR direkt",
-                    "description": "Din personliga QR är redo på sekunder"
-                },
-                "share": {
-                    "title": "Dela digitalt eller via QR i den verkliga världen",
-                    "description": ""
-                }
-            },
-            "mockup": {
-                "title": "Mina Rekommendationer",
-                "addPlace": "Lägg till Plats"
-            }
-        },
-        "shareAnywhere": {
-            "headline": "Dela på sociala medier, butiksfönster, eller stadsväggar",
-            "subtext": "Lägg till i din Instagram bio, skriv ut på menyer, eller inkludera i välkomstböcker — din guide, alltid redo.",
-            "scanText": "Skanna för lokala rekommendationer",
-            "storefrontText": "Perfekt för butiksfönster",
-            "instagramTitle": "Lägg till i din Instagram bio",
-            "instagramDesc": "Dela med dina följare direkt",
-            "menuTitle": "Skriv ut på menyer",
-            "menuDesc": "Fysiska kontaktpunkter gjorda enkla",
-            "welcomeTitle": "Inkludera i välkomstböcker",
-            "welcomeDesc": "Perfekt för värdar och guider",
-            "cafeMenu": "Café Meny",
-            "tokyoFoodGuide": "Min Tokyo matguide explorers.earth/jane"
-        },
-        "analytics": {
-            "headline": "Spåra klick, hänvisningar och engagemang",
-            "subtext": "Se vad som fungerar, vem som skannar, och vilka platser som får mest kärlek — i realtid.",
-            "workingTitle": "Se vad som fungerar",
-            "workingDesc": "Spåra populariteten av dina rekommendationer",
-            "scanningTitle": "Vem som skannar",
-            "scanningDesc": "Övervaka QR-skanningar och uppdateringar",
-            "spotsTitle": "Bäst presterande platser",
-            "spotsDesc": "Data-driven insikter för bättre kurering",
-            "dashboardTitle": "Analytics-instrumentpanel",
-            "last30Days": "Senaste 30 dagarna",
-            "totalScans": "Totalt Antal Skanningar",
-            "engagement": "Engagemang",
-            "referrals": "Hänvisningar"
-        },
-        "referEarn": {
-            "headline": "Dela, hänvisa och tjäna",
-            "subtext": "Förvandla dina rekommendationer till passiva belöningar — få kredit när andra använder din QR.",
-            "comingSoon": "Hänvisningsbelöningsprogram (kommer snart)",
-            "rewardsTitle": "Tjäna Belöningar",
-            "rewardsDesc": "Få betalt när människor använder dina rekommendationer",
-            "earnedThisMonth": "Tjänat denna månad",
-            "passiveTitle": "Förvandla rekommendationer till passiva belöningar",
-            "networkTitle": "Bygg ditt nätverk och tjäna automatiskt"
-        },
-        "localTunes": {
-            "mainHeading": "Tunes",
-            "title": "Lyssna medan du utforskar",
-            "body": "Utforskning är inte bara visuell. Ljud bär minne, sammanhang och känsla.\n\nTunes låter dig samla och dela soundtrack för platser, resor och stämningar — vare sig det är musik upptäckt på vägen eller ljud som definierar en plats för dig.\n\nSömlöst ansluten till din Explorer-profil.",
-            "exploreButton": "Utforska Tunes",
-            "featuresHeading": "Kraftfulla Funktioner",
-            "features": {
-                "realtimeCollaboration": {
-                    "title": "Realtidssamarbete",
-                    "description": "Låt gäster lägga till låtar i din spellista omedelbart medan du behåller full kontroll över vad som spelas."
-                },
-                "qrCodeSharing": {
-                    "title": "QR-koddelning",
-                    "description": "Dela din musikupplevelse med en enkel QR-kodskanning — inga appar eller nedladdningar krävs."
-                },
-                "youtubeIntegration": {
-                    "title": "YouTube-integration",
-                    "description": "Integrera sömlöst med YouTube för att komma åt miljontals låtar och skapa den perfekta atmosfären."
-                },
-                "voteLikeSystem": {
-                    "title": "Röstnings- och Gilla-system",
-                    "description": "Gäster kan rösta på sina favoritlåtar för att påverka spellistekön i realtid."
-                },
-                "silentParties": {
-                    "title": "Tysta Fester",
-                    "description": "Anordna unika tysta fester där alla lyssnar genom sina egna hörlurar."
-                },
-                "karaokeReady": {
-                    "title": "Karaoke Redo",
-                    "description": "Perfekt för karaoke-kvällar med samarbetslistor och realtidslåtförfrågningar."
-                }
-            },
-            "venueHeading": "Perfekt för Varje Plats",
-            "venues": {
-                "barsPubs": "Barer & Pubar",
-                "restaurants": "Restauranger",
-                "coffeeShops": "Kaféer",
-                "eventsWeddings": "Evenemang & Bröllop",
-                "retailStores": "Butiker",
-                "gymsFitness": "Gym & Fitness"
-            },
-            "closingStatement": "Tunes är \u003cstrong\u003egratis\u003c/strong\u003e att utforska, och för betalfunktioner kan du uppgradera senare."
-        },
-        "whoIsFor": {
-            "headline": "För vem är explorers.earth?",
-            "subtext": "explorers.earth är för alla som tror att dela är ett ansvar — inte en sändning.",
-            "cards": {
-                "individuals": {
-                    "title": "Individer",
-                    "oneLiner": "Dela personliga eller lokala rekommendationer.",
-                    "items": {
-                        "traveler": {
-                            "label": "Resenär",
-                            "oneLiner": "Personer som delar resmål"
-                        },
-                        "local": {
-                            "label": "Lokal",
-                            "oneLiner": "Lokalbefolkning som delar grannskapstips"
-                        },
-                        "family": {
-                            "label": "Familj",
-                            "oneLiner": "Familjer som delar användbara platser"
-                        },
-                        "student": {
-                            "label": "Student",
-                            "oneLiner": "Studenter som delar campus/närliggande platser"
-                        },
-                        "nomad": {
-                            "label": "Nomad",
-                            "oneLiner": "Nomader som listar arbetsvänliga utrymmen"
-                        },
-                        "emergencySharer": {
-                            "label": "Nödsdelare",
-                            "oneLiner": "Nödsdelare som publicerar viktiga platser"
-                        }
-                    }
-                },
-                "creators": {
-                    "title": "Skapare",
-                    "oneLiner": "Dela kuraterade listor med din publik.",
-                    "items": {
-                        "influencer": {
-                            "label": "Influencer",
-                            "oneLiner": "Influencers som delar toppval"
-                        },
-                        "blogger": {
-                            "label": "Bloggare",
-                            "oneLiner": "Bloggare som kuraterar skrivna guider"
-                        },
-                        "vlogger": {
-                            "label": "Vloggare",
-                            "oneLiner": "Vloggare som delar visuella resor"
-                        },
-                        "reviewer": {
-                            "label": "Recensent",
-                            "oneLiner": "Recensenter som listar bäst betygsatta platser"
-                        },
-                        "photographer": {
-                            "label": "Fotograf",
-                            "oneLiner": "Fotografer som delar fotoplatser"
-                        },
-                        "educator": {
-                            "label": "Pedagog",
-                            "oneLiner": "Pedagoger som delar lärandeguider"
-                        },
-                        "communityLeader": {
-                            "label": "Samhällsledare",
-                            "oneLiner": "Samhällsledare som kuraterar användbara listor"
-                        }
-                    }
-                },
-                "hospitality": {
-                    "title": "Gästfrihet",
-                    "oneLiner": "Erbjud gäster kuraterade lokala insikter.",
-                    "items": {
-                        "hotel": {
-                            "label": "Hotell",
-                            "oneLiner": "Hotell som erbjuder lokala guider"
-                        },
-                        "airbnb": {
-                            "label": "Airbnb",
-                            "oneLiner": "Värdar som delar grannskapets favoriter"
-                        },
-                        "hostel": {
-                            "label": "Vandrarhem",
-                            "oneLiner": "Vandrarhem som delar backpackertips"
-                        },
-                        "homestay": {
-                            "label": "Hemvist",
-                            "oneLiner": "Hemvister som erbjuder familjeorienterade guider"
-                        },
-                        "resort": {
-                            "label": "Resort",
-                            "oneLiner": "Resorter som tillhandahåller aktivitetslistor"
-                        },
-                        "pgColiving": {
-                            "label": "PG/Gemensamt Boende",
-                            "oneLiner": "PG/Gemensamt Boende som visar viktiga närliggande platser"
-                        }
-                    }
-                },
-                "businesses": {
-                    "title": "Företag",
-                    "oneLiner": "Vägleda kunder med användbara rekommendationer.",
-                    "items": {
-                        "restaurant": {
-                            "label": "Restaurang",
-                            "oneLiner": "Restauranger som delar måste-prova-rätter"
-                        },
-                        "cafe": {
-                            "label": "Kafé",
-                            "oneLiner": "Kaféer som framhäver favoritmenyalternativ"
-                        },
-                        "retailShop": {
-                            "label": "Butik",
-                            "oneLiner": "Butiker som delar produktrekommendationer"
-                        },
-                        "gym": {
-                            "label": "Gym",
-                            "oneLiner": "Gym som föreslår lokala wellnessplatser"
-                        },
-                        "spa": {
-                            "label": "Spa",
-                            "oneLiner": "Spa som listar närliggande avslappningsalternativ"
-                        },
-                        "salon": {
-                            "label": "Salong",
-                            "oneLiner": "Salonger som erbjuder skönhetsguider"
-                        },
-                        "clinic": {
-                            "label": "Klinik",
-                            "oneLiner": "Kliniker som delar hälsorelaterade platser"
-                        },
-                        "boutique": {
-                            "label": "Butik",
-                            "oneLiner": "Butiker som listar kuraterade fynd"
-                        }
-                    }
-                },
-                "organizations": {
-                    "title": "Organisationer",
-                    "oneLiner": "Tillhandahåll kuraterade guider och resurser.",
-                    "items": {
-                        "airline": {
-                            "label": "Flygbolag",
-                            "oneLiner": "Flygbolag som delar stadsguider"
-                        },
-                        "agency": {
-                            "label": "Byrå",
-                            "oneLiner": "Resebyråer som listar måste-besök-platser"
-                        },
-                        "university": {
-                            "label": "Universitet",
-                            "oneLiner": "Universitet som delar campusgrundläggande"
-                        },
-                        "corporate": {
-                            "label": "Företag",
-                            "oneLiner": "Företag som listar närliggande resurser"
-                        },
-                        "airport": {
-                            "label": "Flygplats",
-                            "oneLiner": "Flygplatser som erbjuder terminaler + stadstips"
-                        },
-                        "railway": {
-                            "label": "Järnväg",
-                            "oneLiner": "Järnvägar som delar plattformsinformation"
-                        },
-                        "ngo": {
-                            "label": "NGO",
-                            "oneLiner": "NGO:er som delar samhällsresurser"
-                        },
-                        "government": {
-                            "label": "Regering",
-                            "oneLiner": "Departement som framhäver offentliga tjänster"
-                        }
-                    }
-                }
-            },
-            "useCases": {
-                "travelers": "Resenärer",
-                "travelersDesc": "Dela upptäckta pärlor med medupptäckare",
-                "influencers": "Influencers",
-                "influencersDesc": "Monetisera lokal kunskap och bygg gemenskap",
-                "airbnbHosts": "Airbnb Värdar",
-                "airbnbHostsDesc": "Förbättra gästupplevelse med lokala insikter",
-                "hotels": "Hotell",
-                "hotelsDesc": "Ge kuraterade lokala rekommendationer",
-                "restaurants": "Restauranger",
-                "restaurantsDesc": "Cross-promotion med andra lokala företag",
-                "cafes": "Kaféer",
-                "cafesDesc": "Dela grannskapets favoriter med kunder",
-                "localGuides": "Lokala Guider",
-                "localGuidesDesc": "Skala din expertis bortom individuella turer",
-                "creators": "Skapare",
-                "creatorsDesc": "Lägg till värde bortom innehåll med handlingsbara tips",
-                "tourOperators": "Turoperatörer",
-                "tourOperatorsDesc": "Utöka upplevelser bortom schemalagda turer",
-                "anyBusiness": "Vilket företag som helst",
-                "anyBusinessDesc": "Bygg gemenskap och kundlojalitet"
-            }
-        },
-        "testimonials": {
-            "headline": "Älskad av resenärer, skapare och värdar",
-            "subtext": "Se hur människor världen över använder explorers för att dela det som betyder mest.",
-            "scrollLeft": "Rulla testimonials åt vänster",
-            "scrollRight": "Rulla testimonials åt höger",
-            "items": [
-                {
-                    "id": "1",
-                    "name": "Marcus Chen",
-                    "role": "Resebloggare",
-                    "location": "San Francisco",
-                    "quote": "explorers förändrade hur jag delar min resekunskap. Mina följare älskar att få omedelbar åtkomst till mina kuraterade rekommendationer!"
-                },
-                {
-                    "id": "2",
-                    "name": "Sarah Johnson",
-                    "role": "Airbnb Värd",
-                    "location": "Barcelona",
-                    "quote": "Mina gäster älskar absolut den personaliserade QR-koden i deras välkomstpaket. Det har blivit min signatur!"
-                },
-                {
-                    "id": "3",
-                    "name": "Alex Rodriguez",
-                    "role": "Restaurangägare",
-                    "location": "Mexico City",
-                    "quote": "Vi delar vår explorers med kunder för att rekommendera andra lokala platser. Det har skapat fantastiska gemenskapsförbindelser."
-                },
-                {
-                    "id": "4",
-                    "name": "Emma Thompson",
-                    "role": "Turguide",
-                    "location": "London",
-                    "quote": "explorers hjälper mig att utöka min expertis bortom turerna. Kunder kan komma åt mina rekommendationer när som helst!"
-                }
-            ]
-        },
-        "faq": {
-            "headline": "Har du frågor?",
-            "subtext": "Vi har svarat på de vanligaste sakerna folk frågar innan de börjar.",
-            "loading": "Laddar FAQ...",
-            "error": "Fel vid laddning av FAQ. Försök igen senare."
-        },
-        "features": {
-            "title": "Byggt för att hålla sig ur vägen",
-            "subtitle": "Enkla, genomtänkta funktioner som låter dina rekommendationer glänsa.",
-            "simpleLinks": {
-                "title": "Enkla länkar och QR-delning"
-            },
-            "livingGuides": {
-                "title": "Levande, redigerbara guider"
-            },
-            "locationAware": {
-                "title": "Platsmedvetna rekommendationer"
-            },
-            "soundPlaylists": {
-                "title": "Valfritt ljud och spellistor"
-            },
-            "privacyFirst": {
-                "title": "Integritet först enligt design"
-            },
-            "communityDriven": {
-                "title": "Gemenskapsdriven upptäckt"
-            }
-        },
-        "finalCTA": {
-            "headline": "Börja dela din värld idag",
-            "subtext": "Reservera din gratis explorers och förvandla dina lokala insikter till delbara guider.",
-            "ctaButton": "Reservera explorers – Gratis För Alltid",
-            "disclaimer": "Inget kreditkort krävs • Setup på 2 minuter",
-            "creating": "Skapar din explorers..."
-        }
+    "section3": {
+      "item1": "Guider formade av verklig erfarenhet",
+      "item2": "Platser, resor, ljud och berättelser värda att komma ihåg",
+      "item3": "Gemenskaper byggda på människor — inte popularitetsmätvärden",
+      "line1": "explorers är en plats för:",
+      "line2": "Teknologi hjälper oss att ansluta.",
+      "line3": "Människor ger det syfte.",
+      "title": "VAD VI BYGGER"
     },
-    "contact": {
-        "title": "Låt oss koppla ihop.",
-        "subtitle": "Oavsett om du har en fråga, idé, eller bara vill säga hej — vi skulle vilja höra från dig.",
-        "getInTouch": "Kom i Kontakt",
-        "email": "hello@explorers.earth",
-        "responseTime": "Vi svarar inom 24-48 timmar",
-        "closingMessage": "Vi är ett litet team med stor vision — dina tankar betyder något för oss. Kom i kontakt och låt oss bygga något lokalt och globalt tillsammans.",
-        "seo": {
-            "title": "Contact explorers | Support, Help and Partnership enquiries.",
-            "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
-            "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-            "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
-            "keywords": [
-                "contact explorers",
-                "explorers support",
-                "get in touch explorers",
-                "customer service travel app",
-                "partnership inquiry explorers",
-                "help center local recommendations",
-                "technical support explorers",
-                "travel app customer service",
-                "feedback location sharing",
-                "account assistance explorers",
-                "business collaboration explorers",
-                "report problem explorers",
-                "share local recommendations support",
-                "find explorers contact",
-                "customer service",
-                "explorers team",
-                "help center",
-                "contact support",
-                "QR code support",
-                "local recommendations help",
-                "partnership inquiries"
-            ]
-        }
-    },
-    "about": {
-        "title": "Jordens Upptäckare",
-        "subtitle": {
-            "line1": "En global gemenskap av människor som utforskar med omsorg — för människor, kultur och planeten vi delar.",
-            "line2": "Utforskning handlar för oss inte om hur långt vi går.",
-            "line3": "Det handlar om hur djupt vi ansluter."
-        },
-        "section1": {
-            "title": "VAD VI TROR",
-            "line1": "Utforskning börjar med medvetenhet.",
-            "line2": "Med att lägga märke till vad andra passerar förbi.",
-            "line3": "Med att välja att röra sig eftertänksamt, inte snabbt.",
-            "line4": "Vi lever kort på en gammal planet —\nlägger till några avsiktliga märken till en berättelse\nsom började långt före oss\noch kommer att fortsätta långt efter att vi har gått."
-        },
-        "section2": {
-            "title": "HUR VI SER UTFORSKNING",
-            "line1": "Utforskning mäts inte i mil.",
-            "line2": "Den mäts i betydelse.",
-            "line3": "Den lever i att sakta ner, vara uppmärksam,\noch respektera varje plats vi kliver in på —\nen gata, en bergsstig, ett kafébord,\neller ett ögonblick delat med någon ny."
-        },
-        "section3": {
-            "title": "VAD VI BYGGER",
-            "line1": "explorers är en plats för:",
-            "item1": "Guider formade av verklig erfarenhet",
-            "item2": "Platser, resor, ljud och berättelser värda att komma ihåg",
-            "item3": "Gemenskaper byggda på människor — inte popularitetsmätvärden",
-            "line2": "Teknologi hjälper oss att ansluta.",
-            "line3": "Människor ger det syfte."
-        },
-        "section4": {
-            "title": "TILLHÖRIGHET",
-            "line1": "Jordens Upptäckare är inte en klubb.",
-            "line2": "Det är inte en etikett.",
-            "line3": "Det är en delad mentalitet —\nen tyst förståelse för hur vi rör oss genom världen."
-        },
-        "closing": "Om du är nyfiken.\nOm du är eftertänksam.\nOm du är villig att sakta ner och titta närmare —\ndu hör redan hit.",
-        "seo": {
-            "title": "Explorers of Earth | About Us",
-            "description": "A global community of people who explore with care — for people, culture, and the planet we share. Exploration isn't about distance, it's about depth.",
-            "keywords": [
-                "explorers of earth",
-                "about explorers",
-                "exploration community",
-                "thoughtful travel",
-                "sustainable exploration",
-                "local recommendations platform",
-                "travel app about",
-                "community-driven recommendations",
-                "authentic local experiences",
-                "explorers team",
-                "local discovery platform",
-                "share local places",
-                "travel technology",
-                "local recommendations app",
-                "explorers story",
-                "who we are explorers"
-            ]
-        }
-    },
-    "cookieConsent": {
-        "title": "🍪 Cookie-inställningar",
-        "description": "Vi använder cookies för att förbättra din surfupplevelse, leverera personanpassat innehåll och analysera trafik. Du kan hantera inställningar när som helst.",
-        "acceptAll": "✅ Godkänn alla cookies",
-        "customize": "⚙️ Anpassa",
-        "rejectNonEssential": "❌ Avvisa icke-nödvändiga",
-        "preferencesTitle": "Cookie-inställningar",
-        "essentialCookies": {
-            "title": "Nödvändiga cookies",
-            "description": "Krävs för att webbplatsen ska fungera korrekt",
-            "alwaysOn": "Alltid på"
-        },
-        "analyticsCookies": {
-            "title": "Analytiska cookies",
-            "description": "Hjälper oss förstå hur besökare interagerar med vår webbplats"
-        },
-        "marketingCookies": {
-            "title": "Marknadsföringscookies",
-            "description": "Används för att leverera personanpassade annonser"
-        },
-        "savePreferences": "Spara inställningar",
-        "acceptAllButton": "Godkänn alla",
-        "closeBanner": "Stäng banner",
-        "goBack": "Tillbaka"
-    },
-    "footer": {
-        "tagline": "Låt dina rekommendationer resa världen runt.",
-        "email": "hello@explorers.earth",
-        "sections": {
-            "product": "Produkt",
-            "contact": "Kontakt",
-            "legal": "Juridisk"
-        },
-        "links": {
-            "howItWorks": "Så fungerar det",
-            "faq": "Vanliga frågor",
-            "contact": "Kontakt",
-            "about": "Om oss",
-            "terms": "Villkor och Bestämmelser",
-            "privacy": "Integritetspolicy",
-            "cookies": "Cookiepolicy"
-        },
-        "copyright": "© 2025 explorers. Alla rättigheter förbehållna.",
-        "madeWithLove": "Gjord med kärlek på jorden"
-    },
-    "legal": {
-        "terms": {
-            "title": "Villkor och Bestämmelser",
-            "loading": "Laddar villkor och bestämmelser...",
-            "error": "Fel vid laddning av villkor och bestämmelser. Försök igen senare."
-        },
-        "privacy": {
-            "title": "Integritetspolicy",
-            "loading": "Laddar integritetspolicy...",
-            "error": "Fel vid laddning av integritetspolicy. Försök igen senare."
-        },
-        "cookies": {
-            "title": "Cookiepolicy",
-            "loading": "Laddar cookiepolicy...",
-            "error": "Fel vid laddning av cookiepolicy. Försök igen senare."
-        }
-    },
-    "languageModal": {
-        "title": "Välj Språk",
-        "searchPlaceholder": "Sök språk...",
-        "close": "Stäng"
-    },
-    "auth": {
-        "signup": "Registrera dig",
-        "signupSubtitle": "Registrera dig för att njuta av explorers-funktionerna",
-        "username": "Användarnamn",
-        "usernamePlaceholder": "Ange ditt användarnamn",
-        "email": "E-post",
-        "emailPlaceholder": "Ange din e-post",
-        "password": "Lösenord",
-        "passwordPlaceholder": "Ange ditt lösenord",
-        "confirmPassword": "Bekräfta Lösenord",
-        "confirmPasswordPlaceholder": "Ange ditt lösenord igen",
-        "register": "Registrera dig",
-        "or": "eller",
-        "signUpWithGoogle": "Registrera dig med Google",
-        "alreadyHaveAccount": "Har du redan ett konto?",
-        "login": "Logga in",
-        "loginTitle": "Logga in",
-        "loginSubtitle": "Logga in för att fortsätta till ditt konto",
-        "usernameOrEmail": "Användarnamn eller e-post",
-        "usernameOrEmailPlaceholder": "Ange ditt användarnamn eller e-post",
-        "signInWithGoogle": "Logga in med Google",
-        "newToexplorers": "Ny på explorers?",
-        "forgotPassword": "Glömt lösenordet?",
-        "validations": {
-            "username": {
-                "required": "Användarnamn krävs",
-                "minLength": "Användarnamn måste vara minst 3 tecken",
-                "maxLength": "Användarnamn får inte överstiga 30 tecken",
-                "invalidChars": "Användarnamn får endast innehålla små bokstäver (a-z), siffror (0-9) och bindestreck (-)",
-                "mustStartWithLetter": "Användarnamn måste börja med en bokstav (a-z)",
-                "cannotStartEndHyphen": "Användarnamn får inte börja eller sluta med bindestreck",
-                "noConsecutiveHyphens": "Användarnamn får inte innehålla på varandra följande bindestreck",
-                "cannotBeAllNumbers": "Användarnamn får inte vara endast siffror",
-                "reservedWords": "Detta användarnamn innehåller reserverade ord och kan inte användas",
-                "inappropriateContent": "Användarnamn innehåller olämpligt innehåll",
-                "alreadyExists": "Användarnamn finns redan",
-                "suggestedAlternatives": "Föreslagna alternativ:",
-                "willBeConvertedLowercase": "Användarnamn kommer att konverteras till små bokstäver",
-                "checkingAvailability": "Kontrollerar tillgänglighet...",
-                "available": "Användarnamnet är tillgängligt",
-                "willConvertToLowercase": "Användarnamnet kommer att konverteras till gemener"
-            },
-            "email": {
-                "required": "E-post krävs",
-                "invalidFormat": "Ange en giltig e-postadress",
-                "alreadyExists": "E-post finns redan",
-                "invalid": "Ogiltig e-post"
-            },
-            "password": {
-                "required": "Lösenord krävs",
-                "minLength": "Lösenord måste vara minst 6 tecken",
-                "uppercaseRequired": "Lösenord måste innehålla minst en stor bokstav (A-Z)",
-                "numberRequired": "Lösenord måste innehålla minst en siffra (0-9)",
-                "specialCharRequired": "Lösenord måste innehålla minst ett specialtecken (!@#$%^&*().,?\":{}|\u003c\u003e)",
-                "strength": "Lösenordsstyrka",
-                "weak": "Svag",
-                "medium": "Medel",
-                "strong": "Stark",
-                "maxLength": "Password must not exceed 32 characters",
-                "lowercaseRequired": "Password must contain at least one lowercase letter (a-z)",
-                "tooCommon": "This password is too common. Please choose a more unique password",
-                "sameAsCurrent": "New password cannot be the same as your current password",
-                "considerLonger": "Consider using a longer password with more variety for better security",
-                "moreSecure": "Passwords with 10 or more characters are more secure",
-                "veryWeak": "Mycket svag",
-                "fair": "Medel",
-                "good": "Bra",
-                "veryStrong": "Mycket stark"
-            },
-            "confirmPassword": {
-                "required": "Bekräfta ditt lösenord",
-                "mustMatch": "Lösenorden matchar inte",
-                "confirmRequired": "Lösenordsbekräftelse krävs",
-                "match": "Lösenorden matchar"
-            },
-            "login": {
-                "usernameOrEmailRequired": "Användarnamn eller e-post krävs",
-                "invalidCredentials": "Ogiltigt användarnamn/e-post eller lösenord",
-                "accountNotFound": "Konto hittades inte",
-                "tooManyAttempts": "För många misslyckade försök",
-                "incorrectPassword": "Felaktigt lösenord"
-            },
-            "general": {
-                "fillRequiredFields": "Fyll i alla obligatoriska fält",
-                "somethingWentWrong": "Något gick fel, försök igen"
-            },
-            "forgotPassword": {
-                "title": "Glömt Lösenordet?",
-                "description": "Ange din e-postadress så skickar vi dig en återställningslänk.",
-                "emailLabel": "E-postadress",
-                "emailPlaceholder": "Ange din e-post",
-                "sendResetLink": "Skicka Återställningslänk",
-                "backToLogin": "Tillbaka till Inloggning",
-                "resetLinkSent": "Lösenordsåterställningslänk skickad till din e-post!",
-                "failedToSend": "Misslyckades att skicka återställningslänk. Försök igen senare.",
-                "somethingWentWrong": "Något gick fel!"
-            },
-            "accountName": {
-                "required": "Kontonamn krävs",
-                "minLength": "Kontonamn måste vara minst 2 tecken",
-                "maxLength": "Kontonamn får inte överstiga 50 tecken",
-                "invalidChars": "Kontonamn kan endast innehålla bokstäver, mellanslag, apostrofer, bindestreck och punkter",
-                "noNumbers": "Kontonamn kan inte innehålla siffror"
-            },
-            "accountType": {
-                "required": "Kontotyp krävs",
-                "invalid": "Ogiltig kontotyp"
-            },
-            "primaryAddress": {
-                "required": "Primär adress krävs"
-            },
-            "socialMedia": {
-                "instagram": "Vänligen ange en giltig Instagram-profil-URL",
-                "whatsapp": "Ange en giltig WhatsApp-kontakt: telefon (+1234567890) eller wa.me/api.whatsapp.com-länk",
-                "mobile": "Vänligen ange ett giltigt mobiltelefonnummer (t.ex. +1234567890)",
-                "youtube": "Vänligen ange en giltig YouTube-kanal-URL (t.ex. youtube.com/@användarnamn)",
-                "x": "Vänligen ange en giltig X (Twitter)-profil-URL",
-                "spotify": "Vänligen ange en giltig Spotify-URL",
-                "website": "Vänligen ange en giltig webbplats-URL",
-                "facebook": "Vänligen ange en giltig Facebook-profil-URL",
-                "youtubeMusic": "Vänligen ange en giltig YouTube Music-kanal-URL",
-                "email": "Vänligen ange en giltig e-postadress",
-                "linkedin": "Vänligen ange en giltig LinkedIn-profil-URL",
-                "appleMusic": "Vänligen ange en giltig Apple Music-URL",
-                "tiktok": "Vänligen ange en giltig TikTok-profil-URL",
-                "snapchat": "Vänligen ange ett giltigt Snapchat-användarnamn"
-            },
-            "onboarding": {
-                "displayNameRequired": "Visningsnamn krävs",
-                "displayNameMinLength": "Visningsnamn måste vara minst 2 tecken",
-                "displayNameMaxLength": "Visningsnamn får inte överstiga 50 tecken",
-                "bioRequired": "Biografi krävs",
-                "bioMaxLength": "Biografi får inte överstiga 250 tecken",
-                "mobileNumberRequired": "Mobilnummer krävs",
-                "mobileNumberInvalid": "Ange ett giltigt mobilnummer",
-                "mobileNumberLength": "Mobilnummer måste vara 10 siffror",
-                "addressRequired": "Adress krävs",
-                "cityRequired": "Stad krävs",
-                "stateRequired": "Stat krävs",
-                "countryRequired": "Land krävs",
-                "postalCodeRequired": "Postnummer krävs",
-                "primaryAddressRequired": "Primär adress krävs",
-                "emailAddressRequired": "E-postadress krävs",
-                "resetLinkSentSuccess": "Återställningslänk skickad framgångsrikt!",
-                "invalidUsername": "Ogiltigt användarnamn",
-                "profileImageAlt": "Profile"
-            },
-            "resetPassword": {
-                "newPassword": "New Password",
-                "confirmPassword": "Confirm Password"
-            },
-            "resetLinkSent": {
-                "title": "E-post skickat!",
-                "description": "Kontrollera din inkorg för länken för lösenordsåterställning.",
-                "resending": "Skickar igen...",
-                "resendWithCooldown": "Skicka e-post igen ({{cooldown}}s)",
-                "resendMail": "Skicka e-post igen"
-            }
-        },
-        "onboarding": {
-            "accountDetails": {
-                "title": "Kontodetaljer",
-                "description": "Berätta för oss om dig",
-                "displayName": "Visningsnamn",
-                "displayNamePlaceholder": "Ange ditt visningsnamn",
-                "username": "Användarnamn",
-                "usernamePlaceholder": "Ange ditt användarnamn",
-                "usernameDescription": "Ditt användarnamn är en del av din offentliga profillänk och QR-koder. Exempel: explorers.earth/bhavya",
-                "bio": "Biografi",
-                "bioPlaceholder": "Berätta för oss om dig",
-                "accountType": "Kontotyp",
-                "personal": "Personlig",
-                "creator": "Skapare",
-                "business": "Företag",
-                "next": "Nästa"
-            },
-            "contactDetails": {
-                "title": "Kontaktdetaljer",
-                "description": "Lägg till ditt mobilnummer för verifiering",
-                "mobileNumber": "Mobilnummer",
-                "mobileNumberPlaceholder": "Ange ditt mobilnummer",
-                "next": "Nästa",
-                "back": "Tillbaka"
-            },
-            "addressDetails": {
-                "title": "Adressdetaljer",
-                "description": "Var befinner du dig?",
-                "address": "Adress",
-                "addressPlaceholder": "Ange din adress",
-                "streetName": "Gatunamn",
-                "streetNamePlaceholder": "Ange gatunamn",
-                "city": "Stad",
-                "cityPlaceholder": "Ange stad",
-                "state": "Stat",
-                "statePlaceholder": "Ange stat",
-                "country": "Land",
-                "countryPlaceholder": "Ange land",
-                "postalCode": "Postnummer",
-                "postalCodePlaceholder": "Ange postnummer",
-                "primaryAddress": "Primär adress",
-                "primaryAddressDescription": "visas i offentlig profil (stad och land)",
-                "primaryAddressPlaceholder": "Ange primär adress",
-                "sameAsAddress": "Samma som adress",
-                "confirmDetails": "Bekräfta detaljer",
-                "back": "Tillbaka"
-            }
-        },
-        "resetPassword": {
-            "newPasswordPlaceholder": "Enter new password",
-            "confirmPasswordPlaceholder": "Confirm your password"
-        }
-    },
-    "common": {
-        "loading": "Laddar...",
-        "error": "Ett fel uppstod. Försök igen senare.",
-        "retry": "Försök igen",
-        "noResults": "Inga resultat hittades",
-        "submit": "Skicka",
-        "hidePassword": "Dölj lösenord",
-        "showPassword": "Visa lösenord",
-        "signInWithGoogle": "Logga in med Google",
-        "signUpWithGoogle": "Registrera dig med Google",
-        "cancel": "Avbryt"
-    },
-    "dashboard": {
-        "home": {
-            "welcomeBack": "Välkommen tillbaka",
-            "profile": "Profil",
-            "myRecommendations": "Mina Rekommendationer",
-            "activePlaces": "aktiva platser",
-            "setupProfile": "Konfigurera Din Profil",
-            "draft": "Utkast",
-            "startCurating": "Börja kurera dina rekommendationer och dela dem med världen!",
-            "addRecommendations": "Lägg Till Rekommendationer"
-        },
-        "shareModal": {
-            "copyLink": "Kopiera länk",
-            "copied": "Kopierad!",
-            "linkCopiedToast": "Länk kopierad!!"
-        },
-        "recommendations": {
-            "locationButton": "Plats",
-            "viewAll": "Visa alla",
-            "recommendationsTab": "Rekommendationer",
-            "manageTab": "Hantera",
-            "manageHeading": "Hantera",
-            "deleteAction": "Radera",
-            "editAction": "Redigera",
-            "publishedStatus": "Publicerad",
-            "draftStatus": "Utkast",
-            "myRecommendationsHeading": "Mina Rekommendationer",
-            "myQRHeading": "Min QR",
-            "myRecommendationsQR": "Mina Rekommendationer",
-            "travelLikeLocal": "Res som en local",
-            "shareLink": "Dela Länk",
-            "copyLink": "Kopiera Länk",
-            "downloadQR": "Ladda ner QR",
-            "emptyState": {
-                "title": "Inga Rekommendationer Tillgängliga",
-                "subtitle": "Börja lägga till dina favoritplatser i denna lista"
-            },
-            "draftLabel": "Utkast",
-            "recommendButton": "Rekommendera",
-            "exploreSection": {
-                "heading": "Utforska med explorers",
-                "addButton": "Lägg till"
-            },
-            "locationLabels": {
-                "currentLocation": "Nuvarande Plats",
-                "selectedLocation": "Vald Plats"
-            },
-            "categories": {
-                "foodDrinks": "Mat och Dryck",
-                "lodging": "Boende",
-                "healthWellness": "Hälsa och Välbefinnande",
-                "shopping": "Shopping",
-                "entertainment": "Underhållning",
-                "transportation": "Transport",
-                "services": "Tjänster",
-                "tourism": "Turism",
-                "naturalFeatures": "Naturliga Egenskaper"
-            },
-            "locationForm": {
-                "labels": {
-                    "searchLocation": "Sök plats",
-                    "recommendationSocialLink": "Rekommendation social länk",
-                    "note": "Anteckning",
-                    "placeUrl": "Plats URL"
-                },
-                "placeholders": {
-                    "searchLocation": "Ange stad, stat eller land (t.ex. Paris)",
-                    "recommendationSocialLink": "Ange URL (Youtube / Instagram)",
-                    "note": "Ange en anteckning relaterad till din rekommendation",
-                    "placeUrl": "Ange namn för att skapa en delbar länk"
-                },
-                "buttons": {
-                    "addLocation": "Lägg till plats",
-                    "updateLocation": "Uppdatera plats"
-                }
-            },
-            "toastMessages": {
-                "listCreated": "Recommendation List Created Successfully!!!",
-                "listPublished": "Rekommendationslista publicerad framgångsrikt!",
-                "listUnpublished": "Rekommendationslista avpublicerad framgångsrikt!",
-                "listPublishError": "List Should have atleast one Recommended Place to be Published",
-                "listVisibilityError": "Failed to update recommendation list visibility.",
-                "qrDownloadSuccess": "QR code downloaded successfully!",
-                "qrDownloadError": "Failed to download QR code. Please try again.",
-                "linkCopied": "Link copied to clipboard!",
-                "linkCopyError": "Failed to copy link. Please try again.",
-                "qrNotReady": "QR code not ready for download"
-            },
-            "placesModal": {
-                "placesCount": "{{visible}} av {{total}} platser",
-                "scrollToLoadMore": "Rulla för att ladda fler platser"
-            },
-            "noRecommendationsYet": "Inga rekommendationer ännu!!",
-            "setupProfileBeforeRecommendations": "Konfigurera din profil innan du skapar rekommendationer!!",
-            "startAddingPlaces": "Börja lägga till dina favoritplatser och dela dem med andra.",
-            "startRecommending": "Börja Rekommendera",
-            "addRecommendationForm": {
-                "searchField": {
-                    "label": "Search Recommendation with Google"
-                },
-                "mainInput": {
-                    "placeholder": "Enter your Recommendation"
-                },
-                "taggableFields": {
-                    "title": "Titel",
-                    "address": "Adress",
-                    "category": "Kategori",
-                    "contactNumber": "Kontaktnummer",
-                    "socialLink": "Social länk",
-                    "personName": "Personens namn"
-                },
-                "accordionSection": {
-                    "heading": "Your Recommendation Details",
-                    "recommendationLink": {
-                        "label": "Your Recommendation Link",
-                        "placeholder": "You can insert Instagram reel, YouTube, or blog recommending"
-                    },
-                    "whyRecommend": {
-                        "label": "Why would you recommend?",
-                        "placeholder": "Why would you recommend?"
-                    }
-                },
-                "fileUpload": {
-                    "text": "Attach Image/Video",
-                    "subtext": "optional"
-                },
-                "actionButton": {
-                    "text": "Add recommendation"
-                },
-                "taggableFieldsPlaceholders": {
-                    "title": "Ange titel",
-                    "address": "Ange platsens adress",
-                    "category": "Ange en kategori",
-                    "contactNumber": "Ange kontaktnummer",
-                    "socialLink": "Ange social länk (plats)",
-                    "personName": "Ange personens fullständiga namn"
-                },
-                "validationMessages": {
-                    "titleRequired": "Titel krävs",
-                    "addressRequired": "Adress krävs",
-                    "categoryRequired": "Kategori krävs",
-                    "socialUrlRequired": "Instagram eller LinkedIn URL krävs för personrekommendationer",
-                    "socialUrlInvalid": "Vänligen ange en giltig Instagram eller LinkedIn URL"
-                },
-                "mapModal": {
-                    "cancelButton": "Avbryt",
-                    "addRecommendationButton": "Lägg till rekommendation",
-                    "updateRecommendationButton": "Uppdatera rekommendation",
-                    "setLocationButton": "Ange plats"
-                },
-                "deleteRecommendation": "Ta bort rekommendation",
-                "searchLocation": {
-                    "label": "Sök en plats",
-                    "searchPlace": "Sök en plats",
-                    "placeholder": "Skriv och välj en plats"
-                },
-                "fetchingImages": "Hämtar bilder…",
-                "recommendationType": {
-                    "place": "Plats",
-                    "person": "Person",
-                    "label": "Rekommendationstyp"
-                },
-                "imagePreview": {
-                    "alt": "Förhandsvisning",
-                    "deleteTooltip": "Radera",
-                    "setThumbnailTooltip": "Ange som miniatyr",
-                    "confirmDeleteTitle": "Bekräfta Radering",
-                    "confirmDeleteMessage": "Är du säker på att du vill radera denna bild från samlingen?",
-                    "cancel": "Avbryt",
-                    "confirm": "Bekräfta"
-                },
-                "deleteRecommendationModal": {
-                    "title": "Bekräfta radering",
-                    "message": "Är du säker på att du vill radera denna rekommendation? Denna åtgärd kan inte ångras.",
-                    "cancel": "Avbryt"
-                }
-            }
-        },
-        "profile": {
-            "tabs": {
-                "publicProfile": "Offentlig Profil",
-                "account": "Konto"
-            },
-            "publicProfile": {
-                "sections": {
-                    "profileInformation": "Bio",
-                    "socialMedia": "Sociala Länkar",
-                    "publicAddress": "Offentlig Adress",
-                    "howToReachUs": "Hur Du Når Oss",
-                    "howToReachUsDescription": "Använd denna sektion för att dela din företagsplatsinformation.",
-                    "feed": "Flöde",
-                    "socialMediaSubtitle": "Sociala medier länkar och information"
-                },
-                "fields": {
-                    "accountType": "Kontotyp",
-                    "bio": "Bio",
-                    "socialMedia": "Sociala Medier",
-                    "instagram": "Instagram",
-                    "whatsapp": "Whatsapp",
-                    "mobile": "Mobil",
-                    "youtube": "Youtube",
-                    "x": "X",
-                    "spotify": "Spotify",
-                    "website": "Webbplats",
-                    "facebook": "Facebook",
-                    "youtubeMusic": "Youtube Music",
-                    "gmail": "Gmail",
-                    "linkedin": "Linkedin",
-                    "appleMusic": "Apple Music",
-                    "tiktok": "Tiktok",
-                    "snapchat": "Snapchat",
-                    "businessLocation": "Lägg till din plats. Dessa kommer att visas som utvalda platser på din offentliga profil",
-                    "primaryAddress": "Primär Adress - Visas på offentlig profil (stad och land)",
-                    "feed": "Ladda upp bilder eller videor av din plats, produkter, tjänster eller upplevelser. Dessa foton kommer att visas i din galleri på din offentliga profil",
-                    "title": "Titel",
-                    "contact": "Kontakt",
-                    "about": "Om",
-                    "addLocation": "Lägg till din plats",
-                    "addLocationInformation": "Lägg till Platsinformation",
-                    "searchAddress": "Sök efter din adress...",
-                    "sameAsAddress": "Samma som adress"
-                },
-                "accountTypes": {
-                    "personal": "Personlig",
-                    "creator": "Skapare",
-                    "business": "Företag"
-                },
-                "businessLocation": {
-                    "title": "Titel",
-                    "contact": "Kontakt",
-                    "website": "Webbplats",
-                    "about": "Om"
-                }
-            },
-            "account": {
-                "sections": {
-                    "account": "Konto",
-                    "billingAddress": "Faktureringsadress"
-                },
-                "fields": {
-                    "username": "Användarnamn",
-                    "accountName": "Kontonamn",
-                    "address": "Adress",
-                    "streetName": "Gatunamn",
-                    "state": "Län",
-                    "city": "Stad",
-                    "country": "Land",
-                    "postalCode": "Postnummer",
-                    "addressPlaceholder": "Ange din adress",
-                    "detectLocation": "Upptäck min nuvarande plats"
-                }
-            },
-            "common": {
-                "visible": "Synlig",
-                "hidden": "Dold",
-                "mobileNumber": "Mobilnummer",
-                "mobileNumberPlaceholder": "Mobilnummer",
-                "whatsappNumber": "WhatsApp-nummer",
-                "primaryAddress": "Primär Adress",
-                "editImage": "Redigera Bild",
-                "confirm": "Bekräfta",
-                "add": "Lägg till",
-                "video": "Video",
-                "feedImage": "Flödesbild",
-                "importedImage": "importerad bild",
-                "cover": "Omslag",
-                "profile": "Profil",
-                "saveAndPublish": "Spara och Publicera",
-                "saveToFeed": "Spara till Flöde",
-                "savedAndPublishedSuccessfully": "Sparat och publicerat framgångsrikt",
-                "saveAndPublishFailed": "Spara och publicera misslyckades. Försök igen.",
-                "failedToSaveChanges": "Kunde inte spara ändringar. Försök igen.",
-                "networkError": "Nätverksfel: Kontrollera din anslutning och försök igen.",
-                "unexpectedError": "Ett oväntat fel uppstod. Försök igen.",
-                "somethingWentWrong": "Något gick fel. Försök igen.",
-                "failedToUploadFiles": "Kunde inte ladda upp filer. Försök igen.",
-                "failedToUploadImages": "Kunde inte ladda upp bilder. Försök igen.",
-                "failedToSaveImagesToFeed": "Kunde inte spara bilder till flöde",
-                "failedToUpdateProfile": "Kunde inte uppdatera profil. Försök igen.",
-                "fetching": "Hämtar...",
-                "selectAll": "Välj alla",
-                "clearSelection": "Rensa val",
-                "error": "Ett fel uppstod när din profil laddades. Försök igen senare.",
-                "errors": {
-                    "noFileProvided": "Ingen fil angiven för uppladdning",
-                    "failedToGetAccountId": "Kunde inte hämta kontonummer för uppladdning",
-                    "uploadResponseMissingFileData": "Uppladdningssvar saknar fildata"
-                }
-            },
-            "accountSetup": {
-                "title": "Slutför Din Kontokonfiguration",
-                "progress": "Framsteg",
-                "complete": "Komplett",
-                "profileSetupCompleted": "Profilkonfiguration slutförd",
-                "profileSetupIncomplete": "Lägg till profilbild, bio och sociala länkar",
-                "recommendationsSetupCompleted": "Rekommendationskonfiguration slutförd",
-                "recommendationsSetupIncomplete": "Lägg till platser, ställen och publicera din första lista",
-                "setupButton": "Konfigurera",
-                "footerMessage": "Slutför båda stegen för att låsa upp din fullständiga instrumentpanelsupplevelse"
-            }
-        }
-    },
-    "toast": {
-        "success": {
-            "loginSuccessful": "Inloggning lyckades!",
-            "registrationSuccessful": "Registrering lyckades!",
-            "passwordResetSuccessful": "Lösenordsåterställning lyckades!",
-            "emailVerificationSent": "E-postverifiering skickad!",
-            "resetLinkSent": "Lösenordsåterställningslänk skickad till din e-post!",
-            "resetLinkResent": "Återställningslänk skickad igen!",
-            "profileImageUpdated": "Profilbild uppdaterat framgångsrikt!",
-            "backgroundImageUpdated": "Bakgrundsbild uppdaterad framgångsrikt!",
-            "recommendedListUpdated": "Rekommenderad lista uppdaterad framgångsrikt!!!",
-            "accountCreated": "Konto skapat framgångsrikt!",
-            "usernameUpdated": "Användarnamn uppdaterat framgångsrikt!",
-            "profileUpdated": "Profil uppdaterad framgångsrikt!",
-            "settingsSaved": "Inställningar sparade framgångsrikt!",
-            "dataSaved": "Data sparade framgångsrikt!",
-            "changesSaved": "Ändringar sparade framgångsrikt!",
-            "fileUploaded": "Fil uppladdad framgångsrikt!",
-            "imageUploaded": "Bild uppladdad framgångsrikt!",
-            "linkCopied": "Länk kopierad till urklipp!",
-            "emailSent": "E-post skickat framgångsrikt!",
-            "notificationSent": "Notifiering skickad framgångsrikt!",
-            "actionCompleted": "Åtgärd slutförd framgångsrikt!",
-            "formSubmitted": "Formulär skickat framgångsrikt!",
-            "onboardingCompleted": "Introduktion slutförd framgångsrikt!",
-            "welcomeMessage": "Välkommen till explorers!",
-            "accountActivated": "Kontot aktiverades framgångsrikt!",
-            "emailVerified": "E-post verifierad framgångsrikt!",
-            "passwordChanged": "Lösenord ändrat framgångsrikt!",
-            "usernameChanged": "Användarnamn ändrat framgångsrikt!",
-            "profileCompleted": "Profil slutförd framgångsrikt!",
-            "setupCompleted": "Installation slutförd framgångsrikt!",
-            "loggedOutSuccessfully": "Framg�ngsrikt utloggad!"
-        },
-        "error": {
-            "loginFailed": "Inloggning misslyckades. Kontrollera dina inloggningsuppgifter.",
-            "registrationFailed": "Registrering misslyckades. Försök igen.",
-            "passwordResetFailed": "Lösenordsåterställning misslyckades. Försök igen.",
-            "emailVerificationFailed": "E-postverifiering misslyckades. Försök igen.",
-            "resetLinkFailed": "Skicka återställningslänk misslyckades. Försök senare.",
-            "resetLinkResendFailed": "Skicka igen misslyckades. Försök senare.",
-            "profileImageUpdateFailed": "Kunde inte ladda upp profilbild. Försök igen.",
-            "backgroundImageUpdateFailed": "Kunde inte ladda upp bakgrundsbild. Försök igen.",
-            "recommendedListUpdateFailed": "Fel vid uppdatering av rekommenderad lista!!!",
-            "accountCreationFailed": "Kontoskapande misslyckades. Försök igen.",
-            "usernameUpdateFailed": "Användarnamnsuppdatering misslyckades. Försök igen.",
-            "profileUpdateFailed": "Profiluppdatering misslyckades. Försök igen.",
-            "settingsSaveFailed": "Kunde inte spara inställningar. Försök igen.",
-            "dataSaveFailed": "Kunde inte spara data. Försök igen.",
-            "changesSaveFailed": "Kunde inte spara ändringar. Försök igen.",
-            "fileUploadFailed": "Filuppladdning misslyckades. Försök igen.",
-            "imageUploadFailed": "Bilduppladdning misslyckades. Försök igen.",
-            "linkCopyFailed": "Kunde inte kopiera länk. Försök igen.",
-            "emailSendFailed": "Skicka e-post misslyckades. Försök igen.",
-            "notificationSendFailed": "Kunde inte skicka notifiering. Försök igen.",
-            "actionFailed": "Åtgärd misslyckades. Försök igen.",
-            "formSubmissionFailed": "Formulärskickning misslyckades. Försök igen.",
-            "onboardingFailed": "Introduktion misslyckades. Försök igen.",
-            "accountActivationFailed": "Kontoaktivering misslyckades. Försök igen.",
-            "passwordChangeFailed": "Lösenordsändring misslyckades. Försök igen.",
-            "usernameChangeFailed": "Användarnamnsändring misslyckades. Försök igen.",
-            "profileCompletionFailed": "Profilfullständigande misslyckades. Försök igen.",
-            "setupFailed": "Installation misslyckades. Försök igen.",
-            "networkError": "Nätverksfel. Kontrollera din anslutning.",
-            "serverError": "Serverfel. Försök senare.",
-            "validationError": "Valideringsfel. Kontrollera din inmatning.",
-            "permissionDenied": "Tillstånd nekades. Kontakta support.",
-            "sessionExpired": "Sessionen har gått ut. Logga in igen.",
-            "invalidCredentials": "Ogiltiga inloggningsuppgifter. Kontrollera din inmatning.",
-            "emailNotFound": "E-post hittades inte. Försök igen.",
-            "usernameAlreadyExists": "Användarnamn finns redan. Välj ett annat.",
-            "emailAlreadyExists": "E-post finns redan. Använd en annan e-post.",
-            "invalidEmailFormat": "Ogiltigt e-postformat. Ange en giltig e-post.",
-            "passwordTooWeak": "Lösenordet är för svagt. Välj ett starkare lösenord.",
-            "passwordsDoNotMatch": "Lösenorden matchar inte. Försök igen.",
-            "requiredFieldMissing": "Obligatoriskt fält saknas. Fyll i alla obligatoriska fält.",
-            "invalidInput": "Ogiltig inmatning. Kontrollera dina data.",
-            "fileTooLarge": "Filen är för stor. Välj en mindre fil.",
-            "unsupportedFileType": "Filtyp stöds inte. Välj en annan fil.",
-            "uploadLimitExceeded": "Uppladdningsgräns överskriden. Försök senare.",
-            "operationTimeout": "Åtgärden gick ut på tid. Försök igen.",
-            "serviceUnavailable": "Tjänsten är inte tillgänglig. Försök senare.",
-            "maintenanceMode": "Tjänsten är under underhåll. Försök senare.",
-            "rateLimitExceeded": "För många begäranden. Försök senare.",
-            "quotaExceeded": "Kvot överskriden. Försök senare.",
-            "accessDenied": "Åtkomst nekades. Du har inte behörighet att utföra denna åtgärd.",
-            "resourceNotFound": "Resurs hittades inte. Kontrollera din begäran.",
-            "conflictError": "Konfliktfel. Resursen finns redan.",
-            "preconditionFailed": "Förutsättning misslyckades. Kontrollera din begäran.",
-            "tooManyAttempts": "För många försök. Försök senare.",
-            "accountLocked": "Kontot är låst. Kontakta support.",
-            "accountSuspended": "Kontot är avstängt. Kontakta support.",
-            "accountDeleted": "Kontot är raderat. Kontakta support.",
-            "emailNotVerified": "E-post är inte verifierad. Verifiera din e-post först.",
-            "phoneNotVerified": "Telefonnummer är inte verifierat. Verifiera ditt telefonnummer först.",
-            "twoFactorRequired": "Tvåfaktorsautentisering krävs.",
-            "twoFactorFailed": "Tvåfaktorsautentisering misslyckades. Försök igen.",
-            "captchaFailed": "Captcha-verifiering misslyckades. Försök igen.",
-            "invalidToken": "Ogiltig token. Försök igen.",
-            "expiredToken": "Token har gått ut. Försök igen.",
-            "invalidCode": "Ogiltig kod. Kontrollera din inmatning.",
-            "expiredCode": "Koden har gått ut. Begär en ny.",
-            "codeLimitExceeded": "Kodgräns överskriden. Försök senare.",
-            "invalidUsername": "Ogiltigt användarnamn. Kontrollera din inmatning.",
-            "usernameTooShort": "Användarnamnet är för kort. Välj ett längre användarnamn.",
-            "usernameTooLong": "Användarnamnet är för långt. Välj ett kortare användarnamn.",
-            "usernameInvalidChars": "Användarnamn innehåller ogiltiga tecken. Använd endast bokstäver, siffror och bindestreck.",
-            "usernameReserved": "Användarnamn är reserverat. Välj ett annat användarnamn.",
-            "usernameProfanity": "Användarnamn innehåller olämpligt innehåll. Välj ett annat användarnamn.",
-            "primaryAddressRequired": "Primär adress krävs",
-            "addressRequired": "Adress krävs",
-            "cityRequired": "Stad krävs",
-            "stateRequired": "Stat krävs",
-            "countryRequired": "Land krävs",
-            "postalCodeRequired": "Postnummer krävs",
-            "mobileNumberRequired": "Mobilnummer krävs",
-            "mobileNumberInvalid": "Ogiltigt mobilnummerformat",
-            "mobileNumberTooShort": "Mobilnummer är för kort",
-            "mobileNumberTooLong": "Mobilnummer är för långt",
-            "bioRequired": "Bio krävs",
-            "bioTooLong": "Bio är för lång. Håll det under 250 tecken",
-            "displayNameRequired": "Visningsnamn krävs",
-            "displayNameTooShort": "Visningsnamn är för kort",
-            "displayNameTooLong": "Visningsnamn är för långt",
-            "accountTypeRequired": "Kontotyp krävs",
-            "invalidAccountType": "Ogiltig kontotyp vald",
-            "imageRequired": "Bild krävs",
-            "imageTooLarge": "Bilden är för stor. Välj en mindre bild",
-            "unsupportedImageFormat": "Bildformat stöds inte. Använd JPG, PNG eller GIF",
-            "imageProcessingFailed": "Bildbehandling misslyckades. Försök igen",
-            "imageCorrupted": "Bilden är korrupt. Välj en annan bild",
-            "imageDimensionsInvalid": "Bilddimensioner är ogiltiga. Välj en annan bild",
-            "imageSizeInvalid": "Bildstorlek är ogiltig. Välj en annan bild",
-            "imageFormatInvalid": "Bildformat är ogiltigt. Välj en annan bild",
-            "imageQualityTooLow": "Bildkvalitet är för låg. Välj en bild med högre kvalitet",
-            "imageTooSmall": "Bilden är för liten. Välj en större bild",
-            "imageTooBig": "Bilden är för stor. Välj en mindre bild",
-            "imageAspectRatioInvalid": "Bildaspektförhållande är ogiltigt. Välj en annan bild",
-            "imageColorSpaceInvalid": "Bildfärgrymd är ogiltig. Välj en annan bild",
-            "imageMetadataInvalid": "Bildmetadata är ogiltig. Välj en annan bild",
-            "imageSecurityViolation": "Bildsäkerhetsöverträdelse. Välj en annan bild",
-            "imageVirusDetected": "Virus upptäckt i bild. Välj en annan bild",
-            "imageMalwareDetected": "Skadlig kod upptäckt i bild. Välj en annan bild",
-            "imageSpamDetected": "Spam upptäckt i bild. Välj en annan bild",
-            "imageContentInappropriate": "Bildinnehåll är olämpligt. Välj en annan bild",
-            "imageContentViolent": "Bildinnehåll är våldsamt. Välj en annan bild",
-            "imageContentSexual": "Bildinnehåll är sexuellt. Välj en annan bild",
-            "imageContentHateful": "Bildinnehåll är hatfyllt. Välj en annan bild",
-            "imageContentDiscriminatory": "Bildinnehåll är diskriminerande. Välj en annan bild",
-            "imageContentOffensive": "Bildinnehåll är stötande. Välj en annan bild",
-            "imageContentAbusive": "Bildinnehåll är missbrukande. Välj en annan bild",
-            "imageContentHarassing": "Bildinnehåll är trakasserande. Välj en annan bild",
-            "imageContentThreatening": "Bildinnehåll är hotfullt. Välj en annan bild",
-            "imageContentDangerous": "Bildinnehåll är farligt. Välj en annan bild",
-            "imageContentIllegal": "Bildinnehåll är olagligt. Välj en annan bild",
-            "imageContentCopyright": "Bildinnehåll bryter mot upphovsrätt. Välj en annan bild",
-            "imageContentTrademark": "Bildinnehåll bryter mot varumärke. Välj en annan bild",
-            "imageContentPrivacy": "Bildinnehåll bryter mot integritet. Välj en annan bild",
-            "imageContentConsent": "Bildinnehåll saknar samtycke. Välj en annan bild",
-            "imageContentMinors": "Bildinnehåll involverar minderåriga. Välj en annan bild",
-            "imageContentAnimals": "Bildinnehåll involverar djurplågeri. Välj en annan bild",
-            "imageContentEnvironment": "Bildinnehåll skadar miljön. Välj en annan bild",
-            "imageContentHealth": "Bildinnehåll skadar hälsan. Välj en annan bild",
-            "imageContentSafety": "Bildinnehåll skadar säkerheten. Välj en annan bild",
-            "imageContentSecurity": "Bildinnehåll skadar säkerheten. Välj en annan bild",
-            "imageContentIntegrity": "Bildinnehåll skadar integriteten. Välj en annan bild",
-            "imageContentReputation": "Bildinnehåll skadar rykte. Välj en annan bild",
-            "imageContentBrand": "Bildinnehåll skadar varumärke. Välj en annan bild",
-            "imageContentBusiness": "Bildinnehåll skadar verksamhet. Välj en annan bild",
-            "imageContentPersonal": "Bildinnehåll skadar personliga intressen. Välj en annan bild",
-            "imageContentProfessional": "Bildinnehåll skadar professionella intressen. Välj en annan bild",
-            "imageContentAcademic": "Bildinnehåll skadar akademiska intressen. Välj en annan bild",
-            "imageContentCultural": "Bildinnehåll skadar kulturella intressen. Välj en annan bild",
-            "imageContentReligious": "Bildinnehåll skadar religiösa intressen. Välj en annan bild",
-            "imageContentPolitical": "Bildinnehåll skadar politiska intressen. Välj en annan bild",
-            "imageContentSocial": "Bildinnehåll skadar sociala intressen. Välj en annan bild",
-            "imageContentEconomic": "Bildinnehåll skadar ekonomiska intressen. Välj en annan bild",
-            "imageContentLegal": "Bildinnehåll skadar juridiska intressen. Välj en annan bild",
-            "imageContentEthical": "Bildinnehåll skadar etiska intressen. Välj en annan bild",
-            "imageContentMoral": "Bildinnehåll skadar moraliska intressen. Välj en annan bild",
-            "imageContentSpiritual": "Bildinnehåll skadar andliga intressen. Välj en annan bild",
-            "imageContentPhilosophical": "Bildinnehåll skadar filosofiska intressen. Välj en annan bild",
-            "imageContentScientific": "Bildinnehåll skadar vetenskapliga intressen. Välj en annan bild",
-            "imageContentTechnical": "Bildinnehåll skadar tekniska intressen. Välj en annan bild",
-            "imageContentArtistic": "Bildinnehåll skadar artistiska intressen. Välj en annan bild",
-            "imageContentCreative": "Bildinnehåll skadar kreativa intressen. Välj en annan bild",
-            "imageContentIntellectual": "Bildinnehåll skadar intellektuella intressen. Välj en annan bild",
-            "imageContentEducational": "Bildinnehåll skadar pedagogiska intressen. Välj en annan bild",
-            "imageContentInformational": "Bildinnehåll skadar informationsintressen. Välj en annan bild",
-            "imageContentNews": "Bildinnehåll skadar nyhetsintressen. Välj en annan bild",
-            "imageContentMedia": "Bildinnehåll skadar mediaintressen. Välj en annan bild",
-            "imageContentEntertainment": "Bildinnehåll skadar underhållningsintressen. Välj en annan bild",
-            "imageContentSports": "Bildinnehåll skadar sportintressen. Välj en annan bild",
-            "imageContentRecreation": "Bildinnehåll skadar rekreationsintressen. Välj en annan bild",
-            "imageContentLeisure": "Bildinnehåll skadar fritidsintressen. Välj en annan bild",
-            "imageContentHobby": "Bildinnehåll skadar hobbyintressen. Välj en annan bild",
-            "imageContentInterest": "Bildinnehåll skadar intresseintressen. Välj en annan bild",
-            "imageContentPassion": "Bildinnehåll skadar passionintressen. Välj en annan bild",
-            "imageContentLove": "Bildinnehåll skadar kärleksintressen. Välj en annan bild",
-            "imageContentHate": "Bildinnehåll skadar hatintressen. Välj en annan bild",
-            "imageContentAnger": "Bildinnehåll skadar ilskaintressen. Välj en annan bild",
-            "imageContentFear": "Bildinnehåll skadar rädslointressen. Välj en annan bild",
-            "imageContentSadness": "Bildinnehåll skadar sorgintressen. Välj en annan bild",
-            "imageContentJoy": "Bildinnehåll skadar glädjeintressen. Välj en annan bild",
-            "imageContentHappiness": "Bildinnehåll skadar lyckointressen. Välj en annan bild",
-            "imageContentExcitement": "Bildinnehåll skadar upphetsningsintressen. Välj en annan bild",
-            "imageContentSurprise": "Bildinnehåll skadar överraskningsintressen. Välj en annan bild",
-            "imageContentDisgust": "Bildinnehåll skadar avskyintressen. Välj en annan bild",
-            "imageContentShame": "Bildinnehåll skadar skamintressen. Välj en annan bild",
-            "imageContentGuilt": "Bildinnehåll skadar skuldkänslointressen. Välj en annan bild",
-            "imageContentPride": "Bildinnehåll skadar stolthetsintressen. Välj en annan bild",
-            "imageContentEnvy": "Bildinnehåll skadar avundsjukaintsintressen. Välj en annan bild",
-            "imageContentJealousy": "Bildinnehåll skadar svartsjukaintsintressen. Välj en annan bild",
-            "imageContentGreed": "Bildinnehåll skadar girighetsintressen. Välj en annan bild",
-            "imageContentLust": "Bildinnehåll skadar lustintressen. Välj en annan bild",
-            "imageContentGluttony": "Bildinnehåll skadar glupskhetsintressen. Välj en annan bild",
-            "imageContentSloth": "Bildinnehåll skadar lättjasintressen. Välj en annan bild",
-            "imageContentWrath": "Bildinnehåll skadar vredesintressen. Välj en annan bild"
-        },
-        "warning": {
-            "usernameCooldown": "Användarnamnsändring är tillfälligt låst på grund av nedkylningsperiod",
-            "passwordWeak": "Lösenordet är svagt. Överväg att använda ett starkare lösenord",
-            "emailNotVerified": "E-post är inte verifierad. Verifiera din e-post",
-            "phoneNotVerified": "Telefonnummer är inte verifierat. Verifiera ditt telefonnummer",
-            "profileIncomplete": "Profil är ofullständig. Slutför din profil",
-            "settingsNotSaved": "Inställningar är inte sparade. Spara dina inställningar",
-            "dataNotSaved": "Data är inte sparade. Spara dina data",
-            "changesNotSaved": "Ändringar är inte sparade. Spara dina ändringar",
-            "fileNotUploaded": "Fil är inte uppladdad. Ladda upp din fil",
-            "imageNotUploaded": "Bild är inte uppladdad. Ladda upp din bild",
-            "linkNotCopied": "Länk är inte kopierad. Kopiera din länk",
-            "emailNotSent": "E-post är inte skickad. Skicka din e-post",
-            "notificationNotSent": "Notifiering är inte skickad. Skicka din notifiering",
-            "actionNotCompleted": "Åtgärd är inte slutförd. Slutför din åtgärd",
-            "formNotSubmitted": "Formulär är inte skickat. Skicka ditt formulär",
-            "onboardingNotCompleted": "Introduktion är inte slutförd. Slutför din introduktion",
-            "accountNotActivated": "Kontot är inte aktiverat. Aktivera ditt konto",
-            "passwordNotChanged": "Lösenord är inte ändrat. Ändra ditt lösenord",
-            "usernameNotChanged": "Användarnamn är inte ändrat. Ändra ditt användarnamn",
-            "profileNotCompleted": "Profil är inte slutförd. Slutför din profil",
-            "setupNotCompleted": "Installation är inte slutförd. Slutför din installation",
-            "networkSlow": "Nätverket är långsamt. Kontrollera din anslutning",
-            "serverSlow": "Servern är långsam. Försök senare",
-            "validationPending": "Validering pågår. Vänta",
-            "permissionPending": "Tillstånd pågår. Vänta",
-            "sessionExpiring": "Sessionen går ut. Logga in igen",
-            "credentialsExpiring": "Inloggningsuppgifter går ut. Uppdatera dina inloggningsuppgifter",
-            "emailExpiring": "E-post går ut. Uppdatera din e-post",
-            "phoneExpiring": "Telefonnummer går ut. Uppdatera ditt telefonnummer",
-            "profileExpiring": "Profil går ut. Uppdatera din profil",
-            "settingsExpiring": "Inställningar går ut. Uppdatera dina inställningar",
-            "dataExpiring": "Data går ut. Uppdatera dina data",
-            "changesExpiring": "Ändringar går ut. Uppdatera dina ändringar",
-            "fileExpiring": "Fil går ut. Uppdatera din fil",
-            "imageExpiring": "Bild går ut. Uppdatera din bild",
-            "linkExpiring": "Länk går ut. Uppdatera din länk",
-            "notificationExpiring": "Notifiering går ut. Uppdatera din notifiering",
-            "actionExpiring": "Åtgärd går ut. Uppdatera din åtgärd",
-            "formExpiring": "Formulär går ut. Uppdatera ditt formulär",
-            "onboardingExpiring": "Introduktion går ut. Uppdatera din introduktion",
-            "accountExpiring": "Konto går ut. Uppdatera ditt konto",
-            "passwordExpiring": "Lösenord går ut. Uppdatera ditt lösenord",
-            "usernameExpiring": "Användarnamn går ut. Uppdatera ditt användarnamn",
-            "setupExpiring": "Installation går ut. Uppdatera din installation"
-        },
-        "info": {
-            "loading": "Laddar...",
-            "processing": "Bearbetar...",
-            "saving": "Sparar...",
-            "uploading": "Laddar upp...",
-            "downloading": "Laddar ner...",
-            "connecting": "Ansluter...",
-            "disconnecting": "Kopplar från...",
-            "sending": "Skickar...",
-            "receiving": "Tar emot...",
-            "updating": "Uppdaterar...",
-            "refreshing": "Uppdaterar...",
-            "synchronizing": "Synkroniserar...",
-            "validating": "Validerar...",
-            "verifying": "Verifierar...",
-            "checking": "Kontrollerar...",
-            "searching": "Söker...",
-            "filtering": "Filtrerar...",
-            "sorting": "Sorterar...",
-            "organizing": "Organiserar...",
-            "arranging": "Ordnar...",
-            "configuring": "Konfigurerar...",
-            "setting": "Ställer in...",
-            "adjusting": "Justerar...",
-            "modifying": "Ändrar...",
-            "changing": "Ändrar...",
-            "switching": "Växlar...",
-            "toggling": "Växlar...",
-            "enabling": "Aktiverar...",
-            "disabling": "Inaktiverar...",
-            "activating": "Aktiverar...",
-            "deactivating": "Inaktiverar...",
-            "starting": "Startar...",
-            "stopping": "Stoppar...",
-            "pausing": "Pausar...",
-            "resuming": "Återupptar...",
-            "restarting": "Startar om...",
-            "resetting": "Återställer...",
-            "clearing": "Rensar...",
-            "deleting": "Raderar...",
-            "removing": "Tar bort...",
-            "adding": "Lägger till...",
-            "inserting": "Infogar...",
-            "creating": "Skapar...",
-            "building": "Bygger...",
-            "constructing": "Bygger...",
-            "generating": "Genererar...",
-            "producing": "Producerar...",
-            "making": "Skapar...",
-            "preparing": "Förbereder...",
-            "readying": "Förbereder...",
-            "initializing": "Initierar...",
-            "launching": "Lanserar...",
-            "opening": "Öppnar...",
-            "closing": "Stänger...",
-            "shutting": "Stänger...",
-            "ending": "Avslutar...",
-            "finishing": "Slutför...",
-            "completing": "Slutför...",
-            "finalizing": "Finaliserar...",
-            "concluding": "Avslutar...",
-            "terminating": "Avslutar...",
-            "canceling": "Avbryter...",
-            "aborting": "Avbryter...",
-            "interrupting": "Avbryter...",
-            "halting": "Stoppar...",
-            "freezing": "Fryser...",
-            "unfreezing": "Tinar upp...",
-            "thawing": "Tinar upp...",
-            "melting": "Smälter...",
-            "cooling": "Kyler...",
-            "heating": "Värmer...",
-            "warming": "Värmer...",
-            "chilling": "Kyler...",
-            "renewing": "Förnyar...",
-            "restoring": "Återställer...",
-            "recovering": "Återställer...",
-            "repairing": "Reparerar...",
-            "fixing": "Reparerar...",
-            "correcting": "Korrigerar...",
-            "tuning": "Justerar...",
-            "optimizing": "Optimaliserar...",
-            "improving": "Förbättrar...",
-            "enhancing": "Förbättrar...",
-            "upgrading": "Uppgraderar...",
-            "modernizing": "Moderniserar..."
-        }
-    },
-    "emailVerification": {
-        "title": "Verify Your Email",
-        "description": "We've sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
-        "checkEmail": "Check your email",
-        "emailSent": "Verification email sent!",
-        "resendEmail": "Resend Email",
-        "resendIn": "Resend in",
-        "seconds": "seconds",
-        "didntReceive": "Didn't receive the email?",
-        "checkSpam": "Please check your spam folder or try again.",
-        "backToLogin": "Back to Login",
-        "emailAddress": "Email Address",
-        "verificationSent": "Verification email sent to:",
-        "clickLink": "Click the link in the email to verify your account.",
-        "expiresIn": "This link expires in 24 hours.",
-        "needHelp": "Need help?",
-        "contactSupport": "Contact Support"
-    },
-    "settings": {
-        "title": "Inställningar",
-        "account": {
-            "heading": "Konto",
-            "security": {
-                "title": "Konto och Säkerhet"
-            },
-            "changePassword": {
-                "text": "Byta lösenord?",
-                "button": "Byt lösenord",
-                "modalTitle": "Byt lösenord",
-                "currentPassword": "Nuvarande lösenord",
-                "newPassword": "Nytt lösenord",
-                "confirmPassword": "Bekräfta nytt lösenord",
-                "updateButton": "Uppdatera lösenord",
-                "currentPasswordPlaceholder": "Ange ditt nuvarande lösenord",
-                "newPasswordPlaceholder": "Ange ett nytt lösenord",
-                "confirmPasswordPlaceholder": "Ange det nya lösenordet igen",
-                "successMessage": "Lösenordet har uppdaterats framgångsrikt. Du kommer att omdirigeras till inloggning av säkerhetsskäl.",
-                "redirectMessage": "Omdirigerar till inloggning av säkerhetsskäl...",
-                "description": "Uppdatera ditt lösenord för att hålla ditt konto säkert"
-            },
-            "deactivateAccount": {
-                "text": "Avaktivera ditt konto?",
-                "button": "Avaktivera konto",
-                "modalTitle": "Avaktivera ditt konto?",
-                "modalDescription": "Är du säker på att du vill avaktivera ditt konto?",
-                "enterUsername": "Ange ditt användarnamn",
-                "enterPassword": "Ange ditt lösenord",
-                "usernamePlaceholder": "Ange ditt användarnamn",
-                "passwordPlaceholder": "Ange ditt nuvarande lösenord",
-                "confirmButton": "Avaktivera mitt konto",
-                "deactivatedButton": "Avaktiverat",
-                "successMessage": "Kontot har avaktiverats framgångsrikt",
-                "activatedMessage": "Kontot har aktiverats framgångsrikt",
-                "description": "Inaktivera tillfälligt ditt konto"
-            },
-            "deleteAccount": {
-                "text": "Ta bort ditt konto?",
-                "button": "Ta bort konto",
-                "step1": {
-                    "modalTitle": "Ta bort ditt konto?",
-                    "modalDescription": "Är du säker på att du vill ta bort ditt konto? Denna åtgärd kan inte ångras.",
-                    "modalDescription2": "Om du vill behålla dina data kan du avaktivera ditt konto istället.",
-                    "deactivateInsteadButton": "Avaktivera konto istället",
-                    "continueButton": "Fortsätt med borttagning"
-                },
-                "step2": {
-                    "modalTitle": "Ange dina uppgifter",
-                    "enterUsername": "Ange ditt användarnamn",
-                    "enterPassword": "Ange ditt lösenord",
-                    "confirmPassword": "Bekräfta ditt lösenord",
-                    "usernamePlaceholder": "Ange ditt användarnamn",
-                    "passwordPlaceholder": "Ange ditt lösenord",
-                    "confirmPasswordPlaceholder": "Bekräfta ditt lösenord",
-                    "continueButton": "Fortsätt"
-                },
-                "step3": {
-                    "modalTitle": "Varför lämnar du?",
-                    "reasonPlaceholder": "Vänligen berätta varför du lämnar...",
-                    "continueButton": "Fortsätt"
-                },
-                "step4": {
-                    "modalTitle": "Bekräfta borttagning",
-                    "confirmText": "Skriv 'CONFIRM DELETE' för att fortsätta",
-                    "confirmPlaceholder": "Skriv 'CONFIRM DELETE' för att bekräfta",
-                    "deleteButton": "Ta bort mitt konto",
-                    "confirmationRequired": "Vänligen skriv 'CONFIRM DELETE' för att bekräfta.",
-                    "reasonRequired": "Vänligen ange en anledning till att du lämnar.",
-                    "successMessage": "Kontot har tagits bort framgångsrikt."
-                },
-                "description": "Ta bort permanent ditt konto och all data"
-            }
-        },
-        "languagePreference": {
-            "heading": "Språkpreferens",
-            "selectLanguage": "Välj ditt språk",
-            "availableLanguages": "Välj bland 47 tillgängliga språk",
-            "currentLanguage": "Nuvarande: {{flag}} {{name}}",
-            "languageChanged": "Språk ändrat till {{name}}",
-            "description": "Välj ditt föredragna språk för gränssnittet. Detta kommer att ändra språket för alla texter, knappar och menyer i hela applikationen."
-        },
-        "subtitle": "Hantera dina kontoinställningar och preferenser"
+    "section4": {
+      "line1": "Jordens Upptäckare är inte en klubb.",
+      "line2": "Det är inte en etikett.",
+      "line3": "Det är en delad mentalitet —\nen tyst förståelse för hur vi rör oss genom världen.",
+      "title": "TILLHÖRIGHET"
     },
     "seo": {
-        "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-        "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+      "description": "A global community of people who explore with care — for people, culture, and the planet we share. Exploration isn't about distance, it's about depth.",
+      "keywords": [
+        "explorers of earth",
+        "about explorers",
+        "exploration community",
+        "thoughtful travel",
+        "sustainable exploration",
+        "local recommendations platform",
+        "travel app about",
+        "community-driven recommendations",
+        "authentic local experiences",
+        "explorers team",
+        "local discovery platform",
+        "share local places",
+        "travel technology",
+        "local recommendations app",
+        "explorers story",
+        "who we are explorers"
+      ],
+      "title": "Explorers of Earth | About Us"
     },
-    "sidebar": {
-        "home": "Hem",
-        "profile": "Profil",
-        "recommendations": "Rekommendationer",
-        "analytics": "Analys",
-        "settings": "Inställningar",
-        "logout": "Logga ut",
-        "loading": "Laddar...",
-        "clickToOpenMenu": "Klicka för att öppna menyn"
+    "subtitle": {
+      "line1": "En global gemenskap av människor som utforskar med omsorg — för människor, kultur och planeten vi delar.",
+      "line2": "Utforskning handlar för oss inte om hur långt vi går.",
+      "line3": "Det handlar om hur djupt vi ansluter."
     },
-    "modal": {
-        "unsavedChanges": {
-            "title": "Osparade ändringar",
-            "message": "Du har osparade ändringar som kommer att gå förlorade om du navigerar bort. Vad vill du göra?",
-            "discard": "Kassera",
-            "cancel": "Avbryt",
-            "save": "Spara"
+    "title": "Jordens Upptäckare"
+  },
+  "analytics": {
+    "dashboard": {
+      "charts": {
+        "locationEngagement": {
+          "allLocations": "Alla Platser",
+          "location": "Plats",
+          "locationViews": "{{location}} ({{count}} visningar)",
+          "noLocationData": "Ingen platsvisningsdata tillgänglig",
+          "selectLocation": "Välj Plats:",
+          "selectLocationPlaceholder": "Välj Plats",
+          "stats": {
+            "avgViews": "Genomsnitt Visningar/Plats",
+            "totalLocations": "Totalt Platser",
+            "totalViews": "Totalt Visningar"
+          },
+          "subtitle": "Spåra visningar för olika platser över tid",
+          "title": "Engagemang med Plats",
+          "tooltip": {
+            "date": "Datum: {{date}}",
+            "locationViews": "{{location}}: {{value}} visningar"
+          },
+          "unknownLocation": "Okänd Plats"
         },
-        "usernameChange": {
-            "title": "Bekräftelse av användarnamnsändring",
-            "description": "Ditt användarnamn används i länkarna till din profil och rekommendationslista:",
-            "profileLabel": "Profil:",
-            "listLabel": "Lista:",
-            "warning": "Alla QR-koder eller länkar med ditt gamla användarnamn kommer inte längre att fungera — du måste uppdatera och dela dem igen.",
-            "cooldownPrefix": "Du kommer att kunna ändra ditt användarnamn igen om",
-            "cooldownSuffix": "efter denna uppdatering.",
-            "minute": "1 minut",
-            "day": "1 dag",
-            "days": "dagar",
-            "cancel": "Avbryt",
-            "confirm": "Ändra användarnamn"
+        "recommendedPlaces": {
+          "analyticsSummary": "Analytics-sammanfattning:",
+          "locationPlaces": "{{location}} ({{count}} platser)",
+          "noClicksMessage": "Inga rekommendationsklick hittades för den valda platsen. Rekommendationsdata visas när användare klickar på platskort på dina platsidor.",
+          "noDataMessage": "Ingen rekommendationsklickdata tillgänglig för den valda perioden.",
+          "noRecommendationData": "Ingen Rekommendationsdata",
+          "recordsWithRecommendations": "• {{count}} poster med Rekommendations-ID",
+          "selectLocation": "Välj Plats:",
+          "selectLocationPlaceholder": "Välj Plats",
+          "selectLocationPrompt": "Vänligen välj en plats för att visa rekommendationsdata.",
+          "stats": {
+            "avgClicks": "Genomsnitt Klick/Plats",
+            "placesShown": "Visade Platser",
+            "totalClicks": "Totalt Klick"
+          },
+          "subtitle": "Spåra klick på rekommenderade platser efter plats",
+          "title": "Engagemang med Rekommenderade Platser",
+          "tooltip": {
+            "category": "Kategori: {{category}}",
+            "clicks": "Klick: {{count}}",
+            "place": "{{place}}"
+          },
+          "totalClickEvents": "• {{count}} totala klickhändelser",
+          "uniqueRecommendations": "• {{count}} unika rekommendationer",
+          "unknownCategory": "Okänd Kategori",
+          "unknownLocation": "Okänd Plats",
+          "unknownPlace": "Okänd Plats"
+        },
+        "socialMedia": {
+          "analyticsSummary": "Analytics-sammanfattning:",
+          "noDataMessage": "Ingen sociala medier klickdata tillgänglig från din offentliga profilsida.",
+          "noDataTitle": "Ingen Sociala Medier Interaktionsdata",
+          "stats": {
+            "avgClicks": "Genomsnitt Klick/Plattform",
+            "platforms": "Plattformar",
+            "totalClicks": "Totalt Klick"
+          },
+          "subtitle": "Spåra klick på länkar till sociala medier från din offentliga profil på alla plattformar",
+          "title": "Sociala Medier Interaktion",
+          "tooltip": {
+            "clicks": "Klick: {{count}}",
+            "platform": "{{platform}}"
+          },
+          "totalSocialClicks": "• {{count}} totala sociala medier klick",
+          "trackingNote": "• Spårar endast klick från offentlig profilsida",
+          "uniquePlatforms": "• {{count}} unika plattformar",
+          "willAppear": "Sociala medier interaktionsdata visas när användare klickar på dina länkar till sociala medier."
+        },
+        "topCountries": {
+          "analyticsSummary": "Analytics-sammanfattning:",
+          "countryDataUnavailable": "Landsdata Inte Tillgänglig",
+          "eventsPending": "• {{count}} händelser väntar på geolokalisering",
+          "eventsWithCountry": "• {{count}} händelser med landsdata",
+          "failedToResolve": "Det gick inte att lösa landsdata. Försök igen senare.",
+          "geolocationIssue": "Geolokaliseringproblem:",
+          "legend": "Visningar",
+          "retryGeolocation": "Försök Geolokalisering Igen",
+          "title": "Topp 3 Länder efter Visningar",
+          "tooltip": {
+            "country": "Land: {{country}}",
+            "views": "Visningar: {{count}}"
+          },
+          "totalViewEvents": "• {{count}} totala visningshändelser",
+          "unableToResolve": "Kan för närvarande inte lösa IP-adresser till länder. Detta kan bero på nätverksbegränsningar eller begränsningar i tjänsten.",
+          "willAppear": "Landsdata visas automatiskt när IP-geolokaliseringstjänster blir tillgängliga."
+        },
+        "trafficSource": {
+          "allSources": "Alla Källor",
+          "analyticsSummary": "Analytics-sammanfattning:",
+          "direct": "Direkt",
+          "directTraffic": "• {{count}} direkta trafikhändelser",
+          "eventsWithUTM": "• {{count}} händelser med UTM-källa",
+          "instagram": "Instagram",
+          "noTrafficData": "Ingen Trafikdata Tillgänglig",
+          "noViewEvents": "Inga visningshändelser hittades med trafikkällinformation.",
+          "qrCode": "QR-kod",
+          "selectSource": "Välj Trafikkälla:",
+          "subtitle": "Spåra hur trafik från olika källor varierar över tid",
+          "title": "Trafikkälla Över Tid",
+          "tooltip": {
+            "sourceCount": "{{source}}: {{count}}"
+          },
+          "totalViewEvents": "• {{count}} totala visningshändelser",
+          "twitter": "Twitter",
+          "whatsapp": "WhatsApp",
+          "willAppear": "Trafikkäldata visas när användare besöker dina sidor med UTM-parametrar."
+        },
+        "worldMap": {
+          "analyticsSummary": "Analytics-sammanfattning:",
+          "countriesWithViews": "{{count}} länder med visningar",
+          "eventsPending": "• {{count}} händelser väntar på geolokalisering",
+          "eventsWithCountry": "• {{count}} händelser med landsdata",
+          "failedToResolve": "Det gick inte att lösa landsdata. Försök igen senare.",
+          "legend": {
+            "high": "Hög",
+            "highest": "Högst",
+            "low": "Låg",
+            "medium": "Medel",
+            "views": "Visningar:"
+          },
+          "noGeographicData": "Ingen Geografisk Data Tillgänglig",
+          "subtitle": "Interaktiv världskarta som visar visningsfördelning över länder från offentliga sidor",
+          "title": "Global Visningsfördelning",
+          "tooltip": {
+            "country": "{{country}}",
+            "views": "{{views}} visningar"
+          },
+          "totalViewEvents": "• {{count}} totala visningshändelser",
+          "unableToResolve": "Kan för närvarande inte lösa IP-adresser till länder. Detta kan bero på nätverksbegränsningar eller begränsningar i tjänsten.",
+          "willAppear": "Landsdata visas automatiskt när IP-geolokaliseringstjänster blir tillgängliga."
         }
-    },
-    "analytics": {
-        "dashboard": {
-            "title": "Analytics-instrumentpanel",
-            "subtitle": "Spåra din QR-kodprestanda och användarengagemang",
-            "timePeriod": "Tidsperiod:",
-            "timeFilter": {
-                "today": "Idag",
-                "last7days": "Senaste 7 Dagarna",
-                "last30days": "Senaste 30 Dagarna",
-                "custom": "Anpassat Omfång",
-                "selectPeriod": "Välj Period"
-            },
-            "dateRange": {
-                "from": "Från:",
-                "to": "Till:"
-            },
-            "summaryCards": {
-                "totalViews": "Totalt Visningar",
-                "totalClicks": "Totalt Klick",
-                "totalQRViews": "Totalt QR-visningar",
-                "totalLinkViews": "Totalt Länkvisningar"
-            },
-            "loading": {
-                "loadingData": "Laddar analytics-data...",
-                "resolvingCountry": "Löser landdata..."
-            },
-            "error": {
-                "title": "Fel vid Laddning av Analytics",
-                "message": "Kunde inte hämta analytics-data. Försök igen senare.",
-                "errorLabel": "Fel:"
-            },
-            "comingSoon": {
-                "title": "Analytics Kommer Snart",
-                "message": "Analytics kommer att vara tillgängligt om \u003cstrong\u003e{{days}} dag{{daysPlural}}\u003c/strong\u003e efter att ditt konto skapats.",
-                "whyWait": {
-                    "title": "Varför vänta?",
-                    "reasons": {
-                        "accuracy": "• Säkerställer dataexakthet och förhindrar spam",
-                        "interactions": "• Ger tid för meningsfulla användarinteraktioner",
-                        "insights": "• Ger tillförlitliga analytics-insikter"
-                    }
-                },
-                "tip": "Börja under tiden dela dina QR-koder för att generera data för när analytics blir tillgängligt!",
-                "filterTip": "\u003cstrong\u003eTips:\u003c/strong\u003e När analytics är tillgängligt kan du filtrera efter tidsperioder (idag, senaste 7 dagarna, senaste 30 dagarna eller anpassat omfång) för att visa dina data."
-            },
-            "emptyState": {
-                "title": "Ingen Analytics-data",
-                "noDataMessage": "Ingen analytics-data hittades för ditt konto. Analytics visas här när folk börjar visa och interagera med dina QR-koder.",
-                "customRange": {
-                    "bothMissing": "Vänligen välj både start- och slutdatum för det anpassade omfånget för att visa analytics-data.",
-                    "startMissing": "Vänligen välj ett startdatum för det anpassade omfånget för att visa analytics-data.",
-                    "endMissing": "Vänligen välj ett slutdatum för det anpassade omfånget för att visa analytics-data."
-                },
-                "noDataForPeriod": {
-                    "today": "Ingen analytics-data tillgänglig för idag. Vänligen välj ett annat tidsomfång för att visa dina data.",
-                    "last7days": "Ingen analytics-data tillgänglig för de senaste 7 dagarna. Vänligen välj ett annat tidsomfång för att visa dina data.",
-                    "last30days": "Ingen analytics-data tillgänglig för de senaste 30 dagarna. Vänligen välj ett annat tidsomfång för att visa dina data.",
-                    "custom": "Ingen analytics-data tillgänglig för det anpassade omfånget ({{startDate}} till {{endDate}}). Vänligen välj ett annat tidsomfång för att visa dina data.",
-                    "default": "Ingen analytics-data tillgänglig för den valda tidsperioden. Vänligen välj ett annat tidsomfång för att visa dina data."
-                },
-                "howToStart": {
-                    "title": "För att börja se analytics:",
-                    "shareQR": "• Dela dina QR-koder på sociala medier",
-                    "includeQR": "• Inkludera QR-koder i dina marknadsföringsmaterial",
-                    "askFriends": "• Be vänner att skanna dina QR-koder",
-                    "viewProfile": "• Visa dina offentliga profilsidor"
-                }
-            },
-            "charts": {
-                "topCountries": {
-                    "title": "Topp 3 Länder efter Visningar",
-                    "retryGeolocation": "Försök Geolokalisering Igen",
-                    "geolocationIssue": "Geolokaliseringproblem:",
-                    "countryDataUnavailable": "Landsdata Inte Tillgänglig",
-                    "unableToResolve": "Kan för närvarande inte lösa IP-adresser till länder. Detta kan bero på nätverksbegränsningar eller begränsningar i tjänsten.",
-                    "failedToResolve": "Det gick inte att lösa landsdata. Försök igen senare.",
-                    "analyticsSummary": "Analytics-sammanfattning:",
-                    "totalViewEvents": "• {{count}} totala visningshändelser",
-                    "eventsWithCountry": "• {{count}} händelser med landsdata",
-                    "eventsPending": "• {{count}} händelser väntar på geolokalisering",
-                    "willAppear": "Landsdata visas automatiskt när IP-geolokaliseringstjänster blir tillgängliga.",
-                    "tooltip": {
-                        "country": "Land: {{country}}",
-                        "views": "Visningar: {{count}}"
-                    },
-                    "legend": "Visningar"
-                },
-                "worldMap": {
-                    "title": "Global Visningsfördelning",
-                    "subtitle": "Interaktiv världskarta som visar visningsfördelning över länder från offentliga sidor",
-                    "noGeographicData": "Ingen Geografisk Data Tillgänglig",
-                    "unableToResolve": "Kan för närvarande inte lösa IP-adresser till länder. Detta kan bero på nätverksbegränsningar eller begränsningar i tjänsten.",
-                    "failedToResolve": "Det gick inte att lösa landsdata. Försök igen senare.",
-                    "analyticsSummary": "Analytics-sammanfattning:",
-                    "totalViewEvents": "• {{count}} totala visningshändelser",
-                    "eventsWithCountry": "• {{count}} händelser med landsdata",
-                    "eventsPending": "• {{count}} händelser väntar på geolokalisering",
-                    "willAppear": "Landsdata visas automatiskt när IP-geolokaliseringstjänster blir tillgängliga.",
-                    "tooltip": {
-                        "country": "{{country}}",
-                        "views": "{{views}} visningar"
-                    },
-                    "countriesWithViews": "{{count}} länder med visningar",
-                    "legend": {
-                        "views": "Visningar:",
-                        "low": "Låg",
-                        "medium": "Medel",
-                        "high": "Hög",
-                        "highest": "Högst"
-                    }
-                },
-                "trafficSource": {
-                    "title": "Trafikkälla Över Tid",
-                    "subtitle": "Spåra hur trafik från olika källor varierar över tid",
-                    "selectSource": "Välj Trafikkälla:",
-                    "allSources": "Alla Källor",
-                    "direct": "Direkt",
-                    "qrCode": "QR-kod",
-                    "instagram": "Instagram",
-                    "whatsapp": "WhatsApp",
-                    "twitter": "Twitter",
-                    "noTrafficData": "Ingen Trafikdata Tillgänglig",
-                    "noViewEvents": "Inga visningshändelser hittades med trafikkällinformation.",
-                    "analyticsSummary": "Analytics-sammanfattning:",
-                    "totalViewEvents": "• {{count}} totala visningshändelser",
-                    "eventsWithUTM": "• {{count}} händelser med UTM-källa",
-                    "directTraffic": "• {{count}} direkta trafikhändelser",
-                    "willAppear": "Trafikkäldata visas när användare besöker dina sidor med UTM-parametrar.",
-                    "tooltip": {
-                        "sourceCount": "{{source}}: {{count}}"
-                    }
-                },
-                "locationEngagement": {
-                    "title": "Engagemang med Plats",
-                    "subtitle": "Spåra visningar för olika platser över tid",
-                    "selectLocation": "Välj Plats:",
-                    "allLocations": "Alla Platser",
-                    "selectLocationPlaceholder": "Välj Plats",
-                    "locationViews": "{{location}} ({{count}} visningar)",
-                    "noLocationData": "Ingen platsvisningsdata tillgänglig",
-                    "unknownLocation": "Okänd Plats",
-                    "location": "Plats",
-                    "tooltip": {
-                        "date": "Datum: {{date}}",
-                        "locationViews": "{{location}}: {{value}} visningar"
-                    },
-                    "stats": {
-                        "totalLocations": "Totalt Platser",
-                        "totalViews": "Totalt Visningar",
-                        "avgViews": "Genomsnitt Visningar/Plats"
-                    }
-                },
-                "recommendedPlaces": {
-                    "title": "Engagemang med Rekommenderade Platser",
-                    "subtitle": "Spåra klick på rekommenderade platser efter plats",
-                    "selectLocation": "Välj Plats:",
-                    "selectLocationPlaceholder": "Välj Plats",
-                    "locationPlaces": "{{location}} ({{count}} platser)",
-                    "noRecommendationData": "Ingen Rekommendationsdata",
-                    "noDataMessage": "Ingen rekommendationsklickdata tillgänglig för den valda perioden.",
-                    "analyticsSummary": "Analytics-sammanfattning:",
-                    "totalClickEvents": "• {{count}} totala klickhändelser",
-                    "recordsWithRecommendations": "• {{count}} poster med Rekommendations-ID",
-                    "uniqueRecommendations": "• {{count}} unika rekommendationer",
-                    "selectLocationPrompt": "Vänligen välj en plats för att visa rekommendationsdata.",
-                    "noClicksMessage": "Inga rekommendationsklick hittades för den valda platsen. Rekommendationsdata visas när användare klickar på platskort på dina platsidor.",
-                    "unknownPlace": "Okänd Plats",
-                    "unknownCategory": "Okänd Kategori",
-                    "unknownLocation": "Okänd Plats",
-                    "tooltip": {
-                        "place": "{{place}}",
-                        "category": "Kategori: {{category}}",
-                        "clicks": "Klick: {{count}}"
-                    },
-                    "stats": {
-                        "placesShown": "Visade Platser",
-                        "totalClicks": "Totalt Klick",
-                        "avgClicks": "Genomsnitt Klick/Plats"
-                    }
-                },
-                "socialMedia": {
-                    "title": "Sociala Medier Interaktion",
-                    "subtitle": "Spåra klick på länkar till sociala medier från din offentliga profil på alla plattformar",
-                    "noDataTitle": "Ingen Sociala Medier Interaktionsdata",
-                    "noDataMessage": "Ingen sociala medier klickdata tillgänglig från din offentliga profilsida.",
-                    "analyticsSummary": "Analytics-sammanfattning:",
-                    "totalSocialClicks": "• {{count}} totala sociala medier klick",
-                    "uniquePlatforms": "• {{count}} unika plattformar",
-                    "trackingNote": "• Spårar endast klick från offentlig profilsida",
-                    "willAppear": "Sociala medier interaktionsdata visas när användare klickar på dina länkar till sociala medier.",
-                    "tooltip": {
-                        "platform": "{{platform}}",
-                        "clicks": "Klick: {{count}}"
-                    },
-                    "stats": {
-                        "platforms": "Plattformar",
-                        "totalClicks": "Totalt Klick",
-                        "avgClicks": "Genomsnitt Klick/Plattform"
-                    }
-                }
-            }
+      },
+      "comingSoon": {
+        "filterTip": "<strong>Tips:</strong> När analytics är tillgängligt kan du filtrera efter tidsperioder (idag, senaste 7 dagarna, senaste 30 dagarna eller anpassat omfång) för att visa dina data.",
+        "message": "Analytics kommer att vara tillgängligt om <strong>{{days}} dag{{daysPlural}}</strong> efter att ditt konto skapats.",
+        "tip": "Börja under tiden dela dina QR-koder för att generera data för när analytics blir tillgängligt!",
+        "title": "Analytics Kommer Snart",
+        "whyWait": {
+          "reasons": {
+            "accuracy": "• Säkerställer dataexakthet och förhindrar spam",
+            "insights": "• Ger tillförlitliga analytics-insikter",
+            "interactions": "• Ger tid för meningsfulla användarinteraktioner"
+          },
+          "title": "Varför vänta?"
         }
+      },
+      "dateRange": {
+        "from": "Från:",
+        "to": "Till:"
+      },
+      "emptyState": {
+        "customRange": {
+          "bothMissing": "Vänligen välj både start- och slutdatum för det anpassade omfånget för att visa analytics-data.",
+          "endMissing": "Vänligen välj ett slutdatum för det anpassade omfånget för att visa analytics-data.",
+          "startMissing": "Vänligen välj ett startdatum för det anpassade omfånget för att visa analytics-data."
+        },
+        "howToStart": {
+          "askFriends": "• Be vänner att skanna dina QR-koder",
+          "includeQR": "• Inkludera QR-koder i dina marknadsföringsmaterial",
+          "shareQR": "• Dela dina QR-koder på sociala medier",
+          "title": "För att börja se analytics:",
+          "viewProfile": "• Visa dina offentliga profilsidor"
+        },
+        "noDataForPeriod": {
+          "custom": "Ingen analytics-data tillgänglig för det anpassade omfånget ({{startDate}} till {{endDate}}). Vänligen välj ett annat tidsomfång för att visa dina data.",
+          "default": "Ingen analytics-data tillgänglig för den valda tidsperioden. Vänligen välj ett annat tidsomfång för att visa dina data.",
+          "last30days": "Ingen analytics-data tillgänglig för de senaste 30 dagarna. Vänligen välj ett annat tidsomfång för att visa dina data.",
+          "last7days": "Ingen analytics-data tillgänglig för de senaste 7 dagarna. Vänligen välj ett annat tidsomfång för att visa dina data.",
+          "today": "Ingen analytics-data tillgänglig för idag. Vänligen välj ett annat tidsomfång för att visa dina data."
+        },
+        "noDataMessage": "Ingen analytics-data hittades för ditt konto. Analytics visas här när folk börjar visa och interagera med dina QR-koder.",
+        "title": "Ingen Analytics-data"
+      },
+      "error": {
+        "errorLabel": "Fel:",
+        "message": "Kunde inte hämta analytics-data. Försök igen senare.",
+        "title": "Fel vid Laddning av Analytics"
+      },
+      "loading": {
+        "loadingData": "Laddar analytics-data...",
+        "resolvingCountry": "Löser landdata..."
+      },
+      "subtitle": "Spåra din QR-kodprestanda och användarengagemang",
+      "summaryCards": {
+        "totalClicks": "Totalt Klick",
+        "totalLinkViews": "Totalt Länkvisningar",
+        "totalQRViews": "Totalt QR-visningar",
+        "totalViews": "Totalt Visningar"
+      },
+      "timeFilter": {
+        "custom": "Anpassat Omfång",
+        "last30days": "Senaste 30 Dagarna",
+        "last7days": "Senaste 7 Dagarna",
+        "selectPeriod": "Välj Period",
+        "today": "Idag"
+      },
+      "timePeriod": "Tidsperiod:",
+      "title": "Analytics-instrumentpanel"
     }
+  },
+  "auth": {
+    "acceptTerms": "I accept the",
+    "alreadyHaveAccount": "Har du redan ett konto?",
+    "blockedAccount": {
+      "message": "This account has been deactivated.",
+      "reactivateLink": "Click here to reactivate your account →"
+    },
+    "claimAccount": "Claim Account?",
+    "confirmPassword": "Bekräfta Lösenord",
+    "confirmPasswordPlaceholder": "Ange ditt lösenord igen",
+    "email": "E-post",
+    "emailPlaceholder": "Ange din e-post",
+    "forgotPassword": "Glömt lösenordet?",
+    "login": "Logga in",
+    "loginSubtitle": "Logga in för att fortsätta till ditt konto",
+    "loginTitle": "Logga in",
+    "newToExplorers": "New to explorers?",
+    "onboarding": {
+      "accountDetails": {
+        "accountType": "Kontotyp",
+        "bio": "Biografi",
+        "bioPlaceholder": "Berätta för oss om dig",
+        "business": "Företag",
+        "creator": "Skapare",
+        "description": "Berätta för oss om dig",
+        "displayName": "Visningsnamn",
+        "displayNamePlaceholder": "Ange ditt visningsnamn",
+        "next": "Nästa",
+        "personal": "Personlig",
+        "title": "Kontodetaljer",
+        "username": "Användarnamn",
+        "usernameDescription": "Ditt användarnamn är en del av din offentliga profillänk och QR-koder. Exempel: explorers.earth/bhavya",
+        "usernamePlaceholder": "Ange ditt användarnamn"
+      },
+      "addressDetails": {
+        "address": "Adress",
+        "addressPlaceholder": "Ange din adress",
+        "back": "Tillbaka",
+        "city": "Stad",
+        "cityPlaceholder": "Ange stad",
+        "confirmDetails": "Bekräfta detaljer",
+        "country": "Land",
+        "countryPlaceholder": "Ange land",
+        "description": "Var befinner du dig?",
+        "detectLocation": "Detect my current location",
+        "postalCode": "Postnummer",
+        "postalCodePlaceholder": "Ange postnummer",
+        "primaryAddress": "Primär adress",
+        "primaryAddressDescription": "visas i offentlig profil (stad och land)",
+        "primaryAddressPlaceholder": "Ange primär adress",
+        "sameAsAddress": "Samma som adress",
+        "state": "Stat",
+        "statePlaceholder": "Ange stat",
+        "streetName": "Gatunamn",
+        "streetNamePlaceholder": "Ange gatunamn",
+        "title": "Adressdetaljer"
+      },
+      "contactDetails": {
+        "back": "Tillbaka",
+        "description": "Lägg till ditt mobilnummer för verifiering",
+        "mobileNumber": "Mobilnummer",
+        "mobileNumberPlaceholder": "Ange ditt mobilnummer",
+        "next": "Nästa",
+        "title": "Kontaktdetaljer"
+      }
+    },
+    "or": "eller",
+    "password": "Lösenord",
+    "passwordPlaceholder": "Ange ditt lösenord",
+    "register": "Registrera dig",
+    "resetPassword": {
+      "confirmPasswordPlaceholder": "Confirm your password",
+      "newPasswordPlaceholder": "Enter new password"
+    },
+    "signInWithGoogle": "Logga in med Google",
+    "signup": "Registrera dig",
+    "signupSubtitle": "Registrera dig för att njuta av explorers-funktionerna",
+    "signUpWithGoogle": "Registrera dig med Google",
+    "status": {
+      "authenticating": "Authenticating...",
+      "syncingLocalTunes": "Syncing with LocalTunes..."
+    },
+    "termsAndConditions": "Terms and Conditions",
+    "username": "Användarnamn",
+    "usernameOrEmail": "Användarnamn eller e-post",
+    "usernameOrEmailPlaceholder": "Ange ditt användarnamn eller e-post",
+    "usernamePlaceholder": "Ange ditt användarnamn",
+    "validations": {
+      "accountName": {
+        "invalidChars": "Kontonamn kan endast innehålla bokstäver, mellanslag, apostrofer, bindestreck och punkter",
+        "maxLength": "Kontonamn får inte överstiga 50 tecken",
+        "minLength": "Kontonamn måste vara minst 2 tecken",
+        "noNumbers": "Kontonamn kan inte innehålla siffror",
+        "required": "Kontonamn krävs"
+      },
+      "accountType": {
+        "business": "Business",
+        "creator": "Creator",
+        "invalid": "Ogiltig kontotyp",
+        "personal": "Personal",
+        "required": "Kontotyp krävs"
+      },
+      "confirmPassword": {
+        "confirmRequired": "Lösenordsbekräftelse krävs",
+        "match": "Lösenorden matchar",
+        "mustMatch": "Lösenorden matchar inte",
+        "required": "Bekräfta ditt lösenord"
+      },
+      "email": {
+        "alreadyExists": "E-post finns redan",
+        "invalid": "Ogiltig e-post",
+        "invalidFormat": "Ange en giltig e-postadress",
+        "required": "E-post krävs"
+      },
+      "forgotPassword": {
+        "backToLogin": "Tillbaka till Inloggning",
+        "description": "Ange din e-postadress så skickar vi dig en återställningslänk.",
+        "emailLabel": "E-postadress",
+        "emailPlaceholder": "Ange din e-post",
+        "failedToSend": "Misslyckades att skicka återställningslänk. Försök igen senare.",
+        "resetLinkSent": "Lösenordsåterställningslänk skickad till din e-post!",
+        "sendResetLink": "Skicka Återställningslänk",
+        "somethingWentWrong": "Något gick fel!",
+        "title": "Glömt Lösenordet?"
+      },
+      "general": {
+        "fillRequiredFields": "Fyll i alla obligatoriska fält",
+        "somethingWentWrong": "Något gick fel, försök igen"
+      },
+      "login": {
+        "accountNotFound": "Konto hittades inte",
+        "incorrectPassword": "Felaktigt lösenord",
+        "invalidCredentials": "Ogiltigt användarnamn/e-post eller lösenord",
+        "tooManyAttempts": "För många misslyckade försök",
+        "usernameOrEmailRequired": "Användarnamn eller e-post krävs"
+      },
+      "onboarding": {
+        "addressRequired": "Adress krävs",
+        "bioMaxLength": "Biografi får inte överstiga 250 tecken",
+        "bioRequired": "Biografi krävs",
+        "cityRequired": "Stad krävs",
+        "countryRequired": "Land krävs",
+        "displayNameMaxLength": "Visningsnamn får inte överstiga 50 tecken",
+        "displayNameMinLength": "Visningsnamn måste vara minst 2 tecken",
+        "displayNameRequired": "Visningsnamn krävs",
+        "emailAddressRequired": "E-postadress krävs",
+        "invalidUsername": "Ogiltigt användarnamn",
+        "mobileNumberInvalid": "Ange ett giltigt mobilnummer",
+        "mobileNumberLength": "Mobilnummer måste vara 10 siffror",
+        "mobileNumberRequired": "Mobilnummer krävs",
+        "postalCodeRequired": "Postnummer krävs",
+        "primaryAddressRequired": "Primär adress krävs",
+        "profileImageAlt": "Profile",
+        "resetLinkSentSuccess": "Återställningslänk skickad framgångsrikt!",
+        "stateRequired": "Stat krävs"
+      },
+      "password": {
+        "considerLonger": "Consider using a longer password with more variety for better security",
+        "fair": "Medel",
+        "good": "Bra",
+        "lowercaseRequired": "Password must contain at least one lowercase letter (a-z)",
+        "maxLength": "Password must not exceed 32 characters",
+        "medium": "Medel",
+        "meetsAllRequirements": "Password meets all requirements",
+        "minLength": "Lösenord måste vara minst 6 tecken",
+        "moreSecure": "Passwords with 10 or more characters are more secure",
+        "numberRequired": "Lösenord måste innehålla minst en siffra (0-9)",
+        "required": "Lösenord krävs",
+        "sameAsCurrent": "New password cannot be the same as your current password",
+        "specialCharRequired": "Lösenord måste innehålla minst ett specialtecken (!@#$%^&*().,?\":{}|<>)",
+        "strength": "Lösenordsstyrka",
+        "strong": "Stark",
+        "tooCommon": "This password is too common. Please choose a more unique password",
+        "uppercaseRequired": "Lösenord måste innehålla minst en stor bokstav (A-Z)",
+        "veryStrong": "Mycket stark",
+        "veryWeak": "Mycket svag",
+        "weak": "Svag"
+      },
+      "primaryAddress": {
+        "required": "Primär adress krävs"
+      },
+      "resetLinkSent": {
+        "description": "Kontrollera din inkorg för länken för lösenordsåterställning.",
+        "resending": "Skickar igen...",
+        "resendMail": "Skicka e-post igen",
+        "resendWithCooldown": "Skicka e-post igen ({{cooldown}}s)",
+        "title": "E-post skickat!"
+      },
+      "resetPassword": {
+        "confirmPassword": "Confirm Password",
+        "confirmPasswordPlaceholder": "Confirm your password",
+        "newPassword": "New Password",
+        "newPasswordPlaceholder": "Enter new password"
+      },
+      "socialMedia": {
+        "appleMusic": "Vänligen ange en giltig Apple Music-URL",
+        "email": "Vänligen ange en giltig e-postadress",
+        "facebook": "Vänligen ange en giltig Facebook-profil-URL",
+        "instagram": "Vänligen ange en giltig Instagram-profil-URL",
+        "linkedin": "Vänligen ange en giltig LinkedIn-profil-URL",
+        "mobile": "Vänligen ange ett giltigt mobiltelefonnummer (t.ex. +1234567890)",
+        "snapchat": "Vänligen ange ett giltigt Snapchat-användarnamn",
+        "spotify": "Vänligen ange en giltig Spotify-URL",
+        "tiktok": "Vänligen ange en giltig TikTok-profil-URL",
+        "website": "Vänligen ange en giltig webbplats-URL",
+        "whatsapp": "Ange en giltig WhatsApp-kontakt: telefon (+1234567890) eller wa.me/api.whatsapp.com-länk",
+        "x": "Vänligen ange en giltig X (Twitter)-profil-URL",
+        "youtube": "Vänligen ange en giltig YouTube-kanal-URL (t.ex. youtube.com/@användarnamn)",
+        "youtubeMusic": "Vänligen ange en giltig YouTube Music-kanal-URL"
+      },
+      "termsAccepted": {
+        "required": "You must accept the Terms and Conditions to continue"
+      },
+      "username": {
+        "alreadyExists": "Användarnamn finns redan",
+        "available": "Användarnamnet är tillgängligt",
+        "cannotBeAllNumbers": "Användarnamn får inte vara endast siffror",
+        "cannotStartEndHyphen": "Användarnamn får inte börja eller sluta med bindestreck",
+        "checkingAvailability": "Kontrollerar tillgänglighet...",
+        "inappropriateContent": "Användarnamn innehåller olämpligt innehåll",
+        "invalidChars": "Användarnamn får endast innehålla små bokstäver (a-z), siffror (0-9) och bindestreck (-)",
+        "maxLength": "Användarnamn får inte överstiga 30 tecken",
+        "minLength": "Användarnamn måste vara minst 3 tecken",
+        "mustStartWithLetter": "Användarnamn måste börja med en bokstav (a-z)",
+        "noConsecutiveHyphens": "Användarnamn får inte innehålla på varandra följande bindestreck",
+        "required": "Användarnamn krävs",
+        "reservedWords": "Detta användarnamn innehåller reserverade ord och kan inte användas",
+        "suggestedAlternatives": "Föreslagna alternativ:",
+        "willBeConvertedLowercase": "Användarnamn kommer att konverteras till små bokstäver",
+        "willConvertToLowercase": "Användarnamnet kommer att konverteras till gemener"
+      }
+    }
+  },
+  "common": {
+    "cancel": "Avbryt",
+    "error": "Ett fel uppstod. Försök igen senare.",
+    "hidePassword": "Dölj lösenord",
+    "loading": "Laddar...",
+    "noResults": "Inga resultat hittades",
+    "retry": "Försök igen",
+    "showPassword": "Visa lösenord",
+    "signInWithGoogle": "Logga in med Google",
+    "signUpWithGoogle": "Registrera dig med Google",
+    "submit": "Skicka"
+  },
+  "contact": {
+    "closingMessage": "Vi är ett litet team med stor vision — dina tankar betyder något för oss. Kom i kontakt och låt oss bygga något lokalt och globalt tillsammans.",
+    "email": "hello@explorers.earth",
+    "getInTouch": "Kom i Kontakt",
+    "responseTime": "Vi svarar inom 24-48 timmar",
+    "seo": {
+      "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
+      "keywords": [
+        "contact explorers",
+        "explorers support",
+        "get in touch explorers",
+        "customer service travel app",
+        "partnership inquiry explorers",
+        "help center local recommendations",
+        "technical support explorers",
+        "travel app customer service",
+        "feedback location sharing",
+        "account assistance explorers",
+        "business collaboration explorers",
+        "report problem explorers",
+        "share local recommendations support",
+        "find explorers contact",
+        "customer service",
+        "explorers team",
+        "help center",
+        "contact support",
+        "QR code support",
+        "local recommendations help",
+        "partnership inquiries"
+      ],
+      "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+      "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
+      "title": "Contact explorers | Support, Help and Partnership enquiries."
+    },
+    "subtitle": "Oavsett om du har en fråga, idé, eller bara vill säga hej — vi skulle vilja höra från dig.",
+    "title": "Låt oss koppla ihop."
+  },
+  "cookieConsent": {
+    "acceptAll": "✅ Godkänn alla cookies",
+    "acceptAllButton": "Godkänn alla",
+    "analyticsCookies": {
+      "description": "Hjälper oss förstå hur besökare interagerar med vår webbplats",
+      "title": "Analytiska cookies"
+    },
+    "closeBanner": "Stäng banner",
+    "customize": "⚙️ Anpassa",
+    "description": "Vi använder cookies för att förbättra din surfupplevelse, leverera personanpassat innehåll och analysera trafik. Du kan hantera inställningar när som helst.",
+    "essentialCookies": {
+      "alwaysOn": "Alltid på",
+      "description": "Krävs för att webbplatsen ska fungera korrekt",
+      "title": "Nödvändiga cookies"
+    },
+    "goBack": "Tillbaka",
+    "marketingCookies": {
+      "description": "Används för att leverera personanpassade annonser",
+      "title": "Marknadsföringscookies"
+    },
+    "preferencesTitle": "Cookie-inställningar",
+    "rejectNonEssential": "❌ Avvisa icke-nödvändiga",
+    "savePreferences": "Spara inställningar",
+    "title": "🍪 Cookie-inställningar"
+  },
+  "countries": {
+    "AE": "United Arab Emirates",
+    "AF": "Afghanistan",
+    "AG": "Antigua and Barbuda",
+    "AL": "Albania",
+    "AM": "Armenia",
+    "AO": "Angola",
+    "AR": "Argentina",
+    "AT": "Austria",
+    "AU": "Australia",
+    "AZ": "Azerbaijan",
+    "BA": "Bosnia and Herzegovina",
+    "BB": "Barbados",
+    "BD": "Bangladesh",
+    "BE": "Belgium",
+    "BF": "Burkina Faso",
+    "BG": "Bulgaria",
+    "BH": "Bahrain",
+    "BI": "Burundi",
+    "BJ": "Benin",
+    "BN": "Brunei",
+    "BO": "Bolivia",
+    "BR": "Brazil",
+    "BS": "Bahamas",
+    "BT": "Bhutan",
+    "BW": "Botswana",
+    "BY": "Belarus",
+    "BZ": "Belize",
+    "CA": "Canada",
+    "CD": "Democratic Republic of the Congo",
+    "CF": "Central African Republic",
+    "CG": "Republic of the Congo",
+    "CH": "Switzerland",
+    "CI": "Ivory Coast",
+    "CL": "Chile",
+    "CM": "Cameroon",
+    "CN": "China",
+    "CO": "Colombia",
+    "CR": "Costa Rica",
+    "CU": "Cuba",
+    "CV": "Cape Verde",
+    "CY": "Cyprus",
+    "CZ": "Czech Republic",
+    "DE": "Germany",
+    "DJ": "Djibouti",
+    "DK": "Denmark",
+    "DM": "Dominica",
+    "DO": "Dominican Republic",
+    "DZ": "Algeria",
+    "EC": "Ecuador",
+    "EE": "Estonia",
+    "EG": "Egypt",
+    "ER": "Eritrea",
+    "ES": "Spain",
+    "ET": "Ethiopia",
+    "FI": "Finland",
+    "FJ": "Fiji",
+    "FK": "Falkland Islands",
+    "FM": "Micronesia",
+    "FR": "France",
+    "GA": "Gabon",
+    "GB": "United Kingdom",
+    "GD": "Grenada",
+    "GE": "Georgia",
+    "GF": "French Guiana",
+    "GH": "Ghana",
+    "GM": "Gambia",
+    "GN": "Guinea",
+    "GQ": "Equatorial Guinea",
+    "GR": "Greece",
+    "GT": "Guatemala",
+    "GW": "Guinea-Bissau",
+    "GY": "Guyana",
+    "HK": "Hong Kong",
+    "HN": "Honduras",
+    "HR": "Croatia",
+    "HT": "Haiti",
+    "HU": "Hungary",
+    "ID": "Indonesia",
+    "IE": "Ireland",
+    "IL": "Israel",
+    "IN": "India",
+    "IQ": "Iraq",
+    "IR": "Iran",
+    "IS": "Iceland",
+    "IT": "Italy",
+    "JM": "Jamaica",
+    "JO": "Jordan",
+    "JP": "Japan",
+    "KE": "Kenya",
+    "KG": "Kyrgyzstan",
+    "KH": "Cambodia",
+    "KI": "Kiribati",
+    "KM": "Comoros",
+    "KN": "Saint Kitts and Nevis",
+    "KP": "North Korea",
+    "KR": "South Korea",
+    "KW": "Kuwait",
+    "KZ": "Kazakhstan",
+    "LA": "Laos",
+    "LB": "Lebanon",
+    "LC": "Saint Lucia",
+    "LK": "Sri Lanka",
+    "LR": "Liberia",
+    "LS": "Lesotho",
+    "LT": "Lithuania",
+    "LU": "Luxembourg",
+    "LV": "Latvia",
+    "LY": "Libya",
+    "MA": "Morocco",
+    "MD": "Moldova",
+    "ME": "Montenegro",
+    "MG": "Madagascar",
+    "MH": "Marshall Islands",
+    "MK": "North Macedonia",
+    "ML": "Mali",
+    "MM": "Myanmar",
+    "MN": "Mongolia",
+    "MO": "Macau",
+    "MR": "Mauritania",
+    "MT": "Malta",
+    "MU": "Mauritius",
+    "MV": "Maldives",
+    "MW": "Malawi",
+    "MX": "Mexico",
+    "MY": "Malaysia",
+    "MZ": "Mozambique",
+    "NA": "Namibia",
+    "NC": "New Caledonia",
+    "NE": "Niger",
+    "NG": "Nigeria",
+    "NI": "Nicaragua",
+    "NL": "Netherlands",
+    "NO": "Norway",
+    "NP": "Nepal",
+    "NR": "Nauru",
+    "NZ": "New Zealand",
+    "OM": "Oman",
+    "PA": "Panama",
+    "PE": "Peru",
+    "PF": "French Polynesia",
+    "PG": "Papua New Guinea",
+    "PH": "Philippines",
+    "PK": "Pakistan",
+    "PL": "Poland",
+    "PR": "Puerto Rico",
+    "PS": "Palestine",
+    "PT": "Portugal",
+    "PW": "Palau",
+    "PY": "Paraguay",
+    "QA": "Qatar",
+    "RO": "Romania",
+    "RS": "Serbia",
+    "RU": "Russia",
+    "RW": "Rwanda",
+    "SA": "Saudi Arabia",
+    "SB": "Solomon Islands",
+    "SC": "Seychelles",
+    "SD": "Sudan",
+    "SE": "Sweden",
+    "SG": "Singapore",
+    "SI": "Slovenia",
+    "SK": "Slovakia",
+    "SL": "Sierra Leone",
+    "SN": "Senegal",
+    "SO": "Somalia",
+    "SR": "Suriname",
+    "SS": "South Sudan",
+    "ST": "São Tomé and Príncipe",
+    "SV": "El Salvador",
+    "SY": "Syria",
+    "SZ": "Eswatini",
+    "TD": "Chad",
+    "TG": "Togo",
+    "TH": "Thailand",
+    "TJ": "Tajikistan",
+    "TL": "East Timor",
+    "TM": "Turkmenistan",
+    "TN": "Tunisia",
+    "TO": "Tonga",
+    "TR": "Turkey",
+    "TT": "Trinidad and Tobago",
+    "TV": "Tuvalu",
+    "TW": "Taiwan",
+    "TZ": "Tanzania",
+    "UA": "Ukraine",
+    "UG": "Uganda",
+    "US": "United States",
+    "UY": "Uruguay",
+    "UZ": "Uzbekistan",
+    "VC": "Saint Vincent and the Grenadines",
+    "VE": "Venezuela",
+    "VN": "Vietnam",
+    "VU": "Vanuatu",
+    "WS": "Samoa",
+    "XK": "Kosovo",
+    "YE": "Yemen",
+    "ZA": "South Africa",
+    "ZM": "Zambia",
+    "ZW": "Zimbabwe"
+  },
+  "dashboard": {
+    "home": {
+      "activePlaces": "aktiva platser",
+      "addLocation": "Add Location",
+      "addLocationLabel": "Add",
+      "addRecommendations": "Lägg Till Rekommendationer",
+      "draft": "Utkast",
+      "error": {
+        "message": "An error occurred while loading your data",
+        "retry": "Retry",
+        "title": "Error loading data"
+      },
+      "loginRequired": {
+        "message": "You need to be logged in to view your dashboard.",
+        "title": "Please log in to continue"
+      },
+      "mobile": "Mobile",
+      "myRecommendations": "Mina Rekommendationer",
+      "profile": "Profil",
+      "seo": {
+        "description": "Welcome back, {{username}}! Access your explorers dashboard to manage your personalized QR codes, explore your curated recommendations, and share your favorite places with others easily.",
+        "keywords": {
+          "curatedPlacesManagement": "curated places management",
+          "explorersDashboard": "explorers dashboard",
+          "explorersHome": "explorers home",
+          "locationSharingDashboard": "location sharing dashboard",
+          "personalDashboard": "personal dashboard",
+          "personalizedRecommendationsDashboard": "personalized recommendations dashboard",
+          "qrCodeManagement": "QR code management",
+          "qrCodeSharingPlatform": "QR code sharing platform",
+          "qrRecommendations": "QR recommendations",
+          "recommendationManagement": "recommendation management",
+          "travelGuideDashboard": "travel guide dashboard",
+          "userDashboard": "user dashboard",
+          "userProfileManagement": "user profile management"
+        },
+        "title": "{{username}}'s Dashboard - explorers"
+      },
+      "setupProfile": "Konfigurera Din Profil",
+      "shareButtons": {
+        "instagram": "Instagram",
+        "twitter": "Twitter",
+        "whatsapp": "WhatsApp"
+      },
+      "startCurating": "Börja kurera dina rekommendationer och dela dem med världen!",
+      "viewPublicProfileTooltip": "View your public profile as seen by others",
+      "welcomeBack": "Välkommen tillbaka"
+    },
+    "profile": {
+      "account": {
+        "fields": {
+          "accountName": "Kontonamn",
+          "address": "Adress",
+          "city": "Stad",
+          "country": "Land",
+          "postalCode": "Postnummer",
+          "state": "Län",
+          "streetName": "Gatunamn",
+          "username": "Användarnamn"
+        },
+        "sections": {
+          "account": "Konto",
+          "billingAddress": "Faktureringsadress"
+        }
+      },
+      "accountSetup": {
+        "complete": "Komplett",
+        "footerMessage": "Slutför båda stegen för att låsa upp din fullständiga instrumentpanelsupplevelse",
+        "profileSetupCompleted": "Profilkonfiguration slutförd",
+        "profileSetupIncomplete": "Lägg till profilbild, bio och sociala länkar",
+        "progress": "Framsteg",
+        "recommendationsSetupCompleted": "Rekommendationskonfiguration slutförd",
+        "recommendationsSetupIncomplete": "Lägg till platser, ställen och publicera din första lista",
+        "setupButton": "Konfigurera",
+        "title": "Slutför Din Kontokonfiguration"
+      },
+      "common": {
+        "add": "Lägg till",
+        "clearSelection": "Rensa val",
+        "confirm": "Bekräfta",
+        "cover": "Omslag",
+        "editImage": "Redigera Bild",
+        "error": "Ett fel uppstod när din profil laddades. Försök igen senare.",
+        "errors": {
+          "failedToGetAccountId": "Kunde inte hämta kontonummer för uppladdning",
+          "noFileProvided": "Ingen fil angiven för uppladdning",
+          "uploadResponseMissingFileData": "Uppladdningssvar saknar fildata"
+        },
+        "failedToSaveChanges": "Kunde inte spara ändringar. Försök igen.",
+        "failedToSaveImagesToFeed": "Kunde inte spara bilder till flöde",
+        "failedToUpdateProfile": "Kunde inte uppdatera profil. Försök igen.",
+        "failedToUploadFiles": "Kunde inte ladda upp filer. Försök igen.",
+        "failedToUploadImages": "Kunde inte ladda upp bilder. Försök igen.",
+        "feedImage": "Flödesbild",
+        "fetching": "Hämtar...",
+        "hidden": "Dold",
+        "importedImage": "importerad bild",
+        "mobileNumber": "Mobilnummer",
+        "mobileNumberPlaceholder": "Mobilnummer",
+        "networkError": "Nätverksfel: Kontrollera din anslutning och försök igen.",
+        "primaryAddress": "Primär Adress",
+        "profile": "Profil",
+        "saveAndPublish": "Spara och Publicera",
+        "saveAndPublishFailed": "Spara och publicera misslyckades. Försök igen.",
+        "savedAndPublishedSuccessfully": "Sparat och publicerat framgångsrikt",
+        "saveToFeed": "Spara till Flöde",
+        "selectAll": "Välj alla",
+        "somethingWentWrong": "Något gick fel. Försök igen.",
+        "unexpectedError": "Ett oväntat fel uppstod. Försök igen.",
+        "video": "Video",
+        "viewPublicProfile": "Navigate to Public Profile",
+        "visible": "Synlig",
+        "whatsappNumber": "WhatsApp-nummer"
+      },
+      "publicProfile": {
+        "accountTypes": {
+          "business": "Företag",
+          "creator": "Skapare",
+          "personal": "Personlig"
+        },
+        "businessLocation": {
+          "about": "Om",
+          "contact": "Kontakt",
+          "title": "Titel",
+          "website": "Webbplats"
+        },
+        "fields": {
+          "about": "Om",
+          "accountType": "Kontotyp",
+          "addLocation": "Lägg till din plats",
+          "addLocationInformation": "Lägg till Platsinformation",
+          "appleMusic": "Apple Music",
+          "bio": "Bio",
+          "businessLocation": "Lägg till din plats. Dessa kommer att visas som utvalda platser på din offentliga profil",
+          "contact": "Kontakt",
+          "facebook": "Facebook",
+          "feed": "Ladda upp bilder eller videor av din plats, produkter, tjänster eller upplevelser. Dessa foton kommer att visas i din galleri på din offentliga profil",
+          "gmail": "Gmail",
+          "instagram": "Instagram",
+          "linkedin": "Linkedin",
+          "mobile": "Mobil",
+          "primaryAddress": "Primär Adress - Visas på offentlig profil (stad och land)",
+          "sameAsAddress": "Samma som adress",
+          "searchAddress": "Sök efter din adress...",
+          "snapchat": "Snapchat",
+          "socialMedia": "Sociala Medier",
+          "spotify": "Spotify",
+          "tiktok": "Tiktok",
+          "title": "Titel",
+          "website": "Webbplats",
+          "whatsapp": "Whatsapp",
+          "x": "X",
+          "youtube": "Youtube",
+          "youtubeMusic": "Youtube Music"
+        },
+        "sections": {
+          "feed": "Flöde",
+          "howToReachUs": "Hur Du Når Oss",
+          "howToReachUsDescription": "Använd denna sektion för att dela din företagsplatsinformation.",
+          "profileInformation": "Bio",
+          "publicAddress": "Offentlig Adress",
+          "socialMedia": "Sociala Länkar",
+          "socialMediaSubtitle": "Sociala medier länkar och information"
+        }
+      },
+      "tabs": {
+        "account": "Konto",
+        "publicProfile": "Offentlig Profil"
+      }
+    },
+    "recommendations": {
+      "addRecommendationForm": {
+        "accordionSection": {
+          "heading": "Your Recommendation Details",
+          "recommendationLink": {
+            "label": "Your Recommendation Link",
+            "placeholder": "You can insert Instagram reel, YouTube, or blog recommending"
+          },
+          "whyRecommend": {
+            "label": "Why would you recommend?",
+            "placeholder": "Why would you recommend?"
+          }
+        },
+        "actionButton": {
+          "text": "Add recommendation"
+        },
+        "deleteRecommendation": "Ta bort rekommendation",
+        "deleteRecommendationModal": {
+          "cancel": "Avbryt",
+          "message": "Är du säker på att du vill radera denna rekommendation? Denna åtgärd kan inte ångras.",
+          "title": "Bekräfta radering"
+        },
+        "fetchingImages": "Hämtar bilder…",
+        "fileUpload": {
+          "subtext": "optional",
+          "text": "Attach Image/Video"
+        },
+        "imagePreview": {
+          "alt": "Förhandsvisning",
+          "cancel": "Avbryt",
+          "confirm": "Bekräfta",
+          "confirmDeleteMessage": "Är du säker på att du vill radera denna bild från samlingen?",
+          "confirmDeleteTitle": "Bekräfta Radering",
+          "deleteTooltip": "Radera",
+          "setThumbnailTooltip": "Ange som miniatyr"
+        },
+        "mainInput": {
+          "placeholder": "Enter your Recommendation"
+        },
+        "mapModal": {
+          "addRecommendationButton": "Lägg till rekommendation",
+          "cancelButton": "Avbryt",
+          "setLocationButton": "Ange plats",
+          "updateRecommendationButton": "Uppdatera rekommendation"
+        },
+        "recommendationType": {
+          "label": "Rekommendationstyp",
+          "person": "Person",
+          "place": "Plats"
+        },
+        "searchField": {
+          "label": "Search Recommendation with Google"
+        },
+        "searchLocation": {
+          "label": "Sök en plats",
+          "placeholder": "Skriv och välj en plats",
+          "searchPlace": "Sök en plats"
+        },
+        "taggableFields": {
+          "address": "Adress",
+          "category": "Kategori",
+          "contactName": "Contact Name",
+          "contactNumber": "Kontaktnummer",
+          "personName": "Personens namn",
+          "socialLink": "Social länk",
+          "title": "Titel"
+        },
+        "taggableFieldsPlaceholders": {
+          "address": "Ange platsens adress",
+          "category": "Ange en kategori",
+          "contactName": "Enter the contact person's name",
+          "contactNumber": "Ange kontaktnummer",
+          "personName": "Ange personens fullständiga namn",
+          "socialLink": "Ange social länk (plats)",
+          "title": "Ange titel"
+        },
+        "validationMessages": {
+          "addressRequired": "Adress krävs",
+          "categoryRequired": "Kategori krävs",
+          "socialUrlInvalid": "Vänligen ange en giltig Instagram eller LinkedIn URL",
+          "socialUrlRequired": "Instagram eller LinkedIn URL krävs för personrekommendationer",
+          "titleRequired": "Titel krävs"
+        }
+      },
+      "cancel": "Cancel",
+      "categories": {
+        "entertainment": "Underhållning",
+        "foodDrinks": "Mat och Dryck",
+        "healthWellness": "Hälsa och Välbefinnande",
+        "lodging": "Boende",
+        "naturalFeatures": "Naturliga Egenskaper",
+        "services": "Tjänster",
+        "shopping": "Shopping",
+        "tourism": "Turism",
+        "transportation": "Transport"
+      },
+      "confirm": "Confirm",
+      "confirmDeletion": "Confirm Deletion",
+      "copyLink": "Kopiera Länk",
+      "deleteAction": "Radera",
+      "deleteListConfirmation": "Are you sure you want to delete this list? This action cannot be undone and will remove all",
+      "deleteListConfirmationBelow": "in the field below:",
+      "deleteListConfirmationDelete": "'delete'",
+      "deleteListConfirmationPlaces": "associated places.",
+      "deleteListConfirmationType": "To confirm, type",
+      "deleteSuccess": {
+        "success": "Recommended Place Deleted Successfully.",
+        "unpublished": "Recommended Place Deleted Successfully. List automatically unpublished due to no recommendations."
+      },
+      "downloadQR": "Ladda ner QR",
+      "draftLabel": "Utkast",
+      "draftStatus": "Utkast",
+      "editAction": "Redigera",
+      "emptyState": {
+        "subtitle": "Börja lägga till dina favoritplatser i denna lista",
+        "title": "Inga Rekommendationer Tillgängliga"
+      },
+      "exploreSection": {
+        "addButton": "Lägg till",
+        "heading": "Utforska med explorers"
+      },
+      "loading": {
+        "message": "Please wait while we fetch your recommendations",
+        "title": "Loading Recommendations..."
+      },
+      "locationButton": "Plats",
+      "locationForm": {
+        "buttons": {
+          "addLocation": "Lägg till plats",
+          "updateLocation": "Uppdatera plats"
+        },
+        "labels": {
+          "note": "Anteckning",
+          "placeUrl": "Plats URL",
+          "recommendationSocialLink": "Rekommendation social länk",
+          "searchLocation": "Sök plats"
+        },
+        "placeholders": {
+          "note": "Ange en anteckning relaterad till din rekommendation",
+          "placeUrl": "Ange namn för att skapa en delbar länk",
+          "recommendationSocialLink": "Ange URL (Youtube / Instagram)",
+          "searchLocation": "Ange stad, stat eller land (t.ex. Paris)"
+        }
+      },
+      "locationLabels": {
+        "currentLocation": "Nuvarande Plats",
+        "selectedLocation": "Vald Plats"
+      },
+      "manageHeading": "Hantera",
+      "manageTab": "Hantera",
+      "myQRHeading": "Min QR",
+      "myRecommendationsHeading": "Mina Rekommendationer",
+      "myRecommendationsQR": "Mina Rekommendationer",
+      "noRecommendationsYet": "Inga rekommendationer ännu!!",
+      "placesModal": {
+        "placesCount": "{{visible}} av {{total}} platser",
+        "scrollToLoadMore": "Rulla för att ladda fler platser"
+      },
+      "profileButton": "Profile",
+      "publishedStatus": "Publicerad",
+      "recommendationsTab": "Rekommendationer",
+      "recommendButton": "Rekommendera",
+      "setupProfileBeforeRecommendations": "Konfigurera din profil innan du skapar rekommendationer!!",
+      "shareLink": "Dela Länk",
+      "startAddingPlaces": "Börja lägga till dina favoritplatser och dela dem med andra.",
+      "startRecommending": "Börja Rekommendera",
+      "toastMessages": {
+        "linkCopied": "Link copied to clipboard!",
+        "linkCopyError": "Failed to copy link. Please try again.",
+        "listCreated": "Recommendation List Created Successfully!!!",
+        "listPublished": "Rekommendationslista publicerad framgångsrikt!",
+        "listPublishError": "List Should have atleast one Recommended Place to be Published",
+        "listUnpublished": "Rekommendationslista avpublicerad framgångsrikt!",
+        "listVisibilityError": "Failed to update recommendation list visibility.",
+        "qrDownloadError": "Failed to download QR code. Please try again.",
+        "qrDownloadSuccess": "QR code downloaded successfully!",
+        "qrNotReady": "QR code not ready for download"
+      },
+      "travelLikeLocal": "Res som en local",
+      "typeDeleteToConfirm": "Type 'delete' to confirm",
+      "viewAll": "Visa alla"
+    },
+    "shareModal": {
+      "copied": "Kopierad!",
+      "copyLink": "Kopiera länk",
+      "linkCopiedToast": "Länk kopierad!!"
+    }
+  },
+  "emailVerification": {
+    "backToLogin": "Back to Login",
+    "checkEmail": "Check your email",
+    "checkSpam": "Please check your spam folder or try again.",
+    "clickLink": "Click the link in the email to verify your account.",
+    "contactSupport": "Contact Support",
+    "description": "We've sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
+    "didntReceive": "Didn't receive the email?",
+    "emailAddress": "Email Address",
+    "emailSent": "Verification email sent!",
+    "expiresIn": "This link expires in 24 hours.",
+    "needHelp": "Need help?",
+    "resendEmail": "Resend Email",
+    "resendIn": "Resend in",
+    "seconds": "seconds",
+    "title": "Verify Your Email",
+    "verificationSent": "Verification email sent to:"
+  },
+  "footer": {
+    "copyright": "© 2025 explorers. Alla rättigheter förbehållna.",
+    "email": "hello@explorers.earth",
+    "links": {
+      "about": "Om oss",
+      "contact": "Kontakt",
+      "cookies": "Cookiepolicy",
+      "faq": "Vanliga frågor",
+      "howItWorks": "Så fungerar det",
+      "privacy": "Integritetspolicy",
+      "terms": "Villkor och Bestämmelser"
+    },
+    "madeWithLove": "Gjord med kärlek på jorden",
+    "sections": {
+      "contact": "Kontakt",
+      "legal": "Juridisk",
+      "product": "Produkt"
+    },
+    "tagline": "Låt dina rekommendationer resa världen runt."
+  },
+  "header": {
+    "auth": {
+      "login": "Logga in",
+      "signUp": "Registrera dig"
+    },
+    "nav": {
+      "about": "Om oss",
+      "contact": "Kontakt",
+      "faq": "Vanliga frågor",
+      "howItWorks": "Så fungerar det",
+      "whoIsFor": "För vem"
+    }
+  },
+  "hero": {
+    "ctaButton": "Reservera explorers",
+    "headline": "Alla dina rekommendationer i en QR och enkel länk.",
+    "inputLabel": "Reservera din explorers URL:",
+    "inputPlaceholder": "ditt namn",
+    "signupPrompt": "Registrera dig nu för att få din",
+    "subtext": "Dela vad du vet och älskar om en plats — och gör den upptäckbar för alla, överallt"
+  },
+  "languageModal": {
+    "close": "Stäng",
+    "searchPlaceholder": "Sök språk...",
+    "title": "Välj Språk"
+  },
+  "legal": {
+    "cookies": {
+      "error": "Fel vid laddning av cookiepolicy. Försök igen senare.",
+      "loading": "Laddar cookiepolicy...",
+      "title": "Cookiepolicy"
+    },
+    "privacy": {
+      "error": "Fel vid laddning av integritetspolicy. Försök igen senare.",
+      "loading": "Laddar integritetspolicy...",
+      "title": "Integritetspolicy"
+    },
+    "terms": {
+      "error": "Fel vid laddning av villkor och bestämmelser. Försök igen senare.",
+      "loading": "Laddar villkor och bestämmelser...",
+      "title": "Villkor och Bestämmelser"
+    }
+  },
+  "modal": {
+    "unsavedChanges": {
+      "cancel": "Avbryt",
+      "discard": "Kassera",
+      "message": "Du har osparade ändringar som kommer att gå förlorade om du navigerar bort. Vad vill du göra?",
+      "save": "Spara",
+      "title": "Osparade ändringar"
+    },
+    "usernameChange": {
+      "cancel": "Avbryt",
+      "confirm": "Ändra användarnamn",
+      "cooldownPrefix": "Du kommer att kunna ändra ditt användarnamn igen om",
+      "cooldownSuffix": "efter denna uppdatering.",
+      "day": "1 dag",
+      "days": "dagar",
+      "description": "Ditt användarnamn används i länkarna till din profil och rekommendationslista:",
+      "listLabel": "Lista:",
+      "minute": "1 minut",
+      "profileLabel": "Profil:",
+      "title": "Bekräftelse av användarnamnsändring",
+      "warning": "Alla QR-koder eller länkar med ditt gamla användarnamn kommer inte längre att fungera — du måste uppdatera och dela dem igen."
+    }
+  },
+  "reactivateAccount": {
+    "backToLogin": "Back to Login",
+    "confirmDescription": "Your account has been successfully reactivated. You can now sign in with your credentials.",
+    "confirmError": "Invalid or Expired Link",
+    "confirmTitle": "Account Reactivated!",
+    "emailPlaceholder": "Enter your email address",
+    "emailSent": "Check your inbox!",
+    "emailSentDescription": "We've sent a reactivation link to your email address. The link expires in 24 hours. Check your spam folder if you don't see it.",
+    "goToLogin": "Go to Login",
+    "resendButton": "Resend Link",
+    "resendIn": "Resend in",
+    "sendButton": "Send Reactivation Link",
+    "subtitle": "Enter the email address associated with your deactivated account and we'll send you a reactivation link.",
+    "title": "Reactivate Your Account",
+    "tryAgain": "Request New Link"
+  },
+  "sections": {
+    "analytics": {
+      "dashboardTitle": "Analytics-instrumentpanel",
+      "engagement": "Engagemang",
+      "headline": "Spåra klick, hänvisningar och engagemang",
+      "last30Days": "Senaste 30 dagarna",
+      "referrals": "Hänvisningar",
+      "scanningDesc": "Övervaka QR-skanningar och uppdateringar",
+      "scanningTitle": "Vem som skannar",
+      "spotsDesc": "Data-driven insikter för bättre kurering",
+      "spotsTitle": "Bäst presterande platser",
+      "subtext": "Se vad som fungerar, vem som skannar, och vilka platser som får mest kärlek — i realtid.",
+      "totalScans": "Totalt Antal Skanningar",
+      "workingDesc": "Spåra populariteten av dina rekommendationer",
+      "workingTitle": "Se vad som fungerar"
+    },
+    "createCustomize": {
+      "bulletPoints": {
+        "addSpots": {
+          "description": "Skapa en lista med dina must-visit",
+          "title": "Lägg till dina favoritplatser"
+        },
+        "generate": {
+          "description": "Din personliga QR är redo på sekunder",
+          "title": "Generera din länk och QR direkt"
+        },
+        "organize": {
+          "description": "Skapa kategorier som är meningsfulla för din publik",
+          "title": "Organisera efter stad eller tema"
+        },
+        "share": {
+          "description": "",
+          "title": "Dela digitalt eller via QR i den verkliga världen"
+        }
+      },
+      "headline": "Skapa och anpassa din explorers på minuter",
+      "mockup": {
+        "addPlace": "Lägg till Plats",
+        "title": "Mina Rekommendationer"
+      },
+      "subtext": "Lägg till dina favoritplatser, organisera efter stad eller tema, och generera din QR direkt."
+    },
+    "faq": {
+      "error": "Fel vid laddning av FAQ. Försök igen senare.",
+      "headline": "Har du frågor?",
+      "loading": "Laddar FAQ...",
+      "subtext": "Vi har svarat på de vanligaste sakerna folk frågar innan de börjar."
+    },
+    "features": {
+      "communityDriven": {
+        "title": "Gemenskapsdriven upptäckt"
+      },
+      "livingGuides": {
+        "title": "Levande, redigerbara guider"
+      },
+      "locationAware": {
+        "title": "Platsmedvetna rekommendationer"
+      },
+      "privacyFirst": {
+        "title": "Integritet först enligt design"
+      },
+      "simpleLinks": {
+        "title": "Enkla länkar och QR-delning"
+      },
+      "soundPlaylists": {
+        "title": "Valfritt ljud och spellistor"
+      },
+      "subtitle": "Enkla, genomtänkta funktioner som låter dina rekommendationer glänsa.",
+      "title": "Byggt för att hålla sig ur vägen"
+    },
+    "finalCTA": {
+      "creating": "Skapar din explorers...",
+      "ctaButton": "Reservera explorers – Gratis För Alltid",
+      "disclaimer": "Inget kreditkort krävs • Setup på 2 minuter",
+      "headline": "Börja dela din värld idag",
+      "subtext": "Reservera din gratis explorers och förvandla dina lokala insikter till delbara guider."
+    },
+    "localTunes": {
+      "body": "Utforskning är inte bara visuell. Ljud bär minne, sammanhang och känsla.\n\nTunes låter dig samla och dela soundtrack för platser, resor och stämningar — vare sig det är musik upptäckt på vägen eller ljud som definierar en plats för dig.\n\nSömlöst ansluten till din Explorer-profil.",
+      "closingStatement": "Tunes är <strong>gratis</strong> att utforska, och för betalfunktioner kan du uppgradera senare.",
+      "exploreButton": "Utforska Tunes",
+      "features": {
+        "karaokeReady": {
+          "description": "Perfekt för karaoke-kvällar med samarbetslistor och realtidslåtförfrågningar.",
+          "title": "Karaoke Redo"
+        },
+        "qrCodeSharing": {
+          "description": "Dela din musikupplevelse med en enkel QR-kodskanning — inga appar eller nedladdningar krävs.",
+          "title": "QR-koddelning"
+        },
+        "realtimeCollaboration": {
+          "description": "Låt gäster lägga till låtar i din spellista omedelbart medan du behåller full kontroll över vad som spelas.",
+          "title": "Realtidssamarbete"
+        },
+        "silentParties": {
+          "description": "Anordna unika tysta fester där alla lyssnar genom sina egna hörlurar.",
+          "title": "Tysta Fester"
+        },
+        "voteLikeSystem": {
+          "description": "Gäster kan rösta på sina favoritlåtar för att påverka spellistekön i realtid.",
+          "title": "Röstnings- och Gilla-system"
+        },
+        "youtubeIntegration": {
+          "description": "Integrera sömlöst med YouTube för att komma åt miljontals låtar och skapa den perfekta atmosfären.",
+          "title": "YouTube-integration"
+        }
+      },
+      "featuresHeading": "Kraftfulla Funktioner",
+      "mainHeading": "Tunes",
+      "title": "Lyssna medan du utforskar",
+      "venueHeading": "Perfekt för Varje Plats",
+      "venues": {
+        "barsPubs": "Barer & Pubar",
+        "coffeeShops": "Kaféer",
+        "eventsWeddings": "Evenemang & Bröllop",
+        "gymsFitness": "Gym & Fitness",
+        "restaurants": "Restauranger",
+        "retailStores": "Butiker"
+      }
+    },
+    "referEarn": {
+      "comingSoon": "Hänvisningsbelöningsprogram (kommer snart)",
+      "earnedThisMonth": "Tjänat denna månad",
+      "headline": "Dela, hänvisa och tjäna",
+      "networkTitle": "Bygg ditt nätverk och tjäna automatiskt",
+      "passiveTitle": "Förvandla rekommendationer till passiva belöningar",
+      "rewardsDesc": "Få betalt när människor använder dina rekommendationer",
+      "rewardsTitle": "Tjäna Belöningar",
+      "subtext": "Förvandla dina rekommendationer till passiva belöningar — få kredit när andra använder din QR."
+    },
+    "shareAnywhere": {
+      "cafeMenu": "Café Meny",
+      "headline": "Dela på sociala medier, butiksfönster, eller stadsväggar",
+      "instagramDesc": "Dela med dina följare direkt",
+      "instagramTitle": "Lägg till i din Instagram bio",
+      "menuDesc": "Fysiska kontaktpunkter gjorda enkla",
+      "menuTitle": "Skriv ut på menyer",
+      "profileCarouselCaption": "Instagram & TikTok profiles",
+      "qrEverywhereDesc": "Perfect for Every Venue",
+      "qrEverywhereTitle": "Add the QR link everywhere",
+      "scanText": "Skanna för lokala rekommendationer",
+      "storefrontText": "Perfekt för butiksfönster",
+      "subtext": "Lägg till i din Instagram bio, skriv ut på menyer, eller inkludera i välkomstböcker — din guide, alltid redo.",
+      "tokyoFoodGuide": "Min Tokyo matguide explorers.earth/jane",
+      "welcomeDesc": "Perfekt för värdar och guider",
+      "welcomeTitle": "Inkludera i välkomstböcker"
+    },
+    "testimonials": {
+      "headline": "Älskad av resenärer, skapare och värdar",
+      "items": [
+        {
+          "id": "1",
+          "location": "San Francisco",
+          "name": "Marcus Chen",
+          "quote": "explorers förändrade hur jag delar min resekunskap. Mina följare älskar att få omedelbar åtkomst till mina kuraterade rekommendationer!",
+          "role": "Resebloggare"
+        },
+        {
+          "id": "2",
+          "location": "Barcelona",
+          "name": "Sarah Johnson",
+          "quote": "Mina gäster älskar absolut den personaliserade QR-koden i deras välkomstpaket. Det har blivit min signatur!",
+          "role": "Airbnb Värd"
+        },
+        {
+          "id": "3",
+          "location": "Mexico City",
+          "name": "Alex Rodriguez",
+          "quote": "Vi delar vår explorers med kunder för att rekommendera andra lokala platser. Det har skapat fantastiska gemenskapsförbindelser.",
+          "role": "Restaurangägare"
+        },
+        {
+          "id": "4",
+          "location": "London",
+          "name": "Emma Thompson",
+          "quote": "explorers hjälper mig att utöka min expertis bortom turerna. Kunder kan komma åt mina rekommendationer när som helst!",
+          "role": "Turguide"
+        },
+        {
+          "id": "5",
+          "location": "Sydney, Australia",
+          "name": "James Wilson",
+          "quote": "As a travel influencer, explorers makes it so easy to share my favorite spots with my audience. The QR code feature is brilliant!",
+          "role": "Travel Influencer"
+        },
+        {
+          "id": "6",
+          "location": "Paris, France",
+          "name": "Sophie Martin",
+          "quote": "I use explorers to create walking tours for my clients. They can scan the QR and explore at their own pace!",
+          "role": "Local Guide"
+        }
+      ],
+      "scrollLeft": "Rulla testimonials åt vänster",
+      "scrollRight": "Rulla testimonials åt höger",
+      "subtext": "Se hur människor världen över använder explorers för att dela det som betyder mest."
+    },
+    "whoIsFor": {
+      "cards": {
+        "businesses": {
+          "items": {
+            "boutique": {
+              "label": "Butik",
+              "oneLiner": "Butiker som listar kuraterade fynd"
+            },
+            "cafe": {
+              "label": "Kafé",
+              "oneLiner": "Kaféer som framhäver favoritmenyalternativ"
+            },
+            "clinic": {
+              "label": "Klinik",
+              "oneLiner": "Kliniker som delar hälsorelaterade platser"
+            },
+            "gym": {
+              "label": "Gym",
+              "oneLiner": "Gym som föreslår lokala wellnessplatser"
+            },
+            "restaurant": {
+              "label": "Restaurang",
+              "oneLiner": "Restauranger som delar måste-prova-rätter"
+            },
+            "retailShop": {
+              "label": "Butik",
+              "oneLiner": "Butiker som delar produktrekommendationer"
+            },
+            "salon": {
+              "label": "Salong",
+              "oneLiner": "Salonger som erbjuder skönhetsguider"
+            },
+            "spa": {
+              "label": "Spa",
+              "oneLiner": "Spa som listar närliggande avslappningsalternativ"
+            }
+          },
+          "oneLiner": "Vägleda kunder med användbara rekommendationer.",
+          "title": "Företag"
+        },
+        "creators": {
+          "items": {
+            "blogger": {
+              "label": "Bloggare",
+              "oneLiner": "Bloggare som kuraterar skrivna guider"
+            },
+            "communityLeader": {
+              "label": "Samhällsledare",
+              "oneLiner": "Samhällsledare som kuraterar användbara listor"
+            },
+            "educator": {
+              "label": "Pedagog",
+              "oneLiner": "Pedagoger som delar lärandeguider"
+            },
+            "influencer": {
+              "label": "Influencer",
+              "oneLiner": "Influencers som delar toppval"
+            },
+            "photographer": {
+              "label": "Fotograf",
+              "oneLiner": "Fotografer som delar fotoplatser"
+            },
+            "reviewer": {
+              "label": "Recensent",
+              "oneLiner": "Recensenter som listar bäst betygsatta platser"
+            },
+            "vlogger": {
+              "label": "Vloggare",
+              "oneLiner": "Vloggare som delar visuella resor"
+            }
+          },
+          "oneLiner": "Dela kuraterade listor med din publik.",
+          "title": "Skapare"
+        },
+        "hospitality": {
+          "items": {
+            "airbnb": {
+              "label": "Airbnb",
+              "oneLiner": "Värdar som delar grannskapets favoriter"
+            },
+            "homestay": {
+              "label": "Hemvist",
+              "oneLiner": "Hemvister som erbjuder familjeorienterade guider"
+            },
+            "hostel": {
+              "label": "Vandrarhem",
+              "oneLiner": "Vandrarhem som delar backpackertips"
+            },
+            "hotel": {
+              "label": "Hotell",
+              "oneLiner": "Hotell som erbjuder lokala guider"
+            },
+            "pgColiving": {
+              "label": "PG/Gemensamt Boende",
+              "oneLiner": "PG/Gemensamt Boende som visar viktiga närliggande platser"
+            },
+            "resort": {
+              "label": "Resort",
+              "oneLiner": "Resorter som tillhandahåller aktivitetslistor"
+            }
+          },
+          "oneLiner": "Erbjud gäster kuraterade lokala insikter.",
+          "title": "Gästfrihet"
+        },
+        "individuals": {
+          "items": {
+            "emergencySharer": {
+              "label": "Nödsdelare",
+              "oneLiner": "Nödsdelare som publicerar viktiga platser"
+            },
+            "family": {
+              "label": "Familj",
+              "oneLiner": "Familjer som delar användbara platser"
+            },
+            "local": {
+              "label": "Lokal",
+              "oneLiner": "Lokalbefolkning som delar grannskapstips"
+            },
+            "nomad": {
+              "label": "Nomad",
+              "oneLiner": "Nomader som listar arbetsvänliga utrymmen"
+            },
+            "student": {
+              "label": "Student",
+              "oneLiner": "Studenter som delar campus/närliggande platser"
+            },
+            "traveler": {
+              "label": "Resenär",
+              "oneLiner": "Personer som delar resmål"
+            }
+          },
+          "oneLiner": "Dela personliga eller lokala rekommendationer.",
+          "title": "Individer"
+        },
+        "organizations": {
+          "items": {
+            "agency": {
+              "label": "Byrå",
+              "oneLiner": "Resebyråer som listar måste-besök-platser"
+            },
+            "airline": {
+              "label": "Flygbolag",
+              "oneLiner": "Flygbolag som delar stadsguider"
+            },
+            "airport": {
+              "label": "Flygplats",
+              "oneLiner": "Flygplatser som erbjuder terminaler + stadstips"
+            },
+            "corporate": {
+              "label": "Företag",
+              "oneLiner": "Företag som listar närliggande resurser"
+            },
+            "government": {
+              "label": "Regering",
+              "oneLiner": "Departement som framhäver offentliga tjänster"
+            },
+            "ngo": {
+              "label": "NGO",
+              "oneLiner": "NGO:er som delar samhällsresurser"
+            },
+            "railway": {
+              "label": "Järnväg",
+              "oneLiner": "Järnvägar som delar plattformsinformation"
+            },
+            "university": {
+              "label": "Universitet",
+              "oneLiner": "Universitet som delar campusgrundläggande"
+            }
+          },
+          "oneLiner": "Tillhandahåll kuraterade guider och resurser.",
+          "title": "Organisationer"
+        }
+      },
+      "headline": "För vem är explorers.earth?",
+      "subtext": "explorers.earth är för alla som tror att dela är ett ansvar — inte en sändning.",
+      "useCases": {
+        "airbnbHosts": "Airbnb Värdar",
+        "airbnbHostsDesc": "Förbättra gästupplevelse med lokala insikter",
+        "anyBusiness": "Vilket företag som helst",
+        "anyBusinessDesc": "Bygg gemenskap och kundlojalitet",
+        "cafes": "Kaféer",
+        "cafesDesc": "Dela grannskapets favoriter med kunder",
+        "creators": "Skapare",
+        "creatorsDesc": "Lägg till värde bortom innehåll med handlingsbara tips",
+        "hotels": "Hotell",
+        "hotelsDesc": "Ge kuraterade lokala rekommendationer",
+        "influencers": "Influencers",
+        "influencersDesc": "Monetisera lokal kunskap och bygg gemenskap",
+        "localGuides": "Lokala Guider",
+        "localGuidesDesc": "Skala din expertis bortom individuella turer",
+        "restaurants": "Restauranger",
+        "restaurantsDesc": "Cross-promotion med andra lokala företag",
+        "tourOperators": "Turoperatörer",
+        "tourOperatorsDesc": "Utöka upplevelser bortom schemalagda turer",
+        "travelers": "Resenärer",
+        "travelersDesc": "Dela upptäckta pärlor med medupptäckare"
+      }
+    }
+  },
+  "seo": {
+    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+  },
+  "settings": {
+    "account": {
+      "changePassword": {
+        "accountDetailsRequired": "Enter your account Details to proceed further!!",
+        "accountDocumentIdNotFound": "Could not find account documentId. Please check your username or try again.",
+        "button": "Byt lösenord",
+        "confirmPassword": "Bekräfta nytt lösenord",
+        "confirmPasswordPlaceholder": "Ange det nya lösenordet igen",
+        "currentPassword": "Nuvarande lösenord",
+        "currentPasswordPlaceholder": "Ange ditt nuvarande lösenord",
+        "currentPasswordRequired": "Please enter your current password.",
+        "deleteAccountFailed": "Failed to delete account.",
+        "description": "Uppdatera ditt lösenord för att hålla ditt konto säkert",
+        "invalidPassword": "Invalid password. Please check your password and try again.",
+        "modalTitle": "Byt lösenord",
+        "newPassword": "Nytt lösenord",
+        "newPasswordPlaceholder": "Ange ett nytt lösenord",
+        "passwordRequiredForDeletion": "Password is required to delete account.",
+        "redirectMessage": "Omdirigerar till inloggning av säkerhetsskäl...",
+        "saveReasonFailed": "Failed to save reason. Try again.",
+        "successMessage": "Lösenordet har uppdaterats framgångsrikt. Du kommer att omdirigeras till inloggning av säkerhetsskäl.",
+        "text": "Byta lösenord?",
+        "updateAccountStatusFailed": "Failed to update account status.",
+        "updateButton": "Uppdatera lösenord"
+      },
+      "deactivateAccount": {
+        "activatedMessage": "Kontot har aktiverats framgångsrikt",
+        "button": "Avaktivera konto",
+        "confirmButton": "Avaktivera mitt konto",
+        "deactivatedButton": "Avaktiverat",
+        "description": "Inaktivera tillfälligt ditt konto",
+        "enterPassword": "Ange ditt lösenord",
+        "enterUsername": "Ange ditt användarnamn",
+        "modalDescription": "Är du säker på att du vill avaktivera ditt konto?",
+        "modalTitle": "Avaktivera ditt konto?",
+        "passwordPlaceholder": "Ange ditt nuvarande lösenord",
+        "reactivationHint": "You can reactivate your account later using your email.",
+        "reactivationLink": "Learn how →",
+        "successMessage": "Kontot har avaktiverats framgångsrikt",
+        "text": "Avaktivera ditt konto?",
+        "usernamePlaceholder": "Ange ditt användarnamn"
+      },
+      "deleteAccount": {
+        "button": "Ta bort konto",
+        "description": "Ta bort permanent ditt konto och all data",
+        "step1": {
+          "continueButton": "Fortsätt med borttagning",
+          "deactivateInsteadButton": "Avaktivera konto istället",
+          "modalDescription": "Är du säker på att du vill ta bort ditt konto? Denna åtgärd kan inte ångras.",
+          "modalDescription2": "Om du vill behålla dina data kan du avaktivera ditt konto istället.",
+          "modalTitle": "Ta bort ditt konto?"
+        },
+        "step2": {
+          "confirmPassword": "Bekräfta ditt lösenord",
+          "confirmPasswordPlaceholder": "Bekräfta ditt lösenord",
+          "continueButton": "Fortsätt",
+          "enterPassword": "Ange ditt lösenord",
+          "enterUsername": "Ange ditt användarnamn",
+          "modalTitle": "Ange dina uppgifter",
+          "passwordPlaceholder": "Ange ditt lösenord",
+          "usernamePlaceholder": "Ange ditt användarnamn"
+        },
+        "step3": {
+          "continueButton": "Fortsätt",
+          "modalTitle": "Varför lämnar du?",
+          "reasonPlaceholder": "Vänligen berätta varför du lämnar..."
+        },
+        "step4": {
+          "confirmationRequired": "Vänligen skriv 'CONFIRM DELETE' för att bekräfta.",
+          "confirmPlaceholder": "Skriv 'CONFIRM DELETE' för att bekräfta",
+          "confirmText": "Skriv 'CONFIRM DELETE' för att fortsätta",
+          "confirmTextValue": "CONFIRM DELETE",
+          "deleteButton": "Ta bort mitt konto",
+          "modalTitle": "Bekräfta borttagning",
+          "reasonRequired": "Vänligen ange en anledning till att du lämnar.",
+          "successMessage": "Kontot har tagits bort framgångsrikt."
+        },
+        "text": "Ta bort ditt konto?"
+      },
+      "heading": "Konto",
+      "security": {
+        "title": "Konto och Säkerhet"
+      }
+    },
+    "languagePreference": {
+      "availableLanguages": "Välj bland 47 tillgängliga språk",
+      "currentLanguage": "Nuvarande: {{flag}} {{name}}",
+      "description": "Välj ditt föredragna språk för gränssnittet. Detta kommer att ändra språket för alla texter, knappar och menyer i hela applikationen.",
+      "heading": "Språkpreferens",
+      "languageChanged": "Språk ändrat till {{name}}",
+      "noLanguagesFound": "No languages found",
+      "searchPlaceholder": "Search languages...",
+      "selectLanguage": "Välj ditt språk"
+    },
+    "subtitle": "Hantera dina kontoinställningar och preferenser",
+    "title": "Inställningar"
+  },
+  "sidebar": {
+    "analytics": "Analys",
+    "clickToOpenMenu": "Klicka för att öppna menyn",
+    "darkMode": "Dark Mode",
+    "home": "Hem",
+    "lightMode": "Light Mode",
+    "loading": "Laddar...",
+    "logout": "Logga ut",
+    "music": "Music",
+    "places": "Places",
+    "profile": "Profil",
+    "recommendations": "Rekommendationer",
+    "settings": "Inställningar"
+  },
+  "toast": {
+    "error": {
+      "accessDenied": "Åtkomst nekades. Du har inte behörighet att utföra denna åtgärd.",
+      "accountActivationFailed": "Kontoaktivering misslyckades. Försök igen.",
+      "accountAlreadyExists": "Account already exists. Redirecting to home...",
+      "accountCreationFailed": "Kontoskapande misslyckades. Försök igen.",
+      "accountDeleted": "Kontot är raderat. Kontakta support.",
+      "accountExistsRefresh": "Account already exists. Please refresh the page.",
+      "accountLocked": "Kontot är låst. Kontakta support.",
+      "accountSuspended": "Kontot är avstängt. Kontakta support.",
+      "accountTypeRequired": "Kontotyp krävs",
+      "actionFailed": "Åtgärd misslyckades. Försök igen.",
+      "addressRequired": "Adress krävs",
+      "allFilesAlreadyUploaded": "All selected files are already uploaded!",
+      "alreadyExists": "Already Exist!!",
+      "backgroundImageUpdateFailed": "Kunde inte ladda upp bakgrundsbild. Försök igen.",
+      "bioRequired": "Bio krävs",
+      "bioTooLong": "Bio är för lång. Håll det under 250 tecken",
+      "captchaFailed": "Captcha-verifiering misslyckades. Försök igen.",
+      "changesSaveFailed": "Kunde inte spara ändringar. Försök igen.",
+      "cityRequired": "Stad krävs",
+      "codeLimitExceeded": "Kodgräns överskriden. Försök senare.",
+      "conflictError": "Konfliktfel. Resursen finns redan.",
+      "countryRequired": "Land krävs",
+      "dataSaveFailed": "Kunde inte spara data. Försök igen.",
+      "displayNameRequired": "Visningsnamn krävs",
+      "displayNameTooLong": "Visningsnamn är för långt",
+      "displayNameTooShort": "Visningsnamn är för kort",
+      "duplicateFilesSkipped": "{{count}} duplicate file(s) were skipped.",
+      "emailAlreadyExists": "E-post finns redan. Använd en annan e-post.",
+      "emailConfirmationSendingFailed": "Account created successfully, but failed to send confirmation email. Please try resending from the verification page.",
+      "emailNotFound": "E-post hittades inte. Försök igen.",
+      "emailNotVerified": "E-post är inte verifierad. Verifiera din e-post först.",
+      "emailSendFailed": "Skicka e-post misslyckades. Försök igen.",
+      "emailVerificationFailed": "E-postverifiering misslyckades. Försök igen.",
+      "errorCroppingImage": "Error Cropping the Image.",
+      "errorLoadingCategories": "Error Loading Categories!!!",
+      "errorValidatingFiles": "An error occurred while validating files",
+      "expiredCode": "Koden har gått ut. Begär en ny.",
+      "expiredToken": "Token har gått ut. Försök igen.",
+      "failedToDeleteRecommendationList": "Failed to delete recommendation list. Please try again.",
+      "failedToFetchImages": "Failed to fetch images",
+      "failedToFetchNearbyPlaces": "Failed to fetch nearby places. Please try again.",
+      "failedToUpdatePassword": "Failed to update password.",
+      "fetchedImages": "Fetched {{count}} image(s)",
+      "fileTooLarge": "Filen är för stor. Välj en mindre fil.",
+      "fileUploadFailed": "Filuppladdning misslyckades. Försök igen.",
+      "fileValidationError": "An error occurred while validating files",
+      "fileValidationErrorWithName": "{{fileName}}: {{error}}",
+      "formSubmissionFailed": "Formulärskickning misslyckades. Försök igen.",
+      "graphQLErrorOccurred": "GraphQL error occurred",
+      "imageAspectRatioInvalid": "Bildaspektförhållande är ogiltigt. Välj en annan bild",
+      "imageColorSpaceInvalid": "Bildfärgrymd är ogiltig. Välj en annan bild",
+      "imageContentAbusive": "Bildinnehåll är missbrukande. Välj en annan bild",
+      "imageContentAcademic": "Bildinnehåll skadar akademiska intressen. Välj en annan bild",
+      "imageContentAnger": "Bildinnehåll skadar ilskaintressen. Välj en annan bild",
+      "imageContentAnimals": "Bildinnehåll involverar djurplågeri. Välj en annan bild",
+      "imageContentArtistic": "Bildinnehåll skadar artistiska intressen. Välj en annan bild",
+      "imageContentBrand": "Bildinnehåll skadar varumärke. Välj en annan bild",
+      "imageContentBusiness": "Bildinnehåll skadar verksamhet. Välj en annan bild",
+      "imageContentConsent": "Bildinnehåll saknar samtycke. Välj en annan bild",
+      "imageContentCopyright": "Bildinnehåll bryter mot upphovsrätt. Välj en annan bild",
+      "imageContentCreative": "Bildinnehåll skadar kreativa intressen. Välj en annan bild",
+      "imageContentCultural": "Bildinnehåll skadar kulturella intressen. Välj en annan bild",
+      "imageContentDangerous": "Bildinnehåll är farligt. Välj en annan bild",
+      "imageContentDiscriminatory": "Bildinnehåll är diskriminerande. Välj en annan bild",
+      "imageContentDisgust": "Bildinnehåll skadar avskyintressen. Välj en annan bild",
+      "imageContentEconomic": "Bildinnehåll skadar ekonomiska intressen. Välj en annan bild",
+      "imageContentEducational": "Bildinnehåll skadar pedagogiska intressen. Välj en annan bild",
+      "imageContentEntertainment": "Bildinnehåll skadar underhållningsintressen. Välj en annan bild",
+      "imageContentEnvironment": "Bildinnehåll skadar miljön. Välj en annan bild",
+      "imageContentEnvy": "Bildinnehåll skadar avundsjukaintsintressen. Välj en annan bild",
+      "imageContentEthical": "Bildinnehåll skadar etiska intressen. Välj en annan bild",
+      "imageContentExcitement": "Bildinnehåll skadar upphetsningsintressen. Välj en annan bild",
+      "imageContentFear": "Bildinnehåll skadar rädslointressen. Välj en annan bild",
+      "imageContentGluttony": "Bildinnehåll skadar glupskhetsintressen. Välj en annan bild",
+      "imageContentGreed": "Bildinnehåll skadar girighetsintressen. Välj en annan bild",
+      "imageContentGuilt": "Bildinnehåll skadar skuldkänslointressen. Välj en annan bild",
+      "imageContentHappiness": "Bildinnehåll skadar lyckointressen. Välj en annan bild",
+      "imageContentHarassing": "Bildinnehåll är trakasserande. Välj en annan bild",
+      "imageContentHate": "Bildinnehåll skadar hatintressen. Välj en annan bild",
+      "imageContentHateful": "Bildinnehåll är hatfyllt. Välj en annan bild",
+      "imageContentHealth": "Bildinnehåll skadar hälsan. Välj en annan bild",
+      "imageContentHobby": "Bildinnehåll skadar hobbyintressen. Välj en annan bild",
+      "imageContentIllegal": "Bildinnehåll är olagligt. Välj en annan bild",
+      "imageContentInappropriate": "Bildinnehåll är olämpligt. Välj en annan bild",
+      "imageContentInformational": "Bildinnehåll skadar informationsintressen. Välj en annan bild",
+      "imageContentIntegrity": "Bildinnehåll skadar integriteten. Välj en annan bild",
+      "imageContentIntellectual": "Bildinnehåll skadar intellektuella intressen. Välj en annan bild",
+      "imageContentInterest": "Bildinnehåll skadar intresseintressen. Välj en annan bild",
+      "imageContentJealousy": "Bildinnehåll skadar svartsjukaintsintressen. Välj en annan bild",
+      "imageContentJoy": "Bildinnehåll skadar glädjeintressen. Välj en annan bild",
+      "imageContentLegal": "Bildinnehåll skadar juridiska intressen. Välj en annan bild",
+      "imageContentLeisure": "Bildinnehåll skadar fritidsintressen. Välj en annan bild",
+      "imageContentLove": "Bildinnehåll skadar kärleksintressen. Välj en annan bild",
+      "imageContentLust": "Bildinnehåll skadar lustintressen. Välj en annan bild",
+      "imageContentMedia": "Bildinnehåll skadar mediaintressen. Välj en annan bild",
+      "imageContentMinors": "Bildinnehåll involverar minderåriga. Välj en annan bild",
+      "imageContentMoral": "Bildinnehåll skadar moraliska intressen. Välj en annan bild",
+      "imageContentNews": "Bildinnehåll skadar nyhetsintressen. Välj en annan bild",
+      "imageContentOffensive": "Bildinnehåll är stötande. Välj en annan bild",
+      "imageContentPassion": "Bildinnehåll skadar passionintressen. Välj en annan bild",
+      "imageContentPersonal": "Bildinnehåll skadar personliga intressen. Välj en annan bild",
+      "imageContentPhilosophical": "Bildinnehåll skadar filosofiska intressen. Välj en annan bild",
+      "imageContentPolitical": "Bildinnehåll skadar politiska intressen. Välj en annan bild",
+      "imageContentPride": "Bildinnehåll skadar stolthetsintressen. Välj en annan bild",
+      "imageContentPrivacy": "Bildinnehåll bryter mot integritet. Välj en annan bild",
+      "imageContentProfessional": "Bildinnehåll skadar professionella intressen. Välj en annan bild",
+      "imageContentRecreation": "Bildinnehåll skadar rekreationsintressen. Välj en annan bild",
+      "imageContentReligious": "Bildinnehåll skadar religiösa intressen. Välj en annan bild",
+      "imageContentReputation": "Bildinnehåll skadar rykte. Välj en annan bild",
+      "imageContentSadness": "Bildinnehåll skadar sorgintressen. Välj en annan bild",
+      "imageContentSafety": "Bildinnehåll skadar säkerheten. Välj en annan bild",
+      "imageContentScientific": "Bildinnehåll skadar vetenskapliga intressen. Välj en annan bild",
+      "imageContentSecurity": "Bildinnehåll skadar säkerheten. Välj en annan bild",
+      "imageContentSexual": "Bildinnehåll är sexuellt. Välj en annan bild",
+      "imageContentShame": "Bildinnehåll skadar skamintressen. Välj en annan bild",
+      "imageContentSloth": "Bildinnehåll skadar lättjasintressen. Välj en annan bild",
+      "imageContentSocial": "Bildinnehåll skadar sociala intressen. Välj en annan bild",
+      "imageContentSpiritual": "Bildinnehåll skadar andliga intressen. Välj en annan bild",
+      "imageContentSports": "Bildinnehåll skadar sportintressen. Välj en annan bild",
+      "imageContentSurprise": "Bildinnehåll skadar överraskningsintressen. Välj en annan bild",
+      "imageContentTechnical": "Bildinnehåll skadar tekniska intressen. Välj en annan bild",
+      "imageContentThreatening": "Bildinnehåll är hotfullt. Välj en annan bild",
+      "imageContentTrademark": "Bildinnehåll bryter mot varumärke. Välj en annan bild",
+      "imageContentViolent": "Bildinnehåll är våldsamt. Välj en annan bild",
+      "imageContentWrath": "Bildinnehåll skadar vredesintressen. Välj en annan bild",
+      "imageCorrupted": "Bilden är korrupt. Välj en annan bild",
+      "imageDimensionsInvalid": "Bilddimensioner är ogiltiga. Välj en annan bild",
+      "imageFormatInvalid": "Bildformat är ogiltigt. Välj en annan bild",
+      "imageMalwareDetected": "Skadlig kod upptäckt i bild. Välj en annan bild",
+      "imageMetadataInvalid": "Bildmetadata är ogiltig. Välj en annan bild",
+      "imageProcessingFailed": "Bildbehandling misslyckades. Försök igen",
+      "imageQualityTooLow": "Bildkvalitet är för låg. Välj en bild med högre kvalitet",
+      "imageRequired": "Bild krävs",
+      "imageSecurityViolation": "Bildsäkerhetsöverträdelse. Välj en annan bild",
+      "imageSizeInvalid": "Bildstorlek är ogiltig. Välj en annan bild",
+      "imageSpamDetected": "Spam upptäckt i bild. Välj en annan bild",
+      "imageTooBig": "Bilden är för stor. Välj en mindre bild",
+      "imageTooLarge": "Bilden är för stor. Välj en mindre bild",
+      "imageTooSmall": "Bilden är för liten. Välj en större bild",
+      "imageUploadFailed": "Bilduppladdning misslyckades. Försök igen.",
+      "imageVirusDetected": "Virus upptäckt i bild. Välj en annan bild",
+      "invalidAccountType": "Ogiltig kontotyp vald",
+      "invalidCode": "Ogiltig kod. Kontrollera din inmatning.",
+      "invalidCredentials": "Ogiltiga inloggningsuppgifter. Kontrollera din inmatning.",
+      "invalidEmailFormat": "Ogiltigt e-postformat. Ange en giltig e-post.",
+      "invalidInput": "Ogiltig inmatning. Kontrollera dina data.",
+      "invalidToken": "Ogiltig token. Försök igen.",
+      "invalidUsername": "Ogiltigt användarnamn. Kontrollera din inmatning.",
+      "invalidUsernameWithError": "Invalid username: {{error}}",
+      "linkCopyFailed": "Kunde inte kopiera länk. Försök igen.",
+      "locationAlreadyExists": "This location already exists!",
+      "loginFailed": "Inloggning misslyckades. Kontrollera dina inloggningsuppgifter.",
+      "maintenanceMode": "Tjänsten är under underhåll. Försök senare.",
+      "mobileNumberInvalid": "Ogiltigt mobilnummerformat",
+      "mobileNumberRequired": "Mobilnummer krävs",
+      "mobileNumberTooLong": "Mobilnummer är för långt",
+      "mobileNumberTooShort": "Mobilnummer är för kort",
+      "networkError": "Nätverksfel. Kontrollera din anslutning.",
+      "noImagesFoundForPlace": "No images found for this place",
+      "notificationSendFailed": "Kunde inte skicka notifiering. Försök igen.",
+      "noValidFilesSelected": "No valid files selected. Supported formats: {{formats}}",
+      "onboardingAlreadyCompleted": "Onboarding already completed. Redirecting to home...",
+      "onboardingCompletedAnotherTab": "Onboarding completed in another tab. Redirecting...",
+      "onboardingFailed": "Introduktion misslyckades. Försök igen.",
+      "onboardingInProgress": "Onboarding is already in progress in another tab.",
+      "operationTimeout": "Åtgärden gick ut på tid. Försök igen.",
+      "passwordChangeFailed": "Lösenordsändring misslyckades. Försök igen.",
+      "passwordResetFailed": "Lösenordsåterställning misslyckades. Försök igen.",
+      "passwordsDoNotMatch": "Lösenorden matchar inte. Försök igen.",
+      "passwordTooWeak": "Lösenordet är för svagt. Välj ett starkare lösenord.",
+      "permissionDenied": "Tillstånd nekades. Kontakta support.",
+      "phoneNotVerified": "Telefonnummer är inte verifierat. Verifiera ditt telefonnummer först.",
+      "placeAlreadyExists": "This place already exists in your recommendation list!",
+      "pleaseSelectListFirst": "Please select a recommendation list first",
+      "pleaseSelectLocation": "Please select a location from the search results",
+      "postalCodeRequired": "Postnummer krävs",
+      "preconditionFailed": "Förutsättning misslyckades. Kontrollera din begäran.",
+      "primaryAddressRequired": "Primär adress krävs",
+      "profileCompletionFailed": "Profilfullständigande misslyckades. Försök igen.",
+      "profileImageUpdateFailed": "Kunde inte ladda upp profilbild. Försök igen.",
+      "profileUpdateFailed": "Profiluppdatering misslyckades. Försök igen.",
+      "quotaExceeded": "Kvot överskriden. Försök senare.",
+      "rateLimitExceeded": "För många begäranden. Försök senare.",
+      "recommendedListUpdateFailed": "Fel vid uppdatering av rekommenderad lista!!!",
+      "registrationFailed": "Registrering misslyckades. Försök igen.",
+      "requiredFieldMissing": "Obligatoriskt fält saknas. Fyll i alla obligatoriska fält.",
+      "resetLinkFailed": "Skicka återställningslänk misslyckades. Försök senare.",
+      "resetLinkResendFailed": "Skicka igen misslyckades. Försök senare.",
+      "resourceNotFound": "Resurs hittades inte. Kontrollera din begäran.",
+      "searchAndSelectPlaceFirst": "Search and select a place first",
+      "selectAtLeastOneImage": "Select at least one image",
+      "selectPlaceFromSuggestions": "Select the Place from google suggestions",
+      "selectValidCategory": "Select a Valid Category",
+      "serverError": "Serverfel. Försök senare.",
+      "serviceUnavailable": "Tjänsten är inte tillgänglig. Försök senare.",
+      "sessionExpired": "Sessionen har gått ut. Logga in igen.",
+      "settingsSaveFailed": "Kunde inte spara inställningar. Försök igen.",
+      "setupFailed": "Installation misslyckades. Försök igen.",
+      "somethingWentWrong": "Something Went Wrong!!",
+      "stateRequired": "Stat krävs",
+      "submissionInProgress": "Please wait, submission is already in progress.",
+      "tooManyAttempts": "För många försök. Försök senare.",
+      "twoFactorFailed": "Tvåfaktorsautentisering misslyckades. Försök igen.",
+      "twoFactorRequired": "Tvåfaktorsautentisering krävs.",
+      "unsupportedFileType": "Filtyp stöds inte. Välj en annan fil.",
+      "unsupportedImageFormat": "Bildformat stöds inte. Använd JPG, PNG eller GIF",
+      "updateFailedWithError": "Update failed: {{error}}",
+      "uploadLimitExceeded": "Uppladdningsgräns överskriden. Försök senare.",
+      "usernameAlreadyExists": "Användarnamn finns redan. Välj ett annat.",
+      "usernameChangeFailed": "Användarnamnsändring misslyckades. Försök igen.",
+      "usernameInvalidChars": "Användarnamn innehåller ogiltiga tecken. Använd endast bokstäver, siffror och bindestreck.",
+      "usernameProfanity": "Användarnamn innehåller olämpligt innehåll. Välj ett annat användarnamn.",
+      "usernameReserved": "Användarnamn är reserverat. Välj ett annat användarnamn.",
+      "usernameTooLong": "Användarnamnet är för långt. Välj ett kortare användarnamn.",
+      "usernameTooShort": "Användarnamnet är för kort. Välj ett längre användarnamn.",
+      "usernameUpdateFailed": "Användarnamnsuppdatering misslyckades. Försök igen.",
+      "validationError": "Valideringsfel. Kontrollera din inmatning.",
+      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!"
+    },
+    "info": {
+      "aborting": "Avbryter...",
+      "accountAlreadyExists": "Account already exists. Redirecting to home...",
+      "activating": "Aktiverar...",
+      "adding": "Lägger till...",
+      "adjusting": "Justerar...",
+      "arranging": "Ordnar...",
+      "building": "Bygger...",
+      "canceling": "Avbryter...",
+      "changing": "Ändrar...",
+      "checking": "Kontrollerar...",
+      "chilling": "Kyler...",
+      "clearing": "Rensar...",
+      "closing": "Stänger...",
+      "completing": "Slutför...",
+      "concluding": "Avslutar...",
+      "configuring": "Konfigurerar...",
+      "connecting": "Ansluter...",
+      "constructing": "Bygger...",
+      "cooling": "Kyler...",
+      "correcting": "Korrigerar...",
+      "creating": "Skapar...",
+      "deactivating": "Inaktiverar...",
+      "deleting": "Raderar...",
+      "disabling": "Inaktiverar...",
+      "disconnecting": "Kopplar från...",
+      "downloading": "Laddar ner...",
+      "enabling": "Aktiverar...",
+      "ending": "Avslutar...",
+      "enhancing": "Förbättrar...",
+      "filtering": "Filtrerar...",
+      "finalizing": "Finaliserar...",
+      "finishing": "Slutför...",
+      "fixing": "Reparerar...",
+      "freezing": "Fryser...",
+      "generating": "Genererar...",
+      "halting": "Stoppar...",
+      "heating": "Värmer...",
+      "improving": "Förbättrar...",
+      "initializing": "Initierar...",
+      "inserting": "Infogar...",
+      "interrupting": "Avbryter...",
+      "launching": "Lanserar...",
+      "loading": "Laddar...",
+      "making": "Skapar...",
+      "melting": "Smälter...",
+      "modernizing": "Moderniserar...",
+      "modifying": "Ändrar...",
+      "opening": "Öppnar...",
+      "optimizing": "Optimaliserar...",
+      "organizing": "Organiserar...",
+      "pausing": "Pausar...",
+      "preparing": "Förbereder...",
+      "processing": "Bearbetar...",
+      "producing": "Producerar...",
+      "readying": "Förbereder...",
+      "receiving": "Tar emot...",
+      "recovering": "Återställer...",
+      "refreshing": "Uppdaterar...",
+      "removing": "Tar bort...",
+      "renewing": "Förnyar...",
+      "repairing": "Reparerar...",
+      "resetting": "Återställer...",
+      "restarting": "Startar om...",
+      "restoring": "Återställer...",
+      "resuming": "Återupptar...",
+      "saving": "Sparar...",
+      "searching": "Söker...",
+      "sending": "Skickar...",
+      "setting": "Ställer in...",
+      "shutting": "Stänger...",
+      "sorting": "Sorterar...",
+      "starting": "Startar...",
+      "stopping": "Stoppar...",
+      "switching": "Växlar...",
+      "synchronizing": "Synkroniserar...",
+      "terminating": "Avslutar...",
+      "thawing": "Tinar upp...",
+      "toggling": "Växlar...",
+      "tuning": "Justerar...",
+      "unfreezing": "Tinar upp...",
+      "updating": "Uppdaterar...",
+      "upgrading": "Uppgraderar...",
+      "uploading": "Laddar upp...",
+      "validating": "Validerar...",
+      "verifying": "Verifierar...",
+      "warming": "Värmer..."
+    },
+    "success": {
+      "accountActivated": "Kontot aktiverades framgångsrikt!",
+      "accountCreated": "Konto skapat framgångsrikt!",
+      "actionCompleted": "Åtgärd slutförd framgångsrikt!",
+      "backgroundImageUpdated": "Bakgrundsbild uppdaterad framgångsrikt!",
+      "changesSaved": "Ändringar sparade framgångsrikt!",
+      "dataSaved": "Data sparade framgångsrikt!",
+      "emailSent": "E-post skickat framgångsrikt!",
+      "emailVerificationSent": "E-postverifiering skickad!",
+      "emailVerified": "E-post verifierad framgångsrikt!",
+      "filesAddedSuccessfully": "{{count}} file(s) added successfully!",
+      "filesReadyForUpload": "{{count}} {{fileText}} ready for upload",
+      "fileUploaded": "Fil uppladdad framgångsrikt!",
+      "formSubmitted": "Formulär skickat framgångsrikt!",
+      "imagesUploadedToFeed": "Added {{count}} image(s) to feed",
+      "imageUploaded": "Bild uppladdad framgångsrikt!",
+      "instagramLinkCopied": "Instagram link copied! You can now paste it in your Instagram story or post.",
+      "itemRemovedFromFeed": "Removed {{itemType}} from feed",
+      "linkCopied": "Länk kopierad till urklipp!",
+      "loggedOutSuccessfully": "Framg�ngsrikt utloggad!",
+      "loginSuccessful": "Inloggning lyckades!",
+      "mediaRemovedSuccessfully": "Media removed successfully!",
+      "notificationSent": "Notifiering skickad framgångsrikt!",
+      "onboardingCompleted": "Introduktion slutförd framgångsrikt!",
+      "passwordChanged": "Lösenord ändrat framgångsrikt!",
+      "passwordResetSuccessful": "Lösenordsåterställning lyckades!",
+      "profileCompleted": "Profil slutförd framgångsrikt!",
+      "profileImageUpdated": "Profilbild uppdaterat framgångsrikt!",
+      "profileUpdated": "Profil uppdaterad framgångsrikt!",
+      "profileUpdatedSuccessfully": "Profile updated successfully!",
+      "recommendationCreatedSuccessfully": "Recommendation Created Successfully!!!",
+      "recommendationUpdatedSuccessfully": "Recommendation Updated Successfully!!!",
+      "recommendedCityDeleted": "Recommended City Deleted Successfully!!",
+      "recommendedListUpdated": "Rekommenderad lista uppdaterad framgångsrikt!!!",
+      "registrationSuccessful": "Registrering lyckades!",
+      "resetLinkResent": "Återställningslänk skickad igen!",
+      "resetLinkSent": "Lösenordsåterställningslänk skickad till din e-post!",
+      "settingsSaved": "Inställningar sparade framgångsrikt!",
+      "setupCompleted": "Installation slutförd framgångsrikt!",
+      "uploadingImagesToFeed": "Uploading selected images to your feed...",
+      "usernameChanged": "Användarnamn ändrat framgångsrikt!",
+      "usernameUpdated": "Användarnamn uppdaterat framgångsrikt!",
+      "welcomeMessage": "Välkommen till explorers!"
+    },
+    "warning": {
+      "accountExpiring": "Konto går ut. Uppdatera ditt konto",
+      "accountNotActivated": "Kontot är inte aktiverat. Aktivera ditt konto",
+      "actionExpiring": "Åtgärd går ut. Uppdatera din åtgärd",
+      "actionNotCompleted": "Åtgärd är inte slutförd. Slutför din åtgärd",
+      "changesExpiring": "Ändringar går ut. Uppdatera dina ändringar",
+      "changesNotSaved": "Ändringar är inte sparade. Spara dina ändringar",
+      "credentialsExpiring": "Inloggningsuppgifter går ut. Uppdatera dina inloggningsuppgifter",
+      "dataExpiring": "Data går ut. Uppdatera dina data",
+      "dataNotSaved": "Data är inte sparade. Spara dina data",
+      "emailExpiring": "E-post går ut. Uppdatera din e-post",
+      "emailNotSent": "E-post är inte skickad. Skicka din e-post",
+      "emailNotVerified": "E-post är inte verifierad. Verifiera din e-post",
+      "fileExpiring": "Fil går ut. Uppdatera din fil",
+      "fileNotUploaded": "Fil är inte uppladdad. Ladda upp din fil",
+      "formExpiring": "Formulär går ut. Uppdatera ditt formulär",
+      "formNotSubmitted": "Formulär är inte skickat. Skicka ditt formulär",
+      "imageExpiring": "Bild går ut. Uppdatera din bild",
+      "imageNotUploaded": "Bild är inte uppladdad. Ladda upp din bild",
+      "linkExpiring": "Länk går ut. Uppdatera din länk",
+      "linkNotCopied": "Länk är inte kopierad. Kopiera din länk",
+      "networkSlow": "Nätverket är långsamt. Kontrollera din anslutning",
+      "notificationExpiring": "Notifiering går ut. Uppdatera din notifiering",
+      "notificationNotSent": "Notifiering är inte skickad. Skicka din notifiering",
+      "onboardingExpiring": "Introduktion går ut. Uppdatera din introduktion",
+      "onboardingNotCompleted": "Introduktion är inte slutförd. Slutför din introduktion",
+      "passwordExpiring": "Lösenord går ut. Uppdatera ditt lösenord",
+      "passwordNotChanged": "Lösenord är inte ändrat. Ändra ditt lösenord",
+      "passwordWeak": "Lösenordet är svagt. Överväg att använda ett starkare lösenord",
+      "permissionPending": "Tillstånd pågår. Vänta",
+      "phoneExpiring": "Telefonnummer går ut. Uppdatera ditt telefonnummer",
+      "phoneNotVerified": "Telefonnummer är inte verifierat. Verifiera ditt telefonnummer",
+      "profileExpiring": "Profil går ut. Uppdatera din profil",
+      "profileIncomplete": "Profil är ofullständig. Slutför din profil",
+      "profileNotCompleted": "Profil är inte slutförd. Slutför din profil",
+      "serverSlow": "Servern är långsam. Försök senare",
+      "sessionExpiring": "Sessionen går ut. Logga in igen",
+      "settingsExpiring": "Inställningar går ut. Uppdatera dina inställningar",
+      "settingsNotSaved": "Inställningar är inte sparade. Spara dina inställningar",
+      "setupExpiring": "Installation går ut. Uppdatera din installation",
+      "setupNotCompleted": "Installation är inte slutförd. Slutför din installation",
+      "usernameCooldown": "Användarnamnsändring är tillfälligt låst på grund av nedkylningsperiod",
+      "usernameCooldownDays": "You can change your username after {{days}} day(s) ({{date}})",
+      "usernameCooldownHours": "You can change your username in {{hours}} hour(s) (after {{time}})",
+      "usernameCooldownMinutes": "You can change your username in {{minutes}} minute(s) (after {{time}})",
+      "usernameCooldownReady": "You can change your username now",
+      "usernameCooldownUnknown": "You can change your username now",
+      "usernameExpiring": "Användarnamn går ut. Uppdatera ditt användarnamn",
+      "usernameNotChanged": "Användarnamn är inte ändrat. Ändra ditt användarnamn",
+      "validationPending": "Validering pågår. Vänta"
+    }
+  }
 }

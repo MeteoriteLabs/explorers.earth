@@ -1664,7 +1664,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     try {
       const stats = await storage.getEmailStats();
 
-      // Get AWS SES metrics if credentials available
+      // Get Email metrics if credentials available
       let awsSesStats = null;
       try {
         const configValidation = emailService.validateConfig();
@@ -1673,8 +1673,8 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
           awsSesStats = sendQuota;
         }
       } catch (sesError) {
-        console.error('Error fetching AWS SES stats:', sesError);
-        // Don't fail the whole request if just SES stats fail
+        console.error('Error fetching Email service stats:', sesError);
+        // Don't fail the whole request if just stats fail
       }
 
       res.json({ ...stats, awsSesStats });
@@ -1700,11 +1700,11 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
         return res.status(400).json({ message: "Valid email address is required" });
       }
 
-      // Check if AWS SES is configured
+      // Check if Resend is configured
       const configValidation = emailService.validateConfig();
       if (!configValidation.isValid) {
         return res.status(400).json({
-          message: "AWS SES is not properly configured",
+          message: "Email service is not properly configured",
           details: configValidation.message
         });
       }
@@ -1743,11 +1743,11 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
         return res.status(400).json({ message: "Valid template ID is required" });
       }
 
-      // Check if AWS SES is configured
+      // Check if Resend is configured
       const configValidation = emailService.validateConfig();
       if (!configValidation.isValid) {
         return res.status(400).json({
-          message: "AWS SES is not properly configured",
+          message: "Email service is not properly configured",
           details: configValidation.message
         });
       }
@@ -1786,7 +1786,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
         emailLog.id,
         'sent',
         result.messageId,
-        null
+        undefined
       );
 
       res.json({

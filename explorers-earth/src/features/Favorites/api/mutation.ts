@@ -7,6 +7,9 @@ export const createRecommendationLinkMutation = gql`
       List_Name
       List_Name_Details
       Visibility
+      is_pinned
+      pin_order
+      display_order
       account {
         documentId
       }
@@ -66,6 +69,9 @@ export const updateRecommendedListMutation = gql`
       List_Name_Details
       slug
       Visibility
+      is_pinned
+      pin_order
+      display_order
       documentId
     }
   }

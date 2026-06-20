@@ -46,13 +46,13 @@
 .dashboard-theme {
   --dash-bg: #2E4032;
   --dash-sidebar-bg: #223126;
-  --dash-accent: #3498DB;
+  --dash-accent: #3B82F6;
   --dash-text: #FFFFFF;
   --dash-text-light: #FFFFFF;
   --dash-text-muted: color-mix(in srgb, #FFFFFF 50%, transparent);
   --dash-muted: #3C4E40;
   --dash-border: #3C4E40;
-  --dash-focus-ring: #3498DB;
+  --dash-focus-ring: #3B82F6;
   --dash-danger: #EF4444;
   --dash-danger-hover: #DC2626;
   --status-published: 142 69% 58%;
@@ -74,11 +74,19 @@
   /* Icon colors */
   --dash-icon-primary: #FFFFFF;
   --dash-icon-secondary: #D1D5DB;
-  --dash-icon-accent: #3498DB;
+  --dash-icon-accent: #3B82F6;
   --dash-icon-muted: #9CA3AF;
   /* Sidebar width - default value for initial render (will be overridden by Sidebar component) */
   --sidebar-width: 256px;
   font-family: 'Poppins', sans-serif;
+
+  /* Additional category & theme layout variables */
+  --dash-container-bg: #2E4032;
+  --dash-tab-bg:      #1a2620;
+  --dash-search-bg:   #223126;
+  --dash-map-banner:  linear-gradient(135deg, #1a2c1e, #0f1a10);
+  --status-pub:       #4ade80;
+  --status-draft:     #f87171;
 }
 
 /* Set default sidebar width on root for immediate availability */
@@ -140,6 +148,14 @@ body[data-sidebar-open="false"] .dashboard-content {
   --dash-icon-secondary: #9CA3AF;
   --dash-icon-accent: #60A5FA;
   --dash-icon-muted: #6B7280;
+
+  /* Additional category & theme layout variables */
+  --dash-container-bg: #0F1419;
+  --dash-tab-bg:      #121620;
+  --dash-search-bg:   #161B26;
+  --dash-map-banner:  linear-gradient(135deg, #1e293b, #0f172a);
+  --status-pub:       #4ade80;
+  --status-draft:     #f87171;
 }
 
 @layer components {

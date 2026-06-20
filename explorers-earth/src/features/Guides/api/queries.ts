@@ -46,6 +46,9 @@ export const GET_GUIDES_QUERY = gql`
       account {
         documentId
       }
+      is_pinned
+      pin_order
+      display_order
       createdAt
       updatedAt
     }
@@ -90,6 +93,9 @@ export const GET_GUIDE_BY_ID_QUERY = gql`
         Section_tags
         Budget
       }
+      is_pinned
+      pin_order
+      display_order
       createdAt
       updatedAt
     }
@@ -159,6 +165,9 @@ export const GET_PUBLIC_GUIDES_QUERY = gql`
       account {
         documentId
       }
+      is_pinned
+      pin_order
+      display_order
       createdAt
       updatedAt
     }
@@ -200,6 +209,9 @@ export const GET_PUBLIC_GUIDE_BY_ID_QUERY = gql`
         Section_tags
         Budget
       }
+      is_pinned
+      pin_order
+      display_order
       createdAt
       updatedAt
     }

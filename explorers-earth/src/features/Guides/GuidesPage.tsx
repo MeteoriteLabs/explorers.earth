@@ -1,12 +1,15 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import Button from "../../components/ui/Button";
 import GuideCard from "./components/GuideCard";
+import TopPicksHero from "./components/TopPicksHero";
+import TopPicksMobileHero from "./components/TopPicksMobileHero";
 import { GET_GUIDES_QUERY, GET_USER_ACCOUNT_QUERY } from "./api/queries";
 import { DELETE_GUIDE_MUTATION, UPDATE_GUIDE_MUTATION } from "./api/mutations";
 import { updateTabVisibilityMutation } from "../../features/Settings/api/mutation";
 import GuideCardSkeleton from "../../components/ui/GuideCardSkeleton";
+import HeroSkeleton from "../../components/ui/HeroSkeleton";
 import Modal from "../../components/ui/Modal";
 import { toast } from "sonner";
 import SEO from "../../components/SEO";
@@ -39,6 +42,8 @@ const GuidesPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [isMultiCityFilter, setIsMultiCityFilter] = useState<boolean>(false);
   const [selectedLocation, setSelectedLocation] = useState<string>("");
+  const [isManageModalOpen, setIsManageModalOpen] = useState<boolean>(false);
+  const [mobileDropdownOpen, setMobileDropdownOpen] = useState<boolean>(false);
 
   // Get account documentId
   const { data: accountData, loading: accountLoading } = useQuery(GET_USER_ACCOUNT_QUERY, {
@@ -123,6 +128,12 @@ const GuidesPage: React.FC = () => {
 
   // True when data is still being fetched (either account or guides query)
   const isLoading = accountLoading || loading || (!accountDocumentId && !accountData);
+
+  useEffect(() => {
+    if (!isLoading) {
+      (window as any).__dashboardLoaded = true;
+    }
+  }, [isLoading]);
 
   // Helper function to extract location names from Place_Details
   const extractLocationNames = (guide: Guide): string[] => {
@@ -260,9 +271,9 @@ const GuidesPage: React.FC = () => {
     };
   }, [allGuides]);
 
-  // Filter guides based on selected filters
-  const guides = useMemo(() => {
-    const filteredGuides = allGuides.filter((guide) => {
+  // Filter and sort guides based on selected filters and pinning
+  const filteredAndSortedGuides = useMemo(() => {
+    const filtered = allGuides.filter((guide) => {
       // Guide Type filter
       if (filters.guideType && guide.Guide_Type !== filters.guideType) {
         return false;
@@ -335,8 +346,56 @@ const GuidesPage: React.FC = () => {
       return true;
     });
 
-    return filteredGuides;
+    // Sort: Pinned items first (by pin_order), then unpinned items (by display_order / createdAt desc)
+    return [...filtered].sort((a: any, b: any) => {
+      // Pinned status comparison
+      if (a.is_pinned && !b.is_pinned) return -1;
+      if (!a.is_pinned && b.is_pinned) return 1;
+
+      if (a.is_pinned && b.is_pinned) {
+        // Both pinned: sort by pin_order
+        const orderA = a.pin_order !== null && a.pin_order !== undefined ? a.pin_order : Infinity;
+        const orderB = b.pin_order !== null && b.pin_order !== undefined ? b.pin_order : Infinity;
+        if (orderA !== orderB) return orderA - orderB;
+      } else {
+        // Both unpinned: sort by display_order
+        const orderA = a.display_order !== null && a.display_order !== undefined ? a.display_order : Infinity;
+        const orderB = b.display_order !== null && b.display_order !== undefined ? b.display_order : Infinity;
+        if (orderA !== orderB) return orderA - orderB;
+      }
+
+      // Fallback: sort by createdAt desc
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
   }, [allGuides, filters, isMultiCityFilter, selectedLocation]);
+
+  const guides = filteredAndSortedGuides;
+
+  const pinnedGuides = useMemo(() => {
+    return [...allGuides]
+      .filter((guide) => guide.is_pinned)
+      .sort((a, b) => {
+        const orderA = a.pin_order !== null && a.pin_order !== undefined ? a.pin_order : Infinity;
+        const orderB = b.pin_order !== null && b.pin_order !== undefined ? b.pin_order : Infinity;
+        return orderA - orderB;
+      });
+  }, [allGuides]);
+
+  const unpinnedGuides = useMemo(() => {
+    return [...allGuides]
+      .filter((guide) => !guide.is_pinned)
+      .sort((a, b) => {
+        const orderA = a.display_order !== null && a.display_order !== undefined ? a.display_order : Infinity;
+        const orderB = b.display_order !== null && b.display_order !== undefined ? b.display_order : Infinity;
+        if (orderA !== orderB) return orderA - orderB;
+
+        const dateA = new Date(a.createdAt || 0).getTime();
+        const dateB = new Date(b.createdAt || 0).getTime();
+        return dateB - dateA;
+      });
+  }, [allGuides]);
 
   // Handle filter changes
   const handleFilterChange = (filterKey: keyof FilterState, value: string | number | null) => {
@@ -408,22 +467,130 @@ const GuidesPage: React.FC = () => {
   });
 
   const handleToggleVisibility = (documentId: string, currentVisibility: boolean) => {
+    const guide = allGuides.find((g) => g.documentId === documentId);
+    const nextVisibility = !currentVisibility;
+    
+    const updateData: any = { Visibility: nextVisibility };
+    if (!nextVisibility && guide?.is_pinned) {
+      updateData.is_pinned = false;
+      updateData.pin_order = null;
+    }
+
     updateGuide({
       variables: {
         documentId,
-        data: {
-          Visibility: !currentVisibility
-        }
+        data: updateData
       },
       optimisticResponse: {
         updateGuide: {
           __typename: "Guide",
           documentId,
-          Visibility: !currentVisibility,
+          Visibility: nextVisibility,
+          ...( (!nextVisibility && guide?.is_pinned) ? { is_pinned: false, pin_order: null } : {} )
         }
       }
     });
   };
+
+  const handleTogglePin = async (documentId: string) => {
+    const guide = allGuides.find((g) => g.documentId === documentId);
+    if (!guide) return;
+
+    const nextPinnedValue = !guide.is_pinned;
+    let pinOrder = null;
+
+    if (nextPinnedValue) {
+      if (!guide.Visibility) {
+        toast.error("Only published guides can be pinned as Top Picks");
+        return;
+      }
+      const maxPinOrder = pinnedGuides.reduce((max: number, g: any) => {
+        const po = g.pin_order || 0;
+        return po > max ? po : max;
+      }, 0);
+      pinOrder = maxPinOrder + 1;
+    }
+
+    try {
+      await updateGuide({
+        variables: {
+          documentId,
+          data: {
+            is_pinned: nextPinnedValue,
+            pin_order: pinOrder,
+          },
+        },
+      });
+      refetch();
+      toast.success(`${guide.Title} ${nextPinnedValue ? "pinned as Top Pick" : "unpinned"}`);
+    } catch (error: any) {
+      console.error("Error updating pin state:", error);
+      toast.error(`Failed to update pin state: ${error.message}`);
+    }
+  };
+
+  const handleModalPinToggle = async (guide: any, nextPinnedValue: boolean) => {
+    const docId = guide.documentId;
+    if (!docId) return;
+
+    if (nextPinnedValue && !guide.Visibility) {
+      toast.error("Only published guides can be pinned as Top Picks");
+      return;
+    }
+
+    let pinOrder = null;
+    if (nextPinnedValue) {
+      const maxPinOrder = pinnedGuides.reduce((max: number, g: any) => {
+        const po = g.pin_order || 0;
+        return po > max ? po : max;
+      }, 0);
+      pinOrder = maxPinOrder + 1;
+    }
+
+    try {
+      await updateGuide({
+        variables: {
+          documentId: docId,
+          data: {
+            is_pinned: nextPinnedValue,
+            pin_order: pinOrder,
+          },
+        },
+      });
+      refetch();
+      toast.success(`${guide.Title} ${nextPinnedValue ? "pinned" : "unpinned"}`);
+    } catch (error) {
+      console.error("Error updating pin state:", error);
+      toast.error("Failed to update pin state");
+    }
+  };
+
+  const handleSwapPinOrder = async (guideA: any, guideB: any) => {
+    if (!guideA || !guideB) return;
+    const tempOrder = guideA.pin_order || 0;
+    const nextOrder = guideB.pin_order || 0;
+
+    try {
+      await updateGuide({
+        variables: {
+          documentId: guideA.documentId,
+          data: { pin_order: nextOrder },
+        },
+      });
+      await updateGuide({
+        variables: {
+          documentId: guideB.documentId,
+          data: { pin_order: tempOrder },
+        },
+      });
+      refetch();
+      toast.success("Order updated");
+    } catch (error) {
+      console.error("Error swapping order:", error);
+      toast.error("Failed to update order");
+    }
+  };
+
 
   const guidesCount = guides.length;
   const username = user?.username || "User";
@@ -459,68 +626,119 @@ const GuidesPage: React.FC = () => {
       <div className="dashboard-theme bg-dashboard-bg min-h-screen">
         <div className="w-full h-full mx-auto max-w-5xl px-4 md:px-6 pt-2 md:pt-4 pb-16 md:pb-6">
           {/* Header row with Add Button and Visibility Toggle (matches Recommendations) */}
-          <div className="mb-4 md:mb-6">
-            <div className="flex items-center justify-between bg-dashboard-sidebar/40 px-3 py-3 rounded-2xl">
-              <div className="flex flex-col items-start gap-1.5 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
+          {/* Header row with Add Button and Visibility Toggle */}
+          <div className="mb-4 relative">
+            {/* Desktop Screen actions row */}
+            <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4 border border-white/5">
+              <div className="flex items-center gap-2 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
                 <SwitchButton
                   isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_guides === "Yes"}
                   onChange={handleVisibilityToggle}
                   variant="blue"
                 />
-                <span className="text-[10px] md:text-xs text-white leading-tight whitespace-nowrap">Public Visibility</span>
+                <span className="text-[10px] md:text-xs text-white leading-tight whitespace-nowrap font-medium">Public Visibility</span>
               </div>
-
-              <div className="flex items-center justify-end w-full">
+              <div className="flex items-center gap-2">
                 {/* Filter button - only show when there are guides */}
-                {!isLoading && allGuides.length > 0 ? (
-                  <div className="flex items-center gap-2 md:gap-3 mr-3">
+                {!isLoading && allGuides.length > 0 && (
+                  <div className="flex items-center gap-2 mr-1">
                     <button
                       onClick={() => setShowFilters(!showFilters)}
-                      className={`relative p-2 md:px-4 md:py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 ${hasActiveFilters
+                      className={`relative px-4 py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer border-none ${hasActiveFilters
                         ? "bg-dashboard-accent hover:opacity-90 text-white shadow-lg shadow-blue-900/30"
                         : "bg-dashboard-sidebar hover:bg-dashboard-card text-dashboard border border-dashboard shadow-md"
                         }`}
                       title="Filters"
                     >
-                      <svg className="w-5 h-5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                       </svg>
-                      <span className="hidden md:inline font-poppins text-sm font-medium">Filters</span>
+                      <span className="font-poppins text-sm font-medium">Filters</span>
                       {hasActiveFilters && (
-                        <>
-                          <span className="md:hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
-                            {Object.values(filters).filter(v => v !== null).length + (isMultiCityFilter ? 1 : 0) + (selectedLocation !== "" ? 1 : 0)}
-                          </span>
-                          <span className="hidden md:inline bg-dashboard-accent text-white text-xs px-2 py-0.5 rounded-full">
-                            {Object.values(filters).filter(v => v !== null).length + (isMultiCityFilter ? 1 : 0) + (selectedLocation !== "" ? 1 : 0)}
-                          </span>
-                        </>
+                        <span className="bg-dashboard-accent text-white text-xs px-2 py-0.5 rounded-full">
+                          {Object.values(filters).filter(v => v !== null).length + (isMultiCityFilter ? 1 : 0) + (selectedLocation !== "" ? 1 : 0)}
+                        </span>
                       )}
                     </button>
                     {hasActiveFilters && (
                       <button
                         onClick={handleClearFilters}
-                        className="px-3 py-2 md:px-4 md:py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 font-poppins text-xs md:text-sm transition-colors"
+                        className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 font-poppins text-sm transition-colors cursor-pointer border-none"
                       >
                         Clear Filters
                       </button>
                     )}
                   </div>
-                ) : (
-                  <div />
                 )}
-
-                {/* Create Guide Button */}
                 <button
                   onClick={() => navigate("/guides/new")}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap cursor-pointer border-none"
                 >
                   <AddIcon size="5" />
-                  <span className="hidden sm:inline">Create Guide</span>
-                  <span className="sm:hidden">Create</span>
+                  <span>Create Guide</span>
                 </button>
               </div>
             </div>
+
+            {/* Mobile actions row (split action button with visibility dropdown) */}
+            <div className="md:hidden flex gap-2 items-center mb-4 w-full">
+              <div className="flex-1 flex rounded-2xl overflow-hidden border border-white/10 shadow-lg shadow-blue-900/15">
+                <button
+                  onClick={() => navigate("/guides/new")}
+                  className="flex-1 bg-dashboard-accent hover:opacity-90 text-xs font-bold text-white py-3 px-4 text-left flex items-center gap-1.5 transition-all cursor-pointer border-none"
+                >
+                  <AddIcon size="4" />
+                  <span>Create Guide</span>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMobileDropdownOpen(!mobileDropdownOpen);
+                  }}
+                  className="bg-dashboard-accent border-l border-white/20 px-3 flex items-center justify-center cursor-pointer transition-all hover:opacity-90 border-none"
+                >
+                  <svg className={`w-3.5 h-3.5 text-white transform transition-transform duration-200 ${mobileDropdownOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Filter button on mobile */}
+              {!isLoading && allGuides.length > 0 && (
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`p-3 rounded-2xl border-none transition-all flex items-center justify-center gap-1.5 cursor-pointer h-[42px] ${hasActiveFilters
+                    ? "bg-dashboard-accent text-white"
+                    : "bg-dashboard-sidebar text-dashboard border border-dashboard"
+                    }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                  </svg>
+                  {hasActiveFilters && (
+                    <span className="bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
+                      {Object.values(filters).filter(v => v !== null).length + (isMultiCityFilter ? 1 : 0) + (selectedLocation !== "" ? 1 : 0)}
+                    </span>
+                  )}
+                </button>
+              )}
+            </div>
+
+            {mobileDropdownOpen && (
+              <div className="absolute top-[calc(100%+6px)] right-0 left-0 p-3.5 z-[100] border border-dashboard-accent/30 rounded-2xl bg-dashboard-sidebar/95 backdrop-blur-md shadow-xl flex justify-between items-center md:hidden">
+                <span className="text-[11px] text-white/90 font-semibold">Manage Public Visibility</span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-bold uppercase ${accountData?.usersPermissionsUser?.accounts?.[0]?.public_guides === "Yes" ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+                    {accountData?.usersPermissionsUser?.accounts?.[0]?.public_guides === "Yes" ? "Pub" : "Draft"}
+                  </span>
+                  <SwitchButton
+                    isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_guides === "Yes"}
+                    onChange={handleVisibilityToggle}
+                    variant="blue"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Desktop Filter Panel - Inline */}
             {showFilters && allGuides.length > 0 && (
@@ -822,6 +1040,47 @@ const GuidesPage: React.FC = () => {
             </React.Fragment>
           )}
 
+          {/* Featured Guides Hero Section or Placeholder */}
+          {!isLoading && !error && allGuides.length > 0 && (
+            <div className="mb-6">
+              {pinnedGuides.length > 0 ? (
+                <>
+                  <div className="hidden lg:block">
+                    <TopPicksHero 
+                      guides={pinnedGuides}
+                      onGuideClick={(guide) => handleGuideClick(guide.documentId)}
+                      showManageButton={true}
+                      onManageClick={() => setIsManageModalOpen(true)}
+                    />
+                  </div>
+                  <div className="block lg:hidden">
+                    <TopPicksMobileHero 
+                      guides={pinnedGuides}
+                      onGuideClick={(guide) => handleGuideClick(guide.documentId)}
+                      showManageButton={true}
+                      onManageClick={() => setIsManageModalOpen(true)}
+                    />
+                  </div>
+                </>
+              ) : (
+                /* Empty Placeholder banner */
+                <div
+                  onClick={() => setIsManageModalOpen(true)}
+                  className="w-full flex items-center justify-between p-4 rounded-[14px] border border-amber-500/25 bg-amber-500/5 hover:bg-amber-500/10 transition-all duration-300 cursor-pointer"
+                >
+                  <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-[#fbbf24] font-poppins">
+                    <span className="text-amber-400">★</span> Manage Top Picks ({pinnedGuides.length}/{allGuides.length})
+                  </div>
+                  <div className="flex items-center text-amber-500">
+                    <svg className="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Location Tags */}
           {!isLoading && !error && filterOptions.locations.length > 0 && (
             <div className="mb-4">
@@ -851,42 +1110,78 @@ const GuidesPage: React.FC = () => {
 
           {/* Guides Grid */}
           {!error && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-16 md:mb-0">
-              {isLoading ? (
-                // Skeleton cards — sit directly in the grid, match guide card proportions
-                <GuideCardSkeleton count={6} variant="dashboard" />
-              ) : guides.length > 0 ? (
-                guides.map((guide) => (
-                  <GuideCard
-                    key={guide.documentId}
-                    guide={guide}
-                    onClickHandler={handleGuideClick}
-                    onEdit={handleEditGuide}
-                    onDelete={handleDeleteGuide}
-                    onToggleVisibility={handleToggleVisibility}
-                  />
-                ))
-              ) : (
-                <div className="col-span-1 md:col-span-3 flex flex-col items-center justify-center min-h-[50vh]">
-                  <div className="bg-dashboard-modal p-6 rounded-lg border border-dashboard-accent shadow-dashboard-elevated text-center">
-                    <h1 className="text-white font-poppins font-semibold text-lg md:text-xl mb-2">
-                      No Guides Yet
-                    </h1>
-                    <p className="text-gray-300 font-poppins text-sm md:text-base mb-4">
-                      Create your first travel guide to get started!
-                    </p>
-                    <div className="flex justify-center">
-                      <Button
-                        onClickHandler={() => navigate("/guides/new")}
-                        variant="primary"
-                        btnText="Create Your First Guide"
-                      />
-                    </div>
+            <>
+              {/* ── Hero skeleton — shown while loading and no pinned data yet ── */}
+              {isLoading && pinnedGuides.length === 0 && (
+                <div className="mb-8">
+                  {/* Desktop */}
+                  <div className="hidden md:block">
+                    <HeroSkeleton accentColor="yellow" variant="dashboard" showThumbnails />
+                  </div>
+                  {/* Mobile */}
+                  <div className="md:hidden">
+                    <HeroSkeleton accentColor="yellow" variant="dashboard" mobile />
                   </div>
                 </div>
               )}
-            </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-16 md:mb-0">
+                {isLoading ? (
+                  // Skeleton cards — sit directly in the grid, match guide card proportions
+                  <GuideCardSkeleton count={6} variant="dashboard" />
+                ) : allGuides.length > 0 ? (
+                  <>
+                    {guides.length > 0 ? (
+                      guides.map((guide) => (
+                        <GuideCard
+                          key={guide.documentId}
+                          guide={guide}
+                          onClickHandler={handleGuideClick}
+                          onEdit={handleEditGuide}
+                          onDelete={handleDeleteGuide}
+                          onToggleVisibility={handleToggleVisibility}
+                          onTogglePin={handleTogglePin}
+                        />
+                      ))
+                    ) : (
+                      <div className="col-span-1 md:col-span-2 flex items-center justify-center p-8 bg-dashboard-sidebar/20 border border-dashboard border-dashed rounded-xl min-h-[150px]">
+                        <p className="text-sm font-poppins text-white/50 text-center">
+                          No guides match your filter criteria. Try clearing some filters.
+                        </p>
+                      </div>
+                    )}
+                    {/* Add Guide Dotted Card */}
+                    <div
+                      onClick={() => navigate("/guides/new")}
+                      className="border-2 border-dashed border-dashboard-border rounded-xl flex flex-col items-center justify-center gap-1.5 p-4 cursor-pointer hover:border-dashboard-accent hover:bg-dashboard-accent/5 transition-all duration-300 aspect-[16/9] md:aspect-[4/3] max-w-none w-full"
+                    >
+                      <span className="text-2xl text-white/30 font-light">+</span>
+                      <span className="text-xs md:text-sm text-white/45 font-semibold whitespace-nowrap">Create Guide</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="col-span-1 md:col-span-3 flex flex-col items-center justify-center min-h-[50vh]">
+                    <div className="bg-dashboard-modal p-6 rounded-lg border border-dashboard-accent shadow-dashboard-elevated text-center">
+                      <h1 className="text-white font-poppins font-semibold text-lg md:text-xl mb-2">
+                        No Guides Yet
+                      </h1>
+                      <p className="text-gray-300 font-poppins text-sm md:text-base mb-4">
+                        Create your first travel guide to get started!
+                      </p>
+                      <div className="flex justify-center">
+                        <Button
+                          onClickHandler={() => navigate("/guides/new")}
+                          variant="primary"
+                          btnText="Create Your First Guide"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
           )}
+
 
           {/* Delete Confirmation Modal */}
           {showDeleteModal && (
@@ -918,6 +1213,165 @@ const GuidesPage: React.FC = () => {
                     variant="danger"
                     isLoading={isDeleting}
                     disabled={isDeleting}
+                  />
+                </div>
+              </div>
+            </Modal>
+          )}
+
+          {/* Manage Top Picks Modal */}
+          {isManageModalOpen && (
+            <Modal
+              isOpen={isManageModalOpen}
+              onClose={() => setIsManageModalOpen(false)}
+            >
+              <div className="p-6 max-h-[80vh] overflow-y-auto font-poppins text-white">
+                <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-white">
+                  <span className="text-amber-400">★</span> Manage Top Picks
+                </h2>
+                <p className="text-xs text-white/50 mb-6">
+                  Pin up to 5 guides as Top Picks and reorder them to customize the hero slideshow on your profile.
+                </p>
+
+                {/* Pinned Section */}
+                <div className="mb-6">
+                  <h3 className="text-xs font-semibold text-white/70 uppercase tracking-wider mb-3 flex items-center justify-between">
+                    <span>Pinned ({pinnedGuides.length})</span>
+                    {pinnedGuides.length > 0 && <span className="text-[10px] text-white/40 normal-case font-normal">Use arrows to change order</span>}
+                  </h3>
+
+                  {pinnedGuides.length === 0 ? (
+                    <div className="border border-dashed border-white/10 rounded-xl p-4 text-center text-xs text-white/40">
+                      No pinned guides. Pin a guide below to feature it.
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {pinnedGuides.map((guide: any, index: number) => {
+                        const coverImage = guide.Guide_Media?.[0]?.url || "https://placehold.co/100x100";
+                        return (
+                          <div
+                            key={guide.documentId || index}
+                            className="flex items-center justify-between bg-white/5 border border-white/10 p-3 rounded-xl hover:border-white/20 transition-all"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-8 h-8 rounded bg-white/10 overflow-hidden flex-shrink-0">
+                                <img
+                                  src={coverImage}
+                                  alt=""
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <span className="text-xs font-bold text-white truncate">{guide.Title}</span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1 border-r border-white/10 pr-2">
+                                <button
+                                  onClick={() => {
+                                    if (index > 0) {
+                                      handleSwapPinOrder(guide, pinnedGuides[index - 1]);
+                                    }
+                                  }}
+                                  disabled={index === 0}
+                                  className="p-1.5 rounded bg-white/5 hover:bg-white/10 text-white/70 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-colors border-none cursor-pointer"
+                                  title="Move Up"
+                                >
+                                  <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (index < pinnedGuides.length - 1) {
+                                      handleSwapPinOrder(guide, pinnedGuides[index + 1]);
+                                    }
+                                  }}
+                                  disabled={index === pinnedGuides.length - 1}
+                                  className="p-1.5 rounded bg-white/5 hover:bg-white/10 text-white/70 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-colors border-none cursor-pointer"
+                                  title="Move Down"
+                                >
+                                  <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                  </svg>
+                                </button>
+                              </div>
+
+                              <button
+                                onClick={() => handleModalPinToggle(guide, false)}
+                                className="text-xs bg-amber-500/20 text-amber-300 hover:bg-amber-500/35 px-2.5 py-1.5 rounded-lg font-bold border-none transition-colors cursor-pointer"
+                                title="Unpin"
+                              >
+                                Unpin
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Unpinned Section */}
+                <div>
+                  <h3 className="text-xs font-semibold text-white/70 uppercase tracking-wider mb-3">
+                    All Guides ({unpinnedGuides.length})
+                  </h3>
+
+                  {unpinnedGuides.length === 0 ? (
+                    <div className="border border-dashed border-white/10 rounded-xl p-4 text-center text-xs text-white/40">
+                      No unpinned guides.
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2 max-h-[250px] overflow-y-auto pr-1">
+                      {unpinnedGuides.map((guide: any, index: number) => {
+                        const coverImage = guide.Guide_Media?.[0]?.url || "https://placehold.co/100x100";
+                        return (
+                          <div
+                            key={guide.documentId || index}
+                            className="flex items-center justify-between bg-white/5 border border-white/5 p-3 rounded-xl hover:border-white/15 transition-all"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-8 h-8 rounded bg-white/10 overflow-hidden flex-shrink-0">
+                                <img
+                                  src={coverImage}
+                                  alt=""
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <span className="text-xs font-bold text-white/80 truncate">{guide.Title}</span>
+                            </div>
+
+                            <button
+                              onClick={() => {
+                                if (!guide.Visibility) {
+                                  toast.error("Only published guides can be pinned as Top Picks");
+                                  return;
+                                }
+                                handleModalPinToggle(guide, true);
+                              }}
+                              disabled={!guide.Visibility}
+                              className="text-xs bg-white/5 text-white/70 hover:bg-white/15 px-2.5 py-1.5 rounded-lg font-bold border border-white/10 transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                              title={!guide.Visibility ? "Only published guides can be pinned" : "Pin to Top Picks"}
+                            >
+                              <svg className="w-3.5 h-3.5 text-white/55" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path d="M19 12H5l4-4V3h6v5l4 4z" />
+                                <path d="M12 12v8" />
+                              </svg>
+                              Pin Top Pick
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6 border-t border-white/10 pt-4">
+                  <Button
+                    btnText="Close"
+                    onClickHandler={() => setIsManageModalOpen(false)}
+                    size="small"
+                    variant="google"
                   />
                 </div>
               </div>
