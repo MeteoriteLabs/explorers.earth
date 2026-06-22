@@ -11,7 +11,7 @@ import Accordion from "../../../../components/ui/Accordian";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 
-import { MOVIES_BY_LIST } from "../../api/query";
+import { MOVIES_BY_LIST, moviesByListVars } from "../../api/query";
 import {
   DELETE_RECOMMENDED_MOVIE,
   TOGGLE_MOVIE_PIN,
@@ -167,7 +167,7 @@ const MovieListView = () => {
   const [isEditingList, setIsEditingList] = useState(false);
 
   const { data, loading, refetch } = useQuery(MOVIES_BY_LIST, {
-    variables: { movieListDocumentId: listId, page: 0, pageSize: 100 },
+    variables: moviesByListVars(listId ?? ""),
     skip: !listId,
     fetchPolicy: "cache-and-network",
   });

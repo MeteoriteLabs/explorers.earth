@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import Accordion from "../../../../components/ui/Accordian";
 import useAuthStore from "../../../../store/store";
-import { GAMES_BY_LIST } from "../../api/query";
+import { GAMES_BY_LIST, gamesByListVars } from "../../api/query";
 import {
   UPDATE_GAME_LIST, DELETE_GAME_LIST,
   TOGGLE_GAME_PIN, DELETE_RECOMMENDED_GAME,
@@ -310,7 +310,7 @@ const GameListView = () => {
   };
 
   const { data, loading, refetch } = useQuery(GAMES_BY_LIST, {
-    variables: { gameListDocumentId: listId, page: 0, pageSize: 200 },
+    variables: gamesByListVars(listId ?? ""),
     skip: !listId,
     fetchPolicy: "cache-and-network",
   });
