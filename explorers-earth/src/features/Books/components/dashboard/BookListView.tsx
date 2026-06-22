@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import Accordion from "../../../../components/ui/Accordian";
 import useAuthStore from "../../../../store/store";
-import { BOOKS_BY_LIST } from "../../api/query";
+import { BOOKS_BY_LIST, booksByListVars } from "../../api/query";
 import {
   UPDATE_BOOK_LIST, DELETE_BOOK_LIST,
   TOGGLE_BOOK_PIN, DELETE_RECOMMENDED_BOOK,
@@ -382,7 +382,7 @@ const BookListView = () => {
   const { user } = useAuthStore();
 
   const { data, loading, refetch } = useQuery(BOOKS_BY_LIST, {
-    variables: { bookListDocumentId: listId, page: 0, pageSize: 200 },
+    variables: booksByListVars(listId ?? ""),
     skip: !listId,
     fetchPolicy: "cache-and-network",
   });

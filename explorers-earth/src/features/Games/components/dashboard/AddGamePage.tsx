@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import useAuthStore from "../../../../store/store";
-import { GAMES_BY_LIST, GAME_CATEGORIES } from "../../api/query";
+import { GAMES_BY_LIST, GAME_CATEGORIES, gamesByListVars, refetchGamesByList } from "../../api/query";
 import {
   CREATE_RECOMMENDED_GAME, UPDATE_RECOMMENDED_GAME,
 } from "../../api/mutation";
@@ -144,7 +144,7 @@ const AddGamePage = () => {
   const username: string = (user as any)?.username || "";
 
   const { data: listData } = useQuery(GAMES_BY_LIST, {
-    variables: { gameListDocumentId: listId, page: 0, pageSize: 200 },
+    variables: gamesByListVars(listId ?? ""),
     skip: !listId,
   });
   const existingGames: RecommendedGame[] = deduplicateGames(listData?.gameLists?.[0]?.recommended_games);
@@ -357,6 +357,10 @@ const AddGamePage = () => {
             game_categories: categoryId ? [categoryId] : null,
             media_details: mediaDetails,
           },
+          // Refetch the list view's exact query so the new game is in cache
+          // before we navigate back — prevents the stale "empty list until reload".
+          refetchQueries: refetchGamesByList(listId ?? ""),
+          awaitRefetchQueries: true,
         });
         toast.success("Game added to list!");
       }

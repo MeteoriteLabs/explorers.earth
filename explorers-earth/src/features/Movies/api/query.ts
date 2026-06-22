@@ -102,6 +102,19 @@ export const MOVIES_BY_LIST = gql`
   }
 `;
 
+// Page-0 window shared by the list view's query AND the Add-page refetch, so the
+// two can never drift. A drift would make the refetch target a different cache
+// key — a silent no-op that leaves the list stale after an add.
+export const MOVIES_BY_LIST_PAGE_SIZE = 100;
+export const moviesByListVars = (listId: string) => ({
+  movieListDocumentId: listId,
+  page: 0,
+  pageSize: MOVIES_BY_LIST_PAGE_SIZE,
+});
+export const refetchMoviesByList = (listId: string) => [
+  { query: MOVIES_BY_LIST, variables: moviesByListVars(listId) },
+];
+
 // ─────────────────────────────────────────────────────────────
 // Query 1.3 — Single Movie Detail
 // ─────────────────────────────────────────────────────────────

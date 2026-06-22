@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import useAuthStore from "../../../../store/store";
-import { BOOKS_BY_LIST } from "../../api/query";
+import { BOOKS_BY_LIST, booksByListVars, refetchBooksByList } from "../../api/query";
 import {
   CREATE_RECOMMENDED_BOOK, UPDATE_RECOMMENDED_BOOK,
 } from "../../api/mutation";
@@ -155,7 +155,7 @@ const AddBookPage = () => {
 
   // Load existing book list (for display_order)
   const { data: listData } = useQuery(BOOKS_BY_LIST, {
-    variables: { bookListDocumentId: listId, page: 0, pageSize: 200 },
+    variables: booksByListVars(listId ?? ""),
     skip: !listId,
   });
   const existingBooks: RecommendedBook[] = deduplicateBooks(listData?.bookLists?.[0]?.recommended_books);
@@ -319,6 +319,10 @@ const AddBookPage = () => {
             book_list: listId,
             book_categories: [],
           },
+          // Refetch the list view's exact query so the new book is in cache
+          // before we navigate back — prevents the stale "empty list until reload".
+          refetchQueries: refetchBooksByList(listId ?? ""),
+          awaitRefetchQueries: true,
         });
         toast.success("Book added to list!");
       }

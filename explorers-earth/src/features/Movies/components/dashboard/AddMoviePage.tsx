@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { useTMDBSearch } from "../../hooks/useTMDBSearch";
 import tmdbService from "../../../../services/tmdbService";
 import { CREATE_RECOMMENDED_MOVIE, UPDATE_RECOMMENDED_MOVIE } from "../../api/mutation";
-import { MOVIE_CATEGORIES, MOVIES_BY_LIST } from "../../api/query";
+import { MOVIE_CATEGORIES, MOVIES_BY_LIST, moviesByListVars, refetchMoviesByList } from "../../api/query";
 import type { TMDBSearchResult, WatchProvider, TMDBCastMember } from "../../types";
 import {
   buildPosterUrl, buildBackdropUrl, extractYear, extractNoteText, getGenreNames,
@@ -180,7 +180,7 @@ const AddMoviePage = () => {
 
   // For edit mode: load existing movie data from the list query
   const { data: listData } = useQuery(MOVIES_BY_LIST, {
-    variables: { movieListDocumentId: listId, page: 0, pageSize: 100 },
+    variables: moviesByListVars(listId ?? ""),
     skip: !isEdit || !listId,
     fetchPolicy: "cache-and-network",
   });
@@ -533,7 +533,11 @@ const AddMoviePage = () => {
             media_details: finalMediaDetails,
             cast_details: castDetailsJSON.length > 0 ? castDetailsJSON : null,
           },
-          refetchQueries: [MOVIES_BY_LIST],
+          // Scope the refetch to the list view's exact query + wait for it, so the
+          // new movie is in cache before we navigate back (the bare query without
+          // variables didn't reliably refresh the list on return).
+          refetchQueries: refetchMoviesByList(listId ?? ""),
+          awaitRefetchQueries: true,
         });
         toast.success("Movie added!");
       }
