@@ -111,6 +111,19 @@ export const BOOKS_BY_LIST = gql`
   }
 `;
 
+// Page-0 window shared by the list view's query AND the Add-page refetch, so the
+// two can never drift. A drift would make the refetch target a different cache
+// key — a silent no-op that leaves the list stale after an add.
+export const BOOKS_BY_LIST_PAGE_SIZE = 200;
+export const booksByListVars = (listId: string) => ({
+  bookListDocumentId: listId,
+  page: 0,
+  pageSize: BOOKS_BY_LIST_PAGE_SIZE,
+});
+export const refetchBooksByList = (listId: string) => [
+  { query: BOOKS_BY_LIST, variables: booksByListVars(listId) },
+];
+
 // ─────────────────────────────────────────────────────────────
 // Query 1.3 — Single Book Detail
 // ─────────────────────────────────────────────────────────────

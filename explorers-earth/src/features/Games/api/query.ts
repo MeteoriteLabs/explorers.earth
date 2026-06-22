@@ -113,6 +113,19 @@ export const GAMES_BY_LIST = gql`
   }
 `;
 
+// Page-0 window shared by the list view's query AND the Add-page refetch, so the
+// two can never drift. A drift would make the refetch target a different cache
+// key — a silent no-op that leaves the list stale after an add.
+export const GAMES_BY_LIST_PAGE_SIZE = 200;
+export const gamesByListVars = (listId: string) => ({
+  gameListDocumentId: listId,
+  page: 0,
+  pageSize: GAMES_BY_LIST_PAGE_SIZE,
+});
+export const refetchGamesByList = (listId: string) => [
+  { query: GAMES_BY_LIST, variables: gamesByListVars(listId) },
+];
+
 // ─────────────────────────────────────────────────────────────
 // Query 1.3 — Single Game Detail
 // ─────────────────────────────────────────────────────────────
