@@ -533,7 +533,13 @@ const AddMoviePage = () => {
             media_details: finalMediaDetails,
             cast_details: castDetailsJSON.length > 0 ? castDetailsJSON : null,
           },
-          refetchQueries: [MOVIES_BY_LIST],
+          // Scope the refetch to the list view's exact query + wait for it, so the
+          // new movie is in cache before we navigate back (the bare query without
+          // variables didn't reliably refresh the list on return).
+          refetchQueries: [
+            { query: MOVIES_BY_LIST, variables: { movieListDocumentId: listId, page: 0, pageSize: 100 } },
+          ],
+          awaitRefetchQueries: true,
         });
         toast.success("Movie added!");
       }

@@ -319,6 +319,12 @@ const AddBookPage = () => {
             book_list: listId,
             book_categories: [],
           },
+          // Refetch the list view's exact query so the new book is in cache
+          // before we navigate back — prevents the stale "empty list until reload".
+          refetchQueries: [
+            { query: BOOKS_BY_LIST, variables: { bookListDocumentId: listId, page: 0, pageSize: 200 } },
+          ],
+          awaitRefetchQueries: true,
         });
         toast.success("Book added to list!");
       }

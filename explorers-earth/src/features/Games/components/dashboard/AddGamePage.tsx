@@ -357,6 +357,12 @@ const AddGamePage = () => {
             game_categories: categoryId ? [categoryId] : null,
             media_details: mediaDetails,
           },
+          // Refetch the list view's exact query so the new game is in cache
+          // before we navigate back — prevents the stale "empty list until reload".
+          refetchQueries: [
+            { query: GAMES_BY_LIST, variables: { gameListDocumentId: listId, page: 0, pageSize: 200 } },
+          ],
+          awaitRefetchQueries: true,
         });
         toast.success("Game added to list!");
       }
