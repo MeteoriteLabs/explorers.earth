@@ -1,15 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Song, PlaylistResponse } from "../../types/music";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import PlaylistCard, { PlaylistCardContent, PlaylistCardHeader, PlaylistCardTitle, PlaylistCardDescription } from "../../components/ui/PlaylistCard";
+import PlaylistCard, { PlaylistCardContent } from "../../components/ui/PlaylistCard";
 import { EarthLoader } from "../../components/EarthLoader";
 import PlaylistTable from "../../components/playlist-table";
 import SearchSongs from "../../components/search-songs";
-import { Music2, Volume2, History, Search, Share2, Copy } from "lucide-react";
+import { Music2, Volume2, History, Share2, Copy, ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 import { apiRequest } from "../../lib/queryClient";
-import Accordion, { AccordionContent, AccordionItem, AccordionTrigger } from "../../components/ui/accordion";
 import Tabs, { TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { useWebSocket } from "../../hooks/useWebSocket";
 import { useTheme } from "../../components/theme-provider";
@@ -20,9 +19,11 @@ import { getPublicAccountBasicQuery } from "../../features/PublicHome/api/query"
 import { getSongLimits, getUserSubscriptionPlans, getSubscriptionPlanById } from "../../services/subscriptionService";
 import SEO from "../../components/SEO";
 import { createCanonicalUrl } from "../../utils/getCurrentDomain";
+import { useTrackAnalytics, createAnalyticsOptions } from "../../services/analyticsService";
+import { motion, PanInfo } from "framer-motion";
+import "./PublicMusic.css";
 
 const POLLING_INTERVAL = 1000;
-
 
 const GET_USER_BY_USERNAME_QUERY = gql`
   query UsersPermissionsUser($filters: UsersPermissionsUserFiltersInput) {
@@ -33,6 +34,63 @@ const GET_USER_BY_USERNAME_QUERY = gql`
   }
 `;
 
+const MusicSkeleton = () => {
+  return (
+    <div className="min-h-screen bg-black text-white pt-20 px-4 md:px-6 pb-20">
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* 1. Search Bar Skeleton */}
+        <div className="bg-[#111] border border-white/[0.08] rounded-[14px] p-4 space-y-2.5">
+          <div className="h-4 w-36 bg-white/10 rounded skeleton-shimmer" />
+          <div className="h-10 w-full bg-black border border-gray-800 rounded-lg skeleton-shimmer" />
+          <div className="h-3 w-40 bg-white/5 rounded skeleton-shimmer" />
+        </div>
+        
+        {/* 2. Title Label */}
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-white/10 skeleton-shimmer" />
+          <div className="h-3.5 w-24 bg-white/10 rounded skeleton-shimmer" />
+        </div>
+
+        {/* 3. Hero Card Skeleton (Responsive) */}
+        {/* Mobile View Hero Skeleton */}
+        <div className="md:hidden w-full h-[300px] rounded-[18px] bg-[#0a0a0a] border border-white/10 shadow-lg relative overflow-hidden">
+          <div className="absolute inset-0 skeleton-shimmer" />
+          <div className="absolute bottom-4 left-4 right-4 space-y-2">
+            <div className="h-4 w-20 bg-white/15 rounded skeleton-shimmer" />
+            <div className="h-6 w-3/4 bg-white/20 rounded skeleton-shimmer" />
+            <div className="h-3.5 w-1/2 bg-white/10 rounded skeleton-shimmer" />
+          </div>
+        </div>
+
+        {/* Desktop View Hero Skeleton */}
+        <div className="hidden md:block w-full h-[440px] rounded-[18px] bg-[#0a0a0a] border border-white/10 shadow-lg relative overflow-hidden">
+          <div className="absolute inset-0 skeleton-shimmer" />
+          <div className="absolute bottom-8 left-8 space-y-2.5">
+            <div className="h-5 w-24 bg-white/15 rounded skeleton-shimmer" />
+            <div className="h-8 w-[320px] bg-white/20 rounded-lg skeleton-shimmer" />
+            <div className="h-4 w-40 bg-white/10 rounded skeleton-shimmer" />
+          </div>
+        </div>
+
+        {/* 4. Accordion List Skeletons */}
+        <div className="space-y-3 pt-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-[#111] border border-white/[0.08] rounded-[14px] h-[54px] px-4 flex items-center justify-between">
+              <div className="flex items-center gap-3 w-1/2">
+                <div className="w-8 h-8 rounded-lg bg-white/5 skeleton-shimmer" />
+                <div className="h-4 w-28 bg-white/10 rounded skeleton-shimmer" />
+                <div className="h-3.5 w-16 bg-white/5 rounded-full skeleton-shimmer" />
+              </div>
+              <div className="w-4 h-4 rounded-full bg-white/5 skeleton-shimmer" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 export default function PublicMusic() {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
@@ -40,8 +98,26 @@ export default function PublicMusic() {
   const queryClient = useQueryClient();
   const { updateTheme } = useTheme();
   const [themeUpdated, setThemeUpdated] = useState(false);
-  const [accordionValue, setAccordionValue] = useState<string>("");
   const [guestUrl, setGuestUrl] = useState<string | null>(null);
+  const [activeHeroIndex, setActiveHeroIndex] = useState(0);
+  const [accordionsOpen, setAccordionsOpen] = useState({
+    queue: true,
+    history: false,
+    playlists: false,
+    device: false
+  });
+  const desktopQueueScrollRef = useRef<HTMLDivElement>(null);
+
+  const handleScrollQueue = (direction: 'left' | 'right') => {
+    if (desktopQueueScrollRef.current) {
+      const scrollAmount = 144 + 14; // card width (w-36 = 144px) + gap (gap-3.5 = 14px)
+      desktopQueueScrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
 
   // First, fetch account data to get Local Tunes link
   const { data: accountData, loading: accountLoading } = useApolloQuery(getPublicAccountBasicQuery, {
@@ -89,6 +165,8 @@ export default function PublicMusic() {
   });
 
   const userDocumentId = userData?.usersPermissionsUsers?.[0]?.documentId;
+  // Resolve account documentId for analytics (account != user)
+  const accountDocumentId = accountData?.accounts?.[0]?.documentId;
 
   // Fetch user subscription plans to get plan_id from backend API
   const { data: subscriptionData } = useReactQuery({
@@ -131,6 +209,11 @@ export default function PublicMusic() {
   const songsQuota = planDetailsData?.songs_quota || 0;
   const isLimitReached = Number(songsQuota) > 0 && Number(songRequestsCount) >= Number(songsQuota);
 
+  // Initialize analytics — auto-tracks the page view once accountId resolves
+  const analytics = useTrackAnalytics(
+    createAnalyticsOptions.music(accountDocumentId || '', username)
+  );
+
   // Check if there's an active non-expired subscription plan
   const checkActiveSubscription = () => {
     if (!activeSubscription?.end_date) return false;
@@ -172,6 +255,20 @@ export default function PublicMusic() {
       setThemeUpdated(true);
     }
   }, [playlist?.user?.theme?.primary, updateTheme, themeUpdated]);
+
+  // Reset active card to the "Now Playing" card (index 0) when the currently playing song changes
+  useEffect(() => {
+    setActiveHeroIndex(0);
+  }, [playlist?.currentlyPlaying?.youtubeId]);
+
+  // Adjust activeHeroIndex in case it goes out of bounds when the queue or currently playing song changes
+  useEffect(() => {
+    const totalCardsCount = (playlist?.currentlyPlaying ? 1 : 0) + Math.min((playlist?.songs || []).length, 4);
+    if (activeHeroIndex >= totalCardsCount && totalCardsCount > 0) {
+      setActiveHeroIndex(0);
+    }
+  }, [playlist?.currentlyPlaying, playlist?.songs, activeHeroIndex]);
+
 
   // Handle WebSocket messages
   const handleMessage = (message: { type: string; payload: any }) => {
@@ -316,6 +413,12 @@ export default function PublicMusic() {
 
     try {
       await addSongToQueueMutation.mutateAsync(song);
+      // Track successful song request — key engagement metric
+      analytics.trackClick('song-request', {
+        title: song.title,
+        artist: song.artist,
+        youtubeId: song.youtubeId,
+      });
       // Refetch song limits after adding song
       await refetchSongLimits();
     } catch (error) {
@@ -353,6 +456,7 @@ export default function PublicMusic() {
       console.log('Share API not available, falling back to copy');
       handleCopyLink();
     }
+    analytics.trackClick('share-button', { context: 'music-header' });
   };
 
   const handleCopyLink = async () => {
@@ -370,6 +474,7 @@ export default function PublicMusic() {
       await navigator.clipboard.writeText(shareUrl);
       console.log('Copy successful');
       toast("Music page link copied to clipboard");
+      analytics.trackClick('copy-link', { context: 'music-header' });
     } catch (error) {
       console.error('Copy failed:', error);
       toast("Could not copy the music page link", { variant: "destructive" });
@@ -377,16 +482,27 @@ export default function PublicMusic() {
   };
 
 
+  const queueSongs = playlist?.songs || [];
+
   // Show loader during the full chain:
   // 1. Account data is still fetching
   // 2. Account loaded but onCompleted hasn't set guestUrl yet (brief async gap)
   // 3. guestUrl is set and playlist is being fetched
   const isPageLoading = accountLoading || (!accountLoading && !guestUrl && !error) || isLoading;
 
+  useEffect(() => {
+    if (!isPageLoading) {
+      (window as any).__publicProfileLoaded = true;
+    }
+  }, [isPageLoading]);
+
   if (isPageLoading) {
+    if ((window as any).__publicProfileLoaded) {
+      return <MusicSkeleton />;
+    }
     return (
       <div className="bg-black min-h-screen">
-        <EarthLoader context="profile" />
+        <EarthLoader context="profile" size="default" />
       </div>
     );
   }
@@ -415,6 +531,49 @@ export default function PublicMusic() {
   const accountName = accountData?.accounts?.[0]?.Account_Name || playlist?.user?.venueName || username || "User";
   const visiblePlaylistsCount = playlist?.playlists?.filter((p: any) => p.isVisibleToGuests).length || 0;
   const totalSongs = playlist?.playlists?.reduce((sum: number, p: any) => sum + (p.songs?.length || 0), 0) || 0;
+
+  // Build the list of hero cards (Now Playing + next 4 queue items)
+  const heroCards = [];
+  if (playlist?.currentlyPlaying) {
+    heroCards.push({
+      type: 'now-playing',
+      title: playlist.currentlyPlaying.title,
+      artist: playlist.currentlyPlaying.artist,
+      thumbnailUrl: playlist.currentlyPlaying.thumbnailUrl,
+      badge: 'Now Playing',
+    });
+  }
+
+  const nextQueueItems = queueSongs.slice(0, 4);
+  nextQueueItems.forEach((song, idx) => {
+    heroCards.push({
+      type: 'queue',
+      title: song.title,
+      artist: song.artist,
+      thumbnailUrl: song.thumbnailUrl,
+      badge: idx === 0 ? 'Up Next' : `#${idx + 1} in Queue`,
+    });
+  });
+
+  const totalCards = heroCards.length;
+  const activeCard = heroCards[activeHeroIndex] || heroCards[0];
+
+
+  const desktopQueueSlots = [];
+  if (playlist?.currentlyPlaying) {
+    desktopQueueSlots.push({
+      label: 'Now Playing',
+      song: playlist.currentlyPlaying,
+      targetIndex: 0
+    });
+  }
+  nextQueueItems.forEach((song, idx) => {
+    desktopQueueSlots.push({
+      label: idx === 0 ? 'Up Next' : `#${idx + 1}`,
+      song: song,
+      targetIndex: playlist?.currentlyPlaying ? idx + 1 : idx
+    });
+  });
 
   return (
     <>
@@ -461,6 +620,7 @@ export default function PublicMusic() {
               <button
                 onClick={handleShare}
                 className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
+                title="Share"
                 aria-label="Share"
               >
                 <Share2 className="h-4 w-4" style={{ color: 'white' }} />
@@ -468,179 +628,382 @@ export default function PublicMusic() {
               <button
                 onClick={handleCopyLink}
                 className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
+                title="Copy Link"
                 aria-label="Copy Link"
               >
                 <Copy className="h-4 w-4" style={{ color: 'white' }} />
               </button>
             </div>
           </div>
-        </div>
+        </div>        {/* Main Content */}
+        <div className="pt-14 w-full flex flex-col">
+          {/* Search Songs Section - Only show if song requests are allowed */}
+          {playlist?.user?.allowSongRequests && (
+            <div className="max-w-4xl mx-auto px-4 md:px-6 w-full mt-6 mb-4">
+              <SearchSongs
+                guestUrl={guestUrl}
+                disabled={shouldDisableSearch}
+                onSongsAddedCallback={async () => {
+                  await refetchSongLimits();
+                }}
+              />
+            </div>
+          )}
 
-        {/* Main Content */}
-        <div className="max-w-4xl mx-auto py-8 space-y-8 pt-20 pb-28 px-6">
-          {/* Now Playing Section - Enhanced UI */}
-          <PlaylistCard className="border border-gray-700 bg-black text-white rounded-lg shadow-lg overflow-hidden">
-            <PlaylistCardHeader className="px-6 py-4 bg-gradient-to-r from-blue-500/20 to-blue-600/30">
-              <div className="flex items-center">
-                <div className="bg-primary/20 p-2 rounded-full mr-3">
-                  <Music2 className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-left text-blue-500">Now Playing</h3>
-                </div>
-              </div>
-            </PlaylistCardHeader>
-            <PlaylistCardContent className="px-0 pt-0 pb-0">
-              <div className="relative w-full">
-                {playlist?.currentlyPlaying && (
-                  <div className="w-full flex flex-col items-center bg-black pb-6">
-                    <div className="w-full max-w-xs p-6">
-                      <div className="aspect-square relative rounded-lg overflow-hidden shadow-lg border-4 border-primary/10 mx-auto">
-                        <img
-                          src={playlist?.currentlyPlaying?.thumbnailUrl}
-                          alt={playlist?.currentlyPlaying?.title}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
+          {/* Now Playing Section */}
+          {playlist?.currentlyPlaying ? (
+            <>
+              {/* MOBILE VIEW (stacked swiper) */}
+              <div className="md:hidden w-full mb-4 mt-4 touch-pan-y px-0">
+                <div className="relative w-full h-[65vh] min-h-[480px] max-h-[650px] overflow-x-hidden flex items-center justify-start py-8">
+                  <div className="absolute inset-y-4 left-4 right-14">
+                    {heroCards.map((card, i) => {
+                      const diff = (i - activeHeroIndex + totalCards) % totalCards;
+
+                      let position = "hiddenRight";
+                      if (diff === 0) position = "active";
+                      else if (diff === 1) position = "next";
+                      else if (diff === 2) position = "nextNext";
+                      else if (diff === totalCards - 1) position = "hiddenLeft";
+
+                      const variants = {
+                        active: { x: 0, scale: 1, zIndex: 10, opacity: 1 },
+                        next: { x: "12%", scale: 0.9, zIndex: 5, opacity: 1 },
+                        nextNext: { x: "24%", scale: 0.8, zIndex: 4, opacity: 1 },
+                        hiddenRight: { x: "40%", scale: 0.7, zIndex: 1, opacity: 0 },
+                        hiddenLeft: { x: "-110%", scale: 1, zIndex: 11, opacity: 0 }
+                      };
+
+                      const handleDragEnd = (_e: any, { offset, velocity }: PanInfo) => {
+                        if (offset.x < -50 || velocity.x < -300) {
+                          setActiveHeroIndex((prev) => (prev + 1) % totalCards);
+                        } else if (offset.x > 50 || velocity.x > 300) {
+                          setActiveHeroIndex((prev) => (prev - 1 + totalCards) % totalCards);
+                        }
+                      };
+
+                      const hasThumbnail = !!card.thumbnailUrl;
+
+                      return (
+                        <motion.div
+                          key={i}
+                          variants={variants}
+                          initial={false}
+                          animate={position}
+                          transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
+                          drag={diff === 0 ? "x" : false}
+                          dragConstraints={{ left: 0, right: 0 }}
+                          dragElastic={0.8}
+                          onDragEnd={handleDragEnd}
+                          className={`absolute inset-0 h-full rounded-2xl overflow-hidden shadow-2xl border border-white/10 flex flex-col justify-between ${
+                            diff === 0 ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'
+                          }`}
+                          style={{
+                            background: 'linear-gradient(135deg, #181c2b 0%, #0d0e15 50%, #050608 100%)',
                           }}
-                        />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300">
-                          <div className="p-3 bg-primary rounded-full">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3" fill="white"></polygon></svg>
+                        >
+                          {/* Top left status/action badge */}
+                          <div className="relative z-20 flex justify-between items-start p-5 w-full">
+                            <div className="px-2.5 py-0.5 rounded-full bg-[#0f1624]/65 backdrop-blur-[3px] border border-white/20 flex items-center justify-center text-[10px] text-white font-bold tracking-wide uppercase font-poppins">
+                              {card.type === 'now-playing' ? (
+                                <svg className="mr-1.5 h-2.5 w-2.5 inline animate-pulse text-[var(--primary)]" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+                                </svg>
+                              ) : null}
+                              {card.badge}
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="w-full text-center px-6">
-                      <div className="space-y-4">
-                        <div>
-                          <div className="overflow-hidden w-full">
-                            <h3 className="font-bold text-xl md:text-2xl leading-tight text-white whitespace-nowrap animate-scroll">
-                              {playlist?.currentlyPlaying?.title}
-                            </h3>
-                          </div>
-                          <p className="text-blue-500 font-medium mt-2">{playlist?.currentlyPlaying?.artist}</p>
-                        </div>
 
-                        <div className="flex items-center justify-center space-x-2">
-                          {!playlist.allowGuestPlayOnDevice && (
-                            <span className="inline-flex items-center bg-secondary text-muted-foreground text-xs px-2.5 py-1 rounded-full">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                              Host-Only Playback
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                          {/* Album Art (Centered Square) */}
+                          <div className="relative z-20 flex-1 flex items-center justify-center px-6 my-2">
+                            <div className={`relative w-[70%] max-w-[240px] aspect-square rounded-2xl overflow-hidden shadow-[0_15px_35px_rgba(0,0,0,0.5)] border border-white/10 bg-gray-900 flex items-center justify-center transition-all duration-500 hover:scale-[1.04] ${
+                              card.type === 'now-playing' ? 'album-art-active' : ''
+                            }`}>
+                              {hasThumbnail ? (
+                                <>
+                                  <img
+                                    src={card.thumbnailUrl}
+                                    alt={card.title}
+                                    className="w-full h-full object-cover select-none pointer-events-none"
+                                  />
+                                  {card.type === 'now-playing' && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/35 backdrop-blur-[1.5px] transition-all">
+                                      <div className="h-16 w-16 rounded-full bg-black/55 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center">
+                                        <div className="eq-bars hero-large-eq">
+                                          <div className="eq-bar"></div>
+                                          <div className="eq-bar"></div>
+                                          <div className="eq-bar"></div>
+                                          <div className="eq-bar"></div>
+                                          <div className="eq-bar"></div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                <Music2 className="h-12 w-12 text-gray-700" />
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Song Info (Title & Artist) */}
+                          <div className="relative z-20 px-6 text-center mt-2 pb-8 w-full overflow-hidden">
+                            <div className="marquee-container mx-auto max-w-full">
+                              <h2 className="text-xl font-poppins font-black text-white leading-tight drop-shadow-md select-none marquee-content">
+                                {card.title}
+                              </h2>
+                            </div>
+                            <p className="text-xs text-gray-400 font-medium tracking-wide mt-1 truncate">
+                              by {card.artist}
+                            </p>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </div>
+                {totalCards > 1 && (
+                  <div className="mobile-swipe-dots" style={{ marginTop: '0.1rem' }}>
+                    {heroCards.map((_, i) => (
+                      <div
+                        key={i}
+                        className={`swipe-dot ${i === activeHeroIndex ? 'active' : ''}`}
+                        onClick={() => setActiveHeroIndex(i)}
+                      />
+                    ))}
                   </div>
                 )}
+              </div>
 
-                {!playlist.currentlyPlaying && (
-                  <div className="w-full flex flex-col items-center justify-center bg-black rounded-lg">
-                    <div className="text-center p-8">
-                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-700 flex items-center justify-center">
-                        <Music2 className="h-8 w-8 text-gray-300" />
+              {/* DESKTOP VIEW (banner + strip) */}
+              <div className="hidden md:block w-full mb-12 mt-4 px-4">
+                <div
+                  className="relative w-full h-[75vh] min-h-[620px] max-h-[820px] rounded-2xl overflow-hidden shadow-2xl group/hero max-w-4xl mx-auto border border-white/[0.08] hover:border-white/25 transition-all duration-300 select-none flex flex-col justify-between p-8"
+                  style={{
+                    background: 'linear-gradient(135deg, #181c2b 0%, #0d0e15 50%, #050608 100%)',
+                  }}
+                  onClick={() => setActiveHeroIndex(0)}
+                >
+                  {/* Top left badge */}
+                  <div className="relative z-20 flex justify-between items-center w-full">
+                    <div className="px-3 py-1 rounded-full bg-[#0f1624]/65 backdrop-blur-[3px] border border-white/20 flex items-center justify-center text-[11px] text-white font-semibold tracking-wide uppercase font-poppins">
+                      {activeCard?.type === 'now-playing' ? (
+                        <svg className="mr-1.5 h-3 w-3 inline animate-pulse text-[var(--primary)]" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+                        </svg>
+                      ) : null}
+                      {activeCard?.badge}
+                    </div>
+                  </div>
+
+                  {/* Album Art (Centered Square) */}
+                  <div className="relative z-20 flex-1 flex flex-col items-center justify-center w-full my-4">
+                    <div className={`relative w-64 h-64 lg:w-72 lg:h-72 rounded-2xl overflow-hidden shadow-[0_15px_35px_rgba(0,0,0,0.5)] border border-white/10 bg-gray-900 flex items-center justify-center transition-all duration-500 hover:scale-[1.04] ${
+                      activeCard?.type === 'now-playing' ? 'album-art-active' : ''
+                    }`}>
+                      {activeCard?.thumbnailUrl ? (
+                        <>
+                          <img
+                            src={activeCard.thumbnailUrl}
+                            alt={activeCard.title}
+                            className="w-full h-full object-cover"
+                          />
+                          {activeCard?.type === 'now-playing' && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/35 backdrop-blur-[1.5px] transition-all">
+                              <div className="h-20 w-20 rounded-full bg-black/55 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center">
+                                <div className="eq-bars hero-large-eq">
+                                  <div className="eq-bar"></div>
+                                  <div className="eq-bar"></div>
+                                  <div className="eq-bar"></div>
+                                  <div className="eq-bar"></div>
+                                  <div className="eq-bar"></div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <Music2 className="h-16 w-16 text-gray-700" />
+                      )}
+                    </div>
+
+                    {/* Metadata */}
+                    <div className="text-center mt-4 max-w-[80%] w-full overflow-hidden flex flex-col items-center">
+                      <div className="marquee-container w-full">
+                        <h4 className="text-2xl font-bold text-white tracking-wide font-poppins marquee-content">
+                          {activeCard?.title}
+                        </h4>
                       </div>
-                      <h3 className="font-semibold text-xl text-white">No song playing</h3>
-                      <p className="mt-3 text-gray-300 text-sm max-w-md mx-auto">
-                        The host hasn't started any music yet. When a song starts playing, it will appear here.
+                      <p className="text-sm text-gray-400 font-poppins mt-1 truncate">
+                        by {activeCard?.artist}
                       </p>
                     </div>
                   </div>
-                )}
-              </div>
-            </PlaylistCardContent>
-          </PlaylistCard>
 
-          {/* Search Songs Section - Only show if song requests are allowed */}
-          {playlist?.user?.allowSongRequests && (
-            <Accordion
-              type="single"
-              collapsible
-              value={accordionValue}
-              onValueChange={setAccordionValue}
-            >
-              <AccordionItem value="search">
-                <AccordionTrigger value="search">
-                  <div className="flex items-center gap-2">
-                    <Search className="h-4 w-4" style={{ color: '#d1d5db' }} />
-                    Add Songs
+                  {/* Bottom row containing desktop queue cards */}
+                  <div className="relative z-20 flex justify-end items-end w-full mt-4">
+                    <div className="flex items-center gap-2">
+                      {desktopQueueSlots.length > 2 && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleScrollQueue('left');
+                          }}
+                          className="p-1.5 hover:bg-white/10 text-white/60 hover:text-white rounded-full transition-colors cursor-pointer flex-shrink-0"
+                          aria-label="Scroll left"
+                        >
+                          <ChevronLeft className="h-5 w-5" />
+                        </button>
+                      )}
+                      
+                      <div 
+                        ref={desktopQueueScrollRef}
+                        className="desktop-queue-strip flex gap-3 overflow-x-auto scrollbar-none scroll-smooth select-none py-1 px-2"
+                        style={{ width: '316px' }}
+                      >
+                        {desktopQueueSlots.map((slot, idx) => {
+                          const song = slot.song;
+                          const hasSong = !!song;
+                          const bgImage = song?.thumbnailUrl || '';
+                          const isSelected = activeHeroIndex === slot.targetIndex;
+                          return (
+                            <div
+                              className="queue-thumb-wrapper relative w-36 h-[81px] flex-shrink-0 animate-fade-in"
+                              key={idx}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (hasSong) {
+                                  setActiveHeroIndex(slot.targetIndex);
+                                }
+                              }}
+                            >
+                              <span className="queue-thumb-label absolute font-semibold text-[10px] text-white bg-black/60 px-1.5 py-0.5 rounded top-1.5 left-1.5 z-10">
+                                {slot.label}
+                              </span>
+                              <button
+                                className={`relative w-full h-full rounded-md overflow-hidden transition-all duration-300 border cursor-pointer ${
+                                  hasSong
+                                    ? (isSelected
+                                      ? 'border-white ring-2 ring-white scale-105 shadow-2xl z-10'
+                                      : 'border-white/10 opacity-70 hover:opacity-100 hover:scale-105')
+                                    : 'border-white/5 opacity-30 cursor-default'
+                                }`}
+                              >
+                                {hasSong ? (
+                                  <>
+                                    <img
+                                      src={bgImage}
+                                      alt={song.title}
+                                      className="w-full h-full object-cover"
+                                    />
+                                    <div className="absolute inset-0 bg-black/20" />
+                                    {slot.targetIndex === 0 && (
+                                      <div className="absolute inset-0 flex items-center justify-center bg-black/45 backdrop-blur-[2px] transition-all">
+                                        <div className="eq-bars thumbnail-eq">
+                                          <div className="eq-bar"></div>
+                                          <div className="eq-bar"></div>
+                                          <div className="eq-bar"></div>
+                                          <div className="eq-bar"></div>
+                                          <div className="eq-bar"></div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </>
+                                ) : (
+                                  <div className="w-full h-full bg-gray-900 flex items-center justify-center">
+                                    <Music2 className="h-5 w-5 text-gray-600" />
+                                  </div>
+                                )}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {desktopQueueSlots.length > 2 && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleScrollQueue('right');
+                          }}
+                          className="p-1.5 hover:bg-white/10 text-white/60 hover:text-white rounded-full transition-colors cursor-pointer flex-shrink-0"
+                          aria-label="Scroll right"
+                        >
+                          <ChevronRight className="h-5 w-5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </AccordionTrigger>
-                <AccordionContent value="search">
-                  <PlaylistCard className="mt-4 border-none bg-black text-white">
-                    <PlaylistCardContent>
-                      <SearchSongs
-                        guestUrl={guestUrl}
-                        disabled={shouldDisableSearch}
-                        onSongsAddedCallback={async () => {
-                          await refetchSongLimits();
-                          setAccordionValue("");
-                        }}
-                      />
-                    </PlaylistCardContent>
-                  </PlaylistCard>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+                </div>
+              </div>
+            </>
+          ) : (
+            /* No Song Playing State */
+            <div className="max-w-4xl mx-auto px-4 md:px-6 mb-8 mt-4 w-full">
+              <div className="bg-[#0a0a0a] border border-white/[0.08] rounded-2xl h-[240px] flex items-center justify-center w-full">
+                <div className="empty-state text-center">
+                  <div className="empty-state__icon flex justify-center mb-2">
+                    <Music2 className="h-6 w-6 text-gray-500" />
+                  </div>
+                  <div className="empty-state__title text-white text-sm font-semibold mb-1">No song playing</div>
+                  <div className="empty-state__desc text-gray-500 text-xs">Music will appear here when the host starts playing</div>
+                </div>
+              </div>
+            </div>
           )}
 
-          {/* Queue Section */}
-          <Accordion
-            type="single"
-            collapsible
-            value={accordionValue}
-            onValueChange={setAccordionValue}
-          >
-            <AccordionItem value="queue">
-              <AccordionTrigger value="queue">
-                <div className="flex items-center gap-2">
-                  <Music2 className="h-4 w-4" style={{ color: '#d1d5db' }} />
-                  Queue
-                </div>
-              </AccordionTrigger>
-              <AccordionContent value="queue">
-                <PlaylistCard className="mt-4 border-none bg-black text-white">
-                  <PlaylistCardHeader>
-                    <PlaylistCardTitle className="text-white">Queue</PlaylistCardTitle>
-                    <PlaylistCardDescription className="text-gray-300">Songs in the queue</PlaylistCardDescription>
-                  </PlaylistCardHeader>
-                  <PlaylistCardContent>
+          {/* Accordion Group */}
+          <div className="max-w-4xl mx-auto px-4 md:px-6 pb-28 w-full">
+            <div className="accordion-group">
+              {/* A. Queue Accordion */}
+              <div className="accordion">
+                <button
+                  className="accordion-trigger"
+                  onClick={() => setAccordionsOpen(prev => ({ ...prev, queue: !prev.queue }))}
+                >
+                  <div className="acc-left">
+                    <div className="acc-icon">
+                      <Music2 className="h-4 w-4" />
+                    </div>
+                    Queue
+                    <span className="acc-count">{(playlist?.songs || []).length} songs</span>
+                  </div>
+                  <svg className={`acc-chevron ${accordionsOpen.queue ? 'open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </button>
+                {accordionsOpen.queue && (
+                  <div className="accordion-content">
                     <PlaylistTable
                       songs={playlist?.songs || []}
                       showControls={false}
                       currentPlayingSong={playlist?.currentlyPlaying}
                       guestUrl={guestUrl}
                     />
-                  </PlaylistCardContent>
-                </PlaylistCard>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-
-          {/* History Section */}
-          {/* Only show Recently Played section if allowRecentlyPlayedVisibility is true */}
-          {(playlist?.user?.allowRecentlyPlayedVisibility !== false) && (
-            <Accordion
-              type="single"
-              collapsible
-              value={accordionValue}
-              onValueChange={setAccordionValue}
-            >
-              <AccordionItem value="history">
-                <AccordionTrigger value="history">
-                  <div className="flex items-center gap-2">
-                    <History className="h-4 w-4" style={{ color: '#d1d5db' }} />
-                    Recently Played
                   </div>
-                </AccordionTrigger>
-                <AccordionContent value="history">
-                  <PlaylistCard className="mt-4 border-none bg-black text-white">
-                    <PlaylistCardHeader>
-                      <PlaylistCardTitle className="text-white">Recently Played</PlaylistCardTitle>
-                      <PlaylistCardDescription className="text-gray-300">Songs that have been played</PlaylistCardDescription>
-                    </PlaylistCardHeader>
-                    <PlaylistCardContent>
+                )}
+              </div>
+
+              {/* B. Recently Played Accordion */}
+              {playlist?.user?.allowRecentlyPlayedVisibility !== false && (
+                <div className="accordion">
+                  <button
+                    className="accordion-trigger"
+                    onClick={() => setAccordionsOpen(prev => ({ ...prev, history: !prev.history }))}
+                  >
+                    <div className="acc-left">
+                      <div className="acc-icon">
+                        <History className="h-4 w-4" />
+                      </div>
+                      Recently Played
+                      <span className="acc-count">{(playlist?.playedSongs || []).length} songs</span>
+                    </div>
+                    <svg className={`acc-chevron ${accordionsOpen.history ? 'open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                  </button>
+                  {accordionsOpen.history && (
+                    <div className="accordion-content">
                       {(playlist?.playedSongs?.length ?? 0) > 0 ? (
                         <PlaylistTable
                           songs={playlist?.playedSongs ?? []}
@@ -654,35 +1017,31 @@ export default function PublicMusic() {
                       ) : (
                         <p className="text-sm text-gray-300">No songs have been played yet</p>
                       )}
-                    </PlaylistCardContent>
-                  </PlaylistCard>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          )}
+                    </div>
+                  )}
+                </div>
+              )}
 
-          {/* Add Saved Playlists Section */}
-          {playlist?.user?.allowPlaylistSharing && playlist?.playlists && playlist?.playlists.length > 0 && (
-            <Accordion
-              type="single"
-              collapsible
-              value={accordionValue}
-              onValueChange={setAccordionValue}
-            >
-              <AccordionItem value="playlists">
-                <AccordionTrigger value="playlists">
-                  <div className="flex items-center gap-2">
-                    <Music2 className="h-4 w-4" style={{ color: '#d1d5db' }} />
-                    Playlists
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent value="playlists">
-                  <PlaylistCard className="mt-4 border-none bg-black text-white">
-                    <PlaylistCardHeader>
-                      <PlaylistCardTitle className="text-white">Saved Playlists</PlaylistCardTitle>
-                      <PlaylistCardDescription className="text-gray-300">Browse {playlist?.user?.venueName}'s playlists</PlaylistCardDescription>
-                    </PlaylistCardHeader>
-                    <PlaylistCardContent>
+              {/* C. Playlists Accordion */}
+              {playlist?.user?.allowPlaylistSharing && playlist?.playlists && playlist?.playlists.length > 0 && (
+                <div className="accordion">
+                  <button
+                    className="accordion-trigger"
+                    onClick={() => setAccordionsOpen(prev => ({ ...prev, playlists: !prev.playlists }))}
+                  >
+                    <div className="acc-left">
+                      <div className="acc-icon">
+                        <Music2 className="h-4 w-4" />
+                      </div>
+                      Playlists
+                      <span className="acc-count">{playlist.playlists.filter(p => p.isVisibleToGuests).length} playlists</span>
+                    </div>
+                    <svg className={`acc-chevron ${accordionsOpen.playlists ? 'open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                  </button>
+                  {accordionsOpen.playlists && (
+                    <div className="accordion-content">
                       {playlist?.playlists?.some(p => p.isVisibleToGuests) ? (
                         <Tabs defaultValue={playlist?.playlists?.find(p => p.isVisibleToGuests)?.id.toString()}>
                           <TabsList className="mb-4">
@@ -716,7 +1075,8 @@ export default function PublicMusic() {
                                       onAddToQueue={handleAddToQueue}
                                       showAddToQueue={true}
                                       guestUrl={guestUrl}
-                                      showReorderControls={false} // Hide reorder controls in the guest view
+                                      showReorderControls={false}
+                                      isPlaylist={true}
                                     />
                                   ) : (
                                     <p className="text-center py-8 text-gray-300">
@@ -732,67 +1092,60 @@ export default function PublicMusic() {
                           No playlists are currently shared
                         </p>
                       )}
-                    </PlaylistCardContent>
-                  </PlaylistCard>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          )}
+                    </div>
+                  )}
+                </div>
+              )}
 
-          {/* Play on Device Section - Only visible to guests if allowed */}
-          {playlist?.allowGuestPlayOnDevice && (
-            <Accordion
-              type="single"
-              collapsible
-              value={accordionValue}
-              onValueChange={setAccordionValue}
-            >
-              <AccordionItem value="play-device">
-                <AccordionTrigger value="play-device">
-                  <div className="flex items-center gap-2">
-                    <Volume2 className="h-4 w-4" style={{ color: '#d1d5db' }} />
-                    Play on Your Device
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent value="play-device">
-                  <PlaylistCard className="mt-4 border-none bg-black text-white">
-                    <PlaylistCardHeader>
-                      <PlaylistCardTitle className="text-white">Play on Your Device</PlaylistCardTitle>
-                      <PlaylistCardDescription className="text-gray-300">Control playback on your device</PlaylistCardDescription>
-                    </PlaylistCardHeader>
-                    <PlaylistCardContent>
-                      <div className="flex flex-col gap-3">
-                        <p className="text-sm text-gray-300">
-                          The host has allowed playback on guest devices. You can control the music from here.
-                        </p>
-
-                        <div className="relative w-full aspect-video mb-4">
-                          {playlist?.currentlyPlaying?.youtubeId ? (
-                            <iframe
-                              src={`https://www.youtube.com/embed/${playlist.currentlyPlaying.youtubeId}?autoplay=1&controls=1&modestbranding=1&rel=0`}
-                              width="100%"
-                              height="100%"
-                              frameBorder="0"
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              allowFullScreen
-                              title={playlist.currentlyPlaying.title}
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gray-800 flex items-center justify-center">
-                              <div className="text-center text-gray-400">
-                                <Music2 className="h-12 w-12 mx-auto mb-2" />
-                                <p>No Song Playing, Stay Tuned</p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
+              {/* D. Play on Device Accordion */}
+              {playlist?.allowGuestPlayOnDevice && (
+                <div className="accordion">
+                  <button
+                    className="accordion-trigger"
+                    onClick={() => setAccordionsOpen(prev => ({ ...prev, device: !prev.device }))}
+                  >
+                    <div className="acc-left">
+                      <div className="acc-icon">
+                        <Volume2 className="h-4 w-4" />
                       </div>
-                    </PlaylistCardContent>
-                  </PlaylistCard>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          )}
+                      Play on Your Device
+                    </div>
+                    <svg className={`acc-chevron ${accordionsOpen.device ? 'open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                  </button>
+                  {accordionsOpen.device && (
+                    <div className="accordion-content">
+                      <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '0.75rem' }}>
+                        The host has allowed playback on guest devices. You can listen to the current song right here.
+                      </p>
+                      <div className="relative w-full aspect-video mb-4">
+                        {playlist?.currentlyPlaying?.youtubeId ? (
+                          <iframe
+                            src={`https://www.youtube.com/embed/${playlist.currentlyPlaying.youtubeId}?autoplay=1&controls=1&modestbranding=1&rel=0`}
+                            width="100%"
+                            height="100%"
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            title={playlist.currentlyPlaying.title}
+                          />
+                        ) : (
+                          <div className="yt-placeholder">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                              <rect x="3" y="3" width="18" height="18" rx="2" />
+                              <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none" />
+                            </svg>
+                            No Song Playing, Stay Tuned
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </>

@@ -20,9 +20,9 @@ export const GET_PUBLIC_PAGE_ANALYTICS = gql`
  * Matches the Stats field structure from Strapi
  */
 export interface AnalyticsEvent {
-  type: 'view' | 'click';
+  type: 'view' | 'click' | 'interaction';
   timestamp: string; // ISO 8601 format
-  page: 'public-profile' | 'public-home';
+  page: 'public-profile' | 'public-home' | 'public-guides' | 'public-music' | 'public-movies' | 'public-books' | 'public-games' | 'recommendation-detail';
   element?: string;
   ipAddress?: string;
   country?: string; // Resolved from IP address using geolocation service

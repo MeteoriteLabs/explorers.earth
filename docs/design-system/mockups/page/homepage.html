@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Homepage Mockup (Option A) — explorers.earth</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ============ RESET & BASE ============ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Poppins', system-ui, sans-serif;
+      background: #0d0f12;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* ============ PREVIEW WRAPPER & SHELL ============ */
+    .preview-header {
+      width: 100%;
+      max-width: 800px;
+      padding: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 2rem;
+    }
+    .preview-info h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: white;
+    }
+    .preview-info p {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      margin-top: 0.25rem;
+    }
+    .badge {
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      display: inline-block;
+    }
+    .badge-approved {
+      background: rgba(74, 222, 128, 0.15);
+      color: #4ade80;
+    }
+    .view-controls {
+      display: flex;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 3px;
+      border-radius: 8px;
+      gap: 2px;
+    }
+    .control-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Poppins', sans-serif;
+      transition: all 0.2s ease;
+    }
+    .control-btn.active {
+      background: #3B82F6;
+      color: white;
+    }
+
+    /* Main Layout */
+    .preview-main {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      width: 100%;
+      flex-grow: 1;
+      padding-bottom: 3rem;
+      transition: all 0.3s ease;
+    }
+
+    /* Device Frame Mode */
+    .preview-main.device-view .phone-wrapper {
+      width: 375px;
+      height: 720px;
+      border: 12px solid #1e293b;
+      border-radius: 40px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      background: #090b0d;
+      overflow: hidden;
+      position: relative;
+    }
+    .preview-main.device-view .phone-frame-inner {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+    .preview-main.device-view .phone-frame-inner::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Full Responsive Mode */
+    .preview-main.full-view {
+      padding: 0 1.5rem 3rem;
+      max-width: 1200px;
+    }
+    .preview-main.full-view .phone-wrapper {
+      width: 100%;
+      background: #090b0d;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    .preview-main.full-view .phone-frame-inner {
+      width: 100%;
+      padding: 2rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* ============ DESIGN TOKENS ============ */
+    :root {
+      --dash-bg:         #2E4032;
+      --dash-sidebar-bg: #223126;
+      --dash-accent:     #3B82F6; /* Approved blue replacing deprecated #3498DB */
+      --dash-muted:      #3C4E40;
+      --dash-border:     #3C4E40;
+      --dash-text:       #FFFFFF;
+      --status-pub:      #4ade80;
+      --status-draft:    #f87171;
+
+      /* Theme default values (Forest Green) */
+      --dash-container-bg: #2E4032;
+      --dash-tab-bg:      #1a2620;
+      --dash-search-bg:   #223126;
+      --dash-map-banner:  linear-gradient(135deg, #1a2c1e, #0f1a10);
+    }
+
+    /* ============ MOCKUP COMPONENT STYLES ============ */
+    .dashboard-container {
+      background: var(--dash-container-bg);
+      min-height: 100%;
+      padding-bottom: 2rem;
+      transition: background 0.2s ease;
+    }
+
+    /* Map Banner Placeholder */
+    .map-banner {
+      height: 120px;
+      background: var(--dash-map-banner);
+      position: relative;
+      overflow: hidden;
+    }
+    .map-banner .map-grid {
+      position: absolute;
+      inset: 0;
+      background-image: linear-gradient(rgba(59, 130, 246, 0.08) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(59, 130, 246, 0.08) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    .map-banner .map-dot {
+      width: 10px;
+      height: 10px;
+      background: var(--dash-accent);
+      border: 2px solid white;
+      border-radius: 50%;
+      position: absolute;
+      box-shadow: 0 0 8px var(--dash-accent);
+    }
+
+    /* Stat Badges */
+    .stat-badge {
+      background: var(--dash-sidebar-bg);
+      border: 1px solid var(--dash-border);
+      border-radius: 12px;
+      padding: 0.5rem 0.75rem;
+      text-align: center;
+      flex: 1;
+    }
+    .stat-badge .num {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: white;
+    }
+    .stat-badge .lbl {
+      font-size: 0.6rem;
+      color: rgba(255,255,255,0.5);
+      white-space: nowrap;
+    }
+
+    /* Tab Strip */
+    .home-tab-container {
+      background: var(--dash-tab-bg);
+      border-radius: 28px;
+      padding: 3px;
+      display: flex;
+      gap: 0.25rem;
+      margin-bottom: 0.5rem;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .home-tab-container::-webkit-scrollbar {
+      display: none;
+    }
+
+    .home-tab-btn {
+      flex: 1;
+      min-width: max-content;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.55);
+      border: none;
+      border-radius: 24px;
+      padding: 0.3rem 0.65rem;
+      font-size: 0.6rem;
+      font-weight: 600;
+      font-family: 'Poppins', sans-serif;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+    .home-tab-btn.active {
+      background: var(--dash-accent);
+      color: white;
+      font-weight: 700;
+    }
+
+    /* Search Bar & Actions */
+    .home-search-bar {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: var(--dash-search-bg);
+      border: 1px solid var(--dash-border);
+      border-radius: 12px;
+      padding: 0.35rem 0.55rem;
+      height: 34px;
+    }
+    .home-search-placeholder {
+      flex: 1;
+      font-size: 0.65rem;
+      color: rgba(255, 255, 255, 0.3);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .home-add-btn {
+      background: var(--dash-accent);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 0.45rem 0.65rem;
+      font-size: 0.6rem;
+      font-weight: 700;
+      font-family: 'Poppins', sans-serif;
+      cursor: pointer;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 0.15rem;
+      height: 34px;
+      transition: all 0.2s ease;
+    }
+    .home-add-btn:hover {
+      filter: brightness(1.1);
+    }
+    .home-share-btn-wrapper {
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      background: var(--dash-search-bg);
+      border: 1px solid var(--dash-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+    }
+    .home-share-btn-wrapper:hover {
+      background: var(--dash-muted);
+    }
+
+    /* List Items */
+    .rec-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: var(--dash-sidebar-bg);
+      border: 1px solid var(--dash-border);
+      border-radius: 16px;
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .rec-item:hover {
+      border-color: var(--dash-accent);
+    }
+    .rec-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: var(--dash-muted);
+      flex-shrink: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+    }
+    .rec-item h4 {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: white;
+    }
+    .rec-item p {
+      font-size: 0.62rem;
+      color: rgba(255, 255, 255, 0.45);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ====== PREVIEW MASTER HEADER ====== -->
+  <header class="preview-header">
+    <div class="preview-info">
+      <h1>Homepage Mockup (Option A)</h1>
+      <p>Status: <span class="badge badge-approved">Finalized</span> | Theme: <span id="current-theme-label">🌲 Forest Green</span></p>
+    </div>
+    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+      <div class="view-controls">
+        <button class="control-btn active" id="btn-device" onclick="setViewMode('device')">📱 Phone</button>
+        <button class="control-btn" id="btn-full" onclick="setViewMode('full')">🖥️ Full View</button>
+      </div>
+      <div class="view-controls">
+        <button class="control-btn active" id="btn-theme-green" onclick="setTheme('green')">🌲 Green</button>
+        <button class="control-btn" id="btn-theme-dark" onclick="setTheme('dark')">🖤 Dark</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ====== MAIN PREVIEW CONTAINER ====== -->
+  <main class="preview-main device-view" id="main-container">
+    <div class="phone-wrapper">
+      <div class="phone-frame-inner">
+        <div class="dashboard-container">
+          
+          <!-- Welcoming Header -->
+          <div style="padding: 1.25rem 1rem 0.5rem;">
+            <h1 style="font-size: 1.1rem; font-weight: 800; color: white; text-align: center; font-family: 'Poppins', sans-serif;">Welcome back, alex_explorer 👋</h1>
+          </div>
+          
+          <!-- Profile Card -->
+          <div style="padding: 0 0.75rem; margin-bottom: 0.75rem;">
+            <div style="background: var(--dash-sidebar-bg); border: 1px solid var(--dash-border); border-radius: 22px; overflow: hidden;">
+              
+              <!-- Map Banner -->
+              <div class="map-banner">
+                <div class="map-grid"></div>
+                <div class="map-dot" style="top: 35%; left: 25%;"></div>
+                <div class="map-dot" style="top: 55%; left: 60%; background: #4ade80; border-color: white; box-shadow: 0 0 8px #4ade80;"></div>
+                <div class="map-dot" style="top: 25%; left: 75%; background: #f97316;"></div>
+                
+                <!-- Share Profile Button -->
+                <div title="Share Profile" style="position: absolute; top: 0.5rem; right: 0.5rem; background: rgba(13,15,18,0.7); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 0.25rem 0.65rem; display: flex; align-items: center; gap: 0.3rem; cursor: pointer; z-index: 10;">
+                  <span style="font-size: 0.58rem; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 0.04em;">Share</span>
+                  <svg width="10" height="10" fill="none" stroke="white" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Profile Info -->
+              <div style="padding: 0.75rem 1rem;">
+                <h2 style="font-size: 0.9rem; font-weight: 700; color: white; text-align: center; margin-bottom: 0.6rem; font-family: 'Poppins', sans-serif;">Alex Explorer</h2>
+                <div style="display: flex; gap: 0.5rem;">
+                  <div class="stat-badge">
+                    <div class="num">12</div>
+                    <div class="lbl">Active Lists</div>
+                  </div>
+                  <div class="stat-badge">
+                    <div class="num">87</div>
+                    <div class="lbl">Recommendations</div>
+                  </div>
+                  <div class="stat-badge">
+                    <div class="num">2.3k</div>
+                    <div class="lbl">Views</div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Dynamic Tabs and Actions Container -->
+          <div style="padding: 0 0.75rem;">
+            
+            <!-- Category Tabs Selector -->
+            <div class="home-tab-container">
+              <button onclick="handleHomeTabClick(this, 'places')" class="home-tab-btn active">📍 Places</button>
+              <button onclick="handleHomeTabClick(this, 'movies')" class="home-tab-btn">🎬 Movies</button>
+              <button onclick="handleHomeTabClick(this, 'books')" class="home-tab-btn">📚 Books</button>
+              <button onclick="handleHomeTabClick(this, 'games')" class="home-tab-btn">🎮 Games</button>
+              <button onclick="handleHomeTabClick(this, 'music')" class="home-tab-btn">🎵 Music</button>
+              <button onclick="handleHomeTabClick(this, 'guides')" class="home-tab-btn">📖 Guides</button>
+            </div>
+
+            <!-- Search bar + Add button + Share Button Row -->
+            <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.75rem;">
+              <div class="home-search-bar">
+                <svg width="13" height="13" fill="none" stroke="rgba(255,255,255,0.4)" viewBox="0 0 24 24" style="flex-shrink: 0;">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <span class="home-search-placeholder">Search places, lists…</span>
+              </div>
+              <button class="home-add-btn">
+                <span>+</span> Add Places
+              </button>
+              <div class="home-share-btn-wrapper" title="Copy Link">
+                <svg width="14" height="14" fill="none" stroke="rgba(255,255,255,0.7)" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Recommendation List Items Container -->
+            <div class="home-list-container">
+              <!-- Rendered via JavaScript on Load -->
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ====== INTERACTIVE SCRIPTS ====== -->
+  <script>
+    // ===== Toggle View Mode (Device vs Full) =====
+    function setViewMode(mode) {
+      const main = document.getElementById('main-container');
+      const btnDevice = document.getElementById('btn-device');
+      const btnFull = document.getElementById('btn-full');
+
+      if (mode === 'device') {
+        main.className = 'preview-main device-view';
+        btnDevice.classList.add('active');
+        btnFull.classList.remove('active');
+      } else {
+        main.className = 'preview-main full-view';
+        btnDevice.classList.remove('active');
+        btnFull.classList.add('active');
+      }
+    }
+
+    // ===== Mock Data Index matching Option A style =====
+    const categoryData = {
+      places: [
+        { emoji: '🗼', title: 'Paris Essentials', descShort: '14 places', status: 'pub' },
+        { emoji: '🌏', title: 'Tokyo Hidden Gems', descShort: '8 places', status: 'pub' },
+        { emoji: '🌴', title: 'Bali Beach Spots', descShort: '3 places', status: 'draft' }
+      ],
+      movies: [
+        { emoji: '🎭', title: 'Sci-Fi Masterpieces', descShort: '12 titles', status: 'pub' },
+        { emoji: '⚗️', title: 'Top Drama Series', descShort: '8 titles', status: 'pub' },
+        { emoji: '🌊', title: 'Must-Watch Anime', descShort: '15 titles', status: 'draft' }
+      ],
+      books: [
+        { emoji: '🪐', title: 'Sci-Fi Classics', descShort: '6 books', status: 'pub' },
+        { emoji: '📖', title: 'Self-Improvement Shelf', descShort: '4 books', status: 'pub' },
+        { emoji: '🧠', title: 'Psychology & Brain', descShort: '3 books', status: 'draft' }
+      ],
+      games: [
+        { emoji: '🗡️', title: 'Epic Action RPGs', descShort: '4 games', status: 'pub' },
+        { emoji: '🌌', title: 'Indie Masterpieces', descShort: '8 games', status: 'pub' },
+        { emoji: '🏰', title: 'Backlog Games', descShort: '10 games', status: 'draft' }
+      ],
+      music: [
+        { emoji: '🎵', title: 'Acoustic Indie Rock', descShort: '10 tracks', status: 'pub' },
+        { emoji: '🎹', title: 'Chill Lo-Fi Beats', descShort: '25 tracks', status: 'pub' },
+        { emoji: '🎸', title: 'Classic Rock Anthems', descShort: '15 tracks', status: 'draft' }
+      ],
+      guides: [
+        { emoji: '✈️', title: '48 Hours in Paris', descShort: 'Itinerary', status: 'pub' },
+        { emoji: '🌸', title: 'Cherry Blossom Tokyo', descShort: 'Itinerary', status: 'draft' },
+        { emoji: '🌴', title: 'Ultimate Bali Guide', descShort: 'Itinerary', status: 'pub' }
+      ]
+    };
+
+    // ===== Tab Switch Handler =====
+    function handleHomeTabClick(btn, category) {
+      const container = btn.closest('.home-tab-container');
+      container.querySelectorAll('.home-tab-btn').forEach(b => {
+        b.classList.remove('active');
+      });
+      btn.classList.add('active');
+
+      // Update search placeholder text
+      const placeholder = document.querySelector('.home-search-placeholder');
+      if (placeholder) {
+        placeholder.textContent = `Search ${category}, lists…`;
+      }
+
+      // Update dynamic add button label
+      const addBtn = document.querySelector('.home-add-btn');
+      if (addBtn) {
+        const formattedCategory = category.charAt(0).toUpperCase() + category.slice(1);
+        addBtn.innerHTML = `<span>+</span> Add ${formattedCategory}`;
+        
+        // Match color scheme with brand patterns
+        let btnBg = '#3B82F6';
+        if (category === 'movies') btnBg = '#3B82F6';
+        else if (category === 'books') btnBg = '#F97316';
+        else if (category === 'games') btnBg = '#EC4899';
+        else if (category === 'music') btnBg = '#A855F7';
+        else if (category === 'guides') btnBg = '#4ADE80';
+        
+        if (category === 'guides') {
+          addBtn.style.background = '#4ADE80';
+          addBtn.style.color = '#0d0f12';
+        } else {
+          addBtn.style.background = btnBg;
+          addBtn.style.color = 'white';
+        }
+      }
+
+      // Re-render recommendation list
+      renderCategoryList(category);
+    }
+
+    // ===== Content Rendering Function =====
+    function renderCategoryList(category) {
+      const listContainer = document.querySelector('.home-list-container');
+      if (!listContainer) return;
+      
+      const items = categoryData[category] || [];
+      listContainer.innerHTML = '';
+      
+      items.forEach(item => {
+        const statusClass = item.status === 'pub' ? 'var(--status-pub)' : 'var(--status-draft)';
+        const statusLabel = item.status === 'pub' ? '● Published' : '● Draft';
+        
+        const html = `
+          <div class="rec-item">
+            <div class="rec-avatar" style="border:3px solid ${statusClass};">${item.emoji}</div>
+            <div style="flex:1;">
+              <h4>${item.title}</h4>
+              <p>${item.descShort} · <span style="color:${statusClass};">${statusLabel}</span></p>
+            </div>
+          </div>
+        `;
+        listContainer.innerHTML += html;
+      });
+    }
+
+    // ===== Theme Settings =====
+    const themes = {
+      green: {
+        '--dash-bg': '#2E4032',
+        '--dash-sidebar-bg': '#223126',
+        '--dash-muted': '#3C4E40',
+        '--dash-border': '#3C4E40',
+        '--dash-accent': '#3B82F6',
+        '--dash-container-bg': '#2E4032',
+        '--dash-tab-bg':      '#1a2620',
+        '--dash-search-bg':   '#223126',
+        '--dash-map-banner':  'linear-gradient(135deg, #1a2c1e, #0f1a10)'
+      },
+      dark: {
+        '--dash-bg': '#0F1419',
+        '--dash-sidebar-bg': '#161B26',
+        '--dash-muted': '#222A3B',
+        '--dash-border': '#283147',
+        '--dash-accent': '#60A5FA',
+        '--dash-container-bg': '#0F1419',
+        '--dash-tab-bg':      '#121620',
+        '--dash-search-bg':   '#161B26',
+        '--dash-map-banner':  'linear-gradient(135deg, #1e293b, #0f172a)'
+      }
+    };
+
+    function setTheme(themeName) {
+      const theme = themes[themeName];
+      if (!theme) return;
+      
+      const root = document.documentElement;
+      Object.keys(theme).forEach(key => {
+        root.style.setProperty(key, theme[key]);
+      });
+
+      // Update button classes
+      document.getElementById('btn-theme-green').classList.toggle('active', themeName === 'green');
+      document.getElementById('btn-theme-dark').classList.toggle('active', themeName === 'dark');
+      
+      // Update label
+      document.getElementById('current-theme-label').textContent = themeName === 'green' ? '🌲 Forest Green' : '🖤 Classic Dark';
+    }
+
+    // Initialize the default Places tab view on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      renderCategoryList('places');
+    });
+  </script>
+</body>
+</html>

@@ -61,7 +61,11 @@ export const accountQuery = gql`
       public_profile
       public_recommendations
       public_music
+      public_movie
       public_guides
+      public_books
+      public_games
+      pinned_nav_tabs
     }
   }
 `;
@@ -75,6 +79,11 @@ export const updateAccountMutation = gql`
       public_profile
       public_recommendations
       public_music
+      public_movie
+      public_guides
+      public_books
+      public_games
+      pinned_nav_tabs
     }
   }
 `;
@@ -86,7 +95,11 @@ export const updateTabVisibilityMutation = gql`
       public_profile
       public_recommendations
       public_music
+      public_movie
       public_guides
+      public_books
+      public_games
+      pinned_nav_tabs
     }
   }
 `;

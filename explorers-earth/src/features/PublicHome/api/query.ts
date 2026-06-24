@@ -6,6 +6,9 @@ export const recommendationListQuery = gql`
       documentId
       List_Name
       Visibility
+      is_pinned
+      pin_order
+      display_order
       account {
         documentId
       }
@@ -69,11 +72,18 @@ export const accountsDetailQuery = gql`
       public_profile
       public_recommendations
       public_music
+      public_movie
+      public_books
       public_guides
+      public_games
+      pinned_nav_tabs
       recommendation_lists(pagination: { limit: 100 })  {
         documentId
         List_Name
         Visibility
+        is_pinned
+        pin_order
+        display_order
         List_Name_Details
         recommended_places {
           recommendation_category {
@@ -84,6 +94,9 @@ export const accountsDetailQuery = gql`
             url
           }
           Place_Details
+          Recommendation_Type
+          Contact_Name
+          media_details
         }
       }
     }
@@ -115,10 +128,18 @@ export const accountsDetailsByPlace = gql`
       public_profile
       public_recommendations
       public_music
+      public_movie
+      public_books
       public_guides
+      public_games
+      pinned_nav_tabs
       recommendation_lists(filters: $listFilters) {
+        documentId
         List_Name
         Visibility
+        is_pinned
+        pin_order
+        display_order
         recommended_places {
           recommendation_category {
             Category_Name
@@ -222,7 +243,11 @@ export const getPublicAccountBasicQuery = gql`
       public_profile
       public_recommendations
       public_music
+      public_movie
+      public_books
       public_guides
+      public_games
+      pinned_nav_tabs
     }
   }
 `;
@@ -253,7 +278,11 @@ export const getPublicProfileDataQuery = gql`
       public_profile
       public_recommendations
       public_music
+      public_movie
+      public_books
       public_guides
+      public_games
+      pinned_nav_tabs
     }
   }
 `;
@@ -283,7 +312,11 @@ export const getAccountsDataQuery = gql`
       public_profile
       public_recommendations
       public_music
+      public_movie
+      public_books
       public_guides
+      public_games
+      pinned_nav_tabs
     }
   }
 `;

@@ -52,7 +52,7 @@ import { useUserForOnboarding } from "../features/Authentication/hooks/useCurren
 import { EarthLoader } from "../components/EarthLoader";
 // @ts-ignore
 import { parsePhoneNumberFromString } from "libphonenumber-js";
-import { Check, Sparkles, Zap, Crown } from "lucide-react";
+import { Check, Sparkles, Zap, Crown, LogOut } from "lucide-react";
 import { useQuery as useReactQuery } from "@tanstack/react-query";
 
 const onboardingQuery = gql`
@@ -398,14 +398,43 @@ const OnBoarding = () => {
   const storedUsername = useAuthStore((state) => state.user?.username);
   const userEmail = useAuthStore((state) => state.user?.email);
   const documentId = useAuthStore((state) => state.user?.documentId);
+  const logout = useAuthStore((state) => state.logout);
   // const { isAuthenticated } = useAuthStore();
   const apolloClient = useApolloClient();
   const token = useAuthStore((state) => state.token);
   const navigate = useNavigate();
   const location = useLocation();
-
+ 
   // Password modal state for Local Tunes registration
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+ 
+  const handleLogout = async () => {
+    setShowLogoutModal(false);
+    logout();
+ 
+    // Clear all explorers storage
+    localStorage.removeItem("auth-storage");
+    localStorage.removeItem("qrtoken");
+ 
+    // Clear Local Tunes session
+    localStorage.removeItem("localTunes_session");
+ 
+    // Clear session storage (user credentials)
+    sessionStorage.removeItem("explorers_user_credentials");
+ 
+    // Clear all other possible storage
+    localStorage.clear();
+    sessionStorage.clear();
+ 
+    // Clear all cookies
+    document.cookie.split(";").forEach(function (c) {
+      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+    });
+ 
+    navigate("/login");
+    toast(t("toast.success.loggedOutSuccessfully", "Logged out successfully!"));
+  };
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [isValidatingPassword, setIsValidatingPassword] = useState(false);
@@ -1709,30 +1738,59 @@ const OnBoarding = () => {
   return (
     <div className="dashboard-theme flex items-center justify-center min-h-screen bg-black p-1 sm:p-4">
       <div className="relative w-full max-w-md sm:max-w-md md:max-w-lg lg:max-w-2xl bg-dashboard-sidebar rounded-lg shadow-dashboard-elevated flex flex-col max-h-screen">
-        {/* Sticky Step Indicators */}
-        <div className="sticky top-0 z-20 bg-dashboard-sidebar rounded-t-lg p-3 sm:p-4 md:p-6 pb-4 sm:pb-6">
-          <div className="flex justify-between gap-2">
-            {steps.map((step, index) => (
-              <div
-                key={step.title}
-                className={`flex-1 text-center ${index <= activeStep
-                  ? "text-dashboard-accent"
-                  : "text-dashboard-light"
-                  }`}
-              >
+        {/* Sticky Top Bar */}
+        <div className="sticky top-0 z-20 bg-dashboard-sidebar/95 backdrop-blur-md rounded-t-lg border-b border-dashboard">
+          {/* Header Row */}
+          <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-dashboard/30">
+            <div className="flex items-center gap-3">
+              <img
+                src="/logo.svg"
+                alt="explorers.earth"
+                className="object-contain h-6 sm:h-7 w-auto"
+                style={{
+                  filter: "brightness(0) invert(1)",
+                }}
+              />
+              <div className="w-[1px] h-4 bg-dashboard-muted" />
+              <span className="text-[10px] sm:text-xs font-semibold text-dashboard-light tracking-widest uppercase">
+                Onboarding
+              </span>
+            </div>
+            <button
+              onClick={() => setShowLogoutModal(true)}
+              type="button"
+              className="text-[11px] sm:text-xs text-dashboard hover:text-white transition-all duration-200 font-medium flex items-center gap-1.5 bg-dashboard-muted hover:bg-dashboard-card border border-dashboard rounded-full px-2.5 py-1.5 sm:px-3 sm:py-1.5 cursor-pointer outline-none focus:outline-none"
+            >
+              <span>Log out</span>
+              <LogOut size={12} />
+            </button>
+          </div>
+          
+          {/* Step Indicators */}
+          <div className="p-3 sm:p-4 md:p-6 pb-4 sm:pb-5">
+            <div className="flex justify-between gap-2">
+              {steps.map((step, index) => (
                 <div
-                  className={`w-6 h-6 sm:w-8 sm:h-8 mx-auto rounded-full flex items-center justify-center mb-1 sm:mb-2 text-xs sm:text-sm ${index <= activeStep
-                    ? "bg-dashboard-accent text-dashboard"
-                    : "bg-gray-200"
+                  key={step.title}
+                  className={`flex-1 text-center ${index <= activeStep
+                    ? "text-dashboard-accent"
+                    : "text-dashboard-light"
                     }`}
                 >
-                  {index + 1}
+                  <div
+                    className={`w-6 h-6 sm:w-8 sm:h-8 mx-auto rounded-full flex items-center justify-center mb-1 sm:mb-2 text-xs sm:text-sm ${index <= activeStep
+                      ? "bg-dashboard-accent text-dashboard"
+                      : "bg-dashboard-muted text-dashboard-light"
+                      }`}
+                  >
+                    {index + 1}
+                  </div>
+                  <div className="text-[10px] sm:text-xs font-medium leading-tight">
+                    {step.title}
+                  </div>
                 </div>
-                <div className="text-xs sm:text-sm font-medium leading-tight">
-                  {step.title}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
@@ -2260,17 +2318,46 @@ const OnBoarding = () => {
                 }}
                 variant="secondary"
                 disabled={isValidatingPassword}
-              >
-                Cancel
-              </Button>
+                btnText={t("auth.onboarding.logoutModal.cancel", "Cancel")}
+              />
               <Button
                 onClick={() => handlePasswordSubmit()}
                 variant="primary"
                 disabled={isValidatingPassword || !password.trim()}
                 isLoading={isValidatingPassword}
-              >
-                {isValidatingPassword ? 'Creating Account...' : 'Create Local Tunes Account'}
-              </Button>
+                btnText={isValidatingPassword ? 'Creating Account...' : 'Create Local Tunes Account'}
+              />
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <Modal
+          isOpen={showLogoutModal}
+          onClose={() => setShowLogoutModal(false)}
+        >
+          <div className="dashboard-theme flex flex-col gap-6 w-full mx-auto min-w-[300px] sm:min-w-[500px] md:min-w-[600px] max-w-2xl py-4 sm:py-6 md:py-8 px-6 sm:px-8 md:px-12">
+            <h2 className="dt-heading mb-2">
+              {t("auth.onboarding.logoutModal.title", "Logout from explorers")}
+            </h2>
+
+            <p className="dt-label text-white-muted">
+              {t("auth.onboarding.logoutModal.description", "Are you sure you want to log out? You can resume your onboarding later, but any unsaved changes on this page will be lost.")}
+            </p>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <Button
+                onClick={() => setShowLogoutModal(false)}
+                variant="secondary"
+                btnText={t("auth.onboarding.logoutModal.cancel", "Cancel")}
+              />
+              <Button
+                onClick={handleLogout}
+                variant="danger"
+                btnText={t("auth.onboarding.logoutModal.logout", "Log out")}
+              />
             </div>
           </div>
         </Modal>

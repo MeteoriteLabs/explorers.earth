@@ -66,24 +66,33 @@ export const loginInitialValues = {
 };
 
 // Validation schema for Register
-export const createRegisterValidationSchema = (t: TFunction) => Yup.object({
-  username: createUsernameValidation(t),
-  email: Yup.string()
-    .email(t('auth.validations.email.invalidFormat'))
-    .required(t('auth.validations.email.required')),
-  password: Yup.string()
-    .required(t('auth.validations.password.required'))
-    .min(6, t('auth.validations.password.minLength'))
-    .matches(/[A-Z]/, t('auth.validations.password.uppercaseRequired'))
-    .matches(/[a-z]/, t('auth.validations.password.lowercaseRequired'))
-    .matches(/[0-9]/, t('auth.validations.password.numberRequired'))
-    .matches(/[!@#$%^&*().,?":{}|<>]/, t('auth.validations.password.specialCharRequired')),
-  confirmPassword: Yup.string()
-    .oneOf([Yup.ref('password')], t('auth.validations.confirmPassword.mustMatch'))
-    .required(t('auth.validations.confirmPassword.confirmRequired')),
-  termsAccepted: Yup.boolean()
-    .oneOf([true], t('auth.validations.termsAccepted.required')),
-});
+export const createRegisterValidationSchema = (t: TFunction) => {
+  const schema: any = {
+    username: createUsernameValidation(t),
+    email: Yup.string()
+      .email(t('auth.validations.email.invalidFormat'))
+      .required(t('auth.validations.email.required')),
+    password: Yup.string()
+      .required(t('auth.validations.password.required'))
+      .min(6, t('auth.validations.password.minLength'))
+      .matches(/[A-Z]/, t('auth.validations.password.uppercaseRequired'))
+      .matches(/[a-z]/, t('auth.validations.password.lowercaseRequired'))
+      .matches(/[0-9]/, t('auth.validations.password.numberRequired'))
+      .matches(/[!@#$%^&*().,?":{}|<>]/, t('auth.validations.password.specialCharRequired')),
+    confirmPassword: Yup.string()
+      .oneOf([Yup.ref('password')], t('auth.validations.confirmPassword.mustMatch'))
+      .required(t('auth.validations.confirmPassword.confirmRequired')),
+    termsAccepted: Yup.boolean()
+      .oneOf([true], t('auth.validations.termsAccepted.required')),
+  };
+
+  // Only require Turnstile if the site key is provided in the env
+  if (import.meta.env.VITE_TURNSTILE_SITE_KEY) {
+    schema.turnstileToken = Yup.string().required(t('auth.validations.turnstile.required', { defaultValue: 'Please complete the security check' }));
+  }
+
+  return Yup.object(schema);
+};
 
 // Initial values for form fields
 export const registerInitialValues = {
@@ -91,7 +100,8 @@ export const registerInitialValues = {
   email: "",
   password: "",
   confirmPassword: "",
-  termsAccepted: false
+  termsAccepted: false,
+  turnstileToken: ""
 };
 
 // Translation functions for form fields

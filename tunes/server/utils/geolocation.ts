@@ -1,4 +1,17 @@
-import geoip from 'geoip-lite';
+// Lazy-load geoip-lite to avoid ArrayBuffer allocation crash at startup.
+// The database (~70MB) is only loaded into memory on first actual lookup.
+let _geoip: typeof import('geoip-lite') | null = null;
+function getGeoip(): typeof import('geoip-lite') | null {
+  if (_geoip === null) {
+    try {
+      _geoip = require('geoip-lite');
+    } catch (err) {
+      console.warn('geoip-lite failed to load:', err);
+      _geoip = null;
+    }
+  }
+  return _geoip;
+}
 
 // Define interfaces for geo data
 export interface GeoLocation {
@@ -98,6 +111,8 @@ export function getLocationFromIp(ip: string): GeoLocation | null {
     }
     
     // Lookup IP
+    const geoip = getGeoip();
+    if (!geoip) return null;
     const geo = geoip.lookup(ip);
     return geo as GeoLocation | null;
   } catch (error) {

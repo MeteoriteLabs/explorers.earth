@@ -50,7 +50,7 @@ const UsernameValidator = ({ children }: UsernameValidatorProps) => {
 
       // If we have more than 2 segments, validate the nested route
       if (pathSegments.length > 2) {
-        const validRoutes = ['places', 'community', 'music', 'guides'];
+        const validRoutes = ['places', 'community', 'music', 'guides', 'movies', 'books', 'games'];
         const currentRoute = pathSegments[2];
 
         // Check if the current route is valid
@@ -76,11 +76,18 @@ const UsernameValidator = ({ children }: UsernameValidatorProps) => {
     }
   }, [data, loading, error, username, navigate, location.pathname]);
 
+  useEffect(() => {
+    (window as any).__publicProfileLoaded = false;
+    return () => {
+      (window as any).__publicProfileLoaded = false;
+    };
+  }, []);
+
   // Show loading while checking username
   if (loading) {
     return (
-      <div className="bg-black">
-        <EarthLoader context="general" />
+      <div className="bg-black min-h-screen">
+        <EarthLoader context="general" size="default" />
       </div>
     );
   }

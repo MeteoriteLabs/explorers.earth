@@ -427,7 +427,7 @@ export default function EmailTab() {
                       <Input placeholder="test@example.com" {...field} />
                     </FormControl>
                     <FormDescription>
-                      Email must be verified in SES if in sandbox mode
+                      Ensure this email is verified or matches your domain configuration in Resend
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -831,9 +831,9 @@ export default function EmailTab() {
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle>AWS SES Quota</CardTitle>
+                <CardTitle>Email Service Quota</CardTitle>
                 <CardDescription>
-                  Amazon SES sending limits and usage
+                  Resend sending limits and usage
                 </CardDescription>
               </div>
               <Button variant="outline" onClick={() => refetchQuota()}>
@@ -1047,10 +1047,9 @@ export default function EmailTab() {
       <Dialog open={showVerifyDialog} onOpenChange={setShowVerifyDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Verify Email Address</DialogTitle>
+            <DialogTitle>Verify Sender Email</DialogTitle>
             <DialogDescription>
-              Amazon SES requires verification of email addresses before sending emails to them.
-              This is especially important when in sandbox mode.
+              Domain and email sender verification is managed in the Resend Dashboard (https://resend.com/domains).
             </DialogDescription>
           </DialogHeader>
           <Form {...verificationForm}>

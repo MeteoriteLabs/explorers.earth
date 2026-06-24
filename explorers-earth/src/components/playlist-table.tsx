@@ -19,6 +19,7 @@ interface PlaylistTableProps {
   showAddToQueue?: boolean;
   showReorderControls?: boolean;
   isHistory?: boolean;
+  isPlaylist?: boolean;
   currentPlayingSong?: Song;
   guestUrl?: string;
   onPlaySong?: (song: Song) => void;
@@ -38,6 +39,7 @@ export default function PlaylistTable({
   showAddToQueue = false,
   showReorderControls = true,
   isHistory = false,
+  isPlaylist = false,
   currentPlayingSong,
   onPlaySong,
   onAddToQueue,
@@ -170,7 +172,9 @@ export default function PlaylistTable({
       <div className="space-y-1">
         {currentSongs.map((song) => {
           const globalIdx = songs.findIndex(s => s.id === song.id);
-          const isPlaying = song.id === currentPlayingSong?.id;
+          const isPlaying = isPlaylist
+            ? song.youtubeId === currentPlayingSong?.youtubeId
+            : song.id === currentPlayingSong?.id;
 
           return (
             <div

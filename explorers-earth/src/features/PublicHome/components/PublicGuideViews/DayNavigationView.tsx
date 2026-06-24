@@ -678,9 +678,9 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
       {/* Place Overview Modal (for recommendations) */}
       {selectedPlace.visible && selectedPlace.placeId && (
         <>
-          <div className="fixed inset-0 bg-black md:bg-opacity-40 md:backdrop-blur-md z-[60]"></div>
+          <div className="fixed inset-0 bg-black md:bg-opacity-40 md:backdrop-blur-md z-[150]"></div>
           <div
-            className={`fixed md:max-w-4xl md:mx-auto inset-x-0 bottom-0 top-0 z-[60] transition-transform duration-300 ease-in-out overflow-x-hidden ${selectedPlace.visible ? "translate-y-0" : "translate-y-full"
+            className={`fixed md:max-w-4xl md:mx-auto inset-x-0 bottom-0 top-0 z-[150] transition-transform duration-300 ease-in-out overflow-x-hidden ${selectedPlace.visible ? "translate-y-0" : "translate-y-full"
               }`}
           >
             <PlaceOverview
@@ -695,9 +695,9 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
       {/* Google Place Modal (for guide places) */}
       {selectedGooglePlace.visible && selectedGooglePlace.place && (
         <>
-          <div className="fixed inset-0 bg-black md:bg-opacity-40 md:backdrop-blur-md z-[60]"></div>
+          <div className="fixed inset-0 bg-black md:bg-opacity-40 md:backdrop-blur-md z-[150]"></div>
           <div
-            className={`fixed md:max-w-4xl md:mx-auto inset-x-0 bottom-0 top-0 z-[60] transition-transform duration-300 ease-in-out overflow-x-hidden ${selectedGooglePlace.visible ? "translate-y-0" : "translate-y-full"
+            className={`fixed md:max-w-4xl md:mx-auto inset-x-0 bottom-0 top-0 z-[150] transition-transform duration-300 ease-in-out overflow-x-hidden ${selectedGooglePlace.visible ? "translate-y-0" : "translate-y-full"
               }`}
           >
             <GooglePlaceModal

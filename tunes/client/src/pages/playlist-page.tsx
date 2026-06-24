@@ -791,6 +791,7 @@ export default function PlaylistPage() {
                                     showAddToQueue={true}
                                     guestUrl={guestUrl}
                                     showReorderControls={false} // Hide reorder controls in the guest view
+                                    isPlaylist={true}
                                   />
                                 ) : (
                                   <p className="text-center py-8 text-muted-foreground">

@@ -55,13 +55,10 @@ const GuideDetailsPage = () => {
   const kebabRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [isMainTabsSticky, setIsMainTabsSticky] = useState(false);
-  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-  const [isMobile, setIsMobile] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState('256px');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const mainTabsRef = useRef<HTMLDivElement>(null);
   const guideHeaderRef = useRef<HTMLDivElement>(null);
-  const lastScrollTop = useRef(0);
 
   // Check AI guide quota
   const { shouldDisableGeneration, disableReason, refetch: refetchQuota } = useAIGuideQuota();
@@ -133,21 +130,7 @@ const GuideDetailsPage = () => {
     }
   }, [location.state, refetch]);
 
-  // Check if mobile on mount and resize
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-
-    return () => {
-      window.removeEventListener('resize', checkMobile);
-    };
-  }, []);
-
-  // Scroll detection for sticky tabs and header visibility
+  // Scroll detection for sticky tabs
   useEffect(() => {
     if (loading || !data?.guide) return;
 
@@ -157,83 +140,10 @@ const GuideDetailsPage = () => {
     const initializeScroll = () => {
       const mainTabs = mainTabsRef.current;
       const guideHeader = guideHeaderRef.current;
-
-      if (!mainTabs) {
-        // Retry after a short delay if refs aren't ready
-        timeoutId = setTimeout(initializeScroll, 100);
-        return;
-      }
-
-      let ticking = false;
-
-      const handleScroll = () => {
-        if (!ticking) {
-          window.requestAnimationFrame(() => {
-            // Get scroll position from the scroll container (DashboardLayout overflow-auto container)
-            // Find the scrollable parent container
-            let currentScrollTop = window.scrollY || window.pageYOffset || 0;
-
-            // Try to find the scrollable container (parent with overflow-auto)
-            if (scrollContainerRef.current) {
-              let parent = scrollContainerRef.current.parentElement;
-              while (parent) {
-                const style = window.getComputedStyle(parent);
-                if (style.overflow === 'auto' || style.overflowY === 'auto' || style.overflow === 'scroll' || style.overflowY === 'scroll') {
-                  currentScrollTop = parent.scrollTop;
-                  break;
-                }
-                parent = parent.parentElement;
-              }
-            }
-
-            // Header height: 64px on mobile (pt-16 = 64px), 0 on desktop (md:relative)
-            const headerHeight = isMobile ? 64 : 0;
-
-            // Calculate when tabs should become sticky
-            // Tabs should stick when we've scrolled past the guide header
-            if (guideHeader) {
-              const guideHeaderRect = guideHeader.getBoundingClientRect();
-              // For container scroll, use getBoundingClientRect directly
-              setIsMainTabsSticky(guideHeaderRect.top <= headerHeight);
-            } else {
-              // Fallback: use tabs position relative to viewport
-              const tabsRect = mainTabs.getBoundingClientRect();
-              setIsMainTabsSticky(tabsRect.top <= headerHeight);
-            }
-
-            // Hide/show header on small screens based on scroll direction
-            if (isMobile) {
-              const scrollDelta = currentScrollTop - lastScrollTop.current;
-
-              // Always show header at the very top (within 20px of top)
-              if (currentScrollTop <= 20) {
-                setIsHeaderVisible(true);
-              } else if (Math.abs(scrollDelta) > 3) {
-                // Only update if scroll delta is significant enough to avoid flickering
-                if (scrollDelta > 0) {
-                  // Scrolling down - hide header
-                  setIsHeaderVisible(false);
-                } else {
-                  // Scrolling up - show header
-                  setIsHeaderVisible(true);
-                }
-              }
-            } else {
-              // On desktop, always show header (it's relative, not fixed)
-              setIsHeaderVisible(true);
-            }
-
-            lastScrollTop.current = currentScrollTop;
-            ticking = false;
-          });
-          ticking = true;
-        }
-      };
-
-      // Listen to both container and window scroll events
+      
+      // Find the scrollable parent container (DashboardLayout flex-1 overflow-auto)
+      let scrollableParent: HTMLElement | null = null;
       if (scrollContainerRef.current) {
-        // Find scrollable parent
-        let scrollableParent: HTMLElement | null = null;
         let parent = scrollContainerRef.current.parentElement;
         while (parent) {
           const style = window.getComputedStyle(parent);
@@ -243,63 +153,52 @@ const GuideDetailsPage = () => {
           }
           parent = parent.parentElement;
         }
-
-        if (scrollableParent) {
-          scrollableParent.addEventListener('scroll', handleScroll, { passive: true });
-        }
       }
-      window.addEventListener('scroll', handleScroll, { passive: true });
 
-      // Initial check after a small delay to ensure DOM is fully rendered
-      setTimeout(() => {
-        handleScroll();
-      }, 100);
+      if (!mainTabs || !scrollableParent) {
+        timeoutId = setTimeout(initializeScroll, 100);
+        return;
+      }
+
+      let ticking = false;
+
+      const handleScroll = () => {
+        if (!ticking) {
+          window.requestAnimationFrame(() => {
+            if (!scrollableParent) return;
+
+            // Tabs should stick when we've scrolled past the guide header banner
+            // We use 0 as the threshold because the header hides itself during scroll
+            if (guideHeader) {
+              const guideHeaderRect = guideHeader.getBoundingClientRect();
+              setIsMainTabsSticky(guideHeaderRect.top <= 0);
+            }
+
+            ticking = false;
+          });
+          ticking = true;
+        }
+      };
+
+      scrollableParent.addEventListener('scroll', handleScroll, { passive: true });
+      
+      // Initial check
+      setTimeout(handleScroll, 100);
 
       cleanup = () => {
-        if (scrollContainerRef.current) {
-          let scrollableParent: HTMLElement | null = null;
-          let parent = scrollContainerRef.current.parentElement;
-          while (parent) {
-            const style = window.getComputedStyle(parent);
-            if (style.overflow === 'auto' || style.overflowY === 'auto' || style.overflow === 'scroll' || style.overflowY === 'scroll') {
-              scrollableParent = parent;
-              break;
-            }
-            parent = parent.parentElement;
-          }
-          if (scrollableParent) {
-            scrollableParent.removeEventListener('scroll', handleScroll);
-          }
+        if (scrollableParent) {
+          scrollableParent.removeEventListener('scroll', handleScroll);
         }
-        window.removeEventListener('scroll', handleScroll);
       };
     };
 
-    // Initialize after a short delay to ensure DOM is ready
     timeoutId = setTimeout(initializeScroll, 50);
 
     return () => {
       clearTimeout(timeoutId);
-      if (cleanup) {
-        cleanup();
-      }
+      if (cleanup) cleanup();
     };
-  }, [loading, data?.guide, isMobile]);
-
-  // Control header visibility on small screens via body class
-  useEffect(() => {
-    if (window.innerWidth < 768) {
-      if (isHeaderVisible) {
-        document.body.classList.remove('hide-dashboard-header');
-      } else {
-        document.body.classList.add('hide-dashboard-header');
-      }
-    }
-
-    return () => {
-      document.body.classList.remove('hide-dashboard-header');
-    };
-  }, [isHeaderVisible]);
+  }, [loading, data?.guide]);
 
   /**
    * Kebab Menu Click Outside Handler
@@ -361,7 +260,19 @@ const GuideDetailsPage = () => {
 
   // SEO data for guide page
   const guideTitle = guide.Title || "Travel Guide";
-  const guideDescription = guide.Description || "";
+  
+  // Convert description to string if it is Strapi rich text block format
+  const guideDescriptionText = (() => {
+    if (!guide.Description) return "";
+    if (typeof guide.Description === "string") return guide.Description;
+    if (Array.isArray(guide.Description)) {
+      return guide.Description
+        .map((block: any) => block.children?.map((child: any) => child.text).join(" ") || "")
+        .join(" ");
+    }
+    return "";
+  })();
+
   const guideType = guide.Guide_Type || "";
   const guideCategory = guide.Category || "";
   const bestTimeToVisit = guide.Best_Time_To_Visit || "";
@@ -386,7 +297,7 @@ const GuideDetailsPage = () => {
   }
 
   const pageTitle = `${guideTitle}${citiesText ? ` - ${citiesText}` : ""} | Travel Guide | explorers`;
-  const metaDescription = guideDescription || `Explore ${guideTitle}, ${isItineraryBased ? "an itinerary-based" : "a"} travel guide${citiesText ? ` covering ${citiesText}` : ""}${guideCategory ? ` in ${guideCategory} category` : ""}. Discover curated travel recommendations, ${sectionsCount > 0 ? `${sectionsCount} detailed sections including ` : ""}journey plans, accommodations, transportation, budget tips${bestTimeToVisit ? `, and best time to visit: ${bestTimeToVisit}` : ""}, and local insights.`;
+  const metaDescription = guideDescriptionText || `Explore ${guideTitle}, ${isItineraryBased ? "an itinerary-based" : "a"} travel guide${citiesText ? ` covering ${citiesText}` : ""}${guideCategory ? ` in ${guideCategory} category` : ""}. Discover curated travel recommendations, ${sectionsCount > 0 ? `${sectionsCount} detailed sections including ` : ""}journey plans, accommodations, transportation, budget tips${bestTimeToVisit ? `, and best time to visit: ${bestTimeToVisit}` : ""}, and local insights.`;
 
   const guideKeywords = [
     guideTitle,
@@ -619,7 +530,7 @@ const GuideDetailsPage = () => {
           <div
             ref={mainTabsRef}
             className={`mb-8 z-40 bg-dashboard-bg border-b border-dashboard transition-all duration-200 ${isMainTabsSticky
-              ? `fixed right-0 ${isMobile ? (isHeaderVisible ? 'top-16' : 'top-0') : 'top-0'}`
+              ? `fixed right-0 top-0`
               : 'relative'
               }`}
             style={isMainTabsSticky ? {
@@ -724,9 +635,9 @@ const GuideDetailsPage = () => {
       {/* Google Place Modal (for guide places) */}
       {selectedGooglePlace.visible && selectedGooglePlace.place && (
         <>
-          <div className="fixed inset-0 bg-black md:bg-opacity-40 md:backdrop-blur-md z-[60]"></div>
+          <div className="fixed inset-0 bg-black md:bg-opacity-40 md:backdrop-blur-md z-[150]"></div>
           <div
-            className={`fixed md:max-w-4xl md:mx-auto inset-x-0 bottom-0 top-12 z-[60] transition-transform duration-300 ease-in-out overflow-x-hidden ${selectedGooglePlace.visible ? "translate-y-0" : "translate-y-full"
+            className={`fixed md:max-w-4xl md:mx-auto inset-x-0 bottom-0 top-12 z-[150] transition-transform duration-300 ease-in-out overflow-x-hidden ${selectedGooglePlace.visible ? "translate-y-0" : "translate-y-full"
               }`}
             style={{ height: "100%" }}
           >

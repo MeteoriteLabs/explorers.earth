@@ -17,6 +17,7 @@ import { setupStrapiRoutes } from "./strapiRoutes";
 import { setupYoutubeRoutes } from "./youtubeRoutes";
 import { setupEmailRoutes } from "./emailRoutes";
 import { setupPageRoutes } from "./pageRoutes";
+import { setupReactivationRoutes } from "./reactivationRoutes";
 
 export function registerRoutes(app: Express, _storage: IStorage): Server {
   setupSwagger(app);
@@ -28,6 +29,7 @@ export function registerRoutes(app: Express, _storage: IStorage): Server {
   setupYoutubeRoutes(app);
   setupEmailRoutes(app);
   setupPageRoutes(app);
+  setupReactivationRoutes(app);
 
   setupUserRoutes(app);
   setupPaymentRoutes(app);
@@ -37,6 +39,48 @@ export function registerRoutes(app: Express, _storage: IStorage): Server {
   setupGoogleOAuthRoutes(app);
   setupAuthBridgeRoutes(app);
   setupSeoRoutes(app);
+  
+  // GraphQL Proxy for Strapi
+  app.post("/graphql", async (req, res) => {
+    try {
+      const strapiUrl = process.env.STRAPI_URL;
+      const strapiToken = process.env.STRAPI_ACCESS_TOKEN;
+      
+      if (!strapiUrl) {
+        return res.status(500).json({ error: "STRAPI_URL not configured" });
+      }
+
+      const authHeader = req.headers.authorization;
+      const isAuthOperation = req.body?.query?.includes("login") || req.body?.query?.includes("register");
+      
+      const finalToken = isAuthOperation 
+        ? undefined 
+        : (authHeader || (strapiToken ? `Bearer ${strapiToken}` : undefined));
+      
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      
+      if (finalToken) {
+        headers["Authorization"] = finalToken;
+      }
+
+      const response = await fetch(`${strapiUrl}/graphql`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(req.body),
+      });
+
+      const data = await response.json();
+      res.status(response.status).json(data);
+    } catch (error) {
+      console.error("❌ GraphQL Proxy Error:", error);
+      res.status(500).json({ 
+        error: "GraphQL Proxy Error", 
+        message: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
 
   return server;
 }

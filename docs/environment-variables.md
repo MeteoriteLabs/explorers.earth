@@ -9,14 +9,34 @@ All environment variables for both applications. Each app has its own `.env` fil
 | `VITE_API_URL` | Yes | GraphQL API endpoint (Strapi CMS) | `https://api.explorers.earth/graphql` |
 | `VITE_REST_API_URL` | Yes | REST API endpoint (Strapi uploads) | `https://api.explorers.earth` |
 | `VITE_GOOGLE_MAPS_API_KEY` | Yes | Google Maps JavaScript API key | `AIza...` |
+| `VITE_BASE_URL` | No | Base URL of the app (used for canonical links/SEO) | `https://explorers.earth` |
+| `VITE_GA_MEASUREMENT_ID` | No | Google Analytics 4 Measurement ID | `G-XXXXXXXXXX` |
 | `VITE_GOOGLE_CUSTOM_SEARCH_API_KEY` | No | Google Custom Search API key (image search) | `AIza...` |
 | `VITE_GOOGLE_CUSTOM_SEARCH_ENGINE_ID` | No | Custom Search Engine ID | `abc123...` |
-| `VITE_PUBLIC_ACCESS_TOKEN` | No | Public access token for Strapi | `token...` |
-| `VITE_PUBLIC_SHAREABLE_LINK` | No | Base URL for shareable profile links | `https://explorers.earth` |
+| `VITE_GOOGLE_SEARCH_API_KEY` | No | Google Custom Search API key (alias used in some modules) | `AIza...` |
+| `VITE_GOOGLE_SEARCH_ENGINE_ID` | No | Custom Search Engine ID (alias) | `abc123...` |
+| `VITE_GOOGLE_BOOKS_API_KEY` | No | Google Books API key (book search for Books feature) | `AIza...` |
+| `VITE_TMDB_API_KEY` | No | TMDB API key v3 (movie/show search) | `abc123...` |
+| `VITE_TMDB_ACCESS_TOKEN` | No | TMDB v4 Bearer access token (preferred for new endpoints) | `eyJ...` |
+| `VITE_IGDB_CLIENT_ID` | No | IGDB/Twitch Client ID for game search | `abc123...` |
+| `VITE_IGDB_CLIENT_SECRET` | No | IGDB/Twitch Client Secret for game search | `secret...` |
+| `VITE_INSTAGRAM_API_URL` | No | Instagram Graph API base URL | `https://graph.instagram.com` |
+| `VITE_TURNSTILE_SITE_KEY` | No | Cloudflare Turnstile site key (bot protection on auth forms) | `0x4AAAAA...` |
+| `VITE_PAYMENT_API_URL` | No | Payment backend API URL | `https://pay.explorers.earth` |
+| `VITE_RAZORPAY_KEY_ID_DEV` | No | Razorpay key for dev/test environment | `rzp_test_...` |
+| `VITE_RAZORPAY_KEY_ID_PROD` | No | Razorpay key for production | `rzp_live_...` |
+| `VITE_PUBLIC_ACCESS_TOKEN` | No | Public access token for Strapi (unauthenticated reads) | `token...` |
 | `VITE_LOCAL_TUNES_API_URL` | No | tunes API URL for cross-app integration | `https://localtunes.earth` |
-| `VITE_LOCAL_TUNES_ENABLED` | No | Enable tunes integration | `true` |
+| `VITE_LOCAL_TUNES_WS_URL` | No | tunes WebSocket URL | `wss://localtunes.earth` |
+| `VITE_LOCAL_TUNES_ENABLED` | No | Enable/disable tunes integration | `true` |
 | `VITE_LOCAL_TUNES_TIMEOUT` | No | Tunes API timeout in ms | `10000` |
 | `VITE_LOCAL_TUNES_RETRY_ATTEMPTS` | No | Retry attempts for tunes API | `3` |
+
+> **Note on IGDB**: IGDB uses Twitch OAuth for authentication. `VITE_IGDB_CLIENT_ID` and `VITE_IGDB_CLIENT_SECRET` are your Twitch app credentials. The token exchange is handled in `src/services/igdbService.ts`.
+
+> **Note on TMDB**: Both `VITE_TMDB_API_KEY` (v3 legacy) and `VITE_TMDB_ACCESS_TOKEN` (v4 Bearer) are used. The Bearer token is preferred for newer endpoints.
+
+> **Note on Razorpay**: Two separate keys are used — `VITE_RAZORPAY_KEY_ID_DEV` for test/staging and `VITE_RAZORPAY_KEY_ID_PROD` for production. The app selects based on environment.
 
 > Note: All explorers-earth env vars are prefixed with `VITE_` because Vite exposes these to the client bundle. Do not put secrets here.
 

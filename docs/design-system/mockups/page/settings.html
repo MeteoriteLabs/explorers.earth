@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings Mockup (Option D) — explorers.earth</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ============ RESET & BASE ============ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Poppins', system-ui, sans-serif;
+      background: #0d0f12;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* ============ PREVIEW MASTER HEADER ============ */
+    .preview-header {
+      width: 100%;
+      max-width: 800px;
+      padding: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 2rem;
+    }
+    .preview-info h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: white;
+    }
+    .preview-info p {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      margin-top: 0.25rem;
+    }
+    .badge {
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      display: inline-block;
+    }
+    .badge-approved {
+      background: rgba(74, 222, 128, 0.15);
+      color: #4ade80;
+    }
+    .badge-mobile {
+      background: rgba(249, 115, 22, 0.15);
+      color: #f97316;
+      margin-left: 0.25rem;
+    }
+    .view-controls {
+      display: flex;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 3px;
+      border-radius: 8px;
+      gap: 2px;
+    }
+    .control-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Poppins', sans-serif;
+      transition: all 0.2s ease;
+    }
+    .control-btn.active {
+      background: #3B82F6;
+      color: white;
+    }
+
+    /* ============ MAIN LAYOUT PREVIEW VIEWS ============ */
+    .preview-main {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      width: 100%;
+      flex-grow: 1;
+      padding-bottom: 3rem;
+      transition: all 0.3s ease;
+    }
+
+    /* Device Frame View Mode */
+    .preview-main.device-view .phone-wrapper {
+      width: 375px;
+      height: 720px;
+      border: 12px solid #1e293b;
+      border-radius: 40px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      background: #090b0d;
+      overflow: hidden;
+      position: relative;
+    }
+    .preview-main.device-view .phone-frame-inner {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+    .preview-main.device-view .phone-frame-inner::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Full Responsive View Mode */
+    .preview-main.full-view {
+      padding: 0 1.5rem 3rem;
+      max-width: 1200px;
+    }
+    .preview-main.full-view .phone-wrapper {
+      width: 100%;
+      background: #090b0d;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    .preview-main.full-view .phone-frame-inner {
+      width: 100%;
+      padding: 2rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* ============ DESIGN TOKENS ============ */
+    :root {
+      --dash-bg:         #2E4032; /* Forest Green dashboard background */
+      --dash-sidebar-bg: #223126;
+      --dash-accent:     #3B82F6;
+      --dash-muted:      #3C4E40;
+      --dash-border:     #3C4E40;
+      --dash-text:       #FFFFFF;
+      --blue-cta:        #3B82F6;
+      --blue-final:      #2563EB;
+      --dash-search-bg:   #223126;
+    }
+
+    /* ============ MOCKUP COMPONENT STYLES ============ */
+    .phone-frame {
+      min-height: 100%;
+      padding-bottom: 2rem;
+      transition: background 0.2s ease;
+      background: var(--dash-bg);
+      position: relative;
+    }
+
+    /* ============ TABS PILL ============ */
+    .tabs-pill {
+      display: flex;
+      background: white;
+      border-radius: 24px;
+      width: fit-content;
+      margin: 0 auto 0.75rem;
+      padding: 2px;
+    }
+    .tabs-pill button {
+      padding: 0.3rem 0.85rem;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      font-family: 'Poppins', sans-serif;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: black;
+      background: white;
+    }
+    .tabs-pill button.active {
+      background: var(--dash-accent);
+      color: white;
+    }
+
+    /* ============ SECTION LABEL ============ */
+    .sec-lbl {
+      font-size: 0.6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.3);
+      margin-bottom: 0.5rem;
+      padding-top: 0.5rem;
+    }
+
+    /* ============ FROSTED CARD ============ */
+    .glass-card {
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    /* ============ TOGGLE ROW ============ */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .toggle-row:last-child { border-bottom: none; }
+    .toggle-row .tl { font-size: 0.73rem; font-weight: 500; color: #e2e8f0; }
+
+    /* Theme Switcher buttons styles */
+    .theme-btn {
+      border: 1px solid transparent;
+      color: #64748b;
+      background: none;
+      padding: 0.4rem 1rem;
+      font-size: 0.75rem;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Poppins', sans-serif;
+    }
+    
+    /* Scrollbar hide helper */
+    .scroll-hide::-webkit-scrollbar {
+      display: none;
+    }
+    .scroll-hide {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    
+    /* Global buttons inside phone container */
+    .dash-blue-btn {
+      background: var(--blue-cta);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 0.5rem 1rem;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .dash-blue-btn:hover {
+      background: var(--blue-final);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ====== PREVIEW MASTER HEADER ====== -->
+  <div class="preview-header">
+    <div class="preview-info">
+      <h1>Settings Mockup (Option D) <span class="badge badge-approved">Approved</span><span class="badge badge-mobile">Mobile Only</span></h1>
+      <p>Command Palette Search style layout with interactive Account and Billing tabs switcher.</p>
+    </div>
+    
+    <div style="display:flex; flex-direction:column; gap:0.5rem; align-items:flex-end;">
+      <!-- Layout Controls -->
+      <div class="view-controls">
+        <button id="btn-device" class="control-btn active" onclick="setViewMode('device')">📱 Phone</button>
+        <button id="btn-full" class="control-btn" onclick="setViewMode('full')">🖥️ Full View</button>
+      </div>
+
+      <!-- Theme Controls -->
+      <div style="display: flex; gap: 0.35rem;">
+        <button onclick="setTheme('green')" class="theme-btn" id="btn-theme-green" style="border: 1px solid var(--dash-accent); color: white; background: var(--dash-sidebar-bg);">🌲 Green</button>
+        <button onclick="setTheme('dark')" class="theme-btn" id="btn-theme-dark">🖤 Dark</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== MAIN PREVIEW CONTAINER ====== -->
+  <div class="preview-main device-view" id="preview-main-container">
+    <div class="phone-wrapper">
+      <div class="phone-frame-inner">
+        <div class="phone-frame">
+          
+          <div style="padding:0.75rem;">
+            <h1 style="font-size:1.1rem;font-weight:800;color:white;margin-bottom:0.75rem;">Settings</h1>
+            
+            <!-- Tab switcher -->
+            <div class="tabs-pill" style="margin-bottom:0.75rem;">
+              <button class="active" onclick="switchSettingsTab(this, 'account')">Account</button>
+              <button onclick="switchSettingsTab(this, 'billing')">Billing</button>
+            </div>
+
+            <!-- ACCOUNT TAB CONTENT -->
+            <div class="settings-account-pane">
+              <!-- Search -->
+              <div style="background:var(--dash-search-bg);border:1px solid var(--dash-accent);border-radius:12px;padding:0.5rem 0.75rem;display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;">
+                <svg width="14" height="14" fill="none" stroke="var(--dash-accent)" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <span style="font-size:0.72rem;color:rgba(255,255,255,0.4);">Search settings…</span>
+              </div>
+              <!-- Recent / All settings list -->
+              <div class="sec-lbl">QUICK ACCESS</div>
+              <!-- Setting rows (without Billing) -->
+              <div style="background:var(--dash-sidebar-bg);border:1px solid var(--dash-border);border-radius:12px;overflow:hidden;margin-bottom:0.5rem;">
+                <div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 0.75rem;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;">
+                  <span style="font-size:0.85rem;">🔒</span>
+                  <div style="flex:1;"><div style="font-size:0.73rem;font-weight:600;color:white;">Change Password</div><div style="font-size:0.6rem;color:rgba(255,255,255,0.4);">Security · Last changed 30 days ago</div></div>
+                  <svg width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 0.75rem;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;">
+                  <span style="font-size:0.85rem;">🌐</span>
+                  <div style="flex:1;"><div style="font-size:0.73rem;font-weight:600;color:white;">Language</div><div style="font-size:0.6rem;color:rgba(255,255,255,0.4);">Display · English (UK)</div></div>
+                  <svg width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 0.75rem;cursor:pointer;">
+                  <span style="font-size:0.85rem;">👁️</span>
+                  <div style="flex:1;"><div style="font-size:0.73rem;font-weight:600;color:white;">Tab Visibility</div><div style="font-size:0.6rem;color:rgba(255,255,255,0.4);">Profile · 4 tabs enabled</div></div>
+                  <svg width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </div>
+              </div>
+              <!-- Connected accounts -->
+              <div class="sec-lbl">CONNECTED ACCOUNTS</div>
+              <div style="background:var(--dash-sidebar-bg);border:1px solid var(--dash-border);border-radius:12px;padding:0.6rem 0.75rem;display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">
+                <span style="font-size:0.85rem;">🔗</span>
+                <div style="flex:1;font-size:0.73rem;font-weight:600;color:white;">Google Account</div>
+                <span style="font-size:0.6rem;font-weight:700;color:#4ade80;background:rgba(74,222,128,0.1);padding:0.15rem 0.5rem;border-radius:20px;">Connected</span>
+              </div>
+              <!-- Danger -->
+              <div class="sec-lbl">DANGER ZONE</div>
+              <div style="background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.2);border-radius:12px;overflow:hidden;">
+                <div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 0.75rem;border-bottom:1px solid rgba(248,113,113,0.1);cursor:pointer;"><div style="flex:1;font-size:0.73rem;color:#f87171;font-weight:600;">Deactivate Account</div><svg width="14" height="14" fill="none" stroke="rgba(248,113,113,0.5)" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></div>
+                <div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 0.75rem;cursor:pointer;"><div style="flex:1;font-size:0.73rem;color:#f87171;font-weight:700;">Delete Account Permanently</div><svg width="14" height="14" fill="none" stroke="rgba(248,113,113,0.5)" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></div>
+              </div>
+            </div>
+
+            <!-- BILLING TAB CONTENT (initially hidden) -->
+            <div class="settings-billing-pane" style="display:none; flex-direction:column; gap:1rem;">
+              <!-- 1. USAGE DASHBOARD -->
+              <div>
+                <div class="sec-lbl" style="margin-top:0;">1. USAGE DASHBOARD</div>
+                <div class="scroll-hide" style="display:flex; gap:0.4rem; overflow-x:auto; padding-bottom:0.2rem;">
+                  
+                  <!-- Card 1: PLAN VALIDITY -->
+                  <div class="glass-card" style="flex:1; min-width:105px; padding:0.6rem; display:flex; flex-direction:column; gap:0.5rem; border:1px solid rgba(255,255,255,0.08); position:relative;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                      <div style="width:24px; height:24px; border:1px solid rgba(59,130,246,0.3); border-radius:6px; display:flex; align-items:center; justify-content:center; background:rgba(59,130,246,0.08);">
+                        <svg width="12" height="12" fill="none" stroke="#3b82f6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                      </div>
+                      <span style="font-size:0.5rem; font-weight:700; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:0.04em; white-space:nowrap;">Validity</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                      <div style="position:relative; width:36px; height:36px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                        <svg width="36" height="36" style="transform:rotate(-90deg);">
+                          <circle cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="3.2"/>
+                          <circle cx="18" cy="18" r="14" fill="none" stroke="#3b82f6" stroke-width="3.2" stroke-dasharray="88" stroke-dashoffset="20.2" stroke-linecap="round"/>
+                        </svg>
+                        <span style="position:absolute; font-size:0.52rem; font-weight:800; color:white;">77%</span>
+                      </div>
+                      <div style="display:flex; flex-direction:column;">
+                        <span style="font-size:0.85rem; font-weight:800; color:white; line-height:1;">23d</span>
+                        <span style="font-size:0.52rem; color:rgba(255,255,255,0.45); margin-top:0.15rem; font-weight:500;">Jul 4</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Card 2: SONGS -->
+                  <div class="glass-card" style="flex:1; min-width:105px; padding:0.6rem; display:flex; flex-direction:column; gap:0.5rem; border:1px solid rgba(255,255,255,0.08); position:relative;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                      <div style="width:24px; height:24px; border:1px solid rgba(6,182,212,0.3); border-radius:6px; display:flex; align-items:center; justify-content:center; background:rgba(6,182,212,0.08);">
+                        <svg width="12" height="12" fill="none" stroke="#06b6d4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+                      </div>
+                      <span style="font-size:0.5rem; font-weight:700; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:0.04em; white-space:nowrap;">Songs</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                      <div style="position:relative; width:36px; height:36px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                        <svg width="36" height="36" style="transform:rotate(-90deg);">
+                          <circle cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="3.2"/>
+                          <circle cx="18" cy="18" r="14" fill="none" stroke="#06b6d4" stroke-width="3.2" stroke-dasharray="88" stroke-dashoffset="87.1" stroke-linecap="round"/>
+                        </svg>
+                        <span style="position:absolute; font-size:0.52rem; font-weight:800; color:white;">1%</span>
+                      </div>
+                      <div style="display:flex; flex-direction:column;">
+                        <span style="font-size:0.85rem; font-weight:800; color:white; line-height:1;">1<span style="font-size:0.6rem; color:rgba(255,255,255,0.5); font-weight:500;">/100</span></span>
+                        <span style="font-size:0.52rem; color:rgba(255,255,255,0.45); margin-top:0.15rem; font-weight:500; white-space:nowrap;">reqs used</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Card 3: AI GUIDES -->
+                  <div class="glass-card" style="flex:1; min-width:105px; padding:0.6rem; display:flex; flex-direction:column; gap:0.5rem; border:1px solid rgba(255,255,255,0.08); position:relative;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                      <div style="width:24px; height:24px; border:1px solid rgba(16,185,129,0.3); border-radius:6px; display:flex; align-items:center; justify-content:center; background:rgba(16,185,129,0.08);">
+                        <svg width="12" height="12" fill="none" stroke="#10b981" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 113.536 0V21h-2v-3z"/></svg>
+                      </div>
+                      <span style="font-size:0.5rem; font-weight:700; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:0.04em; white-space:nowrap;">AI Guides</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                      <div style="position:relative; width:36px; height:36px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                        <svg width="36" height="36" style="transform:rotate(-90deg);">
+                          <circle cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="3.2"/>
+                          <circle cx="18" cy="18" r="14" fill="none" stroke="#10b981" stroke-width="3.2" stroke-dasharray="88" stroke-dashoffset="88" stroke-linecap="round"/>
+                        </svg>
+                        <span style="position:absolute; font-size:0.52rem; font-weight:800; color:white;">0%</span>
+                      </div>
+                      <div style="display:flex; flex-direction:column;">
+                        <span style="font-size:0.85rem; font-weight:800; color:white; line-height:1;">0<span style="font-size:0.6rem; color:rgba(255,255,255,0.5); font-weight:500;">/5</span></span>
+                        <span style="font-size:0.52rem; color:rgba(255,255,255,0.45); margin-top:0.15rem; font-weight:500; white-space:nowrap;">gen'd</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2. CURRENT PLAN -->
+              <div>
+                <div class="sec-lbl">2. CURRENT PLAN</div>
+                <!-- Plan Info -->
+                <div class="glass-card" style="padding:0.8rem;margin-bottom:0.5rem;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+                    <span style="font-size:0.6rem;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;">Active Plan</span>
+                    <span style="font-size:0.55rem;font-weight:800;color:#3B82F6;background:rgba(59,130,246,0.15);padding:0.15rem 0.45rem;border-radius:4px;">PRO</span>
+                  </div>
+                  <div style="font-size:0.82rem;font-weight:700;color:white;margin-bottom:0.15rem;">Pro Plan Subscription</div>
+                  <div style="font-size:0.62rem;color:rgba(255,255,255,0.45);margin-bottom:0.5rem;">$8.00 / month · Billed annually</div>
+                  <div style="font-size:0.6rem;color:#4ade80;background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.15);border-radius:8px;padding:0.4rem 0.6rem;display:flex;align-items:center;gap:0.35rem;">
+                    <span style="font-size:0.65rem;">✓</span> Renews automatically on January 15, 2027
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3. BROWSE PLANS -->
+              <div>
+                <div class="sec-lbl" style="margin-bottom:0.4rem;">3. BROWSE PLANS</div>
+                <!-- Monthly/Yearly Tab Switcher -->
+                <div class="tabs-pill" style="margin: 0 auto 0.6rem; width: fit-content; padding: 2px;">
+                  <button class="active" onclick="switchPlanBillingCycle(this, 'yearly')">Yearly</button>
+                  <button onclick="switchPlanBillingCycle(this, 'monthly')">Monthly</button>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                  <!-- Free Plan -->
+                  <div class="glass-card" style="padding:0.75rem; border:1px solid rgba(255,255,255,0.05); display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                      <div style="display:flex; align-items:center; gap:0.4rem;">
+                        <span style="font-size:0.78rem; font-weight:700; color:white;">Free</span>
+                        <span style="font-size:0.6rem; color:rgba(255,255,255,0.4);">$0/mo</span>
+                      </div>
+                      <div style="font-size:0.58rem; color:rgba(255,255,255,0.5); margin-top:0.15rem;">10 lists, standard maps &amp; public sharing.</div>
+                    </div>
+                    <button class="page-tab" style="padding:0.25rem 0.6rem; font-size:0.58rem; border:1px solid rgba(255,255,255,0.15); border-radius:6px; background:rgba(255,255,255,0.03); color:rgba(255,255,255,0.6); font-weight:600; cursor:pointer; margin:0;">Downgrade</button>
+                  </div>
+
+                  <!-- Pro Plan (Current) -->
+                  <div class="glass-card" style="padding:0.75rem; border:2px solid var(--dash-accent); display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden;">
+                    <div style="position:absolute; top:0; right:0; background:var(--dash-accent); color:white; font-size:0.45rem; font-weight:800; padding:0.1rem 0.4rem; border-bottom-left-radius:6px; text-transform:uppercase; letter-spacing:0.05em;">Current</div>
+                    <div>
+                      <div style="display:flex; align-items:center; gap:0.4rem;">
+                        <span style="font-size:0.78rem; font-weight:700; color:white;">Pro</span>
+                        <span class="browse-plan-price-pro" style="font-size:0.6rem; color:var(--dash-accent); font-weight:600;">$8/mo*</span>
+                      </div>
+                      <div style="font-size:0.58rem; color:rgba(255,255,255,0.7); margin-top:0.15rem;">Unlimited lists, 5 guides, custom maps.</div>
+                    </div>
+                    <div style="font-size:0.58rem; color:var(--dash-accent); font-weight:700; padding:0.25rem 0.5rem; display:flex; align-items:center; gap:0.15rem; border-radius:6px; background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2);">Active Plan</div>
+                  </div>
+
+                  <!-- Agency Plan -->
+                  <div class="glass-card" style="padding:0.75rem; border:1px solid rgba(255,255,255,0.05); display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                      <div style="display:flex; align-items:center; gap:0.4rem;">
+                        <span style="font-size:0.78rem; font-weight:700; color:white;">Agency</span>
+                        <span class="browse-plan-price-agency" style="font-size:0.6rem; color:rgba(255,255,255,0.4);">$29/mo</span>
+                      </div>
+                      <div style="font-size:0.58rem; color:rgba(255,255,255,0.5); margin-top:0.15rem;">Unlimited guides, team collaboration, white-label.</div>
+                    </div>
+                    <button class="dash-blue-btn" style="width:auto; margin:0; padding:0.3rem 0.65rem; font-size:0.58rem; border-radius:6px; font-weight:700;">Upgrade</button>
+                  </div>
+                  
+                  <div class="browse-plan-footnote" style="font-size:0.55rem; color:rgba(255,255,255,0.35); text-align:center; margin-top:0.15rem;">* Pro is billed annually. Prices exclude local taxes.</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+          <div style="height:60px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== Viewport view mode toggles =====
+    function setViewMode(mode) {
+      const container = document.getElementById('preview-main-container');
+      const btnDevice = document.getElementById('btn-device');
+      const btnFull = document.getElementById('btn-full');
+      
+      if (mode === 'device') {
+        container.classList.remove('full-view');
+        container.classList.add('device-view');
+        btnDevice.classList.add('active');
+        btnFull.classList.remove('active');
+      } else {
+        container.classList.remove('device-view');
+        container.classList.add('full-view');
+        btnFull.classList.add('active');
+        btnDevice.classList.remove('active');
+      }
+    }
+
+    // ===== Settings Tab Switcher =====
+    window.switchSettingsTab = function(btn, tabName) {
+      const card = btn.closest('.phone-frame');
+      const accountPane = card.querySelector('.settings-account-pane');
+      const billingPane = card.querySelector('.settings-billing-pane');
+      if (!accountPane || !billingPane) return;
+      if (tabName === 'account') {
+        accountPane.style.display = 'block';
+        billingPane.style.display = 'none';
+      } else {
+        accountPane.style.display = 'none';
+        billingPane.style.display = 'flex';
+      }
+
+      // Handle active button states in tab pill
+      const pill = btn.closest('.tabs-pill');
+      if (pill) {
+        pill.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      }
+    };
+
+    // ===== Browse Plans Billing Cycle Switcher =====
+    window.switchPlanBillingCycle = function(btn, cycle) {
+      const card = btn.closest('.phone-frame');
+      const proPrice = card.querySelector('.browse-plan-price-pro');
+      const agencyPrice = card.querySelector('.browse-plan-price-agency');
+      const footnote = card.querySelector('.browse-plan-footnote');
+      
+      if (cycle === 'yearly') {
+        if (proPrice) proPrice.textContent = '$8/mo*';
+        if (agencyPrice) agencyPrice.textContent = '$29/mo';
+        if (footnote) footnote.textContent = '* Pro is billed annually. Prices exclude local taxes.';
+      } else {
+        if (proPrice) proPrice.textContent = '$10/mo';
+        if (agencyPrice) agencyPrice.textContent = '$35/mo';
+        if (footnote) footnote.textContent = 'Prices exclude local taxes.';
+      }
+
+      // Handle active button states in cycle tab pill
+      const pill = btn.closest('.tabs-pill');
+      if (pill) {
+        pill.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      }
+    };
+
+    // ===== Theme Settings =====
+    const themes = {
+      green: {
+        '--dash-bg': '#2E4032',
+        '--dash-sidebar-bg': '#223126',
+        '--dash-accent': '#3B82F6',
+        '--dash-muted': '#3C4E40',
+        '--dash-border': '#3C4E40',
+        '--blue-cta': '#3B82F6',
+        '--blue-final': '#2563EB',
+        '--dash-tab-bg':      '#1a2620',
+        '--dash-search-bg':   '#223126',
+        '--dash-map-banner':  'linear-gradient(135deg, #1a2c1e, #0f1a10)'
+      },
+      dark: {
+        '--dash-bg': '#0F1419',
+        '--dash-sidebar-bg': '#161B26',
+        '--dash-accent': '#60A5FA',
+        '--dash-muted': '#222A3B',
+        '--dash-border': '#283147',
+        '--blue-cta': '#3B82F6',
+        '--blue-final': '#2563EB',
+        '--dash-tab-bg':      '#121620',
+        '--dash-search-bg':   '#161B26',
+        '--dash-map-banner':  'linear-gradient(135deg, #1e293b, #0f172a)'
+      }
+    };
+
+    window.setTheme = function(themeName) {
+      const theme = themes[themeName];
+      if (!theme) return;
+      
+      const root = document.documentElement;
+      Object.keys(theme).forEach(key => {
+        root.style.setProperty(key, theme[key]);
+      });
+
+      const btnGreen = document.getElementById('btn-theme-green');
+      const btnDark = document.getElementById('btn-theme-dark');
+      if (btnGreen && btnDark) {
+        if (themeName === 'green') {
+          btnGreen.style.borderColor = 'var(--dash-accent)';
+          btnGreen.style.color = 'white';
+          btnGreen.style.background = 'var(--dash-sidebar-bg)';
+          
+          btnDark.style.borderColor = 'transparent';
+          btnDark.style.color = '#64748b';
+          btnDark.style.background = 'none';
+        } else {
+          btnDark.style.borderColor = 'var(--dash-accent)';
+          btnDark.style.color = 'white';
+          btnDark.style.background = 'var(--dash-sidebar-bg)';
+          
+          btnGreen.style.borderColor = 'transparent';
+          btnGreen.style.color = '#64748b';
+          btnGreen.style.background = 'none';
+        }
+      }
+    };
+  </script>
+</body>
+</html>

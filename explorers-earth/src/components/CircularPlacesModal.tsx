@@ -204,7 +204,7 @@ const CircularPlacesModal: FC<CircularPlacesModalProps> = ({
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60]"
+        className="fixed inset-0 bg-black/60 flex items-center justify-center z-[150]"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -243,7 +243,7 @@ const CircularPlacesModal: FC<CircularPlacesModalProps> = ({
           <div className="flex-1 flex items-center justify-center">
             <div
               ref={scrollContainerRef}
-              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 p-2 overflow-y-auto max-h-[80vh] overscroll-contain scrollbar-hide"
+              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-6 p-2 overflow-y-auto max-h-[80vh] overscroll-contain scrollbar-hide"
               style={{
                 WebkitOverflowScrolling: "touch", // Enable smooth scrolling on iOS
                 scrollBehavior: "smooth",

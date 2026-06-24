@@ -1,14 +1,26 @@
 # ─── GraphQL proxy (production backend) ───────────────────────────────────────
 [[redirects]]
-  from   = "/graphql"
-  to     = "https://api.localqr.earth/graphql"
+  from = "/graphql"
+  to = "https://api.localqr.earth/graphql"
   status = 200
   force  = true
 
 # ─── Legacy Netlify-app URL (keep for backward compat) ────────────────────────
 [[redirects]]
-  from   = "https://explorers.netlify.app/graphql"
-  to     = "https://api.localqr.earth/graphql"
+  from = "/api/*"
+  to = "https://api.localqr.earth/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/twitch-api/*"
+  to = "https://id.twitch.tv/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/igdb-api/*"
+  to = "https://api.igdb.com/:splat"
   status = 200
   force  = true
 
@@ -32,3 +44,6 @@
 [build]
   command = "npm install && npm run build"
   publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"

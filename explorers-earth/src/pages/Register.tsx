@@ -166,8 +166,13 @@ const Auth = () => {
   };
 
   const handleGoogleSignUp = () => {
-    window.location.href = `${import.meta.env.VITE_REST_API_URL
-      }/connect/google`;
+    // Use the same hardcoded absolute backend URL as Login.tsx.
+    // VITE_REST_API_URL can be a relative path (/api) in some build configs,
+    // which would produce an invalid OAuth initiation URL.
+    // prompt=select_account forces Google to show the account chooser even when
+    // the user already has an active Google session in the same browser window.
+    const backendBase = "https://api.localqr.earth/api";
+    window.location.href = `${backendBase}/connect/google?prompt=select_account`;
   };
 
   // Generate GEO data for register page
@@ -244,6 +249,7 @@ const Auth = () => {
               googleButtonLabel={t("auth.signUpWithGoogle")}
               isRegistration={true}
               enablePasswordValidation={true}
+              turnstileSiteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
               children={
                 <div className="flex flex-col items-center gap-2">
                   <div className="flex justify-center items-center gap-1">

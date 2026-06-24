@@ -57,7 +57,7 @@ export const createProfileValidationSchema = (t: TFunction): Yup.AnySchema => Yu
       }
     ),
   accountType: Yup.string()
-    .oneOf(["Personal", "Creator", "Business"], t('auth.validations.accountType.invalid'))
+    .oneOf(["personal", "creator", "business"], t('auth.validations.accountType.invalid'))
     .required(t('auth.validations.accountType.required')),
   bio: Yup.string(),
   streetNumber: Yup.string(),

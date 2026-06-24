@@ -332,7 +332,7 @@ export default function EmailApisTab() {
         {
           method: "GET",
           path: "/api/admin/email/quota",
-          description: "Get AWS SES sending quota information",
+          description: "Get email service sending quota information",
           parameters: [
             { name: "api_token", type: "string", description: "API token with admin permissions (in Authorization header)" }
           ],
@@ -349,7 +349,7 @@ export default function EmailApisTab() {
     {
       id: "verification",
       name: "Email Verification API",
-      description: "Endpoints for verifying email addresses with AWS SES",
+      description: "Endpoints for managing email sender verification status",
       endpoints: [
         {
           method: "POST",

@@ -19,6 +19,12 @@
  * │           └── activities/
  * │               └── {placeId}/
  * │                   └── [activity photo files]
+ * ├── movies/
+ * │   └── {movieListId}/
+ * │       ├── cover/
+ * │       │   └── [list cover image]
+ * │       └── {tmdbId}/
+ * │           └── [movie recommendation media files]
  * └── {recommendationListId}/
  *     └── {placeId}/
  *         └── [recommendation image files]
@@ -57,7 +63,7 @@ export const generateRandomFileName = (originalName?: string, extension?: string
   }
 
   if (originalName) {
-    const ext = originalName.split('.').pop() || 'jpg';
+    const ext = originalName.includes('.') ? originalName.split('.').pop() : 'jpg';
     return `${timestamp}-${randomId}.${ext}`;
   }
 
@@ -177,6 +183,129 @@ export const generateActivityPhotoPath = (
   const sanitizedPlaceId = sanitizeIdentifier(placeId);
 
   return `${sanitizedUsername}/guides/sections/${sanitizedSectionId}/activities/${sanitizedPlaceId}/${filename}`;
+};
+
+/**
+ * Generates structured path for movie list/movie image uploads
+ * Uses unified structure: {username}/movies/{movieListId}/{tmdbId}/{filename}
+ * @param username - User's username
+ * @param movieListId - Unique ID of the movie list
+ * @param tmdbId - TMDB ID of the movie
+ * @param filename - Generated filename
+ * @returns Structured path for movie uploads
+ */
+export const generateMovieUploadPath = (
+  username: string,
+  movieListId: string,
+  tmdbId: string,
+  filename: string
+): string => {
+  const sanitizedUsername = sanitizeUsername(username);
+  const sanitizedListId = sanitizeIdentifier(movieListId);
+  const sanitizedMovieId = sanitizeIdentifier(tmdbId);
+
+  return `${sanitizedUsername}/movies/${sanitizedListId}/${sanitizedMovieId}/${filename}`;
+};
+
+/**
+ * Generates structured path for movie list cover image uploads
+ * Uses unified structure: {username}/movies/{movieListId}/cover/{filename}
+ * @param username - User's username
+ * @param movieListId - Unique ID of the movie list
+ * @param filename - Generated filename
+ * @returns Structured path for movie list cover uploads
+ */
+export const generateMovieListCoverPath = (
+  username: string,
+  movieListId: string,
+  filename: string
+): string => {
+  const sanitizedUsername = sanitizeUsername(username);
+  const sanitizedListId = sanitizeIdentifier(movieListId);
+
+  return `${sanitizedUsername}/movies/${sanitizedListId}/cover/${filename}`;
+};
+
+/**
+ * Generates structured path for book list/book image uploads
+ * Uses unified structure: {username}/books/{bookListId}/{volumeId}/{filename}
+ * @param username - User's username
+ * @param bookListId - Unique ID of the book list
+ * @param volumeId - Google Books Volume ID
+ * @param filename - Generated filename
+ * @returns Structured path for book uploads
+ */
+export const generateBookUploadPath = (
+  username: string,
+  bookListId: string,
+  volumeId: string,
+  filename: string
+): string => {
+  const sanitizedUsername = sanitizeUsername(username);
+  const sanitizedListId = sanitizeIdentifier(bookListId);
+  const sanitizedVolumeId = sanitizeIdentifier(volumeId);
+
+  return `${sanitizedUsername}/books/${sanitizedListId}/${sanitizedVolumeId}/${filename}`;
+};
+
+/**
+ * Generates structured path for book list cover image uploads
+ * Uses unified structure: {username}/books/{bookListId}/cover/{filename}
+ * @param username - User's username
+ * @param bookListId - Unique ID of the book list
+ * @param filename - Generated filename
+ * @returns Structured path for book list cover uploads
+ */
+export const generateBookListCoverPath = (
+  username: string,
+  bookListId: string,
+  filename: string
+): string => {
+  const sanitizedUsername = sanitizeUsername(username);
+  const sanitizedListId = sanitizeIdentifier(bookListId);
+
+  return `${sanitizedUsername}/books/${sanitizedListId}/cover/${filename}`;
+};
+
+/**
+ * Generates structured path for game list cover image uploads
+ * Uses unified structure: {username}/games/{gameListId}/cover/{filename}
+ * @param username - User's username
+ * @param gameListId - Unique ID of the game list
+ * @param filename - Generated filename
+ * @returns Structured path for game list cover uploads
+ */
+export const generateGameListCoverPath = (
+  username: string,
+  gameListId: string,
+  filename: string
+): string => {
+  const sanitizedUsername = sanitizeUsername(username);
+  const sanitizedListId = sanitizeIdentifier(gameListId);
+
+  return `${sanitizedUsername}/games/${sanitizedListId}/cover/${filename}`;
+};
+
+/**
+ * Generates structured path for game list/game image uploads
+ * Uses unified structure: {username}/games/{gameListId}/{igdbId}/{filename}
+ * @param username - User's username
+ * @param gameListId - Unique ID of the game list
+ * @param igdbId - IGDB ID
+ * @param filename - Generated filename
+ * @returns Structured path for game uploads
+ */
+export const generateGameUploadPath = (
+  username: string,
+  gameListId: string,
+  igdbId: string,
+  filename: string
+): string => {
+  const sanitizedUsername = sanitizeUsername(username);
+  const sanitizedListId = sanitizeIdentifier(gameListId);
+  const sanitizedIgdbId = sanitizeIdentifier(igdbId);
+
+  return `${sanitizedUsername}/games/${sanitizedListId}/${sanitizedIgdbId}/${filename}`;
 };
 
 /**

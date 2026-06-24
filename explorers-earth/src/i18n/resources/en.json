@@ -1,433 +1,518 @@
 {
-  "header": {
-    "nav": {
-      "howItWorks": "How It Works",
-      "whoIsFor": "Who is it for?",
-      "faq": "FAQ",
-      "about": "About",
-      "contact": "Contact"
+  "about": {
+    "closing": "If you're curious.\nIf you're thoughtful.\nIf you're willing to slow down and look closer —\nyou already belong here.",
+    "section1": {
+      "line1": "Exploration begins with awareness.",
+      "line2": "With noticing what others pass by.",
+      "line3": "With choosing to move thoughtfully, not quickly.",
+      "line4": "We're living briefly on an ancient planet —\nadding a few intentional marks to a story\nthat started long before us\nand will continue long after we're gone.",
+      "title": "WHAT WE BELIEVE"
     },
-    "auth": {
-      "login": "Login",
-      "signUp": "Sign Up"
+    "section2": {
+      "line1": "Exploration isn't measured in miles.",
+      "line2": "It's measured in meaning.",
+      "line3": "It lives in slowing down, paying attention,\nand respecting every place we step into —\na street, a mountain path, a café table,\nor a moment shared with someone new.",
+      "title": "HOW WE SEE EXPLORATION"
+    },
+    "section3": {
+      "item1": "Guides shaped by real experience",
+      "item2": "Places, journeys, sounds, and stories worth remembering",
+      "item3": "Communities built on people — not popularity metrics",
+      "line1": "Explorers is a place for:",
+      "line2": "Technology helps us connect.",
+      "line3": "People give it purpose.",
+      "title": "WHAT WE'RE BUILDING"
+    },
+    "section4": {
+      "line1": "Explorers of Earth isn't a club.",
+      "line2": "It isn't a label.",
+      "line3": "It's a shared mindset —\na quiet understanding of how we move through the world.",
+      "title": "BELONGING"
+    },
+    "seo": {
+      "description": "A global community of people who explore with care — for people, culture, and the planet we share. Exploration isn't about distance, it's about depth.",
+      "keywords": [
+        "explorers of earth",
+        "about explorers",
+        "exploration community",
+        "thoughtful travel",
+        "sustainable exploration",
+        "local recommendations platform",
+        "travel app about",
+        "community-driven recommendations",
+        "authentic local experiences",
+        "explorers team",
+        "local discovery platform",
+        "share local places",
+        "travel technology",
+        "local recommendations app",
+        "explorers story",
+        "who we are explorers"
+      ],
+      "title": "Explorers of Earth | About Us"
+    },
+    "subtitle": {
+      "line1": "A global community of people who explore with care — for people, culture, and the planet we share.",
+      "line2": "Exploration, for us, isn't about how far we go.",
+      "line3": "It's about how deeply we connect."
+    },
+    "title": "Explorers of Earth"
+  },
+  "analytics": {
+    "dashboard": {
+      "charts": {
+        "locationEngagement": {
+          "allLocations": "All Locations",
+          "location": "Location",
+          "locationViews": "{{location}} ({{count}} views)",
+          "noLocationData": "No location view data available",
+          "selectLocation": "Select Location:",
+          "selectLocationPlaceholder": "Select Location",
+          "stats": {
+            "avgViews": "Avg Views/Location",
+            "totalLocations": "Total Locations",
+            "totalViews": "Total Views"
+          },
+          "subtitle": "Track views for different locations over time",
+          "title": "Engagement with Location",
+          "tooltip": {
+            "date": "Date: {{date}}",
+            "locationViews": "{{location}}: {{value}} views"
+          },
+          "unknownLocation": "Unknown Location"
+        },
+        "recommendedPlaces": {
+          "analyticsSummary": "Analytics Summary:",
+          "locationPlaces": "{{location}} ({{count}} places)",
+          "noClicksMessage": "No recommendation clicks found for the selected location. Recommendation data will appear once users click on place cards in your location pages.",
+          "noDataMessage": "No recommendation click data available for the selected period.",
+          "noRecommendationData": "No Recommendation Data",
+          "recordsWithRecommendations": "• {{count}} records with Recommendation ID",
+          "selectLocation": "Select Location:",
+          "selectLocationPlaceholder": "Select Location",
+          "selectLocationPrompt": "Please select a location to view recommendation data.",
+          "stats": {
+            "avgClicks": "Avg Clicks/Place",
+            "placesShown": "Places Shown",
+            "totalClicks": "Total Clicks"
+          },
+          "subtitle": "Track clicks on recommended places by location",
+          "title": "Engagement with Recommended Places",
+          "tooltip": {
+            "category": "Category: {{category}}",
+            "clicks": "Clicks: {{count}}",
+            "place": "{{place}}"
+          },
+          "totalClickEvents": "• {{count}} total click events",
+          "uniqueRecommendations": "• {{count}} unique recommendations",
+          "unknownCategory": "Unknown Category",
+          "unknownLocation": "Unknown Location",
+          "unknownPlace": "Unknown Place"
+        },
+        "socialMedia": {
+          "analyticsSummary": "Analytics Summary:",
+          "noDataMessage": "No social media click data available from your public profile page.",
+          "noDataTitle": "No Social Media Interaction Data",
+          "stats": {
+            "avgClicks": "Avg Clicks/Platform",
+            "platforms": "Platforms",
+            "totalClicks": "Total Clicks"
+          },
+          "subtitle": "Track clicks on social media links from your public profile across all platforms",
+          "title": "Social Media Interaction",
+          "tooltip": {
+            "clicks": "Clicks: {{count}}",
+            "platform": "{{platform}}"
+          },
+          "totalSocialClicks": "• {{count}} total social media clicks",
+          "trackingNote": "• Only tracking clicks from public-profile page",
+          "uniquePlatforms": "• {{count}} unique platforms",
+          "willAppear": "Social media interaction data will appear once users click on your social media links."
+        },
+        "topCountries": {
+          "analyticsSummary": "Analytics Summary:",
+          "countryDataUnavailable": "Country Data Unavailable",
+          "eventsPending": "• {{count}} events pending geolocation",
+          "eventsWithCountry": "• {{count}} events with country data",
+          "failedToResolve": "Failed to resolve country data. Please try again later.",
+          "geolocationIssue": "Geolocation Issue:",
+          "legend": "Views",
+          "retryGeolocation": "Retry Geolocation",
+          "title": "Top 3 Countries by Views",
+          "tooltip": {
+            "country": "Country: {{country}}",
+            "views": "Views: {{count}}"
+          },
+          "totalViewEvents": "• {{count}} total view events",
+          "unableToResolve": "Unable to resolve IP addresses to countries at this time. This may be due to network restrictions or service limitations.",
+          "willAppear": "Country data will appear automatically once IP geolocation services are available."
+        },
+        "trafficSource": {
+          "allSources": "All Sources",
+          "analyticsSummary": "Analytics Summary:",
+          "direct": "Direct",
+          "directTraffic": "• {{count}} direct traffic events",
+          "eventsWithUTM": "• {{count}} events with UTM source",
+          "instagram": "Instagram",
+          "noTrafficData": "No Traffic Data Available",
+          "noViewEvents": "No view events found with traffic source information.",
+          "qrCode": "QR Code",
+          "selectSource": "Select Traffic Source:",
+          "subtitle": "Track how traffic from different sources varies over time",
+          "title": "Traffic Source Over Time",
+          "tooltip": {
+            "sourceCount": "{{source}}: {{count}}"
+          },
+          "totalViewEvents": "• {{count}} total view events",
+          "twitter": "Twitter",
+          "whatsapp": "WhatsApp",
+          "willAppear": "Traffic source data will appear once users visit your pages with UTM parameters."
+        },
+        "worldMap": {
+          "analyticsSummary": "Analytics Summary:",
+          "countriesWithViews": "{{count}} countries with views",
+          "eventsPending": "• {{count}} events pending geolocation",
+          "eventsWithCountry": "• {{count}} events with country data",
+          "failedToResolve": "Failed to resolve country data. Please try again later.",
+          "legend": {
+            "high": "High",
+            "highest": "Highest",
+            "low": "Low",
+            "medium": "Medium",
+            "views": "Views:"
+          },
+          "noGeographicData": "No Geographic Data Available",
+          "subtitle": "Interactive world map showing view distribution across countries from public pages",
+          "title": "Global View Distribution",
+          "tooltip": {
+            "country": "{{country}}",
+            "views": "{{views}} views"
+          },
+          "totalViewEvents": "• {{count}} total view events",
+          "unableToResolve": "Unable to resolve IP addresses to countries at this time. This may be due to network restrictions or service limitations.",
+          "willAppear": "Country data will appear automatically once IP geolocation services are available."
+        }
+      },
+      "comingSoon": {
+        "filterTip": "<strong>Tip:</strong> Once analytics are available, you'll be able to filter by time periods (today, last 7 days, last 30 days, or custom range) to view your data.",
+        "message": "Analytics will be available in <strong>{{days}} day{{daysPlural}}</strong> after your account creation.",
+        "tip": "In the meantime, start sharing your QR codes to generate data for when analytics become available!",
+        "title": "Analytics Coming Soon",
+        "whyWait": {
+          "reasons": {
+            "accuracy": "• Ensures data accuracy and prevents spam",
+            "insights": "• Provides reliable analytics insights",
+            "interactions": "• Allows time for meaningful user interactions"
+          },
+          "title": "Why the wait?"
+        }
+      },
+      "dateRange": {
+        "from": "From:",
+        "to": "To:"
+      },
+      "emptyState": {
+        "customRange": {
+          "bothMissing": "Please select both start and end dates for the custom range to view analytics data.",
+          "endMissing": "Please select an end date for the custom range to view analytics data.",
+          "startMissing": "Please select a start date for the custom range to view analytics data."
+        },
+        "howToStart": {
+          "askFriends": "• Ask friends to scan your QR codes",
+          "includeQR": "• Include QR codes in your marketing materials",
+          "shareQR": "• Share your QR codes on social media",
+          "title": "To start seeing analytics:",
+          "viewProfile": "• View your public profile pages"
+        },
+        "noDataForPeriod": {
+          "custom": "No analytics data available for the custom range ({{startDate}} to {{endDate}}). Please select a different time range to view your data.",
+          "default": "No analytics data available for the selected time range. Please select a different time range to view your data.",
+          "last30days": "No analytics data available for the last 30 days. Please select a different time range to view your data.",
+          "last7days": "No analytics data available for the last 7 days. Please select a different time range to view your data.",
+          "today": "No analytics data available for today. Please select a different time range to view your data."
+        },
+        "noDataMessage": "No analytics data found for your account. Analytics will appear here once people start viewing and interacting with your QR codes.",
+        "title": "No Analytics Data"
+      },
+      "error": {
+        "errorLabel": "Error:",
+        "message": "Unable to fetch analytics data. Please try again later.",
+        "title": "Error Loading Analytics"
+      },
+      "loading": {
+        "loadingData": "Loading analytics data...",
+        "resolvingCountry": "Resolving country data..."
+      },
+      "subtitle": "Track your QR code performance and user engagement",
+      "summaryCards": {
+        "totalClicks": "Total Clicks",
+        "totalLinkViews": "Total Link Views",
+        "totalQRViews": "Total QR Views",
+        "totalViews": "Total Views"
+      },
+      "timeFilter": {
+        "custom": "Custom Range",
+        "last30days": "Last 30 Days",
+        "last7days": "Last 7 Days",
+        "selectPeriod": "Select Period",
+        "today": "Today"
+      },
+      "timePeriod": "Time Period:",
+      "title": "Analytics Dashboard"
     }
   },
-  "hero": {
-    "headline": "All your recommendations - one link, one QR",
-    "subtext": "Used by explorers worldwide. One link for everything you recommend - places, guides, music and more.",
-    "inputLabel": "Claim your explorers URL:",
-    "inputPlaceholder": "yourname",
-    "ctaButton": "Claim Your explorers",
-    "signupPrompt": "Signup to get yours now"
-  },
-  "sections": {
-    "createCustomize": {
-      "headline": "Create your Explorer page in minutes",
-      "subtext": "Collect everything you'd normally share across messages, notes, or conversations — and bring it together in one place.\n\nOrganize your recommendations by city, journey, theme, or moment, and update them anytime as your perspective evolves.",
-      "bulletPoints": {
-        "addSpots": {
-          "title": "Add places, experiences, routes, sounds, and notes",
-          "description": ""
-        },
-        "organize": {
-          "title": "Organize by location or interest",
-          "description": ""
-        },
-        "generate": {
-          "title": "Edit anytime — your link always stays the same",
-          "description": ""
-        },
-        "share": {
-          "title": "Share digitally or through a QR in the real world",
-          "description": ""
-        }
+  "auth": {
+    "acceptTerms": "I accept the",
+    "alreadyHaveAccount": "Already have an Account?",
+    "blockedAccount": {
+      "message": "This account has been deactivated.",
+      "reactivateLink": "Click here to reactivate your account →"
+    },
+    "claimAccount": "Claim Account?",
+    "confirmPassword": "Confirm Password",
+    "confirmPasswordPlaceholder": "Re-enter your password",
+    "email": "Email",
+    "emailPlaceholder": "Enter your email",
+    "forgotPassword": "Forgot Password?",
+    "login": "Login",
+    "loginSubtitle": "Please login to continue to your account",
+    "loginTitle": "Login",
+    "newToExplorers": "New to explorers?",
+    "onboarding": {
+      "accountDetails": {
+        "accountType": "Account Type",
+        "bio": "Bio",
+        "bioPlaceholder": "Tell us about yourself",
+        "business": "Business",
+        "creator": "Creator",
+        "description": "Tell us about yourself",
+        "displayName": "Display Name",
+        "displayNamePlaceholder": "Enter your display name",
+        "next": "Next",
+        "personal": "Personal",
+        "title": "Account",
+        "username": "Username",
+        "usernameDescription": "Your username is part of your public profile link and QR codes. Example: explorers.earth/bhavya",
+        "usernamePlaceholder": "Enter your username"
       },
-      "mockup": {
-        "title": "My Recommendations",
-        "addPlace": "Add Place"
+      "addressDetails": {
+        "address": "Address",
+        "addressPlaceholder": "Enter your address",
+        "back": "Back",
+        "city": "City",
+        "cityPlaceholder": "Enter city",
+        "confirmDetails": "Confirm Details",
+        "country": "Country",
+        "countryPlaceholder": "Enter country",
+        "description": "Where are you located?",
+        "detectLocation": "Detect my current location",
+        "postalCode": "Postal Code",
+        "postalCodePlaceholder": "Enter postal code",
+        "primaryAddress": "Primary Address",
+        "primaryAddressDescription": "shown on public profile ( city and country )",
+        "primaryAddressPlaceholder": "Enter primary address",
+        "sameAsAddress": "Same as Address",
+        "state": "State",
+        "statePlaceholder": "Enter state",
+        "streetName": "Street Name",
+        "streetNamePlaceholder": "Enter street name",
+        "title": "Address"
+      },
+      "contactDetails": {
+        "back": "Back",
+        "description": "Add your mobile number for verification",
+        "mobileNumber": "Mobile Number",
+        "mobileNumberPlaceholder": "Enter your mobile number",
+        "next": "Next",
+        "title": "Contact"
       }
     },
-    "shareAnywhere": {
-      "headline": "One link. Many journeys.",
-      "subtext": "Your Explorer link becomes a living guide — something people can save, revisit, and explore at their own pace.\n\nShare it on a profile, message, table, wall, or card.\nWherever it goes, your perspective goes with it.",
-      "scanText": "Scan for local recommendations",
-      "storefrontText": "Perfect for storefront displays",
-      "profileCarouselCaption": "Instagram & TikTok profiles",
-      "qrEverywhereTitle": "Add the QR link everywhere",
-      "qrEverywhereDesc": "Perfect for Every Venue",
-      "instagramTitle": "Add to your Instagram/Tiktok Bio",
-      "instagramDesc": "Share with your followers instantly",
-      "menuTitle": "Print it for Storefront",
-      "menuDesc": "Physical touchpoints made easy",
-      "welcomeTitle": "Include in welcome books",
-      "welcomeDesc": "Perfect for hosts and guides",
-      "cafeMenu": "Cafe Menu",
-      "tokyoFoodGuide": "My Tokyo food guide explorers.earth/jane"
+    "or": "or",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "register": "Register",
+    "resetPassword": {
+      "confirmPasswordPlaceholder": "Confirm your password",
+      "newPasswordPlaceholder": "Enter new password"
     },
-    "analytics": {
-      "headline": "Track clicks, referrals, and engagement",
-      "subtext": "See what's working, who's scanning, and which places get the most love — in real time.",
-      "workingTitle": "See what's working",
-      "workingDesc": "Track popularity of your recommendations",
-      "scanningTitle": "Who's scanning",
-      "scanningDesc": "Monitor QR scans and updates",
-      "spotsTitle": "Top-performing spots",
-      "spotsDesc": "Data-driven insights for better curation",
-      "dashboardTitle": "Analytics Dashboard",
-      "last30Days": "Last 30 days",
-      "totalScans": "Total Scans",
-      "engagement": "Engagement",
-      "referrals": "Referrals"
+    "signInWithGoogle": "Sign in with Google",
+    "signup": "Signup",
+    "signupSubtitle": "Sign up to enjoy the features of explorers",
+    "signUpWithGoogle": "Sign up with Google",
+    "status": {
+      "authenticating": "Authenticating...",
+      "syncingLocalTunes": "Syncing with LocalTunes..."
     },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Listen as you explore",
-      "body": "Exploration isn't only visual. Sound carries memory, context, and emotion.\n\nLocalTunes lets you collect and share soundtracks for places, journeys, and moods — whether it's music discovered on the road or sounds that define a place for you.\n\nSeamlessly connected to your Explorer profile.",
-      "exploreButton": "Explore Tunes",
-      "featuresHeading": "Powerful Features",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Real-time Collaboration",
-          "description": "Let guests add songs to your playlist instantly while you maintain full control over what plays."
-        },
-        "qrCodeSharing": {
-          "title": "QR Code Sharing",
-          "description": "Share your music experience with a simple QR code scan - no apps or downloads required."
-        },
-        "youtubeIntegration": {
-          "title": "YouTube Integration",
-          "description": "Seamlessly integrate with YouTube to access millions of songs and create the perfect atmosphere."
-        },
-        "voteLikeSystem": {
-          "title": "Vote & Like System",
-          "description": "Guests can vote for their favorite songs to influence the playlist queue in real-time."
-        },
-        "silentParties": {
-          "title": "Silent Parties",
-          "description": "Host unique silent parties where everyone listens through their own headphones."
-        },
-        "karaokeReady": {
-          "title": "Karaoke Ready",
-          "description": "Perfect for karaoke nights with collaborative playlists and real-time song requests."
-        }
+    "termsAndConditions": "Terms and Conditions",
+    "username": "Username",
+    "usernameOrEmail": "Username or email",
+    "usernameOrEmailPlaceholder": "Enter your username or email",
+    "usernamePlaceholder": "Enter your username",
+    "validations": {
+      "accountName": {
+        "invalidChars": "Account Name can only contain letters, spaces, apostrophes, hyphens, and periods",
+        "maxLength": "Account Name must not exceed 50 characters",
+        "minLength": "Account Name must be at least 2 characters",
+        "noNumbers": "Account Name cannot contain numbers",
+        "required": "Account Name is required"
       },
-      "venueHeading": "Perfect for Every Venue",
-      "venues": {
-        "barsPubs": "Bars & Pubs",
-        "restaurants": "Restaurants",
-        "coffeeShops": "Coffee Shops",
-        "eventsWeddings": "Events & Weddings",
-        "retailStores": "Retail Stores",
-        "gymsFitness": "Gyms & Fitness"
+      "accountType": {
+        "business": "Business",
+        "creator": "Creator",
+        "invalid": "Invalid account type",
+        "personal": "Personal",
+        "required": "Account Type is required"
       },
-      "closingStatement": "Tunes is <strong>free</strong> to explore, and for paid features you can upgrade afterwards."
-    },
-    "referEarn": {
-      "headline": "Share, refer, and earn",
-      "subtext": "Turn your recommendations into passive rewards — get credit when others use your QR.",
-      "comingSoon": "Referral rewards program (coming soon)",
-      "rewardsTitle": "Earn Rewards",
-      "rewardsDesc": "Get paid when people use your recommendations",
-      "earnedThisMonth": "Earned this month",
-      "passiveTitle": "Turn recommendations into passive rewards",
-      "networkTitle": "Build your network and earn automatically"
-    },
-    "whoIsFor": {
-      "headline": "Who is explorers.earth for?",
-      "subtext": "explorers.earth is for anyone who believes sharing is a responsibility — not a broadcast.",
-      "cards": {
-        "individuals": {
-          "title": "Individuals",
-          "oneLiner": "Share personal or local recommendations.",
-          "items": {
-            "traveler": {
-              "label": "Traveler",
-              "oneLiner": "People sharing travel spots"
-            },
-            "local": {
-              "label": "Local",
-              "oneLiner": "Locals sharing neighborhood tips"
-            },
-            "family": {
-              "label": "Family",
-              "oneLiner": "Families sharing useful places"
-            },
-            "student": {
-              "label": "Student",
-              "oneLiner": "Students sharing campus/nearby spots"
-            },
-            "nomad": {
-              "label": "Nomad",
-              "oneLiner": "Nomads listing work-friendly spaces"
-            },
-            "emergencySharer": {
-              "label": "Emergency Sharer",
-              "oneLiner": "Emergency sharers posting essential places"
-            }
-          }
-        },
-        "creators": {
-          "title": "Creators",
-          "oneLiner": "Share curated lists with your audience.",
-          "items": {
-            "influencer": {
-              "label": "Influencer",
-              "oneLiner": "Influencers sharing top picks"
-            },
-            "blogger": {
-              "label": "Blogger",
-              "oneLiner": "Bloggers curating written guides"
-            },
-            "vlogger": {
-              "label": "Vlogger",
-              "oneLiner": "Vloggers sharing visual journeys"
-            },
-            "reviewer": {
-              "label": "Reviewer",
-              "oneLiner": "Reviewers listing best-rated places"
-            },
-            "photographer": {
-              "label": "Photographer",
-              "oneLiner": "Photographers sharing photo spots"
-            },
-            "educator": {
-              "label": "Educator",
-              "oneLiner": "Educators sharing learning guides"
-            },
-            "communityLeader": {
-              "label": "Community Leader",
-              "oneLiner": "Community leaders curating useful lists"
-            }
-          }
-        },
-        "hospitality": {
-          "title": "Hospitality",
-          "oneLiner": "Offer guests curated local insights.",
-          "items": {
-            "hotel": {
-              "label": "Hotel",
-              "oneLiner": "Hotels offering local guidebooks"
-            },
-            "airbnb": {
-              "label": "Airbnb",
-              "oneLiner": "Hosts sharing neighborhood favorites"
-            },
-            "hostel": {
-              "label": "Hostel",
-              "oneLiner": "Hostels sharing backpacker tips"
-            },
-            "homestay": {
-              "label": "Homestay",
-              "oneLiner": "Homestays offering family-oriented guides"
-            },
-            "resort": {
-              "label": "Resort",
-              "oneLiner": "Resorts providing activity lists"
-            },
-            "pgColiving": {
-              "label": "PG/Coliving",
-              "oneLiner": "PG/Coliving showing important nearby places"
-            }
-          }
-        },
-        "businesses": {
-          "title": "Businesses",
-          "oneLiner": "Guide customers with helpful recommendations.",
-          "items": {
-            "restaurant": {
-              "label": "Restaurant",
-              "oneLiner": "Restaurants sharing must-try dishes"
-            },
-            "cafe": {
-              "label": "Café",
-              "oneLiner": "Cafés highlighting favorite menu items"
-            },
-            "retailShop": {
-              "label": "Retail Shop",
-              "oneLiner": "Shops sharing product recommendations"
-            },
-            "gym": {
-              "label": "Gym",
-              "oneLiner": "Gyms suggesting local wellness spots"
-            },
-            "spa": {
-              "label": "Spa",
-              "oneLiner": "Spas listing nearby relaxation options"
-            },
-            "salon": {
-              "label": "Salon",
-              "oneLiner": "Salons offering beauty guides"
-            },
-            "clinic": {
-              "label": "Clinic",
-              "oneLiner": "Clinics sharing health-related locations"
-            },
-            "boutique": {
-              "label": "Boutique",
-              "oneLiner": "Boutiques listing curated finds"
-            }
-          }
-        },
-        "organizations": {
-          "title": "Organizations",
-          "oneLiner": "Provide curated guides and resources.",
-          "items": {
-            "airline": {
-              "label": "Airline",
-              "oneLiner": "Airlines sharing city guides"
-            },
-            "agency": {
-              "label": "Agency",
-              "oneLiner": "Travel agencies listing must-visits"
-            },
-            "university": {
-              "label": "University",
-              "oneLiner": "Universities sharing campus essentials"
-            },
-            "corporate": {
-              "label": "Corporate",
-              "oneLiner": "Corporates listing nearby resources"
-            },
-            "airport": {
-              "label": "Airport",
-              "oneLiner": "Airports offering terminals + city tips"
-            },
-            "railway": {
-              "label": "Railway",
-              "oneLiner": "Railways sharing platform info"
-            },
-            "ngo": {
-              "label": "NGO",
-              "oneLiner": "NGOs sharing community resources"
-            },
-            "government": {
-              "label": "Government",
-              "oneLiner": "Departments highlighting public services"
-            }
-          }
-        }
+      "confirmPassword": {
+        "confirmRequired": "Confirm password is required",
+        "match": "Passwords match",
+        "mustMatch": "Passwords do not match",
+        "required": "Please confirm your password"
       },
-      "useCases": {
-        "travelers": "Travelers",
-        "travelersDesc": "Share discovered gems with fellow explorers",
-        "influencers": "Influencers",
-        "influencersDesc": "Monetize local knowledge and build community",
-        "airbnbHosts": "Airbnb Hosts",
-        "airbnbHostsDesc": "Enhance guest experience with local insights",
-        "hotels": "Hotels",
-        "hotelsDesc": "Provide curated local recommendations",
-        "restaurants": "Restaurants",
-        "restaurantsDesc": "Cross-promote with other local businesses",
-        "cafes": "Cafes",
-        "cafesDesc": "Share neighborhood favorites with customers",
-        "localGuides": "Local Guides",
-        "localGuidesDesc": "Scale expertise beyond individual tours",
-        "creators": "Creators",
-        "creatorsDesc": "Add value beyond content with actionable tips",
-        "tourOperators": "Tour Operators",
-        "tourOperatorsDesc": "Extend experience beyond scheduled tours",
-        "anyBusiness": "Any Business",
-        "anyBusinessDesc": "Build community and customer loyalty"
+      "email": {
+        "alreadyExists": "Email already exists",
+        "invalid": "Invalid email",
+        "invalidFormat": "Please enter a valid email address",
+        "required": "Email is required"
+      },
+      "forgotPassword": {
+        "backToLogin": "Back to Login",
+        "description": "Enter your email address and we'll send you a reset link.",
+        "emailLabel": "Email address",
+        "emailPlaceholder": "Enter your email",
+        "failedToSend": "Failed to send reset link. Try again later.",
+        "resetLinkSent": "Password reset link sent to your email!",
+        "sendResetLink": "Send Reset Link",
+        "somethingWentWrong": "Something went wrong!",
+        "title": "Forgot Password?"
+      },
+      "general": {
+        "fillRequiredFields": "Please fill in all required fields",
+        "somethingWentWrong": "Something went wrong, please try again"
+      },
+      "login": {
+        "accountNotFound": "Account not found",
+        "incorrectPassword": "Incorrect password",
+        "invalidCredentials": "Invalid username/email or password",
+        "tooManyAttempts": "Too many failed attempts",
+        "usernameOrEmailRequired": "Username or email is required"
+      },
+      "onboarding": {
+        "addressRequired": "Address is required",
+        "bioMaxLength": "Bio must not exceed 250 characters",
+        "bioRequired": "Bio is required",
+        "cityRequired": "City is required",
+        "countryRequired": "Country is required",
+        "displayNameMaxLength": "Display name must not exceed 50 characters",
+        "displayNameMinLength": "Display name must be at least 2 characters",
+        "displayNameRequired": "Display name is required",
+        "emailAddressRequired": "Email address is required",
+        "invalidUsername": "Invalid username",
+        "mobileNumberInvalid": "Please enter a valid mobile number",
+        "mobileNumberLength": "Mobile number must be 10 digits",
+        "mobileNumberRequired": "Mobile number is required",
+        "postalCodeRequired": "Postal code is required",
+        "primaryAddressRequired": "Primary address is required",
+        "profileImageAlt": "Profile",
+        "resetLinkSentSuccess": "Reset link sent successfully!",
+        "stateRequired": "State is required"
+      },
+      "password": {
+        "considerLonger": "Consider using a longer password with more variety for better security",
+        "fair": "Fair",
+        "good": "Good",
+        "lowercaseRequired": "Password must contain at least one lowercase letter (a-z)",
+        "maxLength": "Password must not exceed 32 characters",
+        "medium": "Medium",
+        "meetsAllRequirements": "Password meets all requirements",
+        "minLength": "Password must be at least 6 characters long",
+        "moreSecure": "Passwords with 10 or more characters are more secure",
+        "numberRequired": "Password must contain at least one number (0-9)",
+        "required": "Password is required",
+        "sameAsCurrent": "New password cannot be the same as your current password",
+        "specialCharRequired": "Password must contain at least one special character (!@#$%^&*().,?\":{}|<>)",
+        "strength": "Password Strength",
+        "strong": "Strong",
+        "tooCommon": "This password is too common. Please choose a more unique password",
+        "uppercaseRequired": "Password must contain at least one uppercase letter (A-Z)",
+        "veryStrong": "Very Strong",
+        "veryWeak": "Very Weak",
+        "weak": "Weak"
+      },
+      "primaryAddress": {
+        "required": "Primary Address is required"
+      },
+      "resetLinkSent": {
+        "description": "Check your inbox for the password reset link.",
+        "resending": "Resending...",
+        "resendMail": "Resend Mail",
+        "resendWithCooldown": "Resend Mail ({{cooldown}}s)",
+        "title": "Email Sent!"
+      },
+      "resetPassword": {
+        "confirmPassword": "Confirm Password",
+        "confirmPasswordPlaceholder": "Confirm your password",
+        "newPassword": "New Password",
+        "newPasswordPlaceholder": "Enter new password"
+      },
+      "socialMedia": {
+        "appleMusic": "Please enter a valid Apple Music URL",
+        "email": "Please enter a valid email address",
+        "facebook": "Please enter a valid Facebook profile URL",
+        "instagram": "Please enter a valid Instagram profile URL",
+        "linkedin": "Please enter a valid LinkedIn profile URL",
+        "mobile": "Please enter a valid mobile number (e.g., +1234567890)",
+        "snapchat": "Please enter a valid Snapchat username",
+        "spotify": "Please enter a valid Spotify URL",
+        "tiktok": "Please enter a valid TikTok profile URL",
+        "website": "Please enter a valid website URL",
+        "whatsapp": "Enter a valid WhatsApp contact: phone (+1234567890) or wa.me/api.whatsapp.com link",
+        "x": "Please enter a valid X (Twitter) profile URL",
+        "youtube": "Please enter a valid YouTube channel URL (e.g., youtube.com/@username)",
+        "youtubeMusic": "Please enter a valid YouTube Music channel URL"
+      },
+      "termsAccepted": {
+        "required": "You must accept the Terms and Conditions to continue"
+      },
+      "username": {
+        "alreadyExists": "Username already exists",
+        "available": "Username is available",
+        "cannotBeAllNumbers": "Username cannot be all numbers",
+        "cannotStartEndHyphen": "Username cannot start or end with a hyphen",
+        "checkingAvailability": "Checking availability...",
+        "inappropriateContent": "Username contains inappropriate content",
+        "invalidChars": "Username can only contain lowercase letters (a-z), numbers (0-9), and hyphens (-)",
+        "maxLength": "Username must not exceed 30 characters",
+        "minLength": "Username must be at least 3 characters long",
+        "mustStartWithLetter": "Username must start with a letter (a-z)",
+        "noConsecutiveHyphens": "Username cannot contain consecutive hyphens",
+        "required": "Username is required",
+        "reservedWords": "This username contains reserved words and cannot be used",
+        "suggestedAlternatives": "Suggested alternatives:",
+        "willBeConvertedLowercase": "Username will be converted to lowercase",
+        "willConvertToLowercase": "Username will be converted to lowercase"
       }
-    },
-    "testimonials": {
-      "headline": "Loved by travelers, creators, and hosts",
-      "subtext": "See how people around the world use explorers to share what matters most.",
-      "scrollLeft": "Scroll testimonials left",
-      "scrollRight": "Scroll testimonials right",
-      "items": [
-        {
-          "id": "1",
-          "name": "Priya Sharma",
-          "role": "Travel Blogger",
-          "location": "Mumbai, India",
-          "quote": "explorers transformed how I share my travel knowledge. My followers love getting instant access to my curated recommendations!"
-        },
-        {
-          "id": "2",
-          "name": "Raj Patel",
-          "role": "Airbnb Host",
-          "location": "Delhi, India",
-          "quote": "My guests absolutely love the personalized QR code in their welcome kit. It's become my signature touch!"
-        },
-        {
-          "id": "3",
-          "name": "Yuki Tanaka",
-          "role": "Restaurant Owner",
-          "location": "Tokyo, Japan",
-          "quote": "We share our explorers with customers to recommend other local spots. It's created amazing community connections."
-        },
-        {
-          "id": "4",
-          "name": "Maria Silva",
-          "role": "Tour Guide",
-          "location": "São Paulo, Brazil",
-          "quote": "explorers helps me extend my expertise beyond tour hours. Clients can access my recommendations anytime!"
-        },
-        {
-          "id": "5",
-          "name": "James Wilson",
-          "role": "Travel Influencer",
-          "location": "Sydney, Australia",
-          "quote": "As a travel influencer, explorers makes it so easy to share my favorite spots with my audience. The QR code feature is brilliant!"
-        },
-        {
-          "id": "6",
-          "name": "Sophie Martin",
-          "role": "Local Guide",
-          "location": "Paris, France",
-          "quote": "I use explorers to create walking tours for my clients. They can scan the QR and explore at their own pace!"
-        }
-      ]
-    },
-    "faq": {
-      "headline": "Got questions?",
-      "subtext": "We've answered the most common things people ask before getting started.",
-      "loading": "Loading FAQs...",
-      "error": "Error loading FAQs. Please try again later."
-    },
-    "features": {
-      "title": "Built to stay out of the way",
-      "subtitle": "Simple, thoughtful features that let your recommendations shine.",
-      "simpleLinks": {
-        "title": "Simple links and QR sharing"
-      },
-      "livingGuides": {
-        "title": "Living, editable guides"
-      },
-      "locationAware": {
-        "title": "Location-aware recommendations"
-      },
-      "soundPlaylists": {
-        "title": "Optional sound and playlists"
-      },
-      "privacyFirst": {
-        "title": "Privacy-first by design"
-      },
-      "communityDriven": {
-        "title": "Community-driven discovery"
-      }
-    },
-    "finalCTA": {
-      "headline": "Start sharing your world today",
-      "subtext": "Claim your free explorers and turn your local insights into shareable guides.",
-      "ctaButton": "Claim Your explorers – Free Forever",
-      "disclaimer": "No credit card required • Set up in 2 minutes",
-      "creating": "Creating your explorers..."
     }
+  },
+  "common": {
+    "cancel": "Cancel",
+    "error": "An error occurred. Please try again later.",
+    "hidePassword": "Hide password",
+    "loading": "Loading...",
+    "noResults": "No results found",
+    "retry": "Try Again",
+    "showPassword": "Show password",
+    "signInWithGoogle": "Sign in with Google",
+    "signUpWithGoogle": "Sign up with Google",
+    "submit": "Submit"
   },
   "contact": {
-    "title": "Let's Connect.",
-    "subtitle": "Whether you have a question, idea, or just want to say hi — we'd love to hear from you.",
-    "getInTouch": "Get in Touch",
-    "email": "hello@explorers.earth",
-    "responseTime": "We respond within 24–48 hours",
     "closingMessage": "We're a small team with a big vision — your thoughts matter to us. Reach out and let's build something local and global together.",
+    "email": "hello@explorers.earth",
+    "getInTouch": "Get in Touch",
+    "responseTime": "We respond within 24–48 hours",
     "seo": {
-      "title": "Contact explorers | Support, Help and Partnership enquiries.",
       "description": "Reach out to explorers for support, partnership opportunities, or questions. Our help center assists with account access, local recommendations, and technical issues. Contact us for fast, friendly answers and collaboration.",
-      "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-      "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
       "keywords": [
         "contact explorers",
         "explorers support",
@@ -450,562 +535,412 @@
         "QR code support",
         "local recommendations help",
         "partnership inquiries"
-      ]
-    }
-  },
-  "about": {
-    "title": "Explorers of Earth",
-    "subtitle": {
-      "line1": "A global community of people who explore with care — for people, culture, and the planet we share.",
-      "line2": "Exploration, for us, isn't about how far we go.",
-      "line3": "It's about how deeply we connect."
+      ],
+      "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+      "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
+      "title": "Contact explorers | Support, Help and Partnership enquiries."
     },
-    "section1": {
-      "title": "WHAT WE BELIEVE",
-      "line1": "Exploration begins with awareness.",
-      "line2": "With noticing what others pass by.",
-      "line3": "With choosing to move thoughtfully, not quickly.",
-      "line4": "We're living briefly on an ancient planet —\nadding a few intentional marks to a story\nthat started long before us\nand will continue long after we're gone."
-    },
-    "section2": {
-      "title": "HOW WE SEE EXPLORATION",
-      "line1": "Exploration isn't measured in miles.",
-      "line2": "It's measured in meaning.",
-      "line3": "It lives in slowing down, paying attention,\nand respecting every place we step into —\na street, a mountain path, a café table,\nor a moment shared with someone new."
-    },
-    "section3": {
-      "title": "WHAT WE'RE BUILDING",
-      "line1": "Explorers is a place for:",
-      "item1": "Guides shaped by real experience",
-      "item2": "Places, journeys, sounds, and stories worth remembering",
-      "item3": "Communities built on people — not popularity metrics",
-      "line2": "Technology helps us connect.",
-      "line3": "People give it purpose."
-    },
-    "section4": {
-      "title": "BELONGING",
-      "line1": "Explorers of Earth isn't a club.",
-      "line2": "It isn't a label.",
-      "line3": "It's a shared mindset —\na quiet understanding of how we move through the world."
-    },
-    "closing": "If you're curious.\nIf you're thoughtful.\nIf you're willing to slow down and look closer —\nyou already belong here.",
-    "seo": {
-      "title": "Explorers of Earth | About Us",
-      "description": "A global community of people who explore with care — for people, culture, and the planet we share. Exploration isn't about distance, it's about depth.",
-      "keywords": [
-        "explorers of earth",
-        "about explorers",
-        "exploration community",
-        "thoughtful travel",
-        "sustainable exploration",
-        "local recommendations platform",
-        "travel app about",
-        "community-driven recommendations",
-        "authentic local experiences",
-        "explorers team",
-        "local discovery platform",
-        "share local places",
-        "travel technology",
-        "local recommendations app",
-        "explorers story",
-        "who we are explorers"
-      ]
-    }
+    "subtitle": "Whether you have a question, idea, or just want to say hi — we'd love to hear from you.",
+    "title": "Let's Connect."
   },
   "cookieConsent": {
-    "title": "🍪 Cookie Preferences",
-    "description": "We use cookies to enhance your browsing experience, serve personalized content, and analyze traffic. You can manage preferences anytime.",
     "acceptAll": "✅ Accept All Cookies",
-    "customize": "⚙️ Customize",
-    "rejectNonEssential": "❌ Reject Non-Essential",
-    "preferencesTitle": "Cookie Preferences",
-    "essentialCookies": {
-      "title": "Essential Cookies",
-      "description": "Required for the website to function properly",
-      "alwaysOn": "Always On"
-    },
-    "analyticsCookies": {
-      "title": "Analytics Cookies",
-      "description": "Help us understand how visitors interact with our website"
-    },
-    "marketingCookies": {
-      "title": "Marketing Cookies",
-      "description": "Used to deliver personalized advertisements"
-    },
-    "savePreferences": "Save Preferences",
     "acceptAllButton": "Accept All",
+    "analyticsCookies": {
+      "description": "Help us understand how visitors interact with our website",
+      "title": "Analytics Cookies"
+    },
     "closeBanner": "Close banner",
-    "goBack": "Go back"
+    "customize": "⚙️ Customize",
+    "description": "We use cookies to enhance your browsing experience, serve personalized content, and analyze traffic. You can manage preferences anytime.",
+    "essentialCookies": {
+      "alwaysOn": "Always On",
+      "description": "Required for the website to function properly",
+      "title": "Essential Cookies"
+    },
+    "goBack": "Go back",
+    "marketingCookies": {
+      "description": "Used to deliver personalized advertisements",
+      "title": "Marketing Cookies"
+    },
+    "preferencesTitle": "Cookie Preferences",
+    "rejectNonEssential": "❌ Reject Non-Essential",
+    "savePreferences": "Save Preferences",
+    "title": "🍪 Cookie Preferences"
   },
-  "footer": {
-    "tagline": "Let your recommendations travel the world.",
-    "email": "hello@explorers.earth",
-    "sections": {
-      "product": "Product",
-      "contact": "Contact",
-      "legal": "Legal"
-    },
-    "links": {
-      "howItWorks": "How it works",
-      "faq": "FAQ",
-      "contact": "Contact",
-      "about": "About",
-      "terms": "Terms & Conditions",
-      "privacy": "Privacy Policy",
-      "cookies": "Cookie Policy"
-    },
-    "copyright": "© 2025 explorers. All rights reserved.",
-    "madeWithLove": "Made with love on earth"
-  },
-  "legal": {
-    "terms": {
-      "title": "Terms & Conditions",
-      "loading": "Loading terms and conditions...",
-      "error": "An error occurred while loading the terms and conditions. Please try again later."
-    },
-    "privacy": {
-      "title": "Privacy Policy",
-      "loading": "Loading privacy policy...",
-      "error": "An error occurred while loading the privacy policy. Please try again later."
-    },
-    "cookies": {
-      "title": "Cookie Policy",
-      "loading": "Loading cookie policy...",
-      "error": "An error occurred while loading the cookie policy. Please try again later."
-    }
-  },
-  "languageModal": {
-    "title": "Select Language",
-    "searchPlaceholder": "Search languages...",
-    "close": "Close"
-  },
-  "auth": {
-    "signup": "Signup",
-    "signupSubtitle": "Sign up to enjoy the features of explorers",
-    "username": "Username",
-    "usernamePlaceholder": "Enter your username",
-    "email": "Email",
-    "emailPlaceholder": "Enter your email",
-    "password": "Password",
-    "passwordPlaceholder": "Enter your password",
-    "confirmPassword": "Confirm Password",
-    "confirmPasswordPlaceholder": "Re-enter your password",
-    "register": "Register",
-    "or": "or",
-    "signUpWithGoogle": "Sign up with Google",
-    "alreadyHaveAccount": "Already have an Account?",
-    "acceptTerms": "I accept the",
-    "termsAndConditions": "Terms and Conditions",
-    "login": "Login",
-    "loginTitle": "Login",
-    "loginSubtitle": "Please login to continue to your account",
-    "usernameOrEmail": "Username or email",
-    "usernameOrEmailPlaceholder": "Enter your username or email",
-    "signInWithGoogle": "Sign in with Google",
-    "newToExplorers": "New to explorers?",
-    "forgotPassword": "Forgot Password?",
-    "claimAccount": "Claim Account?",
-    "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
-    },
-    "validations": {
-      "username": {
-        "required": "Username is required",
-        "minLength": "Username must be at least 3 characters long",
-        "maxLength": "Username must not exceed 30 characters",
-        "invalidChars": "Username can only contain lowercase letters (a-z), numbers (0-9), and hyphens (-)",
-        "mustStartWithLetter": "Username must start with a letter (a-z)",
-        "cannotStartEndHyphen": "Username cannot start or end with a hyphen",
-        "noConsecutiveHyphens": "Username cannot contain consecutive hyphens",
-        "cannotBeAllNumbers": "Username cannot be all numbers",
-        "reservedWords": "This username contains reserved words and cannot be used",
-        "inappropriateContent": "Username contains inappropriate content",
-        "alreadyExists": "Username already exists",
-        "suggestedAlternatives": "Suggested alternatives:",
-        "willBeConvertedLowercase": "Username will be converted to lowercase",
-        "checkingAvailability": "Checking availability...",
-        "available": "Username is available",
-        "willConvertToLowercase": "Username will be converted to lowercase"
-      },
-      "email": {
-        "required": "Email is required",
-        "invalidFormat": "Please enter a valid email address",
-        "alreadyExists": "Email already exists",
-        "invalid": "Invalid email"
-      },
-      "password": {
-        "required": "Password is required",
-        "minLength": "Password must be at least 6 characters long",
-        "uppercaseRequired": "Password must contain at least one uppercase letter (A-Z)",
-        "numberRequired": "Password must contain at least one number (0-9)",
-        "specialCharRequired": "Password must contain at least one special character (!@#$%^&*().,?\":{}|<>)",
-        "strength": "Password Strength",
-        "weak": "Weak",
-        "medium": "Medium",
-        "strong": "Strong",
-        "maxLength": "Password must not exceed 32 characters",
-        "lowercaseRequired": "Password must contain at least one lowercase letter (a-z)",
-        "tooCommon": "This password is too common. Please choose a more unique password",
-        "sameAsCurrent": "New password cannot be the same as your current password",
-        "considerLonger": "Consider using a longer password with more variety for better security",
-        "moreSecure": "Passwords with 10 or more characters are more secure",
-        "meetsAllRequirements": "Password meets all requirements",
-        "veryWeak": "Very Weak",
-        "fair": "Fair",
-        "good": "Good",
-        "veryStrong": "Very Strong"
-      },
-      "confirmPassword": {
-        "required": "Please confirm your password",
-        "mustMatch": "Passwords do not match",
-        "confirmRequired": "Confirm password is required",
-        "match": "Passwords match"
-      },
-      "termsAccepted": {
-        "required": "You must accept the Terms and Conditions to continue"
-      },
-      "login": {
-        "usernameOrEmailRequired": "Username or email is required",
-        "invalidCredentials": "Invalid username/email or password",
-        "accountNotFound": "Account not found",
-        "tooManyAttempts": "Too many failed attempts",
-        "incorrectPassword": "Incorrect password"
-      },
-      "general": {
-        "fillRequiredFields": "Please fill in all required fields",
-        "somethingWentWrong": "Something went wrong, please try again"
-      },
-      "forgotPassword": {
-        "title": "Forgot Password?",
-        "description": "Enter your email address and we'll send you a reset link.",
-        "emailLabel": "Email address",
-        "emailPlaceholder": "Enter your email",
-        "sendResetLink": "Send Reset Link",
-        "backToLogin": "Back to Login",
-        "resetLinkSent": "Password reset link sent to your email!",
-        "failedToSend": "Failed to send reset link. Try again later.",
-        "somethingWentWrong": "Something went wrong!"
-      },
-      "resetPassword": {
-        "newPassword": "New Password",
-        "confirmPassword": "Confirm Password",
-        "newPasswordPlaceholder": "Enter new password",
-        "confirmPasswordPlaceholder": "Confirm your password"
-      },
-      "resetLinkSent": {
-        "title": "Email Sent!",
-        "description": "Check your inbox for the password reset link.",
-        "resending": "Resending...",
-        "resendWithCooldown": "Resend Mail ({{cooldown}}s)",
-        "resendMail": "Resend Mail"
-      },
-      "accountName": {
-        "required": "Account Name is required",
-        "minLength": "Account Name must be at least 2 characters",
-        "maxLength": "Account Name must not exceed 50 characters",
-        "invalidChars": "Account Name can only contain letters, spaces, apostrophes, hyphens, and periods",
-        "noNumbers": "Account Name cannot contain numbers"
-      },
-      "accountType": {
-        "required": "Account Type is required",
-        "invalid": "Invalid account type",
-        "personal": "Personal",
-        "creator": "Creator",
-        "business": "Business"
-      },
-      "primaryAddress": {
-        "required": "Primary Address is required"
-      },
-      "socialMedia": {
-        "instagram": "Please enter a valid Instagram profile URL",
-        "whatsapp": "Enter a valid WhatsApp contact: phone (+1234567890) or wa.me/api.whatsapp.com link",
-        "mobile": "Please enter a valid mobile number (e.g., +1234567890)",
-        "youtube": "Please enter a valid YouTube channel URL (e.g., youtube.com/@username)",
-        "x": "Please enter a valid X (Twitter) profile URL",
-        "spotify": "Please enter a valid Spotify URL",
-        "website": "Please enter a valid website URL",
-        "facebook": "Please enter a valid Facebook profile URL",
-        "youtubeMusic": "Please enter a valid YouTube Music channel URL",
-        "email": "Please enter a valid email address",
-        "linkedin": "Please enter a valid LinkedIn profile URL",
-        "appleMusic": "Please enter a valid Apple Music URL",
-        "tiktok": "Please enter a valid TikTok profile URL",
-        "snapchat": "Please enter a valid Snapchat username"
-      },
-      "onboarding": {
-        "displayNameRequired": "Display name is required",
-        "displayNameMinLength": "Display name must be at least 2 characters",
-        "displayNameMaxLength": "Display name must not exceed 50 characters",
-        "bioRequired": "Bio is required",
-        "bioMaxLength": "Bio must not exceed 250 characters",
-        "mobileNumberRequired": "Mobile number is required",
-        "mobileNumberInvalid": "Please enter a valid mobile number",
-        "mobileNumberLength": "Mobile number must be 10 digits",
-        "addressRequired": "Address is required",
-        "cityRequired": "City is required",
-        "stateRequired": "State is required",
-        "countryRequired": "Country is required",
-        "postalCodeRequired": "Postal code is required",
-        "primaryAddressRequired": "Primary address is required",
-        "emailAddressRequired": "Email address is required",
-        "resetLinkSentSuccess": "Reset link sent successfully!",
-        "invalidUsername": "Invalid username",
-        "profileImageAlt": "Profile"
-      }
-    },
-    "onboarding": {
-      "accountDetails": {
-        "title": "Account",
-        "description": "Tell us about yourself",
-        "displayName": "Display Name",
-        "displayNamePlaceholder": "Enter your display name",
-        "username": "Username",
-        "usernamePlaceholder": "Enter your username",
-        "usernameDescription": "Your username is part of your public profile link and QR codes. Example: explorers.earth/bhavya",
-        "bio": "Bio",
-        "bioPlaceholder": "Tell us about yourself",
-        "accountType": "Account Type",
-        "personal": "Personal",
-        "creator": "Creator",
-        "business": "Business",
-        "next": "Next"
-      },
-      "contactDetails": {
-        "title": "Contact",
-        "description": "Add your mobile number for verification",
-        "mobileNumber": "Mobile Number",
-        "mobileNumberPlaceholder": "Enter your mobile number",
-        "next": "Next",
-        "back": "Back"
-      },
-      "addressDetails": {
-        "title": "Address",
-        "description": "Where are you located?",
-        "address": "Address",
-        "addressPlaceholder": "Enter your address",
-        "detectLocation": "Detect my current location",
-        "streetName": "Street Name",
-        "streetNamePlaceholder": "Enter street name",
-        "city": "City",
-        "cityPlaceholder": "Enter city",
-        "state": "State",
-        "statePlaceholder": "Enter state",
-        "country": "Country",
-        "countryPlaceholder": "Enter country",
-        "postalCode": "Postal Code",
-        "postalCodePlaceholder": "Enter postal code",
-        "primaryAddress": "Primary Address",
-        "primaryAddressDescription": "shown on public profile ( city and country )",
-        "primaryAddressPlaceholder": "Enter primary address",
-        "sameAsAddress": "Same as Address",
-        "confirmDetails": "Confirm Details",
-        "back": "Back"
-      }
-    },
-    "resetPassword": {
-      "newPasswordPlaceholder": "Enter new password",
-      "confirmPasswordPlaceholder": "Confirm your password"
-    }
-  },
-  "common": {
-    "loading": "Loading...",
-    "error": "An error occurred. Please try again later.",
-    "retry": "Try Again",
-    "hidePassword": "Hide password",
-    "showPassword": "Show password",
-    "noResults": "No results found",
-    "submit": "Submit",
-    "signInWithGoogle": "Sign in with Google",
-    "signUpWithGoogle": "Sign up with Google",
-    "cancel": "Cancel"
-  },
-  "emailVerification": {
-    "title": "Verify Your Email",
-    "description": "We've sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
-    "checkEmail": "Check your email",
-    "emailSent": "Verification email sent!",
-    "resendEmail": "Resend Email",
-    "resendIn": "Resend in",
-    "seconds": "seconds",
-    "didntReceive": "Didn't receive the email?",
-    "checkSpam": "Please check your spam folder or try again.",
-    "backToLogin": "Back to Login",
-    "emailAddress": "Email Address",
-    "verificationSent": "Verification email sent to:",
-    "clickLink": "Click the link in the email to verify your account.",
-    "expiresIn": "This link expires in 24 hours.",
-    "needHelp": "Need help?",
-    "contactSupport": "Contact Support"
+  "countries": {
+    "AE": "United Arab Emirates",
+    "AF": "Afghanistan",
+    "AG": "Antigua and Barbuda",
+    "AL": "Albania",
+    "AM": "Armenia",
+    "AO": "Angola",
+    "AR": "Argentina",
+    "AT": "Austria",
+    "AU": "Australia",
+    "AZ": "Azerbaijan",
+    "BA": "Bosnia and Herzegovina",
+    "BB": "Barbados",
+    "BD": "Bangladesh",
+    "BE": "Belgium",
+    "BF": "Burkina Faso",
+    "BG": "Bulgaria",
+    "BH": "Bahrain",
+    "BI": "Burundi",
+    "BJ": "Benin",
+    "BN": "Brunei",
+    "BO": "Bolivia",
+    "BR": "Brazil",
+    "BS": "Bahamas",
+    "BT": "Bhutan",
+    "BW": "Botswana",
+    "BY": "Belarus",
+    "BZ": "Belize",
+    "CA": "Canada",
+    "CD": "Democratic Republic of the Congo",
+    "CF": "Central African Republic",
+    "CG": "Republic of the Congo",
+    "CH": "Switzerland",
+    "CI": "Ivory Coast",
+    "CL": "Chile",
+    "CM": "Cameroon",
+    "CN": "China",
+    "CO": "Colombia",
+    "CR": "Costa Rica",
+    "CU": "Cuba",
+    "CV": "Cape Verde",
+    "CY": "Cyprus",
+    "CZ": "Czech Republic",
+    "DE": "Germany",
+    "DJ": "Djibouti",
+    "DK": "Denmark",
+    "DM": "Dominica",
+    "DO": "Dominican Republic",
+    "DZ": "Algeria",
+    "EC": "Ecuador",
+    "EE": "Estonia",
+    "EG": "Egypt",
+    "ER": "Eritrea",
+    "ES": "Spain",
+    "ET": "Ethiopia",
+    "FI": "Finland",
+    "FJ": "Fiji",
+    "FK": "Falkland Islands",
+    "FM": "Micronesia",
+    "FR": "France",
+    "GA": "Gabon",
+    "GB": "United Kingdom",
+    "GD": "Grenada",
+    "GE": "Georgia",
+    "GF": "French Guiana",
+    "GH": "Ghana",
+    "GM": "Gambia",
+    "GN": "Guinea",
+    "GQ": "Equatorial Guinea",
+    "GR": "Greece",
+    "GT": "Guatemala",
+    "GW": "Guinea-Bissau",
+    "GY": "Guyana",
+    "HK": "Hong Kong",
+    "HN": "Honduras",
+    "HR": "Croatia",
+    "HT": "Haiti",
+    "HU": "Hungary",
+    "ID": "Indonesia",
+    "IE": "Ireland",
+    "IL": "Israel",
+    "IN": "India",
+    "IQ": "Iraq",
+    "IR": "Iran",
+    "IS": "Iceland",
+    "IT": "Italy",
+    "JM": "Jamaica",
+    "JO": "Jordan",
+    "JP": "Japan",
+    "KE": "Kenya",
+    "KG": "Kyrgyzstan",
+    "KH": "Cambodia",
+    "KI": "Kiribati",
+    "KM": "Comoros",
+    "KN": "Saint Kitts and Nevis",
+    "KP": "North Korea",
+    "KR": "South Korea",
+    "KW": "Kuwait",
+    "KZ": "Kazakhstan",
+    "LA": "Laos",
+    "LB": "Lebanon",
+    "LC": "Saint Lucia",
+    "LK": "Sri Lanka",
+    "LR": "Liberia",
+    "LS": "Lesotho",
+    "LT": "Lithuania",
+    "LU": "Luxembourg",
+    "LV": "Latvia",
+    "LY": "Libya",
+    "MA": "Morocco",
+    "MD": "Moldova",
+    "ME": "Montenegro",
+    "MG": "Madagascar",
+    "MH": "Marshall Islands",
+    "MK": "North Macedonia",
+    "ML": "Mali",
+    "MM": "Myanmar",
+    "MN": "Mongolia",
+    "MO": "Macau",
+    "MR": "Mauritania",
+    "MT": "Malta",
+    "MU": "Mauritius",
+    "MV": "Maldives",
+    "MW": "Malawi",
+    "MX": "Mexico",
+    "MY": "Malaysia",
+    "MZ": "Mozambique",
+    "NA": "Namibia",
+    "NC": "New Caledonia",
+    "NE": "Niger",
+    "NG": "Nigeria",
+    "NI": "Nicaragua",
+    "NL": "Netherlands",
+    "NO": "Norway",
+    "NP": "Nepal",
+    "NR": "Nauru",
+    "NZ": "New Zealand",
+    "OM": "Oman",
+    "PA": "Panama",
+    "PE": "Peru",
+    "PF": "French Polynesia",
+    "PG": "Papua New Guinea",
+    "PH": "Philippines",
+    "PK": "Pakistan",
+    "PL": "Poland",
+    "PR": "Puerto Rico",
+    "PS": "Palestine",
+    "PT": "Portugal",
+    "PW": "Palau",
+    "PY": "Paraguay",
+    "QA": "Qatar",
+    "RO": "Romania",
+    "RS": "Serbia",
+    "RU": "Russia",
+    "RW": "Rwanda",
+    "SA": "Saudi Arabia",
+    "SB": "Solomon Islands",
+    "SC": "Seychelles",
+    "SD": "Sudan",
+    "SE": "Sweden",
+    "SG": "Singapore",
+    "SI": "Slovenia",
+    "SK": "Slovakia",
+    "SL": "Sierra Leone",
+    "SN": "Senegal",
+    "SO": "Somalia",
+    "SR": "Suriname",
+    "SS": "South Sudan",
+    "ST": "São Tomé and Príncipe",
+    "SV": "El Salvador",
+    "SY": "Syria",
+    "SZ": "Eswatini",
+    "TD": "Chad",
+    "TG": "Togo",
+    "TH": "Thailand",
+    "TJ": "Tajikistan",
+    "TL": "East Timor",
+    "TM": "Turkmenistan",
+    "TN": "Tunisia",
+    "TO": "Tonga",
+    "TR": "Turkey",
+    "TT": "Trinidad and Tobago",
+    "TV": "Tuvalu",
+    "TW": "Taiwan",
+    "TZ": "Tanzania",
+    "UA": "Ukraine",
+    "UG": "Uganda",
+    "US": "United States",
+    "UY": "Uruguay",
+    "UZ": "Uzbekistan",
+    "VC": "Saint Vincent and the Grenadines",
+    "VE": "Venezuela",
+    "VN": "Vietnam",
+    "VU": "Vanuatu",
+    "WS": "Samoa",
+    "XK": "Kosovo",
+    "YE": "Yemen",
+    "ZA": "South Africa",
+    "ZM": "Zambia",
+    "ZW": "Zimbabwe"
   },
   "dashboard": {
     "home": {
-      "welcomeBack": "Welcome back",
-      "profile": "Profile",
-      "myRecommendations": "My Recommendations",
       "activePlaces": "Active places",
-      "setupProfile": "Setup Your Profile",
-      "draft": "Draft",
-      "startCurating": "Start curating your recommendations and share them with the world!",
-      "addRecommendations": "Add Recommendations",
-      "error": {
-        "title": "Error loading data",
-        "message": "An error occurred while loading your data",
-        "retry": "Retry"
-      },
-      "loginRequired": {
-        "title": "Please log in to continue",
-        "message": "You need to be logged in to view your dashboard."
-      },
       "addLocation": "Add Location",
       "addLocationLabel": "Add",
+      "addRecommendations": "Add Recommendations",
+      "draft": "Draft",
+      "error": {
+        "message": "An error occurred while loading your data",
+        "retry": "Retry",
+        "title": "Error loading data"
+      },
+      "loginRequired": {
+        "message": "You need to be logged in to view your dashboard.",
+        "title": "Please log in to continue"
+      },
       "mobile": "Mobile",
-      "viewPublicProfileTooltip": "View your public profile as seen by others",
+      "myRecommendations": "My Recommendations",
+      "profile": "Profile",
       "seo": {
-        "title": "{{username}}'s Dashboard - explorers",
         "description": "Welcome back, {{username}}! Access your explorers dashboard to manage your personalized QR codes, explore your curated recommendations, and share your favorite places with others easily.",
         "keywords": {
+          "curatedPlacesManagement": "curated places management",
           "explorersDashboard": "explorers dashboard",
-          "qrCodeManagement": "QR code management",
-          "userDashboard": "user dashboard",
-          "personalizedRecommendationsDashboard": "personalized recommendations dashboard",
-          "userProfileManagement": "user profile management",
           "explorersHome": "explorers home",
           "locationSharingDashboard": "location sharing dashboard",
-          "curatedPlacesManagement": "curated places management",
-          "travelGuideDashboard": "travel guide dashboard",
           "personalDashboard": "personal dashboard",
+          "personalizedRecommendationsDashboard": "personalized recommendations dashboard",
+          "qrCodeManagement": "QR code management",
+          "qrCodeSharingPlatform": "QR code sharing platform",
           "qrRecommendations": "QR recommendations",
           "recommendationManagement": "recommendation management",
-          "qrCodeSharingPlatform": "QR code sharing platform"
-        }
+          "travelGuideDashboard": "travel guide dashboard",
+          "userDashboard": "user dashboard",
+          "userProfileManagement": "user profile management"
+        },
+        "title": "{{username}}'s Dashboard - explorers"
       },
+      "setupProfile": "Setup Your Profile",
       "shareButtons": {
         "instagram": "Instagram",
         "twitter": "Twitter",
         "whatsapp": "WhatsApp"
-      }
-    },
-    "shareModal": {
-      "copyLink": "Copy Link",
-      "copied": "Copied!",
-      "linkCopiedToast": "Link Copied!!"
-    },
-    "recommendations": {
-      "locationButton": "Add Location",
-      "viewAll": "View all",
-      "recommendationsTab": "Recommendations",
-      "manageTab": "Manage",
-      "manageHeading": "Manage",
-      "deleteAction": "Delete",
-      "editAction": "Edit",
-      "publishedStatus": "Published",
-      "draftStatus": "Draft",
-      "myRecommendationsHeading": "My Recommendations",
-      "myQRHeading": "My QR",
-      "myRecommendationsQR": "My Recommendations",
-      "travelLikeLocal": "Travel like a local",
-      "shareLink": "Share Link",
-      "copyLink": "Copy Link",
-      "downloadQR": "Download QR",
-      "emptyState": {
-        "title": "No Recommendations Available",
-        "subtitle": "Start adding your favorite places to this list"
       },
-      "draftLabel": "Draft",
-      "recommendButton": "Add Place",
-      "locationForm": {
-        "labels": {
-          "searchLocation": "Search Location",
-          "recommendationSocialLink": "Recommendation Social Link",
-          "note": "Note",
-          "placeUrl": "Place Url"
+      "startCurating": "Start curating your recommendations and share them with the world!",
+      "viewPublicProfileTooltip": "View your public profile as seen by others",
+      "welcomeBack": "Welcome back"
+    },
+    "profile": {
+      "account": {
+        "fields": {
+          "accountName": "Account Name",
+          "address": "Address",
+          "city": "City",
+          "country": "Country",
+          "postalCode": "Postal Code",
+          "state": "State",
+          "streetName": "Street Name",
+          "username": "Username"
         },
-        "placeholders": {
-          "searchLocation": "Enter city, state, or country (Eg. Paris)",
-          "recommendationSocialLink": "Enter URL (Youtube / Instagram)",
-          "note": "Enter a note related to your Recommendation",
-          "placeUrl": "Enter the Name to a create a Shareable Link"
-        },
-        "buttons": {
-          "addLocation": "Add Location",
-          "updateLocation": "Update Location"
+        "sections": {
+          "account": "Account",
+          "billingAddress": "Billing Address"
         }
       },
-      "exploreSection": {
-        "heading": "Explore with explorers",
-        "addButton": "Add"
+      "accountSetup": {
+        "complete": "Complete",
+        "footerMessage": "Complete both steps to unlock your full dashboard experience",
+        "profileSetupCompleted": "Profile setup completed",
+        "profileSetupIncomplete": "Add profile picture, bio, and social links",
+        "progress": "Progress",
+        "recommendationsSetupCompleted": "Recommendations setup completed",
+        "recommendationsSetupIncomplete": "Add locations, places, and publish your first list",
+        "setupButton": "Setup",
+        "title": "Complete Your Account Setup"
       },
-      "locationLabels": {
-        "currentLocation": "Current Location",
-        "selectedLocation": "Selected Location"
-      },
-      "categories": {
-        "foodDrinks": "Food & Drinks",
-        "lodging": "Lodging",
-        "healthWellness": "Health & Wellness",
-        "shopping": "Shopping",
-        "entertainment": "Entertainment",
-        "transportation": "Transportation",
-        "services": "Services",
-        "tourism": "Tourism",
-        "naturalFeatures": "Natural Features"
-      },
-      "toastMessages": {
-        "listCreated": "Recommendation List Created Successfully!!!",
-        "listPublished": "Recommendation list Published successfully!",
-        "listUnpublished": "Recommendation list Unpublished successfully!",
-        "listPublishError": "List Should have atleast one Recommended Place to be Published",
-        "listVisibilityError": "Failed to update recommendation list visibility.",
-        "qrDownloadSuccess": "QR code downloaded successfully!",
-        "qrDownloadError": "Failed to download QR code. Please try again.",
-        "linkCopied": "Link copied to clipboard!",
-        "linkCopyError": "Failed to copy link. Please try again.",
-        "qrNotReady": "QR code not ready for download"
-      },
-      "placesModal": {
-        "placesCount": "{{visible}} out of {{total}} places",
-        "scrollToLoadMore": "Scroll to load more places"
-      },
-      "noRecommendationsYet": "No recommendations yet!!",
-      "setupProfileBeforeRecommendations": "Setup your profile before creating recommendations!!",
-      "startAddingPlaces": "Start adding your favorite places and share them with others.",
-      "profileButton": "Profile",
-      "startRecommending": "Start Recommending",
-      "confirmDeletion": "Confirm Deletion",
-      "deleteListConfirmation": "Are you sure you want to delete this list? This action cannot be undone and will remove all",
-      "deleteListConfirmationPlaces": "associated places.",
-      "deleteListConfirmationType": "To confirm, type",
-      "deleteListConfirmationDelete": "'delete'",
-      "deleteListConfirmationBelow": "in the field below:",
-      "typeDeleteToConfirm": "Type 'delete' to confirm",
-      "cancel": "Cancel",
-      "confirm": "Confirm",
-      "addRecommendationForm": {
-        "searchField": {
-          "label": "Search Recommendation with Google"
+      "common": {
+        "add": "Add",
+        "clearSelection": "Clear selection",
+        "confirm": "Confirm",
+        "cover": "Cover",
+        "editImage": "Edit Image",
+        "error": "An error occurred while loading your profile. Please try again later.",
+        "errors": {
+          "failedToGetAccountId": "Failed to get account ID for upload",
+          "noFileProvided": "No file provided for upload",
+          "uploadResponseMissingFileData": "Upload response missing file data"
         },
-        "mainInput": {
-          "placeholder": "Enter your Recommendation"
+        "failedToSaveChanges": "Failed to save changes. Please try again.",
+        "failedToSaveImagesToFeed": "Failed to save images to feed",
+        "failedToUpdateProfile": "Failed to update profile. Please try again.",
+        "failedToUploadFiles": "Failed to upload files. Please try again.",
+        "failedToUploadImages": "Failed to upload images. Please try again.",
+        "feedImage": "Feed image",
+        "fetching": "Fetching...",
+        "hidden": "Hidden",
+        "importedImage": "imported image",
+        "mobileNumber": "Mobile Number",
+        "mobileNumberPlaceholder": "Mobile Number",
+        "networkError": "Network error: Please check your connection and try again.",
+        "primaryAddress": "Primary Address",
+        "profile": "Profile",
+        "saveAndPublish": "Save & Publish",
+        "saveAndPublishFailed": "Save & publish failed. Please try again.",
+        "savedAndPublishedSuccessfully": "Saved & published successfully",
+        "saveToFeed": "Save to Feed",
+        "selectAll": "Select all",
+        "somethingWentWrong": "Something went wrong. Please try again.",
+        "unexpectedError": "An unexpected error occurred. Please try again.",
+        "video": "Video",
+        "viewPublicProfile": "Navigate to Public Profile",
+        "visible": "Visible",
+        "whatsappNumber": "WhatsApp Number"
+      },
+      "publicProfile": {
+        "accountTypes": {
+          "business": "Business",
+          "creator": "Creator",
+          "personal": "Personal"
         },
-        "taggableFields": {
+        "businessLocation": {
+          "about": "About",
+          "contact": "Contact",
           "title": "Title",
-          "address": "Address",
-          "category": "Category",
-          "contactName": "Contact Name",
-          "contactNumber": "Contact Number",
-          "socialLink": "Social Link",
-          "personName": "Person's Name"
+          "website": "Website"
         },
-        "taggableFieldsPlaceholders": {
-          "title": "Enter the title",
-          "address": "Enter the address of the Place",
-          "category": "Enter a Category",
-          "contactName": "Enter the contact person's name",
-          "contactNumber": "Enter Contact Number",
-          "socialLink": "Enter the Social Link (Place)",
-          "personName": "Enter person's full name"
+        "fields": {
+          "about": "About",
+          "accountType": "Account Type",
+          "addLocation": "Add your location",
+          "addLocationInformation": "Add Location Information",
+          "appleMusic": "Apple Music",
+          "bio": "Bio",
+          "businessLocation": "Add your location. These will appear as featured locations on your public profile",
+          "contact": "Contact",
+          "facebook": "Facebook",
+          "feed": "Upload images or videos of your location, products, services or experiences. These photos will be displayed in your gallery on your public profile",
+          "gmail": "Gmail",
+          "instagram": "Instagram",
+          "linkedin": "Linkedin",
+          "mobile": "Mobile",
+          "primaryAddress": "Primary Address - Shown on public profile ( city and country )",
+          "sameAsAddress": "Same as Address",
+          "searchAddress": "Search for your address...",
+          "snapchat": "Snapchat",
+          "socialMedia": "Social Media",
+          "spotify": "Spotify",
+          "tiktok": "Tiktok",
+          "title": "Title",
+          "website": "Website",
+          "whatsapp": "Whatsapp",
+          "x": "X",
+          "youtube": "Youtube",
+          "youtubeMusic": "Youtube Music"
         },
+        "sections": {
+          "feed": "Feed",
+          "howToReachUs": "How to Reach Us",
+          "howToReachUsDescription": "Use this section to share your business location details.",
+          "profileInformation": "Bio",
+          "publicAddress": "Public Address",
+          "socialMedia": "Social Links",
+          "socialMediaSubtitle": "Social media links and information"
+        }
+      },
+      "tabs": {
+        "account": "Account",
+        "publicProfile": "Public Profile"
+      }
+    },
+    "recommendations": {
+      "addRecommendationForm": {
         "accordionSection": {
           "heading": "Your Recommendation Details",
           "recommendationLink": {
@@ -1017,1127 +952,1215 @@
             "placeholder": "Why would you recommend?"
           }
         },
-        "fileUpload": {
-          "text": "Attach Image/Video",
-          "subtext": "optional"
-        },
         "actionButton": {
           "text": "Add recommendation"
         },
-        "validationMessages": {
-          "titleRequired": "Title is required",
-          "addressRequired": "Address is required",
-          "categoryRequired": "Category is required",
-          "socialUrlRequired": "Instagram or LinkedIn URL is required for person recommendations",
-          "socialUrlInvalid": "Please enter a valid Instagram or LinkedIn URL"
-        },
-        "mapModal": {
-          "cancelButton": "Cancel",
-          "addRecommendationButton": "Add Recommendation",
-          "updateRecommendationButton": "Update Recommendation",
-          "setLocationButton": "Set Location"
-        },
         "deleteRecommendation": "Delete Recommendation",
-        "searchLocation": {
-          "label": "Search a location",
-          "searchPlace": "Search for a place",
-          "placeholder": "Type and select a place"
+        "deleteRecommendationModal": {
+          "cancel": "Cancel",
+          "message": "Are you sure you want to delete this recommendation? This action cannot be undone.",
+          "title": "Confirm deletion"
         },
         "fetchingImages": "Fetching images…",
-        "recommendationType": {
-          "place": "Place",
-          "person": "Person",
-          "label": "Recommendation Type"
+        "fileUpload": {
+          "subtext": "optional",
+          "text": "Attach Image/Video"
         },
         "imagePreview": {
           "alt": "Preview",
-          "deleteTooltip": "Delete",
-          "setThumbnailTooltip": "Set as Thumbnail",
-          "confirmDeleteTitle": "Confirm Delete",
-          "confirmDeleteMessage": "Are you sure you want to delete this Image from the Collection?",
           "cancel": "Cancel",
-          "confirm": "Confirm"
+          "confirm": "Confirm",
+          "confirmDeleteMessage": "Are you sure you want to delete this Image from the Collection?",
+          "confirmDeleteTitle": "Confirm Delete",
+          "deleteTooltip": "Delete",
+          "setThumbnailTooltip": "Set as Thumbnail"
         },
-        "deleteRecommendationModal": {
-          "title": "Confirm deletion",
-          "message": "Are you sure you want to delete this recommendation? This action cannot be undone.",
-          "cancel": "Cancel"
+        "mainInput": {
+          "placeholder": "Enter your Recommendation"
+        },
+        "mapModal": {
+          "addRecommendationButton": "Add Recommendation",
+          "cancelButton": "Cancel",
+          "setLocationButton": "Set Location",
+          "updateRecommendationButton": "Update Recommendation"
+        },
+        "recommendationType": {
+          "label": "Recommendation Type",
+          "person": "Person",
+          "place": "Place"
+        },
+        "searchField": {
+          "label": "Search Recommendation with Google"
+        },
+        "searchLocation": {
+          "label": "Search a location",
+          "placeholder": "Type and select a place",
+          "searchPlace": "Search for a place"
+        },
+        "taggableFields": {
+          "address": "Address",
+          "category": "Category",
+          "contactName": "Contact Name",
+          "contactNumber": "Contact Number",
+          "personName": "Person's Name",
+          "socialLink": "Social Link",
+          "title": "Title"
+        },
+        "taggableFieldsPlaceholders": {
+          "address": "Enter the address of the Place",
+          "category": "Enter a Category",
+          "contactName": "Enter the contact person's name",
+          "contactNumber": "Enter Contact Number",
+          "personName": "Enter person's full name",
+          "socialLink": "Enter the Social Link (Place)",
+          "title": "Enter the title"
+        },
+        "validationMessages": {
+          "addressRequired": "Address is required",
+          "categoryRequired": "Category is required",
+          "socialUrlInvalid": "Please enter a valid Instagram or LinkedIn URL",
+          "socialUrlRequired": "Instagram or LinkedIn URL is required for person recommendations",
+          "titleRequired": "Title is required"
         }
       },
-      "loading": {
-        "title": "Loading Recommendations...",
-        "message": "Please wait while we fetch your recommendations"
+      "cancel": "Cancel",
+      "categories": {
+        "entertainment": "Entertainment",
+        "foodDrinks": "Food & Drinks",
+        "healthWellness": "Health & Wellness",
+        "lodging": "Lodging",
+        "naturalFeatures": "Natural Features",
+        "services": "Services",
+        "shopping": "Shopping",
+        "tourism": "Tourism",
+        "transportation": "Transportation"
       },
+      "confirm": "Confirm",
+      "confirmDeletion": "Confirm Deletion",
+      "copyLink": "Copy Link",
+      "deleteAction": "Delete",
+      "deleteListConfirmation": "Are you sure you want to delete this list? This action cannot be undone and will remove all",
+      "deleteListConfirmationBelow": "in the field below:",
+      "deleteListConfirmationDelete": "'delete'",
+      "deleteListConfirmationPlaces": "associated places.",
+      "deleteListConfirmationType": "To confirm, type",
       "deleteSuccess": {
         "success": "Recommended Place Deleted Successfully.",
         "unpublished": "Recommended Place Deleted Successfully. List automatically unpublished due to no recommendations."
-      }
+      },
+      "downloadQR": "Download QR",
+      "draftLabel": "Draft",
+      "draftStatus": "Draft",
+      "editAction": "Edit",
+      "emptyState": {
+        "subtitle": "Start adding your favorite places to this list",
+        "title": "No Recommendations Available"
+      },
+      "exploreSection": {
+        "addButton": "Add",
+        "heading": "Explore with explorers"
+      },
+      "loading": {
+        "message": "Please wait while we fetch your recommendations",
+        "title": "Loading Recommendations..."
+      },
+      "locationButton": "Add Location",
+      "locationForm": {
+        "buttons": {
+          "addLocation": "Add Location",
+          "updateLocation": "Update Location"
+        },
+        "labels": {
+          "note": "Note",
+          "placeUrl": "Place Url",
+          "recommendationSocialLink": "Recommendation Social Link",
+          "searchLocation": "Search Location"
+        },
+        "placeholders": {
+          "note": "Enter a note related to your Recommendation",
+          "placeUrl": "Enter the Name to a create a Shareable Link",
+          "recommendationSocialLink": "Enter URL (Youtube / Instagram)",
+          "searchLocation": "Enter city, state, or country (Eg. Paris)"
+        }
+      },
+      "locationLabels": {
+        "currentLocation": "Current Location",
+        "selectedLocation": "Selected Location"
+      },
+      "manageHeading": "Manage",
+      "manageTab": "Manage",
+      "myQRHeading": "My QR",
+      "myRecommendationsHeading": "My Recommendations",
+      "myRecommendationsQR": "My Recommendations",
+      "noRecommendationsYet": "No recommendations yet!!",
+      "placesModal": {
+        "placesCount": "{{visible}} out of {{total}} places",
+        "scrollToLoadMore": "Scroll to load more places"
+      },
+      "profileButton": "Profile",
+      "publishedStatus": "Published",
+      "recommendationsTab": "Recommendations",
+      "recommendButton": "Add Place",
+      "setupProfileBeforeRecommendations": "Setup your profile before creating recommendations!!",
+      "shareLink": "Share Link",
+      "startAddingPlaces": "Start adding your favorite places and share them with others.",
+      "startRecommending": "Start Recommending",
+      "toastMessages": {
+        "linkCopied": "Link copied to clipboard!",
+        "linkCopyError": "Failed to copy link. Please try again.",
+        "listCreated": "Recommendation List Created Successfully!!!",
+        "listPublished": "Recommendation list Published successfully!",
+        "listPublishError": "List Should have atleast one Recommended Place to be Published",
+        "listUnpublished": "Recommendation list Unpublished successfully!",
+        "listVisibilityError": "Failed to update recommendation list visibility.",
+        "qrDownloadError": "Failed to download QR code. Please try again.",
+        "qrDownloadSuccess": "QR code downloaded successfully!",
+        "qrNotReady": "QR code not ready for download"
+      },
+      "travelLikeLocal": "Travel like a local",
+      "typeDeleteToConfirm": "Type 'delete' to confirm",
+      "viewAll": "View all"
     },
-    "profile": {
-      "tabs": {
-        "publicProfile": "Public Profile",
-        "account": "Account"
-      },
-      "publicProfile": {
-        "sections": {
-          "profileInformation": "Bio",
-          "socialMedia": "Social Links",
-          "publicAddress": "Public Address",
-          "howToReachUs": "How to Reach Us",
-          "howToReachUsDescription": "Use this section to share your business location details.",
-          "feed": "Feed",
-          "socialMediaSubtitle": "Social media links and information"
-        },
-        "fields": {
-          "accountType": "Account Type",
-          "bio": "Bio",
-          "socialMedia": "Social Media",
-          "instagram": "Instagram",
-          "whatsapp": "Whatsapp",
-          "mobile": "Mobile",
-          "youtube": "Youtube",
-          "x": "X",
-          "spotify": "Spotify",
-          "website": "Website",
-          "facebook": "Facebook",
-          "youtubeMusic": "Youtube Music",
-          "gmail": "Gmail",
-          "linkedin": "Linkedin",
-          "appleMusic": "Apple Music",
-          "tiktok": "Tiktok",
-          "snapchat": "Snapchat",
-          "businessLocation": "Add your location. These will appear as featured locations on your public profile",
-          "primaryAddress": "Primary Address - Shown on public profile ( city and country )",
-          "feed": "Upload images or videos of your location, products, services or experiences. These photos will be displayed in your gallery on your public profile",
-          "title": "Title",
-          "contact": "Contact",
-          "about": "About",
-          "addLocation": "Add your location",
-          "addLocationInformation": "Add Location Information",
-          "searchAddress": "Search for your address...",
-          "sameAsAddress": "Same as Address"
-        },
-        "accountTypes": {
-          "personal": "Personal",
-          "creator": "Creator",
-          "business": "Business"
-        },
-        "businessLocation": {
-          "title": "Title",
-          "contact": "Contact",
-          "website": "Website",
-          "about": "About"
-        }
-      },
-      "account": {
-        "sections": {
-          "account": "Account",
-          "billingAddress": "Billing Address"
-        },
-        "fields": {
-          "username": "Username",
-          "accountName": "Account Name",
-          "address": "Address",
-          "streetName": "Street Name",
-          "state": "State",
-          "city": "City",
-          "country": "Country",
-          "postalCode": "Postal Code"
-        }
-      },
-      "common": {
-        "visible": "Visible",
-        "hidden": "Hidden",
-        "mobileNumber": "Mobile Number",
-        "mobileNumberPlaceholder": "Mobile Number",
-        "whatsappNumber": "WhatsApp Number",
-        "primaryAddress": "Primary Address",
-        "editImage": "Edit Image",
-        "confirm": "Confirm",
-        "add": "Add",
-        "video": "Video",
-        "feedImage": "Feed image",
-        "importedImage": "imported image",
-        "cover": "Cover",
-        "profile": "Profile",
-        "saveAndPublish": "Save & Publish",
-        "saveToFeed": "Save to Feed",
-        "savedAndPublishedSuccessfully": "Saved & published successfully",
-        "saveAndPublishFailed": "Save & publish failed. Please try again.",
-        "failedToSaveChanges": "Failed to save changes. Please try again.",
-        "networkError": "Network error: Please check your connection and try again.",
-        "unexpectedError": "An unexpected error occurred. Please try again.",
-        "somethingWentWrong": "Something went wrong. Please try again.",
-        "failedToUploadFiles": "Failed to upload files. Please try again.",
-        "failedToUploadImages": "Failed to upload images. Please try again.",
-        "failedToSaveImagesToFeed": "Failed to save images to feed",
-        "failedToUpdateProfile": "Failed to update profile. Please try again.",
-        "fetching": "Fetching...",
-        "selectAll": "Select all",
-        "clearSelection": "Clear selection",
-        "error": "An error occurred while loading your profile. Please try again later.",
-        "errors": {
-          "noFileProvided": "No file provided for upload",
-          "failedToGetAccountId": "Failed to get account ID for upload",
-          "uploadResponseMissingFileData": "Upload response missing file data"
-        }
-      },
-      "accountSetup": {
-        "title": "Complete Your Account Setup",
-        "progress": "Progress",
-        "complete": "Complete",
-        "profileSetupCompleted": "Profile setup completed",
-        "profileSetupIncomplete": "Add profile picture, bio, and social links",
-        "recommendationsSetupCompleted": "Recommendations setup completed",
-        "recommendationsSetupIncomplete": "Add locations, places, and publish your first list",
-        "setupButton": "Setup",
-        "footerMessage": "Complete both steps to unlock your full dashboard experience"
-      }
+    "shareModal": {
+      "copied": "Copied!",
+      "copyLink": "Copy Link",
+      "linkCopiedToast": "Link Copied!!"
     }
   },
-  "toast": {
-    "success": {
-      "loginSuccessful": "Login successful!",
-      "registrationSuccessful": "Registration successful!",
-      "passwordResetSuccessful": "Password reset successful!",
-      "emailVerificationSent": "Verification email sent!",
-      "resetLinkSent": "Password reset link sent to your email!",
-      "resetLinkResent": "Reset link resent!",
-      "profileImageUpdated": "Profile image updated successfully!",
-      "backgroundImageUpdated": "Background image updated successfully!",
-      "recommendedListUpdated": "Recommended List Updated Successfully!!!",
-      "accountCreated": "Account created successfully!",
-      "usernameUpdated": "Username updated successfully!",
-      "profileUpdated": "Profile updated successfully!",
-      "settingsSaved": "Settings saved successfully!",
-      "dataSaved": "Data saved successfully!",
-      "changesSaved": "Changes saved successfully!",
-      "fileUploaded": "File uploaded successfully!",
-      "imageUploaded": "Image uploaded successfully!",
-      "linkCopied": "Link copied to clipboard!",
-      "emailSent": "Email sent successfully!",
-      "notificationSent": "Notification sent successfully!",
-      "actionCompleted": "Action completed successfully!",
-      "formSubmitted": "Form submitted successfully!",
-      "onboardingCompleted": "Onboarding completed successfully!",
-      "welcomeMessage": "Welcome to explorers!",
-      "accountActivated": "Account activated successfully!",
-      "emailVerified": "Email verified successfully!",
-      "passwordChanged": "Password changed successfully!",
-      "usernameChanged": "Username changed successfully!",
-      "profileCompleted": "Profile completed successfully!",
-      "setupCompleted": "Setup completed successfully!",
-      "loggedOutSuccessfully": "Logged out successfully!",
-      "profileUpdatedSuccessfully": "Profile updated successfully!",
-      "itemRemovedFromFeed": "Removed {{itemType}} from feed",
-      "imagesUploadedToFeed": "Added {{count}} image(s) to feed",
-      "uploadingImagesToFeed": "Uploading selected images to your feed...",
-      "recommendedCityDeleted": "Recommended City Deleted Successfully!!",
-      "mediaRemovedSuccessfully": "Media removed successfully!",
-      "filesAddedSuccessfully": "{{count}} file(s) added successfully!",
-      "filesReadyForUpload": "{{count}} {{fileText}} ready for upload",
-      "instagramLinkCopied": "Instagram link copied! You can now paste it in your Instagram story or post.",
-      "recommendationCreatedSuccessfully": "Recommendation Created Successfully!!!",
-      "recommendationUpdatedSuccessfully": "Recommendation Updated Successfully!!!"
+  "emailVerification": {
+    "backToLogin": "Back to Login",
+    "checkEmail": "Check your email",
+    "checkSpam": "Please check your spam folder or try again.",
+    "clickLink": "Click the link in the email to verify your account.",
+    "contactSupport": "Contact Support",
+    "description": "We've sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
+    "didntReceive": "Didn't receive the email?",
+    "emailAddress": "Email Address",
+    "emailSent": "Verification email sent!",
+    "expiresIn": "This link expires in 24 hours.",
+    "needHelp": "Need help?",
+    "resendEmail": "Resend Email",
+    "resendIn": "Resend in",
+    "seconds": "seconds",
+    "title": "Verify Your Email",
+    "verificationSent": "Verification email sent to:"
+  },
+  "footer": {
+    "copyright": "© 2025 explorers. All rights reserved.",
+    "email": "hello@explorers.earth",
+    "links": {
+      "about": "About",
+      "contact": "Contact",
+      "cookies": "Cookie Policy",
+      "faq": "FAQ",
+      "howItWorks": "How it works",
+      "privacy": "Privacy Policy",
+      "terms": "Terms & Conditions"
     },
-    "error": {
-      "loginFailed": "Login failed. Please check your credentials.",
-      "registrationFailed": "Registration failed. Please try again.",
-      "passwordResetFailed": "Password reset failed. Please try again.",
-      "emailVerificationFailed": "Email verification failed. Please try again.",
-      "emailConfirmationSendingFailed": "Account created successfully, but failed to send confirmation email. Please try resending from the verification page.",
-      "resetLinkFailed": "Failed to send reset link. Try again later.",
-      "resetLinkResendFailed": "Failed to resend. Try again later.",
-      "profileImageUpdateFailed": "Failed to upload profile image. Please try again.",
-      "backgroundImageUpdateFailed": "Failed to upload background image. Please try again.",
-      "recommendedListUpdateFailed": "Error Updating Recommended List!!!",
-      "accountCreationFailed": "Account creation failed. Please try again.",
-      "usernameUpdateFailed": "Username update failed. Please try again.",
-      "profileUpdateFailed": "Profile update failed. Please try again.",
-      "settingsSaveFailed": "Failed to save settings. Please try again.",
-      "dataSaveFailed": "Failed to save data. Please try again.",
-      "changesSaveFailed": "Failed to save changes. Please try again.",
-      "fileUploadFailed": "File upload failed. Please try again.",
-      "imageUploadFailed": "Image upload failed. Please try again",
-      "linkCopyFailed": "Failed to copy link. Please try again.",
-      "emailSendFailed": "Failed to send email. Please try again.",
-      "notificationSendFailed": "Failed to send notification. Please try again.",
-      "actionFailed": "Action failed. Please try again.",
-      "formSubmissionFailed": "Form submission failed. Please try again.",
-      "onboardingFailed": "Onboarding failed. Please try again.",
-      "accountActivationFailed": "Account activation failed. Please try again.",
-      "passwordChangeFailed": "Password change failed. Please try again.",
-      "usernameChangeFailed": "Username change failed. Please try again.",
-      "profileCompletionFailed": "Profile completion failed. Please try again.",
-      "setupFailed": "Setup failed. Please try again.",
-      "networkError": "Network error. Please check your connection.",
-      "serverError": "Server error. Please try again later.",
-      "validationError": "Validation error. Please check your input.",
-      "permissionDenied": "Permission denied. Please contact support.",
-      "sessionExpired": "Session expired. Please login again.",
-      "invalidCredentials": "Invalid credentials. Please check your input.",
-      "emailNotFound": "Email not found. Try again.",
-      "usernameAlreadyExists": "Username already exists. Please choose another.",
-      "emailAlreadyExists": "Email already exists. Please use another email.",
-      "invalidEmailFormat": "Invalid email format. Please enter a valid email.",
-      "passwordTooWeak": "Password is too weak. Please choose a stronger password.",
-      "passwordsDoNotMatch": "Passwords do not match. Please try again.",
-      "requiredFieldMissing": "Required field is missing. Please fill all required fields.",
-      "invalidInput": "Invalid input. Please check your data.",
-      "fileTooLarge": "File is too large. Please choose a smaller file.",
-      "unsupportedFileType": "Unsupported file type. Please choose a different file.",
-      "uploadLimitExceeded": "Upload limit exceeded. Please try again later.",
-      "operationTimeout": "Operation timed out. Please try again.",
-      "serviceUnavailable": "Service unavailable. Please try again later.",
-      "maintenanceMode": "Service is under maintenance. Please try again later.",
-      "rateLimitExceeded": "Too many requests. Please try again later.",
-      "quotaExceeded": "Quota exceeded. Please try again later.",
-      "accessDenied": "Access denied. You don't have permission to perform this action.",
-      "resourceNotFound": "Resource not found. Please check your request.",
-      "conflictError": "Conflict error. The resource already exists.",
-      "preconditionFailed": "Precondition failed. Please check your request.",
-      "tooManyAttempts": "Too many attempts. Please try again later.",
-      "accountLocked": "Account is locked. Please contact support.",
-      "searchAndSelectPlaceFirst": "Search and select a place first",
-      "noImagesFoundForPlace": "No images found for this place",
-      "failedToFetchImages": "Failed to fetch images",
-      "selectAtLeastOneImage": "Select at least one image",
-      "accountSuspended": "Account is suspended. Please contact support.",
-      "accountDeleted": "Account is deleted. Please contact support.",
-      "emailNotVerified": "Email is not verified. Please verify your email first.",
-      "phoneNotVerified": "Phone number is not verified. Please verify your phone first.",
-      "twoFactorRequired": "Two-factor authentication is required.",
-      "twoFactorFailed": "Two-factor authentication failed. Please try again.",
-      "captchaFailed": "Captcha verification failed. Please try again.",
-      "invalidToken": "Invalid token. Please try again.",
-      "expiredToken": "Token has expired. Please try again.",
-      "invalidCode": "Invalid code. Please check your input.",
-      "expiredCode": "Code has expired. Please request a new one.",
-      "codeLimitExceeded": "Code limit exceeded. Please try again later.",
-      "invalidUsername": "Invalid username. Please check your input.",
-      "usernameTooShort": "Username is too short. Please choose a longer username.",
-      "usernameTooLong": "Username is too long. Please choose a shorter username.",
-      "usernameInvalidChars": "Username contains invalid characters. Please use only letters, numbers, and hyphens.",
-      "usernameReserved": "Username is reserved. Please choose another username.",
-      "usernameProfanity": "Username contains inappropriate content. Please choose another username.",
-      "primaryAddressRequired": "Primary Address is required",
-      "addressRequired": "Address is required",
-      "cityRequired": "City is required",
-      "stateRequired": "State is required",
-      "countryRequired": "Country is required",
-      "postalCodeRequired": "Postal code is required",
-      "mobileNumberRequired": "Mobile number is required",
-      "mobileNumberInvalid": "Invalid mobile number format",
-      "mobileNumberTooShort": "Mobile number is too short",
-      "mobileNumberTooLong": "Mobile number is too long",
-      "bioRequired": "Bio is required",
-      "bioTooLong": "Bio is too long. Please keep it under 250 characters",
-      "displayNameRequired": "Display name is required",
-      "displayNameTooShort": "Display name is too short",
-      "displayNameTooLong": "Display name is too long",
-      "accountTypeRequired": "Account type is required",
-      "invalidAccountType": "Invalid account type selected",
-      "imageRequired": "Image is required",
-      "imageTooLarge": "Image is too large. Please choose a smaller image",
-      "unsupportedImageFormat": "Unsupported image format. Please use JPG, PNG, or GIF",
-      "imageProcessingFailed": "Image processing failed. Please try again",
-      "imageCorrupted": "Image is corrupted. Please choose another image",
-      "imageDimensionsInvalid": "Image dimensions are invalid. Please choose another image",
-      "imageSizeInvalid": "Image size is invalid. Please choose another image",
-      "imageFormatInvalid": "Image format is invalid. Please choose another image",
-      "imageQualityTooLow": "Image quality is too low. Please choose a higher quality image",
-      "imageTooSmall": "Image is too small. Please choose a larger image",
-      "imageTooBig": "Image is too big. Please choose a smaller image",
-      "imageAspectRatioInvalid": "Image aspect ratio is invalid. Please choose another image",
-      "imageColorSpaceInvalid": "Image color space is invalid. Please choose another image",
-      "imageMetadataInvalid": "Image metadata is invalid. Please choose another image",
-      "imageSecurityViolation": "Image security violation. Please choose another image",
-      "errorCroppingImage": "Error Cropping the Image.",
-      "updateFailedWithError": "Update failed: {{error}}",
-      "graphQLErrorOccurred": "GraphQL error occurred",
-      "failedToUpdatePassword": "Failed to update password.",
-      "somethingWentWrong": "Something Went Wrong!!",
-      "fetchedImages": "Fetched {{count}} image(s)",
-      "fileValidationError": "An error occurred while validating files",
-      "noValidFilesSelected": "No valid files selected. Supported formats: {{formats}}",
-      "fileValidationErrorWithName": "{{fileName}}: {{error}}",
-      "errorValidatingFiles": "An error occurred while validating files",
-      "alreadyExists": "Already Exist!!",
-      "failedToDeleteRecommendationList": "Failed to delete recommendation list. Please try again.",
-      "selectValidCategory": "Select a Valid Category",
-      "placeAlreadyExists": "This place already exists in your recommendation list!",
-      "selectPlaceFromSuggestions": "Select the Place from google suggestions",
-      "pleaseSelectLocation": "Please select a location from the search results",
-      "locationAlreadyExists": "This location already exists!",
-      "failedToFetchNearbyPlaces": "Failed to fetch nearby places. Please try again.",
-      "pleaseSelectListFirst": "Please select a recommendation list first",
-      "errorLoadingCategories": "Error Loading Categories!!!",
-      "accountAlreadyExists": "Account already exists. Redirecting to home...",
-      "onboardingAlreadyCompleted": "Onboarding already completed. Redirecting to home...",
-      "onboardingInProgress": "Onboarding is already in progress in another tab.",
-      "onboardingCompletedAnotherTab": "Onboarding completed in another tab. Redirecting...",
-      "submissionInProgress": "Please wait, submission is already in progress.",
-      "accountExistsRefresh": "Account already exists. Please refresh the page.",
-      "invalidUsernameWithError": "Invalid username: {{error}}",
-      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!",
-      "allFilesAlreadyUploaded": "All selected files are already uploaded!",
-      "duplicateFilesSkipped": "{{count}} duplicate file(s) were skipped.",
-      "imageVirusDetected": "Virus detected in image. Please choose another image",
-      "imageMalwareDetected": "Malware detected in image. Please choose another image",
-      "imageSpamDetected": "Spam detected in image. Please choose another image",
-      "imageContentInappropriate": "Image content is inappropriate. Please choose another image",
-      "imageContentViolent": "Image content is violent. Please choose another image",
-      "imageContentSexual": "Image content is sexual. Please choose another image",
-      "imageContentHateful": "Image content is hateful. Please choose another image",
-      "imageContentDiscriminatory": "Image content is discriminatory. Please choose another image",
-      "imageContentOffensive": "Image content is offensive. Please choose another image",
-      "imageContentAbusive": "Image content is abusive. Please choose another image",
-      "imageContentHarassing": "Image content is harassing. Please choose another image",
-      "imageContentThreatening": "Image content is threatening. Please choose another image",
-      "imageContentDangerous": "Image content is dangerous. Please choose another image",
-      "imageContentIllegal": "Image content is illegal. Please choose another image",
-      "imageContentCopyright": "Image content violates copyright. Please choose another image",
-      "imageContentTrademark": "Image content violates trademark. Please choose another image",
-      "imageContentPrivacy": "Image content violates privacy. Please choose another image",
-      "imageContentConsent": "Image content lacks consent. Please choose another image",
-      "imageContentMinors": "Image content involves minors. Please choose another image",
-      "imageContentAnimals": "Image content involves animal cruelty. Please choose another image",
-      "imageContentEnvironment": "Image content harms environment. Please choose another image",
-      "imageContentHealth": "Image content harms health. Please choose another image",
-      "imageContentSafety": "Image content harms safety. Please choose another image",
-      "imageContentSecurity": "Image content harms security. Please choose another image",
-      "imageContentIntegrity": "Image content harms integrity. Please choose another image",
-      "imageContentReputation": "Image content harms reputation. Please choose another image",
-      "imageContentBrand": "Image content harms brand. Please choose another image",
-      "imageContentBusiness": "Image content harms business. Please choose another image",
-      "imageContentPersonal": "Image content harms personal interests. Please choose another image",
-      "imageContentProfessional": "Image content harms professional interests. Please choose another image",
-      "imageContentAcademic": "Image content harms academic interests. Please choose another image",
-      "imageContentCultural": "Image content harms cultural interests. Please choose another image",
-      "imageContentReligious": "Image content harms religious interests. Please choose another image",
-      "imageContentPolitical": "Image content harms political interests. Please choose another image",
-      "imageContentSocial": "Image content harms social interests. Please choose another image",
-      "imageContentEconomic": "Image content harms economic interests. Please choose another image",
-      "imageContentLegal": "Image content harms legal interests. Please choose another image",
-      "imageContentEthical": "Image content harms ethical interests. Please choose another image",
-      "imageContentMoral": "Image content harms moral interests. Please choose another image",
-      "imageContentSpiritual": "Image content harms spiritual interests. Please choose another image",
-      "imageContentPhilosophical": "Image content harms philosophical interests. Please choose another image",
-      "imageContentScientific": "Image content harms scientific interests. Please choose another image",
-      "imageContentTechnical": "Image content harms technical interests. Please choose another image",
-      "imageContentArtistic": "Image content harms artistic interests. Please choose another image",
-      "imageContentCreative": "Image content harms creative interests. Please choose another image",
-      "imageContentIntellectual": "Image content harms intellectual interests. Please choose another image",
-      "imageContentEducational": "Image content harms educational interests. Please choose another image",
-      "imageContentInformational": "Image content harms informational interests. Please choose another image",
-      "imageContentNews": "Image content harms news interests. Please choose another image",
-      "imageContentMedia": "Image content harms media interests. Please choose another image",
-      "imageContentEntertainment": "Image content harms entertainment interests. Please choose another image",
-      "imageContentSports": "Image content harms sports interests. Please choose another image",
-      "imageContentRecreation": "Image content harms recreation interests. Please choose another image",
-      "imageContentLeisure": "Image content harms leisure interests. Please choose another image",
-      "imageContentHobby": "Image content harms hobby interests. Please choose another image",
-      "imageContentInterest": "Image content harms interest interests. Please choose another image",
-      "imageContentPassion": "Image content harms passion interests. Please choose another image",
-      "imageContentLove": "Image content harms love interests. Please choose another image",
-      "imageContentHate": "Image content harms hate interests. Please choose another image",
-      "imageContentAnger": "Image content harms anger interests. Please choose another image",
-      "imageContentFear": "Image content harms fear interests. Please choose another image",
-      "imageContentSadness": "Image content harms sadness interests. Please choose another image",
-      "imageContentJoy": "Image content harms joy interests. Please choose another image",
-      "imageContentHappiness": "Image content harms happiness interests. Please choose another image",
-      "imageContentExcitement": "Image content harms excitement interests. Please choose another image",
-      "imageContentSurprise": "Image content harms surprise interests. Please choose another image",
-      "imageContentDisgust": "Image content harms disgust interests. Please choose another image",
-      "imageContentShame": "Image content harms shame interests. Please choose another image",
-      "imageContentGuilt": "Image content harms guilt interests. Please choose another image",
-      "imageContentPride": "Image content harms pride interests. Please choose another image",
-      "imageContentEnvy": "Image content harms envy interests. Please choose another image",
-      "imageContentJealousy": "Image content harms jealousy interests. Please choose another image",
-      "imageContentGreed": "Image content harms greed interests. Please choose another image",
-      "imageContentLust": "Image content harms lust interests. Please choose another image",
-      "imageContentGluttony": "Image content harms gluttony interests. Please choose another image",
-      "imageContentSloth": "Image content harms sloth interests. Please choose another image",
-      "imageContentWrath": "Image content harms wrath interests. Please choose another image"
+    "madeWithLove": "Made with love on earth",
+    "sections": {
+      "contact": "Contact",
+      "legal": "Legal",
+      "product": "Product"
     },
-    "warning": {
-      "usernameCooldown": "Username change is temporarily locked due to cooldown period",
-      "usernameCooldownUnknown": "You can change your username now",
-      "usernameCooldownReady": "You can change your username now",
-      "usernameCooldownDays": "You can change your username after {{days}} day(s) ({{date}})",
-      "usernameCooldownHours": "You can change your username in {{hours}} hour(s) (after {{time}})",
-      "usernameCooldownMinutes": "You can change your username in {{minutes}} minute(s) (after {{time}})",
-      "passwordWeak": "Password is weak. Consider using a stronger password",
-      "emailNotVerified": "Email is not verified. Please verify your email",
-      "phoneNotVerified": "Phone number is not verified. Please verify your phone",
-      "profileIncomplete": "Profile is incomplete. Please complete your profile",
-      "settingsNotSaved": "Settings are not saved. Please save your settings",
-      "dataNotSaved": "Data is not saved. Please save your data",
-      "changesNotSaved": "Changes are not saved. Please save your changes",
-      "fileNotUploaded": "File is not uploaded. Please upload your file",
-      "imageNotUploaded": "Image is not uploaded. Please upload your image",
-      "linkNotCopied": "Link is not copied. Please copy your link",
-      "emailNotSent": "Email is not sent. Please send your email",
-      "notificationNotSent": "Notification is not sent. Please send your notification",
-      "actionNotCompleted": "Action is not completed. Please complete your action",
-      "formNotSubmitted": "Form is not submitted. Please submit your form",
-      "onboardingNotCompleted": "Onboarding is not completed. Please complete your onboarding",
-      "accountNotActivated": "Account is not activated. Please activate your account",
-      "passwordNotChanged": "Password is not changed. Please change your password",
-      "usernameNotChanged": "Username is not changed. Please change your username",
-      "profileNotCompleted": "Profile is not completed. Please complete your profile",
-      "setupNotCompleted": "Setup is not completed. Please complete your setup",
-      "networkSlow": "Network is slow. Please check your connection",
-      "serverSlow": "Server is slow. Please try again later",
-      "validationPending": "Validation is pending. Please wait",
-      "permissionPending": "Permission is pending. Please wait",
-      "sessionExpiring": "Session is expiring. Please login again",
-      "credentialsExpiring": "Credentials are expiring. Please update your credentials",
-      "emailExpiring": "Email is expiring. Please update your email",
-      "phoneExpiring": "Phone is expiring. Please update your phone",
-      "profileExpiring": "Profile is expiring. Please update your profile",
-      "settingsExpiring": "Settings are expiring. Please update your settings",
-      "dataExpiring": "Data is expiring. Please update your data",
-      "changesExpiring": "Changes are expiring. Please update your changes",
-      "fileExpiring": "File is expiring. Please update your file",
-      "imageExpiring": "Image is expiring. Please update your image",
-      "linkExpiring": "Link is expiring. Please update your link",
-      "notificationExpiring": "Notification is expiring. Please update your notification",
-      "actionExpiring": "Action is expiring. Please update your action",
-      "formExpiring": "Form is expiring. Please update your form",
-      "onboardingExpiring": "Onboarding is expiring. Please update your onboarding",
-      "accountExpiring": "Account is expiring. Please update your account",
-      "passwordExpiring": "Password is expiring. Please update your password",
-      "usernameExpiring": "Username is expiring. Please update your username",
-      "setupExpiring": "Setup is expiring. Please update your setup"
+    "tagline": "Let your recommendations travel the world."
+  },
+  "header": {
+    "auth": {
+      "login": "Login",
+      "signUp": "Sign Up"
     },
-    "info": {
-      "loading": "Loading...",
-      "processing": "Processing...",
-      "saving": "Saving...",
-      "uploading": "Uploading...",
-      "downloading": "Downloading...",
-      "connecting": "Connecting...",
-      "disconnecting": "Disconnecting...",
-      "sending": "Sending...",
-      "receiving": "Receiving...",
-      "updating": "Updating...",
-      "refreshing": "Refreshing...",
-      "synchronizing": "Synchronizing...",
-      "validating": "Validating...",
-      "verifying": "Verifying...",
-      "checking": "Checking...",
-      "searching": "Searching...",
-      "filtering": "Filtering...",
-      "sorting": "Sorting...",
-      "organizing": "Organizing...",
-      "arranging": "Arranging...",
-      "accountAlreadyExists": "Account already exists. Redirecting to home...",
-      "configuring": "Configuring...",
-      "setting": "Setting...",
-      "adjusting": "Adjusting...",
-      "modifying": "Modifying...",
-      "changing": "Changing...",
-      "switching": "Switching...",
-      "toggling": "Toggling...",
-      "enabling": "Enabling...",
-      "disabling": "Disabling...",
-      "activating": "Activating...",
-      "deactivating": "Deactivating...",
-      "starting": "Starting...",
-      "stopping": "Stopping...",
-      "pausing": "Pausing...",
-      "resuming": "Resuming...",
-      "restarting": "Restarting...",
-      "resetting": "Resetting...",
-      "clearing": "Clearing...",
-      "deleting": "Deleting...",
-      "removing": "Removing...",
-      "adding": "Adding...",
-      "inserting": "Inserting...",
-      "creating": "Creating...",
-      "building": "Building...",
-      "constructing": "Constructing...",
-      "generating": "Generating...",
-      "producing": "Producing...",
-      "making": "Making...",
-      "preparing": "Preparing...",
-      "readying": "Readying...",
-      "initializing": "Initializing...",
-      "launching": "Launching...",
-      "opening": "Opening...",
-      "closing": "Closing...",
-      "shutting": "Shutting...",
-      "ending": "Ending...",
-      "finishing": "Finishing...",
-      "completing": "Completing...",
-      "finalizing": "Finalizing...",
-      "concluding": "Concluding...",
-      "terminating": "Terminating...",
-      "canceling": "Canceling...",
-      "aborting": "Aborting...",
-      "interrupting": "Interrupting...",
-      "halting": "Halting...",
-      "freezing": "Freezing...",
-      "unfreezing": "Unfreezing...",
-      "thawing": "Thawing...",
-      "melting": "Melting...",
-      "cooling": "Cooling...",
-      "heating": "Heating...",
-      "warming": "Warming...",
-      "chilling": "Chilling...",
-      "renewing": "Renewing...",
-      "restoring": "Restoring...",
-      "recovering": "Recovering...",
-      "repairing": "Repairing...",
-      "fixing": "Fixing...",
-      "correcting": "Correcting...",
-      "tuning": "Tuning...",
-      "optimizing": "Optimizing...",
-      "improving": "Improving...",
-      "enhancing": "Enhancing...",
-      "upgrading": "Upgrading...",
-      "modernizing": "Modernizing..."
+    "nav": {
+      "about": "About",
+      "contact": "Contact",
+      "faq": "FAQ",
+      "howItWorks": "How It Works",
+      "whoIsFor": "Who is it for?"
     }
   },
-  "settings": {
-    "title": "Settings",
-    "subtitle": "Manage your account settings and preferences",
-    "account": {
-      "heading": "Account",
-      "security": {
-        "title": "Account & Security"
-      },
-      "changePassword": {
-        "text": "Change password?",
-        "description": "Update your password to keep your account secure",
-        "button": "Change Password",
-        "modalTitle": "Deactivate your Account?",
-        "currentPassword": "Current password",
-        "newPassword": "New password",
-        "confirmPassword": "Confirm new password",
-        "updateButton": "Update Password",
-        "currentPasswordPlaceholder": "Enter your current password",
-        "newPasswordPlaceholder": "Enter a new password",
-        "confirmPasswordPlaceholder": "Re-enter the new password",
-        "successMessage": "Password updated successfully. You will be redirected to login for security.",
-        "redirectMessage": "Redirecting to login for security...",
-        "currentPasswordRequired": "Please enter your current password.",
-        "accountDetailsRequired": "Enter your account Details to proceed further!!",
-        "updateAccountStatusFailed": "Failed to update account status.",
-        "saveReasonFailed": "Failed to save reason. Try again.",
-        "passwordRequiredForDeletion": "Password is required to delete account.",
-        "invalidPassword": "Invalid password. Please check your password and try again.",
-        "deleteAccountFailed": "Failed to delete account.",
-        "accountDocumentIdNotFound": "Could not find account documentId. Please check your username or try again."
-      },
-      "deactivateAccount": {
-        "text": "Deactivate your account?",
-        "description": "Temporarily disable your account",
-        "button": "Deactivate Account",
-        "modalTitle": "Deactivate your Account?",
-        "modalDescription": "Are you sure you want to deactivate your account?",
-        "enterUsername": "Enter your username",
-        "enterPassword": "Enter your password",
-        "usernamePlaceholder": "Enter your username",
-        "passwordPlaceholder": "Enter your current password",
-        "confirmButton": "Deactivate My Account",
-        "deactivatedButton": "Deactivated",
-        "successMessage": "Account deactivated successfully",
-        "activatedMessage": "Account activated successfully"
-      },
-      "deleteAccount": {
-        "text": "Delete your account?",
-        "description": "Permanently delete your account and all data",
-        "button": "Delete Account",
-        "step1": {
-          "modalTitle": "Delete your account?",
-          "modalDescription": "Are you sure you want to delete your account? This action cannot be undone.",
-          "modalDescription2": "If you want to keep your data, you can deactivate your account instead.",
-          "deactivateInsteadButton": "Deactivate account instead",
-          "continueButton": "Continue with deletion"
+  "hero": {
+    "ctaButton": "Claim Your explorers",
+    "headline": "All your recommendations - one link, one QR",
+    "inputLabel": "Claim your explorers URL:",
+    "inputPlaceholder": "yourname",
+    "signupPrompt": "Signup to get yours now",
+    "subtext": "Used by explorers worldwide. One link for everything you recommend - places, guides, movies, shows, music, books, games and more."
+  },
+  "languageModal": {
+    "close": "Close",
+    "searchPlaceholder": "Search languages...",
+    "title": "Select Language"
+  },
+  "legal": {
+    "cookies": {
+      "error": "An error occurred while loading the cookie policy. Please try again later.",
+      "loading": "Loading cookie policy...",
+      "title": "Cookie Policy"
+    },
+    "privacy": {
+      "error": "An error occurred while loading the privacy policy. Please try again later.",
+      "loading": "Loading privacy policy...",
+      "title": "Privacy Policy"
+    },
+    "terms": {
+      "error": "An error occurred while loading the terms and conditions. Please try again later.",
+      "loading": "Loading terms and conditions...",
+      "title": "Terms & Conditions"
+    }
+  },
+  "modal": {
+    "unsavedChanges": {
+      "cancel": "Cancel",
+      "discard": "Discard",
+      "message": "You have unsaved changes that will be lost if you navigate away. What would you like to do?",
+      "save": "Save",
+      "title": "Unsaved Changes"
+    },
+    "usernameChange": {
+      "cancel": "Cancel",
+      "confirm": "Change Username",
+      "cooldownPrefix": "You will be able to change your username again in",
+      "cooldownSuffix": "after this update.",
+      "day": "1 day",
+      "days": "days",
+      "description": "Your username is used in your profile and recommendation list links:",
+      "listLabel": "List:",
+      "minute": "1 minute",
+      "profileLabel": "Profile:",
+      "title": "Username Change Confirmation",
+      "warning": "Any QR codes or links with your old username will no longer work — you'll need to update and re-share them."
+    }
+  },
+  "reactivateAccount": {
+    "backToLogin": "Back to Login",
+    "confirmDescription": "Your account has been successfully reactivated. You can now sign in with your credentials.",
+    "confirmError": "Invalid or Expired Link",
+    "confirmTitle": "Account Reactivated!",
+    "emailPlaceholder": "Enter your email address",
+    "emailSent": "Check your inbox!",
+    "emailSentDescription": "We've sent a reactivation link to your email address. The link expires in 24 hours. Check your spam folder if you don't see it.",
+    "goToLogin": "Go to Login",
+    "resendButton": "Resend Link",
+    "resendIn": "Resend in",
+    "sendButton": "Send Reactivation Link",
+    "subtitle": "Enter the email address associated with your deactivated account and we'll send you a reactivation link.",
+    "title": "Reactivate Your Account",
+    "tryAgain": "Request New Link"
+  },
+  "sections": {
+    "analytics": {
+      "dashboardTitle": "Analytics Dashboard",
+      "engagement": "Engagement",
+      "headline": "Track clicks, referrals, and engagement",
+      "last30Days": "Last 30 days",
+      "referrals": "Referrals",
+      "scanningDesc": "Monitor QR scans and updates",
+      "scanningTitle": "Who's scanning",
+      "spotsDesc": "Data-driven insights for better curation",
+      "spotsTitle": "Top-performing spots",
+      "subtext": "See what's working, who's scanning, and which places get the most love — in real time.",
+      "totalScans": "Total Scans",
+      "workingDesc": "Track popularity of your recommendations",
+      "workingTitle": "See what's working"
+    },
+    "createCustomize": {
+      "bulletPoints": {
+        "addSpots": {
+          "description": "",
+          "title": "Add places, experiences, routes, sounds, movies, shows, books, games, and notes"
         },
-        "step2": {
-          "modalTitle": "Enter your details",
-          "enterUsername": "Enter your username",
-          "enterPassword": "Enter your password",
-          "confirmPassword": "Confirm your password",
-          "usernamePlaceholder": "Enter your username",
-          "passwordPlaceholder": "Enter your password",
-          "confirmPasswordPlaceholder": "Confirm your password",
-          "continueButton": "Continue"
+        "generate": {
+          "description": "",
+          "title": "Edit anytime — your link always stays the same"
         },
-        "step3": {
-          "modalTitle": "Why are you leaving?",
-          "reasonPlaceholder": "Please let us know the reason for leaving...",
-          "continueButton": "Continue"
+        "organize": {
+          "description": "",
+          "title": "Organize by location or interest"
         },
-        "step4": {
-          "modalTitle": "Confirm deletion",
-          "confirmText": "Type 'CONFIRM DELETE' to continue",
-          "confirmPlaceholder": "Type 'CONFIRM DELETE' to confirm",
-          "confirmTextValue": "CONFIRM DELETE",
-          "deleteButton": "Delete My Account",
-          "confirmationRequired": "Please type 'CONFIRM DELETE' to confirm.",
-          "reasonRequired": "Please provide a reason for leaving.",
-          "successMessage": "Account deleted successfully."
+        "share": {
+          "description": "",
+          "title": "Share digitally or through a QR in the real world"
         }
+      },
+      "headline": "Create your Explorer page in minutes",
+      "mockup": {
+        "addPlace": "Add Place",
+        "title": "My Recommendations"
+      },
+      "subtext": "Collect everything you'd normally share across messages, notes, or conversations — and bring it together in one place.\n\nOrganize your recommendations by city, journey, theme, or moment, and update them anytime as your perspective evolves."
+    },
+    "faq": {
+      "error": "Error loading FAQs. Please try again later.",
+      "headline": "Got questions?",
+      "loading": "Loading FAQs...",
+      "subtext": "We've answered the most common things people ask before getting started."
+    },
+    "features": {
+      "communityDriven": {
+        "title": "Community-driven discovery"
+      },
+      "livingGuides": {
+        "title": "Living, editable guides"
+      },
+      "locationAware": {
+        "title": "Location-aware recommendations"
+      },
+      "privacyFirst": {
+        "title": "Privacy-first by design"
+      },
+      "simpleLinks": {
+        "title": "Simple links and QR sharing"
+      },
+      "soundPlaylists": {
+        "title": "Optional sound and playlists"
+      },
+      "subtitle": "Simple, thoughtful features that let your recommendations shine.",
+      "title": "Built to stay out of the way"
+    },
+    "finalCTA": {
+      "creating": "Creating your explorers...",
+      "ctaButton": "Claim Your explorers – Free Forever",
+      "disclaimer": "No credit card required • Set up in 2 minutes",
+      "headline": "Start sharing your world today",
+      "subtext": "Claim your free explorers and turn your local insights into shareable guides."
+    },
+    "localTunes": {
+      "body": "Exploration isn't only visual. Sound carries memory, context, and emotion.\n\nLocalTunes lets you collect and share soundtracks for places, journeys, and moods — whether it's music discovered on the road or sounds that define a place for you.\n\nSeamlessly connected to your Explorer profile.",
+      "closingStatement": "Tunes is <strong>free</strong> to explore, and for paid features you can upgrade afterwards.",
+      "exploreButton": "Explore Tunes",
+      "features": {
+        "karaokeReady": {
+          "description": "Perfect for karaoke nights with collaborative playlists and real-time song requests.",
+          "title": "Karaoke Ready"
+        },
+        "qrCodeSharing": {
+          "description": "Share your music experience with a simple QR code scan - no apps or downloads required.",
+          "title": "QR Code Sharing"
+        },
+        "realtimeCollaboration": {
+          "description": "Let guests add songs to your playlist instantly while you maintain full control over what plays.",
+          "title": "Real-time Collaboration"
+        },
+        "silentParties": {
+          "description": "Host unique silent parties where everyone listens through their own headphones.",
+          "title": "Silent Parties"
+        },
+        "voteLikeSystem": {
+          "description": "Guests can vote for their favorite songs to influence the playlist queue in real-time.",
+          "title": "Vote & Like System"
+        },
+        "youtubeIntegration": {
+          "description": "Seamlessly integrate with YouTube to access millions of songs and create the perfect atmosphere.",
+          "title": "YouTube Integration"
+        }
+      },
+      "featuresHeading": "Powerful Features",
+      "mainHeading": "Tunes",
+      "title": "Listen as you explore",
+      "venueHeading": "Perfect for Every Venue",
+      "venues": {
+        "barsPubs": "Bars & Pubs",
+        "coffeeShops": "Coffee Shops",
+        "eventsWeddings": "Events & Weddings",
+        "gymsFitness": "Gyms & Fitness",
+        "restaurants": "Restaurants",
+        "retailStores": "Retail Stores"
       }
     },
-    "languagePreference": {
-      "heading": "Language Preference",
-      "description": "Choose your preferred language for the interface. This will change the language of all text, buttons, and menus throughout the application.",
-      "selectLanguage": "Select your language",
-      "availableLanguages": "Choose from 47 available languages",
-      "currentLanguage": "Current: {{flag}} {{name}}",
-      "languageChanged": "Language changed to {{name}}",
-      "searchPlaceholder": "Search languages...",
-      "noLanguagesFound": "No languages found"
+    "referEarn": {
+      "comingSoon": "Referral rewards program (coming soon)",
+      "earnedThisMonth": "Earned this month",
+      "headline": "Share, refer, and earn",
+      "networkTitle": "Build your network and earn automatically",
+      "passiveTitle": "Turn recommendations into passive rewards",
+      "rewardsDesc": "Get paid when people use your recommendations",
+      "rewardsTitle": "Earn Rewards",
+      "subtext": "Turn your recommendations into passive rewards — get credit when others use your QR."
+    },
+    "shareAnywhere": {
+      "cafeMenu": "Cafe Menu",
+      "headline": "One link. Many journeys.",
+      "instagramDesc": "Share with your followers instantly",
+      "instagramTitle": "Add to your Instagram/Tiktok Bio",
+      "menuDesc": "Physical touchpoints made easy",
+      "menuTitle": "Print it for Storefront",
+      "profileCarouselCaption": "Instagram & TikTok profiles",
+      "qrEverywhereDesc": "Perfect for Every Venue",
+      "qrEverywhereTitle": "Add the QR link everywhere",
+      "scanText": "Scan for local recommendations",
+      "storefrontText": "Perfect for storefront displays",
+      "subtext": "Your Explorer link becomes a living guide — something people can save, revisit, and explore at their own pace.\n\nShare it on a profile, message, table, wall, or card.\nWherever it goes, your perspective goes with it.",
+      "tokyoFoodGuide": "My Tokyo food guide explorers.earth/jane",
+      "welcomeDesc": "Perfect for hosts and guides",
+      "welcomeTitle": "Include in welcome books"
+    },
+    "testimonials": {
+      "headline": "Loved by travelers, creators, and hosts",
+      "items": [
+        {
+          "id": "1",
+          "location": "Mumbai, India",
+          "name": "Priya Sharma",
+          "quote": "explorers transformed how I share my travel knowledge. My followers love getting instant access to my curated recommendations!",
+          "role": "Travel Blogger"
+        },
+        {
+          "id": "2",
+          "location": "Delhi, India",
+          "name": "Raj Patel",
+          "quote": "My guests absolutely love the personalized QR code in their welcome kit. It's become my signature touch!",
+          "role": "Airbnb Host"
+        },
+        {
+          "id": "3",
+          "location": "Tokyo, Japan",
+          "name": "Yuki Tanaka",
+          "quote": "We share our explorers with customers to recommend other local spots. It's created amazing community connections.",
+          "role": "Restaurant Owner"
+        },
+        {
+          "id": "4",
+          "location": "São Paulo, Brazil",
+          "name": "Maria Silva",
+          "quote": "explorers helps me extend my expertise beyond tour hours. Clients can access my recommendations anytime!",
+          "role": "Tour Guide"
+        },
+        {
+          "id": "5",
+          "location": "Sydney, Australia",
+          "name": "James Wilson",
+          "quote": "As a travel influencer, explorers makes it so easy to share my favorite spots with my audience. The QR code feature is brilliant!",
+          "role": "Travel Influencer"
+        },
+        {
+          "id": "6",
+          "location": "Paris, France",
+          "name": "Sophie Martin",
+          "quote": "I use explorers to create walking tours for my clients. They can scan the QR and explore at their own pace!",
+          "role": "Local Guide"
+        }
+      ],
+      "scrollLeft": "Scroll testimonials left",
+      "scrollRight": "Scroll testimonials right",
+      "subtext": "See how people around the world use explorers to share what matters most."
+    },
+    "whoIsFor": {
+      "cards": {
+        "businesses": {
+          "items": {
+            "boutique": {
+              "label": "Boutique",
+              "oneLiner": "Boutiques listing curated finds"
+            },
+            "cafe": {
+              "label": "Café",
+              "oneLiner": "Cafés highlighting favorite menu items"
+            },
+            "clinic": {
+              "label": "Clinic",
+              "oneLiner": "Clinics sharing health-related locations"
+            },
+            "gym": {
+              "label": "Gym",
+              "oneLiner": "Gyms suggesting local wellness spots"
+            },
+            "restaurant": {
+              "label": "Restaurant",
+              "oneLiner": "Restaurants sharing must-try dishes"
+            },
+            "retailShop": {
+              "label": "Retail Shop",
+              "oneLiner": "Shops sharing product recommendations"
+            },
+            "salon": {
+              "label": "Salon",
+              "oneLiner": "Salons offering beauty guides"
+            },
+            "spa": {
+              "label": "Spa",
+              "oneLiner": "Spas listing nearby relaxation options"
+            }
+          },
+          "oneLiner": "Guide customers with helpful recommendations.",
+          "title": "Businesses"
+        },
+        "creators": {
+          "items": {
+            "blogger": {
+              "label": "Blogger",
+              "oneLiner": "Bloggers curating written guides"
+            },
+            "communityLeader": {
+              "label": "Community Leader",
+              "oneLiner": "Community leaders curating useful lists"
+            },
+            "educator": {
+              "label": "Educator",
+              "oneLiner": "Educators sharing learning guides"
+            },
+            "influencer": {
+              "label": "Influencer",
+              "oneLiner": "Influencers sharing top picks"
+            },
+            "photographer": {
+              "label": "Photographer",
+              "oneLiner": "Photographers sharing photo spots"
+            },
+            "reviewer": {
+              "label": "Reviewer",
+              "oneLiner": "Reviewers listing best-rated places"
+            },
+            "vlogger": {
+              "label": "Vlogger",
+              "oneLiner": "Vloggers sharing visual journeys"
+            }
+          },
+          "oneLiner": "Share curated lists with your audience.",
+          "title": "Creators"
+        },
+        "hospitality": {
+          "items": {
+            "airbnb": {
+              "label": "Airbnb",
+              "oneLiner": "Hosts sharing neighborhood favorites"
+            },
+            "homestay": {
+              "label": "Homestay",
+              "oneLiner": "Homestays offering family-oriented guides"
+            },
+            "hostel": {
+              "label": "Hostel",
+              "oneLiner": "Hostels sharing backpacker tips"
+            },
+            "hotel": {
+              "label": "Hotel",
+              "oneLiner": "Hotels offering local guidebooks"
+            },
+            "pgColiving": {
+              "label": "PG/Coliving",
+              "oneLiner": "PG/Coliving showing important nearby places"
+            },
+            "resort": {
+              "label": "Resort",
+              "oneLiner": "Resorts providing activity lists"
+            }
+          },
+          "oneLiner": "Offer guests curated local insights.",
+          "title": "Hospitality"
+        },
+        "individuals": {
+          "items": {
+            "emergencySharer": {
+              "label": "Emergency Sharer",
+              "oneLiner": "Emergency sharers posting essential places"
+            },
+            "family": {
+              "label": "Family",
+              "oneLiner": "Families sharing useful places"
+            },
+            "local": {
+              "label": "Local",
+              "oneLiner": "Locals sharing neighborhood tips"
+            },
+            "nomad": {
+              "label": "Nomad",
+              "oneLiner": "Nomads listing work-friendly spaces"
+            },
+            "student": {
+              "label": "Student",
+              "oneLiner": "Students sharing campus/nearby spots"
+            },
+            "traveler": {
+              "label": "Traveler",
+              "oneLiner": "People sharing travel spots"
+            }
+          },
+          "oneLiner": "Share personal or local recommendations.",
+          "title": "Individuals"
+        },
+        "organizations": {
+          "items": {
+            "agency": {
+              "label": "Agency",
+              "oneLiner": "Travel agencies listing must-visits"
+            },
+            "airline": {
+              "label": "Airline",
+              "oneLiner": "Airlines sharing city guides"
+            },
+            "airport": {
+              "label": "Airport",
+              "oneLiner": "Airports offering terminals + city tips"
+            },
+            "corporate": {
+              "label": "Corporate",
+              "oneLiner": "Corporates listing nearby resources"
+            },
+            "government": {
+              "label": "Government",
+              "oneLiner": "Departments highlighting public services"
+            },
+            "ngo": {
+              "label": "NGO",
+              "oneLiner": "NGOs sharing community resources"
+            },
+            "railway": {
+              "label": "Railway",
+              "oneLiner": "Railways sharing platform info"
+            },
+            "university": {
+              "label": "University",
+              "oneLiner": "Universities sharing campus essentials"
+            }
+          },
+          "oneLiner": "Provide curated guides and resources.",
+          "title": "Organizations"
+        }
+      },
+      "headline": "Who is explorers.earth for?",
+      "subtext": "explorers.earth is for anyone who believes sharing is a responsibility — not a broadcast.",
+      "useCases": {
+        "airbnbHosts": "Airbnb Hosts",
+        "airbnbHostsDesc": "Enhance guest experience with local insights",
+        "anyBusiness": "Any Business",
+        "anyBusinessDesc": "Build community and customer loyalty",
+        "cafes": "Cafes",
+        "cafesDesc": "Share neighborhood favorites with customers",
+        "creators": "Creators",
+        "creatorsDesc": "Add value beyond content with actionable tips",
+        "hotels": "Hotels",
+        "hotelsDesc": "Provide curated local recommendations",
+        "influencers": "Influencers",
+        "influencersDesc": "Monetize local knowledge and build community",
+        "localGuides": "Local Guides",
+        "localGuidesDesc": "Scale expertise beyond individual tours",
+        "restaurants": "Restaurants",
+        "restaurantsDesc": "Cross-promote with other local businesses",
+        "tourOperators": "Tour Operators",
+        "tourOperatorsDesc": "Extend experience beyond scheduled tours",
+        "travelers": "Travelers",
+        "travelersDesc": "Share discovered gems with fellow explorers"
+      }
     }
   },
   "seo": {
     "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
     "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
   },
+  "settings": {
+    "account": {
+      "changePassword": {
+        "accountDetailsRequired": "Enter your account Details to proceed further!!",
+        "accountDocumentIdNotFound": "Could not find account documentId. Please check your username or try again.",
+        "button": "Change Password",
+        "confirmPassword": "Confirm new password",
+        "confirmPasswordPlaceholder": "Re-enter the new password",
+        "currentPassword": "Current password",
+        "currentPasswordPlaceholder": "Enter your current password",
+        "currentPasswordRequired": "Please enter your current password.",
+        "deleteAccountFailed": "Failed to delete account.",
+        "description": "Update your password to keep your account secure",
+        "invalidPassword": "Invalid password. Please check your password and try again.",
+        "modalTitle": "Deactivate your Account?",
+        "newPassword": "New password",
+        "newPasswordPlaceholder": "Enter a new password",
+        "passwordRequiredForDeletion": "Password is required to delete account.",
+        "redirectMessage": "Redirecting to login for security...",
+        "saveReasonFailed": "Failed to save reason. Try again.",
+        "successMessage": "Password updated successfully. You will be redirected to login for security.",
+        "text": "Change password?",
+        "updateAccountStatusFailed": "Failed to update account status.",
+        "updateButton": "Update Password"
+      },
+      "deactivateAccount": {
+        "activatedMessage": "Account activated successfully",
+        "button": "Deactivate Account",
+        "confirmButton": "Deactivate My Account",
+        "deactivatedButton": "Deactivated",
+        "description": "Temporarily disable your account",
+        "enterPassword": "Enter your password",
+        "enterUsername": "Enter your username",
+        "modalDescription": "Are you sure you want to deactivate your account?",
+        "modalTitle": "Deactivate your Account?",
+        "passwordPlaceholder": "Enter your current password",
+        "reactivationHint": "You can reactivate your account later using your email.",
+        "reactivationLink": "Learn how →",
+        "successMessage": "Account deactivated successfully",
+        "text": "Deactivate your account?",
+        "usernamePlaceholder": "Enter your username"
+      },
+      "deleteAccount": {
+        "button": "Delete Account",
+        "description": "Permanently delete your account and all data",
+        "step1": {
+          "continueButton": "Continue with deletion",
+          "deactivateInsteadButton": "Deactivate account instead",
+          "modalDescription": "Are you sure you want to delete your account? This action cannot be undone.",
+          "modalDescription2": "If you want to keep your data, you can deactivate your account instead.",
+          "modalTitle": "Delete your account?"
+        },
+        "step2": {
+          "confirmPassword": "Confirm your password",
+          "confirmPasswordPlaceholder": "Confirm your password",
+          "continueButton": "Continue",
+          "enterPassword": "Enter your password",
+          "enterUsername": "Enter your username",
+          "modalTitle": "Enter your details",
+          "passwordPlaceholder": "Enter your password",
+          "usernamePlaceholder": "Enter your username"
+        },
+        "step3": {
+          "continueButton": "Continue",
+          "modalTitle": "Why are you leaving?",
+          "reasonPlaceholder": "Please let us know the reason for leaving..."
+        },
+        "step4": {
+          "confirmationRequired": "Please type 'CONFIRM DELETE' to confirm.",
+          "confirmPlaceholder": "Type 'CONFIRM DELETE' to confirm",
+          "confirmText": "Type 'CONFIRM DELETE' to continue",
+          "confirmTextValue": "CONFIRM DELETE",
+          "deleteButton": "Delete My Account",
+          "modalTitle": "Confirm deletion",
+          "reasonRequired": "Please provide a reason for leaving.",
+          "successMessage": "Account deleted successfully."
+        },
+        "text": "Delete your account?"
+      },
+      "heading": "Account",
+      "security": {
+        "title": "Account & Security"
+      }
+    },
+    "languagePreference": {
+      "availableLanguages": "Choose from 47 available languages",
+      "currentLanguage": "Current: {{flag}} {{name}}",
+      "description": "Choose your preferred language for the interface. This will change the language of all text, buttons, and menus throughout the application.",
+      "heading": "Language Preference",
+      "languageChanged": "Language changed to {{name}}",
+      "noLanguagesFound": "No languages found",
+      "searchPlaceholder": "Search languages...",
+      "selectLanguage": "Select your language"
+    },
+    "subtitle": "Manage your account settings and preferences",
+    "title": "Settings"
+  },
   "sidebar": {
-    "home": "Home",
-    "profile": "Profile",
-    "recommendations": "Recommendations",
-    "places": "Places",
     "analytics": "Analytics",
-    "settings": "Settings",
-    "music": "Music",
-    "logout": "Logout",
-    "loading": "Loading...",
     "clickToOpenMenu": "Click to open menu",
     "darkMode": "Dark Mode",
-    "lightMode": "Light Mode"
+    "home": "Home",
+    "lightMode": "Light Mode",
+    "loading": "Loading...",
+    "logout": "Logout",
+    "music": "Music",
+    "places": "Places",
+    "profile": "Profile",
+    "recommendations": "Recommendations",
+    "settings": "Settings"
   },
-  "modal": {
-    "unsavedChanges": {
-      "title": "Unsaved Changes",
-      "message": "You have unsaved changes that will be lost if you navigate away. What would you like to do?",
-      "discard": "Discard",
-      "cancel": "Cancel",
-      "save": "Save"
+  "toast": {
+    "error": {
+      "accessDenied": "Access denied. You don't have permission to perform this action.",
+      "accountActivationFailed": "Account activation failed. Please try again.",
+      "accountAlreadyExists": "Account already exists. Redirecting to home...",
+      "accountCreationFailed": "Account creation failed. Please try again.",
+      "accountDeleted": "Account is deleted. Please contact support.",
+      "accountExistsRefresh": "Account already exists. Please refresh the page.",
+      "accountLocked": "Account is locked. Please contact support.",
+      "accountSuspended": "Account is suspended. Please contact support.",
+      "accountTypeRequired": "Account type is required",
+      "actionFailed": "Action failed. Please try again.",
+      "addressRequired": "Address is required",
+      "allFilesAlreadyUploaded": "All selected files are already uploaded!",
+      "alreadyExists": "Already Exist!!",
+      "backgroundImageUpdateFailed": "Failed to upload background image. Please try again.",
+      "bioRequired": "Bio is required",
+      "bioTooLong": "Bio is too long. Please keep it under 250 characters",
+      "captchaFailed": "Captcha verification failed. Please try again.",
+      "changesSaveFailed": "Failed to save changes. Please try again.",
+      "cityRequired": "City is required",
+      "codeLimitExceeded": "Code limit exceeded. Please try again later.",
+      "conflictError": "Conflict error. The resource already exists.",
+      "countryRequired": "Country is required",
+      "dataSaveFailed": "Failed to save data. Please try again.",
+      "displayNameRequired": "Display name is required",
+      "displayNameTooLong": "Display name is too long",
+      "displayNameTooShort": "Display name is too short",
+      "duplicateFilesSkipped": "{{count}} duplicate file(s) were skipped.",
+      "emailAlreadyExists": "Email already exists. Please use another email.",
+      "emailConfirmationSendingFailed": "Account created successfully, but failed to send confirmation email. Please try resending from the verification page.",
+      "emailNotFound": "Email not found. Try again.",
+      "emailNotVerified": "Email is not verified. Please verify your email first.",
+      "emailSendFailed": "Failed to send email. Please try again.",
+      "emailVerificationFailed": "Email verification failed. Please try again.",
+      "errorCroppingImage": "Error Cropping the Image.",
+      "errorLoadingCategories": "Error Loading Categories!!!",
+      "errorValidatingFiles": "An error occurred while validating files",
+      "expiredCode": "Code has expired. Please request a new one.",
+      "expiredToken": "Token has expired. Please try again.",
+      "failedToDeleteRecommendationList": "Failed to delete recommendation list. Please try again.",
+      "failedToFetchImages": "Failed to fetch images",
+      "failedToFetchNearbyPlaces": "Failed to fetch nearby places. Please try again.",
+      "failedToUpdatePassword": "Failed to update password.",
+      "fetchedImages": "Fetched {{count}} image(s)",
+      "fileTooLarge": "File is too large. Please choose a smaller file.",
+      "fileUploadFailed": "File upload failed. Please try again.",
+      "fileValidationError": "An error occurred while validating files",
+      "fileValidationErrorWithName": "{{fileName}}: {{error}}",
+      "formSubmissionFailed": "Form submission failed. Please try again.",
+      "graphQLErrorOccurred": "GraphQL error occurred",
+      "imageAspectRatioInvalid": "Image aspect ratio is invalid. Please choose another image",
+      "imageColorSpaceInvalid": "Image color space is invalid. Please choose another image",
+      "imageContentAbusive": "Image content is abusive. Please choose another image",
+      "imageContentAcademic": "Image content harms academic interests. Please choose another image",
+      "imageContentAnger": "Image content harms anger interests. Please choose another image",
+      "imageContentAnimals": "Image content involves animal cruelty. Please choose another image",
+      "imageContentArtistic": "Image content harms artistic interests. Please choose another image",
+      "imageContentBrand": "Image content harms brand. Please choose another image",
+      "imageContentBusiness": "Image content harms business. Please choose another image",
+      "imageContentConsent": "Image content lacks consent. Please choose another image",
+      "imageContentCopyright": "Image content violates copyright. Please choose another image",
+      "imageContentCreative": "Image content harms creative interests. Please choose another image",
+      "imageContentCultural": "Image content harms cultural interests. Please choose another image",
+      "imageContentDangerous": "Image content is dangerous. Please choose another image",
+      "imageContentDiscriminatory": "Image content is discriminatory. Please choose another image",
+      "imageContentDisgust": "Image content harms disgust interests. Please choose another image",
+      "imageContentEconomic": "Image content harms economic interests. Please choose another image",
+      "imageContentEducational": "Image content harms educational interests. Please choose another image",
+      "imageContentEntertainment": "Image content harms entertainment interests. Please choose another image",
+      "imageContentEnvironment": "Image content harms environment. Please choose another image",
+      "imageContentEnvy": "Image content harms envy interests. Please choose another image",
+      "imageContentEthical": "Image content harms ethical interests. Please choose another image",
+      "imageContentExcitement": "Image content harms excitement interests. Please choose another image",
+      "imageContentFear": "Image content harms fear interests. Please choose another image",
+      "imageContentGluttony": "Image content harms gluttony interests. Please choose another image",
+      "imageContentGreed": "Image content harms greed interests. Please choose another image",
+      "imageContentGuilt": "Image content harms guilt interests. Please choose another image",
+      "imageContentHappiness": "Image content harms happiness interests. Please choose another image",
+      "imageContentHarassing": "Image content is harassing. Please choose another image",
+      "imageContentHate": "Image content harms hate interests. Please choose another image",
+      "imageContentHateful": "Image content is hateful. Please choose another image",
+      "imageContentHealth": "Image content harms health. Please choose another image",
+      "imageContentHobby": "Image content harms hobby interests. Please choose another image",
+      "imageContentIllegal": "Image content is illegal. Please choose another image",
+      "imageContentInappropriate": "Image content is inappropriate. Please choose another image",
+      "imageContentInformational": "Image content harms informational interests. Please choose another image",
+      "imageContentIntegrity": "Image content harms integrity. Please choose another image",
+      "imageContentIntellectual": "Image content harms intellectual interests. Please choose another image",
+      "imageContentInterest": "Image content harms interest interests. Please choose another image",
+      "imageContentJealousy": "Image content harms jealousy interests. Please choose another image",
+      "imageContentJoy": "Image content harms joy interests. Please choose another image",
+      "imageContentLegal": "Image content harms legal interests. Please choose another image",
+      "imageContentLeisure": "Image content harms leisure interests. Please choose another image",
+      "imageContentLove": "Image content harms love interests. Please choose another image",
+      "imageContentLust": "Image content harms lust interests. Please choose another image",
+      "imageContentMedia": "Image content harms media interests. Please choose another image",
+      "imageContentMinors": "Image content involves minors. Please choose another image",
+      "imageContentMoral": "Image content harms moral interests. Please choose another image",
+      "imageContentNews": "Image content harms news interests. Please choose another image",
+      "imageContentOffensive": "Image content is offensive. Please choose another image",
+      "imageContentPassion": "Image content harms passion interests. Please choose another image",
+      "imageContentPersonal": "Image content harms personal interests. Please choose another image",
+      "imageContentPhilosophical": "Image content harms philosophical interests. Please choose another image",
+      "imageContentPolitical": "Image content harms political interests. Please choose another image",
+      "imageContentPride": "Image content harms pride interests. Please choose another image",
+      "imageContentPrivacy": "Image content violates privacy. Please choose another image",
+      "imageContentProfessional": "Image content harms professional interests. Please choose another image",
+      "imageContentRecreation": "Image content harms recreation interests. Please choose another image",
+      "imageContentReligious": "Image content harms religious interests. Please choose another image",
+      "imageContentReputation": "Image content harms reputation. Please choose another image",
+      "imageContentSadness": "Image content harms sadness interests. Please choose another image",
+      "imageContentSafety": "Image content harms safety. Please choose another image",
+      "imageContentScientific": "Image content harms scientific interests. Please choose another image",
+      "imageContentSecurity": "Image content harms security. Please choose another image",
+      "imageContentSexual": "Image content is sexual. Please choose another image",
+      "imageContentShame": "Image content harms shame interests. Please choose another image",
+      "imageContentSloth": "Image content harms sloth interests. Please choose another image",
+      "imageContentSocial": "Image content harms social interests. Please choose another image",
+      "imageContentSpiritual": "Image content harms spiritual interests. Please choose another image",
+      "imageContentSports": "Image content harms sports interests. Please choose another image",
+      "imageContentSurprise": "Image content harms surprise interests. Please choose another image",
+      "imageContentTechnical": "Image content harms technical interests. Please choose another image",
+      "imageContentThreatening": "Image content is threatening. Please choose another image",
+      "imageContentTrademark": "Image content violates trademark. Please choose another image",
+      "imageContentViolent": "Image content is violent. Please choose another image",
+      "imageContentWrath": "Image content harms wrath interests. Please choose another image",
+      "imageCorrupted": "Image is corrupted. Please choose another image",
+      "imageDimensionsInvalid": "Image dimensions are invalid. Please choose another image",
+      "imageFormatInvalid": "Image format is invalid. Please choose another image",
+      "imageMalwareDetected": "Malware detected in image. Please choose another image",
+      "imageMetadataInvalid": "Image metadata is invalid. Please choose another image",
+      "imageProcessingFailed": "Image processing failed. Please try again",
+      "imageQualityTooLow": "Image quality is too low. Please choose a higher quality image",
+      "imageRequired": "Image is required",
+      "imageSecurityViolation": "Image security violation. Please choose another image",
+      "imageSizeInvalid": "Image size is invalid. Please choose another image",
+      "imageSpamDetected": "Spam detected in image. Please choose another image",
+      "imageTooBig": "Image is too big. Please choose a smaller image",
+      "imageTooLarge": "Image is too large. Please choose a smaller image",
+      "imageTooSmall": "Image is too small. Please choose a larger image",
+      "imageUploadFailed": "Image upload failed. Please try again",
+      "imageVirusDetected": "Virus detected in image. Please choose another image",
+      "invalidAccountType": "Invalid account type selected",
+      "invalidCode": "Invalid code. Please check your input.",
+      "invalidCredentials": "Invalid credentials. Please check your input.",
+      "invalidEmailFormat": "Invalid email format. Please enter a valid email.",
+      "invalidInput": "Invalid input. Please check your data.",
+      "invalidToken": "Invalid token. Please try again.",
+      "invalidUsername": "Invalid username. Please check your input.",
+      "invalidUsernameWithError": "Invalid username: {{error}}",
+      "linkCopyFailed": "Failed to copy link. Please try again.",
+      "locationAlreadyExists": "This location already exists!",
+      "loginFailed": "Login failed. Please check your credentials.",
+      "maintenanceMode": "Service is under maintenance. Please try again later.",
+      "mobileNumberInvalid": "Invalid mobile number format",
+      "mobileNumberRequired": "Mobile number is required",
+      "mobileNumberTooLong": "Mobile number is too long",
+      "mobileNumberTooShort": "Mobile number is too short",
+      "networkError": "Network error. Please check your connection.",
+      "noImagesFoundForPlace": "No images found for this place",
+      "notificationSendFailed": "Failed to send notification. Please try again.",
+      "noValidFilesSelected": "No valid files selected. Supported formats: {{formats}}",
+      "onboardingAlreadyCompleted": "Onboarding already completed. Redirecting to home...",
+      "onboardingCompletedAnotherTab": "Onboarding completed in another tab. Redirecting...",
+      "onboardingFailed": "Onboarding failed. Please try again.",
+      "onboardingInProgress": "Onboarding is already in progress in another tab.",
+      "operationTimeout": "Operation timed out. Please try again.",
+      "passwordChangeFailed": "Password change failed. Please try again.",
+      "passwordResetFailed": "Password reset failed. Please try again.",
+      "passwordsDoNotMatch": "Passwords do not match. Please try again.",
+      "passwordTooWeak": "Password is too weak. Please choose a stronger password.",
+      "permissionDenied": "Permission denied. Please contact support.",
+      "phoneNotVerified": "Phone number is not verified. Please verify your phone first.",
+      "placeAlreadyExists": "This place already exists in your recommendation list!",
+      "pleaseSelectListFirst": "Please select a recommendation list first",
+      "pleaseSelectLocation": "Please select a location from the search results",
+      "postalCodeRequired": "Postal code is required",
+      "preconditionFailed": "Precondition failed. Please check your request.",
+      "primaryAddressRequired": "Primary Address is required",
+      "profileCompletionFailed": "Profile completion failed. Please try again.",
+      "profileImageUpdateFailed": "Failed to upload profile image. Please try again.",
+      "profileUpdateFailed": "Profile update failed. Please try again.",
+      "quotaExceeded": "Quota exceeded. Please try again later.",
+      "rateLimitExceeded": "Too many requests. Please try again later.",
+      "recommendedListUpdateFailed": "Error Updating Recommended List!!!",
+      "registrationFailed": "Registration failed. Please try again.",
+      "requiredFieldMissing": "Required field is missing. Please fill all required fields.",
+      "resetLinkFailed": "Failed to send reset link. Try again later.",
+      "resetLinkResendFailed": "Failed to resend. Try again later.",
+      "resourceNotFound": "Resource not found. Please check your request.",
+      "searchAndSelectPlaceFirst": "Search and select a place first",
+      "selectAtLeastOneImage": "Select at least one image",
+      "selectPlaceFromSuggestions": "Select the Place from google suggestions",
+      "selectValidCategory": "Select a Valid Category",
+      "serverError": "Server error. Please try again later.",
+      "serviceUnavailable": "Service unavailable. Please try again later.",
+      "sessionExpired": "Session expired. Please login again.",
+      "settingsSaveFailed": "Failed to save settings. Please try again.",
+      "setupFailed": "Setup failed. Please try again.",
+      "somethingWentWrong": "Something Went Wrong!!",
+      "stateRequired": "State is required",
+      "submissionInProgress": "Please wait, submission is already in progress.",
+      "tooManyAttempts": "Too many attempts. Please try again later.",
+      "twoFactorFailed": "Two-factor authentication failed. Please try again.",
+      "twoFactorRequired": "Two-factor authentication is required.",
+      "unsupportedFileType": "Unsupported file type. Please choose a different file.",
+      "unsupportedImageFormat": "Unsupported image format. Please use JPG, PNG, or GIF",
+      "updateFailedWithError": "Update failed: {{error}}",
+      "uploadLimitExceeded": "Upload limit exceeded. Please try again later.",
+      "usernameAlreadyExists": "Username already exists. Please choose another.",
+      "usernameChangeFailed": "Username change failed. Please try again.",
+      "usernameInvalidChars": "Username contains invalid characters. Please use only letters, numbers, and hyphens.",
+      "usernameProfanity": "Username contains inappropriate content. Please choose another username.",
+      "usernameReserved": "Username is reserved. Please choose another username.",
+      "usernameTooLong": "Username is too long. Please choose a shorter username.",
+      "usernameTooShort": "Username is too short. Please choose a longer username.",
+      "usernameUpdateFailed": "Username update failed. Please try again.",
+      "validationError": "Validation error. Please check your input.",
+      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!"
     },
-    "usernameChange": {
-      "title": "Username Change Confirmation",
-      "description": "Your username is used in your profile and recommendation list links:",
-      "profileLabel": "Profile:",
-      "listLabel": "List:",
-      "warning": "Any QR codes or links with your old username will no longer work — you'll need to update and re-share them.",
-      "cooldownPrefix": "You will be able to change your username again in",
-      "cooldownSuffix": "after this update.",
-      "minute": "1 minute",
-      "day": "1 day",
-      "days": "days",
-      "cancel": "Cancel",
-      "confirm": "Change Username"
+    "info": {
+      "aborting": "Aborting...",
+      "accountAlreadyExists": "Account already exists. Redirecting to home...",
+      "activating": "Activating...",
+      "adding": "Adding...",
+      "adjusting": "Adjusting...",
+      "arranging": "Arranging...",
+      "building": "Building...",
+      "canceling": "Canceling...",
+      "changing": "Changing...",
+      "checking": "Checking...",
+      "chilling": "Chilling...",
+      "clearing": "Clearing...",
+      "closing": "Closing...",
+      "completing": "Completing...",
+      "concluding": "Concluding...",
+      "configuring": "Configuring...",
+      "connecting": "Connecting...",
+      "constructing": "Constructing...",
+      "cooling": "Cooling...",
+      "correcting": "Correcting...",
+      "creating": "Creating...",
+      "deactivating": "Deactivating...",
+      "deleting": "Deleting...",
+      "disabling": "Disabling...",
+      "disconnecting": "Disconnecting...",
+      "downloading": "Downloading...",
+      "enabling": "Enabling...",
+      "ending": "Ending...",
+      "enhancing": "Enhancing...",
+      "filtering": "Filtering...",
+      "finalizing": "Finalizing...",
+      "finishing": "Finishing...",
+      "fixing": "Fixing...",
+      "freezing": "Freezing...",
+      "generating": "Generating...",
+      "halting": "Halting...",
+      "heating": "Heating...",
+      "improving": "Improving...",
+      "initializing": "Initializing...",
+      "inserting": "Inserting...",
+      "interrupting": "Interrupting...",
+      "launching": "Launching...",
+      "loading": "Loading...",
+      "making": "Making...",
+      "melting": "Melting...",
+      "modernizing": "Modernizing...",
+      "modifying": "Modifying...",
+      "opening": "Opening...",
+      "optimizing": "Optimizing...",
+      "organizing": "Organizing...",
+      "pausing": "Pausing...",
+      "preparing": "Preparing...",
+      "processing": "Processing...",
+      "producing": "Producing...",
+      "readying": "Readying...",
+      "receiving": "Receiving...",
+      "recovering": "Recovering...",
+      "refreshing": "Refreshing...",
+      "removing": "Removing...",
+      "renewing": "Renewing...",
+      "repairing": "Repairing...",
+      "resetting": "Resetting...",
+      "restarting": "Restarting...",
+      "restoring": "Restoring...",
+      "resuming": "Resuming...",
+      "saving": "Saving...",
+      "searching": "Searching...",
+      "sending": "Sending...",
+      "setting": "Setting...",
+      "shutting": "Shutting...",
+      "sorting": "Sorting...",
+      "starting": "Starting...",
+      "stopping": "Stopping...",
+      "switching": "Switching...",
+      "synchronizing": "Synchronizing...",
+      "terminating": "Terminating...",
+      "thawing": "Thawing...",
+      "toggling": "Toggling...",
+      "tuning": "Tuning...",
+      "unfreezing": "Unfreezing...",
+      "updating": "Updating...",
+      "upgrading": "Upgrading...",
+      "uploading": "Uploading...",
+      "validating": "Validating...",
+      "verifying": "Verifying...",
+      "warming": "Warming..."
+    },
+    "success": {
+      "accountActivated": "Account activated successfully!",
+      "accountCreated": "Account created successfully!",
+      "actionCompleted": "Action completed successfully!",
+      "backgroundImageUpdated": "Background image updated successfully!",
+      "changesSaved": "Changes saved successfully!",
+      "dataSaved": "Data saved successfully!",
+      "emailSent": "Email sent successfully!",
+      "emailVerificationSent": "Verification email sent!",
+      "emailVerified": "Email verified successfully!",
+      "filesAddedSuccessfully": "{{count}} file(s) added successfully!",
+      "filesReadyForUpload": "{{count}} {{fileText}} ready for upload",
+      "fileUploaded": "File uploaded successfully!",
+      "formSubmitted": "Form submitted successfully!",
+      "imagesUploadedToFeed": "Added {{count}} image(s) to feed",
+      "imageUploaded": "Image uploaded successfully!",
+      "instagramLinkCopied": "Instagram link copied! You can now paste it in your Instagram story or post.",
+      "itemRemovedFromFeed": "Removed {{itemType}} from feed",
+      "linkCopied": "Link copied to clipboard!",
+      "loggedOutSuccessfully": "Logged out successfully!",
+      "loginSuccessful": "Login successful!",
+      "mediaRemovedSuccessfully": "Media removed successfully!",
+      "notificationSent": "Notification sent successfully!",
+      "onboardingCompleted": "Onboarding completed successfully!",
+      "passwordChanged": "Password changed successfully!",
+      "passwordResetSuccessful": "Password reset successful!",
+      "profileCompleted": "Profile completed successfully!",
+      "profileImageUpdated": "Profile image updated successfully!",
+      "profileUpdated": "Profile updated successfully!",
+      "profileUpdatedSuccessfully": "Profile updated successfully!",
+      "recommendationCreatedSuccessfully": "Recommendation Created Successfully!!!",
+      "recommendationUpdatedSuccessfully": "Recommendation Updated Successfully!!!",
+      "recommendedCityDeleted": "Recommended City Deleted Successfully!!",
+      "recommendedListUpdated": "Recommended List Updated Successfully!!!",
+      "registrationSuccessful": "Registration successful!",
+      "resetLinkResent": "Reset link resent!",
+      "resetLinkSent": "Password reset link sent to your email!",
+      "settingsSaved": "Settings saved successfully!",
+      "setupCompleted": "Setup completed successfully!",
+      "uploadingImagesToFeed": "Uploading selected images to your feed...",
+      "usernameChanged": "Username changed successfully!",
+      "usernameUpdated": "Username updated successfully!",
+      "welcomeMessage": "Welcome to explorers!"
+    },
+    "warning": {
+      "accountExpiring": "Account is expiring. Please update your account",
+      "accountNotActivated": "Account is not activated. Please activate your account",
+      "actionExpiring": "Action is expiring. Please update your action",
+      "actionNotCompleted": "Action is not completed. Please complete your action",
+      "changesExpiring": "Changes are expiring. Please update your changes",
+      "changesNotSaved": "Changes are not saved. Please save your changes",
+      "credentialsExpiring": "Credentials are expiring. Please update your credentials",
+      "dataExpiring": "Data is expiring. Please update your data",
+      "dataNotSaved": "Data is not saved. Please save your data",
+      "emailExpiring": "Email is expiring. Please update your email",
+      "emailNotSent": "Email is not sent. Please send your email",
+      "emailNotVerified": "Email is not verified. Please verify your email",
+      "fileExpiring": "File is expiring. Please update your file",
+      "fileNotUploaded": "File is not uploaded. Please upload your file",
+      "formExpiring": "Form is expiring. Please update your form",
+      "formNotSubmitted": "Form is not submitted. Please submit your form",
+      "imageExpiring": "Image is expiring. Please update your image",
+      "imageNotUploaded": "Image is not uploaded. Please upload your image",
+      "linkExpiring": "Link is expiring. Please update your link",
+      "linkNotCopied": "Link is not copied. Please copy your link",
+      "networkSlow": "Network is slow. Please check your connection",
+      "notificationExpiring": "Notification is expiring. Please update your notification",
+      "notificationNotSent": "Notification is not sent. Please send your notification",
+      "onboardingExpiring": "Onboarding is expiring. Please update your onboarding",
+      "onboardingNotCompleted": "Onboarding is not completed. Please complete your onboarding",
+      "passwordExpiring": "Password is expiring. Please update your password",
+      "passwordNotChanged": "Password is not changed. Please change your password",
+      "passwordWeak": "Password is weak. Consider using a stronger password",
+      "permissionPending": "Permission is pending. Please wait",
+      "phoneExpiring": "Phone is expiring. Please update your phone",
+      "phoneNotVerified": "Phone number is not verified. Please verify your phone",
+      "profileExpiring": "Profile is expiring. Please update your profile",
+      "profileIncomplete": "Profile is incomplete. Please complete your profile",
+      "profileNotCompleted": "Profile is not completed. Please complete your profile",
+      "serverSlow": "Server is slow. Please try again later",
+      "sessionExpiring": "Session is expiring. Please login again",
+      "settingsExpiring": "Settings are expiring. Please update your settings",
+      "settingsNotSaved": "Settings are not saved. Please save your settings",
+      "setupExpiring": "Setup is expiring. Please update your setup",
+      "setupNotCompleted": "Setup is not completed. Please complete your setup",
+      "usernameCooldown": "Username change is temporarily locked due to cooldown period",
+      "usernameCooldownDays": "You can change your username after {{days}} day(s) ({{date}})",
+      "usernameCooldownHours": "You can change your username in {{hours}} hour(s) (after {{time}})",
+      "usernameCooldownMinutes": "You can change your username in {{minutes}} minute(s) (after {{time}})",
+      "usernameCooldownReady": "You can change your username now",
+      "usernameCooldownUnknown": "You can change your username now",
+      "usernameExpiring": "Username is expiring. Please update your username",
+      "usernameNotChanged": "Username is not changed. Please change your username",
+      "validationPending": "Validation is pending. Please wait"
     }
-  },
-  "analytics": {
-    "dashboard": {
-      "title": "Analytics Dashboard",
-      "subtitle": "Track your QR code performance and user engagement",
-      "timePeriod": "Time Period:",
-      "timeFilter": {
-        "today": "Today",
-        "last7days": "Last 7 Days",
-        "last30days": "Last 30 Days",
-        "custom": "Custom Range",
-        "selectPeriod": "Select Period"
-      },
-      "dateRange": {
-        "from": "From:",
-        "to": "To:"
-      },
-      "summaryCards": {
-        "totalViews": "Total Views",
-        "totalClicks": "Total Clicks",
-        "totalQRViews": "Total QR Views",
-        "totalLinkViews": "Total Link Views"
-      },
-      "loading": {
-        "loadingData": "Loading analytics data...",
-        "resolvingCountry": "Resolving country data..."
-      },
-      "error": {
-        "title": "Error Loading Analytics",
-        "message": "Unable to fetch analytics data. Please try again later.",
-        "errorLabel": "Error:"
-      },
-      "comingSoon": {
-        "title": "Analytics Coming Soon",
-        "message": "Analytics will be available in <strong>{{days}} day{{daysPlural}}</strong> after your account creation.",
-        "whyWait": {
-          "title": "Why the wait?",
-          "reasons": {
-            "accuracy": "• Ensures data accuracy and prevents spam",
-            "interactions": "• Allows time for meaningful user interactions",
-            "insights": "• Provides reliable analytics insights"
-          }
-        },
-        "tip": "In the meantime, start sharing your QR codes to generate data for when analytics become available!",
-        "filterTip": "<strong>Tip:</strong> Once analytics are available, you'll be able to filter by time periods (today, last 7 days, last 30 days, or custom range) to view your data."
-      },
-      "emptyState": {
-        "title": "No Analytics Data",
-        "noDataMessage": "No analytics data found for your account. Analytics will appear here once people start viewing and interacting with your QR codes.",
-        "customRange": {
-          "bothMissing": "Please select both start and end dates for the custom range to view analytics data.",
-          "startMissing": "Please select a start date for the custom range to view analytics data.",
-          "endMissing": "Please select an end date for the custom range to view analytics data."
-        },
-        "noDataForPeriod": {
-          "today": "No analytics data available for today. Please select a different time range to view your data.",
-          "last7days": "No analytics data available for the last 7 days. Please select a different time range to view your data.",
-          "last30days": "No analytics data available for the last 30 days. Please select a different time range to view your data.",
-          "custom": "No analytics data available for the custom range ({{startDate}} to {{endDate}}). Please select a different time range to view your data.",
-          "default": "No analytics data available for the selected time range. Please select a different time range to view your data."
-        },
-        "howToStart": {
-          "title": "To start seeing analytics:",
-          "shareQR": "• Share your QR codes on social media",
-          "includeQR": "• Include QR codes in your marketing materials",
-          "askFriends": "• Ask friends to scan your QR codes",
-          "viewProfile": "• View your public profile pages"
-        }
-      },
-      "charts": {
-        "topCountries": {
-          "title": "Top 3 Countries by Views",
-          "retryGeolocation": "Retry Geolocation",
-          "geolocationIssue": "Geolocation Issue:",
-          "countryDataUnavailable": "Country Data Unavailable",
-          "unableToResolve": "Unable to resolve IP addresses to countries at this time. This may be due to network restrictions or service limitations.",
-          "failedToResolve": "Failed to resolve country data. Please try again later.",
-          "analyticsSummary": "Analytics Summary:",
-          "totalViewEvents": "• {{count}} total view events",
-          "eventsWithCountry": "• {{count}} events with country data",
-          "eventsPending": "• {{count}} events pending geolocation",
-          "willAppear": "Country data will appear automatically once IP geolocation services are available.",
-          "tooltip": {
-            "country": "Country: {{country}}",
-            "views": "Views: {{count}}"
-          },
-          "legend": "Views"
-        },
-        "worldMap": {
-          "title": "Global View Distribution",
-          "subtitle": "Interactive world map showing view distribution across countries from public pages",
-          "noGeographicData": "No Geographic Data Available",
-          "unableToResolve": "Unable to resolve IP addresses to countries at this time. This may be due to network restrictions or service limitations.",
-          "failedToResolve": "Failed to resolve country data. Please try again later.",
-          "analyticsSummary": "Analytics Summary:",
-          "totalViewEvents": "• {{count}} total view events",
-          "eventsWithCountry": "• {{count}} events with country data",
-          "eventsPending": "• {{count}} events pending geolocation",
-          "willAppear": "Country data will appear automatically once IP geolocation services are available.",
-          "tooltip": {
-            "country": "{{country}}",
-            "views": "{{views}} views"
-          },
-          "countriesWithViews": "{{count}} countries with views",
-          "legend": {
-            "views": "Views:",
-            "low": "Low",
-            "medium": "Medium",
-            "high": "High",
-            "highest": "Highest"
-          }
-        },
-        "trafficSource": {
-          "title": "Traffic Source Over Time",
-          "subtitle": "Track how traffic from different sources varies over time",
-          "selectSource": "Select Traffic Source:",
-          "allSources": "All Sources",
-          "direct": "Direct",
-          "qrCode": "QR Code",
-          "instagram": "Instagram",
-          "whatsapp": "WhatsApp",
-          "twitter": "Twitter",
-          "noTrafficData": "No Traffic Data Available",
-          "noViewEvents": "No view events found with traffic source information.",
-          "analyticsSummary": "Analytics Summary:",
-          "totalViewEvents": "• {{count}} total view events",
-          "eventsWithUTM": "• {{count}} events with UTM source",
-          "directTraffic": "• {{count}} direct traffic events",
-          "willAppear": "Traffic source data will appear once users visit your pages with UTM parameters.",
-          "tooltip": {
-            "sourceCount": "{{source}}: {{count}}"
-          }
-        },
-        "locationEngagement": {
-          "title": "Engagement with Location",
-          "subtitle": "Track views for different locations over time",
-          "selectLocation": "Select Location:",
-          "allLocations": "All Locations",
-          "selectLocationPlaceholder": "Select Location",
-          "locationViews": "{{location}} ({{count}} views)",
-          "noLocationData": "No location view data available",
-          "unknownLocation": "Unknown Location",
-          "location": "Location",
-          "tooltip": {
-            "date": "Date: {{date}}",
-            "locationViews": "{{location}}: {{value}} views"
-          },
-          "stats": {
-            "totalLocations": "Total Locations",
-            "totalViews": "Total Views",
-            "avgViews": "Avg Views/Location"
-          }
-        },
-        "recommendedPlaces": {
-          "title": "Engagement with Recommended Places",
-          "subtitle": "Track clicks on recommended places by location",
-          "selectLocation": "Select Location:",
-          "selectLocationPlaceholder": "Select Location",
-          "locationPlaces": "{{location}} ({{count}} places)",
-          "noRecommendationData": "No Recommendation Data",
-          "noDataMessage": "No recommendation click data available for the selected period.",
-          "analyticsSummary": "Analytics Summary:",
-          "totalClickEvents": "• {{count}} total click events",
-          "recordsWithRecommendations": "• {{count}} records with Recommendation ID",
-          "uniqueRecommendations": "• {{count}} unique recommendations",
-          "selectLocationPrompt": "Please select a location to view recommendation data.",
-          "noClicksMessage": "No recommendation clicks found for the selected location. Recommendation data will appear once users click on place cards in your location pages.",
-          "unknownPlace": "Unknown Place",
-          "unknownCategory": "Unknown Category",
-          "unknownLocation": "Unknown Location",
-          "tooltip": {
-            "place": "{{place}}",
-            "category": "Category: {{category}}",
-            "clicks": "Clicks: {{count}}"
-          },
-          "stats": {
-            "placesShown": "Places Shown",
-            "totalClicks": "Total Clicks",
-            "avgClicks": "Avg Clicks/Place"
-          }
-        },
-        "socialMedia": {
-          "title": "Social Media Interaction",
-          "subtitle": "Track clicks on social media links from your public profile across all platforms",
-          "noDataTitle": "No Social Media Interaction Data",
-          "noDataMessage": "No social media click data available from your public profile page.",
-          "analyticsSummary": "Analytics Summary:",
-          "totalSocialClicks": "• {{count}} total social media clicks",
-          "uniquePlatforms": "• {{count}} unique platforms",
-          "trackingNote": "• Only tracking clicks from public-profile page",
-          "willAppear": "Social media interaction data will appear once users click on your social media links.",
-          "tooltip": {
-            "platform": "{{platform}}",
-            "clicks": "Clicks: {{count}}"
-          },
-          "stats": {
-            "platforms": "Platforms",
-            "totalClicks": "Total Clicks",
-            "avgClicks": "Avg Clicks/Platform"
-          }
-        }
-      }
-    }
-  },
-  "countries": {
-    "US": "United States",
-    "IN": "India",
-    "GB": "United Kingdom",
-    "CA": "Canada",
-    "AU": "Australia",
-    "DE": "Germany",
-    "FR": "France",
-    "IT": "Italy",
-    "ES": "Spain",
-    "BR": "Brazil",
-    "MX": "Mexico",
-    "JP": "Japan",
-    "CN": "China",
-    "RU": "Russia",
-    "KR": "South Korea",
-    "NL": "Netherlands",
-    "SE": "Sweden",
-    "NO": "Norway",
-    "DK": "Denmark",
-    "FI": "Finland",
-    "CH": "Switzerland",
-    "AT": "Austria",
-    "BE": "Belgium",
-    "PL": "Poland",
-    "CZ": "Czech Republic",
-    "HU": "Hungary",
-    "RO": "Romania",
-    "BG": "Bulgaria",
-    "GR": "Greece",
-    "PT": "Portugal",
-    "IE": "Ireland",
-    "IS": "Iceland",
-    "LU": "Luxembourg",
-    "MT": "Malta",
-    "CY": "Cyprus",
-    "EE": "Estonia",
-    "LV": "Latvia",
-    "LT": "Lithuania",
-    "SI": "Slovenia",
-    "SK": "Slovakia",
-    "HR": "Croatia",
-    "BA": "Bosnia and Herzegovina",
-    "RS": "Serbia",
-    "ME": "Montenegro",
-    "MK": "North Macedonia",
-    "AL": "Albania",
-    "XK": "Kosovo",
-    "MD": "Moldova",
-    "UA": "Ukraine",
-    "BY": "Belarus",
-    "GE": "Georgia",
-    "AM": "Armenia",
-    "AZ": "Azerbaijan",
-    "KZ": "Kazakhstan",
-    "UZ": "Uzbekistan",
-    "KG": "Kyrgyzstan",
-    "TJ": "Tajikistan",
-    "TM": "Turkmenistan",
-    "AF": "Afghanistan",
-    "PK": "Pakistan",
-    "BD": "Bangladesh",
-    "LK": "Sri Lanka",
-    "MV": "Maldives",
-    "NP": "Nepal",
-    "BT": "Bhutan",
-    "MM": "Myanmar",
-    "TH": "Thailand",
-    "LA": "Laos",
-    "KH": "Cambodia",
-    "VN": "Vietnam",
-    "MY": "Malaysia",
-    "SG": "Singapore",
-    "BN": "Brunei",
-    "ID": "Indonesia",
-    "PH": "Philippines",
-    "TL": "East Timor",
-    "MN": "Mongolia",
-    "KP": "North Korea",
-    "TW": "Taiwan",
-    "HK": "Hong Kong",
-    "MO": "Macau",
-    "SA": "Saudi Arabia",
-    "AE": "United Arab Emirates",
-    "QA": "Qatar",
-    "KW": "Kuwait",
-    "BH": "Bahrain",
-    "OM": "Oman",
-    "YE": "Yemen",
-    "IQ": "Iraq",
-    "IR": "Iran",
-    "SY": "Syria",
-    "LB": "Lebanon",
-    "JO": "Jordan",
-    "IL": "Israel",
-    "PS": "Palestine",
-    "TR": "Turkey",
-    "EG": "Egypt",
-    "LY": "Libya",
-    "TN": "Tunisia",
-    "DZ": "Algeria",
-    "MA": "Morocco",
-    "SD": "Sudan",
-    "SS": "South Sudan",
-    "ET": "Ethiopia",
-    "ER": "Eritrea",
-    "DJ": "Djibouti",
-    "SO": "Somalia",
-    "KE": "Kenya",
-    "UG": "Uganda",
-    "TZ": "Tanzania",
-    "RW": "Rwanda",
-    "BI": "Burundi",
-    "MW": "Malawi",
-    "ZM": "Zambia",
-    "ZW": "Zimbabwe",
-    "BW": "Botswana",
-    "NA": "Namibia",
-    "ZA": "South Africa",
-    "LS": "Lesotho",
-    "SZ": "Eswatini",
-    "MG": "Madagascar",
-    "MU": "Mauritius",
-    "SC": "Seychelles",
-    "KM": "Comoros",
-    "MZ": "Mozambique",
-    "AO": "Angola",
-    "CD": "Democratic Republic of the Congo",
-    "CG": "Republic of the Congo",
-    "CF": "Central African Republic",
-    "TD": "Chad",
-    "CM": "Cameroon",
-    "NG": "Nigeria",
-    "NE": "Niger",
-    "ML": "Mali",
-    "BF": "Burkina Faso",
-    "CI": "Ivory Coast",
-    "GH": "Ghana",
-    "TG": "Togo",
-    "BJ": "Benin",
-    "SN": "Senegal",
-    "GM": "Gambia",
-    "GW": "Guinea-Bissau",
-    "GN": "Guinea",
-    "SL": "Sierra Leone",
-    "LR": "Liberia",
-    "MR": "Mauritania",
-    "CV": "Cape Verde",
-    "ST": "São Tomé and Príncipe",
-    "GQ": "Equatorial Guinea",
-    "GA": "Gabon",
-    "AR": "Argentina",
-    "BO": "Bolivia",
-    "CL": "Chile",
-    "CO": "Colombia",
-    "EC": "Ecuador",
-    "FK": "Falkland Islands",
-    "GF": "French Guiana",
-    "GY": "Guyana",
-    "PY": "Paraguay",
-    "PE": "Peru",
-    "SR": "Suriname",
-    "UY": "Uruguay",
-    "VE": "Venezuela",
-    "CU": "Cuba",
-    "JM": "Jamaica",
-    "HT": "Haiti",
-    "DO": "Dominican Republic",
-    "PR": "Puerto Rico",
-    "TT": "Trinidad and Tobago",
-    "BB": "Barbados",
-    "LC": "Saint Lucia",
-    "VC": "Saint Vincent and the Grenadines",
-    "GD": "Grenada",
-    "AG": "Antigua and Barbuda",
-    "KN": "Saint Kitts and Nevis",
-    "DM": "Dominica",
-    "BS": "Bahamas",
-    "BZ": "Belize",
-    "GT": "Guatemala",
-    "SV": "El Salvador",
-    "HN": "Honduras",
-    "NI": "Nicaragua",
-    "CR": "Costa Rica",
-    "PA": "Panama",
-    "NZ": "New Zealand",
-    "FJ": "Fiji",
-    "PG": "Papua New Guinea",
-    "SB": "Solomon Islands",
-    "VU": "Vanuatu",
-    "NC": "New Caledonia",
-    "PF": "French Polynesia",
-    "WS": "Samoa",
-    "TO": "Tonga",
-    "KI": "Kiribati",
-    "TV": "Tuvalu",
-    "NR": "Nauru",
-    "PW": "Palau",
-    "FM": "Micronesia",
-    "MH": "Marshall Islands"
   }
 }

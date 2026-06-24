@@ -32,11 +32,17 @@ jobs:
           echo "VITE_PAYMENT_API_URL=${{ secrets.VITE_PAYMENT_API_URL }}" >> .env
           echo "VITE_RAZORPAY_KEY_ID_PROD=${{ secrets.VITE_RAZORPAY_KEY_ID_PROD }}" >> .env
           echo "VITE_INSTAGRAM_API_URL=${{ secrets.VITE_INSTAGRAM_API_URL }}" >> .env
+          echo "VITE_TURNSTILE_SITE_KEY=${{ secrets.VITE_TURNSTILE_SITE_KEY }}" >> .env
+          echo "VITE_IGDB_CLIENT_ID=${{ secrets.VITE_IGDB_CLIENT_ID }}" >> .env
+          echo "VITE_IGDB_CLIENT_SECRET=${{ secrets.VITE_IGDB_CLIENT_SECRET }}" >> .env
+          echo "VITE_TMDB_API_KEY=${{ secrets.VITE_TMDB_API_KEY }}" >> .env
+          echo "VITE_TMDB_ACCESS_TOKEN=${{ secrets.VITE_TMDB_ACCESS_TOKEN }}" >> .env
+          echo "VITE_GOOGLE_BOOKS_API_KEY=${{ secrets.VITE_GOOGLE_BOOKS_API_KEY }}" >> .env
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22
 
       - name: Install dependencies
         working-directory: explorers-earth

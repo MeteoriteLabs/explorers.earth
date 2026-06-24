@@ -7,6 +7,9 @@ export const createRecommendationLinkMutation = gql`
       List_Name
       List_Name_Details
       Visibility
+      is_pinned
+      pin_order
+      display_order
       account {
         documentId
       }
@@ -66,6 +69,9 @@ export const updateRecommendedListMutation = gql`
       List_Name_Details
       slug
       Visibility
+      is_pinned
+      pin_order
+      display_order
       documentId
     }
   }
@@ -167,6 +173,14 @@ export const findClaimablePlaceProfileByPlaceIdQuery = gql`
       Claiming_Account {
         documentId
       }
+    }
+  }
+`;
+export const updateAccountVisibility = gql`
+  mutation UpdateAccountVisibility($documentId: ID!, $data: AccountInput!) {
+    updateAccount(documentId: $documentId, data: $data) {
+      documentId
+      public_recommendations
     }
   }
 `;
