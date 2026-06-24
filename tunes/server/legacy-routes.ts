@@ -12,6 +12,7 @@ import { sql } from 'drizzle-orm';
 import { db } from './db';
 import passport from 'passport';
 import { randomBytes, createHash } from 'crypto';
+import { sanitizeUser, publicUser } from './utils/sanitize-user';
 import { emailService } from './services/email-service';
 import { importYouTubeMusicPlaylist, importYouTubeMusicPlaylistToMain } from './services/youtube-playlist-import';
 import { importSpotifyPlaylist, importSpotifyPlaylistToMain } from './services/spotify-playlist-import';
@@ -2128,7 +2129,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
         });
       }
 
-      res.json(updatedUser);
+      res.json(sanitizeUser(updatedUser));
     } catch (error) {
       console.error('Error updating user:', error);
       res.status(500).json({
@@ -2607,7 +2608,8 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
       res.json({
         songs,
-        user,
+        // Public guest/QR page — strip password/otp/tokens (CRITICAL leak fix).
+        user: publicUser(user),
         currentlyPlaying,
         playedSongs,
         allowGuestPlayOnDevice: user.allowGuestPlayOnDevice,
@@ -4201,7 +4203,8 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
     res.json({
       songs,
-      user,
+      // Public guest/QR page — strip password/otp/tokens (CRITICAL leak fix).
+      user: publicUser(user),
       currentlyPlaying,
       playedSongs,
       allowGuestPlayOnDevice: user.allowGuestPlayOnDevice,
