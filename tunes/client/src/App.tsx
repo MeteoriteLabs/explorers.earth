@@ -16,6 +16,7 @@ import AnalyticsTracker from '@/components/analytics-tracker';
 import NotFound from '@/pages/not-found';
 import NewAuthPage from '@/pages/new-auth-page';
 import GoogleCallbackPage from '@/pages/google-callback-page';
+import GoogleAuthRedirect from '@/pages/google-auth-redirect';
 import PlaylistPage from '@/pages/playlist-page';
 import LandingPage from '@/pages/landing-page';
 import DashboardPage from '@/pages/dashboard-page';
@@ -36,6 +37,7 @@ const PUBLIC_ROUTES = [
   '/',
   '/auth',
   '/api/connect/google/callback',
+  '/google-auth/callback',
   '/playlist',
   '/analytics-test',
   '/terms',
@@ -53,6 +55,7 @@ function Router() {
       <Route path="/" component={LandingPage} />
       <Route path="/auth" component={NewAuthPage} />
       <Route path="/api/connect/google/callback" component={GoogleCallbackPage} />
+      <Route path="/google-auth/callback" component={GoogleAuthRedirect} />
       <Route path="/playlist/:guestUrl" component={PlaylistPage} />
       <Route path="/analytics-test" component={AnalyticsTest} />
       <Route path="/terms" component={TermsPage} />
