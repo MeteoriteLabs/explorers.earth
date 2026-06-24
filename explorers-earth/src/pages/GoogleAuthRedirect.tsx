@@ -4,6 +4,7 @@ import axios, { AxiosError } from "axios";
 import useAuthStore from "../store/store";
 import { EarthLoader } from "../components/EarthLoader";
 import { storeUserCredentials } from "../utils/sessionCredentials";
+import { consumeSsoReturn } from "../utils/tunesSso";
 
 /**
  * GoogleAuthRedirect — handles /google-auth/callback
@@ -108,7 +109,10 @@ const GoogleAuthRedirect = () => {
         // Add a small delay for state update before redirect
         setAuthStatus("Login successful! Redirecting...");
         setTimeout(() => {
-          navigate("/home");
+          // Honor a fresh, consume-once SSO return (e.g. /sso/tunes); default
+          // behaviour (/home) is unchanged when nothing valid is stashed.
+          const dest = consumeSsoReturn(Date.now());
+          navigate(dest ?? "/home");
         }, 1500);
       } catch (error) {
         console.error("[GoogleAuthRedirect] Error fetching user profile:", error);

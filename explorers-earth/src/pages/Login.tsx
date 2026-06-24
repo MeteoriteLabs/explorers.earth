@@ -22,6 +22,7 @@ import { isManualAuthEnabled } from "../config/featureFlags";
 import Button from "../components/ui/Button";
 import GoogleIcon from "../assets/icons/GoogleIcon";
 import { storeUserCredentials } from "../utils/sessionCredentials";
+import { consumeSsoReturn } from "../utils/tunesSso";
 
 const Login = () => {
   const { t, i18n } = useTranslation();
@@ -86,7 +87,8 @@ const Login = () => {
         // Small delay to ensure user sees the success message
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        navigate("/home");
+        const dest = consumeSsoReturn(Date.now());
+        navigate(dest ?? "/home");
       }
     } catch (err) {
       setIsCompletingLogin(false);
