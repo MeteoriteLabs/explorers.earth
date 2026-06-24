@@ -72,9 +72,10 @@ describe('CRITICAL: user-returning responses strip secrets', () => {
   });
 
   it('POST /api/auth/sync → no secret fields (SSO bootstrap, ungated)', async () => {
+    // The route reads req.body.strapiUser and 400s without strapiUser.username.
     const r = await request(app)
       .post('/api/auth/sync')
-      .send({ id: 999001, username: SEED.username, email: SEED.email });
+      .send({ strapiUser: { username: SEED.username, email: SEED.email } });
     expect(r.status).toBe(200);
     expect(r.body.user).toBeTruthy();
     for (const k of SECRETS) expect(r.body.user[k]).toBeUndefined();
