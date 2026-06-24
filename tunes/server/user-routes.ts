@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import { extractDeviceInfo, extractBrowserInfo, extractOSInfo } from "./auth";
 import { getGeoInfo } from "./utils/geolocation";
 import { createHash } from "crypto";
+import { sanitizeUser } from "./utils/sanitize-user";
 
 /**
  * Registers user-related routes
@@ -55,7 +56,7 @@ export function setupUserRoutes(app: Express) {
       });
 
       res.json({
-        user,
+        user: sanitizeUser(user),
         activity,
         deviceSessions: formattedSessions,
         playlists: playlists.length,
@@ -78,7 +79,7 @@ export function setupUserRoutes(app: Express) {
     });
 
     if (req.isAuthenticated()) {
-      res.status(200).json(req.user);
+      res.status(200).json(sanitizeUser(req.user));
     } else {
       res.status(401).json({ message: "Not authenticated" });
     }

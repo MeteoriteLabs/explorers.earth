@@ -53,6 +53,12 @@ import createMemoryStore from "memorystore";
 import { randomBytes } from "crypto";
 import connectPgSimple from "connect-pg-simple";
 import { pool } from "./db";
+import { sanitizeUser } from "./utils/sanitize-user";
+
+/** Admin user-list row: sanitized user fields (no secrets) + the accountManager join. */
+export type AdminUserListRow = Record<string, any> & {
+  accountManager: { name: string; role: string } | null;
+};
 
 const MemoryStore = createMemoryStore(session);
 const PgStore = connectPgSimple(session);
@@ -77,7 +83,7 @@ export interface IStorage {
   sessionStore: session.Store;
 
   // Updated admin methods
-  getAllUsers(page: number, limit: number): Promise<{ users: User[]; total: number }>;
+  getAllUsers(page: number, limit: number): Promise<{ users: AdminUserListRow[]; total: number }>;
   updateUserAccountManager(userId: number, accountManagerId: number | null): Promise<void>;
   getUserStats(): Promise<{
     total: number;
@@ -577,7 +583,7 @@ export class DatabaseStorage implements IStorage {
   }
 
 
-  async getAllUsers(page: number = 1, limit: number = 10, searchTerm?: string): Promise<{ users: User[]; total: number }> {
+  async getAllUsers(page: number = 1, limit: number = 10, searchTerm?: string): Promise<{ users: AdminUserListRow[]; total: number }> {
     console.log('Getting all users with pagination:', { page, limit, searchTerm });
     const offset = (page - 1) * limit;
 
@@ -629,24 +635,27 @@ export class DatabaseStorage implements IStorage {
 
       console.log(`Retrieved ${usersWithManagers.length} users (page ${page}/${Math.ceil(Number(countResult.value) / limit)})`);
 
-      // Map the results to include account manager info
-      const mappedUsers = usersWithManagers.map(row => ({
-        ...row.user,
+      // Map the results to include account manager info.
+      // sanitizeUser whitelists safe fields (drops password/otp/otpExpiry/
+      // emailVerificationToken/emailVerificationExpiry — the old code only
+      // redacted password and still leaked otp + tokens). accountManager is a
+      // join, not a users column, so re-attach it after sanitizing.
+      const mappedUsers: AdminUserListRow[] = usersWithManagers.map((row: { user: User; manager: { name: string; role: string } | null }) => ({
+        ...sanitizeUser(row.user),
         accountManager: row.manager ? {
           name: row.manager.name,
           role: row.manager.role
         } : null,
-        // Always redact password
-        password: '[REDACTED]'
       }));
 
-      console.log('Users:', mappedUsers.map(u => ({
+      console.log('Users:', mappedUsers.map((u: AdminUserListRow) => ({
         id: u.id,
         username: u.username,
         accountManager: u.accountManager?.name
       })));
 
       return {
+        // Sanitized admin-list rows (AdminUserListRow): sanitized user + accountManager join.
         users: mappedUsers,
         total: Number(countResult.value)
       };

@@ -6,6 +6,7 @@
 import type { Express } from 'express';
 import { userSyncService } from './services/user-sync-service';
 import { storage } from './storage';
+import { sanitizeUser } from './utils/sanitize-user';
 
 export function setupAuthBridgeRoutes(app: Express) {
   /**
@@ -39,7 +40,7 @@ export function setupAuthBridgeRoutes(app: Express) {
       // This includes all LocalTunes-specific fields
       res.json({
         success: true,
-        user: localUser,
+        user: sanitizeUser(localUser),
       });
     } catch (error) {
       console.error('❌ Auth bridge sync error:', error);
@@ -80,7 +81,7 @@ export function setupAuthBridgeRoutes(app: Express) {
       // Return complete user data from Neon DB
       res.json({
         success: true,
-        user: localUser,
+        user: sanitizeUser(localUser),
       });
     } catch (error) {
       console.error('❌ Error fetching user data:', error);
@@ -122,7 +123,7 @@ export function setupAuthBridgeRoutes(app: Express) {
 
       res.json({
         needsOnboarding,
-        user: localUser,
+        user: sanitizeUser(localUser),
       });
     } catch (error) {
       console.error('❌ Error checking onboarding status:', error);

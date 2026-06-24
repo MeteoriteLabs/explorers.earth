@@ -9,6 +9,7 @@ import session from "express-session";
 import cookieParser from 'cookie-parser';
 import { getGeoInfo } from "./utils/geolocation";
 import { emailService } from "./services/email-service";
+import { sanitizeUser } from "./utils/sanitize-user";
 
 // Helper functions for device detection
 export function extractBrowserInfo(userAgent: string): { name: string, version: string } {
@@ -467,7 +468,7 @@ export function setupAuth(app: Express) {
             // Continue anyway - this is non-critical functionality
           }
 
-          res.json(user);
+          res.json(sanitizeUser(user));
         });
       });
     })(req, res, next);
@@ -631,7 +632,7 @@ export function setupAuth(app: Express) {
 
           // Include emailVerificationSent flag in the response
           res.status(201).json({
-            ...user,
+            ...sanitizeUser(user),
             emailVerificationSent: emailSent
           });
         });
@@ -713,7 +714,7 @@ export function setupAuth(app: Express) {
   // Check authentication status
   app.get("/api/check", (req, res) => {
     if (req.isAuthenticated()) {
-      res.json({ authenticated: true, user: req.user });
+      res.json({ authenticated: true, user: sanitizeUser(req.user) });
     } else {
       res.status(401).json({ authenticated: false });
     }
