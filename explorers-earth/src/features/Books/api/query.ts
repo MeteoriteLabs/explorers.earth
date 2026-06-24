@@ -71,6 +71,7 @@ export const BOOKS_BY_LIST = gql`
       slug
       visibility
       top_reads_heading
+      display_order
       recommended_books(
         sort: ["display_order:asc"]
         pagination: { start: $page, limit: $pageSize }
