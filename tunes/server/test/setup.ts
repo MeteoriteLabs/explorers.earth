@@ -6,7 +6,9 @@
 process.env.NODE_ENV = 'test';
 process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'test-session-secret';
 process.env.COOKIE_SECRET = process.env.COOKIE_SECRET || 'test-cookie-secret';
+// The integration suite CREATES + DELETES a user. NEVER inherit an ambient
+// DATABASE_URL (it could point at dev/prod): use DATABASE_URL_TEST if provided,
+// otherwise a local throwaway. Any inherited DATABASE_URL is deliberately ignored.
 process.env.DATABASE_URL =
   process.env.DATABASE_URL_TEST ||
-  process.env.DATABASE_URL ||
   'postgresql://tunes:tunes@127.0.0.1:5433/tunes_e2e';
