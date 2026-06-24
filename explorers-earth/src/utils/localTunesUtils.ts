@@ -93,3 +93,19 @@ export function buildLocalTunesPlaylistUrl(guestUrl: string, baseUrl?: string): 
   const base = baseUrl || import.meta.env.VITE_LOCAL_TUNES_API_URL || 'https://localtunes.earth';
   return `${base}/playlist/${guestUrl}`;
 }
+
+/**
+ * Decide whether the stored `localtunes_public` link needs (re)writing to match
+ * the live guestUrl. Returns the canonical URL to write, or null to skip.
+ *  - null → stored link already equals canonical (idempotent: no write)
+ *  - url  → stored is missing OR stale → write it (self-heals a changed guestUrl,
+ *           e.g. when the tunes user row was recreated)
+ */
+export function reconcileLocalTunesLink(
+  storedLink: string | null | undefined,
+  guestUrl: string,
+  baseUrl?: string,
+): string | null {
+  const canonical = buildLocalTunesPlaylistUrl(guestUrl, baseUrl);
+  return storedLink === canonical ? null : canonical;
+}

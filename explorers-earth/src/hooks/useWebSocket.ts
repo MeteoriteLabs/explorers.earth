@@ -2,8 +2,16 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 
-// Local Tunes WebSocket configuration
-const LOCAL_TUNES_WS_URL = import.meta.env.VITE_LOCAL_TUNES_WS_URL || 'ws://localtunes.earth';
+// Resolve a secure WebSocket URL. On an https page the browser BLOCKS a ws://
+// connection as mixed content, so default to wss:// and upgrade any ws:// / http://
+// value (e.g. a stale env var) to its secure form. Exported for unit testing.
+export function resolveWsUrl(envUrl: string | undefined, protocol: string): string {
+  let url = envUrl || (protocol === 'https:' ? 'wss://localtunes.earth' : 'ws://localtunes.earth');
+  if (protocol === 'https:') {
+    url = url.replace(/^ws:\/\//, 'wss://').replace(/^http:\/\//, 'https://');
+  }
+  return url;
+}
 
 interface WebSocketOptions {
   enabled?: boolean;
@@ -42,10 +50,14 @@ export const useWebSocket = (
 
     const connect = () => {
       try {
-        console.log('🔌 Attempting WebSocket connection to:', LOCAL_TUNES_WS_URL);
+        const wsUrl = resolveWsUrl(
+          import.meta.env.VITE_LOCAL_TUNES_WS_URL,
+          typeof window !== 'undefined' ? window.location.protocol : 'https:'
+        );
+        console.log('🔌 Attempting WebSocket connection to:', wsUrl);
         console.log('🔌 Guest URL:', guestUrl);
-        
-        const socket = io(LOCAL_TUNES_WS_URL, {
+
+        const socket = io(wsUrl, {
           query: { guestUrl },
           transports: ['websocket', 'polling'],
         });

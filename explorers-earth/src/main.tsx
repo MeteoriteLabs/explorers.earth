@@ -9,6 +9,7 @@ import {
   createHttpLink,
 } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
+import { typePolicies } from "./lib/apolloCache";
 import { Toaster } from "sonner";
 import { APIProvider } from "@vis.gl/react-google-maps";
 import {HelmetProvider} from "react-helmet-async";
@@ -51,8 +52,9 @@ const httpLink = createHttpLink({
 const client = new ApolloClient({
   // link should be with the headers it it exist
   link: authLink.concat(httpLink),
-  // current cache
-  cache: new InMemoryCache(),
+  // current cache — typePolicies key Strapi entities by documentId so publish
+  // mutations patch the rendered list entity (fixes the stale "Draft" label)
+  cache: new InMemoryCache({ typePolicies }),
 });
 
 console.warn = () => {};
