@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useState, useEffect } from "react";
 import BillingTab from "./components/BillingTab";
 import EyeOffIcon from "../../assets/icons/EyeOffIcon";
 import EyeOnIcon from "../../assets/icons/EyeOnIcon";
@@ -21,8 +21,7 @@ import { EarthLoader } from "../../components/EarthLoader";
 import PasswordInput from "../../components/ui/PasswordInput";
 import { validatePassword } from "../../utils/passwordValidator";
 import { useTranslation } from "react-i18next";
-import Accordion from "../../components/ui/Accordian";
-import LanguageSelector from "./components/LanguageSelector";
+import LanguageSelector, { LANGUAGES } from "./components/LanguageSelector";
 import ConnectedAccounts from "./components/ConnectedAccounts";
 
 
@@ -87,8 +86,13 @@ const Settings = memo(() => {
   const [addReasonForLeaving] = useMutation(addReasonForLeavingMutation);
   const [updateTabVisibility] = useMutation(updateTabVisibilityMutation);
   // Optimistic UI state for tab visibility toggles
-  const [tabVisibilityOverrides, setTabVisibilityOverrides] = useState<Record<string, boolean>>({});
+  const [tabVisibilityOverrides, setTabVisibilityOverrides] = useState<Record<string, any>>({});
   const [tabVisibilityLoading, setTabVisibilityLoading] = useState<Record<string, boolean>>({});
+  const [publicVisibilitySectionOpen, setPublicVisibilitySectionOpen] = useState<boolean>(false);
+  const [pinnedNavTabsSectionOpen, setPinnedNavTabsSectionOpen] = useState<boolean>(false);
+  const [languageSectionOpen, setLanguageSectionOpen] = useState<boolean>(false);
+  const [connectedAccountsSectionOpen, setConnectedAccountsSectionOpen] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   const { data } = useQuery(providerQuery, {
     variables: {
@@ -109,7 +113,7 @@ const Settings = memo(() => {
   });
 
   // Query for current user's account data for tab visibility settings
-  const { data: currentUserAccountData, refetch: refetchAccountData } = useQuery(accountQuery, {
+  const { data: currentUserAccountData, refetch: refetchAccountData, loading: settingsLoading } = useQuery(accountQuery, {
     variables: {
       filters: {
         username: {
@@ -120,36 +124,122 @@ const Settings = memo(() => {
     skip: !user?.username,
   });
 
+  useEffect(() => {
+    if (!settingsLoading) {
+      (window as any).__dashboardLoaded = true;
+    }
+  }, [settingsLoading]);
+
   const [deleteAccount] = useMutation(deleteAccountMutation);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+
+  // Helper to get the current language and handle settings search matching
+  const currentLanguage = LANGUAGES.find((lang) => lang.code === i18n.language) || LANGUAGES[0];
+
+  const matchesSearch = (text: string) => {
+    if (!searchQuery.trim()) return true;
+    return text.toLowerCase().includes(searchQuery.toLowerCase());
+  };
 
   // Helper to get the effective toggle value (optimistic override > server data)
   const getTabVisibility = (tabType: string): boolean => {
     if (tabType in tabVisibilityOverrides) {
-      return tabVisibilityOverrides[tabType];
+      return tabVisibilityOverrides[tabType] as boolean;
     }
     return currentUserAccountData?.accounts[0]?.[tabType] === "Yes";
   };
 
-  // Function to update tab visibility with optimistic UI
-  const handleTabVisibilityUpdate = async (tabType: 'public_profile' | 'public_recommendations' | 'public_music' | 'public_guides', isVisible: boolean) => {
+  const getPinnedNavTabs = (): string[] => {
+    if ('pinned_nav_tabs' in tabVisibilityOverrides) {
+      return tabVisibilityOverrides['pinned_nav_tabs'] || [];
+    }
+    return currentUserAccountData?.accounts[0]?.pinned_nav_tabs || [];
+  };
+
+  const isTabPinned = (tabType: string): boolean => {
+    return getPinnedNavTabs().includes(tabType);
+  };
+
+  const handleNavPinUpdate = async (tabType: string, isPinned: boolean) => {
     const currentAccount = currentUserAccountData?.accounts[0];
     if (!currentAccount?.documentId) {
       toast.error("Account not found");
       return;
     }
 
-    // Optimistic: toggle immediately + show loading
-    setTabVisibilityOverrides(prev => ({ ...prev, [tabType]: isVisible }));
-    setTabVisibilityLoading(prev => ({ ...prev, [tabType]: true }));
+    let currentPinned = getPinnedNavTabs();
+
+    if (isPinned) {
+      if (currentPinned.length >= 5) {
+        toast.error("You can only select up to 5 tabs for the navigation menu");
+        return;
+      }
+      currentPinned = [...currentPinned, tabType];
+    } else {
+      currentPinned = currentPinned.filter(t => t !== tabType);
+    }
+
+    setTabVisibilityOverrides(prev => ({ ...prev, pinned_nav_tabs: currentPinned }));
+    setTabVisibilityLoading(prev => ({ ...prev, [`pin_${tabType}`]: true }));
 
     try {
       await updateTabVisibility({
         variables: {
           documentId: currentAccount.documentId,
           data: {
-            [tabType]: isVisible ? "Yes" : "No"
+            pinned_nav_tabs: currentPinned
           }
+        }
+      });
+      toast.success("Navigation tabs updated successfully");
+      await refetchAccountData();
+    } catch (error) {
+      console.error("Error updating pinned tabs:", error);
+      toast.error("Failed to update navigation menu settings");
+    } finally {
+      setTabVisibilityOverrides(prev => {
+        const next = { ...prev };
+        delete next['pinned_nav_tabs'];
+        return next;
+      });
+      setTabVisibilityLoading(prev => ({ ...prev, [`pin_${tabType}`]: false }));
+    }
+  };
+
+  // Function to update tab visibility with optimistic UI
+  const handleTabVisibilityUpdate = async (tabType: string, isVisible: boolean) => {
+    const currentAccount = currentUserAccountData?.accounts[0];
+    if (!currentAccount?.documentId) {
+      toast.error("Account not found");
+      return;
+    }
+
+    // Automatically unpin the tab if it is being hidden
+    let newPinnedTabs = getPinnedNavTabs();
+    let unpinned = false;
+    if (!isVisible && newPinnedTabs.includes(tabType)) {
+      newPinnedTabs = newPinnedTabs.filter(t => t !== tabType);
+      unpinned = true;
+    }
+
+    // Optimistic: toggle immediately + show loading
+    setTabVisibilityOverrides(prev => ({ 
+      ...prev, 
+      [tabType]: isVisible,
+      ...(unpinned ? { pinned_nav_tabs: newPinnedTabs } : {}) 
+    }));
+    setTabVisibilityLoading(prev => ({ ...prev, [tabType]: true }));
+
+    try {
+      const updateData: any = { [tabType]: isVisible ? "Yes" : "No" };
+      if (unpinned) {
+        updateData.pinned_nav_tabs = newPinnedTabs;
+      }
+
+      await updateTabVisibility({
+        variables: {
+          documentId: currentAccount.documentId,
+          data: updateData
         }
       });
 
@@ -159,6 +249,7 @@ const Settings = memo(() => {
       setTabVisibilityOverrides(prev => {
         const next = { ...prev };
         delete next[tabType];
+        if (unpinned) delete next['pinned_nav_tabs'];
         return next;
       });
     } catch (error) {
@@ -168,6 +259,7 @@ const Settings = memo(() => {
       setTabVisibilityOverrides(prev => {
         const next = { ...prev };
         delete next[tabType];
+        if (unpinned) delete next['pinned_nav_tabs'];
         return next;
       });
     } finally {
@@ -467,297 +559,456 @@ const Settings = memo(() => {
   return (
     <div className="dashboard-theme min-h-screen bg-dashboard-bg">
       <div className="bg-dashboard-bg w-full h-full mx-auto max-w-3xl min-h-screen px-4 md:px-6 pt-8 md:pt-5 pb-24 md:pb-6">
-        {/* Header Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white font-poppins mb-2">
-            {t("settings.title")}
-          </h1>
-          <p className="text-white/70 font-poppins text-sm">
-            {t("settings.subtitle")}
-          </p>
-        </div>
 
-        {/* Tab Switcher - Sticky positioning below header on scroll */}
-        <div className="z-[50] sticky top-[73px] md:top-0 w-full -mx-4 md:-mx-6 mb-6 bg-dashboard-bg py-2">
-          <div className="flex items-center justify-center bg-white font-poppins rounded-3xl mx-auto w-fit">
+        {/* Tab Switcher - Command Palette Pill Style */}
+        <div className="w-full mb-6 flex justify-center">
+          <div
+            className="flex items-center bg-white font-poppins rounded-[24px]"
+            style={{ padding: '2px' }}
+          >
             <button
               onClick={() => setActiveTab('account')}
-              className={`px-4 py-2 text-xs font-medium transition-all duration-300 whitespace-nowrap ${activeTab === 'account'
-                ? 'bg-gradient-to-r bg-dashboard-accent rounded-2xl text-dashboard'
-                : 'bg-white rounded-2xl text-black'
-                }`}
+              className={`px-4 py-1.5 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
+                activeTab === 'account'
+                  ? 'bg-[hsl(var(--blue-cta))] text-white shadow-sm'
+                  : 'bg-white text-black hover:bg-gray-100'
+              }`}
             >
               Account
             </button>
             <button
               onClick={() => setActiveTab('billing')}
-              className={`px-4 py-2 text-xs font-medium transition-all duration-300 whitespace-nowrap ${activeTab === 'billing'
-                ? 'bg-gradient-to-r bg-dashboard-accent rounded-2xl text-dashboard'
-                : 'bg-white rounded-2xl text-black'
-                }`}
+              className={`px-4 py-1.5 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
+                activeTab === 'billing'
+                  ? 'bg-[hsl(var(--blue-cta))] text-white shadow-sm'
+                  : 'bg-white text-black hover:bg-gray-100'
+              }`}
             >
               Billing
             </button>
           </div>
         </div>
 
-        {/* Account Tab Content */}
+        {/* ── ACCOUNT TAB ── */}
         {activeTab === 'account' && (
-          <div className="bg-dashboard-sidebar/30 backdrop-blur-sm rounded-2xl px-4 py-4 sm:px-6 sm:py-6 space-y-6 border border-white/20 shadow-xl">
-            {/* Account & Security Accordion */}
-            <Accordion heading={t("settings.account.security.title")} defaultOpen={false}>
-              <div className="space-y-6">
-                {/* Change Password Section */}
-                {data?.usersPermissionsUser?.provider !== "google" && (
-                  <div className="bg-dashboard-sidebar rounded-xl p-4 border-b border-white/10 sm:border-b-0">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      <div className="flex-1">
-                        <h3 className="text-white font-semibold font-poppins mb-1">
-                          {t("settings.account.changePassword.text")}
-                        </h3>
-                        <p className="text-white/60 text-sm font-poppins">
-                          {t("settings.account.changePassword.description")}
-                        </p>
-                      </div>
-                      <div className="sm:flex-shrink-0">
-                        <Button
-                          btnText={t("settings.account.changePassword.button")}
-                          size="small"
-                          variant="primary"
-                          onClickHandler={() => setShowPasswordModal(true)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
+          <div className="flex flex-col gap-1.5">
 
-                {/* Deactivate Account Section */}
-                <div className="bg-dashboard-sidebar rounded-xl p-4 border-b border-white/10 sm:border-b-0">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div className="flex-1">
-                      <h3 className="text-white font-semibold font-poppins mb-1">
-                        {t("settings.account.deactivateAccount.text")}
-                      </h3>
-                      <p className="text-red-400 text-sm font-poppins">
-                        {t("settings.account.deactivateAccount.description")}
-                      </p>
-                    </div>
-                    <div className="sm:flex-shrink-0">
-                      <Button
-                        btnText={t("settings.account.deactivateAccount.button")}
+            {/* Search bar */}
+            <div
+              className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl border"
+              style={{
+                background: 'var(--dash-search-bg, hsl(var(--dashboard-sidebar)))',
+                borderColor: 'hsl(var(--blue-cta))',
+              }}
+            >
+              <svg width="14" height="14" fill="none" stroke="hsl(var(--blue-cta))" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search settings..."
+                className="w-full bg-transparent text-xs text-white placeholder-white/40 font-poppins outline-none border-none"
+              />
+            </div>
+
+            {/* ── QUICK ACCESS section ── */}
+            {((data?.usersPermissionsUser?.provider !== 'google' && matchesSearch("change password security last changed")) ||
+              matchesSearch("language preference display english locale translation") ||
+              matchesSearch("public visibility tab visibility profile control display") ||
+              matchesSearch("pinned navigation tabs profile control navigation pin menu")) && (
+              <>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1 font-poppins">Quick Access</p>
+                <div
+                  className="rounded-xl mb-3"
+                  style={{
+                    background: 'var(--dash-sidebar-bg, hsl(var(--dashboard-sidebar)))',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    overflow: languageSectionOpen ? 'visible' : 'hidden'
+                  }}
+                >
+                  {/* Change Password row — only for non-google users */}
+                  {data?.usersPermissionsUser?.provider !== 'google' && matchesSearch("change password security last changed") && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordModal(true)}
+                      className="w-full flex items-center gap-3 px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors duration-150 group text-left"
+                    >
+                      <span className="text-base leading-none">🔒</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-semibold text-white font-poppins">{t('settings.account.changePassword.text')}</div>
+                        <div className="text-[10px] text-white/40 font-poppins mt-0.5">{t('settings.account.changePassword.description')}</div>
+                      </div>
+                      <svg width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" viewBox="0 0 24 24" className="flex-shrink-0 group-hover:stroke-white/60 transition-colors">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  )}
+
+                  {/* Language row */}
+                  {matchesSearch("language preference display english locale translation") && (
+                    <>
+                      <button
                         type="button"
-                        variant="danger"
-                        size="small"
-                        onClickHandler={() => {
-                          setUsername(user?.username || "");
-                          setShowModal(true);
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
+                        onClick={() => setLanguageSectionOpen(prev => !prev)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors duration-150 group text-left ${
+                          data?.usersPermissionsUser?.provider !== 'google' && matchesSearch("change password security last changed")
+                            ? 'border-t border-white/5'
+                            : ''
+                        }`}
+                      >
+                        <span className="text-base leading-none">🌐</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold text-white font-poppins">{t('settings.languagePreference.heading')}</div>
+                          <div className="text-[10px] text-white/40 font-poppins mt-0.5">Display · {currentLanguage.flag} {currentLanguage.name} ({currentLanguage.nativeName})</div>
+                        </div>
+                        <svg
+                          width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" viewBox="0 0 24 24"
+                          className={`flex-shrink-0 transition-transform duration-200 ${languageSectionOpen ? 'rotate-90' : ''}`}
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
 
-                {/* Delete Account Section */}
-                <div className="bg-dashboard-sidebar rounded-xl p-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div className="flex-1">
-                      <h3 className="text-white font-semibold font-poppins mb-1">
-                        {t("settings.account.deleteAccount.text")}
-                      </h3>
-                      <p className="text-red-400 text-sm font-poppins">
-                        {t("settings.account.deleteAccount.description")}
-                      </p>
-                    </div>
-                    <div className="sm:flex-shrink-0">
-                      <Button
-                        btnText={t("settings.account.deleteAccount.button")}
+                      {languageSectionOpen && (
+                        <div
+                          ref={(el) => {
+                            if (el && !el.dataset.scrolled) {
+                              el.dataset.scrolled = 'true';
+                              setTimeout(() => {
+                                const rect = el.getBoundingClientRect();
+                                const isMobile = window.innerWidth < 768;
+                                const bottomOffset = isMobile ? 80 : 20;
+                                const cutoff = window.innerHeight - bottomOffset;
+                                if (rect.bottom > cutoff) {
+                                  const scrollOffset = rect.bottom - cutoff + 20;
+                                  window.scrollBy({ top: scrollOffset, behavior: 'smooth' });
+                                }
+                              }, 100);
+                            }
+                          }}
+                          className="border-t border-white/5 px-4 pb-4 bg-white/[0.01]"
+                        >
+                          <LanguageSelector />
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Public Visibility row */}
+                  {matchesSearch("public visibility tab visibility profile control display") && (
+                    <>
+                      <button
                         type="button"
-                        variant="danger"
-                        size="small"
-                        onClickHandler={() => {
-                          setDeleteUsername(user?.username || "");
-                          setShowDeleteAccountModal(true);
-                          setDeleteStep(1);
-                        }}
-                      />
-                    </div>
-                  </div>
+                        onClick={() => setPublicVisibilitySectionOpen(prev => !prev)}
+                        className="w-full flex items-center gap-3 px-4 py-3 border-t border-white/5 hover:bg-white/5 transition-colors duration-150 group text-left"
+                      >
+                        <span className="text-base leading-none">👁️</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold text-white font-poppins">Public Visibility</div>
+                          <div className="text-[10px] text-white/40 font-poppins mt-0.5">Profile · Control which tabs appear on your public profile</div>
+                        </div>
+                        <svg
+                          width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" viewBox="0 0 24 24"
+                          className={`flex-shrink-0 transition-transform duration-200 ${publicVisibilitySectionOpen ? 'rotate-90' : ''}`}
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+
+                      {/* Public Visibility expanded panel */}
+                      {publicVisibilitySectionOpen && (
+                        <div
+                          ref={(el) => {
+                            if (el && !el.dataset.scrolled) {
+                              el.dataset.scrolled = 'true';
+                              setTimeout(() => {
+                                const rect = el.getBoundingClientRect();
+                                const isMobile = window.innerWidth < 768;
+                                const bottomOffset = isMobile ? 80 : 20;
+                                const cutoff = window.innerHeight - bottomOffset;
+                                if (rect.bottom > cutoff) {
+                                  const scrollOffset = rect.bottom - cutoff + 20;
+                                  window.scrollBy({ top: scrollOffset, behavior: 'smooth' });
+                                }
+                              }, 100);
+                            }
+                          }}
+                          className="border-t border-white/5 px-4 py-4 space-y-2 bg-white/[0.01]"
+                        >
+                          {[
+                            { key: 'public_profile', label: 'Profile Tab', icon: (
+                              <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" /></svg>
+                            )},
+                            { key: 'public_recommendations', label: 'Recommendations Tab', icon: (
+                              <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
+                            )},
+                            { key: 'public_music', label: 'Music Tab', icon: (
+                              <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                            )},
+                            { key: 'public_guides', label: 'Guides Tab', icon: (
+                              <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" /></svg>
+                            )},
+                            { key: 'public_movie', label: 'Movies & Shows Tab', icon: (
+                              <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" /></svg>
+                            )},
+                            { key: 'public_books', label: 'Books Tab', icon: (
+                              <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                            )},
+                            { key: 'public_games', label: 'Games Tab', icon: (
+                              <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                            )},
+                          ].map(({ key, label, icon }) => (
+                            <div key={key} className="flex items-center justify-between py-1.5">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                                  {icon}
+                                </div>
+                                <span className="text-xs text-white font-poppins">{label}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {tabVisibilityLoading[key] && (
+                                  <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                                )}
+                                <label className={`relative inline-flex items-center ${
+                                  tabVisibilityLoading[key] ? 'pointer-events-none opacity-70' : 'cursor-pointer'
+                                }`}>
+                                  <input
+                                    type="checkbox"
+                                    className="sr-only peer"
+                                    checked={getTabVisibility(key)}
+                                    onChange={(e) => handleTabVisibilityUpdate(key, e.target.checked)}
+                                  />
+                                  <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
+                                </label>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Pinned Navigation Tabs row */}
+                  {matchesSearch("pinned navigation tabs profile control navigation pin menu") && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setPinnedNavTabsSectionOpen(prev => !prev)}
+                        className="w-full flex items-center gap-3 px-4 py-3 border-t border-white/5 hover:bg-white/5 transition-colors duration-150 group text-left"
+                      >
+                        <span className="text-base leading-none">📌</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold text-white font-poppins">Pinned Navigation Tabs</div>
+                          <div className="text-[10px] text-white/40 font-poppins mt-0.5">Navigation · Select up to 5 enabled tabs to pin to your public profile's navigation</div>
+                        </div>
+                        <svg
+                          width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" viewBox="0 0 24 24"
+                          className={`flex-shrink-0 transition-transform duration-200 ${pinnedNavTabsSectionOpen ? 'rotate-90' : ''}`}
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+
+                      {/* Pinned Navigation Tabs expanded panel */}
+                      {pinnedNavTabsSectionOpen && (
+                        <div
+                          ref={(el) => {
+                            if (el && !el.dataset.scrolled) {
+                              el.dataset.scrolled = 'true';
+                              setTimeout(() => {
+                                const rect = el.getBoundingClientRect();
+                                const isMobile = window.innerWidth < 768;
+                                const bottomOffset = isMobile ? 80 : 20;
+                                const cutoff = window.innerHeight - bottomOffset;
+                                if (rect.bottom > cutoff) {
+                                  const scrollOffset = rect.bottom - cutoff + 20;
+                                  window.scrollBy({ top: scrollOffset, behavior: 'smooth' });
+                                }
+                              }, 100);
+                            }
+                          }}
+                          className="border-t border-white/5 px-4 py-4 space-y-3 bg-white/[0.01]"
+                        >
+                          <p className="text-[10px] text-white/50 font-poppins mb-1">Select up to 5 enabled tabs to pin to your public profile's navigation.</p>
+                          <div className="space-y-2">
+                            {[
+                              { key: 'public_profile', label: 'Profile Tab', icon: (
+                                <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" /></svg>
+                              )},
+                              { key: 'public_recommendations', label: 'Recommendations Tab', icon: (
+                                <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
+                              )},
+                              { key: 'public_music', label: 'Music Tab', icon: (
+                                <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                              )},
+                              { key: 'public_guides', label: 'Guides Tab', icon: (
+                                <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385a7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10a7.968 7.968 0 00-14.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" /></svg>
+                              )},
+                              { key: 'public_movie', label: 'Movies & Shows Tab', icon: (
+                                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" /></svg>
+                              )},
+                              { key: 'public_books', label: 'Books Tab', icon: (
+                                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                              )},
+                              { key: 'public_games', label: 'Games Tab', icon: (
+                                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                              )},
+                            ].map(({ key, label, icon }) => {
+                              const isEnabled = getTabVisibility(key);
+                              const isPinned = isTabPinned(key);
+                              return (
+                                <div key={key} className="flex items-center justify-between py-1.5">
+                                  <div className="flex items-center gap-2">
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${isEnabled ? 'bg-white/10' : 'bg-white/5 opacity-40'}`}>
+                                      {icon}
+                                    </div>
+                                    <span className={`text-xs font-poppins ${isEnabled ? 'text-white' : 'text-white/40'}`}>
+                                      {label}
+                                      {!isEnabled && <span className="text-[9px] text-white/35 ml-1.5 font-normal font-poppins">(Visibility off)</span>}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {tabVisibilityLoading[`pin_${key}`] && (
+                                      <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                                    )}
+                                    <label className={`relative inline-flex items-center ${
+                                      tabVisibilityLoading[`pin_${key}`] || !isEnabled ? 'pointer-events-none opacity-50' : 'cursor-pointer'
+                                    }`}>
+                                      <input
+                                        type="checkbox"
+                                        className="sr-only peer"
+                                        checked={isPinned}
+                                        disabled={!isEnabled || tabVisibilityLoading[`pin_${key}`]}
+                                        onChange={(e) => handleNavPinUpdate(key, e.target.checked)}
+                                      />
+                                      <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
+                                    </label>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
-              </div>
-            </Accordion>
+              </>
+            )}
 
-            {/* Language Preference Accordion */}
-            <Accordion heading={t("settings.languagePreference.heading")} defaultOpen={false}>
-              <div className="bg-dashboard-sidebar rounded-xl p-6">
-                <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                  <div className="flex-1">
-                    <h3 className="text-white font-semibold font-poppins mb-2 text-lg">
-                      {t("settings.languagePreference.heading")}
-                    </h3>
-                    <p className="text-white/70 text-sm font-poppins mb-4 lg:mb-0">
-                      {t("settings.languagePreference.description")}
-                    </p>
-                  </div>
-                  <div className="w-full lg:w-80 xl:w-96">
-                    <LanguageSelector />
-                  </div>
+            {/* ── CONNECTED ACCOUNTS section ── */}
+            {matchesSearch("connected accounts local tunes external platform integration google") && (
+              <>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1 font-poppins">Connected Accounts</p>
+                <div
+                  className="rounded-xl overflow-hidden mb-3"
+                  style={{ background: 'var(--dash-sidebar-bg, hsl(var(--dashboard-sidebar)))', border: '1px solid rgba(255,255,255,0.08)' }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setConnectedAccountsSectionOpen(prev => !prev)}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors duration-150 group text-left"
+                  >
+                    <span className="text-base leading-none">🔗</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-semibold text-white font-poppins">Connected Accounts</div>
+                      <div className="text-[10px] text-white/40 font-poppins mt-0.5">Integrations · Manage external music platforms and accounts</div>
+                    </div>
+                    <svg
+                      width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" viewBox="0 0 24 24"
+                      className={`flex-shrink-0 transition-transform duration-200 ${connectedAccountsSectionOpen ? 'rotate-90' : ''}`}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+
+                  {connectedAccountsSectionOpen && (
+                    <div
+                      ref={(el) => {
+                        if (el && !el.dataset.scrolled) {
+                          el.dataset.scrolled = 'true';
+                          setTimeout(() => {
+                            const rect = el.getBoundingClientRect();
+                            const isMobile = window.innerWidth < 768;
+                            const bottomOffset = isMobile ? 80 : 20;
+                            const cutoff = window.innerHeight - bottomOffset;
+                            if (rect.bottom > cutoff) {
+                              const scrollOffset = rect.bottom - cutoff + 20;
+                              window.scrollBy({ top: scrollOffset, behavior: 'smooth' });
+                            }
+                          }, 100);
+                        }
+                      }}
+                      className="border-t border-white/5 px-2 py-2 bg-white/[0.01]"
+                    >
+                      <ConnectedAccounts />
+                    </div>
+                  )}
                 </div>
-              </div>
-            </Accordion>
+              </>
+            )}
 
-            {/* Public Profile Settings Accordion */}
-            <Accordion heading="Public Profile Settings" defaultOpen={false}>
-              <div className="bg-dashboard-sidebar rounded-xl p-6">
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-white font-semibold font-poppins mb-2 text-lg">
-                      Tab Visibility
-                    </h3>
-                    <p className="text-white/70 text-sm font-poppins mb-4">
-                      Control which tabs are visible on your public profile page.
-                    </p>
-                  </div>
+            {/* ── DANGER ZONE section ── */}
+            {((matchesSearch("deactivate account block remove danger") || matchesSearch("delete account permanently remove danger"))) && (
+              <>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1 font-poppins">Danger Zone</p>
+                <div
+                  className="rounded-xl overflow-hidden"
+                  style={{ background: 'rgba(248,113,113,0.04)', border: '1px solid rgba(248,113,113,0.15)' }}
+                >
+                  {/* Deactivate Account row */}
+                  {matchesSearch("deactivate account block remove danger") && (
+                    <button
+                      type="button"
+                      onClick={() => { setUsername(user?.username || ''); setShowModal(true); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 border-b hover:bg-red-500/5 transition-colors duration-150 group text-left"
+                      style={{ borderColor: 'rgba(248,113,113,0.1)' }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-semibold text-red-400 font-poppins">{t('settings.account.deactivateAccount.text')}</div>
+                        <div className="text-[10px] text-red-400/60 font-poppins mt-0.5">{t('settings.account.deactivateAccount.description')}</div>
+                      </div>
+                      <svg width="14" height="14" fill="none" stroke="rgba(248,113,113,0.4)" viewBox="0 0 24 24" className="flex-shrink-0 group-hover:stroke-red-400 transition-colors">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  )}
 
-                  <div className="space-y-4">
-                    {/* Gallery Tab Toggle */}
-                    <div className="flex items-center justify-between p-4 bg-dashboard-muted rounded-lg border border-white/10">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
-                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                        <div>
-                          <h4 className="text-white font-medium font-poppins">Profile Tab</h4>
-                          <p className="text-white/60 text-sm font-poppins">Show your name, social links, photos, and videos on your public profile</p>
-                        </div>
+                  {/* Delete Account row */}
+                  {matchesSearch("delete account permanently remove danger") && (
+                    <button
+                      type="button"
+                      onClick={() => { setDeleteUsername(user?.username || ''); setShowDeleteAccountModal(true); setDeleteStep(1); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/5 transition-colors duration-150 group text-left"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-bold text-red-400 font-poppins">{t('settings.account.deleteAccount.text')}</div>
+                        <div className="text-[10px] text-red-400/60 font-poppins mt-0.5">{t('settings.account.deleteAccount.description')}</div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {tabVisibilityLoading['public_profile'] && (
-                          <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                        )}
-                        <label className={`relative inline-flex items-center ${tabVisibilityLoading['public_profile'] ? 'pointer-events-none opacity-70' : 'cursor-pointer'}`}>
-                          <input
-                            type="checkbox"
-                            className="sr-only peer"
-                            checked={getTabVisibility('public_profile')}
-                            onChange={(e) => {
-                              handleTabVisibilityUpdate('public_profile', e.target.checked);
-                            }}
-                          />
-                          <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Business Tab Toggle */}
-                    <div className="flex items-center justify-between p-4 bg-dashboard-muted rounded-lg border border-white/10">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
-                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                        <div>
-                          <h4 className="text-white font-medium font-poppins">Recommendation Tab</h4>
-                          <p className="text-white/60 text-sm font-poppins">Show recommendations and business details on your public profile</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {tabVisibilityLoading['public_recommendations'] && (
-                          <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                        )}
-                        <label className={`relative inline-flex items-center ${tabVisibilityLoading['public_recommendations'] ? 'pointer-events-none opacity-70' : 'cursor-pointer'}`}>
-                          <input
-                            type="checkbox"
-                            className="sr-only peer"
-                            checked={getTabVisibility('public_recommendations')}
-                            onChange={(e) => {
-                              handleTabVisibilityUpdate('public_recommendations', e.target.checked);
-                            }}
-                          />
-                          <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Music Tab Toggle */}
-                    <div className="flex items-center justify-between p-4 bg-dashboard-muted rounded-lg border border-white/10">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
-                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                        <div>
-                          <h4 className="text-white font-medium font-poppins">Music Tab</h4>
-                          <p className="text-white/60 text-sm font-poppins">Show music preferences and playlists on your public profile</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {tabVisibilityLoading['public_music'] && (
-                          <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                        )}
-                        <label className={`relative inline-flex items-center ${tabVisibilityLoading['public_music'] ? 'pointer-events-none opacity-70' : 'cursor-pointer'}`}>
-                          <input
-                            type="checkbox"
-                            className="sr-only peer"
-                            checked={getTabVisibility('public_music')}
-                            onChange={(e) => {
-                              handleTabVisibilityUpdate('public_music', e.target.checked);
-                            }}
-                          />
-                          <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Guides Tab Toggle */}
-                    <div className="flex items-center justify-between p-4 bg-dashboard-muted rounded-lg border border-white/10">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
-                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
-                          </svg>
-                        </div>
-                        <div>
-                          <h4 className="text-white font-medium font-poppins">Guides Tab</h4>
-                          <p className="text-white/60 text-sm font-poppins">Show guides and travel recommendations on your public profile</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {tabVisibilityLoading['public_guides'] && (
-                          <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                        )}
-                        <label className={`relative inline-flex items-center ${tabVisibilityLoading['public_guides'] ? 'pointer-events-none opacity-70' : 'cursor-pointer'}`}>
-                          <input
-                            type="checkbox"
-                            className="sr-only peer"
-                            checked={getTabVisibility('public_guides')}
-                            onChange={(e) => {
-                              handleTabVisibilityUpdate('public_guides', e.target.checked);
-                            }}
-                          />
-                          <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
+                      <svg width="14" height="14" fill="none" stroke="rgba(248,113,113,0.4)" viewBox="0 0 24 24" className="flex-shrink-0 group-hover:stroke-red-400 transition-colors">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
-              </div>
-            </Accordion>
-
-
-            {/* Connected Accounts Accordion */}
-            <Accordion heading="Connected Accounts" defaultOpen={false}>
-              <ConnectedAccounts />
-            </Accordion>
+              </>
+            )}
           </div>
         )}
 
-        {/* Billing Tab Content */}
+        {/* ── BILLING TAB ── */}
         {activeTab === 'billing' && (
-          <div className="bg-dashboard-sidebar/30 backdrop-blur-sm rounded-2xl px-4 py-4 sm:px-6 sm:py-6 border border-white/20 shadow-xl">
+          <div
+            className="rounded-2xl px-4 py-4 sm:px-6 sm:py-6 border shadow-xl"
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              borderColor: 'rgba(255,255,255,0.08)',
+            }}
+          >
             <BillingTab />
           </div>
         )}

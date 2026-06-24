@@ -92,6 +92,7 @@ In development, Vite middleware provides HMR. In production, pre-built static fi
 | `strapiRoutes.ts` | `/api/strapi/*` | Strapi CMS sync |
 | `subscriptionRoutes.ts` | `/api/subscription/*` | Subscription management |
 | `pageRoutes.ts` | `/api/pages/*` | CMS page content |
+| `reactivationRoutes.ts` | `/api/user/*` | Account reactivation (request magic link, unblock) |
 | `legacyRemainingRoutes.ts` | Various | Consolidated legacy endpoints |
 
 ## Service Layer
@@ -100,6 +101,7 @@ In development, Vite middleware provides HMR. In production, pre-built static fi
 |---------|---------|
 | `email-service.ts` | AWS SES email delivery with templating |
 | `gemini-service.ts` | Google Gemini AI for music recommendations |
+| `reactivation-service.ts` | Handles self-service account reactivation logic (token store, email template seeding, Strapi integration) |
 | `spotify-playlist-import.ts` | Import playlists from Spotify |
 | `youtube-playlist-import.ts` | Import playlists from YouTube |
 | `strapi-service.ts` | Strapi CMS data sync |

@@ -309,6 +309,11 @@ const InteractiveMap = memo(({ locations, onToggleExpand, defaultMapTypeId = "ro
           style={{ height: "100%", width: "100%" }}
           scrollwheel={true}
           gestureHandling={"greedy"}
+          disableDefaultUI={true}
+          fullscreenControl={false}
+          zoomControl={false}
+          mapTypeControl={false}
+          streetViewControl={false}
         >
           <SmoothMapController targetCoords={targetCoords} targetZoom={targetZoom} />
           {markersToDisplay.map((loc, index) => (
@@ -339,7 +344,7 @@ const InteractiveMap = memo(({ locations, onToggleExpand, defaultMapTypeId = "ro
       {!isFullscreen && (
         <button
           onClick={handleFullscreenToggle}
-          className="absolute top-2 right-2 z-50 bg-black/70 hover:bg-black/90 backdrop-blur-sm text-white p-2 rounded-lg shadow-lg transition-all duration-200 pointer-events-auto"
+          className="absolute bottom-8 right-2 z-50 bg-black/70 hover:bg-black/90 active:bg-black text-white p-2 rounded-lg shadow-lg transition-all duration-200 pointer-events-auto cursor-pointer hover:scale-110 active:scale-95 flex items-center justify-center border border-white/5"
           aria-label="Expand map"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

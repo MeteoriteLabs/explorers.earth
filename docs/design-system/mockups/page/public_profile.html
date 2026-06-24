@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Public Profile Mockup — explorers.earth</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ============ RESET & BASE ============ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Poppins', system-ui, sans-serif;
+      background: #0d0f12;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* ============ PREVIEW MASTER HEADER ============ */
+    .preview-header {
+      width: 100%;
+      max-width: 800px;
+      padding: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 2rem;
+      z-index: 100;
+    }
+    .preview-info h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: white;
+    }
+    .preview-info p {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      margin-top: 0.25rem;
+    }
+    .badge {
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      display: inline-block;
+    }
+    .badge-approved {
+      background: rgba(74, 222, 128, 0.15);
+      color: #4ade80;
+    }
+    .badge-public {
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
+      margin-left: 0.25rem;
+    }
+    .view-controls {
+      display: flex;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 3px;
+      border-radius: 8px;
+      gap: 2px;
+    }
+    .control-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Poppins', sans-serif;
+      transition: all 0.2s ease;
+    }
+    .control-btn.active {
+      background: #3B82F6;
+      color: white;
+    }
+
+    /* ============ MAIN LAYOUT PREVIEW VIEWS ============ */
+    .preview-main {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      width: 100%;
+      flex-grow: 1;
+      padding-bottom: 3rem;
+      transition: all 0.3s ease;
+    }
+
+    /* Device Frame View Mode */
+    .preview-main.device-view .phone-wrapper {
+      width: 375px;
+      height: 720px;
+      border: 12px solid #1e293b;
+      border-radius: 40px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      background: #000;
+      overflow: hidden;
+      position: relative;
+    }
+    .preview-main.device-view .phone-frame-inner {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+    .preview-main.device-view .phone-frame-inner::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Full Responsive View Mode */
+    .preview-main.full-view {
+      padding: 0 1.5rem 3rem;
+      max-width: 1200px;
+    }
+    .preview-main.full-view .phone-wrapper {
+      width: 100%;
+      background: #000;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    .preview-main.full-view .phone-frame-inner {
+      width: 100%;
+      max-width: 1024px;
+      margin: 0 auto;
+    }
+
+    /* ============ DESIGN TOKENS ============ */
+    :root {
+      --evergreen: 135deg, #10B981, #047857;
+      --theme-border-color: #10b981;
+      --dash-bg: #000000;
+      --dash-sidebar-bg: #161B26;
+      --dash-accent: #3b82f6;
+      --dash-border: rgba(255,255,255,0.08);
+    }
+
+    /* ============ PUBLIC WEB STYLE SHEET ============ */
+    .phone-frame {
+      min-height: 100%;
+      padding-bottom: 5rem;
+      background: #000000;
+      position: relative;
+      color: white;
+    }
+
+    /* Fixed App Header */
+    .app-header {
+      position: sticky;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      background: rgba(42, 42, 42, 0.9);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.5rem;
+      z-index: 50;
+    }
+    .app-logo {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: white;
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+    .app-header-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .app-btn {
+      width: 32px;
+      height: 32px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .app-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    /* Cover Photo Scenery */
+    .cover-container {
+      position: relative;
+      height: 280px;
+      background: #000;
+      overflow: hidden;
+    }
+    @media (min-width: 768px) {
+      .cover-container {
+        height: 360px;
+      }
+    }
+    .cover-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center 32%;
+      transform: scale(1.05);
+    }
+    .cover-fade {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.85) 100%);
+      z-index: 1;
+    }
+    .cover-blur-mask {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 70%;
+      background: rgba(0,0,0,0.15);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 2;
+      -webkit-mask-image: linear-gradient(to top, black 30%, transparent 100%);
+      mask-image: linear-gradient(to top, black 30%, transparent 100%);
+    }
+    .cover-shadow {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 90px;
+      background: linear-gradient(to top, #000 20%, rgba(0,0,0,0.4) 60%, transparent 100%);
+      z-index: 3;
+    }
+
+    /* Profile Header Info */
+    .profile-info-section {
+      position: relative;
+      z-index: 10;
+      margin-top: -60px;
+      text-align: center;
+      padding: 0 1.5rem;
+    }
+    .avatar-container {
+      position: relative;
+      width: 110px;
+      height: 110px;
+      margin: 0 auto 0.5rem;
+      border-radius: 50%;
+      border: 4px solid var(--theme-border-color);
+      overflow: hidden;
+      background: #000;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      transition: border-color 0.3s;
+    }
+    .avatar-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .profile-name {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: white;
+      letter-spacing: -0.01em;
+      margin-bottom: 0.15rem;
+    }
+    .profile-location {
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+    }
+    .profile-location svg {
+      opacity: 0.7;
+    }
+
+    /* Social Icons Row */
+    .social-icons-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1.2rem;
+      padding: 0 1rem;
+      margin: 1.25rem auto 0.75rem;
+      max-width: 450px;
+    }
+    .social-icon-btn {
+      color: rgba(255, 255, 255, 0.7);
+      transition: all 0.2s;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .social-icon-btn:hover {
+      color: white;
+      transform: translateY(-2px);
+    }
+
+    /* Bio Section */
+    .bio-card {
+      max-width: 600px;
+      margin: 0.5rem auto 1.5rem;
+      padding: 0 1.5rem;
+      font-size: 0.78rem;
+      line-height: 1.5;
+      color: #94a3b8;
+      text-align: center;
+    }
+
+    /* Tab Switcher Layout */
+    .tabs-nav {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 1.25rem;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .tab-nav-btn {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 0.75rem 0.5rem;
+      color: #94a3b8;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .tab-nav-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+    .tab-nav-btn.active {
+      color: white;
+      border-bottom-color: #3b82f6;
+    }
+
+    /* Tab Panels */
+    .tab-panels-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+    .tab-panel {
+      display: none;
+    }
+    .tab-panel.active {
+      display: block;
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ============ RECOMMENDATIONS TAB: CARDS ============ */
+    .recommendations-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding-bottom: 2rem;
+    }
+
+    /* Dynamic Immersive Category Card */
+    .rec-card {
+      position: relative;
+      width: 100%;
+      height: 150px;
+      border-radius: 18px;
+      overflow: hidden;
+      cursor: pointer;
+      background: #111622;
+      display: flex;
+      align-items: center;
+      padding: 1.5rem 2rem;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      transition: transform 0.3s;
+    }
+    .rec-card:hover {
+      transform: scale(1.01);
+    }
+    .rec-card-backdrop-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to right, rgba(0,0,0,0.7) 30%, rgba(0,0,0,0.1) 70%, transparent 100%);
+      z-index: 5;
+    }
+    .rec-card-blur-panel {
+      position: absolute;
+      inset: 0;
+      width: 75%;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 4;
+      -webkit-mask-image: linear-gradient(to right, black 50%, transparent 100%);
+      mask-image: linear-gradient(to right, black 50%, transparent 100%);
+    }
+    .rec-card-content {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      max-width: 80%;
+    }
+    .rec-card-title {
+      font-size: 1.75rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: -0.04em;
+      color: white;
+      margin-bottom: 0.25rem;
+      line-height: 1;
+      transition: transform 0.2s;
+    }
+    .rec-card:hover .rec-card-title {
+      transform: scale(1.03);
+    }
+    .rec-card-desc {
+      font-size: 0.68rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.7);
+      line-height: 1.4;
+      margin-top: 0.25rem;
+    }
+    .rec-card-indicator {
+      position: absolute;
+      right: 1.5rem;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      z-index: 10;
+      opacity: 0;
+      transform: translateX(10px);
+      transition: all 0.3s;
+    }
+    .rec-card:hover .rec-card-indicator {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    /* Aura glow flash effect (flashlight hover) */
+    .rec-card-aura {
+      position: absolute;
+      inset: 0;
+      z-index: 6;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .rec-card:hover .rec-card-aura {
+      opacity: 1;
+    }
+
+    /* Card signature waves / lines */
+    .rec-card-waves {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 40px;
+      pointer-events: none;
+      z-index: 8;
+      overflow: hidden;
+    }
+
+    /* ============ SPECIFIC CATEGORY CUSTOM ANIMATIONS ============ */
+    
+    /* 1. PLACES (Emerald) */
+    .rec-card.places-card {
+      background: radial-gradient(circle at 80% 20%, rgba(16,185,129,0.1) 0%, transparent 60%), #0d1e15;
+    }
+    .places-birds-bg {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      opacity: 0.15;
+      background: url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=600') center/cover no-repeat;
+    }
+    .places-birds-container {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      inset: 0;
+      z-index: 3;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .bird-svg {
+      position: absolute;
+      color: rgba(16, 185, 129, 0.6);
+      animation: flyBird 12s linear infinite;
+    }
+    @keyframes flyBird {
+      0% { left: -10%; top: 40%; transform: scale(0.6) translateY(0); }
+      50% { transform: scale(0.6) translateY(-10px); }
+      100% { left: 110%; top: 20%; transform: scale(0.6) translateY(0); }
+    }
+
+    /* 2. MUSIC (Purple) */
+    .rec-card.music-card {
+      background: radial-gradient(circle at 80% 20%, rgba(168,85,247,0.1) 0%, transparent 60%), #140d1e;
+    }
+    .music-record-decor {
+      position: absolute;
+      right: -40px;
+      top: -20px;
+      width: 180px;
+      height: 180px;
+      opacity: 0.06;
+      z-index: 2;
+      border: 6px double white;
+      border-radius: 50%;
+      animation: rotateRecord 20s linear infinite;
+    }
+    @keyframes rotateRecord {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .music-waves-bar {
+      display: inline-block;
+      width: 3px;
+      height: 10px;
+      background: #a855f7;
+      margin: 0 1px;
+      border-radius: 3px;
+    }
+    
+    /* 3. MOVIES (Blue) */
+    .rec-card.movies-card {
+      background: radial-gradient(circle at 80% 20%, rgba(59,130,246,0.1) 0%, transparent 60%), #0d1424;
+    }
+    .movies-film-reel {
+      position: absolute;
+      right: -30px;
+      top: 50%;
+      transform: translateY(-50%) rotate(15deg);
+      width: 150px;
+      height: 150px;
+      opacity: 0.08;
+      z-index: 2;
+    }
+    .movies-scanline {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 2px;
+      background: rgba(59, 130, 246, 0.4);
+      box-shadow: 0 0 10px #3b82f6;
+      z-index: 8;
+      animation: sweepScanline 4s linear infinite;
+    }
+    @keyframes sweepScanline {
+      0% { top: -10%; }
+      100% { top: 110%; }
+    }
+
+    /* 4. BOOKS (Orange) */
+    .rec-card.books-card {
+      background: radial-gradient(circle at 80% 20%, rgba(249,115,22,0.1) 0%, transparent 60%), #1f140e;
+    }
+    .books-centerpiece {
+      position: absolute;
+      right: 15%;
+      top: 50%;
+      transform: translateY(-50%) rotate(-10deg);
+      width: 70px;
+      height: 50px;
+      perspective: 400px;
+      z-index: 3;
+      opacity: 0.4;
+      transition: all 0.3s;
+    }
+    .rec-card.books-card:hover .books-centerpiece {
+      opacity: 0.8;
+      transform: translateY(-50%) rotate(-5deg) scale(1.05);
+    }
+    .book-page-left {
+      position: absolute;
+      left: 0;
+      width: 50%;
+      height: 100%;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 4px 0 0 4px;
+      transform-origin: right;
+      transform: rotateY(-25deg);
+    }
+    .book-page-right {
+      position: absolute;
+      right: 0;
+      width: 50%;
+      height: 100%;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 0 4px 4px 0;
+      transform-origin: left;
+      transform: rotateY(25deg);
+    }
+    .book-turning-page {
+      position: absolute;
+      left: 50%;
+      width: 46%;
+      height: 90%;
+      top: 5%;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      transform-origin: left;
+      z-index: 5;
+      animation: flipBookPage 5s ease-in-out infinite;
+    }
+    @keyframes flipBookPage {
+      0% { transform: rotateY(25deg); opacity: 0; }
+      10% { opacity: 0.7; }
+      80% { opacity: 0.7; }
+      100% { transform: rotateY(-155deg); opacity: 0; }
+    }
+
+    /* 5. GAMES (Pink) */
+    .rec-card.games-card {
+      background: radial-gradient(circle at 80% 20%, rgba(236,72,153,0.1) 0%, transparent 60%), #220d1c;
+    }
+    .games-controller-bg {
+      position: absolute;
+      right: 10%;
+      top: 50%;
+      transform: translateY(-50%) rotate(-15deg);
+      width: 80px;
+      height: 60px;
+      opacity: 0.25;
+      z-index: 2;
+      transition: all 0.3s;
+    }
+    .rec-card.games-card:hover .games-controller-bg {
+      opacity: 0.5;
+      transform: translateY(-52%) rotate(-10deg) scale(1.1);
+    }
+    .games-glitch-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: rgba(236, 72, 153, 0.3);
+      z-index: 7;
+      animation: gameGlitch 6s steps(5) infinite;
+    }
+    @keyframes gameGlitch {
+      0%, 100% { top: -10%; opacity: 0; }
+      40% { top: 30%; opacity: 0.8; }
+      42% { top: 60%; opacity: 0.8; }
+      44% { top: 30%; opacity: 0; }
+    }
+
+    /* ============ GALLERY TAB: GRID ============ */
+    .gallery-grid {
+      display: grid;
+      grid-template-cols: repeat(3, 1fr);
+      gap: 3px;
+      padding-bottom: 2rem;
+    }
+    @media (min-width: 768px) {
+      .gallery-grid {
+        grid-template-cols: repeat(3, 1fr);
+        gap: 8px;
+      }
+    }
+    .gallery-item {
+      position: relative;
+      aspect-ratio: 1 / 1;
+      border-radius: 4px;
+      overflow: hidden;
+      background: #111622;
+      cursor: pointer;
+    }
+    @media (min-width: 768px) {
+      .gallery-item {
+        border-radius: 12px;
+      }
+    }
+    .gallery-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s;
+    }
+    .gallery-item:hover img {
+      transform: scale(1.05);
+    }
+    .gallery-item-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      opacity: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.2s;
+      z-index: 2;
+    }
+    .gallery-item:hover .gallery-item-overlay {
+      opacity: 1;
+    }
+
+    /* ============ BUSINESS TAB ============ */
+    .business-card {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .business-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 0.5rem;
+    }
+    .business-address {
+      font-size: 0.82rem;
+      color: #cbd5e1;
+      line-height: 1.5;
+      margin-bottom: 1.25rem;
+    }
+    .business-subtitle {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #94a3b8;
+      margin-bottom: 0.5rem;
+    }
+    .business-about {
+      font-size: 0.78rem;
+      color: #94a3b8;
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+    .business-link-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .business-link-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.82rem;
+      color: #cbd5e1;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .business-link-item:hover {
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ====== PREVIEW MASTER HEADER ====== -->
+  <header class="preview-header">
+    <div class="preview-info">
+      <h1>Public Profile Page</h1>
+      <p>
+        Status: <span class="badge badge-public">Public</span>
+      </p>
+    </div>
+    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+      <div class="view-controls">
+        <button class="control-btn active" id="btn-device" onclick="setViewMode('device')">📱 Phone</button>
+        <button class="control-btn" id="btn-full" onclick="setViewMode('full')">🖥️ Full View</button>
+      </div>
+      <div class="view-controls">
+        <button class="control-btn active" id="btn-theme-green" onclick="setTheme('green')">🌲 Green Theme</button>
+        <button class="control-btn" id="btn-theme-dark" onclick="setTheme('dark')">🖤 Dark Theme</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ====== MAIN PREVIEW CONTAINER ====== -->
+  <main class="preview-main device-view" id="main-container">
+    <div class="phone-wrapper">
+      <div class="phone-frame-inner">
+        <div class="phone-frame">
+
+          <!-- ====== PUBLIC APP HEADER ====== -->
+          <div class="app-header">
+            <span class="app-logo">explorers.earth</span>
+            <div class="app-header-actions">
+              <!-- Share Icon -->
+              <button class="app-btn" onclick="alert('Shared profile link!')" aria-label="Share">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+              </button>
+              <!-- Copy Icon -->
+              <button class="app-btn" onclick="alert('Copied profile link to clipboard!')" aria-label="Copy Link">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- ====== COVER IMAGE BANNER ====== -->
+          <div class="cover-container">
+            <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&h=400&q=80" alt="Cover background" class="cover-img" />
+            <div class="cover-fade"></div>
+            <div class="cover-blur-mask"></div>
+            <div class="cover-shadow"></div>
+          </div>
+
+          <!-- ====== PROFILE INFO SECTION ====== -->
+          <div class="profile-info-section">
+            <!-- Avatar picture -->
+            <div class="avatar-container" id="profile-avatar">
+              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&h=300&q=80" alt="Profile avatar" class="avatar-img" />
+            </div>
+
+            <!-- Name and location -->
+            <h2 class="profile-name">Shivanshu Singh</h2>
+            <div class="profile-location">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <circle cx="12" cy="11" r="3" />
+              </svg>
+              <span>Lucknow, India</span>
+            </div>
+
+            <!-- Social Media Row -->
+            <div class="social-icons-row">
+              <!-- Instagram -->
+              <a class="social-icon-btn" href="#" target="_blank" aria-label="Instagram">
+                <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+                </svg>
+              </a>
+              <!-- WhatsApp -->
+              <a class="social-icon-btn" href="#" target="_blank" aria-label="WhatsApp">
+                <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.42 9.864-9.864.002-2.637-1.019-5.114-2.875-6.973C16.582 1.91 14.113.882 11.487.882c-5.442 0-9.87 4.42-9.874 9.865-.001 1.748.473 3.456 1.378 4.978l-1.016 3.71 3.8-.996c1.479.807 3.12 1.233 4.882 1.235zm12.368-8.2c-.33-.165-1.953-.964-2.253-1.074-.3-.109-.519-.165-.738.165-.219.33-.848 1.074-1.039 1.293-.191.218-.382.245-.712.08-.33-.164-1.392-.513-2.653-1.637-1.01-.902-1.691-2.016-1.89-2.344-.199-.328-.02-.507.144-.671.148-.147.33-.382.493-.574.164-.192.219-.328.328-.547.11-.219.055-.411-.027-.575-.082-.164-.738-1.777-1.011-2.434-.267-.641-.539-.553-.738-.563-.19-.01-.41-.01-.629-.01a1.205 1.205 0 00-.875.411c-.3.328-1.149 1.122-1.149 2.736 0 1.614 1.176 3.175 1.34 3.394.164.219 2.314 3.533 5.605 4.954.783.338 1.394.54 1.871.692.787.25 1.5.215 2.066.13.63-.095 1.953-.798 2.227-1.57.273-.772.273-1.432.191-1.57-.082-.138-.3-.219-.63-.383z" />
+                </svg>
+              </a>
+              <!-- Mobile/SMS -->
+              <a class="social-icon-btn" href="#" target="_blank" aria-label="SMS Mobile">
+                <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M17 1H7c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm-5 20c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm5.25-4H6.75V4h10.5v13z" />
+                </svg>
+              </a>
+              <!-- Website -->
+              <a class="social-icon-btn" href="#" target="_blank" aria-label="Website">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+              </a>
+              <!-- YouTube -->
+              <a class="social-icon-btn" href="#" target="_blank" aria-label="YouTube">
+                <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M23.498 6.163a3.003 3.003 0 00-2.11-2.11C19.517 3.545 12 3.545 12 3.545s-7.517 0-9.388.508a3.003 3.003 0 00-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 002.11 2.11c1.871.508 9.388.508 9.388.508s7.517 0 9.388-.508a3.003 3.003 0 002.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                </svg>
+              </a>
+              <!-- Spotify -->
+              <a class="social-icon-btn" href="#" target="_blank" aria-label="Spotify">
+                <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 .007c-6.627 0-12 5.372-12 12s5.373 12 12 12 12-5.372 12-12-5.373-12-12-12zm5.49 17.306c-.235.367-.714.49-1.08.254-2.98-1.822-6.73-2.237-11.144-1.228-.42.097-.84-.17-.936-.59-.096-.418.17-.838.59-.934 4.836-1.106 8.973-.633 12.316 1.413.366.233.49.714.254 1.085zm1.465-3.267c-.296.48-.925.636-1.405.34-3.412-2.096-8.613-2.707-12.648-1.482-.54.164-1.112-.146-1.277-.686-.165-.54.147-1.11.687-1.275 4.613-1.4 10.34-.72 14.303 1.72.48.293.636.924.34 1.403zm.126-3.41c-4.094-2.43-10.843-2.656-14.772-1.465-.628.19-1.292-.164-1.483-.792-.19-.628.163-1.293.792-1.483 4.507-1.37 11.972-1.11 16.7 1.696.564.335.75 1.07.414 1.636-.336.564-1.07.75-1.636.413z" />
+                </svg>
+              </a>
+              <!-- Gmail -->
+              <a class="social-icon-btn" href="#" target="_blank" aria-label="Gmail">
+                <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M24 4.5v15c0 .85-.65 1.5-1.5 1.5H21V7.39l-9 5.86-9-5.86V21H1.5C.65 21 0 20.35 0 19.5v-15c0-.85.65-1.5 1.5-1.5H3l9 5.86 9-5.86h1.5c.85 0 1.5.65 1.5 1.5z" />
+                </svg>
+              </a>
+            </div>
+
+            <!-- Bio Details -->
+            <div class="bio-card">
+              Travel curator & foodie based in India 🌍. Curating aesthetic landscapes, cozy homestays, cinematic stories, and local food trials.
+            </div>
+          </div>
+
+          <!-- ====== TAB SWITCHER NAVIGATION ====== -->
+          <nav class="tabs-nav" role="tablist">
+            <button class="tab-nav-btn active" role="tab" id="tab-recs" aria-selected="true" onclick="switchTab('recs')">
+              <svg fill="currentColor" viewBox="0 0 24 24" style="margin-right: 0.35rem;">
+                <path d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+              </svg>
+              <span>Recommendations</span>
+            </button>
+            <button class="tab-nav-btn" role="tab" id="tab-gallery" aria-selected="false" onclick="switchTab('gallery')">
+              <svg fill="currentColor" viewBox="0 0 24 24" style="margin-right: 0.35rem;">
+                <path d="M20 2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM8 20H4v-4h4v4zm0-6H4v-4h4v4zm0-6H4V4h4v4zm6 12h-4v-4h4v4zm0-6h-4v-4h4v4zm0-6h-4V4h4v4zm6 12h-4v-4h4v4zm0-6h-4v-4h4v4zm0-6h-4V4h4v4z" />
+              </svg>
+              <span>Gallery</span>
+            </button>
+            <button class="tab-nav-btn" role="tab" id="tab-business" aria-selected="false" onclick="switchTab('business')">
+              <svg fill="currentColor" viewBox="0 0 24 24" style="margin-right: 0.35rem;">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+              </svg>
+              <span>Business</span>
+            </button>
+          </nav>
+
+          <!-- ====== TAB PANELS CONTAINER ====== -->
+          <div class="tab-panels-container">
+            
+            <!-- ── PANEL 1: RECOMMENDATIONS (ACTIVE BY DEFAULT) ── -->
+            <div class="tab-panel active" id="panel-recs" role="tabpanel">
+              <div class="recommendations-list">
+                
+                <!-- Card 1: Places (Emerald) -->
+                <div class="rec-card places-card" onclick="location.href='#'" style="--accent-glow: rgba(16, 185, 129, 0.2)">
+                  <div class="places-birds-bg"></div>
+                  <div class="places-birds-container">
+                    <!-- Dynamic flying SVG birds -->
+                    <svg class="bird-svg" style="animation-delay: 0s; top: 30%; width:16px; height:12px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 16">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M2 10 C 6 6, 10 6, 12 8 C 14 6, 18 6, 22 10" />
+                    </svg>
+                    <svg class="bird-svg" style="animation-delay: 4s; top: 55%; width:14px; height:10px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 16">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M2 10 C 6 6, 10 6, 12 8 C 14 6, 18 6, 22 10" />
+                    </svg>
+                  </div>
+                  <div class="rec-card-blur-panel"></div>
+                  <div class="rec-card-backdrop-overlay"></div>
+                  <div class="rec-card-aura"></div>
+                  <div class="rec-card-content">
+                    <h3 class="rec-card-title">Places</h3>
+                    <p class="rec-card-desc">Explore curated locations and favorite spots from around the world</p>
+                  </div>
+                  <div class="rec-card-indicator">➔</div>
+                </div>
+
+                <!-- Card 2: Music (Purple) -->
+                <div class="rec-card music-card" onclick="location.href='#'" style="--accent-glow: rgba(168, 85, 247, 0.2)">
+                  <div class="music-record-decor"></div>
+                  <div class="rec-card-blur-panel"></div>
+                  <div class="rec-card-backdrop-overlay"></div>
+                  <div class="rec-card-aura"></div>
+                  <div class="rec-card-content">
+                    <h3 class="rec-card-title">Music</h3>
+                    <p class="rec-card-desc">Discover shared playlists and local tunes that define the vibe</p>
+                  </div>
+                  <!-- Mini Wave equalizer display -->
+                  <div class="rec-card-waves" style="display:flex; justify-content:center; align-items:flex-end; padding-bottom:5px; opacity:0.35;">
+                    <span class="music-waves-bar" style="animation: bounceBar 1.2s ease-in-out infinite alternate;"></span>
+                    <span class="music-waves-bar" style="animation: bounceBar 0.8s ease-in-out infinite alternate 0.2s;"></span>
+                    <span class="music-waves-bar" style="animation: bounceBar 1.5s ease-in-out infinite alternate 0.4s;"></span>
+                    <span class="music-waves-bar" style="animation: bounceBar 1.0s ease-in-out infinite alternate 0.1s;"></span>
+                    <span class="music-waves-bar" style="animation: bounceBar 1.3s ease-in-out infinite alternate 0.3s;"></span>
+                  </div>
+                  <style>
+                    @keyframes bounceBar {
+                      0% { height: 4px; }
+                      100% { height: 18px; }
+                    }
+                  </style>
+                  <div class="rec-card-indicator">➔</div>
+                </div>
+
+                <!-- Card 3: Movies & Shows (Blue) -->
+                <div class="rec-card movies-card" onclick="location.href='#'" style="--accent-glow: rgba(59, 130, 246, 0.2)">
+                  <div class="movies-scanline"></div>
+                  <!-- Film reel path element -->
+                  <svg class="movies-film-reel" viewBox="0 0 100 100" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1">
+                    <circle cx="50" cy="50" r="45" />
+                    <circle cx="50" cy="50" r="15" />
+                    <circle cx="50" cy="23" r="10" />
+                    <circle cx="50" cy="77" r="10" />
+                    <circle cx="23" cy="50" r="10" />
+                    <circle cx="77" cy="50" r="10" />
+                  </svg>
+                  <div class="rec-card-blur-panel"></div>
+                  <div class="rec-card-backdrop-overlay"></div>
+                  <div class="rec-card-aura"></div>
+                  <div class="rec-card-content">
+                    <h3 class="rec-card-title">Movies & Shows</h3>
+                    <p class="rec-card-desc">Watch lists and cinematic recommendations for every mood</p>
+                  </div>
+                  <div class="rec-card-indicator">➔</div>
+                </div>
+
+                <!-- Card 4: Books (Orange) -->
+                <div class="rec-card books-card" onclick="location.href='#'" style="--accent-glow: rgba(249, 115, 22, 0.2)">
+                  <div class="books-centerpiece">
+                    <div class="book-page-left"></div>
+                    <div class="book-page-right"></div>
+                    <div class="book-turning-page"></div>
+                  </div>
+                  <div class="rec-card-blur-panel"></div>
+                  <div class="rec-card-backdrop-overlay"></div>
+                  <div class="rec-card-aura"></div>
+                  <div class="rec-card-content">
+                    <h3 class="rec-card-title">Books</h3>
+                    <p class="rec-card-desc">Literary picks and reading collections from classic to modern</p>
+                  </div>
+                  <div class="rec-card-indicator">➔</div>
+                </div>
+
+                <!-- Card 5: Games (Pink) -->
+                <div class="rec-card games-card" onclick="location.href='#'" style="--accent-glow: rgba(236, 72, 153, 0.2)">
+                  <div class="games-glitch-line"></div>
+                  <svg class="games-controller-bg" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1.5" viewBox="0 0 120 90">
+                    <path d="M20 70 Q 15 80, 25 85 Q 40 90, 60 70 Q 80 90, 95 85 Q 105 80, 100 70 L 105 30 Q 110 10, 60 10 Q 10 10, 15 30 Z" />
+                    <circle cx="45" cy="55" r="7" />
+                    <circle cx="75" cy="55" r="7" />
+                  </svg>
+                  <div class="rec-card-blur-panel"></div>
+                  <div class="rec-card-backdrop-overlay"></div>
+                  <div class="rec-card-aura"></div>
+                  <div class="rec-card-content">
+                    <h3 class="rec-card-title">Games</h3>
+                    <p class="rec-card-desc">Gaming favorites and latest discoveries in the digital world</p>
+                  </div>
+                  <div class="rec-card-indicator">➔</div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- ── PANEL 2: GALLERY (HIDDEN BY DEFAULT) ── -->
+            <div class="tab-panel" id="panel-gallery" role="tabpanel">
+              <div class="gallery-grid">
+                <!-- Item 1 -->
+                <div class="gallery-item" onclick="alert('Viewing image!')">
+                  <img src="https://images.unsplash.com/photo-1542224566-6e85f2e6772f?auto=format&fit=crop&q=80&w=400&h=400" alt="Mountain sunset" />
+                  <div class="gallery-item-overlay">
+                    <span style="font-size:0.75rem; font-weight:700;">View Photo</span>
+                  </div>
+                </div>
+                <!-- Item 2 -->
+                <div class="gallery-item" onclick="alert('Viewing image!')">
+                  <img src="https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&q=80&w=400&h=400" alt="Scenic lake boat" />
+                  <div class="gallery-item-overlay">
+                    <span style="font-size:0.75rem; font-weight:700;">View Photo</span>
+                  </div>
+                </div>
+                <!-- Item 3 -->
+                <div class="gallery-item" onclick="alert('Viewing image!')">
+                  <img src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=400&h=400" alt="Music concert stage" />
+                  <div class="gallery-item-overlay">
+                    <span style="font-size:0.75rem; font-weight:700;">View Photo</span>
+                  </div>
+                </div>
+                <!-- Item 4 -->
+                <div class="gallery-item" onclick="alert('Viewing image!')">
+                  <img src="https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=400&h=400" alt="Cinema theater" />
+                  <div class="gallery-item-overlay">
+                    <span style="font-size:0.75rem; font-weight:700;">View Photo</span>
+                  </div>
+                </div>
+                <!-- Item 5 -->
+                <div class="gallery-item" onclick="alert('Viewing image!')">
+                  <img src="https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&q=80&w=400&h=400" alt="Library bookshelf" />
+                  <div class="gallery-item-overlay">
+                    <span style="font-size:0.75rem; font-weight:700;">View Photo</span>
+                  </div>
+                </div>
+                <!-- Item 6 -->
+                <div class="gallery-item" onclick="alert('Viewing image!')">
+                  <img src="https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&q=80&w=400&h=400" alt="Retro gaming room" />
+                  <div class="gallery-item-overlay">
+                    <span style="font-size:0.75rem; font-weight:700;">View Photo</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ── PANEL 3: BUSINESS (HIDDEN BY DEFAULT) ── -->
+            <div class="tab-panel" id="panel-business" role="tabpanel">
+              <div class="business-card">
+                <h3 class="business-title">Curated Journeys Co.</h3>
+                <p class="business-address">12, Hazratganj Shopping Plaza, Lucknow, UP, India</p>
+                
+                <h4 class="business-subtitle">About</h4>
+                <div class="business-about">
+                  Curated Journeys helps you find authentic, local, and hidden spots around India. We specialize in mapping out experiential itineraries for travelers, food lovers, and architecture enthusiasts. Tap our recommendation lists to explore Lucknow, Himachal, and beyond!
+                </div>
+
+                <h4 class="business-subtitle">Contact Details</h4>
+                <div class="business-link-row">
+                  <a href="tel:+919876543210" class="business-link-item">
+                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M17 1H7c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2z" />
+                    </svg>
+                    <span>+91 98765 43210</span>
+                  </a>
+                  <a href="https://explorers.earth" target="_blank" class="business-link-item">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
+                    </svg>
+                    <span>Visit Website (explorers.earth)</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ====== INTERACTIVE SCRIPTS ====== -->
+  <script>
+    // ===== Toggle View Mode (Device vs Full) =====
+    function setViewMode(mode) {
+      const main = document.getElementById('main-container');
+      const btnDevice = document.getElementById('btn-device');
+      const btnFull = document.getElementById('btn-full');
+
+      if (mode === 'device') {
+        main.className = 'preview-main device-view';
+        btnDevice.classList.add('active');
+        btnFull.classList.remove('active');
+      } else {
+        main.className = 'preview-main full-view';
+        btnDevice.classList.remove('active');
+        btnFull.classList.add('active');
+      }
+    }
+
+    // ===== Theme Settings =====
+    const themes = {
+      green: {
+        '--theme-border-color': '#10b981',
+        '--evergreen': '135deg, #10B981, #047857'
+      },
+      dark: {
+        '--theme-border-color': '#3b82f6',
+        '--evergreen': '135deg, #3B82F6, #1D4ED8'
+      }
+    };
+
+    function setTheme(themeName) {
+      const theme = themes[themeName];
+      if (!theme) return;
+      
+      const root = document.documentElement;
+      Object.keys(theme).forEach(key => {
+        root.style.setProperty(key, theme[key]);
+      });
+
+      // Update button active states
+      document.getElementById('btn-theme-green').classList.toggle('active', themeName === 'green');
+      document.getElementById('btn-theme-dark').classList.toggle('active', themeName === 'dark');
+
+      // Update avatar border class if matching
+      const avatar = document.getElementById('profile-avatar');
+      if (avatar) {
+        if (themeName === 'green') {
+          avatar.style.borderColor = '#10b981';
+        } else {
+          avatar.style.borderColor = '#3b82f6';
+        }
+      }
+    }
+
+    // ===== Tab Switcher =====
+    function switchTab(tabId) {
+      // Deactivate all nav buttons and panels
+      document.querySelectorAll('.tab-nav-btn').forEach(btn => {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-selected', 'false');
+      });
+      document.querySelectorAll('.tab-panel').forEach(panel => {
+        panel.classList.remove('active');
+      });
+
+      // Activate selected nav button and panel
+      const targetBtn = document.getElementById('tab-' + tabId);
+      const targetPanel = document.getElementById('panel-' + tabId);
+      
+      if (targetBtn && targetPanel) {
+        targetBtn.classList.add('active');
+        targetBtn.setAttribute('aria-selected', 'true');
+        targetPanel.classList.add('active');
+      }
+    }
+
+    // ===== Flashlight/Aura Cursor Effect =====
+    document.querySelectorAll('.rec-card').forEach(card => {
+      const aura = card.querySelector('.rec-card-aura');
+      
+      card.addEventListener('mousemove', e => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        const glowColor = card.getAttribute('style').match(/--accent-glow:\s*([^;)]+)/);
+        const colorVal = glowColor ? glowColor[1] : 'rgba(255,255,255,0.15)';
+        
+        aura.style.background = `radial-gradient(150px circle at ${x}px ${y}px, ${colorVal}, transparent 80%)`;
+      });
+    });
+  </script>
+</body>
+</html>

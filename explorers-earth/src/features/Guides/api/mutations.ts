@@ -9,6 +9,9 @@ export const CREATE_GUIDE_MUTATION = gql`
       Guide_Type
       Visibility
       Estimated_Budget
+      is_pinned
+      pin_order
+      display_order
     }
   }
 `;
@@ -24,6 +27,9 @@ export const UPDATE_GUIDE_MUTATION = gql`
       Estimated_Budget
       Tips_Notes
       Guide_Tags
+      is_pinned
+      pin_order
+      display_order
     }
   }
 `;

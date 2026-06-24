@@ -35,7 +35,7 @@ const RouteLoader = () => {
         };
     }, [pathname]);
 
-    if (!isLoading) return null;
+    if (!isLoading || (window as any).__dashboardLoaded) return null;
 
     return (
         <div

@@ -24,8 +24,14 @@ try {
     pool = new NeonPool({ connectionString: process.env.DATABASE_URL });
     db = drizzleNeon({ client: pool, schema });
   } else {
-    // Local PostgreSQL setup
-    pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+    // PostgreSQL setup (Render external requires SSL)
+    const isRender = process.env.DATABASE_URL?.includes('render.com');
+    const sslConfig = isRender ? { ssl: { rejectUnauthorized: false } } : {};
+
+    pool = new pg.Pool({ 
+      connectionString: process.env.DATABASE_URL,
+      ...sslConfig
+    });
     db = drizzlePg(pool, { schema }); // Using new drizzle signature
   }
   

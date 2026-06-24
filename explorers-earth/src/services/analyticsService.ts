@@ -208,9 +208,14 @@ export const useTrackAnalytics = (options: UseTrackAnalyticsOptions): UseTrackAn
 
     // Check if this event type has already been tracked in this session
     // For place-card events (both click and view), use the full element identifier
+    // For click events with a specific element, use the element identifier to allow
+    // tracking multiple different items (e.g. different movie cards) per session
     let eventTypeToCheck: string;
     if (event.element?.includes('place-card')) {
       eventTypeToCheck = `${event.type}-${event.element}`;
+    } else if (event.type === 'click' && event.element) {
+      // Each unique element (e.g. game-card-abc123) gets its own session check
+      eventTypeToCheck = `click-${event.element}`;
     } else {
       eventTypeToCheck = event.type;
     }
@@ -468,6 +473,52 @@ export const createAnalyticsOptions = {
     locationId: locationDocumentId || null,
     recommendationId: recommendationDocumentId || null,
     pageName: 'recommendation-detail',
+    pageUsername,
+    autoTrackView: true
+  }),
+
+  /**
+   * For public music pages
+   */
+  music: (accountDocumentId: string, pageUsername?: string): UseTrackAnalyticsOptions => ({
+    accountId: accountDocumentId,
+    pageName: 'public-music',
+    pageUsername,
+    autoTrackView: true
+  }),
+
+  /**
+   * For public movies/shows pages
+   */
+  movies: (accountDocumentId: string, pageUsername?: string, listDocumentId?: string, movieDocumentId?: string): UseTrackAnalyticsOptions => ({
+    accountId: accountDocumentId,
+    locationId: listDocumentId || null,
+    recommendationId: movieDocumentId || null,
+    pageName: 'public-movies',
+    pageUsername,
+    autoTrackView: true
+  }),
+
+  /**
+   * For public books pages
+   */
+  books: (accountDocumentId: string, pageUsername?: string, listDocumentId?: string, bookDocumentId?: string): UseTrackAnalyticsOptions => ({
+    accountId: accountDocumentId,
+    locationId: listDocumentId || null,
+    recommendationId: bookDocumentId || null,
+    pageName: 'public-books',
+    pageUsername,
+    autoTrackView: true
+  }),
+
+  /**
+   * For public games pages
+   */
+  games: (accountDocumentId: string, pageUsername?: string, listDocumentId?: string, gameDocumentId?: string): UseTrackAnalyticsOptions => ({
+    accountId: accountDocumentId,
+    locationId: listDocumentId || null,
+    recommendationId: gameDocumentId || null,
+    pageName: 'public-games',
     pageUsername,
     autoTrackView: true
   })

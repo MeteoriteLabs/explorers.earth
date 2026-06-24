@@ -13,7 +13,7 @@ import {
   logUserCreation,
   isLocalTunesEnabled,
   getLocalTunesConfig
-} from '../services/localTunesService';
+} from '../localTunesService';
 
 // Test data for Local Tunes user creation
 const testUserData = {
@@ -197,6 +197,22 @@ export async function manualTest() {
     console.error('❌ Manual test failed:', error);
   }
 }
+
+import { describe, it, expect } from 'vitest';
+
+describe('localTunesIntegration', () => {
+  it('has valid config schema', () => {
+    const config = getLocalTunesConfig();
+    expect(config).toBeDefined();
+    expect(typeof config.enabled).toBe('boolean');
+  });
+
+  it('runs configuration scenarios', () => {
+    const configResult = testScenarios.testConfiguration();
+    expect(configResult).toBeDefined();
+    expect(configResult.isEnabled).toBe(isLocalTunesEnabled());
+  });
+});
 
 // Export for use in development
 export default {

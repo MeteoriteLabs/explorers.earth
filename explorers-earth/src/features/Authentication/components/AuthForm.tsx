@@ -10,6 +10,7 @@ import PasswordInput from "../../../components/ui/PasswordInput";
 import AddressInput from "../../Profile/components/AddressInput";
 import { useTranslation } from "react-i18next";
 import PhoneInputWithCountry from "../../../components/ui/PhoneInputWithCountry";
+import { Turnstile } from '@marsidev/react-turnstile';
 
 export type { AuthFormField };
 // Types for form fields
@@ -44,6 +45,7 @@ interface AuthFormProps {
   isRegistration?: boolean; // New prop to determine if this is a registration form
   isOnboarding?: boolean; // New prop to determine if this is an onboarding form
   enablePasswordValidation?: boolean; // New prop to control password validation
+  turnstileSiteKey?: string; // New prop for Cloudflare Turnstile
 }
 
 const AuthForm: FC<AuthFormProps> = memo(
@@ -64,6 +66,7 @@ const AuthForm: FC<AuthFormProps> = memo(
     isRegistration = false, // Default to false (login form)
     isOnboarding = false, // Default to false (not onboarding)
     enablePasswordValidation = false, // Default to false for login forms
+    turnstileSiteKey, // Site key for Cloudflare Turnstile
   }) => {
     const { t } = useTranslation();
 
@@ -458,6 +461,25 @@ const AuthForm: FC<AuthFormProps> = memo(
                   component="span"
                   className="text-xs font-poppins text-red-400 -mt-2"
                 />
+              )}
+
+              {turnstileSiteKey && (
+                <div className="flex flex-col gap-1 w-full items-center mt-2 mb-2">
+                  <Turnstile 
+                    siteKey={turnstileSiteKey} 
+                    onSuccess={(token: string) => setFieldValue("turnstileToken", token)} 
+                    onError={() => setFieldValue("turnstileToken", "")}
+                    onExpire={() => setFieldValue("turnstileToken", "")}
+                    options={{
+                      theme: 'dark'
+                    }}
+                  />
+                  <ErrorMessage
+                    name="turnstileToken"
+                    component="span"
+                    className="text-xs font-poppins text-red-400 text-center w-full"
+                  />
+                </div>
               )}
 
               <Button

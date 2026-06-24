@@ -1,6 +1,6 @@
-FROM node:18-alpine AS base
+FROM node:22-alpine AS base
 
-# Set working directory
+# Set working directory here
 WORKDIR /app
 
 # Install dependencies for Puppeteer
@@ -49,9 +49,10 @@ COPY --from=builder /app/public ./public
 # Copy necessary config files
 COPY package.json ./
 COPY drizzle.config.ts ./
+COPY shared ./shared
 
 # Expose application port
-EXPOSE 5001
+EXPOSE 5000
 
 # Set the default command
 CMD ["node", "dist/server/index.js"]

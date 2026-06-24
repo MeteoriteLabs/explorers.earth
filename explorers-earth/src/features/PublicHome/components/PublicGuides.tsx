@@ -1,7 +1,8 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo, useState, useEffect } from "react";
 import { useQuery } from "@apollo/client";
 import { useParams, useNavigate } from "react-router-dom";
 import GuideCardSkeleton from "../../../components/ui/GuideCardSkeleton";
+import HeroSkeleton from "../../../components/ui/HeroSkeleton";
 import PublicGuideCard from "../../Guides/components/PublicGuideCard";
 import { GET_PUBLIC_GUIDES_QUERY } from "../../Guides/api/queries";
 import { getPublicAccountBasicQuery } from "../api/query";
@@ -13,6 +14,7 @@ import { toUrlSlug } from "../../../utils/formatAddress";
 import Button from "../../../components/ui/Button";
 import SwitchButton from "../../../components/ui/SwitchButton";
 import { toast } from "sonner";
+import { motion, AnimatePresence, PanInfo } from "framer-motion";
 
 interface FilterState {
   guideType: string | null;
@@ -35,6 +37,8 @@ const PublicGuides = memo(() => {
   const [showFilters, setShowFilters] = useState(false);
   const [isMultiCityFilter, setIsMultiCityFilter] = useState<boolean>(false);
   const [selectedLocation, setSelectedLocation] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeHeroIndex, setActiveHeroIndex] = useState<number>(0);
 
   // First, get account data to get account documentId
   const { data: accountData, loading: accountLoading } = useQuery(
@@ -87,6 +91,13 @@ const PublicGuides = memo(() => {
   const allGuides: Guide[] = guidesData?.guides || [];
   const account = accountData?.accounts?.[0];
   const loading = accountLoading || guidesLoading;
+
+  useEffect(() => {
+    if (!loading && account) {
+      (window as any).__publicProfileLoaded = true;
+    }
+  }, [loading, account]);
+
   const analytics = useTrackAnalytics({
     accountId: account?.documentId || "",
     pageName: "public-guides",
@@ -146,6 +157,18 @@ const PublicGuides = memo(() => {
     }
 
     return locations.filter(loc => loc && loc.trim() !== "");
+  };
+
+  // Helper function to extract plain text from Description (which can be a string or rich text block array)
+  const getDescriptionText = (description: any): string => {
+    if (!description) return "";
+    if (typeof description === "string") return description;
+    if (Array.isArray(description)) {
+      return description
+        .map((block: any) => block.children?.map((child: any) => child.text).join(" ") || "")
+        .join(" ");
+    }
+    return "";
   };
 
   // Extract unique filter values from guides
@@ -230,10 +253,51 @@ const PublicGuides = memo(() => {
     };
   }, [allGuides]);
 
+  // Extract and sort pinned guides for slideshow
+  const pinnedGuides = useMemo(() => {
+    return allGuides
+      .filter((guide) => guide.is_pinned === true)
+      .sort((a, b) => (a.pin_order ?? 999) - (b.pin_order ?? 999));
+  }, [allGuides]);
 
-  // Filter guides based on selected filters
+  // Slideshow auto-rotation timer (6 seconds)
+  useEffect(() => {
+    if (pinnedGuides.length <= 1) return;
+    const interval = setInterval(() => {
+      setActiveHeroIndex((prev) => (prev + 1) % pinnedGuides.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [pinnedGuides.length]);
+
+  // Guard activeHeroIndex range on slides update
+  useEffect(() => {
+    if (activeHeroIndex >= pinnedGuides.length) {
+      setActiveHeroIndex(0);
+    }
+  }, [pinnedGuides.length, activeHeroIndex]);
+
+  // Filter guides based on selected filters and text search query
   const guides = useMemo(() => {
     const filteredGuides = allGuides.filter((guide) => {
+      // Text Search Query filter (matches title, description, location names, and tags)
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        const titleMatch = guide.Title?.toLowerCase().includes(query);
+        const descriptionText = getDescriptionText(guide.Description);
+        const descMatch = descriptionText.toLowerCase().includes(query);
+        const locations = extractLocationNames(guide);
+        const locationMatch = locations.some((loc) =>
+          loc.toLowerCase().includes(query)
+        );
+        const tagMatch = guide.Guide_Tags?.some((tag) =>
+          tag.toLowerCase().includes(query)
+        );
+
+        if (!titleMatch && !descMatch && !locationMatch && !tagMatch) {
+          return false;
+        }
+      }
+
       // Guide Type filter
       if (filters.guideType && guide.Guide_Type !== filters.guideType) {
         return false;
@@ -292,7 +356,7 @@ const PublicGuides = memo(() => {
         return false;
       }
 
-      // Location filter
+      // Location tag filter
       if (selectedLocation) {
         const guideLocations = extractLocationNames(guide);
         const locationMatches = guideLocations.some(
@@ -307,8 +371,7 @@ const PublicGuides = memo(() => {
     });
 
     return filteredGuides;
-  }, [allGuides, filters, isMultiCityFilter, selectedLocation]);
-
+  }, [allGuides, filters, isMultiCityFilter, selectedLocation, searchQuery]);
 
   // Handle filter changes
   const handleFilterChange = (filterKey: keyof FilterState, value: string | number | null) => {
@@ -329,10 +392,15 @@ const PublicGuides = memo(() => {
     });
     setIsMultiCityFilter(false);
     setSelectedLocation("");
+    setSearchQuery("");
   };
 
   // Check if any filter is active
-  const hasActiveFilters = Object.values(filters).some((value) => value !== null) || isMultiCityFilter || selectedLocation !== "";
+  const hasActiveFilters =
+    Object.values(filters).some((value) => value !== null) ||
+    isMultiCityFilter ||
+    selectedLocation !== "" ||
+    searchQuery !== "";
 
   // Helper function to get display label for budget type (convert enum to display format)
   const getBudgetTypeLabel = (value: string | null): string => {
@@ -350,6 +418,13 @@ const PublicGuides = memo(() => {
 
   // Handle guide click - navigate to guide detail page
   const handleGuideClick = (guide: Guide) => {
+    // Track guide card click for analytics
+    analytics.trackClick('guide-card', {
+      id: guide.documentId,
+      title: guide.Title,
+      guideType: guide.Guide_Type,
+      category: Array.isArray(guide.Category) ? guide.Category[0] : guide.Category,
+    });
     // Use slug if available, otherwise use documentId as fallback
     const slug = guide.slug || toUrlSlug(guide.Title) || guide.documentId;
     navigate(`/${username}/guides/${slug}`);
@@ -382,7 +457,6 @@ const PublicGuides = memo(() => {
 
   const profileImage = account?.profile_picture?.url || account?.bg_picture?.url;
   const currentUrl = createCanonicalUrl(`/${username}/guides`);
-
 
   // Check if account exists after loading is complete
   if (!loading && !account) {
@@ -422,12 +496,12 @@ const PublicGuides = memo(() => {
         siteName="explorers"
       />
 
-      <div className="h-full bg-black min-h-screen overflow-auto preview-scroll pb-20">
+      <div className="h-full bg-black min-h-screen overflow-auto preview-scroll pb-20 pt-14">
         {/* Fixed Header */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
           <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
             <span
-              className="text-white font-bold text-2xl cursor-pointer"
+              className="text-white font-bold text-2xl cursor-pointer font-poppins"
               onClick={() => navigate("/")}
             >
               explorers.earth
@@ -452,7 +526,7 @@ const PublicGuides = memo(() => {
                   }
                   analytics.trackClick('share-button', { context: 'guides-header' });
                 }}
-                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
+                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center cursor-pointer"
                 aria-label="Share"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -469,7 +543,7 @@ const PublicGuides = memo(() => {
                     console.error("Failed to copy text:", error);
                   }
                 }}
-                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
+                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center cursor-pointer"
                 aria-label="Copy Link"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -481,73 +555,338 @@ const PublicGuides = memo(() => {
         </div>
 
         {/* Guides Content */}
-        <div className="md:max-w-5xl md:mx-auto mt-14">
-          <div className="bg-black rounded-lg p-4 mx-4 mt-4 mb-4">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4 relative">
-              <div className="flex-1">
+        <div className="md:max-w-5xl md:mx-auto">
+          
+          {/* ── LOADING SKELETON: shown while account/guides queries resolve ── */}
+          {loading && (
+            <>
+              {/* Hero skeleton — Desktop */}
+              <div className="hidden md:block w-full mb-6 mt-4 px-4">
+                <div className="max-w-4xl mx-auto">
+                  <HeroSkeleton accentColor="yellow" showThumbnails />
+                </div>
+              </div>
+              {/* Hero skeleton — Mobile */}
+              <div className="md:hidden w-full mb-4 mt-4 px-4">
+                <HeroSkeleton accentColor="yellow" mobile />
+              </div>
+              {/* Guide card grid skeleton */}
+              <div className="px-4 md:max-w-5xl md:mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-4">
+                  <GuideCardSkeleton count={6} variant="public" />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Featured Guides Slideshow Hero (only shown if pinned guides exist) */}
+          {!error && !loading && pinnedGuides.length > 0 && (
+            <>
+              {/* Carousel Hero Section - Desktop Layout */}
+              <div className="hidden md:block w-full mb-6 mt-4 px-4">
+                <div className="relative w-full h-[60vh] min-h-[500px] max-h-[700px] rounded-2xl overflow-hidden bg-black shadow-2xl group/hero max-w-4xl mx-auto">
+                  {/* Background Presentation */}
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={pinnedGuides[activeHeroIndex].documentId}
+                      initial={{ opacity: 0, scale: 1.05 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.6 }}
+                      className="absolute inset-0 cursor-pointer"
+                      onClick={() => handleGuideClick(pinnedGuides[activeHeroIndex])}
+                    >
+                      <img
+                        src={pinnedGuides[activeHeroIndex].Guide_Media?.[0]?.url || "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=1200"}
+                        alt={pinnedGuides[activeHeroIndex].Title}
+                        className="w-full h-full object-cover opacity-90"
+                      />
+                      {/* Gradients to fade bottom and left */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-[7] pointer-events-none" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent z-[7] pointer-events-none" />
+                    </motion.div>
+                  </AnimatePresence>
+
+                  {/* Featured Heading */}
+                  <div className="absolute top-8 left-8 md:top-12 md:left-12 z-[15] pointer-events-none flex flex-col gap-1">
+                    <h2 className="text-xl md:text-2xl font-bold text-white flex items-center drop-shadow-lg">
+                      <span className="w-1.5 h-6 bg-yellow-400 mr-2.5 rounded-full inline-block"></span>
+                      Featured
+                    </h2>
+                  </div>
+
+                  {/* Main Content Area */}
+                  <div className="absolute inset-0 flex flex-col justify-end p-8 md:p-12 z-[10] pointer-events-none">
+                    <div className="flex justify-between items-end w-full">
+                      {/* Left Text Detail Section */}
+                      <div className="w-full lg:w-1/2 flex flex-col gap-4">
+                        <motion.h1
+                          key={`title-${pinnedGuides[activeHeroIndex].documentId}`}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.2 }}
+                          className="text-4xl md:text-5xl lg:text-6xl font-black text-white leading-tight font-poppins"
+                        >
+                          {pinnedGuides[activeHeroIndex].Title}
+                        </motion.h1>
+
+                        {(() => {
+                          const guide = pinnedGuides[activeHeroIndex];
+                          let placeDetails: any = {};
+                          if (guide.Place_Details) {
+                            if (typeof guide.Place_Details === "string") {
+                              try { placeDetails = JSON.parse(guide.Place_Details); } catch (e) {}
+                            } else { placeDetails = guide.Place_Details; }
+                          }
+                          const rating = placeDetails.Rating || 5.0;
+
+                          return (
+                            <motion.div
+                              key={`meta-${guide.documentId}`}
+                              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+                              className="flex items-center gap-3 text-sm md:text-base text-white/80 font-semibold"
+                            >
+                              <span>★ {rating.toFixed(1)}</span>
+                              <span className="text-white/40">•</span>
+                              <span>{guide.Number_Of_Days || 0} {guide.Number_Of_Days === 1 ? "Day" : "Days"}</span>
+                              {guide.Guide_Type && (
+                                <>
+                                  <span className="text-white/40">•</span>
+                                  <span>{guide.Guide_Type}</span>
+                                </>
+                              )}
+                              {guide.Budget_Type && (
+                                <>
+                                  <span className="text-white/40">•</span>
+                                  <span>{getBudgetTypeLabel(guide.Budget_Type)}</span>
+                                </>
+                              )}
+                            </motion.div>
+                          );
+                        })()}
+
+                        <motion.p
+                          key={`desc-${pinnedGuides[activeHeroIndex].documentId}`}
+                          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+                          className="text-white/70 text-sm md:text-base leading-relaxed line-clamp-3 max-w-xl"
+                        >
+                          {getDescriptionText(pinnedGuides[activeHeroIndex].Description)}
+                        </motion.p>
+
+                        <motion.div
+                          key={`btns-${pinnedGuides[activeHeroIndex].documentId}`}
+                          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+                          className="flex items-center gap-4 mt-2 pointer-events-auto"
+                        >
+                          <button
+                            onClick={() => handleGuideClick(pinnedGuides[activeHeroIndex])}
+                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-xl shadow-blue-500/20 transition-all hover:scale-105 cursor-pointer border-none"
+                          >
+                            Read Guide ➔
+                          </button>
+                        </motion.div>
+                      </div>
+
+                      {/* Right Bottom Featured Thumbnail Row */}
+                      {pinnedGuides.length > 1 && (
+                        <div className="hidden lg:flex flex-col items-end max-w-[50%] z-20 pointer-events-auto">
+                          <div className="flex gap-3 py-4 px-2">
+                            {pinnedGuides.map((guide, index) => {
+                              const isSelected = index === activeHeroIndex;
+                              return (
+                                <button
+                                  key={`thumb-${guide.documentId}`}
+                                  onClick={() => setActiveHeroIndex(index)}
+                                  className={`relative flex-shrink-0 w-32 aspect-video rounded-md overflow-hidden transition-all duration-300 cursor-pointer ${isSelected ? 'ring-2 ring-white scale-110 z-10 shadow-xl' : 'opacity-60 hover:opacity-100 hover:scale-105 filter brightness-75 hover:brightness-100'}`}
+                                >
+                                  <img
+                                    src={guide.Guide_Media?.[0]?.url || "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=1200"}
+                                    alt={guide.Title}
+                                    className="w-full h-full object-cover"
+                                  />
+                                  <div className="absolute inset-0 bg-black/20" />
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Carousel Hero Section - Mobile Layout */}
+              <div className="md:hidden w-full mb-4 touch-pan-y px-0">
+                <div className="relative w-full h-[65vh] min-h-[480px] max-h-[650px] overflow-x-hidden flex items-center justify-start pt-8 pb-2">
+                  <div className="absolute inset-y-4 left-4 right-14">
+                    {pinnedGuides.map((guide, i) => {
+                      const diff = (i - activeHeroIndex + pinnedGuides.length) % pinnedGuides.length;
+
+                      let position = "hiddenRight";
+                      if (diff === 0) position = "active";
+                      else if (diff === 1) position = "next";
+                      else if (diff === 2) position = "nextNext";
+                      else if (diff === pinnedGuides.length - 1) position = "hiddenLeft";
+
+                      const variants = {
+                        active: { x: 0, scale: 1, zIndex: 10, opacity: 1 },
+                        next: { x: "12%", scale: 0.9, zIndex: 5, opacity: 1 },
+                        nextNext: { x: "24%", scale: 0.8, zIndex: 4, opacity: 1 },
+                        hiddenRight: { x: "40%", scale: 0.7, zIndex: 1, opacity: 0 },
+                        hiddenLeft: { x: "-110%", scale: 1, zIndex: 11, opacity: 0 }
+                      };
+
+                      const handleDragEnd = (_e: any, { offset, velocity }: PanInfo) => {
+                        if (offset.x < -50 || velocity.x < -300) {
+                          setActiveHeroIndex((prev) => (prev + 1) % pinnedGuides.length);
+                        } else if (offset.x > 50 || velocity.x > 300) {
+                          setActiveHeroIndex((prev) => (prev - 1 + pinnedGuides.length) % pinnedGuides.length);
+                        }
+                      };
+
+                      let placeDetails: any = {};
+                      if (guide.Place_Details) {
+                        if (typeof guide.Place_Details === "string") {
+                          try { placeDetails = JSON.parse(guide.Place_Details); } catch (e) {}
+                        } else { placeDetails = guide.Place_Details; }
+                      }
+                      const rating = placeDetails.Rating || 5.0;
+
+                      return (
+                        <motion.div
+                          key={guide.documentId}
+                          variants={variants}
+                          initial={false}
+                          animate={position}
+                          transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
+                          drag={diff === 0 ? "x" : false}
+                          dragConstraints={{ left: 0, right: 0 }}
+                          dragElastic={0.8}
+                          onDragEnd={handleDragEnd}
+                          className={`absolute inset-0 h-full rounded-2xl overflow-hidden shadow-2xl bg-[#1a2332] border border-white/10 ${diff === 0 ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'}`}
+                          onClick={() => {
+                            if (diff === 0) {
+                              handleGuideClick(guide);
+                            }
+                          }}
+                        >
+                          <img
+                            src={guide.Guide_Media?.[0]?.url || "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=1200"}
+                            alt={guide.Title}
+                            className="w-full h-full object-cover select-none pointer-events-none filter contrast-125"
+                          />
+
+                          {/* Gradient dark overlay */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/10 pointer-events-none" />
+
+                          {/* Featured Tag Banner */}
+                          <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-auto z-20">
+                            <div className="flex items-center pointer-events-none drop-shadow-md">
+                              <span className="w-1 h-5 bg-yellow-400 mr-2 rounded-full inline-block"></span>
+                              <h2 className="text-lg font-bold text-white tracking-tight">Featured</h2>
+                            </div>
+                          </div>
+
+                          {/* Title & Metadata */}
+                          <div className="absolute bottom-0 left-0 right-0 p-5 flex flex-col gap-1.5 pointer-events-none z-20">
+                            <h2 className="text-3xl font-poppins font-black text-white leading-tight drop-shadow-xl select-none">
+                              {guide.Title}
+                            </h2>
+
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-white/80 font-semibold tracking-wide mt-1">
+                              <span>★ {rating.toFixed(1)}</span>
+                              <span className="text-white/40">•</span>
+                              <span>{guide.Number_Of_Days || 0} {guide.Number_Of_Days === 1 ? "Day" : "Days"}</span>
+                              {guide.Guide_Type && (
+                                <>
+                                  <span className="text-white/40">•</span>
+                                  <span>{guide.Guide_Type}</span>
+                                </>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-3 mt-4 pointer-events-auto">
+                              <button
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-full flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl border-none cursor-pointer"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleGuideClick(guide);
+                                }}
+                              >
+                                Read Guide ➔
+                              </button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          <div className="bg-black rounded-lg pt-2 px-4 pb-2 mx-4 mb-0">
+            
+            {/* Header Title & Side-by-side search row */}
+            <div className="flex flex-col gap-3.5 mb-2">
+              <div>
                 <h1 className="text-xl md:text-2xl font-poppins font-bold text-white mb-1">
                   Travel Guides
                 </h1>
                 <p className="text-gray-400 font-poppins text-xs md:text-sm">
                   {hasActiveFilters
-                    ? `${guidesCount} of ${totalGuidesCount} guide${totalGuidesCount > 1 ? 's' : ''}`
+                    ? `${guidesCount} of ${totalGuidesCount} guide${totalGuidesCount !== 1 ? 's' : ''}`
                     : guidesCount > 0
-                      ? `${guidesCount} guide${guidesCount > 1 ? 's' : ''} available`
+                      ? `${guidesCount} guide${guidesCount !== 1 ? 's' : ''} available`
                       : "No guides available yet"}
                 </p>
               </div>
 
-              {/* Mobile: Filter button - Right aligned */}
-              <div className="md:hidden absolute right-0 top-0">
+              {/* Search Box & Filters Toggle Button */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1 flex items-center gap-1.5 bg-white/[0.04] border border-white/[0.08] rounded-xl px-2.5 h-9">
+                  <svg className="w-3.5 h-3.5 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                  </svg>
+                  <input
+                    type="text"
+                    className="bg-transparent border-none text-white text-xs font-poppins w-full outline-none placeholder:text-white/45"
+                    placeholder="Search guides, cities..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+
                 <button
                   onClick={() => setShowFilters(!showFilters)}
-                  className={`relative p-2 rounded-lg transition-colors ${hasActiveFilters
-                    ? "bg-blue-600 hover:bg-blue-700 text-white"
-                    : "bg-gray-800 hover:bg-gray-700 text-white"
-                    }`}
-                  title="Filters"
+                  className={`relative w-9 h-9 flex items-center justify-center rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/85 hover:bg-white/[0.08] transition-colors cursor-pointer`}
+                  aria-label="Filters"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                   </svg>
                   {hasActiveFilters && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
-                      {Object.values(filters).filter(v => v !== null).length + (isMultiCityFilter ? 1 : 0) + (selectedLocation !== "" ? 1 : 0)}
-                    </span>
+                    <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-blue-500 rounded-full" />
                   )}
                 </button>
               </div>
-
-              {/* Desktop: Filter button */}
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="hidden md:flex items-center justify-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-white font-poppins text-sm transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                </svg>
-                Filters
-                {hasActiveFilters && (
-                  <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">
-                    {Object.values(filters).filter(v => v !== null).length + (isMultiCityFilter ? 1 : 0) + (selectedLocation !== "" ? 1 : 0)}
-                  </span>
-                )}
-              </button>
             </div>
 
             {/* Desktop Filter Panel - Inline */}
             {showFilters && (
-              <div className="hidden md:block border-t border-gray-700 pt-2 mt-2">
-                <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+              <div className="hidden md:block bg-[#1a2332] border border-white/[0.08] rounded-[14px] p-4 mb-4 mt-1">
+                <div className="grid grid-cols-4 gap-3">
                   {/* Guide Type Filter */}
-                  <div>
-                    <label className="block text-white font-poppins text-xs font-medium mb-1">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[0.62rem] text-white/50 font-bold uppercase tracking-wider font-poppins">
                       Guide Type
                     </label>
                     <select
                       value={filters.guideType || ""}
                       onChange={(e) => handleFilterChange("guideType", e.target.value || null)}
-                      className="w-full px-2 py-1 bg-gray-800 border border-gray-700 rounded-lg text-white font-poppins text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full bg-black/20 border border-white/[0.08] rounded px-2 py-1.5 text-white text-[0.72rem] font-poppins outline-none cursor-pointer"
                     >
                       <option value="">All Types</option>
                       {filterOptions.guideTypes.map((type) => (
@@ -559,14 +898,14 @@ const PublicGuides = memo(() => {
                   </div>
 
                   {/* Category Filter */}
-                  <div>
-                    <label className="block text-white font-poppins text-xs font-medium mb-1">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[0.62rem] text-white/50 font-bold uppercase tracking-wider font-poppins">
                       Category
                     </label>
                     <select
                       value={filters.category || ""}
                       onChange={(e) => handleFilterChange("category", e.target.value || null)}
-                      className="w-full px-2 py-1 bg-gray-800 border border-gray-700 rounded-lg text-white font-poppins text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full bg-black/20 border border-white/[0.08] rounded px-2 py-1.5 text-white text-[0.72rem] font-poppins outline-none cursor-pointer"
                     >
                       <option value="">All Categories</option>
                       {filterOptions.categories.map((category) => (
@@ -578,14 +917,14 @@ const PublicGuides = memo(() => {
                   </div>
 
                   {/* Number of Days Filter */}
-                  <div>
-                    <label className="block text-white font-poppins text-xs font-medium mb-1">
-                      Number of Days
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[0.62rem] text-white/50 font-bold uppercase tracking-wider font-poppins">
+                      Duration
                     </label>
                     <select
                       value={filters.numberOfDays !== null ? filters.numberOfDays.toString() : ""}
                       onChange={(e) => handleFilterChange("numberOfDays", e.target.value ? parseInt(e.target.value) : null)}
-                      className="w-full px-2 py-1 bg-gray-800 border border-gray-700 rounded-lg text-white font-poppins text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full bg-black/20 border border-white/[0.08] rounded px-2 py-1.5 text-white text-[0.72rem] font-poppins outline-none cursor-pointer"
                     >
                       <option value="">All Durations</option>
                       {filterOptions.numberOfDays.map((days) => (
@@ -596,34 +935,15 @@ const PublicGuides = memo(() => {
                     </select>
                   </div>
 
-                  {/* Best Time to Visit Filter */}
-                  <div>
-                    <label className="block text-white font-poppins text-xs font-medium mb-1">
-                      Best Time to Visit
-                    </label>
-                    <select
-                      value={filters.bestTimeToVisit || ""}
-                      onChange={(e) => handleFilterChange("bestTimeToVisit", e.target.value || null)}
-                      className="w-full px-2 py-1 bg-gray-800 border border-gray-700 rounded-lg text-white font-poppins text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">All Months</option>
-                      {filterOptions.months.map((month) => (
-                        <option key={month} value={month}>
-                          {month}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
                   {/* Budget Type Filter */}
-                  <div>
-                    <label className="block text-white font-poppins text-xs font-medium mb-1">
-                      Budget Type
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[0.62rem] text-white/50 font-bold uppercase tracking-wider font-poppins">
+                      Budget
                     </label>
                     <select
                       value={filters.budgetType || ""}
                       onChange={(e) => handleFilterChange("budgetType", e.target.value || null)}
-                      className="w-full px-2 py-1 bg-gray-800 border border-gray-700 rounded-lg text-white font-poppins text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full bg-black/20 border border-white/[0.08] rounded px-2 py-1.5 text-white text-[0.72rem] font-poppins outline-none cursor-pointer"
                     >
                       <option value="">All Budget Types</option>
                       {filterOptions.budgetTypes.map((budgetType) => (
@@ -633,200 +953,173 @@ const PublicGuides = memo(() => {
                       ))}
                     </select>
                   </div>
-
-                  {/* Multi-City Filter */}
-                  <div>
-                    <label className="block text-white font-poppins text-xs font-medium mb-1">
-                      Multi city
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <SwitchButton
-                        isChecked={isMultiCityFilter}
-                        onChange={() => setIsMultiCityFilter(!isMultiCityFilter)}
-                        variant="purple"
-                      />
-                      <span className="text-white/70 font-poppins text-xs">
-                        {isMultiCityFilter ? "Multi-City Only" : "All Guides"}
-                      </span>
-                    </div>
-                  </div>
                 </div>
 
-                {/* Clear Filters Button */}
-                {hasActiveFilters && (
-                  <div className="mt-2 flex justify-end">
-                    <button
-                      onClick={handleClearFilters}
-                      className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-poppins text-xs transition-colors"
-                    >
-                      Clear All Filters
-                    </button>
+                {/* Additional Inline Controls */}
+                <div className="mt-4 flex items-center justify-between border-t border-white/[0.08] pt-3">
+                  <div className="flex items-center gap-2">
+                    <SwitchButton
+                      isChecked={isMultiCityFilter}
+                      onChange={() => setIsMultiCityFilter(!isMultiCityFilter)}
+                      variant="purple"
+                    />
+                    <span className="text-white/70 font-poppins text-xs">
+                      {isMultiCityFilter ? "Multi-City Only" : "All Guides"}
+                    </span>
                   </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Mobile Filter Sidebar */}
-          <>
-            {/* Backdrop/Overlay */}
-            <div
-              className={`md:hidden fixed inset-0 bg-black/60 z-40 transition-all duration-300 ease-out ${showFilters ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"
-                }`}
-              onClick={() => setShowFilters(false)}
-            />
-
-            {/* Sidebar */}
-            <div
-              className={`md:hidden fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-gray-900 z-50 shadow-2xl transform transition-transform duration-300 ease-out ${showFilters ? "translate-x-0" : "-translate-x-full"
-                }`}
-            >
-              <div className="flex flex-col h-full">
-                {/* Sidebar Header */}
-                <div className="flex items-center justify-between p-4 border-b border-gray-700">
-                  <h2 className="text-white font-poppins font-semibold text-lg">Filters</h2>
-                  <button
-                    onClick={() => setShowFilters(false)}
-                    className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
-                  >
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* Sidebar Content - Scrollable */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                  {/* Guide Type Filter */}
-                  <div>
-                    <label className="block text-white font-poppins text-sm font-medium mb-2">
-                      Guide Type
-                    </label>
-                    <select
-                      value={filters.guideType || ""}
-                      onChange={(e) => handleFilterChange("guideType", e.target.value || null)}
-                      className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white font-poppins text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">All Types</option>
-                      {filterOptions.guideTypes.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Category Filter */}
-                  <div>
-                    <label className="block text-white font-poppins text-sm font-medium mb-2">
-                      Category
-                    </label>
-                    <select
-                      value={filters.category || ""}
-                      onChange={(e) => handleFilterChange("category", e.target.value || null)}
-                      className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white font-poppins text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">All Categories</option>
-                      {filterOptions.categories.map((category) => (
-                        <option key={category} value={category}>
-                          {category}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Number of Days Filter */}
-                  <div>
-                    <label className="block text-white font-poppins text-sm font-medium mb-2">
-                      Number of Days
-                    </label>
-                    <select
-                      value={filters.numberOfDays !== null ? filters.numberOfDays.toString() : ""}
-                      onChange={(e) => handleFilterChange("numberOfDays", e.target.value ? parseInt(e.target.value) : null)}
-                      className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white font-poppins text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">All Durations</option>
-                      {filterOptions.numberOfDays.map((days) => (
-                        <option key={days} value={days.toString()}>
-                          {days} {days === 1 ? 'Day' : 'Days'}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Best Time to Visit Filter */}
-                  <div>
-                    <label className="block text-white font-poppins text-sm font-medium mb-2">
-                      Best Time to Visit
-                    </label>
-                    <select
-                      value={filters.bestTimeToVisit || ""}
-                      onChange={(e) => handleFilterChange("bestTimeToVisit", e.target.value || null)}
-                      className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white font-poppins text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">All Months</option>
-                      {filterOptions.months.map((month) => (
-                        <option key={month} value={month}>
-                          {month}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Budget Type Filter */}
-                  <div>
-                    <label className="block text-white font-poppins text-sm font-medium mb-2">
-                      Budget Type
-                    </label>
-                    <select
-                      value={filters.budgetType || ""}
-                      onChange={(e) => handleFilterChange("budgetType", e.target.value || null)}
-                      className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white font-poppins text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">All Budget Types</option>
-                      {filterOptions.budgetTypes.map((budgetType) => (
-                        <option key={budgetType} value={budgetType}>
-                          {getBudgetTypeLabel(budgetType)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Multi-City Filter */}
-                  <div>
-                    <label className="block text-white font-poppins text-sm font-medium mb-2">
-                      Multi city
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <SwitchButton
-                        isChecked={isMultiCityFilter}
-                        onChange={() => setIsMultiCityFilter(!isMultiCityFilter)}
-                        variant="purple"
-                      />
-                      <span className="text-white/70 font-poppins text-sm">
-                        {isMultiCityFilter ? "Multi-City Only" : "All Guides"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Sidebar Footer */}
-                <div className="p-4 border-t border-gray-700 space-y-3">
                   {hasActiveFilters && (
                     <button
                       onClick={handleClearFilters}
-                      className="w-full px-4 py-2.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-poppins text-sm transition-colors"
+                      className="px-3 py-1 bg-gray-800 hover:bg-gray-700 border border-white/10 rounded-lg text-white font-poppins text-xs transition-colors cursor-pointer"
                     >
                       Clear All Filters
                     </button>
                   )}
-                  <button
-                    onClick={() => setShowFilters(false)}
-                    className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-poppins text-sm font-medium transition-colors"
-                  >
-                    Apply Filters
-                  </button>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile Filter Sidebar Drawer */}
+          <>
+            {/* Backdrop Shroud */}
+            <div
+              className={`md:hidden fixed inset-0 bg-black/60 z-[10000] transition-all duration-300 ease-out ${
+                showFilters ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"
+              }`}
+              onClick={() => setShowFilters(false)}
+            />
+
+            {/* Slide-out Drawer Panel */}
+            <div
+              className={`md:hidden fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-[#111622] z-[10001] shadow-2xl border-r border-white/10 transform transition-transform duration-300 ease-out flex flex-col ${
+                showFilters ? "translate-x-0" : "-translate-x-full"
+              }`}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-white/10">
+                <h2 className="text-white font-poppins font-semibold text-lg">Filters</h2>
+                <button
+                  onClick={() => setShowFilters(false)}
+                  className="p-2 text-white/60 hover:text-white rounded-lg transition-colors text-xl font-light cursor-pointer"
+                  aria-label="Close filters"
+                >
+                  &times;
+                </button>
+              </div>
+
+              {/* Sidebar Content */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                {/* Guide Type Filter */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[0.62rem] text-white/50 font-bold uppercase tracking-wider font-poppins">
+                    Guide Type
+                  </label>
+                  <select
+                    value={filters.guideType || ""}
+                    onChange={(e) => handleFilterChange("guideType", e.target.value || null)}
+                    className="w-full px-3 py-2 bg-black/20 border border-white/[0.08] rounded-lg text-white font-poppins text-sm focus:outline-none cursor-pointer"
+                  >
+                    <option value="">All Types</option>
+                    {filterOptions.guideTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Category Filter */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[0.62rem] text-white/50 font-bold uppercase tracking-wider font-poppins">
+                    Category
+                  </label>
+                  <select
+                    value={filters.category || ""}
+                    onChange={(e) => handleFilterChange("category", e.target.value || null)}
+                    className="w-full px-3 py-2 bg-black/20 border border-white/[0.08] rounded-lg text-white font-poppins text-sm focus:outline-none cursor-pointer"
+                  >
+                    <option value="">All Categories</option>
+                    {filterOptions.categories.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Number of Days Filter */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[0.62rem] text-white/50 font-bold uppercase tracking-wider font-poppins">
+                    Duration
+                  </label>
+                  <select
+                    value={filters.numberOfDays !== null ? filters.numberOfDays.toString() : ""}
+                    onChange={(e) => handleFilterChange("numberOfDays", e.target.value ? parseInt(e.target.value) : null)}
+                    className="w-full px-3 py-2 bg-black/20 border border-white/[0.08] rounded-lg text-white font-poppins text-sm focus:outline-none cursor-pointer"
+                  >
+                    <option value="">All Durations</option>
+                    {filterOptions.numberOfDays.map((days) => (
+                      <option key={days} value={days.toString()}>
+                        {days} {days === 1 ? 'Day' : 'Days'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Budget Type Filter */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[0.62rem] text-white/50 font-bold uppercase tracking-wider font-poppins">
+                    Budget
+                  </label>
+                  <select
+                    value={filters.budgetType || ""}
+                    onChange={(e) => handleFilterChange("budgetType", e.target.value || null)}
+                    className="w-full px-3 py-2 bg-black/20 border border-white/[0.08] rounded-lg text-white font-poppins text-sm focus:outline-none cursor-pointer"
+                  >
+                    <option value="">All Budget Types</option>
+                    {filterOptions.budgetTypes.map((budgetType) => (
+                      <option key={budgetType} value={budgetType}>
+                        {getBudgetTypeLabel(budgetType)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Multi-City Filter */}
+                <div className="flex flex-col gap-2 pt-2">
+                  <label className="text-[0.62rem] text-white/50 font-bold uppercase tracking-wider font-poppins">
+                    Multi City
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <SwitchButton
+                      isChecked={isMultiCityFilter}
+                      onChange={() => setIsMultiCityFilter(!isMultiCityFilter)}
+                      variant="purple"
+                    />
+                    <span className="text-white/70 font-poppins text-sm">
+                      {isMultiCityFilter ? "Multi-City Only" : "All Guides"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sidebar Footer */}
+              <div className="p-4 border-t border-white/10 space-y-3 bg-black/20">
+                {hasActiveFilters && (
+                  <button
+                    onClick={handleClearFilters}
+                    className="w-full px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-poppins text-sm transition-colors cursor-pointer"
+                  >
+                    Clear All Filters
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowFilters(false)}
+                  className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-poppins text-sm font-medium transition-colors cursor-pointer"
+                >
+                  Apply Filters
+                </button>
               </div>
             </div>
           </>
@@ -845,10 +1138,10 @@ const PublicGuides = memo(() => {
             </div>
           )}
 
-          {/* Location Tags - Similar to MapView */}
+          {/* Location Tags */}
           {!error && filterOptions.locations.length > 0 && (
-            <div className="px-4 mb-4">
-              <div className="overflow-x-auto scrollbar-hide whitespace-nowrap py-3">
+            <div className="px-4 mb-2">
+              <div className="overflow-x-auto scrollbar-hide whitespace-nowrap py-1.5">
                 <div className="flex gap-3">
                   <Button
                     btnText="All Locations"
@@ -875,8 +1168,8 @@ const PublicGuides = memo(() => {
           {/* Guides Grid */}
           {!error && (
             <div className="px-4 mb-14">
-              <div className="bg-black rounded-lg py-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 overflow-visible">
+              <div className="bg-black rounded-lg py-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6 overflow-visible">
                   {loading ? (
                     // Skeleton cards — same grid, public (dark) variant
                     <GuideCardSkeleton count={6} variant="public" />
@@ -889,12 +1182,12 @@ const PublicGuides = memo(() => {
                       />
                     ))
                   ) : (
-                    <div className="col-span-1 md:col-span-3 flex flex-col items-center justify-center min-h-[30vh] py-10 text-center">
+                    <div className="col-span-2 md:col-span-3 flex flex-col items-center justify-center min-h-[30vh] py-10 text-center">
                       <h1 className="text-white font-poppins font-semibold text-lg md:text-xl mb-2">
                         No Guides Yet
                       </h1>
                       <p className="text-gray-400 font-poppins text-sm md:text-base max-w-md">
-                        {account?.Account_Name} hasn't shared any travel guides yet. Check back later for amazing travel insights!
+                        {account?.Account_Name} has no guides matching these filters. Check back later for amazing travel insights!
                       </p>
                     </div>
                   )}
@@ -904,7 +1197,6 @@ const PublicGuides = memo(() => {
           )}
         </div>
       </div>
-
     </>
   );
 });

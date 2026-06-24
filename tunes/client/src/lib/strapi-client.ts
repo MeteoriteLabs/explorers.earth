@@ -33,9 +33,9 @@ async function getStrapiConfig(): Promise<StrapiConfig> {
     return configFetchPromise;
   }
 
-  // Try environment variables first
-  const envUrl = import.meta.env.VITE_STRAPI_URL;
-  const envToken = import.meta.env.VITE_STRAPI_ACCESS_TOKEN;
+  // Use environment variables directly
+  const envUrl = import.meta.env.VITE_REST_API_URL;
+  const envToken = import.meta.env.VITE_PUBLIC_ACCESS_TOKEN;
 
   if (envUrl && envToken) {
     const cleanUrl = envUrl.endsWith('/') ? envUrl.slice(0, -1) : envUrl;

@@ -6,10 +6,11 @@ import { getPublicAccountBasicQuery } from "../../features/PublicHome/api/query"
 import { EarthLoader } from "../../components/EarthLoader";
 import Button from "../../components/ui/Button";
 import Home from "../../assets/icons/Home";
+import HeroSkeleton from "../../components/ui/HeroSkeleton";
 
 interface TabVisibilityGuardProps {
     /** Which tab visibility field to check */
-    tabField: "public_profile" | "public_recommendations" | "public_music" | "public_guides";
+    tabField: "public_profile" | "public_recommendations" | "public_music" | "public_guides" | "public_movie" | "public_books" | "public_games";
     /** Default visibility if the field is not set */
     defaultVisible?: boolean;
     /** The content to render if the tab is enabled */
@@ -38,9 +39,18 @@ const TabVisibilityGuard = memo(({ tabField, defaultVisible = true, children }: 
 
     // Show loader while checking visibility
     if (loading) {
+        if ((window as any).__publicProfileLoaded) {
+            return (
+                <div className="bg-black min-h-screen pt-20 px-4 md:px-6">
+                    <div className="max-w-5xl mx-auto">
+                        <HeroSkeleton accentColor="yellow" showThumbnails />
+                    </div>
+                </div>
+            );
+        }
         return (
-            <div className="bg-black min-h-screen flex items-center justify-center">
-                <EarthLoader context="general" size="small" />
+            <div className="bg-black min-h-screen">
+                <EarthLoader context="general" size="default" />
             </div>
         );
     }
@@ -63,6 +73,9 @@ const TabVisibilityGuard = memo(({ tabField, defaultVisible = true, children }: 
         const tabOptions = [
             { field: "public_recommendations", path: `/${username}/places`, default: true },
             { field: "public_guides", path: `/${username}/guides`, default: false },
+            { field: "public_movie", path: `/${username}/movies`, default: false },
+            { field: "public_books", path: `/${username}/books`, default: false },
+            { field: "public_games", path: `/${username}/games`, default: true },
             { field: "public_music", path: `/${username}/music`, default: false },
             { field: "public_profile", path: `/${username}`, default: true },
         ];

@@ -118,6 +118,28 @@ Feature-scoped State
 React Context ──→ Descendant Components
 ```
 
+## Custom Hooks (`src/hooks/`)
+
+The `hooks/` directory contains 15 custom React hooks. They encapsulate data-fetching logic, UI state, and side-effects shared across feature modules.
+
+| Hook | Purpose |
+|------|---------|
+| `useTunesDashboard.ts` | Syncs Strapi user with tunes DB and fetches playlist data |
+| `useProfileWalkthrough.ts` | Guided onboarding walkthrough for profile setup (react-joyride) |
+| `useRecommendationsWalkthrough.ts` | Guided walkthrough for recommendations feature |
+| `useQRActions.tsx` | QR code generation, download, and sharing logic |
+| `useQRContext.tsx` | React Context provider for QR actions |
+| `useAIGuideQuota.ts` | Tracks and enforces AI guide generation quota per user |
+| `useDeviceDetection.tsx` | Detects mobile/tablet/desktop for responsive behaviour |
+| `useDistanceValidation.ts` | Validates distance between location coordinates |
+| `useFileUpload.ts` | Handles image upload flow (crop → compress → Strapi REST) |
+| `useMediaViewer.ts` | Controls image/media viewer modal state |
+| `usePageTracking.ts` | GA4 page-view tracking triggered on route changes |
+| `useResponsiveChart.ts` | Returns chart dimensions based on current viewport |
+| `useToast.ts` | Toast notification management |
+| `useUsernameValidation.ts` | Async username availability check against Strapi |
+| `useWebSocket.ts` | Socket.IO WebSocket connection for tunes real-time events |
+
 ## Key Files
 
 | File | Purpose |
@@ -127,4 +149,5 @@ React Context ──→ Descendant Components
 | `src/store/useEmailStore.ts` | Email composition state |
 | `src/store/useSetupStore.ts` | Onboarding wizard state |
 | `src/contexts/` | React Context providers |
+| `src/hooks/` | All 15 custom hooks (see table above) |
 | Apollo Client setup | In app initialization code |

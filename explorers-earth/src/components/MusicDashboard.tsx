@@ -17,10 +17,11 @@ import {
   MoreVertical,
   Pencil,
   Trash2 as TrashIcon,
-  Plus,
   Eye,
   EyeOff,
 } from 'lucide-react';
+import SwitchButton from './ui/SwitchButton';
+import { AddIcon } from '../assets/icons/AddIcon';
 import PlaylistTable from './playlist-table';
 import SearchSongs from './search-songs';
 import YoutubePlayer from './youtube-player';
@@ -32,6 +33,8 @@ import type { Song } from '../types/music';
 
 interface MusicDashboardProps {
   data: TunesDashboardData;
+  isPublic?: boolean;
+  onVisibilityToggle?: () => void;
 }
 
 type MainTab = 'queue' | 'guest-controls' | 'recently-played' | 'playlists';
@@ -56,7 +59,7 @@ function ConfirmModal({
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 p-4">
       <div className="bg-gray-900 border border-white/10 rounded-xl p-6 max-w-sm w-full shadow-2xl">
         <h3 className="text-white font-semibold mb-2">{title}</h3>
         <p className="text-gray-400 text-sm mb-5">{description}</p>
@@ -82,7 +85,7 @@ function ConfirmModal({
   );
 }
 
-export default function MusicDashboard({ data }: MusicDashboardProps) {
+export default function MusicDashboard({ data, isPublic, onVisibilityToggle }: MusicDashboardProps) {
   const { localUser, guestUrl, playlists, playlist, isLoading, error } = data;
   const queryClient = useQueryClient();
   const hasAutoStarted = useRef(false);
@@ -102,6 +105,16 @@ export default function MusicDashboard({ data }: MusicDashboardProps) {
   const [activePlaylistTab, setActivePlaylistTab] = useState<string>('');
   // New playlist creation
   const [showNewPlaylistInput, setShowNewPlaylistInput] = useState(false);
+  const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    const handleWindowClick = () => {
+      setMobileDropdownOpen(false);
+    };
+    window.addEventListener("click", handleWindowClick);
+    return () => window.removeEventListener("click", handleWindowClick);
+  }, []);
+
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [newPlaylistDescription, setNewPlaylistDescription] = useState('');
   // Inline edit form
@@ -505,7 +518,70 @@ export default function MusicDashboard({ data }: MusicDashboardProps) {
   ];
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      {/* Desktop Screen actions row */}
+      <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4 border border-white/5">
+        <div className="flex items-center gap-2 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
+          <SwitchButton
+            isChecked={isPublic === true}
+            onChange={onVisibilityToggle || (() => {})}
+            variant="blue"
+          />
+          <span className="text-[10px] md:text-xs text-white leading-tight whitespace-nowrap font-medium font-poppins">Public Visibility</span>
+        </div>
+        <button
+          onClick={() => {
+            setActiveTab('playlists');
+            setShowNewPlaylistInput(true);
+          }}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap cursor-pointer"
+        >
+          <AddIcon size="5" />
+          <span>New Playlist</span>
+        </button>
+      </div>
+
+      {/* Mobile actions row (split action button with visibility dropdown) */}
+      <div className="md:hidden relative mb-4 w-full">
+        <div className="flex w-full rounded-2xl overflow-hidden border border-white/10 shadow-lg shadow-blue-900/15">
+          <button
+            onClick={() => {
+              setActiveTab('playlists');
+              setShowNewPlaylistInput(true);
+            }}
+            className="flex-1 bg-dashboard-accent hover:opacity-90 text-xs font-bold text-white py-3 px-4 text-left flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <AddIcon size="4" />
+            <span>New Playlist</span>
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setMobileDropdownOpen(!mobileDropdownOpen);
+            }}
+            className="bg-dashboard-accent border-l border-white/20 px-3 flex items-center justify-center cursor-pointer transition-all hover:opacity-90"
+          >
+            <svg className={`w-3.5 h-3.5 text-white transform transition-transform duration-200 ${mobileDropdownOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+        {mobileDropdownOpen && (
+          <div className="absolute top-[calc(100%+6px)] right-0 left-0 p-3.5 z-[100] border border-dashboard-accent/30 rounded-2xl bg-dashboard-sidebar/95 backdrop-blur-md shadow-xl flex justify-between items-center">
+            <span className="text-[11px] text-white/90 font-semibold font-poppins">Manage Public Visibility</span>
+            <div className="flex items-center gap-2">
+              <span className={`text-[10px] font-bold uppercase ${isPublic ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+                {isPublic ? "Pub" : "Draft"}
+              </span>
+              <SwitchButton
+                isChecked={isPublic === true}
+                onChange={onVisibilityToggle || (() => {})}
+                variant="blue"
+              />
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* ── Add Songs — always visible at top ─────────────────────────────── */}
       <div className="bg-black/20 rounded-xl p-4">
@@ -558,44 +634,42 @@ export default function MusicDashboard({ data }: MusicDashboardProps) {
         </div>
       )}
 
-      {/* ── Tab-based layout ─────────────────────────────────────────────────── */}
-      <div className="bg-black/20 rounded-xl overflow-hidden">
-        {/* Tab strip */}
-        <div className="flex items-stretch border-b border-white/10">
-          {/* Scrollable tab buttons */}
-          <div
-            className="flex overflow-x-auto flex-1"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
+      {/* ── Tab Switcher ────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-center mx-auto bg-white rounded-3xl w-fit shadow-sm my-6">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center justify-center gap-1.5 px-3 md:px-4 py-2 text-[10px] sm:text-xs font-medium transition-all duration-300 whitespace-nowrap ${
+              activeTab === tab.id
+                ? "bg-dashboard-accent rounded-2xl text-white shadow-md"
+                : "bg-white rounded-2xl text-black hover:bg-gray-50"
+            }`}
           >
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1 px-2.5 sm:px-4 py-3 text-[11px] sm:text-xs font-medium whitespace-nowrap transition-colors border-b-2 flex-shrink-0
-                  ${activeTab === tab.id
-                    ? 'border-dashboard-accent text-dashboard-accent bg-white/5'
-                    : 'border-transparent text-gray-400 hover:text-white hover:bg-white/5'
-                  }`}
-              >
-                {tab.icon}
-                <span>{tab.shortLabel}</span>
-                {tab.id === 'queue' && (currentlyPlaying || songs.length > 0) && (
-                  <span className="text-gray-500 text-[10px]">
-                    {currentlyPlaying ? `${songs.length + 1}` : songs.length}
-                  </span>
-                )}
-                {tab.id === 'recently-played' && playedSongs.length > 0 && (
-                  <span className="text-gray-500 text-[10px]">{playedSongs.length}</span>
-                )}
-                {tab.id === 'playlists' && playlists && playlists.length > 0 && (
-                  <span className="text-gray-500 text-[10px]">{playlists.length}</span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
+            {tab.icon}
+            <span>{tab.shortLabel}</span>
+            {tab.id === "queue" && (currentlyPlaying || songs.length > 0) && (
+              <span className={`text-[10px] ${activeTab === "queue" ? "text-white/70" : "text-black/50"}`}>
+                {currentlyPlaying ? `${songs.length + 1}` : songs.length}
+              </span>
+            )}
+            {tab.id === "recently-played" && playedSongs.length > 0 && (
+              <span className={`text-[10px] ${activeTab === "recently-played" ? "text-white/70" : "text-black/50"}`}>
+                {playedSongs.length}
+              </span>
+            )}
+            {tab.id === "playlists" && playlists && playlists.length > 0 && (
+              <span className={`text-[10px] ${activeTab === "playlists" ? "text-white/70" : "text-black/50"}`}>
+                {playlists.length}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
 
-        {/* Tab content */}
+      {/* ── Tab Content ────────────────────────────────────────────────────── */}
+      <div className="bg-black/20 rounded-xl overflow-hidden min-h-[300px]">
+        {/* Tab content wrapper */}
         <div className="p-4">
 
           {/* ── Queue tab ──────────────────────────────────────────────────── */}
@@ -724,9 +798,9 @@ export default function MusicDashboard({ data }: MusicDashboardProps) {
                 {showNewPlaylistInput ? null : (
                   <button
                     onClick={() => setShowNewPlaylistInput(true)}
-                    className="flex items-center gap-1 text-xs text-dashboard-accent hover:opacity-80 transition-opacity"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-dashboard-accent hover:opacity-90 text-[10px] sm:text-xs text-white font-medium transition-all shadow-md shadow-blue-900/30 whitespace-nowrap"
                   >
-                    <Plus className="w-3 h-3" />
+                    <AddIcon size="3.5" />
                     New Playlist
                   </button>
                 )}
@@ -806,13 +880,13 @@ export default function MusicDashboard({ data }: MusicDashboardProps) {
                           <button
                             key={pl.id}
                             onClick={() => setActivePlaylistTab(pl.id.toString())}
-                            className={`px-3 py-1 text-xs whitespace-nowrap rounded transition-colors ${isActive
-                              ? 'bg-dashboard-accent text-white'
-                              : 'text-gray-400 hover:text-white hover:bg-white/10'
+                            className={`px-3 py-1.5 text-xs whitespace-nowrap rounded-xl transition-all ${isActive
+                              ? 'bg-white/10 text-white font-semibold'
+                              : 'text-gray-400 hover:text-white hover:bg-white/5'
                               }`}
                           >
                             {pl.name}
-                            <span className="ml-1 opacity-60">({pl.songs?.length ?? 0})</span>
+                            <span className="ml-1 opacity-50 font-normal">({pl.songs?.length ?? 0})</span>
                           </button>
                         );
                       })}
@@ -941,33 +1015,33 @@ export default function MusicDashboard({ data }: MusicDashboardProps) {
                             )}
 
                             {/* Action buttons */}
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-row items-center gap-3 pt-2">
                               <button
                                 onClick={() => setPlaylistToReplace({ id: p.id, songs: p.songs ?? [], type: 'play' })}
                                 disabled={!p.songs?.length}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-dashboard-accent text-white hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
+                                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                               >
-                                <PlayCircle className="w-3.5 h-3.5" />
-                                Play Playlist
+                                <PlayCircle className="w-4 h-4" />
+                                <span>Play</span>
                               </button>
                               <button
                                 onClick={() => setPlaylistToReplace({ id: p.id, songs: p.songs ?? [], type: 'shuffle' })}
                                 disabled={!p.songs?.length}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                               >
-                                <Shuffle className="w-3.5 h-3.5" />
-                                Shuffle
+                                <Shuffle className="w-4 h-4" />
+                                <span>Shuffle</span>
                               </button>
                               <button
                                 onClick={() => addPlaylistToQueueMutation.mutate(p.songs ?? [])}
                                 disabled={!p.songs?.length || addPlaylistToQueueMutation.isPending}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                               >
                                 {addPlaylistToQueueMutation.isPending
-                                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                  : <Plus className="w-3.5 h-3.5" />
+                                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                                  : <AddIcon size="4" />
                                 }
-                                Add to Queue
+                                <span>Add to Queue</span>
                               </button>
                             </div>
 

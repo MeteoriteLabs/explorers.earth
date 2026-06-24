@@ -329,7 +329,9 @@ export function setupInstagramRoutes(app: Express) {
             'cdninstagram.com',
             'fbcdn.net',
             'instagram.com',
-            'scontent.cdninstagram.com'
+            'scontent.cdninstagram.com',
+            'google.com',
+            'googleapis.com'
         ];
 
         const isAllowed = allowedDomains.some(domain => decodedUrl.includes(domain));

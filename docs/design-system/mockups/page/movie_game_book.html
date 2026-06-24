@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Media Recommendations Mockup — explorers.earth</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ============ RESET & BASE ============ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Poppins', system-ui, sans-serif;
+      background: #0d0f12;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* ============ PREVIEW MASTER HEADER ============ */
+    .preview-header {
+      width: 100%;
+      max-width: 800px;
+      padding: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 2rem;
+    }
+    .preview-info h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: white;
+    }
+    .preview-info p {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      margin-top: 0.25rem;
+    }
+    .badge {
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      display: inline-block;
+    }
+    .badge-approved {
+      background: rgba(74, 222, 128, 0.15);
+      color: #4ade80;
+    }
+    .badge-mobile {
+      background: rgba(249, 115, 22, 0.15);
+      color: #f97316;
+      margin-left: 0.25rem;
+    }
+    .view-controls {
+      display: flex;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 3px;
+      border-radius: 8px;
+      gap: 2px;
+    }
+    .control-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Poppins', sans-serif;
+      transition: all 0.2s ease;
+    }
+    .control-btn.active {
+      background: #3B82F6;
+      color: white;
+    }
+
+    /* ============ MAIN LAYOUT PREVIEW VIEWS ============ */
+    .preview-main {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      width: 100%;
+      flex-grow: 1;
+      padding-bottom: 3rem;
+      transition: all 0.3s ease;
+    }
+
+    /* Device Frame View Mode */
+    .preview-main.device-view .phone-wrapper {
+      width: 375px;
+      height: 720px;
+      border: 12px solid #1e293b;
+      border-radius: 40px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      background: #090b0d;
+      overflow: hidden;
+      position: relative;
+    }
+    .preview-main.device-view .phone-frame-inner {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+    .preview-main.device-view .phone-frame-inner::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Full Responsive View Mode */
+    .preview-main.full-view {
+      padding: 0 1.5rem 3rem;
+      max-width: 1200px;
+    }
+    .preview-main.full-view .phone-wrapper {
+      width: 100%;
+      background: #090b0d;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    .preview-main.full-view .phone-frame-inner {
+      width: 100%;
+      padding: 2rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* ============ DESIGN TOKENS ============ */
+    :root {
+      --dash-bg:         #0d0f12; /* Neutral dark viewport bg */
+      --dash-sidebar-bg: #111622; /* Category bar bg */
+      --dash-accent:     #3B82F6; /* Active accent color */
+      --dash-border:     rgba(255, 255, 255, 0.08);
+      --dash-text:       #FFFFFF;
+      --blue-cta:        #3B82F6;
+      --blue-final:      #2563EB;
+    }
+
+    /* ============ MOCKUP COMPONENT STYLES ============ */
+    .phone-frame {
+      min-height: 100%;
+      padding-bottom: 2rem;
+      transition: background 0.2s ease;
+      background: var(--dash-bg);
+      position: relative;
+      color: white;
+    }
+
+    /* ============ TABS PILL ============ */
+    .tabs-pill {
+      display: flex;
+      background: white;
+      border-radius: 24px;
+      width: fit-content;
+      margin: 0 auto;
+      padding: 2px;
+    }
+    .tabs-pill button {
+      padding: 0.3rem 0.95rem;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      font-family: 'Poppins', sans-serif;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #0f172a;
+      background: white;
+    }
+    .tabs-pill button.active {
+      background: var(--dash-accent);
+      color: white;
+    }
+
+    /* ============ FROSTED CARD ============ */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    /* Theme Switcher buttons styles */
+    .theme-btn {
+      border: 1px solid transparent;
+      color: #64748b;
+      background: none;
+      padding: 0.4rem 1rem;
+      font-size: 0.75rem;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    /* Switch Component */
+    .mini-switch {
+      width: 32px;
+      height: 18px;
+      background: #3B82F6;
+      border-radius: 99px;
+      position: relative;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .mini-switch::after {
+      content: '';
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: white;
+      border-radius: 50%;
+      top: 3px;
+      right: 3px;
+      transition: transform 0.2s, right 0.2s;
+    }
+    .mini-switch.off {
+      background: rgba(255,255,255,0.15);
+    }
+    .mini-switch.off::after {
+      right: 17px;
+    }
+
+    /* Custom scrollbar hide helper */
+    .scroll-hide::-webkit-scrollbar {
+      display: none;
+    }
+    .scroll-hide {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Toggle header rows based on view mode */
+    .preview-main.device-view .desktop-only-header-row {
+      display: none !important;
+    }
+    .preview-main.device-view .mobile-only-header-row {
+      display: block !important;
+    }
+
+    .preview-main.full-view .desktop-only-header-row {
+      display: flex !important;
+    }
+    .preview-main.full-view .mobile-only-header-row {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ====== PREVIEW MASTER HEADER ====== -->
+  <div class="preview-header">
+    <div class="preview-info">
+      <h1>Media Mockup (Option D) <span class="badge badge-approved">Approved</span><span class="badge badge-mobile">Mobile Only</span></h1>
+      <p>Movies & Shows dashboard layout with step 1 (categories) and step 2 (curated list view).</p>
+    </div>
+    
+    <div style="display:flex; flex-direction:column; gap:0.5rem; align-items:flex-end;">
+      <!-- Layout Controls -->
+      <div class="view-controls">
+        <button id="btn-device" class="control-btn active" onclick="setViewMode('device')">📱 Phone</button>
+        <button id="btn-full" class="control-btn" onclick="setViewMode('full')">🖥️ Full View</button>
+      </div>
+
+      <!-- Theme Controls -->
+      <div style="display: flex; gap: 0.35rem;">
+        <button onclick="setTheme('green')" class="theme-btn" id="btn-theme-green" style="border: 1px solid var(--dash-accent); color: white; background: var(--dash-sidebar-bg);">🌲 Green</button>
+        <button onclick="setTheme('dark')" class="theme-btn" id="btn-theme-dark">🖤 Dark</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== MAIN PREVIEW CONTAINER ====== -->
+  <div class="preview-main device-view" id="preview-main-container">
+    <div class="phone-wrapper">
+      <div class="phone-frame-inner">
+        <div class="phone-frame">
+          
+          <!-- ====== TOP HEADER BAR ====== -->
+          <div style="background:var(--dash-sidebar-bg); border-bottom:1px solid var(--dash-border); padding:0.8rem 1rem; display:flex; align-items:center; justify-content:center; position:relative; height:48px; flex-shrink:0; z-index:20;">
+            <!-- Header Title with chevron -->
+            <div style="display:flex; align-items:center; gap:0.35rem; cursor:pointer;">
+              <span style="font-size:0.95rem; font-weight:800; color:white; letter-spacing:0.02em;">Movies & Shows</span>
+              <svg width="10" height="10" fill="none" stroke="white" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+            </div>
+          </div>
+
+          <!-- ======================================================== -->
+          <!--             STEP 1: MOVIES & SHOWS DASHBOARD             -->
+          <!-- ======================================================== -->
+          <div id="step-1-dashboard" style="display:block; padding:0.75rem;">
+            
+            <!-- Desktop view header (original row design) -->
+            <div class="desktop-only-header-row" style="display:none; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+              <!-- Left: Public switch -->
+              <div style="display:flex; align-items:center; gap:0.4rem;">
+                <span id="pub-visibility-desktop-label" style="font-size:0.58rem; color:#4ade80; font-weight:600;">Public Visibility</span>
+                <div class="mini-switch" id="pub-visibility-desktop-toggle" onclick="toggleMediaSwitch('pub-visibility-desktop-toggle', 'pub-visibility-desktop-label', false)"></div>
+              </div>
+              <!-- Right: New list btn -->
+              <button style="background:var(--blue-cta); border:1px solid rgba(255,255,255,0.1); border-radius:20px; font-size:0.68rem; font-weight:700; color:white; padding:0.35rem 0.8rem; display:flex; align-items:center; gap:0.25rem; cursor:pointer; font-family:'Poppins',sans-serif;">
+                <svg width="10" height="10" fill="none" stroke="white" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                New List
+              </button>
+            </div>
+
+            <!-- Mobile view header (split action button with visibility dropdown) -->
+            <div class="mobile-only-header-row" style="position:relative; margin-bottom:0.75rem; width:100%; display:none;">
+              <div style="display:flex; width:100%; border-radius:20px; overflow:hidden; border:1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 12px rgba(59,130,246,0.15);">
+                <button style="flex:1; background:var(--blue-cta); border:none; font-size:0.68rem; font-weight:700; color:white; padding:0.4rem 0.8rem; text-align:left; display:flex; align-items:center; gap:0.25rem; cursor:pointer; font-family:'Poppins',sans-serif; transition:background 0.2s;" onmouseover="this.style.background='var(--blue-final)'" onmouseout="this.style.background='var(--blue-cta)'">
+                  <svg width="10" height="10" fill="none" stroke="white" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                  New List
+                </button>
+                <button onclick="event.stopPropagation(); toggleNewListDropdown('media-dropdown')" style="background:var(--blue-cta); border:none; border-left:1px solid rgba(255,255,255,0.2); width:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.2s;" onmouseover="this.style.background='var(--blue-final)'" onmouseout="this.style.background='var(--blue-cta)'">
+                  <svg width="9" height="9" fill="none" stroke="white" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+              </div>
+              <!-- Dropdown panel -->
+              <div id="media-dropdown" class="glass-card" style="display:none; position:absolute; top:calc(100% + 5px); right:0; left:0; padding:0.55rem 0.75rem; z-index:50; border:1px solid rgba(59,130,246,0.25); border-radius:12px; background:rgba(15,22,36,0.95); box-shadow:0 8px 20px rgba(0,0,0,0.55);">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span style="font-size:0.65rem; color:rgba(255,255,255,0.85); font-weight:600;">Manage Public Visibility</span>
+                  <div style="display:flex; align-items:center; gap:0.4rem;">
+                    <span id="pub-visibility-label" style="font-size:0.55rem; color:#4ade80; font-weight:700; text-transform:uppercase;">Pub</span>
+                    <div class="mini-switch" id="pub-visibility-toggle" onclick="toggleMediaSwitch('pub-visibility-toggle', 'pub-visibility-label', false)"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Hero Feature Card: Interstellar -->
+            <div class="glass-card" style="border-radius:20px; overflow:hidden; position:relative; min-height:280px; display:flex; flex-direction:column; justify-content:flex-end; padding:1.25rem; margin-bottom:1rem; background:linear-gradient(180deg, rgba(13,15,18,0.15) 0%, rgba(13,15,18,0.95) 90%), url('https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=600') center/cover no-repeat; box-shadow: 0 10px 25px rgba(0,0,0,0.55); border: 1.5px solid rgba(255,255,255,0.08);">
+              <!-- Top pick badge -->
+              <div style="position:absolute; top:1.25rem; left:1.25rem; display:flex; align-items:center; gap:0.35rem;">
+                <div style="width:3px; height:12px; background:#fbbf24; border-radius:2px;"></div>
+                <span style="font-size:0.68rem; font-weight:800; color:white; text-transform:uppercase; letter-spacing:0.06em;">Top Picks</span>
+              </div>
+              
+              <!-- Inset Thumbnail at bottom right -->
+              <div style="position:absolute; bottom:1.25rem; right:1.25rem; width:64px; height:38px; border-radius:6px; border:1.5px solid white; overflow:hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.6); flex-shrink:0;">
+                <div style="width:100%; height:100%; background:url('https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=600') center/cover no-repeat;"></div>
+              </div>
+
+              <!-- Main details -->
+              <div style="max-width:78%;">
+                <h2 style="font-size:1.85rem; font-weight:900; color:white; line-height:1.1; margin-bottom:0.4rem; letter-spacing:-0.01em;">Interstellar</h2>
+                <div style="display:flex; align-items:center; gap:0.3rem; font-size:0.58rem; color:rgba(255,255,255,0.65); font-weight:600; margin-bottom:0.5rem; flex-wrap:wrap;">
+                  <span>2014</span>
+                  <span>•</span>
+                  <span>2h 49m</span>
+                  <span>•</span>
+                  <span>Adventure | Drama | Science Fiction</span>
+                </div>
+                <p style="font-size:0.63rem; color:rgba(255,255,255,0.5); line-height:1.35; margin-bottom:0.8rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">The adventures of a group of explorers who make use of a newly discovered wormhole to surpass the limitations on human space travel...</p>
+                <button style="background:var(--blue-cta); border:none; border-radius:8px; padding:0.4rem 0.8rem; font-size:0.65rem; font-weight:700; color:white; display:flex; align-items:center; gap:0.25rem; cursor:pointer; font-family:'Poppins',sans-serif;">
+                  <span>★</span> Manage Top Picks
+                </button>
+              </div>
+            </div>
+
+            <!-- List curation layout grid -->
+            <div style="display:flex; gap:0.5rem;">
+              <!-- Curated card: mymovie -->
+              <div class="glass-card" onclick="switchStep(2)" style="flex:1; min-width:140px; padding:0.75rem; display:flex; flex-direction:column; gap:0.6rem; cursor:pointer; border:1px solid rgba(255,255,255,0.06); transition:transform 0.2s;">
+                <!-- Header of card -->
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span style="font-size:0.8rem; font-weight:700; color:white;">mymovie</span>
+                  <div style="display:flex; align-items:center; gap:0.25rem;">
+                    <span id="mymovie-pub-label" style="font-size:0.48rem; color:#4ade80; font-weight:700; text-transform:uppercase;">Pub</span>
+                    <div class="mini-switch" id="mymovie-pub-toggle" style="width:22px; height:12px;" onclick="event.stopPropagation(); toggleMediaSwitch('mymovie-pub-toggle', 'mymovie-pub-label', false)"></div>
+                  </div>
+                </div>
+                
+                <!-- Poster thumbnail container -->
+                <div style="width:34px; height:46px; border-radius:4px; overflow:hidden; background:url('https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=600') center/cover no-repeat; border:1px solid rgba(255,255,255,0.15);"></div>
+
+                <!-- Footer of card -->
+                <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                  <div style="display:flex; flex-direction:column;">
+                    <span style="font-size:0.58rem; color:rgba(255,255,255,0.5); font-weight:500;">1 movie</span>
+                    <span style="font-size:0.58rem; color:#fbbf24; font-weight:600; margin-top:0.05rem;">★ 1 pinned</span>
+                  </div>
+                  <span style="font-size:0.62rem; color:var(--blue-cta); font-weight:700; display:flex; align-items:center; gap:0.15rem;">Open ➔</span>
+                </div>
+              </div>
+
+              <!-- Dashed card: Add new list -->
+              <div style="border:2.2px dashed rgba(255, 255, 255, 0.12); border-radius:14px; flex:1; min-width:140px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.35rem; padding:1.25rem 0.75rem; cursor:pointer; background:transparent; transition:all 0.2s;" onmouseover="this.style.borderColor='var(--blue-cta)'; this.style.background='rgba(59,130,246,0.02)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.12)'; this.style.background='transparent'">
+                <span style="font-size:1.3rem; color:rgba(255,255,255,0.3); font-weight:300; line-height:1;">+</span>
+                <span style="font-size:0.68rem; color:rgba(255,255,255,0.45); font-weight:600;">Add new list</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ======================================================== -->
+          <!--             STEP 2: MYMOVIE CURATED LIST VIEW            -->
+          <!-- ======================================================== -->
+          <div id="step-2-list-details" style="display:none; padding:0.75rem;">
+            
+            <!-- List Navigation & Header -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+              <!-- Left: Back and Title info -->
+              <div style="display:flex; flex-direction:column; align-items:flex-start;">
+                <!-- Back text acting as button -->
+                <div onclick="switchStep(1)" style="font-size:0.55rem; color:rgba(255,255,255,0.55); font-weight:600; cursor:pointer; display:flex; align-items:center; gap:0.25rem; margin-bottom:0.15rem;" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,0.55)'">
+                  <svg width="6" height="6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-top:-0.5px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7"/></svg>
+                  Back
+                </div>
+                <span style="font-size:0.85rem; font-weight:800; color:white; line-height:1.1;">mymovie</span>
+              </div>
+              <!-- Right: Published Switch -->
+              <div style="display:flex; align-items:center; gap:0.35rem;">
+                <span id="list-published-label" style="font-size:0.58rem; color:#4ade80; font-weight:600;">Published</span>
+                <div class="mini-switch" id="list-published-toggle" onclick="toggleMediaSwitch('list-published-toggle', 'list-published-label', true)"></div>
+              </div>
+            </div>
+
+            <!-- Tab Switcher Pill -->
+            <div class="tabs-pill" style="margin-bottom:0.75rem;">
+              <button class="active">Recommendations</button>
+              <button>Manage</button>
+            </div>
+
+            <!-- Alert Notice Bar -->
+            <div style="background:rgba(251,191,36,0.06); border:1px solid rgba(251,191,36,0.25); border-radius:12px; padding:0.6rem 0.75rem; display:flex; justify-content:space-between; align-items:center; cursor:pointer; color:#fbbf24; margin-bottom:0.75rem; font-family:'Poppins',sans-serif;">
+              <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.68rem; font-weight:700;">
+                <span>★</span>
+                <span>Manage Top Picks (1/15)</span>
+              </div>
+              <span style="font-size:0.7rem; font-weight:800;">➔</span>
+            </div>
+
+            <!-- Blue Action Button: Add Movie or Show -->
+            <button style="width:100%; background:var(--blue-cta); color:white; border:none; border-radius:12px; padding:0.65rem; font-family:'Poppins',sans-serif; font-size:0.72rem; font-weight:700; cursor:pointer; margin-bottom:0.75rem; display:flex; align-items:center; justify-content:center; gap:0.35rem; box-shadow: 0 4px 12px rgba(59,130,246,0.25);">
+              <svg width="12" height="12" fill="none" stroke="white" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+              Add Movie or Show
+            </button>
+
+            <!-- Movie list content items -->
+            <div style="display:flex; flex-direction:column; gap:0.5rem;">
+              <!-- Item 1: Interstellar -->
+              <div class="glass-card" style="padding:0.5rem 0.6rem; border:1px solid rgba(255,255,255,0.05); display:flex; align-items:center; justify-content:space-between;">
+                <!-- Left Details -->
+                <div style="display:flex; align-items:center; gap:0.55rem;">
+                  <!-- Thumbnail -->
+                  <div style="width:32px; height:46px; border-radius:4px; overflow:hidden; background:url('https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=600') center/cover no-repeat; border:1px solid rgba(255,255,255,0.1); flex-shrink:0;"></div>
+                  <div style="display:flex; flex-direction:column;">
+                    <span style="font-size:0.75rem; font-weight:700; color:white;">Interstellar</span>
+                    <span style="font-size:0.58rem; color:rgba(255,255,255,0.45); font-weight:500; margin-top:0.05rem; white-space:nowrap;">2014 · Adventure, Drama · <span style="color:#fbbf24; font-weight:700;">★ 8.5</span> · 2h 49m</span>
+                  </div>
+                </div>
+                <!-- Right Controls -->
+                <div style="display:flex; align-items:center; gap:0.45rem;">
+                  <!-- Yellow star active -->
+                  <div style="width:24px; height:24px; border-radius:6px; background:rgba(251,191,36,0.15); border:1px solid rgba(251,191,36,0.3); display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                    <span style="color:#fbbf24; font-size:0.65rem;">★</span>
+                  </div>
+                  <!-- Option dots -->
+                  <div style="width:24px; height:24px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:rgba(255,255,255,0.45);">
+                    <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div style="height:60px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== Viewport view mode toggles =====
+    function setViewMode(mode) {
+      const container = document.getElementById('preview-main-container');
+      const btnDevice = document.getElementById('btn-device');
+      const btnFull = document.getElementById('btn-full');
+      
+      if (mode === 'device') {
+        container.classList.remove('full-view');
+        container.classList.add('device-view');
+        btnDevice.classList.add('active');
+        btnFull.classList.remove('active');
+      } else {
+        container.classList.remove('device-view');
+        container.classList.add('full-view');
+        btnFull.classList.add('active');
+        btnDevice.classList.remove('active');
+      }
+    }
+
+    // ===== Switch steps =====
+    function switchStep(step) {
+      const step1 = document.getElementById('step-1-dashboard');
+      const step2 = document.getElementById('step-2-list-details');
+      if (step === 1) {
+        step1.style.display = 'block';
+        step2.style.display = 'none';
+      } else {
+        step1.style.display = 'none';
+        step2.style.display = 'block';
+      }
+    }
+
+    // ===== Toggle Switches =====
+    function toggleSwitch(id) {
+      const sw = document.getElementById(id);
+      if (sw) {
+        sw.classList.toggle('off');
+      }
+    }
+
+    // ===== Toggle Media Switch with Syncing Labels =====
+    function toggleMediaSwitch(switchId, labelId, isStep2) {
+      const sw = document.getElementById(switchId);
+      const label = document.getElementById(labelId);
+      if (!sw) return;
+      sw.classList.toggle('off');
+      const isOff = sw.classList.contains('off');
+      if (label) {
+        if (isStep2) {
+          label.textContent = isOff ? 'Draft' : 'Published';
+          label.style.color = isOff ? '#f87171' : '#4ade80';
+        } else {
+          label.textContent = isOff ? 'Draft' : 'Pub';
+          label.style.color = isOff ? '#f87171' : '#4ade80';
+        }
+      }
+    }
+
+    // ===== Dropdown visibility switcher =====
+    function toggleNewListDropdown(dropdownId) {
+      const dropdown = document.getElementById(dropdownId);
+      if (!dropdown) return;
+      
+      // Close other open dropdowns first to keep it clean
+      const allDropdowns = ['movies-d-dropdown', 'books-d-dropdown', 'games-d-dropdown', 'media-dropdown'];
+      allDropdowns.forEach(id => {
+        if (id !== dropdownId) {
+          const other = document.getElementById(id);
+          if (other) other.style.display = 'none';
+        }
+      });
+
+      if (dropdown.style.display === 'block') {
+        dropdown.style.display = 'none';
+      } else {
+        dropdown.style.display = 'block';
+      }
+    }
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', (e) => {
+      const dropdowns = ['movies-d-dropdown', 'books-d-dropdown', 'games-d-dropdown', 'media-dropdown'];
+      dropdowns.forEach(id => {
+        const dropdown = document.getElementById(id);
+        if (dropdown && dropdown.style.display === 'block') {
+          const btn = dropdown.previousElementSibling;
+          if (btn && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+            dropdown.style.display = 'none';
+          }
+        }
+      });
+    });
+
+    // ===== Theme Settings =====
+    const themes = {
+      green: {
+        '--dash-bg': '#2E4032',
+        '--dash-sidebar-bg': '#223126',
+        '--dash-accent': '#3B82F6',
+        '--dash-border': '#3C4E40',
+        '--blue-cta': '#3B82F6',
+        '--blue-final': '#2563EB',
+      },
+      dark: {
+        '--dash-bg': '#0F1419',
+        '--dash-sidebar-bg': '#161B26',
+        '--dash-accent': '#60A5FA',
+        '--dash-border': '#283147',
+        '--blue-cta': '#3B82F6',
+        '--blue-final': '#2563EB',
+      }
+    };
+
+    window.setTheme = function(themeName) {
+      const theme = themes[themeName];
+      if (!theme) return;
+      
+      const root = document.documentElement;
+      Object.keys(theme).forEach(key => {
+        root.style.setProperty(key, theme[key]);
+      });
+
+      const btnGreen = document.getElementById('btn-theme-green');
+      const btnDark = document.getElementById('btn-theme-dark');
+      if (btnGreen && btnDark) {
+        if (themeName === 'green') {
+          btnGreen.style.borderColor = 'var(--dash-accent)';
+          btnGreen.style.color = 'white';
+          btnGreen.style.background = 'var(--dash-sidebar-bg)';
+          
+          btnDark.style.borderColor = 'transparent';
+          btnDark.style.color = '#64748b';
+          btnDark.style.background = 'none';
+        } else {
+          btnDark.style.borderColor = 'var(--dash-accent)';
+          btnDark.style.color = 'white';
+          btnDark.style.background = 'var(--dash-sidebar-bg)';
+          
+          btnGreen.style.borderColor = 'transparent';
+          btnGreen.style.color = '#64748b';
+          btnGreen.style.background = 'none';
+        }
+      }
+    };
+  </script>
+</body>
+</html>

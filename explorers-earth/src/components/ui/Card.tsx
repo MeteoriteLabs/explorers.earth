@@ -9,6 +9,8 @@ interface MenuItem {
   icon?: ReactElement;
   label?: string;
   action: () => void;
+  disabled?: boolean;
+  title?: string;
 }
 
 interface CardProps {
@@ -24,6 +26,7 @@ interface CardProps {
   numberOfDays?: number | null;
   locationTags?: string[];
   visibility?: boolean | null;
+  isPinned?: boolean;
 }
 
 const Card: FC<CardProps> = memo(
@@ -40,9 +43,11 @@ const Card: FC<CardProps> = memo(
     numberOfDays,
     locationTags,
     visibility,
+    isPinned,
   }) => {
     const [showMenu, setShowMenu] = useState(false);
     const kebabContainerRef = useRef<HTMLDivElement>(null);
+
 
     const handleMenuToggle = () => {
       setShowMenu((prev) => !prev);
@@ -142,14 +147,22 @@ const Card: FC<CardProps> = memo(
         )}
 
         {/* Status Badge - Top Right next to Kebab */}
-        {visibility !== undefined && visibility !== null && cardType === "menuCard" && (
-          <div className={`absolute z-40 right-10 top-2 px-2 py-1 rounded-md flex items-center gap-1 backdrop-blur-sm ${visibility
-            ? "bg-emerald-500/90 text-white"
-            : "bg-slate-500/90 text-white"
+        {((visibility !== undefined && visibility !== null) || isPinned) && cardType === "menuCard" && (
+          <div className={`absolute z-40 right-10 top-2 px-1.5 py-1 rounded-md flex items-center gap-1 backdrop-blur-sm ${
+            visibility
+              ? "bg-emerald-500/90 text-white"
+              : "bg-slate-500/90 text-white"
             }`}>
-            <span className="text-[10px] font-poppins font-semibold uppercase tracking-wider">
-              {visibility ? "Public" : "Draft"}
-            </span>
+            {isPinned && (
+              <svg className="w-2.5 h-2.5 text-amber-400 fill-amber-400 flex-shrink-0" viewBox="0 0 24 24">
+                <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z" />
+              </svg>
+            )}
+            {visibility !== undefined && visibility !== null && (
+              <span className="text-[10px] font-poppins font-semibold uppercase tracking-wider">
+                {visibility ? "Public" : "Draft"}
+              </span>
+            )}
           </div>
         )}
 
@@ -169,9 +182,12 @@ const Card: FC<CardProps> = memo(
                 {menuItems?.map((item, index) => (
                   <button
                     key={index}
-                    className="flex w-full items-center gap-2 mb-2 text-sm text-dashboard hover:bg-dashboard-muted rounded px-2 py-1 whitespace-nowrap"
+                    disabled={item.disabled}
+                    title={item.title}
+                    className="flex w-full items-center gap-2 mb-2 text-sm text-dashboard hover:bg-dashboard-muted rounded px-2 py-1 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed border-none bg-transparent text-left"
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (item.disabled) return;
                       item.action();
                       setShowMenu(false);
                     }}

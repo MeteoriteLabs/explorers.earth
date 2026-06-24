@@ -1,11 +1,10 @@
-import { memo, useState, useEffect, useRef, useMemo } from "react";
+import { memo, useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import ProfileForm from "../features/Profile/components/ProfileForm";
 import { useQuery } from "@apollo/client";
 import useAuthStore from "../store/store";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import Button from "../components/ui/Button";
 import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
 import { profileDataQuery } from "../features/Profile/api/query";
@@ -32,14 +31,14 @@ import Gmail from "../assets/icons/Gmail";
 import LinkedinIcon from "../assets/icons/LinkedinIcon";
 import AppleMusic from "../assets/icons/AppleMusic";
 import TiktokIcon from "../assets/icons/TiktokIcon";
+import SnapchatIcon from "../assets/icons/SnapchatIcon";
+import LinkTo from "../assets/icons/LinkTo";
 import { Tooltip } from "react-tooltip";
 import {
   generateProfileUploadPath,
   generateRandomFileName,
   sanitizeUsername,
 } from "../utils/uploadPathGenerator";
-import SnapchatIcon from "../assets/icons/SnapchatIcon";
-import LinkTo from "../assets/icons/LinkTo";
 import { IMAGE_CONFIG } from "../config";
 import UsernameChangeConfirmationModal from "../components/ui/UsernameChangeConfirmationModal";
 import UnsavedChangesModal from "../components/ui/UnsavedChangesModal";
@@ -108,6 +107,19 @@ const getPublicTabFields = (t: any) => [
     heading: t('dashboard.profile.publicProfile.sections.profileInformation'), // Bio section
     formFields: [
       { name: "bio", label: t('dashboard.profile.publicProfile.fields.bio'), type: "textarea", as: "textarea" },
+      {
+        name: "accountName",
+        label: t('dashboard.profile.account.fields.accountName'),
+        type: "text",
+        isRequired: true,
+      },
+      {
+        name: "primaryAddressCombined",
+        label: t('dashboard.profile.publicProfile.fields.primaryAddress'),
+        type: "primaryAddressCombined",
+        isRequired: true,
+        hasCurrLocation: true,
+      },
     ],
   },
   {
@@ -216,13 +228,6 @@ const getPublicTabFields = (t: any) => [
         type: "businessLocation",
         isRequired: false,
       },
-      {
-        name: "primaryAddressCombined",
-        label: t('dashboard.profile.publicProfile.fields.primaryAddress'),
-        type: "primaryAddressCombined",
-        isRequired: true,
-        hasCurrLocation: true,
-      },
     ],
   },
   {
@@ -245,12 +250,6 @@ const getAccountTabFields = (t: any) => [
     heading: t('dashboard.profile.account.sections.account'), // Private account credentials and identification
     formFields: [
       { name: "username", label: t('dashboard.profile.account.fields.username'), type: "text", isRequired: true },
-      {
-        name: "accountName",
-        label: t('dashboard.profile.account.fields.accountName'),
-        type: "text",
-        isRequired: true,
-      },
       {
         name: "accountType",
         label: t('dashboard.profile.publicProfile.fields.accountType'),
@@ -282,9 +281,40 @@ const getAccountTabFields = (t: any) => [
   },
 ];
 
+const ProfileSkeleton = memo(() => {
+  return (
+    <div className="bg-dashboard-bg md:px-6 md:py-2 md:pt-0 pb-24 md:pb-6 min-h-screen">
+      <div className="pb-4 w-full flex flex-col gap-0 pt-0">
+        {/* Cinematic Header Cover Shimmer */}
+        <div className="relative max-w-3xl mx-auto w-full mt-4 h-[200px] overflow-hidden rounded-xl bg-white/5 border border-white/5 shadow-xl">
+          <div className="absolute inset-0 skeleton-shimmer" />
+          <div className="absolute bottom-4 left-6 flex items-center gap-4">
+            {/* Avatar skeleton */}
+            <div className="w-16 h-16 rounded-full bg-white/10 skeleton-shimmer border-2 border-white/5" />
+            <div className="space-y-1.5">
+              <div className="h-5 w-32 bg-white/10 rounded skeleton-shimmer" />
+              <div className="h-3 w-20 bg-white/5 rounded skeleton-shimmer" />
+            </div>
+          </div>
+        </div>
+
+        {/* Form Fields Accordion Shimmers */}
+        <div className="max-w-3xl mx-auto w-full mt-6 space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-dashboard-sidebar border border-dashboard-border/30 rounded-xl p-4 space-y-3 h-14 flex items-center justify-between">
+              <div className="h-4 w-1/3 bg-white/10 rounded skeleton-shimmer" />
+              <div className="h-4 w-4 bg-white/5 rounded-full skeleton-shimmer" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+});
+ProfileSkeleton.displayName = "ProfileSkeleton";
+
 const Profile = memo(() => {
   const { t } = useTranslation();
-  const profileBannerRef = useRef<HTMLDivElement>(null);
   const [showPreview, setShowPreview] = useState<boolean>(false);
   // local state for account details
   // ✅ VISIBILITY FIX: Remove redundant account state - use GraphQL data directly
@@ -301,6 +331,25 @@ const Profile = memo(() => {
   const [isUploading, setIsUploading] = useState(false);
   // local state for form submission
   const [isFormSubmitting, setIsFormSubmitting] = useState(false);
+
+  // local state for "View Public Profile" tooltip auto-show
+  const [isTooltipOpen, setIsTooltipOpen] = useState<boolean | undefined>(undefined);
+
+  useEffect(() => {
+    // Check if user has already seen the tooltip
+    const hasSeenTooltip = localStorage.getItem("hasSeenPublicProfileTooltip");
+    if (!hasSeenTooltip) {
+      // Small delay to ensure everything is rendered
+      const timer = setTimeout(() => {
+        setIsTooltipOpen(true);
+        // Save to localStorage so it doesn't show again
+        localStorage.setItem("hasSeenPublicProfileTooltip", "true");
+        // Hide after 6 seconds and restore uncontrolled state
+        setTimeout(() => setIsTooltipOpen(undefined), 6000);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   // Enhanced setPlaces that also updates form fields
   const setPlaces = (places: Places, setFieldValue?: (field: string, value: any) => void) => {
@@ -344,6 +393,12 @@ const Profile = memo(() => {
     fetchPolicy: "cache-and-network", // Always fetch fresh data but use cache while loading
     skip: !documentId, // Skip query if documentId is not available
   });
+
+  useEffect(() => {
+    if (!loading) {
+      (window as any).__dashboardLoaded = true;
+    }
+  }, [loading]);
 
   // ✅ VISIBILITY FIX: Get account data from GraphQL response, not separate axios call
   const account = data?.usersPermissionsUser?.accounts?.[0];
@@ -1214,12 +1269,16 @@ const Profile = memo(() => {
 
   // side effects willl be replaced by spinner and toast
   // side effects for query
-  if (loading)
+  if (loading) {
+    if ((window as any).__dashboardLoaded) {
+      return <ProfileSkeleton />;
+    }
     return (
       <div className="flex items-center justify-center min-h-screen bg-dashboard-bg">
-        <EarthLoader context="profile" size="small" />
+        <EarthLoader context="profile" size="default" />
       </div>
     );
+  }
   if (error) return (
     <div className="flex bg-dashboard-bg items-center justify-center min-h-screen">
       <div className="text-dashboard text-center">
@@ -1675,17 +1734,13 @@ const Profile = memo(() => {
       />
       <div className="bg-dashboard-bg md:px-6 md:py-2 md:pt-0">
         <div className="bg-dashboard-bg md:py-2 md:pt-0">
-          {/* Mobile: Add top padding to prevent content from being clipped under fixed header */}
-          {/* MobileLayout already adds pt-16 (64px), header is ~75px, so we add pt-4 (16px) for total ~80px clearance */}
-          {/* Desktop: No extra padding needed as header is relative */}
-          <div className="pb-4 md:mb-0 w-full min-h-screen flex flex-col gap-4 pt-4 md:pt-6">
-            {/* Profile Banner Wrapper - with padding */}
-            <div className="px-2 sm:px-4 md:px-6 w-full">
-              <div
-                ref={profileBannerRef}
-                className={`relative flex flex-col sm:flex-row justify-between md:h-48 w-full max-w-3xl mx-auto md:items-center gap-4 sm:gap-6 rounded-xl p-3 sm:p-4 transition-all duration-300 ${uploadedBackground ? "" : "bg-dashboard-bg"
-                  } ${false ? 'opacity-0 pointer-events-none invisible' : 'opacity-100 visible'
-                  }`}
+          {/* Mobile: Remove top padding to allow header to sit flush with top nav if needed, or adjust for cinematic look */}
+          <div className="pb-4 md:mb-0 w-full min-h-screen flex flex-col gap-0 pt-0 md:pt-0">
+            {/* Header Section - Width matched to accordions */}
+            <div className="relative max-w-3xl mx-auto w-full mt-4 overflow-hidden rounded-xl bg-black transition-all duration-300">
+              {/* Cover Photo Background with Cinematic Effects */}
+              <div 
+                className="absolute inset-0 h-full w-full overflow-hidden z-0"
                 style={{
                   backgroundImage: uploadedBackground
                     ? `url('${uploadedBackground}')`
@@ -1696,63 +1751,128 @@ const Profile = memo(() => {
                   backgroundPosition: "center",
                 }}
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-black/10 via-black/5 to-black/20 z-0 rounded-xl"></div>
-                <div className="relative md:w-36 md:h-36 w-24 h-24 mx-auto ">
-                  <img
-                    src={
-                      uploadedImage ||
-                      data?.usersPermissionsUser?.accounts?.[0]?.profile_picture
-                        ?.url ||
-                      "https://api.dicebear.com/9.x/shapes/svg?seed=Leah"
-                    }
-                    alt={t('dashboard.profile.common.profile')}
-                    className="w-full h-full object-cover rounded-full shadow-md"
-                  />
+                {/* Cinematic top-to-bottom dimming - Base layer */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/80 z-0" />
+                
+                {/* Smooth blur-from-bottom effect */}
+                <div 
+                  className="absolute inset-x-0 bottom-0 h-[70%] backdrop-blur-md bg-black/10 z-0"
+                  style={{
+                    WebkitMaskImage: 'linear-gradient(to top, black 30%, transparent 100%)',
+                    maskImage: 'linear-gradient(to top, black 30%, transparent 100%)'
+                  }}
+                />
+                
+                {/* Deep bottom shadow for final transition */}
+                <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black via-black/60 to-transparent z-0" />
+              </div>
 
-                  <div className="absolute -bottom-1 -right-1" data-walkthrough="profile-picture">
+              {/* Header Content - Centered Profile Picture & Edit Buttons */}
+              <div className="relative z-10 pt-16 md:pt-20 pb-8 text-center px-4">
+                <div className="relative w-28 h-28 md:w-36 md:h-36 mx-auto mb-4 group">
+                  <div className="w-full h-full ring-4 ring-[hsl(var(--evergreen))] rounded-full overflow-hidden bg-black shadow-2xl">
+                    <img
+                      src={
+                        uploadedImage ||
+                        data?.usersPermissionsUser?.accounts?.[0]?.profile_picture?.url ||
+                        "https://api.dicebear.com/9.x/shapes/svg?seed=Leah"
+                      }
+                      alt={t('dashboard.profile.common.profile')}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  
+                  {/* Profile Picture Edit Button - Bottom Right */}
+                  <div className="absolute bottom-1 right-1 z-20" data-walkthrough="profile-picture">
                     <ImageCropper
                       onFileUpload={handleImageUpload}
                       cropType="profileCrop"
-                      buttonTitle="Edit Profile Picture"
                     />
                   </div>
                 </div>
 
-                <div className="absolute -bottom-3 -right-2 md:-right-3" data-walkthrough="cover-image">
+                {/* Background Edit Button - Bottom Right of the entire banner */}
+                <div className="absolute bottom-4 right-4 z-20" data-walkthrough="cover-image">
                   <ImageCropper
                     onFileUpload={handleBackgroundUpload}
                     cropType="backgroundCrop"
-                    buttonTitle="Edit Background"
+                    buttonTitle={t('dashboard.profile.common.editBackground')}
                   />
                 </div>
 
-                <div className="absolute top-4 right-2 md:right-4 flex flex-row justify-end items-end">
-                  <Button
+                {/* View Public Profile Navigation Button - Top Right */}
+                <div className="absolute top-4 right-4 z-20">
+                  <button
                     type="button"
-                    size="small"
-                    endIcon={<LinkTo stroke={"white"} size={"18px"} />}
-                    variant="ghost"
-                    className="bg-gradient-to-r from-[hsl(var(--blue-cta))]/20 via-[hsl(var(--blue-cta))]/30 to-[hsl(var(--blue-final))]/20 backdrop-blur-xl border border-[hsl(var(--blue-cta))]/40 shadow-lg shadow-[hsl(var(--blue-cta))]/20 rounded-full !p-2"
-                    onClickHandler={() => {
-                      const username = user?.username;
-                      if (!username) return;
-                      window.open(
-                        `${window.location.origin}/${username}`,
-                        "_blank",
-                        "noopener,noreferrer"
-                      );
-                    }}
+                    onClick={() => window.open(createCanonicalUrl(`/${initialValues.username}`), "_blank")}
+                    className="p-2.5 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full border border-white/20 transition-all duration-300 group shadow-lg flex items-center justify-center hover:scale-110 active:scale-95"
                     data-tooltip-id="view-public-profile-tooltip"
-                    data-tooltip-content={t("dashboard.home.viewPublicProfileTooltip")}
-                    data-tooltip-place="left"
-                  />
+                    data-tooltip-content={t('dashboard.profile.common.viewPublicProfile')}
+                  >
+                    <LinkTo size="20px" stroke="white" />
+                  </button>
+                </div>
+
+                {/* Name & Location Preview */}
+                <div className="text-center mt-2">
+                   <h1 className="text-lg font-poppins font-bold text-white drop-shadow-lg">
+                     {account?.Account_Name || user?.username}
+                   </h1>
+                   <p className="text-[10px] font-poppins text-white/80 mt-0.5 drop-shadow-md">
+                     {account?.Primary_Address?.address}
+                   </p>
+                </div>
+
+                {/* Social Links Preview */}
+                <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 px-6 mt-4 mb-2 empty:hidden">
+                  {account?.social_media?.instagram?.link && account?.social_media?.instagram?.visibility && (
+                    <div className="scale-[0.85]"><InstagramIcon color="white" /></div>
+                  )}
+                  {account?.mobile_number_visibility && account?.mobile_number && (
+                    <div className="scale-[0.85]"><MobileIcon fill="white" /></div>
+                  )}
+                  {account?.social_media?.whatsapp?.link && account?.social_media?.whatsapp?.visibility && (
+                    <div className="scale-[0.85]"><WhatsappIcon fill="white" /></div>
+                  )}
+                  {account?.social_media?.youtube?.link && account?.social_media?.youtube?.visibility && (
+                    <div className="scale-[0.85]"><YoutubeIcon color="white" /></div>
+                  )}
+                  {account?.social_media?.X?.link && account?.social_media?.X?.visibility && (
+                    <div className="scale-[0.85]"><TwitterIcon color="white" /></div>
+                  )}
+                  {account?.social_media?.spotify?.link && account?.social_media?.spotify?.visibility && (
+                    <div className="scale-[0.85]"><Spotify color="white" /></div>
+                  )}
+                  {account?.social_media?.website?.link && account?.social_media?.website?.visibility && (
+                    <div className="scale-[0.85]"><LinkIcon color="white" /></div>
+                  )}
+                  {account?.social_media?.facebook?.link && account?.social_media?.facebook?.visibility && (
+                    <div className="scale-[0.85]"><FacebookIcon color="white" /></div>
+                  )}
+                  {account?.social_media?.youtubeMusic?.link && account?.social_media?.youtubeMusic?.visibility && (
+                    <div className="scale-[0.85]"><YoutubeMusic color="white" /></div>
+                  )}
+                  {account?.social_media?.gmail?.link && account?.social_media?.gmail?.visibility && (
+                    <div className="scale-[0.85]"><Gmail color="white" /></div>
+                  )}
+                  {account?.social_media?.linkedin?.link && account?.social_media?.linkedin?.visibility && (
+                    <div className="scale-[0.85]"><LinkedinIcon color="white" /></div>
+                  )}
+                  {account?.social_media?.appleMusic?.link && account?.social_media?.appleMusic?.visibility && (
+                    <div className="scale-[0.85]"><AppleMusic color="white" /></div>
+                  )}
+                  {account?.social_media?.tiktok?.link && account?.social_media?.tiktok?.visibility && (
+                    <div className="scale-[0.85]"><TiktokIcon color="white" /></div>
+                  )}
+                  {account?.social_media?.snapchat?.link && account?.social_media?.snapchat?.visibility && (
+                    <div className="scale-[0.85]"><SnapchatIcon color="white" /></div>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Tab Switcher - Seamless sticky positioning on all screen sizes */}
-            <div className={`z-[90] sticky top-[73px] md:top-0 w-full mb-2 bg-dashboard-bg py-2 shadow-sm transition-all duration-300 ${false ? 'opacity-0 pointer-events-none invisible' : 'opacity-100 visible'}}
-              `}>
+            {/* Tab Switcher - Seamless sticky positioning - Sticks to extreme top when header scrolls */}
+            <div className={`z-[90] sticky sticky-top-offset w-full bg-dashboard-bg py-2 shadow-sm transition-all duration-300 ${false ? 'opacity-0 pointer-events-none invisible' : 'opacity-100 visible'}`}>
               <div className="flex items-center justify-center mx-auto bg-white font-poppins rounded-3xl w-fit" data-walkthrough="public-profile-tab">
                 {[
                   { key: "publicProfile", label: t('dashboard.profile.tabs.publicProfile') },
@@ -2020,7 +2140,10 @@ const Profile = memo(() => {
       {/* Tooltip for View Public Profile button */}
       <Tooltip
         id="view-public-profile-tooltip"
-        place="left"
+        place="bottom"
+        content={t('dashboard.profile.common.viewPublicProfile')}
+        isOpen={isTooltipOpen}
+        className="!bg-gray-800 !text-white !border !border-gray-600 !rounded-lg !px-2 !py-1"
         style={{ fontSize: "12px", zIndex: 9999 }}
       />
     </>
