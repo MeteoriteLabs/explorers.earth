@@ -11,7 +11,7 @@ import { getCredentialsForLocalTunes } from '../utils/sessionCredentials';
 import {
   LocalTunesAuthCookies
 } from '../utils/cookieUtils';
-import { buildLocalTunesPlaylistUrl } from '../utils/localTunesUtils';
+import { reconcileLocalTunesLink } from '../utils/localTunesUtils';
 
 export interface SSOConfig {
   localTunesApiUrl: string;
@@ -808,15 +808,16 @@ export async function autoUpdateLocalTunesPublicLink(
       return false;
     }
 
-    // Check if localtunes_public is already set
-    if (account.localtunes_public) {
-      console.log('✅ LocalTunes public link already set, skipping auto-update');
+    // Reconcile: write the canonical link only if the stored one is missing or
+    // STALE (the guestUrl changed — e.g. the tunes user row was recreated, which
+    // orphans the old link and 404s the public music page). Idempotent: no write
+    // when it already matches, so this is safe to run on every login.
+    const playlistUrl = reconcileLocalTunesLink(account.localtunes_public, guestUrl);
+    if (!playlistUrl) {
+      console.log('✅ LocalTunes public link already correct, skipping');
       return true;
     }
-
-    // Build the playlist URL from guestUrl
-    const playlistUrl = buildLocalTunesPlaylistUrl(guestUrl);
-    console.log('📝 Setting LocalTunes public link to:', playlistUrl);
+    console.log('📝 Reconciling LocalTunes public link to:', playlistUrl);
 
     // Update the account with the playlist URL
     await apolloClient.mutate({
@@ -1015,9 +1016,9 @@ export async function handlePostLoginSync(user: any, apolloClient?: ApolloClient
       console.log('✅ Post-login sync successful');
 
       // Safety-net: if guestUrl came back AND apolloClient is available,
-      // check if localtunes_public is already set in Strapi. If not, write it now.
-      // This handles accounts that missed guestUrl during onboarding (e.g. older
-      // accounts, or a network failure during the onboarding sync).
+      // reconcile the localtunes_public link in Strapi — writes it when missing
+      // OR stale (guestUrl changed). This handles accounts that missed guestUrl
+      // during onboarding AND accounts whose guestUrl later changed.
       if (result.user?.guestUrl && apolloClient) {
         const userDocumentId = user.documentId || user.id;
         console.log('🔗 [Safety-net] Checking if guestUrl needs to be saved to account...');
@@ -1027,7 +1028,8 @@ export async function handlePostLoginSync(user: any, apolloClient?: ApolloClient
             userDocumentId,
             result.user.guestUrl
           );
-          // autoUpdateLocalTunesPublicLink already skips if field is set — no duplicate writes
+          // autoUpdateLocalTunesPublicLink reconciles: it skips when the link is
+          // already correct and rewrites it when missing or stale — no duplicate writes
         } catch (linkError) {
           console.error('Failed to apply guestUrl safety-net during post-login sync:', linkError);
         }
