@@ -31,7 +31,7 @@ import { useStrapiAuth } from '@/hooks/use-strapi-auth';
 import { useAuthStore } from '@/stores/authStore';
 import { useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { buildGoogleOAuthInitUrl } from '@/lib/google-auth';
+import { EXPLORERS_TUNES_SSO_URL } from '@/lib/google-auth';
 
 const loginSchema = z.object({
   identifier: z.string().min(1, 'Username or email is required'),
@@ -94,9 +94,10 @@ export default function NewAuthPage() {
   };
 
   const handleGoogleLogin = () => {
-    // Strapi-mediated Google OAuth, returning to tunes' own /google-auth/callback
-    // (passes ?callback= so Strapi redirects back to tunes, not explorers).
-    window.location.href = buildGoogleOAuthInitUrl();
+    // Hand off to explorers (the Strapi auth hub that owns the single allowed
+    // Google callback). It logs the user in and forwards the Strapi JWT back to
+    // tunes' /google-auth/callback.
+    window.location.href = EXPLORERS_TUNES_SSO_URL;
   };
 
   if (isAuthenticated) {

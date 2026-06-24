@@ -7,6 +7,7 @@ import ResetLinkSent from "../pages/ResetLinkSent";
 import EmailVerification from "../pages/EmailVerification";
 import EmailConfirmed from "../pages/EmailConfirmed";
 import GoogleAuthRedirect from "../pages/GoogleAuthRedirect";
+import TunesSsoRedirect from "../pages/TunesSsoRedirect";
 import Landing from "../pages/Landing";
 import Contact from "../pages/Contact";
 import About from "../pages/About";
@@ -43,6 +44,7 @@ const AuthRoutes = [
     path="/google-auth/callback"
     element={<GoogleAuthRedirect />}
   />,
+  <Route key="sso-tunes" path="/sso/tunes" element={<TunesSsoRedirect />} />,
   <Route key="reactivate" path="/reactivate" element={<ReactivateAccount />} />,
   <Route key="reactivate-confirm" path="/reactivate-confirm" element={<ReactivateConfirm />} />,
 ];

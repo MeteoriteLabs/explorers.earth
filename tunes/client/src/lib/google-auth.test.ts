@@ -1,18 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
-  buildGoogleOAuthInitUrl,
+  EXPLORERS_TUNES_SSO_URL,
   parseAccessToken,
   mapStrapiMeToAuthUser,
   STRAPI_GRAPHQL_URL,
 } from './google-auth';
 
-describe('buildGoogleOAuthInitUrl', () => {
-  it('targets Strapi connect/google with the tunes callback + account chooser', () => {
-    expect(buildGoogleOAuthInitUrl()).toBe(
-      'https://api.localqr.earth/api/connect/google' +
-        '?callback=https%3A%2F%2Flocaltunes.earth%2Fgoogle-auth%2Fcallback' +
-        '&prompt=select_account',
-    );
+describe('EXPLORERS_TUNES_SSO_URL', () => {
+  it('points at the explorers SSO entry (single Strapi callback constraint)', () => {
+    expect(EXPLORERS_TUNES_SSO_URL).toBe('https://explorers.earth/sso/tunes');
   });
 });
 
