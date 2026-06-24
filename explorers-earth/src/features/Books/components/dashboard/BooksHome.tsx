@@ -207,7 +207,7 @@ export const CreateBookListModal = ({
 // ─────────────────────────────────────────────────────────────
 // Book List Card
 // ─────────────────────────────────────────────────────────────
-const BookListCard = ({
+export const BookListCard = ({
   list,
   onOpen,
   onToggleVisibility,
@@ -237,7 +237,10 @@ const BookListCard = ({
             <p className="text-xs text-dashboard-muted mt-0.5 line-clamp-2">{list.list_description}</p>
           )}
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div
+          className="flex items-center gap-2 flex-shrink-0"
+          onClick={(e) => e.stopPropagation()}
+        >
           <Switch
             checked={list.visibility}
             onChange={() => onToggleVisibility(list.documentId, list.visibility)}

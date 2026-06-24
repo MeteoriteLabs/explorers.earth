@@ -206,7 +206,7 @@ export const CreateMovieListModal = ({
 };
 
 // List Card
-const MovieListCard = ({
+export const MovieListCard = ({
   list,
   onOpen,
   onToggleVisibility,
@@ -237,7 +237,10 @@ const MovieListCard = ({
             <p className="text-xs text-dashboard-muted mt-0.5 line-clamp-2">{list.list_description}</p>
           )}
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div
+          className="flex items-center gap-2 flex-shrink-0"
+          onClick={(e) => e.stopPropagation()}
+        >
           <Switch
             checked={list.Visibility}
             onChange={() => onToggleVisibility(list.documentId, list.Visibility)}
