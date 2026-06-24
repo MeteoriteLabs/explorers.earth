@@ -32,7 +32,14 @@ import { useAuthStore } from '@/stores/authStore';
 import { useEffect } from 'react';
 import { useLocation } from 'wouter';
 
-const VITE_REST_API_URL = import.meta.env.VITE_REST_API_URL || 'https://api.explorers.earth';
+// Google OAuth must be initiated on the Strapi backend domain (api.localqr.earth),
+// NOT via VITE_REST_API_URL. In this app VITE_REST_API_URL is the same-origin
+// "/api" (tunes' own backend; real Strapi config is loaded at runtime via
+// /api/strapi/config), so `${VITE_REST_API_URL}/connect/google` resolved to
+// localtunes.earth/api/connect/google and never reached Strapi — Google login
+// silently failed. Hardcode the Strapi base, mirroring explorers.earth
+// (src/pages/Login.tsx:158).
+const STRAPI_OAUTH_BASE = 'https://api.localqr.earth/api';
 
 const loginSchema = z.object({
   identifier: z.string().min(1, 'Username or email is required'),
@@ -95,8 +102,9 @@ export default function NewAuthPage() {
   };
 
   const handleGoogleLogin = () => {
-    // Redirect to Google OAuth
-    window.location.href = `${VITE_REST_API_URL}/connect/google`;
+    // Redirect to Strapi's Google OAuth (prompt=select_account mirrors explorers,
+    // forcing the account chooser instead of silently reusing a Google session).
+    window.location.href = `${STRAPI_OAUTH_BASE}/connect/google?prompt=select_account`;
   };
 
   if (isAuthenticated) {
