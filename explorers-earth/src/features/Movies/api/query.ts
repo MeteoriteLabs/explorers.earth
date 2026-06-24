@@ -62,6 +62,7 @@ export const MOVIES_BY_LIST = gql`
       slug
       Visibility
       top_picks_heading
+      display_order
       recommended_movies(
         sort: ["display_order:asc"]
         pagination: { start: $page, limit: $pageSize }

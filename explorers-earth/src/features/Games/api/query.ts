@@ -70,6 +70,7 @@ export const GAMES_BY_LIST = gql`
       slug
       Visibility
       top_picks_heading
+      display_order
       recommended_games(
         sort: ["display_order:asc"]
         pagination: { start: $page, limit: $pageSize }

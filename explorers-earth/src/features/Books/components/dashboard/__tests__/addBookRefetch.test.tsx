@@ -66,6 +66,7 @@ const bookListResult = (books: ReturnType<typeof makeBook>[]) => ({
       slug: "qa",
       visibility: true,
       top_reads_heading: null,
+      display_order: 0,
       recommended_books: books,
     },
   ],
