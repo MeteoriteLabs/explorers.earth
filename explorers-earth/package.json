@@ -96,7 +96,7 @@
     "@types/react-dom": "^18.3.1",
     "@types/react-vertical-timeline-component": "^3.3.6",
     "@types/wouter": "^2.2.0",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^6.0.2",
     "@vitest/coverage-v8": "^4.1.6",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.39.2",
@@ -109,7 +109,7 @@
     "tailwindcss": "^3.4.15",
     "typescript": "~5.6.2",
     "typescript-eslint": "^8.15.0",
-    "vite": "^6.4.1",
+    "vite": "^8.0.16",
     "vitest": "^4.1.6"
   }
 }
