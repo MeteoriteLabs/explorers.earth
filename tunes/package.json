@@ -141,5 +141,9 @@
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
+  },
+  "overrides": {
+    "ws": "^8.21.0",
+    "qs": "6.15.2"
   }
 }
