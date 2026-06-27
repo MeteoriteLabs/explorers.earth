@@ -882,6 +882,14 @@ body.hide-dashboard-header .sticky-top-offset {
   animation: skeletonShimmer 1.8s ease-in-out infinite;
 }
 
+.skeleton-card {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: none !important;
+  border-width: 0 !important;
+  outline: none !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4) !important;
+}
+
 /* Touch ripple effect */
 .ripple-effect {
   position: relative;

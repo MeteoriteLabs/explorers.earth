@@ -39,9 +39,9 @@ const MusicSkeleton = () => {
     <div className="min-h-screen bg-black text-white pt-20 px-4 md:px-6 pb-20">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* 1. Search Bar Skeleton */}
-        <div className="bg-[#111] border border-white/[0.08] rounded-[14px] p-4 space-y-2.5">
+        <div className="rounded-[14px] p-4 space-y-2.5 skeleton-card">
           <div className="h-4 w-36 bg-white/10 rounded skeleton-shimmer" />
-          <div className="h-10 w-full bg-black border border-gray-800 rounded-lg skeleton-shimmer" />
+          <div className="h-10 w-full bg-white/5 rounded-lg skeleton-shimmer" />
           <div className="h-3 w-40 bg-white/5 rounded skeleton-shimmer" />
         </div>
         
@@ -53,7 +53,7 @@ const MusicSkeleton = () => {
 
         {/* 3. Hero Card Skeleton (Responsive) */}
         {/* Mobile View Hero Skeleton */}
-        <div className="md:hidden w-full h-[300px] rounded-[18px] bg-[#0a0a0a] border border-white/10 shadow-lg relative overflow-hidden">
+        <div className="md:hidden w-full h-[300px] rounded-[18px] relative overflow-hidden skeleton-card">
           <div className="absolute inset-0 skeleton-shimmer" />
           <div className="absolute bottom-4 left-4 right-4 space-y-2">
             <div className="h-4 w-20 bg-white/15 rounded skeleton-shimmer" />
@@ -63,7 +63,7 @@ const MusicSkeleton = () => {
         </div>
 
         {/* Desktop View Hero Skeleton */}
-        <div className="hidden md:block w-full h-[440px] rounded-[18px] bg-[#0a0a0a] border border-white/10 shadow-lg relative overflow-hidden">
+        <div className="hidden md:block w-full h-[440px] rounded-[18px] relative overflow-hidden skeleton-card">
           <div className="absolute inset-0 skeleton-shimmer" />
           <div className="absolute bottom-8 left-8 space-y-2.5">
             <div className="h-5 w-24 bg-white/15 rounded skeleton-shimmer" />
@@ -75,7 +75,7 @@ const MusicSkeleton = () => {
         {/* 4. Accordion List Skeletons */}
         <div className="space-y-3 pt-2">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-[#111] border border-white/[0.08] rounded-[14px] h-[54px] px-4 flex items-center justify-between">
+            <div key={i} className="rounded-[14px] h-[54px] px-4 flex items-center justify-between skeleton-card">
               <div className="flex items-center gap-3 w-1/2">
                 <div className="w-8 h-8 rounded-lg bg-white/5 skeleton-shimmer" />
                 <div className="h-4 w-28 bg-white/10 rounded skeleton-shimmer" />

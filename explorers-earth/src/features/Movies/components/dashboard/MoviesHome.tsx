@@ -506,7 +506,7 @@ const MoviesHome = () => {
           {/* List card skeletons */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[1, 2, 3].map(i => (
-              <div key={i} className="relative bg-dashboard-muted rounded-2xl h-[168px] overflow-hidden border border-white/4">
+              <div key={i} className="relative bg-dashboard-muted rounded-2xl h-[168px] overflow-hidden border border-white/4 skeleton-card">
                 <div className="absolute inset-0 skeleton-shimmer" />
                 {/* Card header */}
                 <div className="absolute top-5 left-5 right-5 flex justify-between">

@@ -43,7 +43,7 @@ const DesktopHeroSkeleton = memo(
 
         return (
             <div
-                className="relative w-full h-[60vh] min-h-[500px] max-h-[700px] rounded-2xl overflow-hidden shadow-2xl"
+                className="relative w-full h-[60vh] min-h-[500px] max-h-[700px] rounded-2xl overflow-hidden shadow-2xl skeleton-card"
                 style={{ background: bg }}
             >
                 {/* Shimmer sweep */}
@@ -186,7 +186,7 @@ const MobileHeroSkeleton = memo(
 
         return (
             <div
-                className="relative w-full h-[65vh] min-h-[480px] max-h-[650px] rounded-2xl overflow-hidden shadow-2xl"
+                className="relative w-full h-[65vh] min-h-[480px] max-h-[650px] rounded-2xl overflow-hidden shadow-2xl skeleton-card"
                 style={{ background: bg }}
             >
                 {/* Shimmer sweep */}

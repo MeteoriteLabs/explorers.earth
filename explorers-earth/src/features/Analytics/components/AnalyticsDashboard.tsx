@@ -356,7 +356,7 @@ const AnalyticsDashboard: React.FC = () => {
           {/* 4 Stat cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[0, 1, 2, 3].map(i => (
-              <div key={i} className="relative rounded-lg bg-dashboard-muted p-4 overflow-hidden border border-white/4 min-w-[150px]">
+              <div key={i} className="relative rounded-lg bg-dashboard-muted p-4 overflow-hidden border border-white/4 min-w-[150px] skeleton-card">
                 <div className="absolute inset-0 skeleton-shimmer" />
                 <div className="h-3 w-20 rounded bg-white/8 mb-3" />
                 <div className="h-7 w-14 rounded bg-white/10" />
@@ -368,7 +368,7 @@ const AnalyticsDashboard: React.FC = () => {
           {[280, 220, 200, 200].map((h, i) => (
             <div
               key={i}
-              className="relative rounded-lg bg-dashboard-muted overflow-hidden border border-white/4"
+              className="relative rounded-lg bg-dashboard-muted overflow-hidden border border-white/4 skeleton-card"
               style={{ height: `${h}px` }}
             >
               <div className="absolute inset-0 skeleton-shimmer" />

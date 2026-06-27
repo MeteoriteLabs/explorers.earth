@@ -103,7 +103,7 @@ const FavoritesSkeleton = () => {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-4 mt-6">
         <RecommendationCardSkeleton count={5} variant="dashboard" />
         {/* Plus card shimmer */}
-        <div className="border-2 border-dashed border-dashboard-border rounded-[14px] h-[150px] skeleton-shimmer" />
+        <div className="border-2 border-dashed border-dashboard-border rounded-[14px] h-[150px] skeleton-card" />
       </div>
     </div>
   );

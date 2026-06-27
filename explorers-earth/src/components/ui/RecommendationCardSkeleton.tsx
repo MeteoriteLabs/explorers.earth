@@ -39,7 +39,7 @@ const SkeletonCard = memo(({ variant }: SkeletonCardProps) => {
 
     return (
         <div
-            className="relative w-full aspect-[4/3] max-w-[200px] md:max-w-none mx-auto rounded-xl overflow-hidden"
+            className="relative w-full aspect-[4/3] max-w-[200px] md:max-w-none mx-auto rounded-xl overflow-hidden skeleton-card"
             style={{ background: bg, border: `1px solid ${borderColor}` }}
         >
             {/* Shimmer overlay */}
