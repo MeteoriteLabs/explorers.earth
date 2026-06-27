@@ -2250,7 +2250,7 @@ const OnBoarding = () => {
 
                   <button
                     type="button"
-                    onClick={handleSubscriptionSubmit}
+                    onClick={() => handleSubscriptionSubmit()}
                     disabled={!selectedPlan || isCreatingSubscription}
                     className={`w-full py-2 sm:py-3 px-4 rounded-md font-medium transition-colors text-sm sm:text-base ${!selectedPlan || isCreatingSubscription
                       ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
