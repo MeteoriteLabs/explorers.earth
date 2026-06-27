@@ -807,7 +807,7 @@ const Favorites = memo(() => {
               </button>
 
               {activeDropdownListId === city.documentId && (
-                <div className="absolute right-0 top-6 w-32 bg-[#223126]/95 backdrop-blur-md border border-[#3C4E40] rounded-lg shadow-xl z-50 py-1 flex flex-col gap-0.5 font-poppins">
+                <div className="absolute right-0 top-6 w-32 bg-dashboard-modal border border-dashboard rounded-lg shadow-xl z-50 py-1 flex flex-col gap-0.5 font-poppins">
                   {/* Publish/Draft toggle */}
                   <button
                     onClick={() => {
@@ -1705,9 +1705,10 @@ const Favorites = memo(() => {
         <style>{`
           .react-joyride__tooltip,
           .react-joyride__tooltip > div {
-            background-color: rgba(29, 42, 32, 0.98) !important;
+            background-color: var(--dash-sidebar-bg) !important;
             backdrop-filter: blur(12px) !important;
             -webkit-backdrop-filter: blur(12px) !important;
+            border: 1px solid var(--dash-border) !important;
           }
           .react-joyride__tooltip button[data-action="next"],
           .react-joyride__tooltip button[data-action="primary"],
@@ -1757,11 +1758,11 @@ const Favorites = memo(() => {
               textColor: "white",
             },
             tooltip: {
-              backgroundColor: "rgba(29, 42, 32, 0.98) !important",
+              backgroundColor: "var(--dash-sidebar-bg) !important",
               backdropFilter: "blur(12px) !important",
               WebkitBackdropFilter: "blur(12px) !important",
               borderRadius: "12px",
-              border: "1px solid rgba(255,255,255,0.2)",
+              border: "1px solid var(--dash-border) !important",
               boxShadow: "0 6px 25px rgba(0,0,0,0.55)",
               padding: "20px",
               color: "white",
@@ -1770,7 +1771,7 @@ const Favorites = memo(() => {
               minWidth: "200px",
             },
             tooltipContainer: {
-              backgroundColor: "rgba(29, 42, 32, 0.98) !important",
+              backgroundColor: "var(--dash-sidebar-bg) !important",
               backdropFilter: "blur(12px) !important",
               WebkitBackdropFilter: "blur(12px) !important",
               color: "white",

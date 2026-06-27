@@ -73,7 +73,7 @@ export async function setupVite(app: Express, server: Server) {
     vite.middlewares(req, res, next);
   });
   
-  app.use("*", async (req, res, next) => {
+  app.use(async (req, res, next) => {
     const url = req.originalUrl;
 
     // Skip API routes - they should be handled by route handlers registered before this middleware
@@ -117,7 +117,7 @@ export function serveStatic(app: Express) {
   app.use(express.static(distPath));
 
   // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
+  app.use((_req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

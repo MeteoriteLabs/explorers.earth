@@ -2078,9 +2078,9 @@ const Profile = memo(() => {
                       padding: stepIndex === 2 ? '12px 16px' : '20px',
                       fontFamily: 'Poppins, sans-serif',
                       fontSize: '14px',
-                      backgroundColor: '#223126',
+                      backgroundColor: 'var(--dash-sidebar-bg)',
                       color: 'white',
-                      border: '1px solid #3C4E40',
+                      border: '1px solid var(--dash-border)',
                     },
                     tooltipContainer: {
                       textAlign: 'left',
