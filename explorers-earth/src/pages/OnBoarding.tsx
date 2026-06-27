@@ -998,11 +998,12 @@ const OnBoarding = () => {
       // Step 4 (index 3) is Local Tunes consent - should advance to Step 5 (Subscription Plans)
       // Step 5 (index 4) is Subscription Plans - handled separately via handleSubscriptionSubmit
       if (activeStep === 3) {
-        // This is Step 4 (Local Tunes consent) - advance to Step 5 (Subscription Plans)
-        // All users now go through subscription plan selection
-        console.log("Step 4 (Local Tunes), advancing to Step 5...");
+        // TEMPORARILY SKIPPING subscription plan step — auto-register with free plan.
+        // To re-enable the plan selection UI, restore handleNext() here and
+        // uncomment the 'Subscription Plans' step in the steps array below.
+        console.log("Step 4 (Local Tunes), auto-registering with free plan...");
         console.log("Step 4 - localTunesConsent:", updatedFormData.localTunesConsent);
-        handleNext();
+        await handleSubscriptionSubmitWithFreePlan(updatedFormData);
       } else if (activeStep === 4) {
         // Step 5 (Subscription Plans) - don't call handleSubmit, handled by handleSubscriptionSubmit
         console.log("Step 5 (Subscription Plans) - handled separately");
@@ -1113,8 +1114,18 @@ const OnBoarding = () => {
   };
 
   // Handle Step 5 submission (subscription plan selection)
-  const handleSubscriptionSubmit = async () => {
-    if (!selectedPlan || !selectedPlanData) {
+  // Accepts optional explicit plan/formData for programmatic calls (e.g. auto-free-plan).
+  // When called from the plan selection UI, these params are undefined and state values are used.
+  const handleSubscriptionSubmit = async (
+    explicitPlanId?: string,
+    explicitPlanData?: SubscriptionPlan,
+    explicitFormData?: typeof formData
+  ) => {
+    const planId = explicitPlanId ?? selectedPlan;
+    const planData = explicitPlanData ?? selectedPlanData;
+    const currentFormData = explicitFormData ?? formData;
+
+    if (!planId || !planData) {
       toast.error("Please select a subscription plan");
       return;
     }
@@ -1127,13 +1138,13 @@ const OnBoarding = () => {
 
     // Check if plan is free - if free, create subscription directly
     // If paid, navigate to checkout page
-    if (!isFreePlan(selectedPlanData)) {
-      // Navigate to checkout for paid plans with formData
+    if (!isFreePlan(planData)) {
+      // Navigate to checkout for paid plans with currentFormData
       navigate('/checkout', {
         state: {
-          plan: selectedPlanData,
+          plan: planData,
           fromOnboarding: true,
-          formData: formData, // Pass form data for account creation after payment
+          formData: currentFormData,
         },
       });
       return;
@@ -1176,23 +1187,23 @@ const OnBoarding = () => {
 
       // Resolved username — may be updated below if user changed it during onboarding.
       // Declared here so it's accessible in the LocalTunes sync step after account creation.
-      let usernameToUse = formData.username || storedUsername || "user";
+      let usernameToUse = currentFormData.username || storedUsername || "user";
 
       // Create account only if it doesn't exist
       if (!accountDocId) {
 
         console.log('Creating new explorers account...');
 
-        if (!formData.primaryAddress || formData.primaryAddress.trim() === "") {
+        if (!currentFormData.primaryAddress || currentFormData.primaryAddress.trim() === "") {
           toast.error(t('toast.error.primaryAddressRequired'));
           setIsCreatingSubscription(false);
           return;
         }
 
         // Format phone number to E.164 format before saving
-        let formattedPhoneNumber = formData.mobile_number;
+        let formattedPhoneNumber = currentFormData.mobile_number;
         try {
-          const phoneNumber = parsePhoneNumberFromString(formData.mobile_number);
+          const phoneNumber = parsePhoneNumberFromString(currentFormData.mobile_number);
           if (phoneNumber && phoneNumber.isValid()) {
             formattedPhoneNumber = phoneNumber.format('E.164');
           }
@@ -1201,23 +1212,22 @@ const OnBoarding = () => {
         }
 
         // Check if username was changed during onboarding and update user record if needed
-
-        if (formData.username && formData.username !== storedUsername) {
+        if (currentFormData.username && currentFormData.username !== storedUsername) {
           try {
             const updateUserResponse = await updateUser({
               variables: {
                 id: authUser.id,
-                data: { username: formData.username },
+                data: { username: currentFormData.username },
               },
             });
 
             if (updateUserResponse.data?.updateUsersPermissionsUser?.data) {
-              usernameToUse = formData.username;
+              usernameToUse = currentFormData.username;
               const currentUser = useAuthStore.getState().user;
               if (currentUser) {
                 useAuthStore.getState().login({
                   ...currentUser,
-                  username: formData.username,
+                  username: currentFormData.username,
                   token: token!,
                 });
               }
@@ -1229,29 +1239,29 @@ const OnBoarding = () => {
         }
 
         const primaryAddressObject = {
-          address: formData.primaryAddress,
+          address: currentFormData.primaryAddress,
         };
         const addressObject = {
-          address: formData.address || "",
-          streetName: formData.streetName || "",
-          city: formData.city || "",
-          state: formData.state || "",
-          country: formData.country || "",
-          postalCode: formData.postalCode || "",
+          address: currentFormData.address || "",
+          streetName: currentFormData.streetName || "",
+          city: currentFormData.city || "",
+          state: currentFormData.state || "",
+          country: currentFormData.country || "",
+          postalCode: currentFormData.postalCode || "",
         };
 
         const accountResponse = await createAccount({
           variables: {
             data: {
-              Account_Name: formData.accountName,
-              Account_Type: formData.accountType,
+              Account_Name: currentFormData.accountName,
+              Account_Type: currentFormData.accountType,
               Primary_Address: JSON.stringify(primaryAddressObject),
               Addresss: JSON.stringify(addressObject),
-              Bio: formData.bio,
+              Bio: currentFormData.bio,
               mobile_number: formattedPhoneNumber,
               username: usernameToUse,
               users_permissions_users: documentId,
-              localtunes_integrated: formData.localTunesConsent ? "Yes" : "No", // Set to "Yes" if Local Tunes consent
+              localtunes_integrated: currentFormData.localTunesConsent ? "Yes" : "No",
             },
           },
         });
@@ -1325,7 +1335,7 @@ const OnBoarding = () => {
       // blocked on /onboarding so this is the FIRST time the sync fires.
       console.log('Step 1: Syncing with LocalTunes...');
 
-      if (formData.localTunesConsent && isLocalTunesEnabled()) {
+      if (currentFormData.localTunesConsent && isLocalTunesEnabled()) {
         try {
           // Use usernameToUse (the final resolved username after any edits)
           // This must match what was saved to the Strapi account record.
@@ -1375,11 +1385,11 @@ const OnBoarding = () => {
 
       // Step 2: Create subscription entry
       console.log('Step 2: Creating subscription entry...');
-      const { start_date, end_date } = calculateSubscriptionDates(selectedPlanData.duration);
+      const { start_date, end_date } = calculateSubscriptionDates(planData.duration);
 
       const subscriptionResponse = await createUserSubscriptionPlan({
         user_id: authUser.documentId,
-        plan_id: selectedPlan,
+        plan_id: planId,
         start_date: start_date,
         end_date: end_date
       });
@@ -1474,6 +1484,34 @@ const OnBoarding = () => {
     }
   };
 
+  /**
+   * AUTO-FREE-PLAN: Programmatically registers the user with the free plan.
+   * Called from Step 4 (Local Tunes) "Continue" button instead of advancing to
+   * the plan selection UI (Step 5), which is temporarily hidden.
+   *
+   * To re-enable the plan selection step:
+   *   1. In handleStepSubmit (activeStep === 3), replace this call with handleNext()
+   *   2. Uncomment the 'Subscription Plans' entry in the steps array below
+   */
+  const handleSubscriptionSubmitWithFreePlan = async (currentFormData: typeof formData) => {
+    const freePlan = subscriptionPlansData?.find(
+      (plan: SubscriptionPlan) => plan.plan_name.toLowerCase() === 'free'
+    );
+
+    if (!freePlan) {
+      if (subscriptionPlansLoading) {
+        toast.error("Subscription plans are still loading. Please wait a moment and try again.");
+      } else {
+        toast.error("Free plan not available. Please contact support.");
+      }
+      return;
+    }
+
+    console.log('Auto-selecting free plan:', freePlan.plan_name, freePlan.documentId);
+    // Pass plan explicitly to avoid stale-state race condition
+    await handleSubscriptionSubmit(freePlan.documentId, freePlan, currentFormData);
+  };
+
   const steps = useMemo(() => {
     const baseSteps = [
       {
@@ -1500,13 +1538,18 @@ const OnBoarding = () => {
         description: 'Join Local Tunes music platform',
         validationSchema: Yup.object({}),
       },
-      // Step 5 (Subscription Plans) is now always included for all registrations
-      {
-        title: 'Subscription Plans',
-        fields: [],
-        description: 'Choose your subscription plan',
-        validationSchema: Yup.object({}),
-      },
+      // TEMPORARILY DISABLED: Subscription Plans step (onboarding final step)
+      // Users are now automatically registered with the free plan after Step 4 (Local Tunes).
+      // To re-enable this step:
+      //   1. Uncomment the block below
+      //   2. In handleStepSubmit (activeStep === 3), replace handleSubscriptionSubmitWithFreePlan
+      //      with handleNext()
+      // {
+      //   title: 'Subscription Plans',
+      //   fields: [],
+      //   description: 'Choose your subscription plan',
+      //   validationSchema: Yup.object({}),
+      // },
     ];
 
     return baseSteps;
@@ -2002,13 +2045,13 @@ const OnBoarding = () => {
                       // Proceed to password modal or next step
                       await handleStepSubmit(valuesToSubmit, { errors: {} });
                     }}
-                    disabled={isSubmitting || hasSubmitted}
-                    className={`w-full py-2 sm:py-3 px-4 rounded-md font-medium transition-colors text-sm sm:text-base ${isSubmitting || hasSubmitted
+                    disabled={isSubmitting || hasSubmitted || isCreatingSubscription}
+                    className={`w-full py-2 sm:py-3 px-4 rounded-md font-medium transition-colors text-sm sm:text-base ${isSubmitting || hasSubmitted || isCreatingSubscription
                       ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
                       : 'bg-dashboard-accent text-dashboard hover:bg-dashboard-accent/90'
                       }`}
                   >
-                    {isSubmitting ? t('toast.info.processing') : 'Continue to Choose Plan'}
+                    {isSubmitting || isCreatingSubscription ? 'Completing Registration...' : 'Complete Registration'}
                   </button>
                 </div>
               ) : activeStep === 4 ? (
