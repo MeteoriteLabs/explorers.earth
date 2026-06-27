@@ -1594,8 +1594,6 @@ const Profile = memo(() => {
         } else {
           markProcessingComplete();
         }
-
-        toast.success(t("toast.success.profileImageUpdated"));
       } else {
         throw new Error(t('dashboard.profile.common.errors.uploadResponseMissingFileData'));
       }
@@ -1690,8 +1688,6 @@ const Profile = memo(() => {
         } else {
           markProcessingComplete();
         }
-
-        toast.success(t("toast.success.backgroundImageUpdated"));
       } else {
         throw new Error(t('dashboard.profile.common.errors.uploadResponseMissingFileData'));
       }
@@ -1701,7 +1697,6 @@ const Profile = memo(() => {
       markProcessingComplete();
     } finally {
       setIsUploading(false);
-      toast.error(t("toast.error.backgroundImageUpdateFailed"));
     }
   };
 
