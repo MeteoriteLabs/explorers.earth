@@ -98,11 +98,11 @@ const TopGamesHero = ({ games, onGameClick, showManageButton = false, onManageCl
       </div>
 
       {/* Main Content Area */}
-      <div className="absolute inset-0 flex flex-col justify-end p-8 md:p-12 z-10">
+      <div className="absolute inset-0 flex flex-col justify-end p-8 md:p-12 z-10 pointer-events-none">
         <div className="flex justify-between items-end w-full">
           {/* Left Text Detail Section */}
           <div 
-            className="w-full lg:w-1/2 flex flex-col gap-4 cursor-pointer"
+            className="w-full lg:w-1/2 flex flex-col gap-4 cursor-pointer pointer-events-auto"
             onClick={() => onGameClick(activeGame)}
           >
             <motion.h1 
@@ -162,7 +162,7 @@ const TopGamesHero = ({ games, onGameClick, showManageButton = false, onManageCl
           </div>
 
           {/* Right Bottom Thumbnail Row */}
-          <div className="hidden lg:flex flex-col items-end max-w-[50%] z-20">
+          <div className="hidden lg:flex flex-col items-end max-w-[50%] z-20 pointer-events-auto">
             <div className="relative group/thumbs w-full max-w-2xl pl-12">
                {canScrollLeft && (
                 <button

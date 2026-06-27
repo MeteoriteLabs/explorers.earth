@@ -162,15 +162,6 @@ const Sidebar = () => {
       <div className={`flex w-full py-4 flex-shrink-0 min-h-[72px] ${isOpen ? "items-center justify-start pl-[20px] pr-3 gap-3" : "flex-col items-center justify-center gap-2 px-4"}`}>
         {isOpen ? (
           <>
-            {/* Toggle Button - On immediate left */}
-            <div className="flex-shrink-0 w-[24px] h-[24px] flex items-center justify-center">
-              <Button
-                startIcon={<MenuIcon stroke="var(--dash-accent)" />}
-                onClickHandler={() => setIsOpen(!isOpen)}
-                variant="icon"
-                size="none"
-              />
-            </div>
             {/* SVG Text - explorers.earth */}
             <div className="flex-shrink-0 flex-1 min-w-0">
               <img
@@ -180,6 +171,15 @@ const Sidebar = () => {
                 style={{
                   filter: "brightness(0) invert(1)",
                 }}
+              />
+            </div>
+            {/* Toggle Button - On immediate right of logo */}
+            <div className="flex-shrink-0 w-[24px] h-[24px] flex items-center justify-center">
+              <Button
+                startIcon={<MenuIcon stroke="var(--dash-accent)" />}
+                onClickHandler={() => setIsOpen(!isOpen)}
+                variant="icon"
+                size="none"
               />
             </div>
           </>

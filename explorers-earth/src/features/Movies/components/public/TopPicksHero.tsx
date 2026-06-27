@@ -98,10 +98,13 @@ const TopPicksHero = ({ movies, onMovieClick, showManageButton = false, onManage
       {/* Manage Button moved to bottom left for dashboard */}
 
       {/* Main Content Area */}
-      <div className="absolute inset-0 flex flex-col justify-end p-8 md:p-12 z-10">
+      <div className="absolute inset-0 flex flex-col justify-end p-8 md:p-12 z-10 pointer-events-none">
         <div className="flex justify-between items-end w-full">
           {/* Left Text Detail Section */}
-          <div className="w-full lg:w-1/2 flex flex-col gap-4">
+          <div 
+            className="w-full lg:w-1/2 flex flex-col gap-4 pointer-events-auto cursor-pointer"
+            onClick={() => onMovieClick(activeMovie)}
+          >
             <motion.h1 
               key={`title-${activeMovie.documentId}`}
               initial={{ opacity: 0, y: 20 }}
@@ -136,6 +139,7 @@ const TopPicksHero = ({ movies, onMovieClick, showManageButton = false, onManage
               key={`btns-${activeMovie.documentId}`}
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
               className="flex items-center gap-4 mt-2"
+              onClick={(e) => e.stopPropagation()}
             >
               {showManageButton ? (
                 <button 
@@ -158,7 +162,7 @@ const TopPicksHero = ({ movies, onMovieClick, showManageButton = false, onManage
           </div>
 
           {/* Right Bottom Top Picks Thumbnail Row */}
-          <div className="hidden lg:flex flex-col items-end max-w-[50%] z-20">
+          <div className="hidden lg:flex flex-col items-end max-w-[50%] z-20 pointer-events-auto">
             <div className="relative group/thumbs w-full max-w-2xl pl-12">
                {/* Nav arrows for thumbnails */}
                {canScrollLeft && (

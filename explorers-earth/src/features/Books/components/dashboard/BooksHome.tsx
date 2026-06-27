@@ -539,7 +539,7 @@ const BooksHome = () => {
       ) : (
         <>
           {/* Top Reads Hero Section */}
-          {topReads.length > 0 && (
+          {topReads.length > 0 ? (
             <div className="mb-8">
               <div className="hidden lg:block">
                 <TopReadsHero 
@@ -558,6 +558,23 @@ const BooksHome = () => {
                 />
               </div>
             </div>
+          ) : (
+            /* Empty Placeholder banner */
+            allBooks.length > 0 && (
+              <div
+                onClick={() => setShowManageTopReads(true)}
+                className="w-full flex items-center justify-between p-4 rounded-[14px] border border-amber-500/25 bg-amber-500/5 hover:bg-amber-500/10 transition-all duration-300 cursor-pointer mb-6"
+              >
+                <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-[#fbbf24] font-poppins">
+                  <span className="text-amber-400">★</span> Manage Top Reads ({topReads.length}/{deduplicateBooks(allBooks).length})
+                </div>
+                <div className="flex items-center text-amber-500">
+                  <svg className="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+            )
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

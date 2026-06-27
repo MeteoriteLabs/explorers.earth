@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@apollo/client";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Star, MoreVertical, Trash2,
-  Loader2, Gamepad2, Pencil, Copy, Check, ChevronRight
+  Loader2, Gamepad2, Pencil, Copy, Check
 } from "lucide-react";
 import { AddIcon } from "../../../../assets/icons/AddIcon";
 import { toast } from "sonner";
@@ -447,17 +447,7 @@ const GameListView = () => {
 
       {activeTab === "recommendations" ? (
         <div>
-          {pinnedCount > 0 && (
-            <button
-               onClick={() => setShowTopGamesManager(true)}
-               className="w-full mb-4 flex items-center justify-between px-4 py-3 bg-[#fbbf24]/5 border border-[#fbbf24]/25 rounded-xl text-sm hover:bg-[#fbbf24]/10 text-[#fbbf24] transition-all font-semibold"
-             >
-               <span className="flex items-center gap-2">
-                 <Star size={14} fill="currentColor" /> Manage Top Picks ({pinnedCount}/15)
-               </span>
-               <ChevronRight size={14} className="opacity-80" />
-             </button>
-          )}
+
 
           {/* Add Game button - highlighted CTA */}
           <button

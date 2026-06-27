@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@apollo/client";
 import { AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Star, MoreHorizontal, Trash2, Edit,
-  Film, Copy, Loader2, Check, Clock, ChevronRight, Tv, Share2, Download
+  Film, Copy, Loader2, Check, Clock, Tv, Share2, Download
 } from "lucide-react";
 import { AddIcon } from "../../../../assets/icons/AddIcon";
 import Accordion from "../../../../components/ui/Accordian";
@@ -326,18 +326,7 @@ const MovieListView = () => {
       {/* Tab: Recommendations */}
       {activeTab === "recommendations" && (
         <div>
-          {/* Top picks button */}
-          {pinnedCount > 0 && (
-            <button
-              onClick={() => setShowTopPicks(true)}
-              className="w-full mb-4 flex items-center justify-between px-4 py-3 bg-[#fbbf24]/5 border border-[#fbbf24]/25 rounded-xl text-sm hover:bg-[#fbbf24]/10 text-[#fbbf24] transition-all font-semibold"
-            >
-              <span className="flex items-center gap-2">
-                <Star size={14} fill="currentColor" /> Manage Top Picks ({pinnedCount}/15)
-              </span>
-              <ChevronRight size={14} className="opacity-80" />
-            </button>
-          )}
+
 
           {/* Add Movie or Show button - highlighted CTA */}
           <button

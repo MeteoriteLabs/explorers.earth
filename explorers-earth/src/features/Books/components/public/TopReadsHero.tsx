@@ -132,10 +132,13 @@ const TopReadsHero = ({ books, onBookClick, showManageButton = false, onManageCl
       {/* Manage Button moved to bottom left for dashboard */}
 
       {/* Main Content Area - Increased Left Padding */}
-      <div className="absolute inset-0 flex flex-col justify-end p-10 md:p-16 z-20">
+      <div className="absolute inset-0 flex flex-col justify-end p-10 md:p-16 z-20 pointer-events-none">
         <div className="flex justify-between items-end w-full">
           {/* Left Text Detail Section */}
-          <div className="w-full lg:w-1/2 flex flex-col gap-4">
+          <div 
+            className="w-full lg:w-1/2 flex flex-col gap-4 pointer-events-auto cursor-pointer"
+            onClick={() => onBookClick(activeBook)}
+          >
             <motion.h1 
               key={`title-${activeBook.documentId}`}
               initial={{ opacity: 0, y: 20 }}
@@ -170,6 +173,7 @@ const TopReadsHero = ({ books, onBookClick, showManageButton = false, onManageCl
               key={`btns-${activeBook.documentId}`}
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
               className="flex items-center gap-4 mt-4"
+              onClick={(e) => e.stopPropagation()}
             >
               {showManageButton ? (
                 <button 
@@ -192,7 +196,7 @@ const TopReadsHero = ({ books, onBookClick, showManageButton = false, onManageCl
           </div>
 
           {/* Right Bottom Thumbnail Row */}
-          <div className="hidden lg:flex flex-col items-end max-w-[35%]">
+          <div className="hidden lg:flex flex-col items-end max-w-[35%] pointer-events-auto">
             <div className="relative group/thumbs w-full max-w-xl pl-12">
                {/* Nav arrows */}
                {canScrollLeft && (

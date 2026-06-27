@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@apollo/client";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Star, MoreVertical, Trash2,
-  Loader2, BookOpen, Pencil, Copy, Check, BookMarked, ChevronRight, Share2, Download
+  Loader2, BookOpen, Pencil, Copy, Check, BookMarked, Share2, Download
 } from "lucide-react";
 import { AddIcon } from "../../../../assets/icons/AddIcon";
 import { toast } from "sonner";
@@ -527,18 +527,7 @@ const BookListView = () => {
       {/* Tab content */}
       {activeTab === "recommendations" ? (
         <div>
-          {/* Top Reads Manager entry */}
-          {pinnedCount > 0 && (
-            <button
-               onClick={() => setShowTopReadsManager(true)}
-               className="w-full mb-4 flex items-center justify-between px-4 py-3 bg-[#fbbf24]/5 border border-[#fbbf24]/25 rounded-xl text-sm hover:bg-[#fbbf24]/10 text-[#fbbf24] transition-all font-semibold"
-             >
-               <span className="flex items-center gap-2">
-                 <Star size={14} fill="currentColor" /> Manage Top Reads ({pinnedCount}/15)
-               </span>
-               <ChevronRight size={14} className="opacity-80" />
-             </button>
-          )}
+
 
           {/* Add Book button - highlighted CTA */}
           <button
