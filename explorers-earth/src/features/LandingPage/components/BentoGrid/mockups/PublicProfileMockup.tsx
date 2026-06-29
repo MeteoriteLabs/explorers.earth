@@ -172,13 +172,13 @@ function ExplorerOverview() {
   const [activeTab, setActiveTab] = useState<'rec' | 'feed' | 'send'>('rec');
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden bg-[#0a0e14] font-poppins">
+    <div className="flex flex-col flex-1 overflow-hidden bg-[#050507] font-poppins">
       <div className="flex-1 overflow-y-auto hide-scrollbar">
         {/* Header section - Maximum reduction */}
         <div className="relative pt-3 pb-1 px-6 flex flex-col items-center shrink-0">
           <div className="absolute top-0 inset-x-0 h-20">
             <img src="/landing/Paris.jpg" alt="Cover" className="w-full h-full object-cover opacity-10" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0e14] to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#050507] to-transparent" />
           </div>
 
           <div className="relative z-10 flex flex-col items-center">
@@ -277,7 +277,7 @@ function PlacesPage() {
     {name:'Montmartre',cat:'District',img:'/landing/Paris.jpg',r:4.7,d:'4.0km'}
   ];
   return (
-    <div className="flex flex-col flex-1 overflow-hidden bg-[#0F1419]">
+    <div className="flex flex-col flex-1 overflow-hidden bg-[#050507]">
       {/* Header section */}
       <div className="px-4 pt-3 pb-2 flex items-center justify-between shrink-0">
         <h2 className="text-white text-base font-bold">Places</h2>
@@ -309,7 +309,7 @@ function PlacesPage() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             {places.map((p,i)=>(
-              <motion.div key={p.name} initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} transition={{delay:i*0.08}} className="bg-[#1a1f2e] rounded-2xl overflow-hidden border border-white/5 shadow-lg group">
+              <motion.div key={p.name} initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} transition={{delay:i*0.08}} className="bg-[#0B0B0E] rounded-2xl overflow-hidden border border-white/5 shadow-lg group">
                 <div className="h-24 relative overflow-hidden">
                   <img src={p.img} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"/>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"/>
@@ -343,7 +343,7 @@ function GuidesPage() {
     {title:'Royal Lucknow Food Tour',loc:'Lucknow, India',img:'/landing/Eiffel_Tower.jpg',days:1,likes:512,tags:['Food','Royal']}
   ];
   return (
-    <div className="flex flex-col flex-1 overflow-hidden bg-[#0a0e14] font-poppins">
+    <div className="flex flex-col flex-1 overflow-hidden bg-[#050507] font-poppins">
       <div className="px-4 pt-4 pb-2 shrink-0">
         <h1 className="text-xl font-black text-white mb-1 tracking-tight">Travel Guides</h1>
         <p className="text-[9px] text-white/40 font-medium tracking-tight mb-4">{guides.length} guides available</p>
@@ -402,7 +402,7 @@ function CatPage({ label, data }: { label: string; data: any }) {
   const firstList = lists[0];
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden bg-[#0F1419] font-poppins">
+    <div className="flex flex-col flex-1 overflow-hidden bg-[#050507] font-poppins">
       <AnimatePresence mode="wait">
 
         {/* ── Phase 0: Home overview ── */}
@@ -411,8 +411,8 @@ function CatPage({ label, data }: { label: string; data: any }) {
             {/* Hero */}
             <section className="relative w-full h-[220px] bg-black overflow-hidden mb-5 shadow-2xl">
               <img src={topPick.img} alt={topPick.title} className="w-full h-full object-cover opacity-60" />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0F1419] via-[#0F1419]/30 to-transparent" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#0F1419]/80 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#050507] via-[#050507]/30 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#050507]/80 to-transparent" />
               <div className="absolute top-3 left-4">
                 <span className="text-[9px] font-black text-yellow-400 uppercase tracking-widest flex items-center gap-1.5">
                   <span className="w-1 h-3 bg-yellow-400 rounded-full inline-block" />Top Pick
@@ -470,7 +470,7 @@ function CatPage({ label, data }: { label: string; data: any }) {
         {(phase === 1 || phase === 2) && (
           <motion.div key="detail" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.35 }} className="flex-1 flex flex-col overflow-hidden">
             {/* Detail header */}
-            <div className="px-4 py-3 flex items-center gap-3 shrink-0 border-b border-white/5 bg-[#0F1419]">
+            <div className="px-4 py-3 flex items-center gap-3 shrink-0 border-b border-white/5 bg-[#050507]">
               <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">
                 <ChevronRight size={12} className="text-white rotate-180" />
               </div>
@@ -501,7 +501,7 @@ function CatPage({ label, data }: { label: string; data: any }) {
                   <div className="grid grid-cols-2 gap-3">
                     {firstList.items.map((it: any, i: number) => (
                       <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-                        className="bg-[#1a1f2e] rounded-2xl overflow-hidden border border-white/5 shadow-lg">
+                        className="bg-[#0B0B0E] rounded-2xl overflow-hidden border border-white/5 shadow-lg">
                         <div className="aspect-[4/3] relative overflow-hidden">
                           <img src={it.img} alt={it.name} className="w-full h-full object-cover" />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
@@ -534,7 +534,7 @@ function CatPage({ label, data }: { label: string; data: any }) {
                       { label: 'Delete', color: 'red', icon: 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16' },
                     ].map(({ label: lbl, color, icon }) => (
                       <motion.div key={lbl} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                        className={`${color === 'red' ? 'bg-red-500/10 border-red-500/20' : 'bg-[#1a1f2e] border-white/5'} border rounded-2xl p-4 flex flex-col items-center gap-2.5 shadow-xl`}>
+                        className={`${color === 'red' ? 'bg-red-500/10 border-red-500/20' : 'bg-[#0B0B0E] border-white/5'} border rounded-2xl p-4 flex flex-col items-center gap-2.5 shadow-xl`}>
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                           color === 'blue' ? 'bg-blue-500/10 text-blue-400' :
                           color === 'green' ? 'bg-green-500/10 text-green-400' :
@@ -644,7 +644,7 @@ function MusicPublicPage() {
             </div>
 
             {/* Request a Song Card */}
-            <div className="bg-[#1a1f2e] rounded-2xl border border-white/5 overflow-hidden shadow-2xl">
+            <div className="bg-[#0B0B0E] rounded-2xl border border-white/5 overflow-hidden shadow-2xl">
                <div className="px-4 py-3 flex items-center justify-between border-b border-white/5 bg-white/[0.02]">
                   <div className="flex items-center gap-2">
                      <Search size={10} className="text-white/40" />
@@ -680,7 +680,7 @@ function MusicPublicPage() {
 
             {/* Sections */}
             {['Queue', 'Recently Played', 'Play on Your Device'].map(label => (
-              <div key={label} className="bg-[#1a1f2e] rounded-xl border border-white/5 px-4 py-3.5 flex items-center justify-between shadow-xl">
+              <div key={label} className="bg-[#0B0B0E] rounded-xl border border-white/5 px-4 py-3.5 flex items-center justify-between shadow-xl">
                  <div className="flex items-center gap-3">
                     <div className="w-4 h-4 text-white/40">
                       {label.includes('Queue') && <ListMusic size={14} />}
@@ -701,13 +701,13 @@ function MusicPublicPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-[#1a1f2e] border border-white/5 rounded-2xl p-4 flex flex-col items-center gap-3 shadow-xl">
+              <div className="bg-[#0B0B0E] border border-white/5 rounded-2xl p-4 flex flex-col items-center gap-3 shadow-xl">
                 <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400">
                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                 </div>
                 <span className="text-[9px] font-black text-white uppercase tracking-tighter">Edit Playlist</span>
               </div>
-              <div className="bg-[#1a1f2e] border border-white/5 rounded-2xl p-4 flex flex-col items-center gap-3 shadow-xl">
+              <div className="bg-[#0B0B0E] border border-white/5 rounded-2xl p-4 flex flex-col items-center gap-3 shadow-xl">
                 <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center text-green-400">
                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
                 </div>
@@ -735,7 +735,7 @@ function MusicPublicPage() {
 function GalleryPage() {
   const feedCells = ['/landing/Paris.jpg','/landing/Bali.jpg','/landing/Kyoto.jpg','/landing/Eiffel_Tower.jpg','/landing/Louvre_Museum.jpg','/landing/Bali.jpg','/landing/Paris.jpg','/landing/Kyoto.jpg','/landing/Eiffel_Tower.jpg'];
   return (
-    <div className="flex flex-col flex-1 overflow-hidden bg-[#0F1419]">
+    <div className="flex flex-col flex-1 overflow-hidden bg-[#050507]">
       <div className="flex flex-col items-center pt-6 pb-4 shrink-0">
         <div className="w-20 h-20 rounded-full border-[4px] border-green-400 overflow-hidden ring-4 ring-black shadow-2xl mb-3">
           <img src="/landing/marco_polo.jpg" alt="Marco" className="w-full h-full object-cover"/>
@@ -768,7 +768,7 @@ function GalleryPage() {
 function QRScan() {
   return (
     <div className="flex flex-col flex-1 items-center justify-center gap-4 px-6">
-      <div className="relative w-28 h-36 bg-[#1a1f2e] rounded-2xl border border-white/10 flex items-center justify-center shadow-2xl overflow-hidden">
+      <div className="relative w-28 h-36 bg-[#0B0B0E] rounded-2xl border border-white/10 flex items-center justify-center shadow-2xl overflow-hidden">
         <div className="absolute inset-4">
           {['top-0 left-0 border-t-2 border-l-2','top-0 right-0 border-t-2 border-r-2','bottom-0 left-0 border-b-2 border-l-2','bottom-0 right-0 border-b-2 border-r-2'].map((cls,i)=>(
             <div key={i} className={`absolute w-4 h-4 border-[#3498DB] ${cls}`}/>
@@ -795,7 +795,7 @@ function QRScan() {
 // ── Footer nav ──
 function FooterNav({active}:{active:string}) {
   return (
-    <div className="shrink-0 border-t border-white/5 bg-[#0a0e14] flex items-center justify-around px-1 py-1.5">
+    <div className="shrink-0 border-t border-white/5 bg-[#050507] flex items-center justify-around px-1 py-1.5">
       {footerTabs.map(({id,Icon,label})=>(
         <div key={id} className={`flex flex-col items-center gap-0.5 px-0.5 relative transition-colors duration-300 ${active===id?'text-[#3498DB]':'text-gray-600'}`}>
           {active===id && (

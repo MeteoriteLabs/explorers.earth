@@ -3,7 +3,6 @@ import { useQuery } from "@apollo/client";
 import { useParams, Navigate, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { getPublicAccountBasicQuery } from "../../features/PublicHome/api/query";
-import { EarthLoader } from "../../components/EarthLoader";
 import Button from "../../components/ui/Button";
 import Home from "../../assets/icons/Home";
 import HeroSkeleton from "../../components/ui/HeroSkeleton";

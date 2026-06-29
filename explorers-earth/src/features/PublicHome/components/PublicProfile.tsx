@@ -6,7 +6,6 @@ import { useTrackAnalytics, createAnalyticsOptions } from "../../../services/ana
 import WhatsappIcon from "../../../assets/icons/WhatsappIcon";
 import MobileIcon from "../../../assets/icons/MobileIcon";
 import InstagramIcon from "../../../assets/icons/InstagramIcon";
-import { EarthLoader } from "../../../components/EarthLoader";
 import QRModal from "../../../components/ui/QRModal";
 import { useQRActions } from "../../../hooks/useQRActions";
 import { generateUserProfileQRUrl } from "../../../utils/qrCodeService";

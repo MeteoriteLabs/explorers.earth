@@ -65,7 +65,7 @@ export default function MoviesMockup() {
   const activeList = LISTS[0];
 
   return (
-    <div className="flex-1 flex flex-col bg-[#0F1419] h-full overflow-hidden select-none pointer-events-none font-poppins">
+    <div className="flex-1 flex flex-col bg-[#050507] h-full overflow-hidden select-none pointer-events-none font-poppins">
       <AnimatePresence mode="wait">
 
         {/* ── Phase 0: Hero + list overview ── */}
@@ -76,8 +76,8 @@ export default function MoviesMockup() {
             {/* Hero */}
             <section className="relative w-full h-[190px] bg-black overflow-hidden mb-4 shadow-2xl">
               <img src={TOP_PICK.img} alt={TOP_PICK.title} className="w-full h-full object-cover opacity-60" />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0F1419] via-[#0F1419]/40 to-transparent" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#0F1419]/80 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#050507] via-[#050507]/40 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#050507]/80 to-transparent" />
               <div className="absolute top-3 left-4">
                 <span className="text-[8px] font-black text-yellow-400 uppercase tracking-widest flex items-center gap-1">
                   <span className="w-0.5 h-3 bg-yellow-400 rounded-full inline-block" />Top Pick
@@ -105,7 +105,7 @@ export default function MoviesMockup() {
             {/* Lists */}
             <div className="px-3 space-y-2">
               {LISTS.map((list) => (
-                <div key={list.name} className="bg-[#1a1f2e] border border-white/5 rounded-xl p-2.5">
+                <div key={list.name} className="bg-[#0B0B0E] border border-white/5 rounded-xl p-2.5">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <div className="w-0.5 h-3 bg-[#3498DB] rounded-full" />
@@ -179,7 +179,7 @@ export default function MoviesMockup() {
                   <div className="grid grid-cols-2 gap-2.5">
                     {activeList.items.map((it, i) => (
                       <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-                        className="bg-[#1a1f2e] rounded-xl overflow-hidden border border-white/5 shadow-lg">
+                        className="bg-[#0B0B0E] rounded-xl overflow-hidden border border-white/5 shadow-lg">
                         <div className="aspect-[4/3] relative overflow-hidden">
                           <img src={it.img} alt={it.name} className="w-full h-full object-cover" />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
@@ -208,7 +208,7 @@ export default function MoviesMockup() {
                   <div className="grid grid-cols-2 gap-2">
                     {MANAGE_ACTIONS.map(({ label, color, icon }) => (
                       <motion.div key={label} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                        className={`${color === 'red' ? 'bg-red-500/10 border-red-500/20' : 'bg-[#1a1f2e] border-white/5'} border rounded-xl p-3 flex flex-col items-center gap-2 shadow-lg`}>
+                        className={`${color === 'red' ? 'bg-red-500/10 border-red-500/20' : 'bg-[#0B0B0E] border-white/5'} border rounded-xl p-3 flex flex-col items-center gap-2 shadow-lg`}>
                         <div className={`w-7 h-7 rounded-full flex items-center justify-center ${
                           color === 'blue' ? 'bg-blue-500/10 text-blue-400' :
                           color === 'green' ? 'bg-green-500/10 text-green-400' :

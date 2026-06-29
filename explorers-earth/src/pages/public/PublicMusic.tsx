@@ -3,7 +3,6 @@ import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { Song, PlaylistResponse } from "../../types/music";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import PlaylistCard, { PlaylistCardContent } from "../../components/ui/PlaylistCard";
-import { EarthLoader } from "../../components/EarthLoader";
 import PlaylistTable from "../../components/playlist-table";
 import SearchSongs from "../../components/search-songs";
 import { Music2, Volume2, History, Share2, Copy, ChevronLeft, ChevronRight } from "lucide-react";

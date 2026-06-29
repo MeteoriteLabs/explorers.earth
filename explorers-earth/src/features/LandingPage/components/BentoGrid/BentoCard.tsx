@@ -17,12 +17,12 @@ export default function BentoCard({ className, children, title, subtitle }: Bent
       <motion.div
         whileHover={{ y: -3, boxShadow: '0 20px 56px -16px rgba(0,0,0,0.7)' }}
         transition={{ duration: 0.2 }}
-        className={`relative overflow-hidden flex flex-col rounded-2xl border border-white/[0.06] bg-[#0F1419] shadow-xl group ${className || ''}`}
+        className={`relative overflow-hidden flex flex-col rounded-2xl border border-white/[0.06] bg-[#050507] shadow-xl group ${className || ''}`}
       >
         {/* ── In-card heading (top-left, matching SeaMaster style) ── */}
         {(title || subtitle) && (
           <div className="absolute top-0 left-0 right-0 z-10 px-4 pt-3.5 pb-3 pointer-events-none"
-            style={{ background: 'linear-gradient(to bottom, rgba(15,20,25,0.98) 70%, transparent)' }}>
+            style={{ background: 'linear-gradient(to bottom, rgba(5, 5, 7, 0.98) 70%, transparent)' }}>
             {title && (
               <h3 className="text-white text-sm font-bold leading-tight">{title}</h3>
             )}
@@ -67,7 +67,7 @@ export default function BentoCard({ className, children, title, subtitle }: Bent
 
             {/* Enlarged card */}
             <motion.div
-              className="relative z-10 w-full max-w-xl rounded-2xl border border-white/10 bg-[#0F1419] shadow-2xl overflow-hidden flex flex-col"
+              className="relative z-10 w-full max-w-xl rounded-2xl border border-white/10 bg-[#050507] shadow-2xl overflow-hidden flex flex-col"
               style={{ height: 'min(82vh, 700px)' }}
               initial={{ scale: 0.88, opacity: 0, y: 28 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -75,7 +75,7 @@ export default function BentoCard({ className, children, title, subtitle }: Bent
               transition={{ type: 'spring', stiffness: 300, damping: 28 }}
             >
               {/* Modal header bar */}
-              <div className="flex items-start justify-between px-5 py-4 shrink-0 border-b border-white/5 bg-[#0F1419]">
+              <div className="flex items-start justify-between px-5 py-4 shrink-0 border-b border-white/5 bg-[#050507]">
                 <div>
                   {title && <h3 className="text-white text-sm font-bold">{title}</h3>}
                   {subtitle && <p className="text-gray-500 text-[10px] mt-0.5">{subtitle}</p>}

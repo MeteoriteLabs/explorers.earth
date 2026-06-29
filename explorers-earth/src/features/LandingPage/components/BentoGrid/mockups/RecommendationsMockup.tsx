@@ -117,7 +117,7 @@ export default function RecommendationsMockup() {
   const activeList = cat.lists[0];
 
   return (
-    <div className="flex-1 flex flex-col bg-[#0d1117] h-full overflow-hidden select-none pointer-events-none text-white">
+    <div className="flex-1 flex flex-col bg-[#050507] h-full overflow-hidden select-none pointer-events-none text-white">
 
       {/* Category tab indicator */}
       <div className="flex items-center gap-1.5 px-3 pt-2.5 pb-1.5 shrink-0">
@@ -148,8 +148,8 @@ export default function RecommendationsMockup() {
             {/* Hero */}
             <section className="relative w-full h-[150px] bg-black overflow-hidden mb-3 shadow-xl">
               <img src={cat.topPick.img} alt={cat.topPick.title} className="w-full h-full object-cover opacity-55" />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0d1117] via-[#0d1117]/30 to-transparent" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#0d1117]/80 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#050507] via-[#050507]/30 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#050507]/80 to-transparent" />
               <div className="absolute top-2 left-3">
                 <span className="text-[7px] font-black uppercase tracking-widest text-yellow-400 flex items-center gap-1">
                   <span className="w-0.5 h-2.5 bg-yellow-400 rounded-full inline-block" />Top Pick
@@ -178,7 +178,7 @@ export default function RecommendationsMockup() {
             {/* List cards 2-col */}
             <div className="px-3 grid grid-cols-2 gap-2">
               {cat.lists.map((list) => (
-                <div key={list.name} className="bg-[#161b22] border border-white/5 rounded-xl p-2">
+                <div key={list.name} className="bg-[#0B0B0E] border border-white/5 rounded-xl p-2">
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-1">
                       <div className="w-0.5 h-2.5 rounded-full" style={{ backgroundColor: cat.accentColor }} />
@@ -286,7 +286,7 @@ export default function RecommendationsMockup() {
                   <div className="space-y-2">
                     {activeList.entries.map((entry, i) => (
                       <motion.div key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
-                        className="bg-[#1a1f2e] rounded-xl overflow-hidden border border-white/5 shadow-md flex gap-2.5 p-2">
+                        className="bg-[#0B0B0E] rounded-xl overflow-hidden border border-white/5 shadow-md flex gap-2.5 p-2">
                         
                         {/* Poster */}
                         <div className="w-12 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-white/5 border border-white/10">
@@ -327,7 +327,7 @@ export default function RecommendationsMockup() {
                   
                   {/* Manage section */}
                   <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                    className="bg-[#1a1f2e] border border-white/5 rounded-2xl overflow-hidden shadow-lg">
+                    className="bg-[#0B0B0E] border border-white/5 rounded-2xl overflow-hidden shadow-lg">
                     <button className="w-full px-3.5 py-3 flex items-center justify-between hover:bg-white/5 transition-colors">
                       <span className="text-[9px] font-black text-white uppercase tracking-tight">Manage</span>
                       <ChevronDown size={8} className="text-white/50" />
@@ -362,7 +362,7 @@ export default function RecommendationsMockup() {
 
                   {/* My QR section */}
                   <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-                    className="bg-[#1a1f2e] border border-white/5 rounded-2xl overflow-hidden shadow-lg">
+                    className="bg-[#0B0B0E] border border-white/5 rounded-2xl overflow-hidden shadow-lg">
                     <button className="w-full px-3.5 py-3 flex items-center justify-between hover:bg-white/5 transition-colors">
                       <span className="text-[9px] font-black text-white uppercase tracking-tight">My QR</span>
                       <ChevronDown size={8} className="text-white/50" />
@@ -413,7 +413,7 @@ export default function RecommendationsMockup() {
 
                   {/* Create List Form */}
                   <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8, duration: 0.6 }}
-                    className="bg-[#1a1f2e] border border-white/5 rounded-2xl overflow-hidden shadow-lg p-4">
+                    className="bg-[#0B0B0E] border border-white/5 rounded-2xl overflow-hidden shadow-lg p-4">
                     <h3 className="text-[9px] font-black text-white uppercase tracking-tight mb-3">Create New List</h3>
                     
                     <div className="space-y-3">

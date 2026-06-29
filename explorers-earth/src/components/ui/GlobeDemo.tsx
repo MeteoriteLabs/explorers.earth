@@ -52,7 +52,7 @@ export function GlobeDemo({ arcsData }: GlobeDemoProps) {
   }, []);
 
   // Set background color based on theme
-  const globeBackgroundColor = theme === 'dark' ? '#0F1419' : '#2E4032';
+  const globeBackgroundColor = theme === 'dark' ? '#060608' : '#2E4032';
 
   return (
     <div ref={containerRef} className="w-full h-full flex items-center justify-center overflow-hidden bg-dashboard-bg">
