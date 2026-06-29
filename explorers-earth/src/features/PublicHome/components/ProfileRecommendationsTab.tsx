@@ -2,11 +2,11 @@ import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
 import {
-  MapPin, Music, Film, BookOpen, Gamepad2,
+  MapPin, Music, Film, BookOpen, Gamepad2, Compass,
   ChevronRight
 } from "lucide-react";
 
-type CategoryKey = "places" | "music" | "movies" | "books" | "games";
+type CategoryKey = "places" | "music" | "movies" | "books" | "games" | "guides";
 
 interface CategoryConfig {
   key: CategoryKey;
@@ -427,6 +427,111 @@ const GamesAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
   );
 };
 
+const GuidesAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
+  const containerRef = useRef(null);
+  const { scrollYProgress } = useScroll({ target: containerRef, offset: ["start end", "end start"] });
+  const yScan = useTransform(scrollYProgress, [0, 1], ["0px", "20px"]);
+  return (
+    <div ref={containerRef} className="absolute inset-0 bg-slate-950 overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-b from-cyan-600/40 via-slate-950/20 to-slate-950 opacity-100" />
+      
+      {/* High-Fidelity 3D-Like Compass Dial (Flagship Centerpiece) */}
+      <motion.div 
+        className="absolute right-[10%] top-1/2 -translate-y-1/2 pointer-events-none z-10"
+        initial={{ rotate: 0, x: 0 }}
+        animate={{ 
+          x: isHovering ? [0, 5, -5, 0] : [0, 2, -2, 0],
+          y: isHovering ? ["-50%", "-52%", "-50%"] : ["-50%", "-51%", "-50%"],
+          opacity: isHovering ? 0.6 : 0.35
+        }}
+        transition={{ duration: isHovering ? 5 : 10, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <svg width="120" height="120" viewBox="0 0 120 120" className="text-white">
+          {/* Outer compass ring */}
+          <circle 
+            cx="60" cy="60" r="48" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="1.5" 
+            strokeDasharray="4 2"
+          />
+          <circle 
+            cx="60" cy="60" r="44" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="0.5" 
+          />
+          <circle 
+            cx="60" cy="60" r="52" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="0.5" 
+            opacity="0.3"
+          />
+          
+          {/* Compass markings (ticks) */}
+          {[...Array(12)].map((_, i) => (
+            <line 
+              key={i}
+              x1="60" y1="16" x2="60" y2="20"
+              stroke="currentColor" strokeWidth="1"
+              transform={`rotate(${i * 30} 60 60)`}
+            />
+          ))}
+
+          {/* Compass Directions */}
+          <text x="60" y="29" fill="currentColor" fontSize="8" fontWeight="bold" textAnchor="middle" opacity="0.8">N</text>
+          <text x="91" y="63" fill="currentColor" fontSize="7" fontWeight="bold" textAnchor="middle" opacity="0.6">E</text>
+          <text x="60" y="97" fill="currentColor" fontSize="7" fontWeight="bold" textAnchor="middle" opacity="0.6">S</text>
+          <text x="29" y="63" fill="currentColor" fontSize="7" fontWeight="bold" textAnchor="middle" opacity="0.6">W</text>
+
+          {/* Rotating Needle (Reactive to hover) */}
+          <motion.g 
+            transform-origin="60 60"
+            animate={{ 
+              rotate: isHovering ? [0, 45, -30, 360 + 15, 360] : [0, 15, -10, 0] 
+            }}
+            transition={{ 
+              duration: isHovering ? 6 : 12, 
+              repeat: Infinity, 
+              ease: "easeInOut" 
+            }}
+          >
+            {/* North pointer (Red-accented / Cyan glow) */}
+            <polygon points="60,18 64,60 56,60" fill="#06b6d4" />
+            {/* South pointer */}
+            <polygon points="60,102 64,60 56,60" fill="currentColor" fillOpacity="0.4" />
+            {/* Needle center cap */}
+            <circle cx="60" cy="60" r="4" fill="black" stroke="currentColor" strokeWidth="1" />
+            <circle cx="60" cy="60" r="1.5" fill="#06b6d4" />
+          </motion.g>
+        </svg>
+      </motion.div>
+
+      {/* Grid line overlay representing maps/coordinates */}
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[length:24px_24px]" />
+
+      {/* Dotted path / itinerary trail line that sweeps */}
+      <svg className="absolute inset-0 w-full h-full opacity-20 pointer-events-none z-0">
+        <motion.path 
+          d="M -20,80 C 30,50 80,110 130,40"
+          fill="none"
+          stroke="#06b6d4"
+          strokeWidth="2"
+          strokeDasharray="4 4"
+          animate={{ strokeDashoffset: [0, -20] }}
+          transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+        />
+        {/* Glowing node coordinates */}
+        <circle cx="35" cy="65" r="3" fill="#06b6d4" className="animate-pulse" />
+        <circle cx="85" cy="85" r="3" fill="#06b6d4" className="animate-pulse" />
+      </svg>
+
+      <FloatingItem x={50} delay={1.5} duration={22}><Compass size={16}/></FloatingItem>
+    </div>
+  );
+};
+
 const CategoryBackground = ({ category, isHovering }: { category: CategoryKey, isHovering: boolean }) => {
   switch (category) {
     case "places": return <PlacesAnimatedBackground />;
@@ -434,6 +539,7 @@ const CategoryBackground = ({ category, isHovering }: { category: CategoryKey, i
     case "movies": return <MoviesAnimatedBackground isHovering={isHovering} />;
     case "books":  return <BooksAnimatedBackground isHovering={isHovering} />;
     case "games":  return <GamesAnimatedBackground isHovering={isHovering} />;
+    case "guides": return <GuidesAnimatedBackground isHovering={isHovering} />;
     default:       return null;
   }
 };
@@ -533,6 +639,19 @@ const CATEGORIES: CategoryConfig[] = [
       "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=2000"
     ]
   },
+  { 
+    key: "guides",   
+    label: "Guides",         
+    icon: Compass, 
+    visibilityField: "public_guides",
+    description: "Personalized travel guides, local secrets, and itineraries",
+    color: "cyan",
+    bgImages: [
+      "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&q=80&w=2000",
+      "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&q=80&w=2000",
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=2000"
+    ]
+  },
 ];
 
 interface ProfileRecommendationsTabProps {
@@ -543,6 +662,7 @@ interface ProfileRecommendationsTabProps {
     public_movie?: string;
     public_books?: string;
     public_games?: string;
+    public_guides?: string;
   };
   username: string;
 }
@@ -780,6 +900,25 @@ const RecommendationCard = ({ cat, username }: { cat: CategoryConfig; username: 
           </motion.div>
           <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_4px,rgba(255,255,255,0.05)_4px,rgba(255,255,255,0.05)_5px)]" />
         </div>
+      ) : cat.key === "guides" ? (
+        <div className="absolute bottom-0 left-0 right-0 h-6 flex items-center opacity-70 z-30 overflow-hidden pointer-events-none px-4 bg-black/20">
+          <div className="w-full flex items-center justify-between relative">
+            <div className="absolute left-0 right-0 h-[1px] bg-cyan-500/20" />
+            <motion.div 
+              className="absolute left-0 h-[1px] bg-cyan-500 shadow-[0_0_8px_#06b6d4]"
+              animate={{ width: isHovering ? "100%" : "30%" }}
+              transition={{ duration: 0.8 }}
+            />
+            {[...Array(4)].map((_, i) => (
+              <motion.div 
+                key={i} 
+                className="w-1.5 h-1.5 rounded-full bg-cyan-400 border border-slate-950 z-10"
+                animate={{ scale: isHovering ? [1, 1.3, 1] : 1 }}
+                transition={{ duration: 1, repeat: isHovering ? Infinity : 0, delay: i * 0.2 }}
+              />
+            ))}
+          </div>
+        </div>
       ) : (
         <motion.div 
           className="absolute bottom-0 left-0 h-1 z-30" 
@@ -801,6 +940,7 @@ const getHexColor = (color: string) => {
     case "blue":    return "#3b82f6";
     case "orange":  return "#f97316";
     case "pink":    return "#ec4899";
+    case "cyan":    return "#06b6d4";
     default:        return "#ffffff";
   }
 };

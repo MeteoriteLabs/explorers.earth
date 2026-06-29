@@ -233,7 +233,8 @@ const PublicProfile = memo(() => {
     accountData?.public_music === "Yes" ||
     accountData?.public_movie === "Yes" ||
     accountData?.public_books === "Yes" ||
-    accountData?.public_games === "Yes"
+    accountData?.public_games === "Yes" ||
+    accountData?.public_guides === "Yes"
   );
 
   // Determine availability of business details & gallery (safe before data loaded)
