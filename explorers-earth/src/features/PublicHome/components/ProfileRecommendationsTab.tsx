@@ -428,11 +428,8 @@ const GamesAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
 };
 
 const GuidesAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
-  const containerRef = useRef(null);
-  const { scrollYProgress } = useScroll({ target: containerRef, offset: ["start end", "end start"] });
-  const yScan = useTransform(scrollYProgress, [0, 1], ["0px", "20px"]);
   return (
-    <div ref={containerRef} className="absolute inset-0 bg-slate-950 overflow-hidden">
+    <div className="absolute inset-0 bg-slate-950 overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-cyan-600/40 via-slate-950/20 to-slate-950 opacity-100" />
       
       {/* High-Fidelity 3D-Like Compass Dial (Flagship Centerpiece) */}
