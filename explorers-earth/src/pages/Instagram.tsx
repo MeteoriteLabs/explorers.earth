@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Instagram as InstagramIcon, Link as LinkIcon, Search, Image as ImageIcon, MapPin, User, Grid3X3, Film, ExternalLink, Loader2 } from "lucide-react";
 import { instagramService } from "../services/instagramService";
 import type { InstagramPostData, InstagramProfileData, AccountPostsData } from "../services/instagramService";
@@ -19,6 +19,10 @@ function proxyUrl(url: string, token: string | null): string {
 }
 
 const Instagram = () => {
+    useEffect(() => {
+        (window as any).__dashboardLoaded = true;
+    }, []);
+
     const [activeTab, setActiveTab] = useState<'post' | 'profile' | 'account'>('post');
     const [postUrl, setPostUrl] = useState("");
     const [profileInput, setProfileInput] = useState("");
