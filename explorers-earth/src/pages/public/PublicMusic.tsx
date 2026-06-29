@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { Song, PlaylistResponse } from "../../types/music";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import PlaylistCard, { PlaylistCardContent } from "../../components/ui/PlaylistCard";
@@ -94,6 +94,7 @@ const MusicSkeleton = () => {
 export default function PublicMusic() {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
+  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { updateTheme } = useTheme();
@@ -493,18 +494,15 @@ export default function PublicMusic() {
   useEffect(() => {
     if (!isPageLoading) {
       (window as any).__publicProfileLoaded = true;
+      outletContext?.setIsPageLoaded?.(true);
     }
-  }, [isPageLoading]);
+  }, [isPageLoading, outletContext]);
 
   if (isPageLoading) {
     if ((window as any).__publicProfileLoaded) {
       return <MusicSkeleton />;
     }
-    return (
-      <div className="bg-black min-h-screen">
-        <EarthLoader context="profile" size="default" />
-      </div>
-    );
+    return null;
   }
 
   if (error || !playlist || !guestUrl) {

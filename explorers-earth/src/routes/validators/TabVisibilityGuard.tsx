@@ -48,11 +48,7 @@ const TabVisibilityGuard = memo(({ tabField, defaultVisible = true, children }: 
                 </div>
             );
         }
-        return (
-            <div className="bg-black min-h-screen">
-                <EarthLoader context="general" size="default" />
-            </div>
-        );
+        return null;
     }
 
     const accountData = data?.accounts?.[0];

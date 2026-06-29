@@ -8,7 +8,7 @@ import { useTrackAnalytics } from "../../../services/analyticsService";
 import HeroSkeleton from "../../../components/ui/HeroSkeleton";
 import RecommendationCardSkeleton from "../../../components/ui/RecommendationCardSkeleton";
 import PublicPlaceCard from "./PublicPlaceCard";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useParams, useLocation, useOutletContext } from "react-router-dom";
 
 import { getCurrentDomain } from "../../../utils/getCurrentDomain";
 import PlaceOverview from "./PlaceDetails/PlaceOverview";
@@ -124,6 +124,7 @@ const PublicHome = memo(() => {
   const [hasMoreData, setHasMoreData] = useState<boolean>(true);
   const animationTriggeredRef = useRef<boolean>(false);
   const previousPathnameRef = useRef<string>('');
+  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
 
   // Extract UTM parameters from current URL, or create default ones for QR codes
   const utmParams = useMemo(() => {
@@ -156,8 +157,9 @@ const PublicHome = memo(() => {
   useEffect(() => {
     if (!loading) {
       (window as any).__publicProfileLoaded = true;
+      outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading]);
+  }, [loading, outletContext]);
   const [_isQRVisible, setIsQRVisible] = useState(false);
   const accountData = data?.accounts[0];
 
@@ -1030,46 +1032,48 @@ const PublicHome = memo(() => {
         </div>
 
         {loading ? (
-          <div className="bg-black min-h-screen">
-            {/* ── Hero skeleton — Desktop ── */}
-            <div className="hidden md:block w-full mb-12 mt-4 px-4">
-              <div className="max-w-4xl mx-auto">
-                <HeroSkeleton accentColor="yellow" showThumbnails />
+          (window as any).__publicProfileLoaded ? (
+            <div className="bg-black min-h-screen">
+              {/* ── Hero skeleton — Desktop ── */}
+              <div className="hidden md:block w-full mb-12 mt-4 px-4">
+                <div className="max-w-4xl mx-auto">
+                  <HeroSkeleton accentColor="yellow" showThumbnails />
+                </div>
               </div>
-            </div>
 
-            {/* ── Hero skeleton — Mobile ── */}
-            <div className="md:hidden w-full mb-4 mt-4 px-4">
-              <HeroSkeleton accentColor="yellow" mobile />
-            </div>
+              {/* ── Hero skeleton — Mobile ── */}
+              <div className="md:hidden w-full mb-4 mt-4 px-4">
+                <HeroSkeleton accentColor="yellow" mobile />
+              </div>
 
-            {/* ── City list skeleton ── */}
-            <div className="px-4 max-w-4xl mx-auto w-full">
-              <div className="flex flex-col gap-8">
-                {[0, 1, 2].map((i) => (
-                  <div key={i} className="flex flex-col gap-3">
-                    {/* Row header */}
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-4 h-4 rounded-full bg-white/10 skeleton-shimmer relative overflow-hidden" />
-                        <div className="h-4 w-24 rounded bg-white/10 skeleton-shimmer relative overflow-hidden" />
+              {/* ── City list skeleton ── */}
+              <div className="px-4 max-w-4xl mx-auto w-full">
+                <div className="flex flex-col gap-8">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="flex flex-col gap-3">
+                      {/* Row header */}
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-4 h-4 rounded-full bg-white/10 skeleton-shimmer relative overflow-hidden" />
+                          <div className="h-4 w-24 rounded bg-white/10 skeleton-shimmer relative overflow-hidden" />
+                        </div>
+                        <div className="h-3 w-14 rounded bg-white/8 skeleton-shimmer relative overflow-hidden" />
                       </div>
-                      <div className="h-3 w-14 rounded bg-white/8 skeleton-shimmer relative overflow-hidden" />
+                      {/* Horizontal card strip */}
+                      <div className="flex gap-4 overflow-hidden">
+                        {[0, 1, 2, 3].map((j) => (
+                          <div
+                            key={j}
+                            className="flex-shrink-0 w-[120px] h-[90px] rounded-xl bg-white/5 skeleton-shimmer relative overflow-hidden"
+                          />
+                        ))}
+                      </div>
                     </div>
-                    {/* Horizontal card strip */}
-                    <div className="flex gap-4 overflow-hidden">
-                      {[0, 1, 2, 3].map((j) => (
-                        <div
-                          key={j}
-                          className="flex-shrink-0 w-[120px] h-[90px] rounded-xl bg-white/5 skeleton-shimmer relative overflow-hidden"
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          ) : null
         ) : accountData ? (
           <>            {/* ========================================== */}
             {/*             HERO CAROUSEL SECTION          */}

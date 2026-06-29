@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { deduplicateMovies } from "../../utils/movieHelpers";
 import { Film, Share2 } from "lucide-react";
@@ -37,6 +37,7 @@ const PublicMovies = () => {
   const navigate = useNavigate();
   const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
 
   // Step 1: Resolve account documentId from username
   const { data: userLookup, loading: userLoading } = useQuery(ACCOUNT_BY_USERNAME, {
@@ -58,8 +59,9 @@ const PublicMovies = () => {
   useEffect(() => {
     if (!loading) {
       (window as any).__publicProfileLoaded = true;
+      outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading]);
+  }, [loading, outletContext]);
 
   const lists: MovieList[] = movieData?.movieLists ?? [];
 
@@ -146,30 +148,32 @@ const PublicMovies = () => {
       {/* Content */}
       <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16 pt-20">
         {loading ? (
-          <div className="space-y-10 mt-4">
-            {/* Hero skeleton — Desktop (lg screens) */}
-            <div className="hidden lg:block">
-              <HeroSkeleton accentColor="yellow" showThumbnails />
+          (window as any).__publicProfileLoaded ? (
+            <div className="space-y-10 mt-4">
+              {/* Hero skeleton — Desktop (lg screens) */}
+              <div className="hidden lg:block">
+                <HeroSkeleton accentColor="yellow" showThumbnails />
+              </div>
+              {/* Hero skeleton — Mobile / Tablet */}
+              <div className="lg:hidden">
+                <HeroSkeleton accentColor="yellow" mobile />
+              </div>
+              {/* Carousel row skeletons */}
+              {[1, 2, 3].map((i) => (
+                <section key={i} className="mb-8">
+                  {/* Row header */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-1.5 h-[22px] bg-white/10 rounded-sm flex-shrink-0 skeleton-shimmer relative overflow-hidden" />
+                    <div className="h-5 w-32 bg-white/8 rounded skeleton-shimmer relative overflow-hidden" />
+                  </div>
+                  {/* Poster strip */}
+                  <div className="flex gap-3 overflow-hidden">
+                    <MoviePosterSkeleton count={5} />
+                  </div>
+                </section>
+              ))}
             </div>
-            {/* Hero skeleton — Mobile / Tablet */}
-            <div className="lg:hidden">
-              <HeroSkeleton accentColor="yellow" mobile />
-            </div>
-            {/* Carousel row skeletons */}
-            {[1, 2, 3].map((i) => (
-              <section key={i} className="mb-8">
-                {/* Row header */}
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1.5 h-[22px] bg-white/10 rounded-sm flex-shrink-0 skeleton-shimmer relative overflow-hidden" />
-                  <div className="h-5 w-32 bg-white/8 rounded skeleton-shimmer relative overflow-hidden" />
-                </div>
-                {/* Poster strip */}
-                <div className="flex gap-3 overflow-hidden">
-                  <MoviePosterSkeleton count={5} />
-                </div>
-              </section>
-            ))}
-          </div>
+          ) : null
         ) : (
           <>
             {/* Empty state */}

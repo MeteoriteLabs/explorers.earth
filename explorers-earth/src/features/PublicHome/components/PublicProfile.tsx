@@ -1,6 +1,6 @@
 import { useQuery } from "@apollo/client";
 import { memo, useEffect, useState, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { getPublicProfileDataQuery, getUserMobileNumberQuery } from "../api/query";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../services/analyticsService";
 import WhatsappIcon from "../../../assets/icons/WhatsappIcon";
@@ -83,6 +83,7 @@ const PublicProfile = memo(() => {
   const { username } = useParams();
   const navigate = useNavigate();
   const [showQR, setShowQR] = useState(false);
+  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
 
   // Extract UTM parameters from current URL for QR codes only
   // Only use QR code UTM params if they already exist in the URL (user came from QR scan)
@@ -124,10 +125,11 @@ const PublicProfile = memo(() => {
 
   // Set public profile loaded when query completes successfully
   useEffect(() => {
-    if (!loading && accountData) {
+    if (!loading) {
       (window as any).__publicProfileLoaded = true;
+      outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading, accountData]);
+  }, [loading, outletContext]);
 
   // Fetch mobile number ONLY when visibility is explicitly enabled
   // This prevents the mobile number from ever being in the response unless visibility is set
@@ -271,11 +273,7 @@ const PublicProfile = memo(() => {
     if ((window as any).__publicProfileLoaded) {
       return <ProfileSkeleton />;
     }
-    return (
-      <div className="bg-black min-h-screen">
-        <EarthLoader context="profile" size="default" />
-      </div>
-    );
+    return null;
   }
 
   // Add safety check for accountData
