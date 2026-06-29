@@ -18,6 +18,7 @@ import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 import { motion, AnimatePresence } from "framer-motion";
 import { isManualAuthEnabled } from "../config/featureFlags";
 import { useDashboardTheme } from "../contexts/DashboardThemeContext";
+import { IMAGE_CONFIG } from "../config";
 
 const getCurrentAccountDataQuery = gql`
   query user($documentId: ID!) {
@@ -235,7 +236,7 @@ const Header = memo(() => {
                 className="h-10 w-10 cursor-pointer rounded-full border-2 border-dashboard/800"
                 src={
                   accountData?.[0]?.profile_picture?.url ||
-                  "https://api.dicebear.com/9.x/shapes/svg?seed=Leah"
+                  IMAGE_CONFIG.defaultImages.profile
                 }
                 alt="profile"
               />
@@ -270,7 +271,7 @@ const Header = memo(() => {
                       className="h-10 w-10 rounded-full ring-2 ring-white"
                       src={
                         accountData?.[0]?.profile_picture?.url ||
-                        "https://api.dicebear.com/9.x/shapes/svg?seed=Leah"
+                        IMAGE_CONFIG.defaultImages.profile
                       }
                       alt="profile"
                     />

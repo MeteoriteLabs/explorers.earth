@@ -1770,7 +1770,7 @@ const Profile = memo(() => {
                       src={
                         uploadedImage ||
                         data?.usersPermissionsUser?.accounts?.[0]?.profile_picture?.url ||
-                        "https://api.dicebear.com/9.x/shapes/svg?seed=Leah"
+                        IMAGE_CONFIG.defaultImages.profile
                       }
                       alt={t('dashboard.profile.common.profile')}
                       className="w-full h-full object-cover"

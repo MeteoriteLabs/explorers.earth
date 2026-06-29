@@ -62,6 +62,7 @@ import { toast } from "sonner";
 import { Tooltip } from "react-tooltip";
 import { motion } from "framer-motion";
 import { useDashboardTheme } from "../contexts/DashboardThemeContext";
+import { IMAGE_CONFIG } from "../config";
 
 const accountQuery = gql`
   query account($documentId: ID!) {
@@ -149,7 +150,7 @@ const Sidebar = () => {
 
   // Get account data with fallback for loading state
   const accountData = data?.usersPermissionsUser?.accounts?.[0];
-  const profilePicture = accountData?.profile_picture?.url || "https://api.dicebear.com/9.x/shapes/svg?seed=Leah";
+  const profilePicture = accountData?.profile_picture?.url || IMAGE_CONFIG.defaultImages.profile;
   const accountName = accountData?.Account_Name || (loading ? t("sidebar.loading") : "");
   const email = data?.usersPermissionsUser?.email || "";
 

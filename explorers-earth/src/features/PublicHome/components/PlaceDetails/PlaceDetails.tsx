@@ -442,7 +442,7 @@ const PlaceDetails = memo(() => {
 
                 <div className="relative z-20 flex flex-col items-center pb-6">
                   <img
-                    src={accountData.profile_picture.url}
+                    src={accountData.profile_picture?.url || IMAGE_CONFIG.defaultImages.profile}
                     alt={accountData.Account_Name}
                     className="w-24 h-24 rounded-full border border-white shadow-lg"
                   />
