@@ -100,7 +100,7 @@ const FavoritesSkeleton = () => {
       <HeroSkeleton accentColor="blue" variant="dashboard" showThumbnails />
 
       {/* Recommendations grid skeleton */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-4 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-6">
         <RecommendationCardSkeleton count={5} variant="dashboard" />
         {/* Plus card shimmer */}
         <div className="border-2 border-dashed border-dashboard-border rounded-[14px] h-[150px] skeleton-card" />
@@ -765,7 +765,7 @@ const Favorites = memo(() => {
           handleCitySelect(city);
           setStep(2);
         }}
-        className="glass-card rounded-[14px] p-3 flex flex-col gap-2.5 cursor-pointer border border-white/5 md:border-dashboard-border/30 hover:border-dashboard-accent transition-all duration-300 relative group"
+        className="bg-dashboard-sidebar rounded-[14px] p-3 flex flex-col gap-2.5 cursor-pointer border border-white/5 md:border-dashboard-border/30 hover:border-dashboard-accent transition-all duration-300 relative group"
       >
         <div className="flex justify-between items-center gap-2">
           <span className="text-xs md:text-sm font-bold text-white truncate max-w-[65%]">
@@ -775,7 +775,7 @@ const Favorites = memo(() => {
           <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
             {/* Visibility & Pin Badge */}
             {city.Visibility ? (
-              <span className="text-[10px] font-bold text-[#4ade80] bg-[#4ade80]/15 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+              <span className="text-[10px] font-semibold text-white bg-emerald-500/90 px-1.5 py-0.5 rounded-md flex items-center gap-1 uppercase tracking-wider font-poppins">
                 {city.is_pinned && (
                   <svg className="w-2.5 h-2.5 text-amber-400 fill-amber-400" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                     <path d="M19 12H5l4-4V3h6v5l4 4z" />
@@ -785,7 +785,7 @@ const Favorites = memo(() => {
                 Public
               </span>
             ) : (
-              <span className="text-[10px] font-bold text-[#f87171] bg-[#f87171]/15 px-1.5 py-0.5 rounded-md">
+              <span className="text-[10px] font-semibold text-white bg-slate-500/90 px-1.5 py-0.5 rounded-md uppercase tracking-wider font-poppins">
                 Draft
               </span>
             )}
@@ -1299,7 +1299,7 @@ const Favorites = memo(() => {
 
                       {/* Locations Grid */}
                       <div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-4 mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-4">
                           {filteredCities.map((city: any, idx: number) => renderCityCard(city, idx))}
 
                           {/* Add Location Card */}

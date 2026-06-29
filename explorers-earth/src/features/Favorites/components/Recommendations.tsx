@@ -902,7 +902,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
       </div>
 
       {/* Combined Recommendations Grid - All cards in one section */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-4 mt-2 mb-20 md:mb-0">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-2 mb-20 md:mb-0">
         {loading && !placesData?.recommendedPlaces?.data?.length ? (
           // Skeleton cards while loading — sit directly in the grid
           <RecommendationCardSkeleton count={6} variant="dashboard" />

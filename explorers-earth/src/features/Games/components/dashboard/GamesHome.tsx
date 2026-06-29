@@ -222,7 +222,14 @@ export const GameListCard = ({
     >
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex-1 min-w-0">
-          <h3 className="text-base font-semibold text-dashboard truncate">{list.List_Name}</h3>
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="text-base font-semibold text-dashboard truncate">{list.List_Name}</h3>
+            <span className={`text-[10px] font-semibold text-white px-1.5 py-0.5 rounded-md uppercase tracking-wider font-poppins shrink-0 ${
+              list.Visibility ? "bg-emerald-500/90" : "bg-slate-500/90"
+            }`}>
+              {list.Visibility ? "Public" : "Draft"}
+            </span>
+          </div>
           {list.list_description && (
             <p className="text-xs text-dashboard-muted mt-0.5 line-clamp-2">{list.list_description}</p>
           )}
@@ -236,7 +243,6 @@ export const GameListCard = ({
             onChange={() => onToggleVisibility(list.documentId, list.Visibility)}
             disabled={gameCount === 0}
             loading={togglingId === list.documentId}
-            label={list.Visibility ? "Published" : "Draft"}
           />
         </div>
       </div>
@@ -481,7 +487,7 @@ const GamesHome = () => {
             <HeroSkeleton accentColor="blue" variant="dashboard" mobile />
           </div>
           {/* List card skeletons */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
             {[1, 2, 3].map(i => (
               <div key={i} className="relative bg-dashboard-muted rounded-2xl h-[168px] overflow-hidden border border-white/4 skeleton-card">
                 <div className="absolute inset-0 skeleton-shimmer" />
@@ -560,7 +566,7 @@ const GamesHome = () => {
             )
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
             {lists.map(list => (
               <GameListCard
                 key={list.documentId}
