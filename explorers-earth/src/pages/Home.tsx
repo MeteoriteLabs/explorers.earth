@@ -747,7 +747,7 @@ const Home = memo(() => {
         }
         toast.success("Places list created successfully!", { id: toastId });
         setShowCreatePlacesModal(false);
-        navigate('/recommendations');
+        navigate('/recommendations', { state: { justCreatedList: true } });
       }
     } catch (error) {
       console.error(error);
@@ -1479,9 +1479,9 @@ const Home = memo(() => {
           onCreated={(newId) => {
             refetchMovies();
             if (newId) {
-              navigate(`/recommendations/movies/${newId}`);
+              navigate(`/recommendations/movies/${newId}`, { state: { justCreatedList: true } });
             } else {
-              navigate(`/recommendations/movies`);
+              navigate(`/recommendations/movies`, { state: { justCreatedList: true } });
             }
           }}
           username={user?.username || ""}
@@ -1497,9 +1497,9 @@ const Home = memo(() => {
           onCreated={(newId) => {
             refetchBooks();
             if (newId) {
-              navigate(`/recommendations/books/${newId}`);
+              navigate(`/recommendations/books/${newId}`, { state: { justCreatedList: true } });
             } else {
-              navigate(`/recommendations/books`);
+              navigate(`/recommendations/books`, { state: { justCreatedList: true } });
             }
           }}
           username={user?.username || ""}
@@ -1515,9 +1515,9 @@ const Home = memo(() => {
           onCreated={(newId) => {
             refetchGames();
             if (newId) {
-              navigate(`/recommendations/games/${newId}`);
+              navigate(`/recommendations/games/${newId}`, { state: { justCreatedList: true } });
             } else {
-              navigate(`/recommendations/games`);
+              navigate(`/recommendations/games`, { state: { justCreatedList: true } });
             }
           }}
           username={user?.username || ""}
@@ -1531,7 +1531,7 @@ const Home = memo(() => {
           username={user?.username || ""}
           onCreated={async () => {
             await queryClient.invalidateQueries({ queryKey: ['tunes-playlists', user?.username] });
-            navigate("/music");
+            navigate("/music", { state: { justCreatedList: true } });
           }}
         />
       )}
@@ -1543,9 +1543,9 @@ const Home = memo(() => {
           onCreated={(newId) => {
             refetchGuides();
             if (newId) {
-              navigate(`/guides/${newId}`);
+              navigate(`/guides/${newId}`, { state: { justCreatedGuide: true } });
             } else {
-              navigate(`/guides`);
+              navigate(`/guides`, { state: { justCreatedGuide: true } });
             }
           }}
         />

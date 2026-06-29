@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import { motion } from "framer-motion";
 import {
@@ -21,6 +21,7 @@ import BookDetailModal from "../public/BookDetailModal";
 import Switch from "../../../../components/ui/Switch";
 import SwitchButton from "../../../../components/ui/SwitchButton";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
+import { CategoryVisibilityModal } from "../../../../components/CategoryVisibilityModal";
 
 // Query to get exact account documentId from the usersPermissionsUser relation
 const MY_ACCOUNT = gql`
@@ -311,6 +312,7 @@ export const BookListCard = ({
 // ─────────────────────────────────────────────────────────────
 const BooksHome = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuthStore();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -318,13 +320,38 @@ const BooksHome = () => {
   const [selectedBook, setSelectedBook] = useState<RecommendedBook | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [visibilityPrompt, setVisibilityPrompt] = useState<{
+    isOpen: boolean;
+    categoryName: string;
+    visibilityField: string;
+    defaultValue: boolean;
+  } | null>(null);
 
   const { data: myAccountData } = useQuery(MY_ACCOUNT, {
     variables: { documentId: user?.documentId },
     skip: !user?.documentId,
   });
+  const accountDocumentId = myAccountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
 
-  const accountDocumentId: string = myAccountData?.usersPermissionsUser?.accounts?.[0]?.documentId || "";
+  useEffect(() => {
+    if (location.state?.justCreatedList && myAccountData) {
+      const acc = myAccountData?.usersPermissionsUser?.accounts?.[0];
+      const isPublic = acc?.public_books === "Yes";
+      if (!isPublic) {
+        setVisibilityPrompt({
+          isOpen: true,
+          categoryName: "Books",
+          visibilityField: "public_books",
+          defaultValue: false,
+        });
+      }
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, myAccountData]);
+
+
+
+
 
   const { data, loading, refetch } = useQuery(BOOK_LISTS_BY_ACCOUNT, {
     variables: { accountDocumentId },
@@ -613,7 +640,19 @@ const BooksHome = () => {
           onClose={() => setShowCreateModal(false)}
           accountDocumentId={accountDocumentId}
           currentListCount={lists.length}
-          onCreated={() => refetch()}
+          onCreated={() => {
+            refetch();
+            const acc = myAccountData?.usersPermissionsUser?.accounts?.[0];
+            const isPublic = acc?.public_books === "Yes";
+            if (!isPublic) {
+              setVisibilityPrompt({
+                isOpen: true,
+                categoryName: "Books",
+                visibilityField: "public_books",
+                defaultValue: false,
+              });
+            }
+          }}
           username={user?.username || ""}
         />
       )}
@@ -632,6 +671,18 @@ const BooksHome = () => {
           open={!!selectedBook}
           book={selectedBook}
           onClose={() => setSelectedBook(null)}
+        />
+      )}
+      {visibilityPrompt && accountDocumentId && (
+        <CategoryVisibilityModal
+          isOpen={visibilityPrompt.isOpen}
+          onClose={() => setVisibilityPrompt(null)}
+          categoryName={visibilityPrompt.categoryName}
+          visibilityField={visibilityPrompt.visibilityField}
+          accountDocumentId={accountDocumentId}
+          onSuccess={() => {
+            refetch();
+          }}
         />
       )}
     </div>

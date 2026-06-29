@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
+import { CategoryVisibilityModal } from "../components/CategoryVisibilityModal";
 import { useTunesDashboard } from "../hooks/useTunesDashboard";
 import { gql, useQuery, useMutation } from "@apollo/client";
 import { toast } from "sonner";
@@ -121,6 +123,31 @@ const MusicPage = () => {
     skip: !authUser?.documentId,
     fetchPolicy: 'cache-and-network'
   });
+
+  const [visibilityPrompt, setVisibilityPrompt] = useState<{
+    isOpen: boolean;
+    categoryName: string;
+    visibilityField: string;
+    defaultValue: boolean;
+  } | null>(null);
+
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state?.justCreatedList && userData) {
+      const acc = userData?.usersPermissionsUser?.accounts?.[0];
+      const isPublic = acc?.public_music === "Yes";
+      if (!isPublic) {
+        setVisibilityPrompt({
+          isOpen: true,
+          categoryName: "Music",
+          visibilityField: "public_music",
+          defaultValue: false,
+        });
+      }
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, userData]);
 
   useEffect(() => {
     if (!accountLoading) {
@@ -396,6 +423,18 @@ const MusicPage = () => {
                 data={tunesDashboard} 
                 isPublic={userData?.usersPermissionsUser?.accounts?.[0]?.public_music === "Yes"}
                 onVisibilityToggle={handleVisibilityToggle}
+                onPlaylistCreated={() => {
+                  const acc = userData?.usersPermissionsUser?.accounts?.[0];
+                  const isPublic = acc?.public_music === "Yes";
+                  if (!isPublic) {
+                    setVisibilityPrompt({
+                      isOpen: true,
+                      categoryName: "Music",
+                      visibilityField: "public_music",
+                      defaultValue: false,
+                    });
+                  }
+                }}
               />
             ) : (
               /* Two-column connect view */
@@ -540,6 +579,18 @@ const MusicPage = () => {
           </Modal>
         )}
       </div>
+      {visibilityPrompt && accountDocumentId && (
+        <CategoryVisibilityModal
+          isOpen={visibilityPrompt.isOpen}
+          onClose={() => setVisibilityPrompt(null)}
+          categoryName={visibilityPrompt.categoryName}
+          visibilityField={visibilityPrompt.visibilityField}
+          accountDocumentId={accountDocumentId}
+          onSuccess={() => {
+            refetch();
+          }}
+        />
+      )}
     </>
   );
 };

@@ -28,6 +28,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import CircularPlacesModal from "../components/CircularPlacesModal";
 import WorldIcon from "../assets/icons/WorldIcon";
 import { useNavigate, useLocation } from "react-router-dom";
+import { CategoryVisibilityModal } from "../components/CategoryVisibilityModal";
 import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
 import { useRecommendationsWalkthrough } from "../hooks/useRecommendationsWalkthrough";
@@ -112,6 +113,16 @@ const FavoritesSkeleton = () => {
 const Favorites = memo(() => {
   const { t } = useTranslation();
   const { selectedCity, setSelectedCity } = useCityStore();
+  const location = useLocation();
+  // fetching the user details from the global state
+  const { user } = useAuthStore();
+  // account data by Id
+  const { data: accountById } = useQuery(accountDataQuery, {
+    variables: {
+      documentId: user?.documentId,
+    },
+    skip: !user?.documentId,
+  });
 
   const [showAllPlaces, setShowAllPlaces] = useState<boolean>(false);
   // local state for handling modal
@@ -126,6 +137,29 @@ const Favorites = memo(() => {
   const [activeDropdownListId, setActiveDropdownListId] = useState<string | null>(null);
   const [activePinnedIndex, setActivePinnedIndex] = useState<number>(0);
   const [isManageModalOpen, setIsManageModalOpen] = useState<boolean>(false);
+  const [visibilityPrompt, setVisibilityPrompt] = useState<{
+    isOpen: boolean;
+    categoryName: string;
+    visibilityField: string;
+    defaultValue: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    if (location.state?.justCreatedList && accountById) {
+      const acc = accountById?.usersPermissionsUser?.accounts?.[0];
+      const isPublic = acc?.public_recommendations !== "No"; // default is true
+      if (!isPublic) {
+        setVisibilityPrompt({
+          isOpen: true,
+          categoryName: "Places",
+          visibilityField: "public_recommendations",
+          defaultValue: true,
+        });
+      }
+      // Clear location state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, accountById]);
 
   useEffect(() => {
     const handleWindowClick = () => {
@@ -136,17 +170,8 @@ const Favorites = memo(() => {
   }, []);
 
   const [mobileDropdownOpen, setMobileDropdownOpen] = useState<boolean>(false);
-  // fetching the user details from the global state
-  const { user } = useAuthStore();
   // Check if profile setup is complete
   const { isProfileComplete, isRecommendationsComplete, setSetupStatus } = useSetupStore();
-  // account data by Id
-  const { data: accountById } = useQuery(accountDataQuery, {
-    variables: {
-      documentId: user?.documentId,
-    },
-    skip: !user?.documentId,
-  });
 
   const cityRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   // local state for handling edit state
@@ -294,7 +319,6 @@ const Favorites = memo(() => {
 
 
   // Track route changes for better modal detection
-  const location = useLocation();
 
   // Track if place modal/page is open (when navigating to /new route)
   const [isPlaceModalOpen, setIsPlaceModalOpen] = useState(false);
@@ -436,6 +460,18 @@ const Favorites = memo(() => {
     refetchCities,
     setIsLoading,
     cities,
+    onCreated: () => {
+      const acc = accountById?.usersPermissionsUser?.accounts?.[0];
+      const isPublic = acc?.public_recommendations !== "No"; // default is true
+      if (!isPublic) {
+        setVisibilityPrompt({
+          isOpen: true,
+          categoryName: "Places",
+          visibilityField: "public_recommendations",
+          defaultValue: true,
+        });
+      }
+    }
   });
 
   useEffect(() => {
@@ -1820,6 +1856,18 @@ const Favorites = memo(() => {
             },
           }}
         />
+        {visibilityPrompt && accountById?.usersPermissionsUser?.accounts?.[0]?.documentId && (
+          <CategoryVisibilityModal
+            isOpen={visibilityPrompt.isOpen}
+            onClose={() => setVisibilityPrompt(null)}
+            categoryName={visibilityPrompt.categoryName}
+            visibilityField={visibilityPrompt.visibilityField}
+            accountDocumentId={accountById.usersPermissionsUser.accounts[0].documentId}
+            onSuccess={() => {
+              refetchCities();
+            }}
+          />
+        )}
       </div>
     </>
   );

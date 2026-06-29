@@ -35,6 +35,7 @@ interface MusicDashboardProps {
   data: TunesDashboardData;
   isPublic?: boolean;
   onVisibilityToggle?: () => void;
+  onPlaylistCreated?: () => void;
 }
 
 type MainTab = 'queue' | 'guest-controls' | 'recently-played' | 'playlists';
@@ -85,7 +86,7 @@ function ConfirmModal({
   );
 }
 
-export default function MusicDashboard({ data, isPublic, onVisibilityToggle }: MusicDashboardProps) {
+export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onPlaylistCreated }: MusicDashboardProps) {
   const { localUser, guestUrl, playlists, playlist, isLoading, error } = data;
   const queryClient = useQueryClient();
   const hasAutoStarted = useRef(false);
@@ -320,6 +321,7 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle }: M
       setNewPlaylistDescription('');
       // Switch to the new playlist tab
       if (data?.id) setActivePlaylistTab(data.id.toString());
+      if (onPlaylistCreated) onPlaylistCreated();
     },
     onError: () => toast.error('Failed to create playlist'),
   });

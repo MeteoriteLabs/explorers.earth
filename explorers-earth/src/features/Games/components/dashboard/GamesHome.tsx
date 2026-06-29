@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, gql } from "@apollo/client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Gamepad2, Star, ChevronRight, Loader2, X, ChevronDown } from "lucide-react";
 import { useFormik } from "formik";
@@ -21,6 +21,7 @@ import Switch from "../../../../components/ui/Switch";
 import SwitchButton from "../../../../components/ui/SwitchButton";
 import { AddIcon } from "../../../../assets/icons/AddIcon";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
+import { CategoryVisibilityModal } from "../../../../components/CategoryVisibilityModal";
 
 const MY_ACCOUNT = gql`
   query MyAccountForGames($documentId: ID!) {
@@ -298,6 +299,7 @@ export const GameListCard = ({
 
 const GamesHome = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuthStore();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -305,12 +307,38 @@ const GamesHome = () => {
   const [selectedGame, setSelectedGame] = useState<RecommendedGame | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [visibilityPrompt, setVisibilityPrompt] = useState<{
+    isOpen: boolean;
+    categoryName: string;
+    visibilityField: string;
+    defaultValue: boolean;
+  } | null>(null);
 
   const { data: accountData } = useQuery(MY_ACCOUNT, {
     variables: { documentId: user?.documentId },
     skip: !user?.documentId,
   });
   const accountDocumentId = accountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
+
+  useEffect(() => {
+    if (location.state?.justCreatedList && accountData) {
+      const acc = accountData?.usersPermissionsUser?.accounts?.[0];
+      const isPublic = acc?.public_games === "Yes";
+      const hasNoValue = acc?.public_games !== "No" && acc?.public_games !== "Yes";
+      const currentStatus = isPublic || hasNoValue;
+      if (!currentStatus) {
+        setVisibilityPrompt({
+          isOpen: true,
+          categoryName: "Games",
+          visibilityField: "public_games",
+          defaultValue: true,
+        });
+      }
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, accountData]);
+
+
 
   const { data, loading, refetch } = useQuery(GAME_LISTS_BY_ACCOUNT, {
     variables: { accountDocumentId },
@@ -596,7 +624,21 @@ const GamesHome = () => {
           onClose={() => setShowCreateModal(false)}
           accountDocumentId={accountDocumentId}
           currentListCount={lists.length}
-          onCreated={() => refetch()}
+          onCreated={() => {
+            refetch();
+            const acc = accountData?.usersPermissionsUser?.accounts?.[0];
+            const isPublic = acc?.public_games === "Yes";
+            const hasNoValue = acc?.public_games !== "No" && acc?.public_games !== "Yes";
+            const currentStatus = isPublic || hasNoValue;
+            if (!currentStatus) {
+              setVisibilityPrompt({
+                isOpen: true,
+                categoryName: "Games",
+                visibilityField: "public_games",
+                defaultValue: true,
+              });
+            }
+          }}
           username={user?.username || ""}
         />
       )}
@@ -615,6 +657,18 @@ const GamesHome = () => {
           open={!!selectedGame}
           game={selectedGame}
           onClose={() => setSelectedGame(null)}
+        />
+      )}
+      {visibilityPrompt && accountDocumentId && (
+        <CategoryVisibilityModal
+          isOpen={visibilityPrompt.isOpen}
+          onClose={() => setVisibilityPrompt(null)}
+          categoryName={visibilityPrompt.categoryName}
+          visibilityField={visibilityPrompt.visibilityField}
+          accountDocumentId={accountDocumentId}
+          onSuccess={() => {
+            refetch();
+          }}
         />
       )}
     </div>
