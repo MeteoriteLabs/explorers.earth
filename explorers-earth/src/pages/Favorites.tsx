@@ -37,6 +37,7 @@ import useSetupStore from "../store/useSetupStore";
 import { calculateIsRecommendationsComplete } from "../utils/setupStatusCalculations";
 
 
+import { ListVisibilityModal } from "../components/ListVisibilityModal";
 export interface Recommendation {
   title: string;
   image: string;
@@ -144,6 +145,12 @@ const Favorites = memo(() => {
     defaultValue: boolean;
   } | null>(null);
 
+  const [listVisibilityPrompt, setListVisibilityPrompt] = useState<{
+    isOpen: boolean;
+    listName: string;
+    listDocumentId: string;
+  } | null>(null);
+
   useEffect(() => {
     if (location.state?.justCreatedList && accountById) {
       const acc = accountById?.usersPermissionsUser?.accounts?.[0];
@@ -208,6 +215,21 @@ const Favorites = memo(() => {
       (window as any).__dashboardLoaded = true;
     }
   }, [loading, accountById]);
+
+  useEffect(() => {
+    const listId = location.state?.justAddedRecommendationToListId;
+    if (listId && cities?.recommendationLists) {
+      const targetList = cities.recommendationLists.find((l: any) => l.documentId === listId);
+      if (targetList && !targetList.Visibility) {
+        setListVisibilityPrompt({
+          isOpen: true,
+          listName: targetList.List_Name,
+          listDocumentId: listId,
+        });
+      }
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, cities]);
 
   // // local state for handling current list displayed on the carousel
   // const [selectedCity, setSelectedCity] = useState<selectedCity>(
@@ -1865,6 +1887,29 @@ const Favorites = memo(() => {
             accountDocumentId={accountById.usersPermissionsUser.accounts[0].documentId}
             onSuccess={() => {
               refetchCities();
+            }}
+          />
+        )}
+        {listVisibilityPrompt && (
+          <ListVisibilityModal
+            isOpen={listVisibilityPrompt.isOpen}
+            onClose={() => setListVisibilityPrompt(null)}
+            listName={listVisibilityPrompt.listName}
+            categoryName="Places"
+            onConfirm={async () => {
+              try {
+                await updateRecommendedList({
+                  variables: {
+                    documentId: listVisibilityPrompt.listDocumentId,
+                    data: { Visibility: true },
+                  },
+                });
+                await refetchCities();
+                toast.success(`"${listVisibilityPrompt.listName}" list published!`);
+              } catch (err) {
+                console.error(err);
+                toast.error("Failed to publish list.");
+              }
             }}
           />
         )}

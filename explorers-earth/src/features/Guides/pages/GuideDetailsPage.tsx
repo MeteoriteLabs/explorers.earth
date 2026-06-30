@@ -39,6 +39,7 @@ import GooglePlaceModal from "../../PublicHome/components/PublicGuideViews/Googl
 import ConfirmationModal from "../../../components/ui/ConfirmationModal";
 import useAuthStore from "../../../store/store";
 import { CategoryVisibilityModal } from "../../../components/CategoryVisibilityModal";
+import { ListVisibilityModal } from "../../../components/ListVisibilityModal";
 
 const GuideDetailsPage = () => {
   const { guideId } = useParams<{ guideId: string }>();
@@ -71,6 +72,11 @@ const GuideDetailsPage = () => {
     categoryName: string;
     visibilityField: string;
     defaultValue: boolean;
+  } | null>(null);
+
+  const [listVisibilityPrompt, setListVisibilityPrompt] = useState<{
+    isOpen: boolean;
+    listName: string;
   } | null>(null);
 
   const { data: accountData, refetch: refetchAccount } = useQuery(GET_USER_ACCOUNT_QUERY, {
@@ -283,6 +289,16 @@ const GuideDetailsPage = () => {
   }
 
   const guide = data.guide;
+
+  useEffect(() => {
+    if (location.state?.justAddedRecommendation && guide && !guide.Visibility) {
+      setListVisibilityPrompt({
+        isOpen: true,
+        listName: guide.Title,
+      });
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, guide]);
   const allSections = guide.guide_sections || [];
 
   // Remove duplicates based on documentId (in case of cache issues)
@@ -708,6 +724,28 @@ const GuideDetailsPage = () => {
           accountDocumentId={accountDocumentId}
           onSuccess={() => {
             refetchAccount();
+          }}
+        />
+      )}
+      {listVisibilityPrompt && (
+        <ListVisibilityModal
+          isOpen={listVisibilityPrompt.isOpen}
+          onClose={() => setListVisibilityPrompt(null)}
+          listName={listVisibilityPrompt.listName}
+          categoryName="Guides"
+          onConfirm={async () => {
+            try {
+              await updateGuide({
+                variables: {
+                  documentId: guideId,
+                  data: { Visibility: true },
+                },
+              });
+              refetch();
+              toast.success(`"${listVisibilityPrompt.listName}" guide published!`);
+            } catch (err: any) {
+              toast.error(`Failed to publish: ${err.message}`);
+            }
           }}
         />
       )}

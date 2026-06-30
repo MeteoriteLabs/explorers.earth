@@ -2,6 +2,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { ListVisibilityModal } from './ListVisibilityModal';
 import {
   Music2,
   Loader2,
@@ -131,6 +132,11 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
   const [isReplacingQueue, setIsReplacingQueue] = useState(false);
   // Dropdown menu open state (per playlist)
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [listVisibilityPrompt, setListVisibilityPrompt] = useState<{
+    isOpen: boolean;
+    playlistId: number;
+    playlistName: string;
+  } | null>(null);
 
   // Sync settings when localUser loads
   useEffect(() => {
@@ -378,9 +384,18 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
         })),
         username: localUser?.username,
       }),
-    onSuccess: () => {
+    onSuccess: (_data, { playlistId }) => {
       toast.success('Songs added to playlist');
       queryClient.invalidateQueries({ queryKey: ['tunes-playlists', localUser?.username] });
+      
+      const targetPlaylist = playlists?.find(p => p.id === playlistId);
+      if (targetPlaylist && !targetPlaylist.isVisibleToGuests) {
+        setListVisibilityPrompt({
+          isOpen: true,
+          playlistId,
+          playlistName: targetPlaylist.name,
+        });
+      }
     },
     onError: () => toast.error('Failed to add songs to playlist'),
   });
@@ -1134,6 +1149,26 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
           if (!isReplacingQueue) setPlaylistToReplace(null);
         }}
       />
+      {listVisibilityPrompt && (
+        <ListVisibilityModal
+          isOpen={listVisibilityPrompt.isOpen}
+          onClose={() => setListVisibilityPrompt(null)}
+          listName={listVisibilityPrompt.playlistName}
+          categoryName="Music"
+          onConfirm={async () => {
+            try {
+              await updatePlaylistVisibilityMutation.mutateAsync({
+                playlistId: listVisibilityPrompt.playlistId,
+                isVisible: true,
+              });
+              toast.success(`"${listVisibilityPrompt.playlistName}" published!`);
+            } catch {
+              toast.error("Failed to update visibility.");
+            }
+          }}
+          loading={updatePlaylistVisibilityMutation.isPending}
+        />
+      )}
     </div>
   );
 }

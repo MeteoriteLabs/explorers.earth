@@ -326,7 +326,7 @@ const AddBookPage = () => {
         });
         toast.success("Book added to list!");
       }
-      navigate(`/recommendations/books/${listId}`);
+      navigate(`/recommendations/books/${listId}`, { state: { justAddedRecommendation: true } });
     } catch (err) {
       console.error(err);
       toast.error("Failed to save. Please try again.");

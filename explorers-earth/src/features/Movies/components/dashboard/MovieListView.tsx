@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import { AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, Star, MoreHorizontal, Trash2, Edit,
+  ArrowLeft, Star, MoreVertical, MoreHorizontal, Trash2, Edit,
   Film, Copy, Loader2, Check, Clock, Tv, Share2, Download
 } from "lucide-react";
 import { AddIcon } from "../../../../assets/icons/AddIcon";
@@ -30,6 +30,7 @@ import {
 import TopPicksManager from "./TopPicksManager";
 import MovieDetailModal from "../public/MovieDetailModal";
 import Switch from "../../../../components/ui/Switch";
+import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
 
 const VITE_BASE_URL = import.meta.env.VITE_BASE_URL || "https://explorers.earth";
 
@@ -157,6 +158,7 @@ const MovieRow = ({
 const MovieListView = () => {
   const { listId } = useParams<{ listId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<"recommendations" | "manage">("recommendations");
   const [showTopPicks, setShowTopPicks] = useState(false);
   const [pinningId, setPinningId] = useState<string | null>(null);
@@ -165,6 +167,11 @@ const MovieListView = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isEditingList, setIsEditingList] = useState(false);
+
+  const [listVisibilityPrompt, setListVisibilityPrompt] = useState<{
+    isOpen: boolean;
+    listName: string;
+  } | null>(null);
 
   const { data, loading, refetch } = useQuery(MOVIES_BY_LIST, {
     variables: moviesByListVars(listId ?? ""),
@@ -178,6 +185,16 @@ const MovieListView = () => {
   const [deleteList, { loading: deletingList }] = useMutation(DELETE_MOVIE_LIST);
 
   const list = data?.movieLists?.[0];
+
+  useEffect(() => {
+    if (location.state?.justAddedRecommendation && list && !list.Visibility) {
+      setListVisibilityPrompt({
+        isOpen: true,
+        listName: list.List_Name,
+      });
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, list]);
   const movies = deduplicateMovies(list?.recommended_movies as RecommendedMovie[]);
   const pinnedCount = movies.filter(m => m.is_pinned).length;
 
@@ -547,6 +564,27 @@ const MovieListView = () => {
         open={modalOpen}
         onClose={() => { setModalOpen(false); setSelectedMovie(null); }}
       />
+      {list && listVisibilityPrompt && (
+        <ListVisibilityModal
+          isOpen={listVisibilityPrompt.isOpen}
+          onClose={() => setListVisibilityPrompt(null)}
+          listName={listVisibilityPrompt.listName}
+          categoryName="Movies"
+          onConfirm={async () => {
+            try {
+              await updateList({
+                variables: { documentId: list.documentId, Visibility: true },
+                refetchQueries: [MOVIES_BY_LIST],
+              });
+              refetch();
+              toast.success(`"${list.List_Name}" published!`);
+            } catch {
+              toast.error("Failed to update visibility.");
+            }
+          }}
+          loading={isUpdating}
+        />
+      )}
     </div>
   );
 };

@@ -364,7 +364,7 @@ const AddGamePage = () => {
         });
         toast.success("Game added to list!");
       }
-      navigate(`/recommendations/games/${listId}`);
+      navigate(`/recommendations/games/${listId}`, { state: { justAddedRecommendation: true } });
     } catch {
       toast.error("Failed to save game");
     } finally {

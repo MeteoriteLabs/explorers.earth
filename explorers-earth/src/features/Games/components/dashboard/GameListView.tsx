@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -21,6 +21,7 @@ import type { RecommendedGame, GameList } from "../../types";
 import TopGamesManager from "./TopGamesManager";
 import Switch from "../../../../components/ui/Switch";
 import GameDetailModal from "../public/GameDetailModal";
+import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
 
 const VITE_BASE_URL = import.meta.env.VITE_BASE_URL || window.location.origin;
 
@@ -293,8 +294,14 @@ const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () => void 
 const GameListView = () => {
   const { listId } = useParams<{ listId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<"recommendations" | "manage">("recommendations");
   const [deleteTarget, setDeleteTarget] = useState<RecommendedGame | null>(null);
+
+  const [listVisibilityPrompt, setListVisibilityPrompt] = useState<{
+    isOpen: boolean;
+    listName: string;
+  } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [pinningId, setPinningId] = useState<string | null>(null);
   const [showTopGamesManager, setShowTopGamesManager] = useState(false);
@@ -331,6 +338,16 @@ const GameListView = () => {
       account: rawList.account ?? { documentId: (user as any)?.accountDocumentId ?? "", username: (user as any)?.username ?? "" },
     }
     : null;
+
+  useEffect(() => {
+    if (location.state?.justAddedRecommendation && list && !list.Visibility) {
+      setListVisibilityPrompt({
+        isOpen: true,
+        listName: list.List_Name,
+      });
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, list]);
 
   const handlePinToggle = async (game: RecommendedGame) => {
     const willPin = !game.is_pinned;
@@ -532,6 +549,26 @@ const GameListView = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      {list && listVisibilityPrompt && (
+        <ListVisibilityModal
+          isOpen={listVisibilityPrompt.isOpen}
+          onClose={() => setListVisibilityPrompt(null)}
+          listName={listVisibilityPrompt.listName}
+          categoryName="Games"
+          onConfirm={async () => {
+            try {
+              await updateGameList({
+                variables: { documentId: list.documentId, Visibility: true },
+              });
+              refetch();
+              toast.success(`"${list.List_Name}" published!`);
+            } catch {
+              toast.error("Failed to update visibility.");
+            }
+          }}
+          loading={isUpdating}
+        />
+      )}
     </div>
   );
 };
