@@ -957,20 +957,22 @@ const PublicHome = memo(() => {
 
   return (
     <>
-      <SEO
-        key={`${selectedCity?.documentId || "default"}-home`}
-        title={pageTitle}
-        description={metaDescription}
-        keywords={dynamicKeywords}
-        canonical={currentUrl}
-        image={profileImage}
-        url={currentUrl}
-        type="website"
-        author={profileName}
-        siteName="explorers"
-        enableGEO={true}
-        geoData={geoData}
-      />
+      {!loading && accountData && (
+        <SEO
+          key={`${selectedCity?.documentId || "default"}-home`}
+          title={pageTitle}
+          description={metaDescription}
+          keywords={dynamicKeywords}
+          canonical={currentUrl}
+          image={profileImage}
+          url={currentUrl}
+          type="website"
+          author={profileName}
+          siteName="explorers"
+          enableGEO={true}
+          geoData={geoData}
+        />
+      )}
 
       <div className="relative bg-black min-h-screen pb-14 pt-14 flex flex-col overflow-x-hidden">
         {/* Fixed Header */}

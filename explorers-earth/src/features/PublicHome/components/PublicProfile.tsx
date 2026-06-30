@@ -469,19 +469,21 @@ const PublicProfile = memo(() => {
 
   return (
     <>
-      <SEO
-        title={pageTitle}
-        description={metaDescription}
-        keywords={enhancedKeywords}
-        canonical={createCanonicalUrl(`/${username}`)}
-        image={profileImage}
-        url={createCanonicalUrl(`/${username}`)}
-        type="profile"
-        author={profileName}
-        siteName="explorers"
-        enableGEO={true}
-        geoData={geoData}
-      />
+      {!loading && accountData && (
+        <SEO
+          title={pageTitle}
+          description={metaDescription}
+          keywords={enhancedKeywords}
+          canonical={createCanonicalUrl(`/${username}`)}
+          image={profileImage}
+          url={createCanonicalUrl(`/${username}`)}
+          type="profile"
+          author={profileName}
+          siteName="explorers"
+          enableGEO={true}
+          geoData={geoData}
+        />
+      )}
 
       <div className="h-full bg-black min-h-screen overflow-auto preview-scroll pb-20">
         {/* Fixed Header */}

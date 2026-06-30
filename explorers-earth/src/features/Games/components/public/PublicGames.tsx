@@ -12,6 +12,8 @@ import TopGamesMobileHero from "./TopGamesMobileHero";
 import GameDetailModal from "./GameDetailModal";
 import GenreBrowse from "./GenreBrowse";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
+import SEO from "../../../../components/SEO";
+import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsername($username: String!) {
@@ -100,8 +102,39 @@ const PublicGames = () => {
     analytics.trackClick('share-button', { context: 'games-header' });
   };
 
+  // Dynamic SEO details
+  const profileName = creatorName || username || "User";
+  const gameCount = allGames.length;
+  const listCount = lists.length;
+  
+  const pageTitle = `${profileName} | Favorite Games | explorers`;
+  const metaDescription = gameCount > 0
+    ? `Explore curated video game recommendations and lists shared by ${profileName} on explorers. Browse ${listCount} gaming list${listCount !== 1 ? 's' : ''} containing ${gameCount} game${gameCount !== 1 ? 's' : ''}.`
+    : `Explore game recommendations shared by ${profileName} on explorers.`;
+
+  const seoKeywords = [
+    `${profileName} games`,
+    `${username} games`,
+    "explorers games",
+    "game recommendations",
+    "favorite games",
+    ...lists.map(l => l.List_Name)
+  ];
+
   return (
-    <div className="min-h-screen bg-[#0d1117] text-white">
+    <>
+      {!loading && userLookup && (
+        <SEO
+          title={pageTitle}
+          description={metaDescription}
+          keywords={seoKeywords}
+          canonical={createCanonicalUrl(`/${username}/games`)}
+          type="website"
+          author={profileName}
+          siteName="explorers"
+        />
+      )}
+      <div className="min-h-screen bg-[#0d1117] text-white">
       {/* Fixed Header */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
         <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
@@ -221,7 +254,8 @@ const PublicGames = () => {
         game={modalState.game}
         onClose={() => setModalState({ open: false, game: null })}
       />
-    </div>
+      </div>
+    </>
   );
 };
 

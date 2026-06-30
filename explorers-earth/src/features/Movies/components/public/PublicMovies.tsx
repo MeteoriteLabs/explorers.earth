@@ -15,6 +15,8 @@ import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import MoviePosterSkeleton from "./MoviePosterSkeleton";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
 import { gql } from "@apollo/client";
+import SEO from "../../../../components/SEO";
+import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsername($username: String!) {
@@ -104,8 +106,41 @@ const PublicMovies = () => {
     analytics.trackClick('share-button', { context: 'movies-header' });
   };
 
+  // Dynamic SEO details
+  const profileName = creatorName || username || "User";
+  const movieCount = allMovies.length;
+  const listCount = lists.length;
+  
+  const pageTitle = `${profileName} | Favorite Movies & Shows | explorers`;
+  const metaDescription = movieCount > 0
+    ? `Browse curated movie lists and recommended shows shared by ${profileName} on explorers. Explore ${listCount} movie list${listCount !== 1 ? 's' : ''} containing ${movieCount} favorite film${movieCount !== 1 ? 's' : ''}.`
+    : `Explore movie and show recommendations shared by ${profileName} on explorers.`;
+
+  const seoKeywords = [
+    `${profileName} movies`,
+    `${username} movies`,
+    "explorers movies",
+    "favorite movies list",
+    "movie recommendations",
+    "tv show recommendations",
+    "curated movie lists",
+    ...lists.map(l => l.List_Name)
+  ];
+
   return (
-    <div className="min-h-screen bg-[#0d1117] text-white">
+    <>
+      {!loading && userLookup && (
+        <SEO
+          title={pageTitle}
+          description={metaDescription}
+          keywords={seoKeywords}
+          canonical={createCanonicalUrl(`/${username}/movies`)}
+          type="website"
+          author={profileName}
+          siteName="explorers"
+        />
+      )}
+      <div className="min-h-screen bg-[#0d1117] text-white">
       {/* Fixed Header */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
         <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
@@ -235,7 +270,8 @@ const PublicMovies = () => {
         open={modalOpen}
         onClose={() => { setModalOpen(false); setSelectedMovie(null); }}
       />
-    </div>
+      </div>
+    </>
   );
 };
 

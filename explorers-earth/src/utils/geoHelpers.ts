@@ -4,6 +4,13 @@ import { GEOData } from '../types/geoTypes';
 import { getBaseUrl } from './getCurrentDomain';
 
 /**
+ * Utility to strip HTML tags from a string
+ */
+export const stripHtmlTags = (html: string): string => {
+  return html ? html.replace(/<[^>]*>/g, "").trim() : "";
+};
+
+/**
  * Generate GEO data for user profile pages
  */
 export const createProfileGEOData = (profileData: {
@@ -23,11 +30,11 @@ export const createProfileGEOData = (profileData: {
       primaryEntity: accountName,
       secondaryEntities: [location, ...(topCategories || [])].filter(Boolean) as string[],
       intent: 'Discover local expert and their recommendations',
-      summary: `${accountName} is a local guide and expert${location ? ` in ${location}` : ''} who shares curated recommendations through explorers.`
+      summary: `${accountName} is a local guide and expert${location ? ` in ${location}` : ""} who shares curated recommendations through explorers.`
     },
 
     aiDescription: {
-      conversational: `${accountName} is a trusted local expert${location ? ` based in ${location}` : ''} who curates and shares favorite places through explorers. ${bio || ''} ${totalPlaces ? `They have recommended ${totalPlaces} places` : 'They share local insights'}${topCategories?.length ? ` specializing in ${topCategories.slice(0, 3).join(', ')}` : ''}.`,
+      conversational: `${accountName} is a trusted local expert${location ? ` based in ${location}` : ""} who curates and shares favorite places through explorers. ${stripHtmlTags(bio || "")} ${totalPlaces ? `They have recommended ${totalPlaces} places` : "They share local insights"}${topCategories?.length ? ` specializing in ${topCategories.slice(0, 3).join(", ")}` : ""}.`,
       qaFormat: [
         {
           question: `Who is ${accountName}?`,
@@ -39,7 +46,7 @@ export const createProfileGEOData = (profileData: {
         },
         {
           question: `How can I find ${accountName}'s recommendations?`,
-          answer: `You can explore ${accountName}'s curated recommendations through their explorers profile at ${getBaseUrl().replace(/https?:\/\//, '')}/${username}`
+          answer: `You can explore ${accountName}\'s curated recommendations through their explorers profile at ${getBaseUrl().replace(/https?:\/\//, "")}/${username}`
         }
       ],
       keyPoints: [
@@ -65,11 +72,11 @@ export const createProfileGEOData = (profileData: {
 
     naturalLanguage: {
       commonQueries: [
-        `Who is a local expert in ${location || 'this area'}?`,
+        `Who is a local expert in ${location || "this area"}?`,
         `Find local recommendations from ${accountName}`,
         `What does ${accountName} recommend?`,
         `${accountName} favorite places`,
-        `Local guide ${location || 'recommendations'}`
+        `Local guide ${location || "recommendations"}`
       ],
       conversationalKeywords: [
         'local expert',
@@ -84,7 +91,7 @@ export const createProfileGEOData = (profileData: {
     },
 
     enrichedContent: {
-      fullDescription: `${accountName} is a dedicated local expert${location ? ` specializing in ${location}` : ''} who transforms personal knowledge into valuable recommendations for others. Through explorers, they create easily shareable QR codes and links that connect people to authentic local experiences. ${bio || ''} Their recommendations cover ${topCategories?.length ? topCategories.join(', ') : 'various categories'}, offering insider insights that help visitors and locals alike discover ${location ? `the best of ${location}` : 'amazing places'}.`,
+      fullDescription: `${accountName} is a dedicated local expert${location ? ` specializing in ${location}` : ""} who transforms personal knowledge into valuable recommendations for others. Through explorers, they create easily shareable QR codes and links that connect people to authentic local experiences. ${stripHtmlTags(bio || "")} Their recommendations cover ${topCategories?.length ? topCategories.join(", ") : "various categories"}, offering insider insights that help visitors and locals alike discover ${location ? `the best of ${location}` : "amazing places"}.`,
       benefits: [
         'Authentic local insights',
         'Carefully curated recommendations',
@@ -128,15 +135,15 @@ export const createLocationGEOData = (locationData: {
       primaryEntity: locationName,
       secondaryEntities: [recommenderName, ...topCategories],
       intent: 'Discover the best places in a specific location',
-      summary: `${recommenderName}'s curated guide to ${locationName} featuring ${placesCount} recommended places across ${topCategories.join(', ')}.`
+      summary: `${recommenderName}\'s curated guide to ${locationName} featuring ${placesCount} recommended places across ${topCategories.join(", ")}.`
     },
 
     aiDescription: {
-      conversational: `Discover ${locationName} through ${recommenderName}'s expert recommendations. This curated guide features ${placesCount} carefully selected places across ${topCategories.join(', ')}. ${locationNote || ''} Each recommendation comes with local insights and practical information to enhance your visit.`,
+      conversational: `Discover ${locationName} through ${recommenderName}\'s expert recommendations. This curated guide features ${placesCount} carefully selected places across ${topCategories.join(", ")}. ${stripHtmlTags(locationNote || "")} Each recommendation comes with local insights and practical information to enhance your visit.`,
       qaFormat: [
         {
           question: `What are the best places to visit in ${locationName}?`,
-          answer: `${recommenderName} recommends ${placesCount} places in ${locationName}, including top ${topCategories.slice(0, 3).join(', ')} spots with local insights.`
+          answer: `${recommenderName} recommends ${placesCount} places in ${locationName}, including top ${topCategories.slice(0, 3).join(", ")} spots with local insights.`
         },
         {
           question: `Who created this ${locationName} guide?`,
@@ -144,17 +151,17 @@ export const createLocationGEOData = (locationData: {
         },
         {
           question: `What types of places are recommended in ${locationName}?`,
-          answer: `The guide covers ${topCategories.join(', ')} in ${locationName}, offering diverse options for different interests.`
+          answer: `The guide covers ${topCategories.join(", ")} in ${locationName}, offering diverse options for different interests.`
         }
       ],
       keyPoints: [
         `${placesCount} curated recommendations`,
         `Expert local knowledge from ${recommenderName}`,
-        `Covers ${topCategories.join(', ')}`,
+        `Covers ${topCategories.join(", ")}`,
         'Authentic local experiences',
         'QR code accessibility'
       ],
-      contextualInfo: `This comprehensive guide to ${locationName} represents ${recommenderName}'s local expertise, offering visitors authentic recommendations beyond typical tourist spots.`
+      contextualInfo: `This comprehensive guide to ${locationName} represents ${recommenderName}\'s local expertise, offering visitors authentic recommendations beyond typical tourist spots.`
     },
 
     contextualData: {
@@ -193,7 +200,7 @@ export const createLocationGEOData = (locationData: {
     },
 
     enrichedContent: {
-      fullDescription: `Explore ${locationName} like a local with ${recommenderName}'s expertly curated guide. This comprehensive collection of ${placesCount} recommendations spans ${topCategories.join(', ')}, offering authentic experiences that showcase the true character of ${locationName}. ${locationNote || ''} Each recommendation is selected based on local knowledge and personal experience, ensuring visitors discover the places that locals truly love. From well-known favorites to hidden gems, this guide provides the insider perspective that transforms a simple visit into an authentic local experience.`,
+      fullDescription: `Explore ${locationName} like a local with ${recommenderName}\'s expertly curated guide. This comprehensive collection of ${placesCount} recommendations spans ${topCategories.join(", ")}, offering authentic experiences that showcase the true character of ${locationName}. ${stripHtmlTags(locationNote || "")} Each recommendation is selected based on local knowledge and personal experience, ensuring visitors discover the places that locals truly love. From well-known favorites to hidden gems, this guide provides the insider perspective that transforms a simple visit into an authentic local experience.`,
       benefits: [
         'Local expert curation',
         'Authentic experiences',
@@ -202,7 +209,7 @@ export const createLocationGEOData = (locationData: {
         'Easy mobile access via QR codes'
       ],
       uniqueAspects: [
-        `${recommenderName}'s personal expertise`,
+        `${recommenderName}\'s personal expertise`,
         'Beyond typical tourist attractions',
         'QR code integration for easy access',
         'Mobile-optimized recommendations',
@@ -244,7 +251,7 @@ export const createPlaceGEOData = (placeData: {
     },
 
     aiDescription: {
-      conversational: `${placeName} is a ${category} located at ${address} in ${locationName}. Recommended by local expert ${recommenderName}, this place stands out for ${description || 'its authentic local character and quality experience'}. Perfect for those seeking genuine local favorites rather than typical tourist spots.`,
+      conversational: `${placeName} is a ${category} located at ${address} in ${locationName}. Recommended by local expert ${recommenderName}, this place stands out for ${description || "its authentic local character and quality experience"}. Perfect for those seeking genuine local favorites rather than typical tourist spots.`,
       qaFormat: [
         {
           question: `What is ${placeName}?`,
@@ -256,7 +263,7 @@ export const createPlaceGEOData = (placeData: {
         },
         {
           question: `Why is ${placeName} recommended?`,
-          answer: `${recommenderName} recommends ${placeName} because ${description || 'of its authentic local character and quality experience'}.`
+          answer: `${recommenderName} recommends ${placeName} because ${description || "of its authentic local character and quality experience"}.`
         },
         {
           question: `When is ${placeName} open?`,
@@ -311,7 +318,7 @@ export const createPlaceGEOData = (placeData: {
     },
 
     enrichedContent: {
-      fullDescription: `${placeName} stands as a testament to ${recommenderName}'s discerning taste in ${locationName} ${category} establishments. Located at ${address}, this ${category} embodies the authentic local character that makes ${locationName} special. ${description || ''} Unlike generic recommendations, this selection represents genuine local knowledge and personal experience, offering visitors the kind of authentic encounter that creates lasting memories. The recommendation comes with the confidence that only true local expertise can provide.`,
+      fullDescription: `${placeName} stands as a testament to ${recommenderName}\'s discerning taste in ${locationName} ${category} establishments. Located at ${address}, this ${category} embodies the authentic local character that makes ${locationName} special. ${description || ""} Unlike generic recommendations, this selection represents genuine local knowledge and personal experience, offering visitors the kind of authentic encounter that creates lasting memories. The recommendation comes with the confidence that only true local expertise can provide.`,
       benefits: [
         'Authentic local experience',
         'Expert recommendation',
@@ -320,7 +327,7 @@ export const createPlaceGEOData = (placeData: {
         'Easy QR code access'
       ],
       uniqueAspects: [
-        `${recommenderName}'s personal endorsement`,
+        `${recommenderName}\'s personal endorsement`,
         'Local insider knowledge',
         'Beyond tourist recommendations',
         'Quality-focused selection',
@@ -355,15 +362,15 @@ export const createMapGEOData = (mapData: {
       primaryEntity: isAllLocations ? 'All Locations' : locationName,
       secondaryEntities: [recommenderName, ...categories],
       intent: 'Visually explore recommended places on an interactive map',
-      summary: `Interactive map showing ${totalPlaces} places recommended by ${recommenderName}${isAllLocations ? ' across all locations' : ` in ${locationName}`}.`
+      summary: `Interactive map showing ${totalPlaces} places recommended by ${recommenderName}${isAllLocations ? " across all locations" : ` in ${locationName}`}.`
     },
 
     aiDescription: {
-      conversational: `Explore ${recommenderName}'s recommendations through this interactive map featuring ${totalPlaces} carefully selected places${isAllLocations ? ' across multiple locations' : ` in ${locationName}`}. Each pin represents a local expert's choice, covering ${categories.join(', ')} to help you discover authentic experiences through geographic exploration.`,
+      conversational: `Explore ${recommenderName}\'s recommendations through this interactive map featuring ${totalPlaces} carefully selected places${isAllLocations ? " across multiple locations" : ` in ${locationName}`}. Each pin represents a local expert\'s choice, covering ${categories.join(", ")} to help you discover authentic experiences through geographic exploration.`,
       qaFormat: [
         {
           question: `What can I find on this map?`,
-          answer: `This interactive map shows ${totalPlaces} places recommended by ${recommenderName}, covering ${categories.join(', ')}${isAllLocations ? ' across multiple locations' : ` in ${locationName}`}.`
+          answer: `This interactive map shows ${totalPlaces} places recommended by ${recommenderName}, covering ${categories.join(", ")}${isAllLocations ? " across multiple locations" : ` in ${locationName}`}.`
         },
         {
           question: `How do I use the recommendation map?`,
@@ -381,7 +388,7 @@ export const createMapGEOData = (mapData: {
         'Local expert curation',
         'Mobile-friendly navigation'
       ],
-      contextualInfo: `This map transforms ${recommenderName}'s local knowledge into a visual exploration tool, making it easy to discover places geographically and plan routes efficiently.`
+      contextualInfo: `This map transforms ${recommenderName}\'s local knowledge into a visual exploration tool, making it easy to discover places geographically and plan routes efficiently.`
     },
 
     contextualData: {
@@ -397,7 +404,7 @@ export const createMapGEOData = (mapData: {
 
     naturalLanguage: {
       commonQueries: [
-        `Map of recommended places${locationName ? ` in ${locationName}` : ''}`,
+        `Map of recommended places${locationName ? ` in ${locationName}` : ""}`,
         `${recommenderName} recommendation map`,
         'Interactive place discovery',
         'Visual guide to local favorites',
@@ -416,7 +423,7 @@ export const createMapGEOData = (mapData: {
     },
 
     enrichedContent: {
-      fullDescription: `Experience local discovery through ${recommenderName}'s interactive recommendation map. This visual guide transforms local expertise into an explorable geographic experience, featuring ${totalPlaces} carefully curated places${isAllLocations ? ' spanning multiple locations' : ` throughout ${locationName}`}. Each map pin represents not just a location, but a piece of local knowledge and personal experience. The map covers ${categories.join(', ')}, offering diverse options for different interests and helping visitors understand the geographic relationships between recommended places. This tool bridges the gap between local knowledge and visitor exploration, making authentic discoveries as simple as clicking a pin.`,
+      fullDescription: `Experience local discovery through ${recommenderName}\'s interactive recommendation map. This visual guide transforms local expertise into an explorable geographic experience, featuring ${totalPlaces} carefully curated places${isAllLocations ? " spanning multiple locations" : ` throughout ${locationName}`}. Each map pin represents not just a location, but a piece of local knowledge and personal experience. The map covers ${categories.join(", ")}, offering diverse options for different interests and helping visitors understand the geographic relationships between recommended places. This tool bridges the gap between local knowledge and visitor exploration, making authentic discoveries as simple as clicking a pin.`,
       benefits: [
         'Visual place discovery',
         'Geographic relationship understanding',
@@ -460,11 +467,11 @@ export const createOrganizationGEOData = (orgData: {
       primaryEntity: name,
       secondaryEntities: [...features, industry, 'QR codes', 'local recommendations'],
       intent: 'Learn about explorers platform and services',
-      summary: `${name} - ${description}. Features include ${features.join(', ')}.`
+      summary: `${name} - ${description}. Features include ${features.join(", ")}.`
     },
 
     aiDescription: {
-      conversational: `${name} is a ${industry.toLowerCase()} platform that ${description.toLowerCase()}. Our key features include ${features.join(', ')}. Perfect for businesses, content creators, and individuals who want to share their local knowledge and favorite places through QR codes and digital links.`,
+      conversational: `${name} is a ${industry.toLowerCase()} platform that ${description.toLowerCase()}. Our key features include ${features.join(", ")}. Perfect for businesses, content creators, and individuals who want to share their local knowledge and favorite places through QR codes and digital links.`,
       qaFormat: [
         {
           question: `What is ${name}?`,
@@ -480,7 +487,7 @@ export const createOrganizationGEOData = (orgData: {
         },
         {
           question: `What are the main features of ${name}?`,
-          answer: `Key features include ${features.join(', ')}, making it easy to digitize and share local recommendations.`
+          answer: `Key features include ${features.join(", ")}, making it easy to digitize and share local recommendations.`
         }
       ],
       keyPoints: [
@@ -595,7 +602,7 @@ export const createWebPageGEOData = (pageData: {
         'Secure authentication',
         'Web application'
       ],
-      contextualInfo: `${title} is part of the explorers platform's user access system.`
+      contextualInfo: `${title} is part of the explorers platform\'s user access system.`
     },
 
     contextualData: {

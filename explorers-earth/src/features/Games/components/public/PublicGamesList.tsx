@@ -7,6 +7,8 @@ import { deduplicateGames, buildCoverUrl } from "../../utils/gameHelpers";
 import type { RecommendedGame, GameList } from "../../types";
 import GameDetailModal from "./GameDetailModal";
 import GameCoverCard from "./GameCoverCard";
+import SEO from "../../../../components/SEO";
+import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 
 const PublicGamesList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
@@ -54,60 +56,79 @@ const PublicGamesList = () => {
 
   const coverUrl = buildCoverUrl(list.cover_image?.url);
 
+  const pageTitle = `${list.List_Name} | ${username}'s Game List | explorers`;
+  const metaDescription = list.list_description 
+    ? list.list_description 
+    : `Explore the curated game list "${list.List_Name}" containing ${list.recommended_games.length} games recommended by ${username} on explorers.`;
+
+  const seoKeywords = [list.List_Name, `${username} games`, "game list", "explorers"];
+
   return (
-    <div className="min-h-screen bg-[#0d1117] pb-24">
-      {/* Header Banner */}
-      <div className="relative h-64 md:h-80 w-full overflow-hidden bg-white/5">
-        {coverUrl && (
-          <img src={coverUrl} alt={list.List_Name} className="absolute inset-0 w-full h-full object-cover blur-sm opacity-50" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0d1117] via-[#0d1117]/80 to-transparent" />
-        
-        <div className="absolute inset-0 flex flex-col justify-end max-w-6xl mx-auto px-4 md:px-8 pb-8">
-          <button
-            onClick={() => navigate(`/${username}/games`)}
-            className="flex items-center gap-2 text-white/50 hover:text-white transition-colors mb-6 w-fit"
-          >
-            <ArrowLeft size={16} /> Back to Games
-          </button>
-          
-          <h1 className="text-3xl md:text-5xl font-bold text-white mb-3 tracking-tight">
-            {list.List_Name}
-          </h1>
-          {list.list_description && (
-            <p className="text-white/70 max-w-2xl text-lg">{list.list_description}</p>
-          )}
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-4 md:px-8 -mt-4 relative z-10">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-          {list.recommended_games.map((game) => (
-            <div key={game.documentId} className="flex flex-col">
-               <GameCoverCard coverUrl={game.cover_url} title={game.title} onClick={() => handleGameClick(game)} />
-               <div className="mt-3 px-1 text-center">
-                 <h4 className="text-sm font-semibold text-white/90 line-clamp-1 truncate">{game.title}</h4>
-                 <p className="text-[11px] text-white/40 mt-0.5 flex flex-wrap items-center justify-center gap-1.5 opacity-80">
-                   {game.release_year && <span>{game.release_year}</span>}
-                   {game.release_year && game.igdb_rating && <span>·</span>}
-                   {game.igdb_rating && (
-                     <span className="flex items-center justify-center gap-0.5 text-amber-500">
-                       <Star size={10} fill="currentColor" /> {(game.igdb_rating / 10).toFixed(1)}
-                     </span>
-                   )}
-                 </p>
-               </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <GameDetailModal
-        open={modalState.open}
-        game={modalState.game}
-        onClose={() => setModalState({ open: false, game: null })}
+    <>
+      <SEO
+        title={pageTitle}
+        description={metaDescription}
+        keywords={seoKeywords}
+        canonical={createCanonicalUrl(`/${username}/games/${listSlug}`)}
+        image={coverUrl}
+        type="website"
+        author={username}
+        siteName="explorers"
       />
-    </div>
+      <div className="min-h-screen bg-[#0d1117] pb-24">
+        {/* Header Banner */}
+        <div className="relative h-64 md:h-80 w-full overflow-hidden bg-white/5">
+          {coverUrl && (
+            <img src={coverUrl} alt={list.List_Name} className="absolute inset-0 w-full h-full object-cover blur-sm opacity-50" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0d1117] via-[#0d1117]/80 to-transparent" />
+          
+          <div className="absolute inset-0 flex flex-col justify-end max-w-6xl mx-auto px-4 md:px-8 pb-8">
+            <button
+              onClick={() => navigate(`/${username}/games`)}
+              className="flex items-center gap-2 text-white/50 hover:text-white transition-colors mb-6 w-fit"
+            >
+              <ArrowLeft size={16} /> Back to Games
+            </button>
+            
+            <h1 className="text-3xl md:text-5xl font-bold text-white mb-3 tracking-tight">
+              {list.List_Name}
+            </h1>
+            {list.list_description && (
+              <p className="text-white/70 max-w-2xl text-lg">{list.list_description}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="max-w-6xl mx-auto px-4 md:px-8 -mt-4 relative z-10">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+            {list.recommended_games.map((game) => (
+              <div key={game.documentId} className="flex flex-col">
+                 <GameCoverCard coverUrl={game.cover_url} title={game.title} onClick={() => handleGameClick(game)} />
+                 <div className="mt-3 px-1 text-center">
+                   <h4 className="text-sm font-semibold text-white/90 line-clamp-1 truncate">{game.title}</h4>
+                   <p className="text-[11px] text-white/40 mt-0.5 flex flex-wrap items-center justify-center gap-1.5 opacity-80">
+                     {game.release_year && <span>{game.release_year}</span>}
+                     {game.release_year && game.igdb_rating && <span>·</span>}
+                     {game.igdb_rating && (
+                       <span className="flex items-center justify-center gap-0.5 text-amber-500">
+                         <Star size={10} fill="currentColor" /> {(game.igdb_rating / 10).toFixed(1)}
+                       </span>
+                     )}
+                   </p>
+                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <GameDetailModal
+          open={modalState.open}
+          game={modalState.game}
+          onClose={() => setModalState({ open: false, game: null })}
+        />
+      </div>
+    </>
   );
 };
 

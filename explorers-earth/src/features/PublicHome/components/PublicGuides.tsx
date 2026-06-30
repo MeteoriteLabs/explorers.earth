@@ -10,6 +10,7 @@ import type { Guide } from "../../Guides/types";
 import { useTrackAnalytics } from "../../../services/analyticsService";
 import SEO from "../../../components/SEO";
 import { createCanonicalUrl } from "../../../utils/getCurrentDomain";
+import { createWebPageGEOData } from "../../../utils/geoHelpers";
 import { toUrlSlug } from "../../../utils/formatAddress";
 import Button from "../../../components/ui/Button";
 import SwitchButton from "../../../components/ui/SwitchButton";
@@ -460,6 +461,14 @@ const PublicGuides = memo(() => {
   const profileImage = account?.profile_picture?.url || account?.bg_picture?.url;
   const currentUrl = createCanonicalUrl(`/${username}/guides`);
 
+  const geoData = createWebPageGEOData({
+    pageType: "guides",
+    title: pageTitle,
+    description: metaDescription,
+    keywords: keywords,
+    purpose: `Explore travel guides and itineraries curated by ${profileName}`,
+  });
+
   // Check if account exists after loading is complete
   if (!loading && !account) {
     return (
@@ -469,6 +478,8 @@ const PublicGuides = memo(() => {
           description={metaDescription}
           keywords={keywords}
           canonical={currentUrl}
+          enableGEO={true}
+          geoData={geoData}
         />
         <div className="flex bg-black items-center justify-center min-h-screen">
           <div className="text-white text-center">
@@ -496,6 +507,8 @@ const PublicGuides = memo(() => {
         type="website"
         author={profileName}
         siteName="explorers"
+        enableGEO={true}
+        geoData={geoData}
       />
 
       <div className="h-full bg-black min-h-screen overflow-auto preview-scroll pb-20 pt-14">

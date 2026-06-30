@@ -8,6 +8,8 @@ import { deduplicateBooks } from "../../utils/bookHelpers";
 import type { RecommendedBook } from "../../types";
 import BookCoverCard from "./BookCoverCard";
 import BookDetailModal from "./BookDetailModal";
+import SEO from "../../../../components/SEO";
+import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 
 const PublicBookList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
@@ -32,8 +34,34 @@ const PublicBookList = () => {
   const pinnedBooks = books.filter((b) => b.is_pinned);
   const restBooks = books.filter((b) => !b.is_pinned);
 
+  const pageTitle = rawList ? `${rawList.List_Name} | ${username}'s Book List | explorers` : `Book List | explorers`;
+  const metaDescription = rawList?.list_description 
+    ? rawList.list_description 
+    : rawList 
+      ? `Explore the curated book list "${rawList.List_Name}" containing ${books.length} books recommended by ${username} on explorers.`
+      : "Explore book recommendations on explorers.";
+
+  const seoKeywords = rawList 
+    ? [`${rawList.List_Name}`, `${username} books`, "book list", "explorers"]
+    : ["book list", "explorers"];
+
+  const listImage = rawList?.cover_image?.url || (books[0]?.cover_url ? books[0].cover_url : undefined);
+
   return (
-    <div className="min-h-screen bg-black text-white">
+    <>
+      {!loading && rawList && (
+        <SEO
+          title={pageTitle}
+          description={metaDescription}
+          keywords={seoKeywords}
+          canonical={createCanonicalUrl(`/${username}/books/${listSlug}`)}
+          image={listImage}
+          type="website"
+          author={username}
+          siteName="explorers"
+        />
+      )}
+      <div className="min-h-screen bg-black text-white">
       <div className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/8">
         <div className="flex items-center gap-3 px-4 py-3 max-w-6xl mx-auto">
           <img src="/logo.svg" alt="explorers.earth" className="h-6 opacity-70" />
@@ -118,7 +146,8 @@ const PublicBookList = () => {
         open={modalState.open}
         onClose={() => setModalState({ open: false, book: null })}
       />
-    </div>
+      </div>
+    </>
   );
 };
 

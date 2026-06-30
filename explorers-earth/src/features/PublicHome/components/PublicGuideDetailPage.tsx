@@ -23,6 +23,7 @@ import { getTransportSegments } from "../../Guides/utils/guideHelpers";
 import SEO from "../../../components/SEO";
 import { createCanonicalUrl, getBaseUrl } from "../../../utils/getCurrentDomain";
 import { toUrlSlug } from "../../../utils/formatAddress";
+import { createLocationGEOData } from "../../../utils/geoHelpers";
 import { Share2, Copy } from "lucide-react";
 import { toast } from "sonner";
 
@@ -604,6 +605,38 @@ const PublicGuideDetailPage = memo(() => {
     return keywords.filter(Boolean);
   }, [guide, locationNames]);
 
+  const guideCoords = useMemo(() => {
+    if (!placeDetails) return undefined;
+    if (placeDetails.isMultiCity) {
+      const departure = placeDetails.departure || placeDetails.from;
+      if (departure?.Geometry?.lat && departure?.Geometry?.lng) {
+        return { lat: Number(departure.Geometry.lat), lng: Number(departure.Geometry.lng) };
+      }
+    } else {
+      if (placeDetails.Geometry?.lat && placeDetails.Geometry?.lng) {
+        return { lat: Number(placeDetails.Geometry.lat), lng: Number(placeDetails.Geometry.lng) };
+      }
+    }
+    return undefined;
+  }, [placeDetails]);
+
+  const geoData = useMemo(() => {
+    if (!guide) return undefined;
+    const categories = Array.isArray(guide.Category)
+      ? guide.Category
+      : typeof guide.Category === "string"
+        ? [guide.Category]
+        : [];
+    return createLocationGEOData({
+      locationName: locationNames.join(', ') || "Various Locations",
+      recommenderName: username || "explorers User",
+      placesCount: sections?.length || 0,
+      topCategories: categories,
+      locationNote: seoDescription,
+      coordinates: guideCoords,
+    });
+  }, [guide, locationNames, username, sections, seoDescription, guideCoords]);
+
   if (loadingState) {
     return (
       <>
@@ -614,6 +647,8 @@ const PublicGuideDetailPage = memo(() => {
           canonical={createCanonicalUrl(`/${username}/guides/${guideSlug}`)}
           type="article"
           siteName="explorers"
+          enableGEO={true}
+          geoData={geoData}
         />
         <div className="flex items-center justify-center min-h-screen bg-black">
           <EarthLoader context="general" size="small" />
@@ -632,6 +667,8 @@ const PublicGuideDetailPage = memo(() => {
           canonical={createCanonicalUrl(`/${username}/guides/${guideSlug}`)}
           type="article"
           siteName="explorers"
+          enableGEO={true}
+          geoData={geoData}
         />
         <div className="flex flex-col items-center justify-center min-h-screen bg-black p-8">
           <p className="text-red-400 font-poppins text-lg mb-4">
@@ -661,6 +698,8 @@ const PublicGuideDetailPage = memo(() => {
         author={username || "explorers User"}
         siteName="explorers"
         noIndex={!guide.Visibility}
+        enableGEO={true}
+        geoData={geoData}
       />
 
       {/* CSS for animated scrolling locations */}
