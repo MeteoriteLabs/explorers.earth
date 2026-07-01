@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import { AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, Star, MoreVertical, MoreHorizontal, Trash2, Edit,
+  ArrowLeft, Star, MoreHorizontal, Trash2, Edit,
   Film, Copy, Loader2, Check, Clock, Tv, Share2, Download
 } from "lucide-react";
 import { AddIcon } from "../../../../assets/icons/AddIcon";

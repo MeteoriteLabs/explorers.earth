@@ -47,6 +47,7 @@ const recommendationCategories = [
   { id: 'books', name: 'Books', path: '/recommendations/books' },
   { id: 'games', name: 'Games', path: '/recommendations/games' },
   { id: 'music', name: 'Music', path: '/music' },
+  { id: 'guides', name: 'Guides', path: '/guides' },
 ];
 
 const Header = memo(() => {

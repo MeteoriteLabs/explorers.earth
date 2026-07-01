@@ -52,65 +52,73 @@ export const CategoryVisibilityModal: FC<CategoryVisibilityModalProps> = ({
     }
   };
 
-  if (!isOpen) return null;
-
   const emoji = CATEGORY_EMOJIS[categoryName] || "✨";
 
+  // AnimatePresence must always be mounted in the tree so it can intercept
+  // the child unmount and play the exit animation before removing the DOM node.
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+      {isOpen && (
         <motion.div
-          className="bg-dashboard-sidebar rounded-xl border border-dashboard-border p-6 md:p-8 w-full max-w-md shadow-2xl relative"
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.95, opacity: 0 }}
-          onClick={(e) => e.stopPropagation()}
+          className="fixed inset-0 z-[160] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
         >
-          {/* Close Button */}
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-dashboard-muted hover:text-dashboard transition-colors border-none cursor-pointer"
+          <motion.div
+            className="bg-dashboard-sidebar rounded-xl border border-dashboard-border p-6 md:p-8 w-full max-w-md shadow-2xl relative"
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <X size={16} />
-          </button>
+            {/* Close Button */}
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-dashboard-muted hover:text-dashboard transition-colors border-none cursor-pointer"
+            >
+              <X size={16} />
+            </button>
 
-          {/* Content */}
-          <div className="flex flex-col items-center text-center mt-2">
-            <div className="w-16 h-16 rounded-full bg-dashboard-accent/15 border border-dashboard-accent/30 flex items-center justify-center mb-5 text-3xl">
-              {emoji}
+            {/* Content */}
+            <div className="flex flex-col items-center text-center mt-2">
+              <div className="w-16 h-16 rounded-full bg-dashboard-accent/15 border border-dashboard-accent/30 flex items-center justify-center mb-5 text-3xl">
+                {emoji}
+              </div>
+
+              <h3 className="text-lg font-bold text-white font-poppins mb-2">
+                Make your {categoryName} public?
+              </h3>
+
+              <p className="text-sm text-dashboard-light mb-6 font-poppins leading-relaxed">
+                Your {categoryName} tab is currently hidden on your public profile. Would you like to make it public so others can see your recommendations?
+              </p>
+
+              {/* Actions */}
+              <div className="flex flex-col sm:flex-row gap-3 w-full border-t border-dashboard-border pt-4">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={loading}
+                  className="flex-1 px-4 py-2.5 rounded-lg bg-[#ef4444] hover:bg-[#dc2626] text-sm text-white font-medium transition-colors border-none cursor-pointer font-poppins"
+                >
+                  Keep Private
+                </button>
+                <button
+                  type="button"
+                  onClick={handleMakePublic}
+                  disabled={loading}
+                  className="flex-1 px-4 py-2.5 rounded-lg bg-[#3b82f6] hover:bg-[#2563eb] text-sm text-white font-bold transition-all flex items-center justify-center gap-2 border-none cursor-pointer font-poppins shadow-lg shadow-blue-900/30"
+                >
+                  {loading && <Loader2 size={14} className="animate-spin" />}
+                  Yes, Make Public
+                </button>
+              </div>
             </div>
-
-            <h3 className="text-lg font-bold text-white font-poppins mb-2">
-              Make your {categoryName} public?
-            </h3>
-            
-            <p className="text-sm text-dashboard-light mb-6 font-poppins leading-relaxed">
-              Your {categoryName} tab is currently hidden on your public profile. Would you like to make it public so others can see your recommendations?
-            </p>
-
-            {/* Actions */}
-            <div className="flex flex-col sm:flex-row gap-3 w-full border-t border-dashboard-border pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={loading}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-[#ef4444] hover:bg-[#dc2626] text-sm text-white font-medium transition-colors border-none cursor-pointer font-poppins"
-              >
-                Keep Private
-              </button>
-              <button
-                type="button"
-                onClick={handleMakePublic}
-                disabled={loading}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-[#3b82f6] hover:bg-[#2563eb] text-sm text-white font-bold transition-all flex items-center justify-center gap-2 border-none cursor-pointer font-poppins shadow-lg shadow-blue-900/30"
-              >
-                {loading && <Loader2 size={14} className="animate-spin" />}
-                Yes, Make Public
-              </button>
-            </div>
-          </div>
+          </motion.div>
         </motion.div>
-      </div>
+      )}
     </AnimatePresence>
   );
 };
