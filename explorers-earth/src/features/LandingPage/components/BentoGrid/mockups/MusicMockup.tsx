@@ -54,7 +54,7 @@ export default function MusicMockup() {
   ];
 
   return (
-    <div className="flex-1 flex flex-col bg-[#0F1419] h-full overflow-hidden select-none pointer-events-none space-y-3 p-3">
+    <div className="flex-1 flex flex-col bg-[#050507] h-full overflow-hidden select-none pointer-events-none space-y-3 p-3">
       <motion.div
         animate={{ y: stage === 1 ? -120 : 0 }}
         transition={{ duration: 1.5, ease: 'easeInOut' }}

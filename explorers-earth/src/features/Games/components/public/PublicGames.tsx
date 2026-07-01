@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { useQuery, gql } from "@apollo/client";
 import { Gamepad2, Share2 } from "lucide-react";
 import { PUBLIC_GAME_DATA } from "../../api/query";
@@ -12,6 +12,8 @@ import TopGamesMobileHero from "./TopGamesMobileHero";
 import GameDetailModal from "./GameDetailModal";
 import GenreBrowse from "./GenreBrowse";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
+import SEO from "../../../../components/SEO";
+import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsername($username: String!) {
@@ -32,6 +34,7 @@ const ACCOUNT_BY_USERNAME = gql`
 const PublicGames = () => {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
+  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
   
   const [modalState, setModalState] = useState<{ open: boolean; game: RecommendedGame | null }>({
     open: false,
@@ -57,8 +60,9 @@ const PublicGames = () => {
   useEffect(() => {
     if (!loading) {
       (window as any).__publicProfileLoaded = true;
+      outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading]);
+  }, [loading, outletContext]);
 
   const lists: GameList[] = data?.gameLists ?? [];
 
@@ -98,8 +102,39 @@ const PublicGames = () => {
     analytics.trackClick('share-button', { context: 'games-header' });
   };
 
+  // Dynamic SEO details
+  const profileName = creatorName || username || "User";
+  const gameCount = allGames.length;
+  const listCount = lists.length;
+  
+  const pageTitle = `${profileName} | Favorite Games | explorers`;
+  const metaDescription = gameCount > 0
+    ? `Explore curated video game recommendations and lists shared by ${profileName} on explorers. Browse ${listCount} gaming list${listCount !== 1 ? 's' : ''} containing ${gameCount} game${gameCount !== 1 ? 's' : ''}.`
+    : `Explore game recommendations shared by ${profileName} on explorers.`;
+
+  const seoKeywords = [
+    `${profileName} games`,
+    `${username} games`,
+    "explorers games",
+    "game recommendations",
+    "favorite games",
+    ...lists.map(l => l.List_Name)
+  ];
+
   return (
-    <div className="min-h-screen bg-[#0d1117] text-white">
+    <>
+      {!loading && userLookup && (
+        <SEO
+          title={pageTitle}
+          description={metaDescription}
+          keywords={seoKeywords}
+          canonical={createCanonicalUrl(`/${username}/games`)}
+          type="website"
+          author={profileName}
+          siteName="explorers"
+        />
+      )}
+      <div className="min-h-screen bg-[#0d1117] text-white">
       {/* Fixed Header */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
         <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
@@ -142,21 +177,23 @@ const PublicGames = () => {
       {/* Content */}
       <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16 pt-20">
         {loading ? (
-          <div className="space-y-10 mt-4">
-            {[1, 2, 3].map(i => (
-              <section key={i}>
-                <div className="h-5 w-40 bg-white/5 animate-pulse rounded mb-4" />
-                <div className="flex gap-3 overflow-hidden">
-                  {[1, 2, 3, 4, 5].map(j => (
-                    <div key={j} className="w-36 flex-shrink-0">
-                      <div className="aspect-[3/4] rounded-xl bg-white/5 animate-pulse" />
-                      <div className="h-3 mt-2 bg-white/5 animate-pulse rounded w-4/5" />
-                    </div>
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
+          (window as any).__publicProfileLoaded ? (
+            <div className="space-y-10 mt-4">
+              {[1, 2, 3].map(i => (
+                <section key={i}>
+                  <div className="h-5 w-40 bg-white/5 animate-pulse rounded mb-4" />
+                  <div className="flex gap-3 overflow-hidden">
+                    {[1, 2, 3, 4, 5].map(j => (
+                      <div key={j} className="w-36 flex-shrink-0">
+                        <div className="aspect-[3/4] rounded-xl bg-white/5 animate-pulse" />
+                        <div className="h-3 mt-2 bg-white/5 animate-pulse rounded w-4/5" />
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          ) : null
         ) : (
           <>
             {/* Empty state */}
@@ -217,7 +254,8 @@ const PublicGames = () => {
         game={modalState.game}
         onClose={() => setModalState({ open: false, game: null })}
       />
-    </div>
+      </div>
+    </>
   );
 };
 

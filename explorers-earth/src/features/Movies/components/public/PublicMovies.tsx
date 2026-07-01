@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { deduplicateMovies } from "../../utils/movieHelpers";
 import { Film, Share2 } from "lucide-react";
@@ -15,6 +15,8 @@ import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import MoviePosterSkeleton from "./MoviePosterSkeleton";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
 import { gql } from "@apollo/client";
+import SEO from "../../../../components/SEO";
+import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsername($username: String!) {
@@ -37,6 +39,7 @@ const PublicMovies = () => {
   const navigate = useNavigate();
   const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
 
   // Step 1: Resolve account documentId from username
   const { data: userLookup, loading: userLoading } = useQuery(ACCOUNT_BY_USERNAME, {
@@ -58,8 +61,9 @@ const PublicMovies = () => {
   useEffect(() => {
     if (!loading) {
       (window as any).__publicProfileLoaded = true;
+      outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading]);
+  }, [loading, outletContext]);
 
   const lists: MovieList[] = movieData?.movieLists ?? [];
 
@@ -102,8 +106,41 @@ const PublicMovies = () => {
     analytics.trackClick('share-button', { context: 'movies-header' });
   };
 
+  // Dynamic SEO details
+  const profileName = creatorName || username || "User";
+  const movieCount = allMovies.length;
+  const listCount = lists.length;
+  
+  const pageTitle = `${profileName} | Favorite Movies & Shows | explorers`;
+  const metaDescription = movieCount > 0
+    ? `Browse curated movie lists and recommended shows shared by ${profileName} on explorers. Explore ${listCount} movie list${listCount !== 1 ? 's' : ''} containing ${movieCount} favorite film${movieCount !== 1 ? 's' : ''}.`
+    : `Explore movie and show recommendations shared by ${profileName} on explorers.`;
+
+  const seoKeywords = [
+    `${profileName} movies`,
+    `${username} movies`,
+    "explorers movies",
+    "favorite movies list",
+    "movie recommendations",
+    "tv show recommendations",
+    "curated movie lists",
+    ...lists.map(l => l.List_Name)
+  ];
+
   return (
-    <div className="min-h-screen bg-[#0d1117] text-white">
+    <>
+      {!loading && userLookup && (
+        <SEO
+          title={pageTitle}
+          description={metaDescription}
+          keywords={seoKeywords}
+          canonical={createCanonicalUrl(`/${username}/movies`)}
+          type="website"
+          author={profileName}
+          siteName="explorers"
+        />
+      )}
+      <div className="min-h-screen bg-[#0d1117] text-white">
       {/* Fixed Header */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
         <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
@@ -146,30 +183,32 @@ const PublicMovies = () => {
       {/* Content */}
       <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16 pt-20">
         {loading ? (
-          <div className="space-y-10 mt-4">
-            {/* Hero skeleton — Desktop (lg screens) */}
-            <div className="hidden lg:block">
-              <HeroSkeleton accentColor="yellow" showThumbnails />
+          (window as any).__publicProfileLoaded ? (
+            <div className="space-y-10 mt-4">
+              {/* Hero skeleton — Desktop (lg screens) */}
+              <div className="hidden lg:block">
+                <HeroSkeleton accentColor="yellow" showThumbnails />
+              </div>
+              {/* Hero skeleton — Mobile / Tablet */}
+              <div className="lg:hidden">
+                <HeroSkeleton accentColor="yellow" mobile />
+              </div>
+              {/* Carousel row skeletons */}
+              {[1, 2, 3].map((i) => (
+                <section key={i} className="mb-8">
+                  {/* Row header */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-1.5 h-[22px] bg-white/10 rounded-sm flex-shrink-0 skeleton-shimmer relative overflow-hidden" />
+                    <div className="h-5 w-32 bg-white/8 rounded skeleton-shimmer relative overflow-hidden" />
+                  </div>
+                  {/* Poster strip */}
+                  <div className="flex gap-3 overflow-hidden">
+                    <MoviePosterSkeleton count={5} />
+                  </div>
+                </section>
+              ))}
             </div>
-            {/* Hero skeleton — Mobile / Tablet */}
-            <div className="lg:hidden">
-              <HeroSkeleton accentColor="yellow" mobile />
-            </div>
-            {/* Carousel row skeletons */}
-            {[1, 2, 3].map((i) => (
-              <section key={i} className="mb-8">
-                {/* Row header */}
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1.5 h-[22px] bg-white/10 rounded-sm flex-shrink-0 skeleton-shimmer relative overflow-hidden" />
-                  <div className="h-5 w-32 bg-white/8 rounded skeleton-shimmer relative overflow-hidden" />
-                </div>
-                {/* Poster strip */}
-                <div className="flex gap-3 overflow-hidden">
-                  <MoviePosterSkeleton count={5} />
-                </div>
-              </section>
-            ))}
-          </div>
+          ) : null
         ) : (
           <>
             {/* Empty state */}
@@ -231,7 +270,8 @@ const PublicMovies = () => {
         open={modalOpen}
         onClose={() => { setModalOpen(false); setSelectedMovie(null); }}
       />
-    </div>
+      </div>
+    </>
   );
 };
 

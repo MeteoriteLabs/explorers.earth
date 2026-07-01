@@ -27,6 +27,7 @@ interface UseCreateLocationProps {
   ) => Promise<ApolloQueryResult<unknown>>;
   setIsLoading: (isloading: boolean) => void;
   cities?: any;
+  onCreated?: () => void;
 }
 
 export const useCreateLocation = ({
@@ -34,6 +35,7 @@ export const useCreateLocation = ({
   setIsLocationModalOpen,
   setIsLoading,
   cities,
+  onCreated,
 }: UseCreateLocationProps) => {
   const { t } = useTranslation();
   const { setSelectedCity } = useCityStore();
@@ -176,6 +178,7 @@ export const useCreateLocation = ({
         toast(t("dashboard.recommendations.toastMessages.listCreated"));
         setIsLoading(false);
         setIsLocationModalOpen(false);
+        if (onCreated) onCreated();
         // Note: Do NOT call advanceToNextStep() here - location creation is not part of the walkthrough
         // The walkthrough starts when user clicks Setup button, and should start from step 0
       }

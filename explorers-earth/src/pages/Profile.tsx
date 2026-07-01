@@ -286,7 +286,7 @@ const ProfileSkeleton = memo(() => {
     <div className="bg-dashboard-bg md:px-6 md:py-2 md:pt-0 pb-24 md:pb-6 min-h-screen">
       <div className="pb-4 w-full flex flex-col gap-0 pt-0">
         {/* Cinematic Header Cover Shimmer */}
-        <div className="relative max-w-3xl mx-auto w-full mt-4 h-[200px] overflow-hidden rounded-xl bg-white/5 border border-white/5 shadow-xl">
+        <div className="relative max-w-3xl mx-auto w-full mt-4 h-[200px] overflow-hidden rounded-xl bg-white/5 border border-white/5 shadow-xl skeleton-card">
           <div className="absolute inset-0 skeleton-shimmer" />
           <div className="absolute bottom-4 left-6 flex items-center gap-4">
             {/* Avatar skeleton */}
@@ -301,7 +301,7 @@ const ProfileSkeleton = memo(() => {
         {/* Form Fields Accordion Shimmers */}
         <div className="max-w-3xl mx-auto w-full mt-6 space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-dashboard-sidebar border border-dashboard-border/30 rounded-xl p-4 space-y-3 h-14 flex items-center justify-between">
+            <div key={i} className="bg-dashboard-sidebar border border-dashboard-border/30 rounded-xl p-4 space-y-3 h-14 flex items-center justify-between skeleton-card">
               <div className="h-4 w-1/3 bg-white/10 rounded skeleton-shimmer" />
               <div className="h-4 w-4 bg-white/5 rounded-full skeleton-shimmer" />
             </div>
@@ -1594,8 +1594,6 @@ const Profile = memo(() => {
         } else {
           markProcessingComplete();
         }
-
-        toast.success(t("toast.success.profileImageUpdated"));
       } else {
         throw new Error(t('dashboard.profile.common.errors.uploadResponseMissingFileData'));
       }
@@ -1690,8 +1688,6 @@ const Profile = memo(() => {
         } else {
           markProcessingComplete();
         }
-
-        toast.success(t("toast.success.backgroundImageUpdated"));
       } else {
         throw new Error(t('dashboard.profile.common.errors.uploadResponseMissingFileData'));
       }
@@ -1701,7 +1697,6 @@ const Profile = memo(() => {
       markProcessingComplete();
     } finally {
       setIsUploading(false);
-      toast.error(t("toast.error.backgroundImageUpdateFailed"));
     }
   };
 
@@ -1775,7 +1770,7 @@ const Profile = memo(() => {
                       src={
                         uploadedImage ||
                         data?.usersPermissionsUser?.accounts?.[0]?.profile_picture?.url ||
-                        "https://api.dicebear.com/9.x/shapes/svg?seed=Leah"
+                        IMAGE_CONFIG.defaultImages.profile
                       }
                       alt={t('dashboard.profile.common.profile')}
                       className="w-full h-full object-cover"
@@ -2078,9 +2073,9 @@ const Profile = memo(() => {
                       padding: stepIndex === 2 ? '12px 16px' : '20px',
                       fontFamily: 'Poppins, sans-serif',
                       fontSize: '14px',
-                      backgroundColor: '#223126',
+                      backgroundColor: 'var(--dash-sidebar-bg)',
                       color: 'white',
-                      border: '1px solid #3C4E40',
+                      border: '1px solid var(--dash-border)',
                     },
                     tooltipContainer: {
                       textAlign: 'left',

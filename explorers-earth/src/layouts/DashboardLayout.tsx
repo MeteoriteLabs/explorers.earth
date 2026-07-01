@@ -1,15 +1,38 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "../components/Sidenav";
 import Header from "../components/Header";
 import { DashboardRouteValidator } from "../routes/validators";
 import { DashboardThemeProvider } from "../contexts/DashboardThemeContext";
 import RouteLoader from "../components/RouteLoader";
+import { EarthLoader } from "../components/EarthLoader";
+
+const isMainLandingPage = (path: string): boolean => {
+  const mainPaths = [
+    /^\/home$/,
+    /^\/profile$/,
+    /^\/recommendations$/,
+    /^\/recommendations\/places$/,
+    /^\/analytics$/,
+    /^\/settings$/,
+    /^\/music$/,
+    /^\/recommendations\/movies$/,
+    /^\/recommendations\/books$/,
+    /^\/recommendations\/games$/,
+    /^\/guides$/,
+  ];
+  return mainPaths.some((regex) => regex.test(path));
+};
 
 const DashboardLayout = () => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastScrollTop = useRef(0);
   const location = useLocation();
+
+  // Track initial dashboard load state
+  const [isInitialLoading, setIsInitialLoading] = useState(
+    !(window as any).__dashboardLoaded && isMainLandingPage(location.pathname)
+  );
 
   // Reset scroll and header visibility on route change
   useEffect(() => {
@@ -21,11 +44,40 @@ const DashboardLayout = () => {
   }, [location.pathname]);
 
   useEffect(() => {
-    (window as any).__dashboardLoaded = false;
+    // If it's already loaded, don't show loader
+    if ((window as any).__dashboardLoaded) {
+      setIsInitialLoading(false);
+      return;
+    }
+
+    // Safety timeout: dismiss initial loader after 3.5 seconds anyway
+    const safetyTimer = setTimeout(() => {
+      setIsInitialLoading(false);
+    }, 3500);
+
+    // Setup getter/setter to listen to __dashboardLoaded changes
+    let loadedVal = false;
+    Object.defineProperty(window, "__dashboardLoaded", {
+      get() {
+        return loadedVal;
+      },
+      set(val) {
+        loadedVal = val;
+        if (val) {
+          setIsInitialLoading(false);
+        }
+      },
+      configurable: true,
+    });
+
     return () => {
+      clearTimeout(safetyTimer);
+      // Clean up descriptor and reset to basic value
+      delete (window as any).__dashboardLoaded;
       (window as any).__dashboardLoaded = false;
     };
   }, []);
+
 
   const handleScroll = () => {
     if (!scrollContainerRef.current) return;
@@ -55,6 +107,11 @@ const DashboardLayout = () => {
     <DashboardThemeProvider>
       <DashboardRouteValidator>
         <div className="dashboard-theme flex h-screen bg-dashboard-bg overflow-hidden">
+          {isInitialLoading && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-dashboard-bg">
+              <EarthLoader context="general" size="default" />
+            </div>
+          )}
           {/* Sidebar */}
           <Sidebar />
 

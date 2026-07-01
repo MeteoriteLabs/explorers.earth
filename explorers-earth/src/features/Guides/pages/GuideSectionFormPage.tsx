@@ -47,7 +47,7 @@ const GuideSectionFormPage = () => {
     };
 
     const handleSuccess = () => {
-        navigate(`/guides/${guideId}`, { state: { refetch: true } });
+        navigate(`/guides/${guideId}`, { state: { refetch: true, justAddedRecommendation: !isEditMode } });
     };
 
     const handleCancel = () => {

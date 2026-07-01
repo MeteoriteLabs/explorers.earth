@@ -28,6 +28,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import CircularPlacesModal from "../components/CircularPlacesModal";
 import WorldIcon from "../assets/icons/WorldIcon";
 import { useNavigate, useLocation } from "react-router-dom";
+import { CategoryVisibilityModal } from "../components/CategoryVisibilityModal";
 import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
 import { useRecommendationsWalkthrough } from "../hooks/useRecommendationsWalkthrough";
@@ -36,6 +37,7 @@ import useSetupStore from "../store/useSetupStore";
 import { calculateIsRecommendationsComplete } from "../utils/setupStatusCalculations";
 
 
+import { ListVisibilityModal } from "../components/ListVisibilityModal";
 export interface Recommendation {
   title: string;
   image: string;
@@ -100,10 +102,10 @@ const FavoritesSkeleton = () => {
       <HeroSkeleton accentColor="blue" variant="dashboard" showThumbnails />
 
       {/* Recommendations grid skeleton */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-4 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-6">
         <RecommendationCardSkeleton count={5} variant="dashboard" />
         {/* Plus card shimmer */}
-        <div className="border-2 border-dashed border-dashboard-border rounded-[14px] h-[150px] skeleton-shimmer" />
+        <div className="border-2 border-dashed border-dashboard-border rounded-[14px] h-[150px] skeleton-card" />
       </div>
     </div>
   );
@@ -112,6 +114,16 @@ const FavoritesSkeleton = () => {
 const Favorites = memo(() => {
   const { t } = useTranslation();
   const { selectedCity, setSelectedCity } = useCityStore();
+  const location = useLocation();
+  // fetching the user details from the global state
+  const { user } = useAuthStore();
+  // account data by Id
+  const { data: accountById } = useQuery(accountDataQuery, {
+    variables: {
+      documentId: user?.documentId,
+    },
+    skip: !user?.documentId,
+  });
 
   const [showAllPlaces, setShowAllPlaces] = useState<boolean>(false);
   // local state for handling modal
@@ -126,6 +138,35 @@ const Favorites = memo(() => {
   const [activeDropdownListId, setActiveDropdownListId] = useState<string | null>(null);
   const [activePinnedIndex, setActivePinnedIndex] = useState<number>(0);
   const [isManageModalOpen, setIsManageModalOpen] = useState<boolean>(false);
+  const [visibilityPrompt, setVisibilityPrompt] = useState<{
+    isOpen: boolean;
+    categoryName: string;
+    visibilityField: string;
+    defaultValue: boolean;
+  } | null>(null);
+
+  const [listVisibilityPrompt, setListVisibilityPrompt] = useState<{
+    isOpen: boolean;
+    listName: string;
+    listDocumentId: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (location.state?.justCreatedList && accountById) {
+      const acc = accountById?.usersPermissionsUser?.accounts?.[0];
+      const isPublic = acc?.public_recommendations !== "No"; // default is true
+      if (!isPublic) {
+        setVisibilityPrompt({
+          isOpen: true,
+          categoryName: "Places",
+          visibilityField: "public_recommendations",
+          defaultValue: true,
+        });
+      }
+      // Clear location state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, accountById]);
 
   useEffect(() => {
     const handleWindowClick = () => {
@@ -136,17 +177,8 @@ const Favorites = memo(() => {
   }, []);
 
   const [mobileDropdownOpen, setMobileDropdownOpen] = useState<boolean>(false);
-  // fetching the user details from the global state
-  const { user } = useAuthStore();
   // Check if profile setup is complete
   const { isProfileComplete, isRecommendationsComplete, setSetupStatus } = useSetupStore();
-  // account data by Id
-  const { data: accountById } = useQuery(accountDataQuery, {
-    variables: {
-      documentId: user?.documentId,
-    },
-    skip: !user?.documentId,
-  });
 
   const cityRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   // local state for handling edit state
@@ -183,6 +215,21 @@ const Favorites = memo(() => {
       (window as any).__dashboardLoaded = true;
     }
   }, [loading, accountById]);
+
+  useEffect(() => {
+    const listId = location.state?.justAddedRecommendationToListId;
+    if (listId && cities?.recommendationLists) {
+      const targetList = cities.recommendationLists.find((l: any) => l.documentId === listId);
+      if (targetList && !targetList.Visibility) {
+        setListVisibilityPrompt({
+          isOpen: true,
+          listName: targetList.List_Name,
+          listDocumentId: listId,
+        });
+      }
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, cities]);
 
   // // local state for handling current list displayed on the carousel
   // const [selectedCity, setSelectedCity] = useState<selectedCity>(
@@ -294,7 +341,6 @@ const Favorites = memo(() => {
 
 
   // Track route changes for better modal detection
-  const location = useLocation();
 
   // Track if place modal/page is open (when navigating to /new route)
   const [isPlaceModalOpen, setIsPlaceModalOpen] = useState(false);
@@ -436,6 +482,18 @@ const Favorites = memo(() => {
     refetchCities,
     setIsLoading,
     cities,
+    onCreated: () => {
+      const acc = accountById?.usersPermissionsUser?.accounts?.[0];
+      const isPublic = acc?.public_recommendations !== "No"; // default is true
+      if (!isPublic) {
+        setVisibilityPrompt({
+          isOpen: true,
+          categoryName: "Places",
+          visibilityField: "public_recommendations",
+          defaultValue: true,
+        });
+      }
+    }
   });
 
   useEffect(() => {
@@ -765,7 +823,7 @@ const Favorites = memo(() => {
           handleCitySelect(city);
           setStep(2);
         }}
-        className="glass-card rounded-[14px] p-3 flex flex-col gap-2.5 cursor-pointer border border-white/5 md:border-dashboard-border/30 hover:border-dashboard-accent transition-all duration-300 relative group"
+        className="bg-dashboard-sidebar rounded-[14px] p-3 flex flex-col gap-2.5 cursor-pointer border border-white/5 md:border-dashboard-border/30 hover:border-dashboard-accent transition-all duration-300 relative group"
       >
         <div className="flex justify-between items-center gap-2">
           <span className="text-xs md:text-sm font-bold text-white truncate max-w-[65%]">
@@ -775,7 +833,7 @@ const Favorites = memo(() => {
           <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
             {/* Visibility & Pin Badge */}
             {city.Visibility ? (
-              <span className="text-[10px] font-bold text-[#4ade80] bg-[#4ade80]/15 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+              <span className="text-[10px] font-semibold text-white bg-emerald-500/90 px-1.5 py-0.5 rounded-md flex items-center gap-1 uppercase tracking-wider font-poppins">
                 {city.is_pinned && (
                   <svg className="w-2.5 h-2.5 text-amber-400 fill-amber-400" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                     <path d="M19 12H5l4-4V3h6v5l4 4z" />
@@ -785,7 +843,7 @@ const Favorites = memo(() => {
                 Public
               </span>
             ) : (
-              <span className="text-[10px] font-bold text-[#f87171] bg-[#f87171]/15 px-1.5 py-0.5 rounded-md">
+              <span className="text-[10px] font-semibold text-white bg-slate-500/90 px-1.5 py-0.5 rounded-md uppercase tracking-wider font-poppins">
                 Draft
               </span>
             )}
@@ -807,7 +865,7 @@ const Favorites = memo(() => {
               </button>
 
               {activeDropdownListId === city.documentId && (
-                <div className="absolute right-0 top-6 w-32 bg-[#223126]/95 backdrop-blur-md border border-[#3C4E40] rounded-lg shadow-xl z-50 py-1 flex flex-col gap-0.5 font-poppins">
+                <div className="absolute right-0 top-6 w-32 bg-dashboard-modal border border-dashboard rounded-lg shadow-xl z-50 py-1 flex flex-col gap-0.5 font-poppins">
                   {/* Publish/Draft toggle */}
                   <button
                     onClick={() => {
@@ -1299,7 +1357,7 @@ const Favorites = memo(() => {
 
                       {/* Locations Grid */}
                       <div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-4 mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-4">
                           {filteredCities.map((city: any, idx: number) => renderCityCard(city, idx))}
 
                           {/* Add Location Card */}
@@ -1705,9 +1763,10 @@ const Favorites = memo(() => {
         <style>{`
           .react-joyride__tooltip,
           .react-joyride__tooltip > div {
-            background-color: rgba(29, 42, 32, 0.98) !important;
+            background-color: var(--dash-sidebar-bg) !important;
             backdrop-filter: blur(12px) !important;
             -webkit-backdrop-filter: blur(12px) !important;
+            border: 1px solid var(--dash-border) !important;
           }
           .react-joyride__tooltip button[data-action="next"],
           .react-joyride__tooltip button[data-action="primary"],
@@ -1757,11 +1816,11 @@ const Favorites = memo(() => {
               textColor: "white",
             },
             tooltip: {
-              backgroundColor: "rgba(29, 42, 32, 0.98) !important",
+              backgroundColor: "var(--dash-sidebar-bg) !important",
               backdropFilter: "blur(12px) !important",
               WebkitBackdropFilter: "blur(12px) !important",
               borderRadius: "12px",
-              border: "1px solid rgba(255,255,255,0.2)",
+              border: "1px solid var(--dash-border) !important",
               boxShadow: "0 6px 25px rgba(0,0,0,0.55)",
               padding: "20px",
               color: "white",
@@ -1770,7 +1829,7 @@ const Favorites = memo(() => {
               minWidth: "200px",
             },
             tooltipContainer: {
-              backgroundColor: "rgba(29, 42, 32, 0.98) !important",
+              backgroundColor: "var(--dash-sidebar-bg) !important",
               backdropFilter: "blur(12px) !important",
               WebkitBackdropFilter: "blur(12px) !important",
               color: "white",
@@ -1819,6 +1878,41 @@ const Favorites = memo(() => {
             },
           }}
         />
+        {visibilityPrompt && accountById?.usersPermissionsUser?.accounts?.[0]?.documentId && (
+          <CategoryVisibilityModal
+            isOpen={visibilityPrompt.isOpen}
+            onClose={() => setVisibilityPrompt(null)}
+            categoryName={visibilityPrompt.categoryName}
+            visibilityField={visibilityPrompt.visibilityField}
+            accountDocumentId={accountById.usersPermissionsUser.accounts[0].documentId}
+            onSuccess={() => {
+              refetchCities();
+            }}
+          />
+        )}
+        {listVisibilityPrompt && (
+          <ListVisibilityModal
+            isOpen={listVisibilityPrompt.isOpen}
+            onClose={() => setListVisibilityPrompt(null)}
+            listName={listVisibilityPrompt.listName}
+            categoryName="Places"
+            onConfirm={async () => {
+              try {
+                await updateRecommendedList({
+                  variables: {
+                    documentId: listVisibilityPrompt.listDocumentId,
+                    data: { Visibility: true },
+                  },
+                });
+                await refetchCities();
+                toast.success(`"${listVisibilityPrompt.listName}" list published!`);
+              } catch (err) {
+                console.error(err);
+                toast.error("Failed to publish list.");
+              }
+            }}
+          />
+        )}
       </div>
     </>
   );

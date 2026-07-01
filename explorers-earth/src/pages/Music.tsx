@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
+import { CategoryVisibilityModal } from "../components/CategoryVisibilityModal";
 import { useTunesDashboard } from "../hooks/useTunesDashboard";
 import { gql, useQuery, useMutation } from "@apollo/client";
 import { toast } from "sonner";
@@ -57,19 +59,19 @@ const MusicSkeleton = () => {
     <div className="dashboard-theme min-h-screen bg-dashboard-bg text-white pt-6 px-4 md:px-6 pb-20">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Action bar skeleton */}
-        <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4 border border-white/5">
+        <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4 skeleton-card">
           <div className="h-8 w-32 bg-white/5 rounded-xl skeleton-shimmer" />
           <div className="h-10 w-40 bg-white/10 rounded-xl skeleton-shimmer" />
         </div>
 
         {/* 1. Search Bar Skeleton */}
-        <div className="bg-dashboard-sidebar border border-white/5 rounded-[14px] p-4 space-y-2.5">
+        <div className="rounded-[14px] p-4 space-y-2.5 skeleton-card">
           <div className="h-4 w-36 bg-white/10 rounded skeleton-shimmer" />
           <div className="h-10 w-full bg-dashboard-bg border border-white/5 rounded-lg skeleton-shimmer" />
         </div>
         
         {/* 2. Music Player area skeleton */}
-        <div className="bg-dashboard-sidebar border border-white/5 rounded-[14px] p-4 h-24 flex items-center gap-4">
+        <div className="rounded-[14px] p-4 h-24 flex items-center gap-4 skeleton-card">
           <div className="w-14 h-14 rounded bg-white/10 skeleton-shimmer flex-shrink-0" />
           <div className="flex-1 space-y-2">
             <div className="h-4 w-1/3 bg-white/10 rounded skeleton-shimmer" />
@@ -88,7 +90,7 @@ const MusicSkeleton = () => {
         {/* 4. Queue / List Skeletons */}
         <div className="space-y-3 pt-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-dashboard-sidebar border border-white/5 rounded-[14px] h-[54px] px-4 flex items-center justify-between">
+            <div key={i} className="rounded-[14px] h-[54px] px-4 flex items-center justify-between skeleton-card">
               <div className="flex items-center gap-3 w-1/2">
                 <div className="w-10 h-10 rounded bg-white/5 skeleton-shimmer" />
                 <div className="flex-1 space-y-1.5">
@@ -121,6 +123,31 @@ const MusicPage = () => {
     skip: !authUser?.documentId,
     fetchPolicy: 'cache-and-network'
   });
+
+  const [visibilityPrompt, setVisibilityPrompt] = useState<{
+    isOpen: boolean;
+    categoryName: string;
+    visibilityField: string;
+    defaultValue: boolean;
+  } | null>(null);
+
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state?.justCreatedList && userData) {
+      const acc = userData?.usersPermissionsUser?.accounts?.[0];
+      const isPublic = acc?.public_music === "Yes";
+      if (!isPublic) {
+        setVisibilityPrompt({
+          isOpen: true,
+          categoryName: "Music",
+          visibilityField: "public_music",
+          defaultValue: false,
+        });
+      }
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, userData]);
 
   useEffect(() => {
     if (!accountLoading) {
@@ -396,6 +423,18 @@ const MusicPage = () => {
                 data={tunesDashboard} 
                 isPublic={userData?.usersPermissionsUser?.accounts?.[0]?.public_music === "Yes"}
                 onVisibilityToggle={handleVisibilityToggle}
+                onPlaylistCreated={() => {
+                  const acc = userData?.usersPermissionsUser?.accounts?.[0];
+                  const isPublic = acc?.public_music === "Yes";
+                  if (!isPublic) {
+                    setVisibilityPrompt({
+                      isOpen: true,
+                      categoryName: "Music",
+                      visibilityField: "public_music",
+                      defaultValue: false,
+                    });
+                  }
+                }}
               />
             ) : (
               /* Two-column connect view */
@@ -540,6 +579,18 @@ const MusicPage = () => {
           </Modal>
         )}
       </div>
+      {visibilityPrompt && accountDocumentId && (
+        <CategoryVisibilityModal
+          isOpen={visibilityPrompt.isOpen}
+          onClose={() => setVisibilityPrompt(null)}
+          categoryName={visibilityPrompt.categoryName}
+          visibilityField={visibilityPrompt.visibilityField}
+          accountDocumentId={accountDocumentId}
+          onSuccess={() => {
+            refetch();
+          }}
+        />
+      )}
     </>
   );
 };

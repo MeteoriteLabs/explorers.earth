@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import Button from "../../components/ui/Button";
 import GuideCard from "./components/GuideCard";
@@ -11,6 +11,7 @@ import { updateTabVisibilityMutation } from "../../features/Settings/api/mutatio
 import GuideCardSkeleton from "../../components/ui/GuideCardSkeleton";
 import HeroSkeleton from "../../components/ui/HeroSkeleton";
 import Modal from "../../components/ui/Modal";
+import { CategoryVisibilityModal } from "../../components/CategoryVisibilityModal";
 import { toast } from "sonner";
 import SEO from "../../components/SEO";
 import { createCanonicalUrl } from "../../utils/getCurrentDomain";
@@ -44,6 +45,12 @@ const GuidesPage: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [isManageModalOpen, setIsManageModalOpen] = useState<boolean>(false);
   const [mobileDropdownOpen, setMobileDropdownOpen] = useState<boolean>(false);
+  const [visibilityPrompt, setVisibilityPrompt] = useState<{
+    isOpen: boolean;
+    categoryName: string;
+    visibilityField: string;
+    defaultValue: boolean;
+  } | null>(null);
 
   // Get account documentId
   const { data: accountData, loading: accountLoading } = useQuery(GET_USER_ACCOUNT_QUERY, {
@@ -53,6 +60,26 @@ const GuidesPage: React.FC = () => {
 
   const accountDocumentId =
     accountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
+
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state?.justCreatedGuide && accountData) {
+      const acc = accountData?.usersPermissionsUser?.accounts?.[0];
+      const isPublic = acc?.public_guides === "Yes";
+      if (!isPublic) {
+        setVisibilityPrompt({
+          isOpen: true,
+          categoryName: "Guides",
+          visibilityField: "public_guides",
+          defaultValue: false,
+        });
+      }
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, accountData]);
+
+
 
   // Fetch guides with account filter
   const {
@@ -1379,6 +1406,18 @@ const GuidesPage: React.FC = () => {
           )}
         </div >
       </div >
+      {visibilityPrompt && accountDocumentId && (
+        <CategoryVisibilityModal
+          isOpen={visibilityPrompt.isOpen}
+          onClose={() => setVisibilityPrompt(null)}
+          categoryName={visibilityPrompt.categoryName}
+          visibilityField={visibilityPrompt.visibilityField}
+          accountDocumentId={accountDocumentId}
+          onSuccess={() => {
+            refetch();
+          }}
+        />
+      )}
     </>
   );
 };

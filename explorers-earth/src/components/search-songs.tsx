@@ -19,6 +19,7 @@ import {
 import { youtubeAPI } from '../lib/apiClient';
 import { useToast } from '../hooks/useToast';
 import { isYouTubeUrl } from '../utils/youtubeUtils';
+import { useTheme } from './theme-provider';
 
 type SearchMode = 'search' | 'url' | 'import';
 
@@ -75,6 +76,10 @@ export default function SearchSongs({
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedSongs, setSelectedSongs] = useState<Set<string>>(new Set());
   const [isFocused, setIsFocused] = useState(false);
+
+  const { theme: publicThemeColor } = useTheme();
+  const inDashboard = typeof document !== 'undefined' && !!document.querySelector('.dashboard-theme');
+  const accentColor = inDashboard ? 'var(--dash-accent, #3b82f6)' : publicThemeColor;
 
   // For dropdown positioning (fixed to escape clipping)
   const chevronBtnRef = useRef<HTMLButtonElement>(null);
@@ -350,16 +355,16 @@ export default function SearchSongs({
       <div
         className="flex items-stretch rounded-xl border overflow-hidden transition-all duration-200"
         style={{
-          borderColor: isFocused ? 'var(--primary, #2563eb)' : 'rgba(255, 255, 255, 0.25)',
+          borderColor: isFocused ? accentColor : 'rgba(255, 255, 255, 0.25)',
           background: '#121212',
-          boxShadow: isFocused ? '0 0 0 1px var(--primary, #2563eb)' : 'none',
+          boxShadow: isFocused ? `0 0 0 1px ${accentColor}` : 'none',
         }}
       >
         {/* Mode icon + input */}
         <div className="relative flex-1 min-w-0">
           <span
             className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ color: isFocused ? 'var(--primary, #2563eb)' : '#9ca3af' }}
+            style={{ color: isFocused ? accentColor : '#9ca3af' }}
           >
             {currentMode.icon}
           </span>
@@ -385,7 +390,7 @@ export default function SearchSongs({
           onClick={handleAction}
           disabled={isActionDisabled}
           className="flex items-center px-4 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
-          style={{ background: 'var(--primary, #2563eb)' }}
+          style={{ background: accentColor }}
         >
           {actionContent()}
         </button>
@@ -425,8 +430,8 @@ export default function SearchSongs({
               onClick={() => switchMode(m.key)}
               className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-left transition-colors"
               style={{
-                color: m.key === mode ? 'var(--primary, #2563eb)' : '#9ca3af',
-                background: m.key === mode ? 'rgba(37, 99, 235, 0.15)' : 'transparent',
+                color: m.key === mode ? accentColor : '#9ca3af',
+                background: m.key === mode ? (accentColor.startsWith('var') ? `color-mix(in srgb, ${accentColor} 15%, transparent)` : `${accentColor}26`) : 'transparent',
               }}
               onMouseEnter={(e) => {
                 if (m.key !== mode) (e.currentTarget as HTMLElement).style.background = '#ffffff0f';
@@ -437,7 +442,7 @@ export default function SearchSongs({
             >
               <span>{m.icon}</span>
               <span className="font-medium">{m.label}</span>
-              {m.key === mode && <Check className="h-3.5 w-3.5 ml-auto" style={{ color: 'var(--primary, #2563eb)' }} />}
+              {m.key === mode && <Check className="h-3.5 w-3.5 ml-auto" style={{ color: accentColor }} />}
             </button>
           ))}
         </div>
@@ -449,7 +454,7 @@ export default function SearchSongs({
         {/* Loading spinner */}
         {isSearching && (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin" style={{ color: 'var(--primary, #2563eb)' }} />
+            <Loader2 className="h-6 w-6 animate-spin" style={{ color: accentColor }} />
           </div>
         )}
 
@@ -470,8 +475,8 @@ export default function SearchSongs({
                         onClick={() => toggleSong(song.id)}
                         className="flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all duration-150 select-none border"
                         style={{
-                          background: selected ? 'rgba(37, 99, 235, 0.15)' : 'transparent',
-                          borderColor: selected ? 'var(--primary, #2563eb)' : 'transparent',
+                          background: selected ? (accentColor.startsWith('var') ? `color-mix(in srgb, ${accentColor} 15%, transparent)` : `${accentColor}26`) : 'transparent',
+                          borderColor: selected ? accentColor : 'transparent',
                         }}
                         onMouseEnter={(e) => {
                           if (!selected) (e.currentTarget as HTMLElement).style.background = '#ffffff08';
@@ -495,8 +500,8 @@ export default function SearchSongs({
                         <div
                           className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-all"
                           style={{
-                            background: selected ? 'var(--primary, #2563eb)' : 'transparent',
-                            border: `1.5px solid ${selected ? 'var(--primary, #2563eb)' : '#ffffff25'}`,
+                            background: selected ? accentColor : 'transparent',
+                            border: `1.5px solid ${selected ? accentColor : '#ffffff25'}`,
                           }}
                         >
                           {selected && <Check className="h-3 w-3 text-white" />}
@@ -511,7 +516,10 @@ export default function SearchSongs({
                       onClick={handleLoadMore}
                       disabled={isSearching}
                       className="w-full py-2 text-xs rounded-lg mt-1 transition-colors disabled:opacity-40"
-                      style={{ color: 'var(--primary, #2563eb)', background: 'rgba(37, 99, 235, 0.1)' }}
+                      style={{
+                        color: accentColor,
+                        background: accentColor.startsWith('var') ? `color-mix(in srgb, ${accentColor} 10%, transparent)` : `${accentColor}1a`
+                      }}
                     >
                       Load more results
                     </button>
@@ -539,7 +547,7 @@ export default function SearchSongs({
               onClick={handleAddSelected}
               disabled={addSongsMutation.isPending}
               className="w-full py-2.5 rounded-lg text-sm font-semibold text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 disabled:opacity-50"
-              style={{ background: 'var(--primary, #2563eb)' }}
+              style={{ background: accentColor }}
             >
               {addSongsMutation.isPending
                 ? <Loader2 className="h-4 w-4 animate-spin" />

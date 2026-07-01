@@ -24,7 +24,7 @@ const SingleGuideSkeleton = memo(({ variant }: SingleGuideSkeletonProps) => {
 
     return (
         <div
-            className="relative w-full aspect-[16/9] md:aspect-[4/3] max-w-none mx-auto rounded-xl overflow-hidden"
+            className="relative w-full aspect-[16/9] md:aspect-[4/3] max-w-none mx-auto rounded-xl overflow-hidden skeleton-card"
             style={{
                 background: isDashboard ? "var(--dash-muted, #3C4E40)" : "#1c1c1c",
             }}

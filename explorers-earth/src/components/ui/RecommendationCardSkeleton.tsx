@@ -34,12 +34,12 @@ const SkeletonCard = memo(({ variant }: SkeletonCardProps) => {
         ? "rgba(255,255,255,0.12)"
         : "rgba(255,255,255,0.10)";
     const borderColor = isDashboard
-        ? "rgba(60,78,64,0.6)"
+        ? "var(--dash-border, rgba(60,78,64,0.6))"
         : "rgba(255,255,255,0.04)";
 
     return (
         <div
-            className="relative w-full aspect-[4/3] max-w-[200px] md:max-w-none mx-auto rounded-xl overflow-hidden"
+            className="relative w-full aspect-[4/3] rounded-xl overflow-hidden skeleton-card"
             style={{ background: bg, border: `1px solid ${borderColor}` }}
         >
             {/* Shimmer overlay */}

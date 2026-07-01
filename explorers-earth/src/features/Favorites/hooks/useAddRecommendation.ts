@@ -658,7 +658,7 @@ export const useAddRecommendation = ({
               // CRITICAL: Use setTimeout to ensure React processes the state update
               // before navigation. This guarantees the listener detects the change.
               setTimeout(() => {
-                navigate("/recommendations");
+                navigate("/recommendations", { state: { justAddedRecommendationToListId: listId } });
                 toast("Recommendation Created Successfully!!!");
                 setIsLoading(false);
                 // Advance walkthrough to next step after successful place addition
@@ -669,14 +669,14 @@ export const useAddRecommendation = ({
               }, 100);
             } else {
               // Fallback if refetch doesn't return data
-              navigate("/recommendations");
+              navigate("/recommendations", { state: { justAddedRecommendationToListId: listId } });
               toast("Recommendation Created Successfully!!!");
               setIsLoading(false);
             }
           } catch (refetchError) {
             console.warn("Error refetching data, but proceeding with navigation:", refetchError);
             // Still navigate even if refetch fails
-            navigate("/recommendations");
+            navigate("/recommendations", { state: { justAddedRecommendationToListId: listId } });
             toast("Recommendation Created Successfully!!!");
             setIsLoading(false);
           }

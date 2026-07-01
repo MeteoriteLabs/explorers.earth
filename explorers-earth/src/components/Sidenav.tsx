@@ -62,6 +62,7 @@ import { toast } from "sonner";
 import { Tooltip } from "react-tooltip";
 import { motion } from "framer-motion";
 import { useDashboardTheme } from "../contexts/DashboardThemeContext";
+import { IMAGE_CONFIG } from "../config";
 
 const accountQuery = gql`
   query account($documentId: ID!) {
@@ -149,7 +150,7 @@ const Sidebar = () => {
 
   // Get account data with fallback for loading state
   const accountData = data?.usersPermissionsUser?.accounts?.[0];
-  const profilePicture = accountData?.profile_picture?.url || "https://api.dicebear.com/9.x/shapes/svg?seed=Leah";
+  const profilePicture = accountData?.profile_picture?.url || IMAGE_CONFIG.defaultImages.profile;
   const accountName = accountData?.Account_Name || (loading ? t("sidebar.loading") : "");
   const email = data?.usersPermissionsUser?.email || "";
 
@@ -162,15 +163,6 @@ const Sidebar = () => {
       <div className={`flex w-full py-4 flex-shrink-0 min-h-[72px] ${isOpen ? "items-center justify-start pl-[20px] pr-3 gap-3" : "flex-col items-center justify-center gap-2 px-4"}`}>
         {isOpen ? (
           <>
-            {/* Toggle Button - On immediate left */}
-            <div className="flex-shrink-0 w-[24px] h-[24px] flex items-center justify-center">
-              <Button
-                startIcon={<MenuIcon stroke="var(--dash-accent)" />}
-                onClickHandler={() => setIsOpen(!isOpen)}
-                variant="icon"
-                size="none"
-              />
-            </div>
             {/* SVG Text - explorers.earth */}
             <div className="flex-shrink-0 flex-1 min-w-0">
               <img
@@ -180,6 +172,15 @@ const Sidebar = () => {
                 style={{
                   filter: "brightness(0) invert(1)",
                 }}
+              />
+            </div>
+            {/* Toggle Button - On immediate right of logo */}
+            <div className="flex-shrink-0 w-[24px] h-[24px] flex items-center justify-center">
+              <Button
+                startIcon={<MenuIcon stroke="var(--dash-accent)" />}
+                onClickHandler={() => setIsOpen(!isOpen)}
+                variant="icon"
+                size="none"
               />
             </div>
           </>

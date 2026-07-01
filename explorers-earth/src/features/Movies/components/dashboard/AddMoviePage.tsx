@@ -541,7 +541,7 @@ const AddMoviePage = () => {
         });
         toast.success("Movie added!");
       }
-      navigate(`/recommendations/movies/${listId}`);
+      navigate(`/recommendations/movies/${listId}`, { state: { justAddedRecommendation: true } });
     } catch (e) {
       console.error(e);
       toast.error("Failed to save. Please try again.");

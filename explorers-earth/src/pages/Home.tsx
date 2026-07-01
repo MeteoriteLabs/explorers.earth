@@ -104,7 +104,7 @@ const HomeSkeleton = memo(() => {
       </div>
 
       {/* Main Globe Card Area Placeholder */}
-      <div className="relative w-full h-[55vh] min-h-[350px] max-h-[500px] rounded-2xl bg-white/5 overflow-hidden border border-white/5 shadow-2xl">
+      <div className="relative w-full h-[55vh] min-h-[350px] max-h-[500px] rounded-2xl bg-white/5 overflow-hidden border border-white/5 shadow-2xl skeleton-card">
         <div className="absolute inset-0 skeleton-shimmer" />
         <div className="absolute bottom-6 left-6 right-6 space-y-3">
           <div className="h-6 w-2/3 bg-white/15 rounded skeleton-shimmer" />
@@ -113,7 +113,7 @@ const HomeSkeleton = memo(() => {
       </div>
 
       {/* Setup banner shimmer */}
-      <div className="h-24 w-full bg-white/5 rounded-2xl skeleton-shimmer border border-white/5" />
+      <div className="h-24 w-full bg-white/5 rounded-2xl border border-white/5 skeleton-card" />
 
       {/* Tab Switcher Shimmer */}
       <div className="flex items-center justify-center mx-auto bg-white/5 border border-white/5 rounded-3xl w-fit p-1 gap-2">
@@ -125,7 +125,7 @@ const HomeSkeleton = memo(() => {
       {/* List items placeholders */}
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-dashboard-sidebar border border-dashboard rounded-2xl p-4 flex items-center gap-4 h-24">
+          <div key={i} className="bg-dashboard-sidebar border border-dashboard rounded-2xl p-4 flex items-center gap-4 h-24 skeleton-card">
             <div className="w-14 h-14 rounded-full bg-white/10 skeleton-shimmer flex-shrink-0" />
             <div className="flex-1 space-y-2">
               <div className="h-4 w-1/3 bg-white/10 rounded skeleton-shimmer" />
@@ -747,7 +747,7 @@ const Home = memo(() => {
         }
         toast.success("Places list created successfully!", { id: toastId });
         setShowCreatePlacesModal(false);
-        navigate('/recommendations');
+        navigate('/recommendations', { state: { justCreatedList: true } });
       }
     } catch (error) {
       console.error(error);
@@ -1479,9 +1479,9 @@ const Home = memo(() => {
           onCreated={(newId) => {
             refetchMovies();
             if (newId) {
-              navigate(`/recommendations/movies/${newId}`);
+              navigate(`/recommendations/movies/${newId}`, { state: { justCreatedList: true } });
             } else {
-              navigate(`/recommendations/movies`);
+              navigate(`/recommendations/movies`, { state: { justCreatedList: true } });
             }
           }}
           username={user?.username || ""}
@@ -1497,9 +1497,9 @@ const Home = memo(() => {
           onCreated={(newId) => {
             refetchBooks();
             if (newId) {
-              navigate(`/recommendations/books/${newId}`);
+              navigate(`/recommendations/books/${newId}`, { state: { justCreatedList: true } });
             } else {
-              navigate(`/recommendations/books`);
+              navigate(`/recommendations/books`, { state: { justCreatedList: true } });
             }
           }}
           username={user?.username || ""}
@@ -1515,9 +1515,9 @@ const Home = memo(() => {
           onCreated={(newId) => {
             refetchGames();
             if (newId) {
-              navigate(`/recommendations/games/${newId}`);
+              navigate(`/recommendations/games/${newId}`, { state: { justCreatedList: true } });
             } else {
-              navigate(`/recommendations/games`);
+              navigate(`/recommendations/games`, { state: { justCreatedList: true } });
             }
           }}
           username={user?.username || ""}
@@ -1531,7 +1531,7 @@ const Home = memo(() => {
           username={user?.username || ""}
           onCreated={async () => {
             await queryClient.invalidateQueries({ queryKey: ['tunes-playlists', user?.username] });
-            navigate("/music");
+            navigate("/music", { state: { justCreatedList: true } });
           }}
         />
       )}
@@ -1543,9 +1543,9 @@ const Home = memo(() => {
           onCreated={(newId) => {
             refetchGuides();
             if (newId) {
-              navigate(`/guides/${newId}`);
+              navigate(`/guides/${newId}`, { state: { justCreatedGuide: true } });
             } else {
-              navigate(`/guides`);
+              navigate(`/guides`, { state: { justCreatedGuide: true } });
             }
           }}
         />

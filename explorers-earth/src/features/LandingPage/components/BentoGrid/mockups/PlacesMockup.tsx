@@ -95,7 +95,7 @@ export default function PlacesMockup() {
   const showOpenedCard = stage === 8;   // ★ Eiffel Tower detail open from grid
 
   return (
-    <div className="flex-1 flex flex-col bg-[#0F1419] h-full overflow-hidden select-none pointer-events-none relative">
+    <div className="flex-1 flex flex-col bg-[#050507] h-full overflow-hidden select-none pointer-events-none relative">
       <motion.div
         animate={{ y: (stage === 7 || stage === 8) ? -120 : 0 }}
         transition={{ duration: 1.5, ease: 'easeInOut' }}
@@ -273,7 +273,7 @@ export default function PlacesMockup() {
                             : { scale: 1, borderColor: 'rgba(255,255,255,0.05)' }
                           }
                           transition={{ type: 'spring', stiffness: 300 }}
-                          className="bg-[#1a1f2e] rounded-xl overflow-hidden border"
+                          className="bg-[#0B0B0E] rounded-xl overflow-hidden border"
                         >
                           <div className="h-20 relative">
                             <img src={place.img} alt={place.name} className="w-full h-full object-cover" />
@@ -293,7 +293,7 @@ export default function PlacesMockup() {
                           <motion.div
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            className="bg-[#1a1f2e] rounded-xl overflow-hidden border border-[#3498DB]/40"
+                            className="bg-[#0B0B0E] rounded-xl overflow-hidden border border-[#3498DB]/40"
                           >
                             <div className="h-20 relative">
                               <img src="/landing/Louvre_Museum.jpg" alt="Musée d'Orsay" className="w-full h-full object-cover" />
@@ -321,7 +321,7 @@ export default function PlacesMockup() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: 40 }}
                           transition={{ type: 'spring', stiffness: 260, damping: 24 }}
-                          className="absolute inset-0 bg-[#0F1419] rounded-2xl overflow-hidden border border-white/10 z-10"
+                          className="absolute inset-0 bg-[#050507] rounded-2xl overflow-hidden border border-white/10 z-10"
                         >
                           {/* Hero */}
                           <div className="h-28 relative">
@@ -363,7 +363,7 @@ export default function PlacesMockup() {
                 {activeLocTab === 'manage' && (
                   <motion.div key="manage" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
                     {/* Manage Section */}
-                    <div className="bg-[#1a1f2e] border border-white/5 rounded-xl overflow-hidden shadow-xl">
+                    <div className="bg-[#0B0B0E] border border-white/5 rounded-xl overflow-hidden shadow-xl">
                       <div className="px-4 py-3 flex items-center justify-between border-b border-white/5">
                         <span className="text-[10px] font-bold text-white">Manage</span>
                         <ChevronRight size={14} className="text-white/40 rotate-90" />
@@ -385,7 +385,7 @@ export default function PlacesMockup() {
                     </div>
 
                     {/* My QR Section */}
-                    <div className="bg-[#1a1f2e] border border-white/5 rounded-xl overflow-hidden shadow-xl">
+                    <div className="bg-[#0B0B0E] border border-white/5 rounded-xl overflow-hidden shadow-xl">
                       <div className="px-4 py-3 flex items-center justify-between border-b border-white/5">
                         <span className="text-[10px] font-bold text-white">My QR</span>
                         <ChevronRight size={14} className="text-white/40 rotate-90" />
@@ -444,7 +444,7 @@ export default function PlacesMockup() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           >
             <motion.div
-              className="bg-[#1a1f2e] rounded-xl border border-white/10 p-4 w-full shadow-2xl"
+              className="bg-[#0B0B0E] rounded-xl border border-white/10 p-4 w-full shadow-2xl"
               initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.92, opacity: 0 }}
             >
               <div className="flex items-center justify-between mb-3">
@@ -496,7 +496,7 @@ export default function PlacesMockup() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           >
             <motion.div
-              className="bg-[#1a1f2e] rounded-xl border border-white/10 p-4 w-full shadow-2xl"
+              className="bg-[#0B0B0E] rounded-xl border border-white/10 p-4 w-full shadow-2xl"
               initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.92, opacity: 0 }}
             >
               <div className="flex items-center justify-between mb-3">

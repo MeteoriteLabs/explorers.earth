@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Star, MoreVertical, Trash2,
-  Loader2, BookOpen, Pencil, Copy, Check, BookMarked, ChevronRight, Share2, Download
+  Loader2, BookOpen, Pencil, Copy, Check, BookMarked, Share2, Download
 } from "lucide-react";
 import { AddIcon } from "../../../../assets/icons/AddIcon";
 import { toast } from "sonner";
@@ -21,6 +21,7 @@ import type { RecommendedBook, BookList } from "../../types";
 import BookDetailModal from "../public/BookDetailModal";
 import TopReadsManager from "./TopReadsManager";
 import Switch from "../../../../components/ui/Switch";
+import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
 
 const VITE_BASE_URL = import.meta.env.VITE_BASE_URL || window.location.origin;
 
@@ -373,8 +374,14 @@ const ManageTab = ({ list, onRefetch }: ManageTabProps) => {
 const BookListView = () => {
   const { listId } = useParams<{ listId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<"recommendations" | "manage">("recommendations");
   const [deleteTarget, setDeleteTarget] = useState<RecommendedBook | null>(null);
+
+  const [listVisibilityPrompt, setListVisibilityPrompt] = useState<{
+    isOpen: boolean;
+    listName: string;
+  } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [pinningId, setPinningId] = useState<string | null>(null);
   const [modalState, setModalState] = useState<{ open: boolean; book: RecommendedBook | null }>({ open: false, book: null });
@@ -403,6 +410,16 @@ const BookListView = () => {
       account: rawList.account ?? { documentId: (user as any)?.accountDocumentId ?? "", username: (user as any)?.username ?? "" },
     }
     : null;
+
+  useEffect(() => {
+    if (location.state?.justAddedRecommendation && list && !list.visibility) {
+      setListVisibilityPrompt({
+        isOpen: true,
+        listName: list.List_Name,
+      });
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, list]);
 
   const handlePinToggle = async (book: RecommendedBook) => {
     const willPin = !book.is_pinned;
@@ -527,18 +544,7 @@ const BookListView = () => {
       {/* Tab content */}
       {activeTab === "recommendations" ? (
         <div>
-          {/* Top Reads Manager entry */}
-          {pinnedCount > 0 && (
-            <button
-               onClick={() => setShowTopReadsManager(true)}
-               className="w-full mb-4 flex items-center justify-between px-4 py-3 bg-[#fbbf24]/5 border border-[#fbbf24]/25 rounded-xl text-sm hover:bg-[#fbbf24]/10 text-[#fbbf24] transition-all font-semibold"
-             >
-               <span className="flex items-center gap-2">
-                 <Star size={14} fill="currentColor" /> Manage Top Reads ({pinnedCount}/15)
-               </span>
-               <ChevronRight size={14} className="opacity-80" />
-             </button>
-          )}
+
 
           {/* Add Book button - highlighted CTA */}
           <button
@@ -627,6 +633,26 @@ const BookListView = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      {list && listVisibilityPrompt && (
+        <ListVisibilityModal
+          isOpen={listVisibilityPrompt.isOpen}
+          onClose={() => setListVisibilityPrompt(null)}
+          listName={listVisibilityPrompt.listName}
+          categoryName="Books"
+          onConfirm={async () => {
+            try {
+              await updateBookList({
+                variables: { documentId: list.documentId, visibility: true },
+              });
+              refetch();
+              toast.success(`"${list.List_Name}" published!`);
+            } catch {
+              toast.error("Failed to update visibility.");
+            }
+          }}
+          loading={isUpdating}
+        />
+      )}
     </div>
   );
 };

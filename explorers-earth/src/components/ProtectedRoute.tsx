@@ -34,7 +34,7 @@ const ProtectedRoute = () => {
   if (loading) {
     return (
       <div className="flex bg-black items-center justify-center min-h-screen">
-        <EarthLoader context="general" size="small" />
+        <EarthLoader context="general" size="default" />
       </div>
     );
   }

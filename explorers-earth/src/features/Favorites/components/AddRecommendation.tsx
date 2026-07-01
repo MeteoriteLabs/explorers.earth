@@ -923,7 +923,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
                 const val = getComputedStyle(themeEl).getPropertyValue("--dash-bg").trim();
                 if (val) return val;
               }
-              return "#0F1419";
+              return "#060608";
             })(),
           }}
         >

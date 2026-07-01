@@ -7,6 +7,8 @@ import { deduplicateBooks, slugToSubjectName } from "../../utils/bookHelpers";
 import type { RecommendedBook } from "../../types";
 import BookCoverCard from "./BookCoverCard";
 import BookDetailModal from "./BookDetailModal";
+import SEO from "../../../../components/SEO";
+import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsername($username: String!) {
@@ -55,8 +57,24 @@ const PublicBookSubject = () => {
     setModalState({ open: true, book });
   }, []);
 
+  const pageTitle = `${subjectName} Books | ${username}'s Book List | explorers`;
+  const metaDescription = `Explore ${subjectBooks.length} book${subjectBooks.length !== 1 ? "s" : ""} on ${subjectName} recommended by ${username} on explorers.`;
+  const seoKeywords = [subjectName, "books", `${username} books`, "explorers"];
+
   return (
-    <div className="min-h-screen bg-black text-white">
+    <>
+      {!loading && (
+        <SEO
+          title={pageTitle}
+          description={metaDescription}
+          keywords={seoKeywords}
+          canonical={createCanonicalUrl(`/${username}/books/subject/${subjectSlug}`)}
+          type="website"
+          author={username}
+          siteName="explorers"
+        />
+      )}
+      <div className="min-h-screen bg-black text-white">
       <div className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/8">
         <div className="flex items-center gap-3 px-4 py-3 max-w-6xl mx-auto">
           <img src="/logo.svg" alt="explorers.earth" className="h-6 opacity-70" />
@@ -99,7 +117,8 @@ const PublicBookSubject = () => {
         open={modalState.open}
         onClose={() => setModalState({ open: false, book: null })}
       />
-    </div>
+      </div>
+    </>
   );
 };
 

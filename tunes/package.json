@@ -7,7 +7,7 @@
     "node": ">=22.12"
   },
   "scripts": {
-    "dev": "tsx watch server/index.ts",
+    "dev": "tsx --watch server/index.ts",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist/server",
     "start": "NODE_ENV=production node dist/server/index.js",
     "check": "tsc",
@@ -66,6 +66,7 @@
     "drizzle-orm": "^0.45.2",
     "drizzle-zod": "^0.7.1",
     "embla-carousel-react": "^8.3.0",
+    "explorers-earth-monorepo": "file:..",
     "express": "^5.2.1",
     "express-rate-limit": "^7.5.1",
     "express-session": "^1.19.0",
@@ -133,7 +134,7 @@
     "esbuild": "^0.28.1",
     "postcss": "^8.4.47",
     "supertest": "^7.2.2",
-    "tailwindcss": "^4.3.1",
+    "tailwindcss": "^3.4.19",
     "tsx": "^4.19.1",
     "typescript": "5.6.3",
     "vite": "^8.0.16",

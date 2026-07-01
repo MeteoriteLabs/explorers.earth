@@ -9,6 +9,8 @@ import { deduplicateMovies } from "../../utils/movieHelpers";
 import MoviePosterCard from "./MoviePosterCard";
 import MovieDetailModal from "./MovieDetailModal";
 import MoviePosterSkeleton from "./MoviePosterSkeleton";
+import SEO from "../../../../components/SEO";
+import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 
 const PublicMovieList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
@@ -38,8 +40,34 @@ const PublicMovieList = () => {
     }
   };
 
+  const pageTitle = list ? `${list.List_Name} | ${username}'s Movie List | explorers` : `Movie List | explorers`;
+  const metaDescription = list?.list_description 
+    ? list.list_description 
+    : list 
+      ? `Explore the curated list "${list.List_Name}" containing ${movies.length} movies recommended by ${username} on explorers.`
+      : "Explore movie recommendations on explorers.";
+
+  const seoKeywords = list 
+    ? [`${list.List_Name}`, `${username} movies`, `${list.slug}`, "movie list", "explorers"]
+    : ["movie list", "explorers"];
+
+  const listImage = list?.cover_image?.url || (movies[0]?.poster_path ? `https://image.tmdb.org/t/p/w500${movies[0].poster_path}` : undefined);
+
   return (
-    <div className="min-h-screen bg-[#0d1117] text-white">
+    <>
+      {!loading && list && (
+        <SEO
+          title={pageTitle}
+          description={metaDescription}
+          keywords={seoKeywords}
+          canonical={createCanonicalUrl(`/${username}/movies/${listSlug}`)}
+          image={listImage}
+          type="website"
+          author={username}
+          siteName="explorers"
+        />
+      )}
+      <div className="min-h-screen bg-[#0d1117] text-white">
       {/* Fixed Header */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
         <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
@@ -133,7 +161,8 @@ const PublicMovieList = () => {
         open={modalOpen}
         onClose={() => { setModalOpen(false); setSelectedMovie(null); }}
       />
-    </div>
+      </div>
+    </>
   );
 };
 

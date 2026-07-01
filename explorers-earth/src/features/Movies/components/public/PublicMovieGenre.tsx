@@ -10,6 +10,8 @@ import MoviePosterCard from "./MoviePosterCard";
 import MovieDetailModal from "./MovieDetailModal";
 import MoviePosterSkeleton from "./MoviePosterSkeleton";
 import { PUBLIC_MOVIE_DATA } from "../../api/query";
+import SEO from "../../../../components/SEO";
+import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsernameForGenre($username: String!) {
@@ -60,8 +62,24 @@ const PublicMovieGenre = () => {
     setModalOpen(true);
   };
 
+  const pageTitle = `${genreName} Movies | ${username}'s Movie List | explorers`;
+  const metaDescription = `Explore ${filteredMovies.length} ${genreName} movie${filteredMovies.length !== 1 ? "s" : ""} recommended by ${username} on explorers.`;
+  const seoKeywords = [genreName, "movies", `${username} movies`, "explorers"];
+
   return (
-    <div className="min-h-screen bg-[#0d1117] text-white">
+    <>
+      {!loading && (
+        <SEO
+          title={pageTitle}
+          description={metaDescription}
+          keywords={seoKeywords}
+          canonical={createCanonicalUrl(`/${username}/movies/genre/${genreSlug}`)}
+          type="website"
+          author={username}
+          siteName="explorers"
+        />
+      )}
+      <div className="min-h-screen bg-[#0d1117] text-white">
       {/* Fixed Header */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
         <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
@@ -165,7 +183,8 @@ const PublicMovieGenre = () => {
         open={modalOpen}
         onClose={() => { setModalOpen(false); setSelectedMovie(null); }}
       />
-    </div>
+      </div>
+    </>
   );
 };
 

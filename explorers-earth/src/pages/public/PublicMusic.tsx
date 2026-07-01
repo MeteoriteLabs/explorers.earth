@@ -1,9 +1,8 @@
 import { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { Song, PlaylistResponse } from "../../types/music";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import PlaylistCard, { PlaylistCardContent } from "../../components/ui/PlaylistCard";
-import { EarthLoader } from "../../components/EarthLoader";
 import PlaylistTable from "../../components/playlist-table";
 import SearchSongs from "../../components/search-songs";
 import { Music2, Volume2, History, Share2, Copy, ChevronLeft, ChevronRight } from "lucide-react";
@@ -39,9 +38,9 @@ const MusicSkeleton = () => {
     <div className="min-h-screen bg-black text-white pt-20 px-4 md:px-6 pb-20">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* 1. Search Bar Skeleton */}
-        <div className="bg-[#111] border border-white/[0.08] rounded-[14px] p-4 space-y-2.5">
+        <div className="rounded-[14px] p-4 space-y-2.5 skeleton-card">
           <div className="h-4 w-36 bg-white/10 rounded skeleton-shimmer" />
-          <div className="h-10 w-full bg-black border border-gray-800 rounded-lg skeleton-shimmer" />
+          <div className="h-10 w-full bg-white/5 rounded-lg skeleton-shimmer" />
           <div className="h-3 w-40 bg-white/5 rounded skeleton-shimmer" />
         </div>
         
@@ -53,7 +52,7 @@ const MusicSkeleton = () => {
 
         {/* 3. Hero Card Skeleton (Responsive) */}
         {/* Mobile View Hero Skeleton */}
-        <div className="md:hidden w-full h-[300px] rounded-[18px] bg-[#0a0a0a] border border-white/10 shadow-lg relative overflow-hidden">
+        <div className="md:hidden w-full h-[300px] rounded-[18px] relative overflow-hidden skeleton-card">
           <div className="absolute inset-0 skeleton-shimmer" />
           <div className="absolute bottom-4 left-4 right-4 space-y-2">
             <div className="h-4 w-20 bg-white/15 rounded skeleton-shimmer" />
@@ -63,7 +62,7 @@ const MusicSkeleton = () => {
         </div>
 
         {/* Desktop View Hero Skeleton */}
-        <div className="hidden md:block w-full h-[440px] rounded-[18px] bg-[#0a0a0a] border border-white/10 shadow-lg relative overflow-hidden">
+        <div className="hidden md:block w-full h-[440px] rounded-[18px] relative overflow-hidden skeleton-card">
           <div className="absolute inset-0 skeleton-shimmer" />
           <div className="absolute bottom-8 left-8 space-y-2.5">
             <div className="h-5 w-24 bg-white/15 rounded skeleton-shimmer" />
@@ -75,7 +74,7 @@ const MusicSkeleton = () => {
         {/* 4. Accordion List Skeletons */}
         <div className="space-y-3 pt-2">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-[#111] border border-white/[0.08] rounded-[14px] h-[54px] px-4 flex items-center justify-between">
+            <div key={i} className="rounded-[14px] h-[54px] px-4 flex items-center justify-between skeleton-card">
               <div className="flex items-center gap-3 w-1/2">
                 <div className="w-8 h-8 rounded-lg bg-white/5 skeleton-shimmer" />
                 <div className="h-4 w-28 bg-white/10 rounded skeleton-shimmer" />
@@ -94,6 +93,7 @@ const MusicSkeleton = () => {
 export default function PublicMusic() {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
+  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { updateTheme } = useTheme();
@@ -493,18 +493,15 @@ export default function PublicMusic() {
   useEffect(() => {
     if (!isPageLoading) {
       (window as any).__publicProfileLoaded = true;
+      outletContext?.setIsPageLoaded?.(true);
     }
-  }, [isPageLoading]);
+  }, [isPageLoading, outletContext]);
 
   if (isPageLoading) {
     if ((window as any).__publicProfileLoaded) {
       return <MusicSkeleton />;
     }
-    return (
-      <div className="bg-black min-h-screen">
-        <EarthLoader context="profile" size="default" />
-      </div>
-    );
+    return null;
   }
 
   if (error || !playlist || !guestUrl) {
@@ -695,18 +692,32 @@ export default function PublicMusic() {
                           dragConstraints={{ left: 0, right: 0 }}
                           dragElastic={0.8}
                           onDragEnd={handleDragEnd}
-                          className={`absolute inset-0 h-full rounded-2xl overflow-hidden shadow-2xl border border-white/10 flex flex-col justify-between ${
+                          className={`absolute inset-0 h-full rounded-2xl overflow-hidden flex flex-col justify-between transition-all duration-300 ${
                             diff === 0 ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'
+                          } ${
+                            diff === 0 && card.type === 'now-playing' ? 'now-playing-card-active' : 'border border-white/10 shadow-2xl'
                           }`}
-                          style={{
-                            background: 'linear-gradient(135deg, #181c2b 0%, #0d0e15 50%, #050608 100%)',
-                          }}
+                          style={
+                            diff === 0 && card.type === 'now-playing'
+                              ? {}
+                              : { background: 'linear-gradient(135deg, #181c2b 0%, #0d0e15 50%, #050608 100%)' }
+                          }
                         >
+                          {card.type === 'now-playing' && hasThumbnail && (
+                            <div
+                              className="card-dim-blur-bg"
+                              style={{ backgroundImage: `url(${card.thumbnailUrl})` }}
+                            />
+                          )}
                           {/* Top left status/action badge */}
                           <div className="relative z-20 flex justify-between items-start p-5 w-full">
-                            <div className="px-2.5 py-0.5 rounded-full bg-[#0f1624]/65 backdrop-blur-[3px] border border-white/20 flex items-center justify-center text-[10px] text-white font-bold tracking-wide uppercase font-poppins">
+                            <div className={`px-2.5 py-0.5 rounded-full flex items-center justify-center text-[10px] font-bold tracking-wide uppercase font-poppins border ${
+                              card.type === 'now-playing'
+                                ? 'bg-[var(--primary)] border-[var(--primary)] text-white shadow-lg shadow-[var(--primary)]/20'
+                                : 'bg-[#0f1624]/65 border-white/20 text-white/80 backdrop-blur-[3px]'
+                            }`}>
                               {card.type === 'now-playing' ? (
-                                <svg className="mr-1.5 h-2.5 w-2.5 inline animate-pulse text-[var(--primary)]" viewBox="0 0 24 24" fill="currentColor">
+                                <svg className="mr-1.5 h-2.5 w-2.5 inline animate-pulse text-white" viewBox="0 0 24 24" fill="currentColor">
                                   <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
                                 </svg>
                               ) : null}
@@ -714,36 +725,51 @@ export default function PublicMusic() {
                             </div>
                           </div>
 
-                          {/* Album Art (Centered Square) */}
+                          {/* Album Art (Centered Square or Spinning Vinyl) */}
                           <div className="relative z-20 flex-1 flex items-center justify-center px-6 my-2">
-                            <div className={`relative w-[70%] max-w-[240px] aspect-square rounded-2xl overflow-hidden shadow-[0_15px_35px_rgba(0,0,0,0.5)] border border-white/10 bg-gray-900 flex items-center justify-center transition-all duration-500 hover:scale-[1.04] ${
-                              card.type === 'now-playing' ? 'album-art-active' : ''
-                            }`}>
-                              {hasThumbnail ? (
-                                <>
+                            {card.type === 'now-playing' ? (
+                              <div className="vinyl-record-container">
+                                <div className="vinyl-disc">
+                                  <div className="vinyl-label">
+                                    {hasThumbnail ? (
+                                      <img
+                                        src={card.thumbnailUrl}
+                                        alt={card.title}
+                                        className="w-full h-full object-cover select-none pointer-events-none"
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full bg-gray-900 flex items-center justify-center">
+                                        <Music2 className="h-6 w-6 text-gray-700" />
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="vinyl-spindle"></div>
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                  <div className="h-14 w-14 rounded-full bg-black/60 backdrop-blur-sm border border-white/10 shadow-lg flex items-center justify-center">
+                                    <div className="eq-bars hero-large-eq">
+                                      <div className="eq-bar"></div>
+                                      <div className="eq-bar"></div>
+                                      <div className="eq-bar"></div>
+                                      <div className="eq-bar"></div>
+                                      <div className="eq-bar"></div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="relative w-[70%] max-w-[240px] aspect-square rounded-2xl overflow-hidden shadow-[0_15px_35px_rgba(0,0,0,0.5)] border border-white/10 bg-gray-900 flex items-center justify-center transition-all duration-500 hover:scale-[1.04]">
+                                {hasThumbnail ? (
                                   <img
                                     src={card.thumbnailUrl}
                                     alt={card.title}
                                     className="w-full h-full object-cover select-none pointer-events-none"
                                   />
-                                  {card.type === 'now-playing' && (
-                                    <div className="absolute inset-0 flex items-center justify-center bg-black/35 backdrop-blur-[1.5px] transition-all">
-                                      <div className="h-16 w-16 rounded-full bg-black/55 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center">
-                                        <div className="eq-bars hero-large-eq">
-                                          <div className="eq-bar"></div>
-                                          <div className="eq-bar"></div>
-                                          <div className="eq-bar"></div>
-                                          <div className="eq-bar"></div>
-                                          <div className="eq-bar"></div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
-                                </>
-                              ) : (
-                                <Music2 className="h-12 w-12 text-gray-700" />
-                              )}
-                            </div>
+                                ) : (
+                                  <Music2 className="h-12 w-12 text-gray-700" />
+                                )}
+                              </div>
+                            )}
                           </div>
 
                           {/* Song Info (Title & Artist) */}
@@ -778,17 +804,31 @@ export default function PublicMusic() {
               {/* DESKTOP VIEW (banner + strip) */}
               <div className="hidden md:block w-full mb-12 mt-4 px-4">
                 <div
-                  className="relative w-full h-[75vh] min-h-[620px] max-h-[820px] rounded-2xl overflow-hidden shadow-2xl group/hero max-w-4xl mx-auto border border-white/[0.08] hover:border-white/25 transition-all duration-300 select-none flex flex-col justify-between p-8"
-                  style={{
-                    background: 'linear-gradient(135deg, #181c2b 0%, #0d0e15 50%, #050608 100%)',
-                  }}
+                  className={`relative w-full h-[75vh] min-h-[620px] max-h-[820px] rounded-2xl overflow-hidden group/hero max-w-4xl mx-auto transition-all duration-300 select-none flex flex-col justify-between p-8 ${
+                    activeCard?.type === 'now-playing' ? 'now-playing-card-active' : 'border border-white/[0.08] hover:border-white/25 shadow-2xl'
+                  }`}
+                  style={
+                    activeCard?.type === 'now-playing'
+                      ? {}
+                      : { background: 'linear-gradient(135deg, #181c2b 0%, #0d0e15 50%, #050608 100%)' }
+                  }
                   onClick={() => setActiveHeroIndex(0)}
                 >
+                  {activeCard?.type === 'now-playing' && activeCard.thumbnailUrl && (
+                    <div
+                      className="card-dim-blur-bg"
+                      style={{ backgroundImage: `url(${activeCard.thumbnailUrl})` }}
+                    />
+                  )}
                   {/* Top left badge */}
                   <div className="relative z-20 flex justify-between items-center w-full">
-                    <div className="px-3 py-1 rounded-full bg-[#0f1624]/65 backdrop-blur-[3px] border border-white/20 flex items-center justify-center text-[11px] text-white font-semibold tracking-wide uppercase font-poppins">
+                    <div className={`px-3 py-1 rounded-full flex items-center justify-center text-[11px] font-semibold tracking-wide uppercase font-poppins border ${
+                      activeCard?.type === 'now-playing'
+                        ? 'bg-[var(--primary)] border-[var(--primary)] text-white shadow-lg shadow-[var(--primary)]/20'
+                        : 'bg-[#0f1624]/65 border-white/20 text-white/80 backdrop-blur-[3px]'
+                    }`}>
                       {activeCard?.type === 'now-playing' ? (
-                        <svg className="mr-1.5 h-3 w-3 inline animate-pulse text-[var(--primary)]" viewBox="0 0 24 24" fill="currentColor">
+                        <svg className="mr-1.5 h-3 w-3 inline animate-pulse text-white" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
                         </svg>
                       ) : null}
@@ -796,36 +836,51 @@ export default function PublicMusic() {
                     </div>
                   </div>
 
-                  {/* Album Art (Centered Square) */}
+                  {/* Album Art (Centered Square or Spinning Vinyl) */}
                   <div className="relative z-20 flex-1 flex flex-col items-center justify-center w-full my-4">
-                    <div className={`relative w-64 h-64 lg:w-72 lg:h-72 rounded-2xl overflow-hidden shadow-[0_15px_35px_rgba(0,0,0,0.5)] border border-white/10 bg-gray-900 flex items-center justify-center transition-all duration-500 hover:scale-[1.04] ${
-                      activeCard?.type === 'now-playing' ? 'album-art-active' : ''
-                    }`}>
-                      {activeCard?.thumbnailUrl ? (
-                        <>
+                    {activeCard?.type === 'now-playing' ? (
+                      <div className="vinyl-record-container">
+                        <div className="vinyl-disc">
+                          <div className="vinyl-label">
+                            {activeCard?.thumbnailUrl ? (
+                              <img
+                                src={activeCard.thumbnailUrl}
+                                alt={activeCard.title}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gray-900 flex items-center justify-center">
+                                <Music2 className="h-8 w-8 text-gray-700" />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="vinyl-spindle"></div>
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <div className="h-16 w-16 rounded-full bg-black/60 backdrop-blur-sm border border-white/10 shadow-lg flex items-center justify-center">
+                            <div className="eq-bars hero-large-eq">
+                              <div className="eq-bar"></div>
+                              <div className="eq-bar"></div>
+                              <div className="eq-bar"></div>
+                              <div className="eq-bar"></div>
+                              <div className="eq-bar"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={`relative w-64 h-64 lg:w-72 lg:h-72 rounded-2xl overflow-hidden shadow-[0_15px_35px_rgba(0,0,0,0.5)] border border-white/10 bg-gray-900 flex items-center justify-center transition-all duration-500 hover:scale-[1.04]`}>
+                        {activeCard?.thumbnailUrl ? (
                           <img
                             src={activeCard.thumbnailUrl}
                             alt={activeCard.title}
                             className="w-full h-full object-cover"
                           />
-                          {activeCard?.type === 'now-playing' && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/35 backdrop-blur-[1.5px] transition-all">
-                              <div className="h-20 w-20 rounded-full bg-black/55 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center">
-                                <div className="eq-bars hero-large-eq">
-                                  <div className="eq-bar"></div>
-                                  <div className="eq-bar"></div>
-                                  <div className="eq-bar"></div>
-                                  <div className="eq-bar"></div>
-                                  <div className="eq-bar"></div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <Music2 className="h-16 w-16 text-gray-700" />
-                      )}
-                    </div>
+                        ) : (
+                          <Music2 className="h-16 w-16 text-gray-700" />
+                        )}
+                      </div>
+                    )}
 
                     {/* Metadata */}
                     <div className="text-center mt-4 max-w-[80%] w-full overflow-hidden flex flex-col items-center">

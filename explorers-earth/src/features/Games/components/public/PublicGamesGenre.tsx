@@ -9,6 +9,8 @@ import { slugToGenreName, deduplicateGames, genreToSlug } from "../../utils/game
 import GameCoverCard from "./GameCoverCard";
 import GameDetailModal from "./GameDetailModal";
 import { PUBLIC_GAME_DATA } from "../../api/query";
+import SEO from "../../../../components/SEO";
+import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsernameForGenre($username: String!) {
@@ -67,8 +69,24 @@ const PublicGamesGenre = () => {
     }
   };
 
+  const pageTitle = `${genreName} Games | ${username}'s Game List | explorers`;
+  const metaDescription = `Explore ${filteredGames.length} ${genreName} game${filteredGames.length !== 1 ? "s" : ""} recommended by ${username} on explorers.`;
+  const seoKeywords = [genreName, "games", `${username} games`, "explorers"];
+
   return (
-    <div className="min-h-screen bg-[#0d1117] text-white">
+    <>
+      {!loading && (
+        <SEO
+          title={pageTitle}
+          description={metaDescription}
+          keywords={seoKeywords}
+          canonical={createCanonicalUrl(`/${username}/games/genre/${genreSlug}`)}
+          type="website"
+          author={username}
+          siteName="explorers"
+        />
+      )}
+      <div className="min-h-screen bg-[#0d1117] text-white">
       {/* Fixed Header */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
         <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
@@ -154,6 +172,7 @@ const PublicGamesGenre = () => {
         onClose={() => { setModalOpen(false); setSelectedGame(null); }}
       />
     </div>
+    </>
   );
 };
 

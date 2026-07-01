@@ -132,28 +132,28 @@ body[data-sidebar-open="false"] .dashboard-content {
 
 /* Dark theme overrides */
 .dashboard-theme-dark .dashboard-theme {
-  --dash-bg: #0F1419;
-  --dash-sidebar-bg: #1A1F2E;
+  --dash-bg: #060608;
+  --dash-sidebar-bg: #0B0B0E;
   --dash-accent: #60A5FA;
-  --dash-text: #F3F4F6;
+  --dash-text: #F9FAFB;
   --dash-text-light: #FFFFFF;
-  --dash-text-muted: color-mix(in srgb, #F3F4F6 60%, transparent);
-  --dash-muted: #1E293B;
-  --dash-border: #334155;
+  --dash-text-muted: color-mix(in srgb, #F9FAFB 50%, transparent);
+  --dash-muted: #121217;
+  --dash-border: #1E1E26;
   --dash-focus-ring: #60A5FA;
   --dash-danger: #F87171;
   --dash-danger-hover: #EF4444;
   /* Icon colors for dark theme */
-  --dash-icon-primary: #F3F4F6;
+  --dash-icon-primary: #F9FAFB;
   --dash-icon-secondary: #9CA3AF;
   --dash-icon-accent: #60A5FA;
   --dash-icon-muted: #6B7280;
 
   /* Additional category & theme layout variables */
-  --dash-container-bg: #0F1419;
-  --dash-tab-bg:      #121620;
-  --dash-search-bg:   #161B26;
-  --dash-map-banner:  linear-gradient(135deg, #1e293b, #0f172a);
+  --dash-container-bg: #060608;
+  --dash-tab-bg:      #0C0C10;
+  --dash-search-bg:   #0E0E12;
+  --dash-map-banner:  linear-gradient(135deg, #121217, #060608);
   --status-pub:       #4ade80;
   --status-draft:     #f87171;
 }
@@ -882,6 +882,14 @@ body.hide-dashboard-header .sticky-top-offset {
   animation: skeletonShimmer 1.8s ease-in-out infinite;
 }
 
+.skeleton-card {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: none !important;
+  border-width: 0 !important;
+  outline: none !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4) !important;
+}
+
 /* Touch ripple effect */
 .ripple-effect {
   position: relative;
@@ -986,16 +994,16 @@ body.hide-dashboard-header .sticky-top-offset {
 }
 
 .dark {
-  --background: 240 10% 3.9%;
+  --background: 240 10% 2%;
   --foreground: 0 0% 98%;
-  --muted: 240 3.7% 15.9%;
+  --muted: 240 3.7% 8%;
   --muted-foreground: 240 5% 64.9%;
-  --popover: 240 10% 3.9%;
+  --popover: 240 10% 2%;
   --popover-foreground: 0 0% 98%;
-  --card: 240 10% 3.9%;
+  --card: 240 10% 2.5%;
   --card-foreground: 0 0% 98%;
-  --border: 240 3.7% 15.9%;
-  --input: 240 3.7% 15.9%;
+  --border: 240 3.7% 10%;
+  --input: 240 3.7% 10%;
   --primary: 207 90% 54%;
   --primary-foreground: 211 100% 99%;
   --secondary: 240 3.7% 15.9%;

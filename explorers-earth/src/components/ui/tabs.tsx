@@ -1,6 +1,7 @@
 // Simple Tabs components for playlist management
 import React, { useState } from 'react';
 import { cn } from '../../lib/utils';
+import { useTheme } from '../theme-provider';
 
 interface TabsProps {
   children: React.ReactNode;
@@ -82,6 +83,9 @@ export function TabsTrigger({
   className 
 }: TabsTriggerProps) {
   const isActive = activeValue === value;
+  const { theme: publicThemeColor } = useTheme();
+  const inDashboard = typeof document !== 'undefined' && !!document.querySelector('.dashboard-theme');
+  const accentColor = inDashboard ? 'var(--dash-accent, #3b82f6)' : publicThemeColor;
 
   return (
     <button
@@ -93,7 +97,7 @@ export function TabsTrigger({
           : 'text-gray-400 hover:text-white hover:bg-white/5',
         className
       )}
-      style={isActive ? { background: 'var(--primary, #2563eb)' } : undefined}
+      style={isActive ? { background: accentColor } : undefined}
     >
       {children}
     </button>

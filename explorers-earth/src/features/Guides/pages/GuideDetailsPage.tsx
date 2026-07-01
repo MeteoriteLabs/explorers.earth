@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { EarthLoader } from "../../../components/EarthLoader";
 import SEO from "../../../components/SEO";
 import { createCanonicalUrl } from "../../../utils/getCurrentDomain";
-import { GET_GUIDE_BY_ID_QUERY } from "../api/queries";
+import { GET_GUIDE_BY_ID_QUERY, GET_USER_ACCOUNT_QUERY } from "../api/queries";
 import {
   DELETE_GUIDE_SECTION_MUTATION,
   UPDATE_GUIDE_MUTATION,
@@ -37,6 +37,9 @@ import BudgetTable from "../components/GuideDetails/BudgetTable";
 import TipsTimeline from "../components/GuideDetails/TipsTimeline";
 import GooglePlaceModal from "../../PublicHome/components/PublicGuideViews/GooglePlaceModal";
 import ConfirmationModal from "../../../components/ui/ConfirmationModal";
+import useAuthStore from "../../../store/store";
+import { CategoryVisibilityModal } from "../../../components/CategoryVisibilityModal";
+import { ListVisibilityModal } from "../../../components/ListVisibilityModal";
 
 const GuideDetailsPage = () => {
   const { guideId } = useParams<{ guideId: string }>();
@@ -62,6 +65,42 @@ const GuideDetailsPage = () => {
 
   // Check AI guide quota
   const { shouldDisableGeneration, disableReason, refetch: refetchQuota } = useAIGuideQuota();
+
+  const { user } = useAuthStore();
+  const [visibilityPrompt, setVisibilityPrompt] = useState<{
+    isOpen: boolean;
+    categoryName: string;
+    visibilityField: string;
+    defaultValue: boolean;
+  } | null>(null);
+
+  const [listVisibilityPrompt, setListVisibilityPrompt] = useState<{
+    isOpen: boolean;
+    listName: string;
+  } | null>(null);
+
+  const { data: accountData, refetch: refetchAccount } = useQuery(GET_USER_ACCOUNT_QUERY, {
+    variables: { documentId: user?.documentId },
+    skip: !user?.documentId,
+  });
+
+  const accountDocumentId = accountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
+
+  useEffect(() => {
+    if (location.state?.justCreatedGuide && accountData) {
+      const acc = accountData?.usersPermissionsUser?.accounts?.[0];
+      const isPublic = acc?.public_guides === "Yes";
+      if (!isPublic) {
+        setVisibilityPrompt({
+          isOpen: true,
+          categoryName: "Guides",
+          visibilityField: "public_guides",
+          defaultValue: false,
+        });
+      }
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, accountData]);
 
   // Get sidebar width from CSS variable
   useEffect(() => {
@@ -250,6 +289,16 @@ const GuideDetailsPage = () => {
   }
 
   const guide = data.guide;
+
+  useEffect(() => {
+    if (location.state?.justAddedRecommendation && guide && !guide.Visibility) {
+      setListVisibilityPrompt({
+        isOpen: true,
+        listName: guide.Title,
+      });
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, guide]);
   const allSections = guide.guide_sections || [];
 
   // Remove duplicates based on documentId (in case of cache issues)
@@ -666,6 +715,40 @@ const GuideDetailsPage = () => {
         isDanger={true}
         isLoading={!!deletingSection}
       />
+      {visibilityPrompt && accountDocumentId && (
+        <CategoryVisibilityModal
+          isOpen={visibilityPrompt.isOpen}
+          onClose={() => setVisibilityPrompt(null)}
+          categoryName={visibilityPrompt.categoryName}
+          visibilityField={visibilityPrompt.visibilityField}
+          accountDocumentId={accountDocumentId}
+          onSuccess={() => {
+            refetchAccount();
+          }}
+        />
+      )}
+      {listVisibilityPrompt && (
+        <ListVisibilityModal
+          isOpen={listVisibilityPrompt.isOpen}
+          onClose={() => setListVisibilityPrompt(null)}
+          listName={listVisibilityPrompt.listName}
+          categoryName="Guides"
+          onConfirm={async () => {
+            try {
+              await updateGuide({
+                variables: {
+                  documentId: guideId,
+                  data: { Visibility: true },
+                },
+              });
+              refetch();
+              toast.success(`"${listVisibilityPrompt.listName}" guide published!`);
+            } catch (err: any) {
+              toast.error(`Failed to publish: ${err.message}`);
+            }
+          }}
+        />
+      )}
     </>
   );
 

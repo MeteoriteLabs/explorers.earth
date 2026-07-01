@@ -682,7 +682,7 @@ const CreateGuidePage = ({
         if (isModal && onCreated) {
           onCreated(resultDocumentId);
         } else {
-          navigate(`/guides/${resultDocumentId}`);
+          navigate(`/guides/${resultDocumentId}`, { state: { justCreatedGuide: true } });
         }
       } else if (type === "edit" && guideId) {
         if (isModal && onClose) {

@@ -1,6 +1,6 @@
 import { memo, useMemo, useState, useEffect } from "react";
 import { useQuery } from "@apollo/client";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import GuideCardSkeleton from "../../../components/ui/GuideCardSkeleton";
 import HeroSkeleton from "../../../components/ui/HeroSkeleton";
 import PublicGuideCard from "../../Guides/components/PublicGuideCard";
@@ -10,6 +10,7 @@ import type { Guide } from "../../Guides/types";
 import { useTrackAnalytics } from "../../../services/analyticsService";
 import SEO from "../../../components/SEO";
 import { createCanonicalUrl } from "../../../utils/getCurrentDomain";
+import { createWebPageGEOData } from "../../../utils/geoHelpers";
 import { toUrlSlug } from "../../../utils/formatAddress";
 import Button from "../../../components/ui/Button";
 import SwitchButton from "../../../components/ui/SwitchButton";
@@ -27,6 +28,7 @@ interface FilterState {
 const PublicGuides = memo(() => {
   const { username } = useParams();
   const navigate = useNavigate();
+  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
   const [filters, setFilters] = useState<FilterState>({
     guideType: null,
     category: null,
@@ -95,8 +97,9 @@ const PublicGuides = memo(() => {
   useEffect(() => {
     if (!loading && account) {
       (window as any).__publicProfileLoaded = true;
+      outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading, account]);
+  }, [loading, account, outletContext]);
 
   const analytics = useTrackAnalytics({
     accountId: account?.documentId || "",
@@ -458,6 +461,14 @@ const PublicGuides = memo(() => {
   const profileImage = account?.profile_picture?.url || account?.bg_picture?.url;
   const currentUrl = createCanonicalUrl(`/${username}/guides`);
 
+  const geoData = createWebPageGEOData({
+    pageType: "guides",
+    title: pageTitle,
+    description: metaDescription,
+    keywords: keywords,
+    purpose: `Explore travel guides and itineraries curated by ${profileName}`,
+  });
+
   // Check if account exists after loading is complete
   if (!loading && !account) {
     return (
@@ -467,6 +478,8 @@ const PublicGuides = memo(() => {
           description={metaDescription}
           keywords={keywords}
           canonical={currentUrl}
+          enableGEO={true}
+          geoData={geoData}
         />
         <div className="flex bg-black items-center justify-center min-h-screen">
           <div className="text-white text-center">
@@ -494,6 +507,8 @@ const PublicGuides = memo(() => {
         type="website"
         author={profileName}
         siteName="explorers"
+        enableGEO={true}
+        geoData={geoData}
       />
 
       <div className="h-full bg-black min-h-screen overflow-auto preview-scroll pb-20 pt-14">
@@ -559,24 +574,26 @@ const PublicGuides = memo(() => {
           
           {/* ── LOADING SKELETON: shown while account/guides queries resolve ── */}
           {loading && (
-            <>
-              {/* Hero skeleton — Desktop */}
-              <div className="hidden md:block w-full mb-6 mt-4 px-4">
-                <div className="max-w-4xl mx-auto">
-                  <HeroSkeleton accentColor="yellow" showThumbnails />
+            (window as any).__publicProfileLoaded ? (
+              <>
+                {/* Hero skeleton — Desktop */}
+                <div className="hidden md:block w-full mb-6 mt-4 px-4">
+                  <div className="max-w-4xl mx-auto">
+                    <HeroSkeleton accentColor="yellow" showThumbnails />
+                  </div>
                 </div>
-              </div>
-              {/* Hero skeleton — Mobile */}
-              <div className="md:hidden w-full mb-4 mt-4 px-4">
-                <HeroSkeleton accentColor="yellow" mobile />
-              </div>
-              {/* Guide card grid skeleton */}
-              <div className="px-4 md:max-w-5xl md:mx-auto">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-4">
-                  <GuideCardSkeleton count={6} variant="public" />
+                {/* Hero skeleton — Mobile */}
+                <div className="md:hidden w-full mb-4 mt-4 px-4">
+                  <HeroSkeleton accentColor="yellow" mobile />
                 </div>
-              </div>
-            </>
+                {/* Guide card grid skeleton */}
+                <div className="px-4 md:max-w-5xl md:mx-auto">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-4">
+                    <GuideCardSkeleton count={6} variant="public" />
+                  </div>
+                </div>
+              </>
+            ) : null
           )}
 
           {/* Featured Guides Slideshow Hero (only shown if pinned guides exist) */}

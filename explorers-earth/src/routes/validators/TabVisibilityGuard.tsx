@@ -3,7 +3,6 @@ import { useQuery } from "@apollo/client";
 import { useParams, Navigate, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { getPublicAccountBasicQuery } from "../../features/PublicHome/api/query";
-import { EarthLoader } from "../../components/EarthLoader";
 import Button from "../../components/ui/Button";
 import Home from "../../assets/icons/Home";
 import HeroSkeleton from "../../components/ui/HeroSkeleton";
@@ -48,11 +47,7 @@ const TabVisibilityGuard = memo(({ tabField, defaultVisible = true, children }: 
                 </div>
             );
         }
-        return (
-            <div className="bg-black min-h-screen">
-                <EarthLoader context="general" size="default" />
-            </div>
-        );
+        return null;
     }
 
     const accountData = data?.accounts?.[0];
