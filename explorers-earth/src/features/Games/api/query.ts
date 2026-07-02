@@ -35,6 +35,18 @@ export const GAME_LISTS_BY_ACCOUNT = gql`
         display_order
         screenshot_ids
         media_details
+        igdb_slug
+        igdb_image_id
+        release_date
+        igdb_rating
+        igdb_rating_count
+        developer
+        publisher
+        game_modes
+        igdb_url
+        user_recommendation_note
+        user_rating
+        pin_order
         Media {
           documentId
           url

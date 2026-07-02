@@ -156,7 +156,7 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
                     )}
                     {game.igdb_rating && (
                       <span className="flex items-center gap-1.5 text-blue-400 font-semibold bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-500/10">
-                        <Star size={13} fill="currentColor" /> {(game.igdb_rating / 10).toFixed(1)} IGDB
+                        <Star size={13} fill="currentColor" /> {game.igdb_rating.toFixed(1)} IGDB
                       </span>
                     )}
                     {game.platforms && game.platforms.length > 0 && (

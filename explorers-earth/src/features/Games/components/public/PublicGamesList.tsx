@@ -112,7 +112,7 @@ const PublicGamesList = () => {
                      {game.release_year && game.igdb_rating && <span>·</span>}
                      {game.igdb_rating && (
                        <span className="flex items-center justify-center gap-0.5 text-amber-500">
-                         <Star size={10} fill="currentColor" /> {(game.igdb_rating / 10).toFixed(1)}
+                         <Star size={10} fill="currentColor" /> {game.igdb_rating.toFixed(1)}
                        </span>
                      )}
                    </p>

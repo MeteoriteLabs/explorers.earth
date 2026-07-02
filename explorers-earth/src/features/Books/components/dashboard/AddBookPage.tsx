@@ -385,7 +385,7 @@ const AddBookPage = () => {
                   {selectedBook.page_count && <span className="flex items-center gap-0.5"><Hash size={9} /> {selectedBook.page_count}p</span>}
                   {selectedBook.google_rating && (
                     <span className="flex items-center gap-0.5 text-amber-400">
-                      <Star size={9} fill="currentColor" /> {selectedBook.google_rating}
+                      <Star size={9} fill="currentColor" /> {(selectedBook.google_rating * 2).toFixed(1)}
                     </span>
                   )}
                 </div>

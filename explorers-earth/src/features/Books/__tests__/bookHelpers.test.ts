@@ -47,7 +47,7 @@ describe('bookHelpers', () => {
 
   describe('format helpers', () => {
     it('formats rating', () => {
-      expect(formatRating(4.567)).toBe('4.6');
+      expect(formatRating(4.567)).toBe('9.1');
       expect(formatRating(null)).toBe('');
     });
 
@@ -85,7 +85,7 @@ describe('bookHelpers', () => {
   });
 
   describe('deduplicateBooks', () => {
-    it('deduplicates by documentId', () => {
+    it('deduplicates by documentId when volume_id is missing', () => {
       const books = [
         { documentId: '1', title: 'A' },
         { documentId: '2', title: 'B' },
@@ -93,6 +93,37 @@ describe('bookHelpers', () => {
       ];
       expect(deduplicateBooks(books)).toHaveLength(2);
       expect(deduplicateBooks(null)).toEqual([]);
+    });
+
+    it('deduplicates and merges by volume_id', () => {
+      const books = [
+        {
+          documentId: 'doc_1',
+          volume_id: 'vol_A',
+          title: 'Interstellar',
+          is_pinned: true,
+          user_rating: null,
+          user_recommendation_note: null,
+          publisher: 'Publisher A',
+        },
+        {
+          documentId: 'doc_2',
+          volume_id: 'vol_A',
+          title: 'Interstellar',
+          is_pinned: false,
+          user_rating: 9,
+          user_recommendation_note: 'Mind-bending book',
+          publisher: null,
+        },
+      ];
+
+      const result = deduplicateBooks(books);
+      expect(result).toHaveLength(1);
+      expect(result[0].volume_id).toBe('vol_A');
+      expect(result[0].is_pinned).toBe(true);
+      expect(result[0].user_rating).toBe(9);
+      expect(result[0].user_recommendation_note).toBe('Mind-bending book');
+      expect(result[0].publisher).toBe('Publisher A');
     });
   });
 
