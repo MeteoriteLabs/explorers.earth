@@ -37,6 +37,20 @@ export const MOVIE_LISTS_BY_ACCOUNT = gql`
         cast_details
         is_pinned
         pin_order
+        user_rating
+        director
+        user_recommendation_note
+        season_count
+        media_details
+        movie_categories {
+          documentId
+          genre_name
+        }
+        Media {
+          documentId
+          url
+          caption
+        }
       }
       account {
         documentId

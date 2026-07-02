@@ -12,7 +12,7 @@ const FALLBACK = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg
 
 const BookCoverCard = memo(({ book, onClick }: BookCoverCardProps) => {
   const coverUrl = buildCoverUrl(book.cover_url) || FALLBACK;
-  const rating = book.user_rating ?? book.google_rating;
+  const rating = book.user_rating ?? (book.google_rating ? book.google_rating * 2 : null);
   const authors = formatAuthors(book.authors);
 
   return (

@@ -53,7 +53,7 @@ export function parseSubjects(subjects: unknown): string[] {
 // ─────────────────────────────────────────────────────────────
 export function formatRating(rating: number | null | undefined): string {
   if (!rating) return "";
-  return rating.toFixed(1);
+  return (rating * 2).toFixed(1);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -107,17 +107,63 @@ export function extractNoteText(note: any): string {
 // ─────────────────────────────────────────────────────────────
 // Deduplicate books (fixes Draft & Publish duplication from Strapi)
 // ─────────────────────────────────────────────────────────────
-export function deduplicateBooks<T extends { documentId: string }>(
+export function deduplicateBooks<T extends { documentId: string; volume_id?: string; is_pinned?: boolean; pin_order?: number | null; user_rating?: number | null; user_recommendation_note?: any }>(
   books: T[] | null | undefined
 ): T[] {
   if (!books || !Array.isArray(books)) return [];
-  const map = new Map<string, T>();
+  
+  // Group by volume_id (if available) or fallback to documentId
+  const groups = new Map<string, T[]>();
   for (const b of books) {
-    if (b?.documentId && !map.has(b.documentId)) {
-      map.set(b.documentId, b);
+    if (!b) continue;
+    const key = b.volume_id || b.documentId;
+    if (!key) continue;
+    if (!groups.has(key)) {
+      groups.set(key, []);
     }
+    groups.get(key)!.push(b);
   }
-  return Array.from(map.values());
+
+  const result: T[] = [];
+  for (const group of groups.values()) {
+    if (group.length === 1) {
+      result.push(group[0]);
+      continue;
+    }
+
+    // Sort to determine base record: pinned first, then rated, then first occurrence
+    group.sort((a, b) => {
+      if (a.is_pinned && !b.is_pinned) return -1;
+      if (!a.is_pinned && b.is_pinned) return 1;
+      if (a.user_rating && !b.user_rating) return -1;
+      if (!a.user_rating && b.user_rating) return 1;
+      return 0;
+    });
+
+    const merged = { ...group[0] };
+    for (let i = 1; i < group.length; i++) {
+      const other = group[i];
+      if (other.is_pinned) {
+        merged.is_pinned = true;
+        if (other.pin_order !== null && other.pin_order !== undefined) {
+          merged.pin_order = other.pin_order;
+        }
+      }
+      for (const key of Object.keys(other) as Array<keyof T>) {
+        if (key === "is_pinned" || key === "pin_order") continue;
+        const val = merged[key];
+        const otherVal = other[key];
+        if (
+          (val === null || val === undefined || val === "" || (Array.isArray(val) && val.length === 0)) &&
+          (otherVal !== null && otherVal !== undefined && otherVal !== "" && (!Array.isArray(otherVal) || otherVal.length > 0))
+        ) {
+          merged[key] = otherVal;
+        }
+      }
+    }
+    result.push(merged);
+  }
+  return result;
 }
 
 // ─────────────────────────────────────────────────────────────
