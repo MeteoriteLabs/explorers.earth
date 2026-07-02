@@ -4,7 +4,7 @@ import DirectionBoard from "../assets/icons/DirectionBoard";
 import Profile from "../assets/icons/Profile";
 import MusicNote from "../assets/icons/MusicNote";
 import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
-import { Film, BookOpen, Gamepad2 } from "lucide-react";
+import { Film, BookOpen, Gamepad2, Smartphone, ShoppingBag } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { getPublicAccountBasicQuery } from "../features/PublicHome/api/query";
@@ -61,6 +61,8 @@ const PublicNav = memo(() => {
   const showMoviesTab = accountData?.public_movie === "Yes"; // Only show when explicitly "Yes"
   const showBooksTab = accountData?.public_books === "Yes"; // Only show when explicitly "Yes"
   const showGamesTab = accountData?.public_games === "Yes" || accountData?.public_games === "No" ? accountData?.public_games === "Yes" : true; // Default to show if not set
+  const showAppsTab = accountData?.public_apps === "Yes";
+  const showProductsTab = accountData?.public_products === "Yes";
 
   // Helper function to check if current path is for movies
   const isMoviesPath = (currentPath: string) => {
@@ -78,6 +80,18 @@ const PublicNav = memo(() => {
   const isGamesPath = (currentPath: string) => {
     const normalizedPath = normalizePath(currentPath);
     return normalizedPath.includes('/games');
+  };
+
+  // Helper function to check if current path is for apps
+  const isAppsPath = (currentPath: string) => {
+    const normalizedPath = normalizePath(currentPath);
+    return normalizedPath.includes('/apps');
+  };
+
+  // Helper function to check if current path is for products
+  const isProductsPath = (currentPath: string) => {
+    const normalizedPath = normalizePath(currentPath);
+    return normalizedPath.includes('/products');
   };
 
   // Helper function to check if current path is for guides
@@ -148,6 +162,20 @@ const PublicNav = memo(() => {
       text: "Games",
       path: `/${username}/games`,
     }] : []),
+    // Only add apps tab if visibility is enabled
+    ...(showAppsTab ? [{
+      id: 'public_apps',
+      icon: <Smartphone size={18} color={isAppsPath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
+      text: "Apps",
+      path: `/${username}/apps`,
+    }] : []),
+    // Only add products tab if visibility is enabled
+    ...(showProductsTab ? [{
+      id: 'public_products',
+      icon: <ShoppingBag size={18} color={isProductsPath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
+      text: "Products",
+      path: `/${username}/products`,
+    }] : []),
   ];
 
   // Filter based on user's pinned tabs preference if defined, otherwise show first 5 enabled ones
@@ -175,6 +203,8 @@ const PublicNav = memo(() => {
             (item.path.includes('/movies') && isMoviesPath(location.pathname)) ||
             (item.path.includes('/books') && isBooksPath(location.pathname)) ||
             (item.path.includes('/games') && isGamesPath(location.pathname)) ||
+            (item.path.includes('/apps') && isAppsPath(location.pathname)) ||
+            (item.path.includes('/products') && isProductsPath(location.pathname)) ||
             (item.path.includes('/guides') && isGuidesPath(location.pathname));
 
           return (

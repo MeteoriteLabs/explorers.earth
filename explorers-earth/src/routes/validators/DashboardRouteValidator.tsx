@@ -35,6 +35,8 @@ const DashboardRouteValidator = ({
       /^\/recommendations\/movies(\/.*)?$/, // All movies & shows routes
       /^\/recommendations\/books(\/.*)?$/, // All books routes
       /^\/recommendations\/games(\/.*)?$/, // All games routes
+      /^\/recommendations\/apps(\/.*)?$/, // All apps & tools routes
+      /^\/recommendations\/products(\/.*)?$/, // All products routes
       /^\/[^\/]+\/new$/, // Dynamic routes like /:listId/new
       /^\/[^\/]+\/edit$/, // Dynamic routes like /:placeId/edit
     ];

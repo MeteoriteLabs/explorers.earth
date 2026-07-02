@@ -24,6 +24,8 @@ import {
 import { MoviesHome, MovieListView, AddMoviePage } from "../features/Movies";
 import { BooksHome, BookListView, AddBookPage } from "../features/Books";
 import { GamesHome, GameListView, AddGamePage } from "../features/Games";
+import { AppsHome, AppListView, AddAppPage } from "../features/AppsAndTools";
+import { ProductsHome, ProductListView, AddProductPage } from "../features/Products";
 
 // Import layouts
 import DashboardLayout from "../layouts/DashboardLayout";
@@ -63,6 +65,14 @@ const ProtectedRoutes = ({
       <Route path="recommendations/games/:listId" element={<GameListView />} />
       <Route path="recommendations/games/:listId/add" element={<AddGamePage />} />
       <Route path="recommendations/games/:listId/edit/:gameId" element={<AddGamePage />} />
+      <Route path="recommendations/apps" element={<AppsHome />} />
+      <Route path="recommendations/apps/:listId" element={<AppListView />} />
+      <Route path="recommendations/apps/:listId/add" element={<AddAppPage />} />
+      <Route path="recommendations/apps/:listId/edit/:appId" element={<AddAppPage />} />
+      <Route path="recommendations/products" element={<ProductsHome />} />
+      <Route path="recommendations/products/:listId" element={<ProductListView />} />
+      <Route path="recommendations/products/:listId/add" element={<AddProductPage />} />
+      <Route path="recommendations/products/:listId/edit/:productId" element={<AddProductPage />} />
       <Route path=":listId/new" element={<AddRecommendation />} />
       <Route
         path="guides/:guideId/edit"
@@ -107,6 +117,14 @@ const ProtectedRoutes = ({
       <Route path="recommendations/games/:listId" element={<GameListView />} />
       <Route path="recommendations/games/:listId/add" element={<AddGamePage />} />
       <Route path="recommendations/games/:listId/edit/:gameId" element={<AddGamePage />} />
+      <Route path="recommendations/apps" element={<AppsHome />} />
+      <Route path="recommendations/apps/:listId" element={<AppListView />} />
+      <Route path="recommendations/apps/:listId/add" element={<AddAppPage />} />
+      <Route path="recommendations/apps/:listId/edit/:appId" element={<AddAppPage />} />
+      <Route path="recommendations/products" element={<ProductsHome />} />
+      <Route path="recommendations/products/:listId" element={<ProductListView />} />
+      <Route path="recommendations/products/:listId/add" element={<AddProductPage />} />
+      <Route path="recommendations/products/:listId/edit/:productId" element={<AddProductPage />} />
     </Route>
   );
 

@@ -76,6 +76,8 @@ export const accountsDetailQuery = gql`
       public_books
       public_guides
       public_games
+      public_apps
+      public_products
       pinned_nav_tabs
       recommendation_lists(pagination: { limit: 100 })  {
         documentId
@@ -132,6 +134,8 @@ export const accountsDetailsByPlace = gql`
       public_books
       public_guides
       public_games
+      public_apps
+      public_products
       pinned_nav_tabs
       recommendation_lists(filters: $listFilters) {
         documentId
@@ -247,6 +251,8 @@ export const getPublicAccountBasicQuery = gql`
       public_books
       public_guides
       public_games
+      public_apps
+      public_products
       pinned_nav_tabs
     }
   }
@@ -282,6 +288,8 @@ export const getPublicProfileDataQuery = gql`
       public_books
       public_guides
       public_games
+      public_apps
+      public_products
       pinned_nav_tabs
     }
   }
@@ -316,6 +324,8 @@ export const getAccountsDataQuery = gql`
       public_books
       public_guides
       public_games
+      public_apps
+      public_products
       pinned_nav_tabs
     }
   }

@@ -14,6 +14,8 @@ import TabVisibilityGuard from "./validators/TabVisibilityGuard";
 import { PublicMovies, PublicMovieList, PublicMovieGenre } from "../features/Movies";
 import { PublicBooks, PublicBookList, PublicBookSubject } from "../features/Books";
 import { PublicGames, PublicGamesList, PublicGamesGenre } from "../features/Games";
+import { PublicApps, PublicAppList } from "../features/AppsAndTools";
+import { PublicProducts, PublicProductList } from "../features/Products";
 
 // Import layout
 import PublicLayout from "../layouts/PublicLayout";
@@ -120,6 +122,34 @@ const PublicRoutes = [
       <Route path=":listSlug" element={
         <TabVisibilityGuard tabField="public_games" defaultVisible={true}>
           <PublicGamesList />
+        </TabVisibilityGuard>
+      } />
+    </Route>
+
+    {/* Apps & Tools public routes */}
+    <Route path="apps">
+      <Route index element={
+        <TabVisibilityGuard tabField="public_apps" defaultVisible={false}>
+          <PublicApps />
+        </TabVisibilityGuard>
+      } />
+      <Route path=":listSlug" element={
+        <TabVisibilityGuard tabField="public_apps" defaultVisible={false}>
+          <PublicAppList />
+        </TabVisibilityGuard>
+      } />
+    </Route>
+
+    {/* Products public routes */}
+    <Route path="products">
+      <Route index element={
+        <TabVisibilityGuard tabField="public_products" defaultVisible={false}>
+          <PublicProducts />
+        </TabVisibilityGuard>
+      } />
+      <Route path=":listSlug" element={
+        <TabVisibilityGuard tabField="public_products" defaultVisible={false}>
+          <PublicProductList />
         </TabVisibilityGuard>
       } />
     </Route>
