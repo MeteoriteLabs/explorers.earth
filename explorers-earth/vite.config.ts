@@ -20,7 +20,22 @@ export default defineConfig({
          rewrite: (path) => path.replace(/^\/igdb-api/, ''),
          secure: false,
        },
-       '/api': {
+        '/itunes-api': {
+          target: 'http://127.0.0.1:5000',
+          changeOrigin: true,
+          secure: false,
+        },
+        '/api/apps/scrape-url': {
+          target: 'http://127.0.0.1:5000',
+          changeOrigin: true,
+          secure: false,
+        },
+        '/api/products/scrape-link': {
+          target: 'http://127.0.0.1:5000',
+          changeOrigin: true,
+          secure: false,
+        },
+        '/api': {
         //  target: 'http://13.126.235.177:1337',
          target: 'http://77.42.95.255:1337',
         //  target: 'http://localhost:1337',

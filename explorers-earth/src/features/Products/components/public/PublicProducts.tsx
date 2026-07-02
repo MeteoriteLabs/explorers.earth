@@ -73,7 +73,7 @@ const PublicProducts = () => {
   }, [allProducts]);
 
   const allCategories = useMemo(() => {
-    return extractUniqueCategories(allProducts.map((p) => p.product_category ?? []));
+    return extractUniqueCategories(allProducts.map((p) => p.product_category ? [p.product_category] : []));
   }, [allProducts]);
 
   const handleProductClick = useCallback((product: RecommendedProduct) => {

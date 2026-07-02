@@ -167,15 +167,13 @@ const AppDetailModal = ({ app, open, onClose }: AppDetailModalProps) => {
                 </div>
               )}
 
-              {/* Categories */}
-              {(app.app_category?.length ?? 0) > 0 && (
+              {/* Category */}
+              {app.app_category && (
                 <div className="px-5 mb-4">
                   <div className="flex gap-2 flex-wrap">
-                    {app.app_category!.map((cat) => (
-                      <span key={cat.documentId} className="text-[11px] text-violet-400/70 bg-violet-900/20 border border-violet-800/20 px-2.5 py-1 rounded-full">
-                        {cat.name}
-                      </span>
-                    ))}
+                    <span className="text-[11px] text-violet-400/70 bg-violet-900/20 border border-violet-800/20 px-2.5 py-1 rounded-full">
+                      {app.app_category.name}
+                    </span>
                   </div>
                 </div>
               )}

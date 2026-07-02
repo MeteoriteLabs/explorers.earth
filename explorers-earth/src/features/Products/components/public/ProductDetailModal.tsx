@@ -148,14 +148,12 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
                   </div>
                 )}
 
-                {/* Categories */}
-                {(product.product_category?.length ?? 0) > 0 && (
+                {/* Category */}
+                {product.product_category && (
                   <div className="flex gap-2 flex-wrap mb-4">
-                    {product.product_category!.map((cat) => (
-                      <span key={cat.documentId} className="text-[11px] text-emerald-400/70 bg-emerald-900/20 border border-emerald-800/20 px-2.5 py-1 rounded-full">
-                        {cat.name}
-                      </span>
-                    ))}
+                    <span className="text-[11px] text-emerald-400/70 bg-emerald-900/20 border border-emerald-800/20 px-2.5 py-1 rounded-full">
+                      {product.product_category.name}
+                    </span>
                   </div>
                 )}
 

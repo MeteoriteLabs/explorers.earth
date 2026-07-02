@@ -73,7 +73,7 @@ const PublicApps = () => {
   }, [allApps]);
 
   const allCategories = useMemo(() => {
-    return extractUniqueCategories(allApps.map((a) => a.app_category ?? []));
+    return extractUniqueCategories(allApps.map((a) => a.app_category ? [a.app_category] : []));
   }, [allApps]);
 
   const handleAppClick = useCallback((app: RecommendedApp) => {

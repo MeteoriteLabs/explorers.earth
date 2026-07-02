@@ -43,7 +43,7 @@ export interface RecommendedProduct {
     documentId: string;
     name: string;
     slug: string;
-  }[] | null;
+  } | null;
 }
 
 export interface ProductCategory {

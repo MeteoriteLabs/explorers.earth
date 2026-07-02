@@ -42,7 +42,7 @@ export interface RecommendedApp {
     documentId: string;
     name: string;
     slug: string;
-  }[] | null;
+  } | null;
 }
 
 export interface AppCategory {

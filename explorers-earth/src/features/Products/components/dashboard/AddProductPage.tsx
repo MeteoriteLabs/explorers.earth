@@ -201,7 +201,7 @@ const AddProductPage = () => {
       setNote(existingProduct.user_recommendation_note);
       setUserRating(existingProduct.user_rating);
       setIsPinned(existingProduct.is_pinned);
-      setSelectedCategories(existingProduct.product_category?.map((c) => c.documentId) ?? []);
+      setSelectedCategories(existingProduct.product_category ? [existingProduct.product_category.documentId] : []);
     }
   }, [isEdit, existingProduct?.documentId]);
 
@@ -238,7 +238,7 @@ const AddProductPage = () => {
             user_recommendation_note: note,
             user_rating: userRating,
             is_pinned: isPinned,
-            product_category: selectedCategories,
+            product_category: selectedCategories[0] || null,
           },
           refetchQueries: refetchProductsByList(listId!),
         });
@@ -262,7 +262,7 @@ const AddProductPage = () => {
             pin_order: isPinned ? existingProducts.filter((p) => p.is_pinned).length : null,
             display_order: displayOrder,
             product_list: listId,
-            product_category: selectedCategories,
+            product_category: selectedCategories[0] || null,
           },
           refetchQueries: refetchProductsByList(listId!),
         });
@@ -383,7 +383,7 @@ const AddProductPage = () => {
                       <button
                         key={cat.documentId}
                         type="button"
-                        onClick={() => setSelectedCategories((prev) => selected ? prev.filter((id) => id !== cat.documentId) : [...prev, cat.documentId])}
+                        onClick={() => setSelectedCategories(selected ? [] : [cat.documentId])}
                         className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${selected ? "border-emerald-500/60 bg-emerald-500/20 text-emerald-300" : "border-white/10 bg-white/5 text-white/50 hover:border-white/20"}`}
                       >
                         {cat.name}

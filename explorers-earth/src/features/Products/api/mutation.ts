@@ -100,7 +100,7 @@ export const CREATE_RECOMMENDED_PRODUCT = gql`
     $display_order: Int!
     $images: JSON
     $product_list: ID!
-    $product_category: [ID]
+    $product_category: ID
   ) {
     createRecommendedProduct(
       data: {
@@ -142,7 +142,7 @@ export const UPDATE_RECOMMENDED_PRODUCT = gql`
     $is_pinned: Boolean
     $pin_order: Int
     $display_order: Int
-    $product_category: [ID]
+    $product_category: ID
     $title: String
     $brand: String
     $price: Float

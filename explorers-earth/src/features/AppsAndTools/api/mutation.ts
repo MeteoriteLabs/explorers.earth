@@ -99,7 +99,7 @@ export const CREATE_RECOMMENDED_APP = gql`
     $display_order: Int!
     $screenshots: JSON
     $app_list: ID!
-    $app_category: [ID]
+    $app_category: ID
   ) {
     createRecommendedApp(
       data: {
@@ -140,7 +140,7 @@ export const UPDATE_RECOMMENDED_APP = gql`
     $is_pinned: Boolean
     $pin_order: Int
     $display_order: Int
-    $app_category: [ID]
+    $app_category: ID
     $title: String
     $description: String
     $logo_url: String

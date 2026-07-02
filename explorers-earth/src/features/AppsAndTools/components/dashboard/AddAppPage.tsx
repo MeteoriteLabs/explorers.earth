@@ -213,7 +213,7 @@ const AddAppPage = () => {
       setNote(existingApp.user_recommendation_note);
       setUserRating(existingApp.user_rating);
       setIsPinned(existingApp.is_pinned);
-      setSelectedCategories(existingApp.app_category?.map((c) => c.documentId) ?? []);
+      setSelectedCategories(existingApp.app_category ? [existingApp.app_category.documentId] : []);
     }
   }, [isEdit, existingApp?.documentId]);
 
@@ -280,7 +280,7 @@ const AddAppPage = () => {
             user_recommendation_note: note,
             user_rating: userRating,
             is_pinned: isPinned,
-            app_category: selectedCategories,
+            app_category: selectedCategories[0] || null,
           },
           refetchQueries: refetchAppsByList(listId!),
         });
@@ -303,7 +303,7 @@ const AddAppPage = () => {
             pin_order: isPinned ? existingApps.filter((a) => a.is_pinned).length : null,
             display_order: displayOrder,
             app_list: listId,
-            app_category: selectedCategories,
+            app_category: selectedCategories[0] || null,
           },
           refetchQueries: refetchAppsByList(listId!),
         });
@@ -520,9 +520,7 @@ const AddAppPage = () => {
                         key={cat.documentId}
                         type="button"
                         onClick={() =>
-                          setSelectedCategories((prev) =>
-                            selected ? prev.filter((id) => id !== cat.documentId) : [...prev, cat.documentId]
-                          )
+                          setSelectedCategories(selected ? [] : [cat.documentId])
                         }
                         className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${selected ? "border-violet-500/60 bg-violet-500/20 text-violet-300" : "border-white/10 bg-white/5 text-white/50 hover:border-white/20"}`}
                       >
