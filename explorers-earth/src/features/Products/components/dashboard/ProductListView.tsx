@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Star, MoreVertical, Trash2, Loader2, ShoppingBag, Pencil, Copy, Check } from "lucide-react";
+import {
+  ArrowLeft, Star, MoreVertical, Trash2, Loader2, ShoppingBag, Pencil, Copy, Check, Share2, Download
+} from "lucide-react";
 import { AddIcon } from "../../../../assets/icons/AddIcon";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
@@ -16,7 +18,7 @@ import Switch from "../../../../components/ui/Switch";
 import ProductDetailModal from "../public/ProductDetailModal";
 import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
 
-const VITE_BASE_URL = import.meta.env.VITE_BASE_URL || window.location.origin;
+const VITE_BASE_URL = import.meta.env.VITE_BASE_URL || "https://explorers.earth";
 
 interface ProductRowProps {
   product: RecommendedProduct;
@@ -40,10 +42,10 @@ const ProductRow = ({ product, onPinToggle, onEdit, onDelete, onClick, isPinning
     >
       <div className="w-12 h-12 flex-shrink-0 rounded-xl overflow-hidden bg-white/5 shadow-sm">
         {imgUrl ? (
-          <img src={imgUrl} alt="" className="w-full h-full object-cover" />
+          <img src={imgUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <ShoppingBag size={14} className="text-white/20" />
+          <div className="w-full h-full bg-emerald-950/30 flex items-center justify-center">
+            <ShoppingBag size={14} className="text-emerald-600/40" />
           </div>
         )}
       </div>
@@ -68,35 +70,47 @@ const ProductRow = ({ product, onPinToggle, onEdit, onDelete, onClick, isPinning
           )}
         </div>
         {notePreview && (
-          <p className="text-[11px] text-white/30 truncate mt-1 italic line-clamp-1">{notePreview.replace(/<[^>]+>/g, "")}</p>
+          <p className="text-[11px] text-white/30 truncate mt-1 italic line-clamp-1">
+            {notePreview.replace(/<[^>]+>/g, "")}
+          </p>
         )}
       </div>
 
-      {/* Pin */}
+      {/* Pin button */}
       <button
         onClick={(e) => { e.stopPropagation(); onPinToggle(product); }}
-        className={`flex-shrink-0 text-sm transition-all ${product.is_pinned ? "text-amber-400" : "text-white/20 hover:text-white/50"}`}
+        className={`p-1.5 rounded-lg transition-all ${
+          product.is_pinned
+            ? "text-amber-400 bg-amber-400/10"
+            : "text-white/30 hover:text-amber-400 hover:bg-amber-400/10"
+        } disabled:opacity-50`}
         disabled={isPinning}
-        title={product.is_pinned ? "Unpin" : "Pin to Top"}
+        title={product.is_pinned ? "Unpin from Top Picks" : "Pin to Top Picks"}
       >
-        {isPinning ? <Loader2 size={14} className="animate-spin" /> : <Star size={14} fill={product.is_pinned ? "currentColor" : "none"} />}
+        <Star size={14} fill={product.is_pinned ? "currentColor" : "none"} />
       </button>
 
-      {/* Menu */}
-      <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+      {/* Three-dot menu */}
+      <div className="relative" onClick={(e) => e.stopPropagation()}>
         <button
           onClick={() => setMenuOpen((o) => !o)}
-          className="p-1 rounded-lg text-white/20 hover:text-white/60 hover:bg-white/5 transition-all opacity-0 group-hover:opacity-100"
+          className="p-1.5 rounded-lg text-white/20 hover:text-white hover:bg-white/5 transition-all"
         >
-          <MoreVertical size={15} />
+          <MoreVertical size={14} />
         </button>
         {menuOpen && (
-          <div className="absolute right-0 top-7 z-20 w-32 bg-dashboard-sidebar border border-dashboard-border rounded-xl shadow-xl py-1 text-xs">
-            <button onClick={() => { setMenuOpen(false); onEdit(product); }} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-white/5 text-white/70 hover:text-white">
-              <Pencil size={12} /> Edit
+          <div className="absolute right-0 top-full mt-1 bg-[#1a2332] border border-white/10 rounded-xl shadow-xl z-20 min-w-[130px] overflow-hidden">
+            <button
+              onClick={() => { setMenuOpen(false); onEdit(product); }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-dashboard hover:bg-white/8 transition-colors"
+            >
+              <Pencil size={13} /> Edit
             </button>
-            <button onClick={() => { setMenuOpen(false); onDelete(product); }} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-red-900/20 text-red-400">
-              <Trash2 size={12} /> Delete
+            <button
+              onClick={() => { setMenuOpen(false); onDelete(product); }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+            >
+              <Trash2 size={13} /> Delete
             </button>
           </div>
         )}
@@ -105,20 +119,23 @@ const ProductRow = ({ product, onPinToggle, onEdit, onDelete, onClick, isPinning
   );
 };
 
-// ─────────────────────────────────────────────────────────────
-// ProductListView Main Component
-// ─────────────────────────────────────────────────────────────
 const ProductListView = () => {
   const { listId } = useParams<{ listId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuthStore();
 
+  const [activeTab, setActiveTab] = useState<"recommendations" | "manage">("recommendations");
   const [selectedProduct, setSelectedProduct] = useState<RecommendedProduct | null>(null);
   const [pinningId, setPinningId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [showVisibilityModal, setShowVisibilityModal] = useState(false);
+  const [showDeleteListModal, setShowDeleteListModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isEditingList, setIsEditingList] = useState(false);
+  const [listVisibilityPrompt, setListVisibilityPrompt] = useState<{
+    isOpen: boolean;
+    listName: string;
+  } | null>(null);
 
   const { data, loading, refetch } = useQuery(PRODUCTS_BY_LIST, {
     variables: productsByListVars(listId!),
@@ -126,19 +143,28 @@ const ProductListView = () => {
     fetchPolicy: "cache-and-network",
   });
 
-  useEffect(() => {
-    if (location.state?.refetch) { refetch(); window.history.replaceState({}, document.title); }
-  }, [location.state, refetch]);
-
-  const [updateProductList] = useMutation(UPDATE_PRODUCT_LIST);
-  const [deleteProductList] = useMutation(DELETE_PRODUCT_LIST);
+  const [updateProductList, { loading: isUpdating }] = useMutation(UPDATE_PRODUCT_LIST);
+  const [deleteProductList, { loading: deletingList }] = useMutation(DELETE_PRODUCT_LIST);
   const [togglePin] = useMutation(TOGGLE_PRODUCT_PIN);
   const [deleteProduct] = useMutation(DELETE_RECOMMENDED_PRODUCT);
 
   const listData: ProductList | null = data?.productLists?.[0] ?? null;
   const products = deduplicateProducts(listData?.recommended_products ?? []);
+  const pinnedCount = products.filter((p) => p.is_pinned).length;
 
-  const publicUrl = listData ? `${VITE_BASE_URL}/${user?.username}/products/${listData.slug}` : "";
+  useEffect(() => {
+    if (location.state?.justAddedRecommendation && listData && !listData.Visibility) {
+      setListVisibilityPrompt({
+        isOpen: true,
+        listName: listData.List_Name,
+      });
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, listData]);
+
+  const publicUrl = listData
+    ? `${VITE_BASE_URL}/${user?.username}/products/${listData.slug}`
+    : "";
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(publicUrl);
@@ -146,7 +172,40 @@ const ProductListView = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleToggleVisibility = async () => {
+    if (!listData) return;
+    if (!listData.Visibility && products.length === 0) {
+      toast.error("Add at least one product before publishing.");
+      return;
+    }
+    try {
+      await updateProductList({
+        variables: { documentId: listData.documentId, Visibility: !listData.Visibility },
+        optimisticResponse: {
+          updateProductList: {
+            __typename: "ProductList",
+            documentId: listData.documentId,
+            List_Name: listData.List_Name,
+            list_description: listData.list_description,
+            slug: listData.slug,
+            Visibility: !listData.Visibility,
+            display_order: listData.display_order,
+            top_products_heading: listData.top_products_heading || null,
+          }
+        },
+        refetchQueries: [{ query: PRODUCTS_BY_LIST, variables: productsByListVars(listId!) }],
+      });
+      toast.success(listData.Visibility ? "List set to draft." : "List published!");
+    } catch {
+      toast.error("Failed to update visibility.");
+    }
+  };
+
   const handlePinToggle = async (product: RecommendedProduct) => {
+    if (!product.is_pinned && pinnedCount >= 15) {
+      toast.error("Max 15 pinned products allowed.");
+      return;
+    }
     setPinningId(product.documentId);
     const pinnedProducts = products.filter((p) => p.is_pinned && p.documentId !== product.documentId);
     const newPinOrder = product.is_pinned ? null : pinnedProducts.length;
@@ -179,7 +238,7 @@ const ProductListView = () => {
   };
 
   const handleDeleteList = async () => {
-    if (!listData || !window.confirm(`Delete list "${listData.List_Name}"?`)) return;
+    if (!listData) return;
     try {
       await deleteProductList({ variables: { documentId: listData.documentId } });
       toast.success("List deleted.");
@@ -190,118 +249,295 @@ const ProductListView = () => {
   };
 
   if (loading && !listData) {
-    return <div className="flex items-center justify-center py-32"><Loader2 size={24} className="animate-spin text-emerald-400" /></div>;
+    return (
+      <div className="p-6 space-y-4 max-w-3xl mx-auto">
+        <div className="h-6 w-40 bg-white/5 animate-pulse rounded" />
+        <div className="h-4 w-24 bg-white/5 animate-pulse rounded" />
+        {[1,2,3,4,5].map(i => (
+          <div key={i} className="h-14 bg-white/5 animate-pulse rounded-lg" />
+        ))}
+      </div>
+    );
   }
 
   if (!listData) {
     return (
-      <div className="flex flex-col items-center justify-center py-32 text-center">
-        <p className="text-dashboard-muted mb-4">List not found.</p>
-        <button onClick={() => navigate("/recommendations/products")} className="text-sm text-emerald-400 hover:underline">Back to Products</button>
+      <div className="p-6">
+        <p className="text-red-400">List not found. <Link to="/recommendations/products" className="text-blue-400 underline">Go back</Link></p>
       </div>
     );
   }
 
   return (
-    <div className="px-2 md:px-6 pt-2 pb-24 md:pb-6 max-w-4xl mx-auto">
+    <div className="px-4 pt-8 pb-24 md:p-6 md:pb-6 max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-5">
-        <button onClick={() => navigate("/recommendations/products")} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all">
-          <ArrowLeft size={18} />
-        </button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-bold text-dashboard truncate">{listData.List_Name}</h1>
-          {listData.list_description && <p className="text-xs text-dashboard-muted truncate">{listData.list_description}</p>}
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-dashboard-muted">Public</span>
-          <Switch checked={listData.Visibility} onChange={() => setShowVisibilityModal(true)} disabled={products.length === 0} />
-        </div>
-      </div>
-
-      {/* Actions bar */}
-      <div className="flex items-center gap-3 mb-6">
-        <button
-          onClick={() => navigate(`/recommendations/products/${listId}/add`)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-sm text-white font-medium transition-colors shadow-lg shadow-emerald-900/20"
-        >
-          <AddIcon size="4" /><span>Add Product</span>
-        </button>
-        {publicUrl && (
-          <button onClick={handleCopy} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-sm text-white/70 transition-colors">
-            {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
-            {copied ? "Copied!" : "Copy Link"}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col items-start">
+          <button
+            onClick={() => navigate("/recommendations/products")}
+            className="text-[10px] text-white/50 hover:text-white mb-1 transition-colors flex items-center gap-1 font-semibold uppercase tracking-wider"
+          >
+            <ArrowLeft size={10} />
+            <span>Back</span>
           </button>
-        )}
-        <button onClick={handleDeleteList} className="ml-auto flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-red-900/20 hover:bg-red-900/40 text-sm text-red-400 transition-colors">
-          <Trash2 size={14} />
-          <span className="hidden sm:inline">Delete List</span>
-        </button>
+          <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight leading-tight">{listData.List_Name}</h1>
+        </div>
+        <Switch
+          checked={listData.Visibility}
+          onChange={handleToggleVisibility}
+          loading={isUpdating}
+          label={listData.Visibility ? "Published" : "Draft"}
+        />
       </div>
 
-      {/* QR */}
-      {listData.Visibility && publicUrl && (
-        <Accordion title="Public Link & QR Code">
-          <div className="flex flex-col sm:flex-row gap-4 items-start p-4">
-            <QRCodeSVG value={publicUrl} size={96} bgColor="transparent" fgColor="#34d399" />
-            <div className="flex-1">
-              <p className="text-xs text-dashboard-muted mb-1">Share this link</p>
-              <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-emerald-400 hover:underline break-all">{publicUrl}</a>
+      {/* Tabs */}
+      <div className="flex mb-6 bg-white rounded-full p-[2px] w-fit mx-auto shadow-sm">
+        {(["recommendations", "manage"] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-1.5 text-[11px] md:text-xs font-semibold rounded-full capitalize transition-all duration-200 ${
+              activeTab === tab
+                ? "bg-dashboard-accent text-white shadow"
+                : "text-[#0f172a] bg-transparent hover:opacity-80"
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab: Recommendations */}
+      {activeTab === "recommendations" && (
+        <div>
+          <button
+            onClick={() => navigate(`/recommendations/products/${listId}/add`)}
+            className="w-full mb-6 flex items-center justify-center gap-3 py-4 bg-dashboard-accent hover:opacity-90 text-white rounded-2xl text-sm font-bold transition-all shadow-lg shadow-blue-900/40 border border-white/10"
+          >
+            <AddIcon size="5" /> Add Product
+          </button>
+
+          {products.length === 0 ? (
+            <div className="flex flex-col items-center py-16 text-center">
+              <ShoppingBag size={40} className="text-white/15 mb-3" />
+              <p className="text-dashboard-light text-sm">No products added yet.</p>
+              <p className="text-xs text-white/25 mt-1">Add your first recommendation to this list.</p>
             </div>
-          </div>
-        </Accordion>
+          ) : (
+            <div className="space-y-0">
+              <AnimatePresence>
+                {products.map((product) => (
+                  <motion.div
+                    key={product.documentId}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: deletingId === product.documentId ? 0.4 : 1, y: 0 }}
+                    exit={{ opacity: 0, height: 0 }}
+                  >
+                    <ProductRow
+                      product={product}
+                      onClick={setSelectedProduct}
+                      onPinToggle={handlePinToggle}
+                      onEdit={(p) => navigate(`/recommendations/products/${listId}/edit/${p.documentId}`)}
+                      onDelete={handleDelete}
+                      isPinning={pinningId === product.documentId}
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Products list */}
-      <div className="mt-6">
-        {products.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-emerald-900/20 border border-emerald-800/30 flex items-center justify-center mb-4">
-              <ShoppingBag size={28} className="text-emerald-500/60" />
-            </div>
-            <p className="text-sm text-dashboard-muted mb-4">No products in this list yet.</p>
-            <button onClick={() => navigate(`/recommendations/products/${listId}/add`)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-sm text-white">
-              <AddIcon size="4" /> Add First Product
-            </button>
-          </div>
-        ) : (
-          <AnimatePresence>
-            {products.map((product) => (
-              <motion.div
-                key={product.documentId}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: deletingId === product.documentId ? 0.4 : 1, y: 0 }}
-                exit={{ opacity: 0, height: 0 }}
-              >
-                <ProductRow
-                  product={product}
-                  onClick={setSelectedProduct}
-                  onPinToggle={handlePinToggle}
-                  onEdit={(p) => navigate(`/recommendations/products/${listId}/edit/${p.documentId}`)}
-                  onDelete={handleDelete}
-                  isPinning={pinningId === product.documentId}
-                />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        )}
-      </div>
+      {/* Tab: Manage */}
+      {activeTab === "manage" && (
+        <div className="mb-0 md:mt-2 md:w-[90%] md:mx-auto">
+          <div className="bg-transparent rounded-lg p-6 space-y-4 border border-white/10">
+            <Accordion heading="Manage" defaultOpen={true}>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => setShowDeleteListModal(true)}
+                  className="flex flex-row text-center gap-2 items-center rounded-md font-poppins w-full text-sm border border-white px-4 py-3 hover:border-gray-500 text-white hover:text-gray-500 justify-center font-medium transition-all duration-300"
+                >
+                  <Trash2 size={16} />
+                  <span>Delete</span>
+                </button>
 
+                {isEditingList ? (
+                  <div className="bg-dashboard-sidebar border border-white/10 rounded-lg p-5 space-y-4 mt-2 mb-2 text-left">
+                    <div>
+                      <label className="text-xs text-white/50 mb-1.5 block uppercase tracking-wider">List Name</label>
+                      <input
+                        defaultValue={listData?.List_Name}
+                        onBlur={async (e) => {
+                          if (e.target.value && e.target.value !== listData?.List_Name) {
+                            await updateProductList({ variables: { documentId: listData?.documentId, List_Name: e.target.value }, refetchQueries: [{ query: PRODUCTS_BY_LIST, variables: productsByListVars(listId!) }] });
+                            toast.success("List name updated.");
+                          }
+                        }}
+                        className="w-full bg-dashboard-muted border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-white/30 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-white/50 mb-1.5 block uppercase tracking-wider">Description</label>
+                      <textarea
+                        defaultValue={listData?.list_description ?? ""}
+                        rows={3}
+                        onBlur={async (e) => {
+                          if (e.target.value !== (listData?.list_description ?? "")) {
+                            await updateProductList({ variables: { documentId: listData?.documentId, list_description: e.target.value }, refetchQueries: [{ query: PRODUCTS_BY_LIST, variables: productsByListVars(listId!) }] });
+                            toast.success("Description updated.");
+                          }
+                        }}
+                        className="w-full bg-dashboard-muted border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white resize-none focus:outline-none focus:border-white/30 transition-colors"
+                      />
+                    </div>
+                    <button onClick={() => setIsEditingList(false)} className="w-full py-2 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-lg flex justify-center text-sm mt-3 transition-colors">Done Editing</button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsEditingList(true)}
+                    className="flex flex-row text-center gap-2 items-center rounded-md font-poppins w-full text-sm border border-white px-4 py-3 hover:border-gray-500 text-white hover:text-gray-500 justify-center font-medium transition-all duration-300"
+                  >
+                    <Pencil size={16} />
+                    <span>Edit</span>
+                  </button>
+                )}
+
+                <div className={`p-4 rounded-xl border transition-all mt-2 ${listData?.Visibility ? "border-green-500/30 bg-green-500/5" : "border-white/10"} flex justify-center items-center`}>
+                  <Switch
+                    checked={listData?.Visibility ?? false}
+                    onChange={handleToggleVisibility}
+                    loading={isUpdating}
+                    label={listData?.Visibility ? "Published (Visible to public)" : "Draft (Private)"}
+                  />
+                </div>
+              </div>
+            </Accordion>
+
+            <Accordion heading="My QR" defaultOpen={true}>
+              <div className={`relative pb-2 ${!listData?.Visibility ? "blur-sm pointer-events-none" : ""}`}>
+                {!listData?.Visibility && (
+                  <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-auto">
+                    <span className="bg-dashboard-muted px-4 py-2 rounded-lg text-sm text-white/90 shadow-2xl border border-white/20 backdrop-blur-md">Publish list to share QR</span>
+                  </div>
+                )}
+
+                <div className="flex justify-center items-center my-6">
+                  <div className="flex relative flex-col justify-between items-center h-[16rem] w-[14rem] p-6 bg-black border border-white text-white rounded-lg">
+                    <div className="absolute bottom-0 left-0 w-full h-1/2 rounded-b-lg bg-gradient-to-t from-blue-900/40 to-transparent pointer-events-none" />
+                    <p className="text-sm tracking-wide font-medium z-10 text-center leading-snug">My Recommendations</p>
+                    <div className="z-10 items-center flex flex-col pt-1">
+                      <div className="p-2 bg-white rounded-lg shadow-md mb-3">
+                        <QRCodeSVG value={publicUrl} size={90} />
+                      </div>
+                      <p className="bg-gray-200 text-black px-4 py-1.5 font-poppins rounded-full text-[11px] font-semibold whitespace-nowrap">
+                        Travel like a local
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-center gap-8 mt-5 mb-1 pt-4 border-t border-white/5">
+                  <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => {
+                    if (navigator.share) {
+                      navigator.share({ title: listData?.List_Name, url: publicUrl });
+                    } else {
+                      handleCopy();
+                    }
+                  }}>
+                    <button className="p-0 bg-transparent rounded-full flex items-center justify-center">
+                      <Share2 size={22} className="text-white" strokeWidth={1.5} />
+                    </button>
+                    <span className="font-poppins text-white text-xs">Share Link</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={handleCopy}>
+                    <button className="p-0 bg-transparent rounded-full flex items-center justify-center">
+                      {copied ? <Check size={22} className="text-white" strokeWidth={1.5} /> : <Copy size={22} className="text-white" strokeWidth={1.5} />}
+                    </button>
+                    <span className="font-poppins text-white text-xs whitespace-nowrap">{copied ? "Copied" : "Copy Link"}</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => {
+                     const svg = document.querySelector('svg');
+                     if (svg) {
+                       const svgData = new XMLSerializer().serializeToString(svg);
+                       const canvas = document.createElement("canvas");
+                       const ctx = canvas.getContext("2d");
+                       const img = new Image();
+                       img.onload = () => {
+                         canvas.width = img.width;
+                         canvas.height = img.height;
+                         ctx?.drawImage(img, 0, 0);
+                         const pngFile = canvas.toDataURL("image/png");
+                         const a = document.createElement("a");
+                         a.download = `QR_${listData?.List_Name || "List"}.png`;
+                         a.href = pngFile;
+                         a.click();
+                       };
+                       img.src = "data:image/svg+xml;base64," + btoa(svgData);
+                     }
+                  }}>
+                    <button className="p-0 bg-transparent rounded-full flex items-center justify-center">
+                      <Download size={22} className="text-white" strokeWidth={1.5} />
+                    </button>
+                    <span className="font-poppins text-white text-xs">Download QR</span>
+                  </div>
+                </div>
+              </div>
+            </Accordion>
+          </div>
+        </div>
+      )}
+
+      {/* Delete List Modal */}
+      {showDeleteListModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="bg-dashboard-card rounded-2xl border border-dashboard-border p-6 w-full max-w-sm">
+            <h3 className="text-lg font-semibold text-dashboard mb-2">Delete List?</h3>
+            <p className="text-sm text-dashboard-muted mb-5">
+              This will permanently delete "{listData?.List_Name}" and all its products. This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowDeleteListModal(false)} className="flex-1 py-2.5 rounded-lg border border-dashboard-border text-sm text-dashboard-muted hover:text-dashboard transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteList}
+                disabled={deletingList}
+                className="flex-1 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-sm text-white font-medium flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {deletingList ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal */}
       {selectedProduct && (
         <ProductDetailModal open={!!selectedProduct} product={selectedProduct} onClose={() => setSelectedProduct(null)} />
       )}
 
-      {showVisibilityModal && listData && (
+      {listData && listVisibilityPrompt && (
         <ListVisibilityModal
-          isOpen={showVisibilityModal}
-          onClose={() => setShowVisibilityModal(false)}
-          listDocumentId={listData.documentId}
-          currentVisibility={listData.Visibility}
-          listName={listData.List_Name}
-          updateMutation={UPDATE_PRODUCT_LIST}
-          refetchQuery={PRODUCTS_BY_LIST}
-          refetchVars={productsByListVars(listId!)}
-          onSuccess={refetch}
+          isOpen={listVisibilityPrompt.isOpen}
+          onClose={() => setListVisibilityPrompt(null)}
+          listName={listVisibilityPrompt.listName}
+          categoryName="Products"
+          onConfirm={async () => {
+            try {
+              await updateProductList({
+                variables: { documentId: listData.documentId, Visibility: true },
+                refetchQueries: [{ query: PRODUCTS_BY_LIST, variables: productsByListVars(listId!) }],
+              });
+              refetch();
+              toast.success(`"${listData.List_Name}" published!`);
+            } catch {
+              toast.error("Failed to update visibility.");
+            }
+          }}
+          loading={isUpdating}
         />
       )}
     </div>

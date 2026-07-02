@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, ShoppingBag, Share2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import type { RecommendedProduct } from "../../types";
@@ -10,8 +10,20 @@ interface ProductDetailModalProps {
   onClose: () => void;
 }
 
+const FALLBACK_IMAGE = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'><rect width='300' height='300' fill='%23171e2e'/></svg>`;
+
 const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps) => {
   const [imgIdx, setImgIdx] = useState(0);
+  const [dragStartY, setDragStartY] = useState<number | null>(null);
+  const galleryScrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const scrollGallery = (dir: "left" | "right") => {
+    if (galleryScrollRef.current) {
+      const amount = dir === "left" ? -300 : 300;
+      galleryScrollRef.current.scrollBy({ left: amount, behavior: "smooth" });
+    }
+  };
 
   useEffect(() => {
     if (open) document.body.style.overflow = "hidden";
@@ -20,19 +32,31 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
   }, [open]);
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
     if (open) document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [open, onClose]);
 
-  const handleShare = async () => {
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setDragStartY(e.touches[0].clientY);
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (dragStartY === null) return;
+    const delta = e.changedTouches[0].clientY - dragStartY;
+    if (delta > 100) onClose();
+    setDragStartY(null);
+  };
+
+  const handleShare = useCallback(async () => {
     const url = window.location.href;
     if (navigator.share) {
       try { await navigator.share({ title: product?.title, url }); } catch { /* ignore */ }
     } else {
       await navigator.clipboard.writeText(url);
     }
-  };
+  }, [product?.title]);
 
   if (!product) return null;
 
@@ -43,6 +67,9 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
   const specs = product.specifications || {};
   const hasSpecs = Object.keys(specs).length > 0;
   const priceStr = formatPrice(product.price, product.currency);
+  
+  // Use the first gallery image as backdrop, or main image, or fallback workspace photo
+  const backdropUrl = allImages.length > 0 ? allImages[imgIdx] : "https://images.unsplash.com/photo-1505740420928-5e560c06d30e";
 
   return (
     <AnimatePresence>
@@ -57,125 +84,189 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
             onClick={onClose}
           />
 
-          {/* Modal */}
-          <motion.div
-            className="fixed inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center z-[151] p-0 md:p-4"
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          >
-            <div
-              className="relative bg-[#0f1520] w-full md:max-w-lg rounded-t-3xl md:rounded-2xl overflow-hidden max-h-[92dvh] overflow-y-auto"
+          {/* Modal panel wrapper */}
+          <div className="fixed inset-0 pt-[88px] md:pt-8 flex items-end justify-center z-[150] pointer-events-none">
+            <motion.div
+              className="relative bg-[#0d1117] rounded-t-2xl w-full h-full md:max-w-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-2xl ring-1 ring-white/10 hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pointer-events-auto"
+              initial={{ y: "100%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "100%", opacity: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Handle (mobile) */}
-              <div className="md:hidden w-10 h-1 rounded-full bg-white/20 mx-auto mt-3" />
+              {/* Backdrop hero */}
+              <div className="relative h-48 md:h-56 flex-shrink-0 overflow-hidden">
+                {backdropUrl ? (
+                  <img src={backdropUrl} alt="" className="w-full h-full object-cover filter brightness-75" />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-[#1a2332] to-[#0d1117]" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0d1117] via-[#0d1117]/40 to-transparent" />
 
-              {/* Close */}
-              <button
-                onClick={onClose}
-                className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-              >
-                <X size={16} />
-              </button>
+                {/* Drag handle (mobile) */}
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-white/30 md:hidden" />
 
-              {/* Image gallery */}
-              {allImages.length > 0 ? (
-                <div className="relative aspect-square overflow-hidden bg-black/30">
-                  <img src={allImages[imgIdx]} alt={product.title} className="w-full h-full object-contain" />
-                  {allImages.length > 1 && (
-                    <>
-                      <button onClick={() => setImgIdx((i) => (i - 1 + allImages.length) % allImages.length)} className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/50"><ChevronLeft size={14} /></button>
-                      <button onClick={() => setImgIdx((i) => (i + 1) % allImages.length)} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/50"><ChevronRight size={14} /></button>
-                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-                        {allImages.map((_, i) => (<div key={i} className={`w-1.5 h-1.5 rounded-full transition-all ${i === imgIdx ? "bg-emerald-400" : "bg-white/30"}`} />))}
+                {/* Close button */}
+                <button
+                  onClick={onClose}
+                  className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white/80 hover:text-white transition-all"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Content area */}
+              <div ref={contentRef} className="flex-1 pb-24 md:pb-6 w-full">
+                <div className="flex gap-4 px-5 -mt-16 relative z-10">
+                  {/* Primary product image container */}
+                  <div className="flex-shrink-0 w-28 h-28 rounded-2xl overflow-hidden ring-2 ring-white/10 shadow-2xl bg-[#1a2332]">
+                    <img
+                      src={mainImg || FALLBACK_IMAGE}
+                      alt={product.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).src = FALLBACK_IMAGE; }}
+                    />
+                  </div>
+
+                  {/* Title and Brand */}
+                  <div className="flex-1 pt-16 min-w-0">
+                    <h2 className="text-xl font-bold text-white mt-1 leading-tight">{product.title}</h2>
+                    {product.brand && (
+                      <p className="text-sm text-white/40 mt-0.5">{product.brand}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="px-5 mt-4 space-y-5 pb-6">
+                  {/* Metadata pills */}
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    {priceStr && (
+                      <span className="text-emerald-400 font-bold text-base mr-2">{priceStr}</span>
+                    )}
+                    {product.user_rating && (
+                      <span className="flex items-center gap-1 text-yellow-400 font-semibold">
+                        <Star size={13} fill="currentColor" /> {product.user_rating}/10
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Overview */}
+                  {product.description && (
+                    <p className="text-sm text-white/60 leading-relaxed">{product.description}</p>
+                  )}
+
+                  {/* Creator note */}
+                  {noteText && (
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
+                      <p className="text-xs font-semibold text-emerald-400 mb-1.5 uppercase tracking-wider">Creator's Note</p>
+                      <p className="text-sm text-white/80 leading-relaxed italic">"{noteText}"</p>
+                    </div>
+                  )}
+
+                  {/* Creator Rating */}
+                  {product.user_rating && (
+                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 flex items-center justify-between">
+                      <p className="text-xs font-semibold text-yellow-500 uppercase tracking-wider">Creator's Rating</p>
+                      <div className="flex gap-1 flex-wrap justify-end">
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(star => (
+                          <Star 
+                            key={star} 
+                            size={16} 
+                            fill={product.user_rating! >= star ? "currentColor" : "none"} 
+                            className={product.user_rating! >= star ? "text-yellow-400" : "text-white/20"} 
+                          />
+                        ))}
                       </div>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div className="aspect-square bg-emerald-900/10 flex items-center justify-center">
-                  <ShoppingBag size={48} className="text-emerald-800/40" />
-                </div>
-              )}
-
-              {/* Product info */}
-              <div className="p-5">
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-lg font-bold text-white">{product.title}</h2>
-                    {product.brand && <p className="text-sm text-white/50 mt-0.5">{product.brand}</p>}
-                  </div>
-                  {priceStr && (
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-xl font-bold text-emerald-400">{priceStr}</p>
                     </div>
                   )}
-                </div>
 
-                {product.user_rating && (
-                  <div className="flex items-center gap-1 mb-3">
-                    <Star size={13} fill="currentColor" className="text-amber-400" />
-                    <span className="text-sm text-amber-400 font-semibold">{product.user_rating}/10</span>
-                  </div>
-                )}
+                  {/* Specs */}
+                  {hasSpecs && (
+                    <div>
+                      <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Specifications</p>
+                      <div className="rounded-xl border border-white/10 overflow-hidden bg-[#161e2e]/30">
+                        {Object.entries(specs).map(([key, val], i) => (
+                          <div key={key} className={`flex items-center px-4 py-2.5 text-xs ${i % 2 === 0 ? "bg-white/[0.02]" : ""}`}>
+                            <span className="text-white/40 w-1/3 font-medium">{key}</span>
+                            <span className="text-white/80 flex-1">{val}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-                {product.description && (
-                  <p className="text-sm text-white/60 leading-relaxed mb-4">{product.description}</p>
-                )}
-
-                {/* Creator Note */}
-                {noteText && (
-                  <div className="p-4 rounded-xl bg-emerald-900/20 border border-emerald-800/30 mb-4">
-                    <p className="text-[10px] text-emerald-400/70 font-semibold uppercase tracking-wider mb-1.5">Creator's Note</p>
-                    <p className="text-sm text-white/80 leading-relaxed italic">"{noteText}"</p>
-                  </div>
-                )}
-
-                {/* Specs */}
-                {hasSpecs && (
-                  <div className="mb-4">
-                    <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Specifications</p>
-                    <div className="rounded-xl border border-white/10 overflow-hidden">
-                      {Object.entries(specs).map(([key, val], i) => (
-                        <div key={key} className={`flex items-center px-3 py-2 text-xs ${i % 2 === 0 ? "bg-white/[0.03]" : ""}`}>
-                          <span className="text-white/40 w-1/3">{key}</span>
-                          <span className="text-white/80 flex-1">{val}</span>
+                  {/* Product Images Gallery Row (Movie style snapshots) */}
+                  {allImages.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">
+                        Product Gallery
+                      </p>
+                      <div className="relative group">
+                        <button
+                          onClick={() => scrollGallery("left")}
+                          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-black/60 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-black/80 transition-all -ml-2 backdrop-blur-sm"
+                        >
+                          <ChevronLeft size={16} />
+                        </button>
+                        <div ref={galleryScrollRef} className="flex overflow-x-auto pb-4 -mx-5 px-5 gap-3 hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                          {allImages.map((url, i) => (
+                            <button
+                              key={i}
+                              onClick={() => setImgIdx(i)}
+                              className={`flex-shrink-0 w-56 aspect-square rounded-xl overflow-hidden border transition-all ${i === imgIdx ? 'border-emerald-400 scale-[1.01]' : 'border-white/10 opacity-70 hover:opacity-100'} bg-[#1a2332]`}
+                            >
+                              <img 
+                                src={url} 
+                                className="w-full h-full object-cover" 
+                                alt={`Gallery ${i + 1}`} 
+                              />
+                            </button>
+                          ))}
                         </div>
-                      ))}
+                        <button
+                          onClick={() => scrollGallery("right")}
+                          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-black/60 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-black/80 transition-all -mr-2 backdrop-blur-sm"
+                        >
+                          <ChevronRight size={16} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Category */}
-                {product.product_category && (
-                  <div className="flex gap-2 flex-wrap mb-4">
-                    <span className="text-[11px] text-emerald-400/70 bg-emerald-900/20 border border-emerald-800/20 px-2.5 py-1 rounded-full">
-                      {product.product_category.name}
-                    </span>
-                  </div>
-                )}
+                  {/* Source list */}
+                  {product.product_list && (
+                    <p className="text-xs text-white/30">
+                      From the list: <span className="text-emerald-400">{product.product_list.List_Name}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
 
-                {/* CTA */}
-                <div className="flex gap-3">
+              {/* Footer actions matching Movie modal exactly */}
+              <div className="flex-shrink-0 border-t border-white/8 px-5 py-4 flex items-center justify-between gap-3 bg-[#0d1117]">
+                <button
+                  onClick={handleShare}
+                  className="flex items-center gap-1.5 text-sm text-white/60 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/8 transition-all"
+                >
+                  <Share2 size={14} /> Share
+                </button>
+                <div className="flex gap-2">
                   {(product.buy_url || product.product_url) && (
                     <a
                       href={product.buy_url || product.product_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-sm text-white font-medium transition-colors"
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-sm text-white font-medium transition-colors"
                     >
-                      <ExternalLink size={15} /> {product.buy_url ? "Buy / Get it" : "View Product"}
+                      <ExternalLink size={14} /> {product.buy_url ? "Buy Now" : "View Product"}
                     </a>
                   )}
-                  <button onClick={handleShare} className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 transition-colors">
-                    <Share2 size={16} />
-                  </button>
                 </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>

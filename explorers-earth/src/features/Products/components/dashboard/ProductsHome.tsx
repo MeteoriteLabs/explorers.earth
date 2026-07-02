@@ -19,6 +19,9 @@ import { AddIcon } from "../../../../assets/icons/AddIcon";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import { CategoryVisibilityModal } from "../../../../components/CategoryVisibilityModal";
 import ProductDetailModal from "../public/ProductDetailModal";
+import ProductTopPicksHero from "../public/ProductTopPicksHero";
+import ProductTopPicksMobileHero from "../public/ProductTopPicksMobileHero";
+import ProductTopPicksManager from "./ProductTopPicksManager";
 
 const MY_ACCOUNT = gql`
   query MyAccountForProducts($documentId: ID!) {
@@ -265,6 +268,7 @@ const ProductsHome = () => {
   const { user } = useAuthStore();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showManageTopPicks, setShowManageTopPicks] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<RecommendedProduct | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -421,23 +425,42 @@ const ProductsHome = () => {
       ) : (
         <>
           {/* Top Picks */}
-          {topPicks.length > 0 && (
-            <div className="mb-8 p-4 rounded-2xl bg-gradient-to-r from-emerald-900/20 to-teal-900/10 border border-emerald-800/20">
-              <p className="text-xs text-emerald-400/70 font-semibold uppercase tracking-wider mb-3">⭐ Top Picks</p>
-              <div className="flex gap-3 flex-wrap">
-                {topPicks.slice(0, 8).map((product) => (
-                  <button key={product.documentId} onClick={() => setSelectedProduct(product)} className="flex items-center gap-2 bg-white/5 hover:bg-white/10 rounded-xl px-3 py-2 transition-all">
-                    {product.logo_url ? (
-                      <img src={buildImageUrl(product.logo_url)} alt="" className="w-7 h-7 rounded-lg object-cover" />
-                    ) : (
-                      <div className="w-7 h-7 rounded-lg bg-emerald-900/40 flex items-center justify-center"><ShoppingBag size={12} className="text-emerald-400/60" /></div>
-                    )}
-                    <span className="text-xs font-medium text-white/80 max-w-[100px] truncate">{product.title}</span>
-                    {product.price && <span className="text-[10px] text-emerald-400/70 font-medium">{formatPrice(product.price, product.currency)}</span>}
-                  </button>
-                ))}
+          {topPicks.length > 0 ? (
+            <div className="mb-8">
+              <div className="hidden lg:block">
+                <ProductTopPicksHero 
+                  products={topPicks} 
+                  onProductClick={setSelectedProduct} 
+                  showManageButton={true}
+                  onManageClick={() => setShowManageTopPicks(true)}
+                />
+              </div>
+              <div className="block lg:hidden">
+                <ProductTopPicksMobileHero
+                  products={topPicks}
+                  onProductClick={setSelectedProduct}
+                  showManageButton={true}
+                  onManageClick={() => setShowManageTopPicks(true)}
+                />
               </div>
             </div>
+          ) : (
+            /* Empty Placeholder banner */
+            allProducts.length > 0 && (
+              <div
+                onClick={() => setShowManageTopPicks(true)}
+                className="w-full flex items-center justify-between p-4 rounded-[14px] border border-emerald-500/25 bg-emerald-500/5 hover:bg-emerald-500/10 transition-all duration-300 cursor-pointer mb-6"
+              >
+                <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-emerald-400 font-poppins">
+                  <span className="text-emerald-400">★</span> Manage Top Picks ({topPicks.length}/{deduplicateProducts(allProducts).length})
+                </div>
+                <div className="flex items-center text-emerald-500">
+                  <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+            )
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
@@ -467,6 +490,16 @@ const ProductsHome = () => {
 
       {selectedProduct && (
         <ProductDetailModal open={!!selectedProduct} product={selectedProduct} onClose={() => setSelectedProduct(null)} />
+      )}
+
+      {showManageTopPicks && (
+        <ProductTopPicksManager
+          products={topPicks}
+          allProducts={deduplicateProducts(allProducts)}
+          onClose={() => setShowManageTopPicks(false)}
+          onRefetch={() => refetch()}
+          listId=""
+        />
       )}
 
       {visibilityPrompt && accountDocumentId && (

@@ -19,6 +19,9 @@ import { AddIcon } from "../../../../assets/icons/AddIcon";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import { CategoryVisibilityModal } from "../../../../components/CategoryVisibilityModal";
 import AppDetailModal from "../public/AppDetailModal";
+import AppTopPicksHero from "../public/AppTopPicksHero";
+import AppTopPicksMobileHero from "../public/AppTopPicksMobileHero";
+import AppTopPicksManager from "./AppTopPicksManager";
 
 const MY_ACCOUNT = gql`
   query MyAccountForApps($documentId: ID!) {
@@ -304,6 +307,7 @@ const AppsHome = () => {
   const { user } = useAuthStore();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showManageTopPicks, setShowManageTopPicks] = useState(false);
   const [selectedApp, setSelectedApp] = useState<RecommendedApp | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -513,28 +517,42 @@ const AppsHome = () => {
       ) : (
         <>
           {/* Top Picks Section */}
-          {topPicks.length > 0 && (
-            <div className="mb-8 p-4 rounded-2xl bg-gradient-to-r from-violet-900/20 to-purple-900/10 border border-violet-800/20">
-              <p className="text-xs text-violet-400/70 font-semibold uppercase tracking-wider mb-3">⭐ Top Picks</p>
-              <div className="flex gap-3 flex-wrap">
-                {topPicks.slice(0, 8).map((app) => (
-                  <button
-                    key={app.documentId}
-                    onClick={() => setSelectedApp(app)}
-                    className="flex items-center gap-2 bg-white/5 hover:bg-white/10 rounded-xl px-3 py-2 transition-all"
-                  >
-                    {app.logo_url ? (
-                      <img src={buildLogoUrl(app.logo_url)} alt="" className="w-7 h-7 rounded-lg object-cover" />
-                    ) : (
-                      <div className="w-7 h-7 rounded-lg bg-violet-900/40 flex items-center justify-center">
-                        <Smartphone size={12} className="text-violet-400/60" />
-                      </div>
-                    )}
-                    <span className="text-xs font-medium text-white/80 max-w-[100px] truncate">{app.title}</span>
-                  </button>
-                ))}
+          {topPicks.length > 0 ? (
+            <div className="mb-8">
+              <div className="hidden lg:block">
+                <AppTopPicksHero 
+                  apps={topPicks} 
+                  onAppClick={setSelectedApp} 
+                  showManageButton={true}
+                  onManageClick={() => setShowManageTopPicks(true)}
+                />
+              </div>
+              <div className="block lg:hidden">
+                <AppTopPicksMobileHero
+                  apps={topPicks}
+                  onAppClick={setSelectedApp}
+                  showManageButton={true}
+                  onManageClick={() => setShowManageTopPicks(true)}
+                />
               </div>
             </div>
+          ) : (
+            /* Empty Placeholder banner */
+            allApps.length > 0 && (
+              <div
+                onClick={() => setShowManageTopPicks(true)}
+                className="w-full flex items-center justify-between p-4 rounded-[14px] border border-violet-500/25 bg-violet-500/5 hover:bg-violet-500/10 transition-all duration-300 cursor-pointer mb-6"
+              >
+                <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-violet-400 font-poppins">
+                  <span className="text-violet-400">★</span> Manage Top Picks ({topPicks.length}/{deduplicateApps(allApps).length})
+                </div>
+                <div className="flex items-center text-violet-500">
+                  <svg className="w-3.5 h-3.5 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+            )
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
@@ -576,6 +594,16 @@ const AppsHome = () => {
           open={!!selectedApp}
           app={selectedApp}
           onClose={() => setSelectedApp(null)}
+        />
+      )}
+
+      {showManageTopPicks && (
+        <AppTopPicksManager
+          apps={topPicks}
+          allApps={deduplicateApps(allApps)}
+          onClose={() => setShowManageTopPicks(false)}
+          onRefetch={() => refetch()}
+          listId=""
         />
       )}
 
