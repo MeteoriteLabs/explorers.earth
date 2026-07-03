@@ -4,8 +4,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import {
   ArrowLeft, Search, Star, X, Loader2, Check, Smartphone, Link as LinkIcon,
-  AlertCircle
+  AlertCircle, Upload,
 } from "lucide-react";
+import axios from "axios";
 import { toast } from "sonner";
 import useAuthStore from "../../../../store/store";
 import { APPS_BY_LIST, APP_CATEGORIES, appsByListVars, refetchAppsByList } from "../../api/query";
@@ -18,6 +19,11 @@ import {
 } from "../../utils/appHelpers";
 import type { RecommendedApp, AppCategory } from "../../types";
 import TiptapEditor from "../../../Favorites/components/TiptapEditor";
+import {
+  generateAppUploadPath,
+  generateRandomFileName,
+  sanitizeUsername,
+} from "../../../../utils/uploadPathGenerator";
 
 const PRICE_TIERS = ["Free", "Freemium", "Paid", "Subscription"] as const;
 const ALL_PLATFORMS = ["iOS", "iPadOS", "macOS", "Android", "Windows", "Web", "Linux", "Chrome Extension"];
@@ -166,7 +172,7 @@ const UrlScrapePanel = ({ onScraped }: { onScraped: (data: Partial<RecommendedAp
 const AddAppPage = () => {
   const navigate = useNavigate();
   const { listId, appId } = useParams<{ listId: string; appId: string }>();
-  const { user } = useAuthStore();
+  const { user, token } = useAuthStore();
   const isEdit = !!appId;
 
   const [step, setStep] = useState<"method" | "search" | "url" | "form">(isEdit ? "form" : "method");
@@ -181,6 +187,11 @@ const AddAppPage = () => {
   const [isPinned, setIsPinned] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  // Scraped/fetched images from platform (shown as selectable grid)
+  const [scrapedImages, setScrapedImages] = useState<{ url: string; selected: boolean }[]>([]);
+  // Manual file uploads → S3
+  const [existingSnapshots, setExistingSnapshots] = useState<{ id: string; url: string }[]>([]);
+  const [newSnapshots, setNewSnapshots] = useState<File[]>([]);
 
   // Load existing data for edit mode
   const { data: listData } = useQuery(APPS_BY_LIST, {
@@ -214,6 +225,12 @@ const AddAppPage = () => {
       setUserRating(existingApp.user_rating);
       setIsPinned(existingApp.is_pinned);
       setSelectedCategories(existingApp.app_category ? [existingApp.app_category.documentId] : []);
+      // Populate existing snapshots from saved screenshots
+      if (existingApp.screenshots && existingApp.screenshots.length > 0) {
+        setExistingSnapshots(
+          existingApp.screenshots.map((url: string, i: number) => ({ id: `existing_${i}`, url }))
+        );
+      }
     }
   }, [isEdit, existingApp?.documentId]);
 
@@ -223,6 +240,8 @@ const AddAppPage = () => {
   const handleItunesSelect = useCallback((item: ItunesResult) => {
     const platforms = itunesService.getPlatforms(item);
     const priceTier = itunesService.getPriceTier(item.price);
+    // Use screenshotUrls as selectable scraped images if available
+    const screenshots: string[] = (item as any).screenshotUrls || [];
     setFormData({
       app_url: item.trackViewUrl,
       title: item.trackName,
@@ -234,11 +253,23 @@ const AddAppPage = () => {
       download_url: item.trackViewUrl,
       screenshots: [],
     });
+    if (screenshots.length > 0) {
+      setScrapedImages(screenshots.map((url) => ({ url, selected: true })));
+    } else {
+      setScrapedImages([]);
+    }
     setStep("form");
   }, []);
 
   const handleUrlScraped = useCallback((data: Partial<RecommendedApp>) => {
-    setFormData((prev) => ({ ...prev, ...data }));
+    // Separate scraped screenshots from form data
+    const { screenshots: scrapedScreenshots, ...rest } = data as any;
+    setFormData((prev) => ({ ...prev, ...rest, screenshots: [] }));
+    if (Array.isArray(scrapedScreenshots) && scrapedScreenshots.length > 0) {
+      setScrapedImages(scrapedScreenshots.map((url: string) => ({ url, selected: true })));
+    } else {
+      setScrapedImages([]);
+    }
     setStep("form");
   }, []);
 
@@ -265,6 +296,105 @@ const AddAppPage = () => {
       : existingApps.length;
 
     try {
+      let finalLogoUrl = formData.logo_url || "";
+      // Start with existing snapshots (already on S3)
+      let uploadedSnapshots: { id: string; url: string }[] = [...existingSnapshots];
+
+      // Upload S3 helper for URL-based images
+      const uploadUrlToS3 = async (imageUrl: string, label: string): Promise<string> => {
+        try {
+          toast.loading(`Uploading ${label}...`, { id: `upload-${label}` });
+          const res = await axios.get(imageUrl, { responseType: "blob" });
+          const blob: Blob = res.data;
+          const fileType = blob.type || "image/jpeg";
+          const ext = fileType.split("/")[1] || "jpg";
+          const usernameStr = sanitizeUsername(user?.username || "user");
+          const slugBase = generateSlug(formData.title || "app");
+          const randomFileName = generateRandomFileName(`${label}.${ext}`);
+          const fullS3Path = generateAppUploadPath(usernameStr, listId!, slugBase, randomFileName);
+          const directoryPath = fullS3Path.substring(0, fullS3Path.lastIndexOf("/"));
+          const fd = new FormData();
+          fd.append("files", new File([blob], randomFileName, { type: fileType }));
+          fd.append("path", directoryPath);
+          const uploadRes = await axios.post(
+            `${import.meta.env.VITE_REST_API_URL}/upload`,
+            fd,
+            { headers: { "Content-Type": "multipart/form-data", ...(token ? { Authorization: `Bearer ${token}` } : {}) } }
+          );
+          toast.success(`${label} uploaded!`, { id: `upload-${label}` });
+          if (uploadRes.data?.[0]?.url) return uploadRes.data[0].url;
+        } catch (err) {
+          console.error(`S3 upload failed for ${label}:`, err);
+          toast.error(`Could not upload ${label}.`, { id: `upload-${label}` });
+        }
+        return imageUrl;
+      };
+
+      if (!isEdit) {
+        // Upload selected scraped screenshots to S3
+        const selectedScraped = scrapedImages.filter((img) => img.selected);
+        if (selectedScraped.length > 0) {
+          toast.loading("Uploading fetched images...", { id: "upload-scraped" });
+          const scrapedUploads = await Promise.all(
+            selectedScraped.map(async (img, idx) => {
+              try {
+                const s3Url = await uploadUrlToS3(img.url, `scraped_${idx}`);
+                return { id: `scraped_${Date.now()}_${idx}`, url: s3Url };
+              } catch {
+                return null;
+              }
+            })
+          );
+          const validUploads = scrapedUploads.filter(Boolean) as { id: string; url: string }[];
+          uploadedSnapshots = [...uploadedSnapshots, ...validUploads];
+          toast.success("Images uploaded!", { id: "upload-scraped" });
+        }
+
+        // Upload logo to S3 — if empty, use first uploaded image as logo
+        if (finalLogoUrl && finalLogoUrl.startsWith("http")) {
+          finalLogoUrl = await uploadUrlToS3(finalLogoUrl, "logo");
+        } else if (!finalLogoUrl && uploadedSnapshots.length > 0) {
+          finalLogoUrl = uploadedSnapshots[0].url;
+        }
+      }
+
+      // Upload manually selected snapshot files to S3
+      if (newSnapshots.length > 0) {
+        toast.loading("Uploading snapshots...", { id: "upload-snapshots" });
+        try {
+          const manualUploads = await Promise.all(
+            newSnapshots.map(async (file, idx) => {
+              try {
+                const usernameStr = sanitizeUsername(user?.username || "user");
+                const slugBase = generateSlug(formData.title || "app");
+                const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+                const randomFileName = generateRandomFileName(safeName);
+                const fullS3Path = generateAppUploadPath(usernameStr, listId!, slugBase, randomFileName);
+                const directoryPath = fullS3Path.substring(0, fullS3Path.lastIndexOf("/"));
+                const fd = new FormData();
+                fd.append("files", file, randomFileName);
+                fd.append("path", directoryPath);
+                const uploadRes = await axios.post(
+                  `${import.meta.env.VITE_REST_API_URL}/upload`,
+                  fd,
+                  { headers: { "Content-Type": "multipart/form-data", ...(token ? { Authorization: `Bearer ${token}` } : {}) } }
+                );
+                if (uploadRes.data?.[0]?.url) return { id: `snap_${Date.now()}_${idx}`, url: uploadRes.data[0].url };
+                return null;
+              } catch (e) {
+                console.error("Snapshot upload failed:", e);
+                return null;
+              }
+            })
+          );
+          uploadedSnapshots = [...uploadedSnapshots, ...manualUploads.filter(Boolean) as { id: string; url: string }[]];
+          toast.success("Snapshots uploaded!", { id: "upload-snapshots" });
+        } catch {
+          toast.error("Some snapshots failed to upload.", { id: "upload-snapshots" });
+        }
+      }
+
+      const finalScreenshots = uploadedSnapshots.map((s) => s.url);
       if (isEdit && appId) {
         await updateApp({
           variables: {
@@ -276,7 +406,7 @@ const AddAppPage = () => {
             platforms: formData.platforms,
             price_tier: formData.price_tier,
             download_url: formData.download_url,
-            screenshots: formData.screenshots,
+            screenshots: finalScreenshots,
             user_recommendation_note: note,
             user_rating: userRating,
             is_pinned: isPinned,
@@ -291,12 +421,12 @@ const AddAppPage = () => {
             app_url: formData.app_url,
             title: formData.title,
             description: formData.description,
-            logo_url: formData.logo_url,
+            logo_url: finalLogoUrl,
             developer: formData.developer,
             platforms: formData.platforms || [],
             price_tier: formData.price_tier,
             download_url: formData.download_url,
-            screenshots: formData.screenshots || [],
+            screenshots: finalScreenshots,
             user_recommendation_note: note,
             user_rating: userRating,
             is_pinned: isPinned,
@@ -532,28 +662,62 @@ const AddAppPage = () => {
               </div>
             )}
 
-            {/* User Rating */}
+            {/* User Rating — 10 stars matching movie form */}
             <div>
-              <label className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2 block">
+              <label className="text-sm font-semibold text-dashboard mb-2 block">
                 Your Rating {userRating ? `(${userRating}/10)` : "(optional)"}
               </label>
-              <div className="flex gap-1.5">
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+              <div className="flex gap-1.5 flex-wrap">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
                   <button
-                    key={n}
+                    key={star}
                     type="button"
-                    onClick={() => setUserRating(userRating === n ? null : n)}
-                    className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
-                      userRating !== null && n <= userRating
-                        ? "bg-amber-500/30 text-amber-300 border border-amber-500/40"
-                        : "bg-white/5 text-white/30 border border-white/10 hover:border-white/20"
+                    onClick={() => setUserRating(userRating === star ? null : star)}
+                    className={`p-1 transition-all hover:scale-110 active:scale-95 ${
+                      userRating && userRating >= star ? "text-yellow-400" : "text-white/20 hover:text-white/40"
                     }`}
                   >
-                    {n}
+                    <Star size={24} fill={userRating && userRating >= star ? "currentColor" : "none"} />
                   </button>
                 ))}
               </div>
             </div>
+
+            {/* Scraped Images — selectable grid */}
+            {scrapedImages.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">Media from Platform</label>
+                  <div className="flex gap-3 text-xs">
+                    <button type="button" onClick={() => setScrapedImages((imgs) => imgs.map((img) => ({ ...img, selected: true })))} className="text-violet-400/70 hover:text-violet-400 transition-colors">Select All</button>
+                    <button type="button" onClick={() => setScrapedImages((imgs) => imgs.map((img) => ({ ...img, selected: false })))} className="text-white/30 hover:text-white/50 transition-colors">Deselect All</button>
+                  </div>
+                </div>
+                <p className="text-[11px] text-white/30 mb-3">Click to deselect images you don't want. Selected images will be uploaded to S3.</p>
+                <div className="flex flex-wrap gap-2">
+                  {scrapedImages.map((img, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setScrapedImages((imgs) => imgs.map((m, idx) => idx === i ? { ...m, selected: !m.selected } : m))}
+                      className={`relative w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 transition-all ${
+                        img.selected
+                          ? "ring-2 ring-violet-500 ring-offset-1 ring-offset-black/50 opacity-100"
+                          : "opacity-35 grayscale"
+                      }`}
+                    >
+                      <img src={img.url} alt={`media-${i}`} className="w-full h-full object-cover" />
+                      {img.selected && (
+                        <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-violet-500 flex items-center justify-center">
+                          <Check size={10} className="text-white" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-white/30 mt-2">{scrapedImages.filter((i) => i.selected).length} of {scrapedImages.length} selected</p>
+              </div>
+            )}
 
             {/* Pin */}
             <div className="flex items-center gap-3 p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
@@ -569,6 +733,71 @@ const AddAppPage = () => {
               >
                 <div className={`w-4 h-4 rounded-full bg-white mx-1 transition-transform ${isPinned ? "translate-x-4" : ""}`} />
               </button>
+            </div>
+
+            {/* Manual Snapshots */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-semibold text-dashboard">Manual Snapshots from App (Optional)</label>
+              </div>
+              <div className="flex flex-col gap-3">
+                {/* Existing Snapshots */}
+                {existingSnapshots.length > 0 && (
+                  <div className="flex flex-wrap gap-3 mb-2">
+                    {existingSnapshots.map((snap) => (
+                      <div key={snap.id} className="relative w-24 h-24 rounded-xl overflow-hidden shadow-sm group">
+                        <img
+                          src={snap.url.startsWith("http") ? snap.url : `${import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337"}${snap.url}`}
+                          className="w-full h-full object-cover"
+                          alt="Snapshot"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setExistingSnapshots((prev) => prev.filter((s) => s.id !== snap.id))}
+                          className="absolute top-1 right-1 bg-black/60 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* New Snapshots Preview */}
+                {newSnapshots.length > 0 && (
+                  <div className="flex flex-wrap gap-3 mb-2">
+                    {newSnapshots.map((file, i) => (
+                      <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden shadow-sm group border border-white/10">
+                        <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" alt="New Snapshot preview" />
+                        <button
+                          type="button"
+                          onClick={() => setNewSnapshots((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="absolute top-1 right-1 bg-black/60 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Upload Button */}
+                <label className="w-full md:w-auto self-start cursor-pointer flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 border-dashed rounded-xl px-5 py-3 text-sm text-white/70 transition-colors">
+                  <Upload size={16} className="text-white/50" />
+                  <span>Upload Images</span>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        setNewSnapshots((prev) => [...prev, ...Array.from(e.target.files!)]);
+                      }
+                    }}
+                  />
+                </label>
+              </div>
             </div>
 
             {/* Note */}

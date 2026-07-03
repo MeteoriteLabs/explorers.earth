@@ -309,6 +309,50 @@ export const generateGameUploadPath = (
 };
 
 /**
+ * Generates structured path for product list/product image uploads
+ * Uses unified structure: {username}/products/{productListId}/{productSlug}/{filename}
+ * @param username - User's username
+ * @param productListId - Unique ID of the product list
+ * @param productSlug - Slug/identifier of the product (e.g. from URL)
+ * @param filename - Generated filename
+ * @returns Structured path for product uploads
+ */
+export const generateProductUploadPath = (
+  username: string,
+  productListId: string,
+  productSlug: string,
+  filename: string
+): string => {
+  const sanitizedUsername = sanitizeUsername(username);
+  const sanitizedListId = sanitizeIdentifier(productListId);
+  const sanitizedSlug = sanitizeIdentifier(productSlug);
+
+  return `${sanitizedUsername}/products/${sanitizedListId}/${sanitizedSlug}/${filename}`;
+};
+
+/**
+ * Generates structured path for app/tool list image uploads
+ * Uses unified structure: {username}/apps/{appListId}/{appSlug}/{filename}
+ * @param username - User's username
+ * @param appListId - Unique ID of the app list
+ * @param appSlug - Slug/identifier of the app
+ * @param filename - Generated filename
+ * @returns Structured path for app uploads
+ */
+export const generateAppUploadPath = (
+  username: string,
+  appListId: string,
+  appSlug: string,
+  filename: string
+): string => {
+  const sanitizedUsername = sanitizeUsername(username);
+  const sanitizedListId = sanitizeIdentifier(appListId);
+  const sanitizedSlug = sanitizeIdentifier(appSlug);
+
+  return `${sanitizedUsername}/apps/${sanitizedListId}/${sanitizedSlug}/${filename}`;
+};
+
+/**
  * Sanitizes username for safe path usage
  * @param username - Raw username
  * @returns Sanitized username safe for file paths
