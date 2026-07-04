@@ -15,7 +15,7 @@ import itunesService from "../../../../services/itunesService";
 import type { ItunesResult } from "../../../../services/itunesService";
 import {
   deduplicateApps, buildLogoUrl, generateSlug,
-  getPriceTierColor, getPlatformColor, mapItunesKindToPlatforms, itunesPriceTier,
+  getPriceTierColor, itunesPriceTier,
 } from "../../utils/appHelpers";
 import type { RecommendedApp, AppCategory } from "../../types";
 import TiptapEditor from "../../../Favorites/components/TiptapEditor";
@@ -180,7 +180,7 @@ const AddAppPage = () => {
     platforms: [],
     price_tier: "Freemium",
     screenshots: [],
-    app_category: [],
+    app_category: [] as unknown as RecommendedApp["app_category"],
   });
   const [note, setNote] = useState<any>(null);
   const [userRating, setUserRating] = useState<number | null>(null);
@@ -203,9 +203,9 @@ const AddAppPage = () => {
   const categories: AppCategory[] = categoryData?.appCategories ?? [];
 
   const existingApp: RecommendedApp | null = isEdit
-    ? deduplicateApps(listData?.appLists?.[0]?.recommended_apps ?? []).find(
+    ? (deduplicateApps(listData?.appLists?.[0]?.recommended_apps ?? []).find(
         (a) => a.documentId === appId
-      ) ?? null
+      ) as RecommendedApp | undefined) ?? null
     : null;
 
   useEffect(() => {
@@ -803,7 +803,7 @@ const AddAppPage = () => {
             {/* Note */}
             <div>
               <label className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2 block">Your Note (optional)</label>
-              <TiptapEditor content={note} onChange={setNote} placeholder="Share why you love this app..." />
+              <TiptapEditor value={note ?? ""} onChange={setNote} placeholder="Share why you love this app..." />
             </div>
           </div>
 

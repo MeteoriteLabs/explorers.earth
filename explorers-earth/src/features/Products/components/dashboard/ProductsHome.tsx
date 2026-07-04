@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, gql } from "@apollo/client";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, ShoppingBag, Star, ChevronRight, Loader2, X, ChevronDown } from "lucide-react";
 import { useFormik } from "formik";
@@ -264,7 +264,6 @@ export const ProductListCard = ({
 // ─────────────────────────────────────────────────────────────
 const ProductsHome = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useAuthStore();
 
   const [showCreateModal, setShowCreateModal] = useState(false);

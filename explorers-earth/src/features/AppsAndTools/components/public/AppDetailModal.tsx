@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Star, Smartphone, Share2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Star, Share2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import type { RecommendedApp } from "../../types";
 import { buildLogoUrl, extractNoteText, getPriceTierColor, getPlatformColor } from "../../utils/appHelpers";
 
@@ -13,7 +13,7 @@ interface AppDetailModalProps {
 const FALLBACK_LOGO = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23171e2e'/></svg>`;
 
 const AppDetailModal = ({ app, open, onClose }: AppDetailModalProps) => {
-  const [screenshotIdx, setScreenshotIdx] = useState(0);
+  const [_screenshotIdx, _setScreenshotIdx] = useState(0);
   const [dragStartY, setDragStartY] = useState<number | null>(null);
   const snapshotsScrollRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);

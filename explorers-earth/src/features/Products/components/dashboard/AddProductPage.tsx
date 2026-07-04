@@ -148,7 +148,7 @@ const AddProductPage = () => {
     currency: "USD",
     images: [],
     specifications: {},
-    product_category: [],
+    product_category: [] as unknown as RecommendedProduct["product_category"],
   });
   const [note, setNote] = useState<any>(null);
   const [userRating, setUserRating] = useState<number | null>(null);
@@ -170,9 +170,9 @@ const AddProductPage = () => {
   const categories: ProductCategory[] = categoryData?.productCategories ?? [];
 
   const existingProduct: RecommendedProduct | null = isEdit
-    ? deduplicateProducts(listData?.productLists?.[0]?.recommended_products ?? []).find(
+    ? (deduplicateProducts(listData?.productLists?.[0]?.recommended_products ?? []).find(
         (p) => p.documentId === productId
-      ) ?? null
+      ) as RecommendedProduct | undefined) ?? null
     : null;
 
   useEffect(() => {
@@ -647,7 +647,7 @@ const AddProductPage = () => {
             {/* Note */}
             <div>
               <label className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2 block">Your Note (optional)</label>
-              <TiptapEditor content={note} onChange={setNote} placeholder="Share why you recommend this product..." />
+              <TiptapEditor value={note ?? ""} onChange={setNote} placeholder="Share why you recommend this product..." />
             </div>
           </div>
 
