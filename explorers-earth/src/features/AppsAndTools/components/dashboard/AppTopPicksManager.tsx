@@ -138,7 +138,7 @@ const AppTopPicksManager = ({
 
         <div className="flex items-center justify-between px-5 py-3 border-b border-white/8">
           <h2 className="text-base font-semibold text-white flex items-center gap-2">
-            <Star size={16} className="text-violet-400" fill="currentColor" />
+            <Star size={16} className="text-blue-400" fill="currentColor" />
             Manage Top Picks ({pinnedApps.length}/15)
           </h2>
           <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
@@ -233,7 +233,7 @@ const AppTopPicksManager = ({
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-sm text-white font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+            className="w-full py-3 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
           >
             {saving ? <Loader2 size={15} className="animate-spin" /> : <Star size={15} fill="currentColor" />}
             Save Top Picks

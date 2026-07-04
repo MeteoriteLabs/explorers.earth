@@ -156,7 +156,7 @@ export const CreateProductListModal = ({
             </div>
             <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-dashboard-border">
               <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-lg bg-[#ef4444] hover:bg-[#dc2626] text-sm text-white font-medium transition-colors">Cancel</button>
-              <button type="submit" disabled={loading} className="px-6 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-sm text-white font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-60">
+              <button type="submit" disabled={loading} className="px-6 py-2.5 rounded-lg bg-[#3b82f6] hover:bg-[#2563eb] text-sm text-white font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-60">
                 {loading && <Loader2 size={14} className="animate-spin" />}
                 Create List
               </button>
@@ -251,7 +251,7 @@ export const ProductListCard = ({
             </span>
           )}
         </div>
-        <span className="flex items-center gap-1 text-emerald-400 group-hover:text-emerald-300 transition-colors font-medium">
+        <span className="flex items-center gap-1 text-blue-400 group-hover:text-blue-300 transition-colors font-medium">
           Open <ChevronRight size={13} />
         </span>
       </div>
@@ -377,7 +377,7 @@ const ProductsHome = () => {
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-sm text-white font-medium transition-all shadow-lg shadow-emerald-900/30 whitespace-nowrap"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap"
         >
           <AddIcon size="5" />
           <span>New List</span>
@@ -386,16 +386,16 @@ const ProductsHome = () => {
 
       {/* Mobile Header */}
       <div className="md:hidden relative mb-4 w-full">
-        <div className="flex w-full rounded-2xl overflow-hidden border border-white/10 shadow-lg shadow-emerald-900/15">
-          <button onClick={() => setShowCreateModal(true)} className="flex-1 bg-emerald-600 hover:opacity-90 text-xs font-bold text-white py-3 px-4 text-left flex items-center gap-1.5 transition-all">
+        <div className="flex w-full rounded-2xl overflow-hidden border border-white/10 shadow-lg shadow-blue-900/15">
+          <button onClick={() => setShowCreateModal(true)} className="flex-1 bg-dashboard-accent hover:opacity-90 text-xs font-bold text-white py-3 px-4 text-left flex items-center gap-1.5 transition-all">
             <AddIcon size="4" /><span>New List</span>
           </button>
-          <button onClick={(e) => { e.stopPropagation(); setDropdownOpen(!dropdownOpen); }} className="bg-emerald-600 border-l border-white/20 px-3 flex items-center justify-center cursor-pointer transition-all hover:opacity-90">
+          <button onClick={(e) => { e.stopPropagation(); setDropdownOpen(!dropdownOpen); }} className="bg-dashboard-accent border-l border-white/20 px-3 flex items-center justify-center cursor-pointer transition-all hover:opacity-90">
             <ChevronDown size={14} className={`transform transition-transform duration-200 ${dropdownOpen ? "rotate-180" : ""}`} />
           </button>
         </div>
         {dropdownOpen && (
-          <div className="absolute top-[calc(100%+6px)] right-0 left-0 p-3.5 z-50 border border-emerald-500/30 rounded-2xl bg-dashboard-sidebar/95 backdrop-blur-md shadow-xl flex justify-between items-center">
+          <div className="absolute top-[calc(100%+6px)] right-0 left-0 p-3.5 z-50 border border-dashboard-accent/30 rounded-2xl bg-dashboard-sidebar/95 backdrop-blur-md shadow-xl flex justify-between items-center">
             <span className="text-[11px] text-white/90 font-semibold">Manage Public Visibility</span>
             <SwitchButton isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_products === "Yes"} onChange={handleVisibilityToggle} variant="blue" />
           </div>
@@ -418,7 +418,7 @@ const ProductsHome = () => {
           </div>
           <h2 className="text-lg font-semibold text-dashboard mb-2">No product lists yet</h2>
           <p className="text-sm text-dashboard-light max-w-sm mb-6">Create your first product list to share your gear, setup, or recommendations.</p>
-          <button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-sm text-white font-medium transition-colors">
+          <button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-sm text-white font-medium transition-colors">
             <Plus size={16} /> Create First List
           </button>
         </div>
@@ -449,13 +449,13 @@ const ProductsHome = () => {
             allProducts.length > 0 && (
               <div
                 onClick={() => setShowManageTopPicks(true)}
-                className="w-full flex items-center justify-between p-4 rounded-[14px] border border-emerald-500/25 bg-emerald-500/5 hover:bg-emerald-500/10 transition-all duration-300 cursor-pointer mb-6"
+                className="w-full flex items-center justify-between p-4 rounded-[14px] border border-amber-500/25 bg-amber-500/5 hover:bg-amber-500/10 transition-all duration-300 cursor-pointer mb-6"
               >
-                <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-emerald-400 font-poppins">
-                  <span className="text-emerald-400">★</span> Manage Top Picks ({topPicks.length}/{deduplicateProducts(allProducts).length})
+                <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-[#fbbf24] font-poppins">
+                  <span className="text-amber-400">★</span> Manage Top Picks ({topPicks.length}/{deduplicateProducts(allProducts).length})
                 </div>
-                <div className="flex items-center text-emerald-500">
-                  <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                <div className="flex items-center text-amber-500">
+                  <svg className="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
                 </div>
@@ -475,7 +475,7 @@ const ProductsHome = () => {
             ))}
             <motion.button
               onClick={() => setShowCreateModal(true)}
-              className="border-[2.2px] border-dashed border-dashboard-border rounded-2xl p-5 flex flex-col items-center justify-center gap-2 text-dashboard-muted hover:text-white hover:border-emerald-500 hover:bg-emerald-500/5 transition-all duration-300 min-h-[160px]"
+              className="border-[2.2px] border-dashed border-dashboard-border rounded-2xl p-5 flex flex-col items-center justify-center gap-2 text-dashboard-muted hover:text-white hover:border-dashboard-accent hover:bg-dashboard-accent/5 transition-all duration-300 min-h-[160px]"
               whileHover={{ scale: 1.01 }}
             >
               <Plus size={24} /><span className="text-sm">Add new list</span>
