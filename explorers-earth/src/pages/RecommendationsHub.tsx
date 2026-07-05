@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
 import {
   MapPin, Music, Film, BookOpen, Gamepad2,
-  ChevronRight, Smartphone, ShoppingBag
+  ChevronRight, Smartphone, ShoppingBag, Users
 } from "lucide-react";
 import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 
-type CategoryKey = "places" | "music" | "movies" | "books" | "games" | "guides" | "apps" | "products";
+type CategoryKey = "places" | "music" | "movies" | "books" | "games" | "guides" | "apps" | "products" | "people";
 
 interface CategoryConfig {
   key: CategoryKey;
@@ -74,6 +74,14 @@ const CATEGORIES: CategoryConfig[] = [
     description: "Gear recommendations, tech setups, travel essentials, and retail picks",
     color: "emerald",
     path: "/recommendations/products"
+  },
+  { 
+    key: "people",   
+    label: "People",         
+    icon: Users, 
+    description: "Inspiring creators, founders, makers, and anyone worth following",
+    color: "violet",
+    path: "/recommendations/people"
   },
   { 
     key: "guides",  

@@ -206,6 +206,7 @@ const PublicProfile = memo(() => {
         const showMusic = accountData.public_music === "Yes";
         const showApps = accountData.public_apps === "Yes";
         const showProducts = accountData.public_products === "Yes";
+        const showPeople = accountData.public_people === "Yes";
 
         if (showRecommendations) {
           navigate(`/${username}/places`, { replace: true });
@@ -221,6 +222,8 @@ const PublicProfile = memo(() => {
           navigate(`/${username}/apps`, { replace: true });
         } else if (showProducts) {
           navigate(`/${username}/products`, { replace: true });
+        } else if (showPeople) {
+          navigate(`/${username}/people`, { replace: true });
         } else if (showMusic) {
           navigate(`/${username}/music`, { replace: true });
         }
@@ -242,7 +245,8 @@ const PublicProfile = memo(() => {
     accountData?.public_games === "Yes" ||
     accountData?.public_guides === "Yes" ||
     accountData?.public_apps === "Yes" ||
-    accountData?.public_products === "Yes"
+    accountData?.public_products === "Yes" ||
+    accountData?.public_people === "Yes"
   );
 
   // Determine availability of business details & gallery (safe before data loaded)

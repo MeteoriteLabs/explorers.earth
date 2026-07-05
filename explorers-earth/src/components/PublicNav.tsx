@@ -4,7 +4,7 @@ import DirectionBoard from "../assets/icons/DirectionBoard";
 import Profile from "../assets/icons/Profile";
 import MusicNote from "../assets/icons/MusicNote";
 import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
-import { Film, BookOpen, Gamepad2, Smartphone, ShoppingBag } from "lucide-react";
+import { Film, BookOpen, Gamepad2, Smartphone, ShoppingBag, Users } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { getPublicAccountBasicQuery } from "../features/PublicHome/api/query";
@@ -63,6 +63,7 @@ const PublicNav = memo(() => {
   const showGamesTab = accountData?.public_games === "Yes" || accountData?.public_games === "No" ? accountData?.public_games === "Yes" : true; // Default to show if not set
   const showAppsTab = accountData?.public_apps === "Yes";
   const showProductsTab = accountData?.public_products === "Yes";
+  const showPeopleTab = accountData?.public_people === "Yes";
 
   // Helper function to check if current path is for movies
   const isMoviesPath = (currentPath: string) => {
@@ -92,6 +93,12 @@ const PublicNav = memo(() => {
   const isProductsPath = (currentPath: string) => {
     const normalizedPath = normalizePath(currentPath);
     return normalizedPath.includes('/products');
+  };
+
+  // Helper function to check if current path is for people
+  const isPeoplePath = (currentPath: string) => {
+    const normalizedPath = normalizePath(currentPath);
+    return normalizedPath.includes('/people');
   };
 
   // Helper function to check if current path is for guides
@@ -175,6 +182,13 @@ const PublicNav = memo(() => {
       icon: <ShoppingBag size={18} color={isProductsPath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
       text: "Products",
       path: `/${username}/products`,
+    }] : []),
+    // Only add people tab if visibility is enabled
+    ...(showPeopleTab ? [{
+      id: 'public_people',
+      icon: <Users size={18} color={isPeoplePath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
+      text: "People",
+      path: `/${username}/people`,
     }] : []),
   ];
 

@@ -3,10 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
 import {
   MapPin, Music, Film, BookOpen, Gamepad2, Compass,
-  ChevronRight, Smartphone, ShoppingBag
+  ChevronRight, Smartphone, ShoppingBag, Users
 } from "lucide-react";
 
-type CategoryKey = "places" | "music" | "movies" | "books" | "games" | "guides" | "apps" | "products";
+type CategoryKey = "places" | "music" | "movies" | "books" | "games" | "guides" | "apps" | "products" | "people";
 
 interface CategoryConfig {
   key: CategoryKey;
@@ -764,6 +764,19 @@ const CATEGORIES: CategoryConfig[] = [
       "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=2000"
     ]
   },
+  { 
+    key: "people",   
+    label: "People",         
+    icon: Users, 
+    visibilityField: "public_people",
+    description: "Inspiring creators, founders, makers, and people worth following",
+    color: "indigo",
+    bgImages: [
+      "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=2000",
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=2000",
+      "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=2000"
+    ]
+  },
 ];
 
 interface ProfileRecommendationsTabProps {
@@ -777,6 +790,7 @@ interface ProfileRecommendationsTabProps {
     public_guides?: string;
     public_apps?: string;
     public_products?: string;
+    public_people?: string;
   };
   username: string;
 }

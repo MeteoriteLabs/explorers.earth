@@ -35,6 +35,11 @@ export default defineConfig({
           changeOrigin: true,
           secure: false,
         },
+        '/api/people/scrape-profile': {
+          target: 'http://127.0.0.1:5000',
+          changeOrigin: true,
+          secure: false,
+        },
         '/api': {
         //  target: 'http://13.126.235.177:1337',
          target: 'http://77.42.95.255:1337',

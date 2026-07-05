@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { scrapeUrl } from "../utils/scrapeUtils";
+import { scrapeUrl, scrapeProfile } from "../utils/scrapeUtils";
 
 const router = Router();
 
@@ -42,4 +42,22 @@ router.post("/products/scrape-link", async (req, res) => {
   }
 });
 
+// POST /api/people/scrape-profile
+router.post("/people/scrape-profile", async (req, res) => {
+  const { url } = req.body;
+  if (!url) {
+    return res.status(400).json({ error: "Missing URL in request body" });
+  }
+
+  try {
+    console.log("🕸️ Scrape Profile request for URL:", url);
+    const data = await scrapeProfile(url);
+    res.json(data);
+  } catch (error) {
+    console.error("Scrape Profile failed:", error);
+    res.status(500).json({ error: "Failed to scrape profile metadata" });
+  }
+});
+
 export default router;
+

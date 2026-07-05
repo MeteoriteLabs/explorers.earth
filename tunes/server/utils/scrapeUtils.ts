@@ -421,3 +421,220 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
     buy_url: url,
   };
 }
+
+export interface ProfileScrapedData {
+  full_name?: string;
+  handle?: string;
+  headline?: string;
+  bio?: string;
+  avatar_url?: string;
+  platform?: "instagram" | "linkedin" | "x" | "github" | "youtube" | "website" | "other";
+  follower_count?: string;
+  location?: string;
+}
+
+export function detectProfilePlatform(url: string): ProfileScrapedData["platform"] {
+  const lower = url.toLowerCase();
+  if (lower.includes("instagram.com")) return "instagram";
+  if (lower.includes("linkedin.com")) return "linkedin";
+  if (lower.includes("x.com") || lower.includes("twitter.com")) return "x";
+  if (lower.includes("github.com")) return "github";
+  if (lower.includes("youtube.com") || lower.includes("youtu.be")) return "youtube";
+  return "website";
+}
+
+function extractHandleFromUrl(url: string, platform: ProfileScrapedData["platform"]): string | undefined {
+  try {
+    const parsedUrl = new URL(url);
+    const pathParts = parsedUrl.pathname.split("/").filter(Boolean);
+    if (platform === "instagram" || platform === "github" || platform === "x") {
+      return pathParts[0];
+    }
+    if (platform === "linkedin") {
+      // e.g. /in/username
+      if (pathParts[0] === "in" && pathParts[1]) return pathParts[1];
+      return pathParts[0];
+    }
+    if (platform === "youtube") {
+      // e.g. /@channel or /user/channel or /c/channel
+      if (pathParts[0]?.startsWith("@")) return pathParts[0].substring(1);
+      if ((pathParts[0] === "user" || pathParts[0] === "c" || pathParts[0] === "channel") && pathParts[1]) {
+        return pathParts[1];
+      }
+      return pathParts[0];
+    }
+  } catch {
+    // ignore
+  }
+  return undefined;
+}
+
+export async function scrapeProfile(url: string): Promise<ProfileScrapedData> {
+  const platform = detectProfilePlatform(url);
+  const handle = extractHandleFromUrl(url, platform);
+  const result: ProfileScrapedData = { platform, handle };
+
+  console.log(`👤 Scraping profile for platform: ${platform}, handle: ${handle}, URL: ${url}`);
+
+  // Use Puppeteer for platforms likely to block or run heavy client-side JS
+  const usePuppeteer = ["instagram", "linkedin", "x", "youtube"].includes(platform || "");
+
+  let html = "";
+  if (usePuppeteer) {
+    let browser;
+    try {
+      browser = await puppeteerExtra.launch({
+        headless: true,
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-blink-features=AutomationControlled",
+          "--disable-infobars",
+          "--window-size=1280,800",
+        ],
+      });
+      const page = await browser.newPage();
+      await page.setViewport({ width: 1280, height: 800 });
+      await page.setUserAgent(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      );
+      await page.goto(url, { waitUntil: "domcontentloaded", timeout: 25000 });
+      
+      // Let JS execute / hydrate
+      await new Promise((r) => setTimeout(r, 4000));
+      html = await page.content();
+    } catch (err) {
+      console.warn("Puppeteer profile scrape failed:", err instanceof Error ? err.message : err);
+    } finally {
+      if (browser) await browser.close();
+    }
+  } else {
+    // Standard HTTP fetch for open pages like GitHub or general websites
+    try {
+      const response = await axios.get(url, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        },
+        timeout: 10000,
+      });
+      html = response.data;
+    } catch (err) {
+      console.warn("Axios profile scrape failed, attempting Puppeteer fallback:", err instanceof Error ? err.message : err);
+      let browser;
+      try {
+        browser = await puppeteerExtra.launch({
+          headless: true,
+          args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        });
+        const page = await browser.newPage();
+        await page.goto(url, { waitUntil: "networkidle2", timeout: 15000 });
+        html = await page.content();
+      } catch (pupErr) {
+        console.error("Puppeteer fallback failed for profile scrape:", pupErr);
+      } finally {
+        if (browser) await browser.close();
+      }
+    }
+  }
+
+  if (!html) {
+    console.warn("Could not retrieve HTML content for profile scrape. Returning handle/platform only.");
+    return result;
+  }
+
+  // Parse fields based on platform
+  const ogTitle = extractMeta(html, "og:title") || extractMeta(html, "twitter:title");
+  const ogDescription =
+    extractMeta(html, "og:description") ||
+    extractMeta(html, "twitter:description") ||
+    extractMeta(html, "description");
+  const ogImage = extractMeta(html, "og:image") || extractMeta(html, "twitter:image") || extractTouchIcon(html, url);
+
+  result.avatar_url = ogImage || undefined;
+
+  if (platform === "github") {
+    // GitHub specific extraction
+    const titleMatch = ogTitle?.match(/^([^\(]+)/); // e.g. "username (Full Name)" -> "username" or "Full Name"
+    if (titleMatch) {
+      const parsedTitle = titleMatch[1].trim();
+      result.full_name = parsedTitle === handle ? parsedTitle : parsedTitle;
+    }
+    // Let's refine full name from HTML if available
+    const fullNameMatch = html.match(/<span[^>]*class="[^"]*p-name[^"]*"[^>]*>([\s\S]*?)<\/span>/i);
+    if (fullNameMatch) {
+      result.full_name = decodeHtmlEntities(fullNameMatch[1].trim());
+    } else {
+      result.full_name = result.full_name || ogTitle || handle;
+    }
+
+    const bioMatch = html.match(/<div[^>]*class="[^"]*js-user-profile-bio[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
+    if (bioMatch) {
+      result.bio = decodeHtmlEntities(bioMatch[1].trim().replace(/<[^>]+>/g, ""));
+    } else {
+      result.bio = ogDescription || undefined;
+    }
+
+    const locMatch = html.match(/<span[^>]*class="[^"]*p-label[^"]*"[^>]*>([\s\S]*?)<\/span>/i);
+    if (locMatch) {
+      result.location = decodeHtmlEntities(locMatch[1].trim());
+    }
+
+    const followersMatch = html.match(/href="[^"]*followers[^"]*"[^>]*>([\s\S]*?)<\/a>/i);
+    if (followersMatch) {
+      const numMatch = followersMatch[1].match(/(\d+[\d,.]*[KMB]?)/i);
+      if (numMatch) result.follower_count = numMatch[1].trim();
+    }
+  } else if (platform === "instagram") {
+    // Instagram specific extraction
+    // ogTitle looks like: "Full Name (@handle) • Instagram photos and videos"
+    if (ogTitle) {
+      const match = ogTitle.match(/^(.+?)\s*\(@/);
+      if (match) result.full_name = match[1].trim();
+    }
+    result.full_name = result.full_name || ogTitle || handle;
+    result.bio = ogDescription || undefined;
+
+    // Follower count from description or text: e.g. "1.2M Followers, 500 Following..."
+    if (ogDescription) {
+      const followersMatch = ogDescription.match(/([\d,.]+[KMB]?)\s*Followers/i);
+      if (followersMatch) result.follower_count = followersMatch[1];
+    }
+  } else if (platform === "linkedin") {
+    // LinkedIn specific extraction
+    // ogTitle: "Name - Headline - Company | LinkedIn" or "Name | LinkedIn"
+    if (ogTitle) {
+      const parts = ogTitle.split("-").map((p) => p.trim());
+      if (parts[0]) {
+        result.full_name = parts[0].replace(/\|.*/g, "").trim();
+      }
+      if (parts[1]) {
+        result.headline = parts[1].replace(/\|.*/g, "").trim();
+      }
+    }
+    result.full_name = result.full_name || handle;
+    result.bio = ogDescription || undefined;
+  } else if (platform === "x") {
+    // X specific extraction
+    // ogTitle is usually "Name (@handle) on X"
+    if (ogTitle) {
+      const match = ogTitle.match(/^(.+?)\s*\(@/);
+      if (match) result.full_name = match[1].trim();
+    }
+    result.full_name = result.full_name || ogTitle || handle;
+    result.bio = ogDescription || undefined;
+  } else {
+    // General website
+    result.full_name = ogTitle || extractTitle(html) || handle;
+    result.bio = ogDescription || undefined;
+  }
+
+  // Clean empty values
+  if (result.full_name) {
+    result.full_name = result.full_name.replace(/\|.*/g, "").replace(/•.*/g, "").trim();
+  }
+
+  console.log("✅ Scrape profile complete. Result:", result);
+  return result;
+}
+

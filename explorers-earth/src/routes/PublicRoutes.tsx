@@ -16,6 +16,7 @@ import { PublicBooks, PublicBookList, PublicBookSubject } from "../features/Book
 import { PublicGames, PublicGamesList, PublicGamesGenre } from "../features/Games";
 import { PublicApps, PublicAppList } from "../features/AppsAndTools";
 import { PublicProducts, PublicProductList } from "../features/Products";
+import { PublicPeople, PublicPersonList } from "../features/People";
 
 // Import layout
 import PublicLayout from "../layouts/PublicLayout";
@@ -150,6 +151,20 @@ const PublicRoutes = [
       <Route path=":listSlug" element={
         <TabVisibilityGuard tabField="public_products" defaultVisible={false}>
           <PublicProductList />
+        </TabVisibilityGuard>
+      } />
+    </Route>
+
+    {/* People public routes */}
+    <Route path="people">
+      <Route index element={
+        <TabVisibilityGuard tabField="public_people" defaultVisible={false}>
+          <PublicPeople />
+        </TabVisibilityGuard>
+      } />
+      <Route path=":listSlug" element={
+        <TabVisibilityGuard tabField="public_people" defaultVisible={false}>
+          <PublicPersonList />
         </TabVisibilityGuard>
       } />
     </Route>
