@@ -219,6 +219,7 @@ const PublicNav = memo(() => {
             (item.path.includes('/games') && isGamesPath(location.pathname)) ||
             (item.path.includes('/apps') && isAppsPath(location.pathname)) ||
             (item.path.includes('/products') && isProductsPath(location.pathname)) ||
+            (item.path.includes('/people') && isPeoplePath(location.pathname)) ||
             (item.path.includes('/guides') && isGuidesPath(location.pathname));
 
           return (

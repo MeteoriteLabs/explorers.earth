@@ -616,6 +616,61 @@ const ProductsAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => 
   );
 };
 
+const PeopleAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
+  const containerRef = useRef(null);
+  const { scrollYProgress } = useScroll({ target: containerRef, offset: ["start end", "end start"] });
+  const yNode = useTransform(scrollYProgress, [0, 1], ["0px", "10px"]);
+  return (
+    <div ref={containerRef} className="absolute inset-0 bg-slate-950 overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-b from-indigo-600/40 via-slate-950/20 to-slate-950 opacity-100" />
+      
+      {/* Social Network Node Graph */}
+      <motion.div 
+        className="absolute right-[12%] top-1/2 -translate-y-1/2 pointer-events-none z-10 w-24 h-24"
+        initial={{ rotate: 0 }}
+        animate={{ 
+          rotate: isHovering ? [0, 360] : 0 
+        }}
+        transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+      >
+        <svg width="96" height="96" viewBox="0 0 100 100" className="text-white">
+          <line x1="50" y1="50" x2="20" y2="30" stroke="currentColor" strokeWidth="1" strokeDasharray="3 3" opacity="0.4" />
+          <line x1="50" y1="50" x2="80" y2="30" stroke="currentColor" strokeWidth="1" strokeDasharray="3 3" opacity="0.4" />
+          <line x1="50" y1="50" x2="50" y2="85" stroke="currentColor" strokeWidth="1" strokeDasharray="3 3" opacity="0.4" />
+          <line x1="20" y1="30" x2="80" y2="30" stroke="currentColor" strokeWidth="0.5" opacity="0.2" />
+          <line x1="20" y1="30" x2="50" y2="85" stroke="currentColor" strokeWidth="0.5" opacity="0.2" />
+          <line x1="80" y1="30" x2="50" y2="85" stroke="currentColor" strokeWidth="0.5" opacity="0.2" />
+
+          {/* Central User Node */}
+          <circle cx="50" cy="50" r="10" fill="#6366f1" fillOpacity="0.4" stroke="currentColor" strokeWidth="1.5" />
+          <circle cx="50" cy="46" r="3.5" fill="currentColor" />
+          <path d="M43 56 C43 51, 57 51, 57 56" stroke="currentColor" strokeWidth="1" fill="none" />
+
+          {/* Peripheral Nodes */}
+          <circle cx="20" cy="30" r="6" fill="black" fillOpacity="0.6" stroke="currentColor" strokeWidth="1" />
+          <circle cx="80" cy="30" r="6" fill="black" fillOpacity="0.6" stroke="currentColor" strokeWidth="1" />
+          <circle cx="50" cy="85" r="6" fill="black" fillOpacity="0.6" stroke="currentColor" strokeWidth="1" />
+        </svg>
+      </motion.div>
+
+      {/* Floating Sparkles/Avatars */}
+      {[...Array(5)].map((_, i) => (
+        <motion.div 
+          key={i} 
+          className="absolute text-indigo-300/20" 
+          initial={{ x: (20 + i * 15) + "%", y: "110%", scale: 0.8 }} 
+          animate={{ y: ["110%", "-10%"], opacity: [0, 0.4, 0], scale: [0.8, 1.2, 0.8] }} 
+          transition={{ duration: 12 + i * 3, repeat: Infinity, delay: i * 1.5, ease: "linear" }}
+          style={{ y: yNode }}
+        >
+          <Users size={12 + i * 2} />
+        </motion.div>
+      ))}
+      <FloatingItem x={35} delay={1.5} duration={20}><Users size={16}/></FloatingItem>
+    </div>
+  );
+};
+
 const CategoryBackground = ({ category, isHovering }: { category: CategoryKey, isHovering: boolean }) => {
   switch (category) {
     case "places":   return <PlacesAnimatedBackground />;
@@ -626,6 +681,7 @@ const CategoryBackground = ({ category, isHovering }: { category: CategoryKey, i
     case "guides":   return <GuidesAnimatedBackground isHovering={isHovering} />;
     case "apps":     return <AppsAnimatedBackground isHovering={isHovering} />;
     case "products": return <ProductsAnimatedBackground isHovering={isHovering} />;
+    case "people":   return <PeopleAnimatedBackground isHovering={isHovering} />;
     default:         return null;
   }
 };
