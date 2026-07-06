@@ -28,6 +28,7 @@ export const PERSON_LISTS_BY_ACCOUNT = gql`
         headline
         location
         avatar_path
+        media_details
         primary_platform
         social_urls
         skills_tags
@@ -36,6 +37,10 @@ export const PERSON_LISTS_BY_ACCOUNT = gql`
         is_pinned
         pin_order
         display_order
+        people_category {
+          documentId
+          Category_name
+        }
       }
       account {
         documentId
@@ -74,6 +79,7 @@ export const PEOPLE_BY_LIST = gql`
         headline
         location
         avatar_path
+        media_details
         primary_platform
         social_urls
         skills_tags
@@ -82,6 +88,10 @@ export const PEOPLE_BY_LIST = gql`
         is_pinned
         pin_order
         display_order
+        people_category {
+          documentId
+          Category_name
+        }
       }
     }
   }
@@ -116,6 +126,7 @@ export const PINNED_PEOPLE = gql`
       headline
       location
       avatar_path
+      media_details
       primary_platform
       social_urls
       skills_tags
@@ -123,6 +134,10 @@ export const PINNED_PEOPLE = gql`
       user_rating
       is_pinned
       pin_order
+      people_category {
+        documentId
+        Category_name
+      }
       person_list {
         documentId
         List_Name
@@ -162,6 +177,7 @@ export const PUBLIC_PEOPLE_DATA = gql`
         headline
         location
         avatar_path
+        media_details
         primary_platform
         social_urls
         skills_tags
@@ -169,6 +185,10 @@ export const PUBLIC_PEOPLE_DATA = gql`
         user_rating
         is_pinned
         pin_order
+        people_category {
+          documentId
+          Category_name
+        }
       }
     }
   }
@@ -202,6 +222,7 @@ export const PERSON_LIST_BY_SLUG = gql`
         headline
         location
         avatar_path
+        media_details
         primary_platform
         social_urls
         skills_tags
@@ -209,6 +230,10 @@ export const PERSON_LIST_BY_SLUG = gql`
         user_rating
         is_pinned
         pin_order
+        people_category {
+          documentId
+          Category_name
+        }
       }
       account {
         documentId

@@ -353,6 +353,47 @@ export const generateAppUploadPath = (
 };
 
 /**
+ * Generates structured path for person list cover image uploads
+ * Uses unified structure: {username}/people/{personListId}/cover/{filename}
+ * @param username - User's username
+ * @param personListId - Unique ID of the person list
+ * @param filename - Generated filename
+ * @returns Structured path for person list cover uploads
+ */
+export const generatePersonListCoverPath = (
+  username: string,
+  personListId: string,
+  filename: string
+): string => {
+  const sanitizedUsername = sanitizeUsername(username);
+  const sanitizedListId = sanitizeIdentifier(personListId);
+
+  return `${sanitizedUsername}/people/${sanitizedListId}/cover/${filename}`;
+};
+
+/**
+ * Generates structured path for recommended person uploads (avatars, portfolio, etc.)
+ * Uses unified structure: {username}/people/{personListId}/{personSlug}/{filename}
+ * @param username - User's username
+ * @param personListId - Unique ID of the person list
+ * @param personSlug - Slug of the recommended person
+ * @param filename - Generated filename
+ * @returns Structured path for recommended person uploads
+ */
+export const generatePersonUploadPath = (
+  username: string,
+  personListId: string,
+  personSlug: string,
+  filename: string
+): string => {
+  const sanitizedUsername = sanitizeUsername(username);
+  const sanitizedListId = sanitizeIdentifier(personListId);
+  const sanitizedSlug = sanitizeIdentifier(personSlug);
+
+  return `${sanitizedUsername}/people/${sanitizedListId}/${sanitizedSlug}/${filename}`;
+};
+
+/**
  * Sanitizes username for safe path usage
  * @param username - Raw username
  * @returns Sanitized username safe for file paths

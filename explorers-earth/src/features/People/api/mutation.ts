@@ -98,6 +98,8 @@ export const CREATE_RECOMMENDED_PERSON = gql`
     $pin_order: Int
     $display_order: Int!
     $person_list: ID!
+    $people_category: ID
+    $media_details: JSON
   ) {
     createRecommendedPerson(
       data: {
@@ -115,12 +117,18 @@ export const CREATE_RECOMMENDED_PERSON = gql`
         pin_order: $pin_order
         display_order: $display_order
         person_list: $person_list
+        people_category: $people_category
+        media_details: $media_details
       }
     ) {
       documentId
       name
       display_order
       is_pinned
+      people_category {
+        documentId
+        Category_name
+      }
     }
   }
 `;
@@ -144,6 +152,8 @@ export const UPDATE_RECOMMENDED_PERSON = gql`
     $is_pinned: Boolean
     $pin_order: Int
     $display_order: Int
+    $people_category: ID
+    $media_details: JSON
   ) {
     updateRecommendedPerson(
       documentId: $documentId
@@ -161,6 +171,8 @@ export const UPDATE_RECOMMENDED_PERSON = gql`
         is_pinned: $is_pinned
         pin_order: $pin_order
         display_order: $display_order
+        people_category: $people_category
+        media_details: $media_details
       }
     ) {
       documentId
@@ -168,6 +180,10 @@ export const UPDATE_RECOMMENDED_PERSON = gql`
       pin_order
       display_order
       user_recommendation_note
+      people_category {
+        documentId
+        Category_name
+      }
     }
   }
 `;

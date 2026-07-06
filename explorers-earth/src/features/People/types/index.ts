@@ -25,6 +25,10 @@ export interface RecommendedPerson {
   headline: string | null;
   location: string | null;
   avatar_path: string | null;
+  media_details?: {
+    imageDetails?: Array<{ id: string; url: string }>;
+    thumbnail?: { url: string };
+  } | null;
   primary_platform: "instagram" | "linkedin" | "twitter" | "github" | "youtube" | "website" | "other" | null;
   social_urls: any; // JSON object: { primary: string, instagram?: string, linkedin?: string, ... }
   skills_tags: string[] | null; // JSON array of strings
@@ -44,11 +48,16 @@ export interface RecommendedPerson {
   full_name?: string;
   handle?: string | null;
   avatar_url?: string | null;
-  platform?: "instagram" | "linkedin" | "x" | "github" | "youtube" | "website" | "other" | null;
+  platform?: "instagram" | "linkedin" | "twitter" | "x" | "github" | "youtube" | "website" | "other" | null;
   tags?: string[] | null;
+  bio?: string | null;
+  follower_count?: string | null;
+  people_category?: PeopleCategory | null;
+  person_category?: any;
+  person_categories?: any[] | null;
 }
 
-export interface PersonCategory {
+export interface PeopleCategory {
   documentId: string;
   Category_name: string;
 }

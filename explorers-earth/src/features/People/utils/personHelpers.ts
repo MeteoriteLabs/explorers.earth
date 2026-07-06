@@ -30,13 +30,14 @@ export function slugToCategoryName(slug: string): string {
 // ─────────────────────────────────────────────────────────────
 // Platform display helpers
 // ─────────────────────────────────────────────────────────────
-export type PersonPlatform = "instagram" | "linkedin" | "twitter" | "github" | "youtube" | "website" | "other" | null;
+export type PersonPlatform = "instagram" | "linkedin" | "twitter" | "x" | "github" | "youtube" | "website" | "other" | null;
 
 export function getPlatformLabel(platform: PersonPlatform): string {
   const map: Record<string, string> = {
     instagram: "Instagram",
     linkedin: "LinkedIn",
     twitter: "X (Twitter)",
+    x: "X (Twitter)",
     github: "GitHub",
     youtube: "YouTube",
     website: "Website",
@@ -50,6 +51,7 @@ export function getPlatformColor(platform: PersonPlatform): string {
     instagram: "from-purple-500 to-pink-500",
     linkedin: "from-blue-600 to-blue-700",
     twitter: "from-slate-700 to-slate-900",
+    x: "from-slate-700 to-slate-900",
     github: "from-gray-700 to-gray-900",
     youtube: "from-red-600 to-red-700",
     website: "from-teal-600 to-teal-700",
@@ -63,6 +65,7 @@ export function getPlatformBadgeClass(platform: PersonPlatform): string {
     instagram: "bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-purple-500/30 text-pink-400",
     linkedin: "bg-blue-600/20 border-blue-500/30 text-blue-400",
     twitter: "bg-slate-700/30 border-slate-500/30 text-slate-300",
+    x: "bg-slate-700/30 border-slate-500/30 text-slate-300",
     github: "bg-gray-700/30 border-gray-500/30 text-gray-300",
     youtube: "bg-red-600/20 border-red-500/30 text-red-400",
     website: "bg-teal-600/20 border-teal-500/30 text-teal-400",
@@ -76,7 +79,7 @@ export function detectPlatform(url: string): PersonPlatform {
   const lower = url.toLowerCase();
   if (lower.includes("instagram.com")) return "instagram";
   if (lower.includes("linkedin.com")) return "linkedin";
-  if (lower.includes("x.com") || lower.includes("twitter.com")) return "twitter";
+  if (lower.includes("x.com") || lower.includes("twitter.com")) return "x";
   if (lower.includes("github.com")) return "github";
   if (lower.includes("youtube.com") || lower.includes("youtu.be")) return "youtube";
   return "website";

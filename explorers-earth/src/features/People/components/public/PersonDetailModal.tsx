@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Share2, ExternalLink } from "lucide-react";
-import { Users } from "lucide-react";
 import type { RecommendedPerson } from "../../types";
 import { buildImageUrl, extractNoteText, getPlatformLabel, getPlatformBadgeClass, getPlatformColor } from "../../utils/personHelpers";
 
@@ -54,7 +53,7 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
 
   const avatarUrl = buildImageUrl(person.avatar_url);
   const noteText = extractNoteText(person.user_recommendation_note);
-  const platformGradient = getPlatformColor(person.platform);
+  const platformGradient = getPlatformColor(person.platform || null);
 
   return (
     <AnimatePresence>
@@ -168,7 +167,7 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
                   {noteText && (
                     <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-4">
                       <p className="text-xs font-semibold text-violet-400 mb-1.5 uppercase tracking-wider">Creator's Note</p>
-                      <p className="text-sm text-white/80 leading-relaxed italic">"{noteText}"</p>
+                      <div className="text-sm text-white/80 leading-relaxed [&_p]:mb-2 [&_p]:last:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h1]:text-lg [&_h2]:text-md [&_h3]:text-base font-normal max-w-none" dangerouslySetInnerHTML={{ __html: noteText }} />
                     </div>
                   )}
 

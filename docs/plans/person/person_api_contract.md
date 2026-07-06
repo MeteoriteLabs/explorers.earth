@@ -136,9 +136,9 @@ query PeopleByList($personListDocumentId: ID!) {
       Media {
         url
       }
-      person_categories {
+      people_category {
         documentId
-        category_name
+        Category_name
       }
     }
   }
@@ -191,7 +191,7 @@ query PinnedPeopleByAccount($accountDocumentId: ID!) {
 query PeopleBySector($accountDocumentId: ID!, $categoryName: String!) {
   recommendedPeople(
     filters: {
-      person_categories: { category_name: { eq: $categoryName } }
+      people_category: { Category_name: { eq: $categoryName } }
       person_list: { account: { documentId: { eq: $accountDocumentId } }, Visibility: { eq: true } }
     }
     sort: ["display_order:asc"]

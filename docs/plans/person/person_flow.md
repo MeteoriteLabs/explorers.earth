@@ -59,7 +59,7 @@ Depends on: person_prd.md
    - Headline/Title (optional, e.g. "Lead UX Designer @ Figma").
    - Location (optional, e.g. "Austin, TX").
    - Primary Platform (required, enum selector).
-   - Industry Sector (required, selection maps to `Person_Category` like "Designers", "Founders").
+   - Industry Sector (required, selection maps to `People_Category` like "Designers", "Founders").
    - Personal Endorsement Note (rich text, Tiptap).
    - Endorsement Score / Rating (optional 1-10 slider).
    - Social URLs Accordion (add secondary links: LinkedIn, Instagram, X, GitHub, Website, YouTube).

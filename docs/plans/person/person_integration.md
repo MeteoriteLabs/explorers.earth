@@ -20,7 +20,7 @@ A step-by-step implementation guide for developers setting up the People (Person
 Using the Strapi Content-Type Builder, create the three collections described in `person_schema.md`:
 - `PersonList` (singular ID: `person-list`, plural: `person-lists`)
 - `RecommendedPerson` (singular ID: `recommended-person`, plural: `recommended-people`)
-- `Person_Category` (singular ID: `person-category`, plural: `person-categories`)
+- `People_Category` (singular ID: `people-category`, plural: `people-categories`)
 
 ### 2. Implement the Profile Link Scraper Endpoint
 In your Strapi backend project, create a profile scraper endpoint.

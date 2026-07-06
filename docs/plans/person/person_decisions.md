@@ -60,17 +60,17 @@ LinkedIn and Instagram have aggressive anti-bot protection (Cloudflare, CAPTCHAs
 
 ---
 
-## ADR 3: Grouping via "Sectors/Industries" (Person_Category) vs. Text Tags
+## ADR 3: Grouping via "Sectors/Industries" (People_Category) vs. Text Tags
 
 ### Context & Problem
 We need to allow visitors to browse recommended individuals by sector (e.g., "Designers", "Founders"). We want to know if we should store this as simple text tags or as a separate relational database collection.
 
 ### Alternatives Considered
 1. **JSON Text Tags**: Store all tags (e.g., `["Design", "Founder"]`) inside a JSON column.
-2. **Dedicated Person_Category Collection**: Create a relational table linking `RecommendedPerson` to `Person_Category` in Strapi.
+2. **Dedicated People_Category Collection**: Create a relational table linking `RecommendedPerson` to `People_Category` in Strapi.
 
 ### Decision
-**Combination approach**: Use a relational `Person_Category` table for the primary high-level sector (e.g. "Designers") to build navigation links and grids. Use a JSON `skills_tags` array for granular, custom text tags (e.g. "React", "Figma", "Growth") which don't require global pages but provide context.
+**Combination approach**: Use a relational `People_Category` table for the primary high-level sector (e.g. "Designers") to build navigation links and grids. Use a JSON `skills_tags` array for granular, custom text tags (e.g. "React", "Figma", "Growth") which don't require global pages but provide context.
 
 ### Consequences
 - **Pros**:
@@ -78,7 +78,7 @@ We need to allow visitors to browse recommended individuals by sector (e.g., "De
   - Keeps database queries highly performant for sector filters.
   - Retains tagging flexibility for individual skill highlights.
 - **Cons**:
-  - Requires maintaining a third collection (`Person_Category`) in Strapi.
+  - Requires maintaining a third collection (`People_Category`) in Strapi.
 
 ---
 

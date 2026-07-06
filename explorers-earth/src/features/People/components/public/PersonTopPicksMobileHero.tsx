@@ -54,7 +54,7 @@ const PersonTopPicksMobileHero = ({ people, onPersonClick, showManageButton = fa
           };
 
           const avatarUrl = buildImageUrl(person.avatar_url);
-          const platformGradient = getPlatformColor(person.platform);
+          const platformGradient = getPlatformColor(person.platform || null);
 
           return (
             <motion.div

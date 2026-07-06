@@ -3,6 +3,7 @@
 // ─────────────────────────────────────────────────────────────
 export { default as PublicPeople } from "./components/public/PublicPeople";
 export { default as PublicPersonList } from "./components/public/PublicPersonList";
+export { default as PublicPersonSector } from "./components/public/PublicPersonSector";
 
 // ─────────────────────────────────────────────────────────────
 // Dashboard Exports

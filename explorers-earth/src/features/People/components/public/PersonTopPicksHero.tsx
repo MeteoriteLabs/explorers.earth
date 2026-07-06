@@ -22,7 +22,7 @@ const PersonTopPicksHero = ({ people, onPersonClick, showManageButton = false, o
 
   const activePerson = people[activeIndex];
   const avatarUrl = buildImageUrl(activePerson.avatar_url);
-  const platformGradient = getPlatformColor(activePerson.platform);
+  const platformGradient = getPlatformColor(activePerson.platform || null);
 
   const updateScrollButtons = () => {
     if (scrollRef.current) {
@@ -229,7 +229,7 @@ const PersonTopPicksHero = ({ people, onPersonClick, showManageButton = false, o
                           </div>
                         )}
                       </div>
-                      <p className="text-[10px] text-white/70 truncate w-16 text-center">{person.full_name.split(" ")[0]}</p>
+                      <p className="text-[10px] text-white/70 truncate w-16 text-center">{(person.full_name || person.name || "").split(" ")[0]}</p>
                     </button>
                   );
                 })}

@@ -77,7 +77,7 @@ Complete data model for the People (Person Recommendations) feature. These colle
 | `media_details` | JSON | No | — | Structured media metadata: `{ "imageDetails": [...], "thumbnail": "url" }`. Matches existing RecommendedPlace/RecommendedMovie pattern. |
 | **Relations** | | | | |
 | `person_list` | Relation (Many-to-One) | Yes | — | The PersonList this person belongs to. Many RecommendedPeople belong to one PersonList. |
-| `person_categories` | Relation (Many-to-Many) | No | — | Links to the Person_Category collection (industry sectors). |
+| `people_category` | Relation (Many-to-One) | No | — | Links to the People_Category collection (industry sector). |
 
 ### Notes for Strapi Admin
 - `username_handle` + `person_list` combination should be unique per list to prevent duplicates.
@@ -91,22 +91,22 @@ Complete data model for the People (Person Recommendations) feature. These colle
 
 ---
 
-## Collection 3: Person_Category
+## Collection 3: People_Category
 
 **Purpose:** A dedicated category collection for the People feature, representing industries or professional roles.
 
-**API ID (singular):** `person-category`
-**API ID (plural):** `person-categories`
+**API ID (singular):** `people-category`
+**API ID (plural):** `people-categories`
 
 ### Fields
 
 | Field Name | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `category_name` | Short text | Yes | — | The name of the category/role (e.g., "Designers", "Founders", "Engineers", "Photographers") |
-| `recommended_people` | Relation (Many-to-Many) | No | — | Relates to the RecommendedPerson collection |
+| `Category_name` | Short text | Yes | — | The name of the category/role (e.g., "Designers", "Founders", "Engineers", "Photographers") |
+| `recommended_people` | Relation (One-to-Many) | No | — | Relates to the RecommendedPerson collection |
 
 ### Notes for Strapi Admin
-- Mirrors the `Movie_Category`/`Book_Category` collection patterns.
+- Mirrors the `Movie_Category`/`Book_Category`/`People_Category` collection patterns.
 - Keeps profile categorization clean and independent of Places or Media.
 - Pre-populate common categories: "Designers", "Founders", "Engineers", "Marketers", "Writers", "Photographers", "Artists".
 
@@ -121,7 +121,7 @@ Account (existing)
     │              │
     │              ├── 1:N ── RecommendedPerson
     │              │              │
-    │              │              └── M:M ── Person_Category
+    │              │              └── N:1 ── People_Category
     │              │
     │              └── (cover_image: Media)
     │
@@ -152,4 +152,4 @@ To ensure reliability and compliance with external platform hotlinking rules (In
 
 - No migration of existing data required. These are entirely new collections.
 - No changes to existing `RecommendationList`, `MovieList`, or `BookList` collections.
-- The new `PersonList`, `RecommendedPerson`, and `Person_Category` collections are completely independent, only sharing the `Account` relation.
+- The new `PersonList`, `RecommendedPerson`, and `People_Category` collections are completely independent, only sharing the `Account` relation.

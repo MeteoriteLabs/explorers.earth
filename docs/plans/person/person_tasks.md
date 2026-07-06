@@ -51,8 +51,8 @@ Phase F: Polish & Verification (Tasks F1-F3)
 - **Description**: Set up the Strapi content-type collections via the Strapi Admin Panel.
 - **Tasks**:
   - Create `PersonList` collection with fields (`List_Name`, `list_description`, `slug`, `Visibility`, `cover_image`, `display_order`, `top_picks_heading`, `account` relation, `recommended_people` relation).
-  - Create `RecommendedPerson` collection with fields (`name`, `username_handle`, `headline`, `location`, `avatar_path`, `primary_platform`, `social_urls` JSON, `skills_tags` JSON, `user_recommendation_note`, `user_rating`, `is_pinned`, `pin_order`, `display_order`, `Media` multiple, `media_details` JSON, `person_list` relation, `person_categories` relation).
-  - Create `Person_Category` collection with fields (`category_name`, `recommended_people` relation).
+  - Create `RecommendedPerson` collection with fields (`name`, `username_handle`, `headline`, `location`, `avatar_path`, `primary_platform`, `social_urls` JSON, `skills_tags` JSON, `user_recommendation_note`, `user_rating`, `is_pinned`, `pin_order`, `display_order`, `Media` multiple, `media_details` JSON, `person_list` relation, `people_category` relation).
+  - Create `People_Category` collection with fields (`Category_name`, `recommended_people` relation).
   - Enable API permissions for Authenticated (CRUD) and Public roles (find/findOne).
 
 ### B2 — Backend Scraper Controller

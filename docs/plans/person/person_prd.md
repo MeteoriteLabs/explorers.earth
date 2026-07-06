@@ -31,7 +31,7 @@ To ensure 90%+ implementation accuracy and dashboard consistency:
 ## Scope
 
 ### In Scope
-- New Strapi collections for person recommendations (`RecommendedPerson`), lists (`PersonList`), and categories (`Person_Category`).
+- New Strapi collections for person recommendations (`RecommendedPerson`), lists (`PersonList`), and categories (`People_Category`).
 - Dashboard sidebar (desktop) and category navigation (mobile) updated to include "People".
 - People home view showing all person lists with management controls.
 - Person list view with table/list layout, reordering, and pinning toggles.
@@ -111,7 +111,7 @@ As a visitor, I want to browse all people in a specific list, or browse by secto
 ## Data Model Summary
 See `person_schema.md` for field-level details.
 - **PersonList collection** — list name, description, cover image, slug, visibility, account relation, recommended_people relations, display_order, top_picks_heading.
-- **RecommendedPerson collection** — profile URL, name, username_handle, headline, location, primary_platform (enum), avatar_path (S3 URL), social_urls (JSON), skills_tags (JSON), user_recommendation_note (rich text), user_rating (1-10), is_pinned, pin_order, display_order, portfolio_media (JSON array of S3 URLs), list relation, Person_Category relation.
+- **RecommendedPerson collection** — profile URL, name, username_handle, headline, location, primary_platform (enum), avatar_path (S3 URL), social_urls (JSON), skills_tags (JSON), user_recommendation_note (rich text), user_rating (1-10), is_pinned, pin_order, display_order, portfolio_media (JSON array of S3 URLs), list relation, People_Category relation.
 
 ## API Summary
 See `person_api_contract.md` for GraphQL schema shapes.

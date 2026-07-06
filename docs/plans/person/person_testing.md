@@ -17,7 +17,7 @@ Comprehensive manual and integration test scenarios for the People (Person Recom
 ## 1. Test Environment Setup
 
 ### Prerequisites
-- Strapi running with `PersonList`, `RecommendedPerson`, and `Person_Category` collections created.
+- Strapi running with `PersonList`, `RecommendedPerson`, and `People_Category` collections created.
 - Scraper endpoint `GET /api/people/scrape-profile` active.
 - S3 upload credentials configured (for avatar downloading and portfolio screenshot hosting).
 - Test creator account available.

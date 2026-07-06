@@ -3,7 +3,7 @@ import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, Star, MoreVertical, Trash2, Loader2, Users, Pencil, Copy, Check, Share2, Download
+  ArrowLeft, Star, MoreVertical, Trash2, Loader2, Users, Edit, Copy, Check, Share2, Download
 } from "lucide-react";
 import { AddIcon } from "../../../../assets/icons/AddIcon";
 import { toast } from "sonner";
@@ -68,7 +68,7 @@ const PersonRow = ({ person, onPinToggle, onEdit, onDelete, onClick, isPinning }
           )}
           {person.user_rating && (
             <>
-              <span className="text-white/20">·</span>
+              { (person.handle || person.headline) && <span className="text-white/20">·</span> }
               <span className="flex items-center gap-0.5 text-amber-400/80">
                 <Star size={10} fill="currentColor" /> {person.user_rating}
               </span>
@@ -110,7 +110,7 @@ const PersonRow = ({ person, onPinToggle, onEdit, onDelete, onClick, isPinning }
               onClick={() => { setMenuOpen(false); onEdit(person); }}
               className="flex items-center gap-2 w-full px-3 py-2 text-sm text-dashboard hover:bg-white/8 transition-colors"
             >
-              <Pencil size={13} /> Edit
+              <Edit size={13} /> Edit
             </button>
             <button
               onClick={() => { setMenuOpen(false); onDelete(person); }}
@@ -134,7 +134,6 @@ const PersonListView = () => {
   const [activeTab, setActiveTab] = useState<"recommendations" | "manage">("recommendations");
   const [selectedPerson, setSelectedPerson] = useState<RecommendedPerson | null>(null);
   const [pinningId, setPinningId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showDeleteListModal, setShowDeleteListModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isEditingList, setIsEditingList] = useState(false);
@@ -226,7 +225,6 @@ const PersonListView = () => {
 
   const handleDelete = async (person: RecommendedPerson) => {
     if (!window.confirm(`Delete "${person.full_name}"? This cannot be undone.`)) return;
-    setDeletingId(person.documentId);
     try {
       await deletePerson({
         variables: { documentId: person.documentId },
@@ -235,8 +233,6 @@ const PersonListView = () => {
       toast.success("Person deleted.");
     } catch {
       toast.error("Failed to delete.");
-    } finally {
-      setDeletingId(null);
     }
   };
 
@@ -253,186 +249,256 @@ const PersonListView = () => {
     }
   };
 
-  const handleDownloadQR = () => {
-    const svg = document.getElementById("person-list-qr-svg");
-    if (!svg) return;
-    const blob = new Blob([svg.outerHTML], { type: "image/svg+xml" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${listData?.slug || "person-list"}-qr.svg`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   if (loading && !listData) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="h-8 w-48 bg-white/5 animate-pulse rounded mb-6" />
-        <div className="space-y-2">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-16 rounded-xl bg-white/3 animate-pulse" />
-          ))}
-        </div>
+      <div className="max-w-3xl mx-auto px-4 py-8 space-y-4">
+        <div className="h-6 w-40 bg-white/5 animate-pulse rounded" />
+        <div className="h-4 w-24 bg-white/5 animate-pulse rounded" />
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="h-14 bg-white/5 animate-pulse rounded-lg" />
+        ))}
       </div>
     );
   }
 
   if (!loading && !listData) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-3xl mx-auto px-4 py-8">
         <p className="text-red-400">List not found. <Link to="/recommendations/people" className="text-blue-400 underline">Go back</Link></p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto pb-24 md:pb-6">
+    <div className="px-4 pt-8 pb-24 md:p-6 md:pb-6 max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-3 px-2 md:px-4 py-4">
-        <button
-          onClick={() => navigate("/recommendations/people")}
-          className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all flex-shrink-0"
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-bold text-white truncate">{listData?.List_Name}</h1>
-          {listData?.list_description && (
-            <p className="text-xs text-white/40 truncate mt-0.5">{listData.list_description}</p>
-          )}
+      <div className="flex items-center justify-between mb-6">
+        {/* Left: Back and Title info */}
+        <div className="flex flex-col items-start">
+          <button
+            onClick={() => navigate("/recommendations/people")}
+            className="text-[10px] text-white/50 hover:text-white mb-1 transition-colors flex items-center gap-1 font-semibold uppercase tracking-wider"
+          >
+            <ArrowLeft size={10} />
+            <span>Back</span>
+          </button>
+          <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight leading-tight">{listData?.List_Name}</h1>
         </div>
+        {/* Publish toggle switch */}
         <Switch
           checked={listData?.Visibility ?? false}
           onChange={handleToggleVisibility}
           disabled={people.length === 0}
           loading={isUpdating}
+          label={listData?.Visibility ? "Published" : "Draft"}
         />
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-white/8 px-2 md:px-4 mb-4">
-        {(["recommendations", "manage"] as const).map((tab) => (
+      <div className="flex mb-6 bg-white rounded-full p-[2px] w-fit mx-auto shadow-sm">
+        {(["recommendations", "manage"] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-sm font-medium capitalize transition-colors border-b-2 ${
+            className={`px-4 py-1.5 text-[11px] md:text-xs font-semibold rounded-full capitalize transition-all duration-200 ${
               activeTab === tab
-                ? "border-dashboard-accent text-dashboard"
-                : "border-transparent text-white/40 hover:text-white/70"
+                ? "bg-dashboard-accent text-white shadow"
+                : "text-[#0f172a] bg-transparent hover:opacity-80"
             }`}
           >
-            {tab === "recommendations" ? `People (${people.length})` : "Manage"}
+            {tab}
           </button>
         ))}
       </div>
 
-      <AnimatePresence mode="wait">
-        {activeTab === "recommendations" ? (
-          <motion.div
-            key="recs"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="px-2 md:px-4"
+      {activeTab === "recommendations" && (
+        <div>
+          {/* Add Person button - highlighted CTA */}
+          <button
+            onClick={() => navigate(`/recommendations/people/${listId}/add`)}
+            className="w-full mb-6 flex items-center justify-center gap-3 py-4 bg-dashboard-accent hover:opacity-90 text-white rounded-2xl text-sm font-bold transition-all shadow-lg shadow-blue-900/40 border border-white/10"
           >
-            {/* Add button */}
-            <div className="flex justify-end mb-4">
-              <button
-                onClick={() => navigate(`/recommendations/people/${listId}/add`)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all"
-              >
-                <AddIcon size="4" /> Add Person
-              </button>
+            <AddIcon size="5" /> Add Person
+          </button>
+
+          {people.length === 0 ? (
+            <div className="flex flex-col items-center py-16 text-center">
+              <Users size={40} className="text-white/15 mb-3" />
+              <p className="text-dashboard-light text-sm">No people added yet.</p>
+              <p className="text-xs text-white/25 mt-1">Search or scrape profile metadata to add recommendations.</p>
             </div>
+          ) : (
+            <div className="space-y-0">
+              {people.map((person) => (
+                <PersonRow
+                  key={person.documentId}
+                  person={person}
+                  onPinToggle={handlePinToggle}
+                  onEdit={(p) => navigate(`/recommendations/people/${listId}/edit/${p.documentId}`)}
+                  onDelete={handleDelete}
+                  onClick={setSelectedPerson}
+                  isPinning={pinningId === person.documentId}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
-            {people.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-violet-900/20 border border-violet-800/30 flex items-center justify-center mb-4">
-                  <Users size={28} className="text-violet-500/60" />
-                </div>
-                <p className="text-sm text-white/50 mb-4">No people added yet</p>
-                <button
-                  onClick={() => navigate(`/recommendations/people/${listId}/add`)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-sm text-white font-medium transition-colors"
-                >
-                  Add First Person
-                </button>
-              </div>
-            ) : (
-              <div>
-                {people.map((person) => (
-                  <PersonRow
-                    key={person.documentId}
-                    person={person}
-                    onPinToggle={handlePinToggle}
-                    onEdit={(p) => navigate(`/recommendations/people/${listId}/edit/${p.documentId}`)}
-                    onDelete={handleDelete}
-                    onClick={setSelectedPerson}
-                    isPinning={pinningId === person.documentId}
-                  />
-                ))}
-              </div>
-            )}
-          </motion.div>
-        ) : (
-          <motion.div
-            key="manage"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="px-2 md:px-4 space-y-4"
-          >
-            {/* Public URL */}
-            <Accordion title="Public URL & QR Code" defaultOpen>
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-3">
-                  <span className="text-xs text-white/50 flex-1 truncate">{publicUrl}</span>
-                  <button onClick={handleCopy} className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors flex-shrink-0">
-                    {copied ? <><Check size={12} /> Copied</> : <><Copy size={12} /> Copy</>}
-                  </button>
-                  <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 transition-colors flex-shrink-0">
-                    <Share2 size={12} /> Open
-                  </a>
-                </div>
-                <div className="flex flex-col items-center gap-3 py-4">
-                  <QRCodeSVG id="person-list-qr-svg" value={publicUrl} size={160} bgColor="#0d1117" fgColor="#ffffff" level="H" />
-                  <button onClick={handleDownloadQR} className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white transition-colors">
-                    <Download size={12} /> Download QR
-                  </button>
-                </div>
-              </div>
-            </Accordion>
-
-            {/* Edit list settings */}
-            <Accordion title="List Settings">
-              <EditListForm listData={listData!} onSave={async (vals) => {
-                try {
-                  await updatePersonList({ variables: { documentId: listData!.documentId, ...vals } });
-                  toast.success("List updated!");
-                  setIsEditingList(false);
-                  refetch();
-                } catch {
-                  toast.error("Failed to update.");
-                }
-              }} />
-            </Accordion>
-
-            {/* Danger zone */}
-            <Accordion title="Danger Zone">
-              <div className="space-y-3">
-                <p className="text-sm text-white/50">Deleting a list removes all {people.length} people in it permanently.</p>
+      {/* Tab: Manage */}
+      {activeTab === "manage" && (
+        <div className="mb-0 md:mt-2 md:w-[90%] md:mx-auto">
+          <div className="bg-transparent rounded-lg p-6 space-y-4 border border-white/10">
+            {/* Manage Accordion */}
+            <Accordion heading="Manage" defaultOpen={true}>
+              <div className="flex flex-col gap-3">
                 <button
                   onClick={() => setShowDeleteListModal(true)}
-                  className="px-4 py-2 rounded-lg bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-400 text-sm font-medium transition-colors"
+                  className="flex flex-row text-center gap-2 items-center rounded-md font-poppins w-full text-sm border border-white px-4 py-3 hover:border-gray-500 text-white hover:text-gray-500 justify-center font-medium transition-all duration-300"
                 >
-                  Delete This List
+                  <Trash2 size={16} />
+                  <span>Delete</span>
                 </button>
+                {isEditingList ? (
+                  <div className="bg-dashboard-sidebar border border-white/10 rounded-lg p-5 space-y-4 mt-2 mb-2 text-left">
+                    <div>
+                      <label className="text-xs text-white/50 mb-1.5 block uppercase tracking-wider">List Name</label>
+                      <input
+                        defaultValue={listData?.List_Name}
+                        onBlur={async (e) => {
+                          if (e.target.value && e.target.value !== listData?.List_Name) {
+                            await updatePersonList({ variables: { documentId: listData?.documentId, List_Name: e.target.value } });
+                            toast.success("List name updated.");
+                          }
+                        }}
+                        className="w-full bg-dashboard-muted border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-white/30 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-white/50 mb-1.5 block uppercase tracking-wider">Description</label>
+                      <textarea
+                        defaultValue={listData?.list_description ?? ""}
+                        rows={3}
+                        onBlur={async (e) => {
+                          if (e.target.value !== (listData?.list_description ?? "")) {
+                            await updatePersonList({ variables: { documentId: listData?.documentId, list_description: e.target.value } });
+                            toast.success("Description updated.");
+                          }
+                        }}
+                        className="w-full bg-dashboard-muted border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white resize-none focus:outline-none focus:border-white/30 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-white/50 mb-1.5 block uppercase tracking-wider">Top Picks Section Heading</label>
+                      <input
+                        defaultValue={listData?.top_people_heading ?? ""}
+                        placeholder="e.g. Featured Creators"
+                        onBlur={async (e) => {
+                          if (e.target.value !== (listData?.top_people_heading ?? "")) {
+                            await updatePersonList({ variables: { documentId: listData?.documentId, top_people_heading: e.target.value } });
+                            toast.success("Top Picks heading updated.");
+                          }
+                        }}
+                        className="w-full bg-dashboard-muted border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-white/30 transition-colors"
+                      />
+                    </div>
+                    <button onClick={() => setIsEditingList(false)} className="w-full py-2 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-lg flex justify-center text-sm mt-3 transition-colors">Done Editing</button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsEditingList(true)}
+                    className="flex flex-row text-center gap-2 items-center rounded-md font-poppins w-full text-sm border border-white px-4 py-3 hover:border-gray-500 text-white hover:text-gray-500 justify-center font-medium transition-all duration-300"
+                  >
+                    <Edit size={16} />
+                    <span>Edit</span>
+                  </button>
+                )}
+
+                <div className={`p-4 rounded-xl border transition-all mt-2 ${listData?.Visibility ? "border-green-500/30 bg-green-500/5" : "border-white/10"} flex justify-center items-center`}>
+                  <Switch
+                    checked={listData?.Visibility ?? false}
+                    onChange={handleToggleVisibility}
+                    loading={isUpdating}
+                    label={listData?.Visibility ? "Published (Visible to public)" : "Draft (Private)"}
+                  />
+                </div>
               </div>
             </Accordion>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+            {/* My QR Accordion */}
+            <Accordion heading="My QR" defaultOpen={true}>
+              <div className={`relative pb-2 ${!listData?.Visibility ? "blur-sm pointer-events-none" : ""}`}>
+                {!listData?.Visibility && (
+                  <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-auto">
+                    <span className="bg-dashboard-muted px-4 py-2 rounded-lg text-sm text-white/90 shadow-2xl border border-white/20 backdrop-blur-md">Publish list to share QR</span>
+                  </div>
+                )}
+                
+                <div className="flex justify-center items-center my-6">
+                  <div className="flex relative flex-col justify-between items-center h-[16rem] w-[14rem] p-6 bg-black border border-white text-white rounded-lg">
+                    <div className="absolute bottom-0 left-0 w-full h-1/2 rounded-b-lg bg-gradient-to-t from-blue-900/40 to-transparent pointer-events-none" />
+                    <p className="text-sm tracking-wide font-medium z-10 text-center leading-snug">My Recommendations</p>
+                    <div className="z-10 items-center flex flex-col pt-1">
+                      <div className="p-2 bg-white rounded-lg shadow-md mb-3">
+                        <QRCodeSVG id="person-list-qr-svg" value={publicUrl} size={90} />
+                      </div>
+                      <p className="bg-gray-200 text-black px-4 py-1.5 font-poppins rounded-full text-[11px] font-semibold whitespace-nowrap">
+                        Connect with creators
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-center gap-8 mt-5 mb-1 pt-4 border-t border-white/5">
+                  <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => {
+                    if (navigator.share) {
+                      navigator.share({ title: listData?.List_Name, url: publicUrl });
+                    } else {
+                      handleCopy();
+                    }
+                  }}>
+                    <button className="p-0 bg-transparent rounded-full flex items-center justify-center">
+                      <Share2 size={22} className="text-white" strokeWidth={1.5} />
+                    </button>
+                    <span className="font-poppins text-white text-xs">Share Link</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={handleCopy}>
+                    <button className="p-0 bg-transparent rounded-full flex items-center justify-center">
+                      {copied ? <Check size={22} className="text-white" strokeWidth={1.5} /> : <Copy size={22} className="text-white" strokeWidth={1.5} />}
+                    </button>
+                    <span className="font-poppins text-white text-xs whitespace-nowrap">{copied ? "Copied" : "Copy Link"}</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => {
+                     const svg = document.getElementById("person-list-qr-svg");
+                     if (svg) {
+                       const svgData = new XMLSerializer().serializeToString(svg);
+                       const canvas = document.createElement("canvas");
+                       const ctx = canvas.getContext("2d");
+                       const img = new Image();
+                       img.onload = () => {
+                         canvas.width = img.width;
+                         canvas.height = img.height;
+                         ctx?.drawImage(img, 0, 0);
+                         const pngFile = canvas.toDataURL("image/png");
+                         const a = document.createElement("a");
+                         a.download = `QR_${listData?.List_Name || "List"}.png`;
+                         a.href = pngFile;
+                         a.click();
+                       };
+                       img.src = "data:image/svg+xml;base64," + btoa(svgData);
+                     }
+                  }}>
+                    <button className="p-0 bg-transparent rounded-full flex items-center justify-center">
+                      <Download size={22} className="text-white" strokeWidth={1.5} />
+                    </button>
+                    <span className="font-poppins text-white text-xs">Download QR</span>
+                  </div>
+                </div>
+              </div>
+            </Accordion>
+          </div>
+        </div>
+      )}
 
       {/* Delete list confirmation */}
       <AnimatePresence>
@@ -445,21 +511,21 @@ const PersonListView = () => {
             onClick={() => setShowDeleteListModal(false)}
           >
             <motion.div
-              className="bg-[#0d1117] border border-white/10 rounded-2xl p-6 max-w-sm w-full"
+              className="bg-dashboard-card rounded-2xl border border-dashboard-border p-6 max-w-sm w-full"
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-base font-bold text-white mb-2">Delete list?</h3>
-              <p className="text-sm text-white/50 mb-5">This will permanently delete "<span className="text-white/80">{listData?.List_Name}</span>" and all {people.length} people in it.</p>
+              <h3 className="text-lg font-semibold text-dashboard mb-2">Delete List?</h3>
+              <p className="text-sm text-dashboard-muted mb-5">This will permanently delete "{listData?.List_Name}" and all its people. This cannot be undone.</p>
               <div className="flex gap-3">
-                <button onClick={() => setShowDeleteListModal(false)} className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-sm text-white transition-colors">Cancel</button>
+                <button onClick={() => setShowDeleteListModal(false)} className="flex-1 py-2.5 rounded-lg border border-dashboard-border text-sm text-dashboard-muted hover:text-dashboard transition-colors">Cancel</button>
                 <button
                   onClick={handleDeleteList}
                   disabled={deletingList}
-                  className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-sm text-white font-medium transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-sm text-white font-medium transition-colors flex items-center justify-center gap-2"
                 >
-                  {deletingList ? <Loader2 size={14} className="animate-spin" /> : null}
+                  {deletingList ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                   Delete
                 </button>
               </div>
@@ -472,52 +538,27 @@ const PersonListView = () => {
         <PersonDetailModal open={!!selectedPerson} person={selectedPerson} onClose={() => setSelectedPerson(null)} />
       )}
 
-      {listVisibilityPrompt && (
+      {listData && listVisibilityPrompt && (
         <ListVisibilityModal
           isOpen={listVisibilityPrompt.isOpen}
           onClose={() => setListVisibilityPrompt(null)}
           listName={listVisibilityPrompt.listName}
-          onToggle={handleToggleVisibility}
-          isToggling={isUpdating}
+          categoryName="People"
+          onConfirm={async () => {
+            try {
+              await updatePersonList({
+                variables: { documentId: listData.documentId, Visibility: true },
+                refetchQueries: [{ query: PEOPLE_BY_LIST, variables: peopleByListVars(listId!) }],
+              });
+              refetch();
+              toast.success(`"${listData.List_Name}" published!`);
+            } catch {
+              toast.error("Failed to update visibility.");
+            }
+          }}
+          loading={isUpdating}
         />
       )}
-    </div>
-  );
-};
-
-// Inline edit form
-const EditListForm = ({ listData, onSave }: { listData: PersonList; onSave: (vals: any) => Promise<void> }) => {
-  const [name, setName] = useState(listData.List_Name);
-  const [desc, setDesc] = useState(listData.list_description || "");
-  const [heading, setHeading] = useState(listData.top_people_heading || "");
-  const [saving, setSaving] = useState(false);
-
-  return (
-    <div className="space-y-3">
-      <div>
-        <label className="text-xs text-white/50 mb-1 block">List Name</label>
-        <input value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50" />
-      </div>
-      <div>
-        <label className="text-xs text-white/50 mb-1 block">Description</label>
-        <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 resize-none" />
-      </div>
-      <div>
-        <label className="text-xs text-white/50 mb-1 block">Top Picks Section Heading</label>
-        <input value={heading} onChange={(e) => setHeading(e.target.value)} placeholder="e.g. Featured Creators" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50" />
-      </div>
-      <button
-        onClick={async () => {
-          setSaving(true);
-          await onSave({ List_Name: name, list_description: desc || null, top_people_heading: heading || null });
-          setSaving(false);
-        }}
-        disabled={saving}
-        className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-sm text-white font-medium transition-colors flex items-center gap-2"
-      >
-        {saving && <Loader2 size={13} className="animate-spin" />}
-        Save Changes
-      </button>
     </div>
   );
 };

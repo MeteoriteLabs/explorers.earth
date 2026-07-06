@@ -76,7 +76,7 @@ const PublicPeople = () => {
   }, [allPeople]);
 
   const allCategories = useMemo(() => {
-    return extractUniqueCategories(allPeople.map((p) => p.person_category ? [p.person_category] : []));
+    return extractUniqueCategories(allPeople.map((p) => p.people_category?.Category_name ? [p.people_category.Category_name] : []));
   }, [allPeople]);
 
   const handlePersonClick = useCallback((person: RecommendedPerson) => {

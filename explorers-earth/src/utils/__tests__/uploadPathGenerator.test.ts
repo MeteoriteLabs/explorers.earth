@@ -13,6 +13,8 @@ import {
   generateBookListCoverPath,
   generateGameListCoverPath,
   generateGameUploadPath,
+  generatePersonListCoverPath,
+  generatePersonUploadPath,
   sanitizeUsername,
   sanitizeIdentifier
 } from '../uploadPathGenerator';
@@ -113,6 +115,16 @@ describe('uploadPathGenerator', () => {
     it('generateGameListCoverPath generates correct path', () => {
       const path = generateGameListCoverPath('JohnDoe', 'list1', filename);
       expect(path).toBe('johndoe/games/list1/cover/1735689600000-abc123.jpg');
+    });
+
+    it('generatePersonListCoverPath generates correct path', () => {
+      const path = generatePersonListCoverPath('JohnDoe', 'list1', filename);
+      expect(path).toBe('johndoe/people/list1/cover/1735689600000-abc123.jpg');
+    });
+
+    it('generatePersonUploadPath generates correct path', () => {
+      const path = generatePersonUploadPath('JohnDoe', 'list1', 'person_slug', filename);
+      expect(path).toBe('johndoe/people/list1/person_slug/1735689600000-abc123.jpg');
     });
   });
 
