@@ -12,6 +12,7 @@ export const CREATE_PERSON_LIST = gql`
     $display_order: Int!
     $top_people_heading: String
     $account: ID!
+    $recommendation_list: ID
   ) {
     createPersonList(
       data: {
@@ -22,6 +23,7 @@ export const CREATE_PERSON_LIST = gql`
         display_order: $display_order
         top_picks_heading: $top_people_heading
         account: $account
+        recommendation_list: $recommendation_list
       }
     ) {
       documentId

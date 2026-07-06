@@ -255,6 +255,10 @@ const AddProductPage = () => {
     return imageUrl;
   };
 
+  // Truncate strings to fit Strapi's VARCHAR(255) column limit
+  const trunc = (val: string | undefined | null, max = 255): string | undefined =>
+    val ? val.slice(0, max) : val ?? undefined;
+
   const handleSave = async () => {
     if (!formData.title?.trim()) { toast.error("Product title is required."); return; }
     if (!formData.product_url?.trim()) { toast.error("Product URL is required."); return; }
@@ -348,13 +352,13 @@ const AddProductPage = () => {
         await updateProduct({
           variables: {
             documentId: productId,
-            title: formData.title,
-            brand: formData.brand,
+            title: trunc(formData.title),
+            brand: trunc(formData.brand),
             price: formData.price,
-            currency: formData.currency,
-            buy_url: formData.buy_url,
-            logo_url: formData.logo_url,
-            description: formData.description,
+            currency: trunc(formData.currency),
+            buy_url: trunc(formData.buy_url),
+            logo_url: trunc(formData.logo_url),
+            description: trunc(formData.description),
             specifications: formData.specifications,
             images: finalImages,
             user_recommendation_note: note,
@@ -368,14 +372,14 @@ const AddProductPage = () => {
       } else {
         await createProduct({
           variables: {
-            product_url: formData.product_url,
-            title: formData.title,
-            brand: formData.brand,
+            product_url: trunc(formData.product_url),
+            title: trunc(formData.title),
+            brand: trunc(formData.brand),
             price: formData.price,
-            currency: formData.currency,
-            buy_url: formData.buy_url,
-            logo_url: finalLogoUrl,
-            description: formData.description,
+            currency: trunc(formData.currency),
+            buy_url: trunc(formData.buy_url),
+            logo_url: trunc(finalLogoUrl),
+            description: trunc(formData.description),
             specifications: formData.specifications || {},
             images: finalImages,
             user_recommendation_note: note,

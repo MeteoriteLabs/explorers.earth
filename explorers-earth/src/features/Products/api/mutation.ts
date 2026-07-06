@@ -12,6 +12,7 @@ export const CREATE_PRODUCT_LIST = gql`
     $display_order: Int!
     $top_products_heading: String
     $account: ID!
+    $recommendation_list: ID
   ) {
     createProductList(
       data: {
@@ -22,6 +23,7 @@ export const CREATE_PRODUCT_LIST = gql`
         display_order: $display_order
         top_products_heading: $top_products_heading
         account: $account
+        recommendation_list: $recommendation_list
       }
     ) {
       documentId

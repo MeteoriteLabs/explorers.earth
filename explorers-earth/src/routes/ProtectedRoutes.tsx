@@ -27,6 +27,8 @@ import { GamesHome, GameListView, AddGamePage } from "../features/Games";
 import { AppsHome, AppListView, AddAppPage } from "../features/AppsAndTools";
 import { ProductsHome, ProductListView, AddProductPage } from "../features/Products";
 import { PeopleHome, PersonListView, AddPersonPage } from "../features/People";
+import AddLinkedPeoplePage from "../features/Favorites/components/AddLinkedPeoplePage";
+import AddLinkedProductsPage from "../features/Favorites/components/AddLinkedProductsPage";
 
 // Import layouts
 import DashboardLayout from "../layouts/DashboardLayout";
@@ -78,6 +80,8 @@ const ProtectedRoutes = ({
       <Route path="recommendations/people/:listId" element={<PersonListView />} />
       <Route path="recommendations/people/:listId/add" element={<AddPersonPage />} />
       <Route path="recommendations/people/:listId/edit/:personId" element={<AddPersonPage />} />
+      <Route path="recommendations/places/:locationId/add-people" element={<AddLinkedPeoplePage />} />
+      <Route path="recommendations/places/:locationId/add-products" element={<AddLinkedProductsPage />} />
       <Route path=":listId/new" element={<AddRecommendation />} />
       <Route
         path="guides/:guideId/edit"
@@ -134,6 +138,8 @@ const ProtectedRoutes = ({
       <Route path="recommendations/people/:listId" element={<PersonListView />} />
       <Route path="recommendations/people/:listId/add" element={<AddPersonPage />} />
       <Route path="recommendations/people/:listId/edit/:personId" element={<AddPersonPage />} />
+      <Route path="recommendations/places/:locationId/add-people" element={<AddLinkedPeoplePage />} />
+      <Route path="recommendations/places/:locationId/add-products" element={<AddLinkedProductsPage />} />
     </Route>
   );
 
