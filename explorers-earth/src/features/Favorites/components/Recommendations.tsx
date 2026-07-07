@@ -46,6 +46,10 @@ import InstagramPostImport from "./InstagramPostImport";
 import AddPlaceOverlay from "./AddPlaceOverlay";
 import { IMAGE_CONFIG } from "../../../config";
 import { ChevronDown, Users, ShoppingBag } from "lucide-react";
+import ProductDetailModal from "../../Products/components/public/ProductDetailModal";
+import PersonDetailModal from "../../People/components/public/PersonDetailModal";
+import { deduplicatePeople } from "../../People/utils/personHelpers";
+import { deduplicateProducts } from "../../Products/utils/productHelpers";
 
 // ⭐ TS declaration for window.__walkthrough
 declare global {
@@ -186,10 +190,16 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
   const [isExpanded, setIsExpanded] = useState<{
     visible: boolean;
     documentId: string | null;
+    type: "place" | "person" | null;
   }>({
     visible: false,
     documentId: null,
+    type: null,
   });
+  // local state for inline product detail view
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+  // local state for inline person detail view
+  const [selectedPerson, setSelectedPerson] = useState<any | null>(null);
   // local state for handling delete recommended Place
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   // mutatio for deleting recommendedPlace (reminder: segregate this logic to reduce the complexity)
@@ -256,8 +266,26 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
   const linkedProductLists: any[] = locationLinkedData?.recommendationList?.product_lists || [];
 
   // Flatten all linked people and products
-  const linkedPeople = linkedPersonLists.flatMap((l: any) => (l.recommended_people || []).map((p: any) => ({ ...p, _listName: l.List_Name, _listId: l.documentId })));
-  const linkedProducts = linkedProductLists.flatMap((l: any) => (l.recommended_products || []).map((p: any) => ({ ...p, _listName: l.List_Name, _listId: l.documentId })));
+  const linkedPeople = useMemo(() => {
+    const raw = linkedPersonLists.flatMap((l: any) =>
+      (l.recommended_people || []).map((p: any) => ({
+        ...p,
+        _listName: l.List_Name,
+        _listId: l.documentId,
+      }))
+    );
+    return deduplicatePeople(raw);
+  }, [linkedPersonLists]);
+  const linkedProducts = useMemo(() => {
+    const raw = linkedProductLists.flatMap((l: any) =>
+      (l.recommended_products || []).map((p: any) => ({
+        ...p,
+        _listName: l.List_Name,
+        _listId: l.documentId,
+      }))
+    );
+    return deduplicateProducts(raw);
+  }, [linkedProductLists]);
 
   // Fetch paginated places
   const {
@@ -971,10 +999,6 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
               <h3 className="text-white font-poppins font-semibold text-lg">
                 {t("dashboard.recommendations.myRecommendationsHeading")}
               </h3>
-              <p className="text-white font-poppins text-sm">
-                {selectedCity?.List_Name ||
-                  t("dashboard.recommendations.locationButton")}
-              </p>
             </div>
           </div>
 
@@ -1006,8 +1030,9 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
         </div>
       )}
 
-      <div className="overflow-x-auto whitespace-nowrap py-4 scrollbar-hide">
-        {categories && categories.length >= 1 && (
+      {/* Categories filters only visible on Places tab */}
+      {activeTab === "places" && categories && categories.length >= 1 && (
+        <div className="overflow-x-auto whitespace-nowrap py-4 scrollbar-hide">
           <div className="flex gap-3">
             <Button
               btnText={t("dashboard.recommendations.viewAll")}
@@ -1027,8 +1052,8 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
               />
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ── People Tab ── */}
       {activeTab === "people" && (
@@ -1055,7 +1080,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
                   <div
                     key={person.documentId || `linked-person-${index}`}
                     className="bg-dashboard-sidebar border border-white/5 rounded-xl p-4 flex flex-col gap-3 hover:border-white/15 transition-all cursor-pointer"
-                    onClick={() => navigate(`/recommendations/people/${person._listId}`)}
+                    onClick={() => setSelectedPerson(person)}
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-violet-950/40 ring-2 ring-white/10">
@@ -1111,7 +1136,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
                 <div
                   key={product.documentId || `linked-product-${index}`}
                   className="bg-dashboard-sidebar border border-white/5 rounded-xl overflow-hidden hover:border-white/15 transition-all cursor-pointer"
-                  onClick={() => navigate(`/recommendations/products/${product._listId}`)}
+                  onClick={() => setSelectedProduct(product)}
                 >
                   <div className="h-32 bg-dashboard-muted flex items-center justify-center overflow-hidden">
                     {product.logo_url ? (
@@ -1161,6 +1186,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
                     setIsExpanded({
                       visible: true,
                       documentId: data.documentId,
+                      type: "place",
                     })
                   }
                   className="places-grid-card relative rounded-xl overflow-hidden cursor-pointer shadow-lg transition-transform hover:-translate-y-1 aspect-[4/3] md:aspect-[4/3]"
@@ -1258,26 +1284,27 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
           }`}
         style={{ height: "100%" }}
       >
-        {isExpanded.visible && (() => {
-          // Find the clicked item to determine its type
-          const clickedItem = [...(filteredPlaces || []), ...(filteredPersons || [])].find(
-            item => item.documentId === isExpanded.documentId
-          );
-          const isPersonType = clickedItem?.Recommendation_Type === "person";
-
-          return isPersonType ? (
-            <PersonOverview
-              personId={isExpanded.documentId}
-              onClose={() => setIsExpanded({ visible: false, documentId: null })}
-            />
-          ) : (
-            <PlaceOverview
-              placeId={isExpanded.documentId}
-              onClose={() => setIsExpanded({ visible: false, documentId: null })}
-            />
-          );
-        })()}
+        {isExpanded.visible && (
+          <PlaceOverview
+            placeId={isExpanded.documentId}
+            onClose={() => setIsExpanded({ visible: false, documentId: null, type: null })}
+          />
+        )}
       </div>
+
+      {/* Product Detail Modal */}
+      <ProductDetailModal
+        open={!!selectedProduct}
+        product={selectedProduct}
+        onClose={() => setSelectedProduct(null)}
+      />
+
+      {/* Person Detail Modal */}
+      <PersonDetailModal
+        open={!!selectedPerson}
+        person={selectedPerson}
+        onClose={() => setSelectedPerson(null)}
+      />
 
       {showDeleteModal && (
         <Modal

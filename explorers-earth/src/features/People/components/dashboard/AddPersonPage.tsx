@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import {
   ArrowLeft, Star, Loader2, Check, Users, Link as LinkIcon,
@@ -150,6 +150,8 @@ const TagsEditor = ({ tags, onChange }: { tags: string[]; onChange: (t: string[]
 // ─────────────────────────────────────────────────────────────
 const AddPersonPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectBack = searchParams.get("redirectBack");
   const { listId, personId } = useParams<{ listId: string; personId: string }>();
   const { user, token } = useAuthStore();
   const isEdit = !!personId;
@@ -394,7 +396,11 @@ const AddPersonPage = () => {
         });
         toast.success("Person added!");
       }
-      navigate(`/recommendations/people/${listId}`, { state: { justAddedRecommendation: true } });
+      if (redirectBack) {
+        navigate(redirectBack, { state: { justAddedRecommendation: true } });
+      } else {
+        navigate(`/recommendations/people/${listId}`, { state: { justAddedRecommendation: true } });
+      }
     } catch (err: any) {
       toast.error(err?.message || "Failed to save. Please try again.");
     } finally {
@@ -416,7 +422,7 @@ const AddPersonPage = () => {
       {/* Sticky header */}
       <div className="border-b border-dashboard-border px-4 md:px-6 py-3 flex items-center gap-3 sticky top-0 bg-dashboard-bg z-40 w-full">
         <button
-          onClick={() => step === "form" && !isEdit ? setStep("url") : navigate(`/recommendations/people/${listId}`)}
+          onClick={() => step === "form" && !isEdit ? setStep("url") : (redirectBack ? navigate(redirectBack) : navigate(`/recommendations/people/${listId}`))}
           className="text-white/40 hover:text-white transition-colors"
         >
           <ArrowLeft size={20} />

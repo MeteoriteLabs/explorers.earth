@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import {
   ArrowLeft, Star, Loader2, Check, ShoppingBag, Link as LinkIcon,
@@ -44,7 +44,7 @@ const UrlScrapePanel = ({
       onScraped({ ...data, product_url: url });
       toast.success("Product metadata fetched!");
     } catch {
-      setError("Could not fetch metadata — fill in the details below.");
+      setError("Could not scrape link — fill in the details below.");
       onScraped({ product_url: url });
     } finally {
       setLoading(false);
@@ -55,20 +55,20 @@ const UrlScrapePanel = ({
     <div className="space-y-3">
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <LinkIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+          <LinkIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" />
           <input
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://amazon.com/product/... or any retail link"
-            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-500/50 transition-colors"
+            placeholder="https://amazon.com/dp/... or store.apple.com/..."
+            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500 transition-colors"
             onKeyDown={(e) => e.key === "Enter" && handleScrape()}
           />
         </div>
         <button
           onClick={handleScrape}
           disabled={loading || !url.trim()}
-          className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-sm text-white font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+          className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 flex items-center gap-2 disabled:opacity-50"
         >
           {loading ? <Loader2 size={14} className="animate-spin" /> : "Fetch"}
         </button>
@@ -139,6 +139,8 @@ const SpecificationsEditor = ({
 
 const AddProductPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectBack = searchParams.get("redirectBack");
   const { listId, productId } = useParams<{ listId: string; productId: string }>();
   const { user, token } = useAuthStore();
   const isEdit = !!productId;
@@ -394,7 +396,11 @@ const AddProductPage = () => {
         });
         toast.success("Product added!");
       }
-      navigate(`/recommendations/products/${listId}`, { state: { refetch: true } });
+      if (redirectBack) {
+        navigate(redirectBack, { state: { refetch: true } });
+      } else {
+        navigate(`/recommendations/products/${listId}`, { state: { refetch: true } });
+      }
     } catch (e: any) {
       console.error(e);
       toast.error("Failed to save product.");
@@ -408,7 +414,7 @@ const AddProductPage = () => {
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <button
-          onClick={() => step === "form" && !isEdit ? setStep("url") : navigate(`/recommendations/products/${listId}`)}
+          onClick={() => step === "form" && !isEdit ? setStep("url") : (redirectBack ? navigate(redirectBack) : navigate(`/recommendations/products/${listId}`))}
           className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
         >
           <ArrowLeft size={18} />

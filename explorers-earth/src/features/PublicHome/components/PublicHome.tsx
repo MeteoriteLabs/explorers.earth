@@ -33,7 +33,10 @@ import {
 } from "../../../utils/urlHelpers";
 import Location from "../../../assets/icons/Location";
 import { Share2, Copy, ArrowLeft, Users, ShoppingBag } from "lucide-react";
-import { buildImageUrl } from "../../People/utils/personHelpers";
+import { buildImageUrl, deduplicatePeople } from "../../People/utils/personHelpers";
+import ProductDetailModal from "../../Products/components/public/ProductDetailModal";
+import PersonDetailModal from "../../People/components/public/PersonDetailModal";
+import { deduplicateProducts } from "../../Products/utils/productHelpers";
 import { AdvancedMarker, Map, Pin, useMap } from "@vis.gl/react-google-maps";
 import { getPlaceCoordinatesQuery } from "../api/query";
 import { toast } from "sonner";
@@ -184,7 +187,7 @@ const PublicHome = memo(() => {
   }, [selectedCity]);
 
   const linkedPeople = useMemo(() => {
-    return linkedPersonLists.flatMap((l: any) =>
+    const raw = linkedPersonLists.flatMap((l: any) =>
       (l.recommended_people || []).map((p: any) => ({
         ...p,
         _listName: l.List_Name,
@@ -192,10 +195,11 @@ const PublicHome = memo(() => {
         _listSlug: l.slug,
       }))
     );
+    return deduplicatePeople(raw);
   }, [linkedPersonLists]);
 
   const linkedProducts = useMemo(() => {
-    return linkedProductLists.flatMap((l: any) =>
+    const raw = linkedProductLists.flatMap((l: any) =>
       (l.recommended_products || []).map((p: any) => ({
         ...p,
         _listName: l.List_Name,
@@ -203,7 +207,21 @@ const PublicHome = memo(() => {
         _listSlug: l.slug,
       }))
     );
+    return deduplicateProducts(raw);
   }, [linkedProductLists]);
+
+  // local state for inline details modals
+  const [isExpanded, setIsExpanded] = useState<{
+    visible: boolean;
+    documentId: string | null;
+    type: "place" | "person" | null;
+  }>({
+    visible: false,
+    documentId: null,
+    type: null,
+  });
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+  const [selectedPerson, setSelectedPerson] = useState<any | null>(null);
 
   // Memoize expensive calculations to prevent unnecessary re-renders
   const PublishedCities = useMemo(() => {
@@ -274,13 +292,6 @@ const PublicHome = memo(() => {
     skip: !selectedCity?.documentId || selectedCity?.Visibility !== true,
   });
   const [showShareModal, setShowShareModal] = useState<boolean>(false);
-  const [isExpanded, setIsExpanded] = useState<{
-    visible: boolean;
-    documentId: string | null;
-  }>({
-    visible: false,
-    documentId: null,
-  });
 
   // Track recommendation engagement views when card is opened
   useEffect(() => {
@@ -1656,6 +1667,7 @@ const PublicHome = memo(() => {
                                         setIsExpanded({
                                           visible: true,
                                           documentId: place.documentId,
+                                          type: "place",
                                         })
                                       }
                                       className="w-full h-[155px] md:h-[180px]"
@@ -1699,7 +1711,7 @@ const PublicHome = memo(() => {
                                 <div
                                   key={person.documentId || `linked-person-${index}`}
                                   className="bg-white/5 border border-white/5 rounded-xl p-4 flex flex-col gap-3 hover:border-blue-500/40 transition-all cursor-pointer"
-                                  onClick={() => navigate(`/${username}/people/${person._listSlug}`)}
+                                  onClick={() => setSelectedPerson(person)}
                                 >
                                   <div className="flex items-center gap-3">
                                     <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-violet-950/40 ring-2 ring-white/10">
@@ -1743,7 +1755,7 @@ const PublicHome = memo(() => {
                               <div
                                 key={product.documentId || `linked-product-${index}`}
                                 className="bg-white/5 border border-white/5 rounded-xl overflow-hidden hover:border-blue-500/40 transition-all cursor-pointer flex flex-col justify-between"
-                                onClick={() => navigate(`/${username}/products/${product._listSlug}`)}
+                                onClick={() => setSelectedProduct(product)}
                               >
                                 <div className="h-32 bg-black/40 flex items-center justify-center overflow-hidden">
                                   {product.logo_url ? (
@@ -1808,32 +1820,30 @@ const PublicHome = memo(() => {
                   className={`fixed md:max-w-4xl md:mx-auto inset-x-0 bottom-0 top-0 z-[150] transition-transform duration-300 ease-in-out overflow-x-hidden ${isExpanded.visible ? "translate-y-0" : "translate-y-full"
                     }`}
                 >
-                  {isExpanded.visible && (() => {
-                    // Find the clicked item to determine its type
-                    const clickedItem = filteredPlaces?.find(
-                      (item: any) => item.documentId === isExpanded.documentId
-                    );
-                    const isPersonType = clickedItem?.Recommendation_Type === "person";
-
-                    return isPersonType ? (
-                      <PersonOverview
-                        personId={isExpanded.documentId}
-                        onClose={() =>
-                          setIsExpanded({ visible: false, documentId: null })
-                        }
-                        isPublicProfile={true}
-                      />
-                    ) : (
-                      <PlaceOverview
-                        placeId={isExpanded.documentId}
-                        onClose={() =>
-                          setIsExpanded({ visible: false, documentId: null })
-                        }
-                        isPublicProfile={true}
-                      />
-                    );
-                  })()}
+                  {isExpanded.visible && (
+                    <PlaceOverview
+                      placeId={isExpanded.documentId}
+                      onClose={() =>
+                        setIsExpanded({ visible: false, documentId: null, type: null })
+                      }
+                      isPublicProfile={true}
+                    />
+                  )}
                 </div>
+
+                {/* Product Detail Modal */}
+                <ProductDetailModal
+                  open={!!selectedProduct}
+                  product={selectedProduct}
+                  onClose={() => setSelectedProduct(null)}
+                />
+
+                {/* Person Detail Modal */}
+                <PersonDetailModal
+                  open={!!selectedPerson}
+                  person={selectedPerson}
+                  onClose={() => setSelectedPerson(null)}
+                />
               </>
             ) : (
               /* Empty State - Show consistent profile with 0 places and 0 contributions */

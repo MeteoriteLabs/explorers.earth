@@ -78,10 +78,16 @@ export const recommendedListByIdQuery = gql`
           avatar_path
           media_details
           primary_platform
+          social_urls
           skills_tags
+          user_recommendation_note
           user_rating
           is_pinned
           display_order
+          people_category {
+            documentId
+            Category_name
+          }
         }
       }
       # Linked Product Lists
@@ -91,16 +97,25 @@ export const recommendedListByIdQuery = gql`
         slug
         recommended_products(sort: ["display_order:asc"], pagination: { limit: 200 }) {
           documentId
+          product_url
           title
           brand
           price
           currency
-          logo_url
           buy_url
+          logo_url
+          description
+          specifications
+          user_recommendation_note
           user_rating
           is_pinned
           display_order
           images
+          product_category {
+            documentId
+            name
+            slug
+          }
         }
       }
     }
