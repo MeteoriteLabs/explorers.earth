@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Share2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import type { RecommendedPerson } from "../../types";
 import { buildImageUrl, extractNoteText, getPlatformLabel, getPlatformBadgeClass, getPlatformColor } from "../../utils/personHelpers";
+import MediaViewer from "../../../../components/ui/MediaViewer";
+import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
 
 interface PersonDetailModalProps {
   person: RecommendedPerson | null;
@@ -13,6 +15,7 @@ interface PersonDetailModalProps {
 const FALLBACK_IMAGE = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'><rect width='300' height='300' fill='%23171e2e'/></svg>`;
 
 const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) => {
+  const { isOpen: isMediaOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
   const [dragStartY, setDragStartY] = useState<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const snapshotsScrollRef = useRef<HTMLDivElement>(null);
@@ -56,12 +59,48 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
     }
   }, [person?.full_name]);
 
+  const lightboxMediaItems = useMemo(() => {
+    if (!person) return [];
+    const avatarUrl = buildImageUrl(person.avatar_url);
+    const snapshots = person.media_details?.imageDetails ?? [];
+
+    const items: any[] = [];
+    if (avatarUrl && avatarUrl !== FALLBACK_IMAGE) {
+      items.push({
+        id: "avatar",
+        url: avatarUrl,
+        alt: person.full_name,
+      });
+    }
+    if (snapshots && snapshots.length > 0) {
+      snapshots.forEach((snap: any, index: number) => {
+        items.push({
+          id: `snap-${index}`,
+          url: buildImageUrl(snap.url),
+          alt: `Snapshot ${index + 1}`,
+        });
+      });
+    }
+    return convertToMediaItems(items);
+  }, [person]);
+
   if (!person) return null;
 
   const avatarUrl = buildImageUrl(person.avatar_url);
   const noteText = extractNoteText(person.user_recommendation_note);
   const platformGradient = getPlatformColor(person.platform || null);
   const snapshots = person.media_details?.imageDetails ?? [];
+
+  const handleImageClick = (type: 'avatar' | 'snap', index: number = 0) => {
+    let targetIndex = 0;
+    const hasAvatar = avatarUrl && avatarUrl !== FALLBACK_IMAGE;
+    if (type === 'avatar') {
+      targetIndex = 0;
+    } else if (type === 'snap') {
+      targetIndex = (hasAvatar ? 1 : 0) + index;
+    }
+    openViewer(targetIndex);
+  };
 
   return (
     <AnimatePresence>
@@ -111,7 +150,10 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
               <div ref={contentRef} className="flex-1 pb-24 md:pb-6 w-full">
                 {/* Avatar + Name row */}
                 <div className="flex gap-4 px-5 -mt-16 relative z-10 items-end">
-                  <div className="flex-shrink-0 w-28 h-28 rounded-full overflow-hidden ring-4 ring-[#0d1117] shadow-2xl bg-[#1a2332]">
+                  <div 
+                    onClick={() => handleImageClick("avatar")}
+                    className="flex-shrink-0 w-28 h-28 rounded-full overflow-hidden ring-4 ring-[#0d1117] shadow-2xl bg-[#1a2332] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                  >
                     <img
                       src={avatarUrl || FALLBACK_IMAGE}
                       alt={person.full_name}
@@ -213,10 +255,11 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
                           ref={snapshotsScrollRef}
                           className="flex overflow-x-auto pb-4 -mx-5 px-5 gap-3 hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
                         >
-                          {snapshots.map((snap: any) => (
+                          {snapshots.map((snap: any, i: number) => (
                             <div
                               key={snap.id}
-                              className="flex-shrink-0 w-56 aspect-video rounded-xl overflow-hidden border border-white/10 bg-[#1a2332]"
+                              onClick={() => handleImageClick("snap", i)}
+                              className="flex-shrink-0 w-56 aspect-video rounded-xl overflow-hidden border border-white/10 bg-[#1a2332] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                             >
                               <img
                                 src={buildImageUrl(snap.url)}
@@ -268,6 +311,12 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
               </div>
             </motion.div>
           </div>
+          <MediaViewer
+            mediaItems={lightboxMediaItems}
+            initialIndex={currentIndex}
+            isOpen={isMediaOpen}
+            onClose={closeViewer}
+          />
         </>
       )}
     </AnimatePresence>

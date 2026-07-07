@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Share2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import type { RecommendedProduct } from "../../types";
 import { buildImageUrl, extractNoteText, formatPrice } from "../../utils/productHelpers";
+import MediaViewer from "../../../../components/ui/MediaViewer";
+import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
 
 interface ProductDetailModalProps {
   product: RecommendedProduct | null;
@@ -13,6 +15,7 @@ interface ProductDetailModalProps {
 const FALLBACK_IMAGE = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'><rect width='300' height='300' fill='%23171e2e'/></svg>`;
 
 const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps) => {
+  const { isOpen: isMediaOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
   const [imgIdx, setImgIdx] = useState(0);
   const [dragStartY, setDragStartY] = useState<number | null>(null);
   const galleryScrollRef = useRef<HTMLDivElement>(null);
@@ -58,6 +61,21 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
     }
   }, [product?.title]);
 
+  const lightboxMediaItems = useMemo(() => {
+    if (!product) return [];
+    const mainImg = buildImageUrl(product.logo_url);
+    const gallery = (product.images || []).map(buildImageUrl).filter(Boolean);
+    const allImages = mainImg ? [mainImg, ...gallery.filter((i) => i !== mainImg)] : gallery;
+
+    return convertToMediaItems(
+      allImages.map((url, index) => ({
+        id: `img-${index}`,
+        url,
+        alt: `${product.title} - Image ${index + 1}`,
+      }))
+    );
+  }, [product]);
+
   if (!product) return null;
 
   const mainImg = buildImageUrl(product.logo_url);
@@ -70,6 +88,10 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
   
   // Use the first gallery image as backdrop, or main image, or fallback workspace photo
   const backdropUrl = allImages.length > 0 ? allImages[imgIdx] : "https://images.unsplash.com/photo-1505740420928-5e560c06d30e";
+
+  const handleImageClick = (index: number) => {
+    openViewer(index);
+  };
 
   return (
     <AnimatePresence>
@@ -121,7 +143,10 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
               <div ref={contentRef} className="flex-1 pb-24 md:pb-6 w-full">
                 <div className="flex gap-4 px-5 -mt-16 relative z-10">
                   {/* Primary product image container */}
-                  <div className="flex-shrink-0 w-28 h-28 rounded-2xl overflow-hidden ring-2 ring-white/10 shadow-2xl bg-[#1a2332]">
+                  <div 
+                    onClick={() => handleImageClick(0)}
+                    className="flex-shrink-0 w-28 h-28 rounded-2xl overflow-hidden ring-2 ring-white/10 shadow-2xl bg-[#1a2332] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                  >
                     <img
                       src={mainImg || FALLBACK_IMAGE}
                       alt={product.title}
@@ -214,8 +239,11 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
                           {allImages.map((url, i) => (
                             <button
                               key={i}
-                              onClick={() => setImgIdx(i)}
-                              className={`flex-shrink-0 w-56 aspect-square rounded-xl overflow-hidden border transition-all ${i === imgIdx ? 'border-emerald-400 scale-[1.01]' : 'border-white/10 opacity-70 hover:opacity-100'} bg-[#1a2332]`}
+                              onClick={() => {
+                                setImgIdx(i);
+                                handleImageClick(i);
+                              }}
+                              className={`flex-shrink-0 w-56 aspect-square rounded-xl overflow-hidden border transition-all ${i === imgIdx ? 'border-emerald-400 scale-[1.01]' : 'border-white/10 opacity-70 hover:opacity-100'} bg-[#1a2332] hover:scale-[1.01] active:scale-[0.99] duration-200`}
                             >
                               <img 
                                 src={url} 
@@ -267,6 +295,12 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
               </div>
             </motion.div>
           </div>
+          <MediaViewer
+            mediaItems={lightboxMediaItems}
+            initialIndex={currentIndex}
+            isOpen={isMediaOpen}
+            onClose={closeViewer}
+          />
         </>
       )}
     </AnimatePresence>

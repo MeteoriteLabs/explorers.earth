@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Share2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import type { RecommendedApp } from "../../types";
 import { buildLogoUrl, extractNoteText, getPriceTierColor, getPlatformColor } from "../../utils/appHelpers";
+import MediaViewer from "../../../../components/ui/MediaViewer";
+import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
 
 interface AppDetailModalProps {
   app: RecommendedApp | null;
@@ -13,6 +15,7 @@ interface AppDetailModalProps {
 const FALLBACK_LOGO = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23171e2e'/></svg>`;
 
 const AppDetailModal = ({ app, open, onClose }: AppDetailModalProps) => {
+  const { isOpen: isMediaOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
   const [_screenshotIdx, _setScreenshotIdx] = useState(0);
   const [dragStartY, setDragStartY] = useState<number | null>(null);
   const snapshotsScrollRef = useRef<HTMLDivElement>(null);
@@ -58,6 +61,31 @@ const AppDetailModal = ({ app, open, onClose }: AppDetailModalProps) => {
     }
   }, [app?.title]);
 
+  const lightboxMediaItems = useMemo(() => {
+    if (!app) return [];
+    const logoUrl = buildLogoUrl(app.logo_url);
+    const screenshots = app.screenshots || [];
+
+    const items: any[] = [];
+    if (logoUrl && logoUrl !== FALLBACK_LOGO) {
+      items.push({
+        id: "logo",
+        url: logoUrl,
+        alt: app.title,
+      });
+    }
+    if (screenshots && screenshots.length > 0) {
+      screenshots.forEach((url: string, index: number) => {
+        items.push({
+          id: `screenshot-${index}`,
+          url,
+          alt: `Screenshot ${index + 1}`,
+        });
+      });
+    }
+    return convertToMediaItems(items);
+  }, [app]);
+
   if (!app) return null;
 
   const logoUrl = buildLogoUrl(app.logo_url);
@@ -66,6 +94,17 @@ const AppDetailModal = ({ app, open, onClose }: AppDetailModalProps) => {
   const backdropUrl = screenshots.length > 0 ? screenshots[0] : logoUrl;
   const noteText = extractNoteText(app.user_recommendation_note);
   const platforms = app.platforms || [];
+
+  const handleImageClick = (type: 'logo' | 'screenshot', index: number = 0) => {
+    let targetIndex = 0;
+    const hasLogo = logoUrl && logoUrl !== FALLBACK_LOGO;
+    if (type === 'logo') {
+      targetIndex = 0;
+    } else if (type === 'screenshot') {
+      targetIndex = (hasLogo ? 1 : 0) + index;
+    }
+    openViewer(targetIndex);
+  };
 
   return (
     <AnimatePresence>
@@ -117,7 +156,10 @@ const AppDetailModal = ({ app, open, onClose }: AppDetailModalProps) => {
               <div ref={contentRef} className="flex-1 pb-24 md:pb-6 w-full">
                 <div className="flex gap-4 px-5 -mt-16 relative z-10">
                   {/* Logo */}
-                  <div className="flex-shrink-0 w-28 h-28 rounded-2xl overflow-hidden ring-2 ring-white/10 shadow-2xl bg-[#1a2332]">
+                  <div 
+                    onClick={() => handleImageClick("logo")}
+                    className="flex-shrink-0 w-28 h-28 rounded-2xl overflow-hidden ring-2 ring-white/10 shadow-2xl bg-[#1a2332] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                  >
                     <img
                       src={logoUrl || FALLBACK_LOGO}
                       alt={app.title}
@@ -206,7 +248,11 @@ const AppDetailModal = ({ app, open, onClose }: AppDetailModalProps) => {
                         </button>
                         <div ref={snapshotsScrollRef} className="flex overflow-x-auto pb-4 -mx-5 px-5 gap-3 hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                           {screenshots.map((url, i) => (
-                            <div key={i} className="flex-shrink-0 w-56 aspect-video rounded-xl overflow-hidden border border-white/10 bg-[#1a2332]">
+                            <div 
+                              key={i} 
+                              onClick={() => handleImageClick("screenshot", i)}
+                              className="flex-shrink-0 w-56 aspect-video rounded-xl overflow-hidden border border-white/10 bg-[#1a2332] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                            >
                               <img 
                                 src={url} 
                                 className="w-full h-full object-cover" 
@@ -267,6 +313,12 @@ const AppDetailModal = ({ app, open, onClose }: AppDetailModalProps) => {
               </div>
             </motion.div>
           </div>
+          <MediaViewer
+            mediaItems={lightboxMediaItems}
+            initialIndex={currentIndex}
+            isOpen={isMediaOpen}
+            onClose={closeViewer}
+          />
         </>
       )}
     </AnimatePresence>

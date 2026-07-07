@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Clock, User, ExternalLink, Share2, Tv, ChevronLeft, ChevronRight } from "lucide-react";
 import type { RecommendedMovie, TMDBCastMember } from "../../types";
 import { buildPosterUrl, buildBackdropUrl, buildLogoUrl, formatRating, formatRuntime, getGenreNames, extractNoteText } from "../../utils/movieHelpers";
+import MediaViewer from "../../../../components/ui/MediaViewer";
+import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
 
 interface MovieDetailModalProps {
   movie: RecommendedMovie | null;
@@ -13,6 +15,7 @@ interface MovieDetailModalProps {
 const FALLBACK_POSTER = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='450' viewBox='0 0 300 450'><rect width='300' height='450' fill='%23171e2e'/></svg>`;
 
 const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
+  const { isOpen: isMediaOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
   const [photoIndex, setPhotoIndex] = useState(0);
   const [dragStartY, setDragStartY] = useState<number | null>(null);
   const [cast, setCast] = useState<TMDBCastMember[]>([]);
@@ -86,6 +89,40 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
     }
   }, [movie?.title]);
 
+  const lightboxMediaItems = useMemo(() => {
+    if (!movie) return [];
+    const posterUrl = buildPosterUrl(movie.poster_path, "w500");
+    const photos = movie.Media?.filter(m => m.url) ?? [];
+    const items: any[] = [];
+    if (posterUrl && posterUrl !== FALLBACK_POSTER) {
+      items.push({
+        id: "poster",
+        url: posterUrl,
+        alt: movie.title,
+      });
+    }
+    if (movie.media_details?.imageDetails) {
+      movie.media_details.imageDetails.forEach((snap: any, index: number) => {
+        const url = snap.url.startsWith('http') ? snap.url : (snap.url.startsWith('/') ? `${import.meta.env.VITE_REST_API_URL?.replace('/api', '') || 'http://localhost:1337'}${snap.url}` : snap.url);
+        items.push({
+          id: `snap-${index}`,
+          url,
+          alt: `Snapshot ${index + 1}`,
+        });
+      });
+    }
+    if (photos && photos.length > 0) {
+      photos.forEach((photo: any, index: number) => {
+        items.push({
+          id: `photo-${index}`,
+          url: photo.url,
+          alt: `Creator Photo ${index + 1}`,
+        });
+      });
+    }
+    return convertToMediaItems(items);
+  }, [movie]);
+
   if (!movie) return null;
 
   const genres = getGenreNames(movie.genres);
@@ -96,6 +133,20 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
   const photos = movie.Media?.filter(m => m.url) ?? [];
   const watchProviders = movie.watch_providers ?? [];
   const noteText = extractNoteText(movie.user_recommendation_note);
+
+  const handleImageClick = (type: 'poster' | 'snap' | 'photo', index: number = 0) => {
+    let targetIndex = 0;
+    const hasPoster = posterUrl && posterUrl !== FALLBACK_POSTER;
+    if (type === 'poster') {
+      targetIndex = 0;
+    } else if (type === 'snap') {
+      targetIndex = (hasPoster ? 1 : 0) + index;
+    } else if (type === 'photo') {
+      const snapCount = movie.media_details?.imageDetails?.length || 0;
+      targetIndex = (hasPoster ? 1 : 0) + snapCount + index;
+    }
+    openViewer(targetIndex);
+  };
 
   return (
     <AnimatePresence>
@@ -147,7 +198,10 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
               <div ref={contentRef} className="flex-1 pb-24 md:pb-6 w-full">
                 <div className="flex gap-4 px-5 -mt-16 relative z-10">
                   {/* Poster */}
-                  <div className="flex-shrink-0 w-28 rounded-xl overflow-hidden ring-2 ring-white/10 shadow-2xl">
+                  <div 
+                    onClick={() => handleImageClick("poster")}
+                    className="flex-shrink-0 w-28 rounded-xl overflow-hidden ring-2 ring-white/10 shadow-2xl cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                  >
                     <img
                       src={posterUrl || FALLBACK_POSTER}
                       alt={movie.title}
@@ -295,8 +349,12 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                           <ChevronLeft size={16} />
                         </button>
                         <div ref={snapshotsScrollRef} className="flex overflow-x-auto pb-4 -mx-5 px-5 gap-3 hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                          {movie.media_details.imageDetails.map((snap: any) => (
-                            <div key={snap.id} className="flex-shrink-0 w-56 aspect-video rounded-xl overflow-hidden border border-white/10 bg-[#1a2332]">
+                          {movie.media_details.imageDetails.map((snap: any, i: number) => (
+                            <div 
+                              key={snap.id} 
+                              onClick={() => handleImageClick("snap", i)}
+                              className="flex-shrink-0 w-56 aspect-video rounded-xl overflow-hidden border border-white/10 bg-[#1a2332] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                            >
                               <img 
                                 src={snap.url.startsWith('http') ? snap.url : (snap.url.startsWith('/') ? `${import.meta.env.VITE_REST_API_URL?.replace('/api', '') || 'http://localhost:1337'}${snap.url}` : snap.url)} 
                                 className="w-full h-full object-cover" 
@@ -356,7 +414,10 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                     <div>
                       <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">Photos</p>
                       <div className="relative">
-                        <div className="aspect-video rounded-xl overflow-hidden bg-white/5">
+                        <div 
+                          onClick={() => handleImageClick("photo", photoIndex)}
+                          className="aspect-video rounded-xl overflow-hidden bg-white/5 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-200"
+                        >
                           <img src={photos[photoIndex]?.url} alt="" className="w-full h-full object-cover" />
                         </div>
                         {photos.length > 1 && (
@@ -391,7 +452,6 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                 </div>
               </div>
 
-              {/* Footer actions */}
               <div className="flex-shrink-0 border-t border-white/8 px-5 py-3 flex items-center justify-end gap-2 bg-[#0d1117]">
                 <button
                   onClick={handleShare}
@@ -402,6 +462,12 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
               </div>
             </motion.div>
           </div>
+          <MediaViewer
+            mediaItems={lightboxMediaItems}
+            initialIndex={currentIndex}
+            isOpen={isMediaOpen}
+            onClose={closeViewer}
+          />
         </>
       )}
     </AnimatePresence>

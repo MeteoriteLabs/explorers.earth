@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Gamepad2, Calendar, Share2, ChevronLeft, ChevronRight, Trophy } from "lucide-react";
 import type { RecommendedGame } from "../../types";
 import { buildCoverUrl, extractNoteText } from "../../utils/gameHelpers";
+import MediaViewer from "../../../../components/ui/MediaViewer";
+import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
 
 interface GameDetailModalProps {
   game: RecommendedGame | null;
@@ -13,6 +15,7 @@ interface GameDetailModalProps {
 const FALLBACK_COVER = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='450' viewBox='0 0 300 450'><rect width='300' height='450' fill='%23171e2e'/></svg>`;
 
 const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
+  const { isOpen: isMediaOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
   const [dragStartY, setDragStartY] = useState<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const snapshotsScrollRef = useRef<HTMLDivElement>(null);
@@ -61,6 +64,33 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
     }
   }, [game?.title]);
 
+  const lightboxMediaItems = useMemo(() => {
+    if (!game) return [];
+    const coverUrl = buildCoverUrl(game.cover_url_large || game.cover_url);
+    const screenshots = game.media_details?.imageDetails?.length 
+      ? game.media_details.imageDetails.map((img: any) => buildCoverUrl(img.url))
+      : (game.screenshot_ids?.map((id: string) => `https://images.igdb.com/igdb/image/upload/t_1080p/${id}.jpg`) || []);
+
+    const items: any[] = [];
+    if (coverUrl && coverUrl !== FALLBACK_COVER) {
+      items.push({
+        id: "cover",
+        url: coverUrl,
+        alt: game.title,
+      });
+    }
+    if (screenshots && screenshots.length > 0) {
+      screenshots.forEach((url: string, index: number) => {
+        items.push({
+          id: `screenshot-${index}`,
+          url,
+          alt: `Screenshot ${index + 1}`,
+        });
+      });
+    }
+    return convertToMediaItems(items);
+  }, [game]);
+
   if (!game) return null;
 
   const coverUrl = buildCoverUrl(game.cover_url_large || game.cover_url);
@@ -70,6 +100,17 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
 
   const backdropUrl = screenshots.length > 0 ? screenshots[0] : null;
   const noteText = extractNoteText(game.user_recommendation_note);
+
+  const handleImageClick = (type: 'cover' | 'screenshot', index: number = 0) => {
+    let targetIndex = 0;
+    const hasCover = coverUrl && coverUrl !== FALLBACK_COVER;
+    if (type === 'cover') {
+      targetIndex = 0;
+    } else if (type === 'screenshot') {
+      targetIndex = (hasCover ? 1 : 0) + index;
+    }
+    openViewer(targetIndex);
+  };
 
   return (
     <AnimatePresence>
@@ -121,7 +162,10 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
               <div ref={contentRef} className="flex-1 pb-24 md:pb-6 w-full">
                 <div className="flex gap-4 px-5 -mt-16 relative z-10">
                   {/* Poster */}
-                  <div className="flex-shrink-0 w-28 rounded-xl overflow-hidden ring-2 ring-white/10 shadow-2xl bg-[#161b22]">
+                  <div 
+                    onClick={() => handleImageClick("cover")}
+                    className="flex-shrink-0 w-28 rounded-xl overflow-hidden ring-2 ring-white/10 shadow-2xl bg-[#161b22] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                  >
                     <img
                       src={coverUrl || FALLBACK_COVER}
                       alt={game.title}
@@ -222,7 +266,11 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
                         </button>
                         <div ref={snapshotsScrollRef} className="flex overflow-x-auto pb-4 -mx-5 px-5 gap-3 hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                           {screenshots.map((url, i) => (
-                            <div key={i} className="flex-shrink-0 w-64 aspect-video rounded-xl overflow-hidden border border-white/10 bg-[#1a2332]">
+                            <div 
+                              key={i} 
+                              onClick={() => handleImageClick("screenshot", i)}
+                              className="flex-shrink-0 w-64 aspect-video rounded-xl overflow-hidden border border-white/10 bg-[#1a2332] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                            >
                               <img 
                                 src={url} 
                                 className="w-full h-full object-cover" 
@@ -261,6 +309,12 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
               </div>
             </motion.div>
           </div>
+          <MediaViewer
+            mediaItems={lightboxMediaItems}
+            initialIndex={currentIndex}
+            isOpen={isMediaOpen}
+            onClose={closeViewer}
+          />
         </>
       )}
     </AnimatePresence>
