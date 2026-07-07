@@ -32,7 +32,8 @@ import {
   createUtmParams,
 } from "../../../utils/urlHelpers";
 import Location from "../../../assets/icons/Location";
-import { Share2, Copy, ArrowLeft } from "lucide-react";
+import { Share2, Copy, ArrowLeft, Users, ShoppingBag } from "lucide-react";
+import { buildImageUrl } from "../../People/utils/personHelpers";
 import { AdvancedMarker, Map, Pin, useMap } from "@vis.gl/react-google-maps";
 import { getPlaceCoordinatesQuery } from "../api/query";
 import { toast } from "sonner";
@@ -82,6 +83,8 @@ interface City {
   Instagram_Media_URL?: string;
   Note?: string;
   description?: string;
+  person_lists?: any[];
+  product_lists?: any[];
 }
 
 // Helper function to get person image with avatar fallback
@@ -164,6 +167,43 @@ const PublicHome = memo(() => {
   const accountData = data?.accounts[0];
 
   const [selectedCity, setSelectedCity] = useState<City | undefined>(undefined);
+  const [activeTab, setActiveTab] = useState<"places" | "people" | "products">("places");
+
+  // Reset activeTab when selectedCity changes
+  useEffect(() => {
+    setActiveTab("places");
+  }, [selectedCity?.documentId]);
+
+  // Linked person and product lists for the selected city
+  const linkedPersonLists = useMemo(() => {
+    return (selectedCity?.person_lists || []).filter((l: any) => l.Visibility === true);
+  }, [selectedCity]);
+
+  const linkedProductLists = useMemo(() => {
+    return (selectedCity?.product_lists || []).filter((l: any) => l.Visibility === true);
+  }, [selectedCity]);
+
+  const linkedPeople = useMemo(() => {
+    return linkedPersonLists.flatMap((l: any) =>
+      (l.recommended_people || []).map((p: any) => ({
+        ...p,
+        _listName: l.List_Name,
+        _listId: l.documentId,
+        _listSlug: l.slug,
+      }))
+    );
+  }, [linkedPersonLists]);
+
+  const linkedProducts = useMemo(() => {
+    return linkedProductLists.flatMap((l: any) =>
+      (l.recommended_products || []).map((p: any) => ({
+        ...p,
+        _listName: l.List_Name,
+        _listId: l.documentId,
+        _listSlug: l.slug,
+      }))
+    );
+  }, [linkedProductLists]);
 
   // Memoize expensive calculations to prevent unnecessary re-renders
   const PublishedCities = useMemo(() => {
@@ -1544,73 +1584,187 @@ const PublicHome = memo(() => {
                         </p>
                       </div>
 
-                      {/* Category Tag Selection */}
-                      <div className="overflow-x-auto scrollbar-hide py-1">
-                        {categories && categories.length >= 1 && (
-                          <div className="flex gap-2">
-                            <Button
-                              btnText={"All"}
-                              type="button"
-                              variant={selectedCategory === "" ? "tagSelected" : "tag"}
-                              onClickHandler={() => setSelectedCategory("")}
-                              size="xsmall"
-                            />
-                            {categories?.map((tag: string, index: number) => (
-                              <Button
-                                key={index}
-                                btnText={tag}
-                                type="button"
-                                variant={selectedCategory === tag ? "tagSelected" : "tag"}
-                                onClickHandler={() => setSelectedCategory(tag)}
-                                size="xsmall"
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      {/* Tab Switcher */}
+                      {(filteredPlaces?.length > 0 || linkedPeople.length > 0 || linkedProducts.length > 0) && (
+                        <div className="flex gap-1 p-1 bg-white/5 border border-white/10 rounded-xl w-fit mb-4">
+                          {([
+                            { key: "places", label: "Places", count: filteredPlaces?.length || 0 },
+                            { key: "people", label: "People", count: linkedPeople.length },
+                            { key: "products", label: "Products", count: linkedProducts.length },
+                          ] as const).map(({ key, label, count }) => (
+                            <button
+                              key={key}
+                              onClick={() => setActiveTab(key)}
+                              className={`relative px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 ${
+                                activeTab === key
+                                  ? "bg-blue-600 text-white shadow-lg shadow-blue-900/30"
+                                  : "text-gray-400 hover:text-white"
+                              }`}
+                            >
+                              {label}
+                              {count > 0 && (
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                                  activeTab === key ? "bg-white/20" : "bg-white/10"
+                                }`}>{count}</span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
 
-                      {/* Places Grid */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-4">
-                        {placesQueryLoading && !filteredPlaces?.length ? (
-                          <RecommendationCardSkeleton count={6} />
-                        ) : filteredPlaces?.length ? (
-                          <>
-                            {filteredPlaces?.map((place: CardDataItem) => {
-                              const isPersonType = place?.Recommendation_Type === "person";
-
-                              return (
-                                <PublicPlaceCard
-                                  key={place.documentId}
-                                  onClickhandler={() =>
-                                    setIsExpanded({
-                                      visible: true,
-                                      documentId: place.documentId,
-                                    })
-                                  }
-                                  className="w-full h-[155px] md:h-[180px]"
-                                  image={
-                                    isPersonType
-                                      ? getPersonImageUrl(place)
-                                      : (place?.media_details?.thumbnail?.url ||
-                                        place?.Media?.[0]?.url ||
-                                        place?.Place_Details?.Photos?.[0] ||
-                                        IMAGE_CONFIG.defaultImages.place)
-                                  }
-                                  title={isPersonType ? (place.Contact_Name || "") : (place.Place_Details?.Title || "")}
-                                  rating={!isPersonType ? place.Place_Details?.Rating : undefined}
-                                  reviews={!isPersonType ? place.Place_Details?.Rating_Count : undefined}
+                      {/* Places Tab Content */}
+                      {activeTab === "places" && (
+                        <>
+                          {/* Category Tag Selection */}
+                          <div className="overflow-x-auto scrollbar-hide py-1">
+                            {categories && categories.length >= 1 && (
+                              <div className="flex gap-2">
+                                <Button
+                                  btnText={"All"}
+                                  type="button"
+                                  variant={selectedCategory === "" ? "tagSelected" : "tag"}
+                                  onClickHandler={() => setSelectedCategory("")}
+                                  size="xsmall"
                                 />
+                                {categories?.map((tag: string, index: number) => (
+                                  <Button
+                                    key={index}
+                                    btnText={tag}
+                                    type="button"
+                                    variant={selectedCategory === tag ? "tagSelected" : "tag"}
+                                    onClickHandler={() => setSelectedCategory(tag)}
+                                    size="xsmall"
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Places Grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-4">
+                            {placesQueryLoading && !filteredPlaces?.length ? (
+                              <RecommendationCardSkeleton count={6} />
+                            ) : filteredPlaces?.length ? (
+                              <>
+                                {filteredPlaces?.map((place: CardDataItem) => {
+                                  const isPersonType = place?.Recommendation_Type === "person";
+
+                                  return (
+                                    <PublicPlaceCard
+                                      key={place.documentId}
+                                      onClickhandler={() =>
+                                        setIsExpanded({
+                                          visible: true,
+                                          documentId: place.documentId,
+                                        })
+                                      }
+                                      className="w-full h-[155px] md:h-[180px]"
+                                      image={
+                                        isPersonType
+                                          ? getPersonImageUrl(place)
+                                          : (place?.media_details?.thumbnail?.url ||
+                                            place?.Media?.[0]?.url ||
+                                            place?.Place_Details?.Photos?.[0] ||
+                                            IMAGE_CONFIG.defaultImages.place)
+                                      }
+                                      title={isPersonType ? (place.Contact_Name || "") : (place.Place_Details?.Title || "")}
+                                      rating={!isPersonType ? place.Place_Details?.Rating : undefined}
+                                      reviews={!isPersonType ? place.Place_Details?.Rating_Count : undefined}
+                                    />
+                                  );
+                                })}
+                                {/* Observer target for infinite scroll */}
+                                <div ref={desktopObserverTarget} className="h-10 w-full col-span-2" />
+                              </>
+                            ) : (
+                              <h1 className="flex text-white items-center justify-center font-poppins font-semibold col-span-2 py-8">
+                                No Recommendation Available.
+                              </h1>
+                            )}
+                          </div>
+                        </>
+                      )}
+
+                      {/* People Tab Content */}
+                      {activeTab === "people" && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-4">
+                          {linkedPeople.length === 0 ? (
+                            <h1 className="flex text-white items-center justify-center font-poppins font-semibold col-span-3 py-8">
+                              No People linked to this location.
+                            </h1>
+                          ) : (
+                            linkedPeople.map((person: any, index: number) => {
+                              const avatarSrc = person.media_details?.thumbnail?.url || person.media_details?.imageDetails?.[0]?.url || (person.avatar_path ? buildImageUrl(person.avatar_path) : null) || null;
+                              return (
+                                <div
+                                  key={person.documentId || `linked-person-${index}`}
+                                  className="bg-white/5 border border-white/5 rounded-xl p-4 flex flex-col gap-3 hover:border-blue-500/40 transition-all cursor-pointer"
+                                  onClick={() => navigate(`/${username}/people/${person._listSlug}`)}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-violet-950/40 ring-2 ring-white/10">
+                                      {avatarSrc ? (
+                                        <img src={avatarSrc} alt={person.name} className="w-full h-full object-cover" loading="lazy" />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center bg-violet-900/20">
+                                          <Users size={16} className="text-violet-400/40" />
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-semibold text-sm text-white truncate">{person.name}</p>
+                                      {person.headline && <p className="text-xs text-gray-400 truncate">{person.headline}</p>}
+                                    </div>
+                                  </div>
+                                  {person.skills_tags && person.skills_tags.length > 0 && (
+                                    <div className="flex flex-wrap gap-1">
+                                      {person.skills_tags.slice(0, 3).map((tag: string) => (
+                                        <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-300 border border-violet-500/20">{tag}</span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  <p className="text-[10px] text-gray-500">List: {person._listName}</p>
+                                </div>
                               );
-                            })}
-                            {/* Observer target for infinite scroll */}
-                            <div ref={desktopObserverTarget} className="h-10 w-full col-span-2" />
-                          </>
-                        ) : (
-                          <h1 className="flex text-white items-center justify-center font-poppins font-semibold col-span-2 py-8">
-                            No Recommendation Available.
-                          </h1>
-                        )}
-                      </div>
+                            })
+                          )}
+                        </div>
+                      )}
+
+                      {/* Products Tab Content */}
+                      {activeTab === "products" && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-4">
+                          {linkedProducts.length === 0 ? (
+                            <h1 className="flex text-white items-center justify-center font-poppins font-semibold col-span-3 py-8">
+                              No Products linked to this location.
+                            </h1>
+                          ) : (
+                            linkedProducts.map((product: any, index: number) => (
+                              <div
+                                key={product.documentId || `linked-product-${index}`}
+                                className="bg-white/5 border border-white/5 rounded-xl overflow-hidden hover:border-blue-500/40 transition-all cursor-pointer flex flex-col justify-between"
+                                onClick={() => navigate(`/${username}/products/${product._listSlug}`)}
+                              >
+                                <div className="h-32 bg-black/40 flex items-center justify-center overflow-hidden">
+                                  {product.logo_url ? (
+                                    <img src={product.logo_url} alt={product.title} className="h-full w-full object-cover" loading="lazy" />
+                                  ) : (
+                                    <ShoppingBag size={32} className="text-orange-400/30" />
+                                  )}
+                                </div>
+                                <div className="p-3">
+                                  <p className="font-semibold text-sm text-white truncate">{product.title}</p>
+                                  {product.brand && <p className="text-xs text-gray-400 truncate">{product.brand}</p>}
+                                  {product.price != null && (
+                                    <p className="text-xs text-blue-400 font-semibold mt-1">{product.currency || ""} {product.price}</p>
+                                  )}
+                                  <p className="text-[10px] text-gray-500 mt-1">List: {product._listName}</p>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

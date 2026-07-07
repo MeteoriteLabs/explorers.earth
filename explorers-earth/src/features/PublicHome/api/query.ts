@@ -101,6 +101,45 @@ export const accountsDetailQuery = gql`
           Contact_Name
           media_details
         }
+        person_lists(sort: ["display_order:asc"], pagination: { limit: 50 }) {
+          documentId
+          List_Name
+          slug
+          Visibility
+          recommended_people(sort: ["display_order:asc"], pagination: { limit: 200 }) {
+            documentId
+            name
+            username_handle
+            headline
+            location
+            avatar_path
+            media_details
+            primary_platform
+            skills_tags
+            user_rating
+            is_pinned
+            display_order
+          }
+        }
+        product_lists(sort: ["display_order:asc"], pagination: { limit: 50 }) {
+          documentId
+          List_Name
+          slug
+          Visibility
+          recommended_products(sort: ["display_order:asc"], pagination: { limit: 200 }) {
+            documentId
+            title
+            brand
+            price
+            currency
+            logo_url
+            buy_url
+            user_rating
+            is_pinned
+            display_order
+            images
+          }
+        }
       }
     }
   }
@@ -158,6 +197,45 @@ export const accountsDetailsByPlace = gql`
           Recommendation_Type
           Contact_Name
           media_details
+        }
+        person_lists(sort: ["display_order:asc"], pagination: { limit: 50 }) {
+          documentId
+          List_Name
+          slug
+          Visibility
+          recommended_people(sort: ["display_order:asc"], pagination: { limit: 200 }) {
+            documentId
+            name
+            username_handle
+            headline
+            location
+            avatar_path
+            media_details
+            primary_platform
+            skills_tags
+            user_rating
+            is_pinned
+            display_order
+          }
+        }
+        product_lists(sort: ["display_order:asc"], pagination: { limit: 50 }) {
+          documentId
+          List_Name
+          slug
+          Visibility
+          recommended_products(sort: ["display_order:asc"], pagination: { limit: 200 }) {
+            documentId
+            title
+            brand
+            price
+            currency
+            logo_url
+            buy_url
+            user_rating
+            is_pinned
+            display_order
+            images
+          }
         }
       }
     }
