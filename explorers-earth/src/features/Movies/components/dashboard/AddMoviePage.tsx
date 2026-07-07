@@ -429,7 +429,7 @@ const AddMoviePage = () => {
         let finalPosterPath = posterPath;
         let finalBackdropPath = backdropPath;
 
-        const uploadImageToS3 = async (urlPath: string, type: string) => {
+        const uploadImageToS3 = async (urlPath: string, type: string, silent: boolean = false) => {
           if (!urlPath) return urlPath;
           
           let fullUrl = "";
@@ -443,7 +443,9 @@ const AddMoviePage = () => {
           }
 
           try {
-            toast.loading(`Uploading ${type}...`, { id: `upload-${type}` });
+            if (!silent) {
+              toast.loading(`Uploading ${type}...`, { id: `upload-${type}` });
+            }
             const tmdbRes = await axios.get(fullUrl, { responseType: 'blob' });
             const blob = tmdbRes.data;
             const fileType = blob.type || "image/jpeg";
@@ -469,13 +471,17 @@ const AddMoviePage = () => {
               }
             );
 
-            toast.success(`${type} uploaded successfully!`, { id: `upload-${type}` });
+            if (!silent) {
+              toast.success(`${type} uploaded successfully!`, { id: `upload-${type}` });
+            }
             if (uploadRes.data?.[0]?.url) {
               return uploadRes.data[0].url;
             }
           } catch (err: any) {
             console.error(`CATCH ERROR while uploading ${type}:`, err);
-            toast.error(`Error uploading ${type} to S3. Falling back to TMDB URL.`, { id: `upload-${type}` });
+            if (!silent) {
+              toast.error(`Error uploading ${type} to S3. Falling back to TMDB URL.`, { id: `upload-${type}` });
+            }
             // Instead of throwing, we return the original TMDB URL as a fallback
             return fullUrl;
           }
@@ -493,7 +499,7 @@ const AddMoviePage = () => {
           castMembers.map(async (member) => {
             let uploadedUrl = member.profile_path;
             if (uploadedUrl) {
-              uploadedUrl = await uploadImageToS3(uploadedUrl, `cast_${member.id}`);
+              uploadedUrl = await uploadImageToS3(uploadedUrl, `cast_${member.id}`, true);
             }
             return {
               original_name: member.name,

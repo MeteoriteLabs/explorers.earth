@@ -11,6 +11,7 @@ export { default as PublicPersonSector } from "./components/public/PublicPersonS
 export { default as PeopleHome } from "./components/dashboard/PeopleHome";
 export { default as PersonListView } from "./components/dashboard/PersonListView";
 export { default as AddPersonPage } from "./components/dashboard/AddPersonPage";
+export { default as PlatformIcon } from "./components/PlatformIcon";
 
 // Types
 export type * from "./types";

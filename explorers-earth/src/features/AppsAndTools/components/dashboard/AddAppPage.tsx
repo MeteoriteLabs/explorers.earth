@@ -301,9 +301,11 @@ const AddAppPage = () => {
       let uploadedSnapshots: { id: string; url: string }[] = [...existingSnapshots];
 
       // Upload S3 helper for URL-based images
-      const uploadUrlToS3 = async (imageUrl: string, label: string): Promise<string> => {
+      const uploadUrlToS3 = async (imageUrl: string, label: string, silent: boolean = false): Promise<string> => {
         try {
-          toast.loading(`Uploading ${label}...`, { id: `upload-${label}` });
+          if (!silent) {
+            toast.loading(`Uploading ${label}...`, { id: `upload-${label}` });
+          }
           const res = await axios.get(imageUrl, { responseType: "blob" });
           const blob: Blob = res.data;
           const fileType = blob.type || "image/jpeg";
@@ -321,11 +323,15 @@ const AddAppPage = () => {
             fd,
             { headers: { "Content-Type": "multipart/form-data", ...(token ? { Authorization: `Bearer ${token}` } : {}) } }
           );
-          toast.success(`${label} uploaded!`, { id: `upload-${label}` });
+          if (!silent) {
+            toast.success(`${label} uploaded!`, { id: `upload-${label}` });
+          }
           if (uploadRes.data?.[0]?.url) return uploadRes.data[0].url;
         } catch (err) {
           console.error(`S3 upload failed for ${label}:`, err);
-          toast.error(`Could not upload ${label}.`, { id: `upload-${label}` });
+          if (!silent) {
+            toast.error(`Could not upload ${label}.`, { id: `upload-${label}` });
+          }
         }
         return imageUrl;
       };
@@ -334,11 +340,11 @@ const AddAppPage = () => {
         // Upload selected scraped screenshots to S3
         const selectedScraped = scrapedImages.filter((img) => img.selected);
         if (selectedScraped.length > 0) {
-          toast.loading("Uploading fetched images...", { id: "upload-scraped" });
+          toast.loading("Uploading images...", { id: "upload-scraped" });
           const scrapedUploads = await Promise.all(
             selectedScraped.map(async (img, idx) => {
               try {
-                const s3Url = await uploadUrlToS3(img.url, `scraped_${idx}`);
+                const s3Url = await uploadUrlToS3(img.url, `scraped_${idx}`, true);
                 return { id: `scraped_${Date.now()}_${idx}`, url: s3Url };
               } catch {
                 return null;
@@ -693,7 +699,6 @@ const AddAppPage = () => {
                     <button type="button" onClick={() => setScrapedImages((imgs) => imgs.map((img) => ({ ...img, selected: false })))} className="text-white/30 hover:text-white/50 transition-colors">Deselect All</button>
                   </div>
                 </div>
-                <p className="text-[11px] text-white/30 mb-3">Click to deselect images you don't want. Selected images will be uploaded to S3.</p>
                 <div className="flex flex-wrap gap-2">
                   {scrapedImages.map((img, i) => (
                     <button

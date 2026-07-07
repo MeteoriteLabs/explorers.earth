@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Share2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import type { RecommendedPerson } from "../../types";
 import { buildImageUrl, extractNoteText, getPlatformLabel, getPlatformBadgeClass, getPlatformColor } from "../../utils/personHelpers";
+import PlatformIcon from "../PlatformIcon";
 import MediaViewer from "../../../../components/ui/MediaViewer";
 import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
 
@@ -165,9 +166,7 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
                     <div className="flex items-center gap-2 flex-wrap">
                       <h2 className="text-xl font-bold text-white leading-tight">{person.full_name}</h2>
                       {person.platform && (
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${getPlatformBadgeClass(person.platform)}`}>
-                          {getPlatformLabel(person.platform)}
-                        </span>
+                        <PlatformIcon platform={person.platform} size={16} className="flex-shrink-0" />
                       )}
                     </div>
                     {person.handle && (

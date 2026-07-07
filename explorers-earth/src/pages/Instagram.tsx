@@ -93,7 +93,7 @@ const Instagram = () => {
             const data = await instagramService.extractAccountPosts(accountInput);
             setAccountData(data);
         } catch (err: any) {
-            const errorMsg = err.response?.data?.message || err.message || "Failed to scrape account";
+            const errorMsg = err.response?.data?.message || err.message || "Failed to import account";
             setError(errorMsg);
         } finally {
             setLoading(false);
@@ -127,7 +127,7 @@ const Instagram = () => {
                                 Instagram Data Extractor
                             </h1>
                             <p className="text-gray-600 mt-1">
-                                Extract posts, profiles, and scrape entire accounts from public Instagram
+                                Extract posts, profiles, and import entire accounts from public Instagram
                             </p>
                         </div>
                     </div>
@@ -167,7 +167,7 @@ const Instagram = () => {
                         >
                             <div className="flex items-center justify-center gap-2">
                                 <Grid3X3 className="w-5 h-5" />
-                                Scrape Account
+                                Import Account
                             </div>
                         </button>
                     </div>
@@ -240,7 +240,7 @@ const Instagram = () => {
                                 ) : (
                                     <Search className="w-5 h-5" />
                                 )}
-                                {loading ? 'Scraping...' : 'Scrape All'}
+                                {loading ? 'Importing...' : 'Import All'}
                             </button>
                         </div>
                     )}
@@ -251,8 +251,8 @@ const Instagram = () => {
                             <div className="flex items-center gap-3">
                                 <Loader2 className="w-5 h-5 text-orange-600 animate-spin" />
                                 <div>
-                                    <p className="font-semibold text-orange-900">Scraping account posts...</p>
-                                    <p className="text-sm text-orange-700">This may take 30–60 seconds depending on how many posts the account has. The scraper scrolls through the profile to load all posts.</p>
+                                    <p className="font-semibold text-orange-900">Importing account posts...</p>
+                                    <p className="text-sm text-orange-700">This may take 30–60 seconds depending on how many posts the account has. This scrolls through the profile to load all posts.</p>
                                 </div>
                             </div>
                         </div>
@@ -511,7 +511,7 @@ const Instagram = () => {
                             </div>
                             <div className="text-right flex flex-col gap-1">
                                 <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-2 rounded-xl font-bold text-lg">
-                                    {accountData.totalScraped} posts scraped
+                                    {accountData.totalScraped} posts imported
                                 </div>
                                 <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1.5 rounded-xl font-semibold text-sm">
                                     {accountData.totalMedia} total media items
@@ -754,9 +754,9 @@ const Instagram = () => {
                                         2
                                     </div>
                                     <div>
-                                        <h3 className="font-semibold text-gray-800 mb-1">Wait for Scraping</h3>
+                                        <h3 className="font-semibold text-gray-800 mb-1">Wait for Import</h3>
                                         <p className="text-gray-600">
-                                            The scraper will scroll through the profile grid and collect all posts and reels. This can take 30–60 seconds.
+                                            The importer will browse the profile grid and collect all posts and reels. This can take 30–60 seconds.
                                         </p>
                                     </div>
                                 </div>
@@ -778,7 +778,7 @@ const Instagram = () => {
                             <p className="text-sm text-blue-900">
                                 <strong>✨ No login required!</strong> This works with any public Instagram {activeTab === 'post' ? 'post' : activeTab === 'profile' ? 'profile' : 'account'},
                                 even from personal accounts. {activeTab === 'post' && 'Our AI will extract location information from the caption and image automatically.'}
-                                {activeTab === 'account' && 'The scraper loads the public profile page and collects all visible posts and reels.'}
+                                {activeTab === 'account' && 'The importer loads the public profile page and collects all visible posts and reels.'}
                             </p>
                         </div>
                     </div>

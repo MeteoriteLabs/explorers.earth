@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Star, ExternalLink } from "lucide-react";
 import { Users } from "lucide-react";
 import type { RecommendedPerson } from "../../types";
 import { buildImageUrl, getPlatformLabel, getPlatformBadgeClass, getPlatformColor } from "../../utils/personHelpers";
+import PlatformIcon from "../PlatformIcon";
 
 interface PersonTopPicksHeroProps {
   people: RecommendedPerson[];
@@ -110,9 +111,7 @@ const PersonTopPicksHero = ({ people, onPersonClick, showManageButton = false, o
                 )}
               </div>
               {activePerson.platform && (
-                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${getPlatformBadgeClass(activePerson.platform)}`}>
-                  {getPlatformLabel(activePerson.platform)}
-                </span>
+                <PlatformIcon platform={activePerson.platform} size={20} className="flex-shrink-0" />
               )}
             </div>
 

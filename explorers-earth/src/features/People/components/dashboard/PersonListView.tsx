@@ -17,6 +17,7 @@ import type { RecommendedPerson, PersonList } from "../../types";
 import Switch from "../../../../components/ui/Switch";
 import PersonDetailModal from "../public/PersonDetailModal";
 import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
+import PlatformIcon from "../PlatformIcon";
 
 const VITE_BASE_URL = import.meta.env.VITE_BASE_URL || "https://explorers.earth";
 
@@ -53,9 +54,7 @@ const PersonRow = ({ person, onPinToggle, onEdit, onDelete, onClick, isPinning }
         <div className="flex items-center gap-2">
           <p className="text-sm font-medium text-white truncate">{person.full_name}</p>
           {person.platform && (
-            <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-md border ${getPlatformBadgeClass(person.platform)}`}>
-              {getPlatformLabel(person.platform)}
-            </span>
+            <PlatformIcon platform={person.platform} size={14} className="flex-shrink-0" />
           )}
         </div>
         <div className="flex items-center gap-2 text-xs text-white/40 mt-0.5 flex-wrap">

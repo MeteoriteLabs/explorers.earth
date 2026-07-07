@@ -277,9 +277,11 @@ const AddPersonPage = () => {
         return uploadRes.data?.[0]?.url || "";
       };
 
-      const uploadUrlToS3 = async (imageUrl: string, label: string, titleForSlug: string): Promise<string> => {
+      const uploadUrlToS3 = async (imageUrl: string, label: string, titleForSlug: string, silent: boolean = false): Promise<string> => {
         try {
-          toast.loading(`Uploading ${label}...`, { id: `upload-${label}` });
+          if (!silent) {
+            toast.loading(`Uploading ${label}...`, { id: `upload-${label}` });
+          }
           
           let blob: Blob | null = null;
 
@@ -333,11 +335,15 @@ const AddPersonPage = () => {
             }
           );
 
-          toast.success(`${label} uploaded!`, { id: `upload-${label}` });
+          if (!silent) {
+            toast.success(`${label} uploaded!`, { id: `upload-${label}` });
+          }
           if (uploadRes.data?.[0]?.url) return uploadRes.data[0].url;
         } catch (err) {
           console.error(`S3 upload failed for ${label}:`, err);
-          toast.error(`Could not upload ${label}, using original URL.`, { id: `upload-${label}` });
+          if (!silent) {
+            toast.error(`Could not upload ${label}, using original URL.`, { id: `upload-${label}` });
+          }
         }
         return imageUrl;
       };
@@ -364,12 +370,12 @@ const AddPersonPage = () => {
       // Upload selected scraped screenshots
       const selectedScraped = scrapedScreenshots.filter(s => s.selected).map(s => s.url);
       if (selectedScraped.length > 0) {
-        toast.loading("Uploading scraped profile images...", { id: "upload-scraped" });
+        toast.loading("Uploading profile images...", { id: "upload-scraped" });
         try {
           const scrapedUploads = await Promise.all(
             selectedScraped.map(async (imgUrl, idx) => {
               try {
-                const s3Url = await uploadUrlToS3(imgUrl, `scraped_${idx}`, formData.full_name || "person");
+                const s3Url = await uploadUrlToS3(imgUrl, `scraped_${idx}`, formData.full_name || "person", true);
                 if (s3Url) {
                   return { id: `scraped_${Date.now()}_${idx}`, url: s3Url };
                 }
@@ -384,9 +390,9 @@ const AddPersonPage = () => {
             ...uploadedSnapshots,
             ...(scrapedUploads.filter(Boolean) as { id: string; url: string }[]),
           ];
-          toast.success("Scraped images uploaded!", { id: "upload-scraped" });
+          toast.success("Profile images uploaded!", { id: "upload-scraped" });
         } catch {
-          toast.error("Failed to upload some scraped images.", { id: "upload-scraped" });
+          toast.error("Failed to upload some profile images.", { id: "upload-scraped" });
         }
       }
 
@@ -740,11 +746,8 @@ const AddPersonPage = () => {
               {scrapedScreenshots.length > 0 && (
                 <div>
                   <label className="text-sm font-semibold text-white/90 mb-2 block">
-                    Scraped Profile Feed / Images ({scrapedScreenshots.filter(s => s.selected).length} selected)
+                    Profile Feed / Images ({scrapedScreenshots.filter(s => s.selected).length} selected)
                   </label>
-                  <p className="text-xs text-dashboard-muted mb-3">
-                    These images were fetched from the profile. Select the ones you want to save to S3 as portfolio images.
-                  </p>
                   <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 mb-4">
                     {scrapedScreenshots.map((item, idx) => (
                       <button
@@ -759,7 +762,7 @@ const AddPersonPage = () => {
                           item.selected ? "border-dashboard-accent ring-2 ring-dashboard-accent/30" : "border-white/10 opacity-60 hover:opacity-100"
                         }`}
                       >
-                        <img src={item.url} className="w-full h-full object-cover" alt={`Scraped ${idx}`} referrerPolicy="no-referrer" />
+                        <img src={item.url} className="w-full h-full object-cover" alt={`Profile Feed Image ${idx}`} referrerPolicy="no-referrer" />
                         <div className={`absolute top-1 right-1 p-0.5 rounded-full ${item.selected ? "bg-dashboard-accent text-white" : "bg-black/60 text-white/50"}`}>
                           <Check size={10} />
                         </div>

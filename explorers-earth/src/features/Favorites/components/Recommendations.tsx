@@ -47,7 +47,7 @@ import { IMAGE_CONFIG } from "../../../config";
 import { ChevronDown, Users, ShoppingBag } from "lucide-react";
 import ProductDetailModal from "../../Products/components/public/ProductDetailModal";
 import PersonDetailModal from "../../People/components/public/PersonDetailModal";
-import { deduplicatePeople, buildImageUrl, getPlatformLabel, getPlatformBadgeClass } from "../../People/utils/personHelpers";
+import { deduplicatePeople, buildImageUrl, getPlatformLabel, getPlatformBadgeClass, PlatformIcon } from "../../People";
 import { deduplicateProducts, formatPrice } from "../../Products/utils/productHelpers";
 
 // ⭐ TS declaration for window.__walkthrough
@@ -1103,8 +1103,8 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
                                 </div>
                               )}
                               {person.platform && (
-                                <div className={`absolute bottom-0 right-0 text-[8px] font-bold px-1 py-0.5 rounded-tl-lg border-t border-l ${getPlatformBadgeClass(person.platform)}`}>
-                                  {getPlatformLabel(person.platform).split(" ")[0]}
+                                <div className="absolute bottom-1 right-1 p-1 bg-black/60 rounded-full border border-white/10 flex items-center justify-center shadow-md z-10">
+                                  <PlatformIcon platform={person.platform} size={10} />
                                 </div>
                               )}
                             </div>

@@ -4,6 +4,7 @@ import { useQuery, gql } from "@apollo/client";
 import { Users, Share2, ArrowLeft } from "lucide-react";
 import { PERSON_LIST_BY_SLUG } from "../../api/query";
 import { deduplicatePeople, buildImageUrl, getPlatformBadgeClass, getPlatformLabel } from "../../utils/personHelpers";
+import PlatformIcon from "../PlatformIcon";
 import type { RecommendedPerson, PersonList } from "../../types";
 import PersonDetailModal from "./PersonDetailModal";
 import { toast } from "sonner";
@@ -178,8 +179,8 @@ const PublicPersonList = () => {
                       </div>
                     )}
                     {person.platform && (
-                      <div className={`absolute bottom-0 right-0 text-[8px] font-bold px-1 py-0.5 rounded-tl-lg border-t border-l ${getPlatformBadgeClass(person.platform)}`}>
-                        {getPlatformLabel(person.platform).split(" ")[0]}
+                      <div className="absolute bottom-1 right-1 p-1 bg-black/60 rounded-full border border-white/10 flex items-center justify-center shadow-md z-10">
+                        <PlatformIcon platform={person.platform} size={10} />
                       </div>
                     )}
                   </div>
