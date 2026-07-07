@@ -1,4 +1,5 @@
 import { Router } from "express";
+import axios from "axios";
 import { scrapeUrl, scrapeProfile } from "../utils/scrapeUtils";
 
 const router = Router();
@@ -56,6 +57,54 @@ router.post("/people/scrape-profile", async (req, res) => {
   } catch (error) {
     console.error("Scrape Profile failed:", error);
     res.status(500).json({ error: "Failed to scrape profile metadata" });
+  }
+});
+
+// GET /api/proxy-image?url=<encoded_url>
+// Server-side image proxy to bypass CDN referrer/token restrictions (e.g. Instagram)
+router.get("/proxy-image", async (req, res) => {
+  const { url } = req.query;
+  if (!url || typeof url !== "string") {
+    return res.status(400).json({ error: "Missing url query parameter" });
+  }
+
+  try {
+    const decodedUrl = decodeURIComponent(url);
+
+    // Determine appropriate headers based on URL domain
+    const isInstagram = decodedUrl.includes("fbcdn.net") || decodedUrl.includes("cdninstagram.com") || decodedUrl.includes("instagram.");
+    const isYoutube = decodedUrl.includes("ytimg.com") || decodedUrl.includes("youtube.com");
+
+    const headers: Record<string, string> = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+    };
+
+    if (isInstagram) {
+      headers["Referer"] = "https://www.instagram.com/";
+      headers["Origin"] = "https://www.instagram.com";
+    } else if (isYoutube) {
+      headers["Referer"] = "https://www.youtube.com/";
+    }
+
+    const response = await axios.get(decodedUrl, {
+      responseType: "stream",
+      headers,
+      timeout: 15000,
+    });
+
+    // Forward content type
+    const contentType = response.headers["content-type"] || "image/jpeg";
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    // Remove headers that might cause issues
+    res.removeHeader("x-powered-by");
+
+    response.data.pipe(res);
+  } catch (err: any) {
+    console.error("Image proxy failed:", err?.message || err);
+    res.status(502).json({ error: "Failed to proxy image" });
   }
 });
 

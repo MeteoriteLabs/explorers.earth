@@ -297,6 +297,11 @@ export async function scrapeInstagramAccountPosts(username, options = {}) {
             ]
         });
 
+        // Catch browser crashes so they throw a proper Error instead of crashing Node
+        browser.on('disconnected', () => {
+            console.error('❌ Puppeteer browser disconnected unexpectedly (Chrome crashed)');
+        });
+
         const page = await browser.newPage();
 
         // Filter browser console noise
@@ -326,8 +331,8 @@ export async function scrapeInstagramAccountPosts(username, options = {}) {
 
         const pageTitle = await page.title();
         console.log('📄 Page Title:', pageTitle);
-        if (pageTitle.includes('Login')) {
-            console.error('⚠️ Detected Login Wall!');
+        if (pageTitle.toLowerCase().includes('login') || pageTitle.toLowerCase().includes('sign in') || pageTitle.toLowerCase().includes('log in')) {
+            throw new Error('Instagram requires login to view this profile. The scraper hit a login wall — Instagram is blocking unauthenticated access for this account.');
         }
 
         // ============================================

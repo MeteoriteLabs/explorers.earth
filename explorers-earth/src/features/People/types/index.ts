@@ -97,4 +97,5 @@ export interface PersonScrapeResult {
   platform?: "instagram" | "linkedin" | "twitter" | "github" | "youtube" | "website" | "other" | null;
   follower_count?: string;
   location?: string;
+  screenshots?: string[];
 }

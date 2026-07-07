@@ -421,7 +421,6 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
     buy_url: url,
   };
 }
-
 export interface ProfileScrapedData {
   full_name?: string;
   handle?: string;
@@ -431,6 +430,7 @@ export interface ProfileScrapedData {
   platform?: "instagram" | "linkedin" | "x" | "github" | "youtube" | "website" | "other";
   follower_count?: string;
   location?: string;
+  screenshots?: string[];
 }
 
 export function detectProfilePlatform(url: string): ProfileScrapedData["platform"] {
@@ -469,6 +469,53 @@ function extractHandleFromUrl(url: string, platform: ProfileScrapedData["platfor
   return undefined;
 }
 
+async function scrapeLinkedInViaDuckDuckGo(handle: string): Promise<Partial<ProfileScrapedData>> {
+  try {
+    const query = `site:linkedin.com/in/${handle}`;
+    const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+    console.log(`🦆 Fetching LinkedIn info via DuckDuckGo fallback: ${ddgUrl}`);
+    
+    const response = await axios.get(ddgUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      timeout: 10000,
+    });
+    
+    const html = response.data;
+    const data: Partial<ProfileScrapedData> = {};
+    
+    // DuckDuckGo static page has results inside class="result" or class="web-result"
+    // Let's find result__a and result__snippet using regex
+    const titleMatch = html.match(/<a[^>]*class="[^"]*result__a[^"]*"[^>]*>([\s\S]*?)<\/a>/i);
+    const snippetMatch = html.match(/<a[^>]*class="[^"]*result__snippet[^"]*"[^>]*>([\s\S]*?)<\/a>/i) ||
+                         html.match(/<span[^>]*class="[^"]*result__snippet[^"]*"[^>]*>([\s\S]*?)<\/span>/i);
+    
+    if (titleMatch) {
+      const cleanTitle = titleMatch[1].replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").trim();
+      // e.g. "Shivanshu Singh - Software Engineer - Company | LinkedIn" or similar
+      const parts = cleanTitle.split("-").map((p: string) => p.trim());
+      if (parts[0]) {
+        data.full_name = parts[0].replace(/\|.*/g, "").trim();
+      }
+      if (parts.length > 1) {
+        data.headline = parts.slice(1).join(" - ").replace(/\|.*/g, "").trim();
+      }
+    }
+    
+    if (snippetMatch) {
+      const cleanSnippet = snippetMatch[1].replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").trim();
+      data.bio = cleanSnippet;
+    }
+    
+    return data;
+  } catch (err) {
+    console.error("Failed to fallback search LinkedIn on DuckDuckGo:", err);
+    return {};
+  }
+}
+
 export async function scrapeProfile(url: string): Promise<ProfileScrapedData> {
   const platform = detectProfilePlatform(url);
   const handle = extractHandleFromUrl(url, platform);
@@ -498,11 +545,176 @@ export async function scrapeProfile(url: string): Promise<ProfileScrapedData> {
       await page.setUserAgent(
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
       );
+      await page.setExtraHTTPHeaders({
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+      });
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: 25000 });
       
       // Let JS execute / hydrate
       await new Promise((r) => setTimeout(r, 4000));
       html = await page.content();
+
+      // Scrape screenshots/feed images inside the page context if needed
+      try {
+        const screenshots = await page.evaluate((plat: any) => {
+          const urls: string[] = [];
+          if (plat === "instagram") {
+            const links = document.querySelectorAll('a[href*="/p/"], a[href*="/reel/"]');
+            links.forEach((link: any) => {
+              const img = link.querySelector('img');
+              if (img && img.src && !img.src.startsWith('blob:')) {
+                urls.push(img.src);
+              }
+            });
+            if (urls.length === 0) {
+              const imgs = document.querySelectorAll('img');
+              imgs.forEach((img: any) => {
+                if (img.src && !img.src.startsWith('blob:') && img.width > 150 && img.height > 150) {
+                  urls.push(img.src);
+                }
+              });
+            }
+          } else if (plat === "youtube") {
+            const imgs = document.querySelectorAll('img');
+            imgs.forEach((img: any) => {
+              if (img.src && (img.src.includes('vi/') || img.src.includes('ytimg.com'))) {
+                urls.push(img.src);
+              }
+            });
+            const ytdThumbnails = document.querySelectorAll('ytd-thumbnail img');
+            ytdThumbnails.forEach((img: any) => {
+              if (img.src) urls.push(img.src);
+            });
+          } else if (plat === "x") {
+            const imgs = document.querySelectorAll('img');
+            imgs.forEach((img: any) => {
+              if (img.src && (img.src.includes('/media/') || img.src.includes('profile_banners'))) {
+                urls.push(img.src);
+              }
+            });
+          } else if (plat === "linkedin") {
+            const imgs = document.querySelectorAll('img');
+            imgs.forEach((img: any) => {
+              if (img.src && !img.src.startsWith('blob:') && img.width > 100 && img.height > 100) {
+                if (!img.src.includes('favicon') && !img.src.includes('logo') && !img.src.includes('sign-up')) {
+                  urls.push(img.src);
+                }
+              }
+            });
+          }
+          return Array.from(new Set(urls)).slice(0, 10);
+        }, platform || "") as string[];
+        
+        if (screenshots && screenshots.length > 0) {
+          // Extract session cookies from the Puppeteer browser (Instagram session tokens)
+          // and use them in server-side axios requests to download the images.
+          // This avoids Instagram's CSP which blocks fetch() within the page context,
+          // and ensures the session tokens are still valid.
+          let cookieHeader = "";
+          try {
+            const cookies = await page.cookies();
+            cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+            console.log(`🍪 Extracted ${cookies.length} cookies from Puppeteer session`);
+          } catch (e) {
+            console.warn("Failed to extract cookies from Puppeteer page:", e);
+          }
+
+          const downloadImageAsBase64 = async (imgUrl: string): Promise<string | null> => {
+            const baseHeaders: Record<string, string> = {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+              "Referer": "https://www.instagram.com/",
+              "Origin": "https://www.instagram.com",
+              "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+              "Accept-Language": "en-US,en;q=0.9",
+              "sec-fetch-dest": "image",
+              "sec-fetch-mode": "no-cors",
+              "sec-fetch-site": "cross-site",
+            };
+
+            // Try 1: with session cookies
+            try {
+              const response = await axios.get(imgUrl, {
+                responseType: "arraybuffer",
+                timeout: 10000,
+                headers: { ...baseHeaders, ...(cookieHeader ? { "Cookie": cookieHeader } : {}) },
+              });
+              const mimeType = (response.headers["content-type"] as string) || "image/jpeg";
+              const base64 = Buffer.from(response.data).toString("base64");
+              return `data:${mimeType};base64,${base64}`;
+            } catch (err1: any) {
+              console.warn(`⚠️ Cookie-auth download failed (${err1?.response?.status || "network"}): ${imgUrl.slice(0, 80)}...`);
+              // Try 2: without cookies (some CDN nodes don't require session)
+              try {
+                const response2 = await axios.get(imgUrl, {
+                  responseType: "arraybuffer",
+                  timeout: 10000,
+                  headers: baseHeaders,
+                });
+                const mimeType = (response2.headers["content-type"] as string) || "image/jpeg";
+                const base64 = Buffer.from(response2.data).toString("base64");
+                return `data:${mimeType};base64,${base64}`;
+              } catch (err2: any) {
+                console.warn(`❌ No-cookie download also failed (${err2?.response?.status || "network"}): ${imgUrl.slice(0, 80)}...`);
+                return null;
+              }
+            }
+          };
+
+          const base64Screenshots: string[] = [];
+          for (const imgUrl of screenshots) {
+            const b64 = await downloadImageAsBase64(imgUrl);
+            if (b64) base64Screenshots.push(b64);
+          }
+          console.log(`📸 Downloaded ${base64Screenshots.length}/${screenshots.length} screenshots as base64`);
+          result.screenshots = base64Screenshots.length > 0 ? base64Screenshots : screenshots;
+
+          // Also fetch the avatar (og:image) as base64 using the same session cookies
+          try {
+            const ogImageUrl = await page.evaluate(() => {
+              const el = document.querySelector('meta[property="og:image"]') as HTMLMetaElement | null;
+              return el ? el.content : null;
+            });
+            if (ogImageUrl) {
+              const avatarB64 = await downloadImageAsBase64(ogImageUrl);
+              if (avatarB64) result.avatar_url = avatarB64;
+            }
+          } catch (err) {
+            console.warn("Failed to download avatar as base64:", err);
+          }
+        } else {
+          // No screenshots found, but still try to get avatar as base64
+          try {
+            const ogImageUrl = await page.evaluate(() => {
+              const el = document.querySelector('meta[property="og:image"]') as HTMLMetaElement | null;
+              return el ? el.content : null;
+            });
+            if (ogImageUrl) {
+              let cookieHeader = "";
+              try {
+                const cookies = await page.cookies();
+                cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+              } catch {}
+              const response = await axios.get(ogImageUrl, {
+                responseType: "arraybuffer",
+                timeout: 10000,
+                headers: {
+                  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                  "Referer": "https://www.instagram.com/",
+                  "Accept": "image/*,*/*;q=0.8",
+                  ...(cookieHeader ? { "Cookie": cookieHeader } : {}),
+                },
+              });
+              const mimeType = (response.headers["content-type"] as string) || "image/jpeg";
+              result.avatar_url = `data:${mimeType};base64,${Buffer.from(response.data).toString("base64")}`;
+            }
+          } catch (err) {
+            console.warn("Failed to download avatar as base64:", err);
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to extract screenshots inside page evaluation:", err);
+      }
     } catch (err) {
       console.warn("Puppeteer profile scrape failed:", err instanceof Error ? err.message : err);
     } finally {
@@ -551,7 +763,11 @@ export async function scrapeProfile(url: string): Promise<ProfileScrapedData> {
     extractMeta(html, "description");
   const ogImage = extractMeta(html, "og:image") || extractMeta(html, "twitter:image") || extractTouchIcon(html, url);
 
-  result.avatar_url = ogImage || undefined;
+  // Only set avatar_url from the raw og:image if we haven't already stored a base64
+  // version (downloaded during the Puppeteer session while tokens were still valid).
+  if (!result.avatar_url?.startsWith("data:")) {
+    result.avatar_url = ogImage || undefined;
+  }
 
   if (platform === "github") {
     // GitHub specific extraction
@@ -585,6 +801,26 @@ export async function scrapeProfile(url: string): Promise<ProfileScrapedData> {
       const numMatch = followersMatch[1].match(/(\d+[\d,.]*[KMB]?)/i);
       if (numMatch) result.follower_count = numMatch[1].trim();
     }
+
+    // GitHub screenshots and cards
+    if (handle) {
+      const screenshots: string[] = [];
+      screenshots.push(`https://ghchart.rshah.org/409efe/${handle}`);
+      
+      const repoRegex = new RegExp(`href="\\/${handle}\\/([A-Za-z0-9_.-]+)"`, "g");
+      let match;
+      const foundRepos = new Set<string>();
+      while ((match = repoRegex.exec(html)) !== null) {
+        const repoName = match[1];
+        if (!["followers", "following", "repositories", "projects", "packages", "stars", "sponsoring", "gists", "tab"].includes(repoName)) {
+          foundRepos.add(repoName);
+        }
+      }
+      Array.from(foundRepos).slice(0, 5).forEach((repo) => {
+        screenshots.push(`https://opengraph.githubassets.com/1/${handle}/${repo}`);
+      });
+      result.screenshots = screenshots;
+    }
   } else if (platform === "instagram") {
     // Instagram specific extraction
     // ogTitle looks like: "Full Name (@handle) • Instagram photos and videos"
@@ -614,6 +850,23 @@ export async function scrapeProfile(url: string): Promise<ProfileScrapedData> {
     }
     result.full_name = result.full_name || handle;
     result.bio = ogDescription || undefined;
+
+    const isLinkedInLoginWall =
+      html.includes("linkedin.com/signup") ||
+      html.includes("linkedin.com/checkpoint/lg/login") ||
+      (result.full_name && result.full_name.toLowerCase().includes("sign up")) ||
+      (result.bio && result.bio.toLowerCase().includes("750 million+ members"));
+
+    if (isLinkedInLoginWall && handle) {
+      console.log(`⚠️ Detected LinkedIn login wall. Triggering DuckDuckGo fallback scraping...`);
+      const ddgData = await scrapeLinkedInViaDuckDuckGo(handle);
+      if (ddgData.full_name) {
+        result.full_name = ddgData.full_name;
+        result.headline = ddgData.headline || result.headline;
+        result.bio = ddgData.bio || result.bio;
+        result.avatar_url = undefined; // Clear login wall favicon
+      }
+    }
   } else if (platform === "x") {
     // X specific extraction
     // ogTitle is usually "Name (@handle) on X"

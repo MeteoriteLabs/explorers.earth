@@ -3,6 +3,17 @@ import dotenv from "dotenv";
 // Load environment variables from .env file
 dotenv.config();
 
+// ─── Global crash safety nets ────────────────────────────────────────────────
+// Puppeteer/Chrome sub-processes can generate uncaught errors; log them instead
+// of crashing the whole Node.js server.
+process.on('uncaughtException', (err) => {
+  console.error('💥 [uncaughtException] Server survived an unhandled error:', err?.message || err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('💥 [unhandledRejection] Server survived an unhandled promise rejection:', reason);
+});
+
 // Log environment variables for debugging
 console.log('Environment variables loaded:');
 console.log('BASE_URL:', process.env.BASE_URL);

@@ -27,7 +27,7 @@ import {
 const UrlScrapePanel = ({
   onScraped,
 }: {
-  onScraped: (data: Partial<RecommendedPerson>) => void;
+  onScraped: (data: any) => void;
 }) => {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -172,6 +172,25 @@ const AddPersonPage = () => {
   // Manual file uploads -> S3 (Gallery/Screenshots)
   const [existingSnapshots, setExistingSnapshots] = useState<{ id: string; url: string }[]>([]);
   const [newSnapshots, setNewSnapshots] = useState<File[]>([]);
+  // Scraped screenshots from the profile
+  const [scrapedScreenshots, setScrapedScreenshots] = useState<{ url: string; selected: boolean }[]>([]);
+
+  // Proxy helper: routes external CDN images (Instagram, YouTube, etc.) through our server
+  // to avoid referrer/token blocking issues when displaying them in the browser.
+  const proxyImageUrl = (imgUrl: string): string => {
+    if (!imgUrl) return imgUrl;
+    // Only proxy external CDN URLs, not our own S3 or relative paths
+    const needsProxy = (
+      imgUrl.includes("fbcdn.net") ||
+      imgUrl.includes("cdninstagram.com") ||
+      imgUrl.includes("ytimg.com") ||
+      imgUrl.includes("pbs.twimg.com") ||
+      imgUrl.includes("media.licdn.com")
+    );
+    if (!needsProxy) return imgUrl;
+    const apiBase = import.meta.env.VITE_REST_API_URL || "http://localhost:5000/api";
+    return `${apiBase}/proxy-image?url=${encodeURIComponent(imgUrl)}`;
+  };
 
   const { data: listData } = useQuery(PEOPLE_BY_LIST, {
     variables: peopleByListVars(listId!),
@@ -263,15 +282,29 @@ const AddPersonPage = () => {
           toast.loading(`Uploading ${label}...`, { id: `upload-${label}` });
           
           let blob: Blob | null = null;
-          try {
-            const directResponse = await axios.get(imageUrl, { responseType: "blob", timeout: 5000 });
-            if (directResponse?.data) {
-              blob = directResponse.data;
+
+          // If the server returned a base64 data URL, convert it directly to a Blob
+          if (imageUrl.startsWith("data:")) {
+            const [header, b64data] = imageUrl.split(",");
+            const mimeType = header.match(/data:([^;]+)/)?.[1] || "image/jpeg";
+            const binaryStr = atob(b64data);
+            const bytes = new Uint8Array(binaryStr.length);
+            for (let i = 0; i < binaryStr.length; i++) {
+              bytes[i] = binaryStr.charCodeAt(i);
             }
-          } catch {
-            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(imageUrl)}`;
-            const proxyResponse = await axios.get(proxyUrl, { responseType: "blob", timeout: 10000 });
-            blob = proxyResponse.data;
+            blob = new Blob([bytes], { type: mimeType });
+          } else {
+            try {
+              const directResponse = await axios.get(imageUrl, { responseType: "blob", timeout: 5000 });
+              if (directResponse?.data) {
+                blob = directResponse.data;
+              }
+            } catch {
+              const apiBase = import.meta.env.VITE_REST_API_URL || "http://localhost:5000/api";
+              const proxyUrl = `${apiBase}/proxy-image?url=${encodeURIComponent(imageUrl)}`;
+              const proxyResponse = await axios.get(proxyUrl, { responseType: "blob", timeout: 15000 });
+              blob = proxyResponse.data;
+            }
           }
 
           if (!blob) throw new Error("Could not download image");
@@ -312,11 +345,14 @@ const AddPersonPage = () => {
       let avatarUrl = formData.avatar_url || "";
       if (avatarFile) {
         avatarUrl = await uploadFileToStrapi(avatarFile, formData.full_name || "person");
-      } else if (avatarUrl && avatarUrl.startsWith("http")) {
-        const isExternal = avatarUrl.startsWith("http") && 
-          !avatarUrl.includes("amazonaws.com") && 
-          !avatarUrl.includes("digitaloceanspaces.com") && 
-          !avatarUrl.includes("/uploads/");
+      } else if (avatarUrl && (avatarUrl.startsWith("data:") || avatarUrl.startsWith("http"))) {
+        // base64 data URL (from server-side Instagram download) or external CDN URL — upload to S3
+        const isExternal = avatarUrl.startsWith("data:") || (
+          avatarUrl.startsWith("http") &&
+          !avatarUrl.includes("amazonaws.com") &&
+          !avatarUrl.includes("digitaloceanspaces.com") &&
+          !avatarUrl.includes("/uploads/")
+        );
         
         if (isExternal) {
           avatarUrl = await uploadUrlToS3(avatarUrl, "avatar", formData.full_name || "person");
@@ -324,6 +360,35 @@ const AddPersonPage = () => {
       }
 
       let uploadedSnapshots = [...existingSnapshots];
+
+      // Upload selected scraped screenshots
+      const selectedScraped = scrapedScreenshots.filter(s => s.selected).map(s => s.url);
+      if (selectedScraped.length > 0) {
+        toast.loading("Uploading scraped profile images...", { id: "upload-scraped" });
+        try {
+          const scrapedUploads = await Promise.all(
+            selectedScraped.map(async (imgUrl, idx) => {
+              try {
+                const s3Url = await uploadUrlToS3(imgUrl, `scraped_${idx}`, formData.full_name || "person");
+                if (s3Url) {
+                  return { id: `scraped_${Date.now()}_${idx}`, url: s3Url };
+                }
+                return null;
+              } catch (e) {
+                console.error("Scraped image S3 upload failed:", e);
+                return null;
+              }
+            })
+          );
+          uploadedSnapshots = [
+            ...uploadedSnapshots,
+            ...(scrapedUploads.filter(Boolean) as { id: string; url: string }[]),
+          ];
+          toast.success("Scraped images uploaded!", { id: "upload-scraped" });
+        } catch {
+          toast.error("Failed to upload some scraped images.", { id: "upload-scraped" });
+        }
+      }
 
       if (newSnapshots.length > 0) {
         toast.loading("Uploading screenshots...", { id: "upload-snapshots" });
@@ -352,7 +417,11 @@ const AddPersonPage = () => {
         }
       }
 
-      const mediaDetails = uploadedSnapshots.length > 0 ? { imageDetails: uploadedSnapshots } : null;
+      const mediaDetails = {
+        imageDetails: uploadedSnapshots,
+        bio: formData.bio || null,
+        follower_count: formData.follower_count || null,
+      };
 
       // Persist the selected category selection as a tag inside the skills_tags JSON field
       const selectedCategory = categories.find((c) => c.documentId === selectedCategoryId);
@@ -406,7 +475,7 @@ const AddPersonPage = () => {
     } finally {
       setSaving(false);
     }
-  }, [formData, note, userRating, isPinned, selectedCategoryId, avatarFile, isEdit, personId, listId, currentPeopleCount, user, token, existingSnapshots, newSnapshots]);
+  }, [formData, note, userRating, isPinned, selectedCategoryId, avatarFile, isEdit, personId, listId, currentPeopleCount, user, token, existingSnapshots, newSnapshots, scrapedScreenshots]);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -456,9 +525,23 @@ const AddPersonPage = () => {
               <h2 className="text-sm font-semibold text-white mb-1">Paste Profile Link</h2>
               <p className="text-xs text-dashboard-muted mb-4">Instagram, LinkedIn, GitHub, X — any public profile URL</p>
               <UrlScrapePanel
-                onScraped={(data) => {
+                onScraped={(data: any) => {
                   setFormData((prev) => ({ ...prev, ...data }));
-                  if (data.avatar_url) setAvatarPreview(buildImageUrl(data.avatar_url));
+                  if (data.avatar_url) {
+                    // If the server already returned a base64 data URL, use it directly.
+                    // Otherwise, route through our image proxy (for session-expiry CDN URLs).
+                    setAvatarPreview(
+                      data.avatar_url.startsWith("data:") ? data.avatar_url : proxyImageUrl(data.avatar_url)
+                    );
+                  }
+                  if (data.screenshots) {
+                    setScrapedScreenshots(
+                      data.screenshots.map((sUrl: any) => ({
+                        url: sUrl.startsWith("data:") ? sUrl : proxyImageUrl(sUrl),
+                        selected: true,
+                      }))
+                    );
+                  }
                   setStep("form");
                 }}
               />
@@ -477,7 +560,7 @@ const AddPersonPage = () => {
             {/* Backdrop + avatar strip */}
             <div className="relative rounded-xl overflow-hidden bg-white/5 mb-2 h-32 flex items-end">
               {avatarPreview ? (
-                <img src={avatarPreview} alt="" className="absolute inset-0 w-full h-full object-cover opacity-25 filter blur-sm scale-110" />
+                <img src={avatarPreview} alt="" className="absolute inset-0 w-full h-full object-cover opacity-25 filter blur-sm scale-110" referrerPolicy="no-referrer" />
               ) : (
                 <div className={`absolute inset-0 bg-gradient-to-r ${formData.platform ? getPlatformColor(formData.platform) : "from-blue-900/20 to-purple-900/20"} opacity-20`} />
               )}
@@ -485,7 +568,7 @@ const AddPersonPage = () => {
               <div className="absolute bottom-3 left-4 flex items-end gap-3 z-10">
                 <div className="relative w-16 h-16 rounded-full overflow-hidden shadow-xl border border-white/10 flex-shrink-0 bg-dashboard-muted">
                   {avatarPreview ? (
-                    <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                    <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Users size={24} className="text-white/20" />
@@ -652,6 +735,39 @@ const AddPersonPage = () => {
                   ))}
                 </div>
               </div>
+
+              {/* Scraped Images Section */}
+              {scrapedScreenshots.length > 0 && (
+                <div>
+                  <label className="text-sm font-semibold text-white/90 mb-2 block">
+                    Scraped Profile Feed / Images ({scrapedScreenshots.filter(s => s.selected).length} selected)
+                  </label>
+                  <p className="text-xs text-dashboard-muted mb-3">
+                    These images were fetched from the profile. Select the ones you want to save to S3 as portfolio images.
+                  </p>
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 mb-4">
+                    {scrapedScreenshots.map((item, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setScrapedScreenshots(prev =>
+                            prev.map((s, i) => (i === idx ? { ...s, selected: !s.selected } : s))
+                          );
+                        }}
+                        className={`relative aspect-square rounded-xl overflow-hidden border group transition-all ${
+                          item.selected ? "border-dashboard-accent ring-2 ring-dashboard-accent/30" : "border-white/10 opacity-60 hover:opacity-100"
+                        }`}
+                      >
+                        <img src={item.url} className="w-full h-full object-cover" alt={`Scraped ${idx}`} referrerPolicy="no-referrer" />
+                        <div className={`absolute top-1 right-1 p-0.5 rounded-full ${item.selected ? "bg-dashboard-accent text-white" : "bg-black/60 text-white/50"}`}>
+                          <Check size={10} />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Additional Media — manual file uploads */}
               <div>

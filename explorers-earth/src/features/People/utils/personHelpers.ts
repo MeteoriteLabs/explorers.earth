@@ -132,6 +132,8 @@ export function deduplicatePeople<
     item.platform = rawPlatform === "twitter" ? "x" : rawPlatform || "other";
     item.profile_url = item.profile_url || item.social_urls?.primary || item.social_urls?.instagram || item.social_urls?.linkedin || "";
     item.tags = item.tags || item.skills_tags || [];
+    item.bio = item.bio || item.media_details?.bio || "";
+    item.follower_count = item.follower_count || item.media_details?.follower_count || "";
     return item as T;
   });
 

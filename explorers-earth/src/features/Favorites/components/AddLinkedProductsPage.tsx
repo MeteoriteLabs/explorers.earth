@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import useAuthStore from "../../../store/store";
 import { CREATE_PRODUCT_LIST } from "../../Products/api/mutation";
 import { PRODUCT_LISTS_BY_ACCOUNT } from "../../Products/api/query";
-import { generateSlug, formatPrice } from "../../Products/utils/productHelpers";
+import { generateSlug } from "../../Products/utils/productHelpers";
 import { getCurrentDomain } from "../../../utils/getCurrentDomain";
 
 // ── Fetch location + its linked product lists ─────────────────

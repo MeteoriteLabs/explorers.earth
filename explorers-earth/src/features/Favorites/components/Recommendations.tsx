@@ -31,7 +31,6 @@ import {
 import { EarthLoader } from "../../../components/EarthLoader";
 import RecommendationCardSkeleton from "../../../components/ui/RecommendationCardSkeleton";
 import PlaceOverview from "../../PublicHome/components/PlaceDetails/PlaceOverview";
-import PersonOverview from "../../PublicHome/components/PlaceDetails/PersonOverview";
 import EditIcon from "../../../assets/icons/EditIcon";
 import axios from "axios";
 import useAuthStore from "../../../store/store";
@@ -48,8 +47,8 @@ import { IMAGE_CONFIG } from "../../../config";
 import { ChevronDown, Users, ShoppingBag } from "lucide-react";
 import ProductDetailModal from "../../Products/components/public/ProductDetailModal";
 import PersonDetailModal from "../../People/components/public/PersonDetailModal";
-import { deduplicatePeople } from "../../People/utils/personHelpers";
-import { deduplicateProducts } from "../../Products/utils/productHelpers";
+import { deduplicatePeople, buildImageUrl, getPlatformLabel, getPlatformBadgeClass } from "../../People/utils/personHelpers";
+import { deduplicateProducts, formatPrice } from "../../Products/utils/productHelpers";
 
 // ⭐ TS declaration for window.__walkthrough
 declare global {
@@ -86,8 +85,8 @@ type RecommendedPlaceCategory = {
 
 // Helper function to get person image with avatar fallback
 const getPersonImageUrl = (data: any): string => {
-  const imageUrl = data?.media_details?.thumbnail?.url || data?.media_details?.imageDetails?.[0]?.url;
-  if (imageUrl) return imageUrl;
+  const imageUrl = data?.avatar_url || data?.avatar_path || data?.media_details?.thumbnail?.url || data?.media_details?.imageDetails?.[0]?.url;
+  if (imageUrl) return buildImageUrl(imageUrl);
 
   // Return data URL for inline SVG avatar
   const svgString = `<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="400" fill="#1a1a1a"/><circle cx="200" cy="160" r="70" fill="#2a2a2a"/><circle cx="200" cy="160" r="50" fill="#3a3a3a"/><ellipse cx="200" cy="320" rx="100" ry="80" fill="#3a3a3a"/><circle cx="200" cy="200" r="120" fill="none" stroke="#2a2a2a" stroke-width="2" opacity="0.3"/></svg>`;
@@ -602,15 +601,6 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
     )
     : placesData?.recommendedPlaces;
 
-  // Split into places and persons - only show items with explicit Recommendation_Type
-  const filteredPlaces = allFilteredPlaces?.filter(
-    (item: any) => item?.Recommendation_Type === "place"
-  );
-
-  const filteredPersons = allFilteredPlaces?.filter(
-    (item: any) => item?.Recommendation_Type === "person"
-  );
-
   // Calculate center coordinates for TopPlaces component
   const selectedCityCoordinates = useMemo(() => {
     // First, check if the location itself has coordinates stored (for draft locations)
@@ -853,7 +843,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
 
       // Close any open modals/expanded views
       setShowDeleteModal(false);
-      setIsExpanded({ visible: false, documentId: null });
+      setIsExpanded({ visible: false, documentId: null, type: null });
     } catch (error) {
       console.error(error);
       setIsDeleting(false);
@@ -1058,7 +1048,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
       {/* ── People Tab ── */}
       {activeTab === "people" && (
         <div className="mb-20 md:mb-0">
-          {linkedPeople.length === 0 ? (
+          {!linkedPersonLists.some((list: any) => list.recommended_people && list.recommended_people.length > 0) ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="w-16 h-16 rounded-2xl bg-violet-900/20 border border-violet-800/30 flex items-center justify-center mb-4">
                 <Users size={28} className="text-violet-500/60" />
@@ -1067,44 +1057,67 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
               <p className="text-sm text-dashboard-muted mb-4">Click the chevron on the Add button and select "Add People"</p>
               <button
                 onClick={() => navigate(`/recommendations/places/${selectedCity?.documentId}/add-people`)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600/30 hover:bg-violet-600/50 text-sm text-violet-300 font-medium transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600/30 hover:bg-violet-600/50 text-sm text-violet-300 font-medium transition-colors cursor-pointer"
               >
                 <Users size={14} /> Add People
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-              {linkedPeople.map((person: any, index: number) => {
-                const avatarSrc = person.media_details?.thumbnail?.url || person.media_details?.imageDetails?.[0]?.url || null;
+            <div className="space-y-8">
+              {linkedPersonLists.map((list: any) => {
+                const people = deduplicatePeople(list.recommended_people ?? []);
+                if (people.length === 0) return null;
+
                 return (
-                  <div
-                    key={person.documentId || `linked-person-${index}`}
-                    className="bg-dashboard-sidebar border border-white/5 rounded-xl p-4 flex flex-col gap-3 hover:border-white/15 transition-all cursor-pointer"
-                    onClick={() => setSelectedPerson(person)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-violet-950/40 ring-2 ring-white/10">
-                        {avatarSrc ? (
-                          <img src={avatarSrc} alt={person.name} className="w-full h-full object-cover" loading="lazy" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Users size={16} className="text-violet-400/40" />
-                          </div>
+                  <div key={list.documentId} className="px-1">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h4 className="text-sm font-bold text-white">{list.List_Name}</h4>
+                        {list.list_description && (
+                          <p className="text-xs text-dashboard-muted mt-0.5 line-clamp-1">{list.list_description}</p>
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm text-dashboard truncate">{person.name}</p>
-                        {person.headline && <p className="text-xs text-dashboard-muted truncate">{person.headline}</p>}
-                      </div>
+                      <button
+                        onClick={() => navigate(`/recommendations/people/${list.documentId}`)}
+                        className="text-xs text-violet-400 hover:text-violet-300 font-semibold transition-colors whitespace-nowrap cursor-pointer"
+                      >
+                        View all →
+                      </button>
                     </div>
-                    {person.skills_tags && person.skills_tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {person.skills_tags.slice(0, 3).map((tag: string) => (
-                          <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-300 border border-violet-500/20">{tag}</span>
-                        ))}
-                      </div>
-                    )}
-                    <p className="text-[10px] text-dashboard-muted">from list: {person._listName}</p>
+
+                    <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                      {people.map((person: any) => {
+                        const avatarSrc = person.avatar_url || person.avatar_path || person.media_details?.thumbnail?.url || person.media_details?.imageDetails?.[0]?.url || null;
+                        return (
+                          <button
+                            key={person.documentId}
+                            onClick={() => setSelectedPerson(person)}
+                            className="flex-shrink-0 w-[110px] flex flex-col items-center gap-2 text-center group cursor-pointer bg-transparent border-0 outline-none p-0"
+                          >
+                            <div className="relative w-20 h-20 rounded-full overflow-hidden bg-white/5 ring-2 ring-white/10 group-hover:ring-violet-500/50 transition-all shadow-lg group-hover:scale-105 duration-200">
+                              {avatarSrc ? (
+                                <img src={buildImageUrl(avatarSrc)} alt={person.name} className="w-full h-full object-cover" loading="lazy" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-violet-950/40">
+                                  <Users size={24} className="text-violet-400/40" />
+                                </div>
+                              )}
+                              {person.platform && (
+                                <div className={`absolute bottom-0 right-0 text-[8px] font-bold px-1 py-0.5 rounded-tl-lg border-t border-l ${getPlatformBadgeClass(person.platform)}`}>
+                                  {getPlatformLabel(person.platform).split(" ")[0]}
+                                </div>
+                              )}
+                            </div>
+                            <div className="w-full">
+                              <p className="text-xs font-semibold text-white line-clamp-1">{person.name}</p>
+                              {person.handle && (
+                                <p className="text-[10px] text-white/40 truncate">@{person.handle}</p>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 );
               })}
@@ -1116,7 +1129,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
       {/* ── Products Tab ── */}
       {activeTab === "products" && (
         <div className="mb-20 md:mb-0">
-          {linkedProducts.length === 0 ? (
+          {!linkedProductLists.some((list: any) => list.recommended_products && list.recommended_products.length > 0) ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="w-16 h-16 rounded-2xl bg-orange-900/20 border border-orange-800/30 flex items-center justify-center mb-4">
                 <ShoppingBag size={28} className="text-orange-500/60" />
@@ -1125,36 +1138,65 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
               <p className="text-sm text-dashboard-muted mb-4">Click the chevron on the Add button and select "Add Products"</p>
               <button
                 onClick={() => navigate(`/recommendations/places/${selectedCity?.documentId}/add-products`)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-600/30 hover:bg-orange-600/50 text-sm text-orange-300 font-medium transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-600/30 hover:bg-orange-600/50 text-sm text-orange-300 font-medium transition-colors cursor-pointer"
               >
                 <ShoppingBag size={14} /> Add Products
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-              {linkedProducts.map((product: any, index: number) => (
-                <div
-                  key={product.documentId || `linked-product-${index}`}
-                  className="bg-dashboard-sidebar border border-white/5 rounded-xl overflow-hidden hover:border-white/15 transition-all cursor-pointer"
-                  onClick={() => setSelectedProduct(product)}
-                >
-                  <div className="h-32 bg-dashboard-muted flex items-center justify-center overflow-hidden">
-                    {product.logo_url ? (
-                      <img src={product.logo_url} alt={product.title} className="h-full w-full object-cover" loading="lazy" />
-                    ) : (
-                      <ShoppingBag size={32} className="text-orange-400/30" />
-                    )}
+            <div className="space-y-8">
+              {linkedProductLists.map((list: any) => {
+                const products = deduplicateProducts(list.recommended_products ?? []);
+                if (products.length === 0) return null;
+
+                return (
+                  <div key={list.documentId} className="px-1">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h4 className="text-sm font-bold text-white">{list.List_Name}</h4>
+                        {list.list_description && (
+                          <p className="text-xs text-dashboard-muted mt-0.5 line-clamp-1">{list.list_description}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => navigate(`/recommendations/products/${list.documentId}`)}
+                        className="text-xs text-orange-400 hover:text-orange-300 font-semibold transition-colors whitespace-nowrap cursor-pointer"
+                      >
+                        View all →
+                      </button>
+                    </div>
+
+                    <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
+                      {products.map((product: any) => (
+                        <button
+                          key={product.documentId}
+                          onClick={() => setSelectedProduct(product)}
+                          className="flex-shrink-0 w-[140px] rounded-2xl bg-white/[0.04] border border-white/[0.07] hover:border-orange-500/40 hover:bg-white/[0.07] p-3 text-left transition-all cursor-pointer outline-none"
+                        >
+                          <div className="w-full h-24 rounded-xl overflow-hidden bg-white/5 mb-2 shadow-md">
+                            {product.logo_url ? (
+                              <img src={buildImageUrl(product.logo_url)} alt={product.title} className="w-full h-full object-cover" loading="lazy" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <ShoppingBag size={20} className="text-white/20" />
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-xs font-semibold text-white line-clamp-2 leading-tight mb-1.5">{product.title}</p>
+                          {product.brand && (
+                            <p className="text-[10px] text-white/40 truncate mb-1">{product.brand}</p>
+                          )}
+                          {product.price != null && (
+                            <p className="text-xs font-bold text-orange-400">
+                              {formatPrice(product.price, product.currency)}
+                            </p>
+                          )}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="p-3">
-                    <p className="font-semibold text-sm text-dashboard truncate">{product.title}</p>
-                    {product.brand && <p className="text-xs text-dashboard-muted truncate">{product.brand}</p>}
-                    {product.price != null && (
-                      <p className="text-xs text-dashboard-accent font-semibold mt-1">{product.currency || ""} {product.price}</p>
-                    )}
-                    <p className="text-[10px] text-dashboard-muted mt-1">from list: {product._listName}</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

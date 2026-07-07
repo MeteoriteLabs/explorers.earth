@@ -12,7 +12,6 @@ import { useNavigate, useParams, useLocation, useOutletContext } from "react-rou
 
 import { getCurrentDomain } from "../../../utils/getCurrentDomain";
 import PlaceOverview from "./PlaceDetails/PlaceOverview";
-import PersonOverview from "./PlaceDetails/PersonOverview";
 import WhatsappIcon from "../../../assets/icons/WhatsappIcon";
 import MobileIcon from "../../../assets/icons/MobileIcon";
 import ShareModal from "../../../components/ShareModal";
@@ -1178,6 +1177,7 @@ const PublicHome = memo(() => {
                                       setIsExpanded({
                                         visible: true,
                                         documentId: place.documentId,
+                                        type: "place",
                                       });
                                     }}
                                   >
@@ -1389,6 +1389,7 @@ const PublicHome = memo(() => {
                                           setIsExpanded({
                                             visible: true,
                                             documentId: place.documentId,
+                                            type: "place",
                                           });
                                         }}
                                       >
@@ -1550,6 +1551,7 @@ const PublicHome = memo(() => {
                                       setIsExpanded({
                                         visible: true,
                                         documentId: place.documentId,
+                                        type: isPersonType ? "person" : "place",
                                       })
                                     }
                                     image={

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Star, Share2, ExternalLink } from "lucide-react";
+import { X, Star, Share2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import type { RecommendedPerson } from "../../types";
 import { buildImageUrl, extractNoteText, getPlatformLabel, getPlatformBadgeClass, getPlatformColor } from "../../utils/personHelpers";
 
@@ -15,6 +15,13 @@ const FALLBACK_IMAGE = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/20
 const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) => {
   const [dragStartY, setDragStartY] = useState<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const snapshotsScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollSnapshots = (dir: "left" | "right") => {
+    if (snapshotsScrollRef.current) {
+      snapshotsScrollRef.current.scrollBy({ left: dir === "left" ? -300 : 300, behavior: "smooth" });
+    }
+  };
 
   useEffect(() => {
     if (open) document.body.style.overflow = "hidden";
@@ -54,6 +61,7 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
   const avatarUrl = buildImageUrl(person.avatar_url);
   const noteText = extractNoteText(person.user_recommendation_note);
   const platformGradient = getPlatformColor(person.platform || null);
+  const snapshots = person.media_details?.imageDetails ?? [];
 
   return (
     <AnimatePresence>
@@ -184,6 +192,46 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
                             className={person.user_rating! >= star ? "text-yellow-400" : "text-white/20"}
                           />
                         ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Photos & Media Gallery */}
+                  {snapshots.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">
+                        Photos & Media
+                      </p>
+                      <div className="relative group">
+                        <button
+                          onClick={() => scrollSnapshots("left")}
+                          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-black/60 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-black/80 transition-all -ml-2 backdrop-blur-sm pointer-events-auto"
+                        >
+                          <ChevronLeft size={16} />
+                        </button>
+                        <div
+                          ref={snapshotsScrollRef}
+                          className="flex overflow-x-auto pb-4 -mx-5 px-5 gap-3 hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                        >
+                          {snapshots.map((snap: any) => (
+                            <div
+                              key={snap.id}
+                              className="flex-shrink-0 w-56 aspect-video rounded-xl overflow-hidden border border-white/10 bg-[#1a2332]"
+                            >
+                              <img
+                                src={buildImageUrl(snap.url)}
+                                className="w-full h-full object-cover"
+                                alt="Snapshot"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => scrollSnapshots("right")}
+                          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-black/60 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-black/80 transition-all -mr-2 backdrop-blur-sm pointer-events-auto"
+                        >
+                          <ChevronRight size={16} />
+                        </button>
                       </div>
                     </div>
                   )}
