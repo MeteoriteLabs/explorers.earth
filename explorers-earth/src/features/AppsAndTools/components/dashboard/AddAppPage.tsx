@@ -445,7 +445,7 @@ const AddAppPage = () => {
         });
         toast.success("App added!");
       }
-      navigate(`/recommendations/apps/${listId}`, { state: { refetch: true } });
+      navigate(`/recommendations/apps/${listId}`, { state: { refetch: true, justAddedRecommendation: true } });
     } catch (e: any) {
       console.error(e);
       toast.error("Failed to save app.");

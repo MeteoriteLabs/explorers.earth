@@ -403,9 +403,9 @@ const AddProductPage = () => {
         toast.success("Product added!");
       }
       if (redirectBack) {
-        navigate(redirectBack, { state: { refetch: true } });
+        navigate(redirectBack, { state: { refetch: true, justAddedRecommendation: true } });
       } else {
-        navigate(`/recommendations/products/${listId}`, { state: { refetch: true } });
+        navigate(`/recommendations/products/${listId}`, { state: { refetch: true, justAddedRecommendation: true } });
       }
     } catch (e: any) {
       console.error(e);
