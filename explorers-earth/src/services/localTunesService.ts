@@ -75,8 +75,8 @@ export async function syncLocalTunesUser(
       console.warn('⚠️ No JWT token found in storage before sync call. This might fail if the endpoint is protected.');
     }
 
-    const response = await axios.post(
-      `${LOCAL_TUNES_CONFIG.apiUrl}/api/auth/sync`,
+    const response = await localTunesClient.post(
+      '/api/auth/sync',
       { strapiUser },
       {
         headers: {
