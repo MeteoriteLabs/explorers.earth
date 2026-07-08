@@ -1146,50 +1146,99 @@
     "verificationSent": "Verification email sent to:"
   },
   "footer": {
-    "copyright": "© 2025 explorers. Kaikki oikeudet pidätetään.",
+    "tagline": "Anna suosituksesi matkustaa ympäri maailmaa.",
     "email": "hello@explorers.earth",
-    "links": {
-      "about": "Tietoja",
-      "contact": "Ota yhteyttä",
-      "cookies": "Evästekäytäntö",
-      "faq": "Usein kysytyt kysymykset",
-      "howItWorks": "Miten se toimii",
-      "privacy": "Tietosuojakäytäntö",
-      "terms": "Ehdot ja säännöt"
-    },
-    "madeWithLove": "Tehty rakkaudella maapallolla",
     "sections": {
+      "product": "Tuote",
       "contact": "Ota yhteyttä",
-      "legal": "Oikeudellinen",
-      "product": "Tuote"
+      "legal": "Laillinen",
+      "company": "Yritys"
     },
-    "tagline": "Anna suositustesi matkustaa maailmassa."
+    "links": {
+      "howItWorks": "Miten se toimii",
+      "faq": "FAQ",
+      "contact": "Ota yhteyttä",
+      "about": "Noin",
+      "terms": "Ehdot",
+      "privacy": "Tietosuojakäytäntö",
+      "cookies": "Evästekäytäntö",
+      "product": "Tuote",
+      "shareAnywhere": "Jaa missä tahansa"
+    },
+    "copyright": "© 2025 tutkimusmatkailijat. Kaikki oikeudet pidätetään.",
+    "madeWithLove": "Tehty rakkaudella maan päällä",
+    "freeForever": "Ilmainen ikuisesti."
   },
   "header": {
-    "auth": {
-      "login": "Kirjaudu sisään",
-      "signUp": "Rekisteröidy"
-    },
     "nav": {
+      "howItWorks": "Miten se toimii",
+      "whoIsFor": "Kenelle",
+      "faq": "FAQ",
       "about": "Tietoja",
       "contact": "Ota yhteyttä",
-      "faq": "Usein kysytyt kysymykset",
-      "howItWorks": "Miten se toimii",
-      "whoIsFor": "Kenelle"
+      "product": "Tuote",
+      "share": "Jakaa",
+      "openMenu": "Avaa navigointivalikko",
+      "closeMenu": "Sulje navigointivalikko"
+    },
+    "auth": {
+      "login": "Kirjaudu sisään",
+      "signUp": "Rekisteröidy",
+      "claimFreePage": "Lunasta ilmainen sivu",
+      "claimFree": "Lunasta ilmaiseksi"
     }
   },
   "hero": {
-    "ctaButton": "Varaa explorers",
-    "headline": "Kaikki suosituksesi yhdessä QR-koodissa ja yksinkertaisessa linkissä.",
-    "inputLabel": "Varaa explorers URL-osoitteesi:",
-    "inputPlaceholder": "nimesi",
-    "signupPrompt": "Rekisteröidy nyt saadaksesi omasi",
-    "subtext": "Jaa mitä tiedät ja rakastat paikasta — ja tee siitä löydettävissä kaikille, kaikkialla"
+    "headline": "Kaikki suosituksesi - yksi linkki, yksi QR",
+    "subtext": "Luo yksi jaettava sivu kaikelle suosittelemasi sivulle – paikat, ihmiset, tuotteet, kirjat, elokuvat, ohjelmat, musiikki, pelit, sovellukset ja paljon muuta.",
+    "inputLabel": "Lunasta tutkimusmatkailijoiden URL-osoite:",
+    "inputPlaceholder": "sinun nimesi",
+    "ctaButton": "Lunasta Explorer-sivusi",
+    "signupPrompt": "Rekisteröidy saadaksesi omasi nyt",
+    "headlinePrefix": "Kaikki sinun",
+    "rotatingWords": [
+      "suosituksia",
+      "kuratioita",
+      "kokoelmat",
+      "suosikkeja"
+    ],
+    "headlineSuffix": "yhdessä linkissä ja QR.",
+    "badge": "Ilmainen ikuisesti",
+    "globalStrip": "Explorers jakaa suosituksia ympäri maailmaa",
+    "preview": {
+      "todayList": "Tämän päivän lista",
+      "onePageTitle": "Yksi sivu jokaista hyvää suositusta kohden.",
+      "onePageText": "Jaa se linkkinä, QR, viestinä tai oppaana.",
+      "items": {
+        "place": "Paikka",
+        "book": "Kirja",
+        "music": "Musiikki",
+        "game": "Peli"
+      },
+      "screenAlt": "Explorer sivusuositusnäyttö"
+    },
+    "countries": {
+      "in": "Intia",
+      "us": "Yhdysvallat",
+      "gb": "Yhdistynyt kuningaskunta",
+      "jp": "Japani",
+      "fr": "Ranska",
+      "au": "Australia",
+      "br": "Brasilia",
+      "ae": "Arabiemiirikunnat",
+      "sg": "Singapore",
+      "de": "Saksa"
+    }
   },
   "languageModal": {
-    "close": "Sulje",
+    "close": "Lähellä",
     "searchPlaceholder": "Hae kieliä...",
-    "title": "Valitse kieli"
+    "title": "Valitse Kieli",
+    "subtitle": "Valitse kieli, jota haluat käyttää tutkijoissa.",
+    "noLanguagesFound": "Kieliä ei löytynyt",
+    "tryDifferentSearch": "Kokeile toista hakutermiä.",
+    "languagesAvailable": "{{count}} kielet saatavilla",
+    "escToClose": "Sulje painamalla Esc"
   },
   "legal": {
     "cookies": {
@@ -1248,56 +1297,326 @@
     "tryAgain": "Request New Link"
   },
   "sections": {
-    "analytics": {
-      "dashboardTitle": "Analytiikka-koontinäyttö",
-      "engagement": "Sitoutuminen",
-      "headline": "Seuraa klikkauksia, viittauksia ja sitoutumista",
-      "last30Days": "Viimeiset 30 päivää",
-      "referrals": "Viittaukset",
-      "scanningDesc": "Seuraa QR-skannauksia ja päivityksiä",
-      "scanningTitle": "Kuka skannaa",
-      "spotsDesc": "Tietopohjaisia oivalluksia parempaan kuratointiin",
-      "spotsTitle": "Parhaiten suoriutuvat paikat",
-      "subtext": "Katso mikä toimii, kuka skannaa, ja mitkä paikat saavat eniten rakkautta — reaaliajassa.",
-      "totalScans": "Yhteensä skannauksia",
-      "workingDesc": "Seuraa suositustesi suosiota",
-      "workingTitle": "Katso mikä toimii"
-    },
     "createCustomize": {
+      "headline": "Luo Explorer-sivusi muutamassa minuutissa",
+      "subtext": "Kerää suosittelemasi, järjestä se haluamallasi tavalla ja jaa se missä tahansa yhdellä linkillä tai QR:lla.",
       "bulletPoints": {
         "addSpots": {
-          "description": "Luo lista must-visit paikoistasi",
-          "title": "Lisää suosikki paikkasi"
-        },
-        "generate": {
-          "description": "Mukautettu QR-koodisi on valmis sekunneissa",
-          "title": "Generoi linkkisi ja QR-koodisi heti"
+          "title": "Lisää paikkoja, kokemuksia, reittejä, ääniä ja muistiinpanoja",
+          "description": ""
         },
         "organize": {
-          "description": "Luo kategorioita, jotka ovat merkityksellisiä yleisöllesi",
-          "title": "Järjestä kaupungin tai aiheen mukaan"
+          "title": "Järjestä sijainnin tai kiinnostuksen kohteiden mukaan",
+          "description": ""
+        },
+        "generate": {
+          "title": "Muokkaa milloin tahansa – linkkisi pysyy aina samana",
+          "description": ""
         },
         "share": {
-          "description": "",
-          "title": "Jaa digitaalisesti tai QR-koodin kautta oikeassa maailmassa"
+          "title": "Jaa digitaalisesti tai QR:n kautta todellisessa maailmassa",
+          "description": ""
         }
       },
-      "headline": "Luo ja mukauta explorers-osi minuuteissa",
       "mockup": {
-        "addPlace": "Lisää paikka",
-        "title": "Omat suositukseni"
+        "title": "Omat suositukseni",
+        "addPlace": "Lisää paikka"
       },
-      "subtext": "Lisää suosikki paikkasi, järjestä kaupungin tai aiheen mukaan, ja generoi QR-koodisi heti."
+      "steps": [
+        {
+          "title": "Lisää mitä suosittelet",
+          "body": "Paikat, ihmiset, tuotteet, kirjat, elokuvat, ohjelmat, musiikki, pelit, sovellukset, oppaat ja muistiinpanot."
+        },
+        {
+          "title": "Järjestä se omalla tavallasi",
+          "body": "Ryhmittele kaupungin, teeman, luettelon, luokan, matkan tai hetken mukaan, jotta ihmiset voivat tutkia asiaa luonnollisesti."
+        },
+        {
+          "title": "Jaa yksi linkki tai QR",
+          "body": "Sivusi päivittyy milloin tahansa, kun sama linkki ja QR toimivat kaikkialla."
+        }
+      ]
+    },
+    "shareAnywhere": {
+      "headline": "Yksi linkki. Monet matkat.",
+      "subtext": "Explorer-linkistäsi tulee elävä opas – jotain, jota ihmiset voivat tallentaa, käydä uudelleen ja tutkia omaan tahtiinsa.\n\nJaa se profiilissa, viestissä, pöydässä, seinällä tai kortilla.\nMinne tahansa se menee, näkökulmasi kulkee sen mukana.",
+      "scanText": "Etsi paikallisia suosituksia",
+      "storefrontText": "Täydellinen myymälän esittelyyn",
+      "instagramTitle": "Lisää Instagram/Tiktok Bio",
+      "instagramDesc": "Jaa seuraajillesi välittömästi",
+      "menuTitle": "Tulosta se myymälää varten",
+      "menuDesc": "Fyysiset kosketuspisteet on tehty helpoksi",
+      "welcomeTitle": "Sisällytä tervetulokirjoihin",
+      "welcomeDesc": "Täydellinen isännille ja oppaille",
+      "cafeMenu": "Kahvilan menu",
+      "tokyoFoodGuide": "Tokion ruokaoppaani explorers.earth/jane",
+      "cards": [
+        {
+          "title": "Linkki biossa",
+          "eyebrow": "Profiili valmiina"
+        },
+        {
+          "title": "QR koodit",
+          "eyebrow": "Offline-valmiina"
+        },
+        {
+          "title": "Viestit",
+          "eyebrow": "Chat-valmiina"
+        },
+        {
+          "title": "Tervetuloa oppaat",
+          "eyebrow": "Vierasvalmiina"
+        }
+      ],
+      "visual": {
+        "scanForPicks": "Etsi valintoja",
+        "messageBubble": "Tässä on Kioton listani",
+        "welcomeGuide": "Tervetuloa opas",
+        "guideItems": [
+          "Aamiainen lähellä",
+          "Museon reitti",
+          "Iltakävely"
+        ],
+        "savedRecommendation": "Suositus tallennettu"
+      },
+      "profileCarouselCaption": "Instagram & TikTok profiilit",
+      "qrEverywhereTitle": "Lisää QR-linkki kaikkialle",
+      "qrEverywhereDesc": "Täydellinen jokaiseen tapahtumapaikkaan"
+    },
+    "analytics": {
+      "headline": "Katso, mihin ihmiset osallistuvat.",
+      "subtext": "Ymmärrä, mitä suosituksia ihmiset avaavat, tallentavat ja käyvät uudelleen linkkien ja QR-koodien kautta.",
+      "workingTitle": "Katso mikä toimii",
+      "workingDesc": "Seuraa, mitä suosituksia ihmiset avaavat, tallentavat ja käyvät uudelleen.",
+      "scanningTitle": "Ymmärrä skannaukset ja napsautukset",
+      "scanningDesc": "Katso, kuinka ihmiset päätyvät sivullesi linkkien, QR-koodien ja jaettujen kosketuspisteiden kautta.",
+      "spotsTitle": "Löydä parhaat suositukset",
+      "spotsDesc": "Opi, mitkä paikat, tuotteet, luettelot ja oppaat saavat eniten rakkautta.",
+      "dashboardTitle": "Analyticsin hallintapaneeli",
+      "last30Days": "Viimeiset 30 päivää",
+      "totalScans": "Skannaukset yhteensä",
+      "engagement": "Kihlaus",
+      "referrals": "Viittaukset",
+      "livePreview": "Live-esikatselu"
+    },
+    "referEarn": {
+      "headline": "Jaa, viittaa ja ansaitse",
+      "subtext": "Muunna suosituksesi passiivisiksi palkkioiksi — saa krediittiä kun muut käyttävät QR-koodiasi.",
+      "comingSoon": "Viittauspalkkio-ohjelma (tulossa pian)",
+      "rewardsTitle": "Ansaitse palkkioita",
+      "rewardsDesc": "Saa rahaa kun ihmiset käyttävät suosituksiasi",
+      "earnedThisMonth": "Ansittu tässä kuussa",
+      "passiveTitle": "Muunna suositukset passiivisiksi palkkioiksi",
+      "networkTitle": "Rakenna verkostosi ja ansaitse automaattisesti"
+    },
+    "localTunes": {
+      "mainHeading": "Tunes",
+      "title": "Kuuntele tutkiessasi",
+      "body": "Tutkiminen ei ole vain visuaalista. Ääni kantaa muistia, kontekstia ja tunnetta.\n\nTunes antaa sinun kerätä ja jakaa ääniraitoja paikoille, matkoille ja mielialoille — olipa se sitten matkalla löydettyä musiikkia tai ääniä, jotka määrittelevät paikan sinulle.\n\nSaumattomasti yhdistetty Explorer-profiiliisi.",
+      "exploreButton": "Tutki Tunes",
+      "featuresHeading": "Tehokkaat Ominaisuudet",
+      "features": {
+        "realtimeCollaboration": {
+          "title": "Reaaliaikainen Yhteistyö",
+          "description": "Anna vieraiden lisätä kappaleita soittolistaasi heti, samalla kun pidät täyden kontrollin siitä, mitä soitetaan."
+        },
+        "qrCodeSharing": {
+          "title": "QR-koodin Jakaminen",
+          "description": "Jaa musiikkikokemuksesi yksinkertaisella QR-koodin skannauksella — sovelluksia tai latauksia ei tarvita."
+        },
+        "youtubeIntegration": {
+          "title": "YouTube-integraatio",
+          "description": "Integroi saumattomasti YouTubeen päästäksesi miljooniin kappaleisiin ja luodaksesi täydellisen tunnelman."
+        },
+        "voteLikeSystem": {
+          "title": "Äänestys- ja Tykkäysjärjestelmä",
+          "description": "Vieraat voivat äänestää suosikkikappaleitaan vaikuttamaan soittolistajonoon reaaliaikaisesti."
+        },
+        "silentParties": {
+          "title": "Hiljaiset Juhlat",
+          "description": "Järjestä ainutlaatuisia hiljaisia juhlia, joissa kaikki kuuntelevat omien kuulokkeidensa kautta."
+        },
+        "karaokeReady": {
+          "title": "Karaoke Valmis",
+          "description": "Täydellinen karaoke-illille yhteistyösoittolistojen ja reaaliaikaisten kappalepyyntöjen kanssa."
+        }
+      },
+      "venueHeading": "Täydellinen Jokaiseen Paikkaan",
+      "venues": {
+        "barsPubs": "Baarit ja Pubit",
+        "restaurants": "Ravintolat",
+        "coffeeShops": "Kahvilat",
+        "eventsWeddings": "Tapahtumat ja Häät",
+        "retailStores": "Vähittäiskaupat",
+        "gymsFitness": "Kuntosalit ja Kuntoilu"
+      },
+      "closingStatement": "Tunes on <strong>ilmainen</strong> tutkittavaksi, ja maksullisista ominaisuuksista voit päivittää myöhemmin."
+    },
+    "whoIsFor": {
+      "headline": "Rakennettu ihmisille, joiden maku auttaa muita.",
+      "subtext": "Olitpa jakamassa kaupunkia, hyllyä, tuoteluetteloa, soittolistaa tai vierasopasta, tutkimusmatkailijat tarjoavat suosituksiasi kotiin.",
+      "cards": [
+        "Henkilökohtaiset tutkimusmatkailijat",
+        "Tekijät ja kuraattorit",
+        "Isännät ja yritykset",
+        "Brändit ja organisaatiot"
+      ],
+      "useCases": {
+        "travelers": "Matkailijat",
+        "travelersDesc": "Jaa löydetyt jalokivet muiden tutkimusmatkailijoiden kanssa",
+        "influencers": "Vaikuttajat",
+        "influencersDesc": "Kaupallista paikallistietoa ja rakenna yhteisöä",
+        "airbnbHosts": "Airbnb Isännät",
+        "airbnbHostsDesc": "Paranna vieraiden kokemusta paikallisten oivallusten avulla",
+        "hotels": "Hotellit",
+        "hotelsDesc": "Tarjoa kuratoituja paikallisia suosituksia",
+        "restaurants": "Ravintolat",
+        "restaurantsDesc": "Mainosta ristiin muiden paikallisten yritysten kanssa",
+        "cafes": "Kahvilat",
+        "cafesDesc": "Jaa naapuruston suosikkeja asiakkaiden kanssa",
+        "localGuides": "Local Guides",
+        "localGuidesDesc": "Laajenna asiantuntemusta yksittäisten retkien lisäksi",
+        "creators": "Tekijät",
+        "creatorsDesc": "Lisää arvoa sisällön lisäksi toimivilla vinkeillä",
+        "tourOperators": "Matkanjärjestäjät",
+        "tourOperatorsDesc": "Laajenna kokemusta suunniteltujen retkien lisäksi",
+        "anyBusiness": "Mikä tahansa yritys",
+        "anyBusinessDesc": "Rakenna yhteisöä ja asiakasuskollisuutta"
+      },
+      "explorerLabel": "Explorer",
+      "visual": {
+        "personal": [
+          "Kahvila",
+          "Kirja",
+          "Polku",
+          "Albumi",
+          "Elokuva",
+          "Peli"
+        ],
+        "creators": [
+          "#1",
+          "#2",
+          "#3",
+          "#4"
+        ],
+        "hostsQr": "QR"
+      },
+      "chips": [
+        "Matkailijat",
+        "Paikalliset",
+        "Perheet",
+        "Opiskelijat",
+        "Nomadit",
+        "Tekijät",
+        "Vaikuttajat",
+        "Bloggaajat",
+        "Arvostelijat",
+        "Valokuvaajat",
+        "Kouluttajat",
+        "Yhteisön johtajat",
+        "Hotellit",
+        "Airbnbs",
+        "Hostellit",
+        "Kahvilat",
+        "Ravintolat",
+        "Vähittäiskaupat",
+        "Kuntosalit",
+        "Salonit",
+        "Klinikat",
+        "Putiikit",
+        "Tuotemerkit",
+        "Startupit",
+        "Toimistot",
+        "Yliopistot",
+        "Yritykset",
+        "Lentokentät",
+        "kansalaisjärjestöt",
+        "Hallituksen joukkueet"
+      ]
+    },
+    "testimonials": {
+      "headline": "Matkailijoiden, luojien ja isäntien rakastama",
+      "subtext": "Katso, kuinka ihmiset ympäri maailmaa käyttävät tutkimusmatkailijoita jakaakseen tärkeimmän.",
+      "scrollLeft": "Vieritä suosituksia vasemmalle",
+      "scrollRight": "Vieritä suosituksia oikealle",
+      "items": [
+        {
+          "id": "1",
+          "name": "Priya Sharma",
+          "role": "Matkailubloggaaja",
+          "location": "Mumbai, Intia",
+          "quote": "tutkimusmatkailijat muuttivat tapaa, jolla jaan matkatietoni. Seuraajani rakastavat saada välitöntä pääsyä kuratoituihin suosituksiin!"
+        },
+        {
+          "id": "2",
+          "name": "Raj Patel",
+          "role": "Airbnb Isäntä",
+          "location": "Delhi, Intia",
+          "quote": "Vieraani rakastavat ehdottomasti henkilökohtaista QR-koodia tervetulopakkauksessaan. Siitä on tullut tunnusmerkkini!"
+        },
+        {
+          "id": "3",
+          "name": "Yuki Tanaka",
+          "role": "Ravintolan omistaja",
+          "location": "Tokio, Japani",
+          "quote": "Jaamme tutkimusmatkailijamme asiakkaiden kanssa suositellaksemme muita paikallisia paikkoja. Se on luonut uskomattomia yhteisöyhteyksiä."
+        },
+        {
+          "id": "4",
+          "name": "Maria Silva",
+          "role": "Matkaopas",
+          "location": "São Paulo, Brasilia",
+          "quote": "explorers auttaa minua laajentamaan asiantuntemustani kiertueen aukioloaikojen ulkopuolelle. Asiakkaat voivat käyttää suosituksiani milloin tahansa!"
+        },
+        {
+          "id": "5",
+          "name": "James Wilson",
+          "role": "Matkailun vaikuttaja",
+          "location": "Sydney, Australia",
+          "quote": "Matkailuvaikuttajana tutkimusmatkailijat tekevät lempipaikkojeni jakamisen yleisölleni niin helpoksi. QR-koodiominaisuus on loistava!"
+        },
+        {
+          "id": "6",
+          "name": "Sophie Martin",
+          "role": "Paikallinen opas",
+          "location": "Pariisi, Ranska",
+          "quote": "Käytän tutkimusmatkailijoita kävelyretkien luomiseen asiakkailleni. He voivat skannata QR:n ja tutkia sitä omaan tahtiinsa!"
+        }
+      ]
     },
     "faq": {
-      "error": "Virhe FAQ:n lataamisessa. Yritä myöhemmin uudelleen.",
       "headline": "Onko kysymyksiä?",
+      "subtext": "Olemme vastanneet yleisimpiin asioihin, joita ihmiset kysyvät ennen aloittamista.",
       "loading": "Ladataan FAQ...",
-      "subtext": "Olemme vastanneet yleisimpiin asioihin, joita ihmiset kysyvät ennen aloittamista."
+      "error": "Virhe FAQ:n lataamisessa. Yritä myöhemmin uudelleen.",
+      "fallbackItems": [
+        {
+          "Sequence": 1,
+          "Question": "Mitä voin lisätä Explorer-sivulleni?",
+          "Answer": "Paikat, ihmiset, tuotteet, kirjat, elokuvat, ohjelmat, musiikki, pelit, sovellukset, oppaat ja muistiinpanot."
+        },
+        {
+          "Sequence": 2,
+          "Question": "Voinko jakaa sen QR-koodilla?",
+          "Answer": "Kyllä. Explorer-sivusi voidaan jakaa linkkinä tai QR profiileille, viesteille, taulukoille, korteille ja painetuille oppaille."
+        },
+        {
+          "Sequence": 3,
+          "Question": "Voinko päivittää suosituksiani myöhemmin?",
+          "Answer": "Kyllä. Voit pitää sivusi tuoreena, kun sama linkki ja QR toimivat edelleen."
+        },
+        {
+          "Sequence": 4,
+          "Question": "Ovatko tutkimusmatkailijat ikuisesti ilmaisia?",
+          "Answer": "Kyllä. Sivulla voidaan ilmaista ilmainen lupaus selkeästi ilman maksullista kielenkäyttöä."
+        }
+      ]
     },
     "features": {
-      "communityDriven": {
-        "title": "Yhteisön ohjaama löytäminen"
+      "title": "Rakennettu pysymään poissa tieltä",
+      "subtitle": "Yksinkertaiset, harkitut ominaisuudet, jotka antavat suositustesi loistaa.",
+      "simpleLinks": {
+        "title": "Yksinkertaiset linkit ja QR-jakaminen"
       },
       "livingGuides": {
         "title": "Elävät, muokattavat oppaat"
@@ -1305,347 +1624,143 @@
       "locationAware": {
         "title": "Sijaintitietoiset suositukset"
       },
-      "privacyFirst": {
-        "title": "Yksityisyys ensin suunnittelun mukaan"
-      },
-      "simpleLinks": {
-        "title": "Yksinkertaiset linkit ja QR-jakaminen"
-      },
       "soundPlaylists": {
         "title": "Valinnainen ääni ja soittolistat"
       },
-      "subtitle": "Yksinkertaiset, harkitut ominaisuudet, jotka antavat suositustesi loistaa.",
-      "title": "Rakennettu pysymään poissa tieltä"
+      "privacyFirst": {
+        "title": "Yksityisyys ensin suunnittelun mukaan"
+      },
+      "communityDriven": {
+        "title": "Yhteisön ohjaama löytäminen"
+      }
     },
     "finalCTA": {
-      "creating": "Luodaan explorers-asi...",
+      "headline": "Aloita maailmasi jakaminen tänään",
+      "subtext": "Varaa ilmainen explorers-osi ja muunna paikalliset oivalluksesi jaettaviksi oppaiksi.",
       "ctaButton": "Varaa explorers-osi – Ilmainen ikuisesti",
       "disclaimer": "Luottokorttia ei tarvita • Asetukset 2 minuutissa",
-      "headline": "Aloita maailmasi jakaminen tänään",
-      "subtext": "Varaa ilmainen explorers-osi ja muunna paikalliset oivalluksesi jaettaviksi oppaiksi."
+      "creating": "Luodaan explorers-asi..."
     },
-    "localTunes": {
-      "body": "Tutkiminen ei ole vain visuaalista. Ääni kantaa muistia, kontekstia ja tunnetta.\n\nTunes antaa sinun kerätä ja jakaa ääniraitoja paikoille, matkoille ja mielialoille — olipa se sitten matkalla löydettyä musiikkia tai ääniä, jotka määrittelevät paikan sinulle.\n\nSaumattomasti yhdistetty Explorer-profiiliisi.",
-      "closingStatement": "Tunes on <strong>ilmainen</strong> tutkittavaksi, ja maksullisista ominaisuuksista voit päivittää myöhemmin.",
-      "exploreButton": "Tutki Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "Täydellinen karaoke-illille yhteistyösoittolistojen ja reaaliaikaisten kappalepyyntöjen kanssa.",
-          "title": "Karaoke Valmis"
-        },
-        "qrCodeSharing": {
-          "description": "Jaa musiikkikokemuksesi yksinkertaisella QR-koodin skannauksella — sovelluksia tai latauksia ei tarvita.",
-          "title": "QR-koodin Jakaminen"
-        },
-        "realtimeCollaboration": {
-          "description": "Anna vieraiden lisätä kappaleita soittolistaasi heti, samalla kun pidät täyden kontrollin siitä, mitä soitetaan.",
-          "title": "Reaaliaikainen Yhteistyö"
-        },
-        "silentParties": {
-          "description": "Järjestä ainutlaatuisia hiljaisia juhlia, joissa kaikki kuuntelevat omien kuulokkeidensa kautta.",
-          "title": "Hiljaiset Juhlat"
-        },
-        "voteLikeSystem": {
-          "description": "Vieraat voivat äänestää suosikkikappaleitaan vaikuttamaan soittolistajonoon reaaliaikaisesti.",
-          "title": "Äänestys- ja Tykkäysjärjestelmä"
-        },
-        "youtubeIntegration": {
-          "description": "Integroi saumattomasti YouTubeen päästäksesi miljooniin kappaleisiin ja luodaksesi täydellisen tunnelman.",
-          "title": "YouTube-integraatio"
-        }
-      },
-      "featuresHeading": "Tehokkaat Ominaisuudet",
-      "mainHeading": "Tunes",
-      "title": "Kuuntele tutkiessasi",
-      "venueHeading": "Täydellinen Jokaiseen Paikkaan",
-      "venues": {
-        "barsPubs": "Baarit ja Pubit",
-        "coffeeShops": "Kahvilat",
-        "eventsWeddings": "Tapahtumat ja Häät",
-        "gymsFitness": "Kuntosalit ja Kuntoilu",
-        "restaurants": "Ravintolat",
-        "retailStores": "Vähittäiskaupat"
-      }
-    },
-    "referEarn": {
-      "comingSoon": "Viittauspalkkio-ohjelma (tulossa pian)",
-      "earnedThisMonth": "Ansittu tässä kuussa",
-      "headline": "Jaa, viittaa ja ansaitse",
-      "networkTitle": "Rakenna verkostosi ja ansaitse automaattisesti",
-      "passiveTitle": "Muunna suositukset passiivisiksi palkkioiksi",
-      "rewardsDesc": "Saa rahaa kun ihmiset käyttävät suosituksiasi",
-      "rewardsTitle": "Ansaitse palkkioita",
-      "subtext": "Muunna suosituksesi passiivisiksi palkkioiksi — saa krediittiä kun muut käyttävät QR-koodiasi."
-    },
-    "shareAnywhere": {
-      "cafeMenu": "Kahvilan menu",
-      "headline": "Jaa sosiaalisessa mediassa, liikkeiden ikkunoissa tai kaupunkien seinillä",
-      "instagramDesc": "Jaa seuraajiesi kanssa heti",
-      "instagramTitle": "Lisää Instagram bio-osi",
-      "menuDesc": "Fyysiset kosketuspisteet tehty helpoiksi",
-      "menuTitle": "Tulosta ruokalistoihin",
-      "profileCarouselCaption": "Instagram & TikTok profiles",
-      "qrEverywhereDesc": "Perfect for Every Venue",
-      "qrEverywhereTitle": "Add the QR link everywhere",
-      "scanText": "Skannaa paikallisia suosituksia varten",
-      "storefrontText": "Täydellinen liikkeen ikkunanäytölle",
-      "subtext": "Lisää Instagram bio-osi, tulosta ruokalistoihin tai sisällytä tervetulokirjoihin — ohjeistasi, aina valmiina.",
-      "tokyoFoodGuide": "Minun Tokion ruokaoppas explorers.earth/jane",
-      "welcomeDesc": "Täydellinen isäntien ja oppaiden käyttöön",
-      "welcomeTitle": "Sisällytä tervetulokirjoihin"
-    },
-    "testimonials": {
-      "headline": "Rakastettu matkailijoiden, luojien ja isäntien toimesta",
-      "items": [
-        {
-          "id": "1",
-          "location": "San Francisco",
-          "name": "Marcus Chen",
-          "quote": "explorers muutti tapaa, jolla jaan matkatietouttani. Seuraajani rakastavat saada välittömän pääsyn kuratoituihin suosituksiini!",
-          "role": "Matkabloggaaja"
-        },
-        {
-          "id": "2",
-          "location": "Barcelona",
-          "name": "Sarah Johnson",
-          "quote": "Vierailijani rakastavat ehdottomasti henkilökohtaista QR-koodia tervetulopaketissaan. Siitä on tullut minun leimani!",
-          "role": "Airbnb Isäntä"
-        },
-        {
-          "id": "3",
-          "location": "Meksiko City",
-          "name": "Alex Rodriguez",
-          "quote": "Jaamme explorers:äämme asiakkaiden kanssa suositellaksemme muita paikallisia paikkoja. Se on luonut uskomattomia yhteisöyhteyksiä.",
-          "role": "Ravintolan Omistaja"
-        },
-        {
-          "id": "4",
-          "location": "Lontoo",
-          "name": "Emma Thompson",
-          "quote": "explorers auttaa minua laajentamaan asiantuntijuuttani kierrosten tuntien ulkopuolelle. Asiakkaat voivat käyttää suosituksiani milloin tahansa!",
-          "role": "Matkaopas"
-        },
-        {
-          "id": "5",
-          "location": "Sydney, Australia",
-          "name": "James Wilson",
-          "quote": "As a travel influencer, explorers makes it so easy to share my favorite spots with my audience. The QR code feature is brilliant!",
-          "role": "Travel Influencer"
-        },
-        {
-          "id": "6",
-          "location": "Paris, France",
-          "name": "Sophie Martin",
-          "quote": "I use explorers to create walking tours for my clients. They can scan the QR and explore at their own pace!",
-          "role": "Local Guide"
-        }
+    "productCategories": {
+      "headline": "Suosittele enemmän kuin paikkoja.",
+      "subtext": "Luo yksi sivu paikkoja, ihmisiä, tuotteita, kirjoja, elokuvia, ohjelmia, musiikkia, pelejä, sovelluksia ja työkaluja varten.",
+      "actions": [
+        "Tallentaa",
+        "Järjestää",
+        "Jakaa"
       ],
-      "scrollLeft": "Vieritä suosituksia vasemmalle",
-      "scrollRight": "Vieritä suosituksia oikealle",
-      "subtext": "Katso kuinka ihmiset ympäri maailmaa käyttävät explorers:ää jakamaan tärkeimpiä asioita."
-    },
-    "whoIsFor": {
-      "cards": {
-        "businesses": {
-          "items": {
-            "boutique": {
-              "label": "Boutique",
-              "oneLiner": "Boutique, jotka listaavat kuraattorilta löydöksiä"
-            },
-            "cafe": {
-              "label": "Kahvila",
-              "oneLiner": "Kahvilat, jotka korostavat suosikkimenukohia"
-            },
-            "clinic": {
-              "label": "Klinikka",
-              "oneLiner": "Klinikat, jotka jakavat terveysliittyviä paikkoja"
-            },
-            "gym": {
-              "label": "Kuntosali",
-              "oneLiner": "Kuntosalit, jotka ehdottavat paikallisia hyvinvointipaikkoja"
-            },
-            "restaurant": {
-              "label": "Ravintola",
-              "oneLiner": "Ravintolat, jotka jakavat kokeiltavia ruokia"
-            },
-            "retailShop": {
-              "label": "Vähittäiskauppa",
-              "oneLiner": "Kaupat, jotka jakavat tuotesuosituksia"
-            },
-            "salon": {
-              "label": "Salongi",
-              "oneLiner": "Salongit, jotka tarjoavat kauneusoppaita"
-            },
-            "spa": {
-              "label": "Kylpylä",
-              "oneLiner": "Kylpylät, jotka listaavat lähellä olevia rentoutumisvaihtoehtoja"
-            }
-          },
-          "oneLiner": "Ohjaa asiakkaita hyödyllisillä suosituksilla.",
-          "title": "Yritykset"
-        },
-        "creators": {
-          "items": {
-            "blogger": {
-              "label": "Bloggaaja",
-              "oneLiner": "Bloggaajat, jotka kuraattorivat kirjoitettuja oppaita"
-            },
-            "communityLeader": {
-              "label": "Yhteisön Johtaja",
-              "oneLiner": "Yhteisön johtajat, jotka kuraattorivat hyödyllisiä listoja"
-            },
-            "educator": {
-              "label": "Kasvattaja",
-              "oneLiner": "Kasvattajat, jotka jakavat oppimisoppaita"
-            },
-            "influencer": {
-              "label": "Vaikuttaja",
-              "oneLiner": "Vaikuttajat, jotka jakavat parhaita valintoja"
-            },
-            "photographer": {
-              "label": "Valokuvaaja",
-              "oneLiner": "Valokuvaajat, jotka jakavat valokuvapaikkoja"
-            },
-            "reviewer": {
-              "label": "Arvostelija",
-              "oneLiner": "Arvostelijat, jotka listaavat parhaiten arvosteltuja paikkoja"
-            },
-            "vlogger": {
-              "label": "Vloggaaja",
-              "oneLiner": "Vloggaajat, jotka jakavat visuaalisia matkoja"
-            }
-          },
-          "oneLiner": "Jaa kuraattorilistat yleisöllesi.",
-          "title": "Luojat"
-        },
-        "hospitality": {
-          "items": {
-            "airbnb": {
-              "label": "Airbnb",
-              "oneLiner": "Isännät, jotka jakavat naapuruston suosikkeja"
-            },
-            "homestay": {
-              "label": "Kotimajoitus",
-              "oneLiner": "Kotimajoitukset, jotka tarjoavat perhekeskeisiä oppaita"
-            },
-            "hostel": {
-              "label": "Hostelli",
-              "oneLiner": "Hostellit, jotka jakavat reppumatkailijavinkkejä"
-            },
-            "hotel": {
-              "label": "Hotelli",
-              "oneLiner": "Hotellit, jotka tarjoavat paikallisia oppaita"
-            },
-            "pgColiving": {
-              "label": "PG/Yhteisasuminen",
-              "oneLiner": "PG/Yhteisasuminen, jotka näyttävät tärkeitä lähellä olevia paikkoja"
-            },
-            "resort": {
-              "label": "Lomakylä",
-              "oneLiner": "Lomakylät, jotka tarjoavat aktiviteettilistoja"
-            }
-          },
-          "oneLiner": "Tarjoa vieraillesi kuraattorilta paikallisia näkemyksiä.",
-          "title": "Vastaanottovieraanvaraisuus"
-        },
-        "individuals": {
-          "items": {
-            "emergencySharer": {
-              "label": "Hätäjakaja",
-              "oneLiner": "Hätäjakajat, jotka julkaisevat tärkeitä paikkoja"
-            },
-            "family": {
-              "label": "Perhe",
-              "oneLiner": "Perheet, jotka jakavat hyödyllisiä paikkoja"
-            },
-            "local": {
-              "label": "Paikallinen",
-              "oneLiner": "Paikalliset, jotka jakavat naapurustovinkkejä"
-            },
-            "nomad": {
-              "label": "Nomadi",
-              "oneLiner": "Nomadit, jotka listaavat työystävällisiä tiloja"
-            },
-            "student": {
-              "label": "Opiskelija",
-              "oneLiner": "Opiskelijat, jotka jakavat kampusalueen/lähellä olevia paikkoja"
-            },
-            "traveler": {
-              "label": "Matkailija",
-              "oneLiner": "Ihmiset, jotka jakavat matkakohteita"
-            }
-          },
-          "oneLiner": "Jaa henkilökohtaisia tai paikallisia suosituksia.",
-          "title": "Yksilöt"
-        },
-        "organizations": {
-          "items": {
-            "agency": {
-              "label": "Toimisto",
-              "oneLiner": "Matkatoimistot, jotka listaavat vierailemisen arvoisia paikkoja"
-            },
-            "airline": {
-              "label": "Lentoyhtiö",
-              "oneLiner": "Lentoyhtiöt, jotka jakavat kaupunkioppaita"
-            },
-            "airport": {
-              "label": "Lentoasema",
-              "oneLiner": "Lentoasemat, jotka tarjoavat terminaaleja + kaupunkivinkkejä"
-            },
-            "corporate": {
-              "label": "Yritys",
-              "oneLiner": "Yritykset, jotka listaavat lähellä olevia resursseja"
-            },
-            "government": {
-              "label": "Hallitus",
-              "oneLiner": "Osastot, jotka korostavat julkisia palveluja"
-            },
-            "ngo": {
-              "label": "NGO",
-              "oneLiner": "NGO:t, jotka jakavat yhteisöresursseja"
-            },
-            "railway": {
-              "label": "Rautatie",
-              "oneLiner": "Rautatiet, jotka jakavat alustatietoja"
-            },
-            "university": {
-              "label": "Yliopisto",
-              "oneLiner": "Yliopistot, jotka jakavat kampusalueen perustarvikkeita"
-            }
-          },
-          "oneLiner": "Tarjoa kuraattorilta oppaita ja resursseja.",
-          "title": "Organisaatiot"
-        }
+      "overlayLabel": "Explorer sivu",
+      "visualLabels": {
+        "products": "Todellisia suosikkeja",
+        "apps": "Hyödyllinen pino"
       },
-      "headline": "Kenelle explorers.earth on tarkoitettu?",
-      "subtext": "explorers.earth on kaikille, jotka uskovat, että jakaminen on vastuu — ei lähetys.",
-      "useCases": {
-        "airbnbHosts": "Airbnb isännät",
-        "airbnbHostsDesc": "Paranna vieraselämystä paikallisilla oivalluksilla",
-        "anyBusiness": "Mikä tahansa liike",
-        "anyBusinessDesc": "Rakenna yhteisöä ja asiakasuskollisuutta",
-        "cafes": "Kahvilat",
-        "cafesDesc": "Jaa naapuruston suosikkeja asiakkaiden kanssa",
-        "creators": "Luoja",
-        "creatorsDesc": "Lisää arvoa sisällön yli toimivilla vinkkeillä",
-        "hotels": "Hotellit",
-        "hotelsDesc": "Tarjoa kuratoituja paikallisia suosituksia",
-        "influencers": "Vaikuttajat",
-        "influencersDesc": "Monetoi paikallista tietoa ja rakenna yhteisöä",
-        "localGuides": "Paikalliset oppaat",
-        "localGuidesDesc": "Skaalaa asiantuntemustasi yksittäisten kierrosten yli",
-        "restaurants": "Ravintolat",
-        "restaurantsDesc": "Ristiinpromootio muiden paikallisten liikkeiden kanssa",
-        "tourOperators": "Matkailuoperaattorit",
-        "tourOperatorsDesc": "Laajenna kokemuksia aikataulutettujen kierrosten yli",
-        "travelers": "Matkailijat",
-        "travelersDesc": "Jaa löydettyjä helmiä kollegoiden tutkijoiden kanssa"
-      }
+      "visualDetails": {
+        "products": [
+          "Matkavarusteet",
+          "Päivittäinen kantaminen",
+          "Tekijäsarja"
+        ],
+        "apps": [
+          "Suunnittelutyökalut",
+          "Hyödyllisiä sovelluksia",
+          "Resurssilinkit"
+        ]
+      },
+      "categories": [
+        {
+          "id": "places",
+          "label": "Paikat",
+          "title": "Paikalliset paikat, oppaat ja reitit",
+          "description": "Ravintolat, kaupunginosat, museot, reitit ja piilotetut helmet, joissa ihmiset voivat todella käydä."
+        },
+        {
+          "id": "people",
+          "label": "Ihmiset",
+          "title": "Ihmisiä, joita kannattaa seurata tai joilta kannattaa oppia",
+          "description": "Tekijät, perustajat, oppaat, taiteilijat, opettajat, asiantuntijat ja ihmiset, jotka ovat muokanneet makuasi."
+        },
+        {
+          "id": "books",
+          "label": "Kirjat",
+          "title": "Kirjat ja lukulistat",
+          "description": "Kirjat, joita suosittelet chateissa, muistiinpanoissa, uutiskirjeissä ja matkakeskusteluissa."
+        },
+        {
+          "id": "movies",
+          "label": "Elokuvat ja TV",
+          "title": "Elokuvat, ohjelmat ja katselulistat",
+          "description": "Elokuvia, sarjoja, dokumentteja ja katselulistoja kaikenlaisille tunnelmille ja yleisöille."
+        },
+        {
+          "id": "games",
+          "label": "Pelit",
+          "title": "Pelejä ja maailmoja tutkittavaksi",
+          "description": "Pelit, tehtävät, maailmat ja kokemukset, joita ihmisten tulisi kokeilla seuraavaksi."
+        },
+        {
+          "id": "music",
+          "label": "Musiikki",
+          "title": "Albumit, artistit ja soittolistat",
+          "description": "Paikkoihin ja hetkiin yhdistetyt artistit, albumit, kappaleet, soittolistat ja ääniraidat."
+        },
+        {
+          "id": "products",
+          "label": "Tuotteet",
+          "title": "Tuotteet, joita ihmiset todella suosittelevat",
+          "description": "Arjen suosikkeja, matkavarusteita, sisällöntuottajien työkaluja, lahjoja ja säästämisen arvoisia tuotteita."
+        },
+        {
+          "id": "apps",
+          "label": "Sovellukset ja työkalut",
+          "title": "Sovelluksia, työkaluja ja hyödyllisiä linkkejä",
+          "description": "Ohjelmistot, verkkosivustot, mallit, työkalut ja resurssit, jotka helpottavat elämää."
+        }
+      ]
     }
   },
   "seo": {
     "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
+    "landing": {
+      "title": "tutkimusmatkailijat - löydä ja jaa henkilökohtaisia ​​paikallisia suosituksia",
+      "description": "Löydä ja jaa paikallisia suosikkipaikkojasi tutkimusmatkailijoiden kanssa. Luo henkilökohtaisia ​​kaupunkioppaita, järjestä käyntikohteita ja tee niistä löydettävissä jaettavien QR-koodien avulla. Tutustu piilotettuihin helmiin, kuratoituihin suosituksiin ja paikallisiin matkailuvinkkeihin interaktiivisilla kartoilla.",
+      "keywords": [
+        "löytää paikkoja lähelläni",
+        "henkilökohtaiset matkaoppaat",
+        "paikalliset suositukset -sovellus",
+        "kaupunkioppaan luoja",
+        "jakaa matkavinkkejä",
+        "piilotettuja helmiä suosituksia",
+        "tekemistä kaupungissa",
+        "karttapohjainen matkaopas",
+        "parhaat paikalliset paikat",
+        "kuratoidut ravintolasuositukset",
+        "matkaopas QR koodit",
+        "luoda ja jakaa sijaintiluetteloita",
+        "käyttäjien luomia paikallisia oppaita",
+        "tutkia paikkoja ympärilläsi",
+        "digitaalisia kaupunkioppaita",
+        "QR koodit",
+        "paikalliset suositukset",
+        "paikan jakaminen",
+        "matkaopas",
+        "paikallinen yritys",
+        "digitaalisia suosituksia",
+        "jaettavia linkkejä",
+        "sijainnin jakaminen",
+        "matkavinkkejä",
+        "paikallisia paikkoja"
+      ],
+      "geoDescription": "Löydä ja jaa paikallisia suosikkipaikkojasi henkilökohtaisten QR-koodien ja jaettavien linkkien avulla",
+      "geoFeatures": [
+        "Henkilökohtainen QR-koodin luominen",
+        "Paikallinen suositusten jakaminen",
+        "Analytiikka ja oivallukset",
+        "Mobiilioptimoitu muotoilu",
+        "Yhteisön löytö"
+      ],
+      "geoIndustry": "Tekniikka"
+    }
   },
   "settings": {
     "account": {
@@ -2162,5 +2277,14 @@
       "usernameNotChanged": "Username is not changed. Please change your username",
       "validationPending": "Validation is pending. Please wait"
     }
+  },
+  "usernameClaim": {
+    "validating": "Vahvistetaan...",
+    "claimFree": "Lunasta ilmaiseksi",
+    "trySuggestions": "Kokeile: {{suggestions}}",
+    "available": "Käyttäjätunnus on saatavilla.",
+    "unavailable": "Käyttäjätunnus ei ole saatavilla.",
+    "confirmOnSignup": "Vahvistamme saatavuuden ilmoittautumisen yhteydessä.",
+    "checkingAvailability": "Tarkistetaan saatavuutta..."
   }
 }

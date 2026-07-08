@@ -1,7 +1,7 @@
-import { QrCode, Instagram, Twitter, Linkedin } from 'lucide-react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { GlobePattern } from './BackgroundPatterns';
-import { useTranslation } from 'react-i18next';
+import { Instagram, Linkedin, QrCode, Twitter } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { GlobePattern } from "./BackgroundPatterns";
 
 export default function Footer() {
   const { t } = useTranslation();
@@ -9,10 +9,10 @@ export default function Footer() {
   const location = useLocation();
 
   const scrollToSection = (sectionId: string) => {
-    if (location.pathname === '/') {
+    if (location.pathname === "/") {
       const element = document.getElementById(sectionId);
       if (element) {
-        element.scrollIntoView({ behavior: 'smooth' });
+        element.scrollIntoView({ behavior: "smooth" });
       }
     } else {
       navigate(`/#${sectionId}`);
@@ -20,119 +20,123 @@ export default function Footer() {
   };
 
   return (
-    <footer className="py-16 relative overflow-hidden" style={{ backgroundColor: '#1A1A1A' }}>
+    <footer
+      className="relative overflow-hidden py-16 pb-8 text-white"
+      style={{
+        background:
+          "radial-gradient(circle at 18% 0%, rgba(216,161,93,.18), transparent 28%), radial-gradient(circle at 88% 12%, rgba(184,201,171,.12), transparent 30%), #102513",
+      }}
+    >
       <GlobePattern />
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 lg:gap-8">
-          {/* Brand */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-cta-blue rounded-lg flex items-center justify-center">
-                <QrCode className="text-white" size={16} />
+
+      <div className="relative z-10 mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
+          <div className="space-y-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-[13px] bg-[#f6f1e7]">
+                <QrCode className="text-[#17231a]" size={18} />
               </div>
-              <span className="text-xl font-bold text-white">explorers</span>
+              <span className="text-xl font-extrabold tracking-[-0.02em]">explorers.earth</span>
             </div>
-            <p className="text-gray-400">{t('footer.tagline')}</p>
-            <div className="flex space-x-4">
+            <p className="max-w-sm text-sm leading-6 text-white/68">{t("footer.tagline")}</p>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-2 text-sm font-black text-[#f6f1e7]">
+              <span className="h-2 w-2 rounded-full bg-[#c87941]" />
+              {t("footer.freeForever")}
+            </div>
+            <div className="flex gap-3">
               <a
                 href="https://www.instagram.com/explorers_earth/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-gray-400 hover:text-white transition-colors"
+                className="rounded-full border border-white/10 p-2 text-white/62 transition-colors hover:text-white"
                 aria-label="Instagram"
               >
-                <Instagram size={20} />
+                <Instagram size={18} />
               </a>
               <a
                 href="#"
-                className="text-gray-400 hover:text-white transition-colors"
+                className="rounded-full border border-white/10 p-2 text-white/62 transition-colors hover:text-white"
                 aria-label="Twitter"
               >
-                <Twitter size={20} />
+                <Twitter size={18} />
               </a>
               <a
                 href="#"
-                className="text-gray-400 hover:text-white transition-colors"
+                className="rounded-full border border-white/10 p-2 text-white/62 transition-colors hover:text-white"
                 aria-label="LinkedIn"
               >
-                <Linkedin size={20} />
+                <Linkedin size={18} />
               </a>
             </div>
           </div>
 
-          {/* Links */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-white">{t('footer.sections.product')}</h3>
-            <div className="space-y-2">
+            <h3 className="text-sm font-black uppercase tracking-[0.1em] text-white">{t("footer.sections.product")}</h3>
+            <div className="space-y-2 text-sm font-semibold">
               <button
-                onClick={() => scrollToSection('how-it-works')}
-                className="block text-gray-400 hover:text-white transition-colors"
+                onClick={() => scrollToSection("product")}
+                className="block text-white/68 transition-colors hover:text-white"
               >
-                {t('footer.links.howItWorks')}
+                {t("footer.links.product")}
               </button>
               <button
-                onClick={() => scrollToSection('faq')}
-                className="block text-gray-400 hover:text-white transition-colors"
+                onClick={() => scrollToSection("how-it-works")}
+                className="block text-white/68 transition-colors hover:text-white"
               >
-                {t('footer.links.faq')}
+                {t("footer.links.howItWorks")}
               </button>
-              <Link
-                to="/contact"
-                className="block text-gray-400 hover:text-white transition-colors"
+              <button
+                onClick={() => scrollToSection("share")}
+                className="block text-white/68 transition-colors hover:text-white"
               >
-                {t('footer.links.contact')}
-              </Link>
-              <Link
-                to="/about"
-                className="block text-gray-400 hover:text-white transition-colors"
+                {t("footer.links.shareAnywhere")}
+              </button>
+              <button
+                onClick={() => scrollToSection("faq")}
+                className="block text-white/68 transition-colors hover:text-white"
               >
-                {t('footer.links.about')}
-              </Link>
+                {t("footer.links.faq")}
+              </button>
             </div>
           </div>
 
-          {/* Contact */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-white">{t('footer.sections.contact')}</h3>
-            <div className="space-y-2">
-              <a
-                href={`mailto:${t('footer.email')}`}
-                className="block text-gray-400 hover:text-white transition-colors"
-              >
-                {t('footer.email')}
-              </a>
+            <h3 className="text-sm font-black uppercase tracking-[0.1em] text-white">{t("footer.sections.company")}</h3>
+            <div className="space-y-2 text-sm font-semibold">
+              <Link to="/about" className="block text-white/68 transition-colors hover:text-white">
+                {t("footer.links.about")}
+              </Link>
+              <Link to="/contact" className="block text-white/68 transition-colors hover:text-white">
+                {t("footer.links.contact")}
+              </Link>
+            <a
+              href={`mailto:${t("footer.email")}`}
+              className="block text-white/68 transition-colors hover:text-white"
+            >
+              {t("footer.email")}
+            </a>
             </div>
           </div>
 
-          {/* Legal */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-white">{t('footer.sections.legal')}</h3>
-            <div className="space-y-2">
-              <Link
-                to="/terms"
-                className="block text-gray-400 hover:text-white transition-colors"
-              >
-                {t('footer.links.terms')}
+            <h3 className="text-sm font-black uppercase tracking-[0.1em] text-white">{t("footer.sections.legal")}</h3>
+            <div className="space-y-2 text-sm font-semibold">
+              <Link to="/terms" className="block text-white/68 transition-colors hover:text-white">
+                {t("footer.links.terms")}
               </Link>
-              <Link
-                to="/privacy"
-                className="block text-gray-400 hover:text-white transition-colors"
-              >
-                {t('footer.links.privacy')}
+              <Link to="/privacy" className="block text-white/68 transition-colors hover:text-white">
+                {t("footer.links.privacy")}
               </Link>
-              <Link
-                to="/cookies"
-                className="block text-gray-400 hover:text-white transition-colors"
-              >
-                {t('footer.links.cookies')}
+              <Link to="/cookies" className="block text-white/68 transition-colors hover:text-white">
+                {t("footer.links.cookies")}
               </Link>
             </div>
           </div>
         </div>
 
-        <div className="border-t border-gray-700 mt-12 pt-8 text-center space-y-2">
-          <p className="text-gray-400">{t('footer.copyright')}</p>
-          <p className="text-gray-500 text-sm">{t('footer.madeWithLove')} <span className="text-green-500">♥</span></p>
+        <div className="mt-14 flex flex-col justify-between gap-4 border-t border-white/10 pt-6 text-sm text-white/50 sm:flex-row">
+          <p className="text-sm text-white/54">{t("footer.copyright")}</p>
+          <p className="text-sm text-white/54">{t("footer.madeWithLove")}</p>
         </div>
       </div>
     </footer>

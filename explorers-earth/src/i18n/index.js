@@ -20,9 +20,17 @@ const resources = {
   en: { translation: en },
 };
 
+const rtlLanguages = new Set(['ar', 'fa', 'he', 'ur']);
+
+const applyDocumentLanguage = (languageCode) => {
+  document.documentElement.lang = languageCode;
+  document.documentElement.dir = rtlLanguages.has(languageCode) ? 'rtl' : 'ltr';
+};
+
 // Check for saved language immediately and set it as the initial language
 const savedLanguage = localStorage.getItem('explorers-language');
 const initialLanguage = savedLanguage && savedLanguage !== 'en' ? savedLanguage : 'en';
+applyDocumentLanguage(initialLanguage);
 
 i18n
   .use(initReactI18next)
@@ -48,6 +56,7 @@ i18n.changeLanguage = async (languageCode) => {
   if (i18n.hasResourceBundle(languageCode, 'translation')) {
     const result = await originalChangeLanguage(languageCode);
     localStorage.setItem('explorers-language', languageCode);
+    applyDocumentLanguage(languageCode);
     return result;
   }
 
@@ -59,11 +68,13 @@ i18n.changeLanguage = async (languageCode) => {
     // Change to the new language
     const result = await originalChangeLanguage(languageCode);
     localStorage.setItem('explorers-language', languageCode);
+    applyDocumentLanguage(languageCode);
     return result;
   } else {
     console.warn(`Failed to load language ${languageCode}, falling back to English`);
     const result = await originalChangeLanguage('en');
     localStorage.setItem('explorers-language', 'en');
+    applyDocumentLanguage('en');
     return result;
   }
 };

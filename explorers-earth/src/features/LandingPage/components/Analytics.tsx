@@ -1,150 +1,118 @@
-import { motion } from 'framer-motion';
-import { BarChart3, Eye, Globe } from 'lucide-react';
-import { AnalyticsOverlay } from './SVGOverlays';
-import { useTranslation } from 'react-i18next';
+import { motion } from "framer-motion";
+import { BarChart3, Eye, MousePointerClick } from "lucide-react";
+import { useTranslation } from "react-i18next";
+
+const insightCards = [
+  {
+    icon: BarChart3,
+    titleKey: "sections.analytics.workingTitle",
+    descKey: "sections.analytics.workingDesc",
+  },
+  {
+    icon: MousePointerClick,
+    titleKey: "sections.analytics.scanningTitle",
+    descKey: "sections.analytics.scanningDesc",
+  },
+  {
+    icon: Eye,
+    titleKey: "sections.analytics.spotsTitle",
+    descKey: "sections.analytics.spotsDesc",
+  },
+] as const;
 
 export default function Analytics() {
   const { t } = useTranslation();
 
   return (
-    <section className="py-12 sm:py-16 lg:py-20 relative overflow-hidden" style={{ backgroundColor: '#E3EEF1' }}>
-      <AnalyticsOverlay />
+    <section className="landing-section relative overflow-hidden bg-[#102513] text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_22%,rgba(184,201,171,.18),transparent_34%),radial-gradient(circle_at_12%_76%,rgba(200,121,65,.13),transparent_28%)]" />
+      <div className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7 }}
+          viewport={{ once: true }}
+          className="relative z-10 max-w-xl"
+        >
+          <h2 className="landing-display text-3xl font-bold leading-tight text-white sm:text-4xl lg:text-5xl">
+            {t("sections.analytics.headline")}
+          </h2>
+          <p className="mt-5 text-base leading-7 text-white/68 sm:text-lg">
+            {t("sections.analytics.subtext")}
+          </p>
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-          {/* Content */}
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-            className="text-gray-900 space-y-6"
-          >
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">
-              {t('sections.analytics.headline')}
-            </h2>
-            <p className="text-base sm:text-lg md:text-xl text-gray-700 leading-relaxed">
-              {t('sections.analytics.subtext')}
-            </p>
-            
-            {/* Bullet Points */}
-            <div className="space-y-4 mt-8">
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 }}
-                viewport={{ once: true }}
-                className="flex items-start space-x-3"
-              >
-                <BarChart3 className="text-blue-400 w-6 h-6 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="font-semibold text-gray-900">{t('sections.analytics.workingTitle')}</h4>
-                  <p className="text-gray-700">{t('sections.analytics.workingDesc')}</p>
-                </div>
-              </motion.div>
-              
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.5 }}
-                viewport={{ once: true }}
-                className="flex items-start space-x-3"
-              >
-                <Eye className="text-blue-400 w-6 h-6 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="font-semibold text-gray-900">{t('sections.analytics.scanningTitle')}</h4>
-                  <p className="text-gray-700">{t('sections.analytics.scanningDesc')}</p>
-                </div>
-              </motion.div>
-              
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.6 }}
-                viewport={{ once: true }}
-                className="flex items-start space-x-3"
-              >
-                <Globe className="text-blue-400 w-6 h-6 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="font-semibold text-gray-900">{t('sections.analytics.spotsTitle')}</h4>
-                  <p className="text-gray-700">{t('sections.analytics.spotsDesc')}</p>
-                </div>
-              </motion.div>
+          <div className="mt-8 grid gap-4">
+            {insightCards.map((card, index) => {
+              const Icon = card.icon;
+
+              return (
+                <motion.div
+                  key={card.titleKey}
+                  initial={{ opacity: 0, x: -16 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.12 }}
+                  viewport={{ once: true }}
+                  className="flex gap-4 rounded-[22px] border border-white/10 bg-white/[0.07] p-4"
+                >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#dce9ce] text-[#143d32]">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <span>
+                    <h3 className="font-bold text-white">{t(card.titleKey)}</h3>
+                    <p className="mt-1 text-sm leading-6 text-white/58">{t(card.descKey)}</p>
+                  </span>
+                </motion.div>
+              );
+            })}
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.7 }}
+          viewport={{ once: true }}
+          className="relative z-10 rounded-[28px] border border-white/10 bg-[#17351c] p-5 text-white shadow-[0_24px_80px_rgba(0,0,0,.22)]"
+        >
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="font-bold text-white">{t("sections.analytics.dashboardTitle")}</h3>
+              <p className="text-sm text-white/60">{t("sections.analytics.last30Days")}</p>
             </div>
-          </motion.div>
+            <span className="rounded-full bg-white/10 px-3 py-1.5 text-sm font-semibold text-white/78">
+              {t("sections.analytics.livePreview")}
+            </span>
+          </div>
 
-          {/* Analytics Chart UI */}
-          <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            viewport={{ once: true }}
-            className="bg-white rounded-xl shadow-2xl p-6"
-          >
-            <div className="space-y-6">
-              {/* Header */}
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-charcoal">{t('sections.analytics.dashboardTitle')}</h3>
-                <span className="text-sm text-gray-500">{t('sections.analytics.last30Days')}</span>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { value: "1,247", label: t("sections.analytics.totalScans") },
+              { value: "84%", label: t("sections.analytics.engagement") },
+              { value: "23", label: t("sections.analytics.referrals") },
+            ].map((stat) => (
+              <div key={stat.label} className="rounded-2xl bg-white/10 p-4 text-center">
+                <div className="text-xl font-bold text-white sm:text-2xl">{stat.value}</div>
+                <div className="mt-1 text-xs font-medium text-white/60">{stat.label}</div>
               </div>
+            ))}
+          </div>
 
-              {/* Stats Cards */}
-              <div className="grid grid-cols-3 gap-4">
+          <div className="mt-6 rounded-2xl border border-white/10 bg-white/10 p-5">
+            <div className="flex h-48 items-end justify-between gap-3">
+              {[52, 72, 46, 86, 68, 94, 62, 78].map((height, index) => (
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
+                  key={index}
+                  initial={{ height: 0 }}
+                  whileInView={{ height: `${height}%` }}
+                  transition={{ delay: 0.25 + index * 0.06, duration: 0.45 }}
                   viewport={{ once: true }}
-                  className="bg-gray-50 rounded-lg p-4 text-center"
-                >
-                  <div className="text-2xl font-bold text-cta-blue">1,247</div>
-                  <div className="text-xs text-gray-500">{t('sections.analytics.totalScans')}</div>
-                </motion.div>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 }}
-                  viewport={{ once: true }}
-                  className="bg-gray-50 rounded-lg p-4 text-center"
-                >
-                  <div className="text-2xl font-bold text-emerald-500">84%</div>
-                  <div className="text-xs text-gray-500">{t('sections.analytics.engagement')}</div>
-                </motion.div>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6 }}
-                  viewport={{ once: true }}
-                  className="bg-gray-50 rounded-lg p-4 text-center"
-                >
-                  <div className="text-2xl font-bold text-orange-500">23</div>
-                  <div className="text-xs text-gray-500">{t('sections.analytics.referrals')}</div>
-                </motion.div>
-              </div>
-
-              {/* Chart */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                transition={{ delay: 0.8 }}
-                viewport={{ once: true }}
-                className="h-32 bg-white rounded-lg flex items-end justify-center space-x-2 p-4 border-2 border-gray-200"
-              >
-                {[60, 80, 40, 90, 70, 100, 55].map((height, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ height: 0 }}
-                    whileInView={{ height: `${height}%` }}
-                    transition={{ delay: 1 + index * 0.1, duration: 0.5 }}
-                    viewport={{ once: true }}
-                    className="w-6 bg-gradient-to-t from-blue-600 to-blue-400 rounded-t-md shadow-lg"
-                    style={{ minHeight: '8px' }}
-                  />
-                ))}
-              </motion.div>
+                  className="w-full rounded-t-xl bg-gradient-to-t from-[#c87941] to-[#b8c9ab]"
+                  style={{ minHeight: 10 }}
+                />
+              ))}
             </div>
-          </motion.div>
-        </div>
+          </div>
+        </motion.div>
       </div>
     </section>
   );

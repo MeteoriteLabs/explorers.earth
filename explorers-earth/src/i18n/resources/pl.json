@@ -1146,50 +1146,99 @@
     "verificationSent": "Verification email sent to:"
   },
   "footer": {
-    "copyright": "© 2025 explorers. Wszystkie prawa zastrzeżone.",
+    "tagline": "Niech Twoje rekomendacje podróżują po świecie.",
     "email": "hello@explorers.earth",
-    "links": {
-      "about": "O nas",
-      "contact": "Kontakt",
-      "cookies": "Polityka Ciasteczek",
-      "faq": "Najczęściej zadawane pytania",
-      "howItWorks": "Jak to działa",
-      "privacy": "Polityka Prywatności",
-      "terms": "Warunki i Zasady"
-    },
-    "madeWithLove": "Stworzone z miłością na ziemi",
     "sections": {
+      "product": "Produkt",
       "contact": "Kontakt",
-      "legal": "Prawne",
-      "product": "Produkt"
+      "legal": "Prawny",
+      "company": "Firma"
     },
-    "tagline": "Pozwól swoim rekomendacjom podróżować po świecie."
+    "links": {
+      "howItWorks": "Jak to działa",
+      "faq": "Często zadawane pytania",
+      "contact": "Kontakt",
+      "about": "O",
+      "terms": "Regulamin",
+      "privacy": "Polityka prywatności",
+      "cookies": "Polityka plików cookie",
+      "product": "Produkt",
+      "shareAnywhere": "Udostępnij gdziekolwiek"
+    },
+    "copyright": "© 2025 odkrywcy. Wszelkie prawa zastrzeżone.",
+    "madeWithLove": "Stworzone z miłością na ziemi",
+    "freeForever": "Za darmo na zawsze."
   },
   "header": {
-    "auth": {
-      "login": "Zaloguj się",
-      "signUp": "Zarejestruj się"
-    },
     "nav": {
+      "howItWorks": "Jak to działa",
+      "whoIsFor": "Dla kogo",
+      "faq": "Często zadawane pytania",
       "about": "O nas",
       "contact": "Kontakt",
-      "faq": "Najczęściej zadawane pytania",
-      "howItWorks": "Jak to działa",
-      "whoIsFor": "Dla kogo"
+      "product": "Produkt",
+      "share": "Udział",
+      "openMenu": "Otwórz menu nawigacyjne",
+      "closeMenu": "Zamknij menu nawigacyjne"
+    },
+    "auth": {
+      "login": "Zaloguj się",
+      "signUp": "Zarejestruj się",
+      "claimFreePage": "Uzyskaj bezpłatną stronę",
+      "claimFree": "Odbierz bezpłatnie"
     }
   },
   "hero": {
-    "ctaButton": "Zarezerwuj explorers",
-    "headline": "Wszystkie Twoje rekomendacje w jednym QR i prostym linku.",
-    "inputLabel": "Zarezerwuj swój URL explorers:",
+    "headline": "Wszystkie Twoje rekomendacje - jeden link, jeden QR",
+    "subtext": "Utwórz jedną stronę, którą możesz udostępniać, zawierającą wszystko, co polecasz – miejsca, osoby, produkty, książki, filmy, programy, muzykę, gry, aplikacje i nie tylko.",
+    "inputLabel": "Zgłoś adres URL swojego odkrywcy:",
     "inputPlaceholder": "twoje imię",
-    "signupPrompt": "Zarejestruj się teraz, aby otrzymać swój",
-    "subtext": "Podziel się tym, co wiesz i kochasz o miejscu — i spraw, by było odkrywalne dla wszystkich, wszędzie"
+    "ctaButton": "Odbierz swoją stronę Explorer",
+    "signupPrompt": "Zarejestruj się, aby otrzymać swój już teraz",
+    "headlinePrefix": "Wszystkie Twoje",
+    "rotatingWords": [
+      "zalecenia",
+      "kuracje",
+      "zbiory",
+      "ulubione"
+    ],
+    "headlineSuffix": "w jednym łączu i QR.",
+    "badge": "Za darmo na zawsze",
+    "globalStrip": "Explorers udostępniają rekomendacje na całym świecie",
+    "preview": {
+      "todayList": "Dzisiejsza lista",
+      "onePageTitle": "Jedna strona na każdą dobrą rekomendację.",
+      "onePageText": "Udostępnij jako link, QR, wiadomość lub przewodnik.",
+      "items": {
+        "place": "Miejsce",
+        "book": "Książka",
+        "music": "Muzyka",
+        "game": "Gra"
+      },
+      "screenAlt": "Explorer ekran rekomendacji stron"
+    },
+    "countries": {
+      "in": "Indie",
+      "us": "Stany Zjednoczone",
+      "gb": "Zjednoczone Królestwo",
+      "jp": "Japonia",
+      "fr": "Francja",
+      "au": "Australia",
+      "br": "Brazylia",
+      "ae": "Zjednoczone Emiraty Arabskie",
+      "sg": "Singapur",
+      "de": "Niemcy"
+    }
   },
   "languageModal": {
-    "close": "Zamknij",
-    "searchPlaceholder": "Szukaj języków...",
-    "title": "Wybierz Język"
+    "close": "Zamknąć",
+    "searchPlaceholder": "Wyszukaj języki...",
+    "title": "Wybierz Język",
+    "subtitle": "Wybierz język, którego chcesz używać wśród odkrywców.",
+    "noLanguagesFound": "Nie znaleziono języków",
+    "tryDifferentSearch": "Wypróbuj inne wyszukiwane hasło.",
+    "languagesAvailable": "Dostępne języki {{count}}",
+    "escToClose": "Naciśnij Esc, aby zamknąć"
   },
   "legal": {
     "cookies": {
@@ -1248,56 +1297,326 @@
     "tryAgain": "Request New Link"
   },
   "sections": {
-    "analytics": {
-      "dashboardTitle": "Panel Analytics",
-      "engagement": "Zaangażowanie",
-      "headline": "Śledź kliknięcia, polecenia i zaangażowanie",
-      "last30Days": "Ostatnie 30 dni",
-      "referrals": "Polecenia",
-      "scanningDesc": "Monitoruj skanowanie QR i aktualizacje",
-      "scanningTitle": "Kto skanuje",
-      "spotsDesc": "Wglądy oparte na danych dla lepszej kurateli",
-      "spotsTitle": "Najlepsze miejsca",
-      "subtext": "Zobacz, co działa, kto skanuje, i które miejsca otrzymują najwięcej miłości — w czasie rzeczywistym.",
-      "totalScans": "Łączne Skanowania",
-      "workingDesc": "Śledź popularność swoich rekomendacji",
-      "workingTitle": "Zobacz, co działa"
-    },
     "createCustomize": {
+      "headline": "Utwórz stronę Explorer w kilka minut",
+      "subtext": "Zbieraj to, co polecasz, organizuj na swój sposób i udostępniaj w dowolnym miejscu za pomocą jednego łącza lub QR.",
       "bulletPoints": {
         "addSpots": {
-          "description": "Stwórz listę ze swoimi must-visit",
-          "title": "Dodaj swoje ulubione miejsca"
-        },
-        "generate": {
-          "description": "Twój spersonalizowany QR jest gotowy w sekundy",
-          "title": "Wygeneruj swój link i QR natychmiast"
+          "title": "Dodaj miejsca, doświadczenia, trasy, dźwięki i notatki",
+          "description": ""
         },
         "organize": {
-          "description": "Stwórz kategorie, które mają sens dla Twojej publiczności",
-          "title": "Uporządkuj według miasta lub tematu"
+          "title": "Organizuj według lokalizacji lub zainteresowań",
+          "description": ""
+        },
+        "generate": {
+          "title": "Edytuj w dowolnym momencie — Twój link zawsze pozostaje taki sam",
+          "description": ""
         },
         "share": {
-          "description": "",
-          "title": "Udostępniaj cyfrowo lub przez QR w prawdziwym świecie"
+          "title": "Udostępnij cyfrowo lub za pośrednictwem QR w prawdziwym świecie",
+          "description": ""
         }
       },
-      "headline": "Stwórz i dostosuj swój explorers w minuty",
       "mockup": {
-        "addPlace": "Dodaj Miejsce",
-        "title": "Moje Rekomendacje"
+        "title": "Moje rekomendacje",
+        "addPlace": "Dodaj miejsce"
       },
-      "subtext": "Dodaj swoje ulubione miejsca, uporządkuj według miasta lub tematu, i wygeneruj swój QR natychmiast."
+      "steps": [
+        {
+          "title": "Dodaj to, co polecasz",
+          "body": "Miejsca, ludzie, produkty, książki, filmy, programy, muzyka, gry, aplikacje, przewodniki i notatki."
+        },
+        {
+          "title": "Zorganizuj to na swój sposób",
+          "body": "Grupuj według miasta, tematu, listy, kategorii, podróży lub momentu, aby ludzie mogli odkrywać w sposób naturalny."
+        },
+        {
+          "title": "Udostępnij jeden link lub QR",
+          "body": "Twoja strona jest aktualizowana w dowolnym momencie, a ten sam link i QR działają wszędzie."
+        }
+      ]
+    },
+    "shareAnywhere": {
+      "headline": "Jedno łącze. Wiele podróży.",
+      "subtext": "Twój link Explorer staje się żywym przewodnikiem — czymś, co ludzie mogą zapisywać, ponownie odwiedzać i eksplorować we własnym tempie.\n\nUdostępnij to na profilu, w wiadomości, na stole, na ścianie lub na karcie.\nGdziekolwiek się pojawi, Twoja perspektywa będzie z tym związana.",
+      "scanText": "Wyszukaj lokalne rekomendacje",
+      "storefrontText": "Idealny do ekspozycji sklepowych",
+      "instagramTitle": "Dodaj do swojego Instagram/Tiktok Bio",
+      "instagramDesc": "Natychmiast udostępniaj swoim obserwującym",
+      "menuTitle": "Wydrukuj go dla Storefront",
+      "menuDesc": "Fizyczne punkty kontaktu stają się proste",
+      "welcomeTitle": "Dołącz do ksiąg powitalnych",
+      "welcomeDesc": "Idealny dla gospodarzy i przewodników",
+      "cafeMenu": "Menu kawiarni",
+      "tokyoFoodGuide": "Mój przewodnik kulinarny po Tokio explorers.earth/jane",
+      "cards": [
+        {
+          "title": "Link w bio",
+          "eyebrow": "Gotowy do profilu"
+        },
+        {
+          "title": "Kody QR",
+          "eyebrow": "Gotowy do pracy w trybie offline"
+        },
+        {
+          "title": "Wiadomości",
+          "eyebrow": "Gotowy do czatowania"
+        },
+        {
+          "title": "Witamy przewodników",
+          "eyebrow": "Gotowy na gości"
+        }
+      ],
+      "visual": {
+        "scanForPicks": "Skanuj w poszukiwaniu typów",
+        "messageBubble": "Oto moja lista z Kioto",
+        "welcomeGuide": "Witamy przewodnik",
+        "guideItems": [
+          "Śniadanie w pobliżu",
+          "Trasa muzealna",
+          "Wieczorny spacer"
+        ],
+        "savedRecommendation": "Zapisano rekomendację"
+      },
+      "profileCarouselCaption": "Profile Instagram i TikTok",
+      "qrEverywhereTitle": "Dodaj wszędzie łącze QR",
+      "qrEverywhereDesc": "Idealny dla każdego miejsca"
+    },
+    "analytics": {
+      "headline": "Zobacz, z czym ludzie się angażują.",
+      "subtext": "Dowiedz się, które rekomendacje ludzie otwierają, zapisują i ponownie odwiedzają poprzez Twoje linki i kody QR.",
+      "workingTitle": "Zobacz, co działa",
+      "workingDesc": "Śledź, które rekomendacje ludzie otwierają, zapisują i ponownie odwiedzają.",
+      "scanningTitle": "Zrozumienie skanów i kliknięć",
+      "scanningDesc": "Zobacz, jak ludzie trafiają na Twoją stronę za pomocą linków, kodów QR i udostępnionych punktów kontaktowych.",
+      "spotsTitle": "Znajdź najlepsze rekomendacje",
+      "spotsDesc": "Dowiedz się, które miejsca, produkty, listy i przewodniki cieszą się największym zainteresowaniem.",
+      "dashboardTitle": "Panel analityczny",
+      "last30Days": "Ostatnie 30 dni",
+      "totalScans": "Całkowita liczba skanów",
+      "engagement": "Zaręczyny",
+      "referrals": "Polecenia",
+      "livePreview": "Podgląd na żywo"
+    },
+    "referEarn": {
+      "headline": "Udostępniaj, polecaj i zarabiaj",
+      "subtext": "Zamień swoje rekomendacje w pasywne nagrody — zdobywaj kredyty, gdy inni używają Twojego QR.",
+      "comingSoon": "Program Nagród za Polecenia (Wkrótce)",
+      "rewardsTitle": "Zarabiaj Nagrody",
+      "rewardsDesc": "Otrzymuj pieniądze, gdy ludzie używają Twoich rekomendacji",
+      "earnedThisMonth": "Zarobione w tym miesiącu",
+      "passiveTitle": "Zamień rekomendacje w pasywne nagrody",
+      "networkTitle": "Buduj swoją sieć i zarabiaj automatycznie"
+    },
+    "localTunes": {
+      "mainHeading": "Tunes",
+      "title": "Słuchaj podczas eksploracji",
+      "body": "Eksploracja nie jest tylko wizualna. Dźwięk niesie pamięć, kontekst i emocje.\n\nTunes pozwala zbierać i udostępniać ścieżki dźwiękowe dla miejsc, podróży i nastrojów — czy to muzyka odkryta w drodze, czy dźwięki, które definiują miejsce dla Ciebie.\n\nBezproblemowo połączone z Twoim profilem Explorer.",
+      "exploreButton": "Eksploruj Tunes",
+      "featuresHeading": "Potężne Funkcje",
+      "features": {
+        "realtimeCollaboration": {
+          "title": "Współpraca w Czasie Rzeczywistym",
+          "description": "Pozwól gościom natychmiast dodawać utwory do swojej playlisty, zachowując pełną kontrolę nad tym, co jest odtwarzane."
+        },
+        "qrCodeSharing": {
+          "title": "Udostępnianie Kodu QR",
+          "description": "Udostępnij swoje doświadczenie muzyczne prostym skanowaniem kodu QR — bez aplikacji ani pobierania."
+        },
+        "youtubeIntegration": {
+          "title": "Integracja z YouTube",
+          "description": "Bezproblemowo integruj się z YouTube, aby uzyskać dostęp do milionów utworów i stworzyć idealną atmosferę."
+        },
+        "voteLikeSystem": {
+          "title": "System Głosowania i Polubień",
+          "description": "Goście mogą głosować na swoje ulubione utwory, aby wpływać na kolejkę playlisty w czasie rzeczywistym."
+        },
+        "silentParties": {
+          "title": "Ciche Imprezy",
+          "description": "Organizuj unikalne ciche imprezy, gdzie wszyscy słuchają przez własne słuchawki."
+        },
+        "karaokeReady": {
+          "title": "Gotowe na Karaoke",
+          "description": "Idealne na wieczory karaoke z wspólnotowymi playlistami i prośbami o utwory w czasie rzeczywistym."
+        }
+      },
+      "venueHeading": "Idealne dla Każdego Miejsca",
+      "venues": {
+        "barsPubs": "Bary i Puby",
+        "restaurants": "Restauracje",
+        "coffeeShops": "Kawiarnie",
+        "eventsWeddings": "Wydarzenia i Wesela",
+        "retailStores": "Sklepy Detaliczne",
+        "gymsFitness": "Siłownie i Fitness"
+      },
+      "closingStatement": "Tunes jest <strong>darmowe</strong> do eksploracji, a dla płatnych funkcji możesz później zaktualizować."
+    },
+    "whoIsFor": {
+      "headline": "Stworzony dla ludzi, których gust pomaga innym.",
+      "subtext": "Niezależnie od tego, czy udostępniasz miasto, półkę, listę produktów, playlistę czy przewodnik dla gości, odkrywcy sprawią, że Twoje rekomendacje staną się domem.",
+      "cards": [
+        "Osobiści odkrywcy",
+        "Twórcy i kuratorzy",
+        "Gospodarze i firmy",
+        "Marki i organizacje"
+      ],
+      "useCases": {
+        "travelers": "Podróżnicy",
+        "travelersDesc": "Dziel się odkrytymi klejnotami z innymi odkrywcami",
+        "influencers": "Influencerzy",
+        "influencersDesc": "Monetyzuj lokalną wiedzę i buduj społeczność",
+        "airbnbHosts": "Airbnb Hosty",
+        "airbnbHostsDesc": "Zwiększ komfort gości dzięki lokalnym spostrzeżeniom",
+        "hotels": "Hotele",
+        "hotelsDesc": "Dostarczaj wyselekcjonowane lokalne rekomendacje",
+        "restaurants": "Restauracje",
+        "restaurantsDesc": "Promuj się wzajemnie z innymi lokalnymi firmami",
+        "cafes": "Kawiarnie",
+        "cafesDesc": "Udostępniaj klientom ulubione produkty z okolicy",
+        "localGuides": "Lokalni przewodnicy",
+        "localGuidesDesc": "Skaluj wiedzę wykraczającą poza pojedyncze wycieczki",
+        "creators": "Twórcy",
+        "creatorsDesc": "Dodaj wartość wykraczającą poza treść dzięki praktycznym wskazówkom",
+        "tourOperators": "Organizatorzy wycieczek",
+        "tourOperatorsDesc": "Rozszerz doświadczenie poza zaplanowane wycieczki",
+        "anyBusiness": "Dowolny biznes",
+        "anyBusinessDesc": "Buduj społeczność i lojalność klientów"
+      },
+      "explorerLabel": "Explorer",
+      "visual": {
+        "personal": [
+          "Kawiarnia",
+          "Książka",
+          "Ścieżka",
+          "Album",
+          "Film",
+          "Gra"
+        ],
+        "creators": [
+          "#1",
+          "#2",
+          "#3",
+          "#4"
+        ],
+        "hostsQr": "QR"
+      },
+      "chips": [
+        "Podróżnicy",
+        "Miejscowi",
+        "Rodziny",
+        "Studenci",
+        "Nomadzi",
+        "Twórcy",
+        "Influencerzy",
+        "Blogerzy",
+        "Recenzenci",
+        "Fotografowie",
+        "Wychowawcy",
+        "Liderzy społeczności",
+        "Hotele",
+        "Airbnbs",
+        "Hostele",
+        "Kawiarnie",
+        "Restauracje",
+        "Sklepy detaliczne",
+        "Siłownie",
+        "Salony",
+        "Kliniki",
+        "Butiki",
+        "Marki",
+        "Startupy",
+        "Agencje",
+        "Uniwersytety",
+        "Korporacje",
+        "Lotniska",
+        "Organizacje pozarządowe",
+        "Zespoły rządowe"
+      ]
+    },
+    "testimonials": {
+      "headline": "Uwielbiany przez podróżników, twórców i gospodarzy",
+      "subtext": "Zobacz, jak ludzie na całym świecie korzystają z odkrywców, aby dzielić się tym, co najważniejsze.",
+      "scrollLeft": "Przewiń referencje w lewo",
+      "scrollRight": "Przewiń referencje w prawo",
+      "items": [
+        {
+          "id": "1",
+          "name": "Priya Sharma",
+          "role": "Bloger podróżniczy",
+          "location": "Bombaj, Indie",
+          "quote": "odkrywcy zmienili sposób, w jaki dzielę się swoją wiedzą podróżniczą. Moi obserwatorzy uwielbiają uzyskiwać natychmiastowy dostęp do wybranych przeze mnie rekomendacji!"
+        },
+        {
+          "id": "2",
+          "name": "Raj Patel",
+          "role": "Airbnb Host",
+          "location": "Delhi, Indie",
+          "quote": "Moi goście absolutnie uwielbiają spersonalizowany kod QR w zestawie powitalnym. To stało się moim charakterystycznym akcentem!"
+        },
+        {
+          "id": "3",
+          "name": "Yuki Tanaka",
+          "role": "Właściciel restauracji",
+          "location": "Tokio, Japonia",
+          "quote": "Dzielimy się naszymi odkrywcami z klientami, aby polecali inne lokalne miejsca. Stworzyło to niesamowite powiązania społeczne."
+        },
+        {
+          "id": "4",
+          "name": "Maria Silva",
+          "role": "Przewodnik turystyczny",
+          "location": "Sao Paulo, Brazylia",
+          "quote": "Explorers pomaga mi poszerzać moją wiedzę poza godziny zwiedzania. Klienci mogą uzyskać dostęp do moich rekomendacji w dowolnym momencie!"
+        },
+        {
+          "id": "5",
+          "name": "Jamesa Wilsona",
+          "role": "Wpływowy podróżnik",
+          "location": "Sydney, Australia",
+          "quote": "Dzięki wpływowi na podróże odkrywcy mogą z łatwością dzielić się z odbiorcami moimi ulubionymi miejscami. Funkcja kodu QR jest genialna!"
+        },
+        {
+          "id": "6",
+          "name": "Zofia Martina",
+          "role": "Lokalny przewodnik",
+          "location": "Paryż, Francja",
+          "quote": "Używam eksploratorów do tworzenia pieszych wycieczek dla moich klientów. Mogą skanować QR i eksplorować we własnym tempie!"
+        }
+      ]
     },
     "faq": {
-      "error": "Błąd podczas ładowania FAQ. Spróbuj ponownie później.",
       "headline": "Masz pytania?",
+      "subtext": "Odpowiedzieliśmy na najczęstsze rzeczy, o które ludzie pytają przed rozpoczęciem.",
       "loading": "Ładowanie FAQ...",
-      "subtext": "Odpowiedzieliśmy na najczęstsze rzeczy, o które ludzie pytają przed rozpoczęciem."
+      "error": "Błąd podczas ładowania FAQ. Spróbuj ponownie później.",
+      "fallbackItems": [
+        {
+          "Sequence": 1,
+          "Question": "Co mogę dodać do mojej strony Explorer?",
+          "Answer": "Miejsca, ludzie, produkty, książki, filmy, programy, muzyka, gry, aplikacje, przewodniki i notatki."
+        },
+        {
+          "Sequence": 2,
+          "Question": "Czy mogę go udostępnić za pomocą kodu QR?",
+          "Answer": "Tak. Twoja strona Explorer może być udostępniana jako link lub QR dla profili, wiadomości, tabel, kart i drukowanych przewodników."
+        },
+        {
+          "Sequence": 3,
+          "Question": "Czy mogę później zaktualizować moje rekomendacje?",
+          "Answer": "Tak. Możesz zachować świeżość swojej strony, podczas gdy ten sam link i QR będą nadal działać."
+        },
+        {
+          "Sequence": 4,
+          "Question": "Czy odkrywcy są wolni na zawsze?",
+          "Answer": "Tak. Strona może jasno przekazać bezpłatną obietnicę, bez języka obciążającego płatnościami."
+        }
+      ]
     },
     "features": {
-      "communityDriven": {
-        "title": "Odkrywanie napędzane przez społeczność"
+      "title": "Zaprojektowane, aby pozostać z boku",
+      "subtitle": "Proste, przemyślane funkcje, które pozwalają twoim rekomendacjom błyszczeć.",
+      "simpleLinks": {
+        "title": "Proste linki i udostępnianie QR"
       },
       "livingGuides": {
         "title": "Żywe, edytowalne przewodniki"
@@ -1305,347 +1624,143 @@
       "locationAware": {
         "title": "Rekomendacje świadome lokalizacji"
       },
-      "privacyFirst": {
-        "title": "Prywatność na pierwszym miejscu według projektu"
-      },
-      "simpleLinks": {
-        "title": "Proste linki i udostępnianie QR"
-      },
       "soundPlaylists": {
         "title": "Opcjonalny dźwięk i playlisty"
       },
-      "subtitle": "Proste, przemyślane funkcje, które pozwalają twoim rekomendacjom błyszczeć.",
-      "title": "Zaprojektowane, aby pozostać z boku"
+      "privacyFirst": {
+        "title": "Prywatność na pierwszym miejscu według projektu"
+      },
+      "communityDriven": {
+        "title": "Odkrywanie napędzane przez społeczność"
+      }
     },
     "finalCTA": {
-      "creating": "Tworzenie Twojego explorers...",
+      "headline": "Zacznij dzielić się swoim światem już dziś",
+      "subtext": "Zarezerwuj swój darmowy explorers i zamień swoje lokalne spostrzeżenia w udostępnialne przewodniki.",
       "ctaButton": "Zarezerwuj explorers – Za Darmo Na Zawsze",
       "disclaimer": "Karta kredytowa nie jest wymagana • Konfiguracja w 2 minuty",
-      "headline": "Zacznij dzielić się swoim światem już dziś",
-      "subtext": "Zarezerwuj swój darmowy explorers i zamień swoje lokalne spostrzeżenia w udostępnialne przewodniki."
+      "creating": "Tworzenie Twojego explorers..."
     },
-    "localTunes": {
-      "body": "Eksploracja nie jest tylko wizualna. Dźwięk niesie pamięć, kontekst i emocje.\n\nTunes pozwala zbierać i udostępniać ścieżki dźwiękowe dla miejsc, podróży i nastrojów — czy to muzyka odkryta w drodze, czy dźwięki, które definiują miejsce dla Ciebie.\n\nBezproblemowo połączone z Twoim profilem Explorer.",
-      "closingStatement": "Tunes jest <strong>darmowe</strong> do eksploracji, a dla płatnych funkcji możesz później zaktualizować.",
-      "exploreButton": "Eksploruj Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "Idealne na wieczory karaoke z wspólnotowymi playlistami i prośbami o utwory w czasie rzeczywistym.",
-          "title": "Gotowe na Karaoke"
-        },
-        "qrCodeSharing": {
-          "description": "Udostępnij swoje doświadczenie muzyczne prostym skanowaniem kodu QR — bez aplikacji ani pobierania.",
-          "title": "Udostępnianie Kodu QR"
-        },
-        "realtimeCollaboration": {
-          "description": "Pozwól gościom natychmiast dodawać utwory do swojej playlisty, zachowując pełną kontrolę nad tym, co jest odtwarzane.",
-          "title": "Współpraca w Czasie Rzeczywistym"
-        },
-        "silentParties": {
-          "description": "Organizuj unikalne ciche imprezy, gdzie wszyscy słuchają przez własne słuchawki.",
-          "title": "Ciche Imprezy"
-        },
-        "voteLikeSystem": {
-          "description": "Goście mogą głosować na swoje ulubione utwory, aby wpływać na kolejkę playlisty w czasie rzeczywistym.",
-          "title": "System Głosowania i Polubień"
-        },
-        "youtubeIntegration": {
-          "description": "Bezproblemowo integruj się z YouTube, aby uzyskać dostęp do milionów utworów i stworzyć idealną atmosferę.",
-          "title": "Integracja z YouTube"
-        }
-      },
-      "featuresHeading": "Potężne Funkcje",
-      "mainHeading": "Tunes",
-      "title": "Słuchaj podczas eksploracji",
-      "venueHeading": "Idealne dla Każdego Miejsca",
-      "venues": {
-        "barsPubs": "Bary i Puby",
-        "coffeeShops": "Kawiarnie",
-        "eventsWeddings": "Wydarzenia i Wesela",
-        "gymsFitness": "Siłownie i Fitness",
-        "restaurants": "Restauracje",
-        "retailStores": "Sklepy Detaliczne"
-      }
-    },
-    "referEarn": {
-      "comingSoon": "Program Nagród za Polecenia (Wkrótce)",
-      "earnedThisMonth": "Zarobione w tym miesiącu",
-      "headline": "Udostępniaj, polecaj i zarabiaj",
-      "networkTitle": "Buduj swoją sieć i zarabiaj automatycznie",
-      "passiveTitle": "Zamień rekomendacje w pasywne nagrody",
-      "rewardsDesc": "Otrzymuj pieniądze, gdy ludzie używają Twoich rekomendacji",
-      "rewardsTitle": "Zarabiaj Nagrody",
-      "subtext": "Zamień swoje rekomendacje w pasywne nagrody — zdobywaj kredyty, gdy inni używają Twojego QR."
-    },
-    "shareAnywhere": {
-      "cafeMenu": "Menu kawiarni",
-      "headline": "Udostępnij w mediach społecznościowych, witrynach sklepów, lub ścianach miasta",
-      "instagramDesc": "Udostępniaj natychmiast swoim obserwatorom",
-      "instagramTitle": "Dodaj do swojego bio na Instagramie",
-      "menuDesc": "Fizyczne punkty kontaktu uproszczone",
-      "menuTitle": "Wydrukuj na menu",
-      "profileCarouselCaption": "Instagram & TikTok profiles",
-      "qrEverywhereDesc": "Perfect for Every Venue",
-      "qrEverywhereTitle": "Add the QR link everywhere",
-      "scanText": "Skanuj, aby uzyskać lokalne rekomendacje",
-      "storefrontText": "Idealne do witryn sklepów",
-      "subtext": "Dodaj do swojego bio na Instagramie, wydrukuj na menu, lub włącz do książek powitalnych — Twój przewodnik, zawsze gotowy.",
-      "tokyoFoodGuide": "Mój przewodnik kulinarny po Tokio explorers.earth/jane",
-      "welcomeDesc": "Idealne dla gospodarzy i przewodników",
-      "welcomeTitle": "Włącz do książek powitalnych"
-    },
-    "testimonials": {
-      "headline": "Uwielbiany przez podróżników, twórców i gospodarzy",
-      "items": [
-        {
-          "id": "1",
-          "location": "San Francisco",
-          "name": "Marcus Chen",
-          "quote": "explorers zmienił sposób, w jaki dzielę się swoją wiedzą podróżniczą. Moi obserwatorzy uwielbiają mieć natychmiastowy dostęp do moich kuratorowanych rekomendacji!",
-          "role": "Bloger Podróżniczy"
-        },
-        {
-          "id": "2",
-          "location": "Barcelona",
-          "name": "Sarah Johnson",
-          "quote": "Moi goście absolutnie uwielbiają spersonalizowany kod QR w ich zestawie powitalnym. Stał się moim charakterystycznym akcentem!",
-          "role": "Gospodarz Airbnb"
-        },
-        {
-          "id": "3",
-          "location": "Meksyk",
-          "name": "Alex Rodriguez",
-          "quote": "Dzielimy się naszym explorers z klientami, aby polecać inne lokalne miejsca. Stworzyło to niesamowite połączenia społecznościowe.",
-          "role": "Właściciel Restauracji"
-        },
-        {
-          "id": "4",
-          "location": "Londyn",
-          "name": "Emma Thompson",
-          "quote": "explorers pomaga mi rozszerzyć moją ekspertyzę poza godziny wycieczek. Klienci mogą uzyskać dostęp do moich rekomendacji w dowolnym momencie!",
-          "role": "Przewodnik Turystyczny"
-        },
-        {
-          "id": "5",
-          "location": "Sydney, Australia",
-          "name": "James Wilson",
-          "quote": "As a travel influencer, explorers makes it so easy to share my favorite spots with my audience. The QR code feature is brilliant!",
-          "role": "Travel Influencer"
-        },
-        {
-          "id": "6",
-          "location": "Paris, France",
-          "name": "Sophie Martin",
-          "quote": "I use explorers to create walking tours for my clients. They can scan the QR and explore at their own pace!",
-          "role": "Local Guide"
-        }
+    "productCategories": {
+      "headline": "Polecaj więcej niż miejsca.",
+      "subtext": "Utwórz jedną stronę dla miejsc, osób, produktów, książek, filmów, programów, muzyki, gier, aplikacji i narzędzi.",
+      "actions": [
+        "Ratować",
+        "Zorganizować",
+        "Udział"
       ],
-      "scrollLeft": "Przewiń referencje w lewo",
-      "scrollRight": "Przewiń referencje w prawo",
-      "subtext": "Zobacz, jak ludzie na całym świecie używają explorers do dzielenia się tym, co najważniejsze."
-    },
-    "whoIsFor": {
-      "cards": {
-        "businesses": {
-          "items": {
-            "boutique": {
-              "label": "Butik",
-              "oneLiner": "Butiki wymieniające kuratorowane znaleziska"
-            },
-            "cafe": {
-              "label": "Kawiarnia",
-              "oneLiner": "Kawiarnie podkreślające ulubione pozycje menu"
-            },
-            "clinic": {
-              "label": "Klinika",
-              "oneLiner": "Kliniki dzielące się miejscami związanymi ze zdrowiem"
-            },
-            "gym": {
-              "label": "Siłownia",
-              "oneLiner": "Siłownie sugerujące lokalne miejsca wellness"
-            },
-            "restaurant": {
-              "label": "Restauracja",
-              "oneLiner": "Restauracje dzielące się daniami do wypróbowania"
-            },
-            "retailShop": {
-              "label": "Sklep Detaliczny",
-              "oneLiner": "Sklepy dzielące się rekomendacjami produktów"
-            },
-            "salon": {
-              "label": "Salon",
-              "oneLiner": "Salony oferujące przewodniki piękności"
-            },
-            "spa": {
-              "label": "Spa",
-              "oneLiner": "Spa wymieniające pobliskie opcje relaksacyjne"
-            }
-          },
-          "oneLiner": "Kieruj klientów pomocnymi rekomendacjami.",
-          "title": "Firmy"
-        },
-        "creators": {
-          "items": {
-            "blogger": {
-              "label": "Bloger",
-              "oneLiner": "Blogerzy kuratorujący pisane przewodniki"
-            },
-            "communityLeader": {
-              "label": "Lider Społeczności",
-              "oneLiner": "Liderzy społeczności kuratorujący przydatne listy"
-            },
-            "educator": {
-              "label": "Edukator",
-              "oneLiner": "Edukatorzy dzielący się przewodnikami edukacyjnymi"
-            },
-            "influencer": {
-              "label": "Influencer",
-              "oneLiner": "Influencerzy dzielący się najlepszymi wyborami"
-            },
-            "photographer": {
-              "label": "Fotograf",
-              "oneLiner": "Fotografowie dzielący się miejscami do zdjęć"
-            },
-            "reviewer": {
-              "label": "Recenzent",
-              "oneLiner": "Recenzenci wymieniający najlepiej ocenione miejsca"
-            },
-            "vlogger": {
-              "label": "Vloger",
-              "oneLiner": "Vlogerzy dzielący się wizualnymi podróżami"
-            }
-          },
-          "oneLiner": "Udostępniaj kuratorowane listy swojej publiczności.",
-          "title": "Twórcy"
-        },
-        "hospitality": {
-          "items": {
-            "airbnb": {
-              "label": "Airbnb",
-              "oneLiner": "Gospodarze dzielący się ulubionymi miejscami w dzielnicy"
-            },
-            "homestay": {
-              "label": "Pensjonat",
-              "oneLiner": "Pensjonaty oferujące przewodniki skierowane do rodzin"
-            },
-            "hostel": {
-              "label": "Hostel",
-              "oneLiner": "Hostele dzielące się wskazówkami dla podróżników"
-            },
-            "hotel": {
-              "label": "Hotel",
-              "oneLiner": "Hotele oferujące lokalne przewodniki"
-            },
-            "pgColiving": {
-              "label": "PG/Wspólne Mieszkanie",
-              "oneLiner": "PG/Wspólne Mieszkanie pokazujące ważne pobliskie miejsca"
-            },
-            "resort": {
-              "label": "Ośrodek Wypoczynkowy",
-              "oneLiner": "Ośrodki wypoczynkowe zapewniające listy aktywności"
-            }
-          },
-          "oneLiner": "Oferuj gościom kuratorowane lokalne spostrzeżenia.",
-          "title": "Gościnność"
-        },
-        "individuals": {
-          "items": {
-            "emergencySharer": {
-              "label": "Dzielący się w Sytuacjach Awaryjnych",
-              "oneLiner": "Dzielący się w sytuacjach awaryjnych publikujący ważne miejsca"
-            },
-            "family": {
-              "label": "Rodzina",
-              "oneLiner": "Rodziny dzielące się przydatnymi miejscami"
-            },
-            "local": {
-              "label": "Lokalny",
-              "oneLiner": "Miejscowi dzielący się wskazówkami o dzielnicy"
-            },
-            "nomad": {
-              "label": "Nomada",
-              "oneLiner": "Nomadzi wymieniający przestrzenie przyjazne do pracy"
-            },
-            "student": {
-              "label": "Student",
-              "oneLiner": "Studenci dzielący się miejscami na kampusie/w pobliżu"
-            },
-            "traveler": {
-              "label": "Podróżnik",
-              "oneLiner": "Ludzie dzielący się miejscami podróży"
-            }
-          },
-          "oneLiner": "Udostępniaj osobiste lub lokalne rekomendacje.",
-          "title": "Osoby Indywidualne"
-        },
-        "organizations": {
-          "items": {
-            "agency": {
-              "label": "Agencja",
-              "oneLiner": "Biura podróży wymieniające miejsca do odwiedzenia"
-            },
-            "airline": {
-              "label": "Linia Lotnicza",
-              "oneLiner": "Linie lotnicze dzielące się przewodnikami po miastach"
-            },
-            "airport": {
-              "label": "Lotnisko",
-              "oneLiner": "Lotniska oferujące terminale + wskazówki dotyczące miasta"
-            },
-            "corporate": {
-              "label": "Korporacyjny",
-              "oneLiner": "Korporacje wymieniające pobliskie zasoby"
-            },
-            "government": {
-              "label": "Rząd",
-              "oneLiner": "Departamenty podkreślające usługi publiczne"
-            },
-            "ngo": {
-              "label": "NGO",
-              "oneLiner": "NGO dzielące się zasobami społeczności"
-            },
-            "railway": {
-              "label": "Kolej",
-              "oneLiner": "Koleje dzielące się informacjami o peronie"
-            },
-            "university": {
-              "label": "Uniwersytet",
-              "oneLiner": "Uniwersytety dzielące się podstawami kampusu"
-            }
-          },
-          "oneLiner": "Zapewnij kuratorowane przewodniki i zasoby.",
-          "title": "Organizacje"
-        }
+      "overlayLabel": "Strona Explorer",
+      "visualLabels": {
+        "products": "Prawdziwi ulubieńcy",
+        "apps": "Przydatny stos"
       },
-      "headline": "Dla kogo jest explorers.earth?",
-      "subtext": "explorers.earth jest dla każdego, kto wierzy, że dzielenie się jest odpowiedzialnością — nie transmisją.",
-      "useCases": {
-        "airbnbHosts": "Gospodarze Airbnb",
-        "airbnbHostsDesc": "Ulepsz doświadczenie gości lokalnymi spostrzeżeniami",
-        "anyBusiness": "Każdy Biznes",
-        "anyBusinessDesc": "Buduj społeczność i lojalność klientów",
-        "cafes": "Kawiarnie",
-        "cafesDesc": "Podziel się ulubionymi miejscami w okolicy z klientami",
-        "creators": "Twórcy",
-        "creatorsDesc": "Dodaj wartość poza treścią z praktycznymi wskazówkami",
-        "hotels": "Hotele",
-        "hotelsDesc": "Oferuj kuratorowane lokalne rekomendacje",
-        "influencers": "Influencerzy",
-        "influencersDesc": "Monetyzuj lokalną wiedzę i buduj społeczność",
-        "localGuides": "Lokalni Przewodnicy",
-        "localGuidesDesc": "Skaluj swoją ekspertyzę poza indywidualne wycieczki",
-        "restaurants": "Restauracje",
-        "restaurantsDesc": "Współpracuj z innymi lokalnymi biznesami",
-        "tourOperators": "Operatorzy Wycieczek",
-        "tourOperatorsDesc": "Rozszerz doświadczenia poza zaplanowane wycieczki",
-        "travelers": "Podróżnicy",
-        "travelersDesc": "Podziel się odkrytymi klejnotami z innymi odkrywcami"
-      }
+      "visualDetails": {
+        "products": [
+          "Sprzęt podróżny",
+          "Codzienne noszenie",
+          "Zestaw twórcy"
+        ],
+        "apps": [
+          "Narzędzia planowania",
+          "Przydatne aplikacje",
+          "Linki do zasobów"
+        ]
+      },
+      "categories": [
+        {
+          "id": "places",
+          "label": "Miejsca",
+          "title": "Lokalne miejsca, przewodniki i trasy",
+          "description": "Restauracje, dzielnice, muzea, trasy i ukryte skarby, które ludzie mogą odwiedzić."
+        },
+        {
+          "id": "people",
+          "label": "Ludzie",
+          "title": "Ludzie, których warto naśladować i od których warto się uczyć",
+          "description": "Twórcy, założyciele, przewodnicy, artyści, nauczyciele, eksperci i ludzie, którzy ukształtowali Twój gust."
+        },
+        {
+          "id": "books",
+          "label": "Książki",
+          "title": "Książki i listy lektur",
+          "description": "Książki, które stale polecasz na czatach, w notatkach, biuletynach i rozmowach z podróży."
+        },
+        {
+          "id": "movies",
+          "label": "Filmy i telewizja",
+          "title": "Filmy, programy i listy obserwowanych",
+          "description": "Filmy, seriale, filmy dokumentalne i listy obserwowanych na każdy nastrój i publiczność."
+        },
+        {
+          "id": "games",
+          "label": "Zawody sportowe",
+          "title": "Gry i światy do odkrycia",
+          "description": "Gry, zadania, światy i doświadczenia, które warto wypróbować w następnej kolejności."
+        },
+        {
+          "id": "music",
+          "label": "Muzyka",
+          "title": "Albumy, wykonawcy i playlisty",
+          "description": "Artyści, albumy, utwory, playlisty i ścieżki dźwiękowe powiązane z miejscami i chwilami."
+        },
+        {
+          "id": "products",
+          "label": "Produkty",
+          "title": "Produkty, które ludzie naprawdę polecają",
+          "description": "Ulubione produkty codziennego użytku, sprzęt podróżny, narzędzia dla twórców, prezenty i produkty, na których warto oszczędzać."
+        },
+        {
+          "id": "apps",
+          "label": "Aplikacje i narzędzia",
+          "title": "Aplikacje, narzędzia i przydatne linki",
+          "description": "Oprogramowanie, strony internetowe, szablony, narzędzia i zasoby, które ułatwiają życie."
+        }
+      ]
     }
   },
   "seo": {
     "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
+    "landing": {
+      "title": "odkrywcy — odkrywaj i udostępniaj spersonalizowane lokalne rekomendacje",
+      "description": "Odkrywaj i udostępniaj odkrywcom swoje ulubione lokalne miejsca. Twórz spersonalizowane przewodniki po miastach, organizuj miejsca, które trzeba odwiedzić i ułatwiaj ich odkrywanie dzięki udostępnianym kodom QR. Przeglądaj ukryte perełki, wybrane rekomendacje i wskazówki dotyczące lokalnych podróży na interaktywnych mapach.",
+      "keywords": [
+        "odkryj miejsca blisko mnie",
+        "spersonalizowane przewodniki turystyczne",
+        "aplikacja z lokalnymi rekomendacjami",
+        "twórca przewodników miejskich",
+        "podziel się wskazówkami dotyczącymi podróży",
+        "rekomendacje ukrytych klejnotów",
+        "rzeczy do zrobienia w mieście",
+        "przewodnik turystyczny oparty na mapach",
+        "najlepsze lokalne miejsca",
+        "wyselekcjonowane rekomendacje restauracji",
+        "przewodnik turystyczny kody QR",
+        "tworzyć i udostępniać listy lokalizacji",
+        "lokalne przewodniki tworzone przez użytkowników",
+        "zwiedzaj miejsca wokół siebie",
+        "cyfrowe przewodniki miejskie",
+        "Kody QR",
+        "lokalne zalecenia",
+        "dzielenie się miejscami",
+        "przewodnik turystyczny",
+        "lokalny biznes",
+        "rekomendacje cyfrowe",
+        "linki, które można udostępniać",
+        "udostępnianie lokalizacji",
+        "wskazówki dotyczące podróży",
+        "lokalne spoty"
+      ],
+      "geoDescription": "Odkrywaj i udostępniaj swoje ulubione lokalne miejsca dzięki spersonalizowanym kodom QR i linkom, które można udostępniać",
+      "geoFeatures": [
+        "Spersonalizowane generowanie kodu QR",
+        "Udostępnianie lokalnych rekomendacji",
+        "Analityka i spostrzeżenia",
+        "Projekt zoptymalizowany pod kątem urządzeń mobilnych",
+        "Odkrycie społeczności"
+      ],
+      "geoIndustry": "Technologia"
+    }
   },
   "settings": {
     "account": {
@@ -2162,5 +2277,14 @@
       "usernameNotChanged": "Nazwa użytkownika nie jest zmieniona. Zmień swoją nazwę użytkownika",
       "validationPending": "Walidacja jest w toku. Poczekaj"
     }
+  },
+  "usernameClaim": {
+    "validating": "Sprawdzanie poprawności...",
+    "claimFree": "Odbierz bezpłatnie",
+    "trySuggestions": "Spróbuj: {{suggestions}}",
+    "available": "Nazwa użytkownika jest dostępna.",
+    "unavailable": "Nazwa użytkownika nie jest dostępna.",
+    "confirmOnSignup": "Dostępność potwierdzimy podczas rejestracji.",
+    "checkingAvailability": "Sprawdzam dostępność..."
   }
 }

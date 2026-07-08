@@ -1146,50 +1146,99 @@
     "verificationSent": "Verification email sent to:"
   },
   "footer": {
-    "copyright": "© 2025 explorers. Alle rechten voorbehouden.",
+    "tagline": "Laat uw aanbevelingen de wereld rondreizen.",
     "email": "hello@explorers.earth",
-    "links": {
-      "about": "Over",
-      "contact": "Contact",
-      "cookies": "Cookiebeleid",
-      "faq": "Veelgestelde vragen",
-      "howItWorks": "Hoe het werkt",
-      "privacy": "Privacybeleid",
-      "terms": "Algemene Voorwaarden"
-    },
-    "madeWithLove": "Met liefde gemaakt op aarde",
     "sections": {
+      "product": "Producten",
       "contact": "Contact",
-      "legal": "Juridisch",
-      "product": "Product"
+      "legal": "Legaal",
+      "company": "Bedrijf"
     },
-    "tagline": "Laat je aanbevelingen de wereld rondreizen."
+    "links": {
+      "howItWorks": "Hoe het werkt",
+      "faq": "Veelgestelde vragen",
+      "contact": "Contact",
+      "about": "Over",
+      "terms": "Algemene voorwaarden",
+      "privacy": "Privacybeleid",
+      "cookies": "Cookiebeleid",
+      "product": "Producten",
+      "shareAnywhere": "Deel overal"
+    },
+    "copyright": "© 2025 ontdekkingsreizigers. Alle rechten voorbehouden.",
+    "madeWithLove": "Gemaakt met liefde op aarde",
+    "freeForever": "Voor altijd gratis."
   },
   "header": {
-    "auth": {
-      "login": "Inloggen",
-      "signUp": "Registreren"
-    },
     "nav": {
+      "howItWorks": "Hoe het werkt",
+      "whoIsFor": "Voor wie",
+      "faq": "Veelgestelde vragen",
       "about": "Over",
       "contact": "Contact",
-      "faq": "Veelgestelde vragen",
-      "howItWorks": "Hoe het werkt",
-      "whoIsFor": "Voor wie"
+      "product": "Producten",
+      "share": "Deel",
+      "openMenu": "Navigatiemenu openen",
+      "closeMenu": "Navigatiemenu sluiten"
+    },
+    "auth": {
+      "login": "Inloggen",
+      "signUp": "Registreren",
+      "claimFreePage": "Claim gratis pagina",
+      "claimFree": "Gratis claimen"
     }
   },
   "hero": {
-    "ctaButton": "Claim Je explorers",
-    "headline": "Al je aanbevelingen, gedeeld via één eenvoudige link of QR",
-    "inputLabel": "Claim je explorers URL:",
-    "inputPlaceholder": "je naam",
-    "signupPrompt": "Registreer nu om de jouwe te krijgen",
-    "subtext": "Van plaatsen tot geluiden, routes en verhalen — deel wat je weet en liefhebt."
+    "headline": "Al uw aanbevelingen - één link, één QR",
+    "subtext": "Maak één deelbare pagina voor alles wat u aanbeveelt: plaatsen, mensen, producten, boeken, films, shows, muziek, games, apps en meer.",
+    "inputLabel": "Claim uw verkenners-URL:",
+    "inputPlaceholder": "jouw naam",
+    "ctaButton": "Claim uw Explorer-pagina",
+    "signupPrompt": "Meld u nu aan om de uwe te krijgen",
+    "headlinePrefix": "Helemaal jouw",
+    "rotatingWords": [
+      "aanbevelingen",
+      "curaties",
+      "collecties",
+      "favorieten"
+    ],
+    "headlineSuffix": "in één link en QR.",
+    "badge": "Voor altijd gratis",
+    "globalStrip": "Explorer's delen aanbevelingen over de hele wereld",
+    "preview": {
+      "todayList": "De lijst van vandaag",
+      "onePageTitle": "Eén pagina voor elke goede aanbeveling.",
+      "onePageText": "Deel het als een link, QR, bericht of gids.",
+      "items": {
+        "place": "Plaats",
+        "book": "Boek",
+        "music": "Muziek",
+        "game": "Spel"
+      },
+      "screenAlt": "Explorer pagina-aanbevelingenscherm"
+    },
+    "countries": {
+      "in": "Indië",
+      "us": "Verenigde Staten",
+      "gb": "Verenigd Koninkrijk",
+      "jp": "Japan",
+      "fr": "Frankrijk",
+      "au": "Australië",
+      "br": "Brazilië",
+      "ae": "VAE",
+      "sg": "Singapore",
+      "de": "Duitsland"
+    }
   },
   "languageModal": {
-    "close": "Sluiten",
-    "searchPlaceholder": "Zoek talen...",
-    "title": "Selecteer Taal"
+    "close": "Dichtbij",
+    "searchPlaceholder": "Talen zoeken...",
+    "title": "Selecteer Taal",
+    "subtitle": "Kies de taal die u in verkenners wilt gebruiken.",
+    "noLanguagesFound": "Geen talen gevonden",
+    "tryDifferentSearch": "Probeer een andere zoekterm.",
+    "languagesAvailable": "{{count}} talen beschikbaar",
+    "escToClose": "Druk op Esc om te sluiten"
   },
   "legal": {
     "cookies": {
@@ -1248,56 +1297,326 @@
     "tryAgain": "Request New Link"
   },
   "sections": {
-    "analytics": {
-      "dashboardTitle": "Analytisch Dashboard",
-      "engagement": "Betrokkenheid",
-      "headline": "Volg klikken, verwijzingen en betrokkenheid",
-      "last30Days": "Laatste 30 dagen",
-      "referrals": "Verwijzingen",
-      "scanningDesc": "Monitor QR scans en updates",
-      "scanningTitle": "Wie scant",
-      "spotsDesc": "Data-gedreven inzichten voor betere curatie",
-      "spotsTitle": "Beste presterende plekken",
-      "subtext": "Zie wat werkt, wie scant, en welke plekken de meeste liefde krijgen — in realtime.",
-      "totalScans": "Totaal Scans",
-      "workingDesc": "Volg de populariteit van je aanbevelingen",
-      "workingTitle": "Zie wat werkt"
-    },
     "createCustomize": {
+      "headline": "Creëer uw Explorer-pagina in enkele minuten",
+      "subtext": "Verzamel wat u aanbeveelt, organiseer het op uw manier en deel het waar u maar wilt met één link of QR.",
       "bulletPoints": {
         "addSpots": {
-          "description": "",
-          "title": "Voeg plaatsen, ervaringen, routes, geluiden en notities toe"
-        },
-        "generate": {
-          "description": "",
-          "title": "Bewerk altijd — je link blijft altijd hetzelfde"
+          "title": "Voeg plaatsen, ervaringen, routes, geluiden en notities toe",
+          "description": ""
         },
         "organize": {
-          "description": "",
-          "title": "Organiseer op locatie of interesse"
+          "title": "Organiseer op locatie of interesse",
+          "description": ""
+        },
+        "generate": {
+          "title": "Bewerk op elk gewenst moment: uw link blijft altijd hetzelfde",
+          "description": ""
         },
         "share": {
-          "description": "",
-          "title": "Deel digitaal of via een QR in de echte wereld"
+          "title": "Deel digitaal of via een QR in de echte wereld",
+          "description": ""
         }
       },
-      "headline": "Maak je Explorer-pagina in minuten",
       "mockup": {
-        "addPlace": "Plaats Toevoegen",
-        "title": "Mijn Aanbevelingen"
+        "title": "Mijn aanbevelingen",
+        "addPlace": "Plaats toevoegen"
       },
-      "subtext": "Verzamel alles wat je normaal zou delen in berichten, notities of gesprekken — en breng het samen op één plek.\n\nOrganiseer je aanbevelingen per stad, reis, thema of moment, en update ze wanneer je perspectief evolueert."
+      "steps": [
+        {
+          "title": "Voeg toe wat u aanbeveelt",
+          "body": "Plaatsen, mensen, producten, boeken, films, shows, muziek, games, apps, handleidingen en notities."
+        },
+        {
+          "title": "Organiseer het op jouw manier",
+          "body": "Groepeer op stad, thema, lijst, categorie, reis of moment, zodat mensen op natuurlijke wijze kunnen verkennen."
+        },
+        {
+          "title": "Deel één link of QR",
+          "body": "Je pagina wordt op elk moment bijgewerkt, terwijl dezelfde link en QR overal blijven werken."
+        }
+      ]
+    },
+    "shareAnywhere": {
+      "headline": "Eén koppeling. Veel reizen.",
+      "subtext": "Uw Explorer-link wordt een levende gids – iets dat mensen in hun eigen tempo kunnen opslaan, opnieuw bezoeken en verkennen.\n\nDeel het op een profiel, bericht, tafel, muur of kaart.\nWaar het ook gaat, jouw perspectief gaat mee.",
+      "scanText": "Scan voor lokale aanbevelingen",
+      "storefrontText": "Ideaal voor etalages in winkels",
+      "instagramTitle": "Voeg toe aan uw Instagram/Tiktok Bio",
+      "instagramDesc": "Deel direct met je volgers",
+      "menuTitle": "Print het voor Storefront",
+      "menuDesc": "Fysieke contactpunten gemakkelijk gemaakt",
+      "welcomeTitle": "Opnemen in welkomstboeken",
+      "welcomeDesc": "Perfect voor gastheren en gidsen",
+      "cafeMenu": "Cafémenu",
+      "tokyoFoodGuide": "Mijn voedselgids voor Tokio explorers.earth/jane",
+      "cards": [
+        {
+          "title": "Link in bio",
+          "eyebrow": "Profiel-klaar"
+        },
+        {
+          "title": "QR-codes",
+          "eyebrow": "Offline klaar"
+        },
+        {
+          "title": "Berichten",
+          "eyebrow": "Klaar voor chatten"
+        },
+        {
+          "title": "Welkom gidsen",
+          "eyebrow": "Klaar voor gasten"
+        }
+      ],
+      "visual": {
+        "scanForPicks": "Scannen naar keuzes",
+        "messageBubble": "Hier is mijn Kyoto-lijst",
+        "welcomeGuide": "Welkom gids",
+        "guideItems": [
+          "Ontbijt dichtbij",
+          "Museumroute",
+          "Avondwandeling"
+        ],
+        "savedRecommendation": "Opgeslagen aanbeveling"
+      },
+      "profileCarouselCaption": "Instagram- en TikTok-profielen",
+      "qrEverywhereTitle": "Voeg overal de QR-link toe",
+      "qrEverywhereDesc": "Perfect voor elke locatie"
+    },
+    "analytics": {
+      "headline": "Kijk waar mensen mee bezig zijn.",
+      "subtext": "Begrijp welke aanbevelingen mensen openen, opslaan en opnieuw bezoeken via uw links en QR-codes.",
+      "workingTitle": "Kijk wat werkt",
+      "workingDesc": "Houd bij welke aanbevelingen mensen openen, opslaan en opnieuw bezoeken.",
+      "scanningTitle": "Begrijp scans en klikken",
+      "scanningDesc": "Bekijk hoe mensen uw pagina bereiken via links, QR-codes en gedeelde contactpunten.",
+      "spotsTitle": "Vind topaanbevelingen",
+      "spotsDesc": "Ontdek welke plaatsen, producten, lijsten en gidsen de meeste liefde krijgen.",
+      "dashboardTitle": "Analytics-dashboard",
+      "last30Days": "Laatste 30 dagen",
+      "totalScans": "Totaal aantal scans",
+      "engagement": "Betrokkenheid",
+      "referrals": "Verwijzingen",
+      "livePreview": "Live-voorbeeld"
+    },
+    "localTunes": {
+      "mainHeading": "Tunes",
+      "title": "Luister terwijl je verkent",
+      "body": "Verkennen is niet alleen visueel. Geluid draagt geheugen, context en emotie.\n\nTunes stelt je in staat om soundtracks te verzamelen en te delen voor plaatsen, reizen en stemmingen — of het nu muziek is die onderweg is ontdekt of geluiden die een plek voor jou definiëren.\n\nNaadloos verbonden met je Explorer-profiel.",
+      "exploreButton": "Verken Tunes",
+      "featuresHeading": "Krachtige Functies",
+      "features": {
+        "realtimeCollaboration": {
+          "title": "Realtime Samenwerking",
+          "description": "Laat gasten direct nummers aan je afspeellijst toevoegen terwijl je volledige controle behoudt over wat er speelt."
+        },
+        "qrCodeSharing": {
+          "title": "QR-code Delen",
+          "description": "Deel je muziekervaring met een eenvoudige QR-code scan - geen apps of downloads vereist."
+        },
+        "youtubeIntegration": {
+          "title": "YouTube Integratie",
+          "description": "Integreer naadloos met YouTube om toegang te krijgen tot miljoenen nummers en de perfecte sfeer te creëren."
+        },
+        "voteLikeSystem": {
+          "title": "Stem & Like Systeem",
+          "description": "Gasten kunnen stemmen op hun favoriete nummers om de afspeellijstwachtrij in realtime te beïnvloeden."
+        },
+        "silentParties": {
+          "title": "Stille Feesten",
+          "description": "Organiseer unieke stille feesten waar iedereen via hun eigen koptelefoon luistert."
+        },
+        "karaokeReady": {
+          "title": "Karaoke Klaar",
+          "description": "Perfect voor karaokenachten met collaboratieve afspeellijsten en realtime nummerverzoeken."
+        }
+      },
+      "venueHeading": "Perfect voor Elke Locatie",
+      "venues": {
+        "barsPubs": "Bars & Pubs",
+        "restaurants": "Restaurants",
+        "coffeeShops": "Koffiehuizen",
+        "eventsWeddings": "Evenementen & Bruiloften",
+        "retailStores": "Winkels",
+        "gymsFitness": "Sportscholen & Fitness"
+      },
+      "closingStatement": "Tunes is <strong>gratis</strong> om te verkennen, en voor betaalde functies kun je daarna upgraden."
+    },
+    "referEarn": {
+      "headline": "Deel, verwijs en verdien",
+      "subtext": "Verander je aanbevelingen in passieve beloningen — krijg krediet wanneer anderen je QR gebruiken.",
+      "comingSoon": "Verwijzingsbeloningsprogramma (binnenkort)",
+      "rewardsTitle": "Verdien Beloningen",
+      "rewardsDesc": "Krijg betaald wanneer mensen je aanbevelingen gebruiken",
+      "earnedThisMonth": "Deze maand verdiend",
+      "passiveTitle": "Verander aanbevelingen in passieve beloningen",
+      "networkTitle": "Bouw je netwerk en verdien automatisch"
+    },
+    "whoIsFor": {
+      "headline": "Gebouwd voor mensen wier smaak anderen helpt.",
+      "subtext": "Of u nu een stad, een plank, een productlijst, een afspeellijst of een gastengids deelt, Explorers geeft uw aanbevelingen een thuis.",
+      "cards": [
+        "Persoonlijke ontdekkingsreizigers",
+        "Makers en curatoren",
+        "Gastheren en bedrijven",
+        "Merken en organisaties"
+      ],
+      "useCases": {
+        "travelers": "Reizigers",
+        "travelersDesc": "Deel ontdekte edelstenen met mede-ontdekkingsreizigers",
+        "influencers": "Beïnvloeders",
+        "influencersDesc": "Verdien lokale kennis en bouw een gemeenschap op",
+        "airbnbHosts": "Airbnb Gastheren",
+        "airbnbHostsDesc": "Verbeter de gastervaring met lokale inzichten",
+        "hotels": "Hotels",
+        "hotelsDesc": "Geef samengestelde lokale aanbevelingen",
+        "restaurants": "Restaurants",
+        "restaurantsDesc": "Crosspromotie met andere lokale bedrijven",
+        "cafes": "Cafés",
+        "cafesDesc": "Deel buurtfavorieten met klanten",
+        "localGuides": "Lokale gidsen",
+        "localGuidesDesc": "Schaal de expertise verder dan individuele rondleidingen",
+        "creators": "Makers",
+        "creatorsDesc": "Voeg waarde toe naast de inhoud met bruikbare tips",
+        "tourOperators": "Touroperators",
+        "tourOperatorsDesc": "Breid uw ervaring uit buiten de geplande rondleidingen",
+        "anyBusiness": "Elk bedrijf",
+        "anyBusinessDesc": "Bouw gemeenschap en klantloyaliteit op"
+      },
+      "explorerLabel": "Explorer",
+      "visual": {
+        "personal": [
+          "Café",
+          "Boek",
+          "Pad",
+          "Album",
+          "Film",
+          "Spel"
+        ],
+        "creators": [
+          "#1",
+          "#2",
+          "#3",
+          "#4"
+        ],
+        "hostsQr": "QR"
+      },
+      "chips": [
+        "Reizigers",
+        "Lokale bevolking",
+        "Gezinnen",
+        "Studenten",
+        "Nomaden",
+        "Makers",
+        "Beïnvloeders",
+        "Bloggers",
+        "Recensenten",
+        "Fotografen",
+        "Opvoeders",
+        "Leiders van de gemeenschap",
+        "Hotels",
+        "Airbnbs",
+        "Herbergen",
+        "Cafés",
+        "Restaurants",
+        "Detailhandelswinkels",
+        "Sportscholen",
+        "Salons",
+        "Klinieken",
+        "Boetieks",
+        "Merken",
+        "Startups",
+        "Agentschappen",
+        "Universiteiten",
+        "Bedrijven",
+        "Luchthavens",
+        "NGO's",
+        "Overheidsteams"
+      ]
+    },
+    "testimonials": {
+      "headline": "Geliefd bij reizigers, makers en hosts",
+      "subtext": "Ontdek hoe mensen over de hele wereld ontdekkingsreizigers gebruiken om te delen wat het belangrijkst is.",
+      "scrollLeft": "Scroll testimonials naar links",
+      "scrollRight": "Scroll testimonials naar rechts",
+      "items": [
+        {
+          "id": "1",
+          "name": "Priya Sharma",
+          "role": "Reisblogger",
+          "location": "Mumbai, India",
+          "quote": "ontdekkingsreizigers veranderden de manier waarop ik mijn reiskennis deel. Mijn volgers vinden het geweldig om direct toegang te krijgen tot mijn samengestelde aanbevelingen!"
+        },
+        {
+          "id": "2",
+          "name": "Raj Patel",
+          "role": "Airbnb Gastheer",
+          "location": "Delhi, India",
+          "quote": "Mijn gasten zijn helemaal weg van de gepersonaliseerde QR-code in hun welkomstpakket. Het is mijn kenmerkende tintje geworden!"
+        },
+        {
+          "id": "3",
+          "name": "Yuki Tanaka",
+          "role": "Restauranteigenaar",
+          "location": "Tokio, Japan",
+          "quote": "We delen onze ontdekkingsreizigers met klanten om andere lokale plekken aan te bevelen. Het heeft geweldige gemeenschapsverbindingen gecreëerd."
+        },
+        {
+          "id": "4",
+          "name": "Maria Silva",
+          "role": "Gids",
+          "location": "São Paulo, Brazilië",
+          "quote": "Explorers helpt me mijn expertise uit te breiden buiten de toururen. Klanten hebben op elk moment toegang tot mijn aanbevelingen!"
+        },
+        {
+          "id": "5",
+          "name": "James Wilson",
+          "role": "Reisbeïnvloeder",
+          "location": "Sydney, Australië",
+          "quote": "Als reisbeïnvloeder maken ontdekkingsreizigers het zo gemakkelijk om mijn favoriete plekken met mijn publiek te delen. De QR-codefunctie is briljant!"
+        },
+        {
+          "id": "6",
+          "name": "Sofie Martin",
+          "role": "Lokale gids",
+          "location": "Parijs, Frankrijk",
+          "quote": "Ik gebruik ontdekkingsreizigers om wandeltochten voor mijn klanten te maken. Ze kunnen de QR scannen en in hun eigen tempo verkennen!"
+        }
+      ]
     },
     "faq": {
-      "error": "Fout bij het laden van FAQ's. Probeer het later opnieuw.",
       "headline": "Vragen?",
+      "subtext": "We hebben de meest voorkomende dingen beantwoord die mensen vragen voordat ze beginnen.",
       "loading": "FAQ's laden...",
-      "subtext": "We hebben de meest voorkomende dingen beantwoord die mensen vragen voordat ze beginnen."
+      "error": "Fout bij het laden van FAQ's. Probeer het later opnieuw.",
+      "fallbackItems": [
+        {
+          "Sequence": 1,
+          "Question": "Wat kan ik toevoegen aan mijn Explorer-pagina?",
+          "Answer": "Plaatsen, mensen, producten, boeken, films, shows, muziek, games, apps, handleidingen en notities."
+        },
+        {
+          "Sequence": 2,
+          "Question": "Kan ik het delen met een QR-code?",
+          "Answer": "Ja. Uw Explorer-pagina kan worden gedeeld als een link of QR voor profielen, berichten, tabellen, kaarten en gedrukte handleidingen."
+        },
+        {
+          "Sequence": 3,
+          "Question": "Kan ik mijn aanbevelingen later bijwerken?",
+          "Answer": "Ja. U kunt uw pagina actueel houden terwijl dezelfde link en QR blijven werken."
+        },
+        {
+          "Sequence": 4,
+          "Question": "Zijn ontdekkingsreizigers voor altijd gratis?",
+          "Answer": "Ja. De pagina kan de gratis belofte duidelijk communiceren zonder veel betalend taalgebruik."
+        }
+      ]
     },
     "features": {
-      "communityDriven": {
-        "title": "Gemeenschapsgedreven ontdekking"
+      "title": "Gebouwd om niet in de weg te staan",
+      "subtitle": "Eenvoudige, doordachte functies die je aanbevelingen laten stralen.",
+      "simpleLinks": {
+        "title": "Eenvoudige links en QR-delen"
       },
       "livingGuides": {
         "title": "Levende, bewerkbare gidsen"
@@ -1305,347 +1624,143 @@
       "locationAware": {
         "title": "Locatiebewuste aanbevelingen"
       },
-      "privacyFirst": {
-        "title": "Privacy eerst door ontwerp"
-      },
-      "simpleLinks": {
-        "title": "Eenvoudige links en QR-delen"
-      },
       "soundPlaylists": {
         "title": "Optionele geluiden en afspeellijsten"
       },
-      "subtitle": "Eenvoudige, doordachte functies die je aanbevelingen laten stralen.",
-      "title": "Gebouwd om niet in de weg te staan"
+      "privacyFirst": {
+        "title": "Privacy eerst door ontwerp"
+      },
+      "communityDriven": {
+        "title": "Gemeenschapsgedreven ontdekking"
+      }
     },
     "finalCTA": {
-      "creating": "Je explorers wordt aangemaakt...",
+      "headline": "Begin vandaag je wereld te delen",
+      "subtext": "Claim je gratis explorers en verander je lokale inzichten in deelbare gidsen.",
       "ctaButton": "Claim je explorers – Voor Altijd Gratis",
       "disclaimer": "Geen creditcard vereist • Setup in 2 minuten",
-      "headline": "Begin vandaag je wereld te delen",
-      "subtext": "Claim je gratis explorers en verander je lokale inzichten in deelbare gidsen."
+      "creating": "Je explorers wordt aangemaakt..."
     },
-    "localTunes": {
-      "body": "Verkennen is niet alleen visueel. Geluid draagt geheugen, context en emotie.\n\nTunes stelt je in staat om soundtracks te verzamelen en te delen voor plaatsen, reizen en stemmingen — of het nu muziek is die onderweg is ontdekt of geluiden die een plek voor jou definiëren.\n\nNaadloos verbonden met je Explorer-profiel.",
-      "closingStatement": "Tunes is <strong>gratis</strong> om te verkennen, en voor betaalde functies kun je daarna upgraden.",
-      "exploreButton": "Verken Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "Perfect voor karaokenachten met collaboratieve afspeellijsten en realtime nummerverzoeken.",
-          "title": "Karaoke Klaar"
-        },
-        "qrCodeSharing": {
-          "description": "Deel je muziekervaring met een eenvoudige QR-code scan - geen apps of downloads vereist.",
-          "title": "QR-code Delen"
-        },
-        "realtimeCollaboration": {
-          "description": "Laat gasten direct nummers aan je afspeellijst toevoegen terwijl je volledige controle behoudt over wat er speelt.",
-          "title": "Realtime Samenwerking"
-        },
-        "silentParties": {
-          "description": "Organiseer unieke stille feesten waar iedereen via hun eigen koptelefoon luistert.",
-          "title": "Stille Feesten"
-        },
-        "voteLikeSystem": {
-          "description": "Gasten kunnen stemmen op hun favoriete nummers om de afspeellijstwachtrij in realtime te beïnvloeden.",
-          "title": "Stem & Like Systeem"
-        },
-        "youtubeIntegration": {
-          "description": "Integreer naadloos met YouTube om toegang te krijgen tot miljoenen nummers en de perfecte sfeer te creëren.",
-          "title": "YouTube Integratie"
-        }
-      },
-      "featuresHeading": "Krachtige Functies",
-      "mainHeading": "Tunes",
-      "title": "Luister terwijl je verkent",
-      "venueHeading": "Perfect voor Elke Locatie",
-      "venues": {
-        "barsPubs": "Bars & Pubs",
-        "coffeeShops": "Koffiehuizen",
-        "eventsWeddings": "Evenementen & Bruiloften",
-        "gymsFitness": "Sportscholen & Fitness",
-        "restaurants": "Restaurants",
-        "retailStores": "Winkels"
-      }
-    },
-    "referEarn": {
-      "comingSoon": "Verwijzingsbeloningsprogramma (binnenkort)",
-      "earnedThisMonth": "Deze maand verdiend",
-      "headline": "Deel, verwijs en verdien",
-      "networkTitle": "Bouw je netwerk en verdien automatisch",
-      "passiveTitle": "Verander aanbevelingen in passieve beloningen",
-      "rewardsDesc": "Krijg betaald wanneer mensen je aanbevelingen gebruiken",
-      "rewardsTitle": "Verdien Beloningen",
-      "subtext": "Verander je aanbevelingen in passieve beloningen — krijg krediet wanneer anderen je QR gebruiken."
-    },
-    "shareAnywhere": {
-      "cafeMenu": "Café Menu",
-      "headline": "Één link. Veel reizen.",
-      "instagramDesc": "Deel direct met je volgers",
-      "instagramTitle": "Voeg toe aan je Instagram bio",
-      "menuDesc": "Fysieke contactpunten eenvoudig gemaakt",
-      "menuTitle": "Print op menu's",
-      "profileCarouselCaption": "Instagram & TikTok profiles",
-      "qrEverywhereDesc": "Perfect for Every Venue",
-      "qrEverywhereTitle": "Add the QR link everywhere",
-      "scanText": "Scan voor lokale aanbevelingen",
-      "storefrontText": "Perfect voor winkelpui displays",
-      "subtext": "Je Explorer-link wordt een levende gids — iets dat mensen kunnen opslaan, opnieuw bezoeken en in hun eigen tempo verkennen.\n\nDeel het op een profiel, bericht, tafel, muur of kaart.\nWaar het ook gaat, je perspectief gaat mee.",
-      "tokyoFoodGuide": "Mijn Tokyo food gids explorers.earth/jane",
-      "welcomeDesc": "Perfect voor hosts en gidsen",
-      "welcomeTitle": "Neem op in welkomstboeken"
-    },
-    "testimonials": {
-      "headline": "Geliefd door reizigers, creators en hosts",
-      "items": [
-        {
-          "id": "1",
-          "location": "Mumbai, India",
-          "name": "Priya Sharma",
-          "quote": "explorers heeft veranderd hoe ik mijn reiskennis deel. Mijn volgers houden ervan om directe toegang te hebben tot mijn gecureerde aanbevelingen!",
-          "role": "Reisblogger"
-        },
-        {
-          "id": "2",
-          "location": "Delhi, India",
-          "name": "Raj Patel",
-          "quote": "Mijn gasten houden absoluut van de gepersonaliseerde QR-code in hun welkomstpakket. Het is mijn handtekening geworden!",
-          "role": "Airbnb Host"
-        },
-        {
-          "id": "3",
-          "location": "Tokyo, Japan",
-          "name": "Yuki Tanaka",
-          "quote": "We delen onze explorers met klanten om andere lokale plekken aan te bevelen. Het heeft geweldige gemeenschapsverbindingen gecreëerd.",
-          "role": "Restauranteigenaar"
-        },
-        {
-          "id": "4",
-          "location": "São Paulo, Brazilië",
-          "name": "Maria Silva",
-          "quote": "explorers helpt me mijn expertise uit te breiden buiten de toururen. Klanten kunnen altijd toegang krijgen tot mijn aanbevelingen!",
-          "role": "Tourgids"
-        },
-        {
-          "id": "5",
-          "location": "Sydney, Australië",
-          "name": "James Wilson",
-          "quote": "Als reisinfluencer maakt explorers het zo gemakkelijk om mijn favoriete plekken met mijn publiek te delen. De QR-code functie is briljant!",
-          "role": "Reisinfluencer"
-        },
-        {
-          "id": "6",
-          "location": "Parijs, Frankrijk",
-          "name": "Sophie Martin",
-          "quote": "Ik gebruik explorers om wandeltochten voor mijn klanten te maken. Ze kunnen de QR scannen en in hun eigen tempo verkennen!",
-          "role": "Lokale Gids"
-        }
+    "productCategories": {
+      "headline": "Beveel meer dan plaatsen aan.",
+      "subtext": "Maak één pagina voor plaatsen, mensen, producten, boeken, films, shows, muziek, games, apps en tools.",
+      "actions": [
+        "Redden",
+        "Organiseren",
+        "Deel"
       ],
-      "scrollLeft": "Scroll testimonials naar links",
-      "scrollRight": "Scroll testimonials naar rechts",
-      "subtext": "Zie hoe mensen over de hele wereld explorers gebruiken om te delen wat het belangrijkst is."
-    },
-    "whoIsFor": {
-      "cards": {
-        "businesses": {
-          "items": {
-            "boutique": {
-              "label": "Boutique",
-              "oneLiner": "Boutiques die gecureerde vondsten vermelden"
-            },
-            "cafe": {
-              "label": "Café",
-              "oneLiner": "Cafés die favoriete menu-items benadrukken"
-            },
-            "clinic": {
-              "label": "Kliniek",
-              "oneLiner": "Klinieken die gezondheidsgerelateerde locaties delen"
-            },
-            "gym": {
-              "label": "Sportschool",
-              "oneLiner": "Sportscholen die lokale wellnessplekken suggereren"
-            },
-            "restaurant": {
-              "label": "Restaurant",
-              "oneLiner": "Restaurants die te proberen gerechten delen"
-            },
-            "retailShop": {
-              "label": "Winkel",
-              "oneLiner": "Winkels die productaanbevelingen delen"
-            },
-            "salon": {
-              "label": "Salon",
-              "oneLiner": "Salons die schoonheidsgidsen aanbieden"
-            },
-            "spa": {
-              "label": "Spa",
-              "oneLiner": "Spa's die nabijgelegen ontspanningsopties vermelden"
-            }
-          },
-          "oneLiner": "Leid klanten met nuttige aanbevelingen.",
-          "title": "Bedrijven"
-        },
-        "creators": {
-          "items": {
-            "blogger": {
-              "label": "Blogger",
-              "oneLiner": "Bloggers die geschreven gidsen cureren"
-            },
-            "communityLeader": {
-              "label": "Gemeenschapsleider",
-              "oneLiner": "Gemeenschapsleiders die nuttige lijsten cureren"
-            },
-            "educator": {
-              "label": "Onderwijzer",
-              "oneLiner": "Onderwijzers die leergidsen delen"
-            },
-            "influencer": {
-              "label": "Influencer",
-              "oneLiner": "Influencers die topkeuzes delen"
-            },
-            "photographer": {
-              "label": "Fotograaf",
-              "oneLiner": "Fotografen die fotoplekken delen"
-            },
-            "reviewer": {
-              "label": "Recensent",
-              "oneLiner": "Recensenten die best beoordeelde plekken vermelden"
-            },
-            "vlogger": {
-              "label": "Vlogger",
-              "oneLiner": "Vloggers die visuele reizen delen"
-            }
-          },
-          "oneLiner": "Deel gecureerde lijsten met je publiek.",
-          "title": "Makers"
-        },
-        "hospitality": {
-          "items": {
-            "airbnb": {
-              "label": "Airbnb",
-              "oneLiner": "Hosts die buurtfavorieten delen"
-            },
-            "homestay": {
-              "label": "Homestay",
-              "oneLiner": "Homestays die gezinsgerichte gidsen aanbieden"
-            },
-            "hostel": {
-              "label": "Hostel",
-              "oneLiner": "Hostels die backpackertips delen"
-            },
-            "hotel": {
-              "label": "Hotel",
-              "oneLiner": "Hotels die lokale gidsen aanbieden"
-            },
-            "pgColiving": {
-              "label": "PG/Gedeeld Wonen",
-              "oneLiner": "PG/Gedeeld Wonen die belangrijke nabijgelegen plekken tonen"
-            },
-            "resort": {
-              "label": "Resort",
-              "oneLiner": "Resorts die activiteitenlijsten verstrekken"
-            }
-          },
-          "oneLiner": "Bied gasten gecureerde lokale inzichten.",
-          "title": "Gastvrijheid"
-        },
-        "individuals": {
-          "items": {
-            "emergencySharer": {
-              "label": "Nooddeler",
-              "oneLiner": "Nooddelers die essentiële plekken posten"
-            },
-            "family": {
-              "label": "Familie",
-              "oneLiner": "Gezinnen die nuttige plekken delen"
-            },
-            "local": {
-              "label": "Lokaal",
-              "oneLiner": "Lokale bewoners die buurttips delen"
-            },
-            "nomad": {
-              "label": "Nomade",
-              "oneLiner": "Nomaden die werkvriendelijke ruimtes vermelden"
-            },
-            "student": {
-              "label": "Student",
-              "oneLiner": "Studenten die campus/nabijgelegen plekken delen"
-            },
-            "traveler": {
-              "label": "Reiziger",
-              "oneLiner": "Mensen die reisplekken delen"
-            }
-          },
-          "oneLiner": "Deel persoonlijke of lokale aanbevelingen.",
-          "title": "Individuen"
-        },
-        "organizations": {
-          "items": {
-            "agency": {
-              "label": "Bureau",
-              "oneLiner": "Reisbureaus die te bezoeken plekken vermelden"
-            },
-            "airline": {
-              "label": "Luchtvaartmaatschappij",
-              "oneLiner": "Luchtvaartmaatschappijen die stadsgidsen delen"
-            },
-            "airport": {
-              "label": "Luchthaven",
-              "oneLiner": "Luchthavens die terminals + stedentips aanbieden"
-            },
-            "corporate": {
-              "label": "Bedrijf",
-              "oneLiner": "Bedrijven die nabijgelegen bronnen vermelden"
-            },
-            "government": {
-              "label": "Overheid",
-              "oneLiner": "Afdelingen die openbare diensten benadrukken"
-            },
-            "ngo": {
-              "label": "NGO",
-              "oneLiner": "NGO's die gemeenschapsbronnen delen"
-            },
-            "railway": {
-              "label": "Spoorweg",
-              "oneLiner": "Spoorwegen die platforminformatie delen"
-            },
-            "university": {
-              "label": "Universiteit",
-              "oneLiner": "Universiteiten die campusessentials delen"
-            }
-          },
-          "oneLiner": "Bied gecureerde gidsen en bronnen.",
-          "title": "Organisaties"
-        }
+      "overlayLabel": "Explorer pagina",
+      "visualLabels": {
+        "products": "Echte favorieten",
+        "apps": "Handige stapel"
       },
-      "headline": "Voor wie is explorers.earth?",
-      "subtext": "explorers.earth is voor iedereen die gelooft dat delen een verantwoordelijkheid is — geen uitzending.",
-      "useCases": {
-        "airbnbHosts": "Airbnb Hosts",
-        "airbnbHostsDesc": "Verbeter gastenervaring met lokale inzichten",
-        "anyBusiness": "Elk Bedrijf",
-        "anyBusinessDesc": "Bouw gemeenschap en klantloyaliteit",
-        "cafes": "Cafés",
-        "cafesDesc": "Deel buurtfavorieten met klanten",
-        "creators": "Creators",
-        "creatorsDesc": "Voeg waarde toe voorbij content met uitvoerbare tips",
-        "hotels": "Hotels",
-        "hotelsDesc": "Bied gecureerde lokale aanbevelingen",
-        "influencers": "Influencers",
-        "influencersDesc": "Monetiseer lokale kennis en bouw gemeenschap",
-        "localGuides": "Lokale Gidsen",
-        "localGuidesDesc": "Schaal je expertise voorbij individuele tours",
-        "restaurants": "Restaurants",
-        "restaurantsDesc": "Cross-promotie met andere lokale bedrijven",
-        "tourOperators": "Tour Operatoren",
-        "tourOperatorsDesc": "Breid ervaringen uit voorbij geplande tours",
-        "travelers": "Reizigers",
-        "travelersDesc": "Deel ontdekte juweeltjes met mede-ontdekkers"
-      }
+      "visualDetails": {
+        "products": [
+          "Reisuitrusting",
+          "Dagelijks dragen",
+          "Creator-kit"
+        ],
+        "apps": [
+          "Hulpmiddelen voor planning",
+          "Handige apps",
+          "Bronkoppelingen"
+        ]
+      },
+      "categories": [
+        {
+          "id": "places",
+          "label": "Plaatsen",
+          "title": "Lokale plekken, gidsen en routes",
+          "description": "Restaurants, buurten, musea, routes en verborgen pareltjes die mensen daadwerkelijk kunnen bezoeken."
+        },
+        {
+          "id": "people",
+          "label": "Mensen",
+          "title": "Mensen die het waard zijn om te volgen of van te leren",
+          "description": "Makers, oprichters, gidsen, artiesten, docenten, experts en mensen die jouw smaak hebben gevormd."
+        },
+        {
+          "id": "books",
+          "label": "Boeken",
+          "title": "Boeken en leeslijsten",
+          "description": "Boeken die u blijft aanbevelen in chats, notities, nieuwsbrieven en reisgesprekken."
+        },
+        {
+          "id": "movies",
+          "label": "Films en televisie",
+          "title": "Films, shows en kijklijsten",
+          "description": "Films, series, documentaires en kijklijsten voor elke stemming of doelgroep."
+        },
+        {
+          "id": "games",
+          "label": "Spellen",
+          "title": "Games en werelden om te verkennen",
+          "description": "Games, speurtochten, werelden en ervaringen die mensen als volgende zouden moeten proberen."
+        },
+        {
+          "id": "music",
+          "label": "Muziek",
+          "title": "Albums, artiesten en afspeellijsten",
+          "description": "Artiesten, albums, nummers, afspeellijsten en soundtracks verbonden met plaatsen en momenten."
+        },
+        {
+          "id": "products",
+          "label": "Producten",
+          "title": "Producten die mensen daadwerkelijk aanbevelen",
+          "description": "Dagelijkse favorieten, reisbenodigdheden, tools voor makers, cadeaus en producten die de moeite waard zijn om te bewaren."
+        },
+        {
+          "id": "apps",
+          "label": "Apps en hulpmiddelen",
+          "title": "Apps, tools en handige links",
+          "description": "Software, websites, sjablonen, tools en bronnen die het leven gemakkelijker maken."
+        }
+      ]
     }
   },
   "seo": {
     "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
+    "landing": {
+      "title": "ontdekkingsreizigers - Ontdek en deel gepersonaliseerde lokale aanbevelingen",
+      "description": "Ontdek en deel uw favoriete lokale plekken met ontdekkingsreizigers. Maak gepersonaliseerde stadsgidsen, organiseer plekken die je absoluut moet bezoeken en maak ze vindbaar met deelbare QR-codes. Ontdek verborgen juweeltjes, samengestelde aanbevelingen en lokale reistips op interactieve kaarten.",
+      "keywords": [
+        "ontdek plaatsen bij mij in de buurt",
+        "gepersonaliseerde reisgidsen",
+        "lokale aanbevelingen-app",
+        "maker van stadsgidsen",
+        "deel reistips",
+        "aanbevelingen voor verborgen juweeltjes",
+        "dingen om te doen in de stad",
+        "op kaarten gebaseerde reisgids",
+        "beste lokale plekken",
+        "samengestelde restaurantaanbevelingen",
+        "reisgids QR-codes",
+        "locatielijsten maken en delen",
+        "door gebruikers gegenereerde lokale gidsen",
+        "verken plekken om je heen",
+        "digitale stadsgidsen",
+        "QR-codes",
+        "lokale aanbevelingen",
+        "plaats delen",
+        "reisgids",
+        "lokale zaken",
+        "digitale aanbevelingen",
+        "deelbare koppelingen",
+        "locatie delen",
+        "reistips",
+        "lokale plekken"
+      ],
+      "geoDescription": "Ontdek en deel je favoriete lokale plekken met gepersonaliseerde QR-codes en deelbare links",
+      "geoFeatures": [
+        "Gepersonaliseerde QR-codegeneratie",
+        "Lokale aanbevelingen delen",
+        "Analytics en inzichten",
+        "Voor mobiel geoptimaliseerd ontwerp",
+        "Ontdekking door de gemeenschap"
+      ],
+      "geoIndustry": "Technologie"
+    }
   },
   "settings": {
     "account": {
@@ -2162,5 +2277,14 @@
       "usernameNotChanged": "Gebruikersnaam is niet gewijzigd. Wijzig uw gebruikersnaam",
       "validationPending": "Validatie wordt verwerkt. Wacht even"
     }
+  },
+  "usernameClaim": {
+    "validating": "Valideren...",
+    "claimFree": "Gratis claimen",
+    "trySuggestions": "Probeer: {{suggestions}}",
+    "available": "Gebruikersnaam is beschikbaar.",
+    "unavailable": "Gebruikersnaam is niet beschikbaar.",
+    "confirmOnSignup": "Bij aanmelding bevestigen wij de beschikbaarheid.",
+    "checkingAvailability": "Beschikbaarheid controleren..."
   }
 }

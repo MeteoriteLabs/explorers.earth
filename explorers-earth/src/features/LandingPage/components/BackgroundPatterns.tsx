@@ -1,3 +1,5 @@
+import { ComposableMap, Geographies, Geography } from "react-simple-maps";
+
 // Travel-themed background patterns for explorers landing page
 
 export const WorldMapPattern = () => (
@@ -337,6 +339,145 @@ export const StreetNetworkPattern = () => (
       <circle cx="600" cy="600" r="2" fill="currentColor" opacity="0.5" />
       <circle cx="900" cy="600" r="2" fill="currentColor" opacity="0.5" />
     </svg>
+  </div>
+);
+
+export const ExplorerMapBackground = () => (
+  <div
+    aria-hidden="true"
+    data-hero-map="explorer"
+    data-map-style="full-world"
+    className="pointer-events-none absolute inset-0 overflow-hidden text-[#7c8b70]"
+    style={{ zIndex: 0 }}
+  >
+    <style>
+      {`
+        .hero-map-route {
+          stroke-dasharray: 10 14;
+          stroke-dashoffset: 220;
+          animation: heroMapRouteDraw 8s ease-out 0.55s forwards;
+        }
+
+        .hero-map-dot {
+          opacity: 0.32;
+          transform-origin: center;
+          animation: heroMapDotGlow 5.5s ease-in-out 1.4s infinite;
+        }
+
+        .hero-map-dot:nth-of-type(2n) {
+          animation-delay: 2.1s;
+        }
+
+        @keyframes heroMapRouteDraw {
+          to {
+            stroke-dashoffset: 0;
+          }
+        }
+
+        @keyframes heroMapDotGlow {
+          0%, 100% {
+            opacity: 0.28;
+          }
+          42% {
+            opacity: 0.58;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .hero-map-route,
+          .hero-map-dot {
+            animation: none;
+            stroke-dashoffset: 0;
+          }
+        }
+      `}
+    </style>
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_14%,rgba(228,238,211,.62),transparent_34%),radial-gradient(circle_at_50%_44%,rgba(255,255,255,.62),transparent_30%)]" />
+    <div className="absolute inset-0 opacity-[0.11] [background-image:radial-gradient(rgba(50,75,47,.22)_1px,transparent_1px)] [background-size:22px_22px]" />
+    <div
+      data-map-continents="world"
+      className="absolute left-1/2 top-[14%] h-auto w-[980px] max-w-none -translate-x-1/2 opacity-[0.72] sm:top-[13%] sm:w-[1180px] lg:top-[11%] lg:w-[1380px] xl:w-[1480px]"
+    >
+      <ComposableMap
+        projection="geoEqualEarth"
+        projectionConfig={{ scale: 176, center: [0, 0] }}
+        width={980}
+        height={460}
+        style={{ width: "100%", height: "auto" }}
+      >
+        <Geographies geography="/landing/world-land-110m.json">
+          {({ geographies }) =>
+            geographies.map((geo) => (
+              <Geography
+                key={geo.rsmKey}
+                geography={geo}
+                fill="transparent"
+                stroke="currentColor"
+                strokeWidth={0.72}
+                style={{
+                  default: {
+                    fill: "transparent",
+                    outline: "none",
+                    stroke: "currentColor",
+                    strokeWidth: 0.72,
+                  },
+                  hover: {
+                    fill: "transparent",
+                    outline: "none",
+                    stroke: "currentColor",
+                    strokeWidth: 0.72,
+                  },
+                  pressed: {
+                    fill: "transparent",
+                    outline: "none",
+                    stroke: "currentColor",
+                    strokeWidth: 0.72,
+                  },
+                }}
+              />
+            ))
+          }
+        </Geographies>
+      </ComposableMap>
+
+      <svg
+        className="absolute inset-0 h-full w-full"
+        viewBox="0 0 980 460"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <radialGradient id="explorer-map-center-fade" cx="50%" cy="45%" r="47%">
+            <stop offset="0%" stopColor="#fffcf6" stopOpacity="0.68" />
+            <stop offset="55%" stopColor="#fffcf6" stopOpacity="0.34" />
+            <stop offset="100%" stopColor="#fffcf6" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+
+        <g opacity="0.42" stroke="currentColor" strokeLinecap="round" strokeWidth="1.55">
+          <path className="hero-map-route" d="M205 192 C308 136 424 148 518 198" />
+          <path className="hero-map-route" d="M536 198 C632 146 742 162 834 228" />
+          <path className="hero-map-route" d="M152 236 C304 326 520 356 784 330" />
+          <path className="hero-map-route hidden sm:block" d="M424 266 C506 236 580 242 672 278" />
+        </g>
+
+        <g fill="currentColor">
+          <circle className="hero-map-dot" cx="205" cy="192" r="3.1" />
+          <circle className="hero-map-dot" cx="518" cy="198" r="3.1" />
+          <circle className="hero-map-dot" cx="834" cy="228" r="3.1" />
+          <circle className="hero-map-dot" cx="152" cy="236" r="2.8" />
+          <circle className="hero-map-dot" cx="784" cy="330" r="2.8" />
+          <circle className="hero-map-dot hidden sm:block" cx="672" cy="278" r="2.8" />
+        </g>
+
+        <rect width="980" height="460" fill="url(#explorer-map-center-fade)" />
+      </svg>
+    </div>
+    <div className="absolute left-1/2 top-[19%] h-[350px] w-[min(840px,90vw)] -translate-x-1/2 rounded-full bg-[#fffcf6]/32 blur-3xl" />
+    <div className="absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-[#f3eadc] to-transparent" />
+    <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-[#fffcf6] via-[#fffcf6]/82 to-transparent" />
+    <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-[#f3eadc] to-transparent sm:w-36" />
+    <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-[#f3eadc] to-transparent sm:w-36" />
   </div>
 );
 

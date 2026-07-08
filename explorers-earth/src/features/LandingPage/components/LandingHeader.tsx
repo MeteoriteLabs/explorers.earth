@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Globe, ChevronDown, Menu, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../../store/store';
 import LanguageModal from '../../../components/LanguageModal';
 
@@ -14,6 +14,12 @@ export default function LandingHeader() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const { isAuthenticated } = useAuthStore();
+  const navItems = [
+    { label: t('header.nav.product'), sectionId: 'product' },
+    { label: t('header.nav.howItWorks'), sectionId: 'how-it-works' },
+    { label: t('header.nav.share'), sectionId: 'share' },
+    { label: t('header.nav.faq'), sectionId: 'faq' },
+  ];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -59,110 +65,80 @@ export default function LandingHeader() {
     i18n.changeLanguage(languageCode);
   };
 
+  const hasSolidHeader = isScrolled || isNonHomePage || isMobileMenuOpen;
+
   return (
     <motion.header
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 py-4 overflow-hidden ${
-        isScrolled || isNonHomePage ? 'bg-white shadow-lg' : 'bg-transparent'
+      className={`fixed left-3 right-3 top-4 z-50 mx-auto max-w-[1060px] rounded-full border transition-all duration-300 ${
+        hasSolidHeader
+          ? 'border-white/60 bg-[#fbf7ef]/92 text-[#17231a] shadow-[0_16px_48px_rgba(23,35,26,0.13)] backdrop-blur-xl'
+          : 'border-white/60 bg-[#fbf7ef]/78 text-[#17231a] shadow-[0_16px_48px_rgba(23,35,26,0.12)] backdrop-blur-xl'
       }`}
     >
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <nav className="flex items-center justify-between overflow-hidden">
+      <div className="px-4 py-3 sm:px-5">
+        <nav className="flex items-center justify-between gap-4">
           {/* Logo */}
           <button 
             onClick={() => scrollToSection('hero')}
             className="flex items-center transition-opacity hover:opacity-75"
           >
-            <span className={`text-xl font-bold transition-colors ${
-              isScrolled || isNonHomePage ? 'text-charcoal' : 'text-white'
-            }`}>
+            <span className="text-lg font-black tracking-[-0.02em] sm:text-xl">
               explorers.earth
             </span>
           </button>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center space-x-8">
-            <button
-              onClick={() => scrollToSection('how-it-works')}
-              className={`transition-colors hover:opacity-75 ${
-                isScrolled || isNonHomePage ? 'text-charcoal' : 'text-white'
-              }`}
-            >
-              {t('header.nav.howItWorks')}
-            </button>
-            <button
-              onClick={() => scrollToSection('who-is-for')}
-              className={`transition-colors hover:opacity-75 ${
-                isScrolled || isNonHomePage ? 'text-charcoal' : 'text-white'
-              }`}
-            >
-              {t('header.nav.whoIsFor')}
-            </button>
-            <button
-              onClick={() => scrollToSection('faq')}
-              className={`transition-colors hover:opacity-75 ${
-                isScrolled || isNonHomePage ? 'text-charcoal' : 'text-white'
-              }`}
-            >
-              {t('header.nav.faq')}
-            </button>
-            <Link
-              to="/about"
-              className={`transition-colors hover:opacity-75 ${
-                isScrolled || isNonHomePage ? 'text-charcoal' : 'text-white'
-              }`}
-            >
-              {t('header.nav.about')}
-            </Link>
-            <Link
-              to="/contact"
-              className={`transition-colors hover:opacity-75 ${
-                isScrolled || isNonHomePage ? 'text-charcoal' : 'text-white'
-              }`}
-            >
-              {t('header.nav.contact')}
-            </Link>
+          <div className="hidden items-center gap-5 rounded-full bg-transparent p-1 lg:flex">
+            {navItems.map((item) => (
+              <button
+                key={item.sectionId}
+                onClick={() => scrollToSection(item.sectionId)}
+                className="rounded-full px-1 py-2 text-sm font-bold text-[#17231a]/75 transition-colors hover:text-[#17231a]"
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
 
           {/* Right Side */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center gap-3">
             {/* Language Switcher */}
             <button
               onClick={() => setIsLanguageModalOpen(true)}
-              className={`flex items-center space-x-1 transition-colors hover:opacity-75 ${
-                isScrolled || isNonHomePage ? 'text-charcoal' : 'text-white'
-              }`}
+              className="flex items-center gap-1 rounded-full px-2.5 py-2 text-sm font-medium transition-colors hover:bg-black/5"
             >
               <Globe size={16} />
-              <span className="text-sm">{i18n.language.toUpperCase()}</span>
+              <span className="hidden sm:inline">{i18n.language.toUpperCase()}</span>
               <ChevronDown size={12} />
-            </button>            {/* Auth Buttons */}
-            <div className="hidden md:flex items-center space-x-3">
+            </button>
+
+            {/* Auth Buttons */}
+            <div className="hidden items-center gap-2 md:flex">
               <button 
                 onClick={() => handleAuthButtonClick('/login')}
-                className={`px-4 py-2 border rounded-lg transition-all ${
-                  isScrolled || isNonHomePage
-                    ? 'border-charcoal text-charcoal hover:bg-charcoal hover:text-white' 
-                    : 'border-white text-white hover:bg-white hover:text-charcoal'
-                }`}>
+                className="rounded-full border border-[rgba(23,35,26,.18)] bg-[#fffcf6] px-4 py-2 text-sm font-extrabold text-[#1b3b1a] transition-all hover:bg-[#f6f1e7]"
+              >
                 {t('header.auth.login')}
               </button>
               <button 
                 onClick={() => handleAuthButtonClick('/register')}
-                className="px-4 py-2 text-white rounded-lg"
-                style={{ backgroundColor: 'hsl(var(--blue-cta))' }}
+                className="landing-green-button rounded-full px-4 py-2 text-sm font-extrabold transition-all"
               >
-                {t('header.auth.signUp')}
+                {t('header.auth.claimFreePage')}
               </button>
             </div>
 
             {/* Mobile Menu Toggle */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className={`lg:hidden transition-colors ${
-                isScrolled ? 'text-charcoal' : 'text-white'
-              }`}
+              aria-label={
+                isMobileMenuOpen
+                  ? t('header.nav.closeMenu')
+                  : t('header.nav.openMenu')
+              }
+              className="rounded-full p-2 transition-colors hover:bg-black/5 lg:hidden"
             >
               {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -175,52 +151,30 @@ export default function LandingHeader() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="lg:hidden bg-white shadow-lg mt-4 rounded-lg overflow-hidden"
+            className="mt-4 overflow-hidden rounded-[22px] bg-[#fffcf6] shadow-lg lg:hidden"
           >
             <div className="p-4 space-y-4">
-              <button
-                onClick={() => scrollToSection('how-it-works')}
-                className="block w-full text-left text-charcoal hover:text-cta-blue transition-colors"
-              >
-                {t('header.nav.howItWorks')}
-              </button>
-              <button
-                onClick={() => scrollToSection('who-is-for')}
-                className="block w-full text-left text-charcoal hover:text-cta-blue transition-colors"
-              >
-                {t('header.nav.whoIsFor')}
-              </button>
-              <button
-                onClick={() => scrollToSection('faq')}
-                className="block w-full text-left text-charcoal hover:text-cta-blue transition-colors"
-              >
-                {t('header.nav.faq')}
-              </button>
-              <Link
-                to="/about"
-                className="block text-charcoal hover:text-cta-blue transition-colors"
-              >
-                {t('header.nav.about')}
-              </Link>
-              <Link
-                to="/contact"
-                className="block text-charcoal hover:text-cta-blue transition-colors"
-              >
-                {t('header.nav.contact')}
-              </Link>
+              {navItems.map((item) => (
+                <button
+                  key={item.sectionId}
+                  onClick={() => scrollToSection(item.sectionId)}
+                  className="block w-full text-left text-[#17231a] transition-colors hover:text-[#1b3b1a]"
+                >
+                  {item.label}
+                </button>
+              ))}
               <hr className="border-gray-200" />
               <div className="flex space-x-3">
                 <button 
                   onClick={() => handleAuthButtonClick('/login')}
-                  className="flex-1 px-4 py-2 border border-charcoal text-charcoal rounded-lg hover:bg-charcoal hover:text-white transition-all">
+                  className="flex-1 rounded-full border border-[#17231a] px-4 py-2 text-[#17231a] transition-all hover:bg-[#17231a] hover:text-white">
                   {t('header.auth.login')}
                 </button>
                 <button 
                   onClick={() => handleAuthButtonClick('/register')}
-                  className="flex-1 px-4 py-2 text-white rounded-lg"
-                  style={{ backgroundColor: 'hsl(var(--blue-cta))' }}
+                  className="landing-green-button flex-1 rounded-full px-4 py-2 text-white"
                 >
-                  {t('header.auth.signUp')}
+                  {t('header.auth.claimFree')}
                 </button>
               </div>
             </div>

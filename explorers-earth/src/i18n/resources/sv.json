@@ -1146,50 +1146,99 @@
     "verificationSent": "Verification email sent to:"
   },
   "footer": {
-    "copyright": "© 2025 explorers. Alla rättigheter förbehållna.",
+    "tagline": "Låt dina rekommendationer resa världen runt.",
     "email": "hello@explorers.earth",
-    "links": {
-      "about": "Om oss",
-      "contact": "Kontakt",
-      "cookies": "Cookiepolicy",
-      "faq": "Vanliga frågor",
-      "howItWorks": "Så fungerar det",
-      "privacy": "Integritetspolicy",
-      "terms": "Villkor och Bestämmelser"
-    },
-    "madeWithLove": "Gjord med kärlek på jorden",
     "sections": {
+      "product": "Produkt",
       "contact": "Kontakt",
-      "legal": "Juridisk",
-      "product": "Produkt"
+      "legal": "Rättslig",
+      "company": "Företag"
     },
-    "tagline": "Låt dina rekommendationer resa världen runt."
+    "links": {
+      "howItWorks": "Hur det fungerar",
+      "faq": "FAQ",
+      "contact": "Kontakta",
+      "about": "Om",
+      "terms": "Allmänna villkor",
+      "privacy": "Sekretesspolicy",
+      "cookies": "Cookiepolicy",
+      "product": "Produkt",
+      "shareAnywhere": "Dela var som helst"
+    },
+    "copyright": "© 2025 utforskare. Alla rättigheter reserverade.",
+    "madeWithLove": "Gjord med kärlek på jorden",
+    "freeForever": "Gratis för alltid."
   },
   "header": {
-    "auth": {
-      "login": "Logga in",
-      "signUp": "Registrera dig"
-    },
     "nav": {
+      "howItWorks": "Hur det fungerar",
+      "whoIsFor": "För vem",
+      "faq": "FAQ",
       "about": "Om oss",
       "contact": "Kontakt",
-      "faq": "Vanliga frågor",
-      "howItWorks": "Så fungerar det",
-      "whoIsFor": "För vem"
+      "product": "Produkt",
+      "share": "Dela",
+      "openMenu": "Öppna navigeringsmenyn",
+      "closeMenu": "Stäng navigeringsmenyn"
+    },
+    "auth": {
+      "login": "Logga in",
+      "signUp": "Registrera dig",
+      "claimFreePage": "Gör anspråk på en gratis sida",
+      "claimFree": "Anspråk gratis"
     }
   },
   "hero": {
-    "ctaButton": "Reservera explorers",
-    "headline": "Alla dina rekommendationer i en QR och enkel länk.",
-    "inputLabel": "Reservera din explorers URL:",
+    "headline": "Alla dina rekommendationer - en länk, en QR",
+    "subtext": "Skapa en delbar sida för allt du rekommenderar – platser, människor, produkter, böcker, filmer, program, musik, spel, appar och mer.",
+    "inputLabel": "Gör anspråk på din utforskares URL:",
     "inputPlaceholder": "ditt namn",
-    "signupPrompt": "Registrera dig nu för att få din",
-    "subtext": "Dela vad du vet och älskar om en plats — och gör den upptäckbar för alla, överallt"
+    "ctaButton": "Gör anspråk på din Explorer-sida",
+    "signupPrompt": "Registrera dig för att få din nu",
+    "headlinePrefix": "Alla dina",
+    "rotatingWords": [
+      "rekommendationer",
+      "kurationer",
+      "samlingar",
+      "favoriter"
+    ],
+    "headlineSuffix": "i en länk och QR.",
+    "badge": "Gratis för alltid",
+    "globalStrip": "Explorers delar rekommendationer runt om i världen",
+    "preview": {
+      "todayList": "Dagens lista",
+      "onePageTitle": "En sida för varje bra rekommendation.",
+      "onePageText": "Dela den som en länk, QR, meddelande eller guide.",
+      "items": {
+        "place": "Plats",
+        "book": "Boka",
+        "music": "Musik",
+        "game": "Spel"
+      },
+      "screenAlt": "Explorer sidrekommendationsskärm"
+    },
+    "countries": {
+      "in": "Indien",
+      "us": "USA",
+      "gb": "Storbritannien",
+      "jp": "Japan",
+      "fr": "Frankrike",
+      "au": "Australien",
+      "br": "Brasilien",
+      "ae": "UAE",
+      "sg": "Singapore",
+      "de": "Tyskland"
+    }
   },
   "languageModal": {
-    "close": "Stäng",
-    "searchPlaceholder": "Sök språk...",
-    "title": "Välj Språk"
+    "close": "Nära",
+    "searchPlaceholder": "Sök efter språk...",
+    "title": "Välj Språk",
+    "subtitle": "Välj det språk du vill använda bland utforskare.",
+    "noLanguagesFound": "Inga språk hittades",
+    "tryDifferentSearch": "Prova en annan sökterm.",
+    "languagesAvailable": "{{count}} språk tillgängliga",
+    "escToClose": "Tryck på Esc för att stänga"
   },
   "legal": {
     "cookies": {
@@ -1248,56 +1297,326 @@
     "tryAgain": "Request New Link"
   },
   "sections": {
-    "analytics": {
-      "dashboardTitle": "Analytics-instrumentpanel",
-      "engagement": "Engagemang",
-      "headline": "Spåra klick, hänvisningar och engagemang",
-      "last30Days": "Senaste 30 dagarna",
-      "referrals": "Hänvisningar",
-      "scanningDesc": "Övervaka QR-skanningar och uppdateringar",
-      "scanningTitle": "Vem som skannar",
-      "spotsDesc": "Data-driven insikter för bättre kurering",
-      "spotsTitle": "Bäst presterande platser",
-      "subtext": "Se vad som fungerar, vem som skannar, och vilka platser som får mest kärlek — i realtid.",
-      "totalScans": "Totalt Antal Skanningar",
-      "workingDesc": "Spåra populariteten av dina rekommendationer",
-      "workingTitle": "Se vad som fungerar"
-    },
     "createCustomize": {
+      "headline": "Skapa din Explorer-sida på några minuter",
+      "subtext": "Samla det du rekommenderar, organisera det på ditt sätt och dela det var som helst med en länk eller QR.",
       "bulletPoints": {
         "addSpots": {
-          "description": "Skapa en lista med dina must-visit",
-          "title": "Lägg till dina favoritplatser"
-        },
-        "generate": {
-          "description": "Din personliga QR är redo på sekunder",
-          "title": "Generera din länk och QR direkt"
+          "title": "Lägg till platser, upplevelser, rutter, ljud och anteckningar",
+          "description": ""
         },
         "organize": {
-          "description": "Skapa kategorier som är meningsfulla för din publik",
-          "title": "Organisera efter stad eller tema"
+          "title": "Organisera efter plats eller intresse",
+          "description": ""
+        },
+        "generate": {
+          "title": "Redigera när som helst – din länk förblir alltid densamma",
+          "description": ""
         },
         "share": {
-          "description": "",
-          "title": "Dela digitalt eller via QR i den verkliga världen"
+          "title": "Dela digitalt eller via en QR i den verkliga världen",
+          "description": ""
         }
       },
-      "headline": "Skapa och anpassa din explorers på minuter",
       "mockup": {
-        "addPlace": "Lägg till Plats",
-        "title": "Mina Rekommendationer"
+        "title": "Mina rekommendationer",
+        "addPlace": "Lägg till plats"
       },
-      "subtext": "Lägg till dina favoritplatser, organisera efter stad eller tema, och generera din QR direkt."
+      "steps": [
+        {
+          "title": "Lägg till det du rekommenderar",
+          "body": "Platser, människor, produkter, böcker, filmer, program, musik, spel, appar, guider och anteckningar."
+        },
+        {
+          "title": "Organisera det på ditt sätt",
+          "body": "Gruppera efter stad, tema, lista, kategori, resa eller ögonblick så att människor kan utforska naturligt."
+        },
+        {
+          "title": "Dela en länk eller QR",
+          "body": "Din sida uppdateras när som helst medan samma länk och QR fortsätter att fungera överallt."
+        }
+      ]
+    },
+    "shareAnywhere": {
+      "headline": "En länk. Många resor.",
+      "subtext": "Din Explorer-länk blir en levande guide - något människor kan spara, återbesöka och utforska i sin egen takt.\n\nDela det på en profil, meddelande, bord, vägg eller kort.\nVart det än går, följer ditt perspektiv med det.",
+      "scanText": "Sök efter lokala rekommendationer",
+      "storefrontText": "Perfekt för skyltfönster",
+      "instagramTitle": "Lägg till din Instagram/Tiktok Bio",
+      "instagramDesc": "Dela med dina följare direkt",
+      "menuTitle": "Skriv ut det för Storefront",
+      "menuDesc": "Fysiska beröringspunkter på ett enkelt sätt",
+      "welcomeTitle": "Inkludera i välkomstböcker",
+      "welcomeDesc": "Perfekt för värdar och guider",
+      "cafeMenu": "Café Meny",
+      "tokyoFoodGuide": "Min Tokyo matguide explorers.earth/jane",
+      "cards": [
+        {
+          "title": "Länk i bio",
+          "eyebrow": "Profilklar"
+        },
+        {
+          "title": "QR-koder",
+          "eyebrow": "Klart offline"
+        },
+        {
+          "title": "Meddelanden",
+          "eyebrow": "Chattklar"
+        },
+        {
+          "title": "Välkommen guider",
+          "eyebrow": "Gästklar"
+        }
+      ],
+      "visual": {
+        "scanForPicks": "Sök efter val",
+        "messageBubble": "Här är min Kyoto-lista",
+        "welcomeGuide": "Välkommen guide",
+        "guideItems": [
+          "Frukost i närheten",
+          "Museiväg",
+          "Kvällspromenad"
+        ],
+        "savedRecommendation": "Sparad rekommendation"
+      },
+      "profileCarouselCaption": "Instagram & TikTok profiler",
+      "qrEverywhereTitle": "Lägg till länken QR överallt",
+      "qrEverywhereDesc": "Perfekt för varje plats"
+    },
+    "analytics": {
+      "headline": "Se vad folk engagerar sig i.",
+      "subtext": "Förstå vilka rekommendationer folk öppnar, sparar och återvänder till i dina länkar och QR-koder.",
+      "workingTitle": "Se vad som fungerar",
+      "workingDesc": "Spåra vilka rekommendationer folk öppnar, sparar och besöker igen.",
+      "scanningTitle": "Förstå skanningar och klick",
+      "scanningDesc": "Se hur människor når din sida från länkar, QR-koder och delade kontaktpunkter.",
+      "spotsTitle": "Hitta de bästa rekommendationerna",
+      "spotsDesc": "Lär dig vilka platser, produkter, listor och guider som får mest kärlek.",
+      "dashboardTitle": "Analysinstrumentpanel",
+      "last30Days": "Senaste 30 dagarna",
+      "totalScans": "Totala skanningar",
+      "engagement": "Engagemang",
+      "referrals": "Remisser",
+      "livePreview": "Live förhandsvisning"
+    },
+    "referEarn": {
+      "headline": "Dela, hänvisa och tjäna",
+      "subtext": "Förvandla dina rekommendationer till passiva belöningar — få kredit när andra använder din QR.",
+      "comingSoon": "Hänvisningsbelöningsprogram (kommer snart)",
+      "rewardsTitle": "Tjäna Belöningar",
+      "rewardsDesc": "Få betalt när människor använder dina rekommendationer",
+      "earnedThisMonth": "Tjänat denna månad",
+      "passiveTitle": "Förvandla rekommendationer till passiva belöningar",
+      "networkTitle": "Bygg ditt nätverk och tjäna automatiskt"
+    },
+    "localTunes": {
+      "mainHeading": "Tunes",
+      "title": "Lyssna medan du utforskar",
+      "body": "Utforskning är inte bara visuell. Ljud bär minne, sammanhang och känsla.\n\nTunes låter dig samla och dela soundtrack för platser, resor och stämningar — vare sig det är musik upptäckt på vägen eller ljud som definierar en plats för dig.\n\nSömlöst ansluten till din Explorer-profil.",
+      "exploreButton": "Utforska Tunes",
+      "featuresHeading": "Kraftfulla Funktioner",
+      "features": {
+        "realtimeCollaboration": {
+          "title": "Realtidssamarbete",
+          "description": "Låt gäster lägga till låtar i din spellista omedelbart medan du behåller full kontroll över vad som spelas."
+        },
+        "qrCodeSharing": {
+          "title": "QR-koddelning",
+          "description": "Dela din musikupplevelse med en enkel QR-kodskanning — inga appar eller nedladdningar krävs."
+        },
+        "youtubeIntegration": {
+          "title": "YouTube-integration",
+          "description": "Integrera sömlöst med YouTube för att komma åt miljontals låtar och skapa den perfekta atmosfären."
+        },
+        "voteLikeSystem": {
+          "title": "Röstnings- och Gilla-system",
+          "description": "Gäster kan rösta på sina favoritlåtar för att påverka spellistekön i realtid."
+        },
+        "silentParties": {
+          "title": "Tysta Fester",
+          "description": "Anordna unika tysta fester där alla lyssnar genom sina egna hörlurar."
+        },
+        "karaokeReady": {
+          "title": "Karaoke Redo",
+          "description": "Perfekt för karaoke-kvällar med samarbetslistor och realtidslåtförfrågningar."
+        }
+      },
+      "venueHeading": "Perfekt för Varje Plats",
+      "venues": {
+        "barsPubs": "Barer & Pubar",
+        "restaurants": "Restauranger",
+        "coffeeShops": "Kaféer",
+        "eventsWeddings": "Evenemang & Bröllop",
+        "retailStores": "Butiker",
+        "gymsFitness": "Gym & Fitness"
+      },
+      "closingStatement": "Tunes är <strong>gratis</strong> att utforska, och för betalfunktioner kan du uppgradera senare."
+    },
+    "whoIsFor": {
+      "headline": "Byggd för människor vars smak hjälper andra.",
+      "subtext": "Oavsett om du delar en stad, en hylla, en produktlista, en spellista eller en gästguide, ger utforskare dina rekommendationer ett hem.",
+      "cards": [
+        "Personliga upptäcktsresande",
+        "Skapare och kuratorer",
+        "Värdar och företag",
+        "Varumärken och organisationer"
+      ],
+      "useCases": {
+        "travelers": "Resenärer",
+        "travelersDesc": "Dela upptäckta pärlor med andra upptäcktsresande",
+        "influencers": "Influencers",
+        "influencersDesc": "Tjäna pengar på lokal kunskap och bygg gemenskap",
+        "airbnbHosts": "Airbnb Värdar",
+        "airbnbHostsDesc": "Förbättra gästupplevelsen med lokala insikter",
+        "hotels": "Hotell",
+        "hotelsDesc": "Ge utvalda lokala rekommendationer",
+        "restaurants": "Restauranger",
+        "restaurantsDesc": "Korsmarknadsföra med andra lokala företag",
+        "cafes": "Kaféer",
+        "cafesDesc": "Dela grannskapsfavoriter med kunder",
+        "localGuides": "Lokala guider",
+        "localGuidesDesc": "Skala expertis bortom enskilda turer",
+        "creators": "Skapare",
+        "creatorsDesc": "Lägg till mervärde utöver innehåll med praktiska tips",
+        "tourOperators": "Researrangörer",
+        "tourOperatorsDesc": "Utöka upplevelsen utöver schemalagda turer",
+        "anyBusiness": "Alla företag",
+        "anyBusinessDesc": "Bygg gemenskap och kundlojalitet"
+      },
+      "explorerLabel": "Explorer",
+      "visual": {
+        "personal": [
+          "Kafé",
+          "Boka",
+          "Spår",
+          "Album",
+          "Filma",
+          "Spel"
+        ],
+        "creators": [
+          "#1",
+          "#2",
+          "#3",
+          "#4"
+        ],
+        "hostsQr": "QR"
+      },
+      "chips": [
+        "Resenärer",
+        "Lokalbefolkningen",
+        "Familjer",
+        "Studenter",
+        "Nomader",
+        "Skapare",
+        "Influencers",
+        "Bloggare",
+        "Recensenter",
+        "Fotografer",
+        "Lärare",
+        "Samhällsledare",
+        "Hotell",
+        "Airbnbs",
+        "Vandrarhem",
+        "Kaféer",
+        "Restauranger",
+        "Återförsäljare",
+        "Gym",
+        "Salonger",
+        "Kliniker",
+        "Butiker",
+        "Varumärken",
+        "Nystartade företag",
+        "Byråer",
+        "universitet",
+        "Företag",
+        "Flygplatser",
+        "icke-statliga organisationer",
+        "Regeringsteam"
+      ]
+    },
+    "testimonials": {
+      "headline": "Älskad av resenärer, kreatörer och värdar",
+      "subtext": "Se hur människor runt om i världen använder upptäcktsresande för att dela det som är viktigast.",
+      "scrollLeft": "Rulla testimonials åt vänster",
+      "scrollRight": "Rulla testimonials åt höger",
+      "items": [
+        {
+          "id": "1",
+          "name": "Priya Sharma",
+          "role": "Resebloggare",
+          "location": "Mumbai, Indien",
+          "quote": "upptäcktsresande förändrade hur jag delar med mig av min resekunskap. Mina följare älskar att få omedelbar tillgång till mina utvalda rekommendationer!"
+        },
+        {
+          "id": "2",
+          "name": "Raj Patel",
+          "role": "Airbnb Värd",
+          "location": "Delhi, Indien",
+          "quote": "Mina gäster älskar absolut den personliga QR-koden i deras välkomstpaket. Det har blivit min signatur touch!"
+        },
+        {
+          "id": "3",
+          "name": "Yuki Tanaka",
+          "role": "Restaurangägare",
+          "location": "Tokyo, Japan",
+          "quote": "Vi delar våra upptäcktsresande med kunder för att rekommendera andra lokala platser. Det har skapat fantastiska gemenskapskontakter."
+        },
+        {
+          "id": "4",
+          "name": "Maria Silva",
+          "role": "Reseledare",
+          "location": "São Paulo, Brasilien",
+          "quote": "explorers hjälper mig att utöka min expertis utöver turnétimmar. Kunder kan komma åt mina rekommendationer när som helst!"
+        },
+        {
+          "id": "5",
+          "name": "James Wilson",
+          "role": "Reseinfluencer",
+          "location": "Sydney, Australien",
+          "quote": "Som en reseinfluencer gör upptäcktsresande det så enkelt att dela mina favoritplatser med min publik. QR-kodfunktionen är lysande!"
+        },
+        {
+          "id": "6",
+          "name": "Sophie Martin",
+          "role": "Lokal guide",
+          "location": "Paris, Frankrike",
+          "quote": "Jag använder utforskare för att skapa vandringsturer för mina kunder. De kan skanna QR och utforska i sin egen takt!"
+        }
+      ]
     },
     "faq": {
-      "error": "Fel vid laddning av FAQ. Försök igen senare.",
       "headline": "Har du frågor?",
+      "subtext": "Vi har svarat på de vanligaste sakerna folk frågar innan de börjar.",
       "loading": "Laddar FAQ...",
-      "subtext": "Vi har svarat på de vanligaste sakerna folk frågar innan de börjar."
+      "error": "Fel vid laddning av FAQ. Försök igen senare.",
+      "fallbackItems": [
+        {
+          "Sequence": 1,
+          "Question": "Vad kan jag lägga till på min Explorer-sida?",
+          "Answer": "Platser, människor, produkter, böcker, filmer, program, musik, spel, appar, guider och anteckningar."
+        },
+        {
+          "Sequence": 2,
+          "Question": "Kan jag dela den med en QR-kod?",
+          "Answer": "Ja. Din Explorer-sida kan delas som en länk eller QR för profiler, meddelanden, tabeller, kort och tryckta guider."
+        },
+        {
+          "Sequence": 3,
+          "Question": "Kan jag uppdatera mina rekommendationer senare?",
+          "Answer": "Ja. Du kan hålla din sida fräsch medan samma länk och QR fortsätter att fungera."
+        },
+        {
+          "Sequence": 4,
+          "Question": "Är upptäcktsresande gratis för alltid?",
+          "Answer": "Ja. Sidan kan kommunicera gratislöftet tydligt utan betalningstungt språk."
+        }
+      ]
     },
     "features": {
-      "communityDriven": {
-        "title": "Gemenskapsdriven upptäckt"
+      "title": "Byggt för att hålla sig ur vägen",
+      "subtitle": "Enkla, genomtänkta funktioner som låter dina rekommendationer glänsa.",
+      "simpleLinks": {
+        "title": "Enkla länkar och QR-delning"
       },
       "livingGuides": {
         "title": "Levande, redigerbara guider"
@@ -1305,347 +1624,143 @@
       "locationAware": {
         "title": "Platsmedvetna rekommendationer"
       },
-      "privacyFirst": {
-        "title": "Integritet först enligt design"
-      },
-      "simpleLinks": {
-        "title": "Enkla länkar och QR-delning"
-      },
       "soundPlaylists": {
         "title": "Valfritt ljud och spellistor"
       },
-      "subtitle": "Enkla, genomtänkta funktioner som låter dina rekommendationer glänsa.",
-      "title": "Byggt för att hålla sig ur vägen"
+      "privacyFirst": {
+        "title": "Integritet först enligt design"
+      },
+      "communityDriven": {
+        "title": "Gemenskapsdriven upptäckt"
+      }
     },
     "finalCTA": {
-      "creating": "Skapar din explorers...",
+      "headline": "Börja dela din värld idag",
+      "subtext": "Reservera din gratis explorers och förvandla dina lokala insikter till delbara guider.",
       "ctaButton": "Reservera explorers – Gratis För Alltid",
       "disclaimer": "Inget kreditkort krävs • Setup på 2 minuter",
-      "headline": "Börja dela din värld idag",
-      "subtext": "Reservera din gratis explorers och förvandla dina lokala insikter till delbara guider."
+      "creating": "Skapar din explorers..."
     },
-    "localTunes": {
-      "body": "Utforskning är inte bara visuell. Ljud bär minne, sammanhang och känsla.\n\nTunes låter dig samla och dela soundtrack för platser, resor och stämningar — vare sig det är musik upptäckt på vägen eller ljud som definierar en plats för dig.\n\nSömlöst ansluten till din Explorer-profil.",
-      "closingStatement": "Tunes är <strong>gratis</strong> att utforska, och för betalfunktioner kan du uppgradera senare.",
-      "exploreButton": "Utforska Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "Perfekt för karaoke-kvällar med samarbetslistor och realtidslåtförfrågningar.",
-          "title": "Karaoke Redo"
-        },
-        "qrCodeSharing": {
-          "description": "Dela din musikupplevelse med en enkel QR-kodskanning — inga appar eller nedladdningar krävs.",
-          "title": "QR-koddelning"
-        },
-        "realtimeCollaboration": {
-          "description": "Låt gäster lägga till låtar i din spellista omedelbart medan du behåller full kontroll över vad som spelas.",
-          "title": "Realtidssamarbete"
-        },
-        "silentParties": {
-          "description": "Anordna unika tysta fester där alla lyssnar genom sina egna hörlurar.",
-          "title": "Tysta Fester"
-        },
-        "voteLikeSystem": {
-          "description": "Gäster kan rösta på sina favoritlåtar för att påverka spellistekön i realtid.",
-          "title": "Röstnings- och Gilla-system"
-        },
-        "youtubeIntegration": {
-          "description": "Integrera sömlöst med YouTube för att komma åt miljontals låtar och skapa den perfekta atmosfären.",
-          "title": "YouTube-integration"
-        }
-      },
-      "featuresHeading": "Kraftfulla Funktioner",
-      "mainHeading": "Tunes",
-      "title": "Lyssna medan du utforskar",
-      "venueHeading": "Perfekt för Varje Plats",
-      "venues": {
-        "barsPubs": "Barer & Pubar",
-        "coffeeShops": "Kaféer",
-        "eventsWeddings": "Evenemang & Bröllop",
-        "gymsFitness": "Gym & Fitness",
-        "restaurants": "Restauranger",
-        "retailStores": "Butiker"
-      }
-    },
-    "referEarn": {
-      "comingSoon": "Hänvisningsbelöningsprogram (kommer snart)",
-      "earnedThisMonth": "Tjänat denna månad",
-      "headline": "Dela, hänvisa och tjäna",
-      "networkTitle": "Bygg ditt nätverk och tjäna automatiskt",
-      "passiveTitle": "Förvandla rekommendationer till passiva belöningar",
-      "rewardsDesc": "Få betalt när människor använder dina rekommendationer",
-      "rewardsTitle": "Tjäna Belöningar",
-      "subtext": "Förvandla dina rekommendationer till passiva belöningar — få kredit när andra använder din QR."
-    },
-    "shareAnywhere": {
-      "cafeMenu": "Café Meny",
-      "headline": "Dela på sociala medier, butiksfönster, eller stadsväggar",
-      "instagramDesc": "Dela med dina följare direkt",
-      "instagramTitle": "Lägg till i din Instagram bio",
-      "menuDesc": "Fysiska kontaktpunkter gjorda enkla",
-      "menuTitle": "Skriv ut på menyer",
-      "profileCarouselCaption": "Instagram & TikTok profiles",
-      "qrEverywhereDesc": "Perfect for Every Venue",
-      "qrEverywhereTitle": "Add the QR link everywhere",
-      "scanText": "Skanna för lokala rekommendationer",
-      "storefrontText": "Perfekt för butiksfönster",
-      "subtext": "Lägg till i din Instagram bio, skriv ut på menyer, eller inkludera i välkomstböcker — din guide, alltid redo.",
-      "tokyoFoodGuide": "Min Tokyo matguide explorers.earth/jane",
-      "welcomeDesc": "Perfekt för värdar och guider",
-      "welcomeTitle": "Inkludera i välkomstböcker"
-    },
-    "testimonials": {
-      "headline": "Älskad av resenärer, skapare och värdar",
-      "items": [
-        {
-          "id": "1",
-          "location": "San Francisco",
-          "name": "Marcus Chen",
-          "quote": "explorers förändrade hur jag delar min resekunskap. Mina följare älskar att få omedelbar åtkomst till mina kuraterade rekommendationer!",
-          "role": "Resebloggare"
-        },
-        {
-          "id": "2",
-          "location": "Barcelona",
-          "name": "Sarah Johnson",
-          "quote": "Mina gäster älskar absolut den personaliserade QR-koden i deras välkomstpaket. Det har blivit min signatur!",
-          "role": "Airbnb Värd"
-        },
-        {
-          "id": "3",
-          "location": "Mexico City",
-          "name": "Alex Rodriguez",
-          "quote": "Vi delar vår explorers med kunder för att rekommendera andra lokala platser. Det har skapat fantastiska gemenskapsförbindelser.",
-          "role": "Restaurangägare"
-        },
-        {
-          "id": "4",
-          "location": "London",
-          "name": "Emma Thompson",
-          "quote": "explorers hjälper mig att utöka min expertis bortom turerna. Kunder kan komma åt mina rekommendationer när som helst!",
-          "role": "Turguide"
-        },
-        {
-          "id": "5",
-          "location": "Sydney, Australia",
-          "name": "James Wilson",
-          "quote": "As a travel influencer, explorers makes it so easy to share my favorite spots with my audience. The QR code feature is brilliant!",
-          "role": "Travel Influencer"
-        },
-        {
-          "id": "6",
-          "location": "Paris, France",
-          "name": "Sophie Martin",
-          "quote": "I use explorers to create walking tours for my clients. They can scan the QR and explore at their own pace!",
-          "role": "Local Guide"
-        }
+    "productCategories": {
+      "headline": "Rekommendera mer än platser.",
+      "subtext": "Skapa en sida för platser, människor, produkter, böcker, filmer, program, musik, spel, appar och verktyg.",
+      "actions": [
+        "Spara",
+        "Organisera",
+        "Dela"
       ],
-      "scrollLeft": "Rulla testimonials åt vänster",
-      "scrollRight": "Rulla testimonials åt höger",
-      "subtext": "Se hur människor världen över använder explorers för att dela det som betyder mest."
-    },
-    "whoIsFor": {
-      "cards": {
-        "businesses": {
-          "items": {
-            "boutique": {
-              "label": "Butik",
-              "oneLiner": "Butiker som listar kuraterade fynd"
-            },
-            "cafe": {
-              "label": "Kafé",
-              "oneLiner": "Kaféer som framhäver favoritmenyalternativ"
-            },
-            "clinic": {
-              "label": "Klinik",
-              "oneLiner": "Kliniker som delar hälsorelaterade platser"
-            },
-            "gym": {
-              "label": "Gym",
-              "oneLiner": "Gym som föreslår lokala wellnessplatser"
-            },
-            "restaurant": {
-              "label": "Restaurang",
-              "oneLiner": "Restauranger som delar måste-prova-rätter"
-            },
-            "retailShop": {
-              "label": "Butik",
-              "oneLiner": "Butiker som delar produktrekommendationer"
-            },
-            "salon": {
-              "label": "Salong",
-              "oneLiner": "Salonger som erbjuder skönhetsguider"
-            },
-            "spa": {
-              "label": "Spa",
-              "oneLiner": "Spa som listar närliggande avslappningsalternativ"
-            }
-          },
-          "oneLiner": "Vägleda kunder med användbara rekommendationer.",
-          "title": "Företag"
-        },
-        "creators": {
-          "items": {
-            "blogger": {
-              "label": "Bloggare",
-              "oneLiner": "Bloggare som kuraterar skrivna guider"
-            },
-            "communityLeader": {
-              "label": "Samhällsledare",
-              "oneLiner": "Samhällsledare som kuraterar användbara listor"
-            },
-            "educator": {
-              "label": "Pedagog",
-              "oneLiner": "Pedagoger som delar lärandeguider"
-            },
-            "influencer": {
-              "label": "Influencer",
-              "oneLiner": "Influencers som delar toppval"
-            },
-            "photographer": {
-              "label": "Fotograf",
-              "oneLiner": "Fotografer som delar fotoplatser"
-            },
-            "reviewer": {
-              "label": "Recensent",
-              "oneLiner": "Recensenter som listar bäst betygsatta platser"
-            },
-            "vlogger": {
-              "label": "Vloggare",
-              "oneLiner": "Vloggare som delar visuella resor"
-            }
-          },
-          "oneLiner": "Dela kuraterade listor med din publik.",
-          "title": "Skapare"
-        },
-        "hospitality": {
-          "items": {
-            "airbnb": {
-              "label": "Airbnb",
-              "oneLiner": "Värdar som delar grannskapets favoriter"
-            },
-            "homestay": {
-              "label": "Hemvist",
-              "oneLiner": "Hemvister som erbjuder familjeorienterade guider"
-            },
-            "hostel": {
-              "label": "Vandrarhem",
-              "oneLiner": "Vandrarhem som delar backpackertips"
-            },
-            "hotel": {
-              "label": "Hotell",
-              "oneLiner": "Hotell som erbjuder lokala guider"
-            },
-            "pgColiving": {
-              "label": "PG/Gemensamt Boende",
-              "oneLiner": "PG/Gemensamt Boende som visar viktiga närliggande platser"
-            },
-            "resort": {
-              "label": "Resort",
-              "oneLiner": "Resorter som tillhandahåller aktivitetslistor"
-            }
-          },
-          "oneLiner": "Erbjud gäster kuraterade lokala insikter.",
-          "title": "Gästfrihet"
-        },
-        "individuals": {
-          "items": {
-            "emergencySharer": {
-              "label": "Nödsdelare",
-              "oneLiner": "Nödsdelare som publicerar viktiga platser"
-            },
-            "family": {
-              "label": "Familj",
-              "oneLiner": "Familjer som delar användbara platser"
-            },
-            "local": {
-              "label": "Lokal",
-              "oneLiner": "Lokalbefolkning som delar grannskapstips"
-            },
-            "nomad": {
-              "label": "Nomad",
-              "oneLiner": "Nomader som listar arbetsvänliga utrymmen"
-            },
-            "student": {
-              "label": "Student",
-              "oneLiner": "Studenter som delar campus/närliggande platser"
-            },
-            "traveler": {
-              "label": "Resenär",
-              "oneLiner": "Personer som delar resmål"
-            }
-          },
-          "oneLiner": "Dela personliga eller lokala rekommendationer.",
-          "title": "Individer"
-        },
-        "organizations": {
-          "items": {
-            "agency": {
-              "label": "Byrå",
-              "oneLiner": "Resebyråer som listar måste-besök-platser"
-            },
-            "airline": {
-              "label": "Flygbolag",
-              "oneLiner": "Flygbolag som delar stadsguider"
-            },
-            "airport": {
-              "label": "Flygplats",
-              "oneLiner": "Flygplatser som erbjuder terminaler + stadstips"
-            },
-            "corporate": {
-              "label": "Företag",
-              "oneLiner": "Företag som listar närliggande resurser"
-            },
-            "government": {
-              "label": "Regering",
-              "oneLiner": "Departement som framhäver offentliga tjänster"
-            },
-            "ngo": {
-              "label": "NGO",
-              "oneLiner": "NGO:er som delar samhällsresurser"
-            },
-            "railway": {
-              "label": "Järnväg",
-              "oneLiner": "Järnvägar som delar plattformsinformation"
-            },
-            "university": {
-              "label": "Universitet",
-              "oneLiner": "Universitet som delar campusgrundläggande"
-            }
-          },
-          "oneLiner": "Tillhandahåll kuraterade guider och resurser.",
-          "title": "Organisationer"
-        }
+      "overlayLabel": "Explorer sida",
+      "visualLabels": {
+        "products": "Riktiga favoriter",
+        "apps": "Användbar stack"
       },
-      "headline": "För vem är explorers.earth?",
-      "subtext": "explorers.earth är för alla som tror att dela är ett ansvar — inte en sändning.",
-      "useCases": {
-        "airbnbHosts": "Airbnb Värdar",
-        "airbnbHostsDesc": "Förbättra gästupplevelse med lokala insikter",
-        "anyBusiness": "Vilket företag som helst",
-        "anyBusinessDesc": "Bygg gemenskap och kundlojalitet",
-        "cafes": "Kaféer",
-        "cafesDesc": "Dela grannskapets favoriter med kunder",
-        "creators": "Skapare",
-        "creatorsDesc": "Lägg till värde bortom innehåll med handlingsbara tips",
-        "hotels": "Hotell",
-        "hotelsDesc": "Ge kuraterade lokala rekommendationer",
-        "influencers": "Influencers",
-        "influencersDesc": "Monetisera lokal kunskap och bygg gemenskap",
-        "localGuides": "Lokala Guider",
-        "localGuidesDesc": "Skala din expertis bortom individuella turer",
-        "restaurants": "Restauranger",
-        "restaurantsDesc": "Cross-promotion med andra lokala företag",
-        "tourOperators": "Turoperatörer",
-        "tourOperatorsDesc": "Utöka upplevelser bortom schemalagda turer",
-        "travelers": "Resenärer",
-        "travelersDesc": "Dela upptäckta pärlor med medupptäckare"
-      }
+      "visualDetails": {
+        "products": [
+          "Reseutrustning",
+          "Daglig transport",
+          "Creator kit"
+        ],
+        "apps": [
+          "Planeringsverktyg",
+          "Användbara appar",
+          "Resurslänkar"
+        ]
+      },
+      "categories": [
+        {
+          "id": "places",
+          "label": "Platser",
+          "title": "Lokala platser, guider och rutter",
+          "description": "Restauranger, stadsdelar, museer, rutter och dolda pärlor som folk faktiskt kan besöka."
+        },
+        {
+          "id": "people",
+          "label": "Personer",
+          "title": "Människor värda att följa eller lära av",
+          "description": "Skapare, grundare, guider, konstnärer, lärare, experter och människor som format din smak."
+        },
+        {
+          "id": "books",
+          "label": "Böcker",
+          "title": "Böcker och läslistor",
+          "description": "Böcker du fortsätter att rekommendera i chattar, anteckningar, nyhetsbrev och resekonversationer."
+        },
+        {
+          "id": "movies",
+          "label": "Filmer & TV",
+          "title": "Filmer, shower och bevakningslistor",
+          "description": "Filmer, serier, dokumentärer och bevakningslistor för alla typer av humör eller publik."
+        },
+        {
+          "id": "games",
+          "label": "Spel",
+          "title": "Spel och världar att utforska",
+          "description": "Spel, uppdrag, världar och upplevelser som folk borde prova härnäst."
+        },
+        {
+          "id": "music",
+          "label": "Musik",
+          "title": "Album, artister och spellistor",
+          "description": "Artister, album, låtar, spellistor och ljudspår kopplade till platser och ögonblick."
+        },
+        {
+          "id": "products",
+          "label": "Produkter",
+          "title": "Produkter som folk faktiskt rekommenderar",
+          "description": "Vardagsfavoriter, reseutrustning, verktyg för skapare, presenter och produkter värda att spara."
+        },
+        {
+          "id": "apps",
+          "label": "Appar och verktyg",
+          "title": "Appar, verktyg och användbara länkar",
+          "description": "Programvara, webbplatser, mallar, verktyg och resurser som gör livet enklare."
+        }
+      ]
     }
   },
   "seo": {
     "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
+    "landing": {
+      "title": "utforskare - Upptäck och dela personliga lokala rekommendationer",
+      "description": "Upptäck och dela dina lokala favoritplatser med upptäcktsresande. Skapa personliga stadsguider, organisera platser du måste besöka och gör dem upptäckbara med delbara QR-koder. Utforska dolda pärlor, utvalda rekommendationer och lokala resetips på interaktiva kartor.",
+      "keywords": [
+        "upptäck platser nära mig",
+        "personliga reseguider",
+        "lokala rekommendationer app",
+        "stad guide skapare",
+        "dela resetips",
+        "rekommendationer för dolda pärlor",
+        "saker att göra i staden",
+        "kartbaserad reseguide",
+        "bästa lokala platserna",
+        "utvalda restaurangrekommendationer",
+        "reseguide QR koder",
+        "skapa och dela platslistor",
+        "användargenererade lokala guider",
+        "utforska platser omkring dig",
+        "digitala stadsguider",
+        "QR-koder",
+        "lokala rekommendationer",
+        "platsdelning",
+        "reseguide",
+        "lokala företag",
+        "digitala rekommendationer",
+        "delbara länkar",
+        "platsdelning",
+        "resetips",
+        "lokala platser"
+      ],
+      "geoDescription": "Upptäck och dela dina lokala favoritställen med personliga QR-koder och delbara länkar",
+      "geoFeatures": [
+        "Personlig QR kodgenerering",
+        "Lokal rekommendationsdelning",
+        "Analyser och insikter",
+        "Mobiloptimerad design",
+        "Gemenskapsupptäckt"
+      ],
+      "geoIndustry": "Teknologi"
+    }
   },
   "settings": {
     "account": {
@@ -2162,5 +2277,14 @@
       "usernameNotChanged": "Användarnamn är inte ändrat. Ändra ditt användarnamn",
       "validationPending": "Validering pågår. Vänta"
     }
+  },
+  "usernameClaim": {
+    "validating": "Validerar...",
+    "claimFree": "Anspråk gratis",
+    "trySuggestions": "Prova: {{suggestions}}",
+    "available": "Användarnamn är tillgängligt.",
+    "unavailable": "Användarnamn är inte tillgängligt.",
+    "confirmOnSignup": "Vi bekräftar tillgänglighet vid registrering.",
+    "checkingAvailability": "Kontrollerar tillgänglighet..."
   }
 }
