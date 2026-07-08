@@ -13,7 +13,7 @@ Known exclusion: infrastructure/backend latency is recorded but not fixed in thi
 
 ## Summary
 
-Status: In progress
+Status: Completed with concerns
 
 | Category | List Create | Item Create | Publish Prompt | Manage Smoke | Console | Timing | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -24,7 +24,7 @@ Status: In progress
 | Games | Passed | Passed | Passed | Passed | No errors captured | ~66s list, ~75s item | Created `QA Games 713664` and added `Hades` |
 | People | Passed | Passed | Passed | Passed | No errors captured | ~66s list, ~75s item | Created `QA People 713664` and added `QA Person 713664` |
 | Music | Blocked | Blocked | N/A | N/A | No console errors captured | Page load only | Shows `Could not connect to Local Tunes` |
-| Places | Blocked | Blocked | N/A | N/A | No console errors captured | ~75s failed submit | Add Location rejects typed location with `List Name is Required` |
+| Places | Partial | Partial | N/A | N/A | No console errors captured | ~75s failed submit before fix | Bad validation fixed; still requires selecting a Google Places result |
 | Guides | N/A | Wizard opens | N/A | N/A | No console errors captured | Wizard smoke only | `/guides/new` opens after hydration; full guide creation not completed |
 
 ## Issues
@@ -43,7 +43,7 @@ Impact: Music cannot currently be verified as a working category experience in p
 
 Severity: High
 Category: Functional
-Status: Needs code investigation
+Status: Fixed and deployed in PR #80
 
 Repro:
 
@@ -54,9 +54,13 @@ Repro:
 5. Click `Add Location`.
 6. Press Enter in the location field and click `Add Location` again.
 
-Observed: the form remains open and shows `List Name is Required`. The location input still contains `Bengaluru`, but the app does not treat it as a valid selected list/location.
+Observed before fix: the form remained open and showed `List Name is Required`. The location input still contained `Bengaluru`, but the app did not treat it as a valid selected list/location.
 
 Expected: either the typed location should be accepted, or the UI should expose/select a concrete suggestion before submit. The validation message should match the visible `Search Location` field.
+
+Root cause: `AddressInput` updated only its local `address` state during manual typing. It did not call parent `onChange`, so Formik's `listName` stayed empty until Google autocomplete fired.
+
+Fix: `AddressInput` now calls parent `onChange` on manual input changes. Production retest after deploy confirmed the misleading `List Name is Required` error is gone; the form now shows `Please select a location from the search results`, which matches the real requirement.
 
 ## Category Evidence
 
@@ -134,8 +138,10 @@ Expected: either the typed location should be accepted, or the UI should expose/
 - Page load result: passed after protected-route/data wait.
 - Existing public place lists visible: `Hyderabad`, `Singapore`.
 - Add Location form opened.
-- Creation result: blocked. Submitting with `Bengaluru`, social link, note, and place URL did not create a place/list; validation showed `List Name is Required`.
+- Creation result before fix: blocked. Submitting with `Bengaluru`, social link, note, and place URL did not create a place/list; validation showed `List Name is Required`.
 - Retry: pressing Enter in the location field before submitting still failed with the same validation.
+- Deployed retest after PR #80: passed for validation fix. Submitting typed `Bengaluru` no longer shows `List Name is Required`; it shows `Please select a location from the search results`.
+- Remaining behavior: full place creation still requires selecting a real Google Places autocomplete result, not just typing free text.
 - Console: no warning/error entries captured during the flow.
 
 ### Guides
