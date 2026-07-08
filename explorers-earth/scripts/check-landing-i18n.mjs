@@ -174,6 +174,9 @@ const intentionalQuestionMarkPaths = new Set([
   "footer.links.howItWorks",
 ]);
 
+const leakedProtectedTokenPattern =
+  /(?:I18N\s?TOKEN|I18NTOKEN|18NTOKEN|И18НТОКЕН)\d*/iu;
+
 function parseJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8").replace(/^\uFEFF/, ""));
 }
@@ -212,11 +215,34 @@ function hasEnglishFallback(value, englishValue) {
   return false;
 }
 
+function assertNoProtectedTokenLeaks(value, file, pathParts, failures) {
+  if (typeof value === "string") {
+    if (leakedProtectedTokenPattern.test(value)) {
+      failures.push(`${file}: ${pathParts.join(".")} contains protected token leak`);
+    }
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    value.forEach((item, index) =>
+      assertNoProtectedTokenLeaks(item, file, [...pathParts, String(index)], failures),
+    );
+    return;
+  }
+
+  if (value && typeof value === "object") {
+    Object.entries(value).forEach(([key, child]) =>
+      assertNoProtectedTokenLeaks(child, file, [...pathParts, key], failures),
+    );
+  }
+}
+
 const english = parseJson(path.join(resourcesDir, "en.json"));
 const failures = [];
 
 for (const file of languageFiles) {
   const data = parseJson(path.join(resourcesDir, file));
+  assertNoProtectedTokenLeaks(data, file, [], failures);
 
   for (const dottedPath of requiredPaths) {
     const value = getPath(data, dottedPath);

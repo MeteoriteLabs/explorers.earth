@@ -1237,7 +1237,7 @@
     "subtitle": "Vyberte jazyk, který chcete používat napříč průzkumníky.",
     "noLanguagesFound": "Nebyly nalezeny žádné jazyky",
     "tryDifferentSearch": "Zkuste jiný hledaný výraz.",
-    "languagesAvailable": "K dispozici je 18NTOKEN0 jazyků",
+    "languagesAvailable": "K dispozici je {{count}} jazyků",
     "escToClose": "Stisknutím Esc zavřete"
   },
   "legal": {

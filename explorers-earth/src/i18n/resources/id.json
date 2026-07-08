@@ -1483,7 +1483,7 @@
         "anyBusiness": "Bisnis Apa Pun",
         "anyBusinessDesc": "Membangun komunitas dan loyalitas pelanggan"
       },
-      "explorerLabel": "Saya18NTOKEN0",
+      "explorerLabel": "Explorer",
       "visual": {
         "personal": [
           "Kafe",
@@ -1499,7 +1499,7 @@
           "#3",
           "#4"
         ],
-        "hostsQr": "Saya18NTOKEN0"
+        "hostsQr": "QR"
       },
       "chips": [
         "Wisatawan",

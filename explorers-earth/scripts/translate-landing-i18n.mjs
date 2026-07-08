@@ -122,10 +122,21 @@ function protectText(text) {
 function restoreText(text, replacements) {
   let restored = text;
   for (const [token, original] of replacements) {
-    restored = restored.replaceAll(token, original);
-    restored = restored.replaceAll(token.toLowerCase(), original);
-    restored = restored.replaceAll(token.toUpperCase(), original);
-    restored = restored.replaceAll(token.replace("TOKEN", " TOKEN "), original);
+    const tokenNumber = token.match(/\d+$/)?.[0] ?? "";
+    const tokenVariants = [
+      token,
+      token.toLowerCase(),
+      token.toUpperCase(),
+      token.replace("TOKEN", " TOKEN "),
+      token.replace("I18N", "18N"),
+      `Saya${token.replace("I18N", "18N")}`,
+      `И18НТОКЕН${tokenNumber}`,
+      `и18нтокен${tokenNumber}`,
+    ];
+
+    for (const variant of tokenVariants) {
+      restored = restored.replaceAll(variant, original);
+    }
   }
   return restored;
 }

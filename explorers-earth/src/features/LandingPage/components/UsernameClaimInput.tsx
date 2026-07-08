@@ -158,7 +158,7 @@ export function UsernameClaimInput({
         finalValidation.availability?.isAvailable === true
       ) {
         navigate(`/register?username=${encodeURIComponent(username)}`);
-      } else if (finalValidation.isValid && availabilityUnavailable) {
+      } else if (availabilityUnavailable) {
         navigate("/register");
       } else {
         setValidationState(
