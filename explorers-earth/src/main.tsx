@@ -57,7 +57,6 @@ const client = new ApolloClient({
   cache: new InMemoryCache({ typePolicies }),
 });
 
-console.warn = () => {};
 initAnalytics();
 
 createRoot(document.getElementById("root")!).render(
