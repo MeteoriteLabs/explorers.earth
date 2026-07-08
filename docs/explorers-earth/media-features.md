@@ -1,34 +1,36 @@
-# explorers-earth — Media Features (Movies, Books, Games)
+# explorers-earth — Curation Categories (Movies, Books, Games, Apps, Products)
 
 ## Overview
 
-Beyond places, explorers-earth supports three media content types: Movies & Shows, Books, and Games. Each is an independent feature module under `src/features/` backed by a dedicated third-party API service.
+Beyond places, explorers-earth supports multiple recommendation categories: Movies & Shows, Books, Games, Apps & Tools, and Products. Each is an independent feature module under `src/features/` backed by a dedicated API or metadata service.
 
 ## Architecture Pattern
 
-All three features share the same architectural pattern:
+All features share the same architectural pattern:
 
 ```
-Feature Module (src/features/{Movies|Books|Games}/)
-  ├── components/         # UI (dashboard, list cards, modals, search)
+Feature Module (src/features/{Movies|Books|Games|AppsAndTools|Products}/)
+  ├── components/         # UI (dashboard, list cards, modals, search/scraper)
   ├── hooks/              # Feature-specific data hooks
   └── index.ts            # Module exports
 
-Service (src/services/{tmdb|googleBooks|igdb}Service.ts)
-  └── Third-party API calls (search, metadata, images)
+Service (src/services/{tmdb|googleBooks|igdb}Service.ts or scraper endpoint)
+  └── Third-party API / Scraper calls (search, metadata, images)
 ```
 
 ---
 
 ## Slug Prefixing Strategy
 
-To avoid global uniqueness conflicts between content types (a movies list and a places list could both be named "favorites"), all media list slugs are **prefixed at the persistence layer**:
+To avoid global uniqueness conflicts between content types (e.g. an apps list and a movies list could both be named "favorites"), all curation category list slugs are **prefixed at the persistence layer**:
 
 | Content Type | Slug Prefix | Example Stored Slug |
 |---|---|---|
 | Movies / Shows | `movies-` | `movies-my-watchlist` |
 | Books | `books-` | `books-reading-2026` |
 | Games | `games-` | `games-indie-gems` |
+| Apps & Tools | `apps-` | `apps-dev-utilities` |
+| Products | `products-` | `products-desk-setup` |
 
 The prefix is added when creating or saving a list in Strapi, and public-facing URLs expose the prefixed slug transparently. The UI strips or handles the prefix to keep display names clean.
 
@@ -124,8 +126,39 @@ The access token is then used as a Bearer token in IGDB API calls alongside the 
 
 ---
 
+## Apps & Tools (`features/AppsAndTools/`)
+
+**API**: Custom URL Scraper  
+**Service**: Backend metadata extraction API (`/api/apps/scrape-url`)  
+
+### Key Capabilities
+
+- Paste URL and auto-enrich app metadata (title, description, and high-res logos/favicons).
+- Supports macOS, Windows, Linux, iOS, Android, Web, and Extensions.
+- Price tier tags (Free, Freemium, Paid, Subscription).
+- Self-hosted logo & screenshots stored on S3.
+- Lists use `apps-` slug prefix.
+
+---
+
+## Products (`features/Products/`)
+
+**API**: Custom Retail Scraper  
+**Service**: Backend link extraction API (`/api/products/scrape-link`)  
+
+### Key Capabilities
+
+- Paste product page URL (Amazon, Shopify, Etsy, Nike, etc.) to extract brand, title, description, price, currency, and image gallery via Open Graph / JSON-LD schemas.
+- Structured JSON Specifications System (dynamic key-value specs grid).
+- Price and currency (ISO) tracking.
+- Affiliate buy links formatting.
+- Lists use `products-` slug prefix.
+
+---
+
 ## Related Documentation
 
 - [Integrations](integrations.md) — Full API configuration details (TMDB, IGDB, Google Books)
 - [Environment Variables](../environment-variables.md) — All API keys
 - [Overview](overview.md) — Full feature module list and platform description
+

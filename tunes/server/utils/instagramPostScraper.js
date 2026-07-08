@@ -39,6 +39,10 @@ export async function scrapeInstagramPost(shortcode) {
             ]
         });
 
+        browser.on('disconnected', () => {
+            console.error('❌ Puppeteer browser disconnected unexpectedly (Chrome crashed)');
+        });
+
         const page = await browser.newPage();
 
         // Filter browser console noise

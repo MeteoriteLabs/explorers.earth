@@ -3,10 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
 import {
   MapPin, Music, Film, BookOpen, Gamepad2, Compass,
-  ChevronRight
+  ChevronRight, Smartphone, ShoppingBag, Users
 } from "lucide-react";
 
-type CategoryKey = "places" | "music" | "movies" | "books" | "games" | "guides";
+type CategoryKey = "places" | "music" | "movies" | "books" | "games" | "guides" | "apps" | "products" | "people";
 
 interface CategoryConfig {
   key: CategoryKey;
@@ -529,15 +529,160 @@ const GuidesAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
   );
 };
 
+const AppsAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
+  const containerRef = useRef(null);
+  const { scrollYProgress } = useScroll({ target: containerRef, offset: ["start end", "end start"] });
+  const yScan = useTransform(scrollYProgress, [0, 1], ["0px", "20px"]);
+  return (
+    <div ref={containerRef} className="absolute inset-0 bg-slate-950 overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-b from-violet-600/40 via-slate-950/20 to-slate-950 opacity-100" />
+      
+      {/* Smartphone Floating Outline */}
+      <motion.div 
+        className="absolute right-[12%] top-1/2 -translate-y-1/2 pointer-events-none z-10"
+        initial={{ rotate: 10, x: 0 }}
+        animate={{ 
+          x: isHovering ? [0, 8, -8, 0] : [0, 3, -3, 0],
+          y: isHovering ? ["-50%", "-53%", "-50%"] : ["-50%", "-51%", "-50%"],
+          rotate: isHovering ? [10, 15, 5, 10] : [10, 12, 8, 10],
+          opacity: isHovering ? 0.6 : 0.35
+        }}
+        transition={{ duration: isHovering ? 5 : 10, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <svg width="90" height="120" viewBox="0 0 90 120">
+          <rect x="5" y="5" width="80" height="110" rx="12" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white" />
+          <rect x="10" y="15" width="70" height="85" rx="4" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-white/40" />
+          <circle cx="45" cy="107" r="4" fill="none" stroke="currentColor" strokeWidth="1" className="text-white" />
+          <line x1="38" y1="10" x2="52" y2="10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="text-white" />
+        </svg>
+      </motion.div>
+
+      {/* Floating Apps Grid Dots */}
+      <div className="absolute inset-0 opacity-[0.05] pointer-events-none bg-[radial-gradient(circle,rgba(255,255,255,0.15)_1px,transparent_1px)] bg-[length:16px_16px]" />
+
+      {/* Sweeping scanline */}
+      <motion.div 
+        style={{ translateY: yScan }} 
+        className="absolute inset-x-0 w-full h-[1px] bg-violet-400/20 shadow-[0_0_15px_#ddd6fe] z-10"
+        animate={{ top: ["-10%", "110%"] }} 
+        transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
+      />
+      <FloatingItem x={60} delay={1} duration={20}><Smartphone size={16}/></FloatingItem>
+    </div>
+  );
+};
+
+const ProductsAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
+  const containerRef = useRef(null);
+  const { scrollYProgress } = useScroll({ target: containerRef, offset: ["start end", "end start"] });
+  const yBag = useTransform(scrollYProgress, [0, 1], ["0px", "15px"]);
+  return (
+    <div ref={containerRef} className="absolute inset-0 bg-slate-950 overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-b from-rose-600/40 via-slate-950/20 to-slate-950 opacity-100" />
+      
+      {/* 3D-Like Shopping Bag / Box Outline */}
+      <motion.div 
+        className="absolute right-[12%] top-1/2 -translate-y-1/2 pointer-events-none z-10"
+        initial={{ rotate: -10, x: 0 }}
+        animate={{ 
+          x: isHovering ? [0, -10, 10, 0] : [0, -3, 3, 0],
+          y: isHovering ? ["-50%", "-52%", "-50%"] : ["-50%", "-51%", "-50%"],
+          rotate: isHovering ? [-10, -5, -15, -10] : [-10, -8, -12, -10],
+          opacity: isHovering ? 0.6 : 0.35
+        }}
+        transition={{ duration: isHovering ? 5 : 10, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <svg width="100" height="100" viewBox="0 0 100 100">
+          <path d="M25 35 V85 H75 V35 Z" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white" />
+          <path d="M35 35 Q35 15, 50 15 Q65 15, 65 35" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white" />
+          <line x1="35" y1="50" x2="65" y2="50" stroke="currentColor" strokeWidth="0.5" className="text-white/40" />
+          <line x1="35" y1="65" x2="65" y2="65" stroke="currentColor" strokeWidth="0.5" className="text-white/40" />
+        </svg>
+      </motion.div>
+
+      {/* Floating Sparkles representing new goods */}
+      {[...Array(6)].map((_, i) => (
+        <motion.div 
+          key={i} 
+          className="absolute w-1 h-1 bg-rose-300 rounded-full" 
+          initial={{ x: (20 + i * 15) + "%", y: "110%", opacity: 0 }} 
+          animate={{ y: ["110%", "-10%"], opacity: [0, 0.5, 0] }} 
+          transition={{ duration: 15 + i * 3, repeat: Infinity, delay: i * 2, ease: "linear" }}
+          style={{ y: yBag }}
+        />
+      ))}
+      <FloatingItem x={30} delay={2} duration={22}><ShoppingBag size={16}/></FloatingItem>
+    </div>
+  );
+};
+
+const PeopleAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
+  const containerRef = useRef(null);
+  const { scrollYProgress } = useScroll({ target: containerRef, offset: ["start end", "end start"] });
+  const yNode = useTransform(scrollYProgress, [0, 1], ["0px", "10px"]);
+  return (
+    <div ref={containerRef} className="absolute inset-0 bg-slate-950 overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-b from-indigo-600/40 via-slate-950/20 to-slate-950 opacity-100" />
+      
+      {/* Social Network Node Graph */}
+      <motion.div 
+        className="absolute right-[12%] top-1/2 -translate-y-1/2 pointer-events-none z-10 w-24 h-24"
+        initial={{ rotate: 0 }}
+        animate={{ 
+          rotate: isHovering ? [0, 360] : 0 
+        }}
+        transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+      >
+        <svg width="96" height="96" viewBox="0 0 100 100" className="text-white">
+          <line x1="50" y1="50" x2="20" y2="30" stroke="currentColor" strokeWidth="1" strokeDasharray="3 3" opacity="0.4" />
+          <line x1="50" y1="50" x2="80" y2="30" stroke="currentColor" strokeWidth="1" strokeDasharray="3 3" opacity="0.4" />
+          <line x1="50" y1="50" x2="50" y2="85" stroke="currentColor" strokeWidth="1" strokeDasharray="3 3" opacity="0.4" />
+          <line x1="20" y1="30" x2="80" y2="30" stroke="currentColor" strokeWidth="0.5" opacity="0.2" />
+          <line x1="20" y1="30" x2="50" y2="85" stroke="currentColor" strokeWidth="0.5" opacity="0.2" />
+          <line x1="80" y1="30" x2="50" y2="85" stroke="currentColor" strokeWidth="0.5" opacity="0.2" />
+
+          {/* Central User Node */}
+          <circle cx="50" cy="50" r="10" fill="#6366f1" fillOpacity="0.4" stroke="currentColor" strokeWidth="1.5" />
+          <circle cx="50" cy="46" r="3.5" fill="currentColor" />
+          <path d="M43 56 C43 51, 57 51, 57 56" stroke="currentColor" strokeWidth="1" fill="none" />
+
+          {/* Peripheral Nodes */}
+          <circle cx="20" cy="30" r="6" fill="black" fillOpacity="0.6" stroke="currentColor" strokeWidth="1" />
+          <circle cx="80" cy="30" r="6" fill="black" fillOpacity="0.6" stroke="currentColor" strokeWidth="1" />
+          <circle cx="50" cy="85" r="6" fill="black" fillOpacity="0.6" stroke="currentColor" strokeWidth="1" />
+        </svg>
+      </motion.div>
+
+      {/* Floating Sparkles/Avatars */}
+      {[...Array(5)].map((_, i) => (
+        <motion.div 
+          key={i} 
+          className="absolute text-indigo-300/20" 
+          initial={{ x: (20 + i * 15) + "%", y: "110%", scale: 0.8 }} 
+          animate={{ y: ["110%", "-10%"], opacity: [0, 0.4, 0], scale: [0.8, 1.2, 0.8] }} 
+          transition={{ duration: 12 + i * 3, repeat: Infinity, delay: i * 1.5, ease: "linear" }}
+          style={{ y: yNode }}
+        >
+          <Users size={12 + i * 2} />
+        </motion.div>
+      ))}
+      <FloatingItem x={35} delay={1.5} duration={20}><Users size={16}/></FloatingItem>
+    </div>
+  );
+};
+
 const CategoryBackground = ({ category, isHovering }: { category: CategoryKey, isHovering: boolean }) => {
   switch (category) {
-    case "places": return <PlacesAnimatedBackground />;
-    case "music":  return <MusicAnimatedBackground isHovering={isHovering} />;
-    case "movies": return <MoviesAnimatedBackground isHovering={isHovering} />;
-    case "books":  return <BooksAnimatedBackground isHovering={isHovering} />;
-    case "games":  return <GamesAnimatedBackground isHovering={isHovering} />;
-    case "guides": return <GuidesAnimatedBackground isHovering={isHovering} />;
-    default:       return null;
+    case "places":   return <PlacesAnimatedBackground />;
+    case "music":    return <MusicAnimatedBackground isHovering={isHovering} />;
+    case "movies":   return <MoviesAnimatedBackground isHovering={isHovering} />;
+    case "books":    return <BooksAnimatedBackground isHovering={isHovering} />;
+    case "games":    return <GamesAnimatedBackground isHovering={isHovering} />;
+    case "guides":   return <GuidesAnimatedBackground isHovering={isHovering} />;
+    case "apps":     return <AppsAnimatedBackground isHovering={isHovering} />;
+    case "products": return <ProductsAnimatedBackground isHovering={isHovering} />;
+    case "people":   return <PeopleAnimatedBackground isHovering={isHovering} />;
+    default:         return null;
   }
 };
 
@@ -649,6 +794,45 @@ const CATEGORIES: CategoryConfig[] = [
       "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=2000"
     ]
   },
+  { 
+    key: "apps",   
+    label: "Apps & Tools",         
+    icon: Smartphone, 
+    visibilityField: "public_apps",
+    description: "Handpicked applications, utilities, and software tools",
+    color: "violet",
+    bgImages: [
+      "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&q=80&w=2000",
+      "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=2000",
+      "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=2000"
+    ]
+  },
+  { 
+    key: "products",   
+    label: "Products",         
+    icon: ShoppingBag, 
+    visibilityField: "public_products",
+    description: "Curated physical gear, gadgets, and product reviews",
+    color: "rose",
+    bgImages: [
+      "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80&w=2000",
+      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=2000",
+      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=2000"
+    ]
+  },
+  { 
+    key: "people",   
+    label: "People",         
+    icon: Users, 
+    visibilityField: "public_people",
+    description: "Inspiring creators, founders, makers, and people worth following",
+    color: "indigo",
+    bgImages: [
+      "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=2000",
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=2000",
+      "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=2000"
+    ]
+  },
 ];
 
 interface ProfileRecommendationsTabProps {
@@ -660,6 +844,9 @@ interface ProfileRecommendationsTabProps {
     public_books?: string;
     public_games?: string;
     public_guides?: string;
+    public_apps?: string;
+    public_products?: string;
+    public_people?: string;
   };
   username: string;
 }
@@ -938,6 +1125,8 @@ const getHexColor = (color: string) => {
     case "orange":  return "#f97316";
     case "pink":    return "#ec4899";
     case "cyan":    return "#06b6d4";
+    case "violet":  return "#8b5cf6";
+    case "rose":    return "#f43f5e";
     default:        return "#ffffff";
   }
 };

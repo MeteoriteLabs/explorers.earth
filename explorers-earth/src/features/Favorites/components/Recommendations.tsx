@@ -19,6 +19,7 @@ import {
   recommendedPlacesQuery,
   allRecommendedPlacesQuery,
   recommendationListQuery,
+  recommendedListByIdQuery,
 } from "../api/query";
 import { useNavigate } from "react-router-dom";
 import DeleteIcon from "../../../assets/icons/DeleteIcon";
@@ -30,7 +31,6 @@ import {
 import { EarthLoader } from "../../../components/EarthLoader";
 import RecommendationCardSkeleton from "../../../components/ui/RecommendationCardSkeleton";
 import PlaceOverview from "../../PublicHome/components/PlaceDetails/PlaceOverview";
-import PersonOverview from "../../PublicHome/components/PlaceDetails/PersonOverview";
 import EditIcon from "../../../assets/icons/EditIcon";
 import axios from "axios";
 import useAuthStore from "../../../store/store";
@@ -44,6 +44,11 @@ import { useRecommendationsWalkthrough } from "../../../hooks/useRecommendations
 import InstagramPostImport from "./InstagramPostImport";
 import AddPlaceOverlay from "./AddPlaceOverlay";
 import { IMAGE_CONFIG } from "../../../config";
+import { ChevronDown, Users, ShoppingBag } from "lucide-react";
+import ProductDetailModal from "../../Products/components/public/ProductDetailModal";
+import PersonDetailModal from "../../People/components/public/PersonDetailModal";
+import { deduplicatePeople, buildImageUrl, PlatformIcon } from "../../People";
+import { deduplicateProducts, formatPrice } from "../../Products/utils/productHelpers";
 
 // ⭐ TS declaration for window.__walkthrough
 declare global {
@@ -80,8 +85,8 @@ type RecommendedPlaceCategory = {
 
 // Helper function to get person image with avatar fallback
 const getPersonImageUrl = (data: any): string => {
-  const imageUrl = data?.media_details?.thumbnail?.url || data?.media_details?.imageDetails?.[0]?.url;
-  if (imageUrl) return imageUrl;
+  const imageUrl = data?.avatar_url || data?.avatar_path || data?.media_details?.thumbnail?.url || data?.media_details?.imageDetails?.[0]?.url;
+  if (imageUrl) return buildImageUrl(imageUrl);
 
   // Return data URL for inline SVG avatar
   const svgString = `<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="400" fill="#1a1a1a"/><circle cx="200" cy="160" r="70" fill="#2a2a2a"/><circle cx="200" cy="160" r="50" fill="#3a3a3a"/><ellipse cx="200" cy="320" rx="100" ry="80" fill="#3a3a3a"/><circle cx="200" cy="200" r="120" fill="none" stroke="#2a2a2a" stroke-width="2" opacity="0.3"/></svg>`;
@@ -184,10 +189,16 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
   const [isExpanded, setIsExpanded] = useState<{
     visible: boolean;
     documentId: string | null;
+    type: "place" | "person" | null;
   }>({
     visible: false,
     documentId: null,
+    type: null,
   });
+  // local state for inline product detail view
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+  // local state for inline person detail view
+  const [selectedPerson, setSelectedPerson] = useState<any | null>(null);
   // local state for handling delete recommended Place
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   // mutatio for deleting recommendedPlace (reminder: segregate this logic to reduce the complexity)
@@ -215,14 +226,65 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
   const [showInstagramModal, setShowInstagramModal] = useState<boolean>(false);
   // local state for Add Place overlay
   const [showAddPlaceOverlay, setShowAddPlaceOverlay] = useState<boolean>(false);
+  // dropdown for the split Add button
+  const [showAddDropdown, setShowAddDropdown] = useState<boolean>(false);
+  const addDropdownRef = useRef<HTMLDivElement>(null);
+  // active tab: places | people | products
+  const [activeTab, setActiveTab] = useState<"places" | "people" | "products">("places");
   // fetching data from global state
   const { token } = useAuthStore();
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (addDropdownRef.current && !addDropdownRef.current.contains(e.target as Node)) {
+        setShowAddDropdown(false);
+      }
+    };
+    if (showAddDropdown) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showAddDropdown]);
 
   const observerTarget = useRef<HTMLDivElement>(null);
   // ref for TopPlaces container to detect outside clicks
   const topPlacesRef = useRef<HTMLDivElement>(null);
   // ref for the entire suggestions section (button + content)
   const suggestionsContainerRef = useRef<HTMLDivElement>(null);
+
+  // Fetch linked person_lists and product_lists for this location
+  const { data: locationLinkedData } = useQuery(recommendedListByIdQuery, {
+    variables: {
+      documentId: selectedCity?.documentId,
+      pagination: { page: 1, pageSize: 1 }, // minimal places — we only need the linked lists
+    },
+    fetchPolicy: "cache-and-network",
+    skip: !selectedCity?.documentId,
+  });
+
+  const linkedPersonLists: any[] = locationLinkedData?.recommendationList?.person_lists || [];
+  const linkedProductLists: any[] = locationLinkedData?.recommendationList?.product_lists || [];
+
+  // Flatten all linked people and products
+  const linkedPeople = useMemo(() => {
+    const raw = linkedPersonLists.flatMap((l: any) =>
+      (l.recommended_people || []).map((p: any) => ({
+        ...p,
+        _listName: l.List_Name,
+        _listId: l.documentId,
+      }))
+    );
+    return deduplicatePeople(raw);
+  }, [linkedPersonLists]);
+  const linkedProducts = useMemo(() => {
+    const raw = linkedProductLists.flatMap((l: any) =>
+      (l.recommended_products || []).map((p: any) => ({
+        ...p,
+        _listName: l.List_Name,
+        _listId: l.documentId,
+      }))
+    );
+    return deduplicateProducts(raw);
+  }, [linkedProductLists]);
 
   // Fetch paginated places
   const {
@@ -539,15 +601,6 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
     )
     : placesData?.recommendedPlaces;
 
-  // Split into places and persons - only show items with explicit Recommendation_Type
-  const filteredPlaces = allFilteredPlaces?.filter(
-    (item: any) => item?.Recommendation_Type === "place"
-  );
-
-  const filteredPersons = allFilteredPlaces?.filter(
-    (item: any) => item?.Recommendation_Type === "person"
-  );
-
   // Calculate center coordinates for TopPlaces component
   const selectedCityCoordinates = useMemo(() => {
     // First, check if the location itself has coordinates stored (for draft locations)
@@ -790,7 +843,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
 
       // Close any open modals/expanded views
       setShowDeleteModal(false);
-      setIsExpanded({ visible: false, documentId: null });
+      setIsExpanded({ visible: false, documentId: null, type: null });
     } catch (error) {
       console.error(error);
       setIsDeleting(false);
@@ -810,75 +863,166 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
     <div className="bg-dashboard-bg mb-6 md:p-4">
       {/* Suggestions Container - wraps both button and content */}
       <div ref={suggestionsContainerRef}>
-        {/* Recommend Button and Suggestions Button */}
+        {/* Split Add Curation Button */}
         <div className="flex flex-col gap-2 py-2">
-          {/* Stretched Add Place Button */}
-          <button
-            onClick={() => setShowAddPlaceOverlay(true)}
-            className="w-full bg-dashboard-accent hover:opacity-90 text-sm text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/30 cursor-pointer"
-            data-walkthrough="add-place"
-          >
-            <AddIcon size="5" />
-            <span>Add Place</span>
-          </button>
-        </div>
+          <div ref={addDropdownRef} className="relative w-full">
+            {/* Main button + chevron */}
+            <div className="flex w-full rounded-xl overflow-hidden shadow-lg shadow-blue-900/30">
+              <button
+                onClick={() => setShowAddPlaceOverlay(true)}
+                className="flex-1 bg-dashboard-accent hover:opacity-90 text-sm text-white font-bold py-3 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                data-walkthrough="add-place"
+              >
+                <AddIcon size="5" />
+                <span>Add Place</span>
+              </button>
+              <button
+                onClick={() => setShowAddDropdown((v) => !v)}
+                className="bg-dashboard-accent border-l border-white/20 px-3.5 flex items-center justify-center hover:opacity-90 transition-all cursor-pointer"
+                aria-label="More add options"
+              >
+                <ChevronDown
+                  size={16}
+                  className={`transition-transform duration-200 ${showAddDropdown ? "rotate-180" : ""}`}
+                />
+              </button>
+            </div>
 
-        {/* Collapsible TopPlaces Section */}
-        <AnimatePresence>
-          {showTopPlaces && (
-            <motion.div
-              ref={topPlacesRef}
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="relative mb-4"
-            >
-              <div className="bg-dashboard-bg py-4">
-                {/* TopPlaces Content */}
+            {/* Dropdown menu */}
+            <AnimatePresence>
+              {showAddDropdown && (
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="overflow-hidden"
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute top-[calc(100%+6px)] left-0 right-0 bg-dashboard-sidebar border border-dashboard-border rounded-xl shadow-2xl z-50 overflow-hidden"
                 >
-                  <TopPlacesByCategory
-                    key={`${selectedCity?.documentId || "current-location"
-                      }-${topPlacesKey}`}
-                    selectedLocationName={selectedCity?.List_Name}
-                    selectedLocationCoords={selectedCityCoordinates}
-                    existingRecommendations={
-                      allPlacesData?.recommendationList?.recommended_places ||
-                      []
-                    }
-                    onPlaceAdded={handlePlaceAdded}
-                    selectedCityVisibility={selectedCity?.Visibility}
-                  />
+                  <button
+                    onClick={() => { setShowAddDropdown(false); setShowAddPlaceOverlay(true); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-dashboard hover:bg-dashboard-muted transition-colors text-left border-b border-white/5"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-blue-500/15 flex items-center justify-center flex-shrink-0">
+                      <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" className="text-blue-400">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-semibold">Add Place</p>
+                      <p className="text-xs text-dashboard-muted">Restaurant, hotel, or attraction</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => { setShowAddDropdown(false); navigate(`/recommendations/places/${selectedCity?.documentId}/add-people`); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-dashboard hover:bg-dashboard-muted transition-colors text-left border-b border-white/5"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-violet-500/15 flex items-center justify-center flex-shrink-0">
+                      <Users size={14} className="text-violet-400" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Add People</p>
+                      <p className="text-xs text-dashboard-muted">Local creators, founders, artists</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => { setShowAddDropdown(false); navigate(`/recommendations/places/${selectedCity?.documentId}/add-products`); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-dashboard hover:bg-dashboard-muted transition-colors text-left"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-orange-500/15 flex items-center justify-center flex-shrink-0">
+                      <ShoppingBag size={14} className="text-orange-400" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Add Products</p>
+                      <p className="text-xs text-dashboard-muted">Gear, essentials, recommendations</p>
+                    </div>
+                  </button>
                 </motion.div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
       </div>
 
-      {/* My Recommendations Header - Show when there are any recommendations */}
-      {(allFilteredPlaces?.length > 0) && (
-        <div className="flex items-center gap-3 mb-2 mt-8">
-          <div>
-            <h3 className="text-white font-poppins font-semibold text-lg">
-              {t("dashboard.recommendations.myRecommendationsHeading")}
-            </h3>
-            <p className="text-white font-poppins text-sm">
-              {selectedCity?.List_Name ||
-                t("dashboard.recommendations.locationButton")}
-            </p>
+      {/* Collapsible TopPlaces Section */}
+      <AnimatePresence>
+        {showTopPlaces && (
+          <motion.div
+            ref={topPlacesRef}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="relative mb-4"
+          >
+            <div className="bg-dashboard-bg py-4">
+              {/* TopPlaces Content */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className="overflow-hidden"
+              >
+                <TopPlacesByCategory
+                  key={`${selectedCity?.documentId || "current-location"
+                    }-${topPlacesKey}`}
+                  selectedLocationName={selectedCity?.List_Name}
+                  selectedLocationCoords={selectedCityCoordinates}
+                  existingRecommendations={
+                    allPlacesData?.recommendationList?.recommended_places ||
+                    []
+                  }
+                  onPlaceAdded={handlePlaceAdded}
+                  selectedCityVisibility={selectedCity?.Visibility}
+                />
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* My Recommendations Header + Tab Switcher */}
+      {(allFilteredPlaces?.length > 0 || linkedPeople.length > 0 || linkedProducts.length > 0) && (
+        <div className="mt-8 mb-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div>
+              <h3 className="text-white font-poppins font-semibold text-lg">
+                {t("dashboard.recommendations.myRecommendationsHeading")}
+              </h3>
+            </div>
+          </div>
+
+          {/* Tab Switcher */}
+          <div className="flex gap-1 p-1 bg-dashboard-muted rounded-xl w-fit">
+            {([
+              { key: "places", label: "Places", count: allFilteredPlaces?.length || 0 },
+              { key: "people", label: "People", count: linkedPeople.length },
+              { key: "products", label: "Products", count: linkedProducts.length },
+            ] as const).map(({ key, label, count }) => (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                className={`relative px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 ${
+                  activeTab === key
+                    ? "bg-dashboard-accent text-white shadow-lg shadow-blue-900/30"
+                    : "text-dashboard-muted hover:text-dashboard"
+                }`}
+              >
+                {label}
+                {count > 0 && (
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                    activeTab === key ? "bg-white/20" : "bg-white/10"
+                  }`}>{count}</span>
+                )}
+              </button>
+            ))}
           </div>
         </div>
       )}
 
-      <div className="overflow-x-auto whitespace-nowrap py-4 scrollbar-hide">
-        {categories && categories.length >= 1 && (
+      {/* Categories filters only visible on Places tab */}
+      {activeTab === "places" && categories && categories.length >= 1 && (
+        <div className="overflow-x-auto whitespace-nowrap py-4 scrollbar-hide">
           <div className="flex gap-3">
             <Button
               btnText={t("dashboard.recommendations.viewAll")}
@@ -898,10 +1042,168 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
               />
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Combined Recommendations Grid - All cards in one section */}
+      {/* ── People Tab ── */}
+      {activeTab === "people" && (
+        <div className="mb-20 md:mb-0">
+          {!linkedPersonLists.some((list: any) => list.recommended_people && list.recommended_people.length > 0) ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-violet-900/20 border border-violet-800/30 flex items-center justify-center mb-4">
+                <Users size={28} className="text-violet-500/60" />
+              </div>
+              <h3 className="text-base font-semibold text-dashboard mb-1">No people linked yet</h3>
+              <p className="text-sm text-dashboard-muted mb-4">Click the chevron on the Add button and select "Add People"</p>
+              <button
+                onClick={() => navigate(`/recommendations/places/${selectedCity?.documentId}/add-people`)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600/30 hover:bg-violet-600/50 text-sm text-violet-300 font-medium transition-colors cursor-pointer"
+              >
+                <Users size={14} /> Add People
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {linkedPersonLists.map((list: any) => {
+                const people = deduplicatePeople(list.recommended_people ?? []);
+                if (people.length === 0) return null;
+
+                return (
+                  <div key={list.documentId} className="px-1">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h4 className="text-sm font-bold text-white">{list.List_Name}</h4>
+                        {list.list_description && (
+                          <p className="text-xs text-dashboard-muted mt-0.5 line-clamp-1">{list.list_description}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => navigate(`/recommendations/people/${list.documentId}`)}
+                        className="text-xs text-violet-400 hover:text-violet-300 font-semibold transition-colors whitespace-nowrap cursor-pointer"
+                      >
+                        View all →
+                      </button>
+                    </div>
+
+                    <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                      {people.map((person: any) => {
+                        const avatarSrc = person.avatar_url || person.avatar_path || person.media_details?.thumbnail?.url || person.media_details?.imageDetails?.[0]?.url || null;
+                        return (
+                          <button
+                            key={person.documentId}
+                            onClick={() => setSelectedPerson(person)}
+                            className="flex-shrink-0 w-[110px] flex flex-col items-center gap-2 text-center group cursor-pointer bg-transparent border-0 outline-none p-0"
+                          >
+                            <div className="relative w-20 h-20 rounded-full overflow-hidden bg-white/5 ring-2 ring-white/10 group-hover:ring-violet-500/50 transition-all shadow-lg group-hover:scale-105 duration-200">
+                              {avatarSrc ? (
+                                <img src={buildImageUrl(avatarSrc)} alt={person.name} className="w-full h-full object-cover" loading="lazy" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-violet-950/40">
+                                  <Users size={24} className="text-violet-400/40" />
+                                </div>
+                              )}
+                              {person.platform && (
+                                <div className="absolute bottom-1 right-1 p-1 bg-black/60 rounded-full border border-white/10 flex items-center justify-center shadow-md z-10">
+                                  <PlatformIcon platform={person.platform} size={10} />
+                                </div>
+                              )}
+                            </div>
+                            <div className="w-full">
+                              <p className="text-xs font-semibold text-white line-clamp-1">{person.name}</p>
+                              {person.handle && (
+                                <p className="text-[10px] text-white/40 truncate">@{person.handle}</p>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Products Tab ── */}
+      {activeTab === "products" && (
+        <div className="mb-20 md:mb-0">
+          {!linkedProductLists.some((list: any) => list.recommended_products && list.recommended_products.length > 0) ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-orange-900/20 border border-orange-800/30 flex items-center justify-center mb-4">
+                <ShoppingBag size={28} className="text-orange-500/60" />
+              </div>
+              <h3 className="text-base font-semibold text-dashboard mb-1">No products linked yet</h3>
+              <p className="text-sm text-dashboard-muted mb-4">Click the chevron on the Add button and select "Add Products"</p>
+              <button
+                onClick={() => navigate(`/recommendations/places/${selectedCity?.documentId}/add-products`)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-600/30 hover:bg-orange-600/50 text-sm text-orange-300 font-medium transition-colors cursor-pointer"
+              >
+                <ShoppingBag size={14} /> Add Products
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {linkedProductLists.map((list: any) => {
+                const products = deduplicateProducts(list.recommended_products ?? []);
+                if (products.length === 0) return null;
+
+                return (
+                  <div key={list.documentId} className="px-1">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h4 className="text-sm font-bold text-white">{list.List_Name}</h4>
+                        {list.list_description && (
+                          <p className="text-xs text-dashboard-muted mt-0.5 line-clamp-1">{list.list_description}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => navigate(`/recommendations/products/${list.documentId}`)}
+                        className="text-xs text-orange-400 hover:text-orange-300 font-semibold transition-colors whitespace-nowrap cursor-pointer"
+                      >
+                        View all →
+                      </button>
+                    </div>
+
+                    <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
+                      {products.map((product: any) => (
+                        <button
+                          key={product.documentId}
+                          onClick={() => setSelectedProduct(product)}
+                          className="flex-shrink-0 w-[140px] rounded-2xl bg-white/[0.04] border border-white/[0.07] hover:border-orange-500/40 hover:bg-white/[0.07] p-3 text-left transition-all cursor-pointer outline-none"
+                        >
+                          <div className="w-full h-24 rounded-xl overflow-hidden bg-white/5 mb-2 shadow-md">
+                            {product.logo_url ? (
+                              <img src={buildImageUrl(product.logo_url)} alt={product.title} className="w-full h-full object-cover" loading="lazy" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <ShoppingBag size={20} className="text-white/20" />
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-xs font-semibold text-white line-clamp-2 leading-tight mb-1.5">{product.title}</p>
+                          {product.brand && (
+                            <p className="text-[10px] text-white/40 truncate mb-1">{product.brand}</p>
+                          )}
+                          {product.price != null && (
+                            <p className="text-xs font-bold text-orange-400">
+                              {formatPrice(product.price, product.currency)}
+                            </p>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Places Tab ── */}
+      {activeTab === "places" && (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-2 mb-20 md:mb-0">
         {loading && !placesData?.recommendedPlaces?.length ? (
           // Skeleton cards while loading — sit directly in the grid
@@ -926,6 +1228,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
                     setIsExpanded({
                       visible: true,
                       documentId: data.documentId,
+                      type: "place",
                     })
                   }
                   className="places-grid-card relative rounded-xl overflow-hidden cursor-pointer shadow-lg transition-transform hover:-translate-y-1 aspect-[4/3] md:aspect-[4/3]"
@@ -999,6 +1302,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
           </>
         ) : null}
       </div>
+      )}
 
       {/* Empty State - Show only when no recommendations */}
       {!loading && !allFilteredPlaces?.length && placesData?.recommendedPlaces && (
@@ -1022,26 +1326,27 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
           }`}
         style={{ height: "100%" }}
       >
-        {isExpanded.visible && (() => {
-          // Find the clicked item to determine its type
-          const clickedItem = [...(filteredPlaces || []), ...(filteredPersons || [])].find(
-            item => item.documentId === isExpanded.documentId
-          );
-          const isPersonType = clickedItem?.Recommendation_Type === "person";
-
-          return isPersonType ? (
-            <PersonOverview
-              personId={isExpanded.documentId}
-              onClose={() => setIsExpanded({ visible: false, documentId: null })}
-            />
-          ) : (
-            <PlaceOverview
-              placeId={isExpanded.documentId}
-              onClose={() => setIsExpanded({ visible: false, documentId: null })}
-            />
-          );
-        })()}
+        {isExpanded.visible && (
+          <PlaceOverview
+            placeId={isExpanded.documentId}
+            onClose={() => setIsExpanded({ visible: false, documentId: null, type: null })}
+          />
+        )}
       </div>
+
+      {/* Product Detail Modal */}
+      <ProductDetailModal
+        open={!!selectedProduct}
+        product={selectedProduct}
+        onClose={() => setSelectedProduct(null)}
+      />
+
+      {/* Person Detail Modal */}
+      <PersonDetailModal
+        open={!!selectedPerson}
+        person={selectedPerson}
+        onClose={() => setSelectedPerson(null)}
+      />
 
       {showDeleteModal && (
         <Modal

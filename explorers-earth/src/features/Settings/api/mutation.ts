@@ -65,6 +65,9 @@ export const accountQuery = gql`
       public_guides
       public_books
       public_games
+      public_apps
+      public_products
+      public_people
       pinned_nav_tabs
     }
   }
@@ -83,6 +86,9 @@ export const updateAccountMutation = gql`
       public_guides
       public_books
       public_games
+      public_apps
+      public_products
+      public_people
       pinned_nav_tabs
     }
   }
@@ -99,6 +105,9 @@ export const updateTabVisibilityMutation = gql`
       public_guides
       public_books
       public_games
+      public_apps
+      public_products
+      public_people
       pinned_nav_tabs
     }
   }

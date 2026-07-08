@@ -212,7 +212,7 @@ export const GameListCard = ({
   const uniqueGames = deduplicateGames(list.recommended_games);
   const gameCount = uniqueGames.length;
   const pinnedCount = uniqueGames.filter(g => g.is_pinned).length;
-  const previewGames = uniqueGames.slice(0, 5);
+  const previewGames = uniqueGames.slice(0, 4);
 
   return (
     <motion.div
@@ -268,9 +268,9 @@ export const GameListCard = ({
               </div>
             </div>
           ))}
-          {gameCount > 5 && (
+          {gameCount > 4 && (
             <div className="w-12 rounded-md flex items-center justify-center bg-white/5 flex-shrink-0 aspect-[3/4]">
-              <span className="text-xs text-dashboard-muted">+{gameCount - 5}</span>
+              <span className="text-xs text-dashboard-muted">+{gameCount - 4}</span>
             </div>
           )}
         </div>

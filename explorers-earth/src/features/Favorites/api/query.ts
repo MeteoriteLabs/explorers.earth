@@ -64,6 +64,60 @@ export const recommendedListByIdQuery = gql`
       }
       Visibility
       documentId
+      # Linked People Lists
+      person_lists(sort: ["display_order:asc"], pagination: { limit: 50 }) {
+        documentId
+        List_Name
+        slug
+        recommended_people(sort: ["display_order:asc"], pagination: { limit: 200 }) {
+          documentId
+          name
+          username_handle
+          headline
+          location
+          avatar_path
+          media_details
+          primary_platform
+          social_urls
+          skills_tags
+          user_recommendation_note
+          user_rating
+          is_pinned
+          display_order
+          people_category {
+            documentId
+            Category_name
+          }
+        }
+      }
+      # Linked Product Lists
+      product_lists(sort: ["display_order:asc"], pagination: { limit: 50 }) {
+        documentId
+        List_Name
+        slug
+        recommended_products(sort: ["display_order:asc"], pagination: { limit: 200 }) {
+          documentId
+          product_url
+          title
+          brand
+          price
+          currency
+          buy_url
+          logo_url
+          description
+          specifications
+          user_recommendation_note
+          user_rating
+          is_pinned
+          display_order
+          images
+          product_category {
+            documentId
+            name
+            slug
+          }
+        }
+      }
     }
   }
 `;

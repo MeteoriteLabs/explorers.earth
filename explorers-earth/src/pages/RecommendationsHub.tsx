@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
 import {
   MapPin, Music, Film, BookOpen, Gamepad2,
-  ChevronRight
+  ChevronRight, Smartphone, ShoppingBag, Users
 } from "lucide-react";
 import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 
-type CategoryKey = "places" | "music" | "movies" | "books" | "games" | "guides";
+type CategoryKey = "places" | "music" | "movies" | "books" | "games" | "guides" | "apps" | "products" | "people";
 
 interface CategoryConfig {
   key: CategoryKey;
@@ -58,6 +58,30 @@ const CATEGORIES: CategoryConfig[] = [
     description: "Gaming favorites and latest discoveries in the digital world",
     color: "pink",
     path: "/recommendations/games"
+  },
+  { 
+    key: "apps",   
+    label: "Apps & Tools",         
+    icon: Smartphone, 
+    description: "Curated tech stack, applications, and utility tools for productivity and life",
+    color: "purple",
+    path: "/recommendations/apps"
+  },
+  { 
+    key: "products",   
+    label: "Products",         
+    icon: ShoppingBag, 
+    description: "Gear recommendations, tech setups, travel essentials, and retail picks",
+    color: "emerald",
+    path: "/recommendations/products"
+  },
+  { 
+    key: "people",   
+    label: "People",         
+    icon: Users, 
+    description: "Inspiring creators, founders, makers, and anyone worth following",
+    color: "violet",
+    path: "/recommendations/people"
   },
   { 
     key: "guides",  
@@ -400,6 +424,51 @@ const GuidesAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
   );
 };
 
+const AppsAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
+  const containerRef = useRef(null);
+  const { scrollYProgress } = useScroll({ target: containerRef, offset: ["start end", "end start"] });
+  useTransform(scrollYProgress, [0, 1], ["0px", "20px"]);
+  return (
+    <div ref={containerRef} className="absolute inset-0 bg-slate-950 overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-b from-purple-900/40 via-slate-950/20 to-slate-950 opacity-100" />
+      <motion.div 
+        className="absolute right-[12%] top-1/2 -translate-y-1/2 pointer-events-none z-10 text-white/30"
+        initial={{ scale: 1 }}
+        animate={{ 
+          scale: isHovering ? 1.05 : 1,
+          opacity: isHovering ? 0.6 : 0.35
+        }}
+        transition={{ duration: 0.5 }}
+      >
+        <Smartphone size={72} />
+      </motion.div>
+      <FloatingItem x={25} delay={1} duration={20}><Smartphone size={14}/></FloatingItem>
+    </div>
+  );
+};
+
+const ProductsAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
+  const containerRef = useRef(null);
+  useScroll({ target: containerRef, offset: ["start end", "end start"] });
+  return (
+    <div ref={containerRef} className="absolute inset-0 bg-slate-950 overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-b from-emerald-900/40 via-slate-950/20 to-slate-950 opacity-100" />
+      <motion.div 
+        className="absolute right-[12%] top-1/2 -translate-y-1/2 pointer-events-none z-10 text-white/30"
+        initial={{ scale: 1 }}
+        animate={{ 
+          scale: isHovering ? 1.05 : 1,
+          opacity: isHovering ? 0.6 : 0.35
+        }}
+        transition={{ duration: 0.5 }}
+      >
+        <ShoppingBag size={72} />
+      </motion.div>
+      <FloatingItem x={75} delay={2} duration={22}><ShoppingBag size={16}/></FloatingItem>
+    </div>
+  );
+};
+
 const CategoryBackground = ({ category, isHovering }: { category: CategoryKey, isHovering: boolean }) => {
   switch (category) {
     case "places": return <PlacesAnimatedBackground />;
@@ -407,6 +476,8 @@ const CategoryBackground = ({ category, isHovering }: { category: CategoryKey, i
     case "movies": return <MoviesAnimatedBackground isHovering={isHovering} />;
     case "books":  return <BooksAnimatedBackground isHovering={isHovering} />;
     case "games":  return <GamesAnimatedBackground isHovering={isHovering} />;
+    case "apps":   return <AppsAnimatedBackground isHovering={isHovering} />;
+    case "products": return <ProductsAnimatedBackground isHovering={isHovering} />;
     case "guides": return <GuidesAnimatedBackground isHovering={isHovering} />;
     default:       return null;
   }

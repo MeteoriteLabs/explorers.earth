@@ -35,9 +35,15 @@ const DashboardRouteValidator = ({
       /^\/recommendations\/movies(\/.*)?$/, // All movies & shows routes
       /^\/recommendations\/books(\/.*)?$/, // All books routes
       /^\/recommendations\/games(\/.*)?$/, // All games routes
+      /^\/recommendations\/apps(\/.*)?$/, // All apps & tools routes
+      /^\/recommendations\/products(\/.*)?$/, // All products routes
+      /^\/recommendations\/people(\/.*)?$/, // All people routes
+      /^\/recommendations\/places\/[^\/]+\/add-people$/, // Add linked people to a location
+      /^\/recommendations\/places\/[^\/]+\/add-products$/, // Add linked products to a location
       /^\/[^\/]+\/new$/, // Dynamic routes like /:listId/new
       /^\/[^\/]+\/edit$/, // Dynamic routes like /:placeId/edit
     ];
+
 
     // Check if current path matches any valid pattern
     const currentPath = location.pathname;

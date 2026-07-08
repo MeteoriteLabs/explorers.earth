@@ -3,6 +3,18 @@ import dotenv from "dotenv";
 // Load environment variables from .env file
 dotenv.config();
 
+// ─── Global crash safety nets ────────────────────────────────────────────────
+// Log and exit on uncaught exceptions/rejections so the process manager (Docker) can restart the server cleanly
+process.on('uncaughtException', (err) => {
+  console.error('💥 [uncaughtException] Server encountered a fatal error:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('💥 [unhandledRejection] Server encountered a fatal promise rejection:', reason);
+  process.exit(1);
+});
+
 // Log environment variables for debugging
 console.log('Environment variables loaded:');
 console.log('BASE_URL:', process.env.BASE_URL);

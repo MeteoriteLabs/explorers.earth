@@ -18,6 +18,7 @@ import { setupYoutubeRoutes } from "./youtubeRoutes";
 import { setupEmailRoutes } from "./emailRoutes";
 import { setupPageRoutes } from "./pageRoutes";
 import { setupReactivationRoutes } from "./reactivationRoutes";
+import scrapeRoutes from "./scrapeRoutes";
 
 export function registerRoutes(app: Express, _storage: IStorage): Server {
   setupSwagger(app);
@@ -39,6 +40,41 @@ export function registerRoutes(app: Express, _storage: IStorage): Server {
   setupGoogleOAuthRoutes(app);
   setupAuthBridgeRoutes(app);
   setupSeoRoutes(app);
+
+  // Scraper Routes
+  app.use("/api", scrapeRoutes);
+
+  // iTunes Search Proxy
+  app.get("/itunes-api/search", async (req, res) => {
+    try {
+      const { term, entity, limit, media } = req.query;
+      const url = `https://itunes.apple.com/search?term=${encodeURIComponent(String(term || ""))}&entity=${entity || "software"}&limit=${limit || 12}&media=${media || "software"}`;
+      
+      const response = await fetch(url);
+      const data = await response.json();
+
+      const affiliateToken = process.env.APPLE_AFFILIATE_TOKEN;
+      if (affiliateToken && data.results) {
+        data.results = data.results.map((item: any) => {
+          if (item.trackViewUrl) {
+            try {
+              const u = new URL(item.trackViewUrl);
+              u.searchParams.set("at", affiliateToken);
+              item.trackViewUrl = u.toString();
+            } catch {
+              // ignore url parsing failures
+            }
+          }
+          return item;
+        });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("iTunes proxy search failed:", error);
+      res.status(500).json({ error: "iTunes search proxy failed" });
+    }
+  });
   
   // GraphQL Proxy for Strapi
   app.post("/graphql", async (req, res) => {

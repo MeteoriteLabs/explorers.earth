@@ -19,6 +19,8 @@ const isMainLandingPage = (path: string): boolean => {
     /^\/recommendations\/movies$/,
     /^\/recommendations\/books$/,
     /^\/recommendations\/games$/,
+    /^\/recommendations\/apps$/,
+    /^\/recommendations\/products$/,
     /^\/guides$/,
   ];
   return mainPaths.some((regex) => regex.test(path));

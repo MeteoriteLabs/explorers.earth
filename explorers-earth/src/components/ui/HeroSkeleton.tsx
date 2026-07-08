@@ -1,6 +1,6 @@
 import { memo } from "react";
 
-export type HeroAccentColor = "yellow" | "amber" | "blue";
+export type HeroAccentColor = "yellow" | "amber" | "blue" | "purple" | "green";
 export type HeroSkeletonVariant = "public" | "dashboard";
 
 interface HeroSkeletonProps {
@@ -18,6 +18,8 @@ const ACCENT_COLORS: Record<HeroAccentColor, string> = {
     yellow: "#facc15",
     amber: "#f59e0b",
     blue: "#3b82f6",
+    purple: "#a855f7",
+    green: "#22c55e",
 };
 
 /**

@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, ExternalLink, Share2, ChevronLeft, ChevronRight, BookOpen, Hash, Calendar } from "lucide-react";
 import type { RecommendedBook } from "../../types";
 import { buildCoverUrl, formatAuthors, extractNoteText, formatRating, formatPageCount } from "../../utils/bookHelpers";
+import MediaViewer from "../../../../components/ui/MediaViewer";
+import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
 
 interface BookDetailModalProps {
   book: RecommendedBook | null;
@@ -13,6 +15,7 @@ interface BookDetailModalProps {
 const FALLBACK = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='450' viewBox='0 0 300 450'><rect width='300' height='450' fill='%23171e2e'/></svg>`;
 
 const BookDetailModal = ({ book, open, onClose }: BookDetailModalProps) => {
+  const { isOpen: isMediaOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
   const [photoIndex, setPhotoIndex] = useState(0);
   const [dragStartY, setDragStartY] = useState<number | null>(null);
   const snapshotsScrollRef = useRef<HTMLDivElement>(null);
@@ -45,6 +48,42 @@ const BookDetailModal = ({ book, open, onClose }: BookDetailModalProps) => {
     }
   }, [book?.title]);
 
+  const lightboxMediaItems = useMemo(() => {
+    if (!book) return [];
+    const thumbnailUrl = buildCoverUrl(book.cover_url_large || book.cover_url) || FALLBACK;
+    const snapshots = book.media_details?.imageDetails ?? [];
+    const photos = book.Media?.filter((m) => m.url) ?? [];
+
+    const items: any[] = [];
+    if (thumbnailUrl && thumbnailUrl !== FALLBACK) {
+      items.push({
+        id: "cover",
+        url: thumbnailUrl,
+        alt: book.title,
+      });
+    }
+    if (snapshots && snapshots.length > 0) {
+      snapshots.forEach((snap: any, index: number) => {
+        const url = snap.url.startsWith("http") ? snap.url : `${import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337"}${snap.url}`;
+        items.push({
+          id: `snap-${index}`,
+          url,
+          alt: `Snapshot ${index + 1}`,
+        });
+      });
+    }
+    if (photos && photos.length > 0) {
+      photos.forEach((photo: any, index: number) => {
+        items.push({
+          id: `photo-${index}`,
+          url: photo.url,
+          alt: `Creator Photo ${index + 1}`,
+        });
+      });
+    }
+    return convertToMediaItems(items);
+  }, [book]);
+
   if (!book) return null;
 
   const coverUrl = buildCoverUrl(book.cover_url) || FALLBACK;
@@ -56,6 +95,20 @@ const BookDetailModal = ({ book, open, onClose }: BookDetailModalProps) => {
   const photos = book.Media?.filter((m) => m.url) ?? [];
   const buyLinks = book.buy_links ?? [];
   const snapshots = book.media_details?.imageDetails ?? [];
+
+  const handleImageClick = (type: 'cover' | 'snap' | 'photo', index: number = 0) => {
+    let targetIndex = 0;
+    const hasCover = thumbnailUrl && thumbnailUrl !== FALLBACK;
+    if (type === 'cover') {
+      targetIndex = 0;
+    } else if (type === 'snap') {
+      targetIndex = (hasCover ? 1 : 0) + index;
+    } else if (type === 'photo') {
+      const snapCount = snapshots.length;
+      targetIndex = (hasCover ? 1 : 0) + snapCount + index;
+    }
+    openViewer(targetIndex);
+  };
 
   const scrollSnapshots = (dir: "left" | "right") => {
     if (snapshotsScrollRef.current) {
@@ -117,7 +170,10 @@ const BookDetailModal = ({ book, open, onClose }: BookDetailModalProps) => {
               <div className="flex-1 pb-24 md:pb-6 w-full">
                 <div className="flex gap-4 px-5 -mt-28 relative z-10">
                   {/* Book cover (portrait) */}
-                  <div className="flex-shrink-0 w-28 rounded-xl overflow-hidden ring-2 ring-white/10 shadow-2xl self-end">
+                  <div 
+                    onClick={() => handleImageClick("cover")}
+                    className="flex-shrink-0 w-28 rounded-xl overflow-hidden ring-2 ring-white/10 shadow-2xl self-end cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                  >
                     <img
                       src={thumbnailUrl}
                       alt={book.title}
@@ -223,8 +279,12 @@ const BookDetailModal = ({ book, open, onClose }: BookDetailModalProps) => {
                           <ChevronLeft size={16} />
                         </button>
                         <div ref={snapshotsScrollRef} className="flex overflow-x-auto pb-4 -mx-5 px-5 gap-3 hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                          {snapshots.map((snap: any) => (
-                            <div key={snap.id} className="flex-shrink-0 w-56 aspect-video rounded-xl overflow-hidden border border-white/10 bg-[#1a2332]">
+                          {snapshots.map((snap: any, i: number) => (
+                            <div 
+                              key={snap.id} 
+                              onClick={() => handleImageClick("snap", i)}
+                              className="flex-shrink-0 w-56 aspect-video rounded-xl overflow-hidden border border-white/10 bg-[#1a2332] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                            >
                               <img
                                 src={snap.url.startsWith("http") ? snap.url : `${import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337"}${snap.url}`}
                                 className="w-full h-full object-cover"
@@ -245,7 +305,10 @@ const BookDetailModal = ({ book, open, onClose }: BookDetailModalProps) => {
                     <div>
                       <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">Photos</p>
                       <div className="relative">
-                        <div className="aspect-video rounded-xl overflow-hidden bg-white/5">
+                        <div 
+                          onClick={() => handleImageClick("photo", photoIndex)}
+                          className="aspect-video rounded-xl overflow-hidden bg-white/5 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-200"
+                        >
                           <img src={photos[photoIndex]?.url} alt="" className="w-full h-full object-cover" />
                         </div>
                         {photos.length > 1 && (
@@ -305,6 +368,12 @@ const BookDetailModal = ({ book, open, onClose }: BookDetailModalProps) => {
               </div>
             </motion.div>
           </div>
+          <MediaViewer
+            mediaItems={lightboxMediaItems}
+            initialIndex={currentIndex}
+            isOpen={isMediaOpen}
+            onClose={closeViewer}
+          />
         </>
       )}
     </AnimatePresence>

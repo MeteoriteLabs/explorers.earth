@@ -50,7 +50,7 @@ const UsernameValidator = ({ children }: UsernameValidatorProps) => {
 
       // If we have more than 2 segments, validate the nested route
       if (pathSegments.length > 2) {
-        const validRoutes = ['places', 'community', 'music', 'guides', 'movies', 'books', 'games'];
+        const validRoutes = ['places', 'community', 'music', 'guides', 'movies', 'books', 'games', 'apps', 'products', 'people'];
         const currentRoute = pathSegments[2];
 
         // Check if the current route is valid
