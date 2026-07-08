@@ -355,6 +355,11 @@ const AddressInput: FC<AddressInputProps> = ({
     }
   };
 
+  const handleManualChange = (nextAddress: string) => {
+    setAddress(nextAddress);
+    onChange(nextAddress);
+  };
+
   return (
     <>
       {label && (
@@ -368,7 +373,7 @@ const AddressInput: FC<AddressInputProps> = ({
           type="text"
           disabled={disabled || isDetectingLocation}
           value={address}
-          onChange={(e) => setAddress(e.target.value)}
+          onChange={(e) => handleManualChange(e.target.value)}
           placeholder={placeHolder || t("dashboard.profile.account.fields.addressPlaceholder")}
           className={`w-full placeholder:text-dashboard-muted outline-none p-3 border border-dashboard bg-dashboard-muted font-poppins rounded-md text-sm text-dashboard focus:outline-none focus:ring-2 focus:ring-dashboard-accent hover:border-dashboard-accent focus:bg-dashboard-muted ${showDetectLocation ? 'pr-12' : ''
             } ${className || ''}`}
