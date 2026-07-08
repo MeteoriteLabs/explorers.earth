@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Star, ExternalLink } from "lucide-react";
 import { Users } from "lucide-react";
 import type { RecommendedPerson } from "../../types";
-import { buildImageUrl, getPlatformLabel, getPlatformBadgeClass, getPlatformColor } from "../../utils/personHelpers";
+import { buildImageUrl, getPlatformColor } from "../../utils/personHelpers";
 import PlatformIcon from "../PlatformIcon";
 
 interface PersonTopPicksHeroProps {

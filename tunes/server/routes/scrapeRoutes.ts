@@ -1,11 +1,21 @@
 import { Router } from "express";
 import axios from "axios";
-import { scrapeUrl, scrapeProfile } from "../utils/scrapeUtils";
+import rateLimit from "express-rate-limit";
+import { scrapeUrl, scrapeProfile, secureHttpAgent, secureHttpsAgent } from "../utils/scrapeUtils";
 
 const router = Router();
 
+const scrapeRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 100, // Limit each IP to 100 requests per window
+  message: { error: "Too many scrape requests, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { trustProxy: false },
+});
+
 // POST /api/apps/scrape-url
-router.post("/apps/scrape-url", async (req, res) => {
+router.post("/apps/scrape-url", scrapeRateLimiter, async (req, res) => {
   const { url } = req.body;
   if (!url) {
     return res.status(400).json({ error: "Missing URL in request body" });
@@ -27,7 +37,7 @@ router.post("/apps/scrape-url", async (req, res) => {
 });
 
 // POST /api/products/scrape-link
-router.post("/products/scrape-link", async (req, res) => {
+router.post("/products/scrape-link", scrapeRateLimiter, async (req, res) => {
   const { url } = req.body;
   if (!url) {
     return res.status(400).json({ error: "Missing URL in request body" });
@@ -44,7 +54,7 @@ router.post("/products/scrape-link", async (req, res) => {
 });
 
 // POST /api/people/scrape-profile
-router.post("/people/scrape-profile", async (req, res) => {
+router.post("/people/scrape-profile", scrapeRateLimiter, async (req, res) => {
   const { url } = req.body;
   if (!url) {
     return res.status(400).json({ error: "Missing URL in request body" });
@@ -62,7 +72,7 @@ router.post("/people/scrape-profile", async (req, res) => {
 
 // GET /api/proxy-image?url=<encoded_url>
 // Server-side image proxy to bypass CDN referrer/token restrictions (e.g. Instagram)
-router.get("/proxy-image", async (req, res) => {
+router.get("/proxy-image", scrapeRateLimiter, async (req, res) => {
   const { url } = req.query;
   if (!url || typeof url !== "string") {
     return res.status(400).json({ error: "Missing url query parameter" });
@@ -70,6 +80,16 @@ router.get("/proxy-image", async (req, res) => {
 
   try {
     const decodedUrl = decodeURIComponent(url);
+
+    // Validate scheme/protocol
+    try {
+      const parsedUrl = new URL(decodedUrl);
+      if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+        return res.status(400).json({ error: "Only http and https protocols are allowed for image proxy" });
+      }
+    } catch {
+      return res.status(400).json({ error: "Invalid URL format" });
+    }
 
     // Determine appropriate headers based on URL domain
     const isInstagram = decodedUrl.includes("fbcdn.net") || decodedUrl.includes("cdninstagram.com") || decodedUrl.includes("instagram.");
@@ -92,14 +112,50 @@ router.get("/proxy-image", async (req, res) => {
       responseType: "stream",
       headers,
       timeout: 15000,
+      httpAgent: secureHttpAgent,
+      httpsAgent: secureHttpsAgent,
     });
 
-    // Forward content type
     const contentType = response.headers["content-type"] || "image/jpeg";
+    if (!contentType.startsWith("image/") && !contentType.startsWith("application/octet-stream")) {
+      response.data.destroy();
+      return res.status(400).json({ error: "Target URL does not point to an image" });
+    }
+
+    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+    const contentLengthStr = response.headers["content-length"];
+    if (contentLengthStr) {
+      const contentLength = parseInt(contentLengthStr, 10);
+      if (!isNaN(contentLength) && contentLength > MAX_SIZE) {
+        response.data.destroy();
+        return res.status(400).json({ error: "Image size exceeds limit" });
+      }
+    }
+
     res.setHeader("Content-Type", contentType);
     res.setHeader("Cache-Control", "public, max-age=3600");
-    // Remove headers that might cause issues
     res.removeHeader("x-powered-by");
+
+    let bytesReceived = 0;
+    response.data.on("data", (chunk: Buffer) => {
+      bytesReceived += chunk.length;
+      if (bytesReceived > MAX_SIZE) {
+        console.error("Image proxy: size limit exceeded (5MB limit)");
+        response.data.destroy();
+        if (!res.headersSent) {
+          res.status(400).json({ error: "Image size exceeds limit" });
+        } else {
+          res.destroy();
+        }
+      }
+    });
+
+    response.data.on("error", (err: any) => {
+      console.error("Image proxy stream error:", err);
+      if (!res.headersSent) {
+        res.status(502).json({ error: "Failed to proxy image stream" });
+      }
+    });
 
     response.data.pipe(res);
   } catch (err: any) {

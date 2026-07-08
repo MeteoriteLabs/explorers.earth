@@ -12,7 +12,7 @@ import Accordion from "../../../../components/ui/Accordian";
 import useAuthStore from "../../../../store/store";
 import { PEOPLE_BY_LIST, peopleByListVars } from "../../api/query";
 import { UPDATE_PERSON_LIST, DELETE_PERSON_LIST, TOGGLE_PERSON_PIN, DELETE_RECOMMENDED_PERSON } from "../../api/mutation";
-import { deduplicatePeople, buildImageUrl, extractNoteText, getPlatformLabel, getPlatformBadgeClass } from "../../utils/personHelpers";
+import { deduplicatePeople, buildImageUrl, extractNoteText } from "../../utils/personHelpers";
 import type { RecommendedPerson, PersonList } from "../../types";
 import Switch from "../../../../components/ui/Switch";
 import PersonDetailModal from "../public/PersonDetailModal";

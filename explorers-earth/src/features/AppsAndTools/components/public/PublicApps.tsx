@@ -3,7 +3,7 @@ import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { useQuery, gql } from "@apollo/client";
 import { Smartphone, Share2 } from "lucide-react";
 import { PUBLIC_APP_DATA } from "../../api/query";
-import { deduplicateApps, extractUniqueCategories } from "../../utils/appHelpers";
+import { deduplicateApps } from "../../utils/appHelpers";
 import { toast } from "sonner";
 import type { RecommendedApp, AppList } from "../../types";
 import AppCarouselRow from "./AppCarouselRow";
@@ -75,9 +75,9 @@ const PublicApps = () => {
       .sort((a, b) => (a.pin_order ?? 999) - (b.pin_order ?? 999));
   }, [allApps]);
 
-  const allCategories = useMemo(() => {
-    return extractUniqueCategories(allApps.map((a) => a.app_category ? [a.app_category] : []));
-  }, [allApps]);
+  // const allCategories = useMemo(() => {
+  //   return extractUniqueCategories(allApps.map((a) => a.app_category ? [a.app_category] : []));
+  // }, [allApps]);
 
   const handleAppClick = useCallback((app: RecommendedApp) => {
     setModalState({ open: true, app });
@@ -235,7 +235,7 @@ const PublicApps = () => {
                     ))}
                   </div>
 
-                  {/* Category browse */}
+                  {/* Category browse - hidden for now as category pages are not registered/implemented
                   {allCategories.length > 0 && (
                     <div className="mt-10">
                       <p className="text-sm font-semibold text-white/60 mb-3">Browse by Category</p>
@@ -252,6 +252,7 @@ const PublicApps = () => {
                       </div>
                     </div>
                   )}
+                  */}
                 </>
               )}
             </>

@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, gql } from "@apollo/client";
 import { Users, Share2, ArrowLeft } from "lucide-react";
 import { PERSON_LIST_BY_SLUG } from "../../api/query";
-import { deduplicatePeople, buildImageUrl, getPlatformBadgeClass, getPlatformLabel } from "../../utils/personHelpers";
+import { deduplicatePeople, buildImageUrl } from "../../utils/personHelpers";
 import PlatformIcon from "../PlatformIcon";
 import type { RecommendedPerson, PersonList } from "../../types";
 import PersonDetailModal from "./PersonDetailModal";

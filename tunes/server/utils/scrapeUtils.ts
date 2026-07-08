@@ -1,8 +1,127 @@
 import axios from "axios";
 import puppeteerExtra from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
+import dns from "dns";
+import http from "http";
+import https from "https";
+import net from "net";
 
 puppeteerExtra.use(StealthPlugin());
+
+// Semaphore for limiting Puppeteer concurrency
+class SimpleSemaphore {
+  private active = 0;
+  private queue: (() => void)[] = [];
+  constructor(private max: number) {}
+
+  async acquire(): Promise<void> {
+    if (this.active < this.max) {
+      this.active++;
+      return;
+    }
+    return new Promise((resolve) => {
+      this.queue.push(resolve);
+    });
+  }
+
+  release(): void {
+    if (this.queue.length > 0) {
+      const next = this.queue.shift();
+      if (next) next();
+    } else {
+      this.active--;
+    }
+  }
+}
+
+const puppeteerSemaphore = new SimpleSemaphore(3); // Limit to 3 concurrent browser instances
+
+export function isPrivateIP(ip: string): boolean {
+  if (!net.isIP(ip)) return true;
+  if (net.isIPv4(ip)) {
+    const parts = ip.split(".").map(Number);
+    const [o1, o2, o3, o4] = parts;
+    if (o1 === 127) return true; // loopback
+    if (o1 === 10) return true; // RFC 1918
+    if (o1 === 172 && (o2 >= 16 && o2 <= 31)) return true; // RFC 1918
+    if (o1 === 192 && o2 === 168) return true; // RFC 1918
+    if (o1 === 169 && o2 === 254) return true; // link-local
+    if (o1 === 0) return true; // unspecified
+    if (o1 >= 224) return true; // multicast & reserved
+    return false;
+  }
+  if (net.isIPv6(ip)) {
+    const normalized = ip.toLowerCase();
+    if (normalized === "::1" || normalized === "0:0:0:0:0:0:0:1" || normalized.endsWith("::1")) return true;
+    if (normalized.startsWith("fe8") || normalized.startsWith("fe9") || normalized.startsWith("fea") || normalized.startsWith("feb")) return true;
+    if (normalized.startsWith("fc") || normalized.startsWith("fd")) return true;
+    if (normalized === "::" || normalized === "0:0:0:0:0:0:0:0" || normalized === "::0") return true;
+    return false;
+  }
+  return true;
+}
+
+export const secureLookup: dns.LookupFunction = (hostname, options, callback) => {
+  dns.lookup(hostname, options, (err, address, family) => {
+    if (err) {
+      return callback(err, address, family);
+    }
+    if (Array.isArray(address)) {
+      for (const item of address) {
+        if (isPrivateIP(item.address)) {
+          return callback(new Error("Access to private IP is blocked"), address, family);
+        }
+      }
+    } else {
+      if (isPrivateIP(address)) {
+        return callback(new Error("Access to private IP is blocked"), address, family);
+      }
+    }
+    callback(null, address, family);
+  });
+};
+
+export const secureHttpAgent = new http.Agent({ lookup: secureLookup });
+export const secureHttpsAgent = new https.Agent({ lookup: secureLookup });
+
+async function setupPuppeteerRequestInterception(page: any): Promise<void> {
+  await page.setRequestInterception(true);
+  page.on("request", async (request: any) => {
+    try {
+      const urlStr = request.url();
+      const url = new URL(urlStr);
+      if (url.protocol === "data:") {
+        request.continue();
+        return;
+      }
+      if (url.protocol !== "http:" && url.protocol !== "https:") {
+        request.abort();
+        return;
+      }
+      const hostname = url.hostname;
+      if (net.isIP(hostname)) {
+        if (isPrivateIP(hostname)) {
+          request.abort();
+          return;
+        }
+      } else {
+        const ip = await new Promise<string>((resolve, reject) => {
+          dns.lookup(hostname, (err, address) => {
+            if (err) reject(err);
+            else resolve(address);
+          });
+        }).catch(() => null);
+        if (!ip || isPrivateIP(ip)) {
+          request.abort();
+          return;
+        }
+      }
+      request.continue();
+    } catch {
+      request.abort();
+    }
+  });
+}
 
 export interface ScrapedData {
   title?: string;
@@ -156,19 +275,22 @@ function isAmazonUrl(url: string): boolean {
 /** Launches a stealth Puppeteer browser, renders the page, and returns both the
  *  raw HTML and Amazon-specific data extracted directly from the live DOM. */
 async function scrapeWithStealthPuppeteer(url: string): Promise<{ html: string; amazonData: AmazonPageData }> {
-  const browser = await puppeteerExtra.launch({
-    headless: true,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-blink-features=AutomationControlled",
-      "--disable-infobars",
-      "--window-size=1366,768",
-    ],
-  });
-
+  await puppeteerSemaphore.acquire();
+  let browser;
   try {
+    browser = await puppeteerExtra.launch({
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-blink-features=AutomationControlled",
+        "--disable-infobars",
+        "--window-size=1366,768",
+      ],
+    });
+
     const page = await browser.newPage();
+    await setupPuppeteerRequestInterception(page);
 
     await page.setViewport({ width: 1366, height: 768 });
     await page.setUserAgent(
@@ -303,25 +425,30 @@ async function scrapeWithStealthPuppeteer(url: string): Promise<{ html: string; 
 
     return { html, amazonData };
   } finally {
-    await browser.close();
+    if (browser) await browser.close();
+    puppeteerSemaphore.release();
   }
 }
 
 /** Non-Amazon fallback: plain Puppeteer (no stealth needed for most sites) */
 async function scrapeWithPuppeteer(url: string): Promise<string> {
-  const browser = await puppeteerExtra.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  });
+  await puppeteerSemaphore.acquire();
+  let browser;
   try {
+    browser = await puppeteerExtra.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
     const page = await browser.newPage();
+    await setupPuppeteerRequestInterception(page);
     await page.setUserAgent(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     );
     await page.goto(url, { waitUntil: "networkidle2", timeout: 20000 });
     return await page.content();
   } finally {
-    await browser.close();
+    if (browser) await browser.close();
+    puppeteerSemaphore.release();
   }
 }
 
@@ -380,6 +507,8 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
         "Accept-Language": "en-US,en;q=0.9",
       },
       timeout: 10000,
+      httpAgent: secureHttpAgent,
+      httpsAgent: secureHttpsAgent,
     });
     html = response.data;
   } catch (err) {
@@ -481,6 +610,8 @@ async function scrapeLinkedInViaDuckDuckGo(handle: string): Promise<Partial<Prof
         "Accept-Language": "en-US,en;q=0.9",
       },
       timeout: 10000,
+      httpAgent: secureHttpAgent,
+      httpsAgent: secureHttpsAgent,
     });
     
     const html = response.data;
@@ -528,6 +659,7 @@ export async function scrapeProfile(url: string): Promise<ProfileScrapedData> {
 
   let html = "";
   if (usePuppeteer) {
+    await puppeteerSemaphore.acquire();
     let browser;
     try {
       browser = await puppeteerExtra.launch({
@@ -541,6 +673,7 @@ export async function scrapeProfile(url: string): Promise<ProfileScrapedData> {
         ],
       });
       const page = await browser.newPage();
+      await setupPuppeteerRequestInterception(page);
       await page.setViewport({ width: 1280, height: 800 });
       await page.setUserAgent(
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -638,6 +771,8 @@ export async function scrapeProfile(url: string): Promise<ProfileScrapedData> {
                 responseType: "arraybuffer",
                 timeout: 10000,
                 headers: { ...baseHeaders, ...(cookieHeader ? { "Cookie": cookieHeader } : {}) },
+                httpAgent: secureHttpAgent,
+                httpsAgent: secureHttpsAgent,
               });
               const mimeType = (response.headers["content-type"] as string) || "image/jpeg";
               const base64 = Buffer.from(response.data).toString("base64");
@@ -650,6 +785,8 @@ export async function scrapeProfile(url: string): Promise<ProfileScrapedData> {
                   responseType: "arraybuffer",
                   timeout: 10000,
                   headers: baseHeaders,
+                  httpAgent: secureHttpAgent,
+                  httpsAgent: secureHttpsAgent,
                 });
                 const mimeType = (response2.headers["content-type"] as string) || "image/jpeg";
                 const base64 = Buffer.from(response2.data).toString("base64");
@@ -704,6 +841,8 @@ export async function scrapeProfile(url: string): Promise<ProfileScrapedData> {
                   "Accept": "image/*,*/*;q=0.8",
                   ...(cookieHeader ? { "Cookie": cookieHeader } : {}),
                 },
+                httpAgent: secureHttpAgent,
+                httpsAgent: secureHttpsAgent,
               });
               const mimeType = (response.headers["content-type"] as string) || "image/jpeg";
               result.avatar_url = `data:${mimeType};base64,${Buffer.from(response.data).toString("base64")}`;
@@ -719,6 +858,7 @@ export async function scrapeProfile(url: string): Promise<ProfileScrapedData> {
       console.warn("Puppeteer profile scrape failed:", err instanceof Error ? err.message : err);
     } finally {
       if (browser) await browser.close();
+      puppeteerSemaphore.release();
     }
   } else {
     // Standard HTTP fetch for open pages like GitHub or general websites
@@ -729,10 +869,13 @@ export async function scrapeProfile(url: string): Promise<ProfileScrapedData> {
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         },
         timeout: 10000,
+        httpAgent: secureHttpAgent,
+        httpsAgent: secureHttpsAgent,
       });
       html = response.data;
     } catch (err) {
       console.warn("Axios profile scrape failed, attempting Puppeteer fallback:", err instanceof Error ? err.message : err);
+      await puppeteerSemaphore.acquire();
       let browser;
       try {
         browser = await puppeteerExtra.launch({
@@ -740,12 +883,14 @@ export async function scrapeProfile(url: string): Promise<ProfileScrapedData> {
           args: ["--no-sandbox", "--disable-setuid-sandbox"],
         });
         const page = await browser.newPage();
+        await setupPuppeteerRequestInterception(page);
         await page.goto(url, { waitUntil: "networkidle2", timeout: 15000 });
         html = await page.content();
       } catch (pupErr) {
         console.error("Puppeteer fallback failed for profile scrape:", pupErr);
       } finally {
         if (browser) await browser.close();
+        puppeteerSemaphore.release();
       }
     }
   }

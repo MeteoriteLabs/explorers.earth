@@ -3,7 +3,7 @@ import { motion, PanInfo } from "framer-motion";
 import { Star, ExternalLink } from "lucide-react";
 import { Users } from "lucide-react";
 import type { RecommendedPerson } from "../../types";
-import { buildImageUrl, getPlatformLabel, getPlatformColor, getPlatformBadgeClass } from "../../utils/personHelpers";
+import { buildImageUrl, getPlatformColor } from "../../utils/personHelpers";
 import PlatformIcon from "../PlatformIcon";
 
 interface PersonTopPicksMobileHeroProps {

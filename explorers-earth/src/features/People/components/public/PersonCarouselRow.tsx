@@ -1,6 +1,6 @@
 import { Users } from "lucide-react";
 import type { PersonList, RecommendedPerson } from "../../types";
-import { buildImageUrl, getPlatformBadgeClass, getPlatformLabel } from "../../utils/personHelpers";
+import { buildImageUrl } from "../../utils/personHelpers";
 import { deduplicatePeople } from "../../utils/personHelpers";
 import PlatformIcon from "../PlatformIcon";
 

@@ -120,7 +120,7 @@ const UrlScrapePanel = ({ onScraped }: { onScraped: (data: Partial<RecommendedAp
     setError("");
     try {
       const resp = await fetch(
-        `${import.meta.env.VITE_REST_API_URL}/apps/scrape-url`,
+        `/api/apps/scrape-url`,
         { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) }
       );
       if (!resp.ok) throw new Error("Scrape failed");

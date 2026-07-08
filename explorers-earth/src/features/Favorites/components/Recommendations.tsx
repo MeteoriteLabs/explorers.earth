@@ -47,7 +47,7 @@ import { IMAGE_CONFIG } from "../../../config";
 import { ChevronDown, Users, ShoppingBag } from "lucide-react";
 import ProductDetailModal from "../../Products/components/public/ProductDetailModal";
 import PersonDetailModal from "../../People/components/public/PersonDetailModal";
-import { deduplicatePeople, buildImageUrl, getPlatformLabel, getPlatformBadgeClass, PlatformIcon } from "../../People";
+import { deduplicatePeople, buildImageUrl, PlatformIcon } from "../../People";
 import { deduplicateProducts, formatPrice } from "../../Products/utils/productHelpers";
 
 // ⭐ TS declaration for window.__walkthrough

@@ -3,7 +3,7 @@ import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { useQuery, gql } from "@apollo/client";
 import { ShoppingBag, Share2 } from "lucide-react";
 import { PUBLIC_PRODUCT_DATA } from "../../api/query";
-import { deduplicateProducts, extractUniqueCategories } from "../../utils/productHelpers";
+import { deduplicateProducts } from "../../utils/productHelpers";
 import { toast } from "sonner";
 import type { RecommendedProduct, ProductList } from "../../types";
 import ProductCarouselRow from "./ProductCarouselRow";
@@ -75,9 +75,9 @@ const PublicProducts = () => {
       .sort((a, b) => (a.pin_order ?? 999) - (b.pin_order ?? 999));
   }, [allProducts]);
 
-  const allCategories = useMemo(() => {
-    return extractUniqueCategories(allProducts.map((p) => p.product_category ? [p.product_category] : []));
-  }, [allProducts]);
+  // const allCategories = useMemo(() => {
+  //   return extractUniqueCategories(allProducts.map((p) => p.product_category ? [p.product_category] : []));
+  // }, [allProducts]);
 
   const handleProductClick = useCallback((product: RecommendedProduct) => {
     setModalState({ open: true, product });
@@ -235,7 +235,7 @@ const PublicProducts = () => {
                     ))}
                   </div>
 
-                  {/* Category browse */}
+                  {/* Category browse - hidden for now as category pages are not registered/implemented
                   {allCategories.length > 0 && (
                     <div className="mt-10">
                       <p className="text-sm font-semibold text-white/60 mb-3">Browse by Category</p>
@@ -252,6 +252,7 @@ const PublicProducts = () => {
                       </div>
                     </div>
                   )}
+                  */}
                 </>
               )}
             </>

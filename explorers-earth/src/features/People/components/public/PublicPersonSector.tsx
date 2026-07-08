@@ -6,8 +6,6 @@ import { PUBLIC_PEOPLE_DATA } from "../../api/query";
 import {
   deduplicatePeople,
   buildImageUrl,
-  getPlatformBadgeClass,
-  getPlatformLabel,
   slugToCategoryName,
   categoryToSlug,
 } from "../../utils/personHelpers";

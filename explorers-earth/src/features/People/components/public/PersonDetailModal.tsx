@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Share2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import type { RecommendedPerson } from "../../types";
-import { buildImageUrl, extractNoteText, getPlatformLabel, getPlatformBadgeClass, getPlatformColor } from "../../utils/personHelpers";
+import { buildImageUrl, extractNoteText, getPlatformColor } from "../../utils/personHelpers";
 import PlatformIcon from "../PlatformIcon";
 import MediaViewer from "../../../../components/ui/MediaViewer";
 import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
