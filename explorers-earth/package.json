@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "npm run generate-static && tsc -b && vite build",
+    "build": "npm run landing:check && npm run generate-static && tsc -b && vite build",
     "generate-static": "node scripts/generate-static-files.js",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -16,6 +16,9 @@
     "test:local-tunes": "node scripts/test-local-tunes-integration.js",
     "i18n:sync": "node scripts/sync-i18n.js",
     "i18n:check": "node scripts/check-i18n.js",
+    "landing:i18n:check": "node scripts/check-landing-i18n.mjs",
+    "landing:copy:check": "node scripts/check-landing-hardcoded-copy.mjs",
+    "landing:check": "npm run landing:i18n:check && npm run landing:copy:check",
     "test": "vitest",
     "test:unit": "vitest run",
     "test:watch": "vitest --watch",

@@ -1146,50 +1146,99 @@
     "verificationSent": "Verification email sent to:"
   },
   "footer": {
-    "copyright": "© 2025 explorers. Duk haƙƙoƙin suna kare.",
+    "tagline": "Bari shawarwarinku suyi tafiya cikin duniya.",
     "email": "hello@explorers.earth",
-    "links": {
-      "about": "Game da",
-      "contact": "Tuntuɓi",
-      "cookies": "Manufofin Cookies",
-      "faq": "Tambayoyi da Yawa",
-      "howItWorks": "Yaya Ake Aiki",
-      "privacy": "Manufofin Keɓancewa",
-      "terms": "Sharuɗɗa da Yanayi"
-    },
-    "madeWithLove": "An yi da ƙauna a duniya",
     "sections": {
+      "product": "Samfura",
       "contact": "Tuntuɓi",
-      "legal": "Doka",
-      "product": "Samfur"
+      "legal": "Shari'a",
+      "company": "Kamfanin"
     },
-    "tagline": "Bari shawarwarinku su yi tafiye-tafiye a duniya."
+    "links": {
+      "howItWorks": "Yadda yake aiki",
+      "faq": "FAQ",
+      "about": "Game da",
+      "contact": "Tuntuɓar",
+      "terms": "Sharuɗɗa & Sharuɗɗa",
+      "privacy": "takardar kebantawa",
+      "cookies": "Manufar Kuki",
+      "product": "Samfura",
+      "shareAnywhere": "Raba ko'ina"
+    },
+    "copyright": "© 2025 masu bincike. An kiyaye duk haƙƙoƙi.",
+    "madeWithLove": "Anyi da soyayya a duniya",
+    "freeForever": "Kyauta har abada."
   },
   "header": {
-    "auth": {
-      "login": "Shiga",
-      "signUp": "Yi Rajista"
-    },
     "nav": {
+      "howItWorks": "Yadda yake aiki",
+      "whoIsFor": "Ga Wane",
+      "faq": "FAQ",
       "about": "Game da",
       "contact": "Tuntuɓi",
-      "faq": "Tambayoyi da Yawa",
-      "howItWorks": "Yaya Ake Aiki",
-      "whoIsFor": "Ga Wane"
+      "product": "Samfura",
+      "share": "Raba",
+      "openMenu": "Buɗe menu na kewayawa",
+      "closeMenu": "Rufe menu na kewayawa"
+    },
+    "auth": {
+      "login": "Shiga",
+      "signUp": "Yi Rajista",
+      "claimFreePage": "Da'awar shafin kyauta",
+      "claimFree": "Da'awar kyauta"
     }
   },
   "hero": {
-    "ctaButton": "Ajiye explorers ɗinku",
-    "headline": "Duk shawarwarinku, an raba su ta hanyar hanyar haɗi ɗaya mai sauƙi ko QR",
-    "inputLabel": "Ajiye URL ɗin explorers ɗinku:",
-    "inputPlaceholder": "yourname",
-    "signupPrompt": "Yi rajista yanzu don samun naku",
-    "subtext": "Daga wurare zuwa sautuna, hanyoyi, da labarai — raba abin da kuka sani kuma kuka ƙaunata."
+    "headline": "Duk shawarwarinku - hanyar haɗi ɗaya, ɗaya QR",
+    "subtext": "Ƙirƙirar shafi guda ɗaya don duk abin da kuke ba da shawarar - wurare, mutane, samfura, littattafai, fina-finai, nunin nuni, kiɗa, wasanni, ƙa'idodi, da ƙari.",
+    "inputLabel": "Da'awar URL masu binciken ku:",
+    "inputPlaceholder": "sunanka",
+    "ctaButton": "Da'awar shafinku Explorer",
+    "signupPrompt": "Yi rajista don samun naku yanzu",
+    "headlinePrefix": "Duk naku",
+    "rotatingWords": [
+      "shawarwari",
+      "curations",
+      "tarin",
+      "waɗanda aka fi so"
+    ],
+    "headlineSuffix": "a cikin mahaɗin guda ɗaya kuma QR.",
+    "badge": "Kyauta har abada",
+    "globalStrip": "Explorers suna raba shawarwari a duk duniya",
+    "preview": {
+      "todayList": "Jerin yau",
+      "onePageTitle": "Shafi ɗaya don kowane kyakkyawan shawara.",
+      "onePageText": "Raba shi azaman hanyar haɗi, QR, saƙo, ko jagora.",
+      "items": {
+        "place": "Wuri",
+        "book": "Littafi",
+        "music": "Kiɗa",
+        "game": "Wasan"
+      },
+      "screenAlt": "Explorer allon shawarwarin shafi"
+    },
+    "countries": {
+      "in": "Indiya",
+      "us": "Amurka",
+      "gb": "Ƙasar Ingila",
+      "jp": "Japan",
+      "fr": "Faransa",
+      "au": "Ostiraliya",
+      "br": "Brazil",
+      "ae": "UAE",
+      "sg": "Singapore",
+      "de": "Jamus"
+    }
   },
   "languageModal": {
-    "close": "Rufe",
-    "searchPlaceholder": "Nemo harsuna...",
-    "title": "Zaɓi Harshe"
+    "close": "Kusa",
+    "searchPlaceholder": "Bincika harsuna...",
+    "title": "Zaɓi Harshe",
+    "subtitle": "Zaɓi harshen da kake son amfani da shi a cikin masu bincike.",
+    "noLanguagesFound": "Ba a sami yaruka ba",
+    "tryDifferentSearch": "Gwada wani kalmar nema daban.",
+    "languagesAvailable": "Akwai harsunan {{count}}",
+    "escToClose": "Latsa Esc don rufewa"
   },
   "legal": {
     "cookies": {
@@ -1248,56 +1297,326 @@
     "tryAgain": "Request New Link"
   },
   "sections": {
-    "analytics": {
-      "dashboardTitle": "Dashboard na Nazari",
-      "engagement": "Shiga Ciki",
-      "headline": "Bi danna, nassoshi da shiga ciki",
-      "last30Days": "Kwanaki 30 da suka gabata",
-      "referrals": "Nassoshi",
-      "scanningDesc": "Kula da duban QR da sabuntawa",
-      "scanningTitle": "Wane ke dubawa",
-      "spotsDesc": "Fahimta mai tushe akan bayanai don kyautatawa mafi kyau",
-      "spotsTitle": "Wuraren da suke aiki mafi kyau",
-      "subtext": "Dubi abin da ke aiki, wane ke dubawa, da wane wurare ke samun ƙauna mafi yawa — a cikin lokaci na gaskiya.",
-      "totalScans": "Jimlar Dubawa",
-      "workingDesc": "Bi shaharar shawarwarinku",
-      "workingTitle": "Dubi abin da ke aiki"
-    },
     "createCustomize": {
+      "headline": "Ƙirƙiri shafinku na Explorer a cikin mintuna",
+      "subtext": "Tattara abin da kuke ba da shawarar, tsara shi ta hanyarku, kuma raba shi a ko'ina tare da hanyar haɗi ɗaya ko QR.",
       "bulletPoints": {
         "addSpots": {
-          "description": "Ƙirƙiri jerin tare da must-visit ɗinku",
-          "title": "Ƙara wuraren da kuka fi so"
-        },
-        "generate": {
-          "description": "QR ɗinku na keɓance yana shirye cikin daƙiƙa",
-          "title": "Ƙirƙiri hanyar haɗi da QR ɗinku nan take"
+          "title": "Ƙara wurare, gogewa, hanyoyi, sautuna, da bayanin kula",
+          "description": ""
         },
         "organize": {
-          "description": "Ƙirƙiri rukuni waɗanda suke da ma'ana ga masu sauraro",
-          "title": "Tsara bisa birni ko jigo"
+          "title": "Tsara ta wuri ko sha'awa",
+          "description": ""
+        },
+        "generate": {
+          "title": "Shirya kowane lokaci - hanyar haɗin ku koyaushe tana zama iri ɗaya",
+          "description": ""
         },
         "share": {
-          "description": "",
-          "title": "Raba ta dijital ko ta hanyar QR a duniyar gaske"
+          "title": "Raba dijital ko ta hanyar QR a cikin ainihin duniya",
+          "description": ""
         }
       },
-      "headline": "Ƙirƙiri da keɓance explorers ɗinku cikin mintuna",
       "mockup": {
-        "addPlace": "Ƙara Wuri",
-        "title": "Shawarwarina"
+        "title": "Shawarwarina",
+        "addPlace": "Ƙara Wuri"
       },
-      "subtext": "Ƙara wuraren da kuka fi so, tsara su bisa birni ko jigo, kuma ƙirƙiri QR ɗinku nan take."
+      "steps": [
+        {
+          "title": "Ƙara abin da kuke ba da shawara",
+          "body": "Wurare, mutane, samfura, littattafai, fina-finai, nunin nuni, kiɗa, wasanni, ƙa'idodi, jagorori, da bayanin kula."
+        },
+        {
+          "title": "Shirya ta hanyar ku",
+          "body": "Ƙungiya ta gari, jigo, jeri, rukuni, tafiya, ko lokaci don mutane su iya bincika ta halitta."
+        },
+        {
+          "title": "Raba hanyar haɗi ɗaya ko QR",
+          "body": "Shafinku yana sabuntawa kowane lokaci yayin da hanyar haɗin gwiwa ɗaya da QR ke ci gaba da aiki a ko'ina."
+        }
+      ]
+    },
+    "shareAnywhere": {
+      "headline": "Hanya ɗaya. Tafiya da yawa.",
+      "subtext": "Hanyar hanyar haɗin ku ta Explorer ta zama jagora mai rai - wani abu da mutane za su iya ajiyewa, sake dubawa, da kuma bincika cikin taki.\n\nRaba shi akan bayanin martaba, saƙo, tebur, bango, ko kati.\nDuk inda ya tafi, ra'ayin ku yana tare da shi.",
+      "scanText": "Bincika don shawarwarin gida",
+      "storefrontText": "Cikakke don nunin kantuna",
+      "instagramTitle": "Ƙara zuwa Instagram/Tiktok Bio naku",
+      "instagramDesc": "Raba tare da mabiyan ku nan take",
+      "menuTitle": "Buga shi don Storefront",
+      "menuDesc": "An yi sauƙaƙa wuraren taɓawa na zahiri",
+      "welcomeTitle": "Haɗa cikin littattafan maraba",
+      "welcomeDesc": "Cikakke ga runduna da jagorori",
+      "cafeMenu": "Kafe Menu",
+      "tokyoFoodGuide": "Jagoran abinci na Tokyo explorers.earth/jane",
+      "cards": [
+        {
+          "title": "Link in bio",
+          "eyebrow": "Profile-shirye"
+        },
+        {
+          "title": "Lambobin QR",
+          "eyebrow": "Offline- shirye"
+        },
+        {
+          "title": "Saƙonni",
+          "eyebrow": "Hira-shirye"
+        },
+        {
+          "title": "Barka da jagora",
+          "eyebrow": "Shirye bako"
+        }
+      ],
+      "visual": {
+        "scanForPicks": "Duba don zaɓe",
+        "messageBubble": "Ga jerin Kyoto dina",
+        "welcomeGuide": "Barka da jagora",
+        "guideItems": [
+          "Abincin karin kumallo a kusa",
+          "Hanyar kayan tarihi",
+          "Yakin maraice"
+        ],
+        "savedRecommendation": "Ajiye shawarwarin"
+      },
+      "profileCarouselCaption": "Bayanan martaba Instagram & TikTok",
+      "qrEverywhereTitle": "Ƙara hanyar haɗin QR ko'ina",
+      "qrEverywhereDesc": "Cikakke ga Kowane Wuri"
+    },
+    "analytics": {
+      "headline": "Dubi abin da mutane ke hulɗa da shi.",
+      "subtext": "Fahimtar waɗanne shawarwarin da mutane ke buɗewa, adanawa, da sake duba hanyoyin haɗin yanar gizonku da lambobin QR.",
+      "workingTitle": "Dubi abin da ke aiki",
+      "workingDesc": "Bibiyar shawarwarin da mutane ke buɗewa, adanawa, da sake ziyarta.",
+      "scanningTitle": "Fahimtar dubawa da dannawa",
+      "scanningDesc": "Dubi yadda mutane ke isa shafinku daga hanyoyin haɗin gwiwa, lambobin QR, da wuraren taɓawa.",
+      "spotsTitle": "Nemo manyan shawarwari",
+      "spotsDesc": "Koyi waɗanne wurare, samfura, jeri, da jagorori suka fi samun soyayya.",
+      "dashboardTitle": "Dashboard na nazari",
+      "last30Days": "Kwanaki 30 na ƙarshe",
+      "totalScans": "Jimlar Scans",
+      "engagement": "Shiga",
+      "referrals": "Magana",
+      "livePreview": "Preview Live"
+    },
+    "referEarn": {
+      "headline": "Raba, nassoshi da samun kuɗi",
+      "subtext": "Canza shawarwarinku zuwa lada na pasif — sami daraja lokacin da wasu suka yi amfani da QR ɗinku.",
+      "comingSoon": "Shirin lada na nassoshi (nan gaba)",
+      "rewardsTitle": "Samun Lada",
+      "rewardsDesc": "Samu kuɗi lokacin da mutane suka yi amfani da shawarwarinku",
+      "earnedThisMonth": "An samu wannan watan",
+      "passiveTitle": "Canza shawarwari zuwa lada na pasif",
+      "networkTitle": "Gina hanyar sadarwar ku kuma samu kuɗi ta atomatik"
+    },
+    "localTunes": {
+      "mainHeading": "Tunes",
+      "title": "Saurara yayin da kuke bincike",
+      "body": "Bincike ba na gani kawai ba ne. Sauti yana ɗaukar ƙwaƙwalwa, mahallin, da motsin rai.\n\nLocalTunes yana ba ku damar tattara kuma raba waƙoƙin sauti don wurare, tafiye-tafiye, da yanayi — ko dai waƙar da aka gano a hanya ko sautunan da ke bayyana wuri a gare ku.\n\nAn haɗa shi da bayanin martabar Explorer ɗinku ba tare da katsewa ba.",
+      "exploreButton": "Bincika Tunes",
+      "featuresHeading": "Fasaloli masu ƙarfi",
+      "features": {
+        "realtimeCollaboration": {
+          "title": "Haɗin kai na ainihin lokaci",
+          "description": "Bari baƙi su ƙara waƙoƙi zuwa jerin waƙoƙin ku nan take yayin da kuke kula da cikakken iko akan abin da ke kunna."
+        },
+        "qrCodeSharing": {
+          "title": "Raba lambar QR",
+          "description": "Raba ƙwarewar kiɗa ɗinku tare da sauƙin dubawa lambar QR - ba ana buƙatar apps ko zazzagewa ba."
+        },
+        "youtubeIntegration": {
+          "title": "Haɗin YouTube",
+          "description": "Haɗa kai da YouTube ba tare da katsewa ba don samun damar miliyoyin waƙoƙi da ƙirƙirar yanayi mai kyau."
+        },
+        "voteLikeSystem": {
+          "title": "Tsarin Zaɓe & So",
+          "description": "Baƙi na iya zaɓar waƙoƙinsu na fi so don tasiri jerin jerin waƙoƙi a ainihin lokaci."
+        },
+        "silentParties": {
+          "title": "Biki na Shiru",
+          "description": "Shirya bukukuwa na musamman na shiru inda kowa ke sauraro ta hanyar belun kunnuwa nasu."
+        },
+        "karaokeReady": {
+          "title": "Shirye don Karaoke",
+          "description": "Cikakke don dare na karaoke tare da jerin waƙoƙi na haɗin kai da buƙatun waƙa na ainihin lokaci."
+        }
+      },
+      "venueHeading": "Cikakke ga Kowane Wuri",
+      "venues": {
+        "barsPubs": "Mashaya & Mashaya",
+        "restaurants": "Gidajen Abinci",
+        "coffeeShops": "Shagunan Kofi",
+        "eventsWeddings": "Abubuwan da suka faru & Aure",
+        "retailStores": "Shagunan Sayarwa",
+        "gymsFitness": "Gyms & Fitness"
+      },
+      "closingStatement": "Tunes <strong>kyauta</strong> ne don bincika, kuma don fasalolin da aka biya za ku iya haɓaka daga baya."
+    },
+    "whoIsFor": {
+      "headline": "An gina shi don mutanen da ɗanɗanonsu yana taimaka wa wasu.",
+      "subtext": "Ko kuna raba birni, shiryayye, jerin samfura, jerin waƙoƙi, ko jagorar baƙo, masu bincike suna ba da shawarwarinku gida.",
+      "cards": [
+        "Masu bincike na sirri",
+        "Masu halitta da masu kula",
+        "Runduna da kasuwanci",
+        "Alamomi da kungiyoyi"
+      ],
+      "useCases": {
+        "travelers": "Matafiya",
+        "travelersDesc": "Raba duwatsu masu daraja da aka gano tare da masu bincike",
+        "influencers": "Masu tasiri",
+        "influencersDesc": "Samar da ilimin gida da gina al'umma",
+        "airbnbHosts": "Airbnb Mai Runduna",
+        "airbnbHostsDesc": "Haɓaka ƙwarewar baƙo tare da fahimtar gida",
+        "hotels": "Otal-otal",
+        "hotelsDesc": "Bayar da shawarwarin gida da aka keɓe",
+        "restaurants": "Gidajen abinci",
+        "restaurantsDesc": "Haɓakawa tare da sauran kasuwancin gida",
+        "cafes": "Kafes",
+        "cafesDesc": "Raba abubuwan da aka fi so tare da abokan ciniki",
+        "localGuides": "Jagoran Gida",
+        "localGuidesDesc": "Ƙwarewar sikelin fiye da yawon shakatawa ɗaya",
+        "creators": "Masu halitta",
+        "creatorsDesc": "Ƙara ƙima fiye da abun ciki tare da shawarwari masu aiki",
+        "tourOperators": "Ma'aikatan Yawon shakatawa",
+        "tourOperatorsDesc": "Ƙaddamar ƙwarewa fiye da yadda aka tsara yawon shakatawa",
+        "anyBusiness": "Duk wani Kasuwanci",
+        "anyBusinessDesc": "Gina amincin al'umma da abokin ciniki"
+      },
+      "explorerLabel": "Explorer",
+      "visual": {
+        "personal": [
+          "Kafe",
+          "Littafi",
+          "Hanya",
+          "Album",
+          "Fim",
+          "Wasan"
+        ],
+        "creators": [
+          "#1",
+          "#2",
+          "#3",
+          "#4"
+        ],
+        "hostsQr": "QR"
+      },
+      "chips": [
+        "Matafiya",
+        "Yan unguwa",
+        "Iyalai",
+        "Dalibai",
+        "Makiyaya",
+        "Masu halitta",
+        "Masu tasiri",
+        "Bloggers",
+        "Masu bita",
+        "Masu daukar hoto",
+        "Malamai",
+        "Shugabannin al'umma",
+        "Otal-otal",
+        "Airbnbs",
+        "Dakunan kwanan dalibai",
+        "Kafes",
+        "Gidajen abinci",
+        "Shagunan sayar da kayayyaki",
+        "Wuraren motsa jiki",
+        "Salon",
+        "Asibitoci",
+        "Butiques",
+        "Alamomi",
+        "Farawa",
+        "Hukumomi",
+        "Jami'o'i",
+        "Kamfanoni",
+        "filayen jiragen sama",
+        "Kungiyoyin sa-kai",
+        "Tawagar gwamnati"
+      ]
+    },
+    "testimonials": {
+      "headline": "Matafiya, masu ƙirƙira, da runduna ke ƙauna",
+      "subtext": "Dubi yadda mutane a duk duniya suke amfani da masu bincike don raba abin da ya fi muhimmanci.",
+      "scrollLeft": "Gudanar da shaidu zuwa hagu",
+      "scrollRight": "Gudanar da shaidu zuwa dama",
+      "items": [
+        {
+          "id": "1",
+          "name": "Priya Sharma",
+          "role": "Blogger Balaguro",
+          "location": "Mumbai, India",
+          "quote": "masu bincike sun canza yadda nake raba ilimin tafiya na. Mabiya na suna son samun dama ga shawarwari na da aka keɓe!"
+        },
+        {
+          "id": "2",
+          "name": "Raj Patel",
+          "role": "Mai watsa shiri Airbnb",
+          "location": "Delhi, India",
+          "quote": "Baƙi na suna matuƙar son keɓaɓɓen lambar QR a cikin kayan maraba. Ya zama tabawa na sa hannu!"
+        },
+        {
+          "id": "3",
+          "name": "Yuki Tanaka",
+          "role": "Mai Gidan Abinci",
+          "location": "Tokyo, Japan",
+          "quote": "Muna raba masu binciken mu tare da abokan ciniki don ba da shawarar sauran wuraren gida. An ƙirƙiri haɗin gwiwar al'umma masu ban mamaki."
+        },
+        {
+          "id": "4",
+          "name": "Mariya Silva",
+          "role": "Jagoran Yawon shakatawa",
+          "location": "Sao Paulo, Brazil",
+          "quote": "masu bincike suna taimaka mini in kara gwaninta fiye da sa'o'in yawon shakatawa. Abokan ciniki za su iya samun damar shawarwarina kowane lokaci!"
+        },
+        {
+          "id": "5",
+          "name": "James Wilson",
+          "role": "Mai Tasirin Tafiya",
+          "location": "Sydney, Australia",
+          "quote": "A matsayin mai tasiri na balaguro, masu bincike suna sauƙaƙa raba wuraren da na fi so tare da masu sauraro na. Siffar lambar QR tana da haske!"
+        },
+        {
+          "id": "6",
+          "name": "Sophie Martin",
+          "role": "Jagoran Gida",
+          "location": "Paris, Faransa",
+          "quote": "Ina amfani da masu bincike don ƙirƙirar balaguron tafiya ga abokan cinikina. Za su iya bincika QR kuma su bincika cikin taki!"
+        }
+      ]
     },
     "faq": {
-      "error": "Kuskure a cikin ɗaukar FAQ. Da fatan za a sake gwadawa daga baya.",
       "headline": "Akwai tambayoyi?",
+      "subtext": "Mun ba da amsoshin abubuwan da aka fi yawan tambaya da mutane ke yi kafin fara.",
       "loading": "Ana ɗaukar FAQ...",
-      "subtext": "Mun ba da amsoshin abubuwan da aka fi yawan tambaya da mutane ke yi kafin fara."
+      "error": "Kuskure a cikin ɗaukar FAQ. Da fatan za a sake gwadawa daga baya.",
+      "fallbackItems": [
+        {
+          "Sequence": 1,
+          "Question": "Menene zan iya ƙara zuwa shafi na Explorer?",
+          "Answer": "Wurare, mutane, samfura, littattafai, fina-finai, nunin nuni, kiɗa, wasanni, ƙa'idodi, jagorori, da bayanin kula."
+        },
+        {
+          "Sequence": 2,
+          "Question": "Zan iya raba shi da lambar QR?",
+          "Answer": "Ee. Ana iya raba shafinku na Explorer azaman hanyar haɗi ko QR don bayanan martaba, saƙonni, teburi, katunan, da jagororin bugu."
+        },
+        {
+          "Sequence": 3,
+          "Question": "Zan iya sabunta shawarwarina daga baya?",
+          "Answer": "Ee. Kuna iya kiyaye shafinku sabo yayin da mahaɗin guda ɗaya da QR ke ci gaba da aiki."
+        },
+        {
+          "Sequence": 4,
+          "Question": "Shin masu binciken suna kyauta har abada?",
+          "Answer": "Ee. Shafin na iya sadar da alƙawarin kyauta a sarari ba tare da yare mai nauyi ba."
+        }
+      ]
     },
     "features": {
-      "communityDriven": {
-        "title": "Gano na al'umma"
+      "title": "An gina shi don zama daga hanya",
+      "subtitle": "Fasaloli masu sauƙi, masu tunani waɗanda suke barin shawarwarinku su haskaka.",
+      "simpleLinks": {
+        "title": "Hanyoyin haɗi masu sauƙi da raba QR"
       },
       "livingGuides": {
         "title": "Jagororin raye-raye, masu gyara"
@@ -1305,347 +1624,143 @@
       "locationAware": {
         "title": "Shawarwari masu sanin wuri"
       },
-      "privacyFirst": {
-        "title": "Keɓancewa-farko ta zane"
-      },
-      "simpleLinks": {
-        "title": "Hanyoyin haɗi masu sauƙi da raba QR"
-      },
       "soundPlaylists": {
         "title": "Sauti na zaɓi da jerin waƙoƙi"
       },
-      "subtitle": "Fasaloli masu sauƙi, masu tunani waɗanda suke barin shawarwarinku su haskaka.",
-      "title": "An gina shi don zama daga hanya"
+      "privacyFirst": {
+        "title": "Keɓancewa-farko ta zane"
+      },
+      "communityDriven": {
+        "title": "Gano na al'umma"
+      }
     },
     "finalCTA": {
-      "creating": "Ana ƙirƙirar explorers ɗinku...",
+      "headline": "Fara raba duniyar ku yau",
+      "subtext": "Ajiye explorers ɗinku na kyauta kuma canza fahimtar gida zuwa jagororin da za a iya raba.",
       "ctaButton": "Ajiye explorers ɗinku – Kyauta Har Abada",
       "disclaimer": "Ba a buƙatar katin kuɗi • Saitawa cikin mintuna 2",
-      "headline": "Fara raba duniyar ku yau",
-      "subtext": "Ajiye explorers ɗinku na kyauta kuma canza fahimtar gida zuwa jagororin da za a iya raba."
+      "creating": "Ana ƙirƙirar explorers ɗinku..."
     },
-    "localTunes": {
-      "body": "Bincike ba na gani kawai ba ne. Sauti yana ɗaukar ƙwaƙwalwa, mahallin, da motsin rai.\n\nLocalTunes yana ba ku damar tattara kuma raba waƙoƙin sauti don wurare, tafiye-tafiye, da yanayi — ko dai waƙar da aka gano a hanya ko sautunan da ke bayyana wuri a gare ku.\n\nAn haɗa shi da bayanin martabar Explorer ɗinku ba tare da katsewa ba.",
-      "closingStatement": "Tunes <strong>kyauta</strong> ne don bincika, kuma don fasalolin da aka biya za ku iya haɓaka daga baya.",
-      "exploreButton": "Bincika Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "Cikakke don dare na karaoke tare da jerin waƙoƙi na haɗin kai da buƙatun waƙa na ainihin lokaci.",
-          "title": "Shirye don Karaoke"
-        },
-        "qrCodeSharing": {
-          "description": "Raba ƙwarewar kiɗa ɗinku tare da sauƙin dubawa lambar QR - ba ana buƙatar apps ko zazzagewa ba.",
-          "title": "Raba lambar QR"
-        },
-        "realtimeCollaboration": {
-          "description": "Bari baƙi su ƙara waƙoƙi zuwa jerin waƙoƙin ku nan take yayin da kuke kula da cikakken iko akan abin da ke kunna.",
-          "title": "Haɗin kai na ainihin lokaci"
-        },
-        "silentParties": {
-          "description": "Shirya bukukuwa na musamman na shiru inda kowa ke sauraro ta hanyar belun kunnuwa nasu.",
-          "title": "Biki na Shiru"
-        },
-        "voteLikeSystem": {
-          "description": "Baƙi na iya zaɓar waƙoƙinsu na fi so don tasiri jerin jerin waƙoƙi a ainihin lokaci.",
-          "title": "Tsarin Zaɓe & So"
-        },
-        "youtubeIntegration": {
-          "description": "Haɗa kai da YouTube ba tare da katsewa ba don samun damar miliyoyin waƙoƙi da ƙirƙirar yanayi mai kyau.",
-          "title": "Haɗin YouTube"
-        }
-      },
-      "featuresHeading": "Fasaloli masu ƙarfi",
-      "mainHeading": "Tunes",
-      "title": "Saurara yayin da kuke bincike",
-      "venueHeading": "Cikakke ga Kowane Wuri",
-      "venues": {
-        "barsPubs": "Mashaya & Mashaya",
-        "coffeeShops": "Shagunan Kofi",
-        "eventsWeddings": "Abubuwan da suka faru & Aure",
-        "gymsFitness": "Gyms & Fitness",
-        "restaurants": "Gidajen Abinci",
-        "retailStores": "Shagunan Sayarwa"
-      }
-    },
-    "referEarn": {
-      "comingSoon": "Shirin lada na nassoshi (nan gaba)",
-      "earnedThisMonth": "An samu wannan watan",
-      "headline": "Raba, nassoshi da samun kuɗi",
-      "networkTitle": "Gina hanyar sadarwar ku kuma samu kuɗi ta atomatik",
-      "passiveTitle": "Canza shawarwari zuwa lada na pasif",
-      "rewardsDesc": "Samu kuɗi lokacin da mutane suka yi amfani da shawarwarinku",
-      "rewardsTitle": "Samun Lada",
-      "subtext": "Canza shawarwarinku zuwa lada na pasif — sami daraja lokacin da wasu suka yi amfani da QR ɗinku."
-    },
-    "shareAnywhere": {
-      "cafeMenu": "Menu na Cafe",
-      "headline": "Raba a kan kafofin watsa labarai, gaban shago, ko bangon birni",
-      "instagramDesc": "Raba tare da masu bi ɗinku nan take",
-      "instagramTitle": "Ƙara a cikin bio ɗin Instagram ɗinku",
-      "menuDesc": "Wuraren tuntuɓar jiki an sauƙaƙa",
-      "menuTitle": "Buga akan menu",
-      "profileCarouselCaption": "Instagram & TikTok profiles",
-      "qrEverywhereDesc": "Perfect for Every Venue",
-      "qrEverywhereTitle": "Add the QR link everywhere",
-      "scanText": "Duba don shawarwarin gida",
-      "storefrontText": "Mai kyau don nunin gaban shago",
-      "subtext": "Ƙara a cikin bio ɗin Instagram ɗinku, buga akan menu, ko haɗa a cikin littattafan maraba — jagorar ku, koyaushe a shirye.",
-      "tokyoFoodGuide": "Jagorar abincin Tokyo na explorers.earth/jane",
-      "welcomeDesc": "Mai kyau don masu gida da jagora",
-      "welcomeTitle": "Haɗa a cikin littattafan maraba"
-    },
-    "testimonials": {
-      "headline": "Ana ƙauna da matafiya, masu ƙirƙira da masu gida",
-      "items": [
-        {
-          "id": "1",
-          "location": "San Francisco",
-          "name": "Marcus Chen",
-          "quote": "explorers ya canza yadda nake raba ilimin tafiyata. Masu bi na suna son samun damar nan take ga shawarwari na!",
-          "role": "Mai Rubutun Tafiya"
-        },
-        {
-          "id": "2",
-          "location": "Barcelona",
-          "name": "Sarah Johnson",
-          "quote": "Baƙi na suna son QR code na musamman a cikin kayan maraba. Ya zama alamar sa hannu ta!",
-          "role": "Mai Gida na Airbnb"
-        },
-        {
-          "id": "3",
-          "location": "Mexico City",
-          "name": "Alex Rodriguez",
-          "quote": "Muna raba explorers ɗinmu tare da abokan ciniki don ba da shawarar wasu wuraren gida. Ya haifar da haɗin kai na al'umma mai ban mamaki.",
-          "role": "Mai Gidan Abinci"
-        },
-        {
-          "id": "4",
-          "location": "London",
-          "name": "Emma Thompson",
-          "quote": "explorers yana taimaka mini faɗaɗa ƙwarewata fiye da sa'o'in yawon shakatawa. Abokan ciniki na iya samun damar shawarwari na a kowane lokaci!",
-          "role": "Jagoran Yawon shakatawa"
-        },
-        {
-          "id": "5",
-          "location": "Sydney, Australia",
-          "name": "James Wilson",
-          "quote": "As a travel influencer, explorers makes it so easy to share my favorite spots with my audience. The QR code feature is brilliant!",
-          "role": "Travel Influencer"
-        },
-        {
-          "id": "6",
-          "location": "Paris, France",
-          "name": "Sophie Martin",
-          "quote": "I use explorers to create walking tours for my clients. They can scan the QR and explore at their own pace!",
-          "role": "Local Guide"
-        }
+    "productCategories": {
+      "headline": "Ba da shawarar fiye da wurare.",
+      "subtext": "Ƙirƙiri shafi ɗaya don wurare, mutane, samfura, littattafai, fina-finai, nunin nuni, kiɗa, wasanni, ƙa'idodi, da kayan aiki.",
+      "actions": [
+        "Ajiye",
+        "Tsara",
+        "Raba"
       ],
-      "scrollLeft": "Gudanar da shaidu zuwa hagu",
-      "scrollRight": "Gudanar da shaidu zuwa dama",
-      "subtext": "Dubi yadda mutane a duniya ke amfani da explorers don raba abubuwan da suka fi muhimmanci."
-    },
-    "whoIsFor": {
-      "cards": {
-        "businesses": {
-          "items": {
-            "boutique": {
-              "label": "Boutique",
-              "oneLiner": "Boutique suna jera abubuwan da aka tsara"
-            },
-            "cafe": {
-              "label": "Gidan Kofi",
-              "oneLiner": "Gidajen kofi suna nuna abubuwan da aka fi so na menu"
-            },
-            "clinic": {
-              "label": "Asibiti",
-              "oneLiner": "Asibitoci suna raba wuraren da suke da alaƙa da lafiya"
-            },
-            "gym": {
-              "label": "Gidan Wasan Jiki",
-              "oneLiner": "Gidajen wasan jiki suna ba da shawarar wuraren lafiya na gida"
-            },
-            "restaurant": {
-              "label": "Gidan Abinci",
-              "oneLiner": "Gidajen abinci suna raba abincin da dole ne a gwada"
-            },
-            "retailShop": {
-              "label": "Shago na Sayarwa",
-              "oneLiner": "Shaguna suna raba shawarwarin samfura"
-            },
-            "salon": {
-              "label": "Salon",
-              "oneLiner": "Salon suna ba da jagororin kyau"
-            },
-            "spa": {
-              "label": "Spa",
-              "oneLiner": "Spa suna jera zaɓuɓɓukan natsuwa na kusa"
-            }
-          },
-          "oneLiner": "Jagoranci abokan ciniki tare da shawarwari masu amfani.",
-          "title": "Kasuwanni"
-        },
-        "creators": {
-          "items": {
-            "blogger": {
-              "label": "Mai Rubuta Blog",
-              "oneLiner": "Masu rubuta blog suna tsara jagororin da aka rubuta"
-            },
-            "communityLeader": {
-              "label": "Shugaban Al'umma",
-              "oneLiner": "Shugabannin al'umma suna tsara jerin abubuwa masu amfani"
-            },
-            "educator": {
-              "label": "Malami",
-              "oneLiner": "Malamai suna raba jagororin koyo"
-            },
-            "influencer": {
-              "label": "Mai Tasiri",
-              "oneLiner": "Masu tasiri suna raba zaɓuɓɓukan saman"
-            },
-            "photographer": {
-              "label": "Mai Daukar Hotuna",
-              "oneLiner": "Masu daukar hotuna suna raba wuraren hotuna"
-            },
-            "reviewer": {
-              "label": "Mai Bita",
-              "oneLiner": "Masu bita suna jera wuraren da aka fi yin kima"
-            },
-            "vlogger": {
-              "label": "Mai Yin Bidiyo",
-              "oneLiner": "Masu yin bidiyo suna raba tafiye-tafiye na gani"
-            }
-          },
-          "oneLiner": "Raba jerin abubuwan da aka tsara tare da masu sauraron ku.",
-          "title": "Masu Ƙirƙira"
-        },
-        "hospitality": {
-          "items": {
-            "airbnb": {
-              "label": "Airbnb",
-              "oneLiner": "Masu gida suna raba abubuwan da suke so na unguwa"
-            },
-            "homestay": {
-              "label": "Zama a Gida",
-              "oneLiner": "Zama a gida suna ba da jagororin da suka dace da iyali"
-            },
-            "hostel": {
-              "label": "Masauki",
-              "oneLiner": "Masauki suna raba shawarwari na masu tafiya"
-            },
-            "hotel": {
-              "label": "Otal",
-              "oneLiner": "Otal-otal suna ba da littattafan jagora na gida"
-            },
-            "pgColiving": {
-              "label": "PG/Coliving",
-              "oneLiner": "PG/Coliving suna nuna wurare masu mahimmanci na kusa"
-            },
-            "resort": {
-              "label": "Wurin Hutu",
-              "oneLiner": "Wuraren hutu suna ba da jerin ayyuka"
-            }
-          },
-          "oneLiner": "Bayar da fahimtar gida da aka tsara ga baƙi.",
-          "title": "Baƙi"
-        },
-        "individuals": {
-          "items": {
-            "emergencySharer": {
-              "label": "Mai Raba Gaggawa",
-              "oneLiner": "Masu raba gaggawa suna buga wurare masu mahimmanci"
-            },
-            "family": {
-              "label": "Iyali",
-              "oneLiner": "Iyali suna raba wurare masu amfani"
-            },
-            "local": {
-              "label": "Na Gida",
-              "oneLiner": "Mazaunan gida suna raba shawarwari na unguwa"
-            },
-            "nomad": {
-              "label": "Nomad",
-              "oneLiner": "Nomads suna jera wuraren da suke da kyau ga aiki"
-            },
-            "student": {
-              "label": "Dalibi",
-              "oneLiner": "Dalibai suna raba wuraren harabar makaranta/kusa"
-            },
-            "traveler": {
-              "label": "Matafiya",
-              "oneLiner": "Mutane suna raba wuraren tafiya"
-            }
-          },
-          "oneLiner": "Raba shawarwari na sirri ko na gida.",
-          "title": "Mutane"
-        },
-        "organizations": {
-          "items": {
-            "agency": {
-              "label": "Hukuma",
-              "oneLiner": "Hukumomin tafiya suna jera wuraren da dole ne a ziyarta"
-            },
-            "airline": {
-              "label": "Kamfanin Jirgin Sama",
-              "oneLiner": "Kamfanonin jirgin sama suna raba jagororin birni"
-            },
-            "airport": {
-              "label": "Filin Jirgin Sama",
-              "oneLiner": "Filin jiragen sama suna ba da tashoshi + shawarwari na birni"
-            },
-            "corporate": {
-              "label": "Kamfani",
-              "oneLiner": "Kamfanoni suna jera albarkatu na kusa"
-            },
-            "government": {
-              "label": "Gwamnati",
-              "oneLiner": "Sassan suna nuna ayyukan jama'a"
-            },
-            "ngo": {
-              "label": "NGO",
-              "oneLiner": "NGOs suna raba albarkatun al'umma"
-            },
-            "railway": {
-              "label": "Hanyar Jirgin Ƙasa",
-              "oneLiner": "Hanyoyin jirgin ƙasa suna raba bayanan dandamali"
-            },
-            "university": {
-              "label": "Jami'a",
-              "oneLiner": "Jami'o'i suna raba abubuwan da ake buƙata na harabar makaranta"
-            }
-          },
-          "oneLiner": "Bayar da jagororin da aka tsara da albarkatu.",
-          "title": "Ƙungiyoyi"
-        }
+      "overlayLabel": "Explorer shafi",
+      "visualLabels": {
+        "products": "Abubuwan da aka fi so na gaske",
+        "apps": "Tari mai amfani"
       },
-      "headline": "explorers.earth na wane ne?",
-      "subtext": "explorers.earth na duk wanda ya yi imani cewa raba abu alhaki ne — ba watsa shiri ba.",
-      "useCases": {
-        "airbnbHosts": "Masu Gida na Airbnb",
-        "airbnbHostsDesc": "Inganta ƙwarewar baƙo tare da fahimtar gida",
-        "anyBusiness": "Kowane Kasuwanci",
-        "anyBusinessDesc": "Gina al'umma da amincin abokin ciniki",
-        "cafes": "Gidajen Kofi",
-        "cafesDesc": "Raba abubuwan da aka fi so na unguwa tare da abokan ciniki",
-        "creators": "Masu Ƙirƙira",
-        "creatorsDesc": "Ƙara ƙima fiye da abun ciki tare da shawarwari masu aiki",
-        "hotels": "Otal-otal",
-        "hotelsDesc": "Bayar da shawarwarin gida da aka tsara",
-        "influencers": "Masu tasiri",
-        "influencersDesc": "Yi kuɗi daga ilimin gida kuma gina al'umma",
-        "localGuides": "Jagororin Gida",
-        "localGuidesDesc": "Ƙara ƙwarewar ku fiye da yawon shakatawa na mutum ɗaya",
-        "restaurants": "Gidajen Abinci",
-        "restaurantsDesc": "Haɗin gwiwa tare da sauran kasuwancin gida",
-        "tourOperators": "Masu Gudanar da Yawon Shakatawa",
-        "tourOperatorsDesc": "Faɗaɗa abubuwan gani fiye da yawon shakatawa da aka tsara",
-        "travelers": "Matafiya",
-        "travelersDesc": "Raba lu'ulu'u da aka gano tare da abokan bincike"
-      }
+      "visualDetails": {
+        "products": [
+          "Kayan tafiya",
+          "Kayan yau da kullun",
+          "Kit ɗin mahalicci"
+        ],
+        "apps": [
+          "Kayan aikin tsarawa",
+          "Apps masu amfani",
+          "Hanyoyin haɗin yanar gizo"
+        ]
+      },
+      "categories": [
+        {
+          "id": "places",
+          "label": "Wurare",
+          "title": "Wuraren gida, jagora, da hanyoyi",
+          "description": "Gidajen abinci, unguwanni, gidajen tarihi, hanyoyi, da ɓoyayyun duwatsu masu daraja mutane za su iya ziyarta a zahiri."
+        },
+        {
+          "id": "people",
+          "label": "Mutane",
+          "title": "Mutanen da suka cancanci bi ko koyi da su",
+          "description": "Masu ƙirƙira, masu ƙirƙira, jagorori, masu fasaha, malamai, masana, da mutanen da suka tsara ɗanɗanon ku."
+        },
+        {
+          "id": "books",
+          "label": "Littattafai",
+          "title": "Littattafai da lissafin karatu",
+          "description": "Littattafan da kuke ci gaba da ba da shawarar a cikin taɗi, bayanin kula, wasiƙun labarai, da tattaunawar tafiya."
+        },
+        {
+          "id": "movies",
+          "label": "Fina-finai & TV",
+          "title": "Fina-finai, nuni, da jerin abubuwan kallo",
+          "description": "Fina-finai, jerin shirye-shirye, shirye-shirye, da jerin abubuwan kallo don kowane irin yanayi ko masu sauraro."
+        },
+        {
+          "id": "games",
+          "label": "Wasanni",
+          "title": "Wasanni da duniyoyi don bincika",
+          "description": "Wasanni, tambayoyi, duniyoyi, da gogewa yakamata mutane su gwada na gaba."
+        },
+        {
+          "id": "music",
+          "label": "Kiɗa",
+          "title": "Albums, masu fasaha, da lissafin waƙa",
+          "description": "Masu fasaha, kundi, waƙoƙi, lissafin waƙa, da waƙoƙin sauti da aka haɗa zuwa wurare da lokuta."
+        },
+        {
+          "id": "products",
+          "label": "Kayayyaki",
+          "title": "Haƙiƙa samfuran mutane suna ba da shawarar",
+          "description": "Abubuwan da aka fi so na yau da kullun, kayan tafiye-tafiye, kayan aikin mahalicci, kyaututtuka, da samfuran da suka cancanci adanawa."
+        },
+        {
+          "id": "apps",
+          "label": "Apps & Kayan aiki",
+          "title": "Apps, kayan aiki, da hanyoyin haɗi masu amfani",
+          "description": "Software, gidajen yanar gizo, samfuri, kayan aiki, da albarkatun da ke sauƙaƙa rayuwa."
+        }
+      ]
     }
   },
   "seo": {
     "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
+    "landing": {
+      "title": "masu bincike - Gano & Raba Shawarwari na Gida na Keɓaɓɓen",
+      "description": "Gano kuma raba wuraren da kuka fi so tare da masu bincike. Ƙirƙirar jagororin birni na keɓaɓɓun, tsara wuraren ziyartan dole, kuma sanya su a iya gano su tare da lambobin QR masu iya rabawa. Bincika ɓoyayyun duwatsu masu daraja, shawarwarin da aka tsara, da shawarwarin balaguro na gida akan taswirori masu mu'amala.",
+      "keywords": [
+        "gano wurare kusa da ni",
+        "keɓaɓɓen jagororin tafiya",
+        "app shawarwarin gida",
+        "mahaliccin birni jagora",
+        "raba shawarwarin tafiya",
+        "boye duwatsu masu daraja shawarwari",
+        "abubuwan da za a yi a birni",
+        "jagorar tafiya na tushen taswira",
+        "mafi kyawun wuraren gida",
+        "shawarwarin gidan abinci da aka keɓe",
+        "Jagorar tafiya QR lambobin",
+        "ƙirƙira kuma raba jerin wurare",
+        "jagororin gida na mai amfani",
+        "bincika wuraren da ke kewaye da ku",
+        "jagororin birni na dijital",
+        "Lambobin QR",
+        "shawarwarin gida",
+        "raba wuri",
+        "jagorar tafiya",
+        "kasuwancin gida",
+        "shawarwarin dijital",
+        "mahadi masu iya rabawa",
+        "raba wuri",
+        "tukwici tafiya",
+        "wuraren gida"
+      ],
+      "geoDescription": "Gano kuma raba wuraren da kuka fi so tare da keɓaɓɓun lambobin QR da hanyoyin haɗin kai",
+      "geoFeatures": [
+        "Ƙirƙirar lambar QR na keɓaɓɓen",
+        "Raba shawarwarin gida",
+        "Bincike da fahimta",
+        "Ingantacciyar ƙira ta wayar hannu",
+        "Ganowar al'umma"
+      ],
+      "geoIndustry": "Fasaha"
+    }
   },
   "settings": {
     "account": {
@@ -2162,5 +2277,14 @@
       "usernameNotChanged": "Username is not changed. Please change your username",
       "validationPending": "Validation is pending. Please wait"
     }
+  },
+  "usernameClaim": {
+    "validating": "Ana tabbatarwa...",
+    "claimFree": "Da'awar kyauta",
+    "trySuggestions": "Gwada: {{suggestions}}",
+    "available": "Sunan mai amfani yana samuwa.",
+    "unavailable": "Babu sunan mai amfani.",
+    "confirmOnSignup": "Za mu tabbatar da samuwa akan rajista.",
+    "checkingAvailability": "Ana duba samuwa..."
   }
 }

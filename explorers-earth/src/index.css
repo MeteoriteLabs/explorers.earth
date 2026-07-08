@@ -1,9 +1,84 @@
 /* Font imports must precede all other at-rules for Tailwind build ordering */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .landing-page {
+    --landing-cream: #f6f1e7;
+    --landing-cream-2: #fffcf6;
+    --landing-cream-3: #eadfcf;
+    --landing-ink: #17231a;
+    --landing-muted: #66715f;
+    --landing-green: #1b3b1a;
+    --landing-green-2: #375c3b;
+    --landing-moss: #dce9ce;
+    --landing-sage: #b8c9ab;
+    --landing-orange: #c87941;
+    --landing-gold: #d8a15d;
+    --landing-dark-green: #102513;
+    --landing-line: rgba(23, 35, 26, .14);
+    --landing-shadow: 0 24px 80px rgba(27, 59, 26, .14);
+    --landing-radius: 26px;
+    background: var(--landing-cream);
+    color: var(--landing-ink);
+    font-family: "DM Sans", system-ui, sans-serif;
+  }
+
+  .landing-display {
+    font-family: "Fraunces", Georgia, serif;
+    letter-spacing: -0.025em;
+  }
+
+  .landing-section {
+    padding-block: 86px;
+  }
+
+  .landing-section-band {
+    background: var(--landing-cream-2);
+    border-block: 1px solid var(--landing-line);
+  }
+
+  .landing-section-alt {
+    background: var(--landing-cream);
+  }
+
+  .landing-card {
+    border: 1px solid var(--landing-line);
+    border-radius: var(--landing-radius);
+    background: rgba(255, 255, 255, .62);
+    box-shadow: var(--landing-shadow);
+  }
+
+  .landing-soft-card {
+    border: 1px solid var(--landing-line);
+    border-radius: var(--landing-radius);
+    background: rgba(255, 255, 255, .58);
+  }
+
+  .landing-green-button {
+    color: #fff;
+    background: var(--landing-green);
+    box-shadow: 0 12px 26px rgba(33, 75, 42, .22);
+  }
+
+  .landing-green-button:hover {
+    background: var(--landing-dark-green);
+  }
+
+  .landing-muted {
+    color: var(--landing-muted);
+  }
+
+  .landing-claim-box {
+    border: 1px solid var(--landing-line);
+    background: rgba(255, 255, 255, .75);
+    box-shadow: 0 18px 44px rgba(23, 35, 26, .10);
+    backdrop-filter: blur(18px);
+  }
+}
 
 /* Horizontal scrolling animation for song titles */
 @keyframes scroll {
@@ -2084,4 +2159,28 @@ input {
 
 .pac-icon {
   margin-top: 2px !important;
+}
+
+.landing-testimonials-marquee {
+  animation: landingTestimonialsMarquee 48s linear infinite;
+}
+
+.landing-testimonials-marquee-static {
+  animation: none;
+}
+
+@keyframes landingTestimonialsMarquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-testimonials-marquee {
+    animation: none;
+  }
 }

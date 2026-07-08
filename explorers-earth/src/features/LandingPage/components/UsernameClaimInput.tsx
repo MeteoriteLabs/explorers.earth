@@ -1,17 +1,15 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { Button } from "./ui/landingButton";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { LoadingSpinner } from "./LoadingSpinner";
-import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
-
-// Import the centralized username validation system
-import { validateUsername } from "../../../utils/usernameValidation";
-import { useUsernameValidation } from "../../../hooks/useUsernameValidation";
 import { isManualAuthEnabled } from "../../../config/featureFlags";
+import { useUsernameValidation } from "../../../hooks/useUsernameValidation";
+import { validateUsername } from "../../../utils/usernameValidation";
 
 interface UsernameClaimInputProps {
   className?: string;
@@ -19,19 +17,22 @@ interface UsernameClaimInputProps {
   setUsername: (value: string) => void;
 }
 
-/**
- * Username Claim Input Component for Landing Page
- *
- * This component integrates the centralized username validation system
- * used in the signup form to provide consistent validation experience.
- *
- * Features:
- * - Real-time validation using shared validator utility
- * - Username availability checking (async)
- * - Visual feedback matching signup form UX
- * - Pre-fills signup form on successful validation
- * - Redirects to signup page with validated username
- */
+type ValidationState = {
+  isValid: boolean;
+  errors: string[];
+  suggestions: string[];
+  isAvailable?: boolean;
+  availabilityUnavailable?: boolean;
+};
+
+const getInitialValidationState = (): ValidationState => ({
+  isValid: true,
+  errors: [],
+  suggestions: [],
+  isAvailable: undefined,
+  availabilityUnavailable: false,
+});
+
 export function UsernameClaimInput({
   className,
   username,
@@ -39,302 +40,288 @@ export function UsernameClaimInput({
 }: UsernameClaimInputProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
-  const [validationState, setValidationState] = useState<{
-    isValid: boolean;
-    errors: string[];
-    suggestions: string[];
-    isAvailable?: boolean;
-  }>({
-    isValid: true,
-    errors: [],
-    suggestions: [],
-    isAvailable: undefined,
-  });
+  const [validationState, setValidationState] =
+    useState<ValidationState>(getInitialValidationState);
 
   const navigate = useNavigate();
   const { t } = useTranslation();
-
-  // Use the new username validation hook
   const { validateUsernameWithAvailability, isValidating } =
     useUsernameValidation();
 
-  /**
-   * Debounced validation function to prevent excessive API calls
-   * Uses the same validation logic as the signup form
-   */
-  const validateUsernameDebounced = useCallback(
-    debounce(async (value: string) => {
+  const validateClaimUsername = useCallback(
+    async (value: string) => {
       if (!value.trim()) {
+        setIsCheckingAvailability(false);
+        setValidationState(getInitialValidationState());
+        return;
+      }
+
+      const basicValidation = validateUsername(value, t);
+
+      if (!basicValidation.isValid) {
+        setIsCheckingAvailability(false);
         setValidationState({
-          isValid: true,
-          errors: [],
-          suggestions: [],
+          isValid: false,
+          errors: basicValidation.errors,
+          suggestions: basicValidation.suggestions,
           isAvailable: undefined,
+          availabilityUnavailable: false,
         });
         return;
       }
 
       try {
-        // Use the validation hook method for username availability checking
         const validationResult = await validateUsernameWithAvailability(
           value,
           true
         );
+        const availabilityError = validationResult.availability?.error || "";
+        const availabilityUnavailable = availabilityError
+          .toLowerCase()
+          .includes("unable to check");
+
         setIsCheckingAvailability(false);
+
+        if (availabilityUnavailable) {
+          setValidationState({
+            isValid: true,
+            errors: [],
+            suggestions: [],
+            isAvailable: undefined,
+            availabilityUnavailable: true,
+          });
+          return;
+        }
 
         setValidationState({
           isValid: validationResult.isValid,
           errors: validationResult.errors,
           suggestions: validationResult.suggestions,
           isAvailable: validationResult.availability?.isAvailable,
+          availabilityUnavailable: false,
         });
       } catch (error) {
         setIsCheckingAvailability(false);
         console.error("Username validation error:", error);
         setValidationState({
-          isValid: false,
-          errors: ["Unable to check username availability. Please try again."],
+          isValid: true,
+          errors: [],
           suggestions: [],
           isAvailable: undefined,
+          availabilityUnavailable: true,
         });
       }
-    }, 300),
-    [validateUsernameWithAvailability]
+    },
+    [t, validateUsernameWithAvailability]
   );
 
-  // Real-time validation as user types
   useEffect(() => {
     if (username) {
       setIsCheckingAvailability(true);
     }
-    validateUsernameDebounced(username);
-  }, [username, validateUsernameDebounced]);
+    const timeoutId = window.setTimeout(() => {
+      void validateClaimUsername(username);
+    }, 300);
 
-  /**
-   * Handle username input change with real-time lowercase conversion
-   * Matches the behavior in the signup form UsernameInput component
-   */
+    return () => window.clearTimeout(timeoutId);
+  }, [username, validateClaimUsername]);
+
   const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.toLowerCase(); // Real-time lowercase conversion
-    setUsername(value);
+    setUsername(e.target.value.toLowerCase());
   };
 
-  /**
-   * Handle the "Claim your explorers" button click
-   * Redirects to signup page with pre-filled username (if manual auth enabled)
-   * Otherwise redirects to login for OAuth
-   */
   const handleClaimQR = async () => {
     if (!username.trim() || !validationState.isValid) return;
 
     setIsLoading(true);
 
     try {
-      // MANUAL AUTH DISABLED - Redirect to login for OAuth-only mode
       if (!isManualAuthEnabled()) {
-        toast.info(t('auth.oauthOnlyMessage') || 'Please sign up with Google to continue');
-        navigate('/login');
+        toast.info(
+          t("auth.oauthOnlyMessage") || "Please sign up with Google to continue"
+        );
+        navigate("/login");
         return;
       }
 
-      // Final validation before redirect (only for manual auth)
-      const finalValidation = await validateUsername(username);
+      const finalValidation = await validateUsernameWithAvailability(
+        username,
+        true
+      );
+      const availabilityError = finalValidation.availability?.error || "";
+      const availabilityUnavailable = availabilityError
+        .toLowerCase()
+        .includes("unable to check");
 
-      if (finalValidation.isValid && validationState.isAvailable) {
-        // Redirect to signup page with pre-filled username
-        // Using URL parameter to pre-fill the signup form
+      if (
+        finalValidation.isValid &&
+        finalValidation.availability?.isAvailable === true
+      ) {
         navigate(`/register?username=${encodeURIComponent(username)}`);
+      } else if (finalValidation.isValid && availabilityUnavailable) {
+        navigate("/register");
       } else {
-        // Show validation errors if final check fails
-        setValidationState({
-          isValid: false,
-          errors: finalValidation.errors || ["Username validation failed"],
-          suggestions: finalValidation.suggestions || [],
-          isAvailable: false,
-        });
+        setValidationState(
+          availabilityUnavailable
+            ? {
+                isValid: true,
+                errors: [],
+                suggestions: [],
+                isAvailable: undefined,
+                availabilityUnavailable: true,
+              }
+            : {
+                isValid: false,
+                errors: finalValidation.errors || ["Username validation failed"],
+                suggestions: finalValidation.suggestions || [],
+                isAvailable: finalValidation.availability?.isAvailable,
+                availabilityUnavailable: false,
+              }
+        );
       }
     } catch (error) {
       console.error("Final username validation error:", error);
-      setValidationState({
-        isValid: false,
-        errors: ["Validation failed. Please try again."],
-        suggestions: [],
-        isAvailable: false,
-      });
+      if (validationState.availabilityUnavailable) {
+        navigate("/register");
+      } else {
+        setValidationState({
+          isValid: false,
+          errors: ["Validation failed. Please try again."],
+          suggestions: [],
+          isAvailable: false,
+          availabilityUnavailable: false,
+        });
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Determine button state - now uses isValidating from hook instead of isCheckingAvailability
   const isButtonDisabled =
     !username.trim() ||
     !validationState.isValid ||
     isLoading ||
+    isCheckingAvailability ||
     isValidating ||
-    validationState.isAvailable === false;
-
-  // Format error messages for display (simple array display, not using formatValidationMessages)
-  const displayErrors = validationState.errors;
-  const displaySuggestions = validationState.suggestions;
+    (validationState.isAvailable !== true &&
+      !validationState.availabilityUnavailable);
 
   return (
-    <div className={`space-y-4 ${className}`}>
+    <div className={`space-y-2 ${className}`}>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3, duration: 0.6 }}
-        className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 animated-border"
+        className="landing-claim-box rounded-[28px] p-2 sm:rounded-full"
       >
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-          <Label className="text-sm font-medium text-white">
-            {t('hero.inputLabel')}
-          </Label>
-          <span className="text-xs font-medium text-white/90 bg-white/10 px-2.5 py-1 rounded-md whitespace-nowrap">
-            Free Forever
-          </span>
-        </div>
+        <Label className="sr-only">{t("hero.inputLabel")}</Label>
 
-        <div className="flex flex-col sm:flex-row w-full max-w-full">
-          <span className="inline-flex items-center px-3 sm:px-4 py-2 sm:py-[10px] bg-white/20 border border-white/30 sm:border-r-0 rounded-lg sm:rounded-l-lg sm:rounded-r-none text-xs sm:text-sm whitespace-nowrap flex-shrink-0">
+        <div className="grid w-full grid-cols-[auto_1fr] gap-2 sm:grid-cols-[auto_1fr_auto] sm:items-center">
+          <span className="inline-flex items-center rounded-full px-3 py-3 text-xs font-extrabold text-[#66715f] sm:px-5 sm:text-sm">
             explorers.earth/
           </span>
 
-          <div className="relative flex-1 min-w-0">
+          <div className="relative min-w-0">
             <Input
               type="text"
-              placeholder={t('hero.inputPlaceholder')}
+              placeholder={t("hero.inputPlaceholder")}
               value={username}
               onChange={handleUsernameChange}
-              className={`flex-1 mt-2 sm:mt-0 rounded-lg sm:rounded-l-none sm:rounded-r-lg placeholder-gray-400 py-2 sm:py-[10px] px-3 h-auto input-animated text-gray-900 text-sm sm:text-base w-full max-w-full ${
+              className={`h-12 w-full rounded-full border-0 bg-transparent px-2 py-3 text-sm font-bold text-[#17231a] shadow-none outline-none placeholder:text-[#66715f]/65 focus-visible:ring-0 sm:px-3 sm:text-base ${
                 username && !validationState.isValid
-                  ? "border-red-500 focus:ring-red-500"
+                  ? "ring-2 ring-red-500"
                   : username &&
-                    validationState.isValid &&
-                    validationState.isAvailable
-                  ? "border-green-500 focus:ring-green-500"
-                  : "border-gray-300"
+                      validationState.isValid &&
+                      validationState.isAvailable
+                    ? "ring-2 ring-green-500"
+                    : ""
               }`}
-              style={{ backgroundColor: "hsl(var(--light-gray))" }}
-              onKeyPress={(e) =>
+              onKeyDown={(e) =>
                 e.key === "Enter" && !isButtonDisabled && handleClaimQR()
               }
             />
 
-            {/* Loading indicator for availability check */}
             {isCheckingAvailability && (
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
                 <LoadingSpinner size="sm" />
               </div>
             )}
           </div>
-        </div>
 
-        {/* Validation Messages */}
-        {username && (
-          <div className="mt-3 space-y-2">
-            {/* Error Messages */}
-            {displayErrors.length > 0 && (
-              <div className="text-red-300 text-xs space-y-1">
-                {displayErrors.map((error: string, index: number) => (
-                  <div key={index} className="flex items-start gap-2">
-                    <span className="text-red-400 mt-0.5">•</span>
-                    <span>{error}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Suggestions */}
-            {displaySuggestions.length > 0 &&
-              validationState.errors.length > 0 && (
-                <div className="text-yellow-300 text-xs space-y-1">
-                  <div className="font-medium">Suggestions:</div>
-                  {displaySuggestions.map(
-                    (suggestion: string, index: number) => (
-                      <div key={index} className="flex items-start gap-2">
-                        <span className="text-yellow-400 mt-0.5">•</span>
-                        <span>{suggestion}</span>
-                      </div>
-                    )
-                  )}
-                </div>
-              )}
-
-            {/* Availability Status */}
-            {username &&
-              !isCheckingAvailability &&
-              validationState.isAvailable === true && (
-                <div className="text-green-300 text-xs flex items-center gap-2">
-                  <span className="text-green-400">✓</span>
-                  <span>Username is available!</span>
-                </div>
-              )}
-
-            {username &&
-              !isCheckingAvailability &&
-              validationState.isAvailable === false && (
-                <div className="text-red-300 text-xs flex items-center gap-2">
-                  <span className="text-red-400">×</span>
-                  <span>Username is not available</span>
-                </div>
-              )}
-
-            {isCheckingAvailability && (
-              <div className="text-blue-300 text-xs flex items-center gap-2">
+          <Button
+            onClick={handleClaimQR}
+            disabled={isButtonDisabled}
+            size="lg"
+            className={`landing-green-button col-span-2 h-12 rounded-full px-6 text-sm font-extrabold text-white sm:col-auto ${
+              isButtonDisabled ? "cursor-not-allowed" : "hover:opacity-95"
+            }`}
+          >
+            {isLoading ? (
+              <span className="flex items-center gap-2">
                 <LoadingSpinner size="sm" />
-                <span>Checking availability...</span>
-              </div>
+                {t("usernameClaim.validating")}
+              </span>
+            ) : (
+              t("usernameClaim.claimFree")
             )}
+          </Button>
+        </div>
+      </motion.div>
+
+      <div
+        aria-live="polite"
+        className="min-h-[1.5rem] px-3 text-xs font-bold leading-5 sm:px-5"
+      >
+        {username && validationState.errors.length > 0 && (
+          <div className="space-y-1 text-red-600">
+            {validationState.errors.map((error, index) => (
+              <div key={index} className="flex items-start gap-2">
+                <span aria-hidden className="mt-0.5 text-red-500">
+                  *
+                </span>
+                <span>{error}</span>
+              </div>
+            ))}
           </div>
         )}
-      </motion.div>
 
-      {/* Claim Button */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5, duration: 0.6 }}
-        whileHover={{ scale: isButtonDisabled ? 1 : 1.05 }}
-        whileTap={{ scale: isButtonDisabled ? 1 : 0.95 }}
-      >
-        <Button
-          onClick={handleClaimQR}
-          disabled={isButtonDisabled}
-          size="lg"
-          className={`w-full sm:w-auto lg:w-auto font-semibold text-base sm:text-lg btn-animated ripple-effect text-white px-6 sm:px-8 py-3 sm:py-4 ${
-            isButtonDisabled
-              ? "opacity-50 cursor-not-allowed"
-              : "hover:opacity-90"
-          }`}
-          style={{ backgroundColor: "hsl(var(--blue-cta))" }}
-        >
-          {isLoading ? (
-            <span className="flex items-center gap-2">
-              <LoadingSpinner size="sm" />
-              Validating...
-            </span>
-          ) : (
-            t('hero.ctaButton')
+        {username &&
+          validationState.suggestions.length > 0 &&
+          validationState.errors.length > 0 && (
+            <div className="mt-1 text-yellow-700">
+              {t("usernameClaim.trySuggestions", {
+                suggestions: validationState.suggestions.slice(0, 3).join(", "),
+              })}
+            </div>
           )}
-        </Button>
-      </motion.div>
+
+        {username &&
+          !isCheckingAvailability &&
+          validationState.isAvailable === true && (
+            <div className="text-green-700">{t("usernameClaim.available")}</div>
+          )}
+
+        {username &&
+          !isCheckingAvailability &&
+          validationState.isAvailable === false && (
+            <div className="text-red-600">{t("usernameClaim.unavailable")}</div>
+          )}
+
+        {username &&
+          !isCheckingAvailability &&
+          validationState.availabilityUnavailable && (
+            <div className="text-[#6f6a5f]">
+              {t("usernameClaim.confirmOnSignup")}
+            </div>
+          )}
+
+        {username && isCheckingAvailability && (
+          <div className="flex items-center gap-2 text-blue-700">
+            <LoadingSpinner size="sm" />
+            <span>{t("usernameClaim.checkingAvailability")}</span>
+          </div>
+        )}
+      </div>
     </div>
   );
-}
-
-/**
- * Debounce utility function to limit API calls
- * @param func Function to debounce
- * @param delay Delay in milliseconds
- */
-function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  delay: number
-): T {
-  let timeoutId: ReturnType<typeof setTimeout>;
-  return ((...args: any[]) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => func.apply(null, args), delay);
-  }) as T;
 }

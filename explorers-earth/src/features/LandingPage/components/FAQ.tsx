@@ -8,16 +8,24 @@ import {
   AccordionTrigger,
 } from "./ui/accordion";
 
+type FaqItem = {
+  Sequence: number;
+  Question: string;
+  Answer: string;
+};
+
 export default function FAQ() {
   const { t } = useTranslation();
   const { faqs, loading, error } = useFaqs();
+  const fallbackFaqs = t("sections.faq.fallbackItems", {
+    returnObjects: true,
+  }) as FaqItem[];
 
   if (loading) {
     return (
       <section
         id="faq"
-        className="py-12 sm:py-16 lg:py-20 w-full min-w-0"
-        style={{ backgroundColor: "#F3F4F6" }}
+        className="landing-section landing-section-band w-full min-w-0"
       >
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-full min-w-0">
           <div className="text-center">
@@ -28,40 +36,25 @@ export default function FAQ() {
     );
   }
 
-  if (error) {
-    return (
-      <section
-        id="faq"
-        className="py-12 sm:py-16 lg:py-20 w-full min-w-0"
-        style={{ backgroundColor: "#F3F4F6" }}
-      >
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-full min-w-0">
-          <div className="text-center">
-            <p>{t("sections.faq.error")}</p>
-          </div>
-        </div>
-      </section>
-    );
-  }
+  const visibleFaqs = error || faqs.length === 0 ? fallbackFaqs : faqs;
 
   return (
     <section
       id="faq"
-      className="py-12 sm:py-16 lg:py-20 w-full min-w-0"
-      style={{ backgroundColor: "#F3F4F6" }}
+      className="landing-section landing-section-band w-full min-w-0"
     >
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-full min-w-0 w-full" style={{ overflow: "visible" }}>
+      <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8" style={{ overflow: "visible" }}>
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
           viewport={{ once: true }}
-          className="text-center mb-16"
+          className="mb-12 text-center"
         >
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-charcoal mb-4 sm:mb-6 leading-tight">
+          <h2 className="landing-display text-3xl font-bold leading-tight text-[#17231a] sm:text-4xl lg:text-5xl">
             {t("sections.faq.headline")}
           </h2>
-          <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="landing-muted mx-auto mt-4 max-w-3xl text-base leading-7 sm:text-lg">
             {t("sections.faq.subtext")}
           </p>
         </motion.div>
@@ -71,10 +64,10 @@ export default function FAQ() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
           viewport={{ once: true }}
-          className="max-w-3xl mx-auto w-full min-w-0"
+          className="mx-auto w-full max-w-3xl min-w-0"
         >
           <Accordion type="multiple" className="space-y-4 w-full min-w-0">
-            {faqs.map((item, index) => (
+            {visibleFaqs.map((item, index) => (
               <motion.div
                 key={item.Sequence}
                 initial={{ opacity: 0, y: 20 }}
@@ -84,12 +77,12 @@ export default function FAQ() {
               >
                 <AccordionItem
                   value={item.Sequence.toString()}
-                  className="bg-white rounded-xl shadow-sm border-none px-0"
+                  className="rounded-2xl border border-[rgba(23,35,26,.14)] bg-white/70 px-0 shadow-sm"
                 >
-                  <AccordionTrigger className="px-4 sm:px-6 py-4 text-left font-semibold text-charcoal hover:bg-gray-50 rounded-xl hover:no-underline break-words min-w-0">
+                  <AccordionTrigger className="min-w-0 rounded-2xl px-4 py-4 text-left font-bold text-[#17231a] hover:bg-[#fffcf6] hover:no-underline sm:px-6">
                     {item.Question}
                   </AccordionTrigger>
-                  <AccordionContent className="px-4 sm:px-6 pb-4 text-gray-600 break-words overflow-x-hidden">
+                  <AccordionContent className="landing-muted break-words px-4 pb-4 sm:px-6">
                     {item.Answer}
                   </AccordionContent>
                 </AccordionItem>

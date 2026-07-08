@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, Globe, Check } from 'lucide-react';
@@ -114,7 +115,7 @@ const LanguageModal: React.FC<LanguageModalProps> = ({
     };
   }, [isOpen, onClose]);
 
-  return (
+  const modal = (
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -129,58 +130,61 @@ const LanguageModal: React.FC<LanguageModalProps> = ({
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 20 }}
             transition={{ type: "spring", duration: 0.4, bounce: 0.1 }}
-            className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl mx-4 max-h-[85vh] overflow-hidden border border-gray-100"
+            className="mx-4 flex max-h-[85vh] min-h-0 w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-[#e7dcc8] bg-[#fffcf6] shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="relative bg-gradient-to-r from-blue-50 to-indigo-50 px-8 py-6 border-b border-gray-100">
+            <div className="relative shrink-0 border-b border-[#e7dcc8] bg-[#f6f1e7] px-8 py-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-blue-100 rounded-xl">
-                    <Globe className="w-6 h-6 text-blue-600" />
+                  <div className="rounded-xl bg-[#dce9ce] p-2">
+                    <Globe className="h-6 w-6 text-[#1b3b1a]" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">
+                    <h2 className="text-2xl font-bold text-[#17231a]">
                       {t('languageModal.title')}
                     </h2>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Choose your preferred language
+                    <p className="mt-1 text-sm text-[#7a7568]">
+                      {t('languageModal.subtitle')}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={onClose}
-                  className="p-2 hover:bg-white/80 rounded-xl transition-all duration-200 group"
+                  aria-label={t('languageModal.close')}
+                  className="group rounded-xl p-2 transition-all duration-200 hover:bg-white/80"
                 >
-                  <X className="w-5 h-5 text-gray-500 group-hover:text-gray-700" />
+                  <X className="h-5 w-5 text-[#7a7568] group-hover:text-[#17231a]" />
                 </button>
               </div>
             </div>
 
             {/* Search */}
-            <div className="px-8 py-6 bg-gray-50/50 border-b border-gray-100">
+            <div className="shrink-0 border-b border-[#e7dcc8] bg-[#f8f2e7]/60 px-8 py-6">
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#7a7568]" />
                 <input
                   type="text"
-                  placeholder="Search your language..."
+                  placeholder={t('languageModal.searchPlaceholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm"
+                  className="w-full rounded-2xl border border-[#e7dcc8] bg-[#fffcf6] py-4 pl-12 pr-4 text-[#17231a] shadow-sm outline-none transition-all duration-200 placeholder:text-[#7a7568] focus:border-[#2f6b55] focus:ring-2 focus:ring-[#2f6b55]"
                 />
               </div>
             </div>
 
             {/* Language List */}
-            <div className="max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+            <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[#d8d0c0] scrollbar-track-[#f6f1e7]">
               {filteredLanguages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 px-8">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                    <Search className="w-8 h-8 text-gray-400" />
+                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#f6f1e7]">
+                    <Search className="h-8 w-8 text-[#7a7568]" />
                   </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No languages found</h3>
-                  <p className="text-gray-500 text-center">
-                    Try searching with a different term
+                  <h3 className="mb-2 text-lg font-medium text-[#17231a]">
+                    {t('languageModal.noLanguagesFound')}
+                  </h3>
+                  <p className="text-center text-[#7a7568]">
+                    {t('languageModal.tryDifferentSearch')}
                   </p>
                 </div>
               ) : (
@@ -192,24 +196,24 @@ const LanguageModal: React.FC<LanguageModalProps> = ({
                         key={language.code}
                         whileHover={{ 
                           scale: 1.02, 
-                          backgroundColor: currentLanguage === language.code ? '#dbeafe' : '#f8fafc',
+                          backgroundColor: currentLanguage === language.code ? '#e7efdc' : '#f8f2e7',
                           boxShadow: '0 8px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
                         }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => handleLanguageSelect(language.code)}
                         className={`group flex items-center p-5 rounded-2xl transition-all duration-300 border-2 ${
                           currentLanguage === language.code
-                            ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-lg'
-                            : 'text-gray-700 hover:bg-gray-50 border-gray-100 hover:border-gray-200 bg-white'
+                            ? 'bg-[#e7efdc] text-[#1b3b1a] border-[#2f6b55]/30 shadow-lg'
+                            : 'border-[#e7dcc8] bg-white text-[#17231a] hover:border-[#2f6b55]/30 hover:bg-[#f8f2e7]'
                         }`}
                       >
                         <div className="flex items-center space-x-4 flex-1 min-w-0">
                           <span className="text-3xl flex-shrink-0">{language.flag}</span>
                           <div className="flex-1 text-left min-w-0">
-                            <div className="font-semibold text-base truncate group-hover:text-gray-900">
+                            <div className="truncate text-base font-semibold group-hover:text-[#17231a]">
                               {language.nativeName}
                             </div>
-                            <div className="text-sm text-gray-500 truncate group-hover:text-gray-600">
+                            <div className="truncate text-sm text-[#7a7568] group-hover:text-[#5d6258]">
                               {language.name}
                             </div>
                           </div>
@@ -220,8 +224,8 @@ const LanguageModal: React.FC<LanguageModalProps> = ({
                             animate={{ scale: 1 }}
                             className="flex-shrink-0 ml-3"
                           >
-                            <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                              <Check className="w-4 h-4 text-white" />
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#1b3b1a]">
+                              <Check className="h-4 w-4 text-white" />
                             </div>
                           </motion.div>
                         )}
@@ -233,10 +237,10 @@ const LanguageModal: React.FC<LanguageModalProps> = ({
             </div>
 
             {/* Footer */}
-            <div className="px-8 py-4 bg-gray-50/50 border-t border-gray-100">
-              <div className="flex items-center justify-between text-sm text-gray-500">
-                <span>{filteredLanguages.length} languages available</span>
-                <span>Press ESC to close</span>
+            <div className="shrink-0 border-t border-[#e7dcc8] bg-[#f8f2e7]/60 px-8 py-4">
+              <div className="flex items-center justify-between text-sm text-[#7a7568]">
+                <span>{t('languageModal.languagesAvailable', { count: filteredLanguages.length })}</span>
+                <span>{t('languageModal.escToClose')}</span>
               </div>
             </div>
           </motion.div>
@@ -244,6 +248,8 @@ const LanguageModal: React.FC<LanguageModalProps> = ({
       )}
     </AnimatePresence>
   );
+
+  return createPortal(modal, document.body);
 };
 
 export default LanguageModal;

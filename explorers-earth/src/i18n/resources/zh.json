@@ -1146,50 +1146,99 @@
     "verificationSent": "Verification email sent to:"
   },
   "footer": {
-    "copyright": "© 2025 explorers。保留所有权利。",
+    "tagline": "让您的建议传遍世界。",
     "email": "hello@explorers.earth",
-    "links": {
-      "about": "关于",
-      "contact": "联系我们",
-      "cookies": "Cookie政策",
-      "faq": "常见问题",
-      "howItWorks": "工作原理",
-      "privacy": "隐私政策",
-      "terms": "条款和条件"
-    },
-    "madeWithLove": "在地球上用爱制作",
     "sections": {
+      "product": "产品",
       "contact": "联系我们",
-      "legal": "法律",
-      "product": "产品"
+      "legal": "合法的",
+      "company": "公司"
     },
-    "tagline": "让您的推荐环游世界。"
+    "links": {
+      "howItWorks": "它是如何运作的",
+      "faq": "常问问题",
+      "contact": "接触",
+      "about": "关于",
+      "terms": "条款及条件",
+      "privacy": "隐私政策",
+      "cookies": "Cookie 政策",
+      "product": "产品",
+      "shareAnywhere": "随处分享"
+    },
+    "copyright": "© 2025 探索者。版权所有。",
+    "madeWithLove": "用地球上的爱创造",
+    "freeForever": "永远免费。"
   },
   "header": {
-    "auth": {
-      "login": "登录",
-      "signUp": "注册"
-    },
     "nav": {
+      "howItWorks": "它是如何运作的",
+      "whoIsFor": "适用对象",
+      "faq": "常问问题",
       "about": "关于",
       "contact": "联系我们",
-      "faq": "常见问题",
-      "howItWorks": "工作原理",
-      "whoIsFor": "适用对象"
+      "product": "产品",
+      "share": "分享",
+      "openMenu": "打开导航菜单",
+      "closeMenu": "关闭导航菜单"
+    },
+    "auth": {
+      "login": "登录",
+      "signUp": "注册",
+      "claimFreePage": "索取免费页面",
+      "claimFree": "免费索赔"
     }
   },
   "hero": {
-    "ctaButton": "预订explorers",
-    "headline": "所有推荐内容，一个简单的二维码和链接。",
-    "inputLabel": "预订您的explorers网址：",
-    "inputPlaceholder": "您的姓名",
-    "signupPrompt": "立即注册获取您的专属二维码",
-    "subtext": "分享您对某个地方的了解和喜爱——让全世界都能发现"
+    "headline": "您的所有推荐 - 一个链接，一个 QR",
+    "subtext": "为您推荐的所有内容（地点、人物、产品、书籍、电影、节目、音乐、游戏、应用程序等）创建一个可共享的页面。",
+    "inputLabel": "声明您的浏览器 URL：",
+    "inputPlaceholder": "你的名字",
+    "ctaButton": "领取您的 I18NTToken0 页面",
+    "signupPrompt": "立即注册以获取您的",
+    "headlinePrefix": "你所有的",
+    "rotatingWords": [
+      "建议",
+      "策展",
+      "收藏品",
+      "收藏夹"
+    ],
+    "headlineSuffix": "在一个链接和 QR 中。",
+    "badge": "永远免费",
+    "globalStrip": "Explorers 分享世界各地的推荐",
+    "preview": {
+      "todayList": "今天的清单",
+      "onePageTitle": "每一个好的推荐都一页。",
+      "onePageText": "将其作为链接、QR、消息或指南进行分享。",
+      "items": {
+        "place": "地方",
+        "book": "书",
+        "music": "音乐",
+        "game": "游戏"
+      },
+      "screenAlt": "Explorer 页面推荐屏幕"
+    },
+    "countries": {
+      "in": "印度",
+      "us": "美国",
+      "gb": "英国",
+      "jp": "日本",
+      "fr": "法国",
+      "au": "澳大利亚",
+      "br": "巴西",
+      "ae": "阿联酋",
+      "sg": "新加坡",
+      "de": "德国"
+    }
   },
   "languageModal": {
     "close": "关闭",
     "searchPlaceholder": "搜索语言...",
-    "title": "选择语言"
+    "title": "选择语言",
+    "subtitle": "选择您想要在浏览器中使用的语言。",
+    "noLanguagesFound": "未找到语言",
+    "tryDifferentSearch": "尝试不同的搜索词。",
+    "languagesAvailable": "{{count}} 种语言可用",
+    "escToClose": "按 Esc 关闭"
   },
   "legal": {
     "cookies": {
@@ -1248,56 +1297,326 @@
     "tryAgain": "Request New Link"
   },
   "sections": {
-    "analytics": {
-      "dashboardTitle": "分析仪表板",
-      "engagement": "参与度",
-      "headline": "跟踪点击、推荐和参与度",
-      "last30Days": "最近30天",
-      "referrals": "推荐",
-      "scanningDesc": "监控二维码扫描和更新",
-      "scanningTitle": "谁在扫描",
-      "spotsDesc": "数据驱动的洞察，用于更好的策展",
-      "spotsTitle": "表现最佳的地点",
-      "subtext": "查看什么有效，谁在扫描，哪些地方获得最多喜爱——实时查看。",
-      "totalScans": "总扫描次数",
-      "workingDesc": "跟踪您推荐的受欢迎程度",
-      "workingTitle": "查看什么有效"
-    },
     "createCustomize": {
+      "headline": "在几分钟内创建您的 Explorer 页面",
+      "subtext": "收集您推荐的内容，按照您的方式组织，然后通过一个链接或 QR 在任何地方共享。",
       "bulletPoints": {
         "addSpots": {
-          "description": "创建包含必访地点的清单",
-          "title": "添加您喜欢的地方"
-        },
-        "generate": {
-          "description": "您的个性化二维码几秒钟内就准备好了",
-          "title": "立即生成您的链接和二维码"
+          "title": "添加地点、经历、路线、声音和注释",
+          "description": ""
         },
         "organize": {
-          "description": "创建对您的受众有意义的类别",
-          "title": "按城市或主题整理"
+          "title": "按位置或兴趣进行组织",
+          "description": ""
+        },
+        "generate": {
+          "title": "随时编辑 - 您的链接始终保持不变",
+          "description": ""
         },
         "share": {
-          "description": "",
-          "title": "以数字方式或通过现实世界中的二维码分享"
+          "title": "在现实世界中以数字方式或通过 QR 共享",
+          "description": ""
         }
       },
-      "headline": "几分钟内创建并定制您的explorers",
       "mockup": {
-        "addPlace": "添加地点",
-        "title": "我的推荐"
+        "title": "我的建议",
+        "addPlace": "添加地点"
       },
-      "subtext": "添加您喜欢的地方，按城市或主题整理，立即生成您的二维码。"
+      "steps": [
+        {
+          "title": "添加您推荐的内容",
+          "body": "地点、人物、产品、书籍、电影、节目、音乐、游戏、应用程序、指南和笔记。"
+        },
+        {
+          "title": "按照您的方式组织",
+          "body": "按城市、主题、列表、类别、旅程或时刻进行分组，以便人们可以自然地探索。"
+        },
+        {
+          "title": "分享一个链接或 QR",
+          "body": "您的页面随时更新，而相同的链接和 QR 在任何地方都保持有效。"
+        }
+      ]
+    },
+    "shareAnywhere": {
+      "headline": "一个链接。许多旅程。",
+      "subtext": "您的 Explorer 链接将成为一个活生生的指南——人们可以按照自己的节奏保存、重新访问和探索。\n\n在个人资料、消息、表格、墙壁或卡片上共享它。\n无论它走到哪里，你的观点都会随之而来。",
+      "scanText": "扫描本地推荐",
+      "storefrontText": "非常适合店面展示",
+      "instagramTitle": "添加到您的 Instagram/Tiktok Bio",
+      "instagramDesc": "立即与您的关注者分享",
+      "menuTitle": "打印出来用于店面",
+      "menuDesc": "物理接触点变得简单",
+      "welcomeTitle": "包含在欢迎书籍中",
+      "welcomeDesc": "非常适合房东和导游",
+      "cafeMenu": "咖啡厅菜单",
+      "tokyoFoodGuide": "我的东京美食指南 explorers.earth/jane",
+      "cards": [
+        {
+          "title": "生物链接",
+          "eyebrow": "配置文件就绪"
+        },
+        {
+          "title": "QR 代码",
+          "eyebrow": "离线就绪"
+        },
+        {
+          "title": "留言",
+          "eyebrow": "聊天就绪"
+        },
+        {
+          "title": "欢迎导游",
+          "eyebrow": "宾客就绪"
+        }
+      ],
+      "visual": {
+        "scanForPicks": "扫一扫寻找精选",
+        "messageBubble": "这是我的京都清单",
+        "welcomeGuide": "欢迎指导",
+        "guideItems": [
+          "附近有早餐",
+          "博物馆路线",
+          "晚上散步"
+        ],
+        "savedRecommendation": "已保存推荐"
+      },
+      "profileCarouselCaption": "Instagram 和 TikTok 配置文件",
+      "qrEverywhereTitle": "到处添加 QR 链接",
+      "qrEverywhereDesc": "适合每个场地"
+    },
+    "analytics": {
+      "headline": "看看人们都在做什么。",
+      "subtext": "了解人们通过您的链接和 QR 代码打开、保存和重新访问哪些推荐。",
+      "workingTitle": "看看有什么效果",
+      "workingDesc": "跟踪人们打开、保存和重新访问的推荐。",
+      "scanningTitle": "了解扫描和点击",
+      "scanningDesc": "了解人们如何通过链接、QR 代码和共享接触点访问您的页面。",
+      "spotsTitle": "查找热门推荐",
+      "spotsDesc": "了解哪些地点、产品、列表和指南最受欢迎。",
+      "dashboardTitle": "分析仪表板",
+      "last30Days": "过去 30 天",
+      "totalScans": "总扫描次数",
+      "engagement": "订婚",
+      "referrals": "推荐人",
+      "livePreview": "实时预览"
+    },
+    "referEarn": {
+      "headline": "分享、推荐并赚取",
+      "subtext": "将您的推荐转化为被动奖励——当其他人使用您的二维码时获得积分。",
+      "comingSoon": "推荐奖励计划（即将推出）",
+      "rewardsTitle": "赚取奖励",
+      "rewardsDesc": "当人们使用您的推荐时获得报酬",
+      "earnedThisMonth": "本月赚取",
+      "passiveTitle": "将推荐转化为被动奖励",
+      "networkTitle": "建立您的网络并自动赚取"
+    },
+    "localTunes": {
+      "mainHeading": "Tunes",
+      "title": "在探索时聆听",
+      "body": "探索不仅仅是视觉的。声音承载着记忆、背景和情感。\n\nTunes让您可以为地点、旅程和心情收集和分享配乐——无论是路上发现的音乐，还是为您定义某个地方的声音。\n\n与您的Explorer个人资料无缝连接。",
+      "exploreButton": "探索Tunes",
+      "featuresHeading": "强大功能",
+      "features": {
+        "realtimeCollaboration": {
+          "title": "实时协作",
+          "description": "让客人立即将歌曲添加到您的播放列表，同时您完全控制播放内容。"
+        },
+        "qrCodeSharing": {
+          "title": "二维码分享",
+          "description": "通过简单的二维码扫描分享您的音乐体验——无需应用程序或下载。"
+        },
+        "youtubeIntegration": {
+          "title": "YouTube集成",
+          "description": "与YouTube无缝集成，访问数百万首歌曲并创造完美氛围。"
+        },
+        "voteLikeSystem": {
+          "title": "投票和点赞系统",
+          "description": "客人可以为他们最喜欢的歌曲投票，以实时影响播放列表队列。"
+        },
+        "silentParties": {
+          "title": "无声派对",
+          "description": "举办独特的无声派对，每个人通过自己的耳机聆听。"
+        },
+        "karaokeReady": {
+          "title": "卡拉OK就绪",
+          "description": "非常适合卡拉OK之夜，具有协作播放列表和实时歌曲请求。"
+        }
+      },
+      "venueHeading": "适合任何场所",
+      "venues": {
+        "barsPubs": "酒吧和酒馆",
+        "restaurants": "餐厅",
+        "coffeeShops": "咖啡店",
+        "eventsWeddings": "活动和婚礼",
+        "retailStores": "零售店",
+        "gymsFitness": "健身房和健身"
+      },
+      "closingStatement": "Tunes可以<strong>免费</strong>探索，付费功能可以稍后升级。"
+    },
+    "whoIsFor": {
+      "headline": "专为那些品味可以帮助他人的人而设计。",
+      "subtext": "无论您是共享城市、货架、产品列表、播放列表还是游客指南，探索者都会为您的推荐提供一个家。",
+      "cards": [
+        "个人探险家",
+        "创作者和策展人",
+        "主机和企业",
+        "品牌和组织"
+      ],
+      "useCases": {
+        "travelers": "旅行者",
+        "travelersDesc": "与其他探险家分享发现的宝石",
+        "influencers": "影响者",
+        "influencersDesc": "将当地知识货币化并建立社区",
+        "airbnbHosts": "I18NTToken0 主机",
+        "airbnbHostsDesc": "通过本地洞察增强宾客体验",
+        "hotels": "酒店",
+        "hotelsDesc": "提供精心策划的本地推荐",
+        "restaurants": "餐厅",
+        "restaurantsDesc": "与其他本地企业交叉推广",
+        "cafes": "咖啡馆",
+        "cafesDesc": "与顾客分享附近的最爱",
+        "localGuides": "本地向导",
+        "localGuidesDesc": "将专业知识扩展到个人旅游之外",
+        "creators": "创作者",
+        "creatorsDesc": "通过可行的提示增加内容之外的价值",
+        "tourOperators": "旅游经营者",
+        "tourOperatorsDesc": "将体验延伸至预定行程之外",
+        "anyBusiness": "任何业务",
+        "anyBusinessDesc": "建立社区和客户忠诚度"
+      },
+      "explorerLabel": "I18NTToken0",
+      "visual": {
+        "personal": [
+          "咖啡店",
+          "书",
+          "踪迹",
+          "专辑",
+          "电影",
+          "游戏"
+        ],
+        "creators": [
+          "#1",
+          "#2",
+          "#3",
+          "#4"
+        ],
+        "hostsQr": "I18NTToken0"
+      },
+      "chips": [
+        "旅行者",
+        "当地人",
+        "家庭",
+        "学生",
+        "游牧民族",
+        "创作者",
+        "影响者",
+        "博主",
+        "审稿人",
+        "摄影师",
+        "教育工作者",
+        "社区领袖",
+        "酒店",
+        "I18NTToken0s",
+        "旅舍",
+        "咖啡馆",
+        "餐厅",
+        "零售店",
+        "健身房",
+        "沙龙",
+        "诊所",
+        "精品店",
+        "品牌",
+        "初创公司",
+        "机构",
+        "大学",
+        "企业",
+        "机场",
+        "非政府组织",
+        "政府团队"
+      ]
+    },
+    "testimonials": {
+      "headline": "深受旅行者、创作者和房东的喜爱",
+      "subtext": "了解世界各地的人们如何使用浏览器来分享最重要的事情。",
+      "scrollLeft": "向左滚动推荐",
+      "scrollRight": "向右滚动推荐",
+      "items": [
+        {
+          "id": "1",
+          "name": "普里亚·夏尔马",
+          "role": "旅游博主",
+          "location": "印度孟买",
+          "quote": "探险家改变了我分享旅行知识的方式。我的关注者喜欢立即访问我精选的推荐！"
+        },
+        {
+          "id": "2",
+          "name": "拉吉·帕特尔",
+          "role": "I18NTToken0 主机",
+          "location": "印度德里",
+          "quote": "我的客人非常喜欢他们的欢迎套件中的个性化 QR 代码。它已经成为我的标志性触感！"
+        },
+        {
+          "id": "3",
+          "name": "田中由纪",
+          "role": "餐厅老板",
+          "location": "日本东京",
+          "quote": "我们与客户分享我们的探索者，以推荐其他当地景点。它创造了惊人的社区联系。"
+        },
+        {
+          "id": "4",
+          "name": "玛丽亚席尔瓦",
+          "role": "导游",
+          "location": "巴西圣保罗",
+          "quote": "探险家帮助我将我的专业知识扩展到旅行时间之外。客户可以随时访问我的推荐！"
+        },
+        {
+          "id": "5",
+          "name": "詹姆斯·威尔逊",
+          "role": "旅游影响者",
+          "location": "澳大利亚悉尼",
+          "quote": "作为旅游影响者，探险家让我可以轻松地与观众分享我最喜欢的景点。 QR 代码功能非常棒！"
+        },
+        {
+          "id": "6",
+          "name": "苏菲·马丁",
+          "role": "当地导游",
+          "location": "法国巴黎",
+          "quote": "我使用探险家为我的客户创建徒步旅行。他们可以扫描 QR 并按照自己的节奏进行探索！"
+        }
+      ]
     },
     "faq": {
-      "error": "加载常见问题时出错。请稍后重试。",
       "headline": "有问题吗？",
+      "subtext": "我们已经回答了人们在开始之前最常问的问题。",
       "loading": "加载常见问题...",
-      "subtext": "我们已经回答了人们在开始之前最常问的问题。"
+      "error": "加载常见问题时出错。请稍后重试。",
+      "fallbackItems": [
+        {
+          "Sequence": 1,
+          "Question": "我可以向我的 Explorer 页面添加什么？",
+          "Answer": "地点、人物、产品、书籍、电影、节目、音乐、游戏、应用程序、指南和笔记。"
+        },
+        {
+          "Sequence": 2,
+          "Question": "我可以用 QR 代码分享吗？",
+          "Answer": "是的。您的 Explorer 页面可以作为配置文件、消息、表格、卡片和印刷指南的链接或 QR 进行共享。"
+        },
+        {
+          "Sequence": 3,
+          "Question": "我可以稍后更新我的建议吗？",
+          "Answer": "是的。您可以保持页面新鲜，同时相同的链接和 QR 继续有效。"
+        },
+        {
+          "Sequence": 4,
+          "Question": "探险家是永远免费的吗？",
+          "Answer": "是的。该页面可以清楚地传达免费承诺，而无需使用大量付费语言。"
+        }
+      ]
     },
     "features": {
-      "communityDriven": {
-        "title": "社区驱动的发现"
+      "title": "设计为保持低调",
+      "subtitle": "简单、周到的功能，让您的推荐闪闪发光。",
+      "simpleLinks": {
+        "title": "简单链接和二维码分享"
       },
       "livingGuides": {
         "title": "实时、可编辑的指南"
@@ -1305,347 +1624,143 @@
       "locationAware": {
         "title": "位置感知推荐"
       },
-      "privacyFirst": {
-        "title": "设计优先考虑隐私"
-      },
-      "simpleLinks": {
-        "title": "简单链接和二维码分享"
-      },
       "soundPlaylists": {
         "title": "可选声音和播放列表"
       },
-      "subtitle": "简单、周到的功能，让您的推荐闪闪发光。",
-      "title": "设计为保持低调"
+      "privacyFirst": {
+        "title": "设计优先考虑隐私"
+      },
+      "communityDriven": {
+        "title": "社区驱动的发现"
+      }
     },
     "finalCTA": {
-      "creating": "正在创建您的explorers...",
+      "headline": "今天就开始分享您的世界",
+      "subtext": "预订您的免费explorers，将您的本地洞察转化为可分享的指南。",
       "ctaButton": "预订explorers – 永久免费",
       "disclaimer": "无需信用卡 • 2分钟设置",
-      "headline": "今天就开始分享您的世界",
-      "subtext": "预订您的免费explorers，将您的本地洞察转化为可分享的指南。"
+      "creating": "正在创建您的explorers..."
     },
-    "localTunes": {
-      "body": "探索不仅仅是视觉的。声音承载着记忆、背景和情感。\n\nTunes让您可以为地点、旅程和心情收集和分享配乐——无论是路上发现的音乐，还是为您定义某个地方的声音。\n\n与您的Explorer个人资料无缝连接。",
-      "closingStatement": "Tunes可以<strong>免费</strong>探索，付费功能可以稍后升级。",
-      "exploreButton": "探索Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "非常适合卡拉OK之夜，具有协作播放列表和实时歌曲请求。",
-          "title": "卡拉OK就绪"
-        },
-        "qrCodeSharing": {
-          "description": "通过简单的二维码扫描分享您的音乐体验——无需应用程序或下载。",
-          "title": "二维码分享"
-        },
-        "realtimeCollaboration": {
-          "description": "让客人立即将歌曲添加到您的播放列表，同时您完全控制播放内容。",
-          "title": "实时协作"
-        },
-        "silentParties": {
-          "description": "举办独特的无声派对，每个人通过自己的耳机聆听。",
-          "title": "无声派对"
-        },
-        "voteLikeSystem": {
-          "description": "客人可以为他们最喜欢的歌曲投票，以实时影响播放列表队列。",
-          "title": "投票和点赞系统"
-        },
-        "youtubeIntegration": {
-          "description": "与YouTube无缝集成，访问数百万首歌曲并创造完美氛围。",
-          "title": "YouTube集成"
-        }
-      },
-      "featuresHeading": "强大功能",
-      "mainHeading": "Tunes",
-      "title": "在探索时聆听",
-      "venueHeading": "适合任何场所",
-      "venues": {
-        "barsPubs": "酒吧和酒馆",
-        "coffeeShops": "咖啡店",
-        "eventsWeddings": "活动和婚礼",
-        "gymsFitness": "健身房和健身",
-        "restaurants": "餐厅",
-        "retailStores": "零售店"
-      }
-    },
-    "referEarn": {
-      "comingSoon": "推荐奖励计划（即将推出）",
-      "earnedThisMonth": "本月赚取",
-      "headline": "分享、推荐并赚取",
-      "networkTitle": "建立您的网络并自动赚取",
-      "passiveTitle": "将推荐转化为被动奖励",
-      "rewardsDesc": "当人们使用您的推荐时获得报酬",
-      "rewardsTitle": "赚取奖励",
-      "subtext": "将您的推荐转化为被动奖励——当其他人使用您的二维码时获得积分。"
-    },
-    "shareAnywhere": {
-      "cafeMenu": "咖啡厅菜单",
-      "headline": "在社交媒体、商店橱窗或城市墙壁上分享",
-      "instagramDesc": "立即与您的关注者分享",
-      "instagramTitle": "添加到您的Instagram简介",
-      "menuDesc": "物理接触点变得简单",
-      "menuTitle": "打印在菜单上",
-      "profileCarouselCaption": "Instagram & TikTok profiles",
-      "qrEverywhereDesc": "Perfect for Every Venue",
-      "qrEverywhereTitle": "Add the QR link everywhere",
-      "scanText": "扫描获取本地推荐",
-      "storefrontText": "完美适合商店橱窗展示",
-      "subtext": "添加到您的Instagram简介，打印在菜单上，或包含在欢迎书中——您的指南，随时准备就绪。",
-      "tokyoFoodGuide": "我的东京美食指南 explorers.earth/jane",
-      "welcomeDesc": "完美适合房东和导游",
-      "welcomeTitle": "包含在欢迎书中"
-    },
-    "testimonials": {
-      "headline": "深受旅行者、创作者和房东喜爱",
-      "items": [
-        {
-          "id": "1",
-          "location": "旧金山",
-          "name": "Marcus Chen",
-          "quote": "explorers改变了我分享旅行知识的方式。我的粉丝们喜欢即时访问我精心策划的推荐！",
-          "role": "旅行博主"
-        },
-        {
-          "id": "2",
-          "location": "巴塞罗那",
-          "name": "Sarah Johnson",
-          "quote": "我的客人绝对喜欢他们欢迎包中的个性化二维码。这已经成为我的标志性特色！",
-          "role": "Airbnb房东"
-        },
-        {
-          "id": "3",
-          "location": "墨西哥城",
-          "name": "Alex Rodriguez",
-          "quote": "我们与客户分享我们的explorers来推荐其他本地景点。它创造了惊人的社区联系。",
-          "role": "餐厅老板"
-        },
-        {
-          "id": "4",
-          "location": "伦敦",
-          "name": "Emma Thompson",
-          "quote": "explorers帮助我扩展我的专业知识超越游览时间。客户可以随时访问我的推荐！",
-          "role": "导游"
-        },
-        {
-          "id": "5",
-          "location": "Sydney, Australia",
-          "name": "James Wilson",
-          "quote": "As a travel influencer, explorers makes it so easy to share my favorite spots with my audience. The QR code feature is brilliant!",
-          "role": "Travel Influencer"
-        },
-        {
-          "id": "6",
-          "location": "Paris, France",
-          "name": "Sophie Martin",
-          "quote": "I use explorers to create walking tours for my clients. They can scan the QR and explore at their own pace!",
-          "role": "Local Guide"
-        }
+    "productCategories": {
+      "headline": "推荐的地方不止于此。",
+      "subtext": "为地点、人物、产品、书籍、电影、节目、音乐、游戏、应用程序和工具创建一个页面。",
+      "actions": [
+        "节省",
+        "组织",
+        "分享"
       ],
-      "scrollLeft": "向左滚动推荐",
-      "scrollRight": "向右滚动推荐",
-      "subtext": "看看世界各地的人们如何使用explorers分享最重要的内容。"
-    },
-    "whoIsFor": {
-      "cards": {
-        "businesses": {
-          "items": {
-            "boutique": {
-              "label": "精品店",
-              "oneLiner": "列出精选发现的精品店"
-            },
-            "cafe": {
-              "label": "咖啡馆",
-              "oneLiner": "突出显示最受欢迎菜单项的咖啡馆"
-            },
-            "clinic": {
-              "label": "诊所",
-              "oneLiner": "分享健康相关地点的诊所"
-            },
-            "gym": {
-              "label": "健身房",
-              "oneLiner": "建议本地健康场所的健身房"
-            },
-            "restaurant": {
-              "label": "餐厅",
-              "oneLiner": "分享必试菜肴的餐厅"
-            },
-            "retailShop": {
-              "label": "零售店",
-              "oneLiner": "分享产品推荐的商店"
-            },
-            "salon": {
-              "label": "沙龙",
-              "oneLiner": "提供美容指南的沙龙"
-            },
-            "spa": {
-              "label": "水疗中心",
-              "oneLiner": "列出附近放松选项的水疗中心"
-            }
-          },
-          "oneLiner": "用有用的推荐指导客户。",
-          "title": "企业"
-        },
-        "creators": {
-          "items": {
-            "blogger": {
-              "label": "博主",
-              "oneLiner": "策划书面指南的博主"
-            },
-            "communityLeader": {
-              "label": "社区领袖",
-              "oneLiner": "策划有用列表的社区领袖"
-            },
-            "educator": {
-              "label": "教育者",
-              "oneLiner": "分享学习指南的教育者"
-            },
-            "influencer": {
-              "label": "影响者",
-              "oneLiner": "分享最佳选择的影响者"
-            },
-            "photographer": {
-              "label": "摄影师",
-              "oneLiner": "分享照片地点的摄影师"
-            },
-            "reviewer": {
-              "label": "评论者",
-              "oneLiner": "列出最佳评分地点的评论者"
-            },
-            "vlogger": {
-              "label": "视频博主",
-              "oneLiner": "分享视觉旅程的视频博主"
-            }
-          },
-          "oneLiner": "与您的观众分享精选列表。",
-          "title": "创作者"
-        },
-        "hospitality": {
-          "items": {
-            "airbnb": {
-              "label": "Airbnb",
-              "oneLiner": "分享社区最爱的房东"
-            },
-            "homestay": {
-              "label": "民宿",
-              "oneLiner": "提供面向家庭的指南的民宿"
-            },
-            "hostel": {
-              "label": "青年旅舍",
-              "oneLiner": "分享背包客提示的青年旅舍"
-            },
-            "hotel": {
-              "label": "酒店",
-              "oneLiner": "提供本地指南的酒店"
-            },
-            "pgColiving": {
-              "label": "PG/合租",
-              "oneLiner": "显示重要附近地点的PG/合租"
-            },
-            "resort": {
-              "label": "度假村",
-              "oneLiner": "提供活动列表的度假村"
-            }
-          },
-          "oneLiner": "为客人提供精选的本地见解。",
-          "title": "酒店业"
-        },
-        "individuals": {
-          "items": {
-            "emergencySharer": {
-              "label": "紧急分享者",
-              "oneLiner": "发布重要地点的紧急分享者"
-            },
-            "family": {
-              "label": "家庭",
-              "oneLiner": "分享有用地点的家庭"
-            },
-            "local": {
-              "label": "本地人",
-              "oneLiner": "分享社区提示的本地人"
-            },
-            "nomad": {
-              "label": "数字游民",
-              "oneLiner": "列出适合工作的空间的数字游民"
-            },
-            "student": {
-              "label": "学生",
-              "oneLiner": "分享校园/附近地点的学生"
-            },
-            "traveler": {
-              "label": "旅行者",
-              "oneLiner": "分享旅行地点的人们"
-            }
-          },
-          "oneLiner": "分享个人或本地推荐。",
-          "title": "个人"
-        },
-        "organizations": {
-          "items": {
-            "agency": {
-              "label": "旅行社",
-              "oneLiner": "列出必游地点的旅行社"
-            },
-            "airline": {
-              "label": "航空公司",
-              "oneLiner": "分享城市指南的航空公司"
-            },
-            "airport": {
-              "label": "机场",
-              "oneLiner": "提供航站楼+城市提示的机场"
-            },
-            "corporate": {
-              "label": "企业",
-              "oneLiner": "列出附近资源的企业"
-            },
-            "government": {
-              "label": "政府",
-              "oneLiner": "突出公共服务的部门"
-            },
-            "ngo": {
-              "label": "非政府组织",
-              "oneLiner": "分享社区资源的非政府组织"
-            },
-            "railway": {
-              "label": "铁路",
-              "oneLiner": "分享平台信息的铁路"
-            },
-            "university": {
-              "label": "大学",
-              "oneLiner": "分享校园必需品的大学"
-            }
-          },
-          "oneLiner": "提供精选的指南和资源。",
-          "title": "组织"
-        }
+      "overlayLabel": "I18NTToken0页面",
+      "visualLabels": {
+        "products": "真正的最爱",
+        "apps": "有用的堆栈"
       },
-      "headline": "explorers.earth适合谁？",
-      "subtext": "explorers.earth适合任何相信分享是一种责任的人——而不是广播。",
-      "useCases": {
-        "airbnbHosts": "Airbnb房东",
-        "airbnbHostsDesc": "用本地洞察提升客人体验",
-        "anyBusiness": "任何企业",
-        "anyBusinessDesc": "建立社区和客户忠诚度",
-        "cafes": "咖啡馆",
-        "cafesDesc": "与客户分享附近喜爱的地方",
-        "creators": "创作者",
-        "creatorsDesc": "通过可操作的提示为内容增加价值",
-        "hotels": "酒店",
-        "hotelsDesc": "提供精选的本地推荐",
-        "influencers": "影响者",
-        "influencersDesc": "将本地知识货币化并建立社区",
-        "localGuides": "本地向导",
-        "localGuidesDesc": "将个人导览之外的专长规模化",
-        "restaurants": "餐厅",
-        "restaurantsDesc": "与其他本地企业交叉推广",
-        "tourOperators": "旅游运营商",
-        "tourOperatorsDesc": "将体验扩展到计划旅游之外",
-        "travelers": "旅行者",
-        "travelersDesc": "与其他探索者分享发现的宝藏"
-      }
+      "visualDetails": {
+        "products": [
+          "旅行装备",
+          "日常携带",
+          "创作者套件"
+        ],
+        "apps": [
+          "规划工具",
+          "有用的应用程序",
+          "资源链接"
+        ]
+      },
+      "categories": [
+        {
+          "id": "places",
+          "label": "地点",
+          "title": "当地景点、指南和路线",
+          "description": "人们可以实际参观的餐厅、街区、博物馆、路线和隐藏的瑰宝。"
+        },
+        {
+          "id": "people",
+          "label": "人们",
+          "title": "值得追随或学习的人",
+          "description": "创作者、创始人、指导者、艺术家、教师、专家以及塑造您品味的人。"
+        },
+        {
+          "id": "books",
+          "label": "图书",
+          "title": "书籍和阅读清单",
+          "description": "您在聊天、笔记、时事通讯和旅行对话中不断推荐的书籍。"
+        },
+        {
+          "id": "movies",
+          "label": "电影和电视",
+          "title": "电影、节目和观看列表",
+          "description": "适合各种心情或观众的电影、连续剧、纪录片和观看列表。"
+        },
+        {
+          "id": "games",
+          "label": "游戏",
+          "title": "可供探索的游戏和世界",
+          "description": "人们接下来应该尝试的游戏、任务、世界和体验。"
+        },
+        {
+          "id": "music",
+          "label": "音乐",
+          "title": "专辑、艺术家和播放列表",
+          "description": "与地点和时刻相关的艺术家、专辑、歌曲、播放列表和配乐。"
+        },
+        {
+          "id": "products",
+          "label": "产品",
+          "title": "人们实际推荐的产品",
+          "description": "日常最爱、旅行装备、创作工具、礼物和值得保存的产品。"
+        },
+        {
+          "id": "apps",
+          "label": "应用程序和工具",
+          "title": "应用程序、工具和有用的链接",
+          "description": "让生活更轻松的软件、网站、模板、工具和资源。"
+        }
+      ]
     }
   },
   "seo": {
     "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
+    "landing": {
+      "title": "explorers - 发现并分享个性化的本地推荐",
+      "description": "发现并与探险家分享您最喜欢的当地景点。创建个性化的城市指南，组织必游地点，并通过可共享的 QR 代码来发现它们。在交互式地图上探索隐藏的瑰宝、精选推荐和当地旅行提示。",
+      "keywords": [
+        "发现我附近的地方",
+        "个性化旅行指南",
+        "本地推荐应用程序",
+        "城市指南创建者",
+        "分享旅行小贴士",
+        "隐藏的宝石推荐",
+        "城市里可以做的事情",
+        "基于地图的旅行指南",
+        "当地最佳景点",
+        "精选餐厅推荐",
+        "旅行指南 QR 代码",
+        "创建和共享位置列表",
+        "用户生成的本地指南",
+        "探索你周围的地方",
+        "数字城市指南",
+        "QR 代码",
+        "当地推荐",
+        "地点共享",
+        "旅游指南",
+        "当地企业",
+        "数字化推荐",
+        "可共享的链接",
+        "位置共享",
+        "旅行小贴士",
+        "当地景点"
+      ],
+      "geoDescription": "使用个性化 QR 代码和可共享链接发现并分享您最喜爱的当地景点",
+      "geoFeatures": [
+        "个性化 QR 代码生成",
+        "本地推荐分享",
+        "分析和见解",
+        "移动优化设计",
+        "社区发现"
+      ],
+      "geoIndustry": "技术"
+    }
   },
   "settings": {
     "account": {
@@ -2162,5 +2277,14 @@
       "usernameNotChanged": "用户名未更改。请更改您的用户名",
       "validationPending": "验证待处理。请等待"
     }
+  },
+  "usernameClaim": {
+    "validating": "正在验证...",
+    "claimFree": "免费索赔",
+    "trySuggestions": "尝试：I18NTToken0",
+    "available": "用户名可用。",
+    "unavailable": "用户名不可用。",
+    "confirmOnSignup": "我们将在注册时确认可用性。",
+    "checkingAvailability": "正在检查可用性..."
   }
 }

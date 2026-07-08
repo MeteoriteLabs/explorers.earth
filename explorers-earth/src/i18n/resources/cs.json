@@ -1146,50 +1146,99 @@
     "verificationSent": "Verification email sent to:"
   },
   "footer": {
-    "copyright": "© 2025 explorers. Všechna práva vyhrazena.",
+    "tagline": "Nechte svá doporučení obletět svět.",
     "email": "hello@explorers.earth",
-    "links": {
-      "about": "O nás",
-      "contact": "Kontakt",
-      "cookies": "Zásady cookies",
-      "faq": "Často kladené otázky",
-      "howItWorks": "Jak to funguje",
-      "privacy": "Zásady ochrany osobních údajů",
-      "terms": "Obchodní podmínky"
-    },
-    "madeWithLove": "Vytvořeno s láskou na Zemi",
     "sections": {
+      "product": "Produkt",
       "contact": "Kontakt",
       "legal": "Právní",
-      "product": "Produkt"
+      "company": "Společnost"
     },
-    "tagline": "Nechte svá doporučení cestovat světem."
+    "links": {
+      "howItWorks": "Jak to funguje",
+      "faq": "FAQ",
+      "contact": "Kontakt",
+      "about": "O",
+      "terms": "Smluvní podmínky",
+      "privacy": "Zásady ochrany osobních údajů",
+      "cookies": "Zásady používání souborů cookie",
+      "product": "Produkt",
+      "shareAnywhere": "Sdílejte kdekoli"
+    },
+    "copyright": "© 2025 průzkumníci. Všechna práva vyhrazena.",
+    "madeWithLove": "Vyrobeno s láskou na zemi",
+    "freeForever": "Navždy zdarma."
   },
   "header": {
-    "auth": {
-      "login": "Přihlásit se",
-      "signUp": "Registrovat se"
-    },
     "nav": {
+      "howItWorks": "Jak to funguje",
+      "whoIsFor": "Pro koho",
+      "faq": "FAQ",
       "about": "O nás",
       "contact": "Kontakt",
-      "faq": "Často kladené otázky",
-      "howItWorks": "Jak to funguje",
-      "whoIsFor": "Pro koho"
+      "product": "Produkt",
+      "share": "Podíl",
+      "openMenu": "Otevřete navigační nabídku",
+      "closeMenu": "Zavřete navigační nabídku"
+    },
+    "auth": {
+      "login": "Přihlásit se",
+      "signUp": "Registrovat se",
+      "claimFreePage": "Získejte bezplatnou stránku",
+      "claimFree": "Bezplatná reklamace"
     }
   },
   "hero": {
-    "ctaButton": "Rezervovat explorers",
-    "headline": "Všechna vaše doporučení v jednom QR a jednoduchém odkazu.",
-    "inputLabel": "Rezervujte si váš explorers URL:",
+    "headline": "Všechna vaše doporučení – jeden odkaz, jeden QR",
+    "subtext": "Vytvořte jednu stránku ke sdílení pro vše, co doporučujete – místa, lidi, produkty, knihy, filmy, pořady, hudbu, hry, aplikace a další.",
+    "inputLabel": "Nárokujte si adresu URL průzkumníků:",
     "inputPlaceholder": "vaše jméno",
-    "signupPrompt": "Zaregistrujte se nyní a získejte svůj",
-    "subtext": "Sdílejte to, co víte a milujete o místě — a udělejte to objevitelné pro všechny, všude"
+    "ctaButton": "Získejte svou stránku Explorer",
+    "signupPrompt": "Zaregistrujte se a získejte ten svůj",
+    "headlinePrefix": "Všechny vaše",
+    "rotatingWords": [
+      "doporučení",
+      "kurací",
+      "sbírky",
+      "oblíbené"
+    ],
+    "headlineSuffix": "v jednom odkazu a QR.",
+    "badge": "Navždy zdarma",
+    "globalStrip": "Explorer sdílí doporučení po celém světě",
+    "preview": {
+      "todayList": "Dnešní seznam",
+      "onePageTitle": "Jedna stránka za každé dobré doporučení.",
+      "onePageText": "Sdílejte jej jako odkaz, QR, zprávu nebo průvodce.",
+      "items": {
+        "place": "Místo",
+        "book": "Rezervovat",
+        "music": "Hudba",
+        "game": "Hra"
+      },
+      "screenAlt": "Explorer obrazovka doporučení stránek"
+    },
+    "countries": {
+      "in": "Indie",
+      "us": "Spojené státy",
+      "gb": "Spojené království",
+      "jp": "Japonsko",
+      "fr": "Francie",
+      "au": "Austrálie",
+      "br": "Brazílie",
+      "ae": "Spojené arabské emiráty",
+      "sg": "Singapur",
+      "de": "Německo"
+    }
   },
   "languageModal": {
-    "close": "Zavřít",
+    "close": "Blízko",
     "searchPlaceholder": "Hledat jazyky...",
-    "title": "Vyberte Jazyk"
+    "title": "Vyberte Jazyk",
+    "subtitle": "Vyberte jazyk, který chcete používat napříč průzkumníky.",
+    "noLanguagesFound": "Nebyly nalezeny žádné jazyky",
+    "tryDifferentSearch": "Zkuste jiný hledaný výraz.",
+    "languagesAvailable": "K dispozici je 18NTOKEN0 jazyků",
+    "escToClose": "Stisknutím Esc zavřete"
   },
   "legal": {
     "cookies": {
@@ -1248,56 +1297,326 @@
     "tryAgain": "Request New Link"
   },
   "sections": {
-    "analytics": {
-      "dashboardTitle": "Analytický Dashboard",
-      "engagement": "Zapojení",
-      "headline": "Sledujte kliknutí, doporučení a zapojení",
-      "last30Days": "Posledních 30 dní",
-      "referrals": "Doporučení",
-      "scanningDesc": "Sledujte QR skenování a aktualizace",
-      "scanningTitle": "Kdo skenuje",
-      "spotsDesc": "Data-řízené poznatky pro lepší kurátorství",
-      "spotsTitle": "Nejlepší místa",
-      "subtext": "Podívejte se, co funguje, kdo skenuje a která místa získávají nejvíce lásky — v reálném čase.",
-      "totalScans": "Celkem Skenování",
-      "workingDesc": "Sledujte popularitu vašich doporučení",
-      "workingTitle": "Podívejte se, co funguje"
-    },
     "createCustomize": {
+      "headline": "Vytvořte si stránku Explorer během několika minut",
+      "subtext": "Sbírejte, co doporučujete, uspořádejte si to podle svého a sdílejte to kdekoli pomocí jednoho odkazu nebo QR.",
       "bulletPoints": {
         "addSpots": {
-          "description": "Vytvořte seznam se svými must-visit",
-          "title": "Přidejte svá oblíbená místa"
-        },
-        "generate": {
-          "description": "Vaše personalizované QR je připraveno za sekundy",
-          "title": "Vygenerujte svůj odkaz a QR okamžitě"
+          "title": "Přidejte místa, zážitky, trasy, zvuky a poznámky",
+          "description": ""
         },
         "organize": {
-          "description": "Vytvořte kategorie, které dávají smysl pro vaše publikum",
-          "title": "Uspořádejte podle města nebo tématu"
+          "title": "Uspořádejte podle místa nebo zájmu",
+          "description": ""
+        },
+        "generate": {
+          "title": "Upravte kdykoli – váš odkaz zůstane vždy stejný",
+          "description": ""
         },
         "share": {
-          "description": "",
-          "title": "Sdílejte digitálně nebo prostřednictvím QR ve skutečném světě"
+          "title": "Sdílejte digitálně nebo prostřednictvím QR v reálném světě",
+          "description": ""
         }
       },
-      "headline": "Vytvořte a přizpůsobte si explorers za minuty",
       "mockup": {
-        "addPlace": "Přidat Místo",
-        "title": "Moje Doporučení"
+        "title": "Moje doporučení",
+        "addPlace": "Přidat místo"
       },
-      "subtext": "Přidejte svá oblíbená místa, uspořádejte podle města nebo tématu a okamžitě vygenerujte své QR."
+      "steps": [
+        {
+          "title": "Přidejte, co doporučujete",
+          "body": "Místa, lidé, produkty, knihy, filmy, pořady, hudba, hry, aplikace, průvodci a poznámky."
+        },
+        {
+          "title": "Uspořádejte si to po svém",
+          "body": "Seskupte se podle města, tématu, seznamu, kategorie, cesty nebo okamžiku, aby lidé mohli objevovat přirozeně."
+        },
+        {
+          "title": "Sdílejte jeden odkaz nebo QR",
+          "body": "Vaše stránka se aktualizuje kdykoli, zatímco stejný odkaz a QR fungují všude."
+        }
+      ]
+    },
+    "shareAnywhere": {
+      "headline": "Jeden odkaz. Mnoho cest.",
+      "subtext": "Váš odkaz Explorer se stane živým průvodcem – něco, co si lidé mohou uložit, znovu navštívit a prozkoumat svým vlastním tempem.\n\nSdílejte jej na profilu, zprávě, stole, zdi nebo kartě.\nAť to jde kamkoli, s tím jde i váš pohled.",
+      "scanText": "Vyhledejte místní doporučení",
+      "storefrontText": "Ideální pro výkladní skříně",
+      "instagramTitle": "Přidejte do svého Instagram/Tiktok Bio",
+      "instagramDesc": "Okamžitě sdílejte se svými následovníky",
+      "menuTitle": "Vytiskněte si to pro Storefront",
+      "menuDesc": "Fyzické dotykové body jsou snadné",
+      "welcomeTitle": "Zahrnout do uvítacích knih",
+      "welcomeDesc": "Ideální pro hostitele a průvodce",
+      "cafeMenu": "Menu kavárny",
+      "tokyoFoodGuide": "Můj průvodce jídlem v Tokiu explorers.earth/jane",
+      "cards": [
+        {
+          "title": "Odkaz v biu",
+          "eyebrow": "Profil připraven"
+        },
+        {
+          "title": "Kódy QR",
+          "eyebrow": "Připraveno pro režim offline"
+        },
+        {
+          "title": "Zprávy",
+          "eyebrow": "Připraveno na chat"
+        },
+        {
+          "title": "Vítejte průvodci",
+          "eyebrow": "Host připraven"
+        }
+      ],
+      "visual": {
+        "scanForPicks": "Vyhledejte výběr",
+        "messageBubble": "Zde je můj kjótský seznam",
+        "welcomeGuide": "Vítejte průvodce",
+        "guideItems": [
+          "Snídaně nedaleko",
+          "Cesta do muzea",
+          "Večerní procházka"
+        ],
+        "savedRecommendation": "Uložené doporučení"
+      },
+      "profileCarouselCaption": "Profily Instagram & TikTok",
+      "qrEverywhereTitle": "Přidejte odkaz QR všude",
+      "qrEverywhereDesc": "Ideální pro každé místo"
+    },
+    "analytics": {
+      "headline": "Podívejte se, s čím se lidé zabývají.",
+      "subtext": "Pochopte, která doporučení lidé otevírají, ukládají a znovu navštěvují přes vaše odkazy a kódy QR.",
+      "workingTitle": "Podívejte se, co funguje",
+      "workingDesc": "Sledujte, která doporučení lidé otevírají, ukládají a znovu navštěvují.",
+      "scanningTitle": "Pochopte skenování a kliknutí",
+      "scanningDesc": "Podívejte se, jak se lidé dostanou na vaši stránku z odkazů, kódů QR a sdílených kontaktních bodů.",
+      "spotsTitle": "Najděte nejlepší doporučení",
+      "spotsDesc": "Zjistěte, která místa, produkty, seznamy a průvodci jsou nejvíce oblíbení.",
+      "dashboardTitle": "Panel Analytics",
+      "last30Days": "Posledních 30 dní",
+      "totalScans": "Celkový počet skenů",
+      "engagement": "Zasnoubení",
+      "referrals": "doporučení",
+      "livePreview": "Živý náhled"
+    },
+    "referEarn": {
+      "headline": "Sdílejte, doporučujte a vydělávejte",
+      "subtext": "Proměňte svá doporučení v pasivní odměny — získejte kredity, když ostatní používají vaše QR.",
+      "comingSoon": "Program doporučovacích odměn (brzy)",
+      "rewardsTitle": "Vydělávejte Odměny",
+      "rewardsDesc": "Získejte zaplaceno, když lidé používají vaše doporučení",
+      "earnedThisMonth": "Vyděláno tento měsíc",
+      "passiveTitle": "Proměňte doporučení v pasivní odměny",
+      "networkTitle": "Vybudujte svou síť a vydělávejte automaticky"
+    },
+    "localTunes": {
+      "mainHeading": "Tunes",
+      "title": "Poslouchejte při objevování",
+      "body": "Objevování není jen vizuální. Zvuk nese paměť, kontext a emoce.\n\nTunes vám umožňuje sbírat a sdílet soundtracky pro místa, cesty a nálady — ať už je to hudba objevená na cestě nebo zvuky, které definují místo pro vás.\n\nBezproblémově propojeno s vaším profilem Explorer.",
+      "exploreButton": "Prozkoumat Tunes",
+      "featuresHeading": "Výkonné Funkce",
+      "features": {
+        "realtimeCollaboration": {
+          "title": "Spolupráce v Reálném Čase",
+          "description": "Umožněte hostům okamžitě přidávat písně do vašeho playlistu, přičemž si zachováte plnou kontrolu nad tím, co se přehrává."
+        },
+        "qrCodeSharing": {
+          "title": "Sdílení QR Kódu",
+          "description": "Sdílejte svůj hudební zážitek jednoduchým skenováním QR kódu — žádné aplikace ani stahování není potřeba."
+        },
+        "youtubeIntegration": {
+          "title": "Integrace YouTube",
+          "description": "Bezproblémově se integrujte s YouTube pro přístup k milionům písní a vytvoření dokonalé atmosféry."
+        },
+        "voteLikeSystem": {
+          "title": "Systém Hlasování a Líbí se",
+          "description": "Hosté mohou hlasovat pro své oblíbené písně, aby ovlivnili frontu playlistu v reálném čase."
+        },
+        "silentParties": {
+          "title": "Tiché Večírky",
+          "description": "Pořádejte jedinečné tiché večírky, kde všichni poslouchají přes své vlastní sluchátka."
+        },
+        "karaokeReady": {
+          "title": "Připraveno pro Karaoke",
+          "description": "Perfektní pro karaoke večery s kolaborativními playlisty a požadavky na písně v reálném čase."
+        }
+      },
+      "venueHeading": "Perfektní pro Každé Místo",
+      "venues": {
+        "barsPubs": "Bary a Hospody",
+        "restaurants": "Restaurace",
+        "coffeeShops": "Kavárny",
+        "eventsWeddings": "Události a Svátby",
+        "retailStores": "Obchody",
+        "gymsFitness": "Posilovny a Fitness"
+      },
+      "closingStatement": "Tunes je <strong>zdarma</strong> k prozkoumání, a pro placené funkce můžete později upgradovat."
+    },
+    "whoIsFor": {
+      "headline": "Stvořeno pro lidi, jejichž vkus pomáhá ostatním.",
+      "subtext": "Ať už sdílíte město, poličku, seznam produktů, seznam skladeb nebo průvodce pro hosty, průzkumníci dávají vašim doporučením domov.",
+      "cards": [
+        "Osobní průzkumníci",
+        "Tvůrci a kurátoři",
+        "Hostitelé a podniky",
+        "Značky a organizace"
+      ],
+      "useCases": {
+        "travelers": "Cestovatelé",
+        "travelersDesc": "Sdílejte objevené drahokamy s ostatními průzkumníky",
+        "influencers": "Influenceři",
+        "influencersDesc": "Zpeněžujte místní znalosti a budujte komunitu",
+        "airbnbHosts": "Airbnb Hostitelé",
+        "airbnbHostsDesc": "Vylepšete zkušenost hostů s místními poznatky",
+        "hotels": "hotely",
+        "hotelsDesc": "Poskytujte správná místní doporučení",
+        "restaurants": "Restaurace",
+        "restaurantsDesc": "Křížová propagace s dalšími místními podniky",
+        "cafes": "Kavárny",
+        "cafesDesc": "Sdílejte se zákazníky oblíbená místa v okolí",
+        "localGuides": "Místní průvodci",
+        "localGuidesDesc": "Škálujte odbornost nad rámec jednotlivých prohlídek",
+        "creators": "Tvůrci",
+        "creatorsDesc": "Přidejte hodnotu nad rámec obsahu pomocí užitečných tipů",
+        "tourOperators": "Touroperátoři",
+        "tourOperatorsDesc": "Rozšiřte zkušenosti nad rámec plánovaných zájezdů",
+        "anyBusiness": "Jakékoliv podnikání",
+        "anyBusinessDesc": "Budujte komunitu a loajalitu zákazníků"
+      },
+      "explorerLabel": "Explorer",
+      "visual": {
+        "personal": [
+          "Kavárna",
+          "Rezervovat",
+          "Stezka",
+          "Album",
+          "Film",
+          "Hra"
+        ],
+        "creators": [
+          "#1",
+          "#2",
+          "#3",
+          "#4"
+        ],
+        "hostsQr": "QR"
+      },
+      "chips": [
+        "Cestovatelé",
+        "Místní obyvatelé",
+        "Rodiny",
+        "Studenti",
+        "Nomádi",
+        "Tvůrci",
+        "Influenceři",
+        "Blogeři",
+        "Recenzenti",
+        "fotografové",
+        "Pedagogové",
+        "Komunitní vůdci",
+        "hotely",
+        "Airbnbs",
+        "Ubytovny",
+        "Kavárny",
+        "Restaurace",
+        "Maloobchodní prodejny",
+        "Tělocvičny",
+        "Salony",
+        "Kliniky",
+        "Butiky",
+        "Značky",
+        "Startupy",
+        "agentury",
+        "univerzity",
+        "Společnosti",
+        "letiště",
+        "nevládní organizace",
+        "Vládní týmy"
+      ]
+    },
+    "testimonials": {
+      "headline": "Milované cestovateli, tvůrci a hostiteli",
+      "subtext": "Podívejte se, jak lidé na celém světě používají průzkumníky ke sdílení toho, co je nejdůležitější.",
+      "scrollLeft": "Posuňte doporučení doleva",
+      "scrollRight": "Posuňte doporučení doprava",
+      "items": [
+        {
+          "id": "1",
+          "name": "Priya Sharma",
+          "role": "Travel Blogger",
+          "location": "Mumbai, Indie",
+          "quote": "průzkumníci změnili způsob, jakým sdílím své cestovatelské znalosti. Moji sledující milují okamžitý přístup k mým vybraným doporučením!"
+        },
+        {
+          "id": "2",
+          "name": "Raj Patel",
+          "role": "Airbnb Host",
+          "location": "Dillí, Indie",
+          "quote": "Moji hosté absolutně milují personalizovaný kód QR v jejich uvítací sadě. Stalo se to mým charakteristickým dotykem!"
+        },
+        {
+          "id": "3",
+          "name": "Yuki Tanaka",
+          "role": "Majitel restaurace",
+          "location": "Tokio, Japonsko",
+          "quote": "Sdílíme naše průzkumníky se zákazníky, abychom jim doporučili další místní místa. Vytvořilo to úžasné komunitní spojení."
+        },
+        {
+          "id": "4",
+          "name": "Maria Silva",
+          "role": "Turistický průvodce",
+          "location": "São Paulo, Brazílie",
+          "quote": "explorers mi pomáhá rozšířit mé odborné znalosti nad rámec hodin prohlídky. Klienti mají k mým doporučením kdykoli přístup!"
+        },
+        {
+          "id": "5",
+          "name": "James Wilson",
+          "role": "Cestovatelský influencer",
+          "location": "Sydney, Austrálie",
+          "quote": "Průzkumníci, kteří jsou ovlivňovačem cestování, usnadňují sdílení mých oblíbených míst s mým publikem. Funkce kódu QR je skvělá!"
+        },
+        {
+          "id": "6",
+          "name": "Sophie Martinová",
+          "role": "Místní průvodce",
+          "location": "Paříž, Francie",
+          "quote": "Používám průzkumníky k vytváření pěších prohlídek pro své klienty. Mohou skenovat QR a zkoumat svým vlastním tempem!"
+        }
+      ]
     },
     "faq": {
-      "error": "Chyba při načítání FAQ. Zkuste to později.",
       "headline": "Máte otázky?",
+      "subtext": "Odpověděli jsme na nejčastější věci, na které se lidé ptají před začátkem.",
       "loading": "Načítání FAQ...",
-      "subtext": "Odpověděli jsme na nejčastější věci, na které se lidé ptají před začátkem."
+      "error": "Chyba při načítání FAQ. Zkuste to později.",
+      "fallbackItems": [
+        {
+          "Sequence": 1,
+          "Question": "Co mohu přidat na svou stránku Explorer?",
+          "Answer": "Místa, lidé, produkty, knihy, filmy, pořady, hudba, hry, aplikace, průvodci a poznámky."
+        },
+        {
+          "Sequence": 2,
+          "Question": "Mohu jej sdílet s kódem QR?",
+          "Answer": "Ano. Vaši stránku Explorer lze sdílet jako odkaz nebo QR pro profily, zprávy, tabulky, karty a tištěné průvodce."
+        },
+        {
+          "Sequence": 3,
+          "Question": "Mohu svá doporučení aktualizovat později?",
+          "Answer": "Ano. Můžete udržovat svou stránku aktuální, zatímco stejný odkaz a QR budou nadále fungovat."
+        },
+        {
+          "Sequence": 4,
+          "Question": "Jsou průzkumníci navždy svobodní?",
+          "Answer": "Ano. Stránka může sdělovat bezplatný příslib jasně a bez zbytečných plateb."
+        }
+      ]
     },
     "features": {
-      "communityDriven": {
-        "title": "Objevování řízené komunitou"
+      "title": "Navrženo tak, aby zůstalo stranou",
+      "subtitle": "Jednoduché, promyšlené funkce, které nechají vaše doporučení zářit.",
+      "simpleLinks": {
+        "title": "Jednoduché odkazy a sdílení QR"
       },
       "livingGuides": {
         "title": "Živé, upravitelné průvodce"
@@ -1305,347 +1624,143 @@
       "locationAware": {
         "title": "Doporučení s ohledem na polohu"
       },
-      "privacyFirst": {
-        "title": "Soukromí na prvním místě podle designu"
-      },
-      "simpleLinks": {
-        "title": "Jednoduché odkazy a sdílení QR"
-      },
       "soundPlaylists": {
         "title": "Volitelný zvuk a playlisty"
       },
-      "subtitle": "Jednoduché, promyšlené funkce, které nechají vaše doporučení zářit.",
-      "title": "Navrženo tak, aby zůstalo stranou"
+      "privacyFirst": {
+        "title": "Soukromí na prvním místě podle designu"
+      },
+      "communityDriven": {
+        "title": "Objevování řízené komunitou"
+      }
     },
     "finalCTA": {
-      "creating": "Vytváření vašeho explorers...",
+      "headline": "Začněte sdílet svůj svět dnes",
+      "subtext": "Rezervujte si svůj bezplatný explorers a proměňte své místní poznatky v sdílené průvodce.",
       "ctaButton": "Rezervovat explorers – Navždy Zdarma",
       "disclaimer": "Kreditní karta není vyžadována • Nastavení za 2 minuty",
-      "headline": "Začněte sdílet svůj svět dnes",
-      "subtext": "Rezervujte si svůj bezplatný explorers a proměňte své místní poznatky v sdílené průvodce."
+      "creating": "Vytváření vašeho explorers..."
     },
-    "localTunes": {
-      "body": "Objevování není jen vizuální. Zvuk nese paměť, kontext a emoce.\n\nTunes vám umožňuje sbírat a sdílet soundtracky pro místa, cesty a nálady — ať už je to hudba objevená na cestě nebo zvuky, které definují místo pro vás.\n\nBezproblémově propojeno s vaším profilem Explorer.",
-      "closingStatement": "Tunes je <strong>zdarma</strong> k prozkoumání, a pro placené funkce můžete později upgradovat.",
-      "exploreButton": "Prozkoumat Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "Perfektní pro karaoke večery s kolaborativními playlisty a požadavky na písně v reálném čase.",
-          "title": "Připraveno pro Karaoke"
-        },
-        "qrCodeSharing": {
-          "description": "Sdílejte svůj hudební zážitek jednoduchým skenováním QR kódu — žádné aplikace ani stahování není potřeba.",
-          "title": "Sdílení QR Kódu"
-        },
-        "realtimeCollaboration": {
-          "description": "Umožněte hostům okamžitě přidávat písně do vašeho playlistu, přičemž si zachováte plnou kontrolu nad tím, co se přehrává.",
-          "title": "Spolupráce v Reálném Čase"
-        },
-        "silentParties": {
-          "description": "Pořádejte jedinečné tiché večírky, kde všichni poslouchají přes své vlastní sluchátka.",
-          "title": "Tiché Večírky"
-        },
-        "voteLikeSystem": {
-          "description": "Hosté mohou hlasovat pro své oblíbené písně, aby ovlivnili frontu playlistu v reálném čase.",
-          "title": "Systém Hlasování a Líbí se"
-        },
-        "youtubeIntegration": {
-          "description": "Bezproblémově se integrujte s YouTube pro přístup k milionům písní a vytvoření dokonalé atmosféry.",
-          "title": "Integrace YouTube"
-        }
-      },
-      "featuresHeading": "Výkonné Funkce",
-      "mainHeading": "Tunes",
-      "title": "Poslouchejte při objevování",
-      "venueHeading": "Perfektní pro Každé Místo",
-      "venues": {
-        "barsPubs": "Bary a Hospody",
-        "coffeeShops": "Kavárny",
-        "eventsWeddings": "Události a Svátby",
-        "gymsFitness": "Posilovny a Fitness",
-        "restaurants": "Restaurace",
-        "retailStores": "Obchody"
-      }
-    },
-    "referEarn": {
-      "comingSoon": "Program doporučovacích odměn (brzy)",
-      "earnedThisMonth": "Vyděláno tento měsíc",
-      "headline": "Sdílejte, doporučujte a vydělávejte",
-      "networkTitle": "Vybudujte svou síť a vydělávejte automaticky",
-      "passiveTitle": "Proměňte doporučení v pasivní odměny",
-      "rewardsDesc": "Získejte zaplaceno, když lidé používají vaše doporučení",
-      "rewardsTitle": "Vydělávejte Odměny",
-      "subtext": "Proměňte svá doporučení v pasivní odměny — získejte kredity, když ostatní používají vaše QR."
-    },
-    "shareAnywhere": {
-      "cafeMenu": "Kavárenské menu",
-      "headline": "Sdílejte na sociálních sítích, výlohách obchodů nebo městských zdech",
-      "instagramDesc": "Sdílejte se svými sledujícími okamžitě",
-      "instagramTitle": "Přidejte do svého Instagram bio",
-      "menuDesc": "Fyzické kontaktní body učiněné snadnými",
-      "menuTitle": "Vytiskněte na jídelní lístky",
-      "profileCarouselCaption": "Instagram & TikTok profiles",
-      "qrEverywhereDesc": "Perfect for Every Venue",
-      "qrEverywhereTitle": "Add the QR link everywhere",
-      "scanText": "Naskenujte pro místní doporučení",
-      "storefrontText": "Perfektní pro výlohy obchodů",
-      "subtext": "Přidejte do svého Instagram bio, vytiskněte na jídelní lístky nebo zahrňte do uvítacích knih — váš průvodce, vždy připravený.",
-      "tokyoFoodGuide": "Můj tokijský gastronomický průvodce explorers.earth/jane",
-      "welcomeDesc": "Perfektní pro hostitele a průvodce",
-      "welcomeTitle": "Zahrňte do uvítacích knih"
-    },
-    "testimonials": {
-      "headline": "Milovaný cestovateli, tvůrci a hostiteli",
-      "items": [
-        {
-          "id": "1",
-          "location": "San Francisco",
-          "name": "Marcus Chen",
-          "quote": "explorers změnil způsob, jakým sdílím své cestovní znalosti. Moji sledující milují okamžitý přístup k mým kurátorovaným doporučením!",
-          "role": "Cestovní Bloger"
-        },
-        {
-          "id": "2",
-          "location": "Barcelona",
-          "name": "Sarah Johnson",
-          "quote": "Moji hosté absolutně milují personalizovaný QR kód ve svém uvítacím balíčku. Stal se mým charakteristickým dotykem!",
-          "role": "Airbnb Hostitel"
-        },
-        {
-          "id": "3",
-          "location": "Mexico City",
-          "name": "Alex Rodriguez",
-          "quote": "Sdílíme náš explorers se zákazníky, abychom doporučili další místní místa. Vytvořilo to úžasné komunitní spojení.",
-          "role": "Vlastník Restaurace"
-        },
-        {
-          "id": "4",
-          "location": "Londýn",
-          "name": "Emma Thompson",
-          "quote": "explorers mi pomáhá rozšířit mou odbornost mimo hodiny prohlídek. Zákazníci mohou přistupovat k mým doporučením kdykoli!",
-          "role": "Průvodce"
-        },
-        {
-          "id": "5",
-          "location": "Sydney, Australia",
-          "name": "James Wilson",
-          "quote": "As a travel influencer, explorers makes it so easy to share my favorite spots with my audience. The QR code feature is brilliant!",
-          "role": "Travel Influencer"
-        },
-        {
-          "id": "6",
-          "location": "Paris, France",
-          "name": "Sophie Martin",
-          "quote": "I use explorers to create walking tours for my clients. They can scan the QR and explore at their own pace!",
-          "role": "Local Guide"
-        }
+    "productCategories": {
+      "headline": "Doporučit více než místa.",
+      "subtext": "Vytvořte jednu stránku pro místa, lidi, produkty, knihy, filmy, pořady, hudbu, hry, aplikace a nástroje.",
+      "actions": [
+        "Uložit",
+        "Organizovat",
+        "Podíl"
       ],
-      "scrollLeft": "Posuňte doporučení doleva",
-      "scrollRight": "Posuňte doporučení doprava",
-      "subtext": "Podívejte se, jak lidé po celém světě používají explorers ke sdílení toho, co je nejdůležitější."
-    },
-    "whoIsFor": {
-      "cards": {
-        "businesses": {
-          "items": {
-            "boutique": {
-              "label": "Butik",
-              "oneLiner": "Butiky, které uvádějí kurátorované nálezy"
-            },
-            "cafe": {
-              "label": "Kavárna",
-              "oneLiner": "Kavárny, které zdůrazňují oblíbené položky menu"
-            },
-            "clinic": {
-              "label": "Klinika",
-              "oneLiner": "Kliniky, které sdílejí místa související se zdravím"
-            },
-            "gym": {
-              "label": "Posilovna",
-              "oneLiner": "Posilovny, které navrhují místní wellness místa"
-            },
-            "restaurant": {
-              "label": "Restaurace",
-              "oneLiner": "Restaurace, které sdílejí jídla k vyzkoušení"
-            },
-            "retailShop": {
-              "label": "Obchod",
-              "oneLiner": "Obchody, které sdílejí doporučení produktů"
-            },
-            "salon": {
-              "label": "Salon",
-              "oneLiner": "Salony, které nabízejí průvodce krásou"
-            },
-            "spa": {
-              "label": "Lázně",
-              "oneLiner": "Lázně, které uvádějí blízké možnosti relaxace"
-            }
-          },
-          "oneLiner": "Vedejte zákazníky užitečnými doporučeními.",
-          "title": "Podniky"
-        },
-        "creators": {
-          "items": {
-            "blogger": {
-              "label": "Bloger",
-              "oneLiner": "Blogeři, kteří kurátorují psané průvodce"
-            },
-            "communityLeader": {
-              "label": "Vůdce Komunity",
-              "oneLiner": "Vůdci komunity, kteří kurátorují užitečné seznamy"
-            },
-            "educator": {
-              "label": "Vychovatel",
-              "oneLiner": "Vychovatelé, kteří sdílejí průvodce učením"
-            },
-            "influencer": {
-              "label": "Influencer",
-              "oneLiner": "Influenceři, kteří sdílejí nejlepší volby"
-            },
-            "photographer": {
-              "label": "Fotograf",
-              "oneLiner": "Fotografové, kteří sdílejí místa pro focení"
-            },
-            "reviewer": {
-              "label": "Recenzent",
-              "oneLiner": "Recenzenti, kteří uvádějí nejlépe hodnocená místa"
-            },
-            "vlogger": {
-              "label": "Vloger",
-              "oneLiner": "Vlogeři, kteří sdílejí vizuální cesty"
-            }
-          },
-          "oneLiner": "Sdílejte kurátorované seznamy se svým publikem.",
-          "title": "Tvůrci"
-        },
-        "hospitality": {
-          "items": {
-            "airbnb": {
-              "label": "Airbnb",
-              "oneLiner": "Hostitelé, kteří sdílejí oblíbená místa v čtvrti"
-            },
-            "homestay": {
-              "label": "Ubytování v Rodině",
-              "oneLiner": "Ubytování v rodinách, která nabízejí průvodce orientované na rodinu"
-            },
-            "hostel": {
-              "label": "Hostel",
-              "oneLiner": "Hostely, které sdílejí tipy pro batůžkáře"
-            },
-            "hotel": {
-              "label": "Hotel",
-              "oneLiner": "Hotely, které nabízejí místní průvodce"
-            },
-            "pgColiving": {
-              "label": "PG/Společné Bydlení",
-              "oneLiner": "PG/Společné Bydlení, které zobrazuje důležitá blízká místa"
-            },
-            "resort": {
-              "label": "Rezort",
-              "oneLiner": "Rezorty, které poskytují seznamy aktivit"
-            }
-          },
-          "oneLiner": "Nabídněte hostům kurátorované místní poznatky.",
-          "title": "Pohostinnost"
-        },
-        "individuals": {
-          "items": {
-            "emergencySharer": {
-              "label": "Sdíleč v Nouzi",
-              "oneLiner": "Sdíleči v nouzi, kteří zveřejňují důležitá místa"
-            },
-            "family": {
-              "label": "Rodina",
-              "oneLiner": "Rodiny, které sdílejí užitečná místa"
-            },
-            "local": {
-              "label": "Místní",
-              "oneLiner": "Místní obyvatelé, kteří sdílejí tipy na čtvrť"
-            },
-            "nomad": {
-              "label": "Nomád",
-              "oneLiner": "Nomádi, kteří uvádějí prostory vhodné pro práci"
-            },
-            "student": {
-              "label": "Student",
-              "oneLiner": "Studenti, kteří sdílejí místa v kampusu/v blízkosti"
-            },
-            "traveler": {
-              "label": "Cestovatel",
-              "oneLiner": "Lidé, kteří sdílejí cestovní místa"
-            }
-          },
-          "oneLiner": "Sdílejte osobní nebo místní doporučení.",
-          "title": "Jednotlivci"
-        },
-        "organizations": {
-          "items": {
-            "agency": {
-              "label": "Agentura",
-              "oneLiner": "Cestovní kanceláře, které uvádějí místa k návštěvě"
-            },
-            "airline": {
-              "label": "Letecká Společnost",
-              "oneLiner": "Letecké společnosti, které sdílejí průvodce městem"
-            },
-            "airport": {
-              "label": "Letiště",
-              "oneLiner": "Letiště, která nabízejí terminály + tipy na město"
-            },
-            "corporate": {
-              "label": "Korporátní",
-              "oneLiner": "Korporace, které uvádějí blízké zdroje"
-            },
-            "government": {
-              "label": "Vláda",
-              "oneLiner": "Oddělení, která zdůrazňují veřejné služby"
-            },
-            "ngo": {
-              "label": "NGO",
-              "oneLiner": "NGO, které sdílejí zdroje komunity"
-            },
-            "railway": {
-              "label": "Železnice",
-              "oneLiner": "Železnice, které sdílejí informace o platformě"
-            },
-            "university": {
-              "label": "Univerzita",
-              "oneLiner": "Univerzity, které sdílejí základní potřeby kampusu"
-            }
-          },
-          "oneLiner": "Poskytněte kurátorované průvodce a zdroje.",
-          "title": "Organizace"
-        }
+      "overlayLabel": "Explorer strana",
+      "visualLabels": {
+        "products": "Skuteční oblíbenci",
+        "apps": "Užitečný zásobník"
       },
-      "headline": "Pro koho je explorers.earth?",
-      "subtext": "explorers.earth je pro každého, kdo věří, že sdílení je odpovědnost — ne vysílání.",
-      "useCases": {
-        "airbnbHosts": "Airbnb Hostitelé",
-        "airbnbHostsDesc": "Zlepšete zážitek hostů s místními poznatky",
-        "anyBusiness": "Jakýkoli Podnik",
-        "anyBusinessDesc": "Budujte komunitu a loajalitu zákazníků",
-        "cafes": "Kavárny",
-        "cafesDesc": "Sdílejte oblíbená místa čtvrti se zákazníky",
-        "creators": "Tvůrci",
-        "creatorsDesc": "Přidejte hodnotu za obsah s akčními tipy",
-        "hotels": "Hotely",
-        "hotelsDesc": "Poskytujte kurátorovaná místní doporučení",
-        "influencers": "Influenceři",
-        "influencersDesc": "Zpeněžte místní znalosti a budujte komunitu",
-        "localGuides": "Místní Průvodci",
-        "localGuidesDesc": "Škálujte svou expertízu za individuální prohlídky",
-        "restaurants": "Restaurace",
-        "restaurantsDesc": "Cross-promotion s dalšími místními podniky",
-        "tourOperators": "Cestovní Operátoři",
-        "tourOperatorsDesc": "Rozšiřte zážitky za plánované prohlídky",
-        "travelers": "Cestovatelé",
-        "travelersDesc": "Sdílejte objevené perly s kolegy průzkumníky"
-      }
+      "visualDetails": {
+        "products": [
+          "Cestovní výbava",
+          "Každodenní nošení",
+          "Sada pro tvůrce"
+        ],
+        "apps": [
+          "Nástroje pro plánování",
+          "Užitečné aplikace",
+          "Odkazy na zdroje"
+        ]
+      },
+      "categories": [
+        {
+          "id": "places",
+          "label": "Místa",
+          "title": "Místní místa, průvodci a trasy",
+          "description": "Restaurace, čtvrti, muzea, trasy a skryté drahokamy mohou lidé skutečně navštívit."
+        },
+        {
+          "id": "people",
+          "label": "Lidé",
+          "title": "Lidé, kteří stojí za to následovat nebo se od nich učit",
+          "description": "Tvůrci, zakladatelé, průvodci, umělci, učitelé, odborníci a lidé, kteří utvářeli váš vkus."
+        },
+        {
+          "id": "books",
+          "label": "knihy",
+          "title": "Knihy a seznamy četby",
+          "description": "Knihy, které neustále doporučujete v chatech, poznámkách, bulletinech a konverzacích na cestách."
+        },
+        {
+          "id": "movies",
+          "label": "Filmy a TV",
+          "title": "Filmy, pořady a seznamy sledovaných",
+          "description": "Filmy, seriály, dokumenty a seznamy sledovaných pro každý druh nálady nebo publikum."
+        },
+        {
+          "id": "games",
+          "label": "Hry",
+          "title": "Hry a světy k prozkoumání",
+          "description": "Hry, questy, světy a zážitky by lidé měli vyzkoušet jako další."
+        },
+        {
+          "id": "music",
+          "label": "Hudba",
+          "title": "Alba, umělci a seznamy skladeb",
+          "description": "Umělci, alba, skladby, seznamy skladeb a zvukové stopy spojené s místy a okamžiky."
+        },
+        {
+          "id": "products",
+          "label": "Produkty",
+          "title": "Produkty, které lidé skutečně doporučují",
+          "description": "Každodenní oblíbené položky, cestovní vybavení, nástroje pro tvůrce, dárky a produkty, které stojí za to ušetřit."
+        },
+        {
+          "id": "apps",
+          "label": "Aplikace a nástroje",
+          "title": "Aplikace, nástroje a užitečné odkazy",
+          "description": "Software, webové stránky, šablony, nástroje a zdroje, které usnadňují život."
+        }
+      ]
     }
   },
   "seo": {
     "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
+    "landing": {
+      "title": "průzkumníci – Objevte a sdílejte přizpůsobená místní doporučení",
+      "description": "Objevujte a sdílejte svá oblíbená místní místa s průzkumníky. Vytvářejte personalizované průvodce městem, organizujte místa, která musíte navštívit, a udělejte je tak, aby je bylo možné objevit pomocí kódů QR, které lze sdílet. Prozkoumejte skryté drahokamy, doporučená doporučení a místní cestovní tipy na interaktivních mapách.",
+      "keywords": [
+        "objevovat místa v mém okolí",
+        "personalizované cestovní průvodce",
+        "aplikace pro místní doporučení",
+        "tvůrce průvodce městem",
+        "sdílet tipy na cesty",
+        "doporučení skrytých drahokamů",
+        "co dělat ve městě",
+        "cestovní průvodce založený na mapě",
+        "nejlepší místní místa",
+        "kurátorská doporučení restaurací",
+        "cestovní průvodce QR kódy",
+        "vytvářet a sdílet seznamy míst",
+        "uživatelsky generované místní průvodce",
+        "prozkoumávejte místa kolem sebe",
+        "digitální průvodce městem",
+        "Kódy QR",
+        "místní doporučení",
+        "sdílení místa",
+        "cestovní průvodce",
+        "místní podnik",
+        "digitální doporučení",
+        "odkazy ke sdílení",
+        "sdílení polohy",
+        "cestovatelské tipy",
+        "místní spoty"
+      ],
+      "geoDescription": "Objevujte a sdílejte svá oblíbená místní místa pomocí personalizovaných kódů QR a odkazů, které lze sdílet",
+      "geoFeatures": [
+        "Personalizované generování kódu QR",
+        "Sdílení místních doporučení",
+        "Analýzy a statistiky",
+        "Design optimalizovaný pro mobily",
+        "Objevování komunity"
+      ],
+      "geoIndustry": "Technologie"
+    }
   },
   "settings": {
     "account": {
@@ -2162,5 +2277,14 @@
       "usernameNotChanged": "Username is not changed. Please change your username",
       "validationPending": "Validation is pending. Please wait"
     }
+  },
+  "usernameClaim": {
+    "validating": "Ověřování...",
+    "claimFree": "Bezplatná reklamace",
+    "trySuggestions": "Zkuste: {{suggestions}}",
+    "available": "Uživatelské jméno je k dispozici.",
+    "unavailable": "Uživatelské jméno není k dispozici.",
+    "confirmOnSignup": "Dostupnost potvrdíme při registraci.",
+    "checkingAvailability": "Kontrola dostupnosti..."
   }
 }

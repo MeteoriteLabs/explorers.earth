@@ -80,7 +80,10 @@ describe('gameHelpers', () => {
     });
 
     it('prefixes strapi relative paths', () => {
-      expect(buildCoverUrl('/uploads/cover.jpg')).toBe('http://localhost:1337/uploads/cover.jpg');
+      const expectedBase =
+        import.meta.env.VITE_REST_API_URL?.replace('/api', '') || 'http://localhost:1337';
+
+      expect(buildCoverUrl('/uploads/cover.jpg')).toBe(`${expectedBase}/uploads/cover.jpg`);
     });
 
     it('handles empty', () => {
