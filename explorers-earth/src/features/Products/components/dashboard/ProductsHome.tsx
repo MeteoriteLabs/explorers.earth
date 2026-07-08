@@ -182,7 +182,7 @@ export const ProductListCard = ({
   const uniqueProducts = deduplicateProducts(list.recommended_products);
   const productCount = uniqueProducts.length;
   const pinnedCount = uniqueProducts.filter((p) => p.is_pinned).length;
-  const previewProducts = uniqueProducts.slice(0, 5);
+  const previewProducts = uniqueProducts.slice(0, 4);
 
   return (
     <motion.div
@@ -224,9 +224,9 @@ export const ProductListCard = ({
               )}
             </div>
           ))}
-          {productCount > 5 && (
+          {productCount > 4 && (
             <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-white/5 flex-shrink-0">
-              <span className="text-xs text-dashboard-muted">+{productCount - 5}</span>
+              <span className="text-xs text-dashboard-muted">+{productCount - 4}</span>
             </div>
           )}
           {/* Price of first product */}

@@ -82,11 +82,11 @@ const SelectPersonListCard = ({
         </span>
       </div>
       {preview.length > 0 ? (
-        <div className="flex gap-1.5">
+        <div className="flex -space-x-2">
           {preview.map((p: any) => {
             const avatarSrc = p.media_details?.thumbnail?.url || p.media_details?.imageDetails?.[0]?.url || (p.avatar_path ? buildImageUrl(p.avatar_path) : null);
             return (
-              <div key={p.documentId} className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-white/5 ring-2 ring-white/10">
+              <div key={p.documentId} className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-white/5 ring-2 ring-[var(--dash-sidebar-bg)]">
                 {avatarSrc ? (
                   <img src={avatarSrc} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
                 ) : (
@@ -98,8 +98,8 @@ const SelectPersonListCard = ({
             );
           })}
           {count > 4 && (
-            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-white/5 flex-shrink-0 ring-2 ring-white/10">
-              <span className="text-xs text-dashboard-muted">+{count - 4}</span>
+            <div className="relative w-10 h-10 rounded-full flex items-center justify-center bg-white/5 flex-shrink-0 ring-2 ring-[var(--dash-sidebar-bg)]">
+              <span className="text-xs text-dashboard-muted font-medium">+{count - 4}</span>
             </div>
           )}
         </div>

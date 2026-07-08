@@ -213,9 +213,9 @@ export const PersonListCard = ({
       </div>
 
       {previewPeople.length > 0 ? (
-        <div className="flex gap-1.5 mb-4">
+        <div className="flex -space-x-2 mb-4">
           {previewPeople.map((p) => (
-            <div key={p.documentId} className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-white/5 ring-2 ring-white/10">
+            <div key={p.documentId} className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-white/5 ring-2 ring-[var(--dash-sidebar-bg)]">
               {p.avatar_url ? (
                 <img src={buildImageUrl(p.avatar_url)} alt={p.full_name} className="w-full h-full object-cover" loading="lazy" />
               ) : (
@@ -226,13 +226,13 @@ export const PersonListCard = ({
             </div>
           ))}
           {personCount > 5 && (
-            <div className="w-12 h-12 rounded-full flex items-center justify-center bg-white/5 flex-shrink-0 ring-2 ring-white/10">
+            <div className="relative w-10 h-10 rounded-full flex items-center justify-center bg-white/5 flex-shrink-0 ring-2 ring-[var(--dash-sidebar-bg)]">
               <span className="text-xs text-dashboard-muted">+{personCount - 5}</span>
             </div>
           )}
         </div>
       ) : (
-        <div className="h-14 rounded-lg bg-white/3 border border-dashed border-dashboard-border flex items-center justify-center mb-4">
+        <div className="h-10 rounded-lg bg-white/3 border border-dashed border-dashboard-border flex items-center justify-center mb-4">
           <p className="text-xs text-dashboard-muted">No people yet</p>
         </div>
       )}

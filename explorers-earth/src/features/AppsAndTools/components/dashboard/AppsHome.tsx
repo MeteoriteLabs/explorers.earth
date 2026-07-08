@@ -211,7 +211,7 @@ export const AppListCard = ({
   const uniqueApps = deduplicateApps(list.recommended_apps);
   const appCount = uniqueApps.length;
   const pinnedCount = uniqueApps.filter((a) => a.is_pinned).length;
-  const previewApps = uniqueApps.slice(0, 5);
+  const previewApps = uniqueApps.slice(0, 4);
 
   return (
     <motion.div
@@ -263,9 +263,9 @@ export const AppListCard = ({
               )}
             </div>
           ))}
-          {appCount > 5 && (
+          {appCount > 4 && (
             <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 flex-shrink-0">
-              <span className="text-xs text-dashboard-muted">+{appCount - 5}</span>
+              <span className="text-xs text-dashboard-muted">+{appCount - 4}</span>
             </div>
           )}
           {/* Price tier badge of first app */}

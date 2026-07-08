@@ -221,7 +221,7 @@ export const MovieListCard = ({
   const uniqueMovies = deduplicateMovies(list.recommended_movies);
   const movieCount = uniqueMovies.length;
   const pinnedCount = uniqueMovies.filter(m => m.is_pinned).length;
-  const previewMovies = uniqueMovies.slice(0, 5);
+  const previewMovies = uniqueMovies.slice(0, 4);
 
   return (
     <motion.div
@@ -279,9 +279,9 @@ export const MovieListCard = ({
               </div>
             </div>
           ))}
-          {movieCount > 5 && (
+          {movieCount > 4 && (
             <div className="w-12 rounded-md flex items-center justify-center bg-white/5 flex-shrink-0 aspect-[2/3]">
-              <span className="text-xs text-dashboard-muted">+{movieCount - 5}</span>
+              <span className="text-xs text-dashboard-muted">+{movieCount - 4}</span>
             </div>
           )}
         </div>

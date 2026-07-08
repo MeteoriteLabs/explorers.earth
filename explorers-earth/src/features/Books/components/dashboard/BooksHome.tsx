@@ -222,7 +222,7 @@ export const BookListCard = ({
   const uniqueBooks = deduplicateBooks(list.recommended_books);
   const bookCount = uniqueBooks.length;
   const pinnedCount = uniqueBooks.filter(b => b.is_pinned).length;
-  const previewBooks = uniqueBooks.slice(0, 5);
+  const previewBooks = uniqueBooks.slice(0, 4);
 
   return (
     <motion.div
@@ -278,9 +278,9 @@ export const BookListCard = ({
               </div>
             </div>
           ))}
-          {bookCount > 5 && (
+          {bookCount > 4 && (
             <div className="w-12 rounded-md flex items-center justify-center bg-white/5 flex-shrink-0 aspect-[2/3]">
-              <span className="text-xs text-dashboard-muted font-medium">+{bookCount - 5}</span>
+              <span className="text-xs text-dashboard-muted font-medium">+{bookCount - 4}</span>
             </div>
           )}
         </div>
