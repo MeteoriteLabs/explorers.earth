@@ -18,6 +18,14 @@ Target: https://explorers.earth
   - Direct protected-route reload briefly showed `Loading...` before recovering after roughly 37 seconds.
   - No console warnings/errors were captured.
 
+## Product Deployed Retest
+
+- Draft list: `Desk Setup`
+- Private URL: `https://explorers.earth/recommendations/products/cdpwcx5ricti8lcae94j7ntx`
+- Item created after deploy: `QA Desk Lamp`
+- Result: passed; the page returned to the list, showed the created product, and displayed the `Publish this list?` prompt.
+- Follow-up action: clicked `Keep Draft` after verifying the prompt.
+
 ## Apps & Tools
 
 - Private list: `Daily Workflow`
@@ -30,8 +38,16 @@ Target: https://explorers.earth
   - URL scrape for `https://www.notion.com` succeeded.
   - App item creation took roughly 45 seconds.
   - Manual publish took roughly 60 seconds.
-  - Current production did not show the post-add publish prompt; local patch fixes this by passing `justAddedRecommendation`.
+  - Original production did not show the post-add publish prompt; the deployed patch fixes this by passing `justAddedRecommendation`.
   - No console warnings/errors were captured.
+
+## Apps & Tools Deployed Retest
+
+- Draft list: `Creator Stack`
+- Private URL: `https://explorers.earth/recommendations/apps/xqne7j25bhnyggvu3ux8bez8`
+- Item created after deploy: `Figma: The collaborative canvas for design, code, and AI`
+- Result: passed; the page returned to the list, showed the created app, and displayed the `Publish this list?` prompt.
+- Follow-up action: clicked `Keep Draft` after verifying the prompt.
 
 ## Movies
 
