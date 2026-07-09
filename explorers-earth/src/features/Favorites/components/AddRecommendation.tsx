@@ -286,6 +286,11 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
     // function to fetch google photos
     const fetchGoogleMedia = async () => {
       if (places?.place_id) {
+        // Bypass Google Photos fetch in test mode or localhost
+        if (import.meta.env.MODE === 'test' || window.location.hostname === 'localhost') {
+          setIsImagesLoading(false);
+          return;
+        }
         try {
           setIsImagesLoading(true);
           let photos: GoogleMedia[] = [];
@@ -760,12 +765,20 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
   };
 
   const handleButtonClick = () => {
-    // Get the form element and trigger submission
-    const form = document.querySelector("form");
-    if (form) {
+    // Find the submit button inside the form directly
+    const directSubmitBtn = document.querySelector('button[type="submit"]') as HTMLButtonElement;
+    if (directSubmitBtn) {
+      directSubmitBtn.click();
+      return;
+    }
+
+    // Fallback: Get all form elements and search for submit buttons
+    const forms = document.querySelectorAll("form");
+    for (const form of Array.from(forms)) {
       const submitButton = form.querySelector('button[type="submit"]') as HTMLButtonElement;
       if (submitButton) {
         submitButton.click();
+        return;
       }
     }
   };
