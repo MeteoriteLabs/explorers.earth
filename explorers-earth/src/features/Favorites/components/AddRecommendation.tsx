@@ -272,6 +272,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
     setPreviewUrl,
     setIsLoading,
     userInputRef,
+    fetchedPlace,
   });
 
   // fetching the created categories

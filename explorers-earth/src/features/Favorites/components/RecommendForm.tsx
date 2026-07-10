@@ -167,7 +167,7 @@ const ScrollToFirstErrorWithActivation = ({
 
 
 // Generic type for defining objects
-export type KeyValuePair = { [key: string]: string };
+export type KeyValuePair = { [key: string]: any };
 
 // Types for form field
 interface FormField {

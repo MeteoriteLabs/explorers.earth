@@ -74,8 +74,6 @@ const ListForm: FC<ListFormProps> = ({
           if (!places?.name && !isEditing) {
             toast.error(t("toast.error.selectPlaceFromSuggestions"));
           } else {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-expect-error
             onSubmit(updatedRecommendationValues);
           }
         }}
@@ -126,7 +124,7 @@ const ListForm: FC<ListFormProps> = ({
 
                 {errors[field.name] && touched[field.name] && (
                   <span className="dt-subtext text-dashboard-danger">
-                    {errors[field.name]}
+                    {errors[field.name] as string}
                   </span>
                 )}
               </div>

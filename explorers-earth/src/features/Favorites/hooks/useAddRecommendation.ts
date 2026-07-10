@@ -87,6 +87,7 @@ interface AddRecommendation {
       documentId: string;
     };
   };
+  fetchedPlace?: any;
 }
 
 export const useAddRecommendation = ({
@@ -104,6 +105,7 @@ export const useAddRecommendation = ({
   setIsLoading,
   userInputRef,
   recommendationType = "place",
+  fetchedPlace,
 }: AddRecommendation) => {
   const { selectedCity, setSelectedCity } = useCityStore();
   const navigate = useNavigate();

@@ -46,6 +46,8 @@ interface FetchedPlace {
     media_details: string | null;
     recommendation_sub_category: RecommendationSubCategory;
     user_recommendation_note: string;
+    user_rating?: number | null;
+    google_rating?: number | null;
   };
 }
 export const useRecommendationFields = ({
