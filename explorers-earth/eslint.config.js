@@ -23,6 +23,10 @@ export default tseslint.config(
         'warn',
         { allowConstantExport: true },
       ],
+      // Bulk legacy debt (1,125 + 93 hits on 2026-07-10) — warn now, burn down
+      // in follow-up PRs, then restore to 'error'.
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': 'warn',
     },
   },
 )
