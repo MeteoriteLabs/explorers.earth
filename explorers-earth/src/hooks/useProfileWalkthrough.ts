@@ -75,6 +75,7 @@ export const useProfileWalkthrough = (
         content:
           "Upload your cover image here. Click the camera icon to add or change your background photo.",
         placement: "bottom",
+        disableBeacon: true,
         disableOverlayClose: false,
         disableScrolling: false,
         disableCloseOnEsc: false,
@@ -84,6 +85,7 @@ export const useProfileWalkthrough = (
         content:
           "Expand and add at least 2 social media links.",
         placement: "top",
+        disableBeacon: true,
         disableOverlayClose: false,
         disableScrolling: false,
         disableCloseOnEsc: false,
@@ -93,6 +95,7 @@ export const useProfileWalkthrough = (
         content:
           "Click 'Save & Publish' to save all your profile changes. Make sure you've completed all required fields before saving!",
         placement: "top",
+        disableBeacon: true,
         disableOverlayClose: false,
         disableScrolling: false,
         disableCloseOnEsc: false,
@@ -138,8 +141,10 @@ export const useProfileWalkthrough = (
   // This runs as soon as location.state?.startTour appears. We save to a ref
   // and clear the history state so it doesn't retrigger on re-renders.
   useEffect(() => {
-    if (location.state?.startTour && !hasBeenSkippedOrFinishedRef.current) {
+    if (location.state?.startTour) {
       pendingStartTourRef.current = true;
+      hasBeenSkippedOrFinishedRef.current = false;
+      isProcessingStepRef.current = false;
       window.history.replaceState({}, document.title);
     }
   }, [location.state?.startTour]);
@@ -155,8 +160,6 @@ export const useProfileWalkthrough = (
     if (tourPollingActiveRef.current) return;
 
     tourPollingActiveRef.current = true;
-    // Consume the intent now — before any async work — so we don't double-start
-    pendingStartTourRef.current = false;
 
     let cancelled = false;
     let attempts = 0;
@@ -176,7 +179,9 @@ export const useProfileWalkthrough = (
           : null;
 
       if (element) {
-        // Target found — reset state cleanly and start the tour
+        // Target found — consume the intent and start the tour
+        pendingStartTourRef.current = false;
+        isProcessingStepRef.current = false;
         tourPollingActiveRef.current = false;
         setStepIndex(0);
         setTimeout(() => {

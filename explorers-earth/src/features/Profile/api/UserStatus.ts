@@ -19,6 +19,7 @@ export const DASHBOARD_STATUS_QUERY = gql`
           url
         }
         social_media
+        Feed_Data
         recommendation_lists {
           documentId
           publishedAt

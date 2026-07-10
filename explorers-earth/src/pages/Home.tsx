@@ -24,7 +24,7 @@ import { createUtmParams } from "../utils/urlHelpers";
 import { IMAGE_CONFIG } from "../config";
 import { useCityStore } from "../store/useCityStore";
 import useSetupStore from "../store/useSetupStore";
-import AccountSetupCard from "../components/AccountSetupCard";
+import ProfileSetupAccordion from "../components/ProfileSetupAccordion";
 import { DASHBOARD_STATUS_QUERY } from "../features/Profile/api/UserStatus";
 import { GET_GUIDES_QUERY, GET_USER_ACCOUNT_QUERY } from "../features/Guides/api/queries";
 import type { Guide } from "../features/Guides/types";
@@ -897,9 +897,11 @@ const Home = memo(() => {
               />
             </div>
           )}
-          {isAllSetupComplete && (
-            <>
-              <div className="w-full md:pb-6">
+
+          {/* Public Profile Setup Accordion */}
+          <ProfileSetupAccordion account={account} />
+
+          <div className="w-full md:pb-6">
                 {/* Category Tabs Selector */}
                 <div className="home-tab-container bg-[var(--dash-tab-bg)] rounded-[28px] p-[3px] flex gap-1 mb-4 overflow-x-auto scrollbar-hide">
                   {(
@@ -1447,16 +1449,6 @@ const Home = memo(() => {
                 backgroundImage={account?.bg_picture?.url || IMAGE_CONFIG.defaultImages.background}
                 hideQRTab={activeTab === "guides"}
               />
-            </>
-          )}
-
-          {/* Profile Setup Card - Show when setup is incomplete OR when complete but not yet acknowledged */}
-          {!isAllSetupComplete && (
-            <AccountSetupCard
-              isProfileComplete={isProfileComplete}
-              isRecommendationsComplete={isRecommendationsComplete}
-            />
-          )}
         </div>
       </div>
 

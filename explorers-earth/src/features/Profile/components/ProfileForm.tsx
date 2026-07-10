@@ -1175,21 +1175,22 @@ const ProfileForm: FC<ProfileFormProps> = memo(
               <div
                 className="fixed bottom-20 md:bottom-6 left-0 md:left-[var(--sidebar-width,0)] right-0 z-[100] flex justify-center pointer-events-none transition-all duration-300"
                 style={{ left: isDesktop ? 'var(--sidebar-width, 0)' : '0' }}
-                data-walkthrough="save-publish-button"
               >
                 <div className="pointer-events-auto flex justify-center w-full px-4">
-                  <Button
-                    btnText={t('dashboard.profile.common.saveAndPublish')}
-                    type="button"
-                    variant="primary"
-                    size="small"
-                    isLoading={isSaving}
-                    onClick={async () => {
-                      await formHandleSubmit(values);
-                    }}
-                    disabled={isSaving}
-                    className="shadow-2xl hover:shadow-3xl transition-all duration-200 rounded-full px-8 md:px-12 py-3 backdrop-blur-sm bg-primary hover:bg-primary-dark text-white font-semibold whitespace-nowrap"
-                  />
+                  <div data-walkthrough="save-publish-button" className="w-fit">
+                    <Button
+                      btnText={t('dashboard.profile.common.saveAndPublish')}
+                      type="button"
+                      variant="primary"
+                      size="small"
+                      isLoading={isSaving}
+                      onClick={async () => {
+                        await formHandleSubmit(values);
+                      }}
+                      disabled={isSaving}
+                      className="shadow-2xl hover:shadow-3xl transition-all duration-200 rounded-full px-8 md:px-12 py-3 backdrop-blur-sm bg-primary hover:bg-primary-dark text-white font-semibold whitespace-nowrap"
+                    />
+                  </div>
                 </div>
               </div>
               {/* Global Tooltip Component */}
