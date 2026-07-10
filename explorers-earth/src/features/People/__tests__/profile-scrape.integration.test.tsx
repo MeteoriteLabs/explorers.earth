@@ -183,9 +183,11 @@ describe('People Profile Scrape Flow Integration Test', () => {
     const saveBtn = screen.getByRole('button', { name: 'Add to List' });
     fireEvent.click(saveBtn);
 
-    // Wait until query/mutations resolve
+    // Wait until query/mutations resolve. Generous timeout: the upload →
+    // mutation → refetch chain exceeds the 1s default on slow CI runners
+    // under coverage instrumentation.
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'Add to List' })).not.toBeInTheDocument();
-    });
+    }, { timeout: 15000 });
   });
 });
