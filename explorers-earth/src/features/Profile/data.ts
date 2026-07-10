@@ -45,7 +45,7 @@ export const createProfileValidationSchema = (t: TFunction): Yup.AnySchema => Yu
     .min(2, t('auth.validations.accountName.minLength'))
     .max(50, t('auth.validations.accountName.maxLength'))
     .matches(
-      /^[a-zA-Z\s'\-\.]+$/,
+      /^[a-zA-Z\s'\-.]+$/,
       t('auth.validations.accountName.invalidChars')
     )
     .test(
@@ -73,7 +73,7 @@ export const createProfileValidationSchema = (t: TFunction): Yup.AnySchema => Yu
   instagramLink: Yup.string()
     .test('is-valid-instagram', t('auth.validations.socialMedia.instagram'), function(value) {
       if (!value || value.trim() === '') return true; // Allow empty values
-      return /^(?:https?:\/\/)?(?:www\.)?instagram\.com\/[a-zA-Z0-9_\.]+\/?$/.test(value);
+      return /^(?:https?:\/\/)?(?:www\.)?instagram\.com\/[a-zA-Z0-9_.]+\/?$/.test(value);
     }),
   whatsappLink: Yup.string()
     .test(
@@ -114,7 +114,7 @@ export const createProfileValidationSchema = (t: TFunction): Yup.AnySchema => Yu
   websiteLink: Yup.string()
     .test('is-valid-website', t('auth.validations.socialMedia.website'), function(value) {
       if (!value || value.trim() === '') return true; // Allow empty values
-      return /^(https?:\/\/)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/.test(value);
+      return /^(https?:\/\/)?(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)$/.test(value);
     }),
   facebookLink: Yup.string()
     .test('is-valid-facebook', t('auth.validations.socialMedia.facebook'), function(value) {
@@ -139,7 +139,7 @@ export const createProfileValidationSchema = (t: TFunction): Yup.AnySchema => Yu
   appleMusicLink: Yup.string()
     .test('is-valid-apple-music', t('auth.validations.socialMedia.appleMusic'), function(value) {
       if (!value || value.trim() === '') return true; // Allow empty values
-      return /^(?:https?:\/\/)?(?:music\.)?apple\.com\/(?:[a-z]{2}\/)?(?:artist|album|playlist)\/[^\/]+\/[0-9]+/.test(value);
+      return /^(?:https?:\/\/)?(?:music\.)?apple\.com\/(?:[a-z]{2}\/)?(?:artist|album|playlist)\/[^/]+\/[0-9]+/.test(value);
     }),
   tiktokLink: Yup.string()
     .test('is-valid-tiktok', t('auth.validations.socialMedia.tiktok'), function(value) {

@@ -50,7 +50,7 @@ import { loginQuery } from "../features/Authentication/api/mutation";
 
 import { useUserForOnboarding } from "../features/Authentication/hooks/useCurrentUser";
 import { EarthLoader } from "../components/EarthLoader";
-// @ts-ignore
+// @ts-expect-error - untyped transitive import
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { Check, Sparkles, Zap, Crown, LogOut } from "lucide-react";
 import { useQuery as useReactQuery } from "@tanstack/react-query";
@@ -830,6 +830,7 @@ const OnBoarding = () => {
       }
       throw new Error("No URL in response");
     } catch (error) {
+      console.error("Onboarding media upload failed:", error);
       throw error;
     }
   };
@@ -1912,7 +1913,7 @@ const OnBoarding = () => {
                         console.log(
                           "Validation passed, calling handleStepSubmit"
                         );
-                        // @ts-ignore - localTunesConsent is boolean but FormValues expects string
+                        // @ts-expect-error - localTunesConsent is boolean but FormValues expects string
                         await handleStepSubmit(formData, { errors: {} });
                         // handleStepSubmit already handles advancing to the next step
                       } catch (error) {

@@ -21,9 +21,7 @@ import { getUserAccountQuery, updateAccountMutation } from "../api/mutation";
 import { loginQuery } from "../../Authentication/api/mutation";
 import useAuthStore from "../../../store/store";
 
-interface ConnectedAccountsProps { }
-
-const ConnectedAccounts = memo(({ }: ConnectedAccountsProps) => {
+const ConnectedAccounts = memo(() => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isConnecting, setIsConnecting] = useState(false);

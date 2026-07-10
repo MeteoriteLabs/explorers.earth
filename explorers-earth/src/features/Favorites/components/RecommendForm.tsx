@@ -34,7 +34,6 @@ import { useTranslation } from "react-i18next";
 
 
 
-// Variant that also auto-activates hidden taggable error fields before scrolling.
 // Runs form-level side effects from inside the Formik provider. Extracted from
 // render-prop callbacks because React hooks may not be called in callbacks.
 const RecommendFormEffects = ({
@@ -139,6 +138,7 @@ const RecommendFormEffects = ({
   return null;
 };
 
+// Variant that also auto-activates hidden taggable error fields before scrolling.
 const ScrollToFirstErrorWithActivation = ({
   handleTagClick,
   activeFields,
@@ -891,9 +891,6 @@ const RecommendationForm = memo(
                   setSelectedsubcategory(initialValues.subcategory);
                 }
               }
-            } else if (initialValues.subcategory) {
-              // If no category match but subcategory exists, still set it
-              setSelectedsubcategory(initialValues.subcategory);
             }
           } else if (initialValues.subcategory) {
             // If category doesn't match but subcategory exists, set it anyway

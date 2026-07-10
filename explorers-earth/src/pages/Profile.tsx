@@ -1075,7 +1075,7 @@ const Profile = memo(() => {
                   case 5:
                     navigationTarget = '/settings';
                     break;
-                  default:
+                  default: {
                     // Fallback: try to infer from icon or text
                     const buttonText = button.textContent?.toLowerCase() || '';
                     const iconElement = button.querySelector('svg');
@@ -1095,6 +1095,7 @@ const Profile = memo(() => {
                     } else if (buttonText.includes('setting') || buttonText.includes('settings') || iconClassString.includes('setting')) {
                       navigationTarget = '/settings';
                     }
+                  }
                 }
               }
 
@@ -1301,7 +1302,7 @@ const Profile = memo(() => {
   const userCreatedAt = parseDate(data.usersPermissionsUser?.createdAt);
   const userUpdatedAt = parseDate(data.usersPermissionsUser?.updatedAt);
   // Use the latest user timestamp as a proxy for last username change.
-  let lastUsernameChange = userUpdatedAt || userCreatedAt;
+  const lastUsernameChange = userUpdatedAt || userCreatedAt;
   const cooldownMinutes = 1; // fixed 1 minute for testing; adjust manually for production
   let minutesSinceChange = cooldownMinutes;
   if (
@@ -1867,7 +1868,7 @@ const Profile = memo(() => {
             </div>
 
             {/* Tab Switcher - Seamless sticky positioning - Sticks to extreme top when header scrolls */}
-            <div className={`z-[90] sticky sticky-top-offset w-full bg-dashboard-bg py-2 shadow-sm transition-all duration-300 ${false ? 'opacity-0 pointer-events-none invisible' : 'opacity-100 visible'}`}>
+            <div className={`z-[90] sticky sticky-top-offset w-full bg-dashboard-bg py-2 shadow-sm transition-all duration-300 opacity-100 visible`}>
               <div className="flex items-center justify-center mx-auto bg-white font-poppins rounded-3xl w-fit" data-walkthrough="public-profile-tab">
                 {[
                   { key: "publicProfile", label: t('dashboard.profile.tabs.publicProfile') },

@@ -16,7 +16,7 @@ const GEMINI_API_URL = import.meta.env.VITE_PAYMENT_API_URL || "http://localhost
  * Handles cases where backend appends explanatory text after JSON
  */
 function extractValidJSON(content: string): string {
-  let jsonContent = content.trim();
+  const jsonContent = content.trim();
 
   // Handle markdown code blocks
   if (jsonContent.startsWith("```")) {

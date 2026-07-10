@@ -585,6 +585,7 @@ export const useAddRecommendation = ({
             });
           }
         } catch (error) {
+          // Non-fatal: cache update failure is recovered by the refetch below
         }
 
         // Update Claimable_Place_Profile after successful recommendation creation

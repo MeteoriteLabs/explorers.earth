@@ -234,7 +234,7 @@ const EditStayModal: React.FC<EditStayModalProps> = ({
         }
 
         // Stay appears in this period, update budget entry
-        let updated = budgetPlaces.filter((bp) => bp.place_id !== oldPlaceId);
+        const updated = budgetPlaces.filter((bp) => bp.place_id !== oldPlaceId);
 
         // If the new place has price information, add/update it
         if (newPlaceId && (updatedStay.priceLevel !== undefined || updatedStay.priceRange || updatedStay.customBudget)) {

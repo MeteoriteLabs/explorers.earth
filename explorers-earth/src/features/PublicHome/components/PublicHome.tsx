@@ -499,10 +499,9 @@ const PublicHome = memo(() => {
     // Mark as triggered to prevent re-animation when selectedCity changes
     animationTriggeredRef.current = true;
 
-    let animationTimeout: ReturnType<typeof setTimeout>;
     let scrollBackTimeout: ReturnType<typeof setTimeout>;
 
-    animationTimeout = setTimeout(() => {
+    const animationTimeout = setTimeout(() => {
       const currentContainer = isMobile
         ? mobileScrollContainerRef.current
         : desktopScrollContainerRef.current;

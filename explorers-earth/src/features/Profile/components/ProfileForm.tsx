@@ -41,7 +41,7 @@ import MobileIcon from "../../../assets/icons/MobileIcon";
 
 // Helper function to normalize mobile number format
 // Converts wrong format (ISO code + number, like "AF9140284510") to correct format (+numeric code, like "+939140284510")
-// @ts-ignore - Legacy helper function kept for potential future use
+// @ts-expect-error - Legacy helper function kept for potential future use
 const normalizeMobileNumber = (value: string | undefined): string => {
   if (!value || value.trim() === '') return "";
 
@@ -72,7 +72,7 @@ const normalizeMobileNumber = (value: string | undefined): string => {
 };
 
 // Phone number validation schema
-// @ts-ignore - Legacy validation schema kept for potential future use
+// @ts-expect-error - Legacy validation schema kept for potential future use
 const phoneValidationSchema = Yup.object({
   mobilenumberLink: Yup.string()
     .test(

@@ -71,7 +71,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
   existingSections = [],
   guide,
   onSuccess,
-  // @ts-ignore - onCancel is part of the component interface
+  // @ts-expect-error - onCancel is part of the component interface
   onCancel,
   onLoadingChange,
 }) => {
@@ -92,7 +92,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
   const [sequence, setSequence] = useState<number>(
     initialData?.Sequence || getNextSequence()
   );
-  // @ts-ignore - loading is used via setLoading throughout the component
+  // @ts-expect-error - loading is used via setLoading throughout the component
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("timeline");
 
