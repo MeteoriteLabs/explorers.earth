@@ -87,6 +87,7 @@ interface AddRecommendation {
       documentId: string;
     };
   };
+  fetchedPlace?: any;
 }
 
 export const useAddRecommendation = ({
@@ -104,6 +105,7 @@ export const useAddRecommendation = ({
   setIsLoading,
   userInputRef,
   recommendationType = "place",
+  fetchedPlace,
 }: AddRecommendation) => {
   const { selectedCity, setSelectedCity } = useCityStore();
   const navigate = useNavigate();
@@ -301,6 +303,8 @@ export const useAddRecommendation = ({
               Place_Address: values.address || '',
               Geometry: geometryData,
             },
+            user_rating: values.userRating || null,
+            google_rating: placeDetails?.data?.rating || places?.rating || null,
             recommendation_category: values.category,
             recommendation_sub_category: values.subcategory,
             Contact_Name: values.contactName || '',
@@ -864,6 +868,8 @@ export const useAddRecommendation = ({
             Place_Address: values.address,
             Geometry: geometryData,
           },
+          user_rating: values.userRating || null,
+          google_rating: placeDetails?.data?.rating || fetchedPlace?.recommendedPlace?.google_rating || null,
           recommendation_category: values.category || media_details?.recommendation_category?.documentId || "",
           recommendation_sub_category: values.subcategory || media_details?.recommendation_sub_category?.documentId || "",
           Contact_Name: values.contactName || "",

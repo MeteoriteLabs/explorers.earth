@@ -31,6 +31,7 @@ export interface Places {
   formatted_phone_number?: string;
   formatted_address?: string;
   website?: string;
+  rating?: number; // Fetched Google Maps place rating out of 5
   primaryType?: string; // Google Places primary type (e.g., "beach", "restaurant")
   primaryTypeDisplayName?: string; // Human-readable primary type (e.g., "Beach", "Restaurant")
   geometry?: {

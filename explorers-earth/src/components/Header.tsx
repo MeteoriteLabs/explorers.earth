@@ -46,6 +46,9 @@ const recommendationCategories = [
   { id: 'movies', name: 'Movies & Shows', path: '/recommendations/movies' },
   { id: 'books', name: 'Books', path: '/recommendations/books' },
   { id: 'games', name: 'Games', path: '/recommendations/games' },
+  { id: 'apps', name: 'Apps & Tools', path: '/recommendations/apps' },
+  { id: 'products', name: 'Products', path: '/recommendations/products' },
+  { id: 'people', name: 'People', path: '/recommendations/people' },
   { id: 'music', name: 'Music', path: '/music' },
   { id: 'guides', name: 'Guides', path: '/guides' },
 ];

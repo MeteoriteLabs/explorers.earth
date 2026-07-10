@@ -51,6 +51,8 @@ type CardDataItem = {
   };
   Recommendation_Type?: "place" | "person";
   Contact_Name?: string;
+  user_rating?: number | null;
+  google_rating?: number | null;
   recommendation_category: {
     Category_Name: string;
   };
@@ -541,7 +543,11 @@ const PlaceDetails = memo(() => {
                       })
                     }
                     title={isPersonType ? place.Contact_Name : place.Place_Details?.Title}
-                    rating={!isPersonType ? place.Place_Details?.Rating : undefined}
+                    rating={
+                      !isPersonType
+                        ? (place.user_rating ?? (place.google_rating ? place.google_rating * 2 : (place.Place_Details?.Rating ? place.Place_Details.Rating * 2 : undefined)))
+                        : undefined
+                    }
                     reviews={!isPersonType ? place.Place_Details?.Rating_Count : undefined}
                   />
                 );

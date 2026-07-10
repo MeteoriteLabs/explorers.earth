@@ -16,6 +16,7 @@ import Dropdown from "../../../components/ui/Dropdown";
 import TiptapEditor from "./TiptapEditor";
 import { AddIcon } from "../../../assets/icons/AddIcon";
 import CrossIcon from "../../../assets/icons/CrossIcon";
+import StarIcon from "../../../assets/icons/StarIcon";
 import { AdvancedMarker, Map, MapCameraChangedEvent, Pin } from "@vis.gl/react-google-maps";
 import Modal from "../../../components/ui/Modal";
 import { useTaggableFields } from "../hooks/useTaggableFields";
@@ -166,7 +167,7 @@ const ScrollToFirstErrorWithActivation = ({
 
 
 // Generic type for defining objects
-export type KeyValuePair = { [key: string]: string };
+export type KeyValuePair = { [key: string]: any };
 
 // Types for form field
 interface FormField {
@@ -1553,17 +1554,50 @@ const RecommendationForm = memo(
                             </div>
                           )}
                         </div>
+                      ) : field.type === "rating" ? (
+                        <Field name={field.name}>
+                          {({ form: { setFieldValue, values } }: any) => {
+                            const currentRating = values[field.name] ?? 0;
+                            return (
+                              <div className="flex gap-1.5 flex-wrap items-center mt-1">
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
+                                  <button
+                                    key={star}
+                                    type="button"
+                                    onClick={() => setFieldValue(field.name, star)}
+                                    className={`p-1 transition-all hover:scale-110 active:scale-95 ${
+                                      currentRating >= star
+                                        ? "text-yellow-400"
+                                        : "text-white/20 hover:text-white/40"
+                                    }`}
+                                  >
+                                    <StarIcon
+                                      size="size-6"
+                                      fillColor={currentRating >= star ? "#FFEE58" : "transparent"}
+                                    />
+                                  </button>
+                                ))}
+                                {currentRating > 0 && (
+                                  <span className="text-dashboard text-sm ml-2 font-medium font-poppins">
+                                    {currentRating}/10
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          }}
+                        </Field>
                       ) : (
                         <Field
                           name={field.name}
                           type={field.type}
                           placeholder={field.placeholder}
                           as={field.as}
+                          disabled={field.name === "googleRating"}
                           className={`w-full placeholder:text-dashboard-muted ${field.type === "textarea" &&
                             "h-32 overflow-auto modal-scroll resize-none text-xs"
                             } outline-none p-3 border border-dashboard bg-dashboard-muted text-dashboard font-poppins
                       ${field.name === "recommendation" && "hidden"
-                            } rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-dashboard-accent hover:border-dashboard-accent`}
+                            } ${field.name === "googleRating" && "opacity-60 cursor-not-allowed"} rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-dashboard-accent hover:border-dashboard-accent`}
                         />
                       )}
 

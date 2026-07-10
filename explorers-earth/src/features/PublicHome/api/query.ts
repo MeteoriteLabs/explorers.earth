@@ -288,6 +288,8 @@ export const placeDetailsQuery = gql`
       Places_Social_Link
       Places_Website
       user_recommendation_note
+      user_rating
+      google_rating
       recommendation_category {
         Category_Name
       }

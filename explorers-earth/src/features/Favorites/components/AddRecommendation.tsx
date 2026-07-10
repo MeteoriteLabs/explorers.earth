@@ -272,6 +272,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
     setPreviewUrl,
     setIsLoading,
     userInputRef,
+    fetchedPlace,
   });
 
   // fetching the created categories
@@ -434,6 +435,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
               (searchParams.get("primaryType")
                 ? [searchParams.get("primaryType")!]
                 : []),
+            rating: placeData.rating,
             // Store primaryType and primaryTypeDisplayName for category matching
             primaryType: placeData.primaryType || searchParams.get("primaryType") || undefined,
             primaryTypeDisplayName: placeData.primaryTypeDisplayName?.text || undefined,
@@ -572,7 +574,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
               headers: {
                 'Content-Type': 'application/json',
                 'X-Goog-Api-Key': import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
-                'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.types,places.primaryType,places.primaryTypeDisplayName,places.addressComponents,places.location,places.photos'
+                'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.types,places.primaryType,places.primaryTypeDisplayName,places.addressComponents,places.location,places.photos,places.rating'
               }
             }
           );
@@ -586,6 +588,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
               name: place.displayName?.text || instagramData.location,
               formatted_address: place.formattedAddress || instagramData.location,
               types: place.types || [],
+              rating: place.rating,
               primaryType: place.primaryType,
               primaryTypeDisplayName: place.primaryTypeDisplayName?.text,
               address_components: place.addressComponents?.map((component: any) => ({

@@ -443,7 +443,11 @@ const SidebarItem = ({
   isExternal?: boolean;
 }) => {
   const location = useLocation();
-  const isActive = !isExternal && location.pathname.startsWith(to);
+  const isActive = !isExternal && (
+    to === "/recommendations"
+      ? (location.pathname === "/recommendations" || location.pathname === "/recommendations/" || location.pathname.startsWith("/recommendations/places"))
+      : location.pathname.startsWith(to)
+  );
 
   const handleClick = (e: React.MouseEvent) => {
     if (isExternal) {

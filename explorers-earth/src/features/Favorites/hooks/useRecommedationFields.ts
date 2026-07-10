@@ -46,6 +46,8 @@ interface FetchedPlace {
     media_details: string | null;
     recommendation_sub_category: RecommendationSubCategory;
     user_recommendation_note: string;
+    user_rating?: number | null;
+    google_rating?: number | null;
   };
 }
 export const useRecommendationFields = ({
@@ -95,6 +97,8 @@ export const useRecommendationFields = ({
       socialLink: places?.website || "",
       recommendationLink: instagramLink || "",
       reason: instagramCaption || "",
+      userRating: null,
+      googleRating: (places as any)?.rating ? ((places as any).rating * 2).toFixed(1) : "",
     };
   }, [places, recommendationType, instagramLink, instagramCaption, personName]);
 
@@ -118,6 +122,12 @@ export const useRecommendationFields = ({
     lng: fetchedPlace?.recommendedPlace?.Place_Details?.Geometry?.lng,
     recommendationLink: fetchedPlace?.recommendedPlace?.Users_Social_URL || "",
     reason: fetchedPlace?.recommendedPlace?.user_recommendation_note || "",
+    userRating: fetchedPlace?.recommendedPlace?.user_rating ?? null,
+    googleRating: fetchedPlace?.recommendedPlace?.google_rating
+      ? (fetchedPlace.recommendedPlace.google_rating * 2).toFixed(1)
+      : (fetchedPlace?.recommendedPlace?.Place_Details?.Rating
+        ? (fetchedPlace.recommendedPlace.Place_Details.Rating * 2).toFixed(1)
+        : ""),
   }), [fetchedPlace]);
 
   // validation schema for recommended Place - memoized to update when language changes
@@ -220,6 +230,17 @@ export const useRecommendationFields = ({
             as: "textarea",
           },
         ],
+      },
+      {
+        name: "userRating",
+        label: "Your Rating",
+        type: "rating",
+      },
+      {
+        name: "googleRating",
+        label: "Google Rating",
+        type: "text",
+        placeholder: "e.g. 8.4/10",
       },
     ];
 
