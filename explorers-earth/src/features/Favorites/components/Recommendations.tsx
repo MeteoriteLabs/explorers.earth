@@ -120,6 +120,8 @@ type CardDataItem = {
   };
   Recommendation_Type?: "place" | "person";
   Contact_Name?: string;
+  user_rating?: number | null;
+  google_rating?: number | null;
   documentId: string;
 };
 
@@ -1213,7 +1215,9 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
             {allFilteredPlaces?.map((data: CardDataItem, index: number) => {
               const isPersonType = data?.Recommendation_Type === "person";
               const title = isPersonType ? data.Contact_Name : data.Place_Details?.Title;
-              const rating = !isPersonType ? data?.Place_Details?.Rating : undefined;
+              const rating = !isPersonType
+                ? (data.user_rating ?? (data.google_rating ? data.google_rating * 2 : (data.Place_Details?.Rating ? data.Place_Details.Rating * 2 : undefined)))
+                : undefined;
               const reviews = !isPersonType ? data?.Place_Details?.Rating_Count : undefined;
               const image = isPersonType
                 ? getPersonImageUrl(data)

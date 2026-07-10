@@ -3,6 +3,7 @@ import CrossIcon from "../../../../assets/icons/CrossIcon";
 import Button from "../../../../components/ui/Button";
 import StarIcon from "../../../../assets/icons/StarIcon";
 import ClockIcon from "../../../../assets/icons/ClockIcon";
+import GoogleIcon from "../../../../assets/icons/GoogleIcon";
 import Tab from "../../../../components/ui/Tab";
 import Overview from "./Details/Overview";
 import MediaGallery from "./Details/MediaGallery";
@@ -43,6 +44,9 @@ const PlaceOverview: FC<PlaceOverviewProps> = memo(
 
     const fetchedPlace = data?.recommendedPlace;
     const isPersonType = fetchedPlace?.Recommendation_Type === "person";
+    const googleRating = fetchedPlace?.google_rating ?? fetchedPlace?.Place_Details?.Rating;
+    const googleRatingText = googleRating ? (googleRating * 2).toFixed(1) : null;
+    const userRating = fetchedPlace?.user_rating;
 
     // Prevent background scrolling when modal is open
     useEffect(() => {
@@ -258,44 +262,52 @@ const PlaceOverview: FC<PlaceOverviewProps> = memo(
                 }
               }}
             />
+            {/* Google Rating Badge overlayed on bottom-left of image */}
+            {!isPersonType && googleRatingText && (
+              <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 z-10 shadow-lg">
+                <GoogleIcon size="4" />
+                <span className="text-sm font-bold text-white font-poppins">
+                  {googleRatingText}/10
+                </span>
+                <span className="text-[10px] text-white/60 font-poppins font-medium">
+                  ({fetchedPlace?.Place_Details?.Rating_Count ?? 0} reviews)
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Rating, Category, and Timing Section */}
           <div className="p-3 text-dashboard">
-            <div className="flex flex-row justify-between items-start gap-1">
-              <div className="flex flex-col gap-1">
-                {/* Rating */}
-                {!isPersonType && (
-                  <div className="flex flex-row gap-2">
-                    <span className="flex flex-row gap-1">
-                      {[...Array(5)].map((_, i) => (
-                        <StarIcon
-                          key={i}
-                          fillColor={`${fetchedPlace?.Place_Details?.Rating &&
-                            i < fetchedPlace?.Place_Details.Rating
-                            ? "#FFEE58"
-                            : "#BDBDBD"
-                            }`}
-                        />
-                      ))}
-                    </span>
-                    <span className="text-xs md:text-sm">
-                      {fetchedPlace?.Place_Details?.Rating_Count ?? 0}
-                    </span>
+            {/* Top row: User rating (left) and Timings (right) */}
+            <div className="flex flex-row justify-between items-center gap-4 flex-wrap mb-1.5">
+              {!isPersonType && userRating ? (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-semibold text-yellow-500 uppercase tracking-wider">Creator's Rating:</span>
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
+                      <StarIcon
+                        key={star}
+                        size="size-3.5"
+                        fillColor={userRating >= star ? "#FFEE58" : "transparent"}
+                      />
+                    ))}
                   </div>
-                )}
-
-                {/* Category */}
-                <span className="text-xs md:text-sm">
-                  {fetchedPlace?.recommendation_category.Category_Name}
-                </span>
-              </div>
+                  <span className="text-xs font-semibold text-yellow-500 font-poppins">{userRating}/10</span>
+                </div>
+              ) : (
+                <div />
+              )}
 
               {/* Timings */}
-              <div className="flex flex-row gap-2 items-center">
+              <div className="flex flex-row gap-2 items-center text-dashboard-light">
                 <ClockIcon size={4} />
-                <span className="font-poppins text-sm">9:00 am - 11:30 pm</span>
+                <span className="font-poppins text-xs md:text-sm">9:00 am - 11:30 pm</span>
               </div>
+            </div>
+
+            {/* Bottom: Category */}
+            <div className="text-xs md:text-sm text-dashboard-light font-medium mt-1">
+              {fetchedPlace?.recommendation_category.Category_Name}
             </div>
           </div>
 

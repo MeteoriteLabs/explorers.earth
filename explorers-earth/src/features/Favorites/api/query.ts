@@ -55,6 +55,8 @@ export const recommendedListByIdQuery = gql`
         documentId
         Place_Details
         media_details
+        user_rating
+        google_rating
         Media {
           url
         }
@@ -150,6 +152,8 @@ export const recommendedPlaceQuery = gql`
       }
       user_recommendation_note
       media_details
+      user_rating
+      google_rating
     }
   }
 `;
@@ -171,6 +175,8 @@ export const recommendedPlacesQuery = gql`
       recommendation_list {
         documentId
       }
+      user_rating
+      google_rating
     }
   }
 `;

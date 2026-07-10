@@ -13,6 +13,7 @@ export const useTaggableFields = ({
   const [activeFields, setActiveFields] = useState<string[]>([
     "recommendationDetails",
     "recommendation",
+    ...(recommendationType === "place" ? ["userRating", "googleRating"] : []),
     ...(type === "edit"
       ? [
         "title",
@@ -48,11 +49,11 @@ export const useTaggableFields = ({
   useEffect(() => {
     if (type !== "edit") {
       // For person type, always include subcategory in activeFields
-      // For place type, reset to only base fields
+      // For place type, reset to base fields including ratings
       setActiveFields([
         "recommendationDetails",
         "recommendation",
-        ...(recommendationType === "person" ? ["subcategory"] : []),
+        ...(recommendationType === "person" ? ["subcategory"] : ["userRating", "googleRating"]),
       ]);
     }
   }, [recommendationType, type]);
