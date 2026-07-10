@@ -39,7 +39,9 @@ describe('People Profile Scrape Flow Integration Test', () => {
     vi.restoreAllMocks();
   });
 
-  it('scrapes profile URL, renders form preview, and submits to create person successfully', async () => {
+  // 30s test timeout: the scrape -> upload -> mutate -> refetch chain outruns
+  // vitest's 5s default on slow CI runners under coverage instrumentation.
+  it('scrapes profile URL, renders form preview, and submits to create person successfully', { timeout: 30000 }, async () => {
     vi.spyOn(Date, 'now').mockReturnValue(1234567890);
 
     // 1. Mock the scrape Profile API endpoint using global fetch

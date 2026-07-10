@@ -32,7 +32,9 @@ describe('Apps & Tools Scrape Flow Integration Test', () => {
     vi.restoreAllMocks();
   });
 
-  it('scrapes app URL, renders form preview, and submits to create app successfully', async () => {
+  // 30s test timeout: the scrape -> upload -> mutate -> refetch chain outruns
+  // vitest's 5s default on slow CI runners under coverage instrumentation.
+  it('scrapes app URL, renders form preview, and submits to create app successfully', { timeout: 30000 }, async () => {
     // 1. Mock the scrape Link API endpoint using global fetch
     const mockAppScrape = {
       title: 'Scraped Figma',
