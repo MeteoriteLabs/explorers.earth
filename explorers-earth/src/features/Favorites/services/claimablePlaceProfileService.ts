@@ -122,6 +122,7 @@ export class ClaimablePlaceProfileService {
         return result.data.updateClaimablePlaceProfile;
       }
     } catch (error) {
+      console.error("Failed to update or create claimable place profile:", error);
       throw error;
     }
   }

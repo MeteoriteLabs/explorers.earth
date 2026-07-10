@@ -18,16 +18,6 @@ const AppTopPicksHero = ({ apps, onAppClick, showManageButton = false, onManageC
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
-  if (!apps || apps.length === 0) return null;
-
-  const activeApp = apps[activeIndex];
-  const backdropUrl = (activeApp.screenshots && activeApp.screenshots.length > 0)
-    ? activeApp.screenshots[0]
-    : (activeApp.logo_url ? buildLogoUrl(activeApp.logo_url) : "https://images.unsplash.com/photo-1531403009284-440f080d1e12");
-  
-  const priceTier = activeApp.price_tier;
-  const platforms = activeApp.platforms || [];
-
   const updateScrollButtons = () => {
     if (scrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
@@ -56,6 +46,16 @@ const AppTopPicksHero = ({ apps, onAppClick, showManageButton = false, onManageC
     }, 5000);
     return () => clearInterval(interval);
   }, [apps.length]);
+
+  if (!apps || apps.length === 0) return null;
+
+  const activeApp = apps[activeIndex];
+  const backdropUrl = (activeApp.screenshots && activeApp.screenshots.length > 0)
+    ? activeApp.screenshots[0]
+    : (activeApp.logo_url ? buildLogoUrl(activeApp.logo_url) : "https://images.unsplash.com/photo-1531403009284-440f080d1e12");
+
+  const priceTier = activeApp.price_tier;
+  const platforms = activeApp.platforms || [];
 
   const handleScrollClick = (direction: 'left' | 'right') => {
     if (scrollRef.current) {

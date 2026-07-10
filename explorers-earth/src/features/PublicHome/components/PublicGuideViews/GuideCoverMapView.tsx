@@ -404,16 +404,17 @@ const GuideCoverMapView = memo(({ sections, isVisible }: GuideCoverMapViewProps)
     }
   }, []);
 
+  // Create polyline path from all places in exact sequence. The isVisible gate
+  // lives inside the memo so google.maps is only touched when the map renders.
+  const polylinePath = useMemo(() => {
+    if (!isVisible || placesWithCoords.length < 2) return [];
+    return placesWithCoords.map(p => new google.maps.LatLng(p.lat, p.lng));
+  }, [isVisible, placesWithCoords]);
+
   // Don't render if no places or not visible
   if (!isVisible || placesWithCoords.length === 0) {
     return null;
   }
-
-  // Create polyline path from all places in exact sequence
-  const polylinePath = useMemo(() => {
-    if (placesWithCoords.length < 2) return [];
-    return placesWithCoords.map(p => new google.maps.LatLng(p.lat, p.lng));
-  }, [placesWithCoords]);
 
   return (
     <div className="absolute inset-0 w-full h-full z-[5] pointer-events-auto" style={{ touchAction: 'none' }}>

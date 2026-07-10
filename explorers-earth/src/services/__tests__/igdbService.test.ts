@@ -63,11 +63,8 @@ describe('igdbService', () => {
   });
 
   describe('API and Auth methods', () => {
-    it('authenticates and fetches games', async () => {
+    it('fetches games using the test-mode token bypass', async () => {
       (axios.post as any).mockImplementation((url: string) => {
-        if (url.includes('oauth2/token')) {
-          return Promise.resolve({ data: { access_token: 'fake-token', expires_in: 3600 } });
-        }
         if (url.includes('/igdb-api/v4/games')) {
           return Promise.resolve({ data: [{ id: 1, name: 'Zelda' }] });
         }
@@ -75,14 +72,16 @@ describe('igdbService', () => {
       });
 
       const results = await igdbService.searchGames('Zelda');
-      
-      expect(axios.post).toHaveBeenCalledTimes(2);
+
+      // MODE === 'test' (and jsdom's localhost hostname) short-circuits Twitch
+      // OAuth in getAccessToken, so only the IGDB games request reaches axios.
+      expect(axios.post).toHaveBeenCalledTimes(1);
       expect(results).toHaveLength(1);
       expect(results[0].name).toBe('Zelda');
-      
-      // Token should be cached, next call should only hit IGDB
+
+      // Token stays cached; the next call adds exactly one more IGDB request.
       await igdbService.getGameDetails(1);
-      expect(axios.post).toHaveBeenCalledTimes(3); // 2 previous + 1 new IGDB call
+      expect(axios.post).toHaveBeenCalledTimes(2);
     });
 
     it('searchGames returns empty array for empty query', async () => {

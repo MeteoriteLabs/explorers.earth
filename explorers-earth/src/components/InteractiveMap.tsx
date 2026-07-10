@@ -187,8 +187,6 @@ const InteractiveMap = memo(({ locations, onToggleExpand, defaultMapTypeId = "ro
 
   // Fullscreen Overlay Component
   const FullscreenOverlay = () => {
-    if (!isFullscreen) return null;
-
     const [fullscreenCoords, setFullscreenCoords] = useState(currentCoords);
     const [fullscreenZoom, setFullscreenZoom] = useState(currentZoom);
     const [fullscreenTargetCoords, setFullscreenTargetCoords] = useState(targetCoords);
@@ -203,6 +201,8 @@ const InteractiveMap = memo(({ locations, onToggleExpand, defaultMapTypeId = "ro
       setFullscreenTargetZoom(targetZoom);
       setFullscreenMapTypeId(mapTypeId);
     }, [currentCoords, currentZoom, targetCoords, targetZoom, mapTypeId]);
+
+    if (!isFullscreen) return null;
 
     const handleFullscreenCameraChanged = (event: MapCameraChangedEvent) => {
       const { detail } = event;

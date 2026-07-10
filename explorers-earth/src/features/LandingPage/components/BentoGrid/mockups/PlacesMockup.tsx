@@ -45,9 +45,8 @@ export default function PlacesMockup() {
   const [activeCat, setActiveCat] = useState('View all');
 
   useEffect(() => {
-    let t: ReturnType<typeof setTimeout>;
     const next = (stage + 1) % STAGES.length;
-    t = setTimeout(() => {
+    const t = setTimeout(() => {
       if (next === 0) {
         setTypedCity(''); setTypedPlace('');
         setCityAdded(false); setPlaceAdded(false);

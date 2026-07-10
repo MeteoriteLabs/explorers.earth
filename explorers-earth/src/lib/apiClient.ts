@@ -148,7 +148,7 @@ let sessionCookieValue: string | null = null;
 // Function to extract CSRF token from cookies
 const getCsrfTokenFromCookies = () => {
   const cookies = document.cookie.split(';');
-  for (let cookie of cookies) {
+  for (const cookie of cookies) {
     const [name, value] = cookie.trim().split('=');
     if (name === 'XSRF-TOKEN') {
       return decodeURIComponent(value);
@@ -160,7 +160,7 @@ const getCsrfTokenFromCookies = () => {
 // Function to get session ID from cookies
 const getSessionIdFromCookies = () => {
   const cookies = document.cookie.split(';');
-  for (let cookie of cookies) {
+  for (const cookie of cookies) {
     const [name, value] = cookie.trim().split('=');
     if (name === 'cosmic.sid') {
       return value;

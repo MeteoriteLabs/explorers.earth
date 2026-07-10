@@ -18,7 +18,6 @@ import {
 } from '../services/paymentService';
 import PaymentModeToggle from '../components/PaymentModeToggle';
 import axios from 'axios';
-// @ts-ignore
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import {
   createLocalTunesUserWithRetry,
@@ -474,7 +473,7 @@ const Checkout = () => {
     }
 
     // Fallback: clean the number (remove spaces, dashes, parentheses, +)
-    const cleaned = phoneNumber.replace(/[\s\-\(\)\+]/g, '');
+    const cleaned = phoneNumber.replace(/[\s\-()+]/g, '');
 
     // Validate: must be all digits and at least 10 characters
     if (/^\d{10,}$/.test(cleaned)) {

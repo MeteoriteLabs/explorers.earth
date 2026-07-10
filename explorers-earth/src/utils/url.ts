@@ -2,7 +2,7 @@
 // Ensures a valid protocol is present and preserves already well-formed URLs.
 export function normalizeExternalUrl(raw?: string | null): string | undefined {
   if (!raw) return undefined;
-  let url = raw.trim();
+  const url = raw.trim();
   if (!url) return undefined;
 
   // Accept already valid schemes

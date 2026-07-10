@@ -26,7 +26,7 @@ const RichTextContent: React.FC<RichTextContentProps> = ({ content, className = 
             if (child.underline) text = `<u>${text}</u>`;
             return text;
           }).join('')}</h${block.level}>`;
-        case 'list':
+        case 'list': {
           const tag = block.format === 'ordered' ? 'ol' : 'ul';
           return `<${tag} class="mb-4 list-disc pl-6">${block.children.map((item: any) => 
             `<li class="mb-2">${item.children.map((child: any) => {
@@ -37,6 +37,7 @@ const RichTextContent: React.FC<RichTextContentProps> = ({ content, className = 
               return text;
             }).join('')}</li>`
           ).join('')}</${tag}>`;
+        }
         case 'quote':
           return `<blockquote class="border-l-4 border-gray-300 pl-4 italic mb-4">${block.children.map((child: any) => {
             let text = child.text || '';

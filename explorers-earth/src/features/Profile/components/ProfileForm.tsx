@@ -1,4 +1,4 @@
-import { Formik, Form, Field, ErrorMessage } from "formik";
+import { Formik, Form, Field, ErrorMessage, useFormikContext } from "formik";
 import { FC, memo, ReactNode, useEffect, useState, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import * as Yup from "yup";
@@ -41,7 +41,7 @@ import MobileIcon from "../../../assets/icons/MobileIcon";
 
 // Helper function to normalize mobile number format
 // Converts wrong format (ISO code + number, like "AF9140284510") to correct format (+numeric code, like "+939140284510")
-// @ts-ignore - Legacy helper function kept for potential future use
+// @ts-expect-error - Legacy helper function kept for potential future use
 const normalizeMobileNumber = (value: string | undefined): string => {
   if (!value || value.trim() === '') return "";
 
@@ -72,7 +72,7 @@ const normalizeMobileNumber = (value: string | undefined): string => {
 };
 
 // Phone number validation schema
-// @ts-ignore - Legacy validation schema kept for potential future use
+// @ts-expect-error - Legacy validation schema kept for potential future use
 const phoneValidationSchema = Yup.object({
   mobilenumberLink: Yup.string()
     .test(
@@ -136,6 +136,46 @@ interface ProfileFormProps {
   onResetDirtyState?: (resetFn: () => void) => void; // Callback to expose reset function to parent
   onFeedDataChange?: () => void; // Callback to notify when Feed_Data changes
 }
+
+// Runs the form's side effects from inside the Formik provider. Extracted from
+// the render-prop callback because React hooks may not be called in callbacks.
+const ProfileFormEffects: FC<{
+  setFieldValueRef: React.MutableRefObject<((field: string, value: any) => void) | null>;
+  address: string;
+  setAddress: (address: string) => void;
+  isFormInitialized: boolean;
+  initialValues: KeyValuePair;
+}> = ({ setFieldValueRef, address, setAddress, isFormInitialized, initialValues }) => {
+  const { values, setFieldValue } = useFormikContext<KeyValuePair>();
+
+  // Store setFieldValue in ref for use in DetectLocation
+  useEffect(() => {
+    setFieldValueRef.current = setFieldValue;
+  }, [setFieldValue]);
+
+  // Sync address state with Formik values (for location detection)
+  useEffect(() => {
+    if (values.address !== undefined && values.address !== address) {
+      setAddress(values.address);
+    }
+  }, [values.address]);
+
+  // Update form values when switching tabs, but only for empty fields
+  // This runs during initialization and should not trigger dirty state
+  useEffect(() => {
+    // Only update values if form is not yet initialized to prevent triggering dirty state
+    if (!isFormInitialized) {
+      Object.keys(initialValues).forEach(key => {
+        // Only update if the current value is empty or undefined
+        if (!values[key] && initialValues[key]) {
+          setFieldValue(key, initialValues[key], false); // false = don't validate, don't trigger dirty
+        }
+      });
+    }
+  }, [initialValues, setFieldValue, isFormInitialized]);
+
+  return null;
+};
 
 const ProfileForm: FC<ProfileFormProps> = memo(
   ({
@@ -536,32 +576,6 @@ const ProfileForm: FC<ProfileFormProps> = memo(
         enableReinitialize={false}
       >
         {({ values, setFieldValue, handleChange, touched, errors }) => {
-          // Store setFieldValue in ref for use in DetectLocation
-          useEffect(() => {
-            setFieldValueRef.current = setFieldValue;
-          }, [setFieldValue]);
-
-          // Sync address state with Formik values (for location detection)
-          useEffect(() => {
-            if (values.address !== undefined && values.address !== address) {
-              setAddress(values.address);
-            }
-          }, [values.address]);
-
-          // Update form values when switching tabs, but only for empty fields
-          // This runs during initialization and should not trigger dirty state
-          useEffect(() => {
-            // Only update values if form is not yet initialized to prevent triggering dirty state
-            if (!isFormInitialized) {
-              Object.keys(initialValues).forEach(key => {
-                // Only update if the current value is empty or undefined
-                if (!values[key] && initialValues[key]) {
-                  setFieldValue(key, initialValues[key], false); // false = don't validate, don't trigger dirty
-                }
-              });
-            }
-          }, [initialValues, setFieldValue, isFormInitialized]);
-
           return (
             <Form
               className="font-poppins flex flex-col gap-4 w-full"
@@ -575,6 +589,13 @@ const ProfileForm: FC<ProfileFormProps> = memo(
                 e.stopPropagation();
               }}
             >
+              <ProfileFormEffects
+                setFieldValueRef={setFieldValueRef}
+                address={address}
+                setAddress={setAddress}
+                isFormInitialized={isFormInitialized}
+                initialValues={initialValues}
+              />
               <div className="bg-dashboard-muted backdrop-blur-sm rounded-2xl border border-white p-2 md:p-6 shadow-dashboard-elevated w-full max-w-sm sm:max-w-md md:max-w-2xl lg:max-w-3xl mx-auto">
                 {formFields.map((section, sectionIndex) => (
                   section.heading === t('dashboard.profile.publicProfile.sections.howToReachUs') && values.accountType !== 'business' ? null :

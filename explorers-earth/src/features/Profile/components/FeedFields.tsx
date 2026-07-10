@@ -597,7 +597,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
             try {
               const r = await fetch(direct);
               if (!r.ok) throw new Error("fetch failed");
-            } catch { }
+            } catch { /* probe only — a failed HEAD fetch is acceptable */ }
             return {
               id: `google-${placeId}-${i}`,
               url: direct,
@@ -962,7 +962,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            img.id && toggleSelect(img.id);
+                            if (img.id) toggleSelect(img.id);
                           }}
                         >
                           <div
@@ -1131,7 +1131,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            img.id && igToggleSelect(img.id);
+                            if (img.id) igToggleSelect(img.id);
                           }}
                         >
                           <div

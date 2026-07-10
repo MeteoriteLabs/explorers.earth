@@ -652,7 +652,7 @@ const PublicGuides = memo(() => {
                           let placeDetails: any = {};
                           if (guide.Place_Details) {
                             if (typeof guide.Place_Details === "string") {
-                              try { placeDetails = JSON.parse(guide.Place_Details); } catch (e) {}
+                              try { placeDetails = JSON.parse(guide.Place_Details); } catch { /* malformed JSON — fall back to defaults */ }
                             } else { placeDetails = guide.Place_Details; }
                           }
                           const rating = placeDetails.Rating || 5.0;
@@ -765,7 +765,7 @@ const PublicGuides = memo(() => {
                       let placeDetails: any = {};
                       if (guide.Place_Details) {
                         if (typeof guide.Place_Details === "string") {
-                          try { placeDetails = JSON.parse(guide.Place_Details); } catch (e) {}
+                          try { placeDetails = JSON.parse(guide.Place_Details); } catch { /* malformed JSON — fall back to defaults */ }
                         } else { placeDetails = guide.Place_Details; }
                       }
                       const rating = placeDetails.Rating || 5.0;

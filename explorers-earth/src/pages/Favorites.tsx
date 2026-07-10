@@ -233,7 +233,7 @@ const Favorites = memo(() => {
 
   // // local state for handling current list displayed on the carousel
   // const [selectedCity, setSelectedCity] = useState<selectedCity>(
-  //   recommendationLists// );
+  //   recommendationLists// );
 
   // mutation for updating the recommended list
   const [updateRecommendedList] = useMutation(updateRecommendedListMutation, {

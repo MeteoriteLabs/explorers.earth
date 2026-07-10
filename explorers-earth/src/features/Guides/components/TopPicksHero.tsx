@@ -51,11 +51,6 @@ const TopPicksHero = ({ guides, onGuideClick, showManageButton = false, onManage
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
-  if (!guides || guides.length === 0) return null;
-
-  const activeGuide = guides[activeIndex >= guides.length ? 0 : activeIndex];
-  const coverImage = activeGuide.Guide_Media?.[0]?.url || "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1200&q=80";
-
   const updateScrollButtons = () => {
     if (scrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
@@ -85,6 +80,11 @@ const TopPicksHero = ({ guides, onGuideClick, showManageButton = false, onManage
     }, 5000);
     return () => clearInterval(interval);
   }, [guides.length]);
+
+  if (!guides || guides.length === 0) return null;
+
+  const activeGuide = guides[activeIndex >= guides.length ? 0 : activeIndex];
+  const coverImage = activeGuide.Guide_Media?.[0]?.url || "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1200&q=80";
 
   const handleScrollClick = (direction: 'left' | 'right') => {
     if (scrollRef.current) {

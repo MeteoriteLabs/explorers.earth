@@ -28,20 +28,20 @@ const DashboardRouteValidator = ({
       /^\/onboarding$/,
       /^\/guides$/,
       /^\/guides\/new$/,
-      /^\/guides\/[^\/]+$/, // Guide details: /guides/:guideId
-      /^\/guides\/[^\/]+\/edit$/,
-      /^\/guides\/[^\/]+\/sections\/new$/, // Add section: /guides/:guideId/sections/new
-      /^\/guides\/[^\/]+\/sections\/[^\/]+\/edit$/, // Edit section: /guides/:guideId/sections/:sectionId/edit
+      /^\/guides\/[^/]+$/, // Guide details: /guides/:guideId
+      /^\/guides\/[^/]+\/edit$/,
+      /^\/guides\/[^/]+\/sections\/new$/, // Add section: /guides/:guideId/sections/new
+      /^\/guides\/[^/]+\/sections\/[^/]+\/edit$/, // Edit section: /guides/:guideId/sections/:sectionId/edit
       /^\/recommendations\/movies(\/.*)?$/, // All movies & shows routes
       /^\/recommendations\/books(\/.*)?$/, // All books routes
       /^\/recommendations\/games(\/.*)?$/, // All games routes
       /^\/recommendations\/apps(\/.*)?$/, // All apps & tools routes
       /^\/recommendations\/products(\/.*)?$/, // All products routes
       /^\/recommendations\/people(\/.*)?$/, // All people routes
-      /^\/recommendations\/places\/[^\/]+\/add-people$/, // Add linked people to a location
-      /^\/recommendations\/places\/[^\/]+\/add-products$/, // Add linked products to a location
-      /^\/[^\/]+\/new$/, // Dynamic routes like /:listId/new
-      /^\/[^\/]+\/edit$/, // Dynamic routes like /:placeId/edit
+      /^\/recommendations\/places\/[^/]+\/add-people$/, // Add linked people to a location
+      /^\/recommendations\/places\/[^/]+\/add-products$/, // Add linked products to a location
+      /^\/[^/]+\/new$/, // Dynamic routes like /:listId/new
+      /^\/[^/]+\/edit$/, // Dynamic routes like /:placeId/edit
     ];
 
 

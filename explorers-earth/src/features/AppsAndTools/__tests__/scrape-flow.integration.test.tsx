@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MockedProvider } from '@apollo/client/testing';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import axios from 'axios';
 import AddAppPage from '../components/dashboard/AddAppPage';
 import { APPS_BY_LIST, APP_CATEGORIES } from '../api/query';
 import { CREATE_RECOMMENDED_APP } from '../api/mutation';
@@ -15,6 +16,12 @@ vi.mock('../../../../store/store', () => ({
   }),
 }));
 
+// Mock axios: the submit flow downloads the scraped logo (axios.get) and
+// uploads it to S3 via the REST API (axios.post) BEFORE firing the GraphQL
+// mutation. Unmocked, those calls hit the real network and stall the test.
+vi.mock('axios');
+const UPLOADED_LOGO_URL = 'https://s3.example.com/uploads/logo.png';
+
 describe('Apps & Tools Scrape Flow Integration Test', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -25,7 +32,9 @@ describe('Apps & Tools Scrape Flow Integration Test', () => {
     vi.restoreAllMocks();
   });
 
-  it('scrapes app URL, renders form preview, and submits to create app successfully', async () => {
+  // 30s test timeout: the scrape -> upload -> mutate -> refetch chain outruns
+  // vitest's 5s default on slow CI runners under coverage instrumentation.
+  it('scrapes app URL, renders form preview, and submits to create app successfully', { timeout: 30000 }, async () => {
     // 1. Mock the scrape Link API endpoint using global fetch
     const mockAppScrape = {
       title: 'Scraped Figma',
@@ -41,6 +50,14 @@ describe('Apps & Tools Scrape Flow Integration Test', () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => mockAppScrape,
+    });
+
+    // Logo download → blob; S3 upload → uploaded URL
+    (axios.get as any).mockResolvedValue({
+      data: new Blob(['fake-image'], { type: 'image/png' }),
+    });
+    (axios.post as any).mockResolvedValue({
+      data: [{ url: UPLOADED_LOGO_URL }],
     });
 
     // 2. Setup GraphQL mocks
@@ -89,7 +106,7 @@ describe('Apps & Tools Scrape Flow Integration Test', () => {
           app_url: 'https://figma.com',
           title: 'Scraped Figma',
           description: 'Collaborative interface design tool.',
-          logo_url: 'https://example.com/logo.png',
+          logo_url: UPLOADED_LOGO_URL,
           developer: 'Figma Inc.',
           platforms: ['Web', 'macOS', 'Windows'],
           price_tier: 'Freemium',
@@ -117,9 +134,10 @@ describe('Apps & Tools Scrape Flow Integration Test', () => {
       }
     };
 
-    // Render the page
+    // Render the page. appsByListMock appears twice: once for the initial page
+    // load and once for the post-mutation refetch (each mock is consumed once).
     render(
-      <MockedProvider mocks={[appCategoriesMock, appsByListMock, createAppMock]} addTypename={false}>
+      <MockedProvider mocks={[appCategoriesMock, appsByListMock, createAppMock, appsByListMock]} addTypename={false}>
         <MemoryRouter initialEntries={['/recommendations/apps/list_123/add']}>
           <Routes>
             <Route path="/recommendations/apps/:listId/add" element={<AddAppPage />} />
@@ -156,9 +174,11 @@ describe('Apps & Tools Scrape Flow Integration Test', () => {
     const saveBtn = screen.getByRole('button', { name: 'Add to List' });
     fireEvent.click(saveBtn);
 
-    // Wait until query/mutations resolve
+    // Wait until query/mutations resolve. Generous timeout: the upload →
+    // mutation → refetch chain exceeds the 1s default on slow CI runners
+    // under coverage instrumentation.
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'Add to List' })).not.toBeInTheDocument();
-    });
+    }, { timeout: 15000 });
   });
 });

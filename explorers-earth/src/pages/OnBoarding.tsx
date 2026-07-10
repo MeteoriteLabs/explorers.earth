@@ -50,7 +50,6 @@ import { loginQuery } from "../features/Authentication/api/mutation";
 
 import { useUserForOnboarding } from "../features/Authentication/hooks/useCurrentUser";
 import { EarthLoader } from "../components/EarthLoader";
-// @ts-ignore
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { Check, Sparkles, Zap, Crown, LogOut } from "lucide-react";
 import { useQuery as useReactQuery } from "@tanstack/react-query";
@@ -461,7 +460,7 @@ const OnBoarding = () => {
   useEffect(() => {
     if (subscriptionPlansData && subscriptionPlansData.length > 0 && !selectedPlan) {
       const freePlan = subscriptionPlansData.find(
-        (plan: SubscriptionPlan) => plan.plan_name.toLowerCase() === 'free'
+        (plan: SubscriptionPlan) => plan.plan_name?.toLowerCase() === 'free'
       );
       if (freePlan) {
         setSelectedPlan(freePlan.documentId);
@@ -830,6 +829,7 @@ const OnBoarding = () => {
       }
       throw new Error("No URL in response");
     } catch (error) {
+      console.error("Onboarding media upload failed:", error);
       throw error;
     }
   };
@@ -1069,16 +1069,16 @@ const OnBoarding = () => {
 
   // Get plan icon based on plan name
   const getPlanIcon = (planName: string) => {
-    if (planName.toLowerCase() === 'free') return <Sparkles className="w-5 h-5" />;
-    if (planName.toLowerCase() === 'paid') return <Crown className="w-5 h-5" />;
+    if (planName?.toLowerCase() === 'free') return <Sparkles className="w-5 h-5" />;
+    if (planName?.toLowerCase() === 'paid') return <Crown className="w-5 h-5" />;
     return <Zap className="w-5 h-5" />;
   };
 
   // Filter plans by billing period and sort: Free first, then by cost
   const sortedPlans = [...plans]
     .filter(plan => {
-      const isFree = plan.plan_name.toLowerCase() === 'free';
-      return isFree || plan.duration.toLowerCase() === billingPeriod;
+      const isFree = plan.plan_name?.toLowerCase() === 'free';
+      return isFree || plan.duration?.toLowerCase() === billingPeriod;
     })
     .sort((a, b) => {
       if (a.plan_name === 'Free') return -1;
@@ -1495,7 +1495,7 @@ const OnBoarding = () => {
    */
   const handleSubscriptionSubmitWithFreePlan = async (currentFormData: typeof formData) => {
     const freePlan = subscriptionPlansData?.find(
-      (plan: SubscriptionPlan) => plan.plan_name.toLowerCase() === 'free'
+      (plan: SubscriptionPlan) => plan.plan_name?.toLowerCase() === 'free'
     );
 
     if (!freePlan) {
@@ -1912,7 +1912,6 @@ const OnBoarding = () => {
                         console.log(
                           "Validation passed, calling handleStepSubmit"
                         );
-                        // @ts-ignore - localTunesConsent is boolean but FormValues expects string
                         await handleStepSubmit(formData, { errors: {} });
                         // handleStepSubmit already handles advancing to the next step
                       } catch (error) {
@@ -2105,7 +2104,7 @@ const OnBoarding = () => {
                       {sortedPlans.map((plan) => {
                         const features = parseFeatures(plan.features);
                         const isSelected = selectedPlan === plan.documentId;
-                        const isFree = plan.plan_name.toLowerCase() === 'free';
+                        const isFree = plan.plan_name?.toLowerCase() === 'free';
                         const isYearly = plan.duration === 'yearly';
 
                         return (
