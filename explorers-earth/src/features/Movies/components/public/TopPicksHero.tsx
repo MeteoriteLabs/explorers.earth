@@ -18,13 +18,6 @@ const TopPicksHero = ({ movies, onMovieClick, showManageButton = false, onManage
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
-  if (!movies || movies.length === 0) return null;
-
-  const activeMovie = movies[activeIndex];
-  const backdropUrl = buildBackdropUrl(activeMovie.backdrop_path, "original") || buildPosterUrl(activeMovie.poster_path, "original");
-  const genres = getGenreNames(activeMovie.genres).slice(0, 4);
-  const runtime = formatRuntime(activeMovie.runtime);
-
   const updateScrollButtons = () => {
     if (scrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
@@ -54,6 +47,13 @@ const TopPicksHero = ({ movies, onMovieClick, showManageButton = false, onManage
     }, 5000);
     return () => clearInterval(interval);
   }, [movies.length]);
+
+  if (!movies || movies.length === 0) return null;
+
+  const activeMovie = movies[activeIndex];
+  const backdropUrl = buildBackdropUrl(activeMovie.backdrop_path, "original") || buildPosterUrl(activeMovie.poster_path, "original");
+  const genres = getGenreNames(activeMovie.genres).slice(0, 4);
+  const runtime = formatRuntime(activeMovie.runtime);
 
   const handleScrollClick = (direction: 'left' | 'right') => {
     if (scrollRef.current) {

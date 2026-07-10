@@ -18,17 +18,6 @@ const ProductTopPicksHero = ({ products, onProductClick, showManageButton = fals
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
-  if (!products || products.length === 0) return null;
-
-  const activeProduct = products[activeIndex];
-  const backdropUrl = (activeProduct.images && activeProduct.images.length > 0)
-    ? buildImageUrl(activeProduct.images[0])
-    : (activeProduct.logo_url ? buildImageUrl(activeProduct.logo_url) : "https://images.unsplash.com/photo-1505740420928-5e560c06d30e");
-  
-  const priceStr = formatPrice(activeProduct.price, activeProduct.currency);
-  const brand = activeProduct.brand;
-  const rating = activeProduct.user_rating;
-
   const updateScrollButtons = () => {
     if (scrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
@@ -57,6 +46,17 @@ const ProductTopPicksHero = ({ products, onProductClick, showManageButton = fals
     }, 5000);
     return () => clearInterval(interval);
   }, [products.length]);
+
+  if (!products || products.length === 0) return null;
+
+  const activeProduct = products[activeIndex];
+  const backdropUrl = (activeProduct.images && activeProduct.images.length > 0)
+    ? buildImageUrl(activeProduct.images[0])
+    : (activeProduct.logo_url ? buildImageUrl(activeProduct.logo_url) : "https://images.unsplash.com/photo-1505740420928-5e560c06d30e");
+
+  const priceStr = formatPrice(activeProduct.price, activeProduct.currency);
+  const brand = activeProduct.brand;
+  const rating = activeProduct.user_rating;
 
   const handleScrollClick = (direction: 'left' | 'right') => {
     if (scrollRef.current) {

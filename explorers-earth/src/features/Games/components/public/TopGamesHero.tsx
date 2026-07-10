@@ -18,18 +18,6 @@ const TopGamesHero = ({ games, onGameClick, showManageButton = false, onManageCl
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
-  if (!games || games.length === 0) return null;
-
-  const activeGame = games[activeIndex];
-  
-  // Backdrop logic: try first screenshot, then cover_url_large
-  const backdropUrl = (activeGame.screenshot_ids && activeGame.screenshot_ids.length > 0)
-    ? `https://images.igdb.com/igdb/image/upload/t_1080p/${activeGame.screenshot_ids[0]}.jpg`
-    : buildCoverUrl(activeGame.cover_url_large || activeGame.cover_url);
-
-  const genres = activeGame.genres?.slice(0, 4) || [];
-  const platforms = activeGame.platforms?.slice(0, 3) || [];
-
   const updateScrollButtons = () => {
     if (scrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
@@ -58,6 +46,18 @@ const TopGamesHero = ({ games, onGameClick, showManageButton = false, onManageCl
     }, 5000);
     return () => clearInterval(interval);
   }, [games.length]);
+
+  if (!games || games.length === 0) return null;
+
+  const activeGame = games[activeIndex];
+
+  // Backdrop logic: try first screenshot, then cover_url_large
+  const backdropUrl = (activeGame.screenshot_ids && activeGame.screenshot_ids.length > 0)
+    ? `https://images.igdb.com/igdb/image/upload/t_1080p/${activeGame.screenshot_ids[0]}.jpg`
+    : buildCoverUrl(activeGame.cover_url_large || activeGame.cover_url);
+
+  const genres = activeGame.genres?.slice(0, 4) || [];
+  const platforms = activeGame.platforms?.slice(0, 3) || [];
 
   const handleScrollClick = (direction: 'left' | 'right') => {
     if (scrollRef.current) {

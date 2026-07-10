@@ -19,12 +19,6 @@ const PersonTopPicksHero = ({ people, onPersonClick, showManageButton = false, o
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
-  if (!people || people.length === 0) return null;
-
-  const activePerson = people[activeIndex];
-  const avatarUrl = buildImageUrl(activePerson.avatar_url);
-  const platformGradient = getPlatformColor(activePerson.platform || null);
-
   const updateScrollButtons = () => {
     if (scrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
@@ -49,6 +43,12 @@ const PersonTopPicksHero = ({ people, onPersonClick, showManageButton = false, o
     }, 5000);
     return () => clearInterval(interval);
   }, [people.length]);
+
+  if (!people || people.length === 0) return null;
+
+  const activePerson = people[activeIndex];
+  const avatarUrl = buildImageUrl(activePerson.avatar_url);
+  const platformGradient = getPlatformColor(activePerson.platform || null);
 
   const handleScrollClick = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
