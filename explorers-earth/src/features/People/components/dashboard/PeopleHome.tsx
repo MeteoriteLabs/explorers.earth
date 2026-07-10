@@ -49,6 +49,7 @@ export const CreatePersonListModal = ({
   currentListCount,
   onCreated,
   username,
+  defaultListName,
 }: {
   open: boolean;
   onClose: () => void;
@@ -56,11 +57,17 @@ export const CreatePersonListModal = ({
   currentListCount: number;
   onCreated: (newId?: string) => void;
   username: string;
+  defaultListName?: string;
 }) => {
   const [createPersonList, { loading }] = useMutation(CREATE_PERSON_LIST);
 
   const formik = useFormik({
-    initialValues: { List_Name: "", list_description: "", slug: "" },
+    initialValues: { 
+      List_Name: defaultListName || "", 
+      list_description: "", 
+      slug: defaultListName ? generateSlug(defaultListName) : "" 
+    },
+    enableReinitialize: true,
     validationSchema: Yup.object({
       List_Name: Yup.string().required("List name is required").max(100),
       slug: Yup.string().required("List URL is required").max(100),

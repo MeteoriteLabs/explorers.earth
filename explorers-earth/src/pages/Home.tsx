@@ -58,6 +58,7 @@ import { CreateAppListModal } from "../features/AppsAndTools/components/dashboar
 import { CreateProductListModal } from "../features/Products/components/dashboard/ProductsHome";
 import { CreatePersonListModal } from "../features/People/components/dashboard/PeopleHome";
 import { CreateGuideModal } from "../features/Guides";
+import { CategoryEmptyState } from "../components/CategoryEmptyState";
 
 // Mutations & queries
 import { createRecommendationLinkMutation } from "../features/Favorites/api/mutation";
@@ -178,6 +179,7 @@ const Home = memo(() => {
   const [showCreateAppsModal, setShowCreateAppsModal] = useState<boolean>(false);
   const [showCreateProductsModal, setShowCreateProductsModal] = useState<boolean>(false);
   const [showCreatePeopleModal, setShowCreatePeopleModal] = useState<boolean>(false);
+  const [prefillTitle, setPrefillTitle] = useState<string>("");
 
   const queryClient = useQueryClient();
   const [createRecommendationLink] = useMutation(createRecommendationLinkMutation);
@@ -1072,16 +1074,10 @@ const Home = memo(() => {
                   {activeTab === "places" && (
                     <>
                       {listNames?.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-dashboard-sidebar/20 rounded-2xl border border-dashboard/20">
-                          <div className="w-16 h-16 rounded-full bg-dashboard-muted/50 flex items-center justify-center mb-4 text-3xl">
-                            📍
-                          </div>
-                          <h3 className="text-base font-semibold text-white mb-1">No places lists yet</h3>
-                          <p className="text-xs text-white/55 max-w-xs mb-4">Create your first list to start sharing your recommendations.</p>
-                          <button onClick={handleAddNewItem} style={getAddButtonStyles("places")} className="px-6 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110">
-                            Create Places List
-                          </button>
-                        </div>
+                        <CategoryEmptyState
+                          category="places"
+                          onAddClick={handleAddNewItem}
+                        />
                       ) : filteredListNames?.length > 0 ? (
                         <div className="space-y-3 pb-20">
                           {filteredListNames.map((item: any, index: number) => {
@@ -1171,16 +1167,10 @@ const Home = memo(() => {
                   {activeTab === "movies" && (
                     <>
                       {movieLists.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-dashboard-sidebar/20 rounded-2xl border border-dashboard/20">
-                          <div className="w-16 h-16 rounded-full bg-dashboard-muted/50 flex items-center justify-center mb-4 text-3xl">
-                            🎬
-                          </div>
-                          <h3 className="text-base font-semibold text-white mb-1">No movies lists yet</h3>
-                          <p className="text-xs text-white/55 max-w-xs mb-4">Create your first list to start sharing your movie recommendations.</p>
-                          <button onClick={handleAddNewItem} style={getAddButtonStyles("movies")} className="px-6 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110">
-                            Create Movies List
-                          </button>
-                        </div>
+                        <CategoryEmptyState
+                          category="movies"
+                          onAddClick={handleAddNewItem}
+                        />
                       ) : filteredMovieLists.length > 0 ? (
                         <div className="space-y-3 pb-20">
                           {filteredMovieLists.map((item: any, index: number) => {
@@ -1235,16 +1225,10 @@ const Home = memo(() => {
                   {activeTab === "books" && (
                     <>
                       {bookLists.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-dashboard-sidebar/20 rounded-2xl border border-dashboard/20">
-                          <div className="w-16 h-16 rounded-full bg-dashboard-muted/50 flex items-center justify-center mb-4 text-3xl">
-                            📚
-                          </div>
-                          <h3 className="text-base font-semibold text-white mb-1">No books lists yet</h3>
-                          <p className="text-xs text-white/55 max-w-xs mb-4">Create your first list to start sharing your book recommendations.</p>
-                          <button onClick={handleAddNewItem} style={getAddButtonStyles("books")} className="px-6 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110">
-                            Create Books List
-                          </button>
-                        </div>
+                        <CategoryEmptyState
+                          category="books"
+                          onAddClick={handleAddNewItem}
+                        />
                       ) : filteredBookLists.length > 0 ? (
                         <div className="space-y-3 pb-20">
                           {filteredBookLists.map((item: any, index: number) => {
@@ -1299,16 +1283,10 @@ const Home = memo(() => {
                   {activeTab === "games" && (
                     <>
                       {gameLists.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-dashboard-sidebar/20 rounded-2xl border border-dashboard/20">
-                          <div className="w-16 h-16 rounded-full bg-dashboard-muted/50 flex items-center justify-center mb-4 text-3xl">
-                            🎮
-                          </div>
-                          <h3 className="text-base font-semibold text-white mb-1">No games lists yet</h3>
-                          <p className="text-xs text-white/55 max-w-xs mb-4">Create your first list to start sharing your game recommendations.</p>
-                          <button onClick={handleAddNewItem} style={getAddButtonStyles("games")} className="px-6 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110">
-                            Create Games List
-                          </button>
-                        </div>
+                        <CategoryEmptyState
+                          category="games"
+                          onAddClick={handleAddNewItem}
+                        />
                       ) : filteredGameLists.length > 0 ? (
                         <div className="space-y-3 pb-20">
                           {filteredGameLists.map((item: any, index: number) => {
@@ -1363,16 +1341,10 @@ const Home = memo(() => {
                   {activeTab === "music" && (
                     <>
                       {musicPlaylists.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-dashboard-sidebar/20 rounded-2xl border border-dashboard/20">
-                          <div className="w-16 h-16 rounded-full bg-dashboard-muted/50 flex items-center justify-center mb-4 text-3xl">
-                            🎵
-                          </div>
-                          <h3 className="text-base font-semibold text-white mb-1">No music playlists yet</h3>
-                          <p className="text-xs text-white/55 max-w-xs mb-4">Connect and create your first playlist to share your tunes recommendations.</p>
-                          <button onClick={handleAddNewItem} style={getAddButtonStyles("music")} className="px-6 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110">
-                            Create Music Playlist
-                          </button>
-                        </div>
+                        <CategoryEmptyState
+                          category="music"
+                          onAddClick={handleAddNewItem}
+                        />
                       ) : filteredMusicPlaylists.length > 0 ? (
                         <div className="space-y-3 pb-20">
                           {filteredMusicPlaylists.map((item: any, index: number) => {
@@ -1426,16 +1398,10 @@ const Home = memo(() => {
                   {activeTab === "guides" && (
                     <>
                       {allGuides.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-dashboard-sidebar/20 rounded-2xl border border-dashboard/20">
-                          <div className="w-16 h-16 rounded-full bg-dashboard-muted/50 flex items-center justify-center mb-4 text-3xl">
-                            📖
-                          </div>
-                          <h3 className="text-base font-semibold text-white mb-1">No guides yet</h3>
-                          <p className="text-xs text-white/55 max-w-xs mb-4">Create your first guide to start sharing your travel itineraries.</p>
-                          <button onClick={handleAddNewItem} style={getAddButtonStyles("guides")} className="px-6 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110">
-                            Create Guide
-                          </button>
-                        </div>
+                        <CategoryEmptyState
+                          category="guides"
+                          onAddClick={handleAddNewItem}
+                        />
                       ) : filteredGuides.length > 0 ? (
                         <div className="space-y-3 pb-20">
                           {filteredGuides.map((guide: Guide, index: number) => {
@@ -1523,16 +1489,10 @@ const Home = memo(() => {
                   {activeTab === "apps" && (
                     <>
                       {appLists.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-dashboard-sidebar/20 rounded-2xl border border-dashboard/20">
-                          <div className="w-16 h-16 rounded-full bg-dashboard-muted/50 flex items-center justify-center mb-4 text-3xl">
-                            🛠️
-                          </div>
-                          <h3 className="text-base font-semibold text-white mb-1">No apps & tools lists yet</h3>
-                          <p className="text-xs text-white/55 max-w-xs mb-4">Create your first list to start sharing your app recommendations.</p>
-                          <button onClick={handleAddNewItem} style={getAddButtonStyles("apps")} className="px-6 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110">
-                            Create Apps List
-                          </button>
-                        </div>
+                        <CategoryEmptyState
+                          category="apps"
+                          onAddClick={handleAddNewItem}
+                        />
                       ) : filteredAppLists.length > 0 ? (
                         <div className="space-y-3 pb-20">
                           {filteredAppLists.map((item: any, index: number) => {
@@ -1587,16 +1547,10 @@ const Home = memo(() => {
                   {activeTab === "products" && (
                     <>
                       {productLists.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-dashboard-sidebar/20 rounded-2xl border border-dashboard/20">
-                          <div className="w-16 h-16 rounded-full bg-dashboard-muted/50 flex items-center justify-center mb-4 text-3xl">
-                            🛍️
-                          </div>
-                          <h3 className="text-base font-semibold text-white mb-1">No products lists yet</h3>
-                          <p className="text-xs text-white/55 max-w-xs mb-4">Create your first list to start sharing your product recommendations.</p>
-                          <button onClick={handleAddNewItem} style={getAddButtonStyles("products")} className="px-6 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110">
-                            Create Products List
-                          </button>
-                        </div>
+                        <CategoryEmptyState
+                          category="products"
+                          onAddClick={handleAddNewItem}
+                        />
                       ) : filteredProductLists.length > 0 ? (
                         <div className="space-y-3 pb-20">
                           {filteredProductLists.map((item: any, index: number) => {
@@ -1651,16 +1605,10 @@ const Home = memo(() => {
                   {activeTab === "people" && (
                     <>
                       {personLists.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-dashboard-sidebar/20 rounded-2xl border border-dashboard/20">
-                          <div className="w-16 h-16 rounded-full bg-dashboard-muted/50 flex items-center justify-center mb-4 text-3xl">
-                            👥
-                          </div>
-                          <h3 className="text-base font-semibold text-white mb-1">No persons lists yet</h3>
-                          <p className="text-xs text-white/55 max-w-xs mb-4">Create your first list to start sharing your person recommendations.</p>
-                          <button onClick={handleAddNewItem} style={getAddButtonStyles("people")} className="px-6 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110">
-                            Create Persons List
-                          </button>
-                        </div>
+                        <CategoryEmptyState
+                          category="people"
+                          onAddClick={handleAddNewItem}
+                        />
                       ) : filteredPersonLists.length > 0 ? (
                         <div className="space-y-3 pb-20">
                           {filteredPersonLists.map((item: any, index: number) => {
@@ -1752,20 +1700,29 @@ const Home = memo(() => {
       {showCreatePlacesModal && (
         <AddLocationModal
           isOpen={showCreatePlacesModal}
-          onClose={() => setShowCreatePlacesModal(false)}
+          onClose={() => {
+            setShowCreatePlacesModal(false);
+            setPrefillTitle("");
+          }}
           onSubmit={handlePlacesSubmit}
           existingPlaces={listNames || []}
+          initialValues={prefillTitle ? { listName: prefillTitle } : {}}
         />
       )}
 
       {showCreateMoviesModal && accountDocumentId && (
         <CreateMovieListModal
           open={showCreateMoviesModal}
-          onClose={() => setShowCreateMoviesModal(false)}
+          onClose={() => {
+            setShowCreateMoviesModal(false);
+            setPrefillTitle("");
+          }}
           accountDocumentId={accountDocumentId}
           currentListCount={movieLists.length}
+          defaultListName={prefillTitle}
           onCreated={(newId) => {
             refetchMovies();
+            setPrefillTitle("");
             if (newId) {
               navigate(`/recommendations/movies/${newId}`, { state: { justCreatedList: true } });
             } else {
@@ -1779,11 +1736,16 @@ const Home = memo(() => {
       {showCreateBooksModal && accountDocumentId && (
         <CreateBookListModal
           open={showCreateBooksModal}
-          onClose={() => setShowCreateBooksModal(false)}
+          onClose={() => {
+            setShowCreateBooksModal(false);
+            setPrefillTitle("");
+          }}
           accountDocumentId={accountDocumentId}
           currentListCount={bookLists.length}
+          defaultListName={prefillTitle}
           onCreated={(newId) => {
             refetchBooks();
+            setPrefillTitle("");
             if (newId) {
               navigate(`/recommendations/books/${newId}`, { state: { justCreatedList: true } });
             } else {
@@ -1797,11 +1759,16 @@ const Home = memo(() => {
       {showCreateGamesModal && accountDocumentId && (
         <CreateGameListModal
           open={showCreateGamesModal}
-          onClose={() => setShowCreateGamesModal(false)}
+          onClose={() => {
+            setShowCreateGamesModal(false);
+            setPrefillTitle("");
+          }}
           accountDocumentId={accountDocumentId}
           currentListCount={gameLists.length}
+          defaultListName={prefillTitle}
           onCreated={(newId) => {
             refetchGames();
+            setPrefillTitle("");
             if (newId) {
               navigate(`/recommendations/games/${newId}`, { state: { justCreatedList: true } });
             } else {
@@ -1815,9 +1782,14 @@ const Home = memo(() => {
       {showCreateMusicModal && (
         <CreatePlaylistModal
           open={showCreateMusicModal}
-          onClose={() => setShowCreateMusicModal(false)}
+          onClose={() => {
+            setShowCreateMusicModal(false);
+            setPrefillTitle("");
+          }}
           username={user?.username || ""}
+          defaultListName={prefillTitle}
           onCreated={async () => {
+            setPrefillTitle("");
             await queryClient.invalidateQueries({ queryKey: ['tunes-playlists', user?.username] });
             navigate("/music", { state: { justCreatedList: true } });
           }}
@@ -1827,9 +1799,14 @@ const Home = memo(() => {
       {showCreateGuidesModal && (
         <CreateGuideModal
           open={showCreateGuidesModal}
-          onClose={() => setShowCreateGuidesModal(false)}
+          onClose={() => {
+            setShowCreateGuidesModal(false);
+            setPrefillTitle("");
+          }}
+          defaultTitle={prefillTitle}
           onCreated={(newId) => {
             refetchGuides();
+            setPrefillTitle("");
             if (newId) {
               navigate(`/guides/${newId}`, { state: { justCreatedGuide: true } });
             } else {
@@ -1842,11 +1819,16 @@ const Home = memo(() => {
       {showCreateAppsModal && accountDocumentId && (
         <CreateAppListModal
           open={showCreateAppsModal}
-          onClose={() => setShowCreateAppsModal(false)}
+          onClose={() => {
+            setShowCreateAppsModal(false);
+            setPrefillTitle("");
+          }}
           accountDocumentId={accountDocumentId}
           currentListCount={appLists.length}
+          defaultListName={prefillTitle}
           onCreated={(newId) => {
             refetchApps();
+            setPrefillTitle("");
             if (newId) {
               navigate(`/recommendations/apps/${newId}`, { state: { justCreatedList: true } });
             } else {
@@ -1860,11 +1842,16 @@ const Home = memo(() => {
       {showCreateProductsModal && accountDocumentId && (
         <CreateProductListModal
           open={showCreateProductsModal}
-          onClose={() => setShowCreateProductsModal(false)}
+          onClose={() => {
+            setShowCreateProductsModal(false);
+            setPrefillTitle("");
+          }}
           accountDocumentId={accountDocumentId}
           currentListCount={productLists.length}
+          defaultListName={prefillTitle}
           onCreated={(newId) => {
             refetchProducts();
+            setPrefillTitle("");
             if (newId) {
               navigate(`/recommendations/products/${newId}`, { state: { justCreatedList: true } });
             } else {
@@ -1878,11 +1865,16 @@ const Home = memo(() => {
       {showCreatePeopleModal && accountDocumentId && (
         <CreatePersonListModal
           open={showCreatePeopleModal}
-          onClose={() => setShowCreatePeopleModal(false)}
+          onClose={() => {
+            setShowCreatePeopleModal(false);
+            setPrefillTitle("");
+          }}
           accountDocumentId={accountDocumentId}
           currentListCount={personLists.length}
+          defaultListName={prefillTitle}
           onCreated={(newId) => {
             refetchPeople();
+            setPrefillTitle("");
             if (newId) {
               navigate(`/recommendations/people/${newId}`, { state: { justCreatedList: true } });
             } else {
@@ -1904,15 +1896,23 @@ const CreatePlaylistModal = ({
   onClose,
   onCreated,
   username,
+  defaultListName,
 }: {
   open: boolean;
   onClose: () => void;
   onCreated: (newId?: string) => void;
   username: string;
+  defaultListName?: string;
 }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setName(defaultListName || "");
+    }
+  }, [open, defaultListName]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

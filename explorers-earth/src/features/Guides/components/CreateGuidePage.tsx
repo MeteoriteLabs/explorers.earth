@@ -30,6 +30,7 @@ interface CreateGuidePageProps {
   isModal?: boolean;
   onClose?: () => void;
   onCreated?: (newId?: string) => void;
+  defaultTitle?: string;
 }
 
 // Location mode type
@@ -76,6 +77,7 @@ const CreateGuidePage = ({
   isModal = false,
   onClose,
   onCreated,
+  defaultTitle,
 }: CreateGuidePageProps) => {
   const navigate = useNavigate();
   const { guideId } = useParams();
@@ -100,12 +102,18 @@ const CreateGuidePage = ({
     categories: [],
     bestTimeToVisit: [],
     budgetType: null,
-    title: "",
+    title: defaultTitle || "",
     description: "",
     guideMedia: null,
   });
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (defaultTitle) {
+      setFormData((prev) => ({ ...prev, title: defaultTitle }));
+    }
+  }, [defaultTitle]);
 
   // AI-generated guide sections data
   const [aiGeneratedSections, setAiGeneratedSections] = useState<AIGeneratedGuide["sections"] | null>(null);
@@ -993,10 +1001,12 @@ export const CreateGuideModal = ({
   open,
   onClose,
   onCreated,
+  defaultTitle,
 }: {
   open: boolean;
   onClose: () => void;
   onCreated: (newId?: string) => void;
+  defaultTitle?: string;
 }) => {
   if (!open) return null;
 
@@ -1024,6 +1034,7 @@ export const CreateGuideModal = ({
               onClose={onClose}
               onCreated={onCreated}
               type="create"
+              defaultTitle={defaultTitle}
             />
           </motion.div>
         </div>

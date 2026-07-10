@@ -48,8 +48,8 @@ const ProfileSetupAccordion = ({ account }: ProfileSetupAccordionProps) => {
   const isWalkthroughNeeded = !hasProfilePic || !hasCoverPic || !hasSocialLinks;
   const isComplete = percentage === 100;
 
-  const handleActionClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // prevent toggling accordion
+  const handleActionClick = (e?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+    e?.stopPropagation(); // prevent toggling accordion
     if (isWalkthroughNeeded) {
       navigate("/profile", { state: { startTour: true } });
     } else {
