@@ -18,7 +18,6 @@ import {
 } from '../services/paymentService';
 import PaymentModeToggle from '../components/PaymentModeToggle';
 import axios from 'axios';
-// @ts-expect-error - untyped transitive import
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import {
   createLocalTunesUserWithRetry,
