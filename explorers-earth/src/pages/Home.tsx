@@ -36,6 +36,9 @@ import { calculateIsProfileComplete, calculateIsRecommendationsComplete } from "
 import { MOVIE_LISTS_BY_ACCOUNT } from "../features/Movies/api/query";
 import { BOOK_LISTS_BY_ACCOUNT } from "../features/Books/api/query";
 import { GAME_LISTS_BY_ACCOUNT } from "../features/Games/api/query";
+import { APP_LISTS_BY_ACCOUNT } from "../features/AppsAndTools/api/query";
+import { PRODUCT_LISTS_BY_ACCOUNT } from "../features/Products/api/query";
+import { PERSON_LISTS_BY_ACCOUNT } from "../features/People/api/query";
 import { useTunesDashboard } from "../hooks/useTunesDashboard";
 import { GET_PUBLIC_PAGE_ANALYTICS } from "../features/Analytics/api/queries";
 
@@ -51,6 +54,9 @@ import AddLocationModal from "../components/ui/AddLocationModal";
 import { CreateMovieListModal } from "../features/Movies/components/dashboard/MoviesHome";
 import { CreateBookListModal } from "../features/Books/components/dashboard/BooksHome";
 import { CreateGameListModal } from "../features/Games/components/dashboard/GamesHome";
+import { CreateAppListModal } from "../features/AppsAndTools/components/dashboard/AppsHome";
+import { CreateProductListModal } from "../features/Products/components/dashboard/ProductsHome";
+import { CreatePersonListModal } from "../features/People/components/dashboard/PeopleHome";
 import { CreateGuideModal } from "../features/Guides";
 
 // Mutations & queries
@@ -158,7 +164,9 @@ const Home = memo(() => {
   const [showGuidesShareModal, setShowGuidesShareModal] = useState<boolean>(false);
   const [showGuideShareModals, setShowGuideShareModals] = useState<{ [key: string]: boolean }>({});
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<"places" | "movies" | "books" | "games" | "music" | "guides">("places");
+  const [activeTab, setActiveTab] = useState<
+    "places" | "movies" | "books" | "games" | "music" | "guides" | "apps" | "products" | "people"
+  >("places");
 
   // Inline Modal Creation States
   const [showCreatePlacesModal, setShowCreatePlacesModal] = useState<boolean>(false);
@@ -167,6 +175,9 @@ const Home = memo(() => {
   const [showCreateGamesModal, setShowCreateGamesModal] = useState<boolean>(false);
   const [showCreateMusicModal, setShowCreateMusicModal] = useState<boolean>(false);
   const [showCreateGuidesModal, setShowCreateGuidesModal] = useState<boolean>(false);
+  const [showCreateAppsModal, setShowCreateAppsModal] = useState<boolean>(false);
+  const [showCreateProductsModal, setShowCreateProductsModal] = useState<boolean>(false);
+  const [showCreatePeopleModal, setShowCreatePeopleModal] = useState<boolean>(false);
 
   const queryClient = useQueryClient();
   const [createRecommendationLink] = useMutation(createRecommendationLinkMutation);
@@ -250,6 +261,30 @@ const Home = memo(() => {
   });
   const gameLists = gameListsData?.gameLists || [];
 
+  // Fetch apps & tools lists
+  const { data: appListsData, refetch: refetchApps } = useQuery(APP_LISTS_BY_ACCOUNT, {
+    variables: { accountDocumentId },
+    skip: !accountDocumentId || !user?.username,
+    fetchPolicy: "network-only",
+  });
+  const appLists = appListsData?.appLists || [];
+
+  // Fetch products lists
+  const { data: productListsData, refetch: refetchProducts } = useQuery(PRODUCT_LISTS_BY_ACCOUNT, {
+    variables: { accountDocumentId },
+    skip: !accountDocumentId || !user?.username,
+    fetchPolicy: "network-only",
+  });
+  const productLists = productListsData?.productLists || [];
+
+  // Fetch people lists
+  const { data: personListsData, refetch: refetchPeople } = useQuery(PERSON_LISTS_BY_ACCOUNT, {
+    variables: { accountDocumentId },
+    skip: !accountDocumentId || !user?.username,
+    fetchPolicy: "network-only",
+  });
+  const personLists = personListsData?.personLists || [];
+
   // Fetch music playlists
   const tunesDashboard = useTunesDashboard();
   const musicPlaylists = tunesDashboard.playlists || [];
@@ -311,6 +346,9 @@ const Home = memo(() => {
     else if (activeTab === "games") subPath = "games";
     else if (activeTab === "music") subPath = "music";
     else if (activeTab === "guides") subPath = "guides";
+    else if (activeTab === "apps") subPath = "apps";
+    else if (activeTab === "products") subPath = "products";
+    else if (activeTab === "people") subPath = "people";
 
     return `${url}/${user?.username}/${subPath}`;
   }, [activeTab, url, user?.username]);
@@ -392,8 +430,11 @@ const Home = memo(() => {
     const activeBooks = bookLists?.filter((list: any) => list.visibility === true)?.length || 0;
     const activeGames = gameLists?.filter((list: any) => list.Visibility === true)?.length || 0;
     const activeMusic = musicPlaylists?.filter((list: any) => list.isVisibleToGuests === true)?.length || 0;
-    return activePlaces + activeMovies + activeBooks + activeGames + activeMusic;
-  }, [listNames, movieLists, bookLists, gameLists, musicPlaylists]);
+    const activeApps = appLists?.filter((list: any) => list.Visibility === true)?.length || 0;
+    const activeProducts = productLists?.filter((list: any) => list.Visibility === true)?.length || 0;
+    const activePeople = personLists?.filter((list: any) => list.Visibility === true)?.length || 0;
+    return activePlaces + activeMovies + activeBooks + activeGames + activeMusic + activeApps + activeProducts + activePeople;
+  }, [listNames, movieLists, bookLists, gameLists, musicPlaylists, appLists, productLists, personLists]);
 
   const totalRecommendationsCount = useMemo(() => {
     const placesRecs = listNames?.filter((list: any) => list.Visibility === true)?.reduce((total: number, list: any) => total + (list?.recommended_places?.length || 0), 0) || 0;
@@ -401,8 +442,11 @@ const Home = memo(() => {
     const booksRecs = bookLists?.filter((list: any) => list.visibility === true)?.reduce((total: number, list: any) => total + (list?.recommended_books?.length || 0), 0) || 0;
     const gamesRecs = gameLists?.filter((list: any) => list.Visibility === true)?.reduce((total: number, list: any) => total + (list?.recommended_games?.length || 0), 0) || 0;
     const guidesRecs = allGuides?.filter((guide: any) => guide.Visibility === true)?.length || 0;
-    return placesRecs + moviesRecs + booksRecs + gamesRecs + guidesRecs;
-  }, [listNames, movieLists, bookLists, gameLists, allGuides]);
+    const appsRecs = appLists?.filter((list: any) => list.Visibility === true)?.reduce((total: number, list: any) => total + (list?.recommended_apps?.length || 0), 0) || 0;
+    const productsRecs = productLists?.filter((list: any) => list.Visibility === true)?.reduce((total: number, list: any) => total + (list?.recommended_products?.length || 0), 0) || 0;
+    const peopleRecs = personLists?.filter((list: any) => list.Visibility === true)?.reduce((total: number, list: any) => total + (list?.recommended_people?.length || 0), 0) || 0;
+    return placesRecs + moviesRecs + booksRecs + gamesRecs + guidesRecs + appsRecs + productsRecs + peopleRecs;
+  }, [listNames, movieLists, bookLists, gameLists, allGuides, appLists, productLists, personLists]);
 
   const totalViewsCount = useMemo(() => {
     if (!analyticsData?.publicPageAnalytics || !accountDocumentId) return "0";
@@ -523,6 +567,45 @@ const Home = memo(() => {
     );
   }, [musicPlaylists, searchQuery]);
 
+  // Filter app lists based on search query
+  const filteredAppLists = useMemo(() => {
+    if (!searchQuery.trim()) return appLists;
+    const query = searchQuery.toLowerCase();
+    return appLists.filter((item: any) =>
+      item?.List_Name?.toLowerCase().includes(query) ||
+      item?.list_description?.toLowerCase().includes(query) ||
+      item?.recommended_apps?.some((app: any) =>
+        app?.title?.toLowerCase().includes(query)
+      )
+    );
+  }, [appLists, searchQuery]);
+
+  // Filter product lists based on search query
+  const filteredProductLists = useMemo(() => {
+    if (!searchQuery.trim()) return productLists;
+    const query = searchQuery.toLowerCase();
+    return productLists.filter((item: any) =>
+      item?.List_Name?.toLowerCase().includes(query) ||
+      item?.list_description?.toLowerCase().includes(query) ||
+      item?.recommended_products?.some((prod: any) =>
+        prod?.title?.toLowerCase().includes(query)
+      )
+    );
+  }, [productLists, searchQuery]);
+
+  // Filter person lists based on search query
+  const filteredPersonLists = useMemo(() => {
+    if (!searchQuery.trim()) return personLists;
+    const query = searchQuery.toLowerCase();
+    return personLists.filter((item: any) =>
+      item?.List_Name?.toLowerCase().includes(query) ||
+      item?.list_description?.toLowerCase().includes(query) ||
+      item?.recommended_people?.some((person: any) =>
+        person?.name?.toLowerCase().includes(query)
+      )
+    );
+  }, [personLists, searchQuery]);
+
   const navigate = useNavigate();
 
   const shareButtons = [
@@ -641,6 +724,9 @@ const Home = memo(() => {
     else if (activeTab === "games") setShowCreateGamesModal(true);
     else if (activeTab === "music") setShowCreateMusicModal(true);
     else if (activeTab === "guides") setShowCreateGuidesModal(true);
+    else if (activeTab === "apps") setShowCreateAppsModal(true);
+    else if (activeTab === "products") setShowCreateProductsModal(true);
+    else if (activeTab === "people") setShowCreatePeopleModal(true);
   };
 
   const handlePlacesSubmit = async (values: any) => {
@@ -912,6 +998,9 @@ const Home = memo(() => {
                       { id: "games", label: "Games", icon: "🎮" },
                       { id: "music", label: "Music", icon: "🎵" },
                       { id: "guides", label: "Guides", icon: "📖" },
+                      { id: "apps", label: "Apps & Tools", icon: "🛠️" },
+                      { id: "products", label: "Products", icon: "🛍️" },
+                      { id: "people", label: "Persons", icon: "👥" },
                     ] as const
                   ).map((cat) => {
                     const isActive = activeTab === cat.id;
@@ -939,7 +1028,15 @@ const Home = memo(() => {
                     </svg>
                     <input
                       type="text"
-                      placeholder={`Search ${activeTab === "places" ? "places" : activeTab}, lists…`}
+                      placeholder={`Search ${
+                        activeTab === "places"
+                          ? "places"
+                          : activeTab === "apps"
+                          ? "apps & tools"
+                          : activeTab === "people"
+                          ? "persons"
+                          : activeTab
+                      }, lists…`}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="flex-1 bg-transparent text-white placeholder-white/30 text-[11px] sm:text-xs font-poppins outline-none border-none p-0 min-w-0"
@@ -950,7 +1047,15 @@ const Home = memo(() => {
                     style={getAddButtonStyles(activeTab)}
                     className="flex-shrink-0 flex items-center justify-center gap-1 h-10 px-3 sm:px-4 rounded-xl text-[11px] sm:text-xs font-bold font-poppins transition-all duration-200 hover:brightness-110 whitespace-nowrap"
                   >
-                    <span>+</span> Add {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+                    <span>+</span> Add {
+                      activeTab === "apps"
+                        ? "Apps"
+                        : activeTab === "products"
+                        ? "Products"
+                        : activeTab === "people"
+                        ? "Persons"
+                        : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)
+                    }
                   </button>
                   <button
                     onClick={() => setShowCategoryShareModal(true)}
@@ -1415,6 +1520,197 @@ const Home = memo(() => {
                       )}
                     </>
                   )}
+                  {activeTab === "apps" && (
+                    <>
+                      {appLists.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-dashboard-sidebar/20 rounded-2xl border border-dashboard/20">
+                          <div className="w-16 h-16 rounded-full bg-dashboard-muted/50 flex items-center justify-center mb-4 text-3xl">
+                            🛠️
+                          </div>
+                          <h3 className="text-base font-semibold text-white mb-1">No apps & tools lists yet</h3>
+                          <p className="text-xs text-white/55 max-w-xs mb-4">Create your first list to start sharing your app recommendations.</p>
+                          <button onClick={handleAddNewItem} style={getAddButtonStyles("apps")} className="px-6 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110">
+                            Create Apps List
+                          </button>
+                        </div>
+                      ) : filteredAppLists.length > 0 ? (
+                        <div className="space-y-3 pb-20">
+                          {filteredAppLists.map((item: any, index: number) => {
+                            const isPub = item.Visibility;
+                            const statusColor = isPub ? "var(--status-pub)" : "var(--status-draft)";
+                            const firstAppLogo = item.recommended_apps?.[0]?.logo_url;
+                            const poster = resolveCoverUrl(firstAppLogo || item.cover_image?.url);
+                            return (
+                              <div
+                                key={item.documentId || index}
+                                onClick={() => navigate(`/recommendations/apps/${item.documentId}`)}
+                                className="group relative bg-dashboard-sidebar border border-dashboard rounded-2xl p-4 hover:border-dashboard-accent/50 transition-all duration-300 hover:shadow-dashboard-elevated hover:shadow-dashboard-accent/10 hover:scale-[1.02] cursor-pointer flex items-center gap-4"
+                              >
+                                <div className="flex-shrink-0">
+                                  <div className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center text-2xl bg-dashboard-muted" style={{ border: `3px solid ${statusColor}` }}>
+                                    {poster ? (
+                                      <ImageWithFallback src={poster} alt={item.List_Name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      "🛠️"
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-base font-bold text-white truncate mb-1">{item.List_Name}</h4>
+                                  <p className="text-xs text-white/45 truncate">
+                                    {item.recommended_apps?.length || 0} apps & tools · <span style={{ color: statusColor }}>{isPub ? "Published" : "Draft"}</span>
+                                  </p>
+                                </div>
+                                <div className="flex-shrink-0">
+                                  {!isPub && (
+                                    <span className="font-poppins text-[hsl(var(--blue-cta))] text-xs bg-[hsl(var(--blue-cta))]/10 border border-[hsl(var(--blue-cta))]/30 px-3 py-2 rounded-full">
+                                      {t("dashboard.home.draft")}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 pb-20">
+                          <svg className="w-16 h-16 mx-auto mb-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                          <h3 className="text-lg font-semibold text-white mb-1">No matches found</h3>
+                          <p className="text-xs text-white/55">Try searching with a different name</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {activeTab === "products" && (
+                    <>
+                      {productLists.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-dashboard-sidebar/20 rounded-2xl border border-dashboard/20">
+                          <div className="w-16 h-16 rounded-full bg-dashboard-muted/50 flex items-center justify-center mb-4 text-3xl">
+                            🛍️
+                          </div>
+                          <h3 className="text-base font-semibold text-white mb-1">No products lists yet</h3>
+                          <p className="text-xs text-white/55 max-w-xs mb-4">Create your first list to start sharing your product recommendations.</p>
+                          <button onClick={handleAddNewItem} style={getAddButtonStyles("products")} className="px-6 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110">
+                            Create Products List
+                          </button>
+                        </div>
+                      ) : filteredProductLists.length > 0 ? (
+                        <div className="space-y-3 pb-20">
+                          {filteredProductLists.map((item: any, index: number) => {
+                            const isPub = item.Visibility;
+                            const statusColor = isPub ? "var(--status-pub)" : "var(--status-draft)";
+                            const firstProductImage = item.recommended_products?.[0]?.images?.[0] || item.recommended_products?.[0]?.logo_url;
+                            const poster = resolveCoverUrl(firstProductImage || item.cover_image?.url);
+                            return (
+                              <div
+                                key={item.documentId || index}
+                                onClick={() => navigate(`/recommendations/products/${item.documentId}`)}
+                                className="group relative bg-dashboard-sidebar border border-dashboard rounded-2xl p-4 hover:border-dashboard-accent/50 transition-all duration-300 hover:shadow-dashboard-elevated hover:shadow-dashboard-accent/10 hover:scale-[1.02] cursor-pointer flex items-center gap-4"
+                              >
+                                <div className="flex-shrink-0">
+                                  <div className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center text-2xl bg-dashboard-muted" style={{ border: `3px solid ${statusColor}` }}>
+                                    {poster ? (
+                                      <ImageWithFallback src={poster} alt={item.List_Name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      "🛍️"
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-base font-bold text-white truncate mb-1">{item.List_Name}</h4>
+                                  <p className="text-xs text-white/45 truncate">
+                                    {item.recommended_products?.length || 0} products · <span style={{ color: statusColor }}>{isPub ? "Published" : "Draft"}</span>
+                                  </p>
+                                </div>
+                                <div className="flex-shrink-0">
+                                  {!isPub && (
+                                    <span className="font-poppins text-[hsl(var(--blue-cta))] text-xs bg-[hsl(var(--blue-cta))]/10 border border-[hsl(var(--blue-cta))]/30 px-3 py-2 rounded-full">
+                                      {t("dashboard.home.draft")}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 pb-20">
+                          <svg className="w-16 h-16 mx-auto mb-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                          <h3 className="text-lg font-semibold text-white mb-1">No matches found</h3>
+                          <p className="text-xs text-white/55">Try searching with a different name</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {activeTab === "people" && (
+                    <>
+                      {personLists.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-dashboard-sidebar/20 rounded-2xl border border-dashboard/20">
+                          <div className="w-16 h-16 rounded-full bg-dashboard-muted/50 flex items-center justify-center mb-4 text-3xl">
+                            👥
+                          </div>
+                          <h3 className="text-base font-semibold text-white mb-1">No persons lists yet</h3>
+                          <p className="text-xs text-white/55 max-w-xs mb-4">Create your first list to start sharing your person recommendations.</p>
+                          <button onClick={handleAddNewItem} style={getAddButtonStyles("people")} className="px-6 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110">
+                            Create Persons List
+                          </button>
+                        </div>
+                      ) : filteredPersonLists.length > 0 ? (
+                        <div className="space-y-3 pb-20">
+                          {filteredPersonLists.map((item: any, index: number) => {
+                            const isPub = item.Visibility;
+                            const statusColor = isPub ? "var(--status-pub)" : "var(--status-draft)";
+                            const firstPersonAvatar = item.recommended_people?.[0]?.avatar_path;
+                            const poster = resolveCoverUrl(firstPersonAvatar || item.cover_image?.url);
+                            return (
+                              <div
+                                key={item.documentId || index}
+                                onClick={() => navigate(`/recommendations/people/${item.documentId}`)}
+                                className="group relative bg-dashboard-sidebar border border-dashboard rounded-2xl p-4 hover:border-dashboard-accent/50 transition-all duration-300 hover:shadow-dashboard-elevated hover:shadow-dashboard-accent/10 hover:scale-[1.02] cursor-pointer flex items-center gap-4"
+                              >
+                                <div className="flex-shrink-0">
+                                  <div className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center text-2xl bg-dashboard-muted" style={{ border: `3px solid ${statusColor}` }}>
+                                    {poster ? (
+                                      <ImageWithFallback src={poster} alt={item.List_Name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      "👥"
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-base font-bold text-white truncate mb-1">{item.List_Name}</h4>
+                                  <p className="text-xs text-white/45 truncate">
+                                    {item.recommended_people?.length || 0} persons · <span style={{ color: statusColor }}>{isPub ? "Published" : "Draft"}</span>
+                                  </p>
+                                </div>
+                                <div className="flex-shrink-0">
+                                  {!isPub && (
+                                    <span className="font-poppins text-[hsl(var(--blue-cta))] text-xs bg-[hsl(var(--blue-cta))]/10 border border-[hsl(var(--blue-cta))]/30 px-3 py-2 rounded-full">
+                                      {t("dashboard.home.draft")}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 pb-20">
+                          <svg className="w-16 h-16 mx-auto mb-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                          <h3 className="text-lg font-semibold text-white mb-1">No matches found</h3>
+                          <p className="text-xs text-white/55">Try searching with a different name</p>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
 
                 {listNames?.length > 3 && activeTab === "places" && <GlobeDemo arcsData={arcsData} />}
@@ -1540,6 +1836,60 @@ const Home = memo(() => {
               navigate(`/guides`, { state: { justCreatedGuide: true } });
             }
           }}
+        />
+      )}
+
+      {showCreateAppsModal && accountDocumentId && (
+        <CreateAppListModal
+          open={showCreateAppsModal}
+          onClose={() => setShowCreateAppsModal(false)}
+          accountDocumentId={accountDocumentId}
+          currentListCount={appLists.length}
+          onCreated={(newId) => {
+            refetchApps();
+            if (newId) {
+              navigate(`/recommendations/apps/${newId}`, { state: { justCreatedList: true } });
+            } else {
+              navigate(`/recommendations/apps`, { state: { justCreatedList: true } });
+            }
+          }}
+          username={user?.username || ""}
+        />
+      )}
+
+      {showCreateProductsModal && accountDocumentId && (
+        <CreateProductListModal
+          open={showCreateProductsModal}
+          onClose={() => setShowCreateProductsModal(false)}
+          accountDocumentId={accountDocumentId}
+          currentListCount={productLists.length}
+          onCreated={(newId) => {
+            refetchProducts();
+            if (newId) {
+              navigate(`/recommendations/products/${newId}`, { state: { justCreatedList: true } });
+            } else {
+              navigate(`/recommendations/products`, { state: { justCreatedList: true } });
+            }
+          }}
+          username={user?.username || ""}
+        />
+      )}
+
+      {showCreatePeopleModal && accountDocumentId && (
+        <CreatePersonListModal
+          open={showCreatePeopleModal}
+          onClose={() => setShowCreatePeopleModal(false)}
+          accountDocumentId={accountDocumentId}
+          currentListCount={personLists.length}
+          onCreated={(newId) => {
+            refetchPeople();
+            if (newId) {
+              navigate(`/recommendations/people/${newId}`, { state: { justCreatedList: true } });
+            } else {
+              navigate(`/recommendations/people`, { state: { justCreatedList: true } });
+            }
+          }}
+          username={user?.username || ""}
         />
       )}
     </>
