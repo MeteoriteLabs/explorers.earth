@@ -35,6 +35,110 @@ import { useTranslation } from "react-i18next";
 
 
 // Variant that also auto-activates hidden taggable error fields before scrolling.
+// Runs form-level side effects from inside the Formik provider. Extracted from
+// render-prop callbacks because React hooks may not be called in callbacks.
+const RecommendFormEffects = ({
+  recommendationType,
+  type,
+  initialValues,
+  activeFields,
+  handleTagClick,
+  selectedCategory,
+  selectedSubcategory,
+  setRecommendation,
+  setSelectedsubcategory,
+  setSelectedCategory,
+}: {
+  recommendationType: string;
+  type?: string;
+  initialValues: Record<string, any>;
+  activeFields: string[];
+  handleTagClick: (name: string) => void;
+  selectedCategory: string;
+  selectedSubcategory: string;
+  setRecommendation: (value: string) => void;
+  setSelectedsubcategory: (value: string) => void;
+  setSelectedCategory: (value: string) => void;
+}) => {
+  const { setFieldValue } = useFormikContext<Record<string, any>>();
+
+  // Track previous recommendation type to detect changes
+  const prevTypeRef = useRef(recommendationType);
+
+  // Effect to clear form fields only when recommendation type changes
+  useEffect(() => {
+    // Only clear if type actually changed
+    if (prevTypeRef.current !== recommendationType && type !== "edit") {
+      if (recommendationType === "person") {
+        // Clear all place-related fields when switching to person
+        setFieldValue("title", "");
+        setFieldValue("recommendation", "");
+        setFieldValue("address", "");
+        setFieldValue("subcategory", "");
+        setFieldValue("contactName", "");
+        setFieldValue("contactNumber", "");
+        setFieldValue("socialLink", "");
+        setRecommendation("");
+        setSelectedsubcategory("");
+        setSelectedCategory("");
+      } else {
+        // Clear person-specific fields when switching to place
+        setFieldValue("contactName", "");
+        setFieldValue("recommendation", "");
+        setFieldValue("address", "");
+        setFieldValue("subcategory", "");
+        setFieldValue("title", "");
+        setFieldValue("contactNumber", "");
+        setFieldValue("socialLink", "");
+        setRecommendation("");
+        setSelectedsubcategory("");
+        setSelectedCategory("");
+      }
+      // Update ref to current type
+      prevTypeRef.current = recommendationType;
+    }
+  }, [recommendationType, setFieldValue, type]);
+
+  // Effect to automatically open taggable fields if they have data from initialValues
+  // (e.g. when prefilled from Instagram overlay scraping)
+  useEffect(() => {
+    if (type !== "edit" && initialValues) {
+      // Check if contactName has a value and isn't active
+      if (initialValues.contactName && !activeFields.includes("contactName")) {
+        handleTagClick("contactName");
+      }
+      // Check if socialLink has a value and isn't active
+      if (initialValues.socialLink && !activeFields.includes("socialLink")) {
+        handleTagClick("socialLink");
+      }
+      // Check if reason has a value and isn't active
+      if (initialValues.reason && !activeFields.includes("reason")) {
+        handleTagClick("reason");
+      }
+      // Check if recommendationLink has a value and isn't active
+      if (initialValues.recommendationLink && !activeFields.includes("recommendationLink")) {
+        handleTagClick("recommendationLink");
+      }
+    }
+  }, [initialValues, activeFields, handleTagClick, type]);
+
+  // Sync category field when selectedCategory changes
+  useEffect(() => {
+    if (selectedCategory) {
+      setFieldValue("category", selectedCategory);
+    }
+  }, [selectedCategory, setFieldValue]);
+
+  // Sync subcategory field when selectedSubcategory changes
+  useEffect(() => {
+    if (selectedSubcategory) {
+      setFieldValue("subcategory", selectedSubcategory);
+    }
+  }, [selectedSubcategory, setFieldValue]);
+
+  return null;
+};
+
 const ScrollToFirstErrorWithActivation = ({
   handleTagClick,
   activeFields,
@@ -1083,66 +1187,6 @@ const RecommendationForm = memo(
           enableReinitialize={type !== "edit" || !hasSubmitted}
         >
           {({ isSubmitting, setFieldValue }) => {
-            // Track previous recommendation type to detect changes
-            const prevTypeRef = useRef(recommendationType);
-
-            // Effect to clear form fields only when recommendation type changes
-            useEffect(() => {
-              // Only clear if type actually changed
-              if (prevTypeRef.current !== recommendationType && type !== "edit") {
-                if (recommendationType === "person") {
-                  // Clear all place-related fields when switching to person
-                  setFieldValue("title", "");
-                  setFieldValue("recommendation", "");
-                  setFieldValue("address", "");
-                  setFieldValue("subcategory", "");
-                  setFieldValue("contactName", "");
-                  setFieldValue("contactNumber", "");
-                  setFieldValue("socialLink", "");
-                  setRecommendation("");
-                  setSelectedsubcategory("");
-                  setSelectedCategory("");
-                } else {
-                  // Clear person-specific fields when switching to place
-                  setFieldValue("contactName", "");
-                  setFieldValue("recommendation", "");
-                  setFieldValue("address", "");
-                  setFieldValue("subcategory", "");
-                  setFieldValue("title", "");
-                  setFieldValue("contactNumber", "");
-                  setFieldValue("socialLink", "");
-                  setRecommendation("");
-                  setSelectedsubcategory("");
-                  setSelectedCategory("");
-                }
-                // Update ref to current type
-                prevTypeRef.current = recommendationType;
-              }
-            }, [recommendationType, setFieldValue, type]);
-
-            // Effect to automatically open taggable fields if they have data from initialValues
-            // (e.g. when prefilled from Instagram overlay scraping)
-            useEffect(() => {
-              if (type !== "edit" && initialValues) {
-                // Check if contactName has a value and isn't active
-                if (initialValues.contactName && !activeFields.includes("contactName")) {
-                  handleTagClick("contactName");
-                }
-                // Check if socialLink has a value and isn't active
-                if (initialValues.socialLink && !activeFields.includes("socialLink")) {
-                  handleTagClick("socialLink");
-                }
-                // Check if reason has a value and isn't active
-                if (initialValues.reason && !activeFields.includes("reason")) {
-                  handleTagClick("reason");
-                }
-                // Check if recommendationLink has a value and isn't active
-                if (initialValues.recommendationLink && !activeFields.includes("recommendationLink")) {
-                  handleTagClick("recommendationLink");
-                }
-              }
-            }, [initialValues, activeFields, handleTagClick, type]);
-
             // Function to handle recommendation change and also set address
             const handleRecommendationChangeWithAddress = (newRecommendation: string) => {
               setRecommendation(newRecommendation);
@@ -1160,6 +1204,18 @@ const RecommendationForm = memo(
                 <ScrollToFirstErrorWithActivation
                   handleTagClick={handleTagClick}
                   activeFields={activeFields}
+                />
+                <RecommendFormEffects
+                  recommendationType={recommendationType}
+                  type={type}
+                  initialValues={initialValues}
+                  activeFields={activeFields}
+                  handleTagClick={handleTagClick}
+                  selectedCategory={selectedCategory}
+                  selectedSubcategory={selectedSubcategory}
+                  setRecommendation={setRecommendation}
+                  setSelectedsubcategory={setSelectedsubcategory}
+                  setSelectedCategory={setSelectedCategory}
                 />
                 {/* Loading indicator during validation */}
                 {(isValidatingLocation || isSubmitting) && (
@@ -1382,14 +1438,7 @@ const RecommendationForm = memo(
                       ) : field.name === "category" ? (
                         <Field name="category">
                           {({ form: { setFieldValue } }: { form: { setFieldValue: (field: string, value: any) => void } }) => {
-                            // Sync category field when selectedCategory changes - FORCE update
-                            useEffect(() => {
-                              if (selectedCategory) {
-                                console.log('Syncing Formik category to:', selectedCategory);
-                                // Use setFieldValue to update the category field
-                                setFieldValue("category", selectedCategory);
-                              }
-                            }, [selectedCategory, setFieldValue]);
+                            // Category state → Formik sync happens in RecommendFormEffects
 
                             // Find the category object to display - ensure we always have Category_Name
                             const categoryObj = Array.isArray(categories) && categories.length > 0 && selectedCategory
@@ -1432,20 +1481,7 @@ const RecommendationForm = memo(
                         <>
                           <Field name="subcategory">
                             {({ form: { setFieldValue } }: { form: { setFieldValue: (field: string, value: any) => void } }) => {
-                              // Sync form field value with state when selectedSubcategory changes
-                              useEffect(() => {
-                                if (selectedSubcategory) {
-                                  setFieldValue("subcategory", selectedSubcategory);
-                                }
-                              }, [selectedSubcategory, setFieldValue]);
-
-                              // Sync category field when selectedCategory changes
-                              useEffect(() => {
-                                if (selectedCategory) {
-                                  setFieldValue("category", selectedCategory);
-                                }
-                              }, [selectedCategory, setFieldValue]);
-
+                              // Category/subcategory state → Formik sync happens in RecommendFormEffects
                               return (
                                 <Dropdown
                                   initalValue={initialValues.subcategory}

@@ -265,6 +265,17 @@ const GuideDetailsPage = () => {
     };
   }, [openMenuId]);
 
+  useEffect(() => {
+    const loadedGuide = data?.guide;
+    if (location.state?.justAddedRecommendation && loadedGuide && !loadedGuide.Visibility) {
+      setListVisibilityPrompt({
+        isOpen: true,
+        listName: loadedGuide.Title,
+      });
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, data?.guide]);
+
   if (loading) {
     return (
       <div className="dashboard-theme flex justify-center items-center min-h-screen bg-dashboard-bg">
@@ -290,15 +301,6 @@ const GuideDetailsPage = () => {
 
   const guide = data.guide;
 
-  useEffect(() => {
-    if (location.state?.justAddedRecommendation && guide && !guide.Visibility) {
-      setListVisibilityPrompt({
-        isOpen: true,
-        listName: guide.Title,
-      });
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state, guide]);
   const allSections = guide.guide_sections || [];
 
   // Remove duplicates based on documentId (in case of cache issues)

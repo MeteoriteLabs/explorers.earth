@@ -28,6 +28,22 @@ const isVideo = (item: MediaItem): boolean => {
 };
 
 const MediaGallery: FC<MediaGalleryProps> = memo(({ Media }) => {
+  // MediaViewer state
+  const { isOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
+
+  // Convert media items for MediaViewer
+  const mediaItems = useMemo(() => {
+    if (!Media || !Array.isArray(Media)) return [];
+    return convertToMediaItems(
+      Media.map((item, index) => ({
+        id: `media-${index}`,
+        url: item.url,
+        alt: `Media ${index + 1}`,
+        type: isVideo(item) ? "video" : ("image" as const),
+      }))
+    );
+  }, [Media]);
+
   // Early return if Media is not provided or empty
   if (!Media || !Array.isArray(Media) || Media.length === 0) {
     return (
@@ -38,21 +54,6 @@ const MediaGallery: FC<MediaGalleryProps> = memo(({ Media }) => {
       </div>
     );
   }
-
-  // MediaViewer state
-  const { isOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
-
-  // Convert media items for MediaViewer
-  const mediaItems = useMemo(() => {
-    return convertToMediaItems(
-      Media.map((item, index) => ({
-        id: `media-${index}`,
-        url: item.url,
-        alt: `Media ${index + 1}`,
-        type: isVideo(item) ? "video" : ("image" as const),
-      }))
-    );
-  }, [Media]);
 
   // Handle media click
   const handleMediaClick = (index: number) => {
