@@ -3,8 +3,16 @@ name: CI Pipeline
 on:
   pull_request:
     branches: [main, develop]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
   push:
     branches: [main, develop]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
 
 concurrency:
   group: ci-${{ github.ref }}
