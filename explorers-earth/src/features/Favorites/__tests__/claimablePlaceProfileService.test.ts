@@ -127,4 +127,104 @@ describe('ClaimablePlaceProfileService', () => {
     await expect(service.updateOrCreateClaimablePlaceProfile(mockData))
       .rejects.toThrow('GraphQL errors: Update failed');
   });
+
+  // Additional 4+ tests to reach >= 10:
+  it('creates new profile passing optional properties (Phone, Website, Meta_Data) correctly', async () => {
+    mockApolloClient.query.mockResolvedValueOnce({});
+    mockApolloClient.query.mockResolvedValueOnce({
+      data: { claimablePlaceProfiles: [] }
+    });
+    mockApolloClient.mutate.mockResolvedValueOnce({
+      data: { createClaimablePlaceProfile: { documentId: 'new_doc_optional' } }
+    });
+
+    const optionalData = {
+      ...mockData,
+      Phone: '+1234567890',
+      Website: 'https://place.com',
+      Meta_Data: { rating: 4.8 },
+    };
+
+    const result = await service.updateOrCreateClaimablePlaceProfile(optionalData);
+
+    expect(mockApolloClient.mutate).toHaveBeenCalledWith(expect.objectContaining({
+      variables: expect.objectContaining({
+        data: expect.objectContaining({
+          Phone: '+1234567890',
+          Website: 'https://place.com',
+          Meta_Data: { rating: 4.8 },
+        })
+      })
+    }));
+    expect(result).toEqual({ documentId: 'new_doc_optional' });
+  });
+
+  it('updates existing record passing optional properties correctly', async () => {
+    mockApolloClient.query.mockResolvedValueOnce({});
+    const existingRecord = {
+      documentId: 'doc_1',
+      Added_By_User: ['user_2'],
+      Recommendation_Count: 1,
+    };
+    mockApolloClient.query.mockResolvedValueOnce({
+      data: { claimablePlaceProfiles: [existingRecord] }
+    });
+    mockApolloClient.mutate.mockResolvedValueOnce({
+      data: { updateClaimablePlaceProfile: { documentId: 'doc_1' } }
+    });
+
+    const optionalData = {
+      ...mockData,
+      Phone: '+1234567890',
+      Website: 'https://place.com',
+      Meta_Data: { rating: 4.8 },
+    };
+
+    await service.updateOrCreateClaimablePlaceProfile(optionalData);
+
+    expect(mockApolloClient.mutate).toHaveBeenCalledWith(expect.objectContaining({
+      variables: expect.objectContaining({
+        documentId: 'doc_1',
+        data: expect.objectContaining({
+          Phone: '+1234567890',
+          Website: 'https://place.com',
+          Meta_Data: { rating: 4.8 },
+        })
+      })
+    }));
+  });
+
+  it('handles added_by_user being null or missing in existing record gracefully', async () => {
+    mockApolloClient.query.mockResolvedValueOnce({});
+    const existingRecord = {
+      documentId: 'doc_1',
+      Added_By_User: null,
+      Recommendation_Count: 1,
+    };
+    mockApolloClient.query.mockResolvedValueOnce({
+      data: { claimablePlaceProfiles: [existingRecord] }
+    });
+    mockApolloClient.mutate.mockResolvedValueOnce({
+      data: { updateClaimablePlaceProfile: { documentId: 'doc_1' } }
+    });
+
+    await service.updateOrCreateClaimablePlaceProfile(mockData);
+
+    expect(mockApolloClient.mutate).toHaveBeenCalledWith(expect.objectContaining({
+      variables: expect.objectContaining({
+        documentId: 'doc_1',
+        data: expect.objectContaining({
+          Added_By_User: ['user_1'],
+        })
+      })
+    }));
+  });
+
+  it('propagates top-level unexpected errors', async () => {
+    mockApolloClient.query.mockResolvedValueOnce({});
+    mockApolloClient.query.mockRejectedValueOnce(new Error('Database disconnected'));
+
+    await expect(service.updateOrCreateClaimablePlaceProfile(mockData))
+      .rejects.toThrow('Database disconnected');
+  });
 });

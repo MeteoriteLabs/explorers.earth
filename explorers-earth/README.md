@@ -1,5 +1,9 @@
 # explorers-earth — Location Sharing Platform
 
+[![CI Pipeline](https://github.com/explorers-earth/explorers-earth/actions/workflows/ci.yml/badge.svg)](https://github.com/explorers-earth/explorers-earth/actions/workflows/ci.yml)
+[![Deploy](https://github.com/explorers-earth/explorers-earth/actions/workflows/deploy.yml/badge.svg)](https://github.com/explorers-earth/explorers-earth/actions/workflows/deploy.yml)
+![Coverage](https://img.shields.io/badge/coverage-unit%20%2B%20integration-blue)
+
 explorers-earth is a React-based web application that enables users to create personalized QR codes and shareable links for their favorite places and recommendations. Users can build curated lists of locations, organize them by cities or themes, and share them with others through QR codes and social media integration.
 
 ## Tech Stack
