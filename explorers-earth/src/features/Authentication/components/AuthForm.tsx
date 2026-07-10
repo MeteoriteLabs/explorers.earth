@@ -101,18 +101,20 @@ const AuthForm: FC<AuthFormProps> = memo(
     };
     return (
       <div className="dashboard-theme">
-        <div className="flex flex-col items-center justify-center mt-2 md:mt-3 mb-4 md:mb-6 w-3/4 max-w-[75%] mx-auto">
-          <img
-            src="/logo.svg"
-            alt="explorers.earth"
-            className="object-contain w-full"
-            style={{
-              height: "auto",
-              maxHeight: "60px",
-              filter: "brightness(0) invert(1)",
-            }}
-          />
-        </div>
+        {!isOnboarding && (
+          <div className="flex flex-col items-center justify-center mt-2 md:mt-3 mb-4 md:mb-6 w-3/4 max-w-[75%] mx-auto">
+            <img
+              src="/logo.svg"
+              alt="explorers.earth"
+              className="object-contain w-full"
+              style={{
+                height: "auto",
+                maxHeight: "60px",
+                filter: "brightness(0) invert(1)",
+              }}
+            />
+          </div>
+        )}
         <Formik
           initialValues={initialValues}
           validationSchema={validationSchema}

@@ -244,7 +244,7 @@ const Sidebar = () => {
 
       {/* Sidebar Menu */}
 
-      <nav className="flex flex-col gap-2 mt-4 flex-shrink-0 w-full px-2">
+      <nav className="flex flex-col gap-2 mt-4 flex-1 overflow-y-auto scrollbar-hide w-full px-2">
         <SidebarItem
           isOpen={isOpen}
           Icon={Home}
@@ -334,7 +334,7 @@ const Sidebar = () => {
       </nav>
 
       {/* Profile Section */}
-      <div className="flex justify-end flex-col flex-1 p-2 relative">
+      <div className="flex justify-end flex-col flex-shrink-0 mt-auto p-2 relative">
         {/* Theme Toggle - Above Username Section */}
         {isOpen && (
           <div className="flex items-center justify-between px-2 mb-3">

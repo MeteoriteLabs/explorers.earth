@@ -1595,7 +1595,7 @@ const OnBoarding = () => {
           </div>
           <AddressInput
             setPlaces={setPlaces}
-            label={field.label}
+            label=""
             initalValue={formData.address}
             value={formData.address}
             onChange={handleAddressChange}
@@ -1634,7 +1634,7 @@ const OnBoarding = () => {
           <AddressInput
             key={`${sameAsAddress}-${formData.primaryAddress}`}
             type="primaryAddressCombined"
-            label={field.label}
+            label=""
             value={formData.primaryAddress}
             initalValue={formData.primaryAddress}
             onChange={(val) => {
