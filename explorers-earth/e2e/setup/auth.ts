@@ -60,6 +60,40 @@ export async function setupMockAuthentication(context: BrowserContext) {
     });
   });
 
+  // Mock the subscription plans LIST endpoint. Registered after the generic
+  // '**/api/subscriptions/**' route so it wins (Playwright matches routes in
+  // reverse registration order). Without this, the plans request receives
+  // subscription records lacking plan_name, which crashed OnBoarding.
+  await context.route('**/api/subscriptions/plans', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: [
+          {
+            documentId: 'plan-free',
+            plan_name: 'Free',
+            plan_cost: 0,
+            duration: 'monthly',
+            features: '[]',
+            ai_guide_quota: 10,
+            song_quota: 10
+          },
+          {
+            documentId: 'plan-basic',
+            plan_name: 'Basic Plan',
+            plan_cost: 99,
+            duration: 'monthly',
+            features: '[]',
+            ai_guide_quota: 100,
+            song_quota: 100
+          }
+        ]
+      })
+    });
+  });
+
   // Mock subscription plan by ID calls
   await context.route('**/api/subscriptions/plans/**', async route => {
     await route.fulfill({

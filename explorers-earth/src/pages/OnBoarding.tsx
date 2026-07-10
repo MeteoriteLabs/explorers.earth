@@ -460,7 +460,7 @@ const OnBoarding = () => {
   useEffect(() => {
     if (subscriptionPlansData && subscriptionPlansData.length > 0 && !selectedPlan) {
       const freePlan = subscriptionPlansData.find(
-        (plan: SubscriptionPlan) => plan.plan_name.toLowerCase() === 'free'
+        (plan: SubscriptionPlan) => plan.plan_name?.toLowerCase() === 'free'
       );
       if (freePlan) {
         setSelectedPlan(freePlan.documentId);
@@ -1069,16 +1069,16 @@ const OnBoarding = () => {
 
   // Get plan icon based on plan name
   const getPlanIcon = (planName: string) => {
-    if (planName.toLowerCase() === 'free') return <Sparkles className="w-5 h-5" />;
-    if (planName.toLowerCase() === 'paid') return <Crown className="w-5 h-5" />;
+    if (planName?.toLowerCase() === 'free') return <Sparkles className="w-5 h-5" />;
+    if (planName?.toLowerCase() === 'paid') return <Crown className="w-5 h-5" />;
     return <Zap className="w-5 h-5" />;
   };
 
   // Filter plans by billing period and sort: Free first, then by cost
   const sortedPlans = [...plans]
     .filter(plan => {
-      const isFree = plan.plan_name.toLowerCase() === 'free';
-      return isFree || plan.duration.toLowerCase() === billingPeriod;
+      const isFree = plan.plan_name?.toLowerCase() === 'free';
+      return isFree || plan.duration?.toLowerCase() === billingPeriod;
     })
     .sort((a, b) => {
       if (a.plan_name === 'Free') return -1;
@@ -1495,7 +1495,7 @@ const OnBoarding = () => {
    */
   const handleSubscriptionSubmitWithFreePlan = async (currentFormData: typeof formData) => {
     const freePlan = subscriptionPlansData?.find(
-      (plan: SubscriptionPlan) => plan.plan_name.toLowerCase() === 'free'
+      (plan: SubscriptionPlan) => plan.plan_name?.toLowerCase() === 'free'
     );
 
     if (!freePlan) {
@@ -2104,7 +2104,7 @@ const OnBoarding = () => {
                       {sortedPlans.map((plan) => {
                         const features = parseFeatures(plan.features);
                         const isSelected = selectedPlan === plan.documentId;
-                        const isFree = plan.plan_name.toLowerCase() === 'free';
+                        const isFree = plan.plan_name?.toLowerCase() === 'free';
                         const isYearly = plan.duration === 'yearly';
 
                         return (

@@ -182,7 +182,9 @@ jobs:
         run: npx playwright test --project=chromium
         env:
           CI: true
-          VITE_API_URL: http://localhost:5173
+          # Apollo uses VITE_API_URL verbatim as the GraphQL URI (src/main.tsx);
+          # it must end in /graphql for the specs' **/graphql route mocks to match.
+          VITE_API_URL: http://localhost:5173/graphql
           VITE_GOOGLE_MAPS_API_KEY: test-key
           VITE_PUBLIC_ACCESS_TOKEN: test-token
 
