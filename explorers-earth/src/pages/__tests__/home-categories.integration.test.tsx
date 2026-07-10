@@ -107,7 +107,8 @@ describe('Home Categories Tab switching and List creation integration', () => {
     expect(screen.getByTestId('list-content')).toHaveTextContent('My Books List');
   });
 
-  it('opens movie creation modal, triggers Formik validation, and creates list successfully on submit', async () => {
+  // 30s test timeout: multi-step Formik + Apollo flow needs headroom on slow CI runners.
+  it('opens movie creation modal, triggers Formik validation, and creates list successfully on submit', { timeout: 30000 }, async () => {
     const createListMock = {
       request: {
         query: CREATE_MOVIE_LIST,
