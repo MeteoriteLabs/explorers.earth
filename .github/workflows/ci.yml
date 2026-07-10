@@ -187,6 +187,10 @@ jobs:
           VITE_API_URL: http://localhost:5173/graphql
           VITE_GOOGLE_MAPS_API_KEY: test-key
           VITE_PUBLIC_ACCESS_TOKEN: test-token
+          # Music flow (music.spec.ts) mocks the Local Tunes API and needs the
+          # integration enabled or the playlist UI never renders.
+          VITE_LOCAL_TUNES_ENABLED: true
+          VITE_LOCAL_TUNES_API_URL: http://localhost:5173
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
