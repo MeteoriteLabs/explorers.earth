@@ -200,7 +200,7 @@ const Sidebar = () => {
   return (
     <div
       className={`dashboard-theme ${isOpen ? "w-64 min-w-[256px]" : "w-16 min-w-[64px]"
-        } h-screen bg-dashboard-sidebar font-poppins text-dashboard transition-all duration-300 flex flex-col flex-shrink-0 fixed left-0 top-0 z-40`}
+        } bg-dashboard-sidebar font-poppins text-dashboard transition-all duration-300 flex flex-col flex-shrink-0 fixed left-2 top-2 bottom-2 z-40 rounded-2xl`}
     >
       {/* Fixed Header - Logo and Toggle Button */}
       <div className={`flex w-full py-4 flex-shrink-0 min-h-[72px] ${isOpen ? "items-center justify-start pl-[20px] pr-3 gap-3" : "flex-col items-center justify-center gap-2 px-4"}`}>
