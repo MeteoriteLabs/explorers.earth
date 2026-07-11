@@ -47,6 +47,7 @@ export const CreateGameListModal = ({
   currentListCount,
   onCreated,
   username,
+  defaultListName,
 }: {
   open: boolean;
   onClose: () => void;
@@ -54,11 +55,17 @@ export const CreateGameListModal = ({
   currentListCount: number;
   onCreated: (newId?: string) => void;
   username: string;
+  defaultListName?: string;
 }) => {
   const [createGameList, { loading }] = useMutation(CREATE_GAME_LIST);
 
   const formik = useFormik({
-    initialValues: { List_Name: "", list_description: "", slug: "" },
+    initialValues: { 
+      List_Name: defaultListName || "", 
+      list_description: "", 
+      slug: defaultListName ? generateSlug(defaultListName) : "" 
+    },
+    enableReinitialize: true,
     validationSchema: Yup.object({
       List_Name: Yup.string().required("List name is required").max(100),
       slug: Yup.string().required("List URL is required").max(100),
@@ -373,6 +380,14 @@ const GamesHome = () => {
 
     const currentValue = acc.public_games;
     const newValue = currentValue === "Yes" ? "No" : "Yes";
+
+    if (newValue === "Yes") {
+      const hasPublishedList = lists.some((l) => l.Visibility === true);
+      if (!hasPublishedList) {
+        toast.error("You must have at least one published game list to make Games public.");
+        return;
+      }
+    }
 
     try {
       await updateAccountVisibility({

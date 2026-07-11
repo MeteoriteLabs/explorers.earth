@@ -309,7 +309,7 @@
         "postalCode": "Postal Code",
         "postalCodePlaceholder": "Enter postal code",
         "primaryAddress": "Primary Address",
-        "primaryAddressDescription": "shown on public profile ( city and country )",
+        "primaryAddressDescription": "Shown on public profile ( city and country )",
         "primaryAddressPlaceholder": "Enter primary address",
         "sameAsAddress": "Same as Address",
         "state": "State",

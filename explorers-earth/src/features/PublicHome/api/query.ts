@@ -69,6 +69,7 @@ export const accountsDetailQuery = gql`
       localtunes_integrated
       Account_Type
       social_media
+      Feed_Data
       public_profile
       public_recommendations
       public_music

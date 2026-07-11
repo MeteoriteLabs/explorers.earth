@@ -1951,6 +1951,18 @@ const Profile = memo(() => {
               <>
                 <style>{`
               /* Ensure buttons and interactive elements are clickable during walkthrough */
+              .react-joyride__tooltip {
+                background-color: #121217 !important;
+                backdrop-filter: blur(12px) !important;
+                -webkit-backdrop-filter: blur(12px) !important;
+                border: 1px solid #1e1e26 !important;
+                color: white !important;
+              }
+              .react-joyride__tooltip > div {
+                background-color: transparent !important;
+                border: none !important;
+                outline: none !important;
+              }
               .react-joyride__overlay {
                 pointer-events: none !important;
               }
@@ -2074,9 +2086,9 @@ const Profile = memo(() => {
                       padding: stepIndex === 2 ? '12px 16px' : '20px',
                       fontFamily: 'Poppins, sans-serif',
                       fontSize: '14px',
-                      backgroundColor: 'var(--dash-sidebar-bg)',
+                      backgroundColor: '#121217',
                       color: 'white',
-                      border: '1px solid var(--dash-border)',
+                      border: '1px solid #1e1e26',
                     },
                     tooltipContainer: {
                       textAlign: 'left',

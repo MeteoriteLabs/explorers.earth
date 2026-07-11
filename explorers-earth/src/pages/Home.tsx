@@ -24,7 +24,7 @@ import { createUtmParams } from "../utils/urlHelpers";
 import { IMAGE_CONFIG } from "../config";
 import { useCityStore } from "../store/useCityStore";
 import useSetupStore from "../store/useSetupStore";
-import AccountSetupCard from "../components/AccountSetupCard";
+import ProfileSetupAccordion from "../components/ProfileSetupAccordion";
 import { DASHBOARD_STATUS_QUERY } from "../features/Profile/api/UserStatus";
 import { GET_GUIDES_QUERY, GET_USER_ACCOUNT_QUERY } from "../features/Guides/api/queries";
 import type { Guide } from "../features/Guides/types";
@@ -36,6 +36,9 @@ import { calculateIsProfileComplete, calculateIsRecommendationsComplete } from "
 import { MOVIE_LISTS_BY_ACCOUNT } from "../features/Movies/api/query";
 import { BOOK_LISTS_BY_ACCOUNT } from "../features/Books/api/query";
 import { GAME_LISTS_BY_ACCOUNT } from "../features/Games/api/query";
+import { APP_LISTS_BY_ACCOUNT } from "../features/AppsAndTools/api/query";
+import { PRODUCT_LISTS_BY_ACCOUNT } from "../features/Products/api/query";
+import { PERSON_LISTS_BY_ACCOUNT } from "../features/People/api/query";
 import { useTunesDashboard } from "../hooks/useTunesDashboard";
 import { GET_PUBLIC_PAGE_ANALYTICS } from "../features/Analytics/api/queries";
 
@@ -51,7 +54,11 @@ import AddLocationModal from "../components/ui/AddLocationModal";
 import { CreateMovieListModal } from "../features/Movies/components/dashboard/MoviesHome";
 import { CreateBookListModal } from "../features/Books/components/dashboard/BooksHome";
 import { CreateGameListModal } from "../features/Games/components/dashboard/GamesHome";
+import { CreateAppListModal } from "../features/AppsAndTools/components/dashboard/AppsHome";
+import { CreateProductListModal } from "../features/Products/components/dashboard/ProductsHome";
+import { CreatePersonListModal } from "../features/People/components/dashboard/PeopleHome";
 import { CreateGuideModal } from "../features/Guides";
+import { CategoryEmptyState } from "../components/CategoryEmptyState";
 
 // Mutations & queries
 import { createRecommendationLinkMutation } from "../features/Favorites/api/mutation";
@@ -158,7 +165,9 @@ const Home = memo(() => {
   const [showGuidesShareModal, setShowGuidesShareModal] = useState<boolean>(false);
   const [showGuideShareModals, setShowGuideShareModals] = useState<{ [key: string]: boolean }>({});
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<"places" | "movies" | "books" | "games" | "music" | "guides">("places");
+  const [activeTab, setActiveTab] = useState<
+    "places" | "movies" | "books" | "games" | "music" | "guides" | "apps" | "products" | "people"
+  >("places");
 
   // Inline Modal Creation States
   const [showCreatePlacesModal, setShowCreatePlacesModal] = useState<boolean>(false);
@@ -167,6 +176,10 @@ const Home = memo(() => {
   const [showCreateGamesModal, setShowCreateGamesModal] = useState<boolean>(false);
   const [showCreateMusicModal, setShowCreateMusicModal] = useState<boolean>(false);
   const [showCreateGuidesModal, setShowCreateGuidesModal] = useState<boolean>(false);
+  const [showCreateAppsModal, setShowCreateAppsModal] = useState<boolean>(false);
+  const [showCreateProductsModal, setShowCreateProductsModal] = useState<boolean>(false);
+  const [showCreatePeopleModal, setShowCreatePeopleModal] = useState<boolean>(false);
+  const [prefillTitle, setPrefillTitle] = useState<string>("");
 
   const queryClient = useQueryClient();
   const [createRecommendationLink] = useMutation(createRecommendationLinkMutation);
@@ -250,6 +263,30 @@ const Home = memo(() => {
   });
   const gameLists = gameListsData?.gameLists || [];
 
+  // Fetch apps & tools lists
+  const { data: appListsData, refetch: refetchApps } = useQuery(APP_LISTS_BY_ACCOUNT, {
+    variables: { accountDocumentId },
+    skip: !accountDocumentId || !user?.username,
+    fetchPolicy: "network-only",
+  });
+  const appLists = appListsData?.appLists || [];
+
+  // Fetch products lists
+  const { data: productListsData, refetch: refetchProducts } = useQuery(PRODUCT_LISTS_BY_ACCOUNT, {
+    variables: { accountDocumentId },
+    skip: !accountDocumentId || !user?.username,
+    fetchPolicy: "network-only",
+  });
+  const productLists = productListsData?.productLists || [];
+
+  // Fetch people lists
+  const { data: personListsData, refetch: refetchPeople } = useQuery(PERSON_LISTS_BY_ACCOUNT, {
+    variables: { accountDocumentId },
+    skip: !accountDocumentId || !user?.username,
+    fetchPolicy: "network-only",
+  });
+  const personLists = personListsData?.personLists || [];
+
   // Fetch music playlists
   const tunesDashboard = useTunesDashboard();
   const musicPlaylists = tunesDashboard.playlists || [];
@@ -311,6 +348,9 @@ const Home = memo(() => {
     else if (activeTab === "games") subPath = "games";
     else if (activeTab === "music") subPath = "music";
     else if (activeTab === "guides") subPath = "guides";
+    else if (activeTab === "apps") subPath = "apps";
+    else if (activeTab === "products") subPath = "products";
+    else if (activeTab === "people") subPath = "people";
 
     return `${url}/${user?.username}/${subPath}`;
   }, [activeTab, url, user?.username]);
@@ -392,8 +432,12 @@ const Home = memo(() => {
     const activeBooks = bookLists?.filter((list: any) => list.visibility === true)?.length || 0;
     const activeGames = gameLists?.filter((list: any) => list.Visibility === true)?.length || 0;
     const activeMusic = musicPlaylists?.filter((list: any) => list.isVisibleToGuests === true)?.length || 0;
-    return activePlaces + activeMovies + activeBooks + activeGames + activeMusic;
-  }, [listNames, movieLists, bookLists, gameLists, musicPlaylists]);
+    const activeGuides = allGuides?.filter((guide: any) => guide.Visibility === true)?.length || 0;
+    const activeApps = appLists?.filter((list: any) => list.Visibility === true)?.length || 0;
+    const activeProducts = productLists?.filter((list: any) => list.Visibility === true)?.length || 0;
+    const activePeople = personLists?.filter((list: any) => list.Visibility === true)?.length || 0;
+    return activePlaces + activeMovies + activeBooks + activeGames + activeMusic + activeGuides + activeApps + activeProducts + activePeople;
+  }, [listNames, movieLists, bookLists, gameLists, musicPlaylists, allGuides, appLists, productLists, personLists]);
 
   const totalRecommendationsCount = useMemo(() => {
     const placesRecs = listNames?.filter((list: any) => list.Visibility === true)?.reduce((total: number, list: any) => total + (list?.recommended_places?.length || 0), 0) || 0;
@@ -401,8 +445,11 @@ const Home = memo(() => {
     const booksRecs = bookLists?.filter((list: any) => list.visibility === true)?.reduce((total: number, list: any) => total + (list?.recommended_books?.length || 0), 0) || 0;
     const gamesRecs = gameLists?.filter((list: any) => list.Visibility === true)?.reduce((total: number, list: any) => total + (list?.recommended_games?.length || 0), 0) || 0;
     const guidesRecs = allGuides?.filter((guide: any) => guide.Visibility === true)?.length || 0;
-    return placesRecs + moviesRecs + booksRecs + gamesRecs + guidesRecs;
-  }, [listNames, movieLists, bookLists, gameLists, allGuides]);
+    const appsRecs = appLists?.filter((list: any) => list.Visibility === true)?.reduce((total: number, list: any) => total + (list?.recommended_apps?.length || 0), 0) || 0;
+    const productsRecs = productLists?.filter((list: any) => list.Visibility === true)?.reduce((total: number, list: any) => total + (list?.recommended_products?.length || 0), 0) || 0;
+    const peopleRecs = personLists?.filter((list: any) => list.Visibility === true)?.reduce((total: number, list: any) => total + (list?.recommended_people?.length || 0), 0) || 0;
+    return placesRecs + moviesRecs + booksRecs + gamesRecs + guidesRecs + appsRecs + productsRecs + peopleRecs;
+  }, [listNames, movieLists, bookLists, gameLists, allGuides, appLists, productLists, personLists]);
 
   const totalViewsCount = useMemo(() => {
     if (!analyticsData?.publicPageAnalytics || !accountDocumentId) return "0";
@@ -523,6 +570,45 @@ const Home = memo(() => {
     );
   }, [musicPlaylists, searchQuery]);
 
+  // Filter app lists based on search query
+  const filteredAppLists = useMemo(() => {
+    if (!searchQuery.trim()) return appLists;
+    const query = searchQuery.toLowerCase();
+    return appLists.filter((item: any) =>
+      item?.List_Name?.toLowerCase().includes(query) ||
+      item?.list_description?.toLowerCase().includes(query) ||
+      item?.recommended_apps?.some((app: any) =>
+        app?.title?.toLowerCase().includes(query)
+      )
+    );
+  }, [appLists, searchQuery]);
+
+  // Filter product lists based on search query
+  const filteredProductLists = useMemo(() => {
+    if (!searchQuery.trim()) return productLists;
+    const query = searchQuery.toLowerCase();
+    return productLists.filter((item: any) =>
+      item?.List_Name?.toLowerCase().includes(query) ||
+      item?.list_description?.toLowerCase().includes(query) ||
+      item?.recommended_products?.some((prod: any) =>
+        prod?.title?.toLowerCase().includes(query)
+      )
+    );
+  }, [productLists, searchQuery]);
+
+  // Filter person lists based on search query
+  const filteredPersonLists = useMemo(() => {
+    if (!searchQuery.trim()) return personLists;
+    const query = searchQuery.toLowerCase();
+    return personLists.filter((item: any) =>
+      item?.List_Name?.toLowerCase().includes(query) ||
+      item?.list_description?.toLowerCase().includes(query) ||
+      item?.recommended_people?.some((person: any) =>
+        person?.name?.toLowerCase().includes(query)
+      )
+    );
+  }, [personLists, searchQuery]);
+
   const navigate = useNavigate();
 
   const shareButtons = [
@@ -641,6 +727,9 @@ const Home = memo(() => {
     else if (activeTab === "games") setShowCreateGamesModal(true);
     else if (activeTab === "music") setShowCreateMusicModal(true);
     else if (activeTab === "guides") setShowCreateGuidesModal(true);
+    else if (activeTab === "apps") setShowCreateAppsModal(true);
+    else if (activeTab === "products") setShowCreateProductsModal(true);
+    else if (activeTab === "people") setShowCreatePeopleModal(true);
   };
 
   const handlePlacesSubmit = async (values: any) => {
@@ -897,9 +986,11 @@ const Home = memo(() => {
               />
             </div>
           )}
-          {isAllSetupComplete && (
-            <>
-              <div className="w-full md:pb-6">
+
+          {/* Public Profile Setup Accordion */}
+          <ProfileSetupAccordion account={account} />
+
+          <div className="w-full md:pb-6">
                 {/* Category Tabs Selector */}
                 <div className="home-tab-container bg-[var(--dash-tab-bg)] rounded-[28px] p-[3px] flex gap-1 mb-4 overflow-x-auto scrollbar-hide">
                   {(
@@ -910,6 +1001,9 @@ const Home = memo(() => {
                       { id: "games", label: "Games", icon: "🎮" },
                       { id: "music", label: "Music", icon: "🎵" },
                       { id: "guides", label: "Guides", icon: "📖" },
+                      { id: "apps", label: "Apps & Tools", icon: "🛠️" },
+                      { id: "products", label: "Products", icon: "🛍️" },
+                      { id: "people", label: "Persons", icon: "👥" },
                     ] as const
                   ).map((cat) => {
                     const isActive = activeTab === cat.id;
@@ -937,7 +1031,15 @@ const Home = memo(() => {
                     </svg>
                     <input
                       type="text"
-                      placeholder={`Search ${activeTab === "places" ? "places" : activeTab}, lists…`}
+                      placeholder={`Search ${
+                        activeTab === "places"
+                          ? "places"
+                          : activeTab === "apps"
+                          ? "apps & tools"
+                          : activeTab === "people"
+                          ? "persons"
+                          : activeTab
+                      }, lists…`}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="flex-1 bg-transparent text-white placeholder-white/30 text-[11px] sm:text-xs font-poppins outline-none border-none p-0 min-w-0"
@@ -948,7 +1050,15 @@ const Home = memo(() => {
                     style={getAddButtonStyles(activeTab)}
                     className="flex-shrink-0 flex items-center justify-center gap-1 h-10 px-3 sm:px-4 rounded-xl text-[11px] sm:text-xs font-bold font-poppins transition-all duration-200 hover:brightness-110 whitespace-nowrap"
                   >
-                    <span>+</span> Add {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+                    <span>+</span> Add {
+                      activeTab === "apps"
+                        ? "Apps"
+                        : activeTab === "products"
+                        ? "Products"
+                        : activeTab === "people"
+                        ? "Persons"
+                        : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)
+                    }
                   </button>
                   <button
                     onClick={() => setShowCategoryShareModal(true)}
@@ -965,16 +1075,10 @@ const Home = memo(() => {
                   {activeTab === "places" && (
                     <>
                       {listNames?.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-dashboard-sidebar/20 rounded-2xl border border-dashboard/20">
-                          <div className="w-16 h-16 rounded-full bg-dashboard-muted/50 flex items-center justify-center mb-4 text-3xl">
-                            📍
-                          </div>
-                          <h3 className="text-base font-semibold text-white mb-1">No places lists yet</h3>
-                          <p className="text-xs text-white/55 max-w-xs mb-4">Create your first list to start sharing your recommendations.</p>
-                          <button onClick={handleAddNewItem} style={getAddButtonStyles("places")} className="px-6 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110">
-                            Create Places List
-                          </button>
-                        </div>
+                        <CategoryEmptyState
+                          category="places"
+                          onAddClick={handleAddNewItem}
+                        />
                       ) : filteredListNames?.length > 0 ? (
                         <div className="space-y-3 pb-20">
                           {filteredListNames.map((item: any, index: number) => {
@@ -1064,16 +1168,10 @@ const Home = memo(() => {
                   {activeTab === "movies" && (
                     <>
                       {movieLists.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-dashboard-sidebar/20 rounded-2xl border border-dashboard/20">
-                          <div className="w-16 h-16 rounded-full bg-dashboard-muted/50 flex items-center justify-center mb-4 text-3xl">
-                            🎬
-                          </div>
-                          <h3 className="text-base font-semibold text-white mb-1">No movies lists yet</h3>
-                          <p className="text-xs text-white/55 max-w-xs mb-4">Create your first list to start sharing your movie recommendations.</p>
-                          <button onClick={handleAddNewItem} style={getAddButtonStyles("movies")} className="px-6 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110">
-                            Create Movies List
-                          </button>
-                        </div>
+                        <CategoryEmptyState
+                          category="movies"
+                          onAddClick={handleAddNewItem}
+                        />
                       ) : filteredMovieLists.length > 0 ? (
                         <div className="space-y-3 pb-20">
                           {filteredMovieLists.map((item: any, index: number) => {
@@ -1128,16 +1226,10 @@ const Home = memo(() => {
                   {activeTab === "books" && (
                     <>
                       {bookLists.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-dashboard-sidebar/20 rounded-2xl border border-dashboard/20">
-                          <div className="w-16 h-16 rounded-full bg-dashboard-muted/50 flex items-center justify-center mb-4 text-3xl">
-                            📚
-                          </div>
-                          <h3 className="text-base font-semibold text-white mb-1">No books lists yet</h3>
-                          <p className="text-xs text-white/55 max-w-xs mb-4">Create your first list to start sharing your book recommendations.</p>
-                          <button onClick={handleAddNewItem} style={getAddButtonStyles("books")} className="px-6 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110">
-                            Create Books List
-                          </button>
-                        </div>
+                        <CategoryEmptyState
+                          category="books"
+                          onAddClick={handleAddNewItem}
+                        />
                       ) : filteredBookLists.length > 0 ? (
                         <div className="space-y-3 pb-20">
                           {filteredBookLists.map((item: any, index: number) => {
@@ -1192,16 +1284,10 @@ const Home = memo(() => {
                   {activeTab === "games" && (
                     <>
                       {gameLists.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-dashboard-sidebar/20 rounded-2xl border border-dashboard/20">
-                          <div className="w-16 h-16 rounded-full bg-dashboard-muted/50 flex items-center justify-center mb-4 text-3xl">
-                            🎮
-                          </div>
-                          <h3 className="text-base font-semibold text-white mb-1">No games lists yet</h3>
-                          <p className="text-xs text-white/55 max-w-xs mb-4">Create your first list to start sharing your game recommendations.</p>
-                          <button onClick={handleAddNewItem} style={getAddButtonStyles("games")} className="px-6 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110">
-                            Create Games List
-                          </button>
-                        </div>
+                        <CategoryEmptyState
+                          category="games"
+                          onAddClick={handleAddNewItem}
+                        />
                       ) : filteredGameLists.length > 0 ? (
                         <div className="space-y-3 pb-20">
                           {filteredGameLists.map((item: any, index: number) => {
@@ -1256,16 +1342,10 @@ const Home = memo(() => {
                   {activeTab === "music" && (
                     <>
                       {musicPlaylists.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-dashboard-sidebar/20 rounded-2xl border border-dashboard/20">
-                          <div className="w-16 h-16 rounded-full bg-dashboard-muted/50 flex items-center justify-center mb-4 text-3xl">
-                            🎵
-                          </div>
-                          <h3 className="text-base font-semibold text-white mb-1">No music playlists yet</h3>
-                          <p className="text-xs text-white/55 max-w-xs mb-4">Connect and create your first playlist to share your tunes recommendations.</p>
-                          <button onClick={handleAddNewItem} style={getAddButtonStyles("music")} className="px-6 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110">
-                            Create Music Playlist
-                          </button>
-                        </div>
+                        <CategoryEmptyState
+                          category="music"
+                          onAddClick={handleAddNewItem}
+                        />
                       ) : filteredMusicPlaylists.length > 0 ? (
                         <div className="space-y-3 pb-20">
                           {filteredMusicPlaylists.map((item: any, index: number) => {
@@ -1319,16 +1399,10 @@ const Home = memo(() => {
                   {activeTab === "guides" && (
                     <>
                       {allGuides.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-dashboard-sidebar/20 rounded-2xl border border-dashboard/20">
-                          <div className="w-16 h-16 rounded-full bg-dashboard-muted/50 flex items-center justify-center mb-4 text-3xl">
-                            📖
-                          </div>
-                          <h3 className="text-base font-semibold text-white mb-1">No guides yet</h3>
-                          <p className="text-xs text-white/55 max-w-xs mb-4">Create your first guide to start sharing your travel itineraries.</p>
-                          <button onClick={handleAddNewItem} style={getAddButtonStyles("guides")} className="px-6 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110">
-                            Create Guide
-                          </button>
-                        </div>
+                        <CategoryEmptyState
+                          category="guides"
+                          onAddClick={handleAddNewItem}
+                        />
                       ) : filteredGuides.length > 0 ? (
                         <div className="space-y-3 pb-20">
                           {filteredGuides.map((guide: Guide, index: number) => {
@@ -1413,6 +1487,179 @@ const Home = memo(() => {
                       )}
                     </>
                   )}
+                  {activeTab === "apps" && (
+                    <>
+                      {appLists.length === 0 ? (
+                        <CategoryEmptyState
+                          category="apps"
+                          onAddClick={handleAddNewItem}
+                        />
+                      ) : filteredAppLists.length > 0 ? (
+                        <div className="space-y-3 pb-20">
+                          {filteredAppLists.map((item: any, index: number) => {
+                            const isPub = item.Visibility;
+                            const statusColor = isPub ? "var(--status-pub)" : "var(--status-draft)";
+                            const firstAppLogo = item.recommended_apps?.[0]?.logo_url;
+                            const poster = resolveCoverUrl(firstAppLogo || item.cover_image?.url);
+                            return (
+                              <div
+                                key={item.documentId || index}
+                                onClick={() => navigate(`/recommendations/apps/${item.documentId}`)}
+                                className="group relative bg-dashboard-sidebar border border-dashboard rounded-2xl p-4 hover:border-dashboard-accent/50 transition-all duration-300 hover:shadow-dashboard-elevated hover:shadow-dashboard-accent/10 hover:scale-[1.02] cursor-pointer flex items-center gap-4"
+                              >
+                                <div className="flex-shrink-0">
+                                  <div className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center text-2xl bg-dashboard-muted" style={{ border: `3px solid ${statusColor}` }}>
+                                    {poster ? (
+                                      <ImageWithFallback src={poster} alt={item.List_Name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      "🛠️"
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-base font-bold text-white truncate mb-1">{item.List_Name}</h4>
+                                  <p className="text-xs text-white/45 truncate">
+                                    {item.recommended_apps?.length || 0} apps & tools · <span style={{ color: statusColor }}>{isPub ? "Published" : "Draft"}</span>
+                                  </p>
+                                </div>
+                                <div className="flex-shrink-0">
+                                  {!isPub && (
+                                    <span className="font-poppins text-[hsl(var(--blue-cta))] text-xs bg-[hsl(var(--blue-cta))]/10 border border-[hsl(var(--blue-cta))]/30 px-3 py-2 rounded-full">
+                                      {t("dashboard.home.draft")}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 pb-20">
+                          <svg className="w-16 h-16 mx-auto mb-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                          <h3 className="text-lg font-semibold text-white mb-1">No matches found</h3>
+                          <p className="text-xs text-white/55">Try searching with a different name</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {activeTab === "products" && (
+                    <>
+                      {productLists.length === 0 ? (
+                        <CategoryEmptyState
+                          category="products"
+                          onAddClick={handleAddNewItem}
+                        />
+                      ) : filteredProductLists.length > 0 ? (
+                        <div className="space-y-3 pb-20">
+                          {filteredProductLists.map((item: any, index: number) => {
+                            const isPub = item.Visibility;
+                            const statusColor = isPub ? "var(--status-pub)" : "var(--status-draft)";
+                            const firstProductImage = item.recommended_products?.[0]?.images?.[0] || item.recommended_products?.[0]?.logo_url;
+                            const poster = resolveCoverUrl(firstProductImage || item.cover_image?.url);
+                            return (
+                              <div
+                                key={item.documentId || index}
+                                onClick={() => navigate(`/recommendations/products/${item.documentId}`)}
+                                className="group relative bg-dashboard-sidebar border border-dashboard rounded-2xl p-4 hover:border-dashboard-accent/50 transition-all duration-300 hover:shadow-dashboard-elevated hover:shadow-dashboard-accent/10 hover:scale-[1.02] cursor-pointer flex items-center gap-4"
+                              >
+                                <div className="flex-shrink-0">
+                                  <div className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center text-2xl bg-dashboard-muted" style={{ border: `3px solid ${statusColor}` }}>
+                                    {poster ? (
+                                      <ImageWithFallback src={poster} alt={item.List_Name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      "🛍️"
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-base font-bold text-white truncate mb-1">{item.List_Name}</h4>
+                                  <p className="text-xs text-white/45 truncate">
+                                    {item.recommended_products?.length || 0} products · <span style={{ color: statusColor }}>{isPub ? "Published" : "Draft"}</span>
+                                  </p>
+                                </div>
+                                <div className="flex-shrink-0">
+                                  {!isPub && (
+                                    <span className="font-poppins text-[hsl(var(--blue-cta))] text-xs bg-[hsl(var(--blue-cta))]/10 border border-[hsl(var(--blue-cta))]/30 px-3 py-2 rounded-full">
+                                      {t("dashboard.home.draft")}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 pb-20">
+                          <svg className="w-16 h-16 mx-auto mb-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                          <h3 className="text-lg font-semibold text-white mb-1">No matches found</h3>
+                          <p className="text-xs text-white/55">Try searching with a different name</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {activeTab === "people" && (
+                    <>
+                      {personLists.length === 0 ? (
+                        <CategoryEmptyState
+                          category="people"
+                          onAddClick={handleAddNewItem}
+                        />
+                      ) : filteredPersonLists.length > 0 ? (
+                        <div className="space-y-3 pb-20">
+                          {filteredPersonLists.map((item: any, index: number) => {
+                            const isPub = item.Visibility;
+                            const statusColor = isPub ? "var(--status-pub)" : "var(--status-draft)";
+                            const firstPersonAvatar = item.recommended_people?.[0]?.avatar_path;
+                            const poster = resolveCoverUrl(firstPersonAvatar || item.cover_image?.url);
+                            return (
+                              <div
+                                key={item.documentId || index}
+                                onClick={() => navigate(`/recommendations/people/${item.documentId}`)}
+                                className="group relative bg-dashboard-sidebar border border-dashboard rounded-2xl p-4 hover:border-dashboard-accent/50 transition-all duration-300 hover:shadow-dashboard-elevated hover:shadow-dashboard-accent/10 hover:scale-[1.02] cursor-pointer flex items-center gap-4"
+                              >
+                                <div className="flex-shrink-0">
+                                  <div className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center text-2xl bg-dashboard-muted" style={{ border: `3px solid ${statusColor}` }}>
+                                    {poster ? (
+                                      <ImageWithFallback src={poster} alt={item.List_Name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      "👥"
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-base font-bold text-white truncate mb-1">{item.List_Name}</h4>
+                                  <p className="text-xs text-white/45 truncate">
+                                    {item.recommended_people?.length || 0} persons · <span style={{ color: statusColor }}>{isPub ? "Published" : "Draft"}</span>
+                                  </p>
+                                </div>
+                                <div className="flex-shrink-0">
+                                  {!isPub && (
+                                    <span className="font-poppins text-[hsl(var(--blue-cta))] text-xs bg-[hsl(var(--blue-cta))]/10 border border-[hsl(var(--blue-cta))]/30 px-3 py-2 rounded-full">
+                                      {t("dashboard.home.draft")}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 pb-20">
+                          <svg className="w-16 h-16 mx-auto mb-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                          <h3 className="text-lg font-semibold text-white mb-1">No matches found</h3>
+                          <p className="text-xs text-white/55">Try searching with a different name</p>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
 
                 {listNames?.length > 3 && activeTab === "places" && <GlobeDemo arcsData={arcsData} />}
@@ -1447,16 +1694,6 @@ const Home = memo(() => {
                 backgroundImage={account?.bg_picture?.url || IMAGE_CONFIG.defaultImages.background}
                 hideQRTab={activeTab === "guides"}
               />
-            </>
-          )}
-
-          {/* Profile Setup Card - Show when setup is incomplete OR when complete but not yet acknowledged */}
-          {!isAllSetupComplete && (
-            <AccountSetupCard
-              isProfileComplete={isProfileComplete}
-              isRecommendationsComplete={isRecommendationsComplete}
-            />
-          )}
         </div>
       </div>
 
@@ -1464,20 +1701,29 @@ const Home = memo(() => {
       {showCreatePlacesModal && (
         <AddLocationModal
           isOpen={showCreatePlacesModal}
-          onClose={() => setShowCreatePlacesModal(false)}
+          onClose={() => {
+            setShowCreatePlacesModal(false);
+            setPrefillTitle("");
+          }}
           onSubmit={handlePlacesSubmit}
           existingPlaces={listNames || []}
+          initialValues={prefillTitle ? { listName: prefillTitle } : {}}
         />
       )}
 
       {showCreateMoviesModal && accountDocumentId && (
         <CreateMovieListModal
           open={showCreateMoviesModal}
-          onClose={() => setShowCreateMoviesModal(false)}
+          onClose={() => {
+            setShowCreateMoviesModal(false);
+            setPrefillTitle("");
+          }}
           accountDocumentId={accountDocumentId}
           currentListCount={movieLists.length}
+          defaultListName={prefillTitle}
           onCreated={(newId) => {
             refetchMovies();
+            setPrefillTitle("");
             if (newId) {
               navigate(`/recommendations/movies/${newId}`, { state: { justCreatedList: true } });
             } else {
@@ -1491,11 +1737,16 @@ const Home = memo(() => {
       {showCreateBooksModal && accountDocumentId && (
         <CreateBookListModal
           open={showCreateBooksModal}
-          onClose={() => setShowCreateBooksModal(false)}
+          onClose={() => {
+            setShowCreateBooksModal(false);
+            setPrefillTitle("");
+          }}
           accountDocumentId={accountDocumentId}
           currentListCount={bookLists.length}
+          defaultListName={prefillTitle}
           onCreated={(newId) => {
             refetchBooks();
+            setPrefillTitle("");
             if (newId) {
               navigate(`/recommendations/books/${newId}`, { state: { justCreatedList: true } });
             } else {
@@ -1509,11 +1760,16 @@ const Home = memo(() => {
       {showCreateGamesModal && accountDocumentId && (
         <CreateGameListModal
           open={showCreateGamesModal}
-          onClose={() => setShowCreateGamesModal(false)}
+          onClose={() => {
+            setShowCreateGamesModal(false);
+            setPrefillTitle("");
+          }}
           accountDocumentId={accountDocumentId}
           currentListCount={gameLists.length}
+          defaultListName={prefillTitle}
           onCreated={(newId) => {
             refetchGames();
+            setPrefillTitle("");
             if (newId) {
               navigate(`/recommendations/games/${newId}`, { state: { justCreatedList: true } });
             } else {
@@ -1527,9 +1783,14 @@ const Home = memo(() => {
       {showCreateMusicModal && (
         <CreatePlaylistModal
           open={showCreateMusicModal}
-          onClose={() => setShowCreateMusicModal(false)}
+          onClose={() => {
+            setShowCreateMusicModal(false);
+            setPrefillTitle("");
+          }}
           username={user?.username || ""}
+          defaultListName={prefillTitle}
           onCreated={async () => {
+            setPrefillTitle("");
             await queryClient.invalidateQueries({ queryKey: ['tunes-playlists', user?.username] });
             navigate("/music", { state: { justCreatedList: true } });
           }}
@@ -1539,15 +1800,89 @@ const Home = memo(() => {
       {showCreateGuidesModal && (
         <CreateGuideModal
           open={showCreateGuidesModal}
-          onClose={() => setShowCreateGuidesModal(false)}
+          onClose={() => {
+            setShowCreateGuidesModal(false);
+            setPrefillTitle("");
+          }}
+          defaultTitle={prefillTitle}
           onCreated={(newId) => {
             refetchGuides();
+            setPrefillTitle("");
             if (newId) {
               navigate(`/guides/${newId}`, { state: { justCreatedGuide: true } });
             } else {
               navigate(`/guides`, { state: { justCreatedGuide: true } });
             }
           }}
+        />
+      )}
+
+      {showCreateAppsModal && accountDocumentId && (
+        <CreateAppListModal
+          open={showCreateAppsModal}
+          onClose={() => {
+            setShowCreateAppsModal(false);
+            setPrefillTitle("");
+          }}
+          accountDocumentId={accountDocumentId}
+          currentListCount={appLists.length}
+          defaultListName={prefillTitle}
+          onCreated={(newId) => {
+            refetchApps();
+            setPrefillTitle("");
+            if (newId) {
+              navigate(`/recommendations/apps/${newId}`, { state: { justCreatedList: true } });
+            } else {
+              navigate(`/recommendations/apps`, { state: { justCreatedList: true } });
+            }
+          }}
+          username={user?.username || ""}
+        />
+      )}
+
+      {showCreateProductsModal && accountDocumentId && (
+        <CreateProductListModal
+          open={showCreateProductsModal}
+          onClose={() => {
+            setShowCreateProductsModal(false);
+            setPrefillTitle("");
+          }}
+          accountDocumentId={accountDocumentId}
+          currentListCount={productLists.length}
+          defaultListName={prefillTitle}
+          onCreated={(newId) => {
+            refetchProducts();
+            setPrefillTitle("");
+            if (newId) {
+              navigate(`/recommendations/products/${newId}`, { state: { justCreatedList: true } });
+            } else {
+              navigate(`/recommendations/products`, { state: { justCreatedList: true } });
+            }
+          }}
+          username={user?.username || ""}
+        />
+      )}
+
+      {showCreatePeopleModal && accountDocumentId && (
+        <CreatePersonListModal
+          open={showCreatePeopleModal}
+          onClose={() => {
+            setShowCreatePeopleModal(false);
+            setPrefillTitle("");
+          }}
+          accountDocumentId={accountDocumentId}
+          currentListCount={personLists.length}
+          defaultListName={prefillTitle}
+          onCreated={(newId) => {
+            refetchPeople();
+            setPrefillTitle("");
+            if (newId) {
+              navigate(`/recommendations/people/${newId}`, { state: { justCreatedList: true } });
+            } else {
+              navigate(`/recommendations/people`, { state: { justCreatedList: true } });
+            }
+          }}
+          username={user?.username || ""}
         />
       )}
     </>
@@ -1562,15 +1897,23 @@ const CreatePlaylistModal = ({
   onClose,
   onCreated,
   username,
+  defaultListName,
 }: {
   open: boolean;
   onClose: () => void;
   onCreated: (newId?: string) => void;
   username: string;
+  defaultListName?: string;
 }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setName(defaultListName || "");
+    }
+  }, [open, defaultListName]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

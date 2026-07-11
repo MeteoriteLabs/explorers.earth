@@ -50,6 +50,7 @@ export const CreateAppListModal = ({
   currentListCount,
   onCreated,
   username,
+  defaultListName,
 }: {
   open: boolean;
   onClose: () => void;
@@ -57,11 +58,17 @@ export const CreateAppListModal = ({
   currentListCount: number;
   onCreated: (newId?: string) => void;
   username: string;
+  defaultListName?: string;
 }) => {
   const [createAppList, { loading }] = useMutation(CREATE_APP_LIST);
 
   const formik = useFormik({
-    initialValues: { List_Name: "", list_description: "", slug: "" },
+    initialValues: { 
+      List_Name: defaultListName || "", 
+      list_description: "", 
+      slug: defaultListName ? generateSlug(defaultListName) : "" 
+    },
+    enableReinitialize: true,
     validationSchema: Yup.object({
       List_Name: Yup.string().required("List name is required").max(100),
       slug: Yup.string().required("List URL is required").max(100),
@@ -373,6 +380,13 @@ const AppsHome = () => {
     const acc = accountData?.usersPermissionsUser?.accounts?.[0];
     if (!acc?.documentId) return;
     const newValue = acc.public_apps === "Yes" ? "No" : "Yes";
+    if (newValue === "Yes") {
+      const hasPublishedList = lists.some((l) => l.Visibility === true);
+      if (!hasPublishedList) {
+        toast.error("You must have at least one published app list to make Apps & Tools public.");
+        return;
+      }
+    }
     try {
       await updateAccountVisibility({
         variables: { documentId: acc.documentId, data: { public_apps: newValue } },

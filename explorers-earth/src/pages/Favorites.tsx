@@ -250,6 +250,15 @@ const Favorites = memo(() => {
     const currentValue = accountData.public_recommendations;
     const newValue = currentValue === "Yes" ? "No" : "Yes";
 
+    if (newValue === "Yes") {
+      const lists = cities?.recommendationLists || [];
+      const hasPublishedList = lists.some((l: any) => l.Visibility === true);
+      if (!hasPublishedList) {
+        toast.error("You must have at least one published place list to make Recommendations public.");
+        return;
+      }
+    }
+
     try {
       await updateVisibility({
         variables: {

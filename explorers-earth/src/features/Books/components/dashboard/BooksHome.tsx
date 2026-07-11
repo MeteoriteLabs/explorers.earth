@@ -54,6 +54,7 @@ export const CreateBookListModal = ({
   currentListCount,
   onCreated,
   username,
+  defaultListName,
 }: {
   open: boolean;
   onClose: () => void;
@@ -61,11 +62,17 @@ export const CreateBookListModal = ({
   currentListCount: number;
   onCreated: (newId?: string) => void;
   username: string;
+  defaultListName?: string;
 }) => {
   const [createBookList, { loading }] = useMutation(CREATE_BOOK_LIST);
 
   const formik = useFormik({
-    initialValues: { List_Name: "", list_description: "", slug: "" },
+    initialValues: { 
+      List_Name: defaultListName || "", 
+      list_description: "", 
+      slug: defaultListName ? generateSlug(defaultListName) : "" 
+    },
+    enableReinitialize: true,
     validationSchema: Yup.object({
       List_Name: Yup.string().required("List name is required").max(100),
       slug: Yup.string().required("List URL is required").max(100),
@@ -386,6 +393,14 @@ const BooksHome = () => {
 
     const currentValue = acc.public_books;
     const newValue = currentValue === "Yes" ? "No" : "Yes";
+
+    if (newValue === "Yes") {
+      const hasPublishedList = lists.some((l) => l.visibility === true);
+      if (!hasPublishedList) {
+        toast.error("You must have at least one published book list to make Books public.");
+        return;
+      }
+    }
 
     try {
       await updateAccountVisibility({

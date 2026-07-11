@@ -137,7 +137,7 @@ const Header = memo(() => {
   );
 
   return (
-    <div className="dashboard-header bg-dashboard-sidebar md:px-6 px-4 h-[64px] md:h-[54px] flex items-center border-b border-dashboard">
+    <div className="dashboard-header bg-dashboard-sidebar md:px-6 px-4 h-[64px] md:h-[54px] flex items-center rounded-2xl">
       <div className="flex flex-row rounded-xl items-center justify-between md:justify-center md:p-[4px] w-full">
         <div className="logo-container">
           {(isRecommendationPage && currentCategory) ? (

@@ -1,9 +1,12 @@
 import { FC } from "react";
-import { useMutation } from "@apollo/client";
+import { useMutation, useQuery } from "@apollo/client";
+import { useQuery as useReactQuery } from "@tanstack/react-query";
+import { localTunesRequest } from "../lib/apiClient";
+import useAuthStore from "../store/store";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2 } from "lucide-react";
-import { updateTabVisibilityMutation } from "../features/Settings/api/mutation";
+import { updateTabVisibilityMutation, CHECK_PUBLISHED_LISTS } from "../features/Settings/api/mutation";
 
 interface CategoryVisibilityModalProps {
   isOpen: boolean;
@@ -32,8 +35,87 @@ export const CategoryVisibilityModal: FC<CategoryVisibilityModalProps> = ({
   onSuccess,
 }) => {
   const [updateTabVisibility, { loading }] = useMutation(updateTabVisibilityMutation);
+  const { user } = useAuthStore();
+
+  const {
+    data: publishedListsData,
+    loading: publishedListsLoading,
+    error: publishedListsError,
+  } = useQuery(CHECK_PUBLISHED_LISTS, {
+    variables: { accountDocumentId },
+    skip: !accountDocumentId,
+    fetchPolicy: "network-only",
+  });
+
+  const { data: musicPlaylists } = useReactQuery<any[]>({
+    queryKey: ['tunes-playlists', user?.username],
+    queryFn: () => localTunesRequest('GET', `/api/playlists?username=${user?.username}`),
+    enabled: !!user?.username && categoryName === "Music",
+  });
 
   const handleMakePublic = async () => {
+    // Guard: do not validate while the query is still loading or has errored.
+    // Without this, publishedListsData is undefined and every check evaluates
+    // to 0 > 0 = false, incorrectly blocking users who do have published lists.
+    if (publishedListsLoading) {
+      toast.info("Checking your published lists, please wait…");
+      return;
+    }
+    if (publishedListsError) {
+      toast.error("Could not verify your published lists. Please try again.");
+      return;
+    }
+
+    let hasPublished = false;
+    let errorMsg = "";
+
+    switch (visibilityField) {
+      case "public_books":
+        hasPublished = (publishedListsData?.bookLists?.length ?? 0) > 0;
+        errorMsg = "You must have at least one published book list to make Books public.";
+        break;
+      case "public_games":
+        hasPublished = (publishedListsData?.gameLists?.length ?? 0) > 0;
+        errorMsg = "You must have at least one published game list to make Games public.";
+        break;
+      case "public_apps":
+        hasPublished = (publishedListsData?.appLists?.length ?? 0) > 0;
+        errorMsg = "You must have at least one published app list to make Apps & Tools public.";
+        break;
+      case "public_products":
+        hasPublished = (publishedListsData?.productLists?.length ?? 0) > 0;
+        errorMsg = "You must have at least one published product list to make Products public.";
+        break;
+      case "public_movie":
+        hasPublished = (publishedListsData?.movieLists?.length ?? 0) > 0;
+        errorMsg = "You must have at least one published movie list to make Movies public.";
+        break;
+      case "public_people":
+        hasPublished = (publishedListsData?.personLists?.length ?? 0) > 0;
+        errorMsg = "You must have at least one published people list to make People public.";
+        break;
+      case "public_guides":
+        hasPublished = (publishedListsData?.guides?.length ?? 0) > 0;
+        errorMsg = "You must have at least one published guide to make Guides public.";
+        break;
+      case "public_recommendations":
+        hasPublished = (publishedListsData?.recommendationLists?.length ?? 0) > 0;
+        errorMsg = "You must have at least one published place list to make Recommendations public.";
+        break;
+      case "public_music":
+        hasPublished = musicPlaylists?.some((pl: any) => pl.isVisibleToGuests === true) ?? false;
+        errorMsg = "You must have at least one published playlist to make Music public.";
+        break;
+      default:
+        hasPublished = true;
+        break;
+    }
+
+    if (!hasPublished) {
+      toast.error(errorMsg);
+      return;
+    }
+
     try {
       await updateTabVisibility({
         variables: {
@@ -108,10 +190,10 @@ export const CategoryVisibilityModal: FC<CategoryVisibilityModalProps> = ({
                 <button
                   type="button"
                   onClick={handleMakePublic}
-                  disabled={loading}
-                  className="flex-1 px-4 py-2.5 rounded-lg bg-[#3b82f6] hover:bg-[#2563eb] text-sm text-white font-bold transition-all flex items-center justify-center gap-2 border-none cursor-pointer font-poppins shadow-lg shadow-blue-900/30"
+                  disabled={loading || publishedListsLoading || !!publishedListsError}
+                  className="flex-1 px-4 py-2.5 rounded-lg bg-[#3b82f6] hover:bg-[#2563eb] text-sm text-white font-bold transition-all flex items-center justify-center gap-2 border-none cursor-pointer font-poppins shadow-lg shadow-blue-900/30 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {loading && <Loader2 size={14} className="animate-spin" />}
+                  {(loading || publishedListsLoading) && <Loader2 size={14} className="animate-spin" />}
                   Yes, Make Public
                 </button>
               </div>

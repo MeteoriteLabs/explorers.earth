@@ -200,7 +200,7 @@ const Sidebar = () => {
   return (
     <div
       className={`dashboard-theme ${isOpen ? "w-64 min-w-[256px]" : "w-16 min-w-[64px]"
-        } h-screen bg-dashboard-sidebar font-poppins text-dashboard transition-all duration-300 flex flex-col flex-shrink-0 fixed left-0 top-0 z-40`}
+        } bg-dashboard-sidebar font-poppins text-dashboard transition-all duration-300 flex flex-col flex-shrink-0 fixed left-2 top-2 bottom-2 z-40 rounded-2xl`}
     >
       {/* Fixed Header - Logo and Toggle Button */}
       <div className={`flex w-full py-4 flex-shrink-0 min-h-[72px] ${isOpen ? "items-center justify-start pl-[20px] pr-3 gap-3" : "flex-col items-center justify-center gap-2 px-4"}`}>
@@ -244,7 +244,7 @@ const Sidebar = () => {
 
       {/* Sidebar Menu */}
 
-      <nav className="flex flex-col gap-2 mt-4 flex-shrink-0 w-full px-2">
+      <nav className="flex flex-col gap-2 mt-4 flex-1 overflow-y-auto scrollbar-hide w-full px-2">
         <SidebarItem
           isOpen={isOpen}
           Icon={Home}
@@ -334,7 +334,7 @@ const Sidebar = () => {
       </nav>
 
       {/* Profile Section */}
-      <div className="flex justify-end flex-col flex-1 p-2 relative">
+      <div className="flex justify-end flex-col flex-shrink-0 mt-auto p-2 relative">
         {/* Theme Toggle - Above Username Section */}
         {isOpen && (
           <div className="flex items-center justify-between px-2 mb-3">

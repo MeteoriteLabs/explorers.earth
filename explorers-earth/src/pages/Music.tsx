@@ -175,6 +175,16 @@ const MusicPage = () => {
     const currentValue = accountData?.public_music;
     const newValue = currentValue === "Yes" ? "No" : "Yes";
 
+    if (newValue === "Yes") {
+      const isIntegrated = accountData?.localtunes_integrated === "Yes";
+      const hasPublishedPlaylist = isIntegrated &&
+        (tunesDashboard.playlists?.some(pl => pl.isVisibleToGuests === true) ?? false);
+      if (!hasPublishedPlaylist) {
+        toast.error("You must have at least one published playlist to make Music public.");
+        return;
+      }
+    }
+
     try {
       await updateAccount({
         variables: {

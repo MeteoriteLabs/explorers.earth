@@ -51,6 +51,7 @@ export const CreateMovieListModal = ({
   currentListCount,
   onCreated,
   username,
+  defaultListName,
 }: {
   open: boolean;
   onClose: () => void;
@@ -58,11 +59,17 @@ export const CreateMovieListModal = ({
   currentListCount: number;
   onCreated: (newId?: string) => void;
   username: string;
+  defaultListName?: string;
 }) => {
   const [createMovieList, { loading }] = useMutation(CREATE_MOVIE_LIST);
 
   const formik = useFormik({
-    initialValues: { List_Name: "", list_description: "", slug: "" },
+    initialValues: { 
+      List_Name: defaultListName || "", 
+      list_description: "", 
+      slug: defaultListName ? generateSlug(defaultListName) : "" 
+    },
+    enableReinitialize: true,
     validationSchema: Yup.object({
       List_Name: Yup.string().required("List name is required").max(100),
       slug: Yup.string().required("List URL is required").max(100),
@@ -390,6 +397,14 @@ const MoviesHome = () => {
 
     const currentValue = acc.public_movie;
     const newValue = currentValue === "Yes" ? "No" : "Yes";
+
+    if (newValue === "Yes") {
+      const hasPublishedList = lists.some((l) => l.Visibility === true);
+      if (!hasPublishedList) {
+        toast.error("You must have at least one published movie list to make Movies public.");
+        return;
+      }
+    }
 
     try {
       await updateAccountVisibility({
