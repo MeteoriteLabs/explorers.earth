@@ -37,9 +37,9 @@ export const calculateIsProfileComplete = (account: ProfileData | null | undefin
     const socialLinksCount = Object.values(socialMedia).filter((platform: any) =>
         platform?.link && typeof platform.link === 'string' && platform.link.trim() !== ""
     ).length;
-    const hasAtLeastTwoSocialLinks = socialLinksCount >= 2;
+    const hasAtLeastOneSocialLink = socialLinksCount >= 1;
 
-    return Boolean(hasAccountName && hasBio && hasProfilePicture && hasBackgroundPicture && hasAtLeastTwoSocialLinks);
+    return Boolean(hasAccountName && hasBio && hasProfilePicture && hasBackgroundPicture && hasAtLeastOneSocialLink);
 };
 
 /**

@@ -45,6 +45,7 @@ import UnsavedChangesModal from "../components/ui/UnsavedChangesModal";
 import { validateUsername } from "../utils/usernameValidation";
 import useSetupStore from "../store/useSetupStore";
 import { calculateIsProfileComplete } from "../utils/setupStatusCalculations";
+import ProfileSetupAccordion from "../components/ProfileSetupAccordion";
 
 // ✅ VISIBILITY FIX: Removed unused Account type - now using GraphQL data directly
 // type Account = { ... }
@@ -1866,6 +1867,13 @@ const Profile = memo(() => {
                 </div>
               </div>
             </div>
+
+            {/* Public Profile Setup Accordion - if profile setup is incomplete */}
+            {!currentIsProfileComplete && (
+              <div className="max-w-3xl mx-auto w-full mt-4 px-2 sm:px-0">
+                <ProfileSetupAccordion account={account} />
+              </div>
+            )}
 
             {/* Tab Switcher - Seamless sticky positioning - Sticks to extreme top when header scrolls */}
             <div className={`z-[90] sticky sticky-top-offset w-full bg-dashboard-bg py-2 shadow-sm transition-all duration-300 opacity-100 visible`}>

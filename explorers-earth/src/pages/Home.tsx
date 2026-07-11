@@ -988,7 +988,7 @@ const Home = memo(() => {
           )}
 
           {/* Public Profile Setup Accordion */}
-          <ProfileSetupAccordion account={account} />
+          {!isProfileComplete && <ProfileSetupAccordion account={account} />}
 
           <div className="w-full md:pb-6">
                 {/* Category Tabs Selector */}
@@ -1070,7 +1070,7 @@ const Home = memo(() => {
                 </div>
 
                 {/* Recommendation List Items Container */}
-                <div className="home-list-container">
+                <div className="home-list-container pb-24 md:pb-0">
                   {/* Category Lists Rendering */}
                   {activeTab === "places" && (
                     <>
