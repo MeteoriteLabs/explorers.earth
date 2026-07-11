@@ -381,6 +381,14 @@ const GamesHome = () => {
     const currentValue = acc.public_games;
     const newValue = currentValue === "Yes" ? "No" : "Yes";
 
+    if (newValue === "Yes") {
+      const hasPublishedList = lists.some((l) => l.Visibility === true);
+      if (!hasPublishedList) {
+        toast.error("You must have at least one published game list to make Games public.");
+        return;
+      }
+    }
+
     try {
       await updateAccountVisibility({
         variables: {

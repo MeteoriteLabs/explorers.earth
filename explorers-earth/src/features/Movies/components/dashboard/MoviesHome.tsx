@@ -398,6 +398,14 @@ const MoviesHome = () => {
     const currentValue = acc.public_movie;
     const newValue = currentValue === "Yes" ? "No" : "Yes";
 
+    if (newValue === "Yes") {
+      const hasPublishedList = lists.some((l) => l.Visibility === true);
+      if (!hasPublishedList) {
+        toast.error("You must have at least one published movie list to make Movies public.");
+        return;
+      }
+    }
+
     try {
       await updateAccountVisibility({
         variables: {

@@ -4,6 +4,8 @@ import EyeOffIcon from "../../assets/icons/EyeOffIcon";
 import EyeOnIcon from "../../assets/icons/EyeOnIcon";
 import Button from "../../components/ui/Button";
 import { gql, useMutation, useQuery } from "@apollo/client";
+import { useQuery as useReactQuery } from "@tanstack/react-query";
+import { localTunesRequest } from "../../lib/apiClient";
 import {
   updatePasswordMutation,
   deleteAccountMutation,
@@ -11,6 +13,7 @@ import {
   addReasonForLeavingMutation,
   updateBlockedStatusMutation,
   updateTabVisibilityMutation,
+  CHECK_PUBLISHED_LISTS,
 } from "./api/mutation";
 import useAuthStore from "../../store/store";
 import { toast } from "sonner";
@@ -124,6 +127,21 @@ const Settings = memo(() => {
     skip: !user?.username,
   });
 
+  const currentAccount = currentUserAccountData?.accounts?.[0];
+  const accountDocumentId = currentAccount?.documentId;
+
+  const { data: publishedListsData } = useQuery(CHECK_PUBLISHED_LISTS, {
+    variables: { accountDocumentId },
+    skip: !accountDocumentId,
+    fetchPolicy: "network-only",
+  });
+
+  const { data: musicPlaylists } = useReactQuery<any[]>({
+    queryKey: ['tunes-playlists', user?.username],
+    queryFn: () => localTunesRequest('GET', `/api/playlists?username=${user?.username}`),
+    enabled: !!user?.username && currentAccount?.localtunes_integrated === "Yes",
+  });
+
   useEffect(() => {
     if (!settingsLoading) {
       (window as any).__dashboardLoaded = true;
@@ -212,6 +230,59 @@ const Settings = memo(() => {
     if (!currentAccount?.documentId) {
       toast.error("Account not found");
       return;
+    }
+
+    if (isVisible) {
+      let hasPublished = false;
+      let errorMsg = "";
+
+      switch (tabType) {
+        case "public_books":
+          hasPublished = (publishedListsData?.bookLists?.length ?? 0) > 0;
+          errorMsg = "You must have at least one published book list to make Books public.";
+          break;
+        case "public_games":
+          hasPublished = (publishedListsData?.gameLists?.length ?? 0) > 0;
+          errorMsg = "You must have at least one published game list to make Games public.";
+          break;
+        case "public_apps":
+          hasPublished = (publishedListsData?.appLists?.length ?? 0) > 0;
+          errorMsg = "You must have at least one published app list to make Apps & Tools public.";
+          break;
+        case "public_products":
+          hasPublished = (publishedListsData?.productLists?.length ?? 0) > 0;
+          errorMsg = "You must have at least one published product list to make Products public.";
+          break;
+        case "public_movie":
+          hasPublished = (publishedListsData?.movieLists?.length ?? 0) > 0;
+          errorMsg = "You must have at least one published movie list to make Movies public.";
+          break;
+        case "public_people":
+          hasPublished = (publishedListsData?.personLists?.length ?? 0) > 0;
+          errorMsg = "You must have at least one published people list to make People public.";
+          break;
+        case "public_guides":
+          hasPublished = (publishedListsData?.guides?.length ?? 0) > 0;
+          errorMsg = "You must have at least one published guide to make Guides public.";
+          break;
+        case "public_recommendations":
+          hasPublished = (publishedListsData?.recommendationLists?.length ?? 0) > 0;
+          errorMsg = "You must have at least one published place list to make Recommendations public.";
+          break;
+        case "public_music":
+          hasPublished = currentAccount?.localtunes_integrated === "Yes" &&
+            (musicPlaylists?.some((pl: any) => pl.isVisibleToGuests === true) ?? false);
+          errorMsg = "You must have at least one published playlist to make Music public.";
+          break;
+        default:
+          hasPublished = true;
+          break;
+      }
+
+      if (!hasPublished) {
+        toast.error(errorMsg);
+        return;
+      }
     }
 
     // Automatically unpin the tab if it is being hidden

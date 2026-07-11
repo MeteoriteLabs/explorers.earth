@@ -319,6 +319,13 @@ const ProductsHome = () => {
     const acc = accountData?.usersPermissionsUser?.accounts?.[0];
     if (!acc?.documentId) return;
     const newValue = acc.public_products === "Yes" ? "No" : "Yes";
+    if (newValue === "Yes") {
+      const hasPublishedList = lists.some((l) => l.Visibility === true);
+      if (!hasPublishedList) {
+        toast.error("You must have at least one published product list to make Products public.");
+        return;
+      }
+    }
     try {
       await updateAccountVisibility({
         variables: { documentId: acc.documentId, data: { public_products: newValue } },

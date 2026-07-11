@@ -135,3 +135,33 @@ export const addReasonForLeavingMutation = gql`
     }
   }
 `;
+
+export const CHECK_PUBLISHED_LISTS = gql`
+  query CheckPublishedLists($accountDocumentId: ID!) {
+    bookLists(filters: { account: { documentId: { eq: $accountDocumentId } }, visibility: { eq: true } }, pagination: { limit: 1 }) {
+      documentId
+    }
+    gameLists(filters: { account: { documentId: { eq: $accountDocumentId } }, Visibility: { eq: true } }, pagination: { limit: 1 }) {
+      documentId
+    }
+    appLists(filters: { account: { documentId: { eq: $accountDocumentId } }, Visibility: { eq: true } }, pagination: { limit: 1 }) {
+      documentId
+    }
+    productLists(filters: { account: { documentId: { eq: $accountDocumentId } }, Visibility: { eq: true } }, pagination: { limit: 1 }) {
+      documentId
+    }
+    movieLists(filters: { account: { documentId: { eq: $accountDocumentId } }, Visibility: { eq: true } }, pagination: { limit: 1 }) {
+      documentId
+    }
+    personLists(filters: { account: { documentId: { eq: $accountDocumentId } }, Visibility: { eq: true } }, pagination: { limit: 1 }) {
+      documentId
+    }
+    guides(filters: { account: { documentId: { eq: $accountDocumentId } }, Visibility: { eq: true } }, pagination: { limit: 1 }) {
+      documentId
+    }
+    recommendationLists(filters: { account: { documentId: { eq: $accountDocumentId } }, Visibility: { eq: true } }, pagination: { limit: 1 }) {
+      documentId
+    }
+  }
+`;
+

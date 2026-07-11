@@ -394,6 +394,14 @@ const BooksHome = () => {
     const currentValue = acc.public_books;
     const newValue = currentValue === "Yes" ? "No" : "Yes";
 
+    if (newValue === "Yes") {
+      const hasPublishedList = lists.some((l) => l.visibility === true);
+      if (!hasPublishedList) {
+        toast.error("You must have at least one published book list to make Books public.");
+        return;
+      }
+    }
+
     try {
       await updateAccountVisibility({
         variables: {

@@ -141,6 +141,14 @@ const GuidesPage: React.FC = () => {
     const currentVisibility = account.public_guides;
     const newVisibility = currentVisibility === "Yes" ? "No" : "Yes";
     
+    if (newVisibility === "Yes") {
+      const hasPublishedGuide = allGuides.some((g) => g.Visibility === true);
+      if (!hasPublishedGuide) {
+        toast.error("You must have at least one published guide to make Guides public.");
+        return;
+      }
+    }
+    
     updateTabVisibility({
       variables: {
         documentId: account.documentId,
