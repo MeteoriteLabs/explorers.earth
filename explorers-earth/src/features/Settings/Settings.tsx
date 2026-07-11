@@ -130,7 +130,11 @@ const Settings = memo(() => {
   const currentAccount = currentUserAccountData?.accounts?.[0];
   const accountDocumentId = currentAccount?.documentId;
 
-  const { data: publishedListsData } = useQuery(CHECK_PUBLISHED_LISTS, {
+  const {
+    data: publishedListsData,
+    loading: publishedListsLoading,
+    error: publishedListsError,
+  } = useQuery(CHECK_PUBLISHED_LISTS, {
     variables: { accountDocumentId },
     skip: !accountDocumentId,
     fetchPolicy: "network-only",
@@ -233,6 +237,18 @@ const Settings = memo(() => {
     }
 
     if (isVisible) {
+      // Guard: do not validate while the query is still loading or has errored.
+      // Without this, publishedListsData is undefined and every check evaluates
+      // to 0 > 0 = false, incorrectly blocking users who do have published lists.
+      if (publishedListsLoading) {
+        toast.info("Checking your published lists, please wait…");
+        return;
+      }
+      if (publishedListsError) {
+        toast.error("Could not verify your published lists. Please try again.");
+        return;
+      }
+
       let hasPublished = false;
       let errorMsg = "";
 

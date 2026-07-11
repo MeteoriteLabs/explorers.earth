@@ -432,11 +432,12 @@ const Home = memo(() => {
     const activeBooks = bookLists?.filter((list: any) => list.visibility === true)?.length || 0;
     const activeGames = gameLists?.filter((list: any) => list.Visibility === true)?.length || 0;
     const activeMusic = musicPlaylists?.filter((list: any) => list.isVisibleToGuests === true)?.length || 0;
+    const activeGuides = allGuides?.filter((guide: any) => guide.Visibility === true)?.length || 0;
     const activeApps = appLists?.filter((list: any) => list.Visibility === true)?.length || 0;
     const activeProducts = productLists?.filter((list: any) => list.Visibility === true)?.length || 0;
     const activePeople = personLists?.filter((list: any) => list.Visibility === true)?.length || 0;
-    return activePlaces + activeMovies + activeBooks + activeGames + activeMusic + activeApps + activeProducts + activePeople;
-  }, [listNames, movieLists, bookLists, gameLists, musicPlaylists, appLists, productLists, personLists]);
+    return activePlaces + activeMovies + activeBooks + activeGames + activeMusic + activeGuides + activeApps + activeProducts + activePeople;
+  }, [listNames, movieLists, bookLists, gameLists, musicPlaylists, allGuides, appLists, productLists, personLists]);
 
   const totalRecommendationsCount = useMemo(() => {
     const placesRecs = listNames?.filter((list: any) => list.Visibility === true)?.reduce((total: number, list: any) => total + (list?.recommended_places?.length || 0), 0) || 0;

@@ -37,7 +37,11 @@ export const CategoryVisibilityModal: FC<CategoryVisibilityModalProps> = ({
   const [updateTabVisibility, { loading }] = useMutation(updateTabVisibilityMutation);
   const { user } = useAuthStore();
 
-  const { data: publishedListsData } = useQuery(CHECK_PUBLISHED_LISTS, {
+  const {
+    data: publishedListsData,
+    loading: publishedListsLoading,
+    error: publishedListsError,
+  } = useQuery(CHECK_PUBLISHED_LISTS, {
     variables: { accountDocumentId },
     skip: !accountDocumentId,
     fetchPolicy: "network-only",
@@ -50,6 +54,18 @@ export const CategoryVisibilityModal: FC<CategoryVisibilityModalProps> = ({
   });
 
   const handleMakePublic = async () => {
+    // Guard: do not validate while the query is still loading or has errored.
+    // Without this, publishedListsData is undefined and every check evaluates
+    // to 0 > 0 = false, incorrectly blocking users who do have published lists.
+    if (publishedListsLoading) {
+      toast.info("Checking your published lists, please wait…");
+      return;
+    }
+    if (publishedListsError) {
+      toast.error("Could not verify your published lists. Please try again.");
+      return;
+    }
+
     let hasPublished = false;
     let errorMsg = "";
 
@@ -174,10 +190,10 @@ export const CategoryVisibilityModal: FC<CategoryVisibilityModalProps> = ({
                 <button
                   type="button"
                   onClick={handleMakePublic}
-                  disabled={loading}
-                  className="flex-1 px-4 py-2.5 rounded-lg bg-[#3b82f6] hover:bg-[#2563eb] text-sm text-white font-bold transition-all flex items-center justify-center gap-2 border-none cursor-pointer font-poppins shadow-lg shadow-blue-900/30"
+                  disabled={loading || publishedListsLoading || !!publishedListsError}
+                  className="flex-1 px-4 py-2.5 rounded-lg bg-[#3b82f6] hover:bg-[#2563eb] text-sm text-white font-bold transition-all flex items-center justify-center gap-2 border-none cursor-pointer font-poppins shadow-lg shadow-blue-900/30 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {loading && <Loader2 size={14} className="animate-spin" />}
+                  {(loading || publishedListsLoading) && <Loader2 size={14} className="animate-spin" />}
                   Yes, Make Public
                 </button>
               </div>
