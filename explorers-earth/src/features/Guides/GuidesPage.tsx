@@ -19,6 +19,7 @@ import useAuthStore from "../../store/store";
 import type { Guide } from "./types";
 import SwitchButton from "../../components/ui/SwitchButton";
 import { AddIcon } from "../../assets/icons/AddIcon";
+import { CategoryEmptyState } from "../../components/CategoryEmptyState";
 
 interface FilterState {
   guideType: string | null;
@@ -1195,22 +1196,11 @@ const GuidesPage: React.FC = () => {
                     </div>
                   </>
                 ) : (
-                  <div className="col-span-1 md:col-span-3 flex flex-col items-center justify-center min-h-[50vh]">
-                    <div className="bg-dashboard-modal p-6 rounded-lg border border-dashboard-accent shadow-dashboard-elevated text-center">
-                      <h1 className="text-white font-poppins font-semibold text-lg md:text-xl mb-2">
-                        No Guides Yet
-                      </h1>
-                      <p className="text-gray-300 font-poppins text-sm md:text-base mb-4">
-                        Create your first travel guide to get started!
-                      </p>
-                      <div className="flex justify-center">
-                        <Button
-                          onClickHandler={() => navigate("/guides/new")}
-                          variant="primary"
-                          btnText="Create Your First Guide"
-                        />
-                      </div>
-                    </div>
+                  <div className="col-span-1 md:col-span-3 max-w-2xl mx-auto w-full py-10">
+                    <CategoryEmptyState
+                      category="guides"
+                      onAddClick={() => navigate("/guides/new")}
+                    />
                   </div>
                 )}
               </div>
