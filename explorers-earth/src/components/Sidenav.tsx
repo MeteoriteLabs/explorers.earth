@@ -232,7 +232,7 @@ const Sidebar = () => {
             {/* Toggle Button at top */}
             <div className="flex-shrink-0 w-[24px] h-[24px] flex items-center justify-center">
               <Button
-                startIcon={<MenuIcon />}
+                startIcon={<MenuIcon stroke="var(--dash-accent)" />}
                 onClickHandler={() => setIsOpen(!isOpen)}
                 variant="icon"
                 size="none"
@@ -332,98 +332,6 @@ const Sidebar = () => {
           to="/settings"
         />
       </nav>
-
-      {/* Profile Section */}
-      <div className="flex justify-end flex-col flex-shrink-0 mt-auto p-2 relative">
-        {/* Theme Toggle - Above Username Section */}
-        {isOpen && (
-          <div className="flex items-center justify-between px-2 mb-3">
-            <div className="flex items-center gap-2.5">
-              {theme === 'dark' ? (
-                <SunIcon fill="var(--dash-icon-primary)" />
-              ) : (
-                <MoonIcon fill="var(--dash-icon-primary)" />
-              )}
-              <span className="text-sm font-medium text-dashboard">
-                {theme === 'dark' ? t("sidebar.lightMode") : t("sidebar.darkMode")}
-              </span>
-            </div>
-            <SwitchButton
-              isChecked={theme === 'dark'}
-              onChange={toggleTheme}
-              variant="blue"
-            />
-          </div>
-        )}
-        <div
-          className={`flex items-center bg-dashboard-muted rounded-lg w-full cursor-pointer hover:bg-dashboard-sidebar transition-colors duration-200 ${isOpen ? "px-2 py-2 justify-start" : "p-1 justify-center"
-            }`}
-          onClick={() => setShowMenu(!showMenu)}
-        >
-          {isOpen ? (
-            <>
-              <img
-                src={profilePicture}
-                alt=""
-                className="h-8 w-8 rounded-lg"
-              />
-              <div className="flex relative flex-col mx-2 text-left">
-                <h2 className="dt-label leading-tight">
-                  {accountName}
-                </h2>
-                <h3 className="text-[0.65rem] truncate w-40 text-dashboard-light">
-                  {email}
-                </h3>
-              </div>
-            </>
-          ) : (
-            <img
-              src={profilePicture}
-              alt=""
-              className="h-10 w-10 rounded-full hover:opacity-80 transition-opacity mx-auto"
-              data-tooltip-id="profile-image"
-            />
-          )}
-        </div>
-
-        {/* Tooltips for collapsed profile section */}
-        {!isOpen && (
-          <Tooltip
-            style={{
-              fontSize: "12px",
-              maxWidth: "200px",
-              whiteSpace: "nowrap",
-              zIndex: 1000,
-            }}
-            id="profile-image"
-            place="right"
-            className="!bg-dashboard-muted !text-dashboard !border !border-dashboard !rounded-lg !px-2 !py-1"
-          >
-            {t("sidebar.clickToOpenMenu")}
-          </Tooltip>
-        )}
-
-        {/* Dropdown Menu */}
-        {showMenu && (
-          <motion.div
-            ref={menuRef}
-            className={`absolute bg-dashboard-muted p-2 border-b border-dashboard-sidebar text-dashboard rounded-lg shadow-dashboard-elevated z-50 ${isOpen ? "bottom-16 right-2" : "bottom-16 left-16"
-              }`}
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            transition={{ duration: 0.2 }}
-          >
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-3 py-2.5 px-3 text-sm text-dashboard bg-dashboard-muted hover:bg-dashboard-sidebar hover:text-dashboard rounded-lg transition-all duration-200 whitespace-nowrap w-full"
-            >
-              <LogoutIcon size="4" />
-              <span className="font-medium">{t("sidebar.logout")}</span>
-            </button>
-          </motion.div>
-        )}
-      </div>
     </div>
   );
 };

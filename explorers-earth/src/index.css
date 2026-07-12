@@ -119,15 +119,15 @@
 /* Poppins included in consolidated import above */
 
 :root {
-  --dash-bg: #f6f1e7;
-  --dash-sidebar-bg: #fffcf6;
-  --dash-accent: #1b3b1a;
+  --dash-bg: #fffcf6;
+  --dash-sidebar-bg: #f6f1e7;
+  --dash-accent: #3B82F6;
   --dash-text: #17231a;
   --dash-text-light: #17231a;
   --dash-text-muted: color-mix(in srgb, #17231a 55%, transparent);
   --dash-muted: #eadfcf;
   --dash-border: rgba(23, 35, 26, 0.14);
-  --dash-focus-ring: #1b3b1a;
+  --dash-focus-ring: #3B82F6;
   --dash-danger: #EF4444;
   --dash-danger-hover: #DC2626;
   --status-published: 142 69% 58%;
@@ -149,15 +149,15 @@
   /* Icon colors */
   --dash-icon-primary: #17231a;
   --dash-icon-secondary: #66715f;
-  --dash-icon-accent: #1b3b1a;
+  --dash-icon-accent: #3B82F6;
   --dash-icon-muted: #66715f;
   /* Sidebar width - default value for initial render (will be overridden by Sidebar component) */
   --sidebar-width: 0px;
 
   /* Additional category & theme layout variables */
-  --dash-container-bg: #f6f1e7;
+  --dash-container-bg: #fffcf6;
   --dash-tab-bg:      #eadfcf;
-  --dash-search-bg:   #fffcf6;
+  --dash-search-bg:   #f6f1e7;
   --dash-map-banner:  linear-gradient(135deg, #dce9ce, #b8c9ab);
   --status-pub:       #4ade80;
   --status-draft:     #f87171;

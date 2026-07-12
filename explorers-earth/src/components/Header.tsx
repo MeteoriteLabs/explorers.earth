@@ -137,7 +137,7 @@ const Header = memo(() => {
 
   return (
     <div className="dashboard-header bg-dashboard-sidebar text-dashboard md:px-6 px-4 h-[64px] md:h-[54px] flex items-center rounded-2xl">
-      <div className="flex flex-row rounded-xl items-center justify-between md:justify-center md:p-[4px] w-full">
+      <div className="flex flex-row rounded-xl items-center justify-between md:justify-center md:p-[4px] w-full relative">
         <div className="logo-container">
           {(isRecommendationPage && currentCategory) ? (
             <div className="flex items-center gap-3">
@@ -251,7 +251,34 @@ const Header = memo(() => {
           )}
         </div>
 
-        <div className="hidden md:flex flex-row items-center gap-4">
+        <div className="hidden md:flex flex-row items-center gap-4 absolute right-4 md:right-6 top-1/2 -translate-y-1/2">
+          {isAuthenticated ? (
+            <div
+              className="flex items-center gap-2 cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.nativeEvent.stopImmediatePropagation();
+                setShowMobileMenu((prev) => !prev);
+              }}
+            >
+              <img
+                className="h-9 w-9 rounded-full border border-dashboard hover:ring-2 hover:ring-dashboard transition-all"
+                src={
+                  accountData?.[0]?.profile_picture?.url ||
+                  IMAGE_CONFIG.defaultImages.profile
+                }
+                alt="profile"
+              />
+            </div>
+          ) : (
+            <button
+              className="px-4 py-1.5 rounded-lg bg-[var(--dash-accent)] text-white font-medium text-sm hover:brightness-110 transition-all border-none cursor-pointer"
+              onClick={() => navigate("/login")}
+            >
+              Login
+            </button>
+          )}
         </div>
       </div>
 
@@ -263,7 +290,7 @@ const Header = memo(() => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute right-4 top-[64px] w-64 bg-dashboard-sidebar rounded-xl shadow-dashboard-elevated border border-dashboard overflow-hidden z-[100]"
+            className="absolute right-4 top-[64px] md:top-[54px] w-64 bg-dashboard-sidebar rounded-xl shadow-dashboard-elevated border border-dashboard overflow-hidden z-[100]"
           >
             {isAuthenticated ? (
               <>
