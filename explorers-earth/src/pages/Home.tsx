@@ -1026,7 +1026,7 @@ const Home = memo(() => {
                 {/* Search bar + Add button + Share Button Row */}
                 <div className="flex flex-row items-center gap-1.5 mb-4 px-2 sm:px-0 w-full">
                   <div className="flex-1 flex items-center gap-2 bg-[var(--dash-search-bg)] border border-dashboard rounded-xl px-2 sm:px-3 py-2 h-10 min-w-0">
-                    <svg width="13" height="13" fill="none" stroke="rgba(255,255,255,0.4)" viewBox="0 0 24 24" className="flex-shrink-0">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="flex-shrink-0 text-dashboard-muted">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
                     <input
@@ -1042,7 +1042,7 @@ const Home = memo(() => {
                       }, lists…`}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="flex-1 bg-transparent text-white placeholder-white/30 text-[11px] sm:text-xs font-poppins outline-none border-none p-0 min-w-0"
+                      className="flex-1 bg-transparent text-dashboard text-[11px] sm:text-xs font-poppins outline-none border-none p-0 min-w-0"
                     />
                   </div>
                   <button
@@ -1063,7 +1063,7 @@ const Home = memo(() => {
                   <button
                     onClick={() => setShowCategoryShareModal(true)}
                     title="Share recommendations link"
-                    className="w-10 h-10 rounded-xl bg-[var(--dash-search-bg)] border border-dashboard flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-dashboard-muted flex-shrink-0 text-white/70 hover:text-white"
+                    className="w-10 h-10 rounded-xl bg-[var(--dash-search-bg)] border border-dashboard flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-dashboard-muted flex-shrink-0 text-dashboard-muted hover:text-dashboard"
                   >
                     <ShareIcon size={14} />
                   </button>
@@ -1940,7 +1940,7 @@ const CreatePlaylistModal = ({
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[150] flex items-center justify-center p-4 md:p-6"
+        className="dashboard-theme fixed inset-0 bg-black/70 backdrop-blur-sm z-[150] flex items-center justify-center p-4 md:p-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

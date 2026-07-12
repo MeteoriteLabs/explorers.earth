@@ -124,12 +124,11 @@ const Header = memo(() => {
 
 
 
-  // Define named pages with icons for large-screen header display
   const namedPages = [
-    { path: '/home', exact: true, label: 'Home', icon: <HomeIcon /> },
-    { path: '/profile', exact: true, label: 'Profile', icon: <Profile fill="white" /> },
-    { path: '/settings', exact: true, label: 'Settings', icon: <SettingsIcon fill="white" /> },
-    { path: '/guides', exact: false, label: 'Guides', icon: <TravelGuideIcon fill="white" /> },
+    { path: '/home', exact: true, label: 'Home', icon: <HomeIcon fill="currentColor" /> },
+    { path: '/profile', exact: true, label: 'Profile', icon: <Profile fill="currentColor" /> },
+    { path: '/settings', exact: true, label: 'Settings', icon: <SettingsIcon fill="currentColor" /> },
+    { path: '/guides', exact: false, label: 'Guides', icon: <TravelGuideIcon fill="currentColor" /> },
   ];
 
   const currentNamedPage = namedPages.find(p =>
@@ -137,7 +136,7 @@ const Header = memo(() => {
   );
 
   return (
-    <div className="dashboard-header bg-dashboard-sidebar md:px-6 px-4 h-[64px] md:h-[54px] flex items-center rounded-2xl">
+    <div className="dashboard-header bg-dashboard-sidebar text-dashboard md:px-6 px-4 h-[64px] md:h-[54px] flex items-center rounded-2xl">
       <div className="flex flex-row rounded-xl items-center justify-between md:justify-center md:p-[4px] w-full">
         <div className="logo-container">
           {(isRecommendationPage && currentCategory) ? (
@@ -146,7 +145,7 @@ const Header = memo(() => {
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setShowCategoryMenu(!showCategoryMenu)}
-                  className="flex items-center gap-1.5 text-white font-black text-2xl bg-transparent px-0 py-1"
+                  className="flex items-center gap-1.5 text-dashboard font-black text-2xl bg-transparent px-0 py-1"
                 >
                   <span className="truncate max-w-[280px]">{currentCategory.name}</span>
                   <motion.div
@@ -154,7 +153,7 @@ const Header = memo(() => {
                     transition={{ duration: 0.2 }}
                     className="flex items-center justify-center mt-1"
                   >
-                    <Down stroke="white" />
+                    <Down stroke="var(--dash-text)" />
                   </motion.div>
                 </motion.button>
 
@@ -173,7 +172,7 @@ const Header = memo(() => {
                             className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors ${
                               (location.pathname.startsWith(cat.path) || (cat.id === 'places' && location.pathname === '/recommendations'))
                                 ? "bg-dashboard-accent/20 text-dashboard-accent"
-                                : "text-white hover:bg-dashboard-muted"
+                                : "text-dashboard hover:bg-dashboard-muted"
                             }`}
                             onClick={() => {
                               navigate(cat.path);
@@ -202,7 +201,7 @@ const Header = memo(() => {
               />
               <div className="hidden md:flex items-center gap-2.5">
                 <span className="flex items-center justify-center opacity-90">{currentNamedPage.icon}</span>
-                <span className="text-white font-black text-2xl font-poppins">{currentNamedPage.label}</span>
+                <span className="text-dashboard font-black text-2xl font-poppins">{currentNamedPage.label}</span>
               </div>
             </>
           ) : (
@@ -280,10 +279,10 @@ const Header = memo(() => {
                       alt="profile"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">
+                      <p className="text-sm font-semibold text-dashboard truncate">
                         {user?.username || accountData?.[0]?.Account_Name || "User"}
                       </p>
-                      <p className="text-xs text-white">Account Settings</p>
+                      <p className="text-xs text-dashboard-muted">Account Settings</p>
                     </div>
                   </div>
                 </div>
@@ -312,13 +311,13 @@ const Header = memo(() => {
                   <motion.button
                     whileHover={{ backgroundColor: "hsl(var(--dash-muted))" }}
                     whileTap={{ scale: 0.98 }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-white hover:text-white transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-dashboard hover:text-dashboard transition-colors"
                     onClick={() => {
                       navigate("/settings");
                       setShowMobileMenu(false);
                     }}
                   >
-                    <div className="w-5 h-5 text-white">
+                    <div className="w-5 h-5 text-dashboard">
                       <SettingsIcon fill="currentColor" />
                     </div>
                     <span className="font-medium">Settings</span>
@@ -327,13 +326,13 @@ const Header = memo(() => {
                   <motion.button
                     whileHover={{ backgroundColor: "hsl(var(--dash-danger-hover))" }}
                     whileTap={{ scale: 0.98 }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-white hover:text-white transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-dashboard hover:text-dashboard transition-colors"
                     onClick={() => {
                       handleLogout();
                       setShowMobileMenu(false);
                     }}
                   >
-                    <div className="w-5 h-5 text-white">
+                    <div className="w-5 h-5 text-dashboard">
                       <LogoutIcon size="20" />
                     </div>
                     <span className="font-medium">Logout</span>

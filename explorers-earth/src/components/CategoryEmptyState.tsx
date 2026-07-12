@@ -911,7 +911,7 @@ export const CategoryEmptyState: React.FC<CategoryEmptyStateProps> = ({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="w-full bg-dashboard-sidebar/40 border border-dashboard rounded-3xl backdrop-blur-md shadow-dashboard-elevated overflow-hidden select-none"
+      className="category-empty-state w-full bg-dashboard-sidebar/40 border border-dashboard rounded-3xl backdrop-blur-md shadow-dashboard-elevated overflow-hidden select-none"
     >
       {/* ── Illustration ── */}
       <div className="w-full">

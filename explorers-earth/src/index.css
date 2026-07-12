@@ -118,16 +118,16 @@
 
 /* Poppins included in consolidated import above */
 
-.dashboard-theme {
-  --dash-bg: #2E4032;
-  --dash-sidebar-bg: #223126;
-  --dash-accent: #3B82F6;
-  --dash-text: #FFFFFF;
-  --dash-text-light: #FFFFFF;
-  --dash-text-muted: color-mix(in srgb, #FFFFFF 50%, transparent);
-  --dash-muted: #3C4E40;
-  --dash-border: #3C4E40;
-  --dash-focus-ring: #3B82F6;
+:root {
+  --dash-bg: #f6f1e7;
+  --dash-sidebar-bg: #fffcf6;
+  --dash-accent: #1b3b1a;
+  --dash-text: #17231a;
+  --dash-text-light: #17231a;
+  --dash-text-muted: color-mix(in srgb, #17231a 55%, transparent);
+  --dash-muted: #eadfcf;
+  --dash-border: rgba(23, 35, 26, 0.14);
+  --dash-focus-ring: #1b3b1a;
   --dash-danger: #EF4444;
   --dash-danger-hover: #DC2626;
   --status-published: 142 69% 58%;
@@ -147,26 +147,25 @@
   --dash-button-weight: 400;
   --dash-transition: 160ms cubic-bezier(.4, 0, .2, 1);
   /* Icon colors */
-  --dash-icon-primary: #FFFFFF;
-  --dash-icon-secondary: #D1D5DB;
-  --dash-icon-accent: #3B82F6;
-  --dash-icon-muted: #9CA3AF;
+  --dash-icon-primary: #17231a;
+  --dash-icon-secondary: #66715f;
+  --dash-icon-accent: #1b3b1a;
+  --dash-icon-muted: #66715f;
   /* Sidebar width - default value for initial render (will be overridden by Sidebar component) */
-  --sidebar-width: 256px;
-  font-family: 'Poppins', sans-serif;
+  --sidebar-width: 0px;
 
   /* Additional category & theme layout variables */
-  --dash-container-bg: #2E4032;
-  --dash-tab-bg:      #1a2620;
-  --dash-search-bg:   #223126;
-  --dash-map-banner:  linear-gradient(135deg, #1a2c1e, #0f1a10);
+  --dash-container-bg: #f6f1e7;
+  --dash-tab-bg:      #eadfcf;
+  --dash-search-bg:   #fffcf6;
+  --dash-map-banner:  linear-gradient(135deg, #dce9ce, #b8c9ab);
   --status-pub:       #4ade80;
   --status-draft:     #f87171;
+  --text-light:       102 9% 41%;
 }
 
-/* Set default sidebar width on root for immediate availability */
-:root {
-  --sidebar-width: 0px;
+.dashboard-theme {
+  font-family: 'Poppins', sans-serif;
 }
 
 @media (min-width: 768px) {
@@ -206,7 +205,7 @@ body[data-sidebar-open="false"] .dashboard-content {
 }
 
 /* Dark theme overrides */
-.dashboard-theme-dark .dashboard-theme {
+.dashboard-theme-dark {
   --dash-bg: #060608;
   --dash-sidebar-bg: #0B0B0E;
   --dash-accent: #60A5FA;
@@ -231,6 +230,7 @@ body[data-sidebar-open="false"] .dashboard-content {
   --dash-map-banner:  linear-gradient(135deg, #121217, #060608);
   --status-pub:       #4ade80;
   --status-draft:     #f87171;
+  --text-light:       219 14% 82%;
 }
 
 @layer components {
@@ -1439,9 +1439,9 @@ input {
   filter: brightness(0) invert(1);
 }
 
-/* Light mode - pure white logo */
+/* Light mode - dark ink logo */
 .dashboard-theme .header-logo-light {
-  filter: brightness(0) invert(1);
+  filter: brightness(0);
 }
 
 /* Dark mode - logo matches dark theme text color (slightly softer white) */
@@ -1468,19 +1468,23 @@ input {
 }
 
 .vertical-timeline-element-content-arrow {
-  border-right-color: rgba(255, 255, 255, 0.1) !important;
+  border-right-color: rgba(255, 255, 255, 0.7) !important;
 }
 
 .vertical-timeline-element-icon {
   box-shadow: 0 0 0 4px var(--dash-bg), inset 0 2px 0 rgba(0, 0, 0, .08), 0 3px 0 4px rgba(0, 0, 0, .05) !important;
 }
 
-/* Dark theme adjustments for timeline */
+/* Light theme adjustments for timeline */
 .dashboard-theme .vertical-timeline-element-content {
-  background: rgba(30, 33, 42, 0.8) !important;
+  background: rgba(255, 255, 255, 0.7) !important;
   color: var(--dash-text) !important;
   backdrop-filter: blur(10px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid var(--dash-border) !important;
+}
+
+.dashboard-theme .vertical-timeline-element-content-arrow {
+  border-right-color: rgba(255, 255, 255, 0.7) !important;
 }
 
 .dashboard-theme .vertical-timeline-element-content h3 {
@@ -1488,13 +1492,36 @@ input {
 }
 
 .dashboard-theme .vertical-timeline-element-content p {
-  color: var(--dash-light) !important;
+  color: var(--dash-text-muted) !important;
   font-size: 0.875rem !important;
   /* text-sm equivalent (14px) */
   line-height: 1.25rem !important;
   /* leading-5 equivalent */
   font-weight: 400 !important;
   /* Normal weight for descriptions */
+}
+
+/* Dark theme adjustments for timeline */
+.dashboard-theme-dark .dashboard-theme .vertical-timeline-element-content {
+  background: rgba(30, 33, 42, 0.8) !important;
+  color: var(--dash-text) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.dashboard-theme-dark .dashboard-theme .vertical-timeline-element-content-arrow {
+  border-right-color: rgba(30, 33, 42, 0.8) !important;
+}
+
+.dashboard-theme-dark .dashboard-theme .vertical-timeline-element-content h3 {
+  color: var(--dash-text) !important;
+}
+
+.dashboard-theme-dark .dashboard-theme .vertical-timeline-element-content p {
+  color: var(--dash-text-muted) !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  font-weight: 400 !important;
 }
 
 /* Responsive Timeline Icon/Dot Sizing */
@@ -2185,3 +2212,131 @@ input {
     animation: none;
   }
 }
+
+/* =============================================
+   Dashboard Theme Specific Text/Utility Overrides for Light Mode
+   ============================================= */
+.dashboard-theme .text-white {
+  color: var(--dash-text) !important;
+}
+.dashboard-theme .text-white\/70 {
+  color: color-mix(in srgb, var(--dash-text) 70%, transparent) !important;
+}
+.dashboard-theme .text-white\/55 {
+  color: color-mix(in srgb, var(--dash-text) 55%, transparent) !important;
+}
+.dashboard-theme .text-white\/45 {
+  color: color-mix(in srgb, var(--dash-text) 45%, transparent) !important;
+}
+.dashboard-theme .text-white\/30 {
+  color: color-mix(in srgb, var(--dash-text) 30%, transparent) !important;
+}
+.dashboard-theme .text-white\/10 {
+  color: color-mix(in srgb, var(--dash-text) 10%, transparent) !important;
+}
+.dashboard-theme .placeholder-white\/30::placeholder {
+  color: color-mix(in srgb, var(--dash-text) 30%, transparent) !important;
+}
+
+/* Keep text white inside elements with explicit dark background colors */
+.dashboard-theme .bg-dashboard-accent,
+.dashboard-theme .bg-dashboard-accent *,
+.dashboard-theme .bg-dashboard-danger,
+.dashboard-theme .bg-dashboard-danger *,
+.dashboard-theme .bg-blue-cta,
+.dashboard-theme .bg-blue-cta *,
+.dashboard-theme .bg-blue-final,
+.dashboard-theme .bg-blue-final *,
+.dashboard-theme .bg-\[hsl\(var\(--dash-accent\)\)\],
+.dashboard-theme .bg-\[hsl\(var\(--dash-accent\)\)\] * {
+  color: #ffffff !important;
+}
+
+/* Keep text white inside buttons or links styled with text-white */
+.dashboard-theme button.text-white,
+.dashboard-theme button.text-white *,
+.dashboard-theme button .text-white,
+.dashboard-theme a.text-white,
+.dashboard-theme a.text-white *,
+.dashboard-theme button[type="submit"],
+.dashboard-theme button[type="submit"] * {
+  color: #ffffff !important;
+}
+
+/* Resolve unstyled custom border class */
+.dashboard-theme .border-dashboard-border,
+.dashboard-theme.border-dashboard-border,
+.bg-dashboard-sidebar.border-dashboard-border,
+.bg-dashboard-sidebar .border-dashboard-border,
+.bg-dashboard-card.border-dashboard-border,
+.bg-dashboard-card .border-dashboard-border,
+.bg-dashboard-muted.border-dashboard-border,
+.bg-dashboard-muted .border-dashboard-border {
+  border-color: var(--dash-border) !important;
+}
+
+/* Modals/Cards general overrides outside .dashboard-theme portal wrapper wrapper cases */
+.bg-dashboard-sidebar .text-white,
+.bg-dashboard-card .text-white,
+.bg-dashboard-muted .text-white {
+  color: var(--dash-text) !important;
+}
+.bg-dashboard-sidebar .text-white\/70,
+.bg-dashboard-card .text-white\/70,
+.bg-dashboard-muted .text-white\/70 {
+  color: color-mix(in srgb, var(--dash-text) 70%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/55,
+.bg-dashboard-card .text-white\/55,
+.bg-dashboard-muted .text-white\/55 {
+  color: color-mix(in srgb, var(--dash-text) 55%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/45,
+.bg-dashboard-card .text-white\/45,
+.bg-dashboard-muted .text-white\/45 {
+  color: color-mix(in srgb, var(--dash-text) 45%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/30,
+.bg-dashboard-card .text-white\/30,
+.bg-dashboard-muted .text-white\/30 {
+  color: color-mix(in srgb, var(--dash-text) 30%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/10,
+.bg-dashboard-card .text-white\/10,
+.bg-dashboard-muted .text-white\/10 {
+  color: color-mix(in srgb, var(--dash-text) 10%, transparent) !important;
+}
+
+/* Keep text white inside buttons or links styled with text-white in modal wrappers */
+.bg-dashboard-sidebar button.text-white,
+.bg-dashboard-sidebar button.text-white *,
+.bg-dashboard-sidebar button[type="submit"],
+.bg-dashboard-sidebar button[type="submit"] *,
+.bg-dashboard-card button.text-white,
+.bg-dashboard-card button.text-white *,
+.bg-dashboard-card button[type="submit"],
+.bg-dashboard-card button[type="submit"] *,
+.bg-dashboard-muted button.text-white,
+.bg-dashboard-muted button.text-white *,
+.bg-dashboard-muted button[type="submit"],
+.bg-dashboard-muted button[type="submit"] * {
+  color: #ffffff !important;
+}
+
+/* Category Empty State Illustrations color inversion for light theme white strokes/fills */
+.dashboard-theme .category-empty-state svg *[fill="white"],
+.dashboard-theme .category-empty-state svg *[fill="#F2F2F2"],
+.dashboard-theme .category-empty-state svg *[fill="#ffffff"] {
+  fill: var(--dash-text) !important;
+}
+.dashboard-theme .category-empty-state svg *[stroke="white"],
+.dashboard-theme .category-empty-state svg *[stroke="#F2F2F2"],
+.dashboard-theme .category-empty-state svg *[stroke="#ffffff"] {
+  stroke: var(--dash-text) !important;
+}
+.dashboard-theme .category-empty-state svg text[fill="white"] {
+  fill: var(--dash-text) !important;
+}
+
+
+

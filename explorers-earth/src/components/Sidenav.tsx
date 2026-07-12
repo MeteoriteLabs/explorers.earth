@@ -213,7 +213,7 @@ const Sidebar = () => {
                 alt="explorers.earth"
                 className="object-contain max-h-[40px] w-auto"
                 style={{
-                  filter: "brightness(0) invert(1)",
+                  filter: theme === 'dark' ? "brightness(0) invert(1)" : "brightness(0)",
                 }}
               />
             </div>
@@ -472,7 +472,7 @@ const SidebarItem = ({
           whileHover={{ scale: 1.3 }}
           transition={{ type: "spring", stiffness: 120 }}
         >
-          <Icon />
+          <Icon fill="currentColor" />
         </motion.div>
         {isOpen && <span className="text-sm font-medium">{title}</span>}
         {!isOpen && (
@@ -510,7 +510,7 @@ const SidebarItem = ({
         whileHover={{ scale: 1.3 }}
         transition={{ type: "spring", stiffness: 120 }}
       >
-        <Icon />
+        <Icon fill="currentColor" />
       </motion.div>
       {/* Text - Truncate if needed, with fixed width when open */}
       {isOpen && (
