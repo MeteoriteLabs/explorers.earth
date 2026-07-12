@@ -1,5 +1,44 @@
 import { gql } from "@apollo/client";
 
+// Fetches the count of published lists per content category for a given account.
+// Used by PublicNav to rank auto-fill footer nav tabs by number of published lists.
+export const getPublicCategoryListCountsQuery = gql`
+  query PublicCategoryListCounts($accountDocumentId: ID!) {
+    recommendationLists(
+      filters: { account: { documentId: { eq: $accountDocumentId } }, Visibility: { eq: true } }
+      pagination: { limit: 100 }
+    ) { documentId }
+    bookLists(
+      filters: { account: { documentId: { eq: $accountDocumentId } }, visibility: { eq: true } }
+      pagination: { limit: 100 }
+    ) { documentId }
+    movieLists(
+      filters: { account: { documentId: { eq: $accountDocumentId } }, Visibility: { eq: true } }
+      pagination: { limit: 100 }
+    ) { documentId }
+    gameLists(
+      filters: { account: { documentId: { eq: $accountDocumentId } }, Visibility: { eq: true } }
+      pagination: { limit: 100 }
+    ) { documentId }
+    appLists(
+      filters: { account: { documentId: { eq: $accountDocumentId } }, Visibility: { eq: true } }
+      pagination: { limit: 100 }
+    ) { documentId }
+    productLists(
+      filters: { account: { documentId: { eq: $accountDocumentId } }, Visibility: { eq: true } }
+      pagination: { limit: 100 }
+    ) { documentId }
+    personLists(
+      filters: { account: { documentId: { eq: $accountDocumentId } }, Visibility: { eq: true } }
+      pagination: { limit: 100 }
+    ) { documentId }
+    guides(
+      filters: { account: { documentId: { eq: $accountDocumentId } }, Visibility: { eq: true } }
+      pagination: { limit: 100 }
+    ) { documentId }
+  }
+`;
+
 export const recommendationListQuery = gql`
   query RecommendationLists {
     recommendationLists {
