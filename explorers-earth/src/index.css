@@ -162,6 +162,16 @@
   --status-pub:       #4ade80;
   --status-draft:     #f87171;
   --text-light:       102 9% 41%;
+
+  /* Skeleton loaders variables */
+  --skeleton-bg: #f0e7d8;
+  --skeleton-shimmer-base: rgba(23, 35, 26, 0.05);
+  --skeleton-shimmer-bright: rgba(23, 35, 26, 0.09);
+  --skeleton-shimmer-sweep: rgba(255, 255, 255, 0.6);
+  --skeleton-shadow: rgba(23, 35, 26, 0.04);
+  --skeleton-gradient-1: rgba(255, 252, 246, 0.95);
+  --skeleton-gradient-2: rgba(255, 252, 246, 0.45);
+  --skeleton-gradient-3: rgba(255, 252, 246, 0.05);
 }
 
 .dashboard-theme {
@@ -231,6 +241,16 @@ body[data-sidebar-open="false"] .dashboard-content {
   --status-pub:       #4ade80;
   --status-draft:     #f87171;
   --text-light:       219 14% 82%;
+
+  /* Skeleton loaders variables */
+  --skeleton-bg: #121217;
+  --skeleton-shimmer-base: rgba(255, 255, 255, 0.05);
+  --skeleton-shimmer-bright: rgba(255, 255, 255, 0.12);
+  --skeleton-shimmer-sweep: rgba(255, 255, 255, 0.08);
+  --skeleton-shadow: rgba(0, 0, 0, 0.4);
+  --skeleton-gradient-1: rgba(0, 0, 0, 0.9);
+  --skeleton-gradient-2: rgba(0, 0, 0, 0.45);
+  --skeleton-gradient-3: rgba(0, 0, 0, 0.08);
 }
 
 @layer components {
@@ -951,19 +971,17 @@ body.hide-dashboard-header .sticky-top-offset {
   inset: 0;
   background: linear-gradient(90deg,
       transparent 0%,
-      rgba(255, 255, 255, 0.05) 20%,
-      rgba(255, 255, 255, 0.10) 50%,
-      rgba(255, 255, 255, 0.05) 80%,
+      var(--skeleton-shimmer-sweep, rgba(255, 255, 255, 0.08)) 50%,
       transparent 100%);
   animation: skeletonShimmer 1.8s ease-in-out infinite;
 }
 
 .skeleton-card {
-  background: rgba(255, 255, 255, 0.03) !important;
+  background: var(--skeleton-bg, rgba(255, 255, 255, 0.03)) !important;
   border: none !important;
   border-width: 0 !important;
   outline: none !important;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4) !important;
+  box-shadow: 0 10px 25px -5px var(--skeleton-shadow, rgba(0, 0, 0, 0.4)), 0 8px 10px -6px var(--skeleton-shadow, rgba(0, 0, 0, 0.4)) !important;
 }
 
 /* Touch ripple effect */
@@ -2219,17 +2237,35 @@ input {
 .dashboard-theme .text-white {
   color: var(--dash-text) !important;
 }
+.dashboard-theme .text-white\/90 {
+  color: color-mix(in srgb, var(--dash-text) 90%, transparent) !important;
+}
+.dashboard-theme .text-white\/80 {
+  color: color-mix(in srgb, var(--dash-text) 80%, transparent) !important;
+}
 .dashboard-theme .text-white\/70 {
   color: color-mix(in srgb, var(--dash-text) 70%, transparent) !important;
+}
+.dashboard-theme .text-white\/60 {
+  color: color-mix(in srgb, var(--dash-text) 60%, transparent) !important;
 }
 .dashboard-theme .text-white\/55 {
   color: color-mix(in srgb, var(--dash-text) 55%, transparent) !important;
 }
+.dashboard-theme .text-white\/50 {
+  color: color-mix(in srgb, var(--dash-text) 50%, transparent) !important;
+}
 .dashboard-theme .text-white\/45 {
   color: color-mix(in srgb, var(--dash-text) 45%, transparent) !important;
 }
+.dashboard-theme .text-white\/40 {
+  color: color-mix(in srgb, var(--dash-text) 40%, transparent) !important;
+}
 .dashboard-theme .text-white\/30 {
   color: color-mix(in srgb, var(--dash-text) 30%, transparent) !important;
+}
+.dashboard-theme .text-white\/20 {
+  color: color-mix(in srgb, var(--dash-text) 20%, transparent) !important;
 }
 .dashboard-theme .text-white\/10 {
   color: color-mix(in srgb, var(--dash-text) 10%, transparent) !important;
@@ -2247,9 +2283,71 @@ input {
 .dashboard-theme .bg-blue-cta *,
 .dashboard-theme .bg-blue-final,
 .dashboard-theme .bg-blue-final *,
+.dashboard-theme [class*="bg-black"],
+.dashboard-theme [class*="bg-black"] *,
+.dashboard-theme [class*="bg-[#121824]"],
+.dashboard-theme [class*="bg-[#121824]"] *,
+.dashboard-theme [class*="bg-[#1a2332]"],
+.dashboard-theme [class*="bg-[#1a2332]"] *,
 .dashboard-theme .bg-\[hsl\(var\(--dash-accent\)\)\],
 .dashboard-theme .bg-\[hsl\(var\(--dash-accent\)\)\] * {
   color: #ffffff !important;
+}
+
+.dashboard-theme [class*="bg-black"] .text-white\/90,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/90,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/90 {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/80,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/80,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/80 {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/70,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/70,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/70 {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/60,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/60,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/60 {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/55,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/55,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/55 {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/50,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/50,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/50 {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/45,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/45,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/45 {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/40,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/40,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/40 {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/30,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/30,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/30 {
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/20,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/20,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/20 {
+  color: rgba(255, 255, 255, 0.2) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/10,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/10,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/10 {
+  color: rgba(255, 255, 255, 0.1) !important;
 }
 
 /* Keep text white inside buttons or links styled with text-white */
@@ -2275,31 +2373,60 @@ input {
   border-color: var(--dash-border) !important;
 }
 
-/* Modals/Cards general overrides outside .dashboard-theme portal wrapper wrapper cases */
 .bg-dashboard-sidebar .text-white,
 .bg-dashboard-card .text-white,
 .bg-dashboard-muted .text-white {
   color: var(--dash-text) !important;
+}
+.bg-dashboard-sidebar .text-white\/90,
+.bg-dashboard-card .text-white\/90,
+.bg-dashboard-muted .text-white\/90 {
+  color: color-mix(in srgb, var(--dash-text) 90%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/80,
+.bg-dashboard-card .text-white\/80,
+.bg-dashboard-muted .text-white\/80 {
+  color: color-mix(in srgb, var(--dash-text) 80%, transparent) !important;
 }
 .bg-dashboard-sidebar .text-white\/70,
 .bg-dashboard-card .text-white\/70,
 .bg-dashboard-muted .text-white\/70 {
   color: color-mix(in srgb, var(--dash-text) 70%, transparent) !important;
 }
+.bg-dashboard-sidebar .text-white\/60,
+.bg-dashboard-card .text-white\/60,
+.bg-dashboard-muted .text-white\/60 {
+  color: color-mix(in srgb, var(--dash-text) 60%, transparent) !important;
+}
 .bg-dashboard-sidebar .text-white\/55,
 .bg-dashboard-card .text-white\/55,
 .bg-dashboard-muted .text-white\/55 {
   color: color-mix(in srgb, var(--dash-text) 55%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/50,
+.bg-dashboard-card .text-white\/50,
+.bg-dashboard-muted .text-white\/50 {
+  color: color-mix(in srgb, var(--dash-text) 50%, transparent) !important;
 }
 .bg-dashboard-sidebar .text-white\/45,
 .bg-dashboard-card .text-white\/45,
 .bg-dashboard-muted .text-white\/45 {
   color: color-mix(in srgb, var(--dash-text) 45%, transparent) !important;
 }
+.bg-dashboard-sidebar .text-white\/40,
+.bg-dashboard-card .text-white\/40,
+.bg-dashboard-muted .text-white\/40 {
+  color: color-mix(in srgb, var(--dash-text) 40%, transparent) !important;
+}
 .bg-dashboard-sidebar .text-white\/30,
 .bg-dashboard-card .text-white\/30,
 .bg-dashboard-muted .text-white\/30 {
   color: color-mix(in srgb, var(--dash-text) 30%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/20,
+.bg-dashboard-card .text-white\/20,
+.bg-dashboard-muted .text-white\/20 {
+  color: color-mix(in srgb, var(--dash-text) 20%, transparent) !important;
 }
 .bg-dashboard-sidebar .text-white\/10,
 .bg-dashboard-card .text-white\/10,
