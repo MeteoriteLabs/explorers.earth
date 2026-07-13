@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate, Link, useOutletContext } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { Share2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -15,6 +15,7 @@ import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 const PublicMovieList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
   const navigate = useNavigate();
+  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
   const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -22,6 +23,12 @@ const PublicMovieList = () => {
     variables: { slug: listSlug, username },
     skip: !username || !listSlug,
   });
+
+  useEffect(() => {
+    if (!loading) {
+      outletContext?.setIsPageLoaded?.(true);
+    }
+  }, [loading, outletContext]);
 
   const list = data?.movieLists?.[0];
   const movies: RecommendedMovie[] = deduplicateMovies(list?.recommended_movies ?? []);
@@ -84,23 +91,6 @@ const PublicMovieList = () => {
               aria-label="Share"
             >
               <Share2 size={16} />
-            </button>
-            <button
-              onClick={async () => {
-                const shareUrl = window.location.href;
-                try {
-                  await navigator.clipboard.writeText(shareUrl);
-                  toast.success("Link copied!");
-                } catch (error) {
-                  console.error("Failed to copy text:", error);
-                }
-              }}
-              className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
-              aria-label="Copy Link"
-            >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
             </button>
           </div>
         </div>

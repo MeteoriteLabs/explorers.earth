@@ -404,7 +404,7 @@ const CategorySection = ({
             className="text-lg font-black text-white cursor-pointer hover:text-blue-500 transition-colors duration-200 flex items-center gap-2 font-poppins"
           >
             <IconComponent className="w-[20px] h-[20px] shrink-0" style={{ color: getHexColor(cat.color) }} />
-            <span className="uppercase tracking-wide font-black text-[1.125rem]">{cat.label}</span>
+            <span className="tracking-wide font-black text-[1.125rem]">{cat.label}</span>
           </h2>
         </div>
         <button
@@ -675,7 +675,7 @@ const ProfileRecommendationsTab = ({ accountData, username }: ProfileRecommendat
             title: guide.Title || "",
             image: resolveCoverUrl(guide.Guide_Media?.[0]?.url, "guide"),
             previewImages: [],
-            onClick: () => navigate(`/${username}/guides/${guide.slug}`),
+            onClick: () => navigate(`/${username}/guides/${guide.slug || toUrlSlug(guide.Title) || guide.documentId}`),
           };
         });
     }
@@ -776,7 +776,7 @@ const ProfileRecommendationsTab = ({ accountData, username }: ProfileRecommendat
                 <div className="flex flex-col gap-0.5 max-w-[75%]">
                   <h2 className="text-base font-extrabold text-white/50 flex items-center gap-1.5 font-poppins">
                     <IconComponent className="w-4 h-4 shrink-0 text-white/20" />
-                    <span className="uppercase tracking-wide text-xs">{cat.label}</span>
+                    <span className="tracking-wide text-xs">{cat.label}</span>
                   </h2>
                 </div>
               </div>

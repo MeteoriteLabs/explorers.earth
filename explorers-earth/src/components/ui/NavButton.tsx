@@ -24,14 +24,7 @@ const NavButton: FC<NavButtonProps> = ({
         ${isActive ? "" : "hover:bg-dashboard-muted/50"}
       `}
     >
-      {/* Active indicator: slim pill line above the icon */}
-      <span
-        className={`
-          absolute top-0 left-1/2 -translate-x-1/2
-          h-[3px] rounded-full transition-all duration-300
-          ${isActive ? "w-5 bg-white" : "w-0 bg-transparent"}
-        `}
-      />
+
 
       <div className="transition-transform duration-300">
         {icon}

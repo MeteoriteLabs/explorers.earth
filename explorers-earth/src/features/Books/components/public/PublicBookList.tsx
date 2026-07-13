@@ -1,8 +1,9 @@
-import { useState, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useState, useCallback, useEffect } from "react";
+import { useParams, useOutletContext } from "react-router-dom";
 import { useQuery } from "@apollo/client";
-import { ArrowLeft, Star } from "lucide-react";
+import { ArrowLeft, Star, Share2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import { BOOK_LIST_BY_SLUG } from "../../api/query";
 import { deduplicateBooks } from "../../utils/bookHelpers";
 import type { RecommendedBook } from "../../types";
@@ -13,6 +14,7 @@ import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 
 const PublicBookList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
+  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
   const [modalState, setModalState] = useState<{ open: boolean; book: RecommendedBook | null }>({
     open: false,
     book: null,
@@ -23,6 +25,26 @@ const PublicBookList = () => {
     skip: !listSlug || !username,
     fetchPolicy: "cache-and-network",
   });
+
+  useEffect(() => {
+    if (!loading) {
+      outletContext?.setIsPageLoaded?.(true);
+    }
+  }, [loading, outletContext]);
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      try { await navigator.share({ title: rawList?.List_Name || "Book List", url }); } catch { /* ignore */ }
+    } else {
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success("Link copied!");
+      } catch (error) {
+        console.error("Failed to copy text:", error);
+      }
+    }
+  };
 
   const rawList = data?.bookLists?.[0];
   const books: RecommendedBook[] = deduplicateBooks(rawList?.recommended_books);
@@ -62,13 +84,28 @@ const PublicBookList = () => {
         />
       )}
       <div className="min-h-screen bg-black text-white">
-      <div className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/8">
-        <div className="flex items-center gap-3 px-4 py-3 max-w-6xl mx-auto">
-          <img src="/logo.svg" alt="explorers.earth" className="h-6 opacity-70" />
+      {/* Fixed Header */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
+        <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
+          <span
+            className="text-white font-bold text-2xl cursor-pointer"
+            onClick={() => window.location.href = "/"}
+          >
+            explorers.earth
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={handleShare}
+              className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center cursor-pointer"
+              aria-label="Share"
+            >
+              <Share2 size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="pt-14 pb-20 px-4 md:px-8 max-w-6xl mx-auto">
+      <div className="pt-20 pb-20 px-4 md:px-8 max-w-6xl mx-auto">
         {/* Back link */}
         <div className="py-4">
           <Link to={`/${username}/books`} className="flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors">

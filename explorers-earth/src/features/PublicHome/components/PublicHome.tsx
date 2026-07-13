@@ -1060,24 +1060,7 @@ const PublicHome = memo(() => {
               >
                 <Share2 className="h-4 w-4" style={{ color: 'white' }} />
               </button>
-              <button
-                onClick={async () => {
-                  const shareUrl = selectedCity?.List_Name
-                    ? `${window.location.origin}/${username}/places/${toUrlSlug(selectedCity.List_Name)}`
-                    : `${window.location.origin}/${username}/places`;
-                  try {
-                    await navigator.clipboard.writeText(shareUrl);
-                    toast.success("Link copied!");
-                  } catch (error) {
-                    console.error("Failed to copy text:", error);
-                  }
-                  analytics.trackClick('copy-link-button', { context: 'places-header' });
-                }}
-                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
-                aria-label="Copy Link"
-              >
-                <Copy className="h-4 w-4" style={{ color: 'white' }} />
-              </button>
+
             </div>
           </div>
         </div>

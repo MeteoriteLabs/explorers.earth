@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { useParams, useNavigate, Link, useOutletContext } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { gql } from "@apollo/client";
 import { Share2, ArrowLeft } from "lucide-react";
@@ -25,6 +25,7 @@ const ACCOUNT_BY_USERNAME = gql`
 const PublicGamesGenre = () => {
   const { username, genreSlug } = useParams<{ username: string; genreSlug: string }>();
   const navigate = useNavigate();
+  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
   const [selectedGame, setSelectedGame] = useState<RecommendedGame | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -42,6 +43,12 @@ const PublicGamesGenre = () => {
   });
 
   const loading = userLoading || gamesLoading;
+
+  useEffect(() => {
+    if (!loading) {
+      outletContext?.setIsPageLoaded?.(true);
+    }
+  }, [loading, outletContext]);
 
   const allGames: RecommendedGame[] = useMemo(() => {
     return deduplicateGames((gamesData?.gameLists ?? []).flatMap((l: any) => l.recommended_games ?? []));
