@@ -195,7 +195,7 @@ const PublicProfile = memo(() => {
   // Redirect if public_profile tab is disabled
   useEffect(() => {
     if (!loading && accountData) {
-      const isProfileDisabled = accountData.public_profile === "No";
+      const isProfileDisabled = false; // Public profile is always enabled by default
       if (isProfileDisabled) {
         // Redirect to the first available enabled tab
         const showRecommendations = accountData.public_recommendations === "Yes" || (!accountData.public_recommendations || accountData.public_recommendations === undefined);

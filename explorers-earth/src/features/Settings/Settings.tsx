@@ -165,6 +165,7 @@ const Settings = memo(() => {
 
   // Helper to get the effective toggle value (optimistic override > server data)
   const getTabVisibility = (tabType: string): boolean => {
+    if (tabType === 'public_profile') return true;
     if (tabType in tabVisibilityOverrides) {
       return tabVisibilityOverrides[tabType] as boolean;
     }
@@ -172,13 +173,20 @@ const Settings = memo(() => {
   };
 
   const getPinnedNavTabs = (): string[] => {
+    let pinned: string[] = [];
     if ('pinned_nav_tabs' in tabVisibilityOverrides) {
-      return tabVisibilityOverrides['pinned_nav_tabs'] || [];
+      pinned = tabVisibilityOverrides['pinned_nav_tabs'] || [];
+    } else {
+      pinned = currentUserAccountData?.accounts[0]?.pinned_nav_tabs || [];
     }
-    return currentUserAccountData?.accounts[0]?.pinned_nav_tabs || [];
+    if (!pinned.includes('public_profile')) {
+      return ['public_profile', ...pinned];
+    }
+    return pinned;
   };
 
   const isTabPinned = (tabType: string): boolean => {
+    if (tabType === 'public_profile') return true;
     return getPinnedNavTabs().includes(tabType);
   };
 
@@ -828,7 +836,7 @@ const Settings = memo(() => {
                             { key: 'public_profile', label: 'Profile Tab', icon: (
                               <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" /></svg>
                             )},
-                            { key: 'public_recommendations', label: 'Recommendations Tab', icon: (
+                            { key: 'public_recommendations', label: 'Places Tab', icon: (
                               <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
                             )},
                             { key: 'public_music', label: 'Music Tab', icon: (
@@ -861,32 +869,36 @@ const Settings = memo(() => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                               </svg>
                             )},
-                          ].map(({ key, label, icon }) => (
-                            <div key={key} className="flex items-center justify-between py-1.5">
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-                                  {icon}
+                          ].map(({ key, label, icon }) => {
+                            const isProfile = key === 'public_profile';
+                            return (
+                              <div key={key} className={`flex items-center justify-between py-1.5 transition-opacity duration-150 ${isProfile ? 'opacity-50 cursor-not-allowed select-none' : ''}`}>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                                    {icon}
+                                  </div>
+                                  <span className="text-xs text-white font-poppins">{label}</span>
                                 </div>
-                                <span className="text-xs text-white font-poppins">{label}</span>
+                                <div className="flex items-center gap-2">
+                                  {tabVisibilityLoading[key] && (
+                                    <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                                  )}
+                                  <label className={`relative inline-flex items-center ${
+                                    tabVisibilityLoading[key] || isProfile ? 'pointer-events-none cursor-not-allowed' : 'cursor-pointer'
+                                  }`}>
+                                    <input
+                                      type="checkbox"
+                                      className="sr-only peer"
+                                      checked={getTabVisibility(key)}
+                                      disabled={isProfile}
+                                      onChange={(e) => handleTabVisibilityUpdate(key, e.target.checked)}
+                                    />
+                                    <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
+                                  </label>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                {tabVisibilityLoading[key] && (
-                                  <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                                )}
-                                <label className={`relative inline-flex items-center ${
-                                  tabVisibilityLoading[key] ? 'pointer-events-none opacity-70' : 'cursor-pointer'
-                                }`}>
-                                  <input
-                                    type="checkbox"
-                                    className="sr-only peer"
-                                    checked={getTabVisibility(key)}
-                                    onChange={(e) => handleTabVisibilityUpdate(key, e.target.checked)}
-                                  />
-                                  <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
-                                </label>
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </>
@@ -939,7 +951,7 @@ const Settings = memo(() => {
                               { key: 'public_profile', label: 'Profile Tab', icon: (
                                 <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" /></svg>
                               )},
-                              { key: 'public_recommendations', label: 'Recommendations Tab', icon: (
+                              { key: 'public_recommendations', label: 'Places Tab', icon: (
                                 <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
                               )},
                               { key: 'public_music', label: 'Music Tab', icon: (
@@ -973,10 +985,11 @@ const Settings = memo(() => {
                                 </svg>
                               )},
                             ].map(({ key, label, icon }) => {
+                              const isProfile = key === 'public_profile';
                               const isEnabled = getTabVisibility(key);
                               const isPinned = isTabPinned(key);
                               return (
-                                <div key={key} className="flex items-center justify-between py-1.5">
+                                <div key={key} className={`flex items-center justify-between py-1.5 transition-opacity duration-150 ${isProfile ? 'opacity-50 cursor-not-allowed select-none' : ''}`}>
                                   <div className="flex items-center gap-2">
                                     <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${isEnabled ? 'bg-white/10' : 'bg-white/5 opacity-40'}`}>
                                       {icon}
@@ -991,13 +1004,13 @@ const Settings = memo(() => {
                                       <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
                                     )}
                                     <label className={`relative inline-flex items-center ${
-                                      tabVisibilityLoading[`pin_${key}`] || !isEnabled ? 'pointer-events-none opacity-50' : 'cursor-pointer'
+                                      tabVisibilityLoading[`pin_${key}`] || !isEnabled || isProfile ? 'pointer-events-none opacity-50 cursor-not-allowed' : 'cursor-pointer'
                                     }`}>
                                       <input
                                         type="checkbox"
                                         className="sr-only peer"
                                         checked={isPinned}
-                                        disabled={!isEnabled || tabVisibilityLoading[`pin_${key}`]}
+                                        disabled={!isEnabled || tabVisibilityLoading[`pin_${key}`] || isProfile}
                                         onChange={(e) => handleNavPinUpdate(key, e.target.checked)}
                                       />
                                       <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />

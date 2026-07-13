@@ -67,7 +67,7 @@ const PublicNav = memo(() => {
 
   // Tab visibility logic based on Account collection fields
   const showRecommendationsTab = accountData?.public_recommendations === "Yes" || accountData?.public_recommendations === "No" ? accountData?.public_recommendations === "Yes" : true; // Default to show if not set
-  const showProfileTab = accountData?.public_profile === "Yes" || accountData?.public_profile === "No" ? accountData?.public_profile === "Yes" : true; // Default to show if not set
+  const showProfileTab = true; // Always show public profile tab by default
   const showMusicTab = accountData?.public_music === "Yes" || accountData?.public_music === "No" ? accountData?.public_music === "Yes" : false; // Default to hide if not set
   const showGuidesTab = accountData?.public_guides === "Yes"; // Only show when explicitly "Yes"
   const showMoviesTab = accountData?.public_movie === "Yes"; // Only show when explicitly "Yes"
@@ -156,7 +156,7 @@ const PublicNav = memo(() => {
       icon: isPlacesPath(location.pathname)
         ? <DirectionBoard fill="white" />
         : <DirectionBoard outline strokeColor="rgba(255,255,255,0.5)" />,
-      text: "Recommendations",
+      text: "Places",
       path: `/${username}/places`,
     }] : []),
     // Only add guides tab if visibility is enabled
@@ -248,8 +248,10 @@ const PublicNav = memo(() => {
   // by number of published lists descending (most content = highest priority).
   const MAX_NAV_SLOTS = 5;
   const pinnedTabs: string[] = Array.isArray(accountData?.pinned_nav_tabs)
-    ? accountData.pinned_nav_tabs
-    : [];
+    ? accountData.pinned_nav_tabs.includes('public_profile')
+      ? accountData.pinned_nav_tabs
+      : ['public_profile', ...accountData.pinned_nav_tabs]
+    : ['public_profile'];
 
   // 1. Build pinned nav items (respecting pin order from the array).
   const pinnedNavItems = pinnedTabs

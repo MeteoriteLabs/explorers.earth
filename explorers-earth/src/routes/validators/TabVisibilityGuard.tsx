@@ -58,7 +58,7 @@ const TabVisibilityGuard = memo(({ tabField, defaultVisible = true, children }: 
     }
 
     // Check if the specific tab is enabled
-    const fieldValue = accountData[tabField];
+    const fieldValue = tabField === "public_profile" ? "Yes" : accountData[tabField];
     const isTabEnabled = fieldValue === "Yes" || fieldValue === "No"
         ? fieldValue === "Yes"
         : defaultVisible; // Use default if field is not set (null/undefined)
