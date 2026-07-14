@@ -25,7 +25,11 @@ const TunesSsoRedirect = () => {
     navigate('/login');
   }, [navigate]);
 
-  return <EarthLoader context="login" statusMessage="Connecting to LocalTunes..." />;
+  return (
+    <div className="dashboard-theme dashboard-theme-dark bg-dashboard-bg min-h-screen">
+      <EarthLoader context="login" statusMessage="Connecting to LocalTunes..." />
+    </div>
+  );
 };
 
 export default TunesSsoRedirect;
