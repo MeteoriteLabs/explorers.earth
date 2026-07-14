@@ -22,6 +22,7 @@ import Switch from "../../../../components/ui/Switch";
 import SwitchButton from "../../../../components/ui/SwitchButton";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import { CategoryVisibilityModal } from "../../../../components/CategoryVisibilityModal";
+import { CategoryEmptyState } from "../../../../components/CategoryEmptyState";
 
 // Query to get exact account documentId from the usersPermissionsUser relation
 const MY_ACCOUNT = gql`
@@ -569,20 +570,11 @@ const BooksHome = () => {
           </div>
         </div>
       ) : lists.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-20 h-20 rounded-2xl bg-amber-900/20 border border-amber-800/30 flex items-center justify-center mb-5">
-            <BookOpen size={36} className="text-amber-500/60" />
-          </div>
-          <h2 className="text-lg font-semibold text-dashboard mb-2">No book lists yet</h2>
-          <p className="text-sm text-dashboard-light max-w-sm mb-6">
-            Create your first book list to start sharing your favorite recommendations.
-          </p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-colors"
-          >
-            <Plus size={16} /> Create First List
-          </button>
+        <div className="max-w-2xl mx-auto w-full py-10">
+          <CategoryEmptyState
+            category="books"
+            onAddClick={() => setShowCreateModal(true)}
+          />
         </div>
       ) : (
         <>

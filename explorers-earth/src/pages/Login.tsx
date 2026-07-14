@@ -173,7 +173,7 @@ const Login = () => {
 
   if (loading || isCompletingLogin)
     return (
-      <div className="dashboard-theme bg-dashboard-bg">
+      <div className="dashboard-theme dashboard-theme-dark bg-dashboard-bg min-h-screen">
         <EarthLoader context="login" statusMessage={loginStatus || undefined} />
       </div>
     );

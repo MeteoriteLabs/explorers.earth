@@ -26,7 +26,6 @@ import axios from "axios";
 import { GOOGLE_PLACES_API_BASE_URL, IMAGE_CONFIG } from "../config"; // Force HMR update for IMAGE_CONFIG
 import { motion, AnimatePresence } from "framer-motion";
 import CircularPlacesModal from "../components/CircularPlacesModal";
-import WorldIcon from "../assets/icons/WorldIcon";
 import { useNavigate, useLocation } from "react-router-dom";
 import { CategoryVisibilityModal } from "../components/CategoryVisibilityModal";
 import SEO from "../components/SEO";
@@ -35,8 +34,7 @@ import { useRecommendationsWalkthrough } from "../hooks/useRecommendationsWalkth
 import Joyride from "react-joyride";
 import useSetupStore from "../store/useSetupStore";
 import { calculateIsRecommendationsComplete } from "../utils/setupStatusCalculations";
-
-
+import { CategoryEmptyState } from "../components/CategoryEmptyState";
 import { ListVisibilityModal } from "../components/ListVisibilityModal";
 export interface Recommendation {
   title: string;
@@ -1437,13 +1435,13 @@ const Favorites = memo(() => {
                       </div>
 
                       {/* Tab Switcher Pill */}
-                      <div className="flex items-center bg-white font-poppins rounded-[24px] mx-auto w-fit p-[2px] mb-4">
+                      <div className="flex items-center bg-dashboard-muted border border-dashboard font-poppins rounded-[24px] mx-auto w-fit p-1 mb-4">
                         <button
                           onClick={() => setActiveTab(t("dashboard.recommendations.recommendationsTab"))}
                           className={`px-4 py-1.5 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
                             activeTab === t("dashboard.recommendations.recommendationsTab")
-                              ? "bg-[var(--dash-accent)] text-white shadow-sm font-bold"
-                              : "bg-white text-black hover:bg-gray-100"
+                              ? "bg-dashboard-accent text-[var(--dash-accent-text)] shadow-sm font-bold"
+                              : "bg-transparent text-dashboard-muted hover:text-dashboard"
                           }`}
                         >
                           Recommendations
@@ -1455,8 +1453,8 @@ const Favorites = memo(() => {
                           }}
                           className={`px-4 py-1.5 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
                             activeTab === t("dashboard.recommendations.manageTab")
-                              ? "bg-[var(--dash-accent)] text-white shadow-sm font-bold"
-                              : "bg-white text-black hover:bg-gray-100"
+                              ? "bg-dashboard-accent text-[var(--dash-accent-text)] shadow-sm font-bold"
+                              : "bg-transparent text-dashboard-muted hover:text-dashboard"
                           }`}
                           data-walkthrough="manage-tab"
                         >
@@ -1476,35 +1474,17 @@ const Favorites = memo(() => {
                   )}
                 </>
               ) : (
-                <div className="flex flex-col items-center  justify-center min-h-screen overflow-hidden text-center md:gap-10">
-                  <WorldIcon height="100" width="100" />
-                  <div className="text-center flex flex-col items-center justify-center gap-2">
-                    <h1 className="text-white font-poppins md:text-md">
-                      {t("dashboard.recommendations.noRecommendationsYet")}
-                    </h1>
-                    <p className="w-3/4 font-poppins text-white md:text-md">
-                      {!accountData?.documentId
-                        ? t("dashboard.recommendations.setupProfileBeforeRecommendations")
-                        : t("dashboard.recommendations.startAddingPlaces")}
-                    </p>
-                    {!accountData?.documentId ? (
-                      <Button
-                        btnText={t("dashboard.recommendations.profileButton")}
-                        variant="primary"
-                        size="small"
-                        startIcon={<AddIcon size="5" />}
-                        onClickHandler={() => navigate("/profile")}
-                      />
-                    ) : (
-                      <Button
-                        btnText={t("dashboard.recommendations.startRecommending")}
-                        variant="primary"
-                        size="small"
-                        startIcon={<AddIcon size="5" />}
-                        onClickHandler={() => setIsLocationModalOpen(true)}
-                      />
-                    )}
-                  </div>
+                <div className="max-w-2xl mx-auto w-full py-10">
+                  <CategoryEmptyState
+                    category="places"
+                    onAddClick={() => {
+                      if (!accountData?.documentId) {
+                        navigate("/profile");
+                      } else {
+                        setIsLocationModalOpen(true);
+                      }
+                    }}
+                  />
                 </div>
               )}
             </>

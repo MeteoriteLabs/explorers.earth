@@ -650,15 +650,14 @@ const Settings = memo(() => {
         {/* Tab Switcher - Command Palette Pill Style */}
         <div className="w-full mb-6 flex justify-center">
           <div
-            className="flex items-center bg-white font-poppins rounded-[24px]"
-            style={{ padding: '2px' }}
+            className="flex items-center bg-dashboard-muted border border-dashboard font-poppins rounded-[24px] p-1"
           >
             <button
               onClick={() => setActiveTab('account')}
               className={`px-4 py-1.5 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
                 activeTab === 'account'
-                  ? 'bg-[hsl(var(--blue-cta))] text-white shadow-sm'
-                  : 'bg-white text-black hover:bg-gray-100'
+                  ? 'bg-dashboard-accent text-[var(--dash-accent-text)] shadow-sm'
+                  : 'bg-transparent text-dashboard-muted hover:text-dashboard'
               }`}
             >
               Account
@@ -667,8 +666,8 @@ const Settings = memo(() => {
               onClick={() => setActiveTab('billing')}
               className={`px-4 py-1.5 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
                 activeTab === 'billing'
-                  ? 'bg-[hsl(var(--blue-cta))] text-white shadow-sm'
-                  : 'bg-white text-black hover:bg-gray-100'
+                  ? 'bg-dashboard-accent text-[var(--dash-accent-text)] shadow-sm'
+                  : 'bg-transparent text-dashboard-muted hover:text-dashboard'
               }`}
             >
               Billing
@@ -676,7 +675,6 @@ const Settings = memo(() => {
           </div>
         </div>
 
-        {/* ── ACCOUNT TAB ── */}
         {activeTab === 'account' && (
           <div className="flex flex-col gap-1.5">
 
@@ -685,7 +683,7 @@ const Settings = memo(() => {
               className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl border"
               style={{
                 background: 'var(--dash-search-bg, hsl(var(--dashboard-sidebar)))',
-                borderColor: 'hsl(var(--blue-cta))',
+                borderColor: 'var(--dash-border)',
               }}
             >
               <svg width="14" height="14" fill="none" stroke="hsl(var(--blue-cta))" viewBox="0 0 24 24">
@@ -696,7 +694,7 @@ const Settings = memo(() => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search settings..."
-                className="w-full bg-transparent text-xs text-white placeholder-white/40 font-poppins outline-none border-none"
+                className="w-full bg-transparent text-xs text-dashboard font-poppins outline-none border-none"
               />
             </div>
 
@@ -706,12 +704,12 @@ const Settings = memo(() => {
               matchesSearch("public visibility tab visibility profile control display") ||
               matchesSearch("pinned navigation tabs profile control navigation pin menu")) && (
               <>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1 font-poppins">Quick Access</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-dashboard-muted mb-1 font-poppins">Quick Access</p>
                 <div
                   className="rounded-xl mb-3"
                   style={{
                     background: 'var(--dash-sidebar-bg, hsl(var(--dashboard-sidebar)))',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    border: '1px solid var(--dash-border)',
                     overflow: languageSectionOpen ? 'visible' : 'hidden'
                   }}
                 >
@@ -720,14 +718,14 @@ const Settings = memo(() => {
                     <button
                       type="button"
                       onClick={() => setShowPasswordModal(true)}
-                      className="w-full flex items-center gap-3 px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors duration-150 group text-left"
+                      className="w-full flex items-center gap-3 px-4 py-3 border-b border-dashboard hover:bg-dashboard-muted/50 transition-colors duration-150 group text-left"
                     >
                       <span className="text-base leading-none">🔒</span>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-semibold text-white font-poppins">{t('settings.account.changePassword.text')}</div>
-                        <div className="text-[10px] text-white/40 font-poppins mt-0.5">{t('settings.account.changePassword.description')}</div>
+                        <div className="text-xs font-semibold text-dashboard font-poppins">{t('settings.account.changePassword.text')}</div>
+                        <div className="text-[10px] text-dashboard-muted font-poppins mt-0.5">{t('settings.account.changePassword.description')}</div>
                       </div>
-                      <svg width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" viewBox="0 0 24 24" className="flex-shrink-0 group-hover:stroke-white/60 transition-colors">
+                      <svg width="14" height="14" fill="none" stroke="var(--dash-border)" viewBox="0 0 24 24" className="flex-shrink-0 group-hover:stroke-[var(--dash-text)] transition-colors">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                       </svg>
                     </button>
@@ -739,19 +737,19 @@ const Settings = memo(() => {
                       <button
                         type="button"
                         onClick={() => setLanguageSectionOpen(prev => !prev)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors duration-150 group text-left ${
+                        className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-dashboard-muted/50 transition-colors duration-150 group text-left ${
                           data?.usersPermissionsUser?.provider !== 'google' && matchesSearch("change password security last changed")
-                            ? 'border-t border-white/5'
+                            ? 'border-t border-dashboard'
                             : ''
                         }`}
                       >
                         <span className="text-base leading-none">🌐</span>
                         <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold text-white font-poppins">{t('settings.languagePreference.heading')}</div>
-                          <div className="text-[10px] text-white/40 font-poppins mt-0.5">Display · {currentLanguage.flag} {currentLanguage.name} ({currentLanguage.nativeName})</div>
+                          <div className="text-xs font-semibold text-dashboard font-poppins">{t('settings.languagePreference.heading')}</div>
+                          <div className="text-[10px] text-dashboard-muted font-poppins mt-0.5">Display · {currentLanguage.flag} {currentLanguage.name} ({currentLanguage.nativeName})</div>
                         </div>
                         <svg
-                          width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" viewBox="0 0 24 24"
+                          width="14" height="14" fill="none" stroke="var(--dash-border)" viewBox="0 0 24 24"
                           className={`flex-shrink-0 transition-transform duration-200 ${languageSectionOpen ? 'rotate-90' : ''}`}
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
@@ -775,7 +773,7 @@ const Settings = memo(() => {
                               }, 100);
                             }
                           }}
-                          className="border-t border-white/5 px-4 pb-4 bg-white/[0.01]"
+                          className="border-t border-dashboard px-4 pb-4 bg-dashboard-bg/20"
                         >
                           <LanguageSelector />
                         </div>
@@ -789,15 +787,15 @@ const Settings = memo(() => {
                       <button
                         type="button"
                         onClick={() => setPublicVisibilitySectionOpen(prev => !prev)}
-                        className="w-full flex items-center gap-3 px-4 py-3 border-t border-white/5 hover:bg-white/5 transition-colors duration-150 group text-left"
+                        className="w-full flex items-center gap-3 px-4 py-3 border-t border-dashboard hover:bg-dashboard-muted/50 transition-colors duration-150 group text-left"
                       >
                         <span className="text-base leading-none">👁️</span>
                         <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold text-white font-poppins">Public Visibility</div>
-                          <div className="text-[10px] text-white/40 font-poppins mt-0.5">Profile · Control which tabs appear on your public profile</div>
+                          <div className="text-xs font-semibold text-dashboard font-poppins">Public Visibility</div>
+                          <div className="text-[10px] text-dashboard-muted font-poppins mt-0.5">Profile · Control which tabs appear on your public profile</div>
                         </div>
                         <svg
-                          width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" viewBox="0 0 24 24"
+                          width="14" height="14" fill="none" stroke="var(--dash-border)" viewBox="0 0 24 24"
                           className={`flex-shrink-0 transition-transform duration-200 ${publicVisibilitySectionOpen ? 'rotate-90' : ''}`}
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
@@ -822,52 +820,52 @@ const Settings = memo(() => {
                               }, 100);
                             }
                           }}
-                          className="border-t border-white/5 px-4 py-4 space-y-2 bg-white/[0.01]"
+                          className="border-t border-dashboard px-4 py-4 space-y-2 bg-dashboard-bg/20"
                         >
                           {[
                             { key: 'public_profile', label: 'Profile Tab', icon: (
-                              <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" /></svg>
+                              <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" /></svg>
                             )},
                             { key: 'public_recommendations', label: 'Recommendations Tab', icon: (
-                              <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
+                              <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
                             )},
                             { key: 'public_music', label: 'Music Tab', icon: (
-                              <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                              <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                             )},
                             { key: 'public_guides', label: 'Guides Tab', icon: (
-                              <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" /></svg>
+                              <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" /></svg>
                             )},
                             { key: 'public_movie', label: 'Movies & Shows Tab', icon: (
-                              <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" /></svg>
+                              <svg className="w-3.5 h-3.5 text-dashboard" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" /></svg>
                             )},
                             { key: 'public_books', label: 'Books Tab', icon: (
-                              <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                              <svg className="w-3.5 h-3.5 text-dashboard" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
                             )},
                             { key: 'public_games', label: 'Games Tab', icon: (
-                              <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                              <svg className="w-3.5 h-3.5 text-dashboard" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                             )},
                             { key: 'public_apps', label: 'Apps & Tools Tab', icon: (
-                              <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M17 2H7c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-5 18c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm5.2-3H6.8V6h10.4v11z" />
                               </svg>
                             )},
                             { key: 'public_products', label: 'Products Tab', icon: (
-                              <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M19 6h-2c0-2.76-2.24-5-5-5S7 3.24 7 6H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-7-3c1.66 0 3 1.34 3 3H9c0-1.66 1.34-3 3-3zm7 17H5V8h14v12zm-7-8c-1.66 0-3-1.34-3-3H7c0 2.76 2.24 5 5 5s5-2.24 5-5h-2c0 1.66-1.34 3-3 3z" />
                               </svg>
                             )},
                             { key: 'public_people', label: 'People Tab', icon: (
-                              <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-3.5 h-3.5 text-dashboard" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                               </svg>
                             )},
                           ].map(({ key, label, icon }) => (
                             <div key={key} className="flex items-center justify-between py-1.5">
                               <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                                <div className="w-6 h-6 rounded-full bg-dashboard-muted flex items-center justify-center flex-shrink-0">
                                   {icon}
                                 </div>
-                                <span className="text-xs text-white font-poppins">{label}</span>
+                                <span className="text-xs text-dashboard font-poppins">{label}</span>
                               </div>
                               <div className="flex items-center gap-2">
                                 {tabVisibilityLoading[key] && (
@@ -898,15 +896,15 @@ const Settings = memo(() => {
                       <button
                         type="button"
                         onClick={() => setPinnedNavTabsSectionOpen(prev => !prev)}
-                        className="w-full flex items-center gap-3 px-4 py-3 border-t border-white/5 hover:bg-white/5 transition-colors duration-150 group text-left"
+                        className="w-full flex items-center gap-3 px-4 py-3 border-t border-dashboard hover:bg-dashboard-muted/50 transition-colors duration-150 group text-left"
                       >
                         <span className="text-base leading-none">📌</span>
                         <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold text-white font-poppins">Pinned Navigation Tabs</div>
-                          <div className="text-[10px] text-white/40 font-poppins mt-0.5">Navigation · Select up to 5 enabled tabs to pin to your public profile's navigation</div>
+                          <div className="text-xs font-semibold text-dashboard font-poppins">Pinned Navigation Tabs</div>
+                          <div className="text-[10px] text-dashboard-muted font-poppins mt-0.5">Navigation · Select up to 5 enabled tabs to pin to your public profile's navigation</div>
                         </div>
                         <svg
-                          width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" viewBox="0 0 24 24"
+                          width="14" height="14" fill="none" stroke="var(--dash-border)" viewBox="0 0 24 24"
                           className={`flex-shrink-0 transition-transform duration-200 ${pinnedNavTabsSectionOpen ? 'rotate-90' : ''}`}
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
@@ -931,44 +929,44 @@ const Settings = memo(() => {
                               }, 100);
                             }
                           }}
-                          className="border-t border-white/5 px-4 py-4 space-y-3 bg-white/[0.01]"
+                          className="border-t border-dashboard px-4 py-4 space-y-3 bg-dashboard-bg/20"
                         >
-                          <p className="text-[10px] text-white/50 font-poppins mb-1">Select up to 5 enabled tabs to pin to your public profile's navigation.</p>
+                          <p className="text-[10px] text-dashboard-muted font-poppins mb-1">Select up to 5 enabled tabs to pin to your public profile's navigation.</p>
                           <div className="space-y-2">
                             {[
                               { key: 'public_profile', label: 'Profile Tab', icon: (
-                                <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" /></svg>
+                                <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" /></svg>
                               )},
                               { key: 'public_recommendations', label: 'Recommendations Tab', icon: (
-                                <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
+                                <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
                               )},
                               { key: 'public_music', label: 'Music Tab', icon: (
-                                <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                                <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                               )},
                               { key: 'public_guides', label: 'Guides Tab', icon: (
-                                <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385a7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10a7.968 7.968 0 00-14.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" /></svg>
+                                <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385a7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10a7.968 7.968 0 00-14.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" /></svg>
                               )},
                               { key: 'public_movie', label: 'Movies & Shows Tab', icon: (
-                                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" /></svg>
+                                <svg className="w-3.5 h-3.5 text-dashboard" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" /></svg>
                               )},
                               { key: 'public_books', label: 'Books Tab', icon: (
-                                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                                <svg className="w-3.5 h-3.5 text-dashboard" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
                               )},
                               { key: 'public_games', label: 'Games Tab', icon: (
-                                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                                <svg className="w-3.5 h-3.5 text-dashboard" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                               )},
                               { key: 'public_apps', label: 'Apps & Tools Tab', icon: (
-                                <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 24 24">
                                   <path d="M17 2H7c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-5 18c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm5.2-3H6.8V6h10.4v11z" />
                                 </svg>
                               )},
                               { key: 'public_products', label: 'Products Tab', icon: (
-                                <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 24 24">
                                   <path d="M19 6h-2c0-2.76-2.24-5-5-5S7 3.24 7 6H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-7-3c1.66 0 3 1.34 3 3H9c0-1.66 1.34-3 3-3zm7 17H5V8h14v12zm-7-8c-1.66 0-3-1.34-3-3H7c0 2.76 2.24 5 5 5s5-2.24 5-5h-2c0 1.66-1.34 3-3 3z" />
                                 </svg>
                               )},
                               { key: 'public_people', label: 'People Tab', icon: (
-                                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-3.5 h-3.5 text-dashboard" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                                 </svg>
                               )},
@@ -978,12 +976,12 @@ const Settings = memo(() => {
                               return (
                                 <div key={key} className="flex items-center justify-between py-1.5">
                                   <div className="flex items-center gap-2">
-                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${isEnabled ? 'bg-white/10' : 'bg-white/5 opacity-40'}`}>
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${isEnabled ? 'bg-dashboard-muted' : 'bg-dashboard-muted/40 opacity-40'}`}>
                                       {icon}
                                     </div>
-                                    <span className={`text-xs font-poppins ${isEnabled ? 'text-white' : 'text-white/40'}`}>
+                                    <span className={`text-xs font-poppins ${isEnabled ? 'text-dashboard' : 'text-dashboard-muted'}`}>
                                       {label}
-                                      {!isEnabled && <span className="text-[9px] text-white/35 ml-1.5 font-normal font-poppins">(Visibility off)</span>}
+                                      {!isEnabled && <span className="text-[9px] text-dashboard-muted ml-1.5 font-normal font-poppins">(Visibility off)</span>}
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-2">
@@ -1018,23 +1016,23 @@ const Settings = memo(() => {
             {/* ── CONNECTED ACCOUNTS section ── */}
             {matchesSearch("connected accounts local tunes external platform integration google") && (
               <>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1 font-poppins">Connected Accounts</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-dashboard-muted mb-1 font-poppins">Connected Accounts</p>
                 <div
                   className="rounded-xl overflow-hidden mb-3"
-                  style={{ background: 'var(--dash-sidebar-bg, hsl(var(--dashboard-sidebar)))', border: '1px solid rgba(255,255,255,0.08)' }}
+                  style={{ background: 'var(--dash-sidebar-bg, hsl(var(--dashboard-sidebar)))', border: '1px solid var(--dash-border)' }}
                 >
                   <button
                     type="button"
                     onClick={() => setConnectedAccountsSectionOpen(prev => !prev)}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors duration-150 group text-left"
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-dashboard-muted/50 transition-colors duration-150 group text-left"
                   >
                     <span className="text-base leading-none">🔗</span>
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs font-semibold text-white font-poppins">Connected Accounts</div>
-                      <div className="text-[10px] text-white/40 font-poppins mt-0.5">Integrations · Manage external music platforms and accounts</div>
+                      <div className="text-xs font-semibold text-dashboard font-poppins">Connected Accounts</div>
+                      <div className="text-[10px] text-dashboard-muted font-poppins mt-0.5">Integrations · Manage external music platforms and accounts</div>
                     </div>
                     <svg
-                      width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" viewBox="0 0 24 24"
+                      width="14" height="14" fill="none" stroke="var(--dash-border)" viewBox="0 0 24 24"
                       className={`flex-shrink-0 transition-transform duration-200 ${connectedAccountsSectionOpen ? 'rotate-90' : ''}`}
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
@@ -1058,7 +1056,7 @@ const Settings = memo(() => {
                           }, 100);
                         }
                       }}
-                      className="border-t border-white/5 px-2 py-2 bg-white/[0.01]"
+                      className="border-t border-dashboard px-2 py-2 bg-dashboard-bg/20"
                     >
                       <ConnectedAccounts />
                     </div>
@@ -1070,7 +1068,7 @@ const Settings = memo(() => {
             {/* ── DANGER ZONE section ── */}
             {((matchesSearch("deactivate account block remove danger") || matchesSearch("delete account permanently remove danger"))) && (
               <>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1 font-poppins">Danger Zone</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-dashboard-muted mb-1 font-poppins">Danger Zone</p>
                 <div
                   className="rounded-xl overflow-hidden"
                   style={{ background: 'rgba(248,113,113,0.04)', border: '1px solid rgba(248,113,113,0.15)' }}
@@ -1084,10 +1082,10 @@ const Settings = memo(() => {
                       style={{ borderColor: 'rgba(248,113,113,0.1)' }}
                     >
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-semibold text-red-400 font-poppins">{t('settings.account.deactivateAccount.text')}</div>
-                        <div className="text-[10px] text-red-400/60 font-poppins mt-0.5">{t('settings.account.deactivateAccount.description')}</div>
+                        <div className="text-xs font-semibold text-dashboard-danger font-poppins">{t('settings.account.deactivateAccount.text')}</div>
+                        <div className="text-[10px] text-dashboard-danger opacity-70 font-poppins mt-0.5">{t('settings.account.deactivateAccount.description')}</div>
                       </div>
-                      <svg width="14" height="14" fill="none" stroke="rgba(248,113,113,0.4)" viewBox="0 0 24 24" className="flex-shrink-0 group-hover:stroke-red-400 transition-colors">
+                      <svg width="14" height="14" fill="none" stroke="var(--dash-danger)" viewBox="0 0 24 24" className="flex-shrink-0 group-hover:stroke-[var(--dash-danger)] transition-colors">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                       </svg>
                     </button>
@@ -1101,10 +1099,10 @@ const Settings = memo(() => {
                       className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/5 transition-colors duration-150 group text-left"
                     >
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-bold text-red-400 font-poppins">{t('settings.account.deleteAccount.text')}</div>
-                        <div className="text-[10px] text-red-400/60 font-poppins mt-0.5">{t('settings.account.deleteAccount.description')}</div>
+                        <div className="text-xs font-bold text-dashboard-danger font-poppins">{t('settings.account.deleteAccount.text')}</div>
+                        <div className="text-[10px] text-dashboard-danger opacity-70 font-poppins mt-0.5">{t('settings.account.deleteAccount.description')}</div>
                       </div>
-                      <svg width="14" height="14" fill="none" stroke="rgba(248,113,113,0.4)" viewBox="0 0 24 24" className="flex-shrink-0 group-hover:stroke-red-400 transition-colors">
+                      <svg width="14" height="14" fill="none" stroke="var(--dash-danger)" viewBox="0 0 24 24" className="flex-shrink-0 group-hover:stroke-[var(--dash-danger)] transition-colors">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                       </svg>
                     </button>

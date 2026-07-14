@@ -167,7 +167,7 @@ const LanguageSelector = memo(() => {
 
   return (
     <div className="mt-4">
-      <label className="block text-sm text-white mb-3 font-medium">
+      <label className="block text-sm text-dashboard mb-3 font-medium">
         {t("settings.languagePreference.selectLanguage")}
       </label>
 
@@ -207,7 +207,7 @@ const LanguageSelector = memo(() => {
                   placeholder={t("settings.languagePreference.searchPlaceholder")}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 bg-dashboard-muted border border-dashboard rounded text-white font-poppins text-sm focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-dashboard-accent placeholder:text-dashboard-muted text-opacity-100"
+                  className="w-full pl-10 pr-3 py-2 bg-dashboard-muted border border-dashboard rounded text-dashboard font-poppins text-sm focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-dashboard-accent placeholder:text-dashboard-muted text-opacity-100"
                   style={{ color: 'var(--dash-text)', backgroundColor: 'var(--dash-muted)' }}
                 />
               </div>
@@ -226,7 +226,7 @@ const LanguageSelector = memo(() => {
                     className={`w-full px-3 py-2 text-left hover:bg-dashboard-accent/20 transition-colors flex items-center gap-2 min-w-0 ${
                       language.code === i18n.language 
                         ? 'bg-dashboard-accent/30 text-dashboard-accent' 
-                        : 'text-white'
+                        : 'text-dashboard'
                     }`}
                   >
                     <span className="flex-shrink-0">{language.flag}</span>
@@ -235,7 +235,7 @@ const LanguageSelector = memo(() => {
                   </button>
                 ))
               ) : (
-                <div className="px-3 py-4 text-center text-white text-sm">
+                <div className="px-3 py-4 text-center text-dashboard-muted text-sm">
                   {t("settings.languagePreference.noLanguagesFound")}
                 </div>
               )}

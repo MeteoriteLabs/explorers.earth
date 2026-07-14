@@ -14,6 +14,8 @@ import LogoutIcon from "../assets/icons/LogoutIcon";
 import SunIcon from "../assets/icons/SunIcon";
 import MoonIcon from "../assets/icons/MoonIcon";
 import SwitchButton from "./ui/SwitchButton";
+import Button from "./ui/Button";
+import MenuIcon from "../assets/icons/MenuIcon";
 import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 import { motion, AnimatePresence } from "framer-motion";
 import { isManualAuthEnabled } from "../config/featureFlags";
@@ -63,7 +65,7 @@ const Header = memo(() => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const mobileMenuRef = useRef<HTMLDivElement>(null);
-  const { theme, toggleTheme } = useDashboardTheme();
+  const { theme, toggleTheme, isSidebarOpen, setIsSidebarOpen } = useDashboardTheme();
   const location = useLocation();
 
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
@@ -124,12 +126,11 @@ const Header = memo(() => {
 
 
 
-  // Define named pages with icons for large-screen header display
   const namedPages = [
-    { path: '/home', exact: true, label: 'Home', icon: <HomeIcon /> },
-    { path: '/profile', exact: true, label: 'Profile', icon: <Profile fill="white" /> },
-    { path: '/settings', exact: true, label: 'Settings', icon: <SettingsIcon fill="white" /> },
-    { path: '/guides', exact: false, label: 'Guides', icon: <TravelGuideIcon fill="white" /> },
+    { path: '/home', exact: true, label: 'Home', icon: <HomeIcon fill="currentColor" /> },
+    { path: '/profile', exact: true, label: 'Profile', icon: <Profile fill="currentColor" /> },
+    { path: '/settings', exact: true, label: 'Settings', icon: <SettingsIcon fill="currentColor" /> },
+    { path: '/guides', exact: false, label: 'Guides', icon: <TravelGuideIcon fill="currentColor" /> },
   ];
 
   const currentNamedPage = namedPages.find(p =>
@@ -137,8 +138,17 @@ const Header = memo(() => {
   );
 
   return (
-    <div className="dashboard-header bg-dashboard-sidebar md:px-6 px-4 h-[64px] md:h-[54px] flex items-center rounded-2xl">
-      <div className="flex flex-row rounded-xl items-center justify-between md:justify-center md:p-[4px] w-full">
+    <div className="dashboard-header bg-dashboard-sidebar text-dashboard md:px-6 px-4 h-[64px] md:h-[46px] flex items-center rounded-2xl">
+      <div className="flex flex-row rounded-xl items-center justify-between md:justify-center md:p-[4px] w-full relative">
+        {/* Toggle Button - On left of header on desktop */}
+        <div className="hidden md:flex absolute left-1 md:left-2 top-1/2 -translate-y-1/2 items-center justify-center">
+          <Button
+            startIcon={<MenuIcon stroke="var(--dash-accent)" />}
+            onClickHandler={() => setIsSidebarOpen(!isSidebarOpen)}
+            variant="icon"
+            size="none"
+          />
+        </div>
         <div className="logo-container">
           {(isRecommendationPage && currentCategory) ? (
             <div className="flex items-center gap-3">
@@ -146,7 +156,7 @@ const Header = memo(() => {
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setShowCategoryMenu(!showCategoryMenu)}
-                  className="flex items-center gap-1.5 text-white font-black text-2xl bg-transparent px-0 py-1"
+                  className="flex items-center gap-1.5 text-dashboard font-black text-2xl bg-transparent px-0 py-1"
                 >
                   <span className="truncate max-w-[280px]">{currentCategory.name}</span>
                   <motion.div
@@ -154,7 +164,7 @@ const Header = memo(() => {
                     transition={{ duration: 0.2 }}
                     className="flex items-center justify-center mt-1"
                   >
-                    <Down stroke="white" />
+                    <Down stroke="var(--dash-text)" />
                   </motion.div>
                 </motion.button>
 
@@ -173,7 +183,7 @@ const Header = memo(() => {
                             className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors ${
                               (location.pathname.startsWith(cat.path) || (cat.id === 'places' && location.pathname === '/recommendations'))
                                 ? "bg-dashboard-accent/20 text-dashboard-accent"
-                                : "text-white hover:bg-dashboard-muted"
+                                : "text-dashboard hover:bg-dashboard-muted"
                             }`}
                             onClick={() => {
                               navigate(cat.path);
@@ -202,7 +212,7 @@ const Header = memo(() => {
               />
               <div className="hidden md:flex items-center gap-2.5">
                 <span className="flex items-center justify-center opacity-90">{currentNamedPage.icon}</span>
-                <span className="text-white font-black text-2xl font-poppins">{currentNamedPage.label}</span>
+                <span className="text-dashboard font-black text-2xl font-poppins">{currentNamedPage.label}</span>
               </div>
             </>
           ) : (
@@ -252,7 +262,34 @@ const Header = memo(() => {
           )}
         </div>
 
-        <div className="hidden md:flex flex-row items-center gap-4">
+        <div className="hidden md:flex flex-row items-center gap-4 absolute right-1 md:right-2 top-1/2 -translate-y-1/2">
+          {isAuthenticated ? (
+            <div
+              className="flex items-center gap-2 cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.nativeEvent.stopImmediatePropagation();
+                setShowMobileMenu((prev) => !prev);
+              }}
+            >
+              <img
+                className="h-9 w-9 rounded-full border border-dashboard hover:ring-2 hover:ring-dashboard transition-all"
+                src={
+                  accountData?.[0]?.profile_picture?.url ||
+                  IMAGE_CONFIG.defaultImages.profile
+                }
+                alt="profile"
+              />
+            </div>
+          ) : (
+            <button
+              className="px-4 py-1.5 rounded-lg bg-[var(--dash-accent)] text-white font-medium text-sm hover:brightness-110 transition-all border-none cursor-pointer"
+              onClick={() => navigate("/login")}
+            >
+              Login
+            </button>
+          )}
         </div>
       </div>
 
@@ -264,7 +301,7 @@ const Header = memo(() => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute right-4 top-[64px] w-64 bg-dashboard-sidebar rounded-xl shadow-dashboard-elevated border border-dashboard overflow-hidden z-[100]"
+            className="absolute right-1 md:right-2 top-[64px] md:top-[46px] w-64 bg-dashboard-sidebar rounded-xl shadow-dashboard-elevated border border-dashboard overflow-hidden z-[100]"
           >
             {isAuthenticated ? (
               <>
@@ -280,10 +317,10 @@ const Header = memo(() => {
                       alt="profile"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">
+                      <p className="text-sm font-semibold text-dashboard truncate">
                         {user?.username || accountData?.[0]?.Account_Name || "User"}
                       </p>
-                      <p className="text-xs text-white">Account Settings</p>
+                      <p className="text-xs text-dashboard-muted">Account Settings</p>
                     </div>
                   </div>
                 </div>
@@ -312,13 +349,13 @@ const Header = memo(() => {
                   <motion.button
                     whileHover={{ backgroundColor: "hsl(var(--dash-muted))" }}
                     whileTap={{ scale: 0.98 }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-white hover:text-white transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-dashboard hover:text-dashboard transition-colors"
                     onClick={() => {
                       navigate("/settings");
                       setShowMobileMenu(false);
                     }}
                   >
-                    <div className="w-5 h-5 text-white">
+                    <div className="w-5 h-5 text-dashboard">
                       <SettingsIcon fill="currentColor" />
                     </div>
                     <span className="font-medium">Settings</span>
@@ -327,13 +364,13 @@ const Header = memo(() => {
                   <motion.button
                     whileHover={{ backgroundColor: "hsl(var(--dash-danger-hover))" }}
                     whileTap={{ scale: 0.98 }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-white hover:text-white transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-dashboard hover:text-dashboard transition-colors"
                     onClick={() => {
                       handleLogout();
                       setShowMobileMenu(false);
                     }}
                   >
-                    <div className="w-5 h-5 text-white">
+                    <div className="w-5 h-5 text-dashboard">
                       <LogoutIcon size="20" />
                     </div>
                     <span className="font-medium">Logout</span>

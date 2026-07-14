@@ -26,12 +26,12 @@ interface SkeletonCardProps {
  */
 const SkeletonCard = memo(({ variant }: SkeletonCardProps) => {
     const isDashboard = variant === "dashboard";
-    const bg = isDashboard ? "var(--dash-muted, #3C4E40)" : "#1a1a1a";
+    const bg = isDashboard ? "var(--skeleton-bg, var(--dash-muted, #3C4E40))" : "#1a1a1a";
     const iconBg = isDashboard
-        ? "rgba(255,255,255,0.08)"
+        ? "var(--skeleton-shimmer-base, rgba(255,255,255,0.08))"
         : "rgba(255,255,255,0.06)";
     const textBg = isDashboard
-        ? "rgba(255,255,255,0.12)"
+        ? "var(--skeleton-shimmer-bright, rgba(255,255,255,0.12))"
         : "rgba(255,255,255,0.10)";
     const borderColor = isDashboard
         ? "var(--dash-border, rgba(60,78,64,0.6))"

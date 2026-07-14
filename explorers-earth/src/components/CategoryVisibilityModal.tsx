@@ -142,7 +142,7 @@ export const CategoryVisibilityModal: FC<CategoryVisibilityModalProps> = ({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-[160] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          className="dashboard-theme fixed inset-0 z-[160] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

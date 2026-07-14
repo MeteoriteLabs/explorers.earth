@@ -18,6 +18,7 @@ import SwitchButton from "../../../../components/ui/SwitchButton";
 import { AddIcon } from "../../../../assets/icons/AddIcon";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import { CategoryVisibilityModal } from "../../../../components/CategoryVisibilityModal";
+import { CategoryEmptyState } from "../../../../components/CategoryEmptyState";
 import AppDetailModal from "../public/AppDetailModal";
 import AppTopPicksHero from "../public/AppTopPicksHero";
 import AppTopPicksMobileHero from "../public/AppTopPicksMobileHero";
@@ -513,20 +514,11 @@ const AppsHome = () => {
           </div>
         </div>
       ) : lists.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-20 h-20 rounded-2xl bg-violet-900/20 border border-violet-800/30 flex items-center justify-center mb-5">
-            <Smartphone size={36} className="text-violet-500/60" />
-          </div>
-          <h2 className="text-lg font-semibold text-dashboard mb-2">No app lists yet</h2>
-          <p className="text-sm text-dashboard-light max-w-sm mb-6">
-            Create your first app list to start sharing your favorite apps and tools with the world.
-          </p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-sm text-white font-medium transition-colors"
-          >
-            <Plus size={16} /> Create First List
-          </button>
+        <div className="max-w-2xl mx-auto w-full py-10">
+          <CategoryEmptyState
+            category="apps"
+            onAddClick={() => setShowCreateModal(true)}
+          />
         </div>
       ) : (
         <>

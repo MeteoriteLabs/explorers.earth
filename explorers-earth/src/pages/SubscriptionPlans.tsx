@@ -500,7 +500,7 @@ const SubscriptionPlans = ({
 
   if (loading) {
     return (
-      <div className="bg-dashboard-bg">
+      <div className="dashboard-theme bg-dashboard-bg min-h-screen">
         <EarthLoader context="subscription" />
       </div>
     );

@@ -32,8 +32,10 @@ const ProtectedRoute = () => {
   }
 
   if (loading) {
+    const savedTheme = localStorage.getItem('dashboard-theme');
+    const isDark = savedTheme === 'dark' || !savedTheme;
     return (
-      <div className="flex bg-black items-center justify-center min-h-screen">
+      <div className={`dashboard-theme ${isDark ? 'dashboard-theme-dark' : ''} bg-dashboard-bg min-h-screen flex items-center justify-center`}>
         <EarthLoader context="general" size="default" />
       </div>
     );

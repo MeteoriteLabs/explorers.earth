@@ -82,7 +82,7 @@ const EmptyPlaceholder = ({ title, message, icon }: { title: string; message: st
             {icon || <Package className="w-6 h-6 text-gray-400" />}
         </div>
         <div className="text-center">
-            <p className="text-white font-medium mb-1">{title}</p>
+            <p className="text-dashboard font-medium mb-1">{title}</p>
             <p className="text-gray-400 text-sm">{message}</p>
         </div>
     </div>
@@ -332,10 +332,10 @@ const BillingTab = () => {
                                         <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="none" className="text-gray-700" />
                                         <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="none" strokeDasharray={`${(100 - (planExpiryInfo.progressPercentage || 0)) * 1.76} 176`} className={planExpiryInfo.isExpiringSoon ? 'text-orange-500' : 'text-blue-500'} strokeLinecap="round" />
                                     </svg>
-                                    <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white">{Math.round(100 - (planExpiryInfo.progressPercentage || 0))}%</span>
+                                    <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-dashboard">{Math.round(100 - (planExpiryInfo.progressPercentage || 0))}%</span>
                                 </div>
                                 <div>
-                                    <div className={`text-2xl font-bold ${planExpiryInfo.isExpiringSoon ? 'text-orange-400' : 'text-white'}`}>
+                                    <div className={`text-2xl font-bold ${planExpiryInfo.isExpiringSoon ? 'text-orange-400' : 'text-dashboard'}`}>
                                         {planExpiryInfo.diffMonths && planExpiryInfo.diffMonths > 0 ? `${planExpiryInfo.diffMonths}mo` : `${planExpiryInfo.diffDays ?? 0}d`}
                                     </div>
                                     <div className="text-xs text-gray-400">{planExpiryInfo.endDate?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
@@ -358,10 +358,10 @@ const BillingTab = () => {
                                         <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="none" className="text-gray-700" />
                                         <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="none" strokeDasharray={`${songsQuota > 0 ? Math.max((songRequestsCount / songsQuota) * 176, 8) : 8} 176`} className={songRequestsCount >= songsQuota && songsQuota > 0 ? 'text-red-500' : songsQuota > 0 && (songRequestsCount / songsQuota) >= 0.9 ? 'text-orange-500' : 'text-cyan-500'} strokeLinecap="round" />
                                     </svg>
-                                    <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white">{songsQuota > 0 ? Math.round((songRequestsCount / songsQuota) * 100) : 0}%</span>
+                                    <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-dashboard">{songsQuota > 0 ? Math.round((songRequestsCount / songsQuota) * 100) : 0}%</span>
                                 </div>
                                 <div>
-                                    <div className={`text-2xl font-bold ${songRequestsCount >= songsQuota && songsQuota > 0 ? 'text-red-400' : 'text-white'}`}>{songRequestsCount}<span className="text-sm text-gray-400">/{songsQuota}</span></div>
+                                    <div className={`text-2xl font-bold ${songRequestsCount >= songsQuota && songsQuota > 0 ? 'text-red-400' : 'text-dashboard'}`}>{songRequestsCount}<span className="text-sm text-gray-400">/{songsQuota}</span></div>
                                     <div className="text-xs text-gray-400">requests used</div>
                                 </div>
                             </div>
@@ -383,10 +383,10 @@ const BillingTab = () => {
                                             <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="none" className="text-gray-700" />
                                             <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="none" strokeDasharray={`${aiGuideQuota > 0 ? (guideRequestsCount / aiGuideQuota) * 176 : 0} 176`} className={guideRequestsCount >= aiGuideQuota && aiGuideQuota > 0 ? 'text-red-500' : aiGuideQuota > 0 && (guideRequestsCount / aiGuideQuota) >= 0.9 ? 'text-orange-500' : 'text-emerald-500'} strokeLinecap="round" />
                                         </svg>
-                                        <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white">{aiGuideQuota > 0 ? Math.round((guideRequestsCount / aiGuideQuota) * 100) : 0}%</span>
+                                        <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-dashboard">{aiGuideQuota > 0 ? Math.round((guideRequestsCount / aiGuideQuota) * 100) : 0}%</span>
                                     </div>
                                     <div>
-                                        <div className={`text-2xl font-bold ${guideRequestsCount >= aiGuideQuota && aiGuideQuota > 0 ? 'text-red-400' : 'text-white'}`}>{guideRequestsCount}<span className="text-sm text-gray-400">/{aiGuideQuota}</span></div>
+                                        <div className={`text-2xl font-bold ${guideRequestsCount >= aiGuideQuota && aiGuideQuota > 0 ? 'text-red-400' : 'text-dashboard'}`}>{guideRequestsCount}<span className="text-sm text-gray-400">/{aiGuideQuota}</span></div>
                                         <div className="text-xs text-gray-400">guides generated</div>
                                     </div>
                                 </div>
@@ -445,11 +445,11 @@ const BillingTab = () => {
                                 <div className={`p-2 rounded-xl ${planDetails.plan_name.toLowerCase() === 'free' ? 'bg-gray-700/50 text-gray-300' : 'bg-dashboard-accent/20 text-dashboard-accent'}`}>{getPlanIcon(planDetails.plan_name)}</div>
                                 <div className="flex-1">
                                     <div className="flex items-center gap-3 mb-1">
-                                        <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-white">{planDetails.plan_name}</h3>
+                                        <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-dashboard">{planDetails.plan_name}</h3>
                                         <p className="text-xs text-gray-400 uppercase tracking-wider">{planDetails.duration}</p>
                                     </div>
                                     <div className="flex items-baseline gap-2">
-                                        <span className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">₹{formatCost(planDetails.cost)}</span>
+                                        <span className="text-2xl sm:text-3xl lg:text-4xl font-bold text-dashboard">₹{formatCost(planDetails.cost)}</span>
                                         {planDetails.plan_name.toLowerCase() !== 'free' && <span className="text-gray-400 text-sm sm:text-base lg:text-lg">/{planDetails.duration === 'monthly' ? 'mo' : 'yr'}</span>}
                                     </div>
                                 </div>
@@ -457,21 +457,21 @@ const BillingTab = () => {
                         </div>
                         <div className="mb-4 p-3 bg-dashboard-bg/50 rounded-lg">
                             <div className="grid grid-cols-2 gap-3 text-sm">
-                                <div><span className="text-gray-400">Start Date:</span><p className="text-white font-medium">{new Date(activeSubscription.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p></div>
-                                <div><span className="text-gray-400">End Date:</span><p className="text-white font-medium">{new Date(activeSubscription.end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p></div>
+                                <div><span className="text-gray-400">Start Date:</span><p className="text-dashboard font-medium">{new Date(activeSubscription.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p></div>
+                                <div><span className="text-gray-400">End Date:</span><p className="text-dashboard font-medium">{new Date(activeSubscription.end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p></div>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-2 mb-4">
                             {planDetails.songs_quota && (
                                 <div className="flex items-center gap-2 p-2.5 bg-dashboard-bg/50 rounded-lg">
                                     <div className="flex-shrink-0 w-4 h-4 bg-dashboard-accent/20 rounded flex items-center justify-center"><Check className="w-2.5 h-2.5 text-dashboard-accent" /></div>
-                                    <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-white bg-gray-800 rounded-full shadow-md border border-gray-700">{planDetails.songs_quota} Songs</span>
+                                    <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-dashboard bg-dashboard-muted border border-dashboard rounded-full shadow-md">{planDetails.songs_quota} Songs</span>
                                 </div>
                             )}
                             {planDetails.ai_guide_quota && (
                                 <div className="flex items-center gap-2 p-2.5 bg-dashboard-bg/50 rounded-lg">
                                     <div className="flex-shrink-0 w-4 h-4 bg-dashboard-accent/20 rounded flex items-center justify-center"><Check className="w-2.5 h-2.5 text-dashboard-accent" /></div>
-                                    <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-white bg-gray-800 rounded-full shadow-md border border-gray-700">{planDetails.ai_guide_quota} AI Guides</span>
+                                    <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-dashboard bg-dashboard-muted border border-dashboard rounded-full shadow-md">{planDetails.ai_guide_quota} AI Guides</span>
                                 </div>
                             )}
                         </div>
@@ -523,9 +523,9 @@ const BillingTab = () => {
         return (
             <>
                 <div className="flex items-center justify-center mb-6">
-                    <div className="flex items-center justify-center bg-white font-poppins rounded-3xl mx-auto w-fit">
-                        <button onClick={() => setBillingPeriod('monthly')} className={`px-4 py-2 text-xs font-medium transition-all duration-300 whitespace-nowrap ${billingPeriod === 'monthly' ? 'bg-gradient-to-r bg-dashboard-accent rounded-2xl text-dashboard' : 'bg-white rounded-2xl text-black'}`}>Monthly</button>
-                        <button onClick={() => setBillingPeriod('yearly')} className={`px-4 py-2 text-xs font-medium transition-all duration-300 whitespace-nowrap ${billingPeriod === 'yearly' ? 'bg-gradient-to-r bg-dashboard-accent rounded-2xl text-dashboard' : 'bg-white rounded-2xl text-black'}`}>Yearly</button>
+                    <div className="flex items-center justify-center bg-dashboard-muted border border-dashboard font-poppins rounded-3xl mx-auto w-fit p-1">
+                        <button onClick={() => setBillingPeriod('monthly')} className={`px-4 py-2 text-xs font-medium transition-all duration-300 whitespace-nowrap ${billingPeriod === 'monthly' ? 'bg-dashboard-accent rounded-2xl text-[var(--dash-accent-text)]' : 'bg-transparent rounded-2xl text-dashboard-muted hover:text-dashboard'}`}>Monthly</button>
+                        <button onClick={() => setBillingPeriod('yearly')} className={`px-4 py-2 text-xs font-medium transition-all duration-300 whitespace-nowrap ${billingPeriod === 'yearly' ? 'bg-dashboard-accent rounded-2xl text-[var(--dash-accent-text)]' : 'bg-transparent rounded-2xl text-dashboard-muted hover:text-dashboard'}`}>Yearly</button>
                     </div>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
@@ -535,21 +535,21 @@ const BillingTab = () => {
                         const isYearly = plan.duration === 'yearly';
                         const canUpgrade = hasActiveNonExpiredPlan ? isUpgrade(plan) : true;
                         return (
-                            <div key={plan.documentId} onClick={() => handleViewPlanDetails(plan)} className={`relative bg-dashboard-sidebar rounded-2xl p-4 sm:p-6 border-2 transition-all duration-300 ${canUpgrade ? 'border-gray-700 hover:border-dashboard-accent/50 cursor-pointer opacity-100' : 'border-white/30 opacity-40 grayscale cursor-pointer'}`}>
+                            <div key={plan.documentId} onClick={() => handleViewPlanDetails(plan)} className={`relative bg-dashboard-sidebar rounded-2xl p-4 sm:p-6 border-2 transition-all duration-300 ${canUpgrade ? 'border-dashboard hover:border-dashboard-accent/50 cursor-pointer opacity-100' : 'border-dashboard opacity-40 grayscale cursor-pointer'}`}>
                                 {isYearly && <div className="absolute -top-3 right-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-xs font-bold px-3 py-1 rounded-full shadow-lg border-2 border-yellow-300/50">Best Value</div>}
                                 <div className="flex items-start justify-between mb-4">
                                     <div className="flex items-center gap-3 flex-1">
-                                        <div className={`p-2 rounded-xl ${isFree ? 'bg-gray-700/50 text-gray-300' : 'bg-dashboard-accent/20 text-dashboard-accent'}`}>{getPlanIcon(plan.plan_name)}</div>
+                                        <div className={`p-2 rounded-xl ${isFree ? 'bg-dashboard-muted text-dashboard-light' : 'bg-dashboard-accent/20 text-dashboard-accent'}`}>{getPlanIcon(plan.plan_name)}</div>
                                         <div className="flex-1">
                                             <div className="flex items-center gap-3 mb-1">
-                                                <h3 className="text-lg sm:text-xl font-bold text-white">{plan.plan_name}</h3>
-                                                <p className="text-xs text-gray-400 uppercase tracking-wider">{plan.duration}</p>
+                                                <h3 className="text-lg sm:text-xl font-bold text-dashboard">{plan.plan_name}</h3>
+                                                <p className="text-xs text-dashboard-muted uppercase tracking-wider">{plan.duration}</p>
                                             </div>
                                             <div className="flex items-baseline gap-2">
-                                                <span className="text-2xl sm:text-3xl font-bold text-white">₹{formatCost(plan.cost)}</span>
-                                                {!isFree && <span className="text-gray-400 text-sm sm:text-base">/{plan.duration === 'monthly' ? 'mo' : 'yr'}</span>}
+                                                <span className="text-2xl sm:text-3xl font-bold text-dashboard">₹{formatCost(plan.cost)}</span>
+                                                {!isFree && <span className="text-dashboard-muted text-sm sm:text-base">/{plan.duration === 'monthly' ? 'mo' : 'yr'}</span>}
                                             </div>
-                                            {isYearly && <p className="text-xs text-gray-400 mt-0.5">₹{formatCost((parseInt(plan.cost) / 12).toFixed(0))} per month</p>}
+                                            {isYearly && <p className="text-xs text-dashboard-muted mt-0.5">₹{formatCost((parseInt(plan.cost) / 12).toFixed(0))} per month</p>}
                                         </div>
                                     </div>
                                 </div>
@@ -557,27 +557,27 @@ const BillingTab = () => {
                                     {plan.songs_quota && (
                                         <div className="flex items-center gap-2 p-2.5 bg-dashboard-bg/50 rounded-lg">
                                             <div className="flex-shrink-0 w-4 h-4 bg-dashboard-accent/20 rounded flex items-center justify-center"><Check className="w-2.5 h-2.5 text-dashboard-accent" /></div>
-                                            <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-white bg-gray-800 rounded-full shadow-md border border-gray-700">{plan.songs_quota} Songs</span>
+                                            <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-dashboard bg-dashboard-muted border border-dashboard rounded-full shadow-md">{plan.songs_quota} Songs</span>
                                         </div>
                                     )}
                                     {plan.ai_guide_quota && (
                                         <div className="flex items-center gap-2 p-2.5 bg-dashboard-bg/50 rounded-lg">
                                             <div className="flex-shrink-0 w-4 h-4 bg-dashboard-accent/20 rounded flex items-center justify-center"><Check className="w-2.5 h-2.5 text-dashboard-accent" /></div>
-                                            <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-white bg-gray-800 rounded-full shadow-md border border-gray-700">{plan.ai_guide_quota} AI Guides</span>
+                                            <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-dashboard bg-dashboard-muted border border-dashboard rounded-full shadow-md">{plan.ai_guide_quota} AI Guides</span>
                                         </div>
                                     )}
                                 </div>
                                 {features.length > 0 && (
                                     <div className="mb-4">
-                                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Features</h4>
+                                        <h4 className="text-xs font-semibold text-dashboard-muted uppercase tracking-wider mb-2">Features</h4>
                                         <div className="space-y-1.5">
                                             {features.slice(0, 3).map((feature, idx) => (
                                                 <div key={idx} className="flex items-start gap-2">
                                                     <div className="flex-shrink-0 w-4 h-4 mt-0.5 bg-dashboard-accent/20 rounded flex items-center justify-center"><Check className="w-2.5 h-2.5 text-dashboard-accent" /></div>
-                                                    <span className="text-gray-300 text-xs leading-relaxed">{typeof feature === 'object' ? feature.feature : feature}</span>
+                                                    <span className="text-dashboard-muted text-xs leading-relaxed">{typeof feature === 'object' ? feature.feature : feature}</span>
                                                 </div>
                                             ))}
-                                            {features.length > 3 && <div className="flex items-center gap-2 pt-1"><span className="text-gray-400 text-xs font-medium">+{features.length - 3} more features</span></div>}
+                                            {features.length > 3 && <div className="flex items-center gap-2 pt-1"><span className="text-dashboard-muted text-xs font-medium">+{features.length - 3} more features</span></div>}
                                         </div>
                                     </div>
                                 )}
@@ -618,45 +618,45 @@ const BillingTab = () => {
                             <div className="flex items-center gap-3 sm:gap-4 flex-1">
                                 <div className={`p-2 sm:p-3 rounded-xl ${selectedPlanDetails.plan_name.toLowerCase() === 'free' ? 'bg-gray-700/50 text-gray-300' : 'bg-dashboard-accent/20 text-dashboard-accent'}`}>{getPlanIcon(selectedPlanDetails.plan_name)}</div>
                                 <div>
-                                    <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white">{selectedPlanDetails.plan_name} Plan</h2>
+                                    <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-dashboard">{selectedPlanDetails.plan_name} Plan</h2>
                                     <p className="text-xs sm:text-sm text-gray-400 uppercase tracking-wider">{selectedPlanDetails.duration}</p>
                                 </div>
                             </div>
-                            <button onClick={() => { setShowPlanDetailsModal(false); setSelectedPlanDetails(null); }} className="absolute top-0 right-0 text-gray-400 hover:text-white transition-colors flex-shrink-0 z-10 p-1"><X className="w-5 h-5 sm:w-6 sm:h-6" /></button>
+                            <button onClick={() => { setShowPlanDetailsModal(false); setSelectedPlanDetails(null); }} className="absolute top-0 right-0 text-gray-400 hover:text-dashboard transition-colors flex-shrink-0 z-10 p-1"><X className="w-5 h-5 sm:w-6 sm:h-6" /></button>
                         </div>
                         <div className="bg-dashboard-bg rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
                             <div className="flex items-baseline gap-2 mb-2">
-                                <span className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white">₹{formatCost(selectedPlanDetails.cost)}</span>
+                                <span className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-dashboard">₹{formatCost(selectedPlanDetails.cost)}</span>
                                 {selectedPlanDetails.plan_name.toLowerCase() !== 'free' && <span className="text-gray-400 text-sm sm:text-base md:text-lg">/{selectedPlanDetails.duration === 'monthly' ? 'mo' : 'yr'}</span>}
                             </div>
                             {selectedPlanDetails.duration === 'yearly' && <p className="text-xs sm:text-sm text-gray-400">₹{formatCost((parseInt(selectedPlanDetails.cost) / 12).toFixed(0))} per month</p>}
                         </div>
                         <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
-                            <h3 className="text-lg sm:text-xl font-semibold text-white mb-3 sm:mb-4">Key Features</h3>
+                            <h3 className="text-lg sm:text-xl font-semibold text-dashboard mb-3 sm:mb-4">Key Features</h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 {selectedPlanDetails.songs_quota && (
                                     <div className="flex items-center gap-3 p-3 sm:p-4 bg-dashboard-bg rounded-lg">
                                         <div className="flex-shrink-0 w-5 h-5 sm:w-6 sm:h-6 bg-dashboard-accent/20 rounded flex items-center justify-center"><Check className="w-3 h-3 sm:w-4 sm:h-4 text-dashboard-accent" /></div>
-                                        <span className="text-white font-medium text-sm sm:text-base">{selectedPlanDetails.songs_quota} Songs</span>
+                                        <span className="text-dashboard font-medium text-sm sm:text-base">{selectedPlanDetails.songs_quota} Songs</span>
                                     </div>
                                 )}
                                 {selectedPlanDetails.ai_guide_quota && (
                                     <div className="flex items-center gap-3 p-3 sm:p-4 bg-dashboard-bg rounded-lg">
                                         <div className="flex-shrink-0 w-5 h-5 sm:w-6 sm:h-6 bg-dashboard-accent/20 rounded flex items-center justify-center"><Check className="w-3 h-3 sm:w-4 sm:h-4 text-dashboard-accent" /></div>
-                                        <span className="text-white font-medium text-sm sm:text-base">{selectedPlanDetails.ai_guide_quota} AI Guides</span>
+                                        <span className="text-dashboard font-medium text-sm sm:text-base">{selectedPlanDetails.ai_guide_quota} AI Guides</span>
                                     </div>
                                 )}
                                 {selectedPlanDetails.max_devices && (
                                     <div className="flex items-center gap-3 p-3 sm:p-4 bg-dashboard-bg rounded-lg">
                                         <div className="flex-shrink-0 w-5 h-5 sm:w-6 sm:h-6 bg-dashboard-accent/20 rounded flex items-center justify-center"><Check className="w-3 h-3 sm:w-4 sm:h-4 text-dashboard-accent" /></div>
-                                        <span className="text-white font-medium text-sm sm:text-base">Up to {selectedPlanDetails.max_devices} Devices</span>
+                                        <span className="text-dashboard font-medium text-sm sm:text-base">Up to {selectedPlanDetails.max_devices} Devices</span>
                                     </div>
                                 )}
                             </div>
                         </div>
                         {parseFeatures(selectedPlanDetails.features).length > 0 && (
                             <div className="mb-4 sm:mb-6">
-                                <h3 className="text-lg sm:text-xl font-semibold text-white mb-3 sm:mb-4">All Features</h3>
+                                <h3 className="text-lg sm:text-xl font-semibold text-dashboard mb-3 sm:mb-4">All Features</h3>
                                 <div className="bg-dashboard-bg rounded-lg p-3 sm:p-4">
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 sm:gap-3">
                                         {parseFeatures(selectedPlanDetails.features).map((feature, idx) => (
