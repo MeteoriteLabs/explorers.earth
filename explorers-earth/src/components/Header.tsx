@@ -14,6 +14,8 @@ import LogoutIcon from "../assets/icons/LogoutIcon";
 import SunIcon from "../assets/icons/SunIcon";
 import MoonIcon from "../assets/icons/MoonIcon";
 import SwitchButton from "./ui/SwitchButton";
+import Button from "./ui/Button";
+import MenuIcon from "../assets/icons/MenuIcon";
 import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 import { motion, AnimatePresence } from "framer-motion";
 import { isManualAuthEnabled } from "../config/featureFlags";
@@ -63,7 +65,7 @@ const Header = memo(() => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const mobileMenuRef = useRef<HTMLDivElement>(null);
-  const { theme, toggleTheme } = useDashboardTheme();
+  const { theme, toggleTheme, isSidebarOpen, setIsSidebarOpen } = useDashboardTheme();
   const location = useLocation();
 
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
@@ -136,8 +138,17 @@ const Header = memo(() => {
   );
 
   return (
-    <div className="dashboard-header bg-dashboard-sidebar text-dashboard md:px-6 px-4 h-[64px] md:h-[54px] flex items-center rounded-2xl">
+    <div className="dashboard-header bg-dashboard-sidebar text-dashboard md:px-6 px-4 h-[64px] md:h-[46px] flex items-center rounded-2xl">
       <div className="flex flex-row rounded-xl items-center justify-between md:justify-center md:p-[4px] w-full relative">
+        {/* Toggle Button - On left of header on desktop */}
+        <div className="hidden md:flex absolute left-1 md:left-2 top-1/2 -translate-y-1/2 items-center justify-center">
+          <Button
+            startIcon={<MenuIcon stroke="var(--dash-accent)" />}
+            onClickHandler={() => setIsSidebarOpen(!isSidebarOpen)}
+            variant="icon"
+            size="none"
+          />
+        </div>
         <div className="logo-container">
           {(isRecommendationPage && currentCategory) ? (
             <div className="flex items-center gap-3">
@@ -251,7 +262,7 @@ const Header = memo(() => {
           )}
         </div>
 
-        <div className="hidden md:flex flex-row items-center gap-4 absolute right-4 md:right-6 top-1/2 -translate-y-1/2">
+        <div className="hidden md:flex flex-row items-center gap-4 absolute right-1 md:right-2 top-1/2 -translate-y-1/2">
           {isAuthenticated ? (
             <div
               className="flex items-center gap-2 cursor-pointer"
@@ -290,7 +301,7 @@ const Header = memo(() => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute right-4 top-[64px] md:top-[54px] w-64 bg-dashboard-sidebar rounded-xl shadow-dashboard-elevated border border-dashboard overflow-hidden z-[100]"
+            className="absolute right-1 md:right-2 top-[64px] md:top-[46px] w-64 bg-dashboard-sidebar rounded-xl shadow-dashboard-elevated border border-dashboard overflow-hidden z-[100]"
           >
             {isAuthenticated ? (
               <>

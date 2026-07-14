@@ -860,7 +860,7 @@ body.hide-dashboard-header .dashboard-content > div.overflow-auto {
 
 @media (min-width: 768px) {
   .sticky-top-offset {
-    top: 54px;
+    top: 46px;
   }
 }
 
@@ -871,13 +871,13 @@ body.hide-dashboard-header .sticky-top-offset {
 /* Header sidebar-aware positioning */
 @media (min-width: 768px) {
   .dashboard-header {
-    left: calc(256px + 0.5rem) !important;
-    width: calc(100% - 256px - 1rem) !important;
+    left: calc(256px + 1rem) !important;
+    width: calc(100% - 256px - 2rem) !important;
   }
 
   body[data-sidebar-open="false"] .dashboard-header {
-    left: calc(64px + 0.5rem) !important;
-    width: calc(100% - 64px - 1rem) !important;
+    left: calc(64px + 1rem) !important;
+    width: calc(100% - 64px - 2rem) !important;
   }
 }
 
@@ -1446,7 +1446,7 @@ input {
   }
 
   /* Keep mobile menu icon on the right */
-  .bg-dashboard-sidebar>div.flex.flex-row>div:nth-child(2) {
+  .bg-dashboard-sidebar>div.flex.flex-row>div.md\:hidden {
     position: absolute;
     right: 0.5rem;
   }

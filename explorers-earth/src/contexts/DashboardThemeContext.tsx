@@ -5,6 +5,8 @@ type ThemeMode = 'light' | 'dark';
 interface DashboardThemeContextType {
   theme: ThemeMode;
   toggleTheme: () => void;
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: (open: boolean) => void;
 }
 
 export const DashboardThemeContext = createContext<DashboardThemeContextType | undefined>(undefined);
@@ -14,6 +16,7 @@ interface DashboardThemeProviderProps {
 }
 
 export const DashboardThemeProvider = ({ children }: DashboardThemeProviderProps) => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [theme, setTheme] = useState<ThemeMode>(() => {
     // Check localStorage first
     const saved = localStorage.getItem('dashboard-theme') as ThemeMode | null;
@@ -51,7 +54,7 @@ export const DashboardThemeProvider = ({ children }: DashboardThemeProviderProps
   };
 
   return (
-    <DashboardThemeContext.Provider value={{ theme, toggleTheme }}>
+    <DashboardThemeContext.Provider value={{ theme, toggleTheme, isSidebarOpen, setIsSidebarOpen }}>
       {children}
     </DashboardThemeContext.Provider>
   );

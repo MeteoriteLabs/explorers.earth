@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import React, { useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import MenuIcon from "../assets/icons/MenuIcon";
 import Home from "../assets/icons/Home";
 import SettingsIcon from "../assets/icons/SettingsIcon";
 import DirectionBoard from "../assets/icons/DirectionBoard";
@@ -9,7 +9,6 @@ import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 import Profile from "../assets/icons/Profile";
 import Analytics from "../assets/icons/Analytics";
 import MusicNote from "../assets/icons/MusicNote";
-import Button from "./ui/Button";
 const MovieIcon = ({ fill = "currentColor" }: { fill?: string }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -95,62 +94,13 @@ const PeopleIcon = ({ fill = "currentColor" }: { fill?: string }) => (
   </svg>
 );
 
-import SunIcon from "../assets/icons/SunIcon";
-import MoonIcon from "../assets/icons/MoonIcon";
-import SwitchButton from "./ui/SwitchButton";
-import useAuthStore from "../store/store";
-import { gql, useQuery } from "@apollo/client";
-import LogoutIcon from "../assets/icons/LogoutIcon";
-import { toast } from "sonner";
+import { useDashboardTheme } from "../contexts/DashboardThemeContext";
 import { Tooltip } from "react-tooltip";
 import { motion } from "framer-motion";
-import { useDashboardTheme } from "../contexts/DashboardThemeContext";
-import { IMAGE_CONFIG } from "../config";
-
-const accountQuery = gql`
-  query account($documentId: ID!) {
-    usersPermissionsUser(documentId: $documentId) {
-      accounts {
-        Account_Name
-        profile_picture {
-          url
-        }
-        localtunes_integrated
-      }
-      email
-    }
-  }
-`;
 
 const Sidebar = () => {
   const { t } = useTranslation();
-  const [isOpen, setIsOpen] = useState(true);
-  const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
-  const [showMenu, setShowMenu] = useState<boolean>(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const { theme, toggleTheme } = useDashboardTheme();
-
-  const { data, loading } = useQuery(accountQuery, {
-    variables: {
-      documentId: user?.documentId,
-    },
-    skip: !user?.documentId,
-  });
-
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowMenu(prev => {
-          if (prev) return false;
-          return prev;
-        });
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const { theme, isSidebarOpen: isOpen } = useDashboardTheme();
 
   // Set CSS variable for sidebar width to help with button positioning
   // Use useLayoutEffect for immediate synchronous execution before paint
@@ -165,86 +115,30 @@ const Sidebar = () => {
     };
   }, [isOpen]);
 
-  const handleLogout = async () => {
-    logout();
-
-    // Clear all explorers storage
-    localStorage.removeItem("auth-storage");
-    localStorage.removeItem("qrtoken");
-
-    // Clear Local Tunes session
-    localStorage.removeItem("localTunes_session");
-
-    // Clear session storage (user credentials)
-    sessionStorage.removeItem("explorers_user_credentials");
-
-    // Clear all other possible storage
-    localStorage.clear();
-    sessionStorage.clear();
-
-    // Clear all cookies
-    document.cookie.split(";").forEach(function (c) {
-      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-    });
-
-    navigate("/login");
-    toast(t("toast.success.loggedOutSuccessfully"));
-  };
-
-  // Get account data with fallback for loading state
-  const accountData = data?.usersPermissionsUser?.accounts?.[0];
-  const profilePicture = accountData?.profile_picture?.url || IMAGE_CONFIG.defaultImages.profile;
-  const accountName = accountData?.Account_Name || (loading ? t("sidebar.loading") : "");
-  const email = data?.usersPermissionsUser?.email || "";
-
   return (
     <div
       className={`dashboard-theme ${isOpen ? "w-64 min-w-[256px]" : "w-16 min-w-[64px]"
         } bg-dashboard-sidebar font-poppins text-dashboard transition-all duration-300 flex flex-col flex-shrink-0 fixed left-2 top-2 bottom-2 z-40 rounded-2xl`}
     >
       {/* Fixed Header - Logo and Toggle Button */}
-      <div className={`flex w-full py-4 flex-shrink-0 min-h-[72px] ${isOpen ? "items-center justify-start pl-[20px] pr-3 gap-3" : "flex-col items-center justify-center gap-2 px-4"}`}>
+      <div className={`flex w-full py-2.5 flex-shrink-0 min-h-[56px] ${isOpen ? "items-center justify-start pl-[20px] pr-3 gap-3" : "flex-col items-center justify-center gap-2 px-4"}`}>
         {isOpen ? (
-          <>
-            {/* SVG Text - explorers.earth */}
-            <div className="flex-shrink-0 flex-1 min-w-0">
-              <img
-                src="/logo.svg"
-                alt="explorers.earth"
-                className="object-contain max-h-[40px] w-auto"
-                style={{
-                  filter: theme === 'dark' ? "brightness(0) invert(1)" : "brightness(0)",
-                }}
-              />
-            </div>
-            {/* Toggle Button - On immediate right of logo */}
-            <div className="flex-shrink-0 w-[24px] h-[24px] flex items-center justify-center">
-              <Button
-                startIcon={<MenuIcon stroke="var(--dash-accent)" />}
-                onClickHandler={() => setIsOpen(!isOpen)}
-                variant="icon"
-                size="none"
-              />
-            </div>
-          </>
-        ) : (
-          <>
-            {/* Toggle Button at top */}
-            <div className="flex-shrink-0 w-[24px] h-[24px] flex items-center justify-center">
-              <Button
-                startIcon={<MenuIcon stroke="var(--dash-accent)" />}
-                onClickHandler={() => setIsOpen(!isOpen)}
-                variant="icon"
-                size="none"
-              />
-            </div>
-          </>
-        )}
+          <div className="flex-shrink-0 flex-1 min-w-0">
+            <img
+              src="/logo.svg"
+              alt="explorers.earth"
+              className="object-contain max-h-[40px] w-auto"
+              style={{
+                filter: theme === 'dark' ? "brightness(0) invert(1)" : "brightness(0)",
+              }}
+            />
+          </div>
+        ) : null}
       </div>
 
       {/* Sidebar Menu */}
 
-      <nav className="flex flex-col gap-2 mt-4 flex-1 overflow-y-auto scrollbar-hide w-full px-2">
+      <nav className="flex flex-col gap-2 mt-1.5 flex-1 overflow-y-auto scrollbar-hide w-full px-2">
         <SidebarItem
           isOpen={isOpen}
           Icon={Home}
@@ -383,7 +277,7 @@ const SidebarItem = ({
           <Icon fill="currentColor" />
         </motion.div>
         {isOpen && <span className="text-sm font-medium">{title}</span>}
-        {!isOpen && (
+        {!isOpen && createPortal(
           <Tooltip
             style={{
               fontSize: "12px",
@@ -396,7 +290,8 @@ const SidebarItem = ({
             className="!bg-gray-800 !text-white !border !border-gray-600 !rounded-lg !px-2 !py-1"
           >
             {title}
-          </Tooltip>
+          </Tooltip>,
+          document.body
         )}
       </a>
     );
@@ -429,7 +324,7 @@ const SidebarItem = ({
           {title}
         </span>
       )}
-      {!isOpen && (
+      {!isOpen && createPortal(
         <Tooltip
           style={{
             fontSize: "12px",
@@ -442,7 +337,8 @@ const SidebarItem = ({
           className="!bg-gray-800 !text-white !border !border-gray-600 !rounded-lg !px-2 !py-1"
         >
           {title}
-        </Tooltip>
+        </Tooltip>,
+        document.body
       )}
     </Link>
   );
