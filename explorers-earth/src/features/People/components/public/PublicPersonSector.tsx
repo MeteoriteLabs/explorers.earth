@@ -37,7 +37,7 @@ const PublicPersonSector = () => {
 
   const [selectedPerson, setSelectedPerson] = useState<RecommendedPerson | null>(null);
 
-  const { data: userLookup } = useQuery(ACCOUNT_BY_USERNAME, {
+  const { data: userLookup, loading: userLoading } = useQuery(ACCOUNT_BY_USERNAME, {
     variables: { username },
     skip: !username,
   });
@@ -45,11 +45,13 @@ const PublicPersonSector = () => {
   const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
   const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
 
-  const { data, loading, error } = useQuery<{ personLists: PersonList[] }>(PUBLIC_PEOPLE_DATA, {
+  const { data, loading: peopleLoading, error } = useQuery<{ personLists: PersonList[] }>(PUBLIC_PEOPLE_DATA, {
     variables: { accountDocumentId },
     skip: !accountDocumentId,
     fetchPolicy: "cache-and-network",
   });
+
+  const loading = userLoading || peopleLoading;
 
   useEffect(() => {
     if (!loading) {

@@ -29,7 +29,7 @@ const PublicBookSubject = () => {
   const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
   const subjectName = slugToSubjectName(subjectSlug ?? "");
 
-  const { data: userLookup } = useQuery(ACCOUNT_BY_USERNAME, {
+  const { data: userLookup, loading: userLoading } = useQuery(ACCOUNT_BY_USERNAME, {
     variables: { username },
     skip: !username,
   });
@@ -41,11 +41,13 @@ const PublicBookSubject = () => {
     book: null,
   });
 
-  const { data, loading } = useQuery(BOOKS_BY_SUBJECT, {
+  const { data, loading: booksLoading } = useQuery(BOOKS_BY_SUBJECT, {
     variables: { accountDocumentId },
     skip: !accountDocumentId,
     fetchPolicy: "cache-and-network",
   });
+
+  const loading = userLoading || booksLoading;
 
   useEffect(() => {
     if (!loading) {

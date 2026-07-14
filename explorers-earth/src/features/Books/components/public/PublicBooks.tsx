@@ -35,7 +35,7 @@ const PublicBooks = () => {
   const { isDesktop } = useDeviceDetection();
   const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
 
-  const { data: userLookup } = useQuery(ACCOUNT_BY_USERNAME, {
+  const { data: userLookup, loading: userLoading } = useQuery(ACCOUNT_BY_USERNAME, {
     variables: { username },
     skip: !username,
   });
@@ -47,11 +47,13 @@ const PublicBooks = () => {
     book: null,
   });
 
-  const { data, loading } = useQuery(PUBLIC_BOOK_DATA, {
+  const { data, loading: booksLoading } = useQuery(PUBLIC_BOOK_DATA, {
     variables: { accountDocumentId },
     skip: !accountDocumentId,
     fetchPolicy: "cache-and-network",
   });
+
+  const loading = userLoading || booksLoading;
 
   useEffect(() => {
     if (!loading) {
