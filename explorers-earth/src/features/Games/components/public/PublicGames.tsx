@@ -4,7 +4,6 @@ import { useQuery, gql } from "@apollo/client";
 import { Gamepad2, Share2 } from "lucide-react";
 import { PUBLIC_GAME_DATA } from "../../api/query";
 import { deduplicateGames } from "../../utils/gameHelpers";
-import { toast } from "sonner";
 import type { RecommendedGame, GameList } from "../../types";
 import GameCarouselRow from "./GameCarouselRow";
 import TopGamesHero from "./TopGamesHero";

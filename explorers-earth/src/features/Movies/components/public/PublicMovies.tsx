@@ -4,7 +4,6 @@ import { useQuery } from "@apollo/client";
 import { deduplicateMovies } from "../../utils/movieHelpers";
 import { Film, Share2 } from "lucide-react";
 import { PUBLIC_MOVIE_DATA } from "../../api/query";
-import { toast } from "sonner";
 import type { RecommendedMovie, MovieList } from "../../types";
 import MovieCarouselRow from "./MovieCarouselRow";
 import TopPicksHero from "./TopPicksHero";

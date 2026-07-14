@@ -24,7 +24,7 @@ import SEO from "../../../components/SEO";
 import { createCanonicalUrl, getBaseUrl } from "../../../utils/getCurrentDomain";
 import { toUrlSlug } from "../../../utils/formatAddress";
 import { createLocationGEOData } from "../../../utils/geoHelpers";
-import { Share2, Copy } from "lucide-react";
+import { Share2 } from "lucide-react";
 import { toast } from "sonner";
 
 const PublicGuideDetailPage = memo(() => {

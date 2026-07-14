@@ -566,7 +566,9 @@ const ProfileRecommendationsTab = ({ accountData, username }: ProfileRecommendat
               if (details?.thumbnail) {
                 coverImg = details.thumbnail;
               }
-            } catch (e) {}
+            } catch {
+              // Ignore JSON parse error
+            }
           }
           const previews = (list.recommended_places || [])
             .map((place: any) => place.media_details?.thumbnail?.url || place.Media?.[0]?.url || place.Place_Details?.Photos?.[0] || "")
@@ -712,7 +714,9 @@ const ProfileRecommendationsTab = ({ accountData, username }: ProfileRecommendat
                 try {
                   const parsed = typeof prod.images === "string" ? JSON.parse(prod.images) : prod.images;
                   firstImg = Array.isArray(parsed) ? parsed[0] : parsed;
-                } catch (e) {}
+                } catch {
+                  // Ignore JSON parse error
+                }
               }
               return firstImg || prod.logo_url ? resolveCoverUrl(firstImg || prod.logo_url, "product") : "";
             })

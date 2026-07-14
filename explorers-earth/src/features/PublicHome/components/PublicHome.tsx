@@ -31,7 +31,7 @@ import {
   createUtmParams,
 } from "../../../utils/urlHelpers";
 import Location from "../../../assets/icons/Location";
-import { Share2, Copy, ArrowLeft, Users, ShoppingBag } from "lucide-react";
+import { Share2, ArrowLeft, Users, ShoppingBag } from "lucide-react";
 import { buildImageUrl, deduplicatePeople } from "../../People/utils/personHelpers";
 import ProductDetailModal from "../../Products/components/public/ProductDetailModal";
 import PersonDetailModal from "../../People/components/public/PersonDetailModal";

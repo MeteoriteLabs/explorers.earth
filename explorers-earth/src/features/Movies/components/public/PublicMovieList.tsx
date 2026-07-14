@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link, useOutletContext } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { Share2, ArrowLeft } from "lucide-react";
-import { toast } from "sonner";
 import { MOVIE_LIST_BY_SLUG } from "../../api/query";
 import type { RecommendedMovie } from "../../types";
 import { deduplicateMovies } from "../../utils/movieHelpers";

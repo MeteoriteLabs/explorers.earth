@@ -32,10 +32,10 @@ const PublicGamesList = () => {
     : null;
 
   useEffect(() => {
-    if (!loading && list) {
+    if (!loading) {
       outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading, list, outletContext]);
+  }, [loading, outletContext]);
 
   const handleShare = async () => {
     const url = window.location.href;
