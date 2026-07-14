@@ -20,7 +20,7 @@ const navItems = [
   {
     id: "recommendations",
     icon: Heart,
-    text: "Recommendation",
+    text: "Places",
     path: "/hub",
   },
   {

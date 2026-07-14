@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import NavButton from "./ui/NavButton";
 import DirectionBoard from "../assets/icons/DirectionBoard";
 import Profile from "../assets/icons/Profile";
@@ -7,7 +7,10 @@ import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 import { Film, BookOpen, Gamepad2, Smartphone, ShoppingBag, Users } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@apollo/client";
-import { getPublicAccountBasicQuery } from "../features/PublicHome/api/query";
+import {
+  getPublicAccountBasicQuery,
+  getPublicCategoryListCountsQuery,
+} from "../features/PublicHome/api/query";
 
 const PublicNav = memo(() => {
   const navigate = useNavigate();
@@ -27,6 +30,15 @@ const PublicNav = memo(() => {
   });
 
   const accountData = data?.accounts[0];
+
+  // Second query: fetch published list counts per category (for smart auto-fill ranking).
+  // Only runs after the account document ID is available from the first query.
+  const { data: listCountsData } = useQuery(getPublicCategoryListCountsQuery, {
+    variables: {
+      accountDocumentId: accountData?.documentId,
+    },
+    skip: !accountData?.documentId,
+  });
 
   // Helper function to normalize paths by removing trailing slashes
   const normalizePath = (path: string | undefined) => {
@@ -55,7 +67,7 @@ const PublicNav = memo(() => {
 
   // Tab visibility logic based on Account collection fields
   const showRecommendationsTab = accountData?.public_recommendations === "Yes" || accountData?.public_recommendations === "No" ? accountData?.public_recommendations === "Yes" : true; // Default to show if not set
-  const showProfileTab = accountData?.public_profile === "Yes" || accountData?.public_profile === "No" ? accountData?.public_profile === "Yes" : true; // Default to show if not set
+  const showProfileTab = true; // Always show public profile tab by default
   const showMusicTab = accountData?.public_music === "Yes" || accountData?.public_music === "No" ? accountData?.public_music === "Yes" : false; // Default to hide if not set
   const showGuidesTab = accountData?.public_guides === "Yes"; // Only show when explicitly "Yes"
   const showMoviesTab = accountData?.public_movie === "Yes"; // Only show when explicitly "Yes"
@@ -107,6 +119,24 @@ const PublicNav = memo(() => {
     return normalizedPath.includes('/guides');
   };
 
+  // Map each tab ID to its published list count for ranking.
+  // MUST be before any early return to comply with React Rules of Hooks.
+  const categoryListCountMap: Record<string, number> = useMemo(() => ({
+    public_recommendations: listCountsData?.recommendationLists?.length ?? 0,
+    public_movie:           listCountsData?.movieLists?.length ?? 0,
+    public_books:           listCountsData?.bookLists?.length ?? 0,
+    public_games:           listCountsData?.gameLists?.length ?? 0,
+    public_apps:            listCountsData?.appLists?.length ?? 0,
+    public_products:        listCountsData?.productLists?.length ?? 0,
+    public_people:          listCountsData?.personLists?.length ?? 0,
+    public_guides:          listCountsData?.guides?.length ?? 0,
+    // Music is from LocalTunes — count is not available via GraphQL here;
+    // treat it as 0 so it fills after content-heavy tabs.
+    public_music:           0,
+    // Profile has no "lists" — it's always guaranteed a slot via default pin.
+    public_profile:         0,
+  }), [listCountsData]);
+
   // Don't render tabs until account data is loaded to prevent flash of default tabs
   if (loading || !accountData) {
     return (
@@ -123,91 +153,134 @@ const PublicNav = memo(() => {
     // Only add recommendations tab if visibility is enabled
     ...(showRecommendationsTab ? [{
       id: 'public_recommendations',
-      icon: <DirectionBoard fill={isPlacesPath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
-      text: "Recommendations",
+      icon: isPlacesPath(location.pathname)
+        ? <DirectionBoard fill="white" />
+        : <DirectionBoard outline strokeColor="rgba(255,255,255,0.5)" />,
+      text: "Places",
       path: `/${username}/places`,
     }] : []),
     // Only add guides tab if visibility is enabled
     ...(showGuidesTab ? [{
       id: 'public_guides',
-      icon: <TravelGuideIcon fill={isGuidesPath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
+      icon: isGuidesPath(location.pathname)
+        ? <TravelGuideIcon fill="white" />
+        : <TravelGuideIcon outline strokeColor="rgba(255,255,255,0.5)" />,
       text: "Guides",
       path: `/${username}/guides`,
     }] : []),
     // Only add profile tab if visibility is enabled
     ...(showProfileTab ? [{
       id: 'public_profile',
-      icon: <Profile fill={isPathMatch(location.pathname, `/${username}`) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
+      icon: isPathMatch(location.pathname, `/${username}`)
+        ? <Profile fill="white" />
+        : <Profile outline strokeColor="rgba(255,255,255,0.5)" />,
       text: "Profile",
       path: `/${username}`,
     }] : []),
     // Only add movies tab if visibility is enabled
     ...(showMoviesTab ? [{
       id: 'public_movie',
-      icon: <Film size={18} color={isMoviesPath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
+      icon: isMoviesPath(location.pathname)
+        ? <Film size={18} color="white" strokeWidth={2.5} />
+        : <Film size={18} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />,
       text: "Movies",
       path: `/${username}/movies`,
     }] : []),
     // Only add music tab if visibility is enabled
     ...(showMusicTab ? [{
       id: 'public_music',
-      icon: <MusicNote fill={isMusicPath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
+      icon: isMusicPath(location.pathname)
+        ? <MusicNote fill="white" />
+        : <MusicNote outline strokeColor="rgba(255,255,255,0.5)" />,
       text: "Music",
       path: `/${username}/music`,
     }] : []),
     // Only add books tab if visibility is enabled
     ...(showBooksTab ? [{
       id: 'public_books',
-      icon: <BookOpen size={18} color={isBooksPath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
+      icon: isBooksPath(location.pathname)
+        ? <BookOpen size={18} color="white" strokeWidth={2.5} />
+        : <BookOpen size={18} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />,
       text: "Books",
       path: `/${username}/books`,
     }] : []),
     // Only add games tab if visibility is enabled
     ...(showGamesTab ? [{
       id: 'public_games',
-      icon: <Gamepad2 size={18} color={isGamesPath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
+      icon: isGamesPath(location.pathname)
+        ? <Gamepad2 size={18} color="white" strokeWidth={2.5} />
+        : <Gamepad2 size={18} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />,
       text: "Games",
       path: `/${username}/games`,
     }] : []),
     // Only add apps tab if visibility is enabled
     ...(showAppsTab ? [{
       id: 'public_apps',
-      icon: <Smartphone size={18} color={isAppsPath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
+      icon: isAppsPath(location.pathname)
+        ? <Smartphone size={18} color="white" strokeWidth={2.5} />
+        : <Smartphone size={18} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />,
       text: "Apps",
       path: `/${username}/apps`,
     }] : []),
     // Only add products tab if visibility is enabled
     ...(showProductsTab ? [{
       id: 'public_products',
-      icon: <ShoppingBag size={18} color={isProductsPath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
+      icon: isProductsPath(location.pathname)
+        ? <ShoppingBag size={18} color="white" strokeWidth={2.5} />
+        : <ShoppingBag size={18} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />,
       text: "Products",
       path: `/${username}/products`,
     }] : []),
     // Only add people tab if visibility is enabled
     ...(showPeopleTab ? [{
       id: 'public_people',
-      icon: <Users size={18} color={isPeoplePath(location.pathname) ? "hsl(var(--blue-cta))" : "#F2F2F2"} />,
+      icon: isPeoplePath(location.pathname)
+        ? <Users size={18} color="white" strokeWidth={2.5} />
+        : <Users size={18} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />,
       text: "People",
       path: `/${username}/people`,
     }] : []),
   ];
 
-  // Filter based on user's pinned tabs preference if defined, otherwise show first 5 enabled ones
-  const pinnedTabs = accountData?.pinned_nav_tabs;
-  let finalNavItems = navItems;
+  // ─── Footer Nav Logic ──────────────────────────────────────────────────
+  const MAX_NAV_SLOTS = 5;
+  const autoPinning = accountData?.auto_pinning === null || accountData?.auto_pinning === undefined ? true : accountData.auto_pinning;
 
-  if (pinnedTabs && Array.isArray(pinnedTabs) && pinnedTabs.length > 0) {
-    // Keep only the tabs that are pinned, respecting their order or just filtering existing array
-    finalNavItems = navItems.filter(item => pinnedTabs.includes(item.id));
+  const pinnedTabs: string[] = Array.isArray(accountData?.pinned_nav_tabs)
+    ? accountData.pinned_nav_tabs.includes('public_profile')
+      ? accountData.pinned_nav_tabs
+      : ['public_profile', ...accountData.pinned_nav_tabs]
+    : ['public_profile'];
+
+  let finalNavItems: typeof navItems = [];
+
+  if (autoPinning) {
+    // 1. Auto Pinning Enabled:
+    // Display profile tab first, then fill remaining slots with published categories ranked by list count (descending).
+    const profileTab = navItems.find(item => item.id === 'public_profile');
+    const otherTabs = navItems
+      .filter(item => item.id !== 'public_profile')
+      .sort((a, b) => (categoryListCountMap[b.id] ?? 0) - (categoryListCountMap[a.id] ?? 0));
+    
+    finalNavItems = [
+      ...(profileTab ? [profileTab] : []),
+      ...otherTabs
+    ].slice(0, MAX_NAV_SLOTS);
+  } else {
+    // 2. Auto Pinning Disabled (Manual mode):
+    // Strictly show only the categories manually pinned by the user, capped at MAX_NAV_SLOTS.
+    finalNavItems = pinnedTabs
+      .map(id => navItems.find(item => item.id === id))
+      .filter(Boolean) as typeof navItems;
+    
+    finalNavItems = finalNavItems.slice(0, MAX_NAV_SLOTS);
   }
-  
-  // Enforce Max 5 limit
-  finalNavItems = finalNavItems.slice(0, 5);
+  // ───────────────────────────────────────────────────────────────────────
 
 
 
   return (
-    <div className="fixed bottom-0 md:bottom-2 md:rounded-lg z-50 w-full md:w-[33%]  md:translate-x-[102%]  bg-[#2a2a2a] text-white flex md:flex-row md:justify-center md:items-center justify-center p-1  shadow-md">
+    <div className="fixed bottom-0 md:bottom-2 md:rounded-lg z-50 w-full md:w-[33%]  md:translate-x-[102%]  bg-[#2a2a2a] text-white flex md:flex-row md:justify-center md:items-center justify-center py-0.5 px-1  shadow-md">
       <div className="flex mx-[1.5rem] md:border-0 flex-row justify-around w-full">
         {finalNavItems.map((item, index) => {
           // Check if current path matches the nav item path

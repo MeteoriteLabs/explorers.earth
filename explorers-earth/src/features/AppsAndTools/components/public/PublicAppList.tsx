@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useState, useCallback, useEffect } from "react";
+import { useParams, useNavigate, Link, useOutletContext } from "react-router-dom";
 import { useQuery, gql } from "@apollo/client";
 import { Smartphone, Share2, ArrowLeft } from "lucide-react";
 import { APP_LIST_BY_SLUG } from "../../api/query";
@@ -26,6 +26,7 @@ const ACCOUNT_BY_USERNAME = gql`
 const PublicAppList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
   const navigate = useNavigate();
+  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
 
   const [selectedApp, setSelectedApp] = useState<RecommendedApp | null>(null);
 
@@ -43,6 +44,12 @@ const PublicAppList = () => {
   const list = data?.appLists?.[0];
   const apps = deduplicateApps<RecommendedApp>(list?.recommended_apps ?? []);
   const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
+
+  useEffect(() => {
+    if (!loading) {
+      outletContext?.setIsPageLoaded?.(true);
+    }
+  }, [loading, outletContext]);
 
   const handleAppClick = useCallback((app: RecommendedApp) => {
     setSelectedApp(app);
@@ -102,23 +109,6 @@ const PublicAppList = () => {
                 aria-label="Share"
               >
                 <Share2 size={16} />
-              </button>
-              <button
-                onClick={async () => {
-                  const shareUrl = window.location.href;
-                  try {
-                    await navigator.clipboard.writeText(shareUrl);
-                    toast.success("Link copied!");
-                  } catch (error) {
-                    console.error("Failed to copy text:", error);
-                  }
-                }}
-                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
-                aria-label="Copy Link"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
               </button>
             </div>
           </div>

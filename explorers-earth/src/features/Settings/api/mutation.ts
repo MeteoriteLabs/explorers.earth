@@ -69,6 +69,7 @@ export const accountQuery = gql`
       public_products
       public_people
       pinned_nav_tabs
+      auto_pinning
     }
   }
 `;
@@ -90,6 +91,7 @@ export const updateAccountMutation = gql`
       public_products
       public_people
       pinned_nav_tabs
+      auto_pinning
     }
   }
 `;
@@ -109,6 +111,7 @@ export const updateTabVisibilityMutation = gql`
       public_products
       public_people
       pinned_nav_tabs
+      auto_pinning
     }
   }
 `;

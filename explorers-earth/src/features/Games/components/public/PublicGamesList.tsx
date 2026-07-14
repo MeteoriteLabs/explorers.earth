@@ -1,7 +1,8 @@
-import { useState, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useCallback, useEffect } from "react";
+import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { useQuery } from "@apollo/client";
-import { Gamepad2, ArrowLeft, Star } from "lucide-react";
+import { Gamepad2, ArrowLeft, Star, Share2 } from "lucide-react";
+import { toast } from "sonner";
 import { GAME_LIST_BY_SLUG } from "../../api/query";
 import { deduplicateGames, buildCoverUrl } from "../../utils/gameHelpers";
 import type { RecommendedGame, GameList } from "../../types";
@@ -13,6 +14,7 @@ import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 const PublicGamesList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
   const navigate = useNavigate();
+  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
 
   const [modalState, setModalState] = useState<{ open: boolean; game: RecommendedGame | null }>({
     open: false,
@@ -28,6 +30,26 @@ const PublicGamesList = () => {
   const list: GameList | null = rawList
     ? { ...rawList, recommended_games: deduplicateGames(rawList.recommended_games) }
     : null;
+
+  useEffect(() => {
+    if (!loading) {
+      outletContext?.setIsPageLoaded?.(true);
+    }
+  }, [loading, outletContext]);
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      try { await navigator.share({ title: list?.List_Name || "Game List", url }); } catch { /* ignore */ }
+    } else {
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success("Link copied!");
+      } catch (error) {
+        console.error("Failed to copy text:", error);
+      }
+    }
+  };
 
   const handleGameClick = useCallback((game: RecommendedGame) => {
     setModalState({ open: true, game });
@@ -76,17 +98,38 @@ const PublicGamesList = () => {
         siteName="explorers"
       />
       <div className="min-h-screen bg-[#0d1117] pb-24">
+        {/* Fixed Header */}
+        <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
+          <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
+            <span
+              className="text-white font-bold text-2xl cursor-pointer"
+              onClick={() => navigate("/")}
+            >
+              explorers.earth
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={handleShare}
+                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center cursor-pointer"
+                aria-label="Share"
+              >
+                <Share2 size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Header Banner */}
-        <div className="relative h-64 md:h-80 w-full overflow-hidden bg-white/5">
+        <div className="relative h-40 md:h-52 w-full overflow-hidden bg-white/5 mt-14">
           {coverUrl && (
             <img src={coverUrl} alt={list.List_Name} className="absolute inset-0 w-full h-full object-cover blur-sm opacity-50" />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-[#0d1117] via-[#0d1117]/80 to-transparent" />
           
-          <div className="absolute inset-0 flex flex-col justify-end max-w-6xl mx-auto px-4 md:px-8 pb-8">
+          <div className="absolute inset-0 flex flex-col justify-end max-w-6xl mx-auto px-4 md:px-8 pb-5">
             <button
               onClick={() => navigate(`/${username}/games`)}
-              className="flex items-center gap-2 text-white/50 hover:text-white transition-colors mb-6 w-fit"
+              className="flex items-center gap-2 text-white/50 hover:text-white transition-colors mb-3 w-fit"
             >
               <ArrowLeft size={16} /> Back to Games
             </button>

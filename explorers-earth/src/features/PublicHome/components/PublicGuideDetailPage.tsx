@@ -24,7 +24,7 @@ import SEO from "../../../components/SEO";
 import { createCanonicalUrl, getBaseUrl } from "../../../utils/getCurrentDomain";
 import { toUrlSlug } from "../../../utils/formatAddress";
 import { createLocationGEOData } from "../../../utils/geoHelpers";
-import { Share2, Copy } from "lucide-react";
+import { Share2 } from "lucide-react";
 import { toast } from "sonner";
 
 const PublicGuideDetailPage = memo(() => {
@@ -749,21 +749,7 @@ const PublicGuideDetailPage = memo(() => {
               >
                 <Share2 className="h-4 w-4" style={{ color: 'white' }} />
               </button>
-              <button
-                onClick={async () => {
-                  const shareUrl = `${window.location.origin}/${username}/guides/${guideSlug}`;
-                  try {
-                    await navigator.clipboard.writeText(shareUrl);
-                    toast.success("Link copied!");
-                  } catch (error) {
-                    console.error("Failed to copy text:", error);
-                  }
-                }}
-                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
-                aria-label="Copy Link"
-              >
-                <Copy className="h-4 w-4" style={{ color: 'white' }} />
-              </button>
+
             </div>
           </div>
         </div>
@@ -1223,7 +1209,7 @@ const PublicGuideDetailPage = memo(() => {
 
       {/* Floating Map Button - Only show if guide has places with coordinates */}
       {hasPlacesForMap && !isMapView && (
-        <div className="fixed bottom-[3.8rem] md:bottom-16 left-1/2 -translate-x-1/2 z-40 bg-black/20 rounded-lg p-0.5 backdrop-blur-sm">
+        <div className="fixed bottom-[4.2rem] md:bottom-16 left-1/2 -translate-x-1/2 z-40 bg-black/20 rounded-lg p-0.5 backdrop-blur-sm">
           <Button
             startIcon={<WhiteMap />}
             btnText="Map View"

@@ -31,7 +31,7 @@ import {
   createUtmParams,
 } from "../../../utils/urlHelpers";
 import Location from "../../../assets/icons/Location";
-import { Share2, Copy, ArrowLeft, Users, ShoppingBag } from "lucide-react";
+import { Share2, ArrowLeft, Users, ShoppingBag } from "lucide-react";
 import { buildImageUrl, deduplicatePeople } from "../../People/utils/personHelpers";
 import ProductDetailModal from "../../Products/components/public/ProductDetailModal";
 import PersonDetailModal from "../../People/components/public/PersonDetailModal";
@@ -1060,24 +1060,7 @@ const PublicHome = memo(() => {
               >
                 <Share2 className="h-4 w-4" style={{ color: 'white' }} />
               </button>
-              <button
-                onClick={async () => {
-                  const shareUrl = selectedCity?.List_Name
-                    ? `${window.location.origin}/${username}/places/${toUrlSlug(selectedCity.List_Name)}`
-                    : `${window.location.origin}/${username}/places`;
-                  try {
-                    await navigator.clipboard.writeText(shareUrl);
-                    toast.success("Link copied!");
-                  } catch (error) {
-                    console.error("Failed to copy text:", error);
-                  }
-                  analytics.trackClick('copy-link-button', { context: 'places-header' });
-                }}
-                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
-                aria-label="Copy Link"
-              >
-                <Copy className="h-4 w-4" style={{ color: 'white' }} />
-              </button>
+
             </div>
           </div>
         </div>
@@ -1784,7 +1767,7 @@ const PublicHome = memo(() => {
 
                 {/* Floating Map Toggle button - Glassy Blue FAB */}
                 {PublishedCities && PublishedCities.length > 0 && (
-                  <div className="fixed bottom-[3.8rem] md:bottom-16 left-1/2 -translate-x-1/2 z-40 bg-black/35 rounded-full p-1 backdrop-blur-md border border-white/10 shadow-lg shadow-blue-500/20 transition-all duration-300">
+                  <div className="fixed bottom-[4.2rem] md:bottom-16 left-1/2 -translate-x-1/2 z-40 bg-black/35 rounded-full p-1 backdrop-blur-md border border-white/10 shadow-lg shadow-blue-500/20 transition-all duration-300">
                     <Button
                       startIcon={
                         <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" className="mr-1">

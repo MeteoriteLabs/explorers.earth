@@ -10,6 +10,7 @@ interface NavButtonProps {
 
 const NavButton: FC<NavButtonProps> = ({
   icon,
+  text,
   onClickHandler,
   isActive,
 }) => {
@@ -17,19 +18,27 @@ const NavButton: FC<NavButtonProps> = ({
     <button
       onClick={onClickHandler}
       className={`
-        flex-1 flex font-poppins text-xs flex-col gap-1.5 items-center justify-center
-        py-2.5 px-2 rounded-xl transition-all duration-300 ease-in-out
+        relative flex-1 flex font-poppins flex-col items-center justify-center gap-0.5
+        pt-1.5 pb-1 px-1 rounded-xl transition-all duration-300 ease-in-out
         hover:scale-105 active:scale-95
-        ${
-          isActive 
-            ? "bg-white shadow-md" 
-            : "hover:bg-dashboard-muted/50"
-        }
+        ${isActive ? "" : "hover:bg-dashboard-muted/50"}
       `}
     >
+
+
       <div className="transition-transform duration-300">
         {icon}
       </div>
+
+      {/* Tab label */}
+      <span
+        className={`
+          text-[10px] leading-tight font-medium tracking-wide truncate max-w-full transition-all duration-300
+          ${isActive ? "text-white" : "text-white/50"}
+        `}
+      >
+        {text}
+      </span>
     </button>
   );
 };

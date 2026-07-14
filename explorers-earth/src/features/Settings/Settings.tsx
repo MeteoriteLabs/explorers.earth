@@ -1,4 +1,4 @@
-import { memo, useState, useEffect } from "react";
+import { memo, useState, useEffect, useMemo } from "react";
 import BillingTab from "./components/BillingTab";
 import EyeOffIcon from "../../assets/icons/EyeOffIcon";
 import EyeOnIcon from "../../assets/icons/EyeOnIcon";
@@ -26,6 +26,7 @@ import { validatePassword } from "../../utils/passwordValidator";
 import { useTranslation } from "react-i18next";
 import LanguageSelector, { LANGUAGES } from "./components/LanguageSelector";
 import ConnectedAccounts from "./components/ConnectedAccounts";
+import { getPublicCategoryListCountsQuery } from "../PublicHome/api/query";
 
 
 const providerQuery = gql`
@@ -140,6 +141,13 @@ const Settings = memo(() => {
     fetchPolicy: "network-only",
   });
 
+  const { data: listCountsData } = useQuery(getPublicCategoryListCountsQuery, {
+    variables: {
+      accountDocumentId,
+    },
+    skip: !accountDocumentId,
+  });
+
   const { data: musicPlaylists } = useReactQuery<any[]>({
     queryKey: ['tunes-playlists', user?.username],
     queryFn: () => localTunesRequest('GET', `/api/playlists?username=${user?.username}`),
@@ -165,21 +173,116 @@ const Settings = memo(() => {
 
   // Helper to get the effective toggle value (optimistic override > server data)
   const getTabVisibility = (tabType: string): boolean => {
+    if (tabType === 'public_profile') return true;
     if (tabType in tabVisibilityOverrides) {
       return tabVisibilityOverrides[tabType] as boolean;
     }
     return currentUserAccountData?.accounts[0]?.[tabType] === "Yes";
   };
 
-  const getPinnedNavTabs = (): string[] => {
-    if ('pinned_nav_tabs' in tabVisibilityOverrides) {
-      return tabVisibilityOverrides['pinned_nav_tabs'] || [];
+  const getAutoPinningEnabled = (): boolean => {
+    if ('auto_pinning' in tabVisibilityOverrides) {
+      return tabVisibilityOverrides['auto_pinning'] as boolean;
     }
-    return currentUserAccountData?.accounts[0]?.pinned_nav_tabs || [];
+    const val = currentUserAccountData?.accounts[0]?.auto_pinning;
+    return val === null || val === undefined ? true : val;
+  };
+
+  const isAutoPinningEnabled = getAutoPinningEnabled();
+
+  // Map each tab ID to its published list count
+  const categoryListCountMap: Record<string, number> = useMemo(() => ({
+    public_recommendations: listCountsData?.recommendationLists?.length ?? 0,
+    public_movie:           listCountsData?.movieLists?.length ?? 0,
+    public_books:           listCountsData?.bookLists?.length ?? 0,
+    public_games:           listCountsData?.gameLists?.length ?? 0,
+    public_apps:            listCountsData?.appLists?.length ?? 0,
+    public_products:        listCountsData?.productLists?.length ?? 0,
+    public_people:          listCountsData?.personLists?.length ?? 0,
+    public_guides:          listCountsData?.guides?.length ?? 0,
+    public_music:           0,
+    public_profile:         0,
+  }), [listCountsData]);
+
+  // Get list of currently published categories (visibility is ON)
+  const publishedTabs = useMemo(() => {
+    const keys = [
+      'public_profile',
+      'public_recommendations',
+      'public_music',
+      'public_guides',
+      'public_movie',
+      'public_books',
+      'public_games',
+      'public_apps',
+      'public_products',
+      'public_people'
+    ];
+    return keys.filter(key => getTabVisibility(key));
+  }, [currentUserAccountData, tabVisibilityOverrides]);
+
+  // Compute which tabs are auto-pinned based on published categories and list counts
+  const autoPinnedTabs = useMemo(() => {
+    const profileTab = publishedTabs.includes('public_profile') ? ['public_profile'] : [];
+    const otherTabs = publishedTabs
+      .filter(key => key !== 'public_profile')
+      .sort((a, b) => (categoryListCountMap[b] ?? 0) - (categoryListCountMap[a] ?? 0));
+    return [...profileTab, ...otherTabs].slice(0, 5);
+  }, [publishedTabs, categoryListCountMap]);
+
+  const getPinnedNavTabs = (): string[] => {
+    let pinned: string[] = [];
+    if ('pinned_nav_tabs' in tabVisibilityOverrides) {
+      pinned = tabVisibilityOverrides['pinned_nav_tabs'] || [];
+    } else {
+      pinned = currentUserAccountData?.accounts[0]?.pinned_nav_tabs || [];
+    }
+    if (!pinned.includes('public_profile')) {
+      return ['public_profile', ...pinned];
+    }
+    return pinned;
   };
 
   const isTabPinned = (tabType: string): boolean => {
+    if (tabType === 'public_profile') return true;
+    if (isAutoPinningEnabled) {
+      return autoPinnedTabs.includes(tabType);
+    }
     return getPinnedNavTabs().includes(tabType);
+  };
+
+  const handleAutoPinningToggle = async (enabled: boolean) => {
+    const currentAccount = currentUserAccountData?.accounts[0];
+    if (!currentAccount?.documentId) {
+      toast.error("Account not found");
+      return;
+    }
+
+    setTabVisibilityOverrides(prev => ({ ...prev, auto_pinning: enabled }));
+    setTabVisibilityLoading(prev => ({ ...prev, auto_pinning: true }));
+
+    try {
+      await updateTabVisibility({
+        variables: {
+          documentId: currentAccount.documentId,
+          data: {
+            auto_pinning: enabled
+          }
+        }
+      });
+      toast.success("Navigation pinning mode updated successfully");
+      await refetchAccountData();
+    } catch (error) {
+      console.error("Error updating auto pinning:", error);
+      toast.error("Failed to update navigation pinning mode");
+    } finally {
+      setTabVisibilityOverrides(prev => {
+        const next = { ...prev };
+        delete next['auto_pinning'];
+        return next;
+      });
+      setTabVisibilityLoading(prev => ({ ...prev, auto_pinning: false }));
+    }
   };
 
   const handleNavPinUpdate = async (tabType: string, isPinned: boolean) => {
@@ -826,8 +929,8 @@ const Settings = memo(() => {
                             { key: 'public_profile', label: 'Profile Tab', icon: (
                               <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" /></svg>
                             )},
-                            { key: 'public_recommendations', label: 'Recommendations Tab', icon: (
-                              <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
+                            { key: 'public_recommendations', label: 'Places Tab', icon: (
+                              <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
                             )},
                             { key: 'public_music', label: 'Music Tab', icon: (
                               <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" /></svg>
@@ -859,32 +962,36 @@ const Settings = memo(() => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                               </svg>
                             )},
-                          ].map(({ key, label, icon }) => (
-                            <div key={key} className="flex items-center justify-between py-1.5">
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-dashboard-muted flex items-center justify-center flex-shrink-0">
-                                  {icon}
+                          ].map(({ key, label, icon }) => {
+                            const isProfile = key === 'public_profile';
+                            return (
+                              <div key={key} className={`flex items-center justify-between py-1.5 transition-opacity duration-150 ${isProfile ? 'opacity-50 cursor-not-allowed select-none' : ''}`}>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                                    {icon}
+                                  </div>
+                                  <span className="text-xs text-white font-poppins">{label}</span>
                                 </div>
-                                <span className="text-xs text-dashboard font-poppins">{label}</span>
+                                <div className="flex items-center gap-2">
+                                  {tabVisibilityLoading[key] && (
+                                    <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                                  )}
+                                  <label className={`relative inline-flex items-center ${
+                                    tabVisibilityLoading[key] || isProfile ? 'pointer-events-none cursor-not-allowed' : 'cursor-pointer'
+                                  }`}>
+                                    <input
+                                      type="checkbox"
+                                      className="sr-only peer"
+                                      checked={getTabVisibility(key)}
+                                      disabled={isProfile}
+                                      onChange={(e) => handleTabVisibilityUpdate(key, e.target.checked)}
+                                    />
+                                    <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
+                                  </label>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                {tabVisibilityLoading[key] && (
-                                  <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                                )}
-                                <label className={`relative inline-flex items-center ${
-                                  tabVisibilityLoading[key] ? 'pointer-events-none opacity-70' : 'cursor-pointer'
-                                }`}>
-                                  <input
-                                    type="checkbox"
-                                    className="sr-only peer"
-                                    checked={getTabVisibility(key)}
-                                    onChange={(e) => handleTabVisibilityUpdate(key, e.target.checked)}
-                                  />
-                                  <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
-                                </label>
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </>
@@ -929,16 +1036,47 @@ const Settings = memo(() => {
                               }, 100);
                             }
                           }}
-                          className="border-t border-dashboard px-4 py-4 space-y-3 bg-dashboard-bg/20"
+                          className="border-t border-white/5 px-4 py-4 space-y-4 bg-white/[0.01]"
                         >
-                          <p className="text-[10px] text-dashboard-muted font-poppins mb-1">Select up to 5 enabled tabs to pin to your public profile's navigation.</p>
+                          {/* Auto Pinning Toggle Switch */}
+                          <div className="flex items-center justify-between pb-3 border-b border-white/5">
+                            <div className="flex-1 min-w-0 pr-4">
+                              <span className="text-xs font-semibold text-white font-poppins">Auto-pin navigation tabs</span>
+                              <p className="text-[10px] text-white/40 font-poppins mt-0.5">
+                                Automatically display your most active categories (with the most lists) in your public navigation menu.
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {tabVisibilityLoading['auto_pinning'] && (
+                                <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                              )}
+                              <label className={`relative inline-flex items-center ${
+                                tabVisibilityLoading['auto_pinning'] ? 'pointer-events-none opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                              }`}>
+                                <input
+                                  type="checkbox"
+                                  className="sr-only peer"
+                                  checked={isAutoPinningEnabled}
+                                  disabled={tabVisibilityLoading['auto_pinning']}
+                                  onChange={(e) => handleAutoPinningToggle(e.target.checked)}
+                                />
+                                <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
+                              </label>
+                            </div>
+                          </div>
+
+                          <p className="text-[10px] text-white/50 font-poppins mb-1">
+                            {isAutoPinningEnabled 
+                              ? "Auto-pinning is active. The system automatically selects and pins your categories." 
+                              : "Select up to 5 enabled tabs to pin to your public profile's navigation."}
+                          </p>
                           <div className="space-y-2">
                             {[
                               { key: 'public_profile', label: 'Profile Tab', icon: (
                                 <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" /></svg>
                               )},
-                              { key: 'public_recommendations', label: 'Recommendations Tab', icon: (
-                                <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
+                              { key: 'public_recommendations', label: 'Places Tab', icon: (
+                                <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
                               )},
                               { key: 'public_music', label: 'Music Tab', icon: (
                                 <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" /></svg>
@@ -971,17 +1109,23 @@ const Settings = memo(() => {
                                 </svg>
                               )},
                             ].map(({ key, label, icon }) => {
+                              const isProfile = key === 'public_profile';
                               const isEnabled = getTabVisibility(key);
                               const isPinned = isTabPinned(key);
                               return (
-                                <div key={key} className="flex items-center justify-between py-1.5">
+                                <div key={key} className={`flex items-center justify-between py-1.5 transition-opacity duration-150 ${(isProfile || (!isEnabled && !isPinned)) ? 'opacity-50 cursor-not-allowed select-none' : ''}`}>
                                   <div className="flex items-center gap-2">
                                     <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${isEnabled ? 'bg-dashboard-muted' : 'bg-dashboard-muted/40 opacity-40'}`}>
                                       {icon}
                                     </div>
                                     <span className={`text-xs font-poppins ${isEnabled ? 'text-dashboard' : 'text-dashboard-muted'}`}>
                                       {label}
-                                      {!isEnabled && <span className="text-[9px] text-dashboard-muted ml-1.5 font-normal font-poppins">(Visibility off)</span>}
+                                      {!isEnabled && <span className="text-[9px] text-white/35 ml-1.5 font-normal font-poppins">(Visibility off)</span>}
+                                      {isAutoPinningEnabled && isPinned && (
+                                        <span className="text-[9px] bg-green-500/10 text-green-400 border border-green-500/20 px-1.5 py-0.5 rounded-full ml-1.5 font-medium font-poppins">
+                                          Auto-pinned
+                                        </span>
+                                      )}
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-2">
@@ -989,13 +1133,13 @@ const Settings = memo(() => {
                                       <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
                                     )}
                                     <label className={`relative inline-flex items-center ${
-                                      tabVisibilityLoading[`pin_${key}`] || !isEnabled ? 'pointer-events-none opacity-50' : 'cursor-pointer'
+                                      tabVisibilityLoading[`pin_${key}`] || !isEnabled || isProfile || isAutoPinningEnabled ? 'pointer-events-none opacity-50 cursor-not-allowed' : 'cursor-pointer'
                                     }`}>
                                       <input
                                         type="checkbox"
                                         className="sr-only peer"
                                         checked={isPinned}
-                                        disabled={!isEnabled || tabVisibilityLoading[`pin_${key}`]}
+                                        disabled={!isEnabled || tabVisibilityLoading[`pin_${key}`] || isProfile || isAutoPinningEnabled}
                                         onChange={(e) => handleNavPinUpdate(key, e.target.checked)}
                                       />
                                       <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
