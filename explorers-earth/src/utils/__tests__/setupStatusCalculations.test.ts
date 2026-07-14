@@ -66,13 +66,13 @@ describe('setupStatusCalculations', () => {
       expect(calculateIsProfileComplete(data)).toBe(false);
     });
 
-    it('returns false when there are less than 2 social media links', () => {
+    it('returns false when there are less than 1 social media links', () => {
       const data: ProfileData = {
         Account_Name: 'Name',
         Bio: 'Bio',
         profile_picture: { url: 'pic.jpg' },
         bg_picture: { url: 'bg.jpg' },
-        social_media: { t: { link: 'x.com' } }
+        social_media: {}
       };
       expect(calculateIsProfileComplete(data)).toBe(false);
     });
@@ -83,7 +83,7 @@ describe('setupStatusCalculations', () => {
         Bio: 'Bio',
         profile_picture: { url: 'pic.jpg' },
         bg_picture: { url: 'bg.jpg' },
-        social_media: { t: { link: 'x.com' }, f: { link: '   ' } }
+        social_media: { t: { link: '   ' } }
       };
       expect(calculateIsProfileComplete(data)).toBe(false);
     });
@@ -95,9 +95,7 @@ describe('setupStatusCalculations', () => {
         profile_picture: { url: 'pic.jpg' },
         bg_picture: { url: 'bg.jpg' },
         social_media: { 
-          t: { link: 'x.com' },
-          f: { link: 'f.com' },
-          i: { link: 'i.com' }
+          t: { link: 'x.com' }
         }
       };
       expect(calculateIsProfileComplete(data)).toBe(true);

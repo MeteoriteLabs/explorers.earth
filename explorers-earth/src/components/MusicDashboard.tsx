@@ -62,21 +62,21 @@ function ConfirmModal({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 p-4">
-      <div className="bg-gray-900 border border-white/10 rounded-xl p-6 max-w-sm w-full shadow-2xl">
-        <h3 className="text-white font-semibold mb-2">{title}</h3>
+      <div className="bg-dashboard border border-dashboard rounded-xl p-6 max-w-sm w-full shadow-2xl">
+        <h3 className="text-dashboard font-semibold mb-2">{title}</h3>
         <p className="text-gray-400 text-sm mb-5">{description}</p>
         <div className="flex justify-end gap-2">
           <button
             onClick={onCancel}
             disabled={loading}
-            className="px-4 py-1.5 text-sm rounded bg-white/10 text-white hover:bg-white/20 disabled:opacity-40 transition-colors"
+            className="px-4 py-1.5 text-sm rounded bg-dashboard-muted text-dashboard hover:bg-dashboard-muted/80 disabled:opacity-40 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
             disabled={loading}
-            className="px-4 py-1.5 text-sm rounded bg-dashboard-accent text-white hover:opacity-90 disabled:opacity-40 transition-colors flex items-center gap-1.5"
+            className="px-4 py-1.5 text-sm rounded bg-dashboard-accent text-[var(--dash-accent-text)] hover:opacity-90 disabled:opacity-40 transition-colors flex items-center gap-1.5"
           >
             {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
             {confirmLabel}
@@ -537,21 +537,21 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
   return (
     <div className="space-y-4">
       {/* Desktop Screen actions row */}
-      <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4 border border-white/5">
+      <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4 border border-dashboard">
         <div className="flex items-center gap-2 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
           <SwitchButton
             isChecked={isPublic === true}
             onChange={onVisibilityToggle || (() => {})}
             variant="blue"
           />
-          <span className="text-[10px] md:text-xs text-white leading-tight whitespace-nowrap font-medium font-poppins">Public Visibility</span>
+          <span className="text-[10px] md:text-xs text-dashboard leading-tight whitespace-nowrap font-medium font-poppins">Public Visibility</span>
         </div>
         <button
           onClick={() => {
             setActiveTab('playlists');
             setShowNewPlaylistInput(true);
           }}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap cursor-pointer"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-[var(--dash-accent-text)] font-medium transition-all shadow-md whitespace-nowrap cursor-pointer"
         >
           <AddIcon size="5" />
           <span>New Playlist</span>
@@ -560,13 +560,13 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
 
       {/* Mobile actions row (split action button with visibility dropdown) */}
       <div className="md:hidden relative mb-4 w-full">
-        <div className="flex w-full rounded-2xl overflow-hidden border border-white/10 shadow-lg shadow-blue-900/15">
+        <div className="flex w-full rounded-2xl overflow-hidden border border-dashboard shadow-md">
           <button
             onClick={() => {
               setActiveTab('playlists');
               setShowNewPlaylistInput(true);
             }}
-            className="flex-1 bg-dashboard-accent hover:opacity-90 text-xs font-bold text-white py-3 px-4 text-left flex items-center gap-1.5 transition-all cursor-pointer"
+            className="flex-1 bg-dashboard-accent hover:opacity-90 text-xs font-bold text-[var(--dash-accent-text)] py-3 px-4 text-left flex items-center gap-1.5 transition-all cursor-pointer"
           >
             <AddIcon size="4" />
             <span>New Playlist</span>
@@ -576,16 +576,16 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
               e.stopPropagation();
               setMobileDropdownOpen(!mobileDropdownOpen);
             }}
-            className="bg-dashboard-accent border-l border-white/20 px-3 flex items-center justify-center cursor-pointer transition-all hover:opacity-90"
+            className="bg-dashboard-accent border-l border-dashboard px-3 flex items-center justify-center cursor-pointer transition-all hover:opacity-90"
           >
-            <svg className={`w-3.5 h-3.5 text-white transform transition-transform duration-200 ${mobileDropdownOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={`w-3.5 h-3.5 text-[var(--dash-accent-text)] transform transition-transform duration-200 ${mobileDropdownOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
         </div>
         {mobileDropdownOpen && (
-          <div className="absolute top-[calc(100%+6px)] right-0 left-0 p-3.5 z-[100] border border-dashboard-accent/30 rounded-2xl bg-dashboard-sidebar/95 backdrop-blur-md shadow-xl flex justify-between items-center">
-            <span className="text-[11px] text-white/90 font-semibold font-poppins">Manage Public Visibility</span>
+          <div className="absolute top-[calc(100%+6px)] right-0 left-0 p-3.5 z-[100] border border-dashboard rounded-2xl bg-dashboard-sidebar/95 backdrop-blur-md shadow-xl flex justify-between items-center">
+            <span className="text-[11px] text-dashboard font-semibold font-poppins">Manage Public Visibility</span>
             <div className="flex items-center gap-2">
               <span className={`text-[10px] font-bold uppercase ${isPublic ? "text-[#4ade80]" : "text-[#f87171]"}`}>
                 {isPublic ? "Pub" : "Draft"}
@@ -601,10 +601,10 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
       </div>
 
       {/* ── Add Songs — always visible at top ─────────────────────────────── */}
-      <div className="bg-black/20 rounded-xl p-4">
+      <div className="bg-dashboard-muted/40 border border-dashboard rounded-xl p-4">
         <div className="flex items-center gap-2 mb-3">
           <Search className="w-4 h-4 text-dashboard-accent" />
-          <p className="text-white text-sm font-semibold">Add Songs</p>
+          <p className="text-dashboard text-sm font-semibold">Add Songs</p>
         </div>
         <SearchSongs
           guestUrl={guestUrl ?? undefined}
@@ -617,7 +617,7 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
 
       {/* ── Video Player ────────────────────────────────────────────────────── */}
       {(currentlyPlaying || songs.length > 0) && (
-        <div className="bg-black/20 rounded-xl p-4">
+        <div className="bg-dashboard-muted/40 border border-dashboard rounded-xl p-4">
           {currentlyPlaying ? (
             <YoutubePlayer
               currentSong={currentlyPlaying}
@@ -636,7 +636,7 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
               <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-medium truncate">{songs[0].title}</p>
+                <p className="text-dashboard text-sm font-medium truncate">{songs[0].title}</p>
                 <p className="text-gray-400 text-xs truncate">{songs[0].artist}</p>
               </div>
               <button
@@ -644,7 +644,7 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
                 className="w-10 h-10 rounded-full bg-dashboard-accent flex items-center justify-center flex-shrink-0 hover:opacity-80 transition-opacity"
                 title="Start playing"
               >
-                <Play className="w-4 h-4 text-white ml-0.5" />
+                <Play className="w-4 h-4 text-[var(--dash-accent-text)] ml-0.5" />
               </button>
             </div>
           )}
@@ -652,31 +652,31 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
       )}
 
       {/* ── Tab Switcher ────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-center mx-auto bg-white rounded-3xl w-fit shadow-sm my-6">
+      <div className="flex items-center justify-center mx-auto bg-dashboard-muted border border-dashboard p-1 rounded-3xl w-fit shadow-sm my-6">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center justify-center gap-1.5 px-3 md:px-4 py-2 text-[10px] sm:text-xs font-medium transition-all duration-300 whitespace-nowrap ${
               activeTab === tab.id
-                ? "bg-dashboard-accent rounded-2xl text-white shadow-md"
-                : "bg-white rounded-2xl text-black hover:bg-gray-50"
+                ? "bg-dashboard-accent rounded-2xl text-[var(--dash-accent-text)] shadow-md"
+                : "bg-transparent rounded-2xl text-dashboard-muted hover:text-dashboard"
             }`}
           >
             {tab.icon}
             <span>{tab.shortLabel}</span>
             {tab.id === "queue" && (currentlyPlaying || songs.length > 0) && (
-              <span className={`text-[10px] ${activeTab === "queue" ? "text-white/70" : "text-black/50"}`}>
+              <span className={`text-[10px] ${activeTab === "queue" ? "opacity-80 font-bold" : "opacity-50 font-normal"}`}>
                 {currentlyPlaying ? `${songs.length + 1}` : songs.length}
               </span>
             )}
             {tab.id === "recently-played" && playedSongs.length > 0 && (
-              <span className={`text-[10px] ${activeTab === "recently-played" ? "text-white/70" : "text-black/50"}`}>
+              <span className={`text-[10px] ${activeTab === "recently-played" ? "opacity-80 font-bold" : "opacity-50 font-normal"}`}>
                 {playedSongs.length}
               </span>
             )}
             {tab.id === "playlists" && playlists && playlists.length > 0 && (
-              <span className={`text-[10px] ${activeTab === "playlists" ? "text-white/70" : "text-black/50"}`}>
+              <span className={`text-[10px] ${activeTab === "playlists" ? "opacity-80 font-bold" : "opacity-50 font-normal"}`}>
                 {playlists.length}
               </span>
             )}
@@ -685,7 +685,7 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
       </div>
 
       {/* ── Tab Content ────────────────────────────────────────────────────── */}
-      <div className="bg-black/20 rounded-xl overflow-hidden min-h-[300px]">
+      <div className="bg-dashboard-muted/40 border border-dashboard rounded-xl overflow-hidden min-h-[300px]">
         {/* Tab content wrapper */}
         <div className="p-4">
 
@@ -710,7 +710,7 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-green-400 mb-0.5">Now Playing</p>
-                        <p className="text-sm text-white font-medium truncate">{currentlyPlaying.title}</p>
+                        <p className="text-sm text-dashboard font-medium truncate">{currentlyPlaying.title}</p>
                         <p className="text-xs text-gray-400 truncate">{currentlyPlaying.artist}</p>
                       </div>
                     </div>
@@ -742,9 +742,9 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
                   { key: 'allowPlaylistSharing' as const, label: 'Allow playlist sharing', desc: 'Guests can see your saved playlists' },
                   { key: 'allowRecentlyPlayedVisibility' as const, label: 'Show recently played', desc: "Guests can see songs you've played" },
                 ]).map(({ key, label, desc }) => (
-                  <div key={key} className="flex items-center justify-between gap-4 py-2.5 border-b border-white/5 last:border-0">
+                  <div key={key} className="flex items-center justify-between gap-4 py-2.5 border-b border-dashboard last:border-0">
                     <div className="flex-1 min-w-0">
-                      <p className="text-white text-sm">{label}</p>
+                      <p className="text-dashboard text-sm">{label}</p>
                       <p className="text-gray-500 text-xs mt-0.5">{desc}</p>
                     </div>
                     <button
@@ -764,7 +764,7 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
               </div>
 
               {guestUrl && (
-                <div className="mt-4 pt-4 border-t border-white/5">
+                <div className="mt-4 pt-4 border-t border-dashboard">
                   <p className="text-gray-500 text-xs mb-1">Guest page link</p>
                   <p className="text-gray-400 text-xs break-all font-mono">{guestPageUrl}</p>
                   <button
@@ -815,7 +815,7 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
                 {showNewPlaylistInput ? null : (
                   <button
                     onClick={() => setShowNewPlaylistInput(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-dashboard-accent hover:opacity-90 text-[10px] sm:text-xs text-white font-medium transition-all shadow-md shadow-blue-900/30 whitespace-nowrap"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-dashboard-accent hover:opacity-90 text-[10px] sm:text-xs text-[var(--dash-accent-text)] font-medium transition-all shadow-md whitespace-nowrap"
                   >
                     <AddIcon size="3.5" />
                     New Playlist
@@ -825,8 +825,8 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
 
               {/* Inline new-playlist form */}
               {showNewPlaylistInput && (
-                <div className="mb-4 p-3 bg-black/30 rounded-lg border border-white/10 space-y-2">
-                  <p className="text-xs text-white font-medium">Create Playlist</p>
+                <div className="mb-4 p-3 bg-dashboard-muted/50 rounded-lg border border-dashboard space-y-2">
+                  <p className="text-xs text-dashboard font-medium">Create Playlist</p>
                   <input
                     type="text"
                     value={newPlaylistName}
@@ -843,19 +843,19 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
                     }}
                     placeholder="Playlist name…"
                     autoFocus
-                    className="w-full text-sm bg-black/30 border border-white/10 rounded px-2 py-1.5 text-white placeholder-gray-500 focus:outline-none focus:border-dashboard-accent"
+                    className="w-full text-sm bg-dashboard-muted border border-dashboard rounded px-2 py-1.5 text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent"
                   />
                   <input
                     type="text"
                     value={newPlaylistDescription}
                     onChange={e => setNewPlaylistDescription(e.target.value)}
                     placeholder="Description (optional)…"
-                    className="w-full text-sm bg-black/30 border border-white/10 rounded px-2 py-1.5 text-white placeholder-gray-500 focus:outline-none focus:border-dashboard-accent"
+                    className="w-full text-sm bg-dashboard-muted border border-dashboard rounded px-2 py-1.5 text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent"
                   />
                   <div className="flex items-center gap-2 justify-end">
                     <button
                       onClick={() => { setShowNewPlaylistInput(false); setNewPlaylistName(''); setNewPlaylistDescription(''); }}
-                      className="text-xs text-gray-400 hover:text-white transition-colors px-3 py-1"
+                      className="text-xs text-gray-400 hover:text-dashboard transition-colors px-3 py-1"
                     >
                       Cancel
                     </button>
@@ -866,7 +866,7 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
                         }
                       }}
                       disabled={!newPlaylistName.trim() || createPlaylistMutation.isPending}
-                      className="text-xs bg-dashboard-accent text-white rounded px-3 py-1 hover:opacity-90 disabled:opacity-40 flex items-center gap-1"
+                      className="text-xs bg-dashboard-accent text-[var(--dash-accent-text)] rounded px-3 py-1 hover:opacity-90 disabled:opacity-40 flex items-center gap-1"
                     >
                       {createPlaylistMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                       Create
@@ -890,7 +890,7 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
                 return (
                   <div>
                     {/* Playlist tab strip */}
-                    <div className="mb-4 flex flex-wrap gap-1 p-1 bg-black/30 border border-white/10 rounded-lg overflow-x-auto">
+                    <div className="mb-4 flex flex-wrap gap-1 p-1 bg-dashboard-muted/50 border border-dashboard rounded-lg overflow-x-auto">
                       {playlists.map((pl: any) => {
                         const isActive = currentTabId === pl.id.toString();
                         return (
@@ -898,8 +898,8 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
                             key={pl.id}
                             onClick={() => setActivePlaylistTab(pl.id.toString())}
                             className={`px-3 py-1.5 text-xs whitespace-nowrap rounded-xl transition-all ${isActive
-                              ? 'bg-white/10 text-white font-semibold'
-                              : 'text-gray-400 hover:text-white hover:bg-white/5'
+                              ? 'bg-dashboard-muted text-dashboard font-semibold'
+                              : 'text-dashboard-light hover:text-dashboard hover:bg-dashboard-muted/50'
                               }`}
                           >
                             {pl.name}
@@ -918,7 +918,7 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
                           <div className="space-y-4">
 
                             {/* Add Songs to playlist */}
-                            <div className="bg-black/10 rounded-lg p-3 border border-white/5">
+                            <div className="bg-dashboard-muted/40 rounded-lg p-3 border border-dashboard">
                               <p className="text-xs text-gray-400 font-medium mb-2">Add Songs to "{p.name}"</p>
                               <SearchSongs
                                 playlistId={p.id}
@@ -933,7 +933,7 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
 
                             {/* Playlist header: name/desc + ⋮ menu */}
                             {isEditing ? (
-                              <div className="bg-black/10 rounded-lg p-3 border border-white/5 space-y-2">
+                              <div className="bg-dashboard-muted/40 rounded-lg p-3 border border-dashboard space-y-2">
                                 <p className="text-xs text-gray-400 font-medium">Edit Playlist</p>
                                 <input
                                   type="text"
@@ -941,19 +941,19 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
                                   onChange={e => setEditPlaylistName(e.target.value)}
                                   placeholder="Playlist name…"
                                   autoFocus
-                                  className="w-full text-sm bg-black/30 border border-white/10 rounded px-2 py-1.5 text-white placeholder-gray-500 focus:outline-none focus:border-dashboard-accent"
+                                  className="w-full text-sm bg-dashboard-muted border border-dashboard rounded px-2 py-1.5 text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent"
                                 />
                                 <input
                                   type="text"
                                   value={editPlaylistDescription}
                                   onChange={e => setEditPlaylistDescription(e.target.value)}
                                   placeholder="Description (optional)…"
-                                  className="w-full text-sm bg-black/30 border border-white/10 rounded px-2 py-1.5 text-white placeholder-gray-500 focus:outline-none focus:border-dashboard-accent"
+                                  className="w-full text-sm bg-dashboard-muted border border-dashboard rounded px-2 py-1.5 text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent"
                                 />
                                 <div className="flex gap-2 justify-end">
                                   <button
                                     onClick={() => setEditingPlaylistId(null)}
-                                    className="text-xs text-gray-400 hover:text-white px-3 py-1"
+                                    className="text-xs text-gray-400 hover:text-dashboard px-3 py-1"
                                   >
                                     Cancel
                                   </button>
@@ -968,7 +968,7 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
                                       }
                                     }}
                                     disabled={!editPlaylistName.trim() || updatePlaylistMutation.isPending}
-                                    className="text-xs bg-dashboard-accent text-white rounded px-3 py-1 hover:opacity-90 disabled:opacity-40 flex items-center gap-1"
+                                    className="text-xs bg-dashboard-accent text-[var(--dash-accent-text)] rounded px-3 py-1 hover:opacity-90 disabled:opacity-40 flex items-center gap-1"
                                   >
                                     {updatePlaylistMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                                     Save
@@ -978,7 +978,7 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
                             ) : (
                               <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0">
-                                  <p className="text-white text-sm font-medium truncate">{p.name}</p>
+                                  <p className="text-dashboard text-sm font-medium truncate">{p.name}</p>
                                   {p.description && (
                                     <p className="text-gray-400 text-xs mt-0.5 line-clamp-2">{p.description}</p>
                                   )}
@@ -989,7 +989,7 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
                                 <div className="relative flex-shrink-0">
                                   <button
                                     onClick={() => setOpenMenuId(openMenuId === p.id ? null : p.id)}
-                                    className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+                                    className="p-1.5 rounded text-gray-400 hover:text-dashboard hover:bg-dashboard-muted transition-colors"
                                     title="More options"
                                   >
                                     <MoreVertical className="w-4 h-4" />
@@ -1001,7 +1001,7 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
                                         className="fixed inset-0 z-10"
                                         onClick={() => setOpenMenuId(null)}
                                       />
-                                      <div className="absolute right-0 top-8 z-20 bg-gray-900 border border-white/10 rounded-lg shadow-xl overflow-hidden min-w-[140px]">
+                                      <div className="absolute right-0 top-8 z-20 bg-dashboard border border-dashboard rounded-lg shadow-xl overflow-hidden min-w-[140px]">
                                         <button
                                           onClick={() => {
                                             setOpenMenuId(null);
@@ -1009,7 +1009,7 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
                                             setEditPlaylistName(p.name);
                                             setEditPlaylistDescription(p.description || '');
                                           }}
-                                          className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-white/10 w-full text-left transition-colors"
+                                          className="flex items-center gap-2 px-3 py-2 text-sm text-dashboard hover:bg-dashboard-muted w-full text-left transition-colors"
                                         >
                                           <Pencil className="w-3.5 h-3.5" />
                                           Edit Playlist
@@ -1036,7 +1036,7 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
                               <button
                                 onClick={() => setPlaylistToReplace({ id: p.id, songs: p.songs ?? [], type: 'play' })}
                                 disabled={!p.songs?.length}
-                                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-dashboard-muted text-dashboard hover:bg-dashboard-muted/80 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                               >
                                 <PlayCircle className="w-4 h-4" />
                                 <span>Play</span>
@@ -1044,7 +1044,7 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
                               <button
                                 onClick={() => setPlaylistToReplace({ id: p.id, songs: p.songs ?? [], type: 'shuffle' })}
                                 disabled={!p.songs?.length}
-                                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-dashboard-muted text-dashboard hover:bg-dashboard-muted/80 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                               >
                                 <Shuffle className="w-4 h-4" />
                                 <span>Shuffle</span>
@@ -1052,7 +1052,7 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
                               <button
                                 onClick={() => addPlaylistToQueueMutation.mutate(p.songs ?? [])}
                                 disabled={!p.songs?.length || addPlaylistToQueueMutation.isPending}
-                                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-dashboard-muted text-dashboard hover:bg-dashboard-muted/80 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                               >
                                 {addPlaylistToQueueMutation.isPending
                                   ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -1064,13 +1064,13 @@ export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onP
 
                             {/* Visible to guests toggle */}
                             {settings.allowPlaylistSharing && (
-                              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-black/20 border border-white/5">
+                              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-dashboard-muted/40 border border-dashboard">
                                 <div className="flex items-center gap-2">
                                   {p.isVisibleToGuests
                                     ? <Eye className="w-3.5 h-3.5 text-green-400" />
                                     : <EyeOff className="w-3.5 h-3.5 text-gray-500" />
                                   }
-                                  <span className="text-xs text-gray-300">Visible to guests</span>
+                                  <span className="text-xs text-dashboard-light">Visible to guests</span>
                                 </div>
                                 <button
                                   onClick={() =>

@@ -35,12 +35,12 @@ const DesktopHeroSkeleton = memo(
     }: Omit<HeroSkeletonProps, "mobile">) => {
         const isDashboard = variant === "dashboard";
         const accent = ACCENT_COLORS[accentColor];
-        const bg = isDashboard ? "var(--dash-muted, #2a3830)" : "#111111";
+        const bg = isDashboard ? "var(--skeleton-bg, var(--dash-muted, #2a3830))" : "#111111";
         const shimmerBase = isDashboard
-            ? "rgba(255,255,255,0.06)"
+            ? "var(--skeleton-shimmer-base, rgba(255,255,255,0.06))"
             : "rgba(255,255,255,0.05)";
         const shimmerBright = isDashboard
-            ? "rgba(255,255,255,0.12)"
+            ? "var(--skeleton-shimmer-bright, rgba(255,255,255,0.12))"
             : "rgba(255,255,255,0.10)";
 
         return (
@@ -55,15 +55,17 @@ const DesktopHeroSkeleton = memo(
                 <div
                     className="absolute inset-0 pointer-events-none"
                     style={{
-                        background:
-                            "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.45) 50%, rgba(0,0,0,0.08) 100%)",
+                        background: isDashboard
+                            ? "linear-gradient(to top, var(--skeleton-gradient-1, rgba(0,0,0,0.9)) 0%, var(--skeleton-gradient-2, rgba(0,0,0,0.45)) 50%, var(--skeleton-gradient-3, rgba(0,0,0,0.08)) 100%)"
+                            : "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.45) 50%, rgba(0,0,0,0.08) 100%)",
                     }}
                 />
                 <div
                     className="absolute inset-0 pointer-events-none"
                     style={{
-                        background:
-                            "linear-gradient(to right, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.35) 55%, transparent 100%)",
+                        background: isDashboard
+                            ? "linear-gradient(to right, var(--skeleton-gradient-1, rgba(0,0,0,0.75)) 0%, var(--skeleton-gradient-2, rgba(0,0,0,0.35)) 55%, transparent 100%)"
+                            : "linear-gradient(to right, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.35) 55%, transparent 100%)",
                     }}
                 />
 
@@ -178,12 +180,12 @@ const MobileHeroSkeleton = memo(
     }: Omit<HeroSkeletonProps, "showThumbnails" | "mobile">) => {
         const isDashboard = variant === "dashboard";
         const accent = ACCENT_COLORS[accentColor];
-        const bg = isDashboard ? "var(--dash-muted, #2a3830)" : "#111111";
+        const bg = isDashboard ? "var(--skeleton-bg, var(--dash-muted, #2a3830))" : "#111111";
         const shimmerBase = isDashboard
-            ? "rgba(255,255,255,0.06)"
+            ? "var(--skeleton-shimmer-base, rgba(255,255,255,0.06))"
             : "rgba(255,255,255,0.05)";
         const shimmerBright = isDashboard
-            ? "rgba(255,255,255,0.12)"
+            ? "var(--skeleton-shimmer-bright, rgba(255,255,255,0.12))"
             : "rgba(255,255,255,0.10)";
 
         return (
@@ -198,8 +200,9 @@ const MobileHeroSkeleton = memo(
                 <div
                     className="absolute inset-0 pointer-events-none"
                     style={{
-                        background:
-                            "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.05) 100%)",
+                        background: isDashboard
+                            ? "linear-gradient(to top, var(--skeleton-gradient-1, rgba(0,0,0,0.95)) 0%, var(--skeleton-gradient-2, rgba(0,0,0,0.4)) 50%, var(--skeleton-gradient-3, rgba(0,0,0,0.05)) 100%)"
+                            : "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.05) 100%)",
                     }}
                 />
 

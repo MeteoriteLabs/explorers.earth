@@ -23,22 +23,14 @@ const ProfileSetupAccordion = ({ account }: ProfileSetupAccordionProps) => {
   const socialLinksCount = Object.values(socialMedia).filter((platform: any) =>
     platform?.link && typeof platform.link === "string" && platform.link.trim() !== ""
   ).length;
-  const hasSocialLinks = socialLinksCount >= 2;
+  const hasSocialLinks = socialLinksCount >= 1;
 
-  const feedData = account?.Feed_Data || [];
-  const hasFeedMedia = Array.isArray(feedData) && feedData.length > 0;
-
-  // Calculate percentage (20% for each of the 5 criteria)
+  // Calculate percentage (25% for each of the 4 criteria)
   let percentage = 0;
-  if (hasProfilePic) percentage += 20;
-  if (hasCoverPic) percentage += 20;
-  if (hasBio) percentage += 20;
-  if (hasSocialLinks) {
-    percentage += 20;
-  } else if (socialLinksCount === 1) {
-    percentage += 10; // partial progress for 1 link
-  }
-  if (hasFeedMedia) percentage += 20;
+  if (hasProfilePic) percentage += 25;
+  if (hasCoverPic) percentage += 25;
+  if (hasBio) percentage += 25;
+  if (hasSocialLinks) percentage += 25;
 
   // Ensure percentage is in [0, 100]
   percentage = Math.max(0, Math.min(100, percentage));
@@ -58,7 +50,7 @@ const ProfileSetupAccordion = ({ account }: ProfileSetupAccordionProps) => {
   };
 
   // Click handler for individual checklist items
-  const handleItemClick = (itemType: "profile_picture" | "cover_picture" | "bio" | "social_links" | "feed", itemComplete: boolean) => {
+  const handleItemClick = (itemType: "profile_picture" | "cover_picture" | "bio" | "social_links", itemComplete: boolean) => {
     if (itemComplete) return; // Do nothing if already completed
     if (itemType === "profile_picture" || itemType === "cover_picture" || itemType === "social_links") {
       navigate("/profile", { state: { startTour: true } });
@@ -325,38 +317,10 @@ const ProfileSetupAccordion = ({ account }: ProfileSetupAccordionProps) => {
                       </div>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2">
                         <span className={`text-sm font-semibold font-poppins ${hasSocialLinks ? "text-white/80" : "text-white/50"}`}>
-                          Social Links {socialLinksCount > 0 && `(${socialLinksCount}/2)`}
+                          Social Links {socialLinksCount > 0 && `(${Math.min(socialLinksCount, 1)}/1)`}
                         </span>
                         <span className="text-xs text-white/40 font-poppins">
-                          Connect at least 2 social media accounts
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Item 5: Feed Media */}
-                  <div
-                    onClick={() => handleItemClick("feed", hasFeedMedia)}
-                    className={`flex items-center p-2.5 rounded-xl transition-all duration-150 border border-transparent ${
-                      hasFeedMedia 
-                        ? "cursor-default" 
-                        : "cursor-pointer hover:bg-white/[0.04] hover:border-dashboard/30"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
-                        hasFeedMedia 
-                          ? "bg-green-500/20 text-green-400 border border-green-500/30" 
-                          : "bg-white/5 border border-white/20 text-white/30"
-                      }`}>
-                        {hasFeedMedia ? "✓" : "☐"}
-                      </div>
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2">
-                        <span className={`text-sm font-semibold font-poppins ${hasFeedMedia ? "text-white/80" : "text-white/50"}`}>
-                          Feed Media
-                        </span>
-                        <span className="text-xs text-white/40 font-poppins">
-                          Add at least one photo or media post to your feed
+                          Connect at least 1 social media account
                         </span>
                       </div>
                     </div>

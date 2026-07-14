@@ -73,7 +73,7 @@ export const createProfileValidationSchema = (t: TFunction): Yup.AnySchema => Yu
   instagramLink: Yup.string()
     .test('is-valid-instagram', t('auth.validations.socialMedia.instagram'), function(value) {
       if (!value || value.trim() === '') return true; // Allow empty values
-      return /^(?:https?:\/\/)?(?:www\.)?instagram\.com\/[a-zA-Z0-9_.]+\/?$/.test(value);
+      return /^(?:https?:\/\/)?(?:www\.)?instagram\.com\/[a-zA-Z0-9_.]+\/?(?:[?#].*)?$/.test(value);
     }),
   whatsappLink: Yup.string()
     .test(
@@ -99,17 +99,17 @@ export const createProfileValidationSchema = (t: TFunction): Yup.AnySchema => Yu
   youtubeLink: Yup.string()
     .test('is-valid-youtube', t('auth.validations.socialMedia.youtube'), function(value) {
       if (!value || value.trim() === '') return true; // Allow empty values
-      return /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:c\/|channel\/|user\/|@)?[a-zA-Z0-9_-]+|youtu\.be\/[a-zA-Z0-9_-]+)$/.test(value);
+      return /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:c\/|channel\/|user\/|@)?[a-zA-Z0-9_-]+|youtu\.be\/[a-zA-Z0-9_-]+)(?:\/)?(?:[?#].*)?$/.test(value);
     }),
   XLink: Yup.string()
     .test('is-valid-x', t('auth.validations.socialMedia.x'), function(value) {
       if (!value || value.trim() === '') return true; // Allow empty values
-      return /^(?:https?:\/\/)?(?:www\.)?(?:twitter\.com|x\.com)\/[a-zA-Z0-9_]+$/.test(value);
+      return /^(?:https?:\/\/)?(?:www\.)?(?:twitter\.com|x\.com)\/[a-zA-Z0-9_]+(?:\/)?(?:[?#].*)?$/.test(value);
     }),
   spotifyLink: Yup.string()
     .test('is-valid-spotify', t('auth.validations.socialMedia.spotify'), function(value) {
       if (!value || value.trim() === '') return true; // Allow empty values
-      return /^(?:https?:\/\/)?(?:open\.)?spotify\.com\/(?:artist|user|playlist|album|track)\/[a-zA-Z0-9]+/.test(value);
+      return /^(?:https?:\/\/)?(?:open\.)?spotify\.com\/(?:artist|user|playlist|album|track)\/[a-zA-Z0-9]+(?:\/)?(?:[?#].*)?$/.test(value);
     }),
   websiteLink: Yup.string()
     .test('is-valid-website', t('auth.validations.socialMedia.website'), function(value) {
@@ -119,12 +119,12 @@ export const createProfileValidationSchema = (t: TFunction): Yup.AnySchema => Yu
   facebookLink: Yup.string()
     .test('is-valid-facebook', t('auth.validations.socialMedia.facebook'), function(value) {
       if (!value || value.trim() === '') return true; // Allow empty values
-      return /^(?:https?:\/\/)?(?:www\.)?facebook\.com\/[a-zA-Z0-9.]+$/.test(value);
+      return /^(?:https?:\/\/)?(?:www\.)?facebook\.com\/[a-zA-Z0-9.]+(?:\/)?(?:[?#].*)?$/.test(value);
     }),
   youtubeMusicLink: Yup.string()
     .test('is-valid-youtube-music', t('auth.validations.socialMedia.youtubeMusic'), function(value) {
       if (!value || value.trim() === '') return true; // Allow empty values
-      return /^(?:https?:\/\/)?(?:music\.)?youtube\.com\/(?:channel|user)\/[a-zA-Z0-9_-]+/.test(value);
+      return /^(?:https?:\/\/)?(?:music\.)?youtube\.com\/(?:channel|user)\/[a-zA-Z0-9_-]+(?:\/)?(?:[?#].*)?$/.test(value);
     }),
   gmailLink: Yup.string()
     .test('is-valid-email', t('auth.validations.socialMedia.email'), function(value) {
@@ -134,21 +134,21 @@ export const createProfileValidationSchema = (t: TFunction): Yup.AnySchema => Yu
   linkedinLink: Yup.string()
     .test('is-valid-linkedin', t('auth.validations.socialMedia.linkedin'), function(value) {
       if (!value || value.trim() === '') return true; // Allow empty values
-      return /^(?:https?:\/\/)?(?:www\.)?linkedin\.com\/(?:in|company)\/[a-zA-Z0-9-]+$/.test(value);
+      return /^(?:https?:\/\/)?(?:www\.)?linkedin\.com\/(?:in|company)\/[a-zA-Z0-9-]+(?:\/)?(?:[?#].*)?$/.test(value);
     }),
   appleMusicLink: Yup.string()
     .test('is-valid-apple-music', t('auth.validations.socialMedia.appleMusic'), function(value) {
       if (!value || value.trim() === '') return true; // Allow empty values
-      return /^(?:https?:\/\/)?(?:music\.)?apple\.com\/(?:[a-z]{2}\/)?(?:artist|album|playlist)\/[^/]+\/[0-9]+/.test(value);
+      return /^(?:https?:\/\/)?(?:music\.)?apple\.com\/(?:[a-z]{2}\/)?(?:artist|album|playlist)\/[^/]+\/[0-9]+(?:\/)?(?:[?#].*)?$/.test(value);
     }),
   tiktokLink: Yup.string()
     .test('is-valid-tiktok', t('auth.validations.socialMedia.tiktok'), function(value) {
       if (!value || value.trim() === '') return true; // Allow empty values
-      return /^(?:https?:\/\/)?(?:www\.)?tiktok\.com\/@[a-zA-Z0-9._]+$/.test(value);
+      return /^(?:https?:\/\/)?(?:www\.)?tiktok\.com\/@[a-zA-Z0-9._]+(?:\/)?(?:[?#].*)?$/.test(value);
     }),
   snapchatLink: Yup.string()
     .test('is-valid-snapchat', t('auth.validations.socialMedia.snapchat'), function(value) {
       if (!value || value.trim() === '') return true; // Allow empty values
-      return /^(?:https?:\/\/)?(?:www\.)?snapchat\.com\/add\/[a-zA-Z0-9._-]+$/.test(value);
+      return /^(?:https?:\/\/)?(?:www\.)?snapchat\.com\/add\/[a-zA-Z0-9._-]+(?:\/)?(?:[?#].*)?$/.test(value);
     }),
 });

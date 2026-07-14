@@ -1,6 +1,6 @@
 import { memo } from "react";
 
-const Home = memo(() => {
+const Home = memo(({ fill = "currentColor" }: { fill?: string }) => {
   return (
     <>
       <svg
@@ -12,7 +12,7 @@ const Home = memo(() => {
       >
         <path
           d="M10.5 22V14.5H15.5V22H21.75V12H25.5L13 0.75L0.5 12H4.25V22H10.5Z"
-          fill="#F2F2F2"
+          fill={fill}
         />
       </svg>
     </>
