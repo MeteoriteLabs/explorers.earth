@@ -1435,13 +1435,13 @@ const Favorites = memo(() => {
                       </div>
 
                       {/* Tab Switcher Pill */}
-                      <div className="flex items-center bg-white font-poppins rounded-[24px] mx-auto w-fit p-[2px] mb-4">
+                      <div className="flex items-center bg-dashboard-muted border border-dashboard font-poppins rounded-[24px] mx-auto w-fit p-1 mb-4">
                         <button
                           onClick={() => setActiveTab(t("dashboard.recommendations.recommendationsTab"))}
                           className={`px-4 py-1.5 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
                             activeTab === t("dashboard.recommendations.recommendationsTab")
-                              ? "bg-[var(--dash-accent)] text-white shadow-sm font-bold"
-                              : "bg-white text-black hover:bg-gray-100"
+                              ? "bg-dashboard-accent text-[var(--dash-accent-text)] shadow-sm font-bold"
+                              : "bg-transparent text-dashboard-muted hover:text-dashboard"
                           }`}
                         >
                           Recommendations
@@ -1453,8 +1453,8 @@ const Favorites = memo(() => {
                           }}
                           className={`px-4 py-1.5 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
                             activeTab === t("dashboard.recommendations.manageTab")
-                              ? "bg-[var(--dash-accent)] text-white shadow-sm font-bold"
-                              : "bg-white text-black hover:bg-gray-100"
+                              ? "bg-dashboard-accent text-[var(--dash-accent-text)] shadow-sm font-bold"
+                              : "bg-transparent text-dashboard-muted hover:text-dashboard"
                           }`}
                           data-walkthrough="manage-tab"
                         >

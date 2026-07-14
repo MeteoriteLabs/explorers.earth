@@ -930,10 +930,10 @@ export const CategoryEmptyState: React.FC<CategoryEmptyStateProps> = ({
 
         {/* Headline */}
         <div className="space-y-1.5">
-          <h3 className="text-lg font-bold text-white font-poppins leading-snug tracking-tight">
+          <h3 className="text-lg font-bold text-dashboard font-poppins leading-snug tracking-tight">
             {meta.tagline}
           </h3>
-          <p className="text-xs text-white/45 font-poppins leading-relaxed max-w-xs mx-auto">
+          <p className="text-xs text-dashboard-muted font-poppins leading-relaxed max-w-xs mx-auto">
             {meta.sub}
           </p>
         </div>

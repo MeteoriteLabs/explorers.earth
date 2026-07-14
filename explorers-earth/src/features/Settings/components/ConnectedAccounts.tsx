@@ -280,10 +280,10 @@ const ConnectedAccounts = memo(() => {
       <div className="bg-dashboard-sidebar rounded-xl p-6">
         <div className="flex items-center justify-between">
           <div className="flex-1">
-            <h3 className="text-white font-semibold font-poppins mb-2">
+            <h3 className="text-dashboard font-semibold font-poppins mb-2">
               Local Tunes
             </h3>
-            <p className="text-white/60 text-sm font-poppins">
+            <p className="text-dashboard-muted text-sm font-poppins">
               Local Tunes integration is currently disabled
             </p>
           </div>
@@ -315,18 +315,18 @@ const ConnectedAccounts = memo(() => {
                 />
                 {/* Fallback gradient icon */}
                 <div className="w-full h-full bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 flex items-center justify-center hidden">
-                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-6 h-6 text-dashboard" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 11-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" />
                   </svg>
                 </div>
               </div>
-              <h3 className="text-white font-semibold font-poppins">
+              <h3 className="text-dashboard font-semibold font-poppins">
                 Local Tunes
               </h3>
             </div>
 
             {/* Dynamic description based on connection status */}
-            <p className="text-white/60 text-sm font-poppins mb-3">
+            <p className="text-dashboard-muted text-sm font-poppins mb-3">
               {localTunesConnected === true
                 ? "Your explorers account is connected to Local Tunes music platform"
                 : "Connect your explorers account to Local Tunes music platform"
@@ -360,7 +360,7 @@ const ConnectedAccounts = memo(() => {
             {/* LocalTunes Public Profile Link - Only show when connected */}
             {localTunesConnected && (
               <div className="mb-4">
-                <label className="block text-white/80 text-sm font-medium mb-2">
+                <label className="block text-dashboard text-sm font-medium mb-2">
                   LocalTunes Public Profile Link
                 </label>
                 <div className="flex gap-2">
@@ -370,9 +370,9 @@ const ConnectedAccounts = memo(() => {
                     onChange={(e) => setLocalTunesPublicLink(e.target.value)}
                     placeholder="https://localtunes.earth/profile/yourusername"
                     disabled={!!currentLocalTunesPublicLink}
-                    className={`flex-1 px-3 py-2 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${currentLocalTunesPublicLink
-                      ? 'bg-gray-800 border-gray-600 cursor-not-allowed opacity-60'
-                      : 'bg-gray-700 border-gray-600'
+                    className={`flex-1 px-3 py-2 border rounded-lg text-dashboard placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${currentLocalTunesPublicLink
+                      ? 'bg-dashboard-muted border-dashboard cursor-not-allowed opacity-60'
+                      : 'bg-dashboard-muted border-dashboard'
                       }`}
                   />
                   {!currentLocalTunesPublicLink && (
@@ -385,7 +385,7 @@ const ConnectedAccounts = memo(() => {
                     />
                   )}
                 </div>
-                <p className="text-white/60 text-xs mt-1">
+                <p className="text-dashboard-muted text-xs mt-1">
                   {currentLocalTunesPublicLink
                     ? "Your LocalTunes public profile link has been set and cannot be changed"
                     : "Add your LocalTunes public profile URL to share your music with others. You won't be able to edit it later."
@@ -431,7 +431,7 @@ const ConnectedAccounts = memo(() => {
               Connect to Local Tunes
             </h2>
 
-            <p className="dt-label text-white-muted">
+            <p className="dt-label text-dashboard-muted">
               Enter your explorers password to create your Local Tunes account. We'll use your existing username and email.
             </p>
 
@@ -451,7 +451,7 @@ const ConnectedAccounts = memo(() => {
                 <button
                   type="button"
                   onClick={() => setPasswordVisible(!passwordVisible)}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400 hover:text-white transition-colors"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400 hover:text-dashboard transition-colors"
                 >
                   {passwordVisible ? <EyeOnIcon /> : <EyeOffIcon />}
                 </button>

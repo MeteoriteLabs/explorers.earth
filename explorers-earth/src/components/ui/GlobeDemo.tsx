@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import Globe, { GlobeMethods } from "react-globe.gl";
-import { useDashboardTheme } from "../../contexts/DashboardThemeContext";
 
 type ArcData = {
   startLat: number;
@@ -15,7 +14,6 @@ interface GlobeDemoProps {
 }
 
 export function GlobeDemo({ arcsData }: GlobeDemoProps) {
-  const { theme } = useDashboardTheme();
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const [dimensions, setDimensions] = useState({ width: 600, height: 600 });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -51,8 +49,8 @@ export function GlobeDemo({ arcsData }: GlobeDemoProps) {
     };
   }, []);
 
-  // Set background color based on theme
-  const globeBackgroundColor = theme === 'dark' ? '#060608' : '#2E4032';
+  // Set background color to transparent to blend seamlessly with container
+  const globeBackgroundColor = "rgba(0,0,0,0)";
 
   return (
     <div ref={containerRef} className="w-full h-full flex items-center justify-center overflow-hidden bg-dashboard-bg">

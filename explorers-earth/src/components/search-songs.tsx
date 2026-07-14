@@ -355,8 +355,8 @@ export default function SearchSongs({
       <div
         className="flex items-stretch rounded-xl border overflow-hidden transition-all duration-200"
         style={{
-          borderColor: isFocused ? accentColor : 'rgba(255, 255, 255, 0.25)',
-          background: '#121212',
+          borderColor: isFocused ? accentColor : 'var(--dash-border, rgba(255, 255, 255, 0.25))',
+          background: 'var(--dash-search-bg, #121212)',
           boxShadow: isFocused ? `0 0 0 1px ${accentColor}` : 'none',
         }}
       >
@@ -378,31 +378,31 @@ export default function SearchSongs({
             disabled={isSearching || isActioning}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            className="w-full h-11 pl-9 pr-3 bg-transparent text-white text-sm placeholder:text-gray-400 focus:outline-none disabled:opacity-50"
+            className="w-full h-11 pl-9 pr-3 bg-transparent text-dashboard text-sm placeholder:text-dashboard-muted focus:outline-none disabled:opacity-50"
           />
         </div>
 
         {/* Divider */}
-        <div className="w-px self-stretch bg-white/10" />
+        <div className="w-px self-stretch bg-dashboard" />
 
         {/* Action button */}
         <button
           onClick={handleAction}
           disabled={isActionDisabled}
-          className="flex items-center px-4 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+          className="flex items-center px-4 text-sm font-semibold text-[var(--dash-accent-text)] transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
           style={{ background: accentColor }}
         >
           {actionContent()}
         </button>
 
         {/* Divider */}
-        <div className="w-px self-stretch bg-white/10" />
+        <div className="w-px self-stretch bg-dashboard" />
 
         {/* Chevron ICON ONLY — perfectly centered */}
         <button
           ref={chevronBtnRef}
           onClick={() => setDropdownOpen((o) => !o)}
-          className="h-11 w-10 flex items-center justify-center text-white hover:bg-white/5 transition-colors flex-shrink-0"
+          className="h-11 w-10 flex items-center justify-center text-dashboard hover:bg-dashboard-muted/50 transition-colors flex-shrink-0"
           title="Switch mode"
         >
           {dropdownOpen
@@ -420,8 +420,8 @@ export default function SearchSongs({
           style={{
             top: dropdownPos.top,
             right: dropdownPos.right,
-            background: '#1a1a1a',
-            borderColor: 'rgba(255, 255, 255, 0.15)',
+            background: 'var(--dash-bg, #1a1a1a)',
+            borderColor: 'var(--dash-border, rgba(255, 255, 255, 0.15))',
           }}
         >
           {MODES.map((m) => (
@@ -430,11 +430,11 @@ export default function SearchSongs({
               onClick={() => switchMode(m.key)}
               className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-left transition-colors"
               style={{
-                color: m.key === mode ? accentColor : '#9ca3af',
+                color: m.key === mode ? accentColor : 'var(--dash-text-muted, #9ca3af)',
                 background: m.key === mode ? (accentColor.startsWith('var') ? `color-mix(in srgb, ${accentColor} 15%, transparent)` : `${accentColor}26`) : 'transparent',
               }}
               onMouseEnter={(e) => {
-                if (m.key !== mode) (e.currentTarget as HTMLElement).style.background = '#ffffff0f';
+                if (m.key !== mode) (e.currentTarget as HTMLElement).style.background = 'var(--dash-muted, #ffffff0f)';
               }}
               onMouseLeave={(e) => {
                 if (m.key !== mode) (e.currentTarget as HTMLElement).style.background = 'transparent';
@@ -479,13 +479,13 @@ export default function SearchSongs({
                           borderColor: selected ? accentColor : 'transparent',
                         }}
                         onMouseEnter={(e) => {
-                          if (!selected) (e.currentTarget as HTMLElement).style.background = '#ffffff08';
+                          if (!selected) (e.currentTarget as HTMLElement).style.background = 'var(--dash-muted, #ffffff08)';
                         }}
                         onMouseLeave={(e) => {
                           if (!selected) (e.currentTarget as HTMLElement).style.background = 'transparent';
                         }}
                       >
-                        <div className="w-10 h-10 rounded-md overflow-hidden flex-shrink-0 bg-gray-800">
+                        <div className="w-10 h-10 rounded-md overflow-hidden flex-shrink-0 bg-dashboard-muted">
                           <img
                             src={song.thumbnailUrl}
                             alt={song.title}
@@ -494,17 +494,17 @@ export default function SearchSongs({
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-white truncate">{song.title}</p>
+                          <p className="text-sm font-medium text-dashboard truncate">{song.title}</p>
                           <p className="text-xs text-gray-400 truncate">{song.artist}</p>
                         </div>
                         <div
                           className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-all"
                           style={{
                             background: selected ? accentColor : 'transparent',
-                            border: `1.5px solid ${selected ? accentColor : '#ffffff25'}`,
+                            border: `1.5px solid ${selected ? accentColor : 'var(--dash-border, #ffffff25)'}`,
                           }}
                         >
-                          {selected && <Check className="h-3 w-3 text-white" />}
+                          {selected && <Check className="h-3 w-3 text-[var(--dash-accent-text)]" />}
                         </div>
                       </div>
                     );
@@ -541,12 +541,12 @@ export default function SearchSongs({
         {selectedSongs.size > 0 && (
           <div
             className="sticky bottom-0 pt-2 mt-2 border-t"
-            style={{ borderColor: 'rgba(255,255,255,0.1)', background: '#0d0d0d' }}
+            style={{ borderColor: 'var(--dash-border)', background: 'var(--dash-bg, #0d0d0d)' }}
           >
             <button
               onClick={handleAddSelected}
               disabled={addSongsMutation.isPending}
-              className="w-full py-2.5 rounded-lg text-sm font-semibold text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 disabled:opacity-50"
+              className="w-full py-2.5 rounded-lg text-sm font-semibold text-[var(--dash-accent-text)] flex items-center justify-center gap-2 transition-all hover:opacity-90 disabled:opacity-50"
               style={{ background: accentColor }}
             >
               {addSongsMutation.isPending

@@ -122,6 +122,7 @@
   --dash-bg: #fffcf6;
   --dash-sidebar-bg: #f6f1e7;
   --dash-accent: #3B82F6;
+  --dash-accent-text: #ffffff;
   --dash-text: #17231a;
   --dash-text-light: #17231a;
   --dash-text-muted: color-mix(in srgb, #17231a 55%, transparent);
@@ -219,6 +220,7 @@ body[data-sidebar-open="false"] .dashboard-content {
   --dash-bg: #060608;
   --dash-sidebar-bg: #0B0B0E;
   --dash-accent: #60A5FA;
+  --dash-accent-text: #060608;
   --dash-text: #F9FAFB;
   --dash-text-light: #FFFFFF;
   --dash-text-muted: color-mix(in srgb, #F9FAFB 50%, transparent);

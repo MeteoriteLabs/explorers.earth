@@ -881,7 +881,7 @@ const Home = memo(() => {
               } w-full mt-4`}
           >
 
-            <h1 className="text-2xl md:text-3xl font-bold font-poppins text-white leading-tight md:leading-normal py-2 px-4 text-center">
+            <h1 className="text-2xl md:text-3xl font-bold font-poppins text-dashboard leading-tight md:leading-normal py-2 px-4 text-center">
               {t("dashboard.home.welcomeBack")}, {user?.username}
             </h1>
             {!account?.Account_Name && (
@@ -926,7 +926,7 @@ const Home = memo(() => {
                 <div className="relative px-4 pb-4 -mt-12 md:-mt-16 pointer-events-none">
                   {/* Profile Name */}
                   <div className="text-center mb-4 pt-14 md:pt-20 pointer-events-none">
-                    <h2 className="inline-block text-lg md:text-xl font-bold font-poppins text-white pointer-events-auto">
+                    <h2 className="inline-block text-lg md:text-xl font-bold font-poppins text-dashboard pointer-events-auto">
                       {account?.Account_Name}
                     </h2>
                   </div>
@@ -935,7 +935,7 @@ const Home = memo(() => {
                   <div className="flex gap-2 sm:gap-3 justify-center px-2 sm:px-0 pointer-events-auto">
                     <div className="bg-dashboard-sidebar backdrop-blur-sm rounded-xl px-2 sm:px-3 py-2 border border-dashboard flex-1 min-w-0">
                       <div className="text-center">
-                        <p className="text-base sm:text-lg md:text-xl font-bold text-white">
+                        <p className="text-base sm:text-lg md:text-xl font-bold text-dashboard">
                           {totalActiveListsCount}
                         </p>
                         <p className="text-[hsl(var(--text-light))] font-poppins text-xs sm:text-xs truncate">
@@ -945,7 +945,7 @@ const Home = memo(() => {
                     </div>
                     <div className="bg-dashboard-sidebar backdrop-blur-sm rounded-xl px-2 sm:px-3 py-2 border border-dashboard flex-1 min-w-0">
                       <div className="text-center">
-                        <p className="text-base sm:text-lg md:text-xl font-bold text-white">
+                        <p className="text-base sm:text-lg md:text-xl font-bold text-dashboard">
                           {totalRecommendationsCount}
                         </p>
                         <p className="text-[hsl(var(--text-light))] font-poppins text-xs sm:text-xs truncate">
@@ -955,7 +955,7 @@ const Home = memo(() => {
                     </div>
                     <div className="bg-dashboard-sidebar backdrop-blur-sm rounded-xl px-2 sm:px-3 py-2 border border-dashboard flex-1 min-w-0">
                       <div className="text-center">
-                        <p className="text-base sm:text-lg md:text-xl font-bold text-white">
+                        <p className="text-base sm:text-lg md:text-xl font-bold text-dashboard">
                           {totalViewsCount}
                         </p>
                         <p className="text-[hsl(var(--text-light))] font-poppins text-xs sm:text-xs truncate">
@@ -1013,8 +1013,8 @@ const Home = memo(() => {
                         onClick={() => setActiveTab(cat.id)}
                         className={`flex-1 min-w-max bg-transparent border-none rounded-[24px] py-1.5 px-3 text-xs font-semibold font-poppins cursor-pointer whitespace-nowrap transition-all duration-200 ${
                           isActive
-                            ? "bg-dashboard-accent text-white font-bold"
-                            : "text-white/55"
+                            ? "bg-dashboard-accent text-[var(--dash-accent-text)] font-bold"
+                            : "text-dashboard-muted hover:text-dashboard"
                         }`}
                       >
                         {cat.icon} {cat.label}
@@ -1110,8 +1110,8 @@ const Home = memo(() => {
                                   </div>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h4 className="text-base font-bold text-white truncate mb-1">{item.List_Name}</h4>
-                                  <p className="text-xs text-white/45 truncate">
+                                  <h4 className="text-base font-bold text-dashboard truncate mb-1">{item.List_Name}</h4>
+                                  <p className="text-xs text-dashboard-muted truncate">
                                     {item.recommended_places?.length || 0} places · <span style={{ color: statusColor }}>{isPub ? "Published" : "Draft"}</span>
                                   </p>
                                 </div>
@@ -1155,11 +1155,11 @@ const Home = memo(() => {
                         </div>
                       ) : (
                         <div className="text-center py-8 pb-20">
-                          <svg className="w-16 h-16 mx-auto mb-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-16 h-16 mx-auto mb-4 text-dashboard-muted/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                           </svg>
-                          <h3 className="text-lg font-semibold text-white mb-1">No matches found</h3>
-                          <p className="text-xs text-white/55">Try searching with a different name</p>
+                          <h3 className="text-lg font-semibold text-dashboard mb-1">No matches found</h3>
+                          <p className="text-xs text-dashboard-muted">Try searching with a different name</p>
                         </div>
                       )}
                     </>
@@ -1195,8 +1195,8 @@ const Home = memo(() => {
                                   </div>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h4 className="text-base font-bold text-white truncate mb-1">{item.List_Name}</h4>
-                                  <p className="text-xs text-white/45 truncate">
+                                  <h4 className="text-base font-bold text-dashboard truncate mb-1">{item.List_Name}</h4>
+                                  <p className="text-xs text-dashboard-muted truncate">
                                     {item.recommended_movies?.length || 0} movies · <span style={{ color: statusColor }}>{isPub ? "Published" : "Draft"}</span>
                                   </p>
                                 </div>
@@ -1213,11 +1213,11 @@ const Home = memo(() => {
                         </div>
                       ) : (
                         <div className="text-center py-8 pb-20">
-                          <svg className="w-16 h-16 mx-auto mb-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-16 h-16 mx-auto mb-4 text-dashboard-muted/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                           </svg>
-                          <h3 className="text-lg font-semibold text-white mb-1">No matches found</h3>
-                          <p className="text-xs text-white/55">Try searching with a different name</p>
+                          <h3 className="text-lg font-semibold text-dashboard mb-1">No matches found</h3>
+                          <p className="text-xs text-dashboard-muted">Try searching with a different name</p>
                         </div>
                       )}
                     </>
@@ -1253,8 +1253,8 @@ const Home = memo(() => {
                                   </div>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h4 className="text-base font-bold text-white truncate mb-1">{item.List_Name}</h4>
-                                  <p className="text-xs text-white/45 truncate">
+                                  <h4 className="text-base font-bold text-dashboard truncate mb-1">{item.List_Name}</h4>
+                                  <p className="text-xs text-dashboard-muted truncate">
                                     {item.recommended_books?.length || 0} books · <span style={{ color: statusColor }}>{isPub ? "Published" : "Draft"}</span>
                                   </p>
                                 </div>
@@ -1271,11 +1271,11 @@ const Home = memo(() => {
                         </div>
                       ) : (
                         <div className="text-center py-8 pb-20">
-                          <svg className="w-16 h-16 mx-auto mb-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-16 h-16 mx-auto mb-4 text-dashboard-muted/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                           </svg>
-                          <h3 className="text-lg font-semibold text-white mb-1">No matches found</h3>
-                          <p className="text-xs text-white/55">Try searching with a different name</p>
+                          <h3 className="text-lg font-semibold text-dashboard mb-1">No matches found</h3>
+                          <p className="text-xs text-dashboard-muted">Try searching with a different name</p>
                         </div>
                       )}
                     </>
@@ -1311,8 +1311,8 @@ const Home = memo(() => {
                                   </div>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h4 className="text-base font-bold text-white truncate mb-1">{item.List_Name}</h4>
-                                  <p className="text-xs text-white/45 truncate">
+                                  <h4 className="text-base font-bold text-dashboard truncate mb-1">{item.List_Name}</h4>
+                                  <p className="text-xs text-dashboard-muted truncate">
                                     {item.recommended_games?.length || 0} games · <span style={{ color: statusColor }}>{isPub ? "Published" : "Draft"}</span>
                                   </p>
                                 </div>
@@ -1329,11 +1329,11 @@ const Home = memo(() => {
                         </div>
                       ) : (
                         <div className="text-center py-8 pb-20">
-                          <svg className="w-16 h-16 mx-auto mb-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-16 h-16 mx-auto mb-4 text-dashboard-muted/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                           </svg>
-                          <h3 className="text-lg font-semibold text-white mb-1">No matches found</h3>
-                          <p className="text-xs text-white/55">Try searching with a different name</p>
+                          <h3 className="text-lg font-semibold text-dashboard mb-1">No matches found</h3>
+                          <p className="text-xs text-dashboard-muted">Try searching with a different name</p>
                         </div>
                       )}
                     </>
@@ -1368,8 +1368,8 @@ const Home = memo(() => {
                                   </div>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h4 className="text-base font-bold text-white truncate mb-1">{item.name}</h4>
-                                  <p className="text-xs text-white/45 truncate">
+                                  <h4 className="text-base font-bold text-dashboard truncate mb-1">{item.name}</h4>
+                                  <p className="text-xs text-dashboard-muted truncate">
                                     {item.songs?.length || 0} tracks · <span style={{ color: statusColor }}>{isPub ? "Visible" : "Hidden"}</span>
                                   </p>
                                 </div>
@@ -1386,11 +1386,11 @@ const Home = memo(() => {
                         </div>
                       ) : (
                         <div className="text-center py-8 pb-20">
-                          <svg className="w-16 h-16 mx-auto mb-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-16 h-16 mx-auto mb-4 text-dashboard-muted/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                           </svg>
-                          <h3 className="text-lg font-semibold text-white mb-1">No matches found</h3>
-                          <p className="text-xs text-white/55">Try searching with a different name</p>
+                          <h3 className="text-lg font-semibold text-dashboard mb-1">No matches found</h3>
+                          <p className="text-xs text-dashboard-muted">Try searching with a different name</p>
                         </div>
                       )}
                     </>
@@ -1426,14 +1426,14 @@ const Home = memo(() => {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-1">
-                                    <h4 className="text-base font-bold text-white truncate">{guide.Title}</h4>
+                                    <h4 className="text-base font-bold text-dashboard truncate">{guide.Title}</h4>
                                     {guide.Number_Of_Days && (
-                                      <span className="bg-white/10 text-white/70 text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1 font-poppins shrink-0">
+                                      <span className="bg-dashboard-muted text-dashboard-muted text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1 font-poppins shrink-0">
                                         {guide.Number_Of_Days} {guide.Number_Of_Days === 1 ? "Day" : "Days"}
                                       </span>
                                     )}
                                   </div>
-                                  <p className="text-xs text-white/45 truncate">
+                                  <p className="text-xs text-dashboard-muted truncate">
                                     {guide.Guide_Type || "Itinerary"} · <span style={{ color: statusColor }}>{isPub ? "Published" : "Draft"}</span>
                                   </p>
                                 </div>
@@ -1478,11 +1478,11 @@ const Home = memo(() => {
                         </div>
                       ) : (
                         <div className="text-center py-8 pb-20">
-                          <svg className="w-16 h-16 mx-auto mb-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-16 h-16 mx-auto mb-4 text-dashboard-muted/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                           </svg>
-                          <h3 className="text-lg font-semibold text-white mb-1">No matches found</h3>
-                          <p className="text-xs text-white/55">Try searching with a different name</p>
+                          <h3 className="text-lg font-semibold text-dashboard mb-1">No matches found</h3>
+                          <p className="text-xs text-dashboard-muted">Try searching with a different name</p>
                         </div>
                       )}
                     </>
@@ -1517,8 +1517,8 @@ const Home = memo(() => {
                                   </div>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h4 className="text-base font-bold text-white truncate mb-1">{item.List_Name}</h4>
-                                  <p className="text-xs text-white/45 truncate">
+                                  <h4 className="text-base font-bold text-dashboard truncate mb-1">{item.List_Name}</h4>
+                                  <p className="text-xs text-dashboard-muted truncate">
                                     {item.recommended_apps?.length || 0} apps & tools · <span style={{ color: statusColor }}>{isPub ? "Published" : "Draft"}</span>
                                   </p>
                                 </div>
@@ -1535,11 +1535,11 @@ const Home = memo(() => {
                         </div>
                       ) : (
                         <div className="text-center py-8 pb-20">
-                          <svg className="w-16 h-16 mx-auto mb-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-16 h-16 mx-auto mb-4 text-dashboard-muted/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                           </svg>
-                          <h3 className="text-lg font-semibold text-white mb-1">No matches found</h3>
-                          <p className="text-xs text-white/55">Try searching with a different name</p>
+                          <h3 className="text-lg font-semibold text-dashboard mb-1">No matches found</h3>
+                          <p className="text-xs text-dashboard-muted">Try searching with a different name</p>
                         </div>
                       )}
                     </>
@@ -1575,8 +1575,8 @@ const Home = memo(() => {
                                   </div>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h4 className="text-base font-bold text-white truncate mb-1">{item.List_Name}</h4>
-                                  <p className="text-xs text-white/45 truncate">
+                                  <h4 className="text-base font-bold text-dashboard truncate mb-1">{item.List_Name}</h4>
+                                  <p className="text-xs text-dashboard-muted truncate">
                                     {item.recommended_products?.length || 0} products · <span style={{ color: statusColor }}>{isPub ? "Published" : "Draft"}</span>
                                   </p>
                                 </div>
@@ -1593,11 +1593,11 @@ const Home = memo(() => {
                         </div>
                       ) : (
                         <div className="text-center py-8 pb-20">
-                          <svg className="w-16 h-16 mx-auto mb-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-16 h-16 mx-auto mb-4 text-dashboard-muted/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                           </svg>
-                          <h3 className="text-lg font-semibold text-white mb-1">No matches found</h3>
-                          <p className="text-xs text-white/55">Try searching with a different name</p>
+                          <h3 className="text-lg font-semibold text-dashboard mb-1">No matches found</h3>
+                          <p className="text-xs text-dashboard-muted">Try searching with a different name</p>
                         </div>
                       )}
                     </>
@@ -1633,8 +1633,8 @@ const Home = memo(() => {
                                   </div>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h4 className="text-base font-bold text-white truncate mb-1">{item.List_Name}</h4>
-                                  <p className="text-xs text-white/45 truncate">
+                                  <h4 className="text-base font-bold text-dashboard truncate mb-1">{item.List_Name}</h4>
+                                  <p className="text-xs text-dashboard-muted truncate">
                                     {item.recommended_people?.length || 0} persons · <span style={{ color: statusColor }}>{isPub ? "Published" : "Draft"}</span>
                                   </p>
                                 </div>
@@ -1651,11 +1651,11 @@ const Home = memo(() => {
                         </div>
                       ) : (
                         <div className="text-center py-8 pb-20">
-                          <svg className="w-16 h-16 mx-auto mb-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-16 h-16 mx-auto mb-4 text-dashboard-muted/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                           </svg>
-                          <h3 className="text-lg font-semibold text-white mb-1">No matches found</h3>
-                          <p className="text-xs text-white/55">Try searching with a different name</p>
+                          <h3 className="text-lg font-semibold text-dashboard mb-1">No matches found</h3>
+                          <p className="text-xs text-dashboard-muted">Try searching with a different name</p>
                         </div>
                       )}
                     </>
