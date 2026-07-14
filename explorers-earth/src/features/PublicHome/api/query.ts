@@ -120,6 +120,7 @@ export const accountsDetailQuery = gql`
       public_products
       public_people
       pinned_nav_tabs
+      auto_pinning
       recommendation_lists(pagination: { limit: 100 })  {
         documentId
         List_Name
@@ -407,6 +408,7 @@ export const getPublicAccountBasicQuery = gql`
       public_products
       public_people
       pinned_nav_tabs
+      auto_pinning
     }
   }
 `;
@@ -445,6 +447,7 @@ export const getPublicProfileDataQuery = gql`
       public_products
       public_people
       pinned_nav_tabs
+      auto_pinning
     }
   }
 `;
@@ -482,6 +485,7 @@ export const getAccountsDataQuery = gql`
       public_products
       public_people
       pinned_nav_tabs
+      auto_pinning
     }
   }
 `;

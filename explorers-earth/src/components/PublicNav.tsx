@@ -242,44 +242,45 @@ const PublicNav = memo(() => {
     }] : []),
   ];
 
-  // ─── Smart Auto-Fill Footer Nav Logic ─────────────────────────────────
-  // Manually pinned tabs always take priority. Any remaining slots (up to 5
-  // total) are auto-filled with published-but-not-pinned categories, ranked
-  // by number of published lists descending (most content = highest priority).
+  // ─── Footer Nav Logic ──────────────────────────────────────────────────
   const MAX_NAV_SLOTS = 5;
+  const autoPinning = accountData?.auto_pinning === null || accountData?.auto_pinning === undefined ? true : accountData.auto_pinning;
+
   const pinnedTabs: string[] = Array.isArray(accountData?.pinned_nav_tabs)
     ? accountData.pinned_nav_tabs.includes('public_profile')
       ? accountData.pinned_nav_tabs
       : ['public_profile', ...accountData.pinned_nav_tabs]
     : ['public_profile'];
 
-  // 1. Build pinned nav items (respecting pin order from the array).
-  const pinnedNavItems = pinnedTabs
-    .map(id => navItems.find(item => item.id === id))
-    .filter(Boolean) as typeof navItems;
+  let finalNavItems: typeof navItems = [];
 
-  // 2. Calculate remaining slots.
-  const remainingSlots = MAX_NAV_SLOTS - pinnedNavItems.length;
-
-  // 3. Auto-fill: published tabs that are enabled but not manually pinned,
-  //    sorted by published list count (descending).
-  const autoFillNavItems = remainingSlots > 0
-    ? navItems
-        .filter(item => !pinnedTabs.includes(item.id))
-        .sort((a, b) =>
-          (categoryListCountMap[b.id] ?? 0) - (categoryListCountMap[a.id] ?? 0)
-        )
-        .slice(0, remainingSlots)
-    : [];
-
-  // 4. Final list: pinned first, then auto-fill, hard-capped at MAX_NAV_SLOTS.
-  const finalNavItems = [...pinnedNavItems, ...autoFillNavItems].slice(0, MAX_NAV_SLOTS);
+  if (autoPinning) {
+    // 1. Auto Pinning Enabled:
+    // Display profile tab first, then fill remaining slots with published categories ranked by list count (descending).
+    const profileTab = navItems.find(item => item.id === 'public_profile');
+    const otherTabs = navItems
+      .filter(item => item.id !== 'public_profile')
+      .sort((a, b) => (categoryListCountMap[b.id] ?? 0) - (categoryListCountMap[a.id] ?? 0));
+    
+    finalNavItems = [
+      ...(profileTab ? [profileTab] : []),
+      ...otherTabs
+    ].slice(0, MAX_NAV_SLOTS);
+  } else {
+    // 2. Auto Pinning Disabled (Manual mode):
+    // Strictly show only the categories manually pinned by the user, capped at MAX_NAV_SLOTS.
+    finalNavItems = pinnedTabs
+      .map(id => navItems.find(item => item.id === id))
+      .filter(Boolean) as typeof navItems;
+    
+    finalNavItems = finalNavItems.slice(0, MAX_NAV_SLOTS);
+  }
   // ───────────────────────────────────────────────────────────────────────
 
 
 
   return (
-    <div className="fixed bottom-0 md:bottom-2 md:rounded-lg z-50 w-full md:w-[33%]  md:translate-x-[102%]  bg-[#2a2a2a] text-white flex md:flex-row md:justify-center md:items-center justify-center p-1  shadow-md">
+    <div className="fixed bottom-0 md:bottom-2 md:rounded-lg z-50 w-full md:w-[33%]  md:translate-x-[102%]  bg-[#2a2a2a] text-white flex md:flex-row md:justify-center md:items-center justify-center py-0.5 px-1  shadow-md">
       <div className="flex mx-[1.5rem] md:border-0 flex-row justify-around w-full">
         {finalNavItems.map((item, index) => {
           // Check if current path matches the nav item path

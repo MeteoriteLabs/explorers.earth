@@ -18,8 +18,8 @@ const NavButton: FC<NavButtonProps> = ({
     <button
       onClick={onClickHandler}
       className={`
-        relative flex-1 flex font-poppins flex-col items-center justify-center gap-1
-        pt-3 pb-2 px-1 rounded-xl transition-all duration-300 ease-in-out
+        relative flex-1 flex font-poppins flex-col items-center justify-center gap-0.5
+        pt-1.5 pb-1 px-1 rounded-xl transition-all duration-300 ease-in-out
         hover:scale-105 active:scale-95
         ${isActive ? "" : "hover:bg-dashboard-muted/50"}
       `}

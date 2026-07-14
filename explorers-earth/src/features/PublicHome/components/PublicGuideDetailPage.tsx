@@ -1209,7 +1209,7 @@ const PublicGuideDetailPage = memo(() => {
 
       {/* Floating Map Button - Only show if guide has places with coordinates */}
       {hasPlacesForMap && !isMapView && (
-        <div className="fixed bottom-[3.8rem] md:bottom-16 left-1/2 -translate-x-1/2 z-40 bg-black/20 rounded-lg p-0.5 backdrop-blur-sm">
+        <div className="fixed bottom-[4.2rem] md:bottom-16 left-1/2 -translate-x-1/2 z-40 bg-black/20 rounded-lg p-0.5 backdrop-blur-sm">
           <Button
             startIcon={<WhiteMap />}
             btnText="Map View"
