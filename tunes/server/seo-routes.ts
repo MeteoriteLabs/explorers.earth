@@ -9,6 +9,18 @@ const TUNES_BASE_URL = "https://localtunes.earth";
 const EXPLORERS_BASE_URL = "https://explorers.earth";
 const SITEMAP_CACHE_TTL = 60 * 60 * 1000; // 1 hour in ms
 
+export const EXPLORERS_STATIC_SITEMAP_URLS = [
+  { loc: `${EXPLORERS_BASE_URL}/`, changefreq: "weekly", priority: 1.0 },
+  { loc: `${EXPLORERS_BASE_URL}/about`, changefreq: "monthly", priority: 0.8 },
+  { loc: `${EXPLORERS_BASE_URL}/use-cases`, changefreq: "monthly", priority: 0.8 },
+  { loc: `${EXPLORERS_BASE_URL}/contact`, changefreq: "monthly", priority: 0.8 },
+  { loc: `${EXPLORERS_BASE_URL}/privacy`, changefreq: "monthly", priority: 0.7 },
+  { loc: `${EXPLORERS_BASE_URL}/terms`, changefreq: "monthly", priority: 0.7 },
+  { loc: `${EXPLORERS_BASE_URL}/cookies`, changefreq: "monthly", priority: 0.6 },
+  { loc: `${EXPLORERS_BASE_URL}/login`, changefreq: "monthly", priority: 0.5 },
+  { loc: `${EXPLORERS_BASE_URL}/register`, changefreq: "monthly", priority: 0.5 },
+] as const;
+
 // Simple in-memory cache for sitemaps
 const sitemapCache: Record<string, { xml: string; timestamp: number }> = {};
 
@@ -28,7 +40,7 @@ function escapeXml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function buildSitemapXml(urls: Array<{ loc: string; lastmod?: string; changefreq?: string; priority?: number }>): string {
+export function buildSitemapXml(urls: ReadonlyArray<{ loc: string; lastmod?: string; changefreq?: string; priority?: number }>): string {
   const today = new Date().toISOString().split("T")[0];
   const entries = urls
     .map(
@@ -104,14 +116,7 @@ async function generateExplorersSitemap(): Promise<string> {
   if (cached) return cached;
 
   const urls: Array<{ loc: string; lastmod?: string; changefreq?: string; priority?: number }> = [
-    // Static pages
-    { loc: `${EXPLORERS_BASE_URL}/`, changefreq: "weekly", priority: 1.0 },
-    { loc: `${EXPLORERS_BASE_URL}/contact`, changefreq: "monthly", priority: 0.8 },
-    { loc: `${EXPLORERS_BASE_URL}/privacy`, changefreq: "monthly", priority: 0.7 },
-    { loc: `${EXPLORERS_BASE_URL}/terms`, changefreq: "monthly", priority: 0.7 },
-    { loc: `${EXPLORERS_BASE_URL}/cookies`, changefreq: "monthly", priority: 0.6 },
-    { loc: `${EXPLORERS_BASE_URL}/login`, changefreq: "monthly", priority: 0.5 },
-    { loc: `${EXPLORERS_BASE_URL}/register`, changefreq: "monthly", priority: 0.5 },
+    ...EXPLORERS_STATIC_SITEMAP_URLS,
   ];
 
   const strapiUrl = process.env.STRAPI_URL;

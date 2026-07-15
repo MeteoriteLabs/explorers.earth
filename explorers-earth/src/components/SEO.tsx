@@ -194,7 +194,7 @@ const SEO: React.FC<SEOProps> = ({
     author: author || defaultSEO.author,
     canonical: canonical || defaultSEO.canonical,
     image: image || defaultSEO.image,
-    url: url || defaultSEO.url,
+    url: url || canonical || defaultSEO.url,
     type: type || defaultSEO.type,
     siteName: siteName || defaultSEO.siteName,
     locale: locale || defaultSEO.locale,

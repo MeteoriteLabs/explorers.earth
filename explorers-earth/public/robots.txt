@@ -6,6 +6,7 @@ User-agent: *
 # PUBLIC ROUTES - Allow crawling for SEO and discoverability
 Allow: /
 Allow: /about
+Allow: /use-cases
 Allow: /contact
 Allow: /privacy
 Allow: /cookies

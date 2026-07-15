@@ -1,6 +1,10 @@
 {
   "about": {
     "closing": "If you're curious.\nIf you're thoughtful.\nIf you're willing to slow down and look closer —\nyou already belong here.",
+    "heroEyebrow": "Our shared perspective",
+    "join": "Join explorers",
+    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
+    "readBeliefs": "Read what we believe",
     "section1": {
       "line1": "Exploration begins with awareness.",
       "line2": "With noticing what others pass by.",
@@ -49,7 +53,8 @@
         "explorers story",
         "who we are explorers"
       ],
-      "title": "Explorers of Earth | About Us"
+      "title": "Explorers of Earth | About Us",
+      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow."
     },
     "subtitle": {
       "line1": "A global community of people who explore with care — for people, culture, and the planet we share.",
@@ -1163,7 +1168,8 @@
       "privacy": "Privacy Policy",
       "cookies": "Cookie Policy",
       "product": "Product",
-      "shareAnywhere": "Share anywhere"
+      "shareAnywhere": "Share anywhere",
+      "useCases": "Use Cases"
     },
     "copyright": "© 2025 explorers. All rights reserved.",
     "madeWithLove": "Made with love on earth",
@@ -1177,6 +1183,7 @@
       "whoIsFor": "Who is it for?",
       "faq": "FAQ",
       "about": "About",
+      "useCases": "Use Cases",
       "contact": "Contact",
       "openMenu": "Open navigation menu",
       "closeMenu": "Close navigation menu"
@@ -1228,6 +1235,84 @@
       "ae": "UAE",
       "sg": "Singapore",
       "de": "Germany"
+    }
+  },
+  "useCases": {
+    "seo": {
+      "title": "Use Cases | explorers.earth",
+      "description": "See how people, creators, and brands can collect what they value, shape it with context, and share it through one thoughtful Explorer page.",
+      "keywords": [
+        "explorers use cases",
+        "personal recommendations page",
+        "creator recommendations",
+        "brand curation",
+        "share recommendations",
+        "curated collections"
+      ],
+      "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view."
+    },
+    "hero": {
+      "eyebrow": "Ways to explore",
+      "title": "Different perspectives. One place to share them.",
+      "description": "Whether the point of view is personal, creative, or shared by a brand, explorers gives it a thoughtful home.",
+      "chooseLabel": "Choose a perspective",
+      "visualAlt": "Three perspectives connected through a place, an Explorer profile, and a storefront."
+    },
+    "perspectives": {
+      "personal": {
+        "label": "Personal",
+        "title": "A home for the things that shape your world.",
+        "description": "Keep the places, books, films, tools, people, and small discoveries you return to in one living collection.",
+        "points": [
+          "Bring different kinds of recommendations together.",
+          "Add the context that makes each choice yours.",
+          "Share one page that can keep evolving with you."
+        ]
+      },
+      "creators": {
+        "label": "Creators",
+        "title": "Give your audience more than a feed.",
+        "description": "Turn the recommendations scattered across posts, videos, conversations, and notes into something people can return to.",
+        "points": [
+          "Create a durable home for your point of view.",
+          "Organize recommendations around stories and themes.",
+          "Share through one link or QR wherever people find you."
+        ]
+      },
+      "brands": {
+        "label": "Brands",
+        "title": "Turn your point of view into an experience people can enter.",
+        "description": "Curate the places, products, guides, and ideas that express what your organization genuinely values.",
+        "points": [
+          "Build collections with a clear and human perspective.",
+          "Connect locations, products, and useful context.",
+          "Give people something thoughtful to save and revisit."
+        ]
+      }
+    },
+    "journey": {
+      "eyebrow": "One simple rhythm",
+      "title": "Three perspectives. One way of sharing with care.",
+      "description": "The shape changes with the person behind it. The rhythm stays simple.",
+      "steps": {
+        "collect": {
+          "title": "Collect",
+          "description": "Bring together what you genuinely recommend across the parts of life that matter to you."
+        },
+        "shape": {
+          "title": "Shape",
+          "description": "Organize it with enough context for someone else to understand why it belongs."
+        },
+        "share": {
+          "title": "Share",
+          "description": "Offer one living link or QR that people can save, scan, and return to."
+        }
+      }
+    },
+    "cta": {
+      "title": "Make a home for what you would pass on.",
+      "description": "Start with the recommendations you already share. Give them one place to live.",
+      "button": "Claim your Explorer page"
     }
   },
   "languageModal": {
@@ -1453,8 +1538,24 @@
       "networkTitle": "Build your network and earn automatically"
     },
     "whoIsFor": {
-      "headline": "Built for people whose taste helps others.",
-      "subtext": "Whether you are sharing a city, a shelf, a product list, a playlist, or a guest guide, explorers gives your recommendations a home.",
+      "eyebrow": "Ways to use explorers",
+      "headline": "A place for every kind of perspective.",
+      "subtext": "The same simple page can hold a personal world, a creator's living guide, or a brand's considered point of view.",
+      "explore": "See this perspective",
+      "perspectives": {
+        "personal": {
+          "title": "Personal",
+          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world."
+        },
+        "creators": {
+          "title": "Creators",
+          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed."
+        },
+        "brands": {
+          "title": "Brands",
+          "description": "Curate collections, guides, locations, and products with a clear and human point of view."
+        }
+      },
       "cards": [
         "Personal explorers",
         "Creators and curators",

@@ -40,6 +40,14 @@ function generateSitemap() {
     <priority>0.8</priority>
   </url>
 
+  <!-- Use Cases Page -->
+  <url>
+    <loc>${BASE_URL}/use-cases</loc>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
   <!-- Legal & Information Pages -->
   <url>
     <loc>${BASE_URL}/contact</loc>
@@ -112,6 +120,7 @@ User-agent: *
 # PUBLIC ROUTES - Allow crawling for SEO and discoverability
 Allow: /
 Allow: /about
+Allow: /use-cases
 Allow: /contact
 Allow: /privacy
 Allow: /cookies

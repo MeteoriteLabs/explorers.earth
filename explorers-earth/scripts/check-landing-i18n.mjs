@@ -53,12 +53,14 @@ const requiredPaths = [
   "sections.shareAnywhere.visual.savedRecommendation",
   "sections.whoIsFor.headline",
   "sections.whoIsFor.subtext",
-  "sections.whoIsFor.explorerLabel",
-  "sections.whoIsFor.cards",
-  "sections.whoIsFor.visual.personal",
-  "sections.whoIsFor.visual.creators",
-  "sections.whoIsFor.visual.hostsQr",
-  "sections.whoIsFor.chips",
+  "sections.whoIsFor.eyebrow",
+  "sections.whoIsFor.explore",
+  "sections.whoIsFor.perspectives.personal.title",
+  "sections.whoIsFor.perspectives.personal.description",
+  "sections.whoIsFor.perspectives.creators.title",
+  "sections.whoIsFor.perspectives.creators.description",
+  "sections.whoIsFor.perspectives.brands.title",
+  "sections.whoIsFor.perspectives.brands.description",
   "sections.analytics.livePreview",
   "sections.analytics.headline",
   "sections.analytics.subtext",
@@ -80,6 +82,7 @@ const requiredPaths = [
   "header.nav.share",
   "header.nav.howItWorks",
   "header.nav.faq",
+  "header.nav.useCases",
   "header.nav.openMenu",
   "header.nav.closeMenu",
   "header.auth.claimFreePage",
@@ -112,6 +115,7 @@ const requiredPaths = [
   "footer.links.faq",
   "footer.links.contact",
   "footer.links.about",
+  "footer.links.useCases",
   "footer.links.terms",
   "footer.links.privacy",
   "footer.links.cookies",
@@ -122,6 +126,44 @@ const requiredPaths = [
   "footer.sections.legal",
   "footer.copyright",
   "footer.madeWithLove",
+  "about.heroEyebrow",
+  "about.readBeliefs",
+  "about.join",
+  "about.productVisualAlt",
+  "about.seo.purpose",
+  "useCases.seo.title",
+  "useCases.seo.description",
+  "useCases.seo.keywords",
+  "useCases.seo.purpose",
+  "useCases.hero.eyebrow",
+  "useCases.hero.title",
+  "useCases.hero.description",
+  "useCases.hero.chooseLabel",
+  "useCases.hero.visualAlt",
+  "useCases.perspectives.personal.label",
+  "useCases.perspectives.personal.title",
+  "useCases.perspectives.personal.description",
+  "useCases.perspectives.personal.points",
+  "useCases.perspectives.creators.label",
+  "useCases.perspectives.creators.title",
+  "useCases.perspectives.creators.description",
+  "useCases.perspectives.creators.points",
+  "useCases.perspectives.brands.label",
+  "useCases.perspectives.brands.title",
+  "useCases.perspectives.brands.description",
+  "useCases.perspectives.brands.points",
+  "useCases.journey.eyebrow",
+  "useCases.journey.title",
+  "useCases.journey.description",
+  "useCases.journey.steps.collect.title",
+  "useCases.journey.steps.collect.description",
+  "useCases.journey.steps.shape.title",
+  "useCases.journey.steps.shape.description",
+  "useCases.journey.steps.share.title",
+  "useCases.journey.steps.share.description",
+  "useCases.cta.title",
+  "useCases.cta.description",
+  "useCases.cta.button",
 ];
 
 const exactLengthPaths = new Map([
@@ -133,10 +175,10 @@ const exactLengthPaths = new Map([
   ["sections.createCustomize.steps", 3],
   ["sections.shareAnywhere.cards", 4],
   ["sections.shareAnywhere.visual.guideItems", 3],
-  ["sections.whoIsFor.cards", 4],
-  ["sections.whoIsFor.visual.personal", 6],
-  ["sections.whoIsFor.visual.creators", 4],
-  ["sections.whoIsFor.chips", 30],
+  ["useCases.seo.keywords", 6],
+  ["useCases.perspectives.personal.points", 3],
+  ["useCases.perspectives.creators.points", 3],
+  ["useCases.perspectives.brands.points", 3],
   ["seo.landing.keywords", 25],
   ["seo.landing.geoFeatures", 5],
   ["sections.faq.fallbackItems", 4],
@@ -166,6 +208,25 @@ const intentionalFallbackPaths = new Set([
   "footer.links.faq",
   "footer.links.contact",
   "footer.sections.legal",
+]);
+
+const englishFallbackAllowedPaths = new Set([
+  "sections.whoIsFor.eyebrow",
+  "sections.whoIsFor.explore",
+  "sections.whoIsFor.perspectives.personal.title",
+  "sections.whoIsFor.perspectives.personal.description",
+  "sections.whoIsFor.perspectives.creators.title",
+  "sections.whoIsFor.perspectives.creators.description",
+  "sections.whoIsFor.perspectives.brands.title",
+  "sections.whoIsFor.perspectives.brands.description",
+  "header.nav.useCases",
+  "footer.links.useCases",
+  "about.heroEyebrow",
+  "about.readBeliefs",
+  "about.join",
+  "about.productVisualAlt",
+  "about.seo.purpose",
+  ...requiredPaths.filter((dottedPath) => dottedPath.startsWith("useCases.")),
 ]);
 
 const intentionalQuestionMarkPaths = new Set([
@@ -248,6 +309,14 @@ for (const file of languageFiles) {
     const value = getPath(data, dottedPath);
     const englishValue = getPath(english, dottedPath);
 
+    if (
+      file !== "en.json" &&
+      englishFallbackAllowedPaths.has(dottedPath) &&
+      (value === undefined || value === null || value === "")
+    ) {
+      continue;
+    }
+
     assertNonEmpty(value, file, dottedPath, failures);
     assertArrayShape(value, file, dottedPath, failures);
 
@@ -266,6 +335,7 @@ for (const file of languageFiles) {
     if (
       strictTranslationFiles.has(file) &&
       !intentionalFallbackPaths.has(dottedPath) &&
+      !englishFallbackAllowedPaths.has(dottedPath) &&
       hasEnglishFallback(value, englishValue)
     ) {
       failures.push(`${file}: ${dottedPath} still equals English fallback`);
