@@ -1,4 +1,5 @@
-import { Instagram, Linkedin, QrCode, Twitter } from "lucide-react";
+import { Instagram, QrCode } from "lucide-react";
+import { useReducedMotion } from "framer-motion";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { GlobePattern } from "./BackgroundPatterns";
@@ -7,12 +8,13 @@ export default function Footer() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const reducedMotion = useReducedMotion();
 
   const scrollToSection = (sectionId: string) => {
     if (location.pathname === "/") {
       const element = document.getElementById(sectionId);
       if (element) {
-        element.scrollIntoView({ behavior: "smooth" });
+        element.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" });
       }
     } else {
       navigate(`/#${sectionId}`);
@@ -52,20 +54,6 @@ export default function Footer() {
                 aria-label="Instagram"
               >
                 <Instagram size={18} />
-              </a>
-              <a
-                href="#"
-                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 p-2 text-white/62 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941]"
-                aria-label="Twitter"
-              >
-                <Twitter size={18} />
-              </a>
-              <a
-                href="#"
-                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 p-2 text-white/62 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941]"
-                aria-label="LinkedIn"
-              >
-                <Linkedin size={18} />
               </a>
             </div>
           </div>

@@ -19,7 +19,7 @@ export default function WhoIsFor() {
           viewport={{ once: true }}
           className="max-w-3xl"
         >
-          <p className="mb-4 text-xs font-black uppercase tracking-[0.2em] text-[#c87941]">
+          <p className="mb-4 text-xs font-black uppercase tracking-[0.2em] text-[#8c4d22]">
             {t("sections.whoIsFor.eyebrow")}
           </p>
           <h2 className="landing-display text-3xl font-bold leading-tight text-[#17231a] sm:text-4xl lg:text-5xl">

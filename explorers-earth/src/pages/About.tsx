@@ -64,7 +64,7 @@ export default function About() {
             transition={{ duration: 0.75 }}
             className="relative z-10 mx-auto max-w-4xl text-center"
           >
-            <p className="mb-5 text-xs font-black uppercase tracking-[0.24em] text-[#c87941]">
+            <p className="mb-5 text-xs font-black uppercase tracking-[0.24em] text-[#8c4d22]">
               {t("about.heroEyebrow")}
             </p>
             <h1 className="landing-display text-5xl font-bold leading-[0.98] text-[#17231a] sm:text-6xl lg:text-8xl">
@@ -87,7 +87,7 @@ export default function About() {
 
         <section id="what-we-believe" className="scroll-mt-28 bg-[#fffcf6] px-4 py-24 sm:px-6 lg:py-32">
           <motion.div {...motionProps} className="mx-auto max-w-3xl text-center">
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#c87941]">{t("about.section1.title")}</p>
+            <h2 className="text-xs font-black uppercase tracking-[0.22em] text-[#8c4d22]">{t("about.section1.title")}</h2>
             <div className="landing-display mt-8 space-y-3 text-3xl font-semibold leading-tight text-[#17231a] sm:text-4xl">
               <p>{t("about.section1.line1")}</p>
               <p>{t("about.section1.line2")}</p>
@@ -102,7 +102,7 @@ export default function About() {
         <section className="relative overflow-hidden bg-[#102513] px-4 py-24 text-white sm:px-6 lg:py-32">
           <div aria-hidden="true" className="absolute inset-0 opacity-20 [background-image:radial-gradient(#b8c9ab_1px,transparent_1px)] [background-size:26px_26px]" />
           <motion.div {...motionProps} className="relative mx-auto max-w-4xl text-center">
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#d8a15d]">{t("about.section2.title")}</p>
+            <h2 className="text-xs font-black uppercase tracking-[0.22em] text-[#d8a15d]">{t("about.section2.title")}</h2>
             <div className="landing-display mt-8 text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
               <p>{t("about.section2.line1")}</p>
               <p className="mt-2 text-[#dce9ce]">{t("about.section2.line2")}</p>
@@ -116,7 +116,7 @@ export default function About() {
         <section className="bg-[var(--landing-cream)] px-4 py-24 sm:px-6 lg:py-32">
           <div className="mx-auto grid max-w-6xl gap-14 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <motion.div {...motionProps}>
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-[#c87941]">{t("about.section3.title")}</p>
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-[#8c4d22]">{t("about.section3.title")}</p>
               <h2 className="landing-display mt-6 text-4xl font-bold text-[#17231a] sm:text-5xl">
                 {t("about.section3.line1")}
               </h2>
@@ -156,7 +156,7 @@ export default function About() {
 
         <section className="bg-[#fffcf6] px-4 py-24 sm:px-6 lg:py-32">
           <motion.div {...motionProps} className="mx-auto max-w-3xl text-center">
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#c87941]">{t("about.section4.title")}</p>
+            <h2 className="text-xs font-black uppercase tracking-[0.22em] text-[#8c4d22]">{t("about.section4.title")}</h2>
             <div className="landing-display mt-8 space-y-3 text-4xl font-bold leading-tight text-[#17231a] sm:text-5xl">
               <p>{t("about.section4.line1")}</p>
               <p>{t("about.section4.line2")}</p>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Globe, ChevronDown, Menu, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -15,6 +15,7 @@ export default function LandingHeader() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const { isAuthenticated } = useAuthStore();
+  const reducedMotion = useReducedMotion();
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileMenuId = 'marketing-mobile-menu';
   const navItems = [
@@ -71,7 +72,7 @@ export default function LandingHeader() {
 
     const element = document.getElementById(sectionId);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+      element.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth' });
     }
     setIsMobileMenuOpen(false);
   };
@@ -118,8 +119,8 @@ export default function LandingHeader() {
 
   return (
     <motion.header
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={reducedMotion ? false : { opacity: 0, y: -20 }}
+      animate={reducedMotion ? undefined : { opacity: 1, y: 0 }}
       className={`fixed left-3 right-3 top-4 z-50 mx-auto max-w-[1060px] rounded-full border transition-all duration-300 ${
         hasSolidHeader
           ? 'border-white/60 bg-[#fbf7ef]/92 text-[#17231a] shadow-[0_16px_48px_rgba(23,35,26,0.13)] backdrop-blur-xl'
@@ -161,6 +162,7 @@ export default function LandingHeader() {
             {/* Language Switcher */}
             <button
               onClick={() => setIsLanguageModalOpen(true)}
+              aria-label={t('languageModal.title')}
               className="flex min-h-11 items-center gap-1 rounded-full px-2.5 py-2 text-sm font-medium transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941] focus-visible:ring-offset-2"
             >
               <Globe size={16} />
@@ -169,7 +171,7 @@ export default function LandingHeader() {
             </button>
 
             {/* Auth Buttons */}
-            <div className="hidden items-center gap-2 md:flex">
+            <div className="hidden items-center gap-2 xl:flex">
               <button 
                 onClick={() => handleAuthButtonClick('/login')}
                 className="min-h-11 rounded-full border border-[rgba(23,35,26,.18)] bg-[#fffcf6] px-4 py-2 text-sm font-extrabold text-[#1b3b1a] transition-all hover:bg-[#f6f1e7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941] focus-visible:ring-offset-2"
@@ -206,8 +208,8 @@ export default function LandingHeader() {
         {isMobileMenuOpen && (
           <motion.div
             id={mobileMenuId}
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
+            initial={reducedMotion ? false : { opacity: 0, height: 0 }}
+            animate={reducedMotion ? undefined : { opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             className="mt-4 overflow-hidden rounded-[22px] bg-[#fffcf6] shadow-lg xl:hidden"
           >

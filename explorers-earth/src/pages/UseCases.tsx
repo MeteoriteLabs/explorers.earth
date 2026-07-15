@@ -152,7 +152,7 @@ export default function UseCases() {
             transition={{ duration: 0.75 }}
             className="mx-auto max-w-5xl text-center"
           >
-            <p className="text-xs font-black uppercase tracking-[0.24em] text-[#c87941]">{t("useCases.hero.eyebrow")}</p>
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-[#8c4d22]">{t("useCases.hero.eyebrow")}</p>
             <h1 className="landing-display mx-auto mt-5 max-w-4xl text-5xl font-bold leading-[1.02] text-[#17231a] sm:text-6xl lg:text-7xl">
               {t("useCases.hero.title")}
             </h1>
@@ -182,7 +182,7 @@ export default function UseCases() {
                 <PerspectiveVisual perspective={perspective} />
               </motion.div>
               <motion.div {...reveal} className="max-w-xl">
-                <p className="text-xs font-black uppercase tracking-[0.22em] text-[#c87941]">{t(`useCases.perspectives.${perspective}.label`)}</p>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-[#8c4d22]">{t(`useCases.perspectives.${perspective}.label`)}</p>
                 <h2 className="landing-display mt-6 text-4xl font-bold leading-tight text-[#17231a] sm:text-5xl">{t(`useCases.perspectives.${perspective}.title`)}</h2>
                 <p className="mt-6 text-lg leading-8 text-[#66715f]">{t(`useCases.perspectives.${perspective}.description`)}</p>
                 <ul className="mt-8 space-y-4">
