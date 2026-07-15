@@ -917,7 +917,7 @@ const Home = memo(() => {
                     onClick={() => setShowProfileShareModal(true)}
                     className="absolute top-2 right-2 bg-[#3B82F6] hover:bg-[#2563EB] border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5 cursor-pointer z-10 transition-all shadow-md"
                   >
-                    <span className="text-[10px] font-bold text-white uppercase tracking-wider font-poppins">Share Profile</span>
+                    <span className="text-[10px] font-bold !text-white uppercase tracking-wider font-poppins">Share Profile</span>
                     <ShareIcon color="white" size={10} />
                   </div>
                 </div>
@@ -938,7 +938,7 @@ const Home = memo(() => {
                         <p className="text-base sm:text-lg md:text-xl font-bold text-dashboard">
                           {totalActiveListsCount}
                         </p>
-                        <p className="text-[hsl(var(--text-light))] font-poppins text-xs sm:text-xs truncate">
+                        <p className="text-dashboard-muted font-poppins text-xs sm:text-xs truncate">
                           Active Lists
                         </p>
                       </div>
@@ -948,7 +948,7 @@ const Home = memo(() => {
                         <p className="text-base sm:text-lg md:text-xl font-bold text-dashboard">
                           {totalRecommendationsCount}
                         </p>
-                        <p className="text-[hsl(var(--text-light))] font-poppins text-xs sm:text-xs truncate">
+                        <p className="text-dashboard-muted font-poppins text-xs sm:text-xs truncate">
                           Recommendations
                         </p>
                       </div>
@@ -958,7 +958,7 @@ const Home = memo(() => {
                         <p className="text-base sm:text-lg md:text-xl font-bold text-dashboard">
                           {totalViewsCount}
                         </p>
-                        <p className="text-[hsl(var(--text-light))] font-poppins text-xs sm:text-xs truncate">
+                        <p className="text-dashboard-muted font-poppins text-xs sm:text-xs truncate">
                           Views
                         </p>
                       </div>
@@ -1013,7 +1013,7 @@ const Home = memo(() => {
                         onClick={() => setActiveTab(cat.id)}
                         className={`flex-1 min-w-max bg-transparent border-none rounded-[24px] py-1.5 px-3 text-xs font-semibold font-poppins cursor-pointer whitespace-nowrap transition-all duration-200 ${
                           isActive
-                            ? "bg-dashboard-accent text-[var(--dash-accent-text)] font-bold"
+                            ? "bg-dashboard-accent !text-white font-bold"
                             : "text-dashboard-muted hover:text-dashboard"
                         }`}
                       >

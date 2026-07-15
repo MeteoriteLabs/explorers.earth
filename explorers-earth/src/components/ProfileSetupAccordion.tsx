@@ -113,7 +113,7 @@ const ProfileSetupAccordion = ({ account }: ProfileSetupAccordionProps) => {
         {/* Header (Clickable area with reduced vertical padding) */}
         <div
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center justify-between py-2.5 px-5 md:py-3.5 md:px-6 cursor-pointer hover:bg-white/5 transition-colors duration-200 select-none"
+          className="flex items-center justify-between py-2.5 px-5 md:py-3.5 md:px-6 cursor-pointer hover:bg-dashboard-muted/20 transition-colors duration-200 select-none"
         >
           <div className="flex items-center gap-4 flex-1 min-w-0 mr-4">
             
@@ -126,7 +126,7 @@ const ProfileSetupAccordion = ({ account }: ProfileSetupAccordionProps) => {
                   cy="27"
                   r="22"
                   fill="transparent"
-                  stroke="rgba(255,255,255,0.08)"
+                  stroke="var(--dash-border)"
                   strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeDasharray="115.19 138.23"
@@ -148,7 +148,7 @@ const ProfileSetupAccordion = ({ account }: ProfileSetupAccordionProps) => {
               </svg>
               
               {/* Profile Image container */}
-              <div className="absolute top-[8px] left-[8px] w-[38px] h-[38px] rounded-full overflow-hidden bg-dashboard-muted border border-white/10">
+              <div className="absolute top-[8px] left-[8px] w-[38px] h-[38px] rounded-full overflow-hidden bg-dashboard-muted border border-dashboard">
                 <img
                   src={resolveProfileImageUrl(account?.profile_picture?.url)}
                   alt="Profile"
@@ -163,10 +163,10 @@ const ProfileSetupAccordion = ({ account }: ProfileSetupAccordionProps) => {
             </div>
 
             <div className="min-w-0">
-              <h3 className="text-sm md:text-base font-bold font-poppins text-white leading-tight mb-0.5">
+              <h3 className="text-sm md:text-base font-bold font-poppins text-dashboard leading-tight mb-0.5">
                 {t("dashboard.profile.accountSetup.accordionTitle", "Public Profile Setup")}
               </h3>
-              <p className="text-[11px] text-white/50 font-poppins truncate">
+              <p className="text-[11px] text-dashboard-muted font-poppins truncate">
                 {isComplete 
                   ? t("dashboard.profile.accountSetup.allComplete", "Your profile is fully set up!") 
                   : t("dashboard.profile.accountSetup.setupDescription", "Complete your profile to build your brand.")}
@@ -190,7 +190,7 @@ const ProfileSetupAccordion = ({ account }: ProfileSetupAccordionProps) => {
 
             {/* Collapse Arrow */}
             <svg
-              className={`w-4 h-4 text-white/50 transition-transform duration-300 ${
+              className={`w-4 h-4 text-dashboard-muted transition-transform duration-300 ${
                 isOpen ? "transform rotate-180" : ""
               }`}
               fill="none"
@@ -211,7 +211,7 @@ const ProfileSetupAccordion = ({ account }: ProfileSetupAccordionProps) => {
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.25, ease: "easeInOut" }}
             >
-              <div className="px-5 pb-5 md:px-6 md:pb-6 border-t border-dashboard/30 pt-4 bg-black/10">
+              <div className="px-5 pb-5 md:px-6 md:pb-6 border-t border-dashboard/30 pt-4 bg-dashboard-muted/30">
                 <div className="flex flex-col gap-2.5">
                   
                   {/* Item 1: Profile Picture */}
@@ -220,22 +220,22 @@ const ProfileSetupAccordion = ({ account }: ProfileSetupAccordionProps) => {
                     className={`flex items-center p-2.5 rounded-xl transition-all duration-150 border border-transparent ${
                       hasProfilePic 
                         ? "cursor-default" 
-                        : "cursor-pointer hover:bg-white/[0.04] hover:border-dashboard/30"
+                        : "cursor-pointer hover:bg-dashboard-muted/40 hover:border-dashboard/30"
                     }`}
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
                       <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
                         hasProfilePic 
-                          ? "bg-green-500/20 text-green-400 border border-green-500/30" 
-                          : "bg-white/5 border border-white/20 text-white/30"
+                          ? "bg-green-500/10 dark:bg-green-500/20 text-green-600 dark:text-green-400 border border-green-500/20 dark:border-green-500/30" 
+                          : "bg-dashboard-muted/50 border border-dashboard text-dashboard-muted/50"
                       }`}>
                         {hasProfilePic ? "✓" : "☐"}
                       </div>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2">
-                        <span className={`text-sm font-semibold font-poppins ${hasProfilePic ? "text-white/80" : "text-white/50"}`}>
+                        <span className={`text-sm font-semibold font-poppins ${hasProfilePic ? "text-dashboard" : "text-dashboard-muted"}`}>
                           Profile Picture
                         </span>
-                        <span className="text-xs text-white/40 font-poppins">
+                        <span className="text-xs text-dashboard-muted font-poppins">
                           Upload a photo to represent your page
                         </span>
                       </div>
@@ -248,22 +248,22 @@ const ProfileSetupAccordion = ({ account }: ProfileSetupAccordionProps) => {
                     className={`flex items-center p-2.5 rounded-xl transition-all duration-150 border border-transparent ${
                       hasCoverPic 
                         ? "cursor-default" 
-                        : "cursor-pointer hover:bg-white/[0.04] hover:border-dashboard/30"
+                        : "cursor-pointer hover:bg-dashboard-muted/40 hover:border-dashboard/30"
                     }`}
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
                       <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
                         hasCoverPic 
-                          ? "bg-green-500/20 text-green-400 border border-green-500/30" 
-                          : "bg-white/5 border border-white/20 text-white/30"
+                          ? "bg-green-500/10 dark:bg-green-500/20 text-green-600 dark:text-green-400 border border-green-500/20 dark:border-green-500/30" 
+                          : "bg-dashboard-muted/50 border border-dashboard text-dashboard-muted/50"
                       }`}>
                         {hasCoverPic ? "✓" : "☐"}
                       </div>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2">
-                        <span className={`text-sm font-semibold font-poppins ${hasCoverPic ? "text-white/80" : "text-white/50"}`}>
+                        <span className={`text-sm font-semibold font-poppins ${hasCoverPic ? "text-dashboard" : "text-dashboard-muted"}`}>
                           Cover Picture
                         </span>
-                        <span className="text-xs text-white/40 font-poppins">
+                        <span className="text-xs text-dashboard-muted font-poppins">
                           Upload a banner for your public page header
                         </span>
                       </div>
@@ -276,22 +276,22 @@ const ProfileSetupAccordion = ({ account }: ProfileSetupAccordionProps) => {
                     className={`flex items-center p-2.5 rounded-xl transition-all duration-150 border border-transparent ${
                       hasBio 
                         ? "cursor-default" 
-                        : "cursor-pointer hover:bg-white/[0.04] hover:border-dashboard/30"
+                        : "cursor-pointer hover:bg-dashboard-muted/40 hover:border-dashboard/30"
                     }`}
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
                       <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
                         hasBio 
-                          ? "bg-green-500/20 text-green-400 border border-green-500/30" 
-                          : "bg-white/5 border border-white/20 text-white/30"
+                          ? "bg-green-500/10 dark:bg-green-500/20 text-green-600 dark:text-green-400 border border-green-500/20 dark:border-green-500/30" 
+                          : "bg-dashboard-muted/50 border border-dashboard text-dashboard-muted/50"
                       }`}>
                         {hasBio ? "✓" : "☐"}
                       </div>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2">
-                        <span className={`text-sm font-semibold font-poppins ${hasBio ? "text-white/80" : "text-white/50"}`}>
+                        <span className={`text-sm font-semibold font-poppins ${hasBio ? "text-dashboard" : "text-dashboard-muted"}`}>
                           Bio
                         </span>
-                        <span className="text-xs text-white/40 font-poppins">
+                        <span className="text-xs text-dashboard-muted font-poppins">
                           Tell other explorers about yourself in a short description
                         </span>
                       </div>
@@ -304,22 +304,22 @@ const ProfileSetupAccordion = ({ account }: ProfileSetupAccordionProps) => {
                     className={`flex items-center p-2.5 rounded-xl transition-all duration-150 border border-transparent ${
                       hasSocialLinks 
                         ? "cursor-default" 
-                        : "cursor-pointer hover:bg-white/[0.04] hover:border-dashboard/30"
+                        : "cursor-pointer hover:bg-dashboard-muted/40 hover:border-dashboard/30"
                     }`}
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
                       <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
                         hasSocialLinks 
-                          ? "bg-green-500/20 text-green-400 border border-green-500/30" 
-                          : "bg-white/5 border border-white/20 text-white/30"
+                          ? "bg-green-500/10 dark:bg-green-500/20 text-green-600 dark:text-green-400 border border-green-500/20 dark:border-green-500/30" 
+                          : "bg-dashboard-muted/50 border border-dashboard text-dashboard-muted/50"
                       }`}>
                         {hasSocialLinks ? "✓" : "☐"}
                       </div>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2">
-                        <span className={`text-sm font-semibold font-poppins ${hasSocialLinks ? "text-white/80" : "text-white/50"}`}>
+                        <span className={`text-sm font-semibold font-poppins ${hasSocialLinks ? "text-dashboard" : "text-dashboard-muted"}`}>
                           Social Links {socialLinksCount > 0 && `(${Math.min(socialLinksCount, 1)}/1)`}
                         </span>
-                        <span className="text-xs text-white/40 font-poppins">
+                        <span className="text-xs text-dashboard-muted font-poppins">
                           Connect at least 1 social media account
                         </span>
                       </div>
