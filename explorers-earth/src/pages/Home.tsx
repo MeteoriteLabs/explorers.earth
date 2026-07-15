@@ -1013,9 +1013,10 @@ const Home = memo(() => {
                         onClick={() => setActiveTab(cat.id)}
                         className={`flex-1 min-w-max bg-transparent border-none rounded-[24px] py-1.5 px-3 text-xs font-semibold font-poppins cursor-pointer whitespace-nowrap transition-all duration-200 ${
                           isActive
-                            ? "bg-dashboard-accent !text-white font-bold"
+                            ? "font-bold"
                             : "text-dashboard-muted hover:text-dashboard"
                         }`}
+                        style={isActive ? { backgroundColor: 'var(--dash-accent)', color: '#ffffff' } : {}}
                       >
                         {cat.icon} {cat.label}
                       </button>
