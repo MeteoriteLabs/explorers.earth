@@ -849,7 +849,7 @@ const SubscriptionPlans = ({
             <div className="flex items-center justify-between mb-3 sm:mb-4 relative">
               <div className="flex items-center gap-3 sm:gap-4 flex-1">
                 <div className={`p-2 sm:p-3 rounded-xl ${detailsPlan.plan_name.toLowerCase() === 'free'
-                  ? 'bg-gray-700/50 text-gray-300'
+                  ? 'bg-gray-700/50 text-dashboard-muted'
                   : 'bg-dashboard-accent/20 text-dashboard-accent'
                   }`}>
                   {getPlanIcon(detailsPlan.plan_name)}
@@ -858,7 +858,7 @@ const SubscriptionPlans = ({
                   <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white">
                     {detailsPlan.plan_name} Plan
                   </h2>
-                  <p className="text-xs sm:text-sm text-gray-400 uppercase tracking-wider">
+                  <p className="text-xs sm:text-sm text-dashboard-muted uppercase tracking-wider">
                     {detailsPlan.duration}
                   </p>
                 </div>
@@ -868,7 +868,7 @@ const SubscriptionPlans = ({
                   setShowDetailsModal(false);
                   setDetailsPlan(null);
                 }}
-                className="absolute top-0 right-0 text-gray-400 hover:text-white transition-colors flex-shrink-0 z-10 p-1"
+                className="absolute top-0 right-0 text-dashboard-muted hover:text-dashboard transition-colors flex-shrink-0 z-10 p-1"
               >
                 <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
@@ -881,13 +881,13 @@ const SubscriptionPlans = ({
                   ${formatCost(detailsPlan.cost)}
                 </span>
                 {detailsPlan.plan_name.toLowerCase() !== 'free' && (
-                  <span className="text-gray-400 text-sm sm:text-base md:text-lg">
+                  <span className="text-dashboard-muted text-sm sm:text-base md:text-lg">
                     /{detailsPlan.duration === 'monthly' ? 'mo' : 'yr'}
                   </span>
                 )}
               </div>
               {detailsPlan.duration === 'yearly' && (
-                <p className="text-xs sm:text-sm text-gray-400">
+                <p className="text-xs sm:text-sm text-dashboard-muted">
                   ${formatCost((parseInt(detailsPlan.cost) / 12).toFixed(0))} per month
                 </p>
               )}
@@ -943,7 +943,7 @@ const SubscriptionPlans = ({
                       <div className="flex-shrink-0 w-4 h-4 sm:w-5 sm:h-5 mt-0.5 bg-dashboard-accent/20 rounded flex items-center justify-center">
                         <Check className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-dashboard-accent" />
                       </div>
-                      <span className="text-gray-300 text-xs sm:text-sm leading-relaxed">
+                      <span className="text-dashboard-muted text-xs sm:text-sm leading-relaxed">
                         {typeof feature === 'object' ? feature.feature : feature}
                       </span>
                     </div>

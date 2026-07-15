@@ -272,7 +272,7 @@ const Auth = () => {
             />
           ) : (
             // OAuth-only registration (currently active)
-            <div className="dashboard-theme">
+            <div className="dashboard-theme dashboard-theme-dark">
               <div className="flex flex-col items-center justify-center mb-4 md:mb-6 w-3/4 max-w-[75%] mx-auto">
                 <img
                   src="/logo.svg"

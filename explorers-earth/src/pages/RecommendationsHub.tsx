@@ -123,7 +123,7 @@ const Bird = ({ delay }: { delay: number }) => (
 );
 
 const FloatingItem = ({ children, x, delay, duration }: any) => (
-  <motion.div className="absolute text-white/20" initial={{ x: x + "%", y: "110%" }} animate={{ y: "-20%", rotate: [0, 10, -10, 0] }} transition={{ duration, repeat: Infinity, delay, ease: "linear" }}>
+  <motion.div className="absolute !text-white/20" initial={{ x: x + "%", y: "110%" }} animate={{ y: "-20%", rotate: [0, 10, -10, 0] }} transition={{ duration, repeat: Infinity, delay, ease: "linear" }}>
     {children}
   </motion.div>
 );
@@ -189,7 +189,7 @@ const PlacesAnimatedBackground = () => {
         <path d="M0 100 L20 80 L40 95 L60 75 L80 90 L100 85 L100 100 Z" fill="currentColor" className="text-emerald-700" />
       </motion.svg>
       {[...Array(5)].map((_, i) => (
-        <motion.div key={i} className="absolute text-white/60 w-full z-10" initial={{ x: "-25%", y: (8 + (i * 10)) + "%" }} animate={{ x: "135%", y: (12 + (i * 7)) + "%" }} transition={{ duration: 18 + (i * 4), repeat: Infinity, delay: i * 4, ease: "linear" }}>
+        <motion.div key={i} className="absolute !text-white/60 w-full z-10" initial={{ x: "-25%", y: (8 + (i * 10)) + "%" }} animate={{ x: "135%", y: (12 + (i * 7)) + "%" }} transition={{ duration: 18 + (i * 4), repeat: Infinity, delay: i * 4, ease: "linear" }}>
           <div className="flex gap-14">
             <Bird delay={i * 0.2} />
             {i % 2 === 0 && <Bird delay={i * 0.5 + 0.3} />}
@@ -209,7 +209,7 @@ const MusicAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
     <div ref={containerRef} className="absolute inset-0 bg-slate-950 overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-purple-900/30 via-slate-950/20 to-slate-950 opacity-90" />
       <motion.div className="absolute -right-20 -top-10 w-96 h-96 opacity-[0.04] pointer-events-none z-0" animate={{ rotate: isHovering ? 360 : 0 }} transition={{ duration: 20, repeat: Infinity, ease: "linear" }}>
-        <svg viewBox="0 0 100 100" className="w-full h-full text-white">
+        <svg viewBox="0 0 100 100" className="w-full h-full !text-white">
           <circle cx="50" cy="50" r="48" fill="currentColor" />
           {[...Array(40)].map((_, i) => (
             <circle key={i} cx="50" cy="50" r={46 - i} stroke="black" strokeWidth="0.1" fill="none" opacity="0.3" />
@@ -250,7 +250,7 @@ const MoviesAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
         }}
         className="absolute -left-20 top-1/2 -translate-y-1/2 w-96 h-96 blur-[0.5px] pointer-events-none z-0"
       >
-        <svg viewBox="0 0 100 100" className="w-full h-full text-white/70">
+        <svg viewBox="0 0 100 100" className="w-full h-full !text-white/70">
           <circle cx="50" cy="50" r="48" stroke="currentColor" strokeWidth="1.2" fill="none" />
           <circle cx="50" cy="50" r="46" stroke="currentColor" strokeWidth="0.5" fill="none" strokeDasharray="3 3" />
           <circle cx="50" cy="50" r="14" stroke="currentColor" strokeWidth="2" fill="none" />
@@ -377,7 +377,7 @@ const GuidesAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
         }}
         transition={{ duration: 0.8, ease: "easeInOut" }}
       >
-        <svg width="85" height="85" viewBox="0 0 100 100" className="text-white/40">
+        <svg width="85" height="85" viewBox="0 0 100 100" className="!text-white/40">
           <circle cx="50" cy="50" r="45" stroke="currentColor" strokeWidth="1" fill="none" />
           <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="0.5" fill="none" strokeDasharray="2 2" />
           {[...Array(8)].map((_, i) => (
@@ -432,7 +432,7 @@ const AppsAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
     <div ref={containerRef} className="absolute inset-0 bg-slate-950 overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-purple-900/40 via-slate-950/20 to-slate-950 opacity-100" />
       <motion.div 
-        className="absolute right-[12%] top-1/2 -translate-y-1/2 pointer-events-none z-10 text-white/30"
+        className="absolute right-[12%] top-1/2 -translate-y-1/2 pointer-events-none z-10 !text-white/30"
         initial={{ scale: 1 }}
         animate={{ 
           scale: isHovering ? 1.05 : 1,
@@ -454,7 +454,7 @@ const ProductsAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => 
     <div ref={containerRef} className="absolute inset-0 bg-slate-950 overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-emerald-900/40 via-slate-950/20 to-slate-950 opacity-100" />
       <motion.div 
-        className="absolute right-[12%] top-1/2 -translate-y-1/2 pointer-events-none z-10 text-white/30"
+        className="absolute right-[12%] top-1/2 -translate-y-1/2 pointer-events-none z-10 !text-white/30"
         initial={{ scale: 1 }}
         animate={{ 
           scale: isHovering ? 1.05 : 1,
@@ -564,10 +564,10 @@ const RecommendationCard = ({ cat }: { cat: CategoryConfig }) => {
 
       <div className="absolute inset-0 p-6 md:p-8 flex items-center z-20">
         <div className="flex flex-col min-w-0">
-          <h3 className="text-3xl md:text-4xl font-black text-white tracking-tighter leading-none uppercase group-hover:scale-105 transition-transform origin-left">
+          <h3 className="text-3xl md:text-4xl font-black !text-white tracking-tighter leading-none uppercase group-hover:scale-105 transition-transform origin-left">
             {cat.label}
           </h3>
-          <p className="text-white/70 text-[10px] md:text-xs font-semibold tracking-wide mt-2 line-clamp-2 group-hover:text-white transition-colors max-w-[85%]">
+          <p className="!text-white/70 text-[10px] md:text-xs font-semibold tracking-wide mt-2 line-clamp-2 group-hover:!text-white transition-colors max-w-[85%]">
             {cat.description}
           </p>
           <motion.div className="h-0.5 mt-3 bg-white/20 rounded-full overflow-hidden" initial={{ width: 0 }} whileHover={{ width: "120px" }} transition={{ duration: 0.6 }}>
@@ -575,7 +575,7 @@ const RecommendationCard = ({ cat }: { cat: CategoryConfig }) => {
           </motion.div>
         </div>
         <div className="ml-auto opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-300 shrink-0">
-          <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white">
+          <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center !text-white">
             <ChevronRight size={20} />
           </div>
         </div>

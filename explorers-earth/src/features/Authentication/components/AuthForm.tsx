@@ -100,7 +100,7 @@ const AuthForm: FC<AuthFormProps> = memo(
       return requiredFields.includes(fieldName);
     };
     return (
-      <div className="dashboard-theme">
+      <div className="dashboard-theme dashboard-theme-dark">
         {!isOnboarding && (
           <div className="flex flex-col items-center justify-center mt-2 md:mt-3 mb-4 md:mb-6 w-3/4 max-w-[75%] mx-auto">
             <img
