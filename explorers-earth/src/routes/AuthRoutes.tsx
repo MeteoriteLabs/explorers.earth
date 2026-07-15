@@ -11,6 +11,7 @@ import TunesSsoRedirect from "../pages/TunesSsoRedirect";
 import Landing from "../pages/Landing";
 import Contact from "../pages/Contact";
 import About from "../pages/About";
+import UseCases from "../pages/UseCases";
 import Privacy from "../pages/Privacy";
 import Cookies from "../pages/Cookies";
 import Terms from "../pages/Terms";
@@ -36,6 +37,7 @@ const AuthRoutes = [
   <Route key="email-confirmed" path="/email-confirmed" element={<EmailConfirmed />} />,
   <Route key="contact" path="/contact" element={<Contact />} />,
   <Route key="about" path="/about" element={<About />} />,
+  <Route key="use-cases" path="/use-cases" element={<UseCases />} />,
   <Route key="privacy" path="/privacy" element={<Privacy />} />,
   <Route key="cookies" path="/cookies" element={<Cookies />} />,
   <Route key="terms" path="/terms" element={<Terms />} />,

@@ -79,6 +79,9 @@ export default function Footer() {
               >
                 {t("footer.links.product")}
               </button>
+              <Link to="/use-cases" className="block text-white/68 transition-colors hover:text-white visited:text-[#b8c9ab]">
+                {t("footer.links.useCases")}
+              </Link>
               <button
                 onClick={() => scrollToSection("how-it-works")}
                 className="block text-white/68 transition-colors hover:text-white"
@@ -103,10 +106,10 @@ export default function Footer() {
           <div className="space-y-4">
             <h3 className="text-sm font-black uppercase tracking-[0.1em] text-white">{t("footer.sections.company")}</h3>
             <div className="space-y-2 text-sm font-semibold">
-              <Link to="/about" className="block text-white/68 transition-colors hover:text-white">
+              <Link to="/about" className="block text-white/68 transition-colors hover:text-white visited:text-[#b8c9ab]">
                 {t("footer.links.about")}
               </Link>
-              <Link to="/contact" className="block text-white/68 transition-colors hover:text-white">
+              <Link to="/contact" className="block text-white/68 transition-colors hover:text-white visited:text-[#b8c9ab]">
                 {t("footer.links.contact")}
               </Link>
             <a

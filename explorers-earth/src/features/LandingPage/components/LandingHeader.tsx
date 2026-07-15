@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Globe, ChevronDown, Menu, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../../store/store';
 import LanguageModal from '../../../components/LanguageModal';
+import useMarketingHashNavigation from '../hooks/useMarketingHashNavigation';
 
 export default function LandingHeader() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -14,12 +15,17 @@ export default function LandingHeader() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const { isAuthenticated } = useAuthStore();
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuId = 'marketing-mobile-menu';
   const navItems = [
-    { label: t('header.nav.product'), sectionId: 'product' },
-    { label: t('header.nav.howItWorks'), sectionId: 'how-it-works' },
-    { label: t('header.nav.share'), sectionId: 'share' },
-    { label: t('header.nav.faq'), sectionId: 'faq' },
-  ];
+    { label: t('header.nav.product'), kind: 'section', target: 'product' },
+    { label: t('header.nav.howItWorks'), kind: 'section', target: 'how-it-works' },
+    { label: t('header.nav.useCases'), kind: 'route', target: '/use-cases' },
+    { label: t('header.nav.about'), kind: 'route', target: '/about' },
+    { label: t('header.nav.faq'), kind: 'section', target: 'faq' },
+  ] as const;
+
+  useMarketingHashNavigation();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -32,18 +38,61 @@ export default function LandingHeader() {
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname, location.hash]);
+
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsMobileMenuOpen(false);
+        menuButtonRef.current?.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMobileMenuOpen]);
+
   const scrollToSection = (sectionId: string) => {
-    // If we're not on the home page, navigate to home first
-    if (location.pathname !== '/') {
-      window.location.href = `/#${sectionId}`;
+    if (isAuthenticated) {
+      navigate('/home');
       return;
     }
-    
+
+    if (location.pathname !== '/') {
+      navigate(`/#${sectionId}`);
+      setIsMobileMenuOpen(false);
+      return;
+    }
+
     const element = document.getElementById(sectionId);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
     }
     setIsMobileMenuOpen(false);
+  };
+
+  const handleNavigation = (item: (typeof navItems)[number]) => {
+    if (item.kind === 'route') {
+      navigate(item.target);
+      setIsMobileMenuOpen(false);
+      return;
+    }
+
+    scrollToSection(item.target);
+  };
+
+  const handleLogoClick = () => {
+    if (isAuthenticated) {
+      navigate('/home');
+      return;
+    }
+
+    scrollToSection('hero');
   };
 
   // Check if we're on a non-home page to always show background
@@ -81,8 +130,8 @@ export default function LandingHeader() {
         <nav className="flex items-center justify-between gap-4">
           {/* Logo */}
           <button 
-            onClick={() => scrollToSection('hero')}
-            className="flex items-center transition-opacity hover:opacity-75"
+            onClick={handleLogoClick}
+            className="flex min-h-11 items-center transition-opacity hover:opacity-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941] focus-visible:ring-offset-2"
           >
             <span className="text-lg font-black tracking-[-0.02em] sm:text-xl">
               explorers.earth
@@ -90,12 +139,17 @@ export default function LandingHeader() {
           </button>
 
           {/* Desktop Navigation */}
-          <div className="hidden items-center gap-5 rounded-full bg-transparent p-1 lg:flex">
+          <div className="hidden items-center gap-4 rounded-full bg-transparent p-1 xl:flex">
             {navItems.map((item) => (
               <button
-                key={item.sectionId}
-                onClick={() => scrollToSection(item.sectionId)}
-                className="rounded-full px-1 py-2 text-sm font-bold text-[#17231a]/75 transition-colors hover:text-[#17231a]"
+                key={`${item.kind}-${item.target}`}
+                onClick={() => handleNavigation(item)}
+                aria-current={item.kind === 'route' && location.pathname === item.target ? 'page' : undefined}
+                className={`relative min-h-11 rounded-full px-1 py-2 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941] focus-visible:ring-offset-2 ${
+                  item.kind === 'route' && location.pathname === item.target
+                    ? 'text-[#17231a] after:absolute after:inset-x-1 after:bottom-1 after:h-0.5 after:rounded-full after:bg-[#c87941]'
+                    : 'text-[#17231a]/75 hover:text-[#17231a]'
+                }`}
               >
                 {item.label}
               </button>
@@ -132,13 +186,16 @@ export default function LandingHeader() {
 
             {/* Mobile Menu Toggle */}
             <button
+              ref={menuButtonRef}
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-expanded={isMobileMenuOpen}
+              aria-controls={mobileMenuId}
               aria-label={
                 isMobileMenuOpen
                   ? t('header.nav.closeMenu')
                   : t('header.nav.openMenu')
               }
-              className="rounded-full p-2 transition-colors hover:bg-black/5 lg:hidden"
+              className="min-h-11 min-w-11 rounded-full p-2 transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941] focus-visible:ring-offset-2 xl:hidden"
             >
               {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -148,17 +205,21 @@ export default function LandingHeader() {
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <motion.div
+            id={mobileMenuId}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="mt-4 overflow-hidden rounded-[22px] bg-[#fffcf6] shadow-lg lg:hidden"
+            className="mt-4 overflow-hidden rounded-[22px] bg-[#fffcf6] shadow-lg xl:hidden"
           >
             <div className="p-4 space-y-4">
               {navItems.map((item) => (
                 <button
-                  key={item.sectionId}
-                  onClick={() => scrollToSection(item.sectionId)}
-                  className="block w-full text-left text-[#17231a] transition-colors hover:text-[#1b3b1a]"
+                  key={`${item.kind}-${item.target}`}
+                  onClick={() => handleNavigation(item)}
+                  aria-current={item.kind === 'route' && location.pathname === item.target ? 'page' : undefined}
+                  className={`block min-h-11 w-full rounded-lg px-2 text-left text-[#17231a] transition-colors hover:bg-[#f6f1e7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941] ${
+                    item.kind === 'route' && location.pathname === item.target ? 'underline decoration-2 decoration-[#c87941] underline-offset-8' : ''
+                  }`}
                 >
                   {item.label}
                 </button>
