@@ -1,7 +1,7 @@
 # About and Use Cases Marketing Pages
 
-Date: 2026-07-15  
-Branch: `main`  
+Date: 2026-07-15
+Branch: `codex/about-use-cases`
 Mode: selective expansion, with the user-approved scope held as the baseline
 
 ## Outcome

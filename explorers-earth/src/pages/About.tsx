@@ -137,7 +137,15 @@ export default function About() {
             <motion.div {...motionProps} className="relative mx-auto w-full max-w-xl" role="img" aria-label={t("about.productVisualAlt")}>
               <div className="absolute -inset-8 rounded-full bg-[#dce9ce]/55 blur-3xl" aria-hidden="true" />
               <div className="relative grid grid-cols-2 gap-4 rounded-[32px] border border-[#17231a]/10 bg-[#fffcf6]/80 p-5 shadow-[0_24px_80px_rgba(27,59,26,.14)]">
-                <img src="/landing/profile-1.png" alt="" width="420" height="420" className="aspect-square w-full rounded-[22px] object-cover object-top" />
+                <img
+                  src="/landing/profile-1.png"
+                  alt=""
+                  width="420"
+                  height="420"
+                  loading="lazy"
+                  decoding="async"
+                  className="aspect-square w-full rounded-[22px] object-cover object-top"
+                />
                 <div className="space-y-4 pt-8" aria-hidden="true">
                   <div className="rounded-[20px] bg-[#1b3b1a] p-5 text-[#f6f1e7]">
                     <MapPin className="mb-8" size={22} />

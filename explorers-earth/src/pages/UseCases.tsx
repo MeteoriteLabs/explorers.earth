@@ -19,9 +19,9 @@ const journeySteps = [
 
 function HeroTriptych({ alt }: { alt: string }) {
   const images = [
-    { src: "/landing/Paris.jpg", position: "object-center", label: "personal" },
-    { src: "/landing/profile-1.png", position: "object-top", label: "creators" },
-    { src: "/landing/storefront-1.png", position: "object-center", label: "brands" },
+    { src: "/landing/Paris.jpg", position: "object-center" },
+    { src: "/landing/profile-1.png", position: "object-top" },
+    { src: "/landing/storefront-1.png", position: "object-center" },
   ] as const;
 
   return (

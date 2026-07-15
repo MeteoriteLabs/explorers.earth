@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Globe, ChevronDown, Menu, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../../store/store';
 import LanguageModal from '../../../components/LanguageModal';
 import useMarketingHashNavigation from '../hooks/useMarketingHashNavigation';
@@ -26,7 +26,7 @@ export default function LandingHeader() {
     { label: t('header.nav.faq'), kind: 'section', target: 'faq' },
   ] as const;
 
-  useMarketingHashNavigation();
+  useMarketingHashNavigation(Boolean(reducedMotion));
 
   useEffect(() => {
     const handleScroll = () => {
@@ -141,20 +141,23 @@ export default function LandingHeader() {
 
           {/* Desktop Navigation */}
           <div className="hidden items-center gap-4 rounded-full bg-transparent p-1 xl:flex">
-            {navItems.map((item) => (
-              <button
-                key={`${item.kind}-${item.target}`}
-                onClick={() => handleNavigation(item)}
-                aria-current={item.kind === 'route' && location.pathname === item.target ? 'page' : undefined}
-                className={`relative min-h-11 rounded-full px-1 py-2 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941] focus-visible:ring-offset-2 ${
-                  item.kind === 'route' && location.pathname === item.target
-                    ? 'text-[#17231a] after:absolute after:inset-x-1 after:bottom-1 after:h-0.5 after:rounded-full after:bg-[#c87941]'
-                    : 'text-[#17231a]/75 hover:text-[#17231a]'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
+            {navItems.map((item) => {
+              const className = `relative flex min-h-11 items-center rounded-full px-1 py-2 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941] focus-visible:ring-offset-2 ${
+                item.kind === 'route' && location.pathname === item.target
+                  ? 'text-[#17231a] after:absolute after:inset-x-1 after:bottom-1 after:h-0.5 after:rounded-full after:bg-[#c87941]'
+                  : 'text-[#17231a]/75 hover:text-[#17231a]'
+              }`;
+
+              return item.kind === 'route' ? (
+                <Link key={`${item.kind}-${item.target}`} to={item.target} aria-current={location.pathname === item.target ? 'page' : undefined} className={className}>
+                  {item.label}
+                </Link>
+              ) : (
+                <button key={`${item.kind}-${item.target}`} onClick={() => handleNavigation(item)} className={className}>
+                  {item.label}
+                </button>
+              );
+            })}
           </div>
 
           {/* Right Side */}
@@ -214,20 +217,29 @@ export default function LandingHeader() {
             className="mt-4 overflow-hidden rounded-[22px] bg-[#fffcf6] shadow-lg xl:hidden"
           >
             <div className="p-4 space-y-4">
-              {navItems.map((item) => (
-                <button
-                  key={`${item.kind}-${item.target}`}
-                  onClick={() => handleNavigation(item)}
-                  aria-current={item.kind === 'route' && location.pathname === item.target ? 'page' : undefined}
-                  className={`block min-h-11 w-full rounded-lg px-2 text-left text-[#17231a] transition-colors hover:bg-[#f6f1e7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941] ${
-                    item.kind === 'route' && location.pathname === item.target ? 'underline decoration-2 decoration-[#c87941] underline-offset-8' : ''
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
+              {navItems.map((item) => {
+                const className = `flex min-h-11 w-full items-center rounded-lg px-2 text-left text-[#17231a] transition-colors hover:bg-[#f6f1e7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941] ${
+                  item.kind === 'route' && location.pathname === item.target ? 'underline decoration-2 decoration-[#c87941] underline-offset-8' : ''
+                }`;
+
+                return item.kind === 'route' ? (
+                  <Link
+                    key={`${item.kind}-${item.target}`}
+                    to={item.target}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    aria-current={location.pathname === item.target ? 'page' : undefined}
+                    className={className}
+                  >
+                    {item.label}
+                  </Link>
+                ) : (
+                  <button key={`${item.kind}-${item.target}`} onClick={() => handleNavigation(item)} className={className}>
+                    {item.label}
+                  </button>
+                );
+              })}
               <hr className="border-gray-200" />
-              <div className="flex space-x-3">
+              <div className="flex flex-col gap-3 sm:flex-row">
                 <button 
                   onClick={() => handleAuthButtonClick('/login')}
                   className="min-h-11 flex-1 rounded-full border border-[#17231a] px-4 py-2 text-[#17231a] transition-all hover:bg-[#17231a] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941]">

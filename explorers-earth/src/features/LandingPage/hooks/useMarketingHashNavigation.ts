@@ -11,7 +11,7 @@ function getHashTarget(hash: string) {
   }
 }
 
-export default function useMarketingHashNavigation() {
+export default function useMarketingHashNavigation(reducedMotion = false) {
   const location = useLocation();
 
   useEffect(() => {
@@ -24,7 +24,7 @@ export default function useMarketingHashNavigation() {
     firstFrame = window.requestAnimationFrame(() => {
       secondFrame = window.requestAnimationFrame(() => {
         document.getElementById(targetId)?.scrollIntoView({
-          behavior: "smooth",
+          behavior: reducedMotion ? "auto" : "smooth",
           block: "start",
         });
       });
@@ -34,6 +34,5 @@ export default function useMarketingHashNavigation() {
       window.cancelAnimationFrame(firstFrame);
       window.cancelAnimationFrame(secondFrame);
     };
-  }, [location.hash, location.key, location.pathname]);
+  }, [location.hash, location.key, location.pathname, reducedMotion]);
 }
-

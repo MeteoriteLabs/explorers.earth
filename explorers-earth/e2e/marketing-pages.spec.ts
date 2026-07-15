@@ -7,7 +7,7 @@ test.describe("marketing pages", () => {
     await expect(page.getByText("WHAT WE'RE BUILDING")).toBeVisible();
     await expect(page.getByText("BELONGING")).toBeVisible();
 
-    await page.getByRole("button", { name: "Use Cases" }).first().click();
+    await page.getByRole("link", { name: "Use Cases" }).first().click();
     await expect(page).toHaveURL(/\/use-cases$/);
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Different perspectives");
   });
@@ -37,17 +37,52 @@ test.describe("marketing pages", () => {
     await expect(trigger).toBeFocused();
   });
 
+  test("mobile disclosure fits its navigation and actions at 320px", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 700 });
+    await page.goto("/use-cases");
+
+    const trigger = page.locator('button[aria-controls="marketing-mobile-menu"]');
+    await trigger.click();
+    const menu = page.locator("#marketing-mobile-menu");
+    await expect(menu).toBeVisible();
+    await expect(menu.getByRole("link", { name: "About" })).toBeVisible();
+    await expect(menu.getByRole("button", { name: "Login" })).toBeVisible();
+
+    const layout = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }));
+    expect(layout.scrollWidth).toBe(layout.clientWidth);
+  });
+
   for (const viewport of [
+    { width: 320, height: 700 },
     { width: 375, height: 812 },
+    { width: 430, height: 932 },
     { width: 768, height: 1024 },
+    { width: 1024, height: 900 },
+    { width: 1280, height: 900 },
     { width: 1440, height: 1000 },
+    { width: 1920, height: 1080 },
   ]) {
-    test(`has no horizontal overflow at ${viewport.width}px`, async ({ page }) => {
+    test(`keeps both marketing pages usable at ${viewport.width}px`, async ({ page }) => {
       await page.setViewportSize(viewport);
       await page.emulateMedia({ reducedMotion: "reduce" });
-      await page.goto("/use-cases");
-      const overflows = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
-      expect(overflows).toBe(false);
+
+      for (const route of ["/about", "/use-cases"]) {
+        await page.goto(route);
+        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+
+        const layout = await page.evaluate(() => ({
+          clientWidth: document.documentElement.clientWidth,
+          scrollWidth: document.documentElement.scrollWidth,
+          mainWidth: document.querySelector("main")?.getBoundingClientRect().width ?? 0,
+        }));
+
+        expect(layout.scrollWidth).toBe(layout.clientWidth);
+        expect(layout.mainWidth).toBeGreaterThan(0);
+        expect(layout.mainWidth).toBeLessThanOrEqual(layout.clientWidth);
+      }
     });
   }
 });
