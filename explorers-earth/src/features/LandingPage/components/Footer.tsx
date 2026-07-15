@@ -48,21 +48,21 @@ export default function Footer() {
                 href="https://www.instagram.com/explorers_earth/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-full border border-white/10 p-2 text-white/62 transition-colors hover:text-white"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 p-2 text-white/62 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941]"
                 aria-label="Instagram"
               >
                 <Instagram size={18} />
               </a>
               <a
                 href="#"
-                className="rounded-full border border-white/10 p-2 text-white/62 transition-colors hover:text-white"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 p-2 text-white/62 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941]"
                 aria-label="Twitter"
               >
                 <Twitter size={18} />
               </a>
               <a
                 href="#"
-                className="rounded-full border border-white/10 p-2 text-white/62 transition-colors hover:text-white"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 p-2 text-white/62 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941]"
                 aria-label="LinkedIn"
               >
                 <Linkedin size={18} />
@@ -75,28 +75,28 @@ export default function Footer() {
             <div className="space-y-2 text-sm font-semibold">
               <button
                 onClick={() => scrollToSection("product")}
-                className="block text-white/68 transition-colors hover:text-white"
+                className="flex min-h-11 w-fit items-center text-white/68 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941]"
               >
                 {t("footer.links.product")}
               </button>
-              <Link to="/use-cases" className="block text-white/68 transition-colors hover:text-white visited:text-[#b8c9ab]">
+              <Link to="/use-cases" className="flex min-h-11 w-fit items-center text-white/68 transition-colors hover:text-white visited:text-[#b8c9ab] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941]">
                 {t("footer.links.useCases")}
               </Link>
               <button
                 onClick={() => scrollToSection("how-it-works")}
-                className="block text-white/68 transition-colors hover:text-white"
+                className="flex min-h-11 w-fit items-center text-white/68 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941]"
               >
                 {t("footer.links.howItWorks")}
               </button>
               <button
                 onClick={() => scrollToSection("share")}
-                className="block text-white/68 transition-colors hover:text-white"
+                className="flex min-h-11 w-fit items-center text-white/68 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941]"
               >
                 {t("footer.links.shareAnywhere")}
               </button>
               <button
                 onClick={() => scrollToSection("faq")}
-                className="block text-white/68 transition-colors hover:text-white"
+                className="flex min-h-11 w-fit items-center text-white/68 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941]"
               >
                 {t("footer.links.faq")}
               </button>
@@ -106,15 +106,15 @@ export default function Footer() {
           <div className="space-y-4">
             <h3 className="text-sm font-black uppercase tracking-[0.1em] text-white">{t("footer.sections.company")}</h3>
             <div className="space-y-2 text-sm font-semibold">
-              <Link to="/about" className="block text-white/68 transition-colors hover:text-white visited:text-[#b8c9ab]">
+              <Link to="/about" className="flex min-h-11 w-fit items-center text-white/68 transition-colors hover:text-white visited:text-[#b8c9ab] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941]">
                 {t("footer.links.about")}
               </Link>
-              <Link to="/contact" className="block text-white/68 transition-colors hover:text-white visited:text-[#b8c9ab]">
+              <Link to="/contact" className="flex min-h-11 w-fit items-center text-white/68 transition-colors hover:text-white visited:text-[#b8c9ab] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941]">
                 {t("footer.links.contact")}
               </Link>
             <a
               href={`mailto:${t("footer.email")}`}
-              className="block text-white/68 transition-colors hover:text-white"
+              className="flex min-h-11 w-fit items-center text-white/68 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941]"
             >
               {t("footer.email")}
             </a>
@@ -124,13 +124,13 @@ export default function Footer() {
           <div className="space-y-4">
             <h3 className="text-sm font-black uppercase tracking-[0.1em] text-white">{t("footer.sections.legal")}</h3>
             <div className="space-y-2 text-sm font-semibold">
-              <Link to="/terms" className="block text-white/68 transition-colors hover:text-white">
+              <Link to="/terms" className="flex min-h-11 w-fit items-center text-white/68 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941]">
                 {t("footer.links.terms")}
               </Link>
-              <Link to="/privacy" className="block text-white/68 transition-colors hover:text-white">
+              <Link to="/privacy" className="flex min-h-11 w-fit items-center text-white/68 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941]">
                 {t("footer.links.privacy")}
               </Link>
-              <Link to="/cookies" className="block text-white/68 transition-colors hover:text-white">
+              <Link to="/cookies" className="flex min-h-11 w-fit items-center text-white/68 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941]">
                 {t("footer.links.cookies")}
               </Link>
             </div>

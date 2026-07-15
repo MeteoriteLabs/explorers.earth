@@ -161,7 +161,7 @@ export default function LandingHeader() {
             {/* Language Switcher */}
             <button
               onClick={() => setIsLanguageModalOpen(true)}
-              className="flex items-center gap-1 rounded-full px-2.5 py-2 text-sm font-medium transition-colors hover:bg-black/5"
+              className="flex min-h-11 items-center gap-1 rounded-full px-2.5 py-2 text-sm font-medium transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941] focus-visible:ring-offset-2"
             >
               <Globe size={16} />
               <span className="hidden sm:inline">{i18n.language.toUpperCase()}</span>
@@ -172,13 +172,13 @@ export default function LandingHeader() {
             <div className="hidden items-center gap-2 md:flex">
               <button 
                 onClick={() => handleAuthButtonClick('/login')}
-                className="rounded-full border border-[rgba(23,35,26,.18)] bg-[#fffcf6] px-4 py-2 text-sm font-extrabold text-[#1b3b1a] transition-all hover:bg-[#f6f1e7]"
+                className="min-h-11 rounded-full border border-[rgba(23,35,26,.18)] bg-[#fffcf6] px-4 py-2 text-sm font-extrabold text-[#1b3b1a] transition-all hover:bg-[#f6f1e7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941] focus-visible:ring-offset-2"
               >
                 {t('header.auth.login')}
               </button>
               <button 
                 onClick={() => handleAuthButtonClick('/register')}
-                className="landing-green-button rounded-full px-4 py-2 text-sm font-extrabold transition-all"
+                className="landing-green-button min-h-11 rounded-full px-4 py-2 text-sm font-extrabold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941] focus-visible:ring-offset-2"
               >
                 {t('header.auth.claimFreePage')}
               </button>
@@ -228,12 +228,12 @@ export default function LandingHeader() {
               <div className="flex space-x-3">
                 <button 
                   onClick={() => handleAuthButtonClick('/login')}
-                  className="flex-1 rounded-full border border-[#17231a] px-4 py-2 text-[#17231a] transition-all hover:bg-[#17231a] hover:text-white">
+                  className="min-h-11 flex-1 rounded-full border border-[#17231a] px-4 py-2 text-[#17231a] transition-all hover:bg-[#17231a] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941]">
                   {t('header.auth.login')}
                 </button>
                 <button 
                   onClick={() => handleAuthButtonClick('/register')}
-                  className="landing-green-button flex-1 rounded-full px-4 py-2 text-white"
+                  className="landing-green-button min-h-11 flex-1 rounded-full px-4 py-2 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941]"
                 >
                   {t('header.auth.claimFree')}
                 </button>
