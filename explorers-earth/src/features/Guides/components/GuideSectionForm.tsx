@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useMutation, useApolloClient } from "@apollo/client";
 import { toast } from "sonner";
 import { Reorder } from "framer-motion";
@@ -126,6 +126,15 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
 
   // Activity places state
   const [activityPlaces, setActivityPlaces] = useState<DayPlace[]>([]);
+
+  // Tracks in-flight activity photo uploads so submit can await them before
+  // serializing Recommendation_Activity. Without this, saving a day/stop before
+  // the Google-photo upload finishes persists an empty photos array, and the
+  // guide detail view falls back to placehold.co (the "images don't come back
+  // after adding" bug). Each promise resolves to the uploaded photos for a place.
+  const pendingActivityUploadsRef = useRef<
+    Promise<{ place_id: string; photos: DayPlace["photos"] } | null>[]
+  >([]);
 
   // Travel mode selector state
   const [selectorOpen, setSelectorOpen] = useState<{
@@ -683,8 +692,11 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
             photos: [],
           };
 
-          // Fetch and upload photos asynchronously
-          fetchAndUploadActivityPhotos(activityWithLoadingState);
+          // Fetch and upload photos asynchronously, tracking the promise so
+          // handleSubmit can await it before persisting (prevents empty photos).
+          pendingActivityUploadsRef.current.push(
+            fetchAndUploadActivityPhotos(activityWithLoadingState)
+          );
 
           return [...prev, activityWithLoadingState];
         });
@@ -712,7 +724,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
               : act
           )
         );
-        return;
+        return { place_id: activity.place_id, photos: [] };
       }
 
       // Upload photos to Strapi S3
@@ -736,6 +748,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
       );
 
       // No toast notification - photos load silently in background
+      return { place_id: activity.place_id, photos: uploadedPhotos };
     } catch (error) {
       console.error("Error fetching/uploading activity photos:", error);
 
@@ -747,6 +760,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
             : act
         )
       );
+      return { place_id: activity.place_id, photos: [] };
     }
   };
 
@@ -1034,8 +1048,40 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
       const stayString = JSON.stringify(stayData);
 
       // Prepare Activity JSON (activities/attractions)
+      // Wait for any in-flight activity photo uploads so we never persist an
+      // empty photos array (the "images don't come back after adding" bug).
+      // We merge the resolved upload results directly rather than relying on
+      // React state having flushed, which makes the save deterministic.
+      let activitiesForSave = activityPlaces;
+      if (pendingActivityUploadsRef.current.length > 0) {
+        const uploadResults = await Promise.allSettled(
+          pendingActivityUploadsRef.current
+        );
+        const uploadedByPlace = new Map<string, DayPlace["photos"]>();
+        uploadResults.forEach((result) => {
+          if (
+            result.status === "fulfilled" &&
+            result.value &&
+            result.value.photos &&
+            result.value.photos.length > 0
+          ) {
+            uploadedByPlace.set(result.value.place_id, result.value.photos);
+          }
+        });
+        activitiesForSave = activityPlaces.map((act) =>
+          uploadedByPlace.has(act.place_id)
+            ? {
+                ...act,
+                photos: uploadedByPlace.get(act.place_id),
+                photosLoading: false,
+              }
+            : act
+        );
+        pendingActivityUploadsRef.current = [];
+      }
+
       const activityData: ActivityData = {
-        activities: activityPlaces,
+        activities: activitiesForSave,
       };
 
       const activityString = JSON.stringify(activityData);
@@ -1127,6 +1173,8 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
         setEveningPlaces([]);
         setTransportSegments([]);
         setStayAccommodations([]);
+        setActivityPlaces([]);
+        pendingActivityUploadsRef.current = [];
         setTimelineSearch("");
       }
     } catch (err: any) {
