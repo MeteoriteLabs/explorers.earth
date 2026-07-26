@@ -1,4 +1,5 @@
 import { FC, memo, useMemo } from "react";
+import { isDisplayableNumber, toDisplayNumber } from "../../../utils/rating";
 
 interface PublicPlaceCardProps {
   title: string;
@@ -102,18 +103,24 @@ const PublicPlaceCard: FC<PublicPlaceCardProps> = memo(
               </span>
             </div>
           )}
-          {(rating !== undefined || reviews !== undefined) && (
-            <div className="flex items-center gap-1 text-[0.58rem] md:text-[0.62rem] font-semibold text-white/90 font-poppins mt-0.5">
-              {rating !== undefined && (
-                <span className="text-[#fbbf24] flex items-center gap-0.5">
-                  ★ {rating.toFixed(1)}
-                </span>
-              )}
-              {reviews !== undefined && reviews > 0 && (
-                <span className="text-white/70">({reviews})</span>
-              )}
-            </div>
-          )}
+          {(() => {
+            const showRating = isDisplayableNumber(rating);
+            const showReviews =
+              isDisplayableNumber(reviews) && toDisplayNumber(reviews) > 0;
+            if (!showRating && !showReviews) return null;
+            return (
+              <div className="flex items-center gap-1 text-[0.58rem] md:text-[0.62rem] font-semibold text-white/90 font-poppins mt-0.5">
+                {showRating && (
+                  <span className="text-[#fbbf24] flex items-center gap-0.5">
+                    ★ {toDisplayNumber(rating).toFixed(1)}
+                  </span>
+                )}
+                {showReviews && (
+                  <span className="text-white/70">({toDisplayNumber(reviews)})</span>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
     );
