@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import { AnimatePresence } from "framer-motion";
@@ -186,15 +186,27 @@ const MovieListView = () => {
 
   const list = data?.movieLists?.[0];
 
+  // One-shot guard: consume the post-create/post-add route-state signal exactly
+  // once. Prevents an infinite re-render loop (BUG-3): the prompt setter builds a
+  // new object each render and the effect used to depend on `list` (rebuilt every
+  // render) while clearing state via window.history.replaceState, which does NOT
+  // update React Router's location.state — so justCreatedList stayed true forever.
+  const promptShownRef = useRef(false);
+
   useEffect(() => {
-    if ((location.state?.justAddedRecommendation || location.state?.justCreatedList) && list && !list.Visibility) {
-      setListVisibilityPrompt({
-        isOpen: true,
-        listName: list.List_Name,
-      });
-      window.history.replaceState({}, document.title);
+    if (promptShownRef.current) return;
+    const wants =
+      location.state?.justAddedRecommendation || location.state?.justCreatedList;
+    if (!wants || !list) return;
+    promptShownRef.current = true;
+    if (!list.Visibility) {
+      setListVisibilityPrompt({ isOpen: true, listName: list.List_Name });
     }
-  }, [location.state, list]);
+    // Clear the route state via React Router so it doesn't persist/re-fire.
+    navigate(location.pathname, { replace: true, state: {} });
+    // Key on the stable list documentId, not the every-render-rebuilt list object.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, location.pathname, list?.documentId, navigate]);
   const movies = deduplicateMovies(list?.recommended_movies as RecommendedMovie[]);
   const pinnedCount = movies.filter(m => m.is_pinned).length;
 
