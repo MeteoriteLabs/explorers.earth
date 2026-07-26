@@ -38,6 +38,16 @@ const AddressInput: FC<AddressInputProps> = ({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const placesLibrary = useMapsLibrary("places");
 
+  // Keep the latest callbacks in refs so the Autocomplete init effect can depend
+  // only on [placesLibrary, type] and build the Google Autocomplete ONCE. Before
+  // this, a keystroke re-render (fresh onChange/setPlaces closures) tore down and
+  // rebuilt the Autocomplete, so a pending place_changed fired on the cleared
+  // instance and the first selection was lost (BUG-4).
+  const onChangeRef = useRef(onChange);
+  const setPlacesRef = useRef(setPlaces);
+  onChangeRef.current = onChange;
+  setPlacesRef.current = setPlaces;
+
   useEffect(() => {
     if (initalValue !== undefined) {
       setAddress(initalValue);
@@ -92,6 +102,9 @@ const AddressInput: FC<AddressInputProps> = ({
     if (!inputRef.current || !placesLibrary) return;
 
     let autocomplete: google.maps.places.Autocomplete | null = null;
+    // Guards a late async metadata fetch from calling a stale callback after the
+    // effect has been cleaned up (unmount or re-init).
+    let isCurrent = true;
 
     try {
       autocomplete = new placesLibrary.Autocomplete(inputRef.current, {
@@ -113,7 +126,7 @@ const AddressInput: FC<AddressInputProps> = ({
         const place = autocomplete?.getPlace();
         if (!place || !place.geometry) {
           setAddress("");
-          onChange("");
+          onChangeRef.current?.("");
           return;
         }
 
@@ -144,7 +157,7 @@ const AddressInput: FC<AddressInputProps> = ({
 
         // If setPlaces is provided and we have a place_id, fetch full place details
         // to get primaryType and primaryTypeDisplayName for better categorization
-        if (setPlaces && place.place_id && (type === "title" || type === "listName")) {
+        if (setPlacesRef.current && place.place_id && (type === "title" || type === "listName")) {
           try {
             // Fetch place details using new Google Places API to get primaryType
             const response = await axios.get(
@@ -156,6 +169,10 @@ const AddressInput: FC<AddressInputProps> = ({
                 },
               }
             );
+
+            // The instance was cleaned up (unmount / re-init) while awaiting —
+            // don't call a stale callback.
+            if (!isCurrent) return;
 
             const placeData = response.data;
 
@@ -169,23 +186,24 @@ const AddressInput: FC<AddressInputProps> = ({
 
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-expect-error
-            setPlaces(enhancedPlace);
+            setPlacesRef.current?.(enhancedPlace);
           } catch (error) {
             console.warn("Error fetching place details for metadata:", error);
+            if (!isCurrent) return;
             // Fallback to original place if fetch fails
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-expect-error
-            setPlaces(place);
+            setPlacesRef.current?.(place);
           }
-        } else if (setPlaces) {
+        } else if (setPlacesRef.current) {
           // For other types, just pass the place as-is
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-expect-error
-          setPlaces(place);
+          setPlacesRef.current?.(place);
         }
 
         // Call onChange with the appropriate value
-        onChange(returnValue);
+        onChangeRef.current?.(returnValue);
       });
     } catch (error) {
       console.error("Error initializing autocomplete:", error);
@@ -193,11 +211,12 @@ const AddressInput: FC<AddressInputProps> = ({
 
     // Cleanup function
     return () => {
+      isCurrent = false;
       if (autocomplete) {
         google.maps.event.clearInstanceListeners(autocomplete);
       }
     };
-  }, [placesLibrary, onChange, setPlaces, type]);
+  }, [placesLibrary, type]);
 
   const populatePlaceData = (
     place: google.maps.GeocoderResult | google.maps.places.PlaceResult,
