@@ -45,6 +45,18 @@ describe("parsePriceString — locale-aware price parsing (BUG-6)", () => {
     expect(parsePriceString("0")).toBeNull();
     expect(parsePriceString("$0.00")).toBeNull();
   });
+
+  it("takes the first amount of a price range, not the concatenation", () => {
+    expect(parsePriceString("$19.99 - $24.99")).toBe(19.99);
+    expect(parsePriceString("€10,00 – €20,00")).toBe(10);
+    expect(parsePriceString("₹499 to ₹999")).toBe(499);
+  });
+
+  it("normalizes Eastern-Arabic digits and separators", () => {
+    // ١٬٢٩٩٫٠٠ = 1,299.00 (Arabic-Indic), ۳۹۹ = 399 (Persian)
+    expect(parsePriceString("١٬٢٩٩٫٠٠")).toBe(1299);
+    expect(parsePriceString("۳۹۹")).toBe(399);
+  });
 });
 
 describe("currencyFromSymbol", () => {
@@ -59,11 +71,14 @@ describe("currencyFromSymbol", () => {
     expect(currencyFromSymbol("$")).toBe("USD");
     expect(currencyFromSymbol("$399.00")).toBe("USD");
   });
-  it("passes through ISO codes and rejects junk", () => {
+  it("passes through KNOWN ISO codes and rejects junk", () => {
     expect(currencyFromSymbol("USD")).toBe("USD");
     expect(currencyFromSymbol("")).toBeNull();
     expect(currencyFromSymbol(null)).toBeNull();
     expect(currencyFromSymbol("399")).toBeNull();
+    // "SALE 19.99" must NOT yield "SAL" — only validated ISO codes pass.
+    expect(currencyFromSymbol("SALE 19.99")).toBeNull();
+    expect(currencyFromSymbol("XYZ")).toBeNull();
   });
 });
 
@@ -75,6 +90,11 @@ describe("currencyFromHostname", () => {
     expect(currencyFromHostname("amazon.de")).toBe("EUR");
     expect(currencyFromHostname("amazon.ca")).toBe("CAD");
     expect(currencyFromHostname("smile.amazon.com")).toBe("USD");
+    // Marketplaces added after codex review
+    expect(currencyFromHostname("amazon.com.tr")).toBe("TRY");
+    expect(currencyFromHostname("amazon.eg")).toBe("EGP");
+    expect(currencyFromHostname("amazon.co.za")).toBe("ZAR");
+    expect(currencyFromHostname("amazon.ie")).toBe("EUR");
   });
   it("returns null for unknown hosts", () => {
     expect(currencyFromHostname("example.com")).toBeNull();
@@ -89,6 +109,11 @@ describe("resolveCurrency — symbol vs hostname precedence", () => {
   it("defers to the host when the symbol is $ (ambiguous)", () => {
     expect(resolveCurrency("$", "amazon.ca")).toBe("CAD");
     expect(resolveCurrency("$399.00", "amazon.com")).toBe("USD");
+  });
+  it("trusts an explicit ISO code over the host (USD label on amazon.ca is USD)", () => {
+    expect(resolveCurrency("USD", "amazon.ca")).toBe("USD");
+    expect(resolveCurrency("USD 12.00", "amazon.ca")).toBe("USD");
+    expect(resolveCurrency("EUR 9,99", "amazon.com")).toBe("EUR");
   });
   it("uses the host when no symbol is present", () => {
     expect(resolveCurrency(undefined, "amazon.co.uk")).toBe("GBP");
@@ -121,12 +146,15 @@ describe("selectBestPrice — buy-box over installment (BUG-6 root cause)", () =
     expect(selectBestPrice(candidates, hostname).price).toBe(449);
   });
 
-  it("falls back to a rejected candidate only if no clean one parses", () => {
+  it("NEVER selects a rejected candidate — returns no price so the caller falls back", () => {
+    // Only a struck-through list price is parseable; promoting it would repeat
+    // the BUG-6 mistake. selectBestPrice must yield {} and let JSON-LD/the client
+    // handle the missing price.
     const candidates: PriceCandidate[] = [
       { raw: "Currently unavailable", source: "#corePrice_feature_div", rejected: false },
       { raw: "₹29,990.00", symbol: "₹", source: ".a-text-price", rejected: true },
     ];
-    expect(selectBestPrice(candidates, "www.amazon.in")).toEqual({ price: 29990, currency: "INR" });
+    expect(selectBestPrice(candidates, "www.amazon.in")).toEqual({});
   });
 
   it("derives currency from hostname when the candidate has no symbol", () => {
