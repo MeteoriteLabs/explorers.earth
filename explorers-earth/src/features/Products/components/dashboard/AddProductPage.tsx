@@ -231,21 +231,34 @@ const AddProductPage = () => {
         ? scrapedCurrency
         : undefined;
 
-    setFormData((prev) => ({
-      ...prev,
-      ...rest,
-      // Preserve the existing image-selection flow.
-      images: [],
-      // Only overwrite price/currency when the scraped value is usable;
-      // otherwise keep whatever was already there.
-      price: safePrice ?? prev.price,
-      currency: safeCurrency ?? prev.currency ?? "USD",
-    }));
+    setFormData((prev) => {
+      // Currency: use a supported scraped currency; if the scrape sent an
+      // UNSUPPORTED one, fall back to USD (do NOT keep a stale prior currency —
+      // e.g. EUR then XYZ must become USD); if the scrape sent no currency at
+      // all, keep the user's current choice.
+      let nextCurrency = prev.currency ?? "USD";
+      if (scrapedCurrency !== undefined) {
+        nextCurrency = safeCurrency ?? "USD";
+      }
+      return {
+        ...prev,
+        ...rest,
+        // Preserve the existing image-selection flow.
+        images: [],
+        // Only overwrite the price when the scraped value is usable; otherwise
+        // keep whatever was already there.
+        price: safePrice ?? prev.price,
+        currency: nextCurrency,
+      };
+    });
 
-    // Flag for verification whenever a scrape provided any price/currency signal.
-    const scrapeTouchedPrice =
+    // Whenever a scrape supplies ANY price/currency signal, the displayed value
+    // is a scraped one the user should verify. Recompute per scrape but NEVER
+    // clear here: a rescrape that omits price/currency must keep a prior
+    // unverified price flagged (only editing the PRICE field clears it).
+    const scrapeSignalledPriceOrCurrency =
       scrapedPrice !== undefined || scrapedCurrency !== undefined;
-    setPriceUnverified(scrapeTouchedPrice);
+    setPriceUnverified((prev) => scrapeSignalledPriceOrCurrency || prev);
 
     if (Array.isArray(scrapedImgs) && scrapedImgs.length > 0) {
       setScrapedImages(scrapedImgs.map((url: string) => ({ url, selected: true })));
@@ -523,7 +536,7 @@ const AddProductPage = () => {
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2 block">Currency</label>
-                  <select value={formData.currency || "USD"} onChange={(e) => { setPriceUnverified(false); setFormData((p) => ({ ...p, currency: e.target.value })); }} className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 ${priceUnverified ? "border-amber-500/60" : "border-white/10"}`}>
+                  <select value={formData.currency || "USD"} onChange={(e) => setFormData((p) => ({ ...p, currency: e.target.value }))} className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 ${priceUnverified ? "border-amber-500/60" : "border-white/10"}`}>
                     {ALLOWED_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>

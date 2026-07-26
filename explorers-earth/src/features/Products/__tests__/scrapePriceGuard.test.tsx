@@ -132,4 +132,66 @@ describe("AddProductPage scraped price guard (BUG-6)", () => {
     // 0 is not a valid price → the field stays empty.
     expect(screen.getByPlaceholderText("79.99")).toHaveValue(null);
   });
+
+  it("keeps the prior scraped price flagged after a rescrape that omits price/currency", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ title: "Sony", price: 16.7, currency: "EUR" }),
+    });
+
+    renderPage();
+    await scrape();
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("79.99")).toHaveValue(16.7);
+    });
+    expect(screen.getByText(/Unverified/i)).toBeInTheDocument();
+
+    // Go back to the URL step (header back button is the first button).
+    fireEvent.click(screen.getAllByRole("button")[0]);
+
+    // A second scrape that returns NO price/currency (e.g. a page with no price).
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ title: "Sony (rescraped)" }),
+    });
+    await scrape();
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("Product name")).toHaveValue(
+        "Sony (rescraped)"
+      );
+    });
+
+    // The prior scraped price is preserved AND still flagged as unverified —
+    // the warning must NOT be cleared just because the rescrape omitted price.
+    expect(screen.getByPlaceholderText("79.99")).toHaveValue(16.7);
+    expect(screen.getByText(/Unverified/i)).toBeInTheDocument();
+  });
+
+  it("keeps the warning when the user only edits the currency (not the suspect price)", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ title: "Sony", price: 16.7, currency: "EUR" }),
+    });
+
+    renderPage();
+    await scrape();
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("79.99")).toHaveValue(16.7);
+    });
+    expect(screen.getByText(/Unverified/i)).toBeInTheDocument();
+
+    // Editing the CURRENCY does not resolve the suspect PRICE → warning persists.
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "GBP" } });
+    expect(screen.getByText(/Unverified/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("79.99")).toHaveValue(16.7);
+
+    // Editing the PRICE itself clears the warning.
+    fireEvent.change(screen.getByPlaceholderText("79.99"), {
+      target: { value: "399" },
+    });
+    expect(screen.queryByText(/Unverified/i)).toBeNull();
+  });
 });
