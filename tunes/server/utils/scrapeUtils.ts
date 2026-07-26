@@ -135,13 +135,173 @@ export interface ScrapedData {
   buy_url?: string;
 }
 
+/**
+ * A single price reading harvested from the Amazon DOM, kept RAW so the
+ * (locale-aware, buy-box-aware) selection can happen Node-side where it is
+ * unit-testable. `rejected` marks readings that sit inside an installment/EMI,
+ * "subscribe & save", or struck-through list-price block — these must never win
+ * over the real buy-box price (the BUG-6 root cause was greedily taking the
+ * first `.a-price .a-offscreen`, which is the monthly installment figure).
+ */
+export interface PriceCandidate {
+  raw: string;
+  symbol?: string;
+  source?: string;
+  rejected?: boolean;
+}
+
 interface AmazonPageData {
   title?: string;
   brand?: string;
-  price?: number;
-  currency?: string;
+  priceCandidates?: PriceCandidate[];
   images?: string[];
   description?: string;
+}
+
+/**
+ * Parse a price string into a number, tolerant of BOTH US ("1,299.00") and
+ * EU ("1.299,00") thousands/decimal conventions, plus bare values ("16.7",
+ * "39900") and currency-symbol prefixes ("₹29,990.00"). Returns null for
+ * anything that isn't a positive finite number.
+ */
+export function parsePriceString(raw: string | null | undefined): number | null {
+  if (!raw) return null;
+  // Normalize Eastern-Arabic / Persian digits and their locale separators to
+  // ASCII so amazon.sa/.eg listings parse (١٬٢٩٩٫٠٠ → 1,299.00).
+  let text = raw.replace(/[٠-٩۰-۹]/g, (d) =>
+    String((d.charCodeAt(0) & 0xf))
+  ).replace(/[٫٬]/g, (s) => (s === "٫" ? "." : ","));
+  // A price range ("$19.99 - $24.99") must not be concatenated into one number —
+  // take the first amount only.
+  text = text.split(/\s*(?:-|–|—|to)\s+/i)[0];
+  const cleaned = text.replace(/[^\d.,]/g, "");
+  if (!cleaned) return null;
+
+  const lastDot = cleaned.lastIndexOf(".");
+  const lastComma = cleaned.lastIndexOf(",");
+
+  let normalized: string;
+  if (lastDot === -1 && lastComma === -1) {
+    normalized = cleaned;
+  } else {
+    const decimalPos = Math.max(lastDot, lastComma);
+    const decimalChar = cleaned[decimalPos];
+    const decimals = cleaned.length - decimalPos - 1;
+    const bothPresent = lastDot !== -1 && lastComma !== -1;
+    const occurrences = cleaned.split(decimalChar).length - 1;
+    // The rightmost separator is a DECIMAL point when either both separator
+    // kinds are present (US "1,299.00" / EU "1.299,00"), or it occurs once and
+    // is followed by 1-2 digits ("16.7", "1299,00"). Otherwise every separator
+    // is a thousands grouping ("1,234", "1.234.567") and gets stripped.
+    const isDecimal = bothPresent || (occurrences === 1 && decimals >= 1 && decimals <= 2);
+    if (isDecimal) {
+      const intPart = cleaned.slice(0, decimalPos).replace(/[.,]/g, "");
+      const fracPart = cleaned.slice(decimalPos + 1).replace(/[.,]/g, "");
+      normalized = `${intPart}.${fracPart}`;
+    } else {
+      normalized = cleaned.replace(/[.,]/g, "");
+    }
+  }
+
+  const value = parseFloat(normalized);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+// ISO 4217 codes we actively recognize (the Amazon marketplaces below + a few
+// common ones). Used to validate explicit codes so junk like "SAL" (from "SALE")
+// is not mistaken for a currency.
+const KNOWN_ISO = new Set([
+  "USD", "CAD", "AUD", "EUR", "GBP", "INR", "JPY", "BRL", "MXN",
+  "AED", "SAR", "SGD", "SEK", "PLN", "TRY", "EGP", "ZAR",
+]);
+
+/** Map a currency symbol (or explicit ISO code) to an ISO 4217 code. A bare "$"
+ *  is ambiguous (USD/CAD/AUD/…) and resolves to USD here — refine with the
+ *  hostname via resolveCurrency. An explicit, KNOWN ISO code wins over symbols. */
+export function currencyFromSymbol(sym?: string | null): string | null {
+  if (!sym) return null;
+  const s = sym.trim();
+  // Explicit ISO code (word-bounded, validated) — most authoritative.
+  const iso = s.match(/\b([A-Z]{3})\b/);
+  if (iso && KNOWN_ISO.has(iso[1])) return iso[1];
+  if (s.includes("₹") || /\bRs\.?/i.test(s)) return "INR";
+  if (s.includes("€")) return "EUR";
+  if (s.includes("£")) return "GBP";
+  if (s.includes("¥")) return "JPY";
+  if (s.includes("$")) return "USD";
+  return null;
+}
+
+const AMAZON_TLD_CURRENCY: Record<string, string> = {
+  "amazon.in": "INR",
+  "amazon.com": "USD",
+  "amazon.co.uk": "GBP",
+  "amazon.ca": "CAD",
+  "amazon.com.au": "AUD",
+  "amazon.de": "EUR",
+  "amazon.fr": "EUR",
+  "amazon.it": "EUR",
+  "amazon.es": "EUR",
+  "amazon.nl": "EUR",
+  "amazon.co.jp": "JPY",
+  "amazon.com.br": "BRL",
+  "amazon.com.mx": "MXN",
+  "amazon.ae": "AED",
+  "amazon.sa": "SAR",
+  "amazon.sg": "SGD",
+  "amazon.se": "SEK",
+  "amazon.pl": "PLN",
+  "amazon.com.tr": "TRY",
+  "amazon.eg": "EGP",
+  "amazon.co.za": "ZAR",
+  "amazon.com.be": "EUR",
+  "amazon.ie": "EUR",
+};
+
+/** Derive the marketplace currency from an Amazon hostname (amazon.in → INR). */
+export function currencyFromHostname(hostname: string): string | null {
+  const h = hostname.toLowerCase().replace(/^www\./, "");
+  for (const [domain, cur] of Object.entries(AMAZON_TLD_CURRENCY)) {
+    if (h === domain || h.endsWith("." + domain)) return cur;
+  }
+  return null;
+}
+
+/** Resolve the currency, preferring an unambiguous symbol (₹/€/£/¥) but
+ *  deferring to the hostname when the symbol is "$" (ambiguous) or absent. */
+export function resolveCurrency(symbol: string | undefined | null, hostname: string): string | undefined {
+  // An explicit, validated ISO code (e.g. "USD"/"US$ 12"/"EUR 9,99") is
+  // authoritative and beats the hostname — a US$ price on amazon.ca is USD.
+  const explicitIso = symbol?.match(/\b([A-Z]{3})\b/);
+  if (explicitIso && KNOWN_ISO.has(explicitIso[1])) return explicitIso[1];
+
+  const fromSym = currencyFromSymbol(symbol);
+  const fromHost = currencyFromHostname(hostname);
+  if (fromSym && fromSym !== "USD") return fromSym; // ₹ € £ ¥ — unambiguous, trust it
+  if (fromHost) return fromHost; // bare "$" or no symbol → let the marketplace decide
+  return fromSym || undefined;
+}
+
+/**
+ * Pick the real buy-box price from the raw candidates. Only NON-rejected
+ * readings (i.e. NOT installment/EMI/list-price blocks) are eligible, tried in
+ * DOM/selector order. Rejected candidates are NEVER selected — returning no
+ * price (so the caller falls back to JSON-LD, and the client flags it) is safer
+ * than promoting an installment figure to "the price".
+ */
+export function selectBestPrice(
+  candidates: PriceCandidate[] | undefined,
+  hostname: string
+): { price?: number; currency?: string } {
+  if (!candidates || candidates.length === 0) return {};
+  for (const c of candidates) {
+    if (c.rejected) continue;
+    const price = parsePriceString(c.raw);
+    if (price != null) {
+      return { price, currency: resolveCurrency(c.symbol || c.raw, hostname) };
+    }
+  }
+  return {};
 }
 
 function decodeHtmlEntities(str: string): string {
@@ -348,36 +508,51 @@ async function scrapeWithStealthPuppeteer(url: string): Promise<{ html: string; 
       }
 
       // ── Price ──────────────────────────────────────────────────────────────
+      // Harvest EVERY price reading (raw), tagging installment/EMI/list-price
+      // blocks as `rejected`. The real buy-box selection + locale parse happens
+      // Node-side (selectBestPrice) where it can be unit-tested. Buy-box-scoped
+      // selectors are listed first so they win before the generic fallback.
+      // Buy-box-scoped selectors first; the generic `.a-price .a-offscreen` is a
+      // last resort. `.a-price-whole` is intentionally omitted — its text drops
+      // the fractional part (399.99 → "399"), and `.a-offscreen` already carries
+      // the full amount on every modern Amazon layout.
       const priceSelectors = [
-        ".a-price .a-offscreen",
+        "#corePrice_feature_div .a-price .a-offscreen",
+        "#corePriceDisplay_desktop_feature_div .a-price .a-offscreen",
+        "#apex_desktop .a-price .a-offscreen",
+        ".priceToPay .a-offscreen",
+        ".apexPriceToPay .a-offscreen",
         "#priceblock_ourprice",
         "#priceblock_dealprice",
-        ".apexPriceToPay .a-offscreen",
-        "#corePrice_feature_div .a-offscreen",
-        ".a-price-whole",
+        ".a-price .a-offscreen",
       ];
+      // Ancestor blocks whose prices are NOT the buy-box price: installments/EMI,
+      // subscribe-and-save, struck-through list prices, and cross-sell carousels
+      // / other-seller widgets. `[id^="emi" i]` (starts-with) avoids matching
+      // unrelated ids like "premium".
+      const rejectSelector =
+        '#installmentCalculator, [id*="installment" i], [id^="emi" i], [id*="emiCalculator" i], ' +
+        '[id*="subscribe" i], [class*="installment" i], #mir-layout-DELIVERY_BLOCK, ' +
+        '.a-text-price, [data-a-strike="true"], .basisPrice, .savingsPercentage, ' +
+        '.a-carousel, [id*="similarities" i], [id*="sims" i], [id*="_carousel" i], ' +
+        '#aod-offer-list, #mbc, [data-csa-c-content-id*="carousel" i]';
+      const priceCandidates: Array<{ raw: string; symbol?: string; source?: string; rejected?: boolean }> = [];
+      const seen = new Set<string>();
       for (const sel of priceSelectors) {
-        const priceEl = document.querySelector(sel);
-        if (priceEl && priceEl.textContent) {
-          const raw = priceEl.textContent.trim().replace(/[^\d.,]/g, "").replace(",", "");
-          const parsed = parseFloat(raw);
-          if (!isNaN(parsed) && parsed > 0) {
-            result.price = parsed;
-            break;
-          }
-        }
+        document.querySelectorAll(sel).forEach((el) => {
+          const raw = el.textContent?.trim();
+          if (!raw) return;
+          const priceRoot = el.closest(".a-price") || el;
+          const symbol = priceRoot.querySelector(".a-price-symbol")?.textContent?.trim() || undefined;
+          const rejected = !!el.closest(rejectSelector) || priceRoot.getAttribute("data-a-strike") === "true";
+          // Dedup identical readings regardless of which selector surfaced them.
+          const key = `${raw}|${symbol || ""}|${rejected}`;
+          if (seen.has(key)) return;
+          seen.add(key);
+          priceCandidates.push({ raw, symbol, source: sel, rejected });
+        });
       }
-
-      // ── Currency ───────────────────────────────────────────────────────────
-      const currencyEl = document.querySelector(".a-price-symbol");
-      if (currencyEl) {
-        const sym = currencyEl.textContent?.trim();
-        if (sym === "₹") result.currency = "INR";
-        else if (sym === "$") result.currency = "USD";
-        else if (sym === "€") result.currency = "EUR";
-        else if (sym === "£") result.currency = "GBP";
-        else result.currency = sym;
-      }
+      if (priceCandidates.length > 0) result.priceCandidates = priceCandidates;
 
       // ── Images ─────────────────────────────────────────────────────────────
       const images: string[] = [];
@@ -474,8 +649,14 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
 
     const title = amazonData.title || jsonLdDetails.title || ogTitle || extractTitle(html) || cleanHostname;
     const brand = amazonData.brand || jsonLdDetails.brand || cleanHostname;
-    const price = amazonData.price ?? jsonLdDetails.price;
-    const currency = amazonData.currency || jsonLdDetails.currency || "INR"; // Amazon.in defaults to INR
+    // Buy-box price from the DOM candidates (installment/list-price readings
+    // filtered out), falling back to structured JSON-LD. Currency comes from the
+    // winning candidate's symbol, else JSON-LD, else the marketplace TLD — never
+    // a blanket "INR" default (that mislabeled non-.in listings).
+    const { price: domPrice, currency: domCurrency } = selectBestPrice(amazonData.priceCandidates, hostname);
+    const price = domPrice ?? jsonLdDetails.price;
+    const currency =
+      domCurrency || jsonLdDetails.currency || currencyFromHostname(hostname) || "USD";
     const images =
       amazonData.images && amazonData.images.length > 0
         ? amazonData.images
