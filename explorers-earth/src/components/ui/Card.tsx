@@ -272,7 +272,7 @@ const Card: FC<CardProps> = memo(
               className={`flex items-center gap-1 ${cardType === "suggestion" ? "mt-0.5" : "mt-1"
                 }`}
             >
-              {isDisplayableNumber(rating) && toDisplayNumber(rating) > 0 && (
+              {isDisplayableNumber(rating) && (
                 <div className="flex items-center gap-0.5">
                   <span
                     className={`text-dashboard-accent ${cardType === "suggestion" ? "text-xs" : "text-xs"

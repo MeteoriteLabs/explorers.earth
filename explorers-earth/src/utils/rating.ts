@@ -9,7 +9,11 @@
  * and nullish values BEFORE coercing — otherwise a missing rating renders "0.0".
  */
 export const isDisplayableNumber = (value: unknown): boolean =>
-  value != null && String(value).trim() !== "" && Number.isFinite(Number(value));
+  typeof value === "number"
+    ? Number.isFinite(value)
+    : typeof value === "string" &&
+      value.trim() !== "" &&
+      Number.isFinite(Number(value));
 
 /** Coerce a known-displayable value to a number. Guard with isDisplayableNumber first. */
 export const toDisplayNumber = (value: unknown): number => Number(value);

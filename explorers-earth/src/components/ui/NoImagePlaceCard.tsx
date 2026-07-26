@@ -118,7 +118,7 @@ const NoImagePlaceCard: FC<NoImagePlaceCardProps> = memo(
             </h3>
             {(rating !== undefined || reviews !== undefined) && (
               <div className="flex items-center gap-1 mt-0.5">
-                {isDisplayableNumber(rating) && toDisplayNumber(rating) > 0 && (
+                {isDisplayableNumber(rating) && (
                   <div className="flex items-center gap-0.5">
                     <span className="text-[hsl(var(--amber))] text-xs">★</span>
                     <span className="font-poppins text-xs">

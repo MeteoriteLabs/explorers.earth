@@ -18,11 +18,14 @@ const PublicGuideCard: FC<PublicGuideCardProps> = memo(
     if (guide.Place_Details) {
       if (typeof guide.Place_Details === "string") {
         try {
-          placeDetails = JSON.parse(guide.Place_Details);
+          const parsed = JSON.parse(guide.Place_Details);
+          // A legacy value can parse to null/number/array — only keep real objects
+          // so `.Rating` / Object.keys() below can't throw.
+          if (parsed && typeof parsed === "object") placeDetails = parsed;
         } catch (error) {
           console.error("Error parsing Place_Details:", error);
         }
-      } else {
+      } else if (typeof guide.Place_Details === "object") {
         placeDetails = guide.Place_Details;
       }
     }

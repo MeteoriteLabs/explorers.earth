@@ -637,11 +637,11 @@ const PublicGuides = memo(() => {
                           let placeDetails: any = {};
                           if (guide.Place_Details) {
                             if (typeof guide.Place_Details === "string") {
-                              try { placeDetails = JSON.parse(guide.Place_Details); } catch { /* malformed JSON — fall back to defaults */ }
-                            } else { placeDetails = guide.Place_Details; }
+                              try { const parsed = JSON.parse(guide.Place_Details); if (parsed && typeof parsed === "object") placeDetails = parsed; } catch { /* malformed JSON — fall back to defaults */ }
+                            } else if (typeof guide.Place_Details === "object") { placeDetails = guide.Place_Details; }
                           }
-                          const rating = isDisplayableNumber(placeDetails.Rating)
-                            ? toDisplayNumber(placeDetails.Rating)
+                          const rating = isDisplayableNumber(placeDetails?.Rating)
+                            ? toDisplayNumber(placeDetails?.Rating)
                             : 5.0;
 
                           return (
@@ -752,11 +752,11 @@ const PublicGuides = memo(() => {
                       let placeDetails: any = {};
                       if (guide.Place_Details) {
                         if (typeof guide.Place_Details === "string") {
-                          try { placeDetails = JSON.parse(guide.Place_Details); } catch { /* malformed JSON — fall back to defaults */ }
-                        } else { placeDetails = guide.Place_Details; }
+                          try { const parsed = JSON.parse(guide.Place_Details); if (parsed && typeof parsed === "object") placeDetails = parsed; } catch { /* malformed JSON — fall back to defaults */ }
+                        } else if (typeof guide.Place_Details === "object") { placeDetails = guide.Place_Details; }
                       }
-                      const rating = isDisplayableNumber(placeDetails.Rating)
-                        ? toDisplayNumber(placeDetails.Rating)
+                      const rating = isDisplayableNumber(placeDetails?.Rating)
+                        ? toDisplayNumber(placeDetails?.Rating)
                         : 5.0;
 
                       return (
