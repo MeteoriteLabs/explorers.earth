@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import { motion, AnimatePresence } from "framer-motion";
@@ -152,15 +152,21 @@ const ProductListView = () => {
   const products = deduplicateProducts(listData?.recommended_products ?? []);
   const pinnedCount = products.filter((p) => p.is_pinned).length;
 
+  // One-shot guard against the BUG-3 re-render loop (see MovieListView for detail).
+  const promptShownRef = useRef(false);
+
   useEffect(() => {
-    if (location.state?.justAddedRecommendation && listData && !listData.Visibility) {
-      setListVisibilityPrompt({
-        isOpen: true,
-        listName: listData.List_Name,
-      });
-      window.history.replaceState({}, document.title);
+    if (promptShownRef.current) return;
+    const wants =
+      location.state?.justAddedRecommendation || location.state?.justCreatedList;
+    if (!wants || !listData) return;
+    promptShownRef.current = true;
+    if (!listData.Visibility) {
+      setListVisibilityPrompt({ isOpen: true, listName: listData.List_Name });
     }
-  }, [location.state, listData]);
+    navigate(location.pathname, { replace: true, state: {} });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, location.pathname, listData?.documentId, navigate]);
 
   const publicUrl = listData
     ? `${VITE_BASE_URL}/${user?.username}/products/${listData.slug}`

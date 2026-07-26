@@ -38,6 +38,23 @@ const AddressInput: FC<AddressInputProps> = ({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const placesLibrary = useMapsLibrary("places");
 
+  // Keep the latest callbacks in refs so the Autocomplete init effect can depend
+  // only on [placesLibrary, type] and build the Google Autocomplete ONCE. Before
+  // this, a keystroke re-render (fresh onChange/setPlaces closures) tore down and
+  // rebuilt the Autocomplete, so a pending place_changed fired on the cleared
+  // instance and the first selection was lost (BUG-4).
+  const onChangeRef = useRef(onChange);
+  const setPlacesRef = useRef(setPlaces);
+  onChangeRef.current = onChange;
+  setPlacesRef.current = setPlaces;
+
+  // Monotonic token identifying the latest user intent. It increments on every
+  // new place selection, on manual typing, and on effect cleanup. A place's async
+  // metadata fetch captures the token at request start and bails if it's no longer
+  // the latest — so an earlier selection whose request resolves LAST (or after the
+  // user resumes typing) can't overwrite the newer value (BUG-4 stale request).
+  const requestTokenRef = useRef(0);
+
   useEffect(() => {
     if (initalValue !== undefined) {
       setAddress(initalValue);
@@ -110,10 +127,12 @@ const AddressInput: FC<AddressInputProps> = ({
 
       // Listener to handle when the user selects a place
       autocomplete.addListener("place_changed", async () => {
+        // Each selection is a new user intent — invalidate any in-flight request.
+        const requestToken = ++requestTokenRef.current;
         const place = autocomplete?.getPlace();
         if (!place || !place.geometry) {
           setAddress("");
-          onChange("");
+          onChangeRef.current?.("");
           return;
         }
 
@@ -144,7 +163,7 @@ const AddressInput: FC<AddressInputProps> = ({
 
         // If setPlaces is provided and we have a place_id, fetch full place details
         // to get primaryType and primaryTypeDisplayName for better categorization
-        if (setPlaces && place.place_id && (type === "title" || type === "listName")) {
+        if (setPlacesRef.current && place.place_id && (type === "title" || type === "listName")) {
           try {
             // Fetch place details using new Google Places API to get primaryType
             const response = await axios.get(
@@ -156,6 +175,10 @@ const AddressInput: FC<AddressInputProps> = ({
                 },
               }
             );
+
+            // A newer selection (or manual typing, or cleanup) happened while
+            // awaiting — don't let this stale response overwrite the newer value.
+            if (requestTokenRef.current !== requestToken) return;
 
             const placeData = response.data;
 
@@ -169,23 +192,27 @@ const AddressInput: FC<AddressInputProps> = ({
 
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-expect-error
-            setPlaces(enhancedPlace);
+            setPlacesRef.current?.(enhancedPlace);
           } catch (error) {
             console.warn("Error fetching place details for metadata:", error);
+            if (requestTokenRef.current !== requestToken) return;
             // Fallback to original place if fetch fails
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-expect-error
-            setPlaces(place);
+            setPlacesRef.current?.(place);
           }
-        } else if (setPlaces) {
+        } else if (setPlacesRef.current) {
           // For other types, just pass the place as-is
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-expect-error
-          setPlaces(place);
+          setPlacesRef.current?.(place);
         }
 
+        // A newer intent may have arrived during the awaited fetch above — don't
+        // report this (now stale) selection's value.
+        if (requestTokenRef.current !== requestToken) return;
         // Call onChange with the appropriate value
-        onChange(returnValue);
+        onChangeRef.current?.(returnValue);
       });
     } catch (error) {
       console.error("Error initializing autocomplete:", error);
@@ -193,11 +220,13 @@ const AddressInput: FC<AddressInputProps> = ({
 
     // Cleanup function
     return () => {
+      // Invalidate any in-flight metadata request tied to this instance.
+      requestTokenRef.current += 1;
       if (autocomplete) {
         google.maps.event.clearInstanceListeners(autocomplete);
       }
     };
-  }, [placesLibrary, onChange, setPlaces, type]);
+  }, [placesLibrary, type]);
 
   const populatePlaceData = (
     place: google.maps.GeocoderResult | google.maps.places.PlaceResult,
@@ -356,6 +385,9 @@ const AddressInput: FC<AddressInputProps> = ({
   };
 
   const handleManualChange = (nextAddress: string) => {
+    // Manual typing is a new user intent — invalidate a pending selection's
+    // async metadata fetch so it can't overwrite what the user is typing.
+    requestTokenRef.current += 1;
     setAddress(nextAddress);
     onChange(nextAddress);
   };

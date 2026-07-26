@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import { motion, AnimatePresence } from "framer-motion";
@@ -411,15 +411,23 @@ const BookListView = () => {
     }
     : null;
 
+  // One-shot guard against the BUG-3 re-render loop (see MovieListView for detail):
+  // window.history.replaceState never updated React Router's location.state, so
+  // justCreatedList stayed true and the prompt setter re-fired every render.
+  const promptShownRef = useRef(false);
+
   useEffect(() => {
-    if (location.state?.justAddedRecommendation && list && !list.visibility) {
-      setListVisibilityPrompt({
-        isOpen: true,
-        listName: list.List_Name,
-      });
-      window.history.replaceState({}, document.title);
+    if (promptShownRef.current) return;
+    const wants =
+      location.state?.justAddedRecommendation || location.state?.justCreatedList;
+    if (!wants || !list) return;
+    promptShownRef.current = true;
+    if (!list.visibility) {
+      setListVisibilityPrompt({ isOpen: true, listName: list.List_Name });
     }
-  }, [location.state, list]);
+    navigate(location.pathname, { replace: true, state: {} });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, location.pathname, list?.documentId, navigate]);
 
   const handlePinToggle = async (book: RecommendedBook) => {
     const willPin = !book.is_pinned;

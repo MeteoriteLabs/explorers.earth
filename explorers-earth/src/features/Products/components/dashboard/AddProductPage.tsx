@@ -21,6 +21,10 @@ import {
   sanitizeUsername,
 } from "../../../../utils/uploadPathGenerator";
 
+// Currencies offered by the currency <select>. A scraped currency outside this
+// set can't be represented, so we drop it and fall back to the default.
+const ALLOWED_CURRENCIES = ["USD", "EUR", "GBP", "INR", "JPY", "AUD", "CAD", "SGD"];
+
 const UrlScrapePanel = ({
   onScraped,
 }: {
@@ -159,6 +163,10 @@ const AddProductPage = () => {
   const [saving, setSaving] = useState(false);
   // Scraped images from platform (shown as selectable grid)
   const [scrapedImages, setScrapedImages] = useState<{ url: string; selected: boolean }[]>([]);
+  // Persistent flag: a scrape auto-filled price/currency the user should verify.
+  // Scraped prices are frequently wrong (installment/EMI widgets, locale-naive
+  // parsing), so we never silently trust them (BUG-6).
+  const [priceUnverified, setPriceUnverified] = useState(false);
   // Manual file uploads → S3
   const [existingSnapshots, setExistingSnapshots] = useState<{ id: string; url: string }[]>([]);
   const [newSnapshots, setNewSnapshots] = useState<File[]>([]);
@@ -208,9 +216,50 @@ const AddProductPage = () => {
   const [updateProduct] = useMutation(UPDATE_RECOMMENDED_PRODUCT);
 
   const handleUrlScraped = useCallback((data: Partial<RecommendedProduct>) => {
-    // Separate scraped images from form data — we'll show them as a selectable grid
-    const { images: scrapedImgs, ...rest } = data as any;
-    setFormData((prev) => ({ ...prev, ...rest, images: [] }));
+    // Separate scraped images from form data — we'll show them as a selectable grid.
+    // Also pull price/currency out so we can validate them instead of trusting
+    // them verbatim (scrapers often grab an installment price or wrong currency).
+    const { images: scrapedImgs, price: scrapedPrice, currency: scrapedCurrency, ...rest } = data as any;
+
+    // Accept a scraped price only if it's a positive finite number.
+    const priceNum = Number(scrapedPrice);
+    const safePrice = Number.isFinite(priceNum) && priceNum > 0 ? priceNum : undefined;
+
+    // Accept a scraped currency only if the <select> can represent it.
+    const safeCurrency =
+      typeof scrapedCurrency === "string" && ALLOWED_CURRENCIES.includes(scrapedCurrency)
+        ? scrapedCurrency
+        : undefined;
+
+    setFormData((prev) => {
+      // Currency: use a supported scraped currency; if the scrape sent an
+      // UNSUPPORTED one, fall back to USD (do NOT keep a stale prior currency —
+      // e.g. EUR then XYZ must become USD); if the scrape sent no currency at
+      // all, keep the user's current choice.
+      let nextCurrency = prev.currency ?? "USD";
+      if (scrapedCurrency !== undefined) {
+        nextCurrency = safeCurrency ?? "USD";
+      }
+      return {
+        ...prev,
+        ...rest,
+        // Preserve the existing image-selection flow.
+        images: [],
+        // Only overwrite the price when the scraped value is usable; otherwise
+        // keep whatever was already there.
+        price: safePrice ?? prev.price,
+        currency: nextCurrency,
+      };
+    });
+
+    // Whenever a scrape supplies ANY price/currency signal, the displayed value
+    // is a scraped one the user should verify. Recompute per scrape but NEVER
+    // clear here: a rescrape that omits price/currency must keep a prior
+    // unverified price flagged (only editing the PRICE field clears it).
+    const scrapeSignalledPriceOrCurrency =
+      scrapedPrice !== undefined || scrapedCurrency !== undefined;
+    setPriceUnverified((prev) => scrapeSignalledPriceOrCurrency || prev);
+
     if (Array.isArray(scrapedImgs) && scrapedImgs.length > 0) {
       setScrapedImages(scrapedImgs.map((url: string) => ({ url, selected: true })));
     } else {
@@ -479,17 +528,25 @@ const AddProductPage = () => {
               <label className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2 block">Brand</label>
               <input type="text" value={formData.brand || ""} onChange={(e) => setFormData((p) => ({ ...p, brand: e.target.value }))} placeholder="e.g. Keychron, Sony" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-500/50" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2 block">Price</label>
-                <input type="number" step="0.01" min="0" value={formData.price ?? ""} onChange={(e) => setFormData((p) => ({ ...p, price: e.target.value ? parseFloat(e.target.value) : undefined }))} placeholder="79.99" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-500/50" />
+            <div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2 block">Price</label>
+                  <input type="number" step="0.01" min="0" value={formData.price ?? ""} onChange={(e) => { setPriceUnverified(false); setFormData((p) => ({ ...p, price: e.target.value ? parseFloat(e.target.value) : undefined })); }} placeholder="79.99" className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-500/50 ${priceUnverified ? "border-amber-500/60" : "border-white/10"}`} />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2 block">Currency</label>
+                  <select value={formData.currency || "USD"} onChange={(e) => setFormData((p) => ({ ...p, currency: e.target.value }))} className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 ${priceUnverified ? "border-amber-500/60" : "border-white/10"}`}>
+                    {ALLOWED_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2 block">Currency</label>
-                <select value={formData.currency || "USD"} onChange={(e) => setFormData((p) => ({ ...p, currency: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/50">
-                  {["USD", "EUR", "GBP", "INR", "JPY", "AUD", "CAD", "SGD"].map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
+              {priceUnverified && (
+                <p className="mt-2 flex items-center gap-1.5 text-xs text-amber-400">
+                  <AlertCircle size={13} className="shrink-0" />
+                  Unverified — please double-check the price and currency from the link.
+                </p>
+              )}
             </div>
             <div>
               <label className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2 block">Buy / Affiliate URL</label>

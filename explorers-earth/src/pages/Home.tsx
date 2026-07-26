@@ -732,7 +732,7 @@ const Home = memo(() => {
     else if (activeTab === "people") setShowCreatePeopleModal(true);
   };
 
-  const handlePlacesSubmit = async (values: any) => {
+  const handlePlacesSubmit = async (values: any): Promise<boolean> => {
     const toastId = toast.loading("Creating Places list and uploading location image...");
     try {
       const placeDetails = await axios.get(
@@ -826,21 +826,31 @@ const Home = memo(() => {
       });
 
       if (response.data) {
-        const { data: refetched } = await refetchUserLists();
-        const updatedCity = refetched?.recommendationLists?.find(
-          (list: any) => list.List_Name === values.listName
-        );
-
-        if (updatedCity) {
-          setSelectedCity(updatedCity);
+        // Best-effort refresh — a refetch failure AFTER a successful create must
+        // NOT report failure (that would re-open/retry and create a duplicate).
+        try {
+          const { data: refetched } = await refetchUserLists();
+          const updatedCity = refetched?.recommendationLists?.find(
+            (list: any) => list.List_Name === values.listName
+          );
+          if (updatedCity) {
+            setSelectedCity(updatedCity);
+          }
+        } catch (refetchError) {
+          console.warn("Failed to refetch lists after creating a place:", refetchError);
         }
         toast.success("Places list created successfully!", { id: toastId });
         setShowCreatePlacesModal(false);
         navigate('/recommendations', { state: { justCreatedList: true } });
+        return true;
       }
+      // No data returned — treat as failure so the modal stays open.
+      toast.error("Failed to create places list", { id: toastId });
+      return false;
     } catch (error) {
       console.error(error);
       toast.error("Failed to create places list", { id: toastId });
+      return false;
     }
   };
 

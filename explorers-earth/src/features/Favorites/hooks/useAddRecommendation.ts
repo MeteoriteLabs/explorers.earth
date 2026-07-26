@@ -24,6 +24,15 @@ import {
 import { createClaimablePlaceProfileService } from "../services/claimablePlaceProfileService";
 import { fetchPlaceDetails } from "../../../utils/placeDetailsFetcher";
 
+/**
+ * Coerce a value to a finite number, or null. Used for Place_Details.Rating /
+ * Rating_Count so we never persist non-numeric values (e.g. "") into Strapi —
+ * a persisted string later crashes the public rating render (`value.toFixed`).
+ * Note: 0 is a valid rating and is kept.
+ */
+export const toNumberOrNull = (v: unknown): number | null =>
+  typeof v === "number" && Number.isFinite(v) ? v : null;
+
 // TypeScript declaration for window.__walkthrough
 declare global {
   interface Window {
@@ -295,8 +304,8 @@ export const useAddRecommendation = ({
             Recommendation_Type: recommendationType,
             Place_Details: {
               Title: placeDetails?.data?.displayName?.text || values.title || 'Untitled',
-              Rating: placeDetails?.data?.rating || "",
-              Rating_Count: placeDetails?.data?.userRatingCount || "",
+              Rating: toNumberOrNull(placeDetails?.data?.rating),
+              Rating_Count: toNumberOrNull(placeDetails?.data?.userRatingCount),
               Price_Range: placeDetails?.data?.priceRange || "",
               Place_Name: places?.formatted_address || values.title || '',
               Place_Id: places?.place_id || "",
@@ -861,8 +870,8 @@ export const useAddRecommendation = ({
           },
           Place_Details: {
             Title: values.title,
-            Rating: placeDetails?.data?.rating || "",
-            Rating_Count: placeDetails?.data?.userRatingCount || "",
+            Rating: toNumberOrNull(placeDetails?.data?.rating),
+            Rating_Count: toNumberOrNull(placeDetails?.data?.userRatingCount),
             Price_Range: placeDetails?.data?.priceRange || "",
             Place_Name: places?.formatted_address || values.title,
             Place_Id: googlePlaceRefId || "",

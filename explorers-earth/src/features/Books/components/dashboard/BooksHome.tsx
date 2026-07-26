@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import { motion } from "framer-motion";
 import {
@@ -21,7 +21,6 @@ import BookDetailModal from "../public/BookDetailModal";
 import Switch from "../../../../components/ui/Switch";
 import SwitchButton from "../../../../components/ui/SwitchButton";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
-import { CategoryVisibilityModal } from "../../../../components/CategoryVisibilityModal";
 import { CategoryEmptyState } from "../../../../components/CategoryEmptyState";
 
 // Query to get exact account documentId from the usersPermissionsUser relation
@@ -320,7 +319,6 @@ export const BookListCard = ({
 // ─────────────────────────────────────────────────────────────
 const BooksHome = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useAuthStore();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -328,35 +326,12 @@ const BooksHome = () => {
   const [selectedBook, setSelectedBook] = useState<RecommendedBook | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [visibilityPrompt, setVisibilityPrompt] = useState<{
-    isOpen: boolean;
-    categoryName: string;
-    visibilityField: string;
-    defaultValue: boolean;
-  } | null>(null);
 
   const { data: myAccountData } = useQuery(MY_ACCOUNT, {
     variables: { documentId: user?.documentId },
     skip: !user?.documentId,
   });
   const accountDocumentId = myAccountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
-
-  useEffect(() => {
-    if (location.state?.justCreatedList && myAccountData) {
-      const acc = myAccountData?.usersPermissionsUser?.accounts?.[0];
-      const isPublic = acc?.public_books === "Yes";
-      if (!isPublic) {
-        setVisibilityPrompt({
-          isOpen: true,
-          categoryName: "Books",
-          visibilityField: "public_books",
-          defaultValue: false,
-        });
-      }
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state, myAccountData]);
-
 
 
 
@@ -647,16 +622,13 @@ const BooksHome = () => {
           onClose={() => setShowCreateModal(false)}
           accountDocumentId={accountDocumentId}
           currentListCount={lists.length}
-          onCreated={() => {
+          onCreated={(newId?: string) => {
             refetch();
-            const acc = myAccountData?.usersPermissionsUser?.accounts?.[0];
-            const isPublic = acc?.public_books === "Yes";
-            if (!isPublic) {
-              setVisibilityPrompt({
-                isOpen: true,
-                categoryName: "Books",
-                visibilityField: "public_books",
-                defaultValue: false,
+            // Open the newly created list's detail view and let it prompt to
+            // publish this list (BUG-3). The prompt lives in BookListView now.
+            if (newId) {
+              navigate(`/recommendations/books/${newId}`, {
+                state: { justCreatedList: true },
               });
             }
           }}
@@ -678,18 +650,6 @@ const BooksHome = () => {
           open={!!selectedBook}
           book={selectedBook}
           onClose={() => setSelectedBook(null)}
-        />
-      )}
-      {visibilityPrompt && accountDocumentId && (
-        <CategoryVisibilityModal
-          isOpen={visibilityPrompt.isOpen}
-          onClose={() => setVisibilityPrompt(null)}
-          categoryName={visibilityPrompt.categoryName}
-          visibilityField={visibilityPrompt.visibilityField}
-          accountDocumentId={accountDocumentId}
-          onSuccess={() => {
-            refetch();
-          }}
         />
       )}
     </div>

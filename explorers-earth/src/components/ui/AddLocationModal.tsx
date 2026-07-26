@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 interface AddLocationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (values: any) => void;
+  onSubmit: (values: any) => void | boolean | Promise<void | boolean>;
   isEditing?: boolean;
   initialValues?: any;
   existingPlaces?: any[];
@@ -31,19 +31,11 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
   const { user } = useAuthStore();
   const [places, setPlaces] = useState<Places | null>(null);
   const [fetchedListName, setFetchedListName] = useState<string>('');
+  const [submitting, setSubmitting] = useState(false);
 
   const url = getCurrentDomain();
 
   // Initialize fetchedListName with initial values when editing, reset when adding new
-  useEffect(() => {
-    if (isEditing && initialValues?.listName) {
-      setFetchedListName(initialValues.listName);
-    } else if (!isEditing) {
-      // Reset fetchedListName and places when adding a new location
-      setFetchedListName('');
-      setPlaces(null);
-    }
-  }, [isEditing, initialValues?.listName]);
   useEffect(() => {
     if (isEditing && initialValues?.listName) {
       setFetchedListName(initialValues.listName);
@@ -130,13 +122,13 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
     }
   };
 
-  const handleSubmit = (values: any) => {
+  const handleSubmit = async (values: any) => {
     // Check if a place has been selected (only for new locations, not when editing)
     if (!isEditing && !places?.place_id) {
       toast.error(t("toast.error.pleaseSelectLocation"));
       return;
     }
-    
+
     // Extract city name and get place_id
     const cityName = isEditing ? values.listName : extractCityName(places);
     const currentPlaceId = isEditing ? (initialValues?.placeId || null) : places?.place_id;
@@ -205,12 +197,24 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
       placeId: currentPlaceId,
     };
 
-    // This tells walkthrough step is finished
-    onSubmit(submissionValues);
-    onClose();
-    window.__walkthrough?.markProcessingCompleteRef?.();
-
-
+    // Await the submit and close ONLY on explicit success. All three submitters
+    // now return Promise<boolean> (true = success), so a failed create/update
+    // keeps the modal open with the user's input intact.
+    setSubmitting(true);
+    try {
+      const ok = await onSubmit(submissionValues);
+      if (ok === true) {
+        onClose();
+        // This tells walkthrough step is finished
+        window.__walkthrough?.markProcessingCompleteRef?.();
+      }
+    } catch (err) {
+      // A submitter should return false rather than throw, but guard anyway so a
+      // throw never leaks past the modal (and never closes it).
+      console.error("Location submit failed:", err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -330,6 +334,7 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
                   btnText={isEditing ? "Update Location" : "Add Location"}
                   variant="primary"
                   size="medium"
+                  isLoading={submitting}
                 />
               </div>
             </Form>

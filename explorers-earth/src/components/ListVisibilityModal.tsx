@@ -84,6 +84,11 @@ export const ListVisibilityModal: FC<ListVisibilityModalProps> = ({
               <button
                 type="button"
                 onClick={async () => {
+                  // NOTE: the modal closes after onConfirm resolves regardless of
+                  // whether the publish mutation actually succeeded. onConfirm is
+                  // expected to surface its own error toast; if publish reliability
+                  // becomes an issue, have onConfirm return a boolean and gate the
+                  // close on it (kept out of scope here to avoid touching every caller).
                   await onConfirm();
                   onClose();
                 }}

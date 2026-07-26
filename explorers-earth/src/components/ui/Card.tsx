@@ -1,4 +1,5 @@
 import { FC, memo, ReactElement, useState, useEffect, useRef } from "react";
+import { isDisplayableNumber, toDisplayNumber } from "../../utils/rating";
 import VerticalKebab from "../../assets/icons/VerticalKebab";
 import Location from "../../assets/icons/Location";
 import Profile from "../../assets/icons/Profile";
@@ -271,7 +272,7 @@ const Card: FC<CardProps> = memo(
               className={`flex items-center gap-1 ${cardType === "suggestion" ? "mt-0.5" : "mt-1"
                 }`}
             >
-              {rating !== undefined && rating > 0 && (
+              {isDisplayableNumber(rating) && (
                 <div className="flex items-center gap-0.5">
                   <span
                     className={`text-dashboard-accent ${cardType === "suggestion" ? "text-xs" : "text-xs"
@@ -283,7 +284,7 @@ const Card: FC<CardProps> = memo(
                     className={`font-poppins ${cardType === "suggestion" ? "text-xs" : "text-xs"
                       }`}
                   >
-                    {rating.toFixed(1)}
+                    {toDisplayNumber(rating).toFixed(1)}
                   </span>
                 </div>
               )}
