@@ -197,17 +197,21 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
       placeId: currentPlaceId,
     };
 
-    // Await the submit so a failed create keeps the modal open (the create
-    // submitter returns false on error). The other submitters (edit + Home add)
-    // return undefined, so `ok !== false` closes the modal as before.
+    // Await the submit and close ONLY on explicit success. All three submitters
+    // now return Promise<boolean> (true = success), so a failed create/update
+    // keeps the modal open with the user's input intact.
     setSubmitting(true);
     try {
       const ok = await onSubmit(submissionValues);
-      if (ok !== false) {
+      if (ok === true) {
         onClose();
         // This tells walkthrough step is finished
         window.__walkthrough?.markProcessingCompleteRef?.();
       }
+    } catch (err) {
+      // A submitter should return false rather than throw, but guard anyway so a
+      // throw never leaks past the modal (and never closes it).
+      console.error("Location submit failed:", err);
     } finally {
       setSubmitting(false);
     }

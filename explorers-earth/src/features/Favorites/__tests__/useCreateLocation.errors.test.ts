@@ -77,4 +77,40 @@ describe("useCreateLocation error handling (BUG-5)", () => {
     // The mutation must not run when the pre-flight fetch fails.
     expect(createMutation).not.toHaveBeenCalled();
   });
+
+  it("returns true when the mutation succeeds but the follow-up refetch fails (no duplicate-create path)", async () => {
+    // Place lookup succeeds with no photos → skip the S3 upload branch.
+    axiosGet.mockResolvedValueOnce({ data: { photos: undefined, location: { lat: 1, lng: 2 } } });
+    // The create mutation succeeds and returns a documentId.
+    createMutation.mockResolvedValueOnce({
+      data: { createRecommendationList: { documentId: "c1" } },
+    });
+    // The refetch AFTER a successful create fails — this must NOT be reported
+    // as a create failure (otherwise a retry would create a duplicate).
+    const refetchCities = vi.fn().mockRejectedValue(new Error("refetch boom"));
+    const setIsLoading = vi.fn();
+    const onCreated = vi.fn();
+
+    const { result } = renderHook(() =>
+      useCreateLocation({
+        setIsLocationModalOpen: vi.fn(),
+        refetchCities,
+        setIsLoading,
+        cities: { recommendationLists: [] },
+        onCreated,
+      })
+    );
+
+    const ok = await result.current.handleLocationSubmit({
+      placeId: "x",
+      listName: "Y",
+    } as never);
+
+    expect(ok).toBe(true);
+    expect(refetchCities).toHaveBeenCalledTimes(1);
+    expect(onCreated).toHaveBeenCalledWith("c1");
+    // No create-failure toast despite the refetch failing.
+    expect(toastError).not.toHaveBeenCalled();
+    expect(setIsLoading).toHaveBeenLastCalledWith(false);
+  });
 });

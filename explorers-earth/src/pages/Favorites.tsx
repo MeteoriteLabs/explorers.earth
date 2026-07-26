@@ -724,7 +724,9 @@ const Favorites = memo(() => {
     ),
   };
 
-  const handleUpdateRecommendedList = async (values: KeyValuePair) => {
+  const handleUpdateRecommendedList = async (
+    values: KeyValuePair
+  ): Promise<boolean> => {
     if (
       values.placeUrl !== selectedCity?.slug &&
       cities?.account?.recommendation_lists.some(
@@ -732,33 +734,33 @@ const Favorites = memo(() => {
       )
     ) {
       toast.error(t("toast.error.conflictError"));
-      return;
-    }
-
-    // Skip Google Places API call when editing since we're only updating social link and notes
-    let photoUrl = selectedCity?.List_Name_Details?.thumbnail || "";
-
-    // Only fetch place details if we have a placeId (for new locations)
-    if (values.placeId) {
-      const placeDetails = await axios.get(
-        `${GOOGLE_PLACES_API_BASE_URL}/${values.placeId
-        }?fields=id,displayName,primaryType,primaryTypeDisplayName,priceRange,rating,userRatingCount,photos&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY
-        }`
-      );
-
-      const photoReferences = placeDetails.data.photos.map(
-        (photo: { name: string }) => photo.name.split(`${values.placeId}/`)[1]
-      );
-
-      const response = await fetch(
-        `${GOOGLE_PLACES_API_BASE_URL}/${values.placeId}/${photoReferences[0]
-        }/media?maxWidthPx=400&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`,
-        { redirect: "follow" }
-      );
-      photoUrl = response.url;
+      return false;
     }
 
     try {
+      // Skip Google Places API call when editing since we're only updating social link and notes
+      let photoUrl = selectedCity?.List_Name_Details?.thumbnail || "";
+
+      // Only fetch place details if we have a placeId (for new locations)
+      if (values.placeId) {
+        const placeDetails = await axios.get(
+          `${GOOGLE_PLACES_API_BASE_URL}/${values.placeId
+          }?fields=id,displayName,primaryType,primaryTypeDisplayName,priceRange,rating,userRatingCount,photos&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+          }`
+        );
+
+        const photoReferences = placeDetails.data.photos.map(
+          (photo: { name: string }) => photo.name.split(`${values.placeId}/`)[1]
+        );
+
+        const response = await fetch(
+          `${GOOGLE_PLACES_API_BASE_URL}/${values.placeId}/${photoReferences[0]
+          }/media?maxWidthPx=400&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`,
+          { redirect: "follow" }
+        );
+        photoUrl = response.url;
+      }
+
       // Preserve existing place_id from List_Name_Details or use new one if provided
       let existingPlaceId = null;
       if (selectedCity?.List_Name_Details) {
@@ -806,19 +808,26 @@ const Favorites = memo(() => {
           });
         }
 
-        // get the refetched data to ensure cache is updated
-        await refetchCities();
+        // Best-effort cache refresh — a refetch failure AFTER a successful
+        // update must NOT report failure (that would keep the modal open and
+        // invite a duplicate write).
+        try {
+          await refetchCities();
+        } catch (refetchError) {
+          console.warn("Failed to refetch cities after update:", refetchError);
+        }
 
-        // Close modal after updating state
-        setTimeout(() => {
-          setIsEditing(false);
-          setIsLocationModalOpen(false);
-        }, 100); // Small delay to ensure toast is visible
+        // The modal closes itself on success (ok === true); also reset edit mode.
+        setIsEditing(false);
+        return true;
       }
-    } catch (error) {
+      // No data returned — treat as failure so the modal stays open.
       toast.error(t("toast.error.recommendedListUpdateFailed"));
-      setIsEditing(false);
-      setIsLocationModalOpen(false);
+      return false;
+    } catch (error) {
+      console.error("Failed to update recommendation list:", error);
+      toast.error(t("toast.error.recommendedListUpdateFailed"));
+      return false;
     }
   };
   // Helper to render a location list card with pin controls
