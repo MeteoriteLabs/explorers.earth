@@ -495,7 +495,12 @@ const ProductsHome = () => {
       )}
 
       {accountDocumentId && (
-        <CreateProductListModal open={showCreateModal} onClose={() => setShowCreateModal(false)} accountDocumentId={accountDocumentId} currentListCount={lists.length} onCreated={() => refetch()} username={user?.username || ""} />
+        <CreateProductListModal open={showCreateModal} onClose={() => setShowCreateModal(false)} accountDocumentId={accountDocumentId} currentListCount={lists.length} onCreated={(newId?: string) => {
+          refetch();
+          if (newId) {
+            navigate(`/recommendations/products/${newId}`, { state: { justCreatedList: true } });
+          }
+        }} username={user?.username || ""} />
       )}
 
       {selectedProduct && (

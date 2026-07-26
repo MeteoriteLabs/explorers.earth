@@ -481,7 +481,12 @@ const PeopleHome = () => {
       )}
 
       {accountDocumentId && (
-        <CreatePersonListModal open={showCreateModal} onClose={() => setShowCreateModal(false)} accountDocumentId={accountDocumentId} currentListCount={lists.length} onCreated={() => refetch()} username={user?.username || ""} />
+        <CreatePersonListModal open={showCreateModal} onClose={() => setShowCreateModal(false)} accountDocumentId={accountDocumentId} currentListCount={lists.length} onCreated={(newId?: string) => {
+          refetch();
+          if (newId) {
+            navigate(`/recommendations/people/${newId}`, { state: { justCreatedList: true } });
+          }
+        }} username={user?.username || ""} />
       )}
 
       {selectedPerson && (

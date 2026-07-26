@@ -412,7 +412,7 @@ const BookListView = () => {
     : null;
 
   useEffect(() => {
-    if (location.state?.justAddedRecommendation && list && !list.visibility) {
+    if ((location.state?.justAddedRecommendation || location.state?.justCreatedList) && list && !list.visibility) {
       setListVisibilityPrompt({
         isOpen: true,
         listName: list.List_Name,

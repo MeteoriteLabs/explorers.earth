@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useMutation, useQuery } from "@apollo/client";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Film, Star, ChevronRight, Loader2, X, ChevronDown } from "lucide-react";
 import { AddIcon } from "../../../../assets/icons/AddIcon";
@@ -24,7 +24,6 @@ import MovieDetailModal from "../public/MovieDetailModal";
 import type { RecommendedMovie } from "../../types";
 import Switch from "../../../../components/ui/Switch";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
-import { CategoryVisibilityModal } from "../../../../components/CategoryVisibilityModal";
 import { CategoryEmptyState } from "../../../../components/CategoryEmptyState";
 
 // Query to get account documentId
@@ -324,7 +323,6 @@ export const MovieListCard = ({
 // ─────────────────────────────────────────────────────────────
 const MoviesHome = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useAuthStore();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -332,12 +330,6 @@ const MoviesHome = () => {
   const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [visibilityPrompt, setVisibilityPrompt] = useState<{
-    isOpen: boolean;
-    categoryName: string;
-    visibilityField: string;
-    defaultValue: boolean;
-  } | null>(null);
 
   // Get account documentId
   const { data: accountData } = useQuery(MY_ACCOUNT, {
@@ -345,23 +337,6 @@ const MoviesHome = () => {
     skip: !user?.documentId,
   });
   const accountDocumentId = accountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
-
-  useEffect(() => {
-    if (location.state?.justCreatedList && accountData) {
-      const acc = accountData?.usersPermissionsUser?.accounts?.[0];
-      const isPublic = acc?.public_movie === "Yes";
-      if (!isPublic) {
-        setVisibilityPrompt({
-          isOpen: true,
-          categoryName: "Movies",
-          visibilityField: "public_movie",
-          defaultValue: false,
-        });
-      }
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state, accountData]);
-
 
 
   // Fetch movie lists
@@ -652,16 +627,13 @@ const MoviesHome = () => {
           onClose={() => setShowCreateModal(false)}
           accountDocumentId={accountDocumentId}
           currentListCount={lists.length}
-          onCreated={() => {
+          onCreated={(newId?: string) => {
             refetch();
-            const acc = accountData?.usersPermissionsUser?.accounts?.[0];
-            const isPublic = acc?.public_movie === "Yes";
-            if (!isPublic) {
-              setVisibilityPrompt({
-                isOpen: true,
-                categoryName: "Movies",
-                visibilityField: "public_movie",
-                defaultValue: false,
+            // Open the newly created list's detail view and let it prompt to
+            // publish this list (BUG-3). The prompt lives in MovieListView now.
+            if (newId) {
+              navigate(`/recommendations/movies/${newId}`, {
+                state: { justCreatedList: true },
               });
             }
           }}
@@ -684,18 +656,6 @@ const MoviesHome = () => {
           open={!!selectedMovie}
           movie={selectedMovie}
           onClose={() => setSelectedMovie(null)}
-        />
-      )}
-      {visibilityPrompt && accountDocumentId && (
-        <CategoryVisibilityModal
-          isOpen={visibilityPrompt.isOpen}
-          onClose={() => setVisibilityPrompt(null)}
-          categoryName={visibilityPrompt.categoryName}
-          visibilityField={visibilityPrompt.visibilityField}
-          accountDocumentId={accountDocumentId}
-          onSuccess={() => {
-            refetch();
-          }}
         />
       )}
     </div>

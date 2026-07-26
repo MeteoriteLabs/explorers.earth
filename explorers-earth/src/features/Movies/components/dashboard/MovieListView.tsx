@@ -187,7 +187,7 @@ const MovieListView = () => {
   const list = data?.movieLists?.[0];
 
   useEffect(() => {
-    if (location.state?.justAddedRecommendation && list && !list.Visibility) {
+    if ((location.state?.justAddedRecommendation || location.state?.justCreatedList) && list && !list.Visibility) {
       setListVisibilityPrompt({
         isOpen: true,
         listName: list.List_Name,

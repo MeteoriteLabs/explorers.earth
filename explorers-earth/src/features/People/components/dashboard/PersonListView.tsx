@@ -157,7 +157,7 @@ const PersonListView = () => {
   const pinnedCount = people.filter((p) => p.is_pinned).length;
 
   useEffect(() => {
-    if (location.state?.justAddedRecommendation && listData && !listData.Visibility) {
+    if ((location.state?.justAddedRecommendation || location.state?.justCreatedList) && listData && !listData.Visibility) {
       setListVisibilityPrompt({
         isOpen: true,
         listName: listData.List_Name,
