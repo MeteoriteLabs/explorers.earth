@@ -12,6 +12,7 @@ import SEO from "../../../components/SEO";
 import { createCanonicalUrl } from "../../../utils/getCurrentDomain";
 import { createWebPageGEOData } from "../../../utils/geoHelpers";
 import { toUrlSlug } from "../../../utils/formatAddress";
+import { isDisplayableNumber, toDisplayNumber } from "../../../utils/rating";
 import Button from "../../../components/ui/Button";
 import SwitchButton from "../../../components/ui/SwitchButton";
 import { toast } from "sonner";
@@ -639,7 +640,9 @@ const PublicGuides = memo(() => {
                               try { placeDetails = JSON.parse(guide.Place_Details); } catch { /* malformed JSON — fall back to defaults */ }
                             } else { placeDetails = guide.Place_Details; }
                           }
-                          const rating = placeDetails.Rating || 5.0;
+                          const rating = isDisplayableNumber(placeDetails.Rating)
+                            ? toDisplayNumber(placeDetails.Rating)
+                            : 5.0;
 
                           return (
                             <motion.div
@@ -752,7 +755,9 @@ const PublicGuides = memo(() => {
                           try { placeDetails = JSON.parse(guide.Place_Details); } catch { /* malformed JSON — fall back to defaults */ }
                         } else { placeDetails = guide.Place_Details; }
                       }
-                      const rating = placeDetails.Rating || 5.0;
+                      const rating = isDisplayableNumber(placeDetails.Rating)
+                        ? toDisplayNumber(placeDetails.Rating)
+                        : 5.0;
 
                       return (
                         <motion.div

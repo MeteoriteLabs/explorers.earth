@@ -1,6 +1,7 @@
 import { FC, memo } from "react";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { isDisplayableNumber, toDisplayNumber } from "../../utils/rating";
 
 interface NoImagePlaceCardProps {
   title: string;
@@ -117,11 +118,11 @@ const NoImagePlaceCard: FC<NoImagePlaceCardProps> = memo(
             </h3>
             {(rating !== undefined || reviews !== undefined) && (
               <div className="flex items-center gap-1 mt-0.5">
-                {rating !== undefined && rating > 0 && (
+                {isDisplayableNumber(rating) && toDisplayNumber(rating) > 0 && (
                   <div className="flex items-center gap-0.5">
                     <span className="text-[hsl(var(--amber))] text-xs">★</span>
                     <span className="font-poppins text-xs">
-                      {rating.toFixed(1)}
+                      {toDisplayNumber(rating).toFixed(1)}
                     </span>
                   </div>
                 )}
