@@ -4,14 +4,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Capture the place_changed listener and count Autocomplete constructions.
 let placeChangedCb: (() => void) | null = null;
 let constructCount = 0;
-
-const fakePlace = {
-  place_id: "p1",
-  name: "Jaipur",
-  geometry: { location: { lat: () => 1, lng: () => 2 } },
-  formatted_address: "Jaipur, Rajasthan, India",
-  address_components: [],
-};
+// The place the (single) Autocomplete instance currently reports.
+let currentPlace: Record<string, unknown> = {};
 
 class FakeAutocomplete {
   constructor() {
@@ -21,14 +15,11 @@ class FakeAutocomplete {
     if (evt === "place_changed") placeChangedCb = cb;
   }
   getPlace() {
-    return fakePlace;
+    return currentPlace;
   }
 }
 
 vi.mock("@vis.gl/react-google-maps", () => {
-  // Return a STABLE library reference so placesLibrary identity doesn't change
-  // across renders (mirrors real useMapsLibrary behavior). Built lazily so the
-  // FakeAutocomplete class is initialized by the time it's referenced.
   let lib: { Autocomplete: typeof FakeAutocomplete } | null = null;
   return {
     useMapsLibrary: () => {
@@ -46,23 +37,39 @@ vi.mock("../../../../assets/icons/CurrLocation", () => ({
   default: () => null,
 }));
 
-// setPlaces uses type "title"/"listName" → the metadata axios.get path runs.
-// Reject it so the fallback still calls setPlaces synchronously enough for the test.
-vi.mock("axios", () => ({
-  default: { get: vi.fn().mockRejectedValue(new Error("no network")) },
-}));
+// axios.get returns a promise we resolve manually so we can control ordering.
+const { axiosGet, resolvers } = vi.hoisted(() => {
+  const resolvers: Array<(v: unknown) => void> = [];
+  return {
+    resolvers,
+    axiosGet: vi.fn(
+      () => new Promise((res) => resolvers.push(res as (v: unknown) => void))
+    ),
+  };
+});
+vi.mock("axios", () => ({ default: { get: axiosGet } }));
 
-// Google event API used in the effect cleanup.
 (globalThis as unknown as { google: unknown }).google = {
   maps: { event: { clearInstanceListeners: vi.fn() } },
 };
 
 import AddressInput from "../AddressInput";
 
+const makePlace = (id: string) => ({
+  place_id: id,
+  name: `Place ${id}`,
+  geometry: { location: { lat: () => 1, lng: () => 2 } },
+  formatted_address: `${id}, India`,
+  address_components: [],
+});
+
 describe("AddressInput place_changed (BUG-4)", () => {
   beforeEach(() => {
     placeChangedCb = null;
     constructCount = 0;
+    currentPlace = {};
+    resolvers.length = 0;
+    axiosGet.mockClear();
   });
 
   it("builds the Autocomplete once across a parent re-render and captures the selection", async () => {
@@ -90,18 +97,73 @@ describe("AddressInput place_changed (BUG-4)", () => {
       />
     );
 
-    // The Autocomplete must NOT be rebuilt on re-render.
     expect(constructCount).toBe(1);
     expect(placeChangedCb).toBeTruthy();
 
-    // Fire the Google selection; the fallback (axios rejects) still reports the place.
+    currentPlace = makePlace("A");
+    await act(async () => {
+      placeChangedCb!();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      resolvers[0]({ data: { primaryType: "park", rating: 4.5 } });
+      await Promise.resolve();
+    });
+
+    expect(setPlaces).toHaveBeenCalledTimes(1);
+    expect(setPlaces.mock.calls[0][0]).toMatchObject({ place_id: "A" });
+  });
+
+  it("ignores an earlier selection whose metadata request resolves LAST", async () => {
+    const setPlaces = vi.fn();
+    const onChange = vi.fn();
+
+    render(
+      <AddressInput
+        type="listName"
+        label="x"
+        setPlaces={setPlaces}
+        onChange={onChange}
+        placeHolder="p"
+      />
+    );
+    expect(placeChangedCb).toBeTruthy();
+
+    // Selection A → starts request 0 (in flight).
+    currentPlace = makePlace("A");
     await act(async () => {
       placeChangedCb!();
       await Promise.resolve();
     });
 
-    expect(setPlaces).toHaveBeenCalledWith(
-      expect.objectContaining({ place_id: "p1" })
+    // Selection B → starts request 1 (in flight). B is the latest intent.
+    currentPlace = makePlace("B");
+    await act(async () => {
+      placeChangedCb!();
+      await Promise.resolve();
+    });
+
+    expect(axiosGet).toHaveBeenCalledTimes(2);
+
+    // B resolves FIRST → applied.
+    await act(async () => {
+      resolvers[1]({ data: { primaryType: "cafe", rating: 4.9 } });
+      await Promise.resolve();
+    });
+    // A resolves LAST → must be dropped as stale.
+    await act(async () => {
+      resolvers[0]({ data: { primaryType: "park", rating: 3.1 } });
+      await Promise.resolve();
+    });
+
+    // Only B's value was applied; A never overwrote it.
+    const appliedIds = setPlaces.mock.calls.map(
+      (c) => (c[0] as { place_id: string }).place_id
     );
+    expect(appliedIds).toEqual(["B"]);
+    expect(appliedIds).not.toContain("A");
+    // onChange (final value) likewise reflects only B.
+    expect(onChange).toHaveBeenLastCalledWith("B, India");
+    expect(onChange).not.toHaveBeenCalledWith("A, India");
   });
 });

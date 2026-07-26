@@ -48,6 +48,13 @@ const AddressInput: FC<AddressInputProps> = ({
   onChangeRef.current = onChange;
   setPlacesRef.current = setPlaces;
 
+  // Monotonic token identifying the latest user intent. It increments on every
+  // new place selection, on manual typing, and on effect cleanup. A place's async
+  // metadata fetch captures the token at request start and bails if it's no longer
+  // the latest — so an earlier selection whose request resolves LAST (or after the
+  // user resumes typing) can't overwrite the newer value (BUG-4 stale request).
+  const requestTokenRef = useRef(0);
+
   useEffect(() => {
     if (initalValue !== undefined) {
       setAddress(initalValue);
@@ -102,9 +109,6 @@ const AddressInput: FC<AddressInputProps> = ({
     if (!inputRef.current || !placesLibrary) return;
 
     let autocomplete: google.maps.places.Autocomplete | null = null;
-    // Guards a late async metadata fetch from calling a stale callback after the
-    // effect has been cleaned up (unmount or re-init).
-    let isCurrent = true;
 
     try {
       autocomplete = new placesLibrary.Autocomplete(inputRef.current, {
@@ -123,6 +127,8 @@ const AddressInput: FC<AddressInputProps> = ({
 
       // Listener to handle when the user selects a place
       autocomplete.addListener("place_changed", async () => {
+        // Each selection is a new user intent — invalidate any in-flight request.
+        const requestToken = ++requestTokenRef.current;
         const place = autocomplete?.getPlace();
         if (!place || !place.geometry) {
           setAddress("");
@@ -170,9 +176,9 @@ const AddressInput: FC<AddressInputProps> = ({
               }
             );
 
-            // The instance was cleaned up (unmount / re-init) while awaiting —
-            // don't call a stale callback.
-            if (!isCurrent) return;
+            // A newer selection (or manual typing, or cleanup) happened while
+            // awaiting — don't let this stale response overwrite the newer value.
+            if (requestTokenRef.current !== requestToken) return;
 
             const placeData = response.data;
 
@@ -189,7 +195,7 @@ const AddressInput: FC<AddressInputProps> = ({
             setPlacesRef.current?.(enhancedPlace);
           } catch (error) {
             console.warn("Error fetching place details for metadata:", error);
-            if (!isCurrent) return;
+            if (requestTokenRef.current !== requestToken) return;
             // Fallback to original place if fetch fails
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-expect-error
@@ -202,6 +208,9 @@ const AddressInput: FC<AddressInputProps> = ({
           setPlacesRef.current?.(place);
         }
 
+        // A newer intent may have arrived during the awaited fetch above — don't
+        // report this (now stale) selection's value.
+        if (requestTokenRef.current !== requestToken) return;
         // Call onChange with the appropriate value
         onChangeRef.current?.(returnValue);
       });
@@ -211,7 +220,8 @@ const AddressInput: FC<AddressInputProps> = ({
 
     // Cleanup function
     return () => {
-      isCurrent = false;
+      // Invalidate any in-flight metadata request tied to this instance.
+      requestTokenRef.current += 1;
       if (autocomplete) {
         google.maps.event.clearInstanceListeners(autocomplete);
       }
@@ -375,6 +385,9 @@ const AddressInput: FC<AddressInputProps> = ({
   };
 
   const handleManualChange = (nextAddress: string) => {
+    // Manual typing is a new user intent — invalidate a pending selection's
+    // async metadata fetch so it can't overwrite what the user is typing.
+    requestTokenRef.current += 1;
     setAddress(nextAddress);
     onChange(nextAddress);
   };
