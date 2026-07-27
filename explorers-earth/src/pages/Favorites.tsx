@@ -490,6 +490,14 @@ const Favorites = memo(() => {
     setIsLoading,
     cities,
     onCreated: () => {
+      // Open directly into the newly-created list's detail view (BUG-3 parity
+      // with Movies): useCreateLocation already sets selectedCity to the new
+      // list, so switch the in-page view from the all-lists grid (step 1) to the
+      // list detail (step 2) and focus the Recommendations tab, where the
+      // add-place affordance lives. Without this the user was left on the grid.
+      setActiveTab(t("dashboard.recommendations.recommendationsTab"));
+      setStep(2);
+
       const acc = accountById?.usersPermissionsUser?.accounts?.[0];
       const isPublic = acc?.public_recommendations !== "No"; // default is true
       if (!isPublic) {

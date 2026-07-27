@@ -347,13 +347,16 @@ const GameListView = () => {
     const wants =
       location.state?.justAddedRecommendation || location.state?.justCreatedList;
     if (!wants || !list) return;
+    // Never prompt to publish an empty list; wait until the first item is added.
+    // Do NOT set promptShownRef here, so a later render can still open the prompt.
+    if (games.length < 1) return;
     promptShownRef.current = true;
     if (!list.Visibility) {
       setListVisibilityPrompt({ isOpen: true, listName: list.List_Name });
     }
     navigate(location.pathname, { replace: true, state: {} });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state, location.pathname, list?.documentId, navigate]);
+  }, [location.state, location.pathname, list?.documentId, games.length, navigate]);
 
   const handlePinToggle = async (game: RecommendedGame) => {
     const willPin = !game.is_pinned;
