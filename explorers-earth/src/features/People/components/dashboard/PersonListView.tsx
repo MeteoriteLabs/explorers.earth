@@ -164,13 +164,16 @@ const PersonListView = () => {
     const wants =
       location.state?.justAddedRecommendation || location.state?.justCreatedList;
     if (!wants || !listData) return;
+    // Never prompt to publish an empty list; wait until the first item is added.
+    // Do NOT set promptShownRef here, so a later render can still open the prompt.
+    if (people.length < 1) return;
     promptShownRef.current = true;
     if (!listData.Visibility) {
       setListVisibilityPrompt({ isOpen: true, listName: listData.List_Name });
     }
     navigate(location.pathname, { replace: true, state: {} });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state, location.pathname, listData?.documentId, navigate]);
+  }, [location.state, location.pathname, listData?.documentId, people.length, navigate]);
 
   const publicUrl = listData
     ? `${VITE_BASE_URL}/${user?.username}/people/${listData.slug}`

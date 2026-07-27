@@ -185,6 +185,8 @@ const MovieListView = () => {
   const [deleteList, { loading: deletingList }] = useMutation(DELETE_MOVIE_LIST);
 
   const list = data?.movieLists?.[0];
+  const movies = deduplicateMovies(list?.recommended_movies as RecommendedMovie[]);
+  const pinnedCount = movies.filter(m => m.is_pinned).length;
 
   // One-shot guard: consume the post-create/post-add route-state signal exactly
   // once. Prevents an infinite re-render loop (BUG-3): the prompt setter builds a
@@ -198,6 +200,10 @@ const MovieListView = () => {
     const wants =
       location.state?.justAddedRecommendation || location.state?.justCreatedList;
     if (!wants || !list) return;
+    // Never prompt to publish an empty list (BUG: fired immediately on create).
+    // Do NOT set promptShownRef here, so a later render (after the first item
+    // loads) can still open the prompt.
+    if (movies.length < 1) return;
     promptShownRef.current = true;
     if (!list.Visibility) {
       setListVisibilityPrompt({ isOpen: true, listName: list.List_Name });
@@ -206,9 +212,7 @@ const MovieListView = () => {
     navigate(location.pathname, { replace: true, state: {} });
     // Key on the stable list documentId, not the every-render-rebuilt list object.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state, location.pathname, list?.documentId, navigate]);
-  const movies = deduplicateMovies(list?.recommended_movies as RecommendedMovie[]);
-  const pinnedCount = movies.filter(m => m.is_pinned).length;
+  }, [location.state, location.pathname, list?.documentId, movies.length, navigate]);
 
   // Public share URL
   const shareUrl = list ? `${VITE_BASE_URL}/${list.account?.username || ""}/movies/${list.slug}` : "";
