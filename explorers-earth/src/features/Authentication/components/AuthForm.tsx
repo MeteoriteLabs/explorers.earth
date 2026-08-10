@@ -46,6 +46,7 @@ interface AuthFormProps {
   isOnboarding?: boolean; // New prop to determine if this is an onboarding form
   enablePasswordValidation?: boolean; // New prop to control password validation
   turnstileSiteKey?: string; // New prop for Cloudflare Turnstile
+  formId?: string; // Optional id so an external button can submit this form (onboarding footer)
 }
 
 const AuthForm: FC<AuthFormProps> = memo(
@@ -67,6 +68,7 @@ const AuthForm: FC<AuthFormProps> = memo(
     isOnboarding = false, // Default to false (not onboarding)
     enablePasswordValidation = false, // Default to false for login forms
     turnstileSiteKey, // Site key for Cloudflare Turnstile
+    formId, // External-submit hook for the onboarding footer
   }) => {
     const { t } = useTranslation();
 
@@ -115,6 +117,7 @@ const AuthForm: FC<AuthFormProps> = memo(
         >
           {({ isSubmitting, values, setFieldValue, setFieldTouched, touched, errors }) => (
             <Form
+              id={formId}
               className={`font-poppins flex flex-col gap-4 w-full text-dashboard ${
                 isOnboarding
                   ? "" // onboarding steps sit directly in the outer card — no nested box
@@ -478,17 +481,21 @@ const AuthForm: FC<AuthFormProps> = memo(
                 </div>
               )}
 
-              <Button
-                btnText={
-                  isSubmitting || isLoading
-                    ? t("auth.validations.general.processing")
-                    : finalSubmitButtonLabel
-                }
-                size="small"
-                type="submit"
-                variant="primary"
-                isLoading={isSubmitting || isLoading}
-              />
+              {/* In onboarding the primary action lives in the pinned footer,
+                  which submits this form via its formId — so hide this button. */}
+              {!isOnboarding && (
+                <Button
+                  btnText={
+                    isSubmitting || isLoading
+                      ? t("auth.validations.general.processing")
+                      : finalSubmitButtonLabel
+                  }
+                  size="small"
+                  type="submit"
+                  variant="primary"
+                  isLoading={isSubmitting || isLoading}
+                />
+              )}
 
               {GoogleAuthHandler && (
                 <>

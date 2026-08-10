@@ -51,9 +51,8 @@ import { loginQuery } from "../features/Authentication/api/mutation";
 import { useUserForOnboarding } from "../features/Authentication/hooks/useCurrentUser";
 import { EarthLoader } from "../components/EarthLoader";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
-import { Check, Sparkles, Zap, Crown, LogOut } from "lucide-react";
+import { Check, Sparkles, Zap, Crown, LogOut, ArrowLeft } from "lucide-react";
 import GlobeCanvas from "../components/auth/GlobeCanvas";
-import { LogoFull } from "../assets/icons/EoeLogo";
 import OnboardingProgress from "../components/onboarding/OnboardingProgress";
 import { useQuery as useReactQuery } from "@tanstack/react-query";
 
@@ -1515,6 +1514,28 @@ const OnBoarding = () => {
     await handleSubscriptionSubmit(freePlan.documentId, freePlan, currentFormData);
   };
 
+  // Final step (Address). Validates the address fields, then creates the account
+  // on the free plan. Local Tunes is provisioned silently here — its dedicated
+  // step was removed, so consent is implied and forced on. Mirrors the old
+  // Address "Confirm Details" button, but finalizes instead of advancing.
+  const handleFinalizeAddress = async () => {
+    if (isSubmitting || hasSubmitted || isCreatingSubscription) return;
+    try {
+      await addressValidationSchema(t).validate(formData, { abortEarly: false });
+      await handleSubscriptionSubmitWithFreePlan({
+        ...formData,
+        localTunesConsent: true,
+      });
+    } catch (error) {
+      if (error instanceof Yup.ValidationError) {
+        error.errors.forEach((errorMessage) => toast.error(errorMessage));
+      } else {
+        console.error("Onboarding finalize failed:", error);
+        toast.error(t("toast.error.validationError"));
+      }
+    }
+  };
+
   const steps = useMemo(() => {
     const baseSteps = [
       {
@@ -1535,24 +1556,10 @@ const OnBoarding = () => {
         description: t('auth.onboarding.addressDetails.description'),
         validationSchema: addressValidationSchema(t),
       },
-      {
-        title: 'Local Tunes',
-        fields: [],
-        description: 'Join Local Tunes music platform',
-        validationSchema: Yup.object({}),
-      },
-      // TEMPORARILY DISABLED: Subscription Plans step (onboarding final step)
-      // Users are now automatically registered with the free plan after Step 4 (Local Tunes).
-      // To re-enable this step:
-      //   1. Uncomment the block below
-      //   2. In handleStepSubmit (activeStep === 3), replace handleSubscriptionSubmitWithFreePlan
-      //      with handleNext()
-      // {
-      //   title: 'Subscription Plans',
-      //   fields: [],
-      //   description: 'Choose your subscription plan',
-      //   validationSchema: Yup.object({}),
-      // },
+      // Local Tunes is no longer a visible step. Its account is still provisioned
+      // silently during the final submit (see handleFinalizeAddress → the free-plan
+      // registration path, which calls syncLocalTunesUser when localTunesConsent is
+      // true). A one-line disclosure is shown in the footer on the final step.
     ];
 
     return baseSteps;
@@ -1786,26 +1793,36 @@ const OnBoarding = () => {
       {/* Earthrise scene — shared with the auth screens for a continuous journey */}
       <GlobeCanvas />
       <div className="ob-vignette" />
-      <div className="ob-card relative w-full max-w-md sm:max-w-md md:max-w-lg lg:max-w-2xl rounded-3xl flex flex-col max-h-[100dvh]">
-        {/* Sticky Top Bar */}
-        <div className="ob-topbar sticky top-0 z-20 backdrop-blur-md rounded-t-3xl border-b border-dashboard">
-          {/* Header Row */}
-          <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-dashboard/30">
-            <div className="flex items-center gap-3">
-              <LogoFull className="h-6 sm:h-7 w-auto text-white" title="explorers.earth" />
-            </div>
+      <div className="ob-card ob-frame relative w-full max-w-md sm:max-w-md md:max-w-lg lg:max-w-2xl flex flex-col">
+        {/* Header (fixed) — controls row (back / log out) + slim progress.
+            The logo was dropped; the changing step heading carries the top. */}
+        <div className="ob-topbar border-b border-dashboard">
+          <div className="flex items-center justify-between px-4 sm:px-6 pt-3.5 pb-1.5">
+            {activeStep > 0 ? (
+              <button
+                onClick={handleBack}
+                type="button"
+                aria-label="Back"
+                className="text-[11px] sm:text-xs text-dashboard-light hover:text-white transition-colors font-medium flex items-center gap-1 cursor-pointer outline-none focus:outline-none"
+              >
+                <ArrowLeft size={15} />
+                <span>Back</span>
+              </button>
+            ) : (
+              <span />
+            )}
             <button
               onClick={() => setShowLogoutModal(true)}
               type="button"
-              className="text-[11px] sm:text-xs text-dashboard hover:text-white transition-all duration-200 font-medium flex items-center gap-1.5 bg-dashboard-muted hover:bg-dashboard-card border border-dashboard rounded-full px-2.5 py-1.5 sm:px-3 sm:py-1.5 cursor-pointer outline-none focus:outline-none"
+              className="text-[11px] sm:text-xs text-dashboard hover:text-white transition-all duration-200 font-medium flex items-center gap-1.5 bg-dashboard-muted hover:bg-dashboard-card border border-dashboard rounded-full px-2.5 py-1.5 cursor-pointer outline-none focus:outline-none"
             >
               <span>Log out</span>
               <LogOut size={12} />
             </button>
           </div>
-          
+
           {/* Slim progress — replaces the space-hungry four-column stepper */}
-          <div className="px-4 sm:px-6 pt-4 pb-4 sm:pb-5">
+          <div className="px-4 sm:px-6 pt-1 pb-4 sm:pb-5">
             <OnboardingProgress
               stepIndex={activeStep}
               total={steps.length}
@@ -1815,7 +1832,7 @@ const OnBoarding = () => {
           </div>
         </div>
 
-        {/* Scrollable Content Area */}
+        {/* Body (only region that scrolls) */}
         <div className="flex-1 overflow-y-auto px-3 sm:px-4 md:px-6 pb-3 sm:pb-4 md:pb-6 scrollbar-hide">
           <div className="flex justify-center w-full">
             <div className="w-full md:max-w-md">
@@ -1862,49 +1879,14 @@ const OnBoarding = () => {
               )}
 
               {activeStep === 2 ? (
-                // Custom address form for step 3
+                // Custom address form (final step). The submit action lives in
+                // the pinned footer (handleFinalizeAddress).
                 <div className="space-y-6">
                   <div className="space-y-4">
                     {getAddressFields(t).map((field: any) =>
                       renderAddressField(field)
                     )}
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        // Validate the address step data
-                        await addressValidationSchema(t).validate(formData, {
-                          abortEarly: false,
-                        });
-                        console.log(
-                          "Validation passed, calling handleStepSubmit"
-                        );
-                        await handleStepSubmit(formData, { errors: {} });
-                        // handleStepSubmit already handles advancing to the next step
-                      } catch (error) {
-                        console.log("Validation failed:", error);
-                        if (error instanceof Yup.ValidationError) {
-                          // Show specific validation errors
-                          error.errors.forEach((errorMessage) => {
-                            toast.error(errorMessage);
-                          });
-                        } else {
-                          toast.error(t("toast.error.validationError"));
-                        }
-                      }
-                    }}
-                    disabled={isSubmitting || hasSubmitted}
-                    className={`w-full py-2 sm:py-3 px-4 rounded-md font-medium transition-colors text-sm sm:text-base ${isSubmitting || hasSubmitted
-                      ? "bg-gray-400 text-gray-200 cursor-not-allowed"
-                      : "bg-dashboard-accent text-dashboard hover:bg-dashboard-accent/90"
-                      }`}
-                  >
-                    {isSubmitting
-                      ? t("auth.validations.general.processing")
-                      : t("auth.onboarding.addressDetails.confirmDetails")}
-                  </button>
                 </div>
               ) : activeStep === 3 ? (
                 // Local Tunes integration step (mandatory)
@@ -2238,21 +2220,44 @@ const OnBoarding = () => {
                   }
                   isLoading={isSubmitting}
                   isOnboarding={true}
+                  formId="onboarding-form"
                 />
               )}
             </div>
           </div>
+        </div>
 
-          {/* Back Button - Inside Scrollable Area */}
-          {activeStep > 0 && (
-            <div className="mt-4">
-              <Button
-                type="button"
-                onClick={handleBack}
-                variant="secondary"
-                btnText={t("auth.onboarding.contactDetails.back")}
-              />
-            </div>
+        {/* Footer (pinned) — the single "floating" primary action. AuthForm steps
+            submit the form via its formId; the final Address step finalizes. */}
+        <div className="ob-footer">
+          {activeStep === steps.length - 1 && (
+            <p className="ob-disclose">
+              {t("auth.onboarding.localTunesDisclosure", {
+                defaultValue:
+                  "You'll also get a Local Tunes music account — manage it anytime in Settings.",
+              })}
+            </p>
+          )}
+          {activeStep === 2 ? (
+            <button
+              type="button"
+              onClick={handleFinalizeAddress}
+              disabled={isSubmitting || hasSubmitted || isCreatingSubscription}
+              className="ob-primary"
+            >
+              {isSubmitting || isCreatingSubscription
+                ? t("auth.validations.general.processing")
+                : t("auth.onboarding.addressDetails.confirmDetails")}
+            </button>
+          ) : (
+            <button
+              type="submit"
+              form="onboarding-form"
+              disabled={isSubmitting}
+              className="ob-primary"
+            >
+              {t("auth.onboarding.accountDetails.next")}
+            </button>
           )}
         </div>
       </div>

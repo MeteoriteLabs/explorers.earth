@@ -285,6 +285,7 @@
     "newToExplorers": "New to explorers?",
     "onboarding": {
       "stepCount": "Step {{current}} of {{total}}",
+      "localTunesDisclosure": "You'll also get a Local Tunes music account — manage it anytime in Settings.",
       "accountDetails": {
         "accountType": "Account Type",
         "bio": "Bio",
