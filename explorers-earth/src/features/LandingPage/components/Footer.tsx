@@ -1,4 +1,5 @@
 import { Instagram, QrCode } from "lucide-react";
+import { LogoFull } from "../../../assets/icons/EoeLogo";
 import { useReducedMotion } from "framer-motion";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -38,7 +39,7 @@ export default function Footer() {
               <div className="flex h-10 w-10 items-center justify-center rounded-[13px] bg-[#f6f1e7]">
                 <QrCode className="text-[#17231a]" size={18} />
               </div>
-              <span className="text-xl font-extrabold tracking-[-0.02em]">explorers.earth</span>
+              <LogoFull className="h-7 text-[#f6f1e7]" />
             </div>
             <p className="max-w-sm text-sm leading-6 text-white/68">{t("footer.tagline")}</p>
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-2 text-sm font-black text-[#f6f1e7]">
