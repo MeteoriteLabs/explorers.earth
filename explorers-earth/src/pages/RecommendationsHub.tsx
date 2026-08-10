@@ -576,7 +576,6 @@ const RecommendationCard = ({
   const { user } = useAuthStore();
   const cardRef = useRef<HTMLDivElement>(null);
   const kebabButtonRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isHovering, setIsHovering] = useState(false);
   const [showKebab, setShowKebab] = useState(false);
@@ -602,8 +601,11 @@ const RecommendationCard = ({
   useEffect(() => {
     if (!showKebab) return;
     const handlePointerDown = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (menuRef.current?.contains(target) || kebabButtonRef.current?.contains(target)) return;
+      const node = e.target as Node;
+      const el = node instanceof Element ? node : node.parentElement;
+      // Ignore clicks inside the portaled menu (matched by data attribute, no ref
+      // needed — AnimatePresence doesn't forward refs cleanly) or on the trigger.
+      if (el?.closest("[data-kebab-menu]") || kebabButtonRef.current?.contains(node)) return;
       setShowKebab(false);
     };
     const handleDismiss = () => setShowKebab(false);
@@ -709,7 +711,7 @@ const RecommendationCard = ({
           <AnimatePresence>
             {showKebab && menuPos && (
               <motion.div
-                ref={menuRef}
+                data-kebab-menu
                 initial={{ opacity: 0, scale: 0.95, y: -5 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: -5 }}
