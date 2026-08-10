@@ -432,7 +432,7 @@ const AuthForm: FC<AuthFormProps> = memo(
                   >
                     {t("auth.acceptTerms")}{" "}
                     <a
-                      href="/terms"
+                      href="/terms?return=/register"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-dashboard-accent underline hover:text-dashboard-accent/80"
