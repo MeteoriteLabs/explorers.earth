@@ -133,7 +133,7 @@ const Sidebar = () => {
         />
 
         {/* Account avatar + popover (View public profile · Logout) */}
-        <div ref={accountMenuRef} className="relative w-full pt-2 border-t border-dashboard/40">
+        <div ref={accountMenuRef} className="relative w-full">
           <button
             type="button"
             onClick={() => setShowAccountMenu((v) => !v)}
