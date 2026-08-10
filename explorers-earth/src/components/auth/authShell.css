@@ -18,6 +18,12 @@
 .ea-globe{position:absolute;inset:0;width:100%;height:100%;z-index:1}
 /* host for the manual username/password form (AuthForm) over the scene */
 .ea-formhost{position:relative;z-index:3;width:100%;max-width:432px}
+/* minimal top-left logo -> landing page */
+.ea-header{position:absolute;top:26px;left:30px;z-index:4;display:inline-flex;color:var(--ea-cream);opacity:.9;transition:opacity .15s}
+.ea-header:hover{opacity:1}
+.ea-header .ea-headerlogo{height:26px}
+.ea-header:focus-visible{outline:2px solid var(--ea-terra);outline-offset:4px;border-radius:6px}
+@media (max-width:640px){.ea-header{top:18px;left:18px}.ea-header .ea-headerlogo{height:22px}}
 .ea-vignette{position:absolute;inset:0;z-index:2;pointer-events:none;
   background:radial-gradient(120% 100% at 50% 50%, transparent 38%, rgba(6,11,8,.5) 92%)}
 

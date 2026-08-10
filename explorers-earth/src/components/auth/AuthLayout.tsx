@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import AuthShell from "./AuthShell";
-import { LogoFull } from "../../assets/icons/EoeLogo";
 
 interface Helper {
   label: string;
@@ -42,9 +41,6 @@ const AuthLayout = ({
 }: AuthLayoutProps) => (
   <AuthShell>
     <main className="ea-card">
-      <div className="ea-logo">
-        <LogoFull className="ea-logomark" />
-      </div>
       <div className="ea-eyebrow"><span className="ea-spark" />{eyebrow}</div>
 
       {banner}

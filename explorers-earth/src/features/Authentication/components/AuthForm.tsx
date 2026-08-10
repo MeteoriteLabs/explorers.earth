@@ -11,7 +11,6 @@ import AddressInput from "../../Profile/components/AddressInput";
 import { useTranslation } from "react-i18next";
 import PhoneInputWithCountry from "../../../components/ui/PhoneInputWithCountry";
 import { Turnstile } from '@marsidev/react-turnstile';
-import { LogoFull } from "../../../assets/icons/EoeLogo";
 
 export type { AuthFormField };
 // Types for form fields
@@ -102,11 +101,6 @@ const AuthForm: FC<AuthFormProps> = memo(
     };
     return (
       <div className="dashboard-theme">
-        {!isOnboarding && (
-          <div className="flex items-center justify-center mt-2 md:mt-3 mb-4 md:mb-6">
-            <LogoFull className="h-8 text-white" />
-          </div>
-        )}
         <Formik
           initialValues={initialValues}
           validationSchema={validationSchema}
