@@ -654,7 +654,7 @@ const RecommendationCard = ({
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       onClick={() => navigate(cat.path)}
-      className="relative w-full h-[155px] overflow-hidden rounded-2xl md:rounded-[1.5rem] cursor-pointer group bg-slate-900/90 shadow-xl border border-white/5 hover:border-white/20 transition-all duration-300"
+      className="rec-card relative w-full h-[155px] overflow-hidden rounded-2xl md:rounded-[1.5rem] cursor-pointer group bg-slate-900 shadow-xl border border-white/5 hover:border-white/20 transition-all duration-300"
     >
       <div className="absolute inset-0 w-full h-full z-10">
         <CategoryBackground category={cat.key} isHovering={isHovering} />
