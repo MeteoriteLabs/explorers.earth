@@ -1,11 +1,14 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import {
   MapPin, Music, Film, BookOpen, Gamepad2,
-  ChevronRight, Smartphone, ShoppingBag, Users
+  ChevronRight, Smartphone, ShoppingBag, Users,
+  MoreVertical, ExternalLink, Copy, Check, Globe
 } from "lucide-react";
 import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
+import useAuthStore from "../store/store";
+import { toast } from "sonner";
 
 type CategoryKey = "places" | "music" | "movies" | "books" | "games" | "guides" | "apps" | "products" | "people";
 
@@ -523,9 +526,12 @@ const getHexColor = (color: string) => {
 
 const RecommendationCard = ({ cat }: { cat: CategoryConfig }) => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const cardRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isHovering, setIsHovering] = useState(false);
+  const [showKebab, setShowKebab] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!cardRef.current) return;
@@ -534,6 +540,23 @@ const RecommendationCard = ({ cat }: { cat: CategoryConfig }) => {
   };
 
   const accentColor = getHexColor(cat.color);
+  const publicPath = user?.username ? `/${user.username}/${cat.key}` : cat.path;
+
+  const handleCopyLink = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const fullUrl = `${window.location.origin}${publicPath}`;
+    navigator.clipboard.writeText(fullUrl);
+    setCopied(true);
+    toast.success(`Copied public ${cat.label} link to clipboard!`);
+    setTimeout(() => setCopied(false), 2000);
+    setShowKebab(false);
+  };
+
+  const handleOpenPublic = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowKebab(false);
+    navigate(publicPath);
+  };
 
   return (
     <motion.div
@@ -543,9 +566,12 @@ const RecommendationCard = ({ cat }: { cat: CategoryConfig }) => {
       transition={{ duration: 0.4 }}
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
+      onMouseLeave={() => {
+        setIsHovering(false);
+        setShowKebab(false);
+      }}
       onClick={() => navigate(cat.path)}
-      className="relative w-full h-[150px] overflow-hidden rounded-2xl md:rounded-[1.5rem] cursor-pointer group bg-slate-900/90 shadow-xl"
+      className="relative w-full h-[155px] overflow-hidden rounded-2xl md:rounded-[1.5rem] cursor-pointer group bg-slate-900/90 shadow-xl border border-white/5 hover:border-white/20 transition-all duration-300"
     >
       <div className="absolute inset-0 w-full h-full z-10">
         <CategoryBackground category={cat.key} isHovering={isHovering} />
@@ -562,9 +588,65 @@ const RecommendationCard = ({ cat }: { cat: CategoryConfig }) => {
         <div className="absolute inset-y-0 left-0 w-3/4 backdrop-blur-md" style={{ maskImage: "linear-gradient(to right, black 50%, transparent 100%)", WebkitMaskImage: "linear-gradient(to right, black 50%, transparent 100%)" }} />
       </div>
 
-      <div className="absolute inset-0 p-6 md:p-8 flex items-center z-20">
+      {/* Top Status & Kebab Menu Bar */}
+      <div className="absolute top-3.5 right-3.5 z-40 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+        {/* Live Published Status Pill */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-[10px] font-semibold text-emerald-400 shadow-sm">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span>Published</span>
+        </div>
+
+        {/* Kebab Action Trigger */}
+        <button
+          onClick={() => setShowKebab(!showKebab)}
+          className="w-7 h-7 rounded-full bg-black/40 hover:bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 hover:text-white transition-all shadow-sm"
+          title="Category options"
+        >
+          <MoreVertical size={14} />
+        </button>
+
+        {/* Dropdown Menu */}
+        <AnimatePresence>
+          {showKebab && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: -5 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: -5 }}
+              transition={{ duration: 0.15 }}
+              className="absolute right-0 top-9 w-44 rounded-xl bg-slate-950/95 border border-white/15 backdrop-blur-xl shadow-2xl p-1.5 z-50 flex flex-col gap-0.5 text-xs font-medium text-white"
+            >
+              <button
+                onClick={handleOpenPublic}
+                className="flex items-center gap-2 w-full px-3 py-2 rounded-lg hover:bg-white/10 text-dashboard-muted hover:text-white transition-colors text-left"
+              >
+                <Globe size={13} className="text-emerald-400 shrink-0" />
+                <span>View Public Page</span>
+              </button>
+              <button
+                onClick={handleCopyLink}
+                className="flex items-center gap-2 w-full px-3 py-2 rounded-lg hover:bg-white/10 text-dashboard-muted hover:text-white transition-colors text-left"
+              >
+                {copied ? <Check size={13} className="text-emerald-400 shrink-0" /> : <Copy size={13} className="text-blue-400 shrink-0" />}
+                <span>{copied ? "Copied!" : "Copy Public Link"}</span>
+              </button>
+              <button
+                onClick={() => {
+                  setShowKebab(false);
+                  navigate(cat.path);
+                }}
+                className="flex items-center gap-2 w-full px-3 py-2 rounded-lg hover:bg-white/10 text-dashboard-muted hover:text-white transition-colors text-left"
+              >
+                <ExternalLink size={13} className="text-amber-400 shrink-0" />
+                <span>Manage Lists</span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <div className="absolute inset-0 p-6 md:p-7 flex items-center z-20">
         <div className="flex flex-col min-w-0">
-          <h3 className="text-3xl md:text-4xl font-black text-white tracking-tighter leading-none uppercase group-hover:scale-105 transition-transform origin-left">
+          <h3 className="text-2xl md:text-3xl font-black text-white tracking-tighter leading-none uppercase group-hover:scale-105 transition-transform origin-left">
             {cat.label}
           </h3>
           <p className="text-white/70 text-[10px] md:text-xs font-semibold tracking-wide mt-2 line-clamp-2 group-hover:text-white transition-colors max-w-[85%]">
@@ -575,8 +657,8 @@ const RecommendationCard = ({ cat }: { cat: CategoryConfig }) => {
           </motion.div>
         </div>
         <div className="ml-auto opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-300 shrink-0">
-          <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white">
-            <ChevronRight size={20} />
+          <div className="w-9 h-9 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white">
+            <ChevronRight size={18} />
           </div>
         </div>
       </div>
