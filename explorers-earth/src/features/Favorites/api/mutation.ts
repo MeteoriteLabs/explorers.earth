@@ -2,7 +2,7 @@ import { gql } from "@apollo/client";
 
 export const createRecommendationLinkMutation = gql`
   mutation CreateRecommendationList($data: RecommendationListInput!) {
-    createRecommendationList(data: $data) {
+    createRecommendationList(status: PUBLISHED, data: $data) {
       Instagram_Media_URL
       List_Name
       List_Name_Details
@@ -24,7 +24,7 @@ export const createRecommendationLinkMutation = gql`
 
 export const createRecommendationCategoryMutation = gql`
   mutation CreateRecommendationCategory($data: RecommendationCategoryInput!) {
-    createRecommendationCategory(data: $data) {
+    createRecommendationCategory(status: PUBLISHED, data: $data) {
       Category_Name
       documentId
     }
@@ -33,7 +33,7 @@ export const createRecommendationCategoryMutation = gql`
 
 export const CreateRecommendedPlaceMutation = gql`
   mutation CreateRecommendedPlace($data: RecommendedPlaceInput!) {
-    createRecommendedPlace(data: $data) {
+    createRecommendedPlace(status: PUBLISHED, data: $data) {
       documentId
     }
   }

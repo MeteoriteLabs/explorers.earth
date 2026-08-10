@@ -15,6 +15,7 @@ export const CREATE_PERSON_LIST = gql`
     $recommendation_list: ID
   ) {
     createPersonList(
+      status: PUBLISHED
       data: {
         List_Name: $List_Name
         list_description: $list_description
@@ -50,6 +51,7 @@ export const UPDATE_PERSON_LIST = gql`
   ) {
     updatePersonList(
       documentId: $documentId
+      status: PUBLISHED
       data: {
         List_Name: $List_Name
         list_description: $list_description

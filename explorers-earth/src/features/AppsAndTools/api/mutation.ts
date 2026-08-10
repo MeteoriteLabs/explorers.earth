@@ -14,6 +14,7 @@ export const CREATE_APP_LIST = gql`
     $account: ID!
   ) {
     createAppList(
+      status: PUBLISHED
       data: {
         List_Name: $List_Name
         list_description: $list_description
@@ -48,6 +49,7 @@ export const UPDATE_APP_LIST = gql`
   ) {
     updateAppList(
       documentId: $documentId
+      status: PUBLISHED
       data: {
         List_Name: $List_Name
         list_description: $list_description

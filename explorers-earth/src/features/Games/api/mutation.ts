@@ -14,6 +14,7 @@ export const CREATE_GAME_LIST = gql`
     $account: ID!
   ) {
     createGameList(
+      status: PUBLISHED
       data: {
         List_Name: $List_Name
         list_description: $list_description
@@ -48,6 +49,7 @@ export const UPDATE_GAME_LIST = gql`
   ) {
     updateGameList(
       documentId: $documentId
+      status: PUBLISHED
       data: {
         List_Name: $List_Name
         list_description: $list_description

@@ -15,6 +15,7 @@ export const CREATE_PRODUCT_LIST = gql`
     $recommendation_list: ID
   ) {
     createProductList(
+      status: PUBLISHED
       data: {
         List_Name: $List_Name
         list_description: $list_description
@@ -50,6 +51,7 @@ export const UPDATE_PRODUCT_LIST = gql`
   ) {
     updateProductList(
       documentId: $documentId
+      status: PUBLISHED
       data: {
         List_Name: $List_Name
         list_description: $list_description
