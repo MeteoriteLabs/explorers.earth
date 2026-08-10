@@ -39,7 +39,7 @@ const CATEGORIES: CategoryConfig[] = [
     key: "places",  
     label: "Places",        
     icon: MapPin, 
-    description: "Explore curated locations and favorite spots from around the world",
+    description: "Your favorite spots to eat, stay, and wander — curated to share.",
     color: "emerald",
     path: "/recommendations/places",
     visibilityField: "public_recommendations",
@@ -49,7 +49,7 @@ const CATEGORIES: CategoryConfig[] = [
     key: "music",   
     label: "Music",         
     icon: Music, 
-    description: "Discover shared playlists and local tunes that define the vibe",
+    description: "The playlists and tracks on repeat, shared with your people.",
     color: "purple",
     path: "/recommendations/music",
     visibilityField: "public_music",
@@ -59,7 +59,7 @@ const CATEGORIES: CategoryConfig[] = [
     key: "movies",  
     label: "Movies & Shows", 
     icon: Film, 
-    description: "Watch lists and cinematic recommendations for every mood",
+    description: "Your watchlist of films and shows worth recommending.",
     color: "blue",
     path: "/recommendations/movies",
     visibilityField: "public_movie",
@@ -69,7 +69,7 @@ const CATEGORIES: CategoryConfig[] = [
     key: "books",   
     label: "Books",         
     icon: BookOpen, 
-    description: "Literary picks and reading collections from classic to modern",
+    description: "The books that stuck with you, shelved for others to find.",
     color: "orange",
     path: "/recommendations/books",
     visibilityField: "public_books",
@@ -79,7 +79,7 @@ const CATEGORIES: CategoryConfig[] = [
     key: "games",   
     label: "Games",         
     icon: Gamepad2, 
-    description: "Gaming favorites and latest discoveries in the digital world",
+    description: "Your gaming hall of fame — the titles worth passing on.",
     color: "pink",
     path: "/recommendations/games",
     visibilityField: "public_games",
@@ -89,7 +89,7 @@ const CATEGORIES: CategoryConfig[] = [
     key: "apps",   
     label: "Apps & Tools",         
     icon: Smartphone, 
-    description: "Curated tech stack, applications, and utility tools for productivity and life",
+    description: "The apps and tools you actually swear by.",
     color: "purple",
     path: "/recommendations/apps",
     visibilityField: "public_apps",
@@ -99,7 +99,7 @@ const CATEGORIES: CategoryConfig[] = [
     key: "products",   
     label: "Products",         
     icon: ShoppingBag, 
-    description: "Gear recommendations, tech setups, travel essentials, and retail picks",
+    description: "The gear you'd tell a friend to buy.",
     color: "emerald",
     path: "/recommendations/products",
     visibilityField: "public_products",
@@ -109,7 +109,7 @@ const CATEGORIES: CategoryConfig[] = [
     key: "people",   
     label: "People",         
     icon: Users, 
-    description: "Inspiring creators, founders, makers, and anyone worth following",
+    description: "The creators and makers you'd tell everyone to follow.",
     color: "violet",
     path: "/recommendations/people",
     visibilityField: "public_people",
@@ -119,7 +119,7 @@ const CATEGORIES: CategoryConfig[] = [
     key: "guides",  
     label: "Guides",        
     icon: TravelGuideIcon, 
-    description: "Explore curated travel itineraries, maps, and local guides for your next trip",
+    description: "Your itineraries and local know-how, mapped for others to follow.",
     color: "amber",
     path: "/recommendations/guides",
     visibilityField: "public_guides",
@@ -793,7 +793,7 @@ const RecommendationCard = ({
           <h3 className="text-2xl md:text-3xl font-black text-white tracking-tighter leading-none uppercase group-hover:scale-105 transition-transform origin-left">
             {cat.label}
           </h3>
-          <p className="text-white/70 text-[10px] md:text-xs font-semibold tracking-wide mt-2 line-clamp-2 group-hover:text-white transition-colors max-w-[85%]">
+          <p className="text-white/70 text-[10px] md:text-xs font-semibold tracking-wide mt-2 line-clamp-3 group-hover:text-white transition-colors max-w-[85%]">
             {cat.description}
           </p>
           <motion.div className="h-0.5 mt-3 bg-white/20 rounded-full overflow-hidden" initial={{ width: 0 }} whileHover={{ width: "120px" }} transition={{ duration: 0.6 }}>
