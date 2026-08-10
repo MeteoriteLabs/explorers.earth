@@ -1839,7 +1839,7 @@ const OnBoarding = () => {
               {activeStep === 0 && (
                 <div className="mb-4">
                   <div
-                    className={`relative flex flex-col sm:flex-row justify-center items-center sm:justify-between h-32 sm:h-36 md:h-40 w-full rounded-xl p-3 sm:p-4 ${previewBackgroundImage ? "" : "bg-dashboard-bg"
+                    className={`relative flex flex-col sm:flex-row justify-center items-center sm:justify-between h-32 sm:h-36 md:h-36 w-full rounded-xl p-3 sm:p-4 ${previewBackgroundImage ? "" : "bg-dashboard-bg"
                       }`}
                     style={{
                       backgroundImage: previewBackgroundImage
