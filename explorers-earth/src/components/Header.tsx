@@ -16,7 +16,6 @@ import MoonIcon from "../assets/icons/MoonIcon";
 import SwitchButton from "./ui/SwitchButton";
 import Button from "./ui/Button";
 import MenuIcon from "../assets/icons/MenuIcon";
-import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 import { motion, AnimatePresence } from "framer-motion";
 import { isManualAuthEnabled } from "../config/featureFlags";
 import { useDashboardTheme } from "../contexts/DashboardThemeContext";
