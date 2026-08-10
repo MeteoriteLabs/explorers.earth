@@ -42,6 +42,12 @@
 }
 .ob-topbar{ flex:none; background:linear-gradient(180deg, rgba(20,20,28,.92), rgba(20,20,28,.66)) }
 
+/* Center each step's content vertically when it fits (short steps like Contact
+   get breathing room top & bottom instead of hugging the header). "safe center"
+   falls back to top-alignment when content is taller than the body, so tall
+   steps (Account/Address) still scroll from the top and never clip. */
+.ob-body{ display:flex; flex-direction:column; justify-content:safe center }
+
 /* pinned footer + its floating primary action */
 .ob-footer{
   flex:none;
@@ -52,7 +58,6 @@
   display:flex; flex-direction:column; gap:10px;
 }
 @media (min-width:640px){ .ob-footer{ padding:16px 24px } }
-.ob-disclose{ margin:0; font-size:.72rem; color:var(--ob-muted); line-height:1.4; text-align:center }
 .ob-primary{
   width:100%; height:48px; border-radius:14px; border:none;
   font-family:inherit; font-size:.95rem; font-weight:700; letter-spacing:.01em;

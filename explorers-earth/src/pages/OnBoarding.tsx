@@ -1833,7 +1833,7 @@ const OnBoarding = () => {
         </div>
 
         {/* Body (only region that scrolls) */}
-        <div className="flex-1 overflow-y-auto px-3 sm:px-4 md:px-6 pb-3 sm:pb-4 md:pb-4 scrollbar-hide">
+        <div className="ob-body flex-1 overflow-y-auto px-3 sm:px-4 md:px-6 pb-3 sm:pb-4 md:pb-4 scrollbar-hide">
           <div className="flex justify-center w-full">
             <div className="w-full md:max-w-md">
               {activeStep === 0 && (
@@ -2230,14 +2230,6 @@ const OnBoarding = () => {
         {/* Footer (pinned) — the single "floating" primary action. AuthForm steps
             submit the form via its formId; the final Address step finalizes. */}
         <div className="ob-footer">
-          {activeStep === steps.length - 1 && (
-            <p className="ob-disclose">
-              {t("auth.onboarding.localTunesDisclosure", {
-                defaultValue:
-                  "You'll also get a Local Tunes music account — manage it anytime in Settings.",
-              })}
-            </p>
-          )}
           {activeStep === 2 ? (
             <button
               type="button"
