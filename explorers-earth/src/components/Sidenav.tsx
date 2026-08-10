@@ -124,7 +124,7 @@ const Sidebar = () => {
       </nav>
 
       {/* Footer: Settings, then the account avatar pinned to the bottom */}
-      <div className="flex flex-col gap-2 flex-shrink-0 w-full px-2 pt-2 pb-2 border-t border-dashboard/40">
+      <div className="flex flex-col gap-2 flex-shrink-0 w-full px-2 pb-2">
         <SidebarItem
           isOpen={isOpen}
           Icon={SettingsIcon}
@@ -133,7 +133,7 @@ const Sidebar = () => {
         />
 
         {/* Account avatar + popover (View public profile · Logout) */}
-        <div ref={accountMenuRef} className="relative w-full">
+        <div ref={accountMenuRef} className="relative w-full pt-2 border-t border-dashboard/40">
           <button
             type="button"
             onClick={() => setShowAccountMenu((v) => !v)}
