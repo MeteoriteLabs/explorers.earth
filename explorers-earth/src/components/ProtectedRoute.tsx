@@ -20,18 +20,23 @@ const ProtectedRoute = () => {
   const { isAuthenticated, user } = useAuthStore();
   const location = useLocation();
 
-  const { data, loading } = useQuery(checkOnboardingStatusQuery, {
+  const { data, loading, error } = useQuery(checkOnboardingStatusQuery, {
     variables: { documentId: user?.documentId },
     skip: !user?.documentId,
     fetchPolicy: "cache-first", // Use cache to speed up navigation
     nextFetchPolicy: "cache-first",
+    errorPolicy: "all", // keep any partial data alongside errors
   });
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  if (loading) {
+  // Only decide onboarding from a definitive response. While the check is still
+  // loading, or if it failed WITHOUT returning any account data, show the loader
+  // rather than assuming "not onboarded" — a transient error must never bounce a
+  // real (already-onboarded) account back to /onboarding.
+  if (loading || (error && !data)) {
     const savedTheme = localStorage.getItem('dashboard-theme');
     const isDark = savedTheme === 'dark' || !savedTheme;
     return (

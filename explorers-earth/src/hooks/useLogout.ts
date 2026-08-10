@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { useApolloClient } from "@apollo/client";
 import useAuthStore from "../store/store";
 
 /**
@@ -13,6 +14,7 @@ export const useLogout = () => {
   const { logout } = useAuthStore();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const client = useApolloClient();
 
   return async () => {
     logout();
@@ -35,6 +37,14 @@ export const useLogout = () => {
     document.cookie.split(";").forEach(function (c) {
       document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
     });
+
+    // Reset the Apollo cache so the next login/account starts from server truth
+    // (prevents a stale `accounts` read from surviving a same-tab account switch).
+    try {
+      await client.clearStore();
+    } catch (err) {
+      console.warn("Failed to clear Apollo cache on logout:", err);
+    }
 
     navigate("/login");
     toast(t("toast.success.loggedOutSuccessfully"));
