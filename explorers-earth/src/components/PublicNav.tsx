@@ -11,6 +11,7 @@ import {
   getPublicAccountBasicQuery,
   getPublicCategoryListCountsQuery,
 } from "../features/PublicHome/api/query";
+import { computePinnedNavTabIds } from "../utils/navPinning";
 
 const PublicNav = memo(() => {
   const navigate = useNavigate();
@@ -243,38 +244,11 @@ const PublicNav = memo(() => {
   ];
 
   // ─── Footer Nav Logic ──────────────────────────────────────────────────
-  const MAX_NAV_SLOTS = 5;
-  const autoPinning = accountData?.auto_pinning === null || accountData?.auto_pinning === undefined ? true : accountData.auto_pinning;
-
-  const pinnedTabs: string[] = Array.isArray(accountData?.pinned_nav_tabs)
-    ? accountData.pinned_nav_tabs.includes('public_profile')
-      ? accountData.pinned_nav_tabs
-      : ['public_profile', ...accountData.pinned_nav_tabs]
-    : ['public_profile'];
-
-  let finalNavItems: typeof navItems = [];
-
-  if (autoPinning) {
-    // 1. Auto Pinning Enabled:
-    // Display profile tab first, then fill remaining slots with published categories ranked by list count (descending).
-    const profileTab = navItems.find(item => item.id === 'public_profile');
-    const otherTabs = navItems
-      .filter(item => item.id !== 'public_profile')
-      .sort((a, b) => (categoryListCountMap[b.id] ?? 0) - (categoryListCountMap[a.id] ?? 0));
-    
-    finalNavItems = [
-      ...(profileTab ? [profileTab] : []),
-      ...otherTabs
-    ].slice(0, MAX_NAV_SLOTS);
-  } else {
-    // 2. Auto Pinning Disabled (Manual mode):
-    // Strictly show only the categories manually pinned by the user, capped at MAX_NAV_SLOTS.
-    finalNavItems = pinnedTabs
-      .map(id => navItems.find(item => item.id === id))
-      .filter(Boolean) as typeof navItems;
-    
-    finalNavItems = finalNavItems.slice(0, MAX_NAV_SLOTS);
-  }
+  // Single source of truth for pinned/shown tabs (auto-rank vs manual, max 5).
+  // See src/utils/navPinning.ts — shared with the Recommendations Hub.
+  const finalNavItems = computePinnedNavTabIds(accountData, categoryListCountMap)
+    .map(id => navItems.find(item => item.id === id))
+    .filter(Boolean) as typeof navItems;
   // ───────────────────────────────────────────────────────────────────────
 
 
