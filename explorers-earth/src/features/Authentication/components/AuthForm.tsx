@@ -117,10 +117,14 @@ const AuthForm: FC<AuthFormProps> = memo(
             <Form
               className={`font-poppins flex flex-col gap-4 w-full bg-dashboard-sidebar p-6 rounded-3xl shadow-dashboard-elevated text-dashboard mb-4 md:mb-6`}
             >
-              <div className=" font-poppins">
-                <h1 className="font-semibold text-2xl text-white">{heading}</h1>
-                <p className="text-sm mt-1 text-gray-300">{description}</p>
-              </div>
+              {/* In onboarding the step title/subtitle are shown by the progress
+                  bar, so hide the duplicate heading here. */}
+              {!isOnboarding && (
+                <div className=" font-poppins">
+                  <h1 className="font-semibold text-2xl text-white">{heading}</h1>
+                  <p className="text-sm mt-1 text-gray-300">{description}</p>
+                </div>
+              )}
               <div className=" flex flex-col gap-2 md:gap-6 ">
                 {formFields.map((field) => (
                   <div key={field.name} className="flex flex-col gap-2">

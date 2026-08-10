@@ -52,6 +52,9 @@ import { useUserForOnboarding } from "../features/Authentication/hooks/useCurren
 import { EarthLoader } from "../components/EarthLoader";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { Check, Sparkles, Zap, Crown, LogOut } from "lucide-react";
+import GlobeCanvas from "../components/auth/GlobeCanvas";
+import { LogoFull } from "../assets/icons/EoeLogo";
+import OnboardingProgress from "../components/onboarding/OnboardingProgress";
 import { useQuery as useReactQuery } from "@tanstack/react-query";
 
 const onboardingQuery = gql`
@@ -1779,21 +1782,17 @@ const OnBoarding = () => {
   console.log("OnBoarding: Rendering onboarding form - all conditions passed");
 
   return (
-    <div className="dashboard-theme flex items-center justify-center min-h-screen bg-black p-1 sm:p-4">
-      <div className="relative w-full max-w-md sm:max-w-md md:max-w-lg lg:max-w-2xl bg-dashboard-sidebar rounded-lg shadow-dashboard-elevated flex flex-col max-h-screen">
+    <div className="ob-scene dashboard-theme dashboard-theme-dark">
+      {/* Earthrise scene — shared with the auth screens for a continuous journey */}
+      <GlobeCanvas />
+      <div className="ob-vignette" />
+      <div className="ob-card relative w-full max-w-md sm:max-w-md md:max-w-lg lg:max-w-2xl rounded-3xl flex flex-col max-h-[100dvh]">
         {/* Sticky Top Bar */}
-        <div className="sticky top-0 z-20 bg-dashboard-sidebar/95 backdrop-blur-md rounded-t-lg border-b border-dashboard">
+        <div className="ob-topbar sticky top-0 z-20 backdrop-blur-md rounded-t-3xl border-b border-dashboard">
           {/* Header Row */}
           <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-dashboard/30">
             <div className="flex items-center gap-3">
-              <img
-                src="/logo.svg"
-                alt="explorers.earth"
-                className="object-contain h-6 sm:h-7 w-auto"
-                style={{
-                  filter: "brightness(0) invert(1)",
-                }}
-              />
+              <LogoFull className="h-6 sm:h-7 w-auto text-white" title="explorers.earth" />
               <div className="w-[1px] h-4 bg-dashboard-muted" />
               <span className="text-[10px] sm:text-xs font-semibold text-dashboard-light tracking-widest uppercase">
                 Onboarding
@@ -1809,31 +1808,14 @@ const OnBoarding = () => {
             </button>
           </div>
           
-          {/* Step Indicators */}
-          <div className="p-3 sm:p-4 md:p-6 pb-4 sm:pb-5">
-            <div className="flex justify-between gap-2">
-              {steps.map((step, index) => (
-                <div
-                  key={step.title}
-                  className={`flex-1 text-center ${index <= activeStep
-                    ? "text-dashboard-accent"
-                    : "text-dashboard-light"
-                    }`}
-                >
-                  <div
-                    className={`w-6 h-6 sm:w-8 sm:h-8 mx-auto rounded-full flex items-center justify-center mb-1 sm:mb-2 text-xs sm:text-sm ${index <= activeStep
-                      ? "bg-dashboard-accent text-dashboard"
-                      : "bg-dashboard-muted text-dashboard-light"
-                      }`}
-                  >
-                    {index + 1}
-                  </div>
-                  <div className="text-[10px] sm:text-xs font-medium leading-tight">
-                    {step.title}
-                  </div>
-                </div>
-              ))}
-            </div>
+          {/* Slim progress — replaces the space-hungry four-column stepper */}
+          <div className="px-4 sm:px-6 pt-4 pb-4 sm:pb-5">
+            <OnboardingProgress
+              stepIndex={activeStep}
+              total={steps.length}
+              title={steps[activeStep].title}
+              subtitle={steps[activeStep].description}
+            />
           </div>
         </div>
 
@@ -1886,15 +1868,6 @@ const OnBoarding = () => {
               {activeStep === 2 ? (
                 // Custom address form for step 3
                 <div className="space-y-6">
-                  <div className="text-center mb-6">
-                    <h2 className="text-xl font-semibold text-white mb-2">
-                      {t("auth.onboarding.addressDetails.title")}
-                    </h2>
-                    <p className="text-gray-300 text-sm">
-                      {t("auth.onboarding.addressDetails.description")}
-                    </p>
-                  </div>
-
                   <div className="space-y-4">
                     {getAddressFields(t).map((field: any) =>
                       renderAddressField(field)
@@ -1940,15 +1913,6 @@ const OnBoarding = () => {
               ) : activeStep === 3 ? (
                 // Local Tunes integration step (mandatory)
                 <div className="space-y-6">
-                  <div className="text-center mb-6">
-                    <h2 className="text-xl font-semibold text-white mb-2">
-                      Welcome to Local Tunes
-                    </h2>
-                    <p className="text-gray-300 text-sm">
-                      Your explorers account includes access to Local Tunes music platform
-                    </p>
-                  </div>
-
                   <div className="bg-dashboard-bg rounded-lg p-6 space-y-4">
                     <div className="flex items-start space-x-3">
                       <div className="flex-shrink-0">
