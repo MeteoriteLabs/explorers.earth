@@ -6,11 +6,9 @@
 // needs to reflect the public nav (the owner's Recommendations Hub, etc.) stays
 // consistent with it.
 //
-// Visibility policy intentionally matches PublicNav's per-category defaults:
-//   - places (recommendations) and games default to VISIBLE when unset
-//   - music defaults to HIDDEN when unset
-//   - every other category is visible only when explicitly "Yes"
-//   - the public profile tab is always visible
+// Visibility policy is strict opt-in: a category tab is public only when its
+// account field is explicitly "Yes". The public profile tab is always visible.
+// (Matches Settings and the "Make public?" publish prompt across the app.)
 
 export const MAX_NAV_SLOTS = 5;
 
@@ -30,34 +28,16 @@ export const NAV_TAB_ORDER: string[] = [
   "public_people",
 ];
 
-// Per-category default visibility when the account field is null/undefined
-// (i.e. not explicitly "Yes" or "No"). Mirrors PublicNav.tsx lines 69-78.
-const VISIBILITY_DEFAULT: Record<string, boolean> = {
-  public_recommendations: true,
-  public_games: true,
-  // everything else defaults to hidden
-  public_music: false,
-  public_guides: false,
-  public_movie: false,
-  public_books: false,
-  public_apps: false,
-  public_products: false,
-  public_people: false,
-};
-
 export interface AccountLike {
   pinned_nav_tabs?: unknown;
   auto_pinning?: unknown;
   [key: string]: unknown;
 }
 
-// Resolve a single category field to a boolean using its default when unset.
+// A category tab is public only when explicitly "Yes"; the profile tab is always on.
 function isTabVisible(account: AccountLike | null | undefined, tabId: string): boolean {
   if (tabId === PROFILE_TAB) return true;
-  const raw = account?.[tabId];
-  if (raw === "Yes") return true;
-  if (raw === "No") return false;
-  return VISIBILITY_DEFAULT[tabId] ?? false;
+  return account?.[tabId] === "Yes";
 }
 
 // The set of tab ids currently visible on the public nav (includes public_profile).

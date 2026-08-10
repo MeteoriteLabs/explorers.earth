@@ -67,13 +67,14 @@ const PublicNav = memo(() => {
   };
 
   // Tab visibility logic based on Account collection fields
-  const showRecommendationsTab = accountData?.public_recommendations === "Yes" || accountData?.public_recommendations === "No" ? accountData?.public_recommendations === "Yes" : true; // Default to show if not set
-  const showProfileTab = true; // Always show public profile tab by default
-  const showMusicTab = accountData?.public_music === "Yes" || accountData?.public_music === "No" ? accountData?.public_music === "Yes" : false; // Default to hide if not set
-  const showGuidesTab = accountData?.public_guides === "Yes"; // Only show when explicitly "Yes"
-  const showMoviesTab = accountData?.public_movie === "Yes"; // Only show when explicitly "Yes"
-  const showBooksTab = accountData?.public_books === "Yes"; // Only show when explicitly "Yes"
-  const showGamesTab = accountData?.public_games === "Yes" || accountData?.public_games === "No" ? accountData?.public_games === "Yes" : true; // Default to show if not set
+  // Strict opt-in: a category tab is public only when explicitly "Yes".
+  const showRecommendationsTab = accountData?.public_recommendations === "Yes";
+  const showProfileTab = true; // Always show public profile tab
+  const showMusicTab = accountData?.public_music === "Yes";
+  const showGuidesTab = accountData?.public_guides === "Yes";
+  const showMoviesTab = accountData?.public_movie === "Yes";
+  const showBooksTab = accountData?.public_books === "Yes";
+  const showGamesTab = accountData?.public_games === "Yes";
   const showAppsTab = accountData?.public_apps === "Yes";
   const showProductsTab = accountData?.public_products === "Yes";
   const showPeopleTab = accountData?.public_people === "Yes";

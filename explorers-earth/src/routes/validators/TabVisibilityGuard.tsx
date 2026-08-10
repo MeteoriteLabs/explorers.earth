@@ -21,7 +21,7 @@ interface TabVisibilityGuardProps {
  * If the tab is disabled (set to "No"), redirects to the first available tab.
  * This prevents manual URL navigation to disabled tabs.
  */
-const TabVisibilityGuard = memo(({ tabField, defaultVisible = true, children }: TabVisibilityGuardProps) => {
+const TabVisibilityGuard = memo(({ tabField, defaultVisible = false, children }: TabVisibilityGuardProps) => {
     const { username } = useParams();
     const navigate = useNavigate();
 
@@ -65,12 +65,14 @@ const TabVisibilityGuard = memo(({ tabField, defaultVisible = true, children }: 
 
     if (!isTabEnabled) {
         // Find the first available tab to redirect to
+        // Strict opt-in: categories are available only when explicitly "Yes".
+        // Profile stays default-visible so it's always a safe redirect fallback.
         const tabOptions = [
-            { field: "public_recommendations", path: `/${username}/places`, default: true },
+            { field: "public_recommendations", path: `/${username}/places`, default: false },
             { field: "public_guides", path: `/${username}/guides`, default: false },
             { field: "public_movie", path: `/${username}/movies`, default: false },
             { field: "public_books", path: `/${username}/books`, default: false },
-            { field: "public_games", path: `/${username}/games`, default: true },
+            { field: "public_games", path: `/${username}/games`, default: false },
             { field: "public_apps", path: `/${username}/apps`, default: false },
             { field: "public_products", path: `/${username}/products`, default: false },
             { field: "public_people", path: `/${username}/people`, default: false },

@@ -10,25 +10,22 @@ import {
 const ZERO_COUNTS: Record<string, number> = {};
 
 describe("getVisibleNavTabIds", () => {
-  it("applies PublicNav per-category defaults for a fresh (null) account", () => {
+  it("is strict opt-in: a fresh (null) account shows only the profile tab", () => {
     const visible = getVisibleNavTabIds(null);
-    // profile always, places + games default visible, music default hidden, rest hidden
-    expect([...visible].sort()).toEqual(
-      ["public_games", "public_profile", "public_recommendations"].sort()
-    );
+    expect([...visible]).toEqual(["public_profile"]);
   });
 
-  it('respects explicit "Yes"/"No" over defaults', () => {
+  it('shows a category only when its field is explicitly "Yes"', () => {
     const visible = getVisibleNavTabIds({
-      public_recommendations: "No", // override default-true
-      public_games: "No", // override default-true
-      public_music: "Yes", // override default-false
+      public_recommendations: "Yes",
+      public_games: null, // unset -> hidden (no magic default)
+      public_music: "No",
       public_movie: "Yes",
     });
-    expect(visible.has("public_recommendations")).toBe(false);
-    expect(visible.has("public_games")).toBe(false);
-    expect(visible.has("public_music")).toBe(true);
+    expect(visible.has("public_recommendations")).toBe(true);
     expect(visible.has("public_movie")).toBe(true);
+    expect(visible.has("public_games")).toBe(false);
+    expect(visible.has("public_music")).toBe(false);
     expect(visible.has("public_profile")).toBe(true);
   });
 });
@@ -65,19 +62,17 @@ describe("normalizePinnedTabs", () => {
 });
 
 describe("computePinnedNavTabIds — auto-pinning mode (default)", () => {
-  it("fresh account ranks visible categories by count, profile first, capped at 5", () => {
+  it("fresh (null) account shows only the profile — nothing is public yet", () => {
     const pinned = computePinnedNavTabIds(null, ZERO_COUNTS);
-    // fresh visible = profile, places, games; all counts 0 -> NAV_TAB_ORDER tie-break
-    expect(pinned).toEqual(["public_profile", "public_recommendations", "public_games"]);
+    expect(pinned).toEqual(["public_profile"]);
     expect(pinned.length).toBeLessThanOrEqual(MAX_NAV_SLOTS);
   });
 
-  it("ranks by list count descending", () => {
+  it("ranks visible categories by list count descending", () => {
     const account = {
       public_recommendations: "Yes",
       public_movie: "Yes",
       public_books: "Yes",
-      public_games: "No", // exclude the default-visible games tab to isolate ranking
     };
     const counts = { public_movie: 10, public_books: 5, public_recommendations: 1 };
     const pinned = computePinnedNavTabIds(account, counts);

@@ -152,7 +152,7 @@ const Favorites = memo(() => {
   useEffect(() => {
     if (location.state?.justCreatedList && accountById) {
       const acc = accountById?.usersPermissionsUser?.accounts?.[0];
-      const isPublic = acc?.public_recommendations !== "No"; // default is true
+      const isPublic = acc?.public_recommendations === "Yes"; // strict opt-in
       if (!isPublic) {
         setVisibilityPrompt({
           isOpen: true,
@@ -491,7 +491,7 @@ const Favorites = memo(() => {
     cities,
     onCreated: () => {
       const acc = accountById?.usersPermissionsUser?.accounts?.[0];
-      const isPublic = acc?.public_recommendations !== "No"; // default is true
+      const isPublic = acc?.public_recommendations === "Yes"; // strict opt-in
       if (!isPublic) {
         setVisibilityPrompt({
           isOpen: true,

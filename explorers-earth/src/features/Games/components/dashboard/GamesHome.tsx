@@ -332,9 +332,7 @@ const GamesHome = () => {
     if (location.state?.justCreatedList && accountData) {
       const acc = accountData?.usersPermissionsUser?.accounts?.[0];
       const isPublic = acc?.public_games === "Yes";
-      const hasNoValue = acc?.public_games !== "No" && acc?.public_games !== "Yes";
-      const currentStatus = isPublic || hasNoValue;
-      if (!currentStatus) {
+      if (!isPublic) {
         setVisibilityPrompt({
           isOpen: true,
           categoryName: "Games",
@@ -635,9 +633,7 @@ const GamesHome = () => {
             refetch();
             const acc = accountData?.usersPermissionsUser?.accounts?.[0];
             const isPublic = acc?.public_games === "Yes";
-            const hasNoValue = acc?.public_games !== "No" && acc?.public_games !== "Yes";
-            const currentStatus = isPublic || hasNoValue;
-            if (!currentStatus) {
+            if (!isPublic) {
               setVisibilityPrompt({
                 isOpen: true,
                 categoryName: "Games",

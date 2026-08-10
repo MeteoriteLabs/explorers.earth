@@ -16,8 +16,10 @@ import {
   accountQuery,
   updateAccountMutation,
 } from "../features/Settings/api/mutation";
+import { useQuery as useReactQuery } from "@tanstack/react-query";
+import { localTunesRequest } from "../lib/apiClient";
 import { getPublicCategoryListCountsQuery } from "../features/PublicHome/api/query";
-import { computePinnedNavTabIds, getVisibleNavTabIds } from "../utils/navPinning";
+import { computePinnedNavTabIds, getVisibleNavTabIds, resolveAutoPinning } from "../utils/navPinning";
 
 type CategoryKey = "places" | "music" | "movies" | "books" | "games" | "guides" | "apps" | "products" | "people";
 
@@ -899,9 +901,20 @@ const RecommendationsHub = () => {
   const pinnedTabIds = useMemo(() => computePinnedNavTabIds(account, countMap), [account, countMap]);
   const pinnedSet = useMemo(() => new Set(pinnedTabIds), [pinnedTabIds]);
 
-  // A category can be made public once it has at least one published list.
+  // Music lives in LocalTunes (not Strapi); fetch the user's playlists so the hub
+  // applies the same guest-visible-playlist guard that Settings and the modal use.
+  const { data: musicPlaylists } = useReactQuery<any[]>({
+    queryKey: ["tunes-playlists", user?.username],
+    queryFn: () => localTunesRequest("GET", `/api/playlists?username=${user?.username}`),
+    enabled: !!user?.username,
+  });
+
+  // A category can be made public once it has publishable content.
   const hasPublishedContent = (cat: CategoryConfig): boolean => {
-    if (cat.key === "music") return true; // music lives in LocalTunes, always allowed
+    if (cat.key === "music") {
+      return account?.localtunes_integrated === "Yes" &&
+        (musicPlaylists?.some((pl: any) => pl.isVisibleToGuests === true) ?? false);
+    }
     return (countMap[cat.tabId] ?? 0) > 0;
   };
 
@@ -914,7 +927,8 @@ const RecommendationsHub = () => {
 
     // Basis = the effective set actually shown in the nav (auto or manual), so the
     // card's pin state and this action can never disagree. Any pin/unpin switches
-    // the account to manual mode (auto_pinning: false).
+    // the account to manual mode (auto_pinning: false) — we tell the user when it does.
+    const wasAuto = resolveAutoPinning(account);
     const isCurrentlyPinned = pinnedSet.has(cat.tabId);
 
     if (isCurrentlyPinned) {
@@ -931,7 +945,9 @@ const RecommendationsHub = () => {
             },
           },
         });
-        toast.success(`Unpinned ${cat.label} from public navigation.`);
+        toast.success(wasAuto
+          ? `Unpinned ${cat.label}. Nav switched to manual mode.`
+          : `Unpinned ${cat.label} from public navigation.`);
         refetchAccount();
       } catch (err: any) {
         toast.error(`Failed to unpin ${cat.label}: ${err.message || ""}`);
@@ -964,7 +980,9 @@ const RecommendationsHub = () => {
             },
           },
         });
-        toast.success(`Pinned ${cat.label} to public navigation!`);
+        toast.success(wasAuto
+          ? `Pinned ${cat.label}. Nav switched to manual mode.`
+          : `Pinned ${cat.label} to public navigation!`);
         refetchAccount();
       } catch (err: any) {
         toast.error(`Failed to pin ${cat.label}: ${err.message || ""}`);
