@@ -22,6 +22,7 @@ import { isManualAuthEnabled } from "../config/featureFlags";
 import { storeUserCredentials } from "../utils/sessionCredentials";
 import { consumeSsoReturn } from "../utils/tunesSso";
 import AuthLayout from "../components/auth/AuthLayout";
+import AuthShell from "../components/auth/AuthShell";
 
 const Login = () => {
   const { t, i18n } = useTranslation();
@@ -215,9 +216,9 @@ const Login = () => {
       />
 
       {isManualAuthEnabled() ? (
-        // Manual authentication form (currently disabled)
-        <div className="relative flex items-center justify-center min-h-screen bg-black w-full px-4 py-8">
-          <div className="w-full max-w-md md:max-w-lg lg:max-w-xl">
+        // Manual username/password form (active) on the Earthrise scene
+        <AuthShell>
+          <div className="ea-formhost dashboard-theme-dark">
             <AuthForm
               initialValues={loginInitialValues}
               validationSchema={validationSchema}
@@ -262,9 +263,9 @@ const Login = () => {
               }
             />
           </div>
-        </div>
+        </AuthShell>
       ) : (
-        // OAuth-only authentication (active) — "Earthrise" brand screen
+        // OAuth-only authentication — "Earthrise" brand screen
         <AuthLayout
           eyebrow={t("auth.brand.tagline", "Every place connects us")}
           title={t("auth.login.title2", "Welcome back, explorer.")}

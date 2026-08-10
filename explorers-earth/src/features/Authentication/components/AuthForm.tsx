@@ -11,6 +11,7 @@ import AddressInput from "../../Profile/components/AddressInput";
 import { useTranslation } from "react-i18next";
 import PhoneInputWithCountry from "../../../components/ui/PhoneInputWithCountry";
 import { Turnstile } from '@marsidev/react-turnstile';
+import { LogoFull } from "../../../assets/icons/EoeLogo";
 
 export type { AuthFormField };
 // Types for form fields
@@ -102,17 +103,8 @@ const AuthForm: FC<AuthFormProps> = memo(
     return (
       <div className="dashboard-theme">
         {!isOnboarding && (
-          <div className="flex flex-col items-center justify-center mt-2 md:mt-3 mb-4 md:mb-6 w-3/4 max-w-[75%] mx-auto">
-            <img
-              src="/logo.svg"
-              alt="explorers.earth"
-              className="object-contain w-full"
-              style={{
-                height: "auto",
-                maxHeight: "60px",
-                filter: "brightness(0) invert(1)",
-              }}
-            />
+          <div className="flex items-center justify-center mt-2 md:mt-3 mb-4 md:mb-6">
+            <LogoFull className="h-8 text-white" />
           </div>
         )}
         <Formik
@@ -499,9 +491,9 @@ const AuthForm: FC<AuthFormProps> = memo(
               {GoogleAuthHandler && (
                 <>
                   <div className="flex items-center justify-center gap-2">
-                    <div className="flex-grow border-t border-black"></div>
+                    <div className="flex-grow border-t border-white/15"></div>
                     <p className="font-poppins text-sm px-2">{t("auth.or")}</p>
-                    <div className="flex-grow border-t border-black"></div>
+                    <div className="flex-grow border-t border-white/15"></div>
                   </div>
 
                   <Button

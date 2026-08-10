@@ -8,6 +8,7 @@ import {
 import { useNavigate, useLocation } from "react-router-dom";
 import AuthForm from "../features/Authentication/components/AuthForm";
 import AuthLayout from "../components/auth/AuthLayout";
+import AuthShell from "../components/auth/AuthShell";
 import { registerQuery } from "../features/Authentication/api/mutation";
 import { EarthLoader } from "../components/EarthLoader";
 import useEmailStore from "../store/useEmailStore";
@@ -232,9 +233,9 @@ const Auth = () => {
       />
 
       {isManualAuthEnabled() ? (
-        // Manual registration form (currently disabled)
-        <div className="relative flex items-center justify-center min-h-screen bg-black w-full px-4 py-8">
-          <div className="w-full max-w-md md:max-w-lg lg:max-w-xl">
+        // Manual registration form (active) on the Earthrise scene
+        <AuthShell>
+          <div className="ea-formhost dashboard-theme-dark">
             <AuthForm
               initialValues={formState}
               validationSchema={validationSchema as any}
@@ -263,9 +264,9 @@ const Auth = () => {
               }
             />
           </div>
-        </div>
+        </AuthShell>
       ) : (
-        // OAuth-only registration (active) — "Earthrise" brand screen
+        // OAuth-only registration — "Earthrise" brand screen
         <AuthLayout
           eyebrow={t("auth.brand.tagline", "Every place connects us")}
           title={t("auth.register.title2", "Map your world.")}

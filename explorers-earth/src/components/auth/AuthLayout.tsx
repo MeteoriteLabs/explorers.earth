@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import GlobeCanvas from "./GlobeCanvas";
+import AuthShell from "./AuthShell";
 import { LogoFull } from "../../assets/icons/EoeLogo";
-import "./authShell.css";
 
 interface Helper {
   label: string;
@@ -41,10 +40,7 @@ const AuthLayout = ({
   termsPrefix, termsLabel, privacyLabel, andWord,
   switchPrompt, switchCta, switchTo, secureLabel, helpers, banner,
 }: AuthLayoutProps) => (
-  <div className="ea-root">
-    <GlobeCanvas />
-    <div className="ea-vignette" />
-
+  <AuthShell>
     <main className="ea-card">
       <div className="ea-logo">
         <LogoFull className="ea-logomark" />
@@ -81,7 +77,7 @@ const AuthLayout = ({
         </div>
       )}
     </main>
-  </div>
+  </AuthShell>
 );
 
 export default AuthLayout;

@@ -16,6 +16,8 @@
     radial-gradient(120% 120% at 50% 0%, #12211a 0%, var(--ea-ground-2) 42%, var(--ea-ground) 100%);
 }
 .ea-globe{position:absolute;inset:0;width:100%;height:100%;z-index:1}
+/* host for the manual username/password form (AuthForm) over the scene */
+.ea-formhost{position:relative;z-index:3;width:100%;max-width:432px}
 .ea-vignette{position:absolute;inset:0;z-index:2;pointer-events:none;
   background:radial-gradient(120% 100% at 50% 50%, transparent 38%, rgba(6,11,8,.5) 92%)}
 
