@@ -14,6 +14,7 @@ export const CREATE_BOOK_LIST = gql`
     $account: ID!
   ) {
     createBookList(
+      status: PUBLISHED
       data: {
         List_Name: $List_Name
         list_description: $list_description
@@ -48,6 +49,7 @@ export const UPDATE_BOOK_LIST = gql`
   ) {
     updateBookList(
       documentId: $documentId
+      status: PUBLISHED
       data: {
         List_Name: $List_Name
         list_description: $list_description
