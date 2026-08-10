@@ -35,7 +35,10 @@
    mobile, a fixed centered frame on desktop. Only the body region scrolls. */
 .ob-frame{ height:100dvh; max-height:100dvh; border-radius:0 }
 @media (min-width:640px){
-  .ob-frame{ height:640px; max-height:calc(100dvh - 44px); border-radius:24px }
+  /* Tall enough to show the tallest step (Account) without scrolling on a normal
+     desktop; clamps to the viewport on shorter laptops. Fixed value keeps the
+     frame the same size across steps. */
+  .ob-frame{ height:min(880px, calc(100dvh - 24px)); border-radius:24px }
 }
 .ob-topbar{ flex:none; background:linear-gradient(180deg, rgba(20,20,28,.92), rgba(20,20,28,.66)) }
 

@@ -1822,7 +1822,7 @@ const OnBoarding = () => {
           </div>
 
           {/* Slim progress — replaces the space-hungry four-column stepper */}
-          <div className="px-4 sm:px-6 pt-1 pb-4 sm:pb-5">
+          <div className="px-4 sm:px-6 pt-1 pb-3 sm:pb-4">
             <OnboardingProgress
               stepIndex={activeStep}
               total={steps.length}
@@ -1833,13 +1833,13 @@ const OnBoarding = () => {
         </div>
 
         {/* Body (only region that scrolls) */}
-        <div className="flex-1 overflow-y-auto px-3 sm:px-4 md:px-6 pb-3 sm:pb-4 md:pb-6 scrollbar-hide">
+        <div className="flex-1 overflow-y-auto px-3 sm:px-4 md:px-6 pb-3 sm:pb-4 md:pb-4 scrollbar-hide">
           <div className="flex justify-center w-full">
             <div className="w-full md:max-w-md">
               {activeStep === 0 && (
-                <div className="mb-6">
+                <div className="mb-4">
                   <div
-                    className={`relative flex flex-col sm:flex-row justify-center items-center sm:justify-between h-32 sm:h-40 md:h-48 w-full rounded-xl p-3 sm:p-4 ${previewBackgroundImage ? "" : "bg-dashboard-bg"
+                    className={`relative flex flex-col sm:flex-row justify-center items-center sm:justify-between h-32 sm:h-36 md:h-40 w-full rounded-xl p-3 sm:p-4 ${previewBackgroundImage ? "" : "bg-dashboard-bg"
                       }`}
                     style={{
                       backgroundImage: previewBackgroundImage
@@ -1850,7 +1850,7 @@ const OnBoarding = () => {
                     }}
                   >
                     <div className="absolute inset-0 bg-black bg-opacity-50 z-0 rounded-xl"></div>
-                    <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-36 md:h-36 mx-auto z-10">
+                    <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 mx-auto z-10">
                       <img
                         src={
                           previewProfileImage ||
