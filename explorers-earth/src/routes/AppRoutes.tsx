@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import useDeviceDetection from "../hooks/useDeviceDetection";
 import usePageTracking from "../hooks/usePageTracking";
 
@@ -19,6 +19,11 @@ const AppRoutes = () => {
 
   return (
     <Routes>
+      {/* Legacy Redirect Routes (handled before PublicRoutes :username/* matching) */}
+      <Route path="/guides" element={<Navigate to="/recommendations/guides" replace />} />
+      <Route path="/music" element={<Navigate to="/recommendations/music" replace />} />
+      <Route path="/hub" element={<Navigate to="/recommendations" replace />} />
+
       {/* Auth Routes */}
       {AuthRoutes}
 

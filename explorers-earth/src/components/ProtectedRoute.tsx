@@ -49,10 +49,10 @@ const ProtectedRoute = () => {
     !account.Account_Type ||
     !account.mobile_number;
 
-  // Allow access to onboarding, music, instagram, subscription-plans, and checkout pages even if onboarding is required
   const allowedDuringOnboarding = [
     "/onboarding",
     "/music",
+    "/recommendations/music",
     "/instagram",
     "/subscription-plans",
     "/checkout"

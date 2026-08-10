@@ -47,17 +47,26 @@ const ProtectedRoutes = ({
       <Route path="recommendations" element={<RecommendationsHub />} />
       <Route path="recommendations/places" element={<Favorites />} />
       <Route path="recommendations/guides" element={<GuidesPage />} />
+      <Route path="recommendations/guides/new" element={<CreateGuidePage />} />
+      <Route path="recommendations/guides/:guideId" element={<GuideDetailsPage />} />
+      <Route path="recommendations/guides/:guideId/edit" element={<CreateGuidePage type="edit" />} />
+      <Route path="recommendations/guides/:guideId/sections/new" element={<GuideSectionFormPage />} />
+      <Route path="recommendations/guides/:guideId/sections/:sectionId/edit" element={<GuideSectionFormPage />} />
       <Route path="recommendations/music" element={<Music />} />
+
+      {/* Legacy redirects & aliases */}
       <Route path="guides" element={<Navigate to="/recommendations/guides" replace />} />
+      <Route path="guides/new" element={<CreateGuidePage />} />
+      <Route path="guides/:guideId" element={<GuideDetailsPage />} />
+      <Route path="guides/:guideId/edit" element={<CreateGuidePage type="edit" />} />
+      <Route path="guides/:guideId/sections/new" element={<GuideSectionFormPage />} />
+      <Route path="guides/:guideId/sections/:sectionId/edit" element={<GuideSectionFormPage />} />
       <Route path="music" element={<Navigate to="/recommendations/music" replace />} />
       <Route path="hub" element={<Navigate to="/recommendations" replace />} />
+
       <Route path="analytics" element={<Analytics />} />
       <Route path="settings" element={<SettingsPage />} />
       <Route path="home" element={<Home />} />
-      <Route path="guides/new" element={<CreateGuidePage />} />
-      <Route path="guides/:guideId" element={<GuideDetailsPage />} />
-      <Route path="guides/:guideId/sections/new" element={<GuideSectionFormPage />} />
-      <Route path="guides/:guideId/sections/:sectionId/edit" element={<GuideSectionFormPage />} />
       <Route path="instagram" element={<Instagram />} />
       <Route path="recommendations/movies" element={<MoviesHome />} />
       <Route path="recommendations/movies/:listId" element={<MovieListView />} />
@@ -85,11 +94,6 @@ const ProtectedRoutes = ({
       <Route path="recommendations/people/:listId/edit/:personId" element={<AddPersonPage />} />
       <Route path="recommendations/places/:locationId/add-people" element={<AddLinkedPeoplePage />} />
       <Route path="recommendations/places/:locationId/add-products" element={<AddLinkedProductsPage />} />
-      <Route path=":listId/new" element={<AddRecommendation />} />
-      <Route
-        path="guides/:guideId/edit"
-        element={<CreateGuidePage type="edit" />}
-      />
       <Route path=":listId/new" element={<AddRecommendation />} />
       <Route path=":placeId/edit" element={<AddRecommendation type="edit" />} />
     </Route>
@@ -101,23 +105,26 @@ const ProtectedRoutes = ({
       <Route path="recommendations" element={<RecommendationsHub />} />
       <Route path="recommendations/places" element={<Favorites />} />
       <Route path="recommendations/guides" element={<GuidesPage />} />
+      <Route path="recommendations/guides/new" element={<CreateGuidePage />} />
+      <Route path="recommendations/guides/:guideId" element={<GuideDetailsPage />} />
+      <Route path="recommendations/guides/:guideId/edit" element={<CreateGuidePage type="edit" />} />
+      <Route path="recommendations/guides/:guideId/sections/new" element={<GuideSectionFormPage />} />
+      <Route path="recommendations/guides/:guideId/sections/:sectionId/edit" element={<GuideSectionFormPage />} />
       <Route path="recommendations/music" element={<Music />} />
+
+      {/* Legacy redirects & aliases */}
       <Route path="guides" element={<Navigate to="/recommendations/guides" replace />} />
+      <Route path="guides/new" element={<CreateGuidePage />} />
+      <Route path="guides/:guideId" element={<GuideDetailsPage />} />
+      <Route path="guides/:guideId/edit" element={<CreateGuidePage type="edit" />} />
+      <Route path="guides/:guideId/sections/new" element={<GuideSectionFormPage />} />
+      <Route path="guides/:guideId/sections/:sectionId/edit" element={<GuideSectionFormPage />} />
       <Route path="music" element={<Navigate to="/recommendations/music" replace />} />
       <Route path="hub" element={<Navigate to="/recommendations" replace />} />
+
       <Route path="analytics" element={<Analytics />} />
       <Route path="settings" element={<SettingsPage />} />
       <Route path="home" element={<Home />} />
-      <Route path="guides/new" element={<CreateGuidePage />} />
-      <Route path="guides/:guideId" element={<GuideDetailsPage />} />
-      <Route path="guides/:guideId/sections/new" element={<GuideSectionFormPage />} />
-      <Route path="guides/:guideId/sections/:sectionId/edit" element={<GuideSectionFormPage />} />
-      <Route
-        path="guides/:guideId/edit"
-        element={<CreateGuidePage type="edit" />}
-      />
-      <Route path=":listId/new" element={<AddRecommendation />} />
-      <Route path=":placeId/edit" element={<AddRecommendation type="edit" />} />
       <Route path="instagram" element={<Instagram />} />
       <Route path="recommendations/movies" element={<MoviesHome />} />
       <Route path="recommendations/movies/:listId" element={<MovieListView />} />
@@ -145,6 +152,8 @@ const ProtectedRoutes = ({
       <Route path="recommendations/people/:listId/edit/:personId" element={<AddPersonPage />} />
       <Route path="recommendations/places/:locationId/add-people" element={<AddLinkedPeoplePage />} />
       <Route path="recommendations/places/:locationId/add-products" element={<AddLinkedProductsPage />} />
+      <Route path=":listId/new" element={<AddRecommendation />} />
+      <Route path=":placeId/edit" element={<AddRecommendation type="edit" />} />
     </Route>
   );
 

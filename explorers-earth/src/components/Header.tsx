@@ -73,9 +73,9 @@ const Header = memo(() => {
   const categoryMenuRef = useRef<HTMLDivElement>(null);
 
   const currentCategory = recommendationCategories.find(cat => {
-    // Exact match for /recommendations as Places
-    if (cat.id === 'places' && location.pathname === '/recommendations') return true;
-    // Prefix match for all categories
+    if (cat.id === 'hub') {
+      return location.pathname === '/recommendations' || location.pathname === '/recommendations/';
+    }
     return location.pathname.startsWith(cat.path);
   });
 
@@ -131,7 +131,6 @@ const Header = memo(() => {
     { path: '/home', exact: true, label: 'Home', icon: <HomeIcon fill="currentColor" /> },
     { path: '/profile', exact: true, label: 'Profile', icon: <Profile fill="currentColor" /> },
     { path: '/settings', exact: true, label: 'Settings', icon: <SettingsIcon fill="currentColor" /> },
-    { path: '/guides', exact: false, label: 'Guides', icon: <TravelGuideIcon fill="currentColor" /> },
   ];
 
   const currentNamedPage = namedPages.find(p =>
