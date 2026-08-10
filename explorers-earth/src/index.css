@@ -120,7 +120,7 @@
 
 :root {
   --dash-bg: #fffcf6;
-  --dash-sidebar-bg: #f6f1e7;
+  --dash-sidebar-bg: #ffffff;
   --dash-accent: #3B82F6;
   --dash-accent-text: #ffffff;
   --dash-text: #17231a;
@@ -218,7 +218,7 @@ body[data-sidebar-open="false"] .dashboard-content {
 /* Dark theme overrides */
 .dashboard-theme-dark {
   --dash-bg: #060608;
-  --dash-sidebar-bg: #0B0B0E;
+  --dash-sidebar-bg: #14141C;
   --dash-accent: #60A5FA;
   --dash-accent-text: #060608;
   --dash-text: #F9FAFB;
