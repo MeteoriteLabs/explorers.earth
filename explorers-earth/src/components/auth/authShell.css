@@ -60,3 +60,34 @@
   .ea-root{padding:24px 18px}
   .ea-card{max-width:440px;padding:34px 26px 28px}
 }
+
+/* ---- shared controls for the utility auth pages
+   (forgot password / reset link sent / reset password / verify email / verified) ---- */
+.ea-center{text-align:center}
+.ea-center .ea-eyebrow{justify-content:center}
+.ea-center .ea-sub{margin-left:auto;margin-right:auto}
+
+.ea-iconwrap{width:58px;height:58px;border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;background:rgba(95,168,255,.12);border:1px solid rgba(95,168,255,.28);color:var(--ea-blue)}
+.ea-iconwrap.is-success{background:rgba(67,192,47,.14);border-color:rgba(67,192,47,.32);color:var(--ea-green)}
+.ea-iconwrap svg{width:27px;height:27px}
+
+.ea-form{margin-top:26px;text-align:left}
+.ea-field{margin-top:16px}
+.ea-field:first-child{margin-top:0}
+.ea-label{display:block;font-size:.78rem;font-weight:600;letter-spacing:.01em;color:var(--ea-muted);margin-bottom:7px}
+.ea-input{width:100%;height:48px;border-radius:12px;background:rgba(9,15,11,.55);border:1px solid var(--ea-line);padding:0 14px;font-family:inherit;font-size:.95rem;color:var(--ea-cream);transition:border-color .14s,box-shadow .14s}
+.ea-input::placeholder{color:rgba(169,181,166,.55)}
+.ea-input:focus{outline:none;border-color:var(--ea-terra);box-shadow:0 0 0 3px rgba(224,146,92,.16)}
+.ea-fielderr{color:#f0a37f;font-size:.78rem;margin-top:7px}
+
+.ea-primary{margin-top:24px;width:100%;height:50px;border-radius:14px;border:none;background:var(--ea-blue);color:#07131f;font-family:inherit;font-size:1rem;font-weight:700;letter-spacing:.01em;cursor:pointer;transition:filter .14s,transform .1s,opacity .14s;box-shadow:0 14px 30px -12px rgba(95,168,255,.5)}
+.ea-primary:hover{filter:brightness(1.06)}
+.ea-primary:active{transform:translateY(1px)}
+.ea-primary:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+.ea-primary:focus-visible{outline:2px solid var(--ea-terra);outline-offset:3px}
+
+.ea-altrow{margin-top:20px;font-size:.9rem;color:var(--ea-muted)}
+.ea-altrow a,.ea-linkbtn{color:var(--ea-cream);font-weight:700;text-decoration:underline;text-underline-offset:3px;background:none;border:none;font-family:inherit;font-size:inherit;cursor:pointer;padding:0}
+.ea-linkbtn:hover,.ea-altrow a:hover{color:#fff}
+.ea-note{margin-top:16px;font-size:.8rem;color:var(--ea-muted);line-height:1.5}
+.ea-email-chip{color:var(--ea-cream);font-weight:600;word-break:break-all}
