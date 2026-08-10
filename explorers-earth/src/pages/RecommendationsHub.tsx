@@ -33,7 +33,7 @@ const CATEGORIES: CategoryConfig[] = [
     icon: Music, 
     description: "Discover shared playlists and local tunes that define the vibe",
     color: "purple",
-    path: "/music"
+    path: "/recommendations/music"
   },
   { 
     key: "movies",  
@@ -89,7 +89,7 @@ const CATEGORIES: CategoryConfig[] = [
     icon: TravelGuideIcon, 
     description: "Explore curated travel itineraries, maps, and local guides for your next trip",
     color: "amber",
-    path: "/guides"
+    path: "/recommendations/guides"
   },
 ];
 

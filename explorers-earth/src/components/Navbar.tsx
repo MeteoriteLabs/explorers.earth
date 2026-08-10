@@ -20,8 +20,8 @@ const navItems = [
   {
     id: "recommendations",
     icon: Heart,
-    text: "Places",
-    path: "/hub",
+    text: "Recommendations",
+    path: "/recommendations",
   },
   {
     id: "analytics",
