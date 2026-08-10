@@ -1,6 +1,6 @@
-import React, { useLayoutEffect } from "react";
+import React, { useLayoutEffect, useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Home from "../assets/icons/Home";
 import SettingsIcon from "../assets/icons/SettingsIcon";
@@ -10,11 +10,54 @@ import Analytics from "../assets/icons/Analytics";
 
 import { useDashboardTheme } from "../contexts/DashboardThemeContext";
 import { Tooltip } from "react-tooltip";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useQuery, gql } from "@apollo/client";
+import LogoutIcon from "../assets/icons/LogoutIcon";
+import useAuthStore from "../store/store";
+import { IMAGE_CONFIG } from "../config";
+import { useLogout } from "../hooks/useLogout";
+
+const SIDEBAR_ACCOUNT_QUERY = gql`
+  query SidebarAccount($documentId: ID!) {
+    usersPermissionsUser(documentId: $documentId) {
+      accounts {
+        documentId
+        Account_Name
+        profile_picture {
+          url
+        }
+      }
+    }
+  }
+`;
 
 const Sidebar = () => {
   const { t } = useTranslation();
   const { theme, isSidebarOpen: isOpen } = useDashboardTheme();
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const handleLogout = useLogout();
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+  const { data: acctData } = useQuery(SIDEBAR_ACCOUNT_QUERY, {
+    variables: { documentId: user?.documentId },
+    skip: !user?.documentId,
+  });
+  const avatarUrl =
+    acctData?.usersPermissionsUser?.accounts?.[0]?.profile_picture?.url ||
+    IMAGE_CONFIG.defaultImages.profile;
+
+  // Close the account popover on any outside click
+  useEffect(() => {
+    if (!showAccountMenu) return;
+    const onDown = (e: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
+        setShowAccountMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [showAccountMenu]);
 
   // Set CSS variable for sidebar width to help with button positioning
   // Use useLayoutEffect for immediate synchronous execution before paint
@@ -78,13 +121,106 @@ const Sidebar = () => {
           title={t('sidebar.analytics')}
           to="/analytics"
         />
+      </nav>
+
+      {/* Footer: Settings, then the account avatar pinned to the bottom */}
+      <div className="flex flex-col gap-2 flex-shrink-0 w-full px-2 pt-2 pb-2 border-t border-dashboard/40">
         <SidebarItem
           isOpen={isOpen}
           Icon={SettingsIcon}
           title={t("sidebar.settings")}
           to="/settings"
         />
-      </nav>
+
+        {/* Account avatar + popover (View public profile · Logout) */}
+        <div ref={accountMenuRef} className="relative w-full">
+          <button
+            type="button"
+            onClick={() => setShowAccountMenu((v) => !v)}
+            {...(!isOpen ? { "data-tooltip-id": "account" } : {})}
+            className={`relative flex items-center rounded-lg transition-all w-full hover:bg-dashboard-muted ${isOpen ? "gap-3 px-3 py-2" : "justify-center py-2"
+              }`}
+          >
+            <img
+              src={avatarUrl}
+              alt="account"
+              className="h-8 w-8 rounded-full object-cover border border-dashboard flex-shrink-0"
+            />
+            {isOpen && (
+              <span className="text-sm font-medium text-dashboard truncate max-w-[150px] text-left">
+                {user?.username || "Account"}
+              </span>
+            )}
+          </button>
+
+          <AnimatePresence>
+            {showAccountMenu && (
+              <motion.div
+                initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                transition={{ duration: 0.15 }}
+                className={`absolute bottom-full mb-2 bg-dashboard-sidebar rounded-xl shadow-dashboard-elevated border border-dashboard overflow-hidden z-50 ${isOpen ? "left-0 w-full" : "left-full ml-2 w-56"
+                  }`}
+              >
+                <div className="px-4 py-3 bg-dashboard-muted border-b border-dashboard flex items-center gap-3">
+                  <img
+                    src={avatarUrl}
+                    alt="account"
+                    className="h-9 w-9 rounded-full object-cover ring-2 ring-white flex-shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-dashboard truncate">
+                      {user?.username || "User"}
+                    </p>
+                    <p className="text-xs text-dashboard-muted">Account</p>
+                  </div>
+                </div>
+                <div className="py-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAccountMenu(false);
+                      if (user?.username) navigate(`/${user.username}`);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-dashboard hover:bg-dashboard-muted transition-colors"
+                  >
+                    <div className="w-5 h-5 flex items-center justify-center">
+                      <Profile fill="currentColor" />
+                    </div>
+                    <span>View public profile</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAccountMenu(false);
+                      handleLogout();
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-dashboard hover:bg-dashboard-muted transition-colors"
+                  >
+                    <div className="w-5 h-5 flex items-center justify-center">
+                      <LogoutIcon size="18" />
+                    </div>
+                    <span>Logout</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {!isOpen && createPortal(
+            <Tooltip
+              id="account"
+              place="right"
+              style={{ fontSize: "12px", zIndex: 1000 }}
+              className="!bg-gray-800 !text-white !border !border-gray-600 !rounded-lg !px-2 !py-1"
+            >
+              Account
+            </Tooltip>,
+            document.body
+          )}
+        </div>
+      </div>
     </div>
   );
 };
