@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
@@ -15,8 +15,9 @@ import { toast } from "sonner";
 import {
   accountQuery,
   updateAccountMutation,
-  CHECK_PUBLISHED_LISTS
 } from "../features/Settings/api/mutation";
+import { getPublicCategoryListCountsQuery } from "../features/PublicHome/api/query";
+import { computePinnedNavTabIds, getVisibleNavTabIds } from "../utils/navPinning";
 
 type CategoryKey = "places" | "music" | "movies" | "books" | "games" | "guides" | "apps" | "products" | "people";
 
@@ -554,7 +555,8 @@ const getHexColor = (color: string) => {
 
 interface RecommendationCardProps {
   cat: CategoryConfig;
-  account: any;
+  isPinned: boolean;
+  isPublic: boolean;
   onTogglePin: (cat: CategoryConfig) => void;
   onToggleVisibility: (cat: CategoryConfig) => void;
   isUpdating: boolean;
@@ -562,7 +564,8 @@ interface RecommendationCardProps {
 
 const RecommendationCard = ({
   cat,
-  account,
+  isPinned,
+  isPublic,
   onTogglePin,
   onToggleVisibility,
   isUpdating,
@@ -620,16 +623,6 @@ const RecommendationCard = ({
 
   const accentColor = getHexColor(cat.color);
   const publicPath = user?.username ? `/${user.username}/${cat.key}` : cat.path;
-
-  // Determine Pin & Visibility Status
-  const pinnedNavTabs: string[] = Array.isArray(account?.pinned_nav_tabs)
-    ? (account.pinned_nav_tabs.includes("public_profile")
-        ? account.pinned_nav_tabs
-        : ["public_profile", ...account.pinned_nav_tabs])
-    : ["public_profile", "public_recommendations", "public_movie", "public_books", "public_games"];
-
-  const isPinned = pinnedNavTabs.includes(cat.tabId);
-  const isPublic = account?.[cat.visibilityField] === "Yes";
 
   const handleCopyLink = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -877,29 +870,39 @@ const RecommendationsHub = () => {
   const account = accountData?.accounts?.[0];
   const accountDocumentId = account?.documentId;
 
-  const { data: publishedListsData } = useQuery(CHECK_PUBLISHED_LISTS, {
+  // Published-list counts per category — drives both the nav auto-ranking and the
+  // "has publishable content" guard. Same query PublicNav uses, so counts match.
+  const { data: listCountsData } = useQuery(getPublicCategoryListCountsQuery, {
     variables: { accountDocumentId },
     skip: !accountDocumentId,
   });
+
+  const countMap: Record<string, number> = useMemo(() => ({
+    public_recommendations: listCountsData?.recommendationLists?.length ?? 0,
+    public_movie:           listCountsData?.movieLists?.length ?? 0,
+    public_books:           listCountsData?.bookLists?.length ?? 0,
+    public_games:           listCountsData?.gameLists?.length ?? 0,
+    public_apps:            listCountsData?.appLists?.length ?? 0,
+    public_products:        listCountsData?.productLists?.length ?? 0,
+    public_people:          listCountsData?.personLists?.length ?? 0,
+    public_guides:          listCountsData?.guides?.length ?? 0,
+    public_music:           0,
+    public_profile:         0,
+  }), [listCountsData]);
 
   const [updateAccount] = useMutation(updateAccountMutation);
   // Track which single category is mid-mutation so only that card shows a spinner
   const [updatingKey, setUpdatingKey] = useState<CategoryKey | null>(null);
 
-  // Helper to check if a category has published content
-  const hasPublishedContent = (catKey: CategoryKey): boolean => {
-    switch (catKey) {
-      case "places":   return (publishedListsData?.recommendationLists?.length ?? 0) > 0;
-      case "movies":   return (publishedListsData?.movieLists?.length ?? 0) > 0;
-      case "books":    return (publishedListsData?.bookLists?.length ?? 0) > 0;
-      case "games":    return (publishedListsData?.gameLists?.length ?? 0) > 0;
-      case "apps":     return (publishedListsData?.appLists?.length ?? 0) > 0;
-      case "products": return (publishedListsData?.productLists?.length ?? 0) > 0;
-      case "people":   return (publishedListsData?.personLists?.length ?? 0) > 0;
-      case "guides":   return (publishedListsData?.guides?.length ?? 0) > 0;
-      case "music":    return true;
-      default:         return false;
-    }
+  // Effective public-nav state, derived exactly like PublicNav (the live nav).
+  const visibleSet = useMemo(() => getVisibleNavTabIds(account), [account]);
+  const pinnedTabIds = useMemo(() => computePinnedNavTabIds(account, countMap), [account, countMap]);
+  const pinnedSet = useMemo(() => new Set(pinnedTabIds), [pinnedTabIds]);
+
+  // A category can be made public once it has at least one published list.
+  const hasPublishedContent = (cat: CategoryConfig): boolean => {
+    if (cat.key === "music") return true; // music lives in LocalTunes, always allowed
+    return (countMap[cat.tabId] ?? 0) > 0;
   };
 
   // Handle Toggle Pin
@@ -909,17 +912,14 @@ const RecommendationsHub = () => {
       return;
     }
 
-    const currentPinned: string[] = Array.isArray(account?.pinned_nav_tabs)
-      ? (account.pinned_nav_tabs.includes("public_profile")
-          ? account.pinned_nav_tabs
-          : ["public_profile", ...account.pinned_nav_tabs])
-      : ["public_profile", "public_recommendations", "public_movie", "public_books", "public_games"];
-
-    const isCurrentlyPinned = currentPinned.includes(cat.tabId);
+    // Basis = the effective set actually shown in the nav (auto or manual), so the
+    // card's pin state and this action can never disagree. Any pin/unpin switches
+    // the account to manual mode (auto_pinning: false).
+    const isCurrentlyPinned = pinnedSet.has(cat.tabId);
 
     if (isCurrentlyPinned) {
       // Unpin
-      const updatedPinned = currentPinned.filter(id => id !== cat.tabId);
+      const updatedPinned = pinnedTabIds.filter(id => id !== cat.tabId);
       setUpdatingKey(cat.key);
       try {
         await updateAccount({
@@ -939,34 +939,29 @@ const RecommendationsHub = () => {
         setUpdatingKey(null);
       }
     } else {
-      // Pin: Check max limit of 5 slots
-      if (currentPinned.length >= 5) {
+      // Pin: enforce the 5-slot cap (profile counts as slot 1)
+      if (pinnedTabIds.length >= 5) {
         toast.error("Maximum 5 tabs can be pinned to your public navigation bar. Unpin an existing tab first.");
         return;
       }
 
-      // Check if visibility is "Yes"
-      const isPublic = account?.[cat.visibilityField] === "Yes";
-      if (!isPublic) {
-        if (!hasPublishedContent(cat.key)) {
-          toast.error(`Create and publish at least 1 list in ${cat.label} before pinning it to your public profile.`);
-          return;
-        }
+      // Pinning forces the category public — require content if it isn't already visible
+      if (!visibleSet.has(cat.tabId) && !hasPublishedContent(cat)) {
+        toast.error(`Create and publish at least 1 list in ${cat.label} before pinning it to your public profile.`);
+        return;
       }
 
-      const updatedPinned = [...currentPinned, cat.tabId];
-      const updateData: any = {
-        pinned_nav_tabs: updatedPinned,
-        auto_pinning: false,
-        [cat.visibilityField]: "Yes",
-      };
-
+      const updatedPinned = [...pinnedTabIds, cat.tabId];
       setUpdatingKey(cat.key);
       try {
         await updateAccount({
           variables: {
             documentId: accountDocumentId,
-            data: updateData,
+            data: {
+              pinned_nav_tabs: updatedPinned,
+              auto_pinning: false,
+              [cat.visibilityField]: "Yes",
+            },
           },
         });
         toast.success(`Pinned ${cat.label} to public navigation!`);
@@ -986,16 +981,11 @@ const RecommendationsHub = () => {
       return;
     }
 
-    const currentVisibility = account?.[cat.visibilityField] === "Yes";
-    const currentPinned: string[] = Array.isArray(account?.pinned_nav_tabs)
-      ? (account.pinned_nav_tabs.includes("public_profile")
-          ? account.pinned_nav_tabs
-          : ["public_profile", ...account.pinned_nav_tabs])
-      : ["public_profile", "public_recommendations", "public_movie", "public_books", "public_games"];
+    const currentlyPublic = visibleSet.has(cat.tabId);
 
-    if (currentVisibility) {
-      // Turn Off Visibility
-      const updatedPinned = currentPinned.filter(id => id !== cat.tabId);
+    if (currentlyPublic) {
+      // Turn off the public URL. A hidden tab drops out of the nav automatically
+      // (computePinnedNavTabIds filters by visibility), so pins are left untouched.
       setUpdatingKey(cat.key);
       try {
         await updateAccount({
@@ -1003,7 +993,6 @@ const RecommendationsHub = () => {
             documentId: accountDocumentId,
             data: {
               [cat.visibilityField]: "No",
-              pinned_nav_tabs: updatedPinned,
             },
           },
         });
@@ -1016,7 +1005,7 @@ const RecommendationsHub = () => {
       }
     } else {
       // Turn On Visibility
-      if (!hasPublishedContent(cat.key)) {
+      if (!hasPublishedContent(cat)) {
         toast.error(`Create and publish at least 1 list in ${cat.label} before enabling public visibility.`);
         return;
       }
@@ -1059,7 +1048,8 @@ const RecommendationsHub = () => {
           <RecommendationCard
             key={cat.key}
             cat={cat}
-            account={account}
+            isPinned={pinnedSet.has(cat.tabId)}
+            isPublic={visibleSet.has(cat.tabId)}
             onTogglePin={handleTogglePin}
             onToggleVisibility={handleToggleVisibility}
             isUpdating={updatingKey === cat.key}
