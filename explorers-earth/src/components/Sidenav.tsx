@@ -155,63 +155,8 @@ const Sidebar = () => {
         <SidebarItem
           isOpen={isOpen}
           Icon={DirectionBoard}
-          title={t("sidebar.places")}
+          title={"Recommendations"}
           to="/recommendations"
-        />
-        <SidebarItem
-          isOpen={isOpen}
-          Icon={TravelGuideIcon}
-          title={"Guides"}
-          to="/guides"
-        />
-        {/* Movies & Shows */}
-        <SidebarItem
-          isOpen={isOpen}
-          Icon={MovieIcon}
-          title={"Movies"}
-          to="/recommendations/movies"
-        />
-        {/* Books */}
-        <SidebarItem
-          isOpen={isOpen}
-          Icon={BookIcon}
-          title={"Books"}
-          to="/recommendations/books"
-        />
-        {/* Games */}
-        <SidebarItem
-          isOpen={isOpen}
-          Icon={GameIcon}
-          title={"Games"}
-          to="/recommendations/games"
-        />
-        {/* Apps & Tools */}
-        <SidebarItem
-          isOpen={isOpen}
-          Icon={AppIcon}
-          title={"Apps & Tools"}
-          to="/recommendations/apps"
-        />
-        {/* Products */}
-        <SidebarItem
-          isOpen={isOpen}
-          Icon={ProductIcon}
-          title={"Products"}
-          to="/recommendations/products"
-        />
-        {/* People */}
-        <SidebarItem
-          isOpen={isOpen}
-          Icon={PeopleIcon}
-          title={"People"}
-          to="/recommendations/people"
-        />
-        {/* Music button - show for all users */}
-        <SidebarItem
-          isOpen={isOpen}
-          Icon={MusicNote}
-          title={t('sidebar.music')}
-          to="/music"
         />
         <SidebarItem
           isOpen={isOpen}
