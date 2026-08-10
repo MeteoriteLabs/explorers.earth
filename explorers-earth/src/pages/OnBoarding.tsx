@@ -38,20 +38,16 @@ import { useApolloClient } from "@apollo/client";
 import {
   isFreePlan
 } from "../services/paymentService";
-import {
-  removeUserCredentials,
-  storeUserCredentials
-} from "../utils/sessionCredentials";
+import { removeUserCredentials } from "../utils/sessionCredentials";
 import { createUserSubscriptionPlan, getSongLimits, updateSongLimit as updateSongLimitAPI, createSongLimit, getSubscriptionPlans } from "../services/subscriptionService";
 import Modal from "../components/ui/Modal";
-import { loginQuery } from "../features/Authentication/api/mutation";
 
 //import { usernameValidation } from "../features/Authentication/data";
 
 import { useUserForOnboarding } from "../features/Authentication/hooks/useCurrentUser";
 import { EarthLoader } from "../components/EarthLoader";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
-import { Check, Sparkles, Zap, Crown, LogOut, ArrowLeft } from "lucide-react";
+import { LogOut, ArrowLeft } from "lucide-react";
 import GlobeCanvas from "../components/auth/GlobeCanvas";
 import OnboardingProgress from "../components/onboarding/OnboardingProgress";
 import { useQuery as useReactQuery } from "@tanstack/react-query";
@@ -395,9 +391,7 @@ const OnBoarding = () => {
 
   const [createAccount] = useMutation(onboardingQuery);
   const [updateUser] = useMutation(updateUserMutation);
-  const [validatePassword] = useMutation(loginQuery);
   const storedUsername = useAuthStore((state) => state.user?.username);
-  const userEmail = useAuthStore((state) => state.user?.email);
   const documentId = useAuthStore((state) => state.user?.documentId);
   const logout = useAuthStore((state) => state.logout);
   // const { isAuthenticated } = useAuthStore();
@@ -407,7 +401,6 @@ const OnBoarding = () => {
   const location = useLocation();
  
   // Password modal state for Local Tunes registration
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
  
   const handleLogout = async () => {
@@ -436,9 +429,6 @@ const OnBoarding = () => {
     navigate("/login");
     toast(t("toast.success.loggedOutSuccessfully", "Logged out successfully!"));
   };
-  const [password, setPassword] = useState("");
-  const [passwordVisible, setPasswordVisible] = useState(false);
-  const [isValidatingPassword, setIsValidatingPassword] = useState(false);
 
 
   // Subscription plan state
@@ -447,7 +437,6 @@ const OnBoarding = () => {
   const [_localTunesRegistrationResult, setLocalTunesRegistrationResult] = useState<any>(null);
   const [isCreatingSubscription, setIsCreatingSubscription] = useState(false);
   const [accountDocumentId, setAccountDocumentId] = useState<string | null>(null);
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
 
   // Subscription plan queries and mutations - using backend API
   const { data: subscriptionPlansData, isLoading: subscriptionPlansLoading } = useReactQuery({
@@ -836,88 +825,6 @@ const OnBoarding = () => {
     }
   };
 
-  // Validate explorers password
-  const validateexplorersPassword = async (username: string, password: string): Promise<boolean> => {
-    try {
-      await validatePassword({
-        variables: {
-          input: {
-            identifier: username,
-            password: password
-          }
-        }
-      });
-      return true;
-    } catch (error: any) {
-      console.log('Password validation failed:', error.message);
-      return false;
-    }
-  };
-
-  // Handle password submission for Local Tunes registration
-  const handlePasswordSubmit = async (_accountName?: string) => {
-    if (!password.trim()) {
-      toast.error('Please enter your password');
-      return;
-    }
-
-    if (!storedUsername || !userEmail) {
-      toast.error('User information not available');
-      return;
-    }
-
-    setIsValidatingPassword(true);
-    try {
-      console.log('Validating explorers password for Local Tunes registration...');
-
-      const isPasswordValid = await validateexplorersPassword(storedUsername, password);
-
-      if (!isPasswordValid) {
-        toast.error('Invalid password. Please check your password and try again.');
-        setIsValidatingPassword(false);
-        return;
-      }
-
-      console.log('Password validated successfully. Storing credentials for Local Tunes registration...');
-
-      // Store credentials for Local Tunes registration (will be used in Step 5)
-      storeUserCredentials({
-        username: storedUsername,
-        email: userEmail,
-        password: password
-      });
-
-      console.log('Credentials stored. Local Tunes registration will happen after subscription plan selection in Step 5.');
-
-      // Don't register on Local Tunes yet - wait until Step 5
-      // Just advance to Step 5 (subscription plans)
-      console.log('Advancing to Step 5 (Subscription Plans)...');
-      setShowPasswordModal(false);
-      setPassword("");
-      setIsValidatingPassword(false);
-      // Update formData to ensure step 5 is included in steps array
-      setFormData(prev => ({ ...prev, localTunesConsent: true }));
-      // Advance to step 5 (index 4)
-      setActiveStep(4);
-
-      // Don't register on Local Tunes yet - wait until Step 5
-      // Just advance to Step 5 (subscription plans)
-      console.log('Advancing to Step 5 (Subscription Plans)...');
-      console.log('Local Tunes registration will happen after subscription plan selection');
-      setShowPasswordModal(false);
-      setPassword("");
-      setIsValidatingPassword(false);
-      // Update formData to ensure step 5 is included in steps array
-      setFormData(prev => ({ ...prev, localTunesConsent: true }));
-      // Advance to step 5 (index 4)
-      setActiveStep(4);
-
-    } catch (error) {
-      console.error('Failed to validate password:', error);
-      toast.error('Failed to validate password. Please try again.');
-      setIsValidatingPassword(false);
-    }
-  };
 
   const handleSubmit = async (values: FormValues) => {
     console.log("handleSubmit called with values:", values);
@@ -1044,50 +951,6 @@ const OnBoarding = () => {
     setActiveStep((prev) => prev - 1);
   };
 
-  // Helper functions for subscription plans
-  const plans: SubscriptionPlan[] = subscriptionPlansData || [];
-
-  // Parse features if it's a string
-  const parseFeatures = (features: Array<{ feature: string }> | string): Array<{ feature: string }> => {
-    if (Array.isArray(features)) {
-      return features;
-    }
-    if (typeof features === 'string') {
-      try {
-        const parsed = JSON.parse(features);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  };
-
-  // Format cost with commas
-  const formatCost = (cost: string) => {
-    const numCost = parseInt(cost);
-    return numCost.toLocaleString();
-  };
-
-  // Get plan icon based on plan name
-  const getPlanIcon = (planName: string) => {
-    if (planName?.toLowerCase() === 'free') return <Sparkles className="w-5 h-5" />;
-    if (planName?.toLowerCase() === 'paid') return <Crown className="w-5 h-5" />;
-    return <Zap className="w-5 h-5" />;
-  };
-
-  // Filter plans by billing period and sort: Free first, then by cost
-  const sortedPlans = [...plans]
-    .filter(plan => {
-      const isFree = plan.plan_name?.toLowerCase() === 'free';
-      return isFree || plan.duration?.toLowerCase() === billingPeriod;
-    })
-    .sort((a, b) => {
-      if (a.plan_name === 'Free') return -1;
-      if (b.plan_name === 'Free') return 1;
-      // Sort by cost (lower first) for same duration
-      return parseInt(a.cost) - parseInt(b.cost);
-    });
 
   // Calculate subscription dates based on duration
   const calculateSubscriptionDates = (duration: string) => {
@@ -1106,14 +969,6 @@ const OnBoarding = () => {
     };
   };
 
-  // Handle plan selection
-  const handlePlanSelect = (planId: string) => {
-    setSelectedPlan(planId);
-    const plan = plans.find(p => p.documentId === planId);
-    if (plan) {
-      setSelectedPlanData(plan);
-    }
-  };
 
   // Handle Step 5 submission (subscription plan selection)
   // Accepts optional explicit plan/formData for programmatic calls (e.g. auto-free-plan).
@@ -1888,319 +1743,6 @@ const OnBoarding = () => {
                     )}
                   </div>
                 </div>
-              ) : activeStep === 3 ? (
-                // Local Tunes integration step (mandatory)
-                <div className="space-y-6">
-                  <div className="bg-dashboard-bg rounded-lg p-6 space-y-4">
-                    <div className="flex items-start space-x-3">
-                      <div className="flex-shrink-0">
-                        {/* Local Tunes Logo */}
-                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-black flex items-center justify-center">
-                          <img
-                            src="/locar-tunes.png"
-                            alt="Local Tunes Logo"
-                            className="w-full h-full object-contain"
-                            onError={(e) => {
-                              // Fallback to music icon if logo fails to load
-                              e.currentTarget.style.display = 'none';
-                              const nextSibling = e.currentTarget.nextElementSibling as HTMLElement;
-                              if (nextSibling) {
-                                nextSibling.style.display = 'flex';
-                              }
-                            }}
-                          />
-                          {/* Fallback music icon */}
-                          <div className="w-full h-full bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 flex items-center justify-center" style={{ display: 'none' }}>
-                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                            </svg>
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        <h3 className="text-white font-medium mb-2">What is Local Tunes?</h3>
-                        <p className="text-gray-300 text-sm">
-                          Create collaborative music experiences that let your guests contribute to your space's atmosphere in real-time, fostering deeper connections through shared musical discovery.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start space-x-3">
-                      <div className="flex-shrink-0">
-                        <svg className="w-6 h-6 text-dashboard-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-gray-300 text-sm">
-                          Your explorers account information will be used to create your Local Tunes account.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start space-x-3">
-                      <div className="flex-shrink-0">
-                        <svg className="w-6 h-6 text-dashboard-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-gray-300 text-sm">
-                          Access curated playlists and music features with your subscription plan.
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Mandatory notice */}
-                    <div className="mt-4 p-3 bg-dashboard-accent/10 border border-dashboard-accent/30 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <svg className="w-5 h-5 text-dashboard-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <p className="text-dashboard-accent text-sm font-medium">
-                          Local Tunes is included with your explorers account
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      console.log("=== Step 4 Button Clicked ===");
-                      console.log("isLocalTunesEnabled:", isLocalTunesEnabled());
-
-                      // LocalTunes consent is mandatory - set to true
-                      setFormData((prev) => ({
-                        ...prev,
-                        localTunesConsent: true,
-                      }));
-
-                      // Ensure localTunesConsent is true in the values being passed
-                      const valuesToSubmit: FormValues = {
-                        ...formData,
-                        localTunesConsent: 'true' as any
-                      };
-                      console.log("Values to submit:", valuesToSubmit);
-
-                      // Proceed to password modal or next step
-                      await handleStepSubmit(valuesToSubmit, { errors: {} });
-                    }}
-                    disabled={isSubmitting || hasSubmitted || isCreatingSubscription}
-                    className={`w-full py-2 sm:py-3 px-4 rounded-md font-medium transition-colors text-sm sm:text-base ${isSubmitting || hasSubmitted || isCreatingSubscription
-                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                      : 'bg-dashboard-accent text-dashboard hover:bg-dashboard-accent/90'
-                      }`}
-                  >
-                    {isSubmitting || isCreatingSubscription ? 'Completing Registration...' : 'Complete Registration'}
-                  </button>
-                </div>
-              ) : activeStep === 4 ? (
-                // Step 5: Subscription Plans
-                <div className="space-y-6">
-                  <div className="text-center mb-6">
-                    <h2 className="text-xl font-semibold text-white mb-2">
-                      Choose Your Plan
-                    </h2>
-                    <p className="text-gray-300 text-sm">
-                      Select the perfect subscription plan to unlock Local Tunes features
-                    </p>
-                  </div>
-
-                  {/* Monthly/Yearly Tab Switcher */}
-                  <div className="flex items-center justify-center mb-4">
-                    <div className="flex bg-dashboard-bg rounded-full p-1 border border-gray-700">
-                      <button
-                        type="button"
-                        onClick={() => setBillingPeriod('monthly')}
-                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${billingPeriod === 'monthly'
-                          ? 'bg-dashboard-accent text-dashboard shadow-lg'
-                          : 'text-gray-400 hover:text-white'
-                          }`}
-                      >
-                        Monthly
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setBillingPeriod('yearly')}
-                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${billingPeriod === 'yearly'
-                          ? 'bg-dashboard-accent text-dashboard shadow-lg'
-                          : 'text-gray-400 hover:text-white'
-                          }`}
-                      >
-                        Yearly
-                      </button>
-                    </div>
-                  </div>
-
-                  {subscriptionPlansLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <EarthLoader context="subscription" size="small" />
-                    </div>
-                  ) : sortedPlans.length === 0 ? (
-                    <div className="text-center py-12">
-                      <p className="text-gray-400">No subscription plans available at the moment</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {sortedPlans.map((plan) => {
-                        const features = parseFeatures(plan.features);
-                        const isSelected = selectedPlan === plan.documentId;
-                        const isFree = plan.plan_name?.toLowerCase() === 'free';
-                        const isYearly = plan.duration === 'yearly';
-
-                        return (
-                          <div
-                            key={plan.documentId}
-                            onClick={() => handlePlanSelect(plan.documentId)}
-                            className={`relative cursor-pointer transition-all duration-300 ${isSelected
-                              ? 'transform scale-[1.02]'
-                              : 'hover:scale-[1.01]'
-                              }`}
-                          >
-                            <div
-                              className={`relative bg-dashboard-sidebar rounded-2xl p-4 sm:p-6 border-2 transition-all duration-300 ${isSelected
-                                ? 'border-dashboard-accent shadow-2xl shadow-dashboard-accent/30 bg-gradient-to-br from-dashboard-sidebar to-dashboard-sidebar/80'
-                                : isFree
-                                  ? 'border-gray-700 hover:border-gray-600'
-                                  : 'border-gray-700 hover:border-dashboard-accent/50'
-                                }`}
-                            >
-                              {/* Selected Badge */}
-                              {isSelected && (
-                                <div className="absolute -top-3 right-4 bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg border-2 border-blue-300/50">
-                                  Selected
-                                </div>
-                              )}
-
-                              {/* Popular Badge for Yearly */}
-                              {isYearly && !isSelected && (
-                                <div className="absolute -top-3 right-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-xs font-bold px-3 py-1 rounded-full shadow-lg border-2 border-yellow-300/50">
-                                  Best Value
-                                </div>
-                              )}
-
-                              {/* Plan Header */}
-                              <div className="flex items-start justify-between mb-4">
-                                <div className="flex items-center gap-3 flex-1">
-                                  <div className={`p-2 rounded-xl ${isFree
-                                    ? 'bg-gray-700/50 text-gray-300'
-                                    : 'bg-dashboard-accent/20 text-dashboard-accent'
-                                    }`}>
-                                    {getPlanIcon(plan.plan_name)}
-                                  </div>
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-3 mb-1">
-                                      <h3 className="text-lg sm:text-xl font-bold text-white">
-                                        {plan.plan_name}
-                                      </h3>
-                                      <p className="text-xs text-gray-400 uppercase tracking-wider">
-                                        {plan.duration}
-                                      </p>
-                                    </div>
-                                    {/* Price */}
-                                    <div className="flex items-baseline gap-2">
-                                      <span className="text-2xl sm:text-3xl font-bold text-white">
-                                        ₹{formatCost(plan.cost)}
-                                      </span>
-                                      {!isFree && (
-                                        <span className="text-gray-400 text-sm sm:text-base">
-                                          /{plan.duration === 'monthly' ? 'mo' : 'yr'}
-                                        </span>
-                                      )}
-                                    </div>
-                                    {isYearly && (
-                                      <p className="text-xs text-gray-400 mt-0.5">
-                                        ₹{formatCost((parseInt(plan.cost) / 12).toFixed(0))} per month
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Key Features */}
-                              <div className="grid grid-cols-2 gap-2 mb-4">
-                                {plan.songs_quota && (
-                                  <div className="flex items-center gap-2 p-2.5 bg-dashboard-bg/50 rounded-lg">
-                                    <div className="flex-shrink-0 w-4 h-4 bg-dashboard-accent/20 rounded flex items-center justify-center">
-                                      <Check className="w-2.5 h-2.5 text-dashboard-accent" />
-                                    </div>
-                                    <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-white bg-gray-800 rounded-full shadow-md border border-gray-700">
-                                      {plan.songs_quota} Songs
-                                    </span>
-                                  </div>
-                                )}
-                                {plan.ai_guide_quota && (
-                                  <div className="flex items-center gap-2 p-2.5 bg-dashboard-bg/50 rounded-lg">
-                                    <div className="flex-shrink-0 w-4 h-4 bg-dashboard-accent/20 rounded flex items-center justify-center">
-                                      <Check className="w-2.5 h-2.5 text-dashboard-accent" />
-                                    </div>
-                                    <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-white bg-gray-800 rounded-full shadow-md border border-gray-700">
-                                      {plan.ai_guide_quota} AI Guides
-                                    </span>
-                                  </div>
-                                )}
-                                {plan.max_devices && (
-                                  <div className="flex items-center gap-2 p-2.5 bg-dashboard-bg/50 rounded-lg">
-                                    <div className="flex-shrink-0 w-4 h-4 bg-dashboard-accent/20 rounded flex items-center justify-center">
-                                      <Check className="w-2.5 h-2.5 text-dashboard-accent" />
-                                    </div>
-                                    <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-white bg-gray-800 rounded-full shadow-md border border-gray-700">
-                                      Up to {plan.max_devices} Devices
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Features List - Show only 3 */}
-                              {features.length > 0 && (
-                                <div className="mb-4">
-                                  <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                                    Features
-                                  </h4>
-                                  <div className="space-y-1.5">
-                                    {features.slice(0, 3).map((feature, idx) => (
-                                      <div
-                                        key={idx}
-                                        className="flex items-start gap-2"
-                                      >
-                                        <div className="flex-shrink-0 w-4 h-4 mt-0.5 bg-dashboard-accent/20 rounded flex items-center justify-center">
-                                          <Check className="w-2.5 h-2.5 text-dashboard-accent" />
-                                        </div>
-                                        <span className="text-gray-300 text-xs leading-relaxed">
-                                          {typeof feature === 'object' ? feature.feature : feature}
-                                        </span>
-                                      </div>
-                                    ))}
-                                    {features.length > 3 && (
-                                      <div className="flex items-center gap-2 pt-1">
-                                        <span className="text-gray-400 text-xs font-medium">
-                                          +{features.length - 3} more features
-                                        </span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => handleSubscriptionSubmit()}
-                    disabled={!selectedPlan || isCreatingSubscription}
-                    className={`w-full py-2 sm:py-3 px-4 rounded-md font-medium transition-colors text-sm sm:text-base ${!selectedPlan || isCreatingSubscription
-                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                      : 'bg-dashboard-accent text-dashboard hover:bg-dashboard-accent/90'
-                      }`}
-                  >
-                    {isCreatingSubscription ? 'Processing...' : 'Proceed to Pay'}
-                  </button>
-                </div>
               ) : (
                 <AuthForm
                   initialValues={formData as unknown as FormValues}
@@ -2254,82 +1796,6 @@ const OnBoarding = () => {
         </div>
       </div>
 
-      {/* Password Modal for Local Tunes Registration */}
-      {showPasswordModal && (
-        <Modal
-          isOpen={showPasswordModal}
-          onClose={() => {
-            setShowPasswordModal(false);
-            setPassword("");
-          }}
-        >
-          <div className="dashboard-theme flex flex-col gap-6 w-full mx-auto min-w-[300px] sm:min-w-[500px] md:min-w-[600px] max-w-2xl py-4 sm:py-6 md:py-8 px-6 sm:px-8 md:px-12">
-            <h2 className="dt-heading mb-2">
-              Connect to Local Tunes
-            </h2>
-
-            <p className="dt-label text-white-muted">
-              Enter your explorers password to create your Local Tunes account. We'll use your existing username and email.
-            </p>
-
-            <div className="flex flex-col gap-2">
-              <label className="dt-label text-sm font-medium">
-                Password
-              </label>
-              <div className="relative w-full">
-                <input
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  type={passwordVisible ? "text" : "password"}
-                  placeholder="Enter your password"
-                  className="w-full dt-input"
-                  autoComplete="current-password"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !isValidatingPassword) {
-                      handlePasswordSubmit();
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setPasswordVisible(!passwordVisible)}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400 hover:text-white transition-colors"
-                >
-                  {passwordVisible ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-6">
-              <Button
-                onClick={() => {
-                  setShowPasswordModal(false);
-                  setPassword("");
-                }}
-                variant="secondary"
-                disabled={isValidatingPassword}
-                btnText={t("auth.onboarding.logoutModal.cancel", "Cancel")}
-              />
-              <Button
-                onClick={() => handlePasswordSubmit()}
-                variant="primary"
-                disabled={isValidatingPassword || !password.trim()}
-                isLoading={isValidatingPassword}
-                btnText={isValidatingPassword ? 'Creating Account...' : 'Create Local Tunes Account'}
-              />
-            </div>
-          </div>
-        </Modal>
-      )}
 
       {/* Logout Confirmation Modal */}
       {showLogoutModal && (
