@@ -13,6 +13,7 @@ import { Tooltip } from "react-tooltip";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, gql } from "@apollo/client";
 import LogoutIcon from "../assets/icons/LogoutIcon";
+import { LogoFull, LogoIcon } from "../assets/icons/EoeLogo";
 import useAuthStore from "../store/store";
 import { IMAGE_CONFIG } from "../config";
 import { useLogout } from "../hooks/useLogout";
@@ -33,7 +34,7 @@ const SIDEBAR_ACCOUNT_QUERY = gql`
 
 const Sidebar = () => {
   const { t } = useTranslation();
-  const { theme, isSidebarOpen: isOpen } = useDashboardTheme();
+  const { isSidebarOpen: isOpen } = useDashboardTheme();
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const handleLogout = useLogout();
@@ -80,17 +81,10 @@ const Sidebar = () => {
       {/* Fixed Header - Logo and Toggle Button */}
       <div className={`flex w-full py-2.5 flex-shrink-0 min-h-[56px] ${isOpen ? "items-center justify-start pl-[20px] pr-3 gap-3" : "flex-col items-center justify-center gap-2 px-4"}`}>
         {isOpen ? (
-          <div className="flex-shrink-0 flex-1 min-w-0">
-            <img
-              src="/logo.svg"
-              alt="explorers.earth"
-              className="object-contain max-h-[40px] w-auto"
-              style={{
-                filter: theme === 'dark' ? "brightness(0) invert(1)" : "brightness(0)",
-              }}
-            />
-          </div>
-        ) : null}
+          <LogoFull className="h-7 text-dashboard flex-shrink-0" />
+        ) : (
+          <LogoIcon className="h-8 text-dashboard flex-shrink-0" />
+        )}
       </div>
 
       {/* Sidebar Menu */}
