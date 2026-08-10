@@ -640,7 +640,7 @@ const RecommendationCard = ({ cat }: { cat: CategoryConfig }) => {
 
 const RecommendationsHub = () => {
   return (
-    <div className="min-h-screen bg-dashboard-bg text-dashboard px-4 md:px-8 py-6 md:py-8 pb-24 max-w-7xl mx-auto flex flex-col justify-between">
+    <div className="min-h-screen bg-dashboard-bg text-dashboard px-4 md:px-8 py-6 md:py-8 pb-24 max-w-7xl mx-auto">
       {/* Header Banner */}
       <div className="mb-6 md:mb-8">
         <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white uppercase font-poppins">
@@ -656,21 +656,6 @@ const RecommendationsHub = () => {
         {CATEGORIES.map(cat => (
           <RecommendationCard key={cat.key} cat={cat} />
         ))}
-      </div>
-
-      {/* Bottom Footer Quote Banner */}
-      <div className="mt-10 md:mt-12 p-5 md:p-6 rounded-2xl md:rounded-3xl bg-dashboard-sidebar/40 border border-white/10 backdrop-blur-md flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
-        <div className="flex items-center gap-3">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-          <p className="text-xs md:text-sm text-white/80 font-medium italic">
-            "Curation is the art of choosing what matters."
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-[10px] md:text-xs text-dashboard-muted font-semibold bg-white/5 px-3.5 py-1.5 rounded-xl border border-white/5">
-          <span>Explorers Earth Curation Engine</span>
-          <span>•</span>
-          <span className="text-emerald-400">9 Categories Live</span>
-        </div>
       </div>
     </div>
   );
