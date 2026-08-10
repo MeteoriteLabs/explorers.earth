@@ -1793,10 +1793,6 @@ const OnBoarding = () => {
           <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-dashboard/30">
             <div className="flex items-center gap-3">
               <LogoFull className="h-6 sm:h-7 w-auto text-white" title="explorers.earth" />
-              <div className="w-[1px] h-4 bg-dashboard-muted" />
-              <span className="text-[10px] sm:text-xs font-semibold text-dashboard-light tracking-widest uppercase">
-                Onboarding
-              </span>
             </div>
             <button
               onClick={() => setShowLogoutModal(true)}

@@ -115,7 +115,11 @@ const AuthForm: FC<AuthFormProps> = memo(
         >
           {({ isSubmitting, values, setFieldValue, setFieldTouched, touched, errors }) => (
             <Form
-              className={`font-poppins flex flex-col gap-4 w-full bg-dashboard-sidebar p-6 rounded-3xl shadow-dashboard-elevated text-dashboard mb-4 md:mb-6`}
+              className={`font-poppins flex flex-col gap-4 w-full text-dashboard ${
+                isOnboarding
+                  ? "" // onboarding steps sit directly in the outer card — no nested box
+                  : "bg-dashboard-sidebar p-6 rounded-3xl shadow-dashboard-elevated mb-4 md:mb-6"
+              }`}
             >
               {/* In onboarding the step title/subtitle are shown by the progress
                   bar, so hide the duplicate heading here. */}
