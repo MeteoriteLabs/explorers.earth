@@ -391,6 +391,14 @@ const OnBoarding = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  // Synchronous re-entrancy lock for step submission. The floating footer button
+  // submits AuthForm via the form= attribute, but its disabled state reads the
+  // PARENT isSubmitting, which handleStepSubmit never sets (Formik's submitting
+  // state is internal). So a rapid double-click could fire two submits that both
+  // pass async validation and call handleNext() twice — skipping the required
+  // phone step (incomplete account) or overrunning the steps array (crash). This
+  // ref flips synchronously before the first await; released in the finally.
+  const stepSubmitLock = useRef(false);
   const [hasShownAccountExistsToast, setHasShownAccountExistsToast] =
     useState(false);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
@@ -896,6 +904,13 @@ const OnBoarding = () => {
       return;
     }
 
+    // Synchronous guard: the footer button's disabled state can't see this step's
+    // in-flight submission (parent isSubmitting is never set here; Formik's is
+    // internal), so flip a ref before the first await to stop a double-click
+    // advancing the step twice. Released in the finally below.
+    if (stepSubmitLock.current) return;
+    stepSubmitLock.current = true;
+
     // Validate the current step using the appropriate validation schema
     try {
       const currentStepSchema = steps[activeStep].validationSchema;
@@ -949,6 +964,8 @@ const OnBoarding = () => {
         // Show toast for validation errors
         toast.error(t("toast.error.validationError"));
       }
+    } finally {
+      stepSubmitLock.current = false;
     }
   };
 
