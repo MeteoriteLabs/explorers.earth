@@ -1,6 +1,7 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import useDeviceDetection from "../hooks/useDeviceDetection";
 import usePageTracking from "../hooks/usePageTracking";
+import StatePreservingRedirect from "./StatePreservingRedirect";
 
 // Import route modules
 import AuthRoutes from "./AuthRoutes";
@@ -19,10 +20,12 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      {/* Legacy Redirect Routes (handled before PublicRoutes :username/* matching) */}
-      <Route path="/guides" element={<Navigate to="/recommendations/guides" replace />} />
-      <Route path="/music" element={<Navigate to="/recommendations/music" replace />} />
-      <Route path="/hub" element={<Navigate to="/recommendations" replace />} />
+      {/* Legacy Redirect Routes (handled before PublicRoutes :username/* matching).
+          StatePreservingRedirect forwards location.state so callers like
+          navigate("/music", { state: { justCreatedList: true } }) don't lose it. */}
+      <Route path="/guides" element={<StatePreservingRedirect to="/recommendations/guides" />} />
+      <Route path="/music" element={<StatePreservingRedirect to="/recommendations/music" />} />
+      <Route path="/hub" element={<StatePreservingRedirect to="/recommendations" />} />
 
       {/* Auth Routes */}
       {AuthRoutes}

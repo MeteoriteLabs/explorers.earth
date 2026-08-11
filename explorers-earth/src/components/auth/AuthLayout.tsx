@@ -54,8 +54,8 @@ const AuthLayout = ({
       </button>
 
       <p className="ea-terms">
-        {termsPrefix} <a href="/terms-and-conditions">{termsLabel}</a> {andWord}{" "}
-        <a href="/privacy-policy">{privacyLabel}</a>.
+        {termsPrefix} <a href="/terms">{termsLabel}</a> {andWord}{" "}
+        <a href="/privacy">{privacyLabel}</a>.
       </p>
 
       <div className="ea-divide">{secureLabel}</div>

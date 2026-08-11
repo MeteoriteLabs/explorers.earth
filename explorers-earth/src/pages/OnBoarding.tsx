@@ -7,7 +7,7 @@ import {
 import useAuthStore from "../store/store";
 import { toast } from "sonner";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import Button from "../components/ui/Button";
 import * as Yup from "yup";
@@ -51,6 +51,11 @@ import { LogOut, ArrowLeft } from "lucide-react";
 import GlobeCanvas from "../components/auth/GlobeCanvas";
 import OnboardingProgress from "../components/onboarding/OnboardingProgress";
 import { decideAccountAction } from "./onboardingAccountDecision";
+import {
+  createFinalizeLock,
+  beginFinalize,
+  endFinalize,
+} from "./onboardingFinalizeLock";
 import { useQuery as useReactQuery } from "@tanstack/react-query";
 
 const onboardingQuery = gql`
@@ -437,6 +442,9 @@ const OnBoarding = () => {
   const [selectedPlanData, setSelectedPlanData] = useState<SubscriptionPlan | null>(null);
   const [_localTunesRegistrationResult, setLocalTunesRegistrationResult] = useState<any>(null);
   const [isCreatingSubscription, setIsCreatingSubscription] = useState(false);
+  // Synchronous re-entrancy lock for the free-plan finalize/create path (guards
+  // against a double-click creating duplicate accounts; see onboardingFinalizeLock).
+  const finalizeLockRef = useRef(createFinalizeLock());
   const [accountDocumentId, setAccountDocumentId] = useState<string | null>(null);
 
   // Subscription plan queries and mutations - using backend API
@@ -1008,7 +1016,11 @@ const OnBoarding = () => {
       return;
     }
 
-    // For free plans, proceed with existing subscription creation flow
+    // For free plans, proceed with existing subscription creation flow.
+    // Re-entrancy guard: a double-click can reach here twice before the state
+    // guard flips, creating duplicate accounts/subscriptions. beginFinalize flips
+    // the lock synchronously (before any await); bail if one is already running.
+    if (!beginFinalize(finalizeLockRef.current)) return;
     setIsCreatingSubscription(true);
 
     try {
@@ -1357,6 +1369,7 @@ const OnBoarding = () => {
       toast.error(error.message || "Failed to process subscription. Please try again.");
     } finally {
       setIsCreatingSubscription(false);
+      endFinalize(finalizeLockRef.current);
     }
   };
 
