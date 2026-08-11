@@ -1,8 +1,11 @@
 import React, { useRef } from "react";
-import ReactQuill from "react-quill";
-import "react-quill/dist/quill.snow.css";
-import "quill-emoji/dist/quill-emoji.css"; // Emoji CSS
-import "quill-emoji"; // Emoji plugin
+import ReactQuill, { Quill } from "react-quill-new";
+import "react-quill-new/dist/quill.snow.css";
+import * as Emoji from "quill2-emoji"; // Emoji plugin (Quill 2 compatible)
+import "quill2-emoji/dist/style.css"; // Emoji CSS
+
+// Register the emoji module with Quill 2 (quill2-emoji)
+Quill.register("modules/emoji", Emoji);
 
 interface TiptapEditorProps {
   value: string;
