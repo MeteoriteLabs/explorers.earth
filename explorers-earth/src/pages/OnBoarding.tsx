@@ -50,6 +50,7 @@ import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { LogOut, ArrowLeft } from "lucide-react";
 import GlobeCanvas from "../components/auth/GlobeCanvas";
 import OnboardingProgress from "../components/onboarding/OnboardingProgress";
+import { decideAccountAction } from "./onboardingAccountDecision";
 import { useQuery as useReactQuery } from "@tanstack/react-query";
 
 const onboardingQuery = gql`
@@ -1017,6 +1018,9 @@ const OnBoarding = () => {
       // Check if account already exists
       let accountDocId = accountDocumentId;
       let accountId: string | null = null;
+      // Whether the existence lookup actually completed. If it throws we must
+      // NOT assume "no account" — creating one blindly risks a duplicate.
+      let existenceCheckSucceeded = false;
 
       if (!accountDocId) {
         try {
@@ -1028,6 +1032,7 @@ const OnBoarding = () => {
               },
             }
           );
+          existenceCheckSucceeded = true;
 
           if (existingAccountCheck.data?.data?.length > 0) {
             console.log('Account already exists, using existing account');
@@ -1040,6 +1045,20 @@ const OnBoarding = () => {
         } catch (checkError) {
           console.warn("Could not verify existing accounts:", checkError);
         }
+      }
+
+      // Don't blind-create when we couldn't verify the account doesn't already
+      // exist — that would produce a duplicate account (accounts[0] is unordered,
+      // so the incomplete one can win and bounce the user back to onboarding).
+      if (decideAccountAction(accountDocId, existenceCheckSucceeded) === "abort") {
+        toast.error(
+          t("toast.error.accountVerifyFailed", {
+            defaultValue:
+              "Couldn't verify your account. Please check your connection and try again.",
+          })
+        );
+        setIsCreatingSubscription(false);
+        return;
       }
 
       // Resolved username — may be updated below if user changed it during onboarding.
