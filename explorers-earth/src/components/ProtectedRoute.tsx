@@ -2,7 +2,9 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { gql } from "@apollo/client";
 import useAuthStore from "../store/store";
+import { useLogout } from "../hooks/useLogout";
 import { EarthLoader } from "./EarthLoader";
+import OnboardingCheckError from "./OnboardingCheckError";
 
 const checkOnboardingStatusQuery = gql`
   query CheckOnboardingStatus($documentId: ID!) {
@@ -20,23 +22,21 @@ const ProtectedRoute = () => {
   const { isAuthenticated, user } = useAuthStore();
   const location = useLocation();
 
-  const { data, loading, error } = useQuery(checkOnboardingStatusQuery, {
+  const { data, loading, error, refetch } = useQuery(checkOnboardingStatusQuery, {
     variables: { documentId: user?.documentId },
     skip: !user?.documentId,
     fetchPolicy: "cache-first", // Use cache to speed up navigation
     nextFetchPolicy: "cache-first",
     errorPolicy: "all", // keep any partial data alongside errors
   });
+  const logout = useLogout();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  // Only decide onboarding from a definitive response. While the check is still
-  // loading, or if it failed WITHOUT returning any account data, show the loader
-  // rather than assuming "not onboarded" — a transient error must never bounce a
-  // real (already-onboarded) account back to /onboarding.
-  if (loading || (error && !data)) {
+  // While the check is still loading, show the loader.
+  if (loading) {
     const savedTheme = localStorage.getItem('dashboard-theme');
     const isDark = savedTheme === 'dark' || !savedTheme;
     return (
@@ -44,6 +44,15 @@ const ProtectedRoute = () => {
         <EarthLoader context="general" size="default" />
       </div>
     );
+  }
+
+  // If the check failed WITHOUT returning any account data, do NOT assume "not
+  // onboarded" (a transient error must never bounce a real, already-onboarded
+  // account back to /onboarding). But don't render a perpetual loader either —
+  // the Apollo client has no retry link, so a persistent error would lock the
+  // user out of every route. Show a recoverable state: retry or log out.
+  if (error && !data) {
+    return <OnboardingCheckError onRetry={() => { refetch(); }} onLogout={() => { logout(); }} />;
   }
 
   // Check if mandatory fields are missing

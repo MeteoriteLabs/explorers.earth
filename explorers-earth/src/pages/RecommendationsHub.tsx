@@ -927,6 +927,13 @@ const RecommendationsHub = () => {
       return;
     }
 
+    // Serialize pin mutations. Each call derives the next pinned_nav_tabs list
+    // from the current pinnedTabIds snapshot, so if a second pin/unpin runs
+    // before the first mutation + refetchAccount() land, it would overwrite the
+    // first change and silently drop a requested pin. Ignore clicks while one is
+    // in flight (updatingKey is set for the duration of the active mutation).
+    if (updatingKey !== null) return;
+
     // Basis = the effective set actually shown in the nav (auto or manual), so the
     // card's pin state and this action can never disagree. Any pin/unpin switches
     // the account to manual mode (auto_pinning: false) — we tell the user when it does.

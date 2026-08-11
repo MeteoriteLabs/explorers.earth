@@ -14,6 +14,8 @@ vi.mock("@apollo/client", () => ({
 vi.mock("../../store/store", () => ({ default: vi.fn() }));
 // EarthLoader pulls in heavy animation deps; stub it to a simple marker.
 vi.mock("../EarthLoader", () => ({ EarthLoader: () => <div>LOADING</div> }));
+// useLogout pulls in Apollo client + i18n + sonner; stub it (the gate only calls it).
+vi.mock("../../hooks/useLogout", () => ({ useLogout: () => vi.fn() }));
 
 const mockStore = (v: unknown) =>
   (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue(v);
@@ -90,12 +92,15 @@ describe("ProtectedRoute onboarding gate", () => {
     expect(screen.getByText("ONBOARDING PAGE")).toBeInTheDocument();
   });
 
-  it("does NOT bounce to /onboarding on a transient error with no data (the regression)", () => {
+  it("does NOT bounce to /onboarding on an error with no data — shows a recoverable state (the regression)", () => {
     mockStore(AUTHED);
     mockQuery({ data: null, loading: false, error: new Error("network blip") });
     renderAt();
+    // Must never redirect to onboarding on an error...
     expect(screen.queryByText("ONBOARDING PAGE")).toBeNull();
-    expect(screen.getByText("LOADING")).toBeInTheDocument();
+    // ...and must not be a perpetual loader either — offer a way out.
+    expect(screen.getByText("Try again")).toBeInTheDocument();
+    expect(screen.getByText("Log out")).toBeInTheDocument();
   });
 
   it("keeps the user on the protected page when an error arrives alongside complete cached data", () => {
