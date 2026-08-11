@@ -944,7 +944,11 @@ const RecommendationsHub = () => {
   // applies the same guest-visible-playlist guard that Settings and the modal use.
   const {
     data: musicPlaylists,
-    isLoading: musicLoading,
+    // isFetching (not isLoading): React Query reports isLoading:false whenever
+    // cached data exists, so a background refetch (e.g. after changing playlist
+    // visibility in MusicDashboard and returning to the hub) would otherwise be
+    // treated as "ready" and validated against the stale cached array.
+    isFetching: musicFetching,
     isError: musicError,
   } = useReactQuery<any[]>({
     queryKey: ["tunes-playlists", user?.username],
@@ -969,7 +973,7 @@ const RecommendationsHub = () => {
   // Returns true (and toasts) if the relevant source isn't ready.
   const contentNotReady = (cat: CategoryConfig): boolean => {
     if (cat.key === "music") {
-      if (musicLoading) {
+      if (musicFetching) {
         toast.info("Checking your Music, please wait…");
         return true;
       }
