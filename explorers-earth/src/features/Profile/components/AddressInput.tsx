@@ -38,6 +38,18 @@ const AddressInput: FC<AddressInputProps> = ({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const placesLibrary = useMapsLibrary("places");
 
+  // Keep the latest callbacks in refs so the Google Autocomplete is created
+  // ONCE (see the effect below). Passing inline `onChange`/`setPlaces` that
+  // change every render used to re-create the Autocomplete on every keystroke,
+  // which tore down its prediction dropdown — so the FIRST place selection was
+  // silently dropped and the user had to select a second time.
+  const onChangeRef = useRef(onChange);
+  const setPlacesRef = useRef(setPlaces);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+    setPlacesRef.current = setPlaces;
+  }, [onChange, setPlaces]);
+
   useEffect(() => {
     if (initalValue !== undefined) {
       setAddress(initalValue);
@@ -113,7 +125,7 @@ const AddressInput: FC<AddressInputProps> = ({
         const place = autocomplete?.getPlace();
         if (!place || !place.geometry) {
           setAddress("");
-          onChange("");
+          onChangeRef.current("");
           return;
         }
 
@@ -144,7 +156,7 @@ const AddressInput: FC<AddressInputProps> = ({
 
         // If setPlaces is provided and we have a place_id, fetch full place details
         // to get primaryType and primaryTypeDisplayName for better categorization
-        if (setPlaces && place.place_id && (type === "title" || type === "listName")) {
+        if (setPlacesRef.current && place.place_id && (type === "title" || type === "listName")) {
           try {
             // Fetch place details using new Google Places API to get primaryType
             const response = await axios.get(
@@ -169,23 +181,23 @@ const AddressInput: FC<AddressInputProps> = ({
 
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-expect-error
-            setPlaces(enhancedPlace);
+            setPlacesRef.current(enhancedPlace);
           } catch (error) {
             console.warn("Error fetching place details for metadata:", error);
             // Fallback to original place if fetch fails
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-expect-error
-            setPlaces(place);
+            setPlacesRef.current(place);
           }
-        } else if (setPlaces) {
+        } else if (setPlacesRef.current) {
           // For other types, just pass the place as-is
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-expect-error
-          setPlaces(place);
+          setPlacesRef.current(place);
         }
 
         // Call onChange with the appropriate value
-        onChange(returnValue);
+        onChangeRef.current(returnValue);
       });
     } catch (error) {
       console.error("Error initializing autocomplete:", error);
@@ -197,7 +209,11 @@ const AddressInput: FC<AddressInputProps> = ({
         google.maps.event.clearInstanceListeners(autocomplete);
       }
     };
-  }, [placesLibrary, onChange, setPlaces, type]);
+    // Create the Autocomplete ONCE (per maps-library load / type). The listener
+    // reads the latest onChange/setPlaces from refs, so we must NOT depend on
+    // those callbacks here — depending on them re-created the widget on every
+    // keystroke and dropped the first selection.
+  }, [placesLibrary, type]);
 
   const populatePlaceData = (
     place: google.maps.GeocoderResult | google.maps.places.PlaceResult,

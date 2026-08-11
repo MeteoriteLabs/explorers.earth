@@ -44,15 +44,6 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
       setPlaces(null);
     }
   }, [isEditing, initialValues?.listName]);
-  useEffect(() => {
-    if (isEditing && initialValues?.listName) {
-      setFetchedListName(initialValues.listName);
-    } else if (!isEditing) {
-      // Reset fetchedListName and places when adding a new location
-      setFetchedListName('');
-      setPlaces(null);
-    }
-  }, [isEditing, initialValues?.listName]);
 
   // Function to extract city name from place data
   const extractCityName = (place: any) => {
