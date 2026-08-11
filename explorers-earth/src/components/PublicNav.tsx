@@ -28,6 +28,11 @@ const PublicNav = memo(() => {
       },
     },
     skip: !username,
+    // Revalidate on mount so "View Public Page" reflects the owner's latest
+    // visibility/pin config. Account isn't normalized in apolloCache, so a hub
+    // edit to pinned_nav_tabs/visibility doesn't patch this separate cache-first
+    // query; without this it would show stale config until a hard reload.
+    fetchPolicy: "cache-and-network",
   });
 
   const accountData = data?.accounts[0];

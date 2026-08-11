@@ -46,22 +46,29 @@ const ProtectedRoute = () => {
     );
   }
 
-  // If the check failed WITHOUT returning any account data, do NOT assume "not
-  // onboarded" (a transient error must never bounce a real, already-onboarded
-  // account back to /onboarding). But don't render a perpetual loader either —
-  // the Apollo client has no retry link, so a persistent error would lock the
-  // user out of every route. Show a recoverable state: retry or log out.
-  if (error && !data) {
+  // Onboarding is complete only when the account positively has all mandatory
+  // fields. Compute it first so the error guard can distinguish "verified
+  // complete" from "unknown / partial".
+  const account = data?.usersPermissionsUser?.accounts?.[0];
+  const isAccountComplete = !!(
+    account &&
+    account.Account_Name &&
+    account.Account_Type &&
+    account.mobile_number
+  );
+
+  // On any query error, only trust the response if it POSITIVELY establishes a
+  // complete account. With errorPolicy:"all", a field-level failure can return a
+  // truthy-but-partial object (e.g. { usersPermissionsUser: null }, or an account
+  // missing mobile_number) alongside the error — which must NOT be read as "not
+  // onboarded" and bounce an already-onboarded user to /onboarding. Show the
+  // recoverable state (retry / log out) instead; there's no perpetual loader, so a
+  // persistent error can't lock the user out.
+  if (error && !isAccountComplete) {
     return <OnboardingCheckError onRetry={() => { refetch(); }} onLogout={() => { logout(); }} />;
   }
 
-  // Check if mandatory fields are missing
-  const account = data?.usersPermissionsUser?.accounts?.[0];
-  const isOnboardingRequired =
-    !account ||
-    !account.Account_Name ||
-    !account.Account_Type ||
-    !account.mobile_number;
+  const isOnboardingRequired = !isAccountComplete;
 
   const allowedDuringOnboarding = [
     "/onboarding",

@@ -34,6 +34,9 @@ const TabVisibilityGuard = memo(({ tabField, defaultVisible = false, children }:
             },
         },
         skip: !username,
+        // Revalidate on mount so a category the owner just made public/hidden in
+        // the hub isn't gated on stale cache-first data (Account isn't normalized).
+        fetchPolicy: "cache-and-network",
     });
 
     // Show loader while checking visibility

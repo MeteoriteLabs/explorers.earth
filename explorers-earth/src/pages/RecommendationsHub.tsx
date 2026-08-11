@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation, type ApolloCache } from "@apollo/client";
 import {
   MapPin, Music, Film, BookOpen, Gamepad2,
   ChevronRight, Smartphone, ShoppingBag, Users,
@@ -879,12 +879,18 @@ const RecommendationsHub = () => {
 
   // Published-list counts per category — drives both the nav auto-ranking and the
   // "has publishable content" guard. Same query PublicNav uses, so counts match.
-  const { data: listCountsData } = useQuery(getPublicCategoryListCountsQuery, {
+  const {
+    data: listCountsData,
+    loading: countsLoading,
+    error: countsError,
+  } = useQuery(getPublicCategoryListCountsQuery, {
     variables: { accountDocumentId },
     skip: !accountDocumentId,
     // Default cache-first serves a stale (possibly empty) count after the user
     // creates a list elsewhere and returns to the hub, wrongly blocking
-    // enable/pin via hasPublishedContent. Revalidate from network on mount.
+    // enable/pin via hasPublishedContent. Revalidate from network on mount, and
+    // guard the content check on countsLoading/countsError (see countsNotReady)
+    // so we never validate against stale/undefined counts mid-revalidation.
     fetchPolicy: "cache-and-network",
   });
 
@@ -904,6 +910,30 @@ const RecommendationsHub = () => {
   const [updateAccount] = useMutation(updateAccountMutation);
   // Track which single category is mid-mutation so only that card shows a spinner
   const [updatingKey, setUpdatingKey] = useState<CategoryKey | null>(null);
+  // Synchronous re-entrancy lock. pin/unpin/visibility all write the same account,
+  // and updatingKey is React state that doesn't flip until a re-render — so rapid
+  // clicks can enter two handlers before it updates. This ref flips synchronously
+  // before the first await and is released after the refetch settles.
+  const accountMutationLock = useRef(false);
+
+  // Account isn't normalized in apolloCache (its onboarding query omits documentId),
+  // so a successful updateAccount only reaches the hub via refetchAccount(). If that
+  // refetch fails, pinnedTabIds stays on the pre-mutation snapshot and a later pin
+  // overwrites the change. Patch the account query cache from the mutation result so
+  // the successful write is authoritative regardless of the refetch outcome.
+  const reconcileAccountCache = (
+    cache: ApolloCache<unknown>,
+    updated: Record<string, unknown> | null | undefined
+  ) => {
+    if (!updated) return;
+    cache.updateQuery<{ accounts: Record<string, unknown>[] }>(
+      { query: accountQuery, variables: { filters: { username: { eq: user?.username } } } },
+      (existing) =>
+        existing?.accounts?.length
+          ? { accounts: [{ ...existing.accounts[0], ...updated }, ...existing.accounts.slice(1)] }
+          : existing ?? undefined
+    );
+  };
 
   // Effective public-nav state, derived exactly like PublicNav (the live nav).
   const visibleSet = useMemo(() => getVisibleNavTabIds(account), [account]);
@@ -927,6 +957,22 @@ const RecommendationsHub = () => {
     return (countMap[cat.tabId] ?? 0) > 0;
   };
 
+  // hasPublishedContent reads countMap, but cache-and-network exposes stale/empty
+  // counts while the refresh is in flight (and cached-positive counts if the
+  // refresh failed). Mirror Settings.tsx: don't run the content check until the
+  // counts query has settled without error. Returns true (and toasts) if not ready.
+  const countsNotReady = (): boolean => {
+    if (countsLoading) {
+      toast.info("Checking your published lists, please wait…");
+      return true;
+    }
+    if (countsError) {
+      toast.error("Couldn't verify your published lists. Please try again.");
+      return true;
+    }
+    return false;
+  };
+
   // Handle Toggle Pin
   const handleTogglePin = async (cat: CategoryConfig) => {
     if (!accountDocumentId) {
@@ -934,12 +980,12 @@ const RecommendationsHub = () => {
       return;
     }
 
-    // Serialize pin mutations. Each call derives the next pinned_nav_tabs list
-    // from the current pinnedTabIds snapshot, so if a second pin/unpin runs
-    // before the first mutation + refetchAccount() land, it would overwrite the
-    // first change and silently drop a requested pin. Ignore clicks while one is
-    // in flight (updatingKey is set for the duration of the active mutation).
-    if (updatingKey !== null) return;
+    // Serialize account mutations. pinned_nav_tabs is derived from the current
+    // pinnedTabIds snapshot, so a second pin/unpin that runs before the first
+    // mutation + refetch land would overwrite it. updatingKey is React state and
+    // lags a render, so a rapid double-click can pass it twice; a ref-backed lock
+    // flips synchronously (before the first await) and is released after refetch.
+    if (accountMutationLock.current) return;
 
     // Basis = the effective set actually shown in the nav (auto or manual), so the
     // card's pin state and this action can never disagree. Any pin/unpin switches
@@ -950,6 +996,7 @@ const RecommendationsHub = () => {
     if (isCurrentlyPinned) {
       // Unpin
       const updatedPinned = pinnedTabIds.filter(id => id !== cat.tabId);
+      accountMutationLock.current = true;
       setUpdatingKey(cat.key);
       try {
         await updateAccount({
@@ -960,6 +1007,7 @@ const RecommendationsHub = () => {
               auto_pinning: false,
             },
           },
+          update: (cache, res) => reconcileAccountCache(cache, res.data?.updateAccount),
         });
         toast.success(wasAuto
           ? `Unpinned ${cat.label}. Nav switched to manual mode.`
@@ -969,6 +1017,7 @@ const RecommendationsHub = () => {
         toast.error(`Failed to unpin ${cat.label}: ${err.message || ""}`);
       } finally {
         setUpdatingKey(null);
+        accountMutationLock.current = false;
       }
     } else {
       // Pin: enforce the 5-slot cap (profile counts as slot 1)
@@ -977,13 +1026,20 @@ const RecommendationsHub = () => {
         return;
       }
 
-      // Pinning forces the category public — require content if it isn't already visible
-      if (!visibleSet.has(cat.tabId) && !hasPublishedContent(cat)) {
-        toast.error(`Create and publish at least 1 list in ${cat.label} before pinning it to your public profile.`);
-        return;
+      // Pinning forces the category public — require content if it isn't already
+      // visible. Guard on the counts query first (cache-and-network can expose
+      // stale counts mid-revalidation) so we never wrongly reject a category that
+      // actually has content.
+      if (!visibleSet.has(cat.tabId)) {
+        if (countsNotReady()) return;
+        if (!hasPublishedContent(cat)) {
+          toast.error(`Create and publish at least 1 list in ${cat.label} before pinning it to your public profile.`);
+          return;
+        }
       }
 
       const updatedPinned = [...pinnedTabIds, cat.tabId];
+      accountMutationLock.current = true;
       setUpdatingKey(cat.key);
       try {
         await updateAccount({
@@ -995,6 +1051,7 @@ const RecommendationsHub = () => {
               [cat.visibilityField]: "Yes",
             },
           },
+          update: (cache, res) => reconcileAccountCache(cache, res.data?.updateAccount),
         });
         toast.success(wasAuto
           ? `Pinned ${cat.label}. Nav switched to manual mode.`
@@ -1004,6 +1061,7 @@ const RecommendationsHub = () => {
         toast.error(`Failed to pin ${cat.label}: ${err.message || ""}`);
       } finally {
         setUpdatingKey(null);
+        accountMutationLock.current = false;
       }
     }
   };
@@ -1015,16 +1073,17 @@ const RecommendationsHub = () => {
       return;
     }
 
-    // Serialize with the other account mutations (shares updatingKey with
-    // pin/unpin): don't start while one is in flight, so no handler derives its
-    // update from a stale account snapshot.
-    if (updatingKey !== null) return;
+    // Serialize with the other account mutations (shares the account write): the
+    // ref-backed lock flips synchronously, so a rapid click can't enter while one
+    // is in flight and derive its update from a stale account snapshot.
+    if (accountMutationLock.current) return;
 
     const currentlyPublic = visibleSet.has(cat.tabId);
 
     if (currentlyPublic) {
       // Turn off the public URL. A hidden tab drops out of the nav automatically
       // (computePinnedNavTabIds filters by visibility), so pins are left untouched.
+      accountMutationLock.current = true;
       setUpdatingKey(cat.key);
       try {
         await updateAccount({
@@ -1034,6 +1093,7 @@ const RecommendationsHub = () => {
               [cat.visibilityField]: "No",
             },
           },
+          update: (cache, res) => reconcileAccountCache(cache, res.data?.updateAccount),
         });
         toast.success(`${cat.label} public URL is now disabled.`);
         await refetchAccount();
@@ -1041,14 +1101,17 @@ const RecommendationsHub = () => {
         toast.error(`Failed to update ${cat.label} visibility: ${err.message || ""}`);
       } finally {
         setUpdatingKey(null);
+        accountMutationLock.current = false;
       }
     } else {
       // Turn On Visibility
+      if (countsNotReady()) return;
       if (!hasPublishedContent(cat)) {
         toast.error(`Create and publish at least 1 list in ${cat.label} before enabling public visibility.`);
         return;
       }
 
+      accountMutationLock.current = true;
       setUpdatingKey(cat.key);
       try {
         await updateAccount({
@@ -1058,6 +1121,7 @@ const RecommendationsHub = () => {
               [cat.visibilityField]: "Yes",
             },
           },
+          update: (cache, res) => reconcileAccountCache(cache, res.data?.updateAccount),
         });
         toast.success(`${cat.label} public URL is now enabled!`);
         await refetchAccount();
@@ -1065,6 +1129,7 @@ const RecommendationsHub = () => {
         toast.error(`Failed to enable ${cat.label} visibility: ${err.message || ""}`);
       } finally {
         setUpdatingKey(null);
+        accountMutationLock.current = false;
       }
     }
   };

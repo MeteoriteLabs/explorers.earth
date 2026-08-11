@@ -103,6 +103,28 @@ describe("ProtectedRoute onboarding gate", () => {
     expect(screen.getByText("Log out")).toBeInTheDocument();
   });
 
+  it("does NOT bounce to /onboarding on an error with truthy-but-partial data (null user)", () => {
+    // errorPolicy:"all" can return { usersPermissionsUser: null } alongside an error.
+    // That must NOT be read as "not onboarded".
+    mockStore(AUTHED);
+    mockQuery({ data: { usersPermissionsUser: null }, loading: false, error: new Error("field error") });
+    renderAt();
+    expect(screen.queryByText("ONBOARDING PAGE")).toBeNull();
+    expect(screen.getByText("Try again")).toBeInTheDocument();
+  });
+
+  it("does NOT bounce to /onboarding on an error with an incomplete account (field may have errored)", () => {
+    mockStore(AUTHED);
+    mockQuery({
+      data: account({ Account_Name: "Bhavya", Account_Type: "Personal", mobile_number: "" }),
+      loading: false,
+      error: new Error("partial"),
+    });
+    renderAt();
+    expect(screen.queryByText("ONBOARDING PAGE")).toBeNull();
+    expect(screen.getByText("Try again")).toBeInTheDocument();
+  });
+
   it("keeps the user on the protected page when an error arrives alongside complete cached data", () => {
     mockStore(AUTHED);
     mockQuery({ data: COMPLETE, loading: false, error: new Error("partial") });
