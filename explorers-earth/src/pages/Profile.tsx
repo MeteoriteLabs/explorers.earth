@@ -1885,10 +1885,11 @@ const Profile = memo(() => {
                   <button
                     key={tab.key}
                     onClick={() => handleTabChange(tab.key)}
-                    className={`px-4 py-2 text-xs font-medium transition-all duration-300 whitespace-nowrap ${currentActiveTab === tab.key
-                      ? "bg-gradient-to-r bg-dashboard-accent rounded-2xl text-dashboard"
-                      : "bg-white rounded-2xl text-black"
+                    className={`px-4 py-2 text-xs font-medium transition-all duration-300 whitespace-nowrap rounded-2xl ${currentActiveTab === tab.key
+                      ? ""
+                      : "bg-white text-black"
                       }`}
+                    style={currentActiveTab === tab.key ? { backgroundColor: 'var(--dash-accent)', color: '#ffffff' } : {}}
                   >
                     {tab.label}
                   </button>

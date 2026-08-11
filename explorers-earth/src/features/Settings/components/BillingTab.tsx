@@ -324,7 +324,7 @@ const BillingTab = () => {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                 </div>
-                                <span className="text-xs text-gray-500 uppercase tracking-wider">Plan Validity</span>
+                                <span className="text-xs text-dashboard-muted uppercase tracking-wider">Plan Validity</span>
                             </div>
                             <div className="flex items-center gap-4">
                                 <div className="relative w-16 h-16">
@@ -338,7 +338,7 @@ const BillingTab = () => {
                                     <div className={`text-2xl font-bold ${planExpiryInfo.isExpiringSoon ? 'text-orange-400' : 'text-dashboard'}`}>
                                         {planExpiryInfo.diffMonths && planExpiryInfo.diffMonths > 0 ? `${planExpiryInfo.diffMonths}mo` : `${planExpiryInfo.diffDays ?? 0}d`}
                                     </div>
-                                    <div className="text-xs text-gray-400">{planExpiryInfo.endDate?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                                    <div className="text-xs text-dashboard-muted">{planExpiryInfo.endDate?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
                                 </div>
                             </div>
                         </div>
@@ -350,7 +350,7 @@ const BillingTab = () => {
                                         <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
                                     </svg>
                                 </div>
-                                <span className="text-xs text-gray-500 uppercase tracking-wider">Songs</span>
+                                <span className="text-xs text-dashboard-muted uppercase tracking-wider">Songs</span>
                             </div>
                             <div className="flex items-center gap-4">
                                 <div className="relative w-16 h-16">
@@ -361,8 +361,8 @@ const BillingTab = () => {
                                     <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-dashboard">{songsQuota > 0 ? Math.round((songRequestsCount / songsQuota) * 100) : 0}%</span>
                                 </div>
                                 <div>
-                                    <div className={`text-2xl font-bold ${songRequestsCount >= songsQuota && songsQuota > 0 ? 'text-red-400' : 'text-dashboard'}`}>{songRequestsCount}<span className="text-sm text-gray-400">/{songsQuota}</span></div>
-                                    <div className="text-xs text-gray-400">requests used</div>
+                                    <div className={`text-2xl font-bold ${songRequestsCount >= songsQuota && songsQuota > 0 ? 'text-red-400' : 'text-dashboard'}`}>{songRequestsCount}<span className="text-sm text-dashboard-muted">/{songsQuota}</span></div>
+                                    <div className="text-xs text-dashboard-muted">requests used</div>
                                 </div>
                             </div>
                         </div>
@@ -375,7 +375,7 @@ const BillingTab = () => {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                                         </svg>
                                     </div>
-                                    <span className="text-xs text-gray-500 uppercase tracking-wider">AI Guides</span>
+                                    <span className="text-xs text-dashboard-muted uppercase tracking-wider">AI Guides</span>
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <div className="relative w-16 h-16">
@@ -386,8 +386,8 @@ const BillingTab = () => {
                                         <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-dashboard">{aiGuideQuota > 0 ? Math.round((guideRequestsCount / aiGuideQuota) * 100) : 0}%</span>
                                     </div>
                                     <div>
-                                        <div className={`text-2xl font-bold ${guideRequestsCount >= aiGuideQuota && aiGuideQuota > 0 ? 'text-red-400' : 'text-dashboard'}`}>{guideRequestsCount}<span className="text-sm text-gray-400">/{aiGuideQuota}</span></div>
-                                        <div className="text-xs text-gray-400">guides generated</div>
+                                        <div className={`text-2xl font-bold ${guideRequestsCount >= aiGuideQuota && aiGuideQuota > 0 ? 'text-red-400' : 'text-dashboard'}`}>{guideRequestsCount}<span className="text-sm text-dashboard-muted">/{aiGuideQuota}</span></div>
+                                        <div className="text-xs text-dashboard-muted">guides generated</div>
                                     </div>
                                 </div>
                             </div>
@@ -446,19 +446,19 @@ const BillingTab = () => {
                                 <div className="flex-1">
                                     <div className="flex items-center gap-3 mb-1">
                                         <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-dashboard">{planDetails.plan_name}</h3>
-                                        <p className="text-xs text-gray-400 uppercase tracking-wider">{planDetails.duration}</p>
+                                        <p className="text-xs text-dashboard-muted uppercase tracking-wider">{planDetails.duration}</p>
                                     </div>
                                     <div className="flex items-baseline gap-2">
                                         <span className="text-2xl sm:text-3xl lg:text-4xl font-bold text-dashboard">₹{formatCost(planDetails.cost)}</span>
-                                        {planDetails.plan_name.toLowerCase() !== 'free' && <span className="text-gray-400 text-sm sm:text-base lg:text-lg">/{planDetails.duration === 'monthly' ? 'mo' : 'yr'}</span>}
+                                        {planDetails.plan_name.toLowerCase() !== 'free' && <span className="text-dashboard-muted text-sm sm:text-base lg:text-lg">/{planDetails.duration === 'monthly' ? 'mo' : 'yr'}</span>}
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div className="mb-4 p-3 bg-dashboard-bg/50 rounded-lg">
                             <div className="grid grid-cols-2 gap-3 text-sm">
-                                <div><span className="text-gray-400">Start Date:</span><p className="text-dashboard font-medium">{new Date(activeSubscription.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p></div>
-                                <div><span className="text-gray-400">End Date:</span><p className="text-dashboard font-medium">{new Date(activeSubscription.end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p></div>
+                                <div><span className="text-dashboard-muted">Start Date:</span><p className="text-dashboard font-medium">{new Date(activeSubscription.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p></div>
+                                <div><span className="text-dashboard-muted">End Date:</span><p className="text-dashboard font-medium">{new Date(activeSubscription.end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p></div>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-2 mb-4">
@@ -481,12 +481,12 @@ const BillingTab = () => {
                     </div>
                     {parseFeatures(planDetails.features).length > 0 && (
                         <div className="flex-1">
-                            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Features</h4>
+                            <h4 className="text-xs font-semibold text-dashboard-muted uppercase tracking-wider mb-2">Features</h4>
                             <div className="space-y-1.5">
                                 {parseFeatures(planDetails.features).map((feature, idx) => (
                                     <div key={idx} className="flex items-start gap-2">
                                         <div className="flex-shrink-0 w-4 h-4 mt-0.5 bg-dashboard-accent/20 rounded flex items-center justify-center"><Check className="w-2.5 h-2.5 text-dashboard-accent" /></div>
-                                        <span className="text-gray-300 text-xs leading-relaxed">{typeof feature === 'object' ? feature.feature : feature}</span>
+                                        <span className="text-dashboard-muted text-xs leading-relaxed">{typeof feature === 'object' ? feature.feature : feature}</span>
                                     </div>
                                 ))}
                             </div>
@@ -616,20 +616,20 @@ const BillingTab = () => {
                     <div className="dashboard-theme flex flex-col gap-4 sm:gap-6 w-full max-h-[85vh] overflow-y-auto py-4 sm:py-6 px-4 sm:px-6 md:px-8">
                         <div className="flex items-center justify-between mb-3 sm:mb-4 relative">
                             <div className="flex items-center gap-3 sm:gap-4 flex-1">
-                                <div className={`p-2 sm:p-3 rounded-xl ${selectedPlanDetails.plan_name.toLowerCase() === 'free' ? 'bg-gray-700/50 text-gray-300' : 'bg-dashboard-accent/20 text-dashboard-accent'}`}>{getPlanIcon(selectedPlanDetails.plan_name)}</div>
+                                <div className={`p-2 sm:p-3 rounded-xl ${selectedPlanDetails.plan_name.toLowerCase() === 'free' ? 'bg-gray-700/50 text-dashboard-muted' : 'bg-dashboard-accent/20 text-dashboard-accent'}`}>{getPlanIcon(selectedPlanDetails.plan_name)}</div>
                                 <div>
                                     <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-dashboard">{selectedPlanDetails.plan_name} Plan</h2>
-                                    <p className="text-xs sm:text-sm text-gray-400 uppercase tracking-wider">{selectedPlanDetails.duration}</p>
+                                    <p className="text-xs sm:text-sm text-dashboard-muted uppercase tracking-wider">{selectedPlanDetails.duration}</p>
                                 </div>
                             </div>
-                            <button onClick={() => { setShowPlanDetailsModal(false); setSelectedPlanDetails(null); }} className="absolute top-0 right-0 text-gray-400 hover:text-dashboard transition-colors flex-shrink-0 z-10 p-1"><X className="w-5 h-5 sm:w-6 sm:h-6" /></button>
+                            <button onClick={() => { setShowPlanDetailsModal(false); setSelectedPlanDetails(null); }} className="absolute top-0 right-0 text-dashboard-muted hover:text-dashboard transition-colors flex-shrink-0 z-10 p-1"><X className="w-5 h-5 sm:w-6 sm:h-6" /></button>
                         </div>
                         <div className="bg-dashboard-bg rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
                             <div className="flex items-baseline gap-2 mb-2">
                                 <span className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-dashboard">₹{formatCost(selectedPlanDetails.cost)}</span>
-                                {selectedPlanDetails.plan_name.toLowerCase() !== 'free' && <span className="text-gray-400 text-sm sm:text-base md:text-lg">/{selectedPlanDetails.duration === 'monthly' ? 'mo' : 'yr'}</span>}
+                                {selectedPlanDetails.plan_name.toLowerCase() !== 'free' && <span className="text-dashboard-muted text-sm sm:text-base md:text-lg">/{selectedPlanDetails.duration === 'monthly' ? 'mo' : 'yr'}</span>}
                             </div>
-                            {selectedPlanDetails.duration === 'yearly' && <p className="text-xs sm:text-sm text-gray-400">₹{formatCost((parseInt(selectedPlanDetails.cost) / 12).toFixed(0))} per month</p>}
+                            {selectedPlanDetails.duration === 'yearly' && <p className="text-xs sm:text-sm text-dashboard-muted">₹{formatCost((parseInt(selectedPlanDetails.cost) / 12).toFixed(0))} per month</p>}
                         </div>
                         <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
                             <h3 className="text-lg sm:text-xl font-semibold text-dashboard mb-3 sm:mb-4">Key Features</h3>
@@ -662,7 +662,7 @@ const BillingTab = () => {
                                         {parseFeatures(selectedPlanDetails.features).map((feature, idx) => (
                                             <div key={idx} className="flex items-start gap-2 sm:gap-3">
                                                 <div className="flex-shrink-0 w-4 h-4 sm:w-5 sm:h-5 mt-0.5 bg-dashboard-accent/20 rounded flex items-center justify-center"><Check className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-dashboard-accent" /></div>
-                                                <span className="text-gray-300 text-xs sm:text-sm leading-relaxed">{typeof feature === 'object' ? feature.feature : feature}</span>
+                                                <span className="text-dashboard-muted text-xs sm:text-sm leading-relaxed">{typeof feature === 'object' ? feature.feature : feature}</span>
                                             </div>
                                         ))}
                                     </div>

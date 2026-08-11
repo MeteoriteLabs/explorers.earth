@@ -12,6 +12,7 @@ import SEO from "../../../components/SEO";
 import { createCanonicalUrl } from "../../../utils/getCurrentDomain";
 import { createWebPageGEOData } from "../../../utils/geoHelpers";
 import { toUrlSlug } from "../../../utils/formatAddress";
+import { isDisplayableNumber, toDisplayNumber } from "../../../utils/rating";
 import Button from "../../../components/ui/Button";
 import SwitchButton from "../../../components/ui/SwitchButton";
 import { toast } from "sonner";
@@ -636,10 +637,12 @@ const PublicGuides = memo(() => {
                           let placeDetails: any = {};
                           if (guide.Place_Details) {
                             if (typeof guide.Place_Details === "string") {
-                              try { placeDetails = JSON.parse(guide.Place_Details); } catch { /* malformed JSON — fall back to defaults */ }
-                            } else { placeDetails = guide.Place_Details; }
+                              try { const parsed = JSON.parse(guide.Place_Details); if (parsed && typeof parsed === "object") placeDetails = parsed; } catch { /* malformed JSON — fall back to defaults */ }
+                            } else if (typeof guide.Place_Details === "object") { placeDetails = guide.Place_Details; }
                           }
-                          const rating = placeDetails.Rating || 5.0;
+                          const rating = isDisplayableNumber(placeDetails?.Rating)
+                            ? toDisplayNumber(placeDetails?.Rating)
+                            : 5.0;
 
                           return (
                             <motion.div
@@ -749,10 +752,12 @@ const PublicGuides = memo(() => {
                       let placeDetails: any = {};
                       if (guide.Place_Details) {
                         if (typeof guide.Place_Details === "string") {
-                          try { placeDetails = JSON.parse(guide.Place_Details); } catch { /* malformed JSON — fall back to defaults */ }
-                        } else { placeDetails = guide.Place_Details; }
+                          try { const parsed = JSON.parse(guide.Place_Details); if (parsed && typeof parsed === "object") placeDetails = parsed; } catch { /* malformed JSON — fall back to defaults */ }
+                        } else if (typeof guide.Place_Details === "object") { placeDetails = guide.Place_Details; }
                       }
-                      const rating = placeDetails.Rating || 5.0;
+                      const rating = isDisplayableNumber(placeDetails?.Rating)
+                        ? toDisplayNumber(placeDetails?.Rating)
+                        : 5.0;
 
                       return (
                         <motion.div

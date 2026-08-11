@@ -20,6 +20,8 @@ const navItems = [
   {
     id: "recommendations",
     icon: Heart,
+    // Recommendations hub spans ALL categories, not just Places — labeled
+    // "Recommendations", routed straight to /recommendations (the hub).
     text: "Recommendations",
     path: "/recommendations",
   },
@@ -68,7 +70,7 @@ const Navbar = () => {
       >
         <path
           d="M10.5 22V14.5H15.5V22H21.75V12H25.5L13 0.75L0.5 12H4.25V22H10.5Z"
-          fill={isActive ? "var(--dash-accent)" : "#F2F2F2"}
+          fill={isActive ? "var(--dash-accent)" : "var(--dash-text-muted)"}
         />
       </svg>
     );
@@ -89,27 +91,27 @@ const Navbar = () => {
           } else if (item.id === "recommendations") {
             iconElement = (
               <Heart
-                fill={isActive ? "var(--dash-accent)" : "#F2F2F2"}
+                fill={isActive ? "var(--dash-accent)" : "var(--dash-text-muted)"}
               />
             );
           } else if (item.id === "analytics") {
             iconElement = (
-              <Analytics fill={isActive ? "var(--dash-accent)" : "#F2F2F2"} />
+              <Analytics fill={isActive ? "var(--dash-accent)" : "var(--dash-text-muted)"} />
             );
           } else if (item.id === "guides") {
             iconElement = (
               <TravelGuideIcon
-                fill={isActive ? "var(--dash-accent)" : "#F2F2F2"}
+                fill={isActive ? "var(--dash-accent)" : "var(--dash-text-muted)"}
               />
             );
           } else if (item.id === "profile") {
             iconElement = (
-              <Profile fill={isActive ? "var(--dash-accent)" : "#F2F2F2"} />
+              <Profile fill={isActive ? "var(--dash-accent)" : "var(--dash-text-muted)"} />
             );
           } else if (item.id === "settings") {
-            iconElement = <SettingsIcon fill={isActive ? "var(--dash-accent)" : "#F2F2F2"} />;
+            iconElement = <SettingsIcon fill={isActive ? "var(--dash-accent)" : "var(--dash-text-muted)"} />;
           } else if (item.id === "music") {
-            iconElement = <MusicNote fill={isActive ? "var(--dash-accent)" : "#F2F2F2"} />;
+            iconElement = <MusicNote fill={isActive ? "var(--dash-accent)" : "var(--dash-text-muted)"} />;
           }
 
           const handleClick = () => {

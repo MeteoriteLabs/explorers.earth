@@ -2492,6 +2492,201 @@ html:not(.dashboard-theme-dark) .dashboard-header {
 }
 .dashboard-theme .category-empty-state svg *[stroke="white"],
 .dashboard-theme .category-empty-state svg *[stroke="#F2F2F2"],
+.dashboard-theme .text-white\/10 {
+  color: color-mix(in srgb, var(--dash-text) 10%, transparent) !important;
+}
+.dashboard-theme .placeholder-white\/30::placeholder {
+  color: color-mix(in srgb, var(--dash-text) 30%, transparent) !important;
+}
+
+/* Keep text white inside elements with explicit dark background colors */
+.dashboard-theme .bg-dashboard-danger,
+.dashboard-theme .bg-dashboard-danger *,
+.dashboard-theme .bg-blue-cta,
+.dashboard-theme .bg-blue-cta *,
+.dashboard-theme .bg-blue-final,
+.dashboard-theme .bg-blue-final *,
+.dashboard-theme [class*="bg-black"],
+.dashboard-theme [class*="bg-black"] *,
+.dashboard-theme [class*="bg-[#121824]"],
+.dashboard-theme [class*="bg-[#121824]"] *,
+.dashboard-theme [class*="bg-[#1a2332]"],
+.dashboard-theme [class*="bg-[#1a2332]"] * {
+  color: #ffffff !important;
+}
+
+/* Ensure text inside elements with the dashboard accent background preserves the dynamic accent text color token */
+.dashboard-theme .bg-dashboard-accent,
+.dashboard-theme .bg-dashboard-accent *,
+.dashboard-theme .bg-\[hsl\(var\(--dash-accent\)\)\],
+.dashboard-theme .bg-\[hsl\(var\(--dash-accent\)\)\] * {
+  color: var(--dash-accent-text) !important;
+}
+
+.dashboard-theme [class*="bg-black"] .text-white\/90,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/90,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/90 {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/80,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/80,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/80 {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/70,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/70,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/70 {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/60,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/60,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/60 {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/55,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/55,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/55 {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/50,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/50,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/50 {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/45,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/45,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/45 {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/40,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/40,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/40 {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/30,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/30,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/30 {
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/20,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/20,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/20 {
+  color: rgba(255, 255, 255, 0.2) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/10,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/10,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/10 {
+  color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Keep text white inside buttons or links styled with text-white */
+.dashboard-theme button.text-white,
+.dashboard-theme button.text-white *,
+.dashboard-theme button .text-white,
+.dashboard-theme a.text-white,
+.dashboard-theme a.text-white *,
+.dashboard-theme button[type="submit"],
+.dashboard-theme button[type="submit"] * {
+  color: #ffffff !important;
+}
+
+/* Resolve unstyled custom border class */
+.dashboard-theme .border-dashboard-border,
+.dashboard-theme.border-dashboard-border,
+.bg-dashboard-sidebar.border-dashboard-border,
+.bg-dashboard-sidebar .border-dashboard-border,
+.bg-dashboard-card.border-dashboard-border,
+.bg-dashboard-card .border-dashboard-border,
+.bg-dashboard-muted.border-dashboard-border,
+.bg-dashboard-muted .border-dashboard-border {
+  border-color: var(--dash-border) !important;
+}
+
+.bg-dashboard-sidebar .text-white,
+.bg-dashboard-card .text-white,
+.bg-dashboard-muted .text-white {
+  color: var(--dash-text) !important;
+}
+.bg-dashboard-sidebar .text-white\/90,
+.bg-dashboard-card .text-white\/90,
+.bg-dashboard-muted .text-white\/90 {
+  color: color-mix(in srgb, var(--dash-text) 90%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/80,
+.bg-dashboard-card .text-white\/80,
+.bg-dashboard-muted .text-white\/80 {
+  color: color-mix(in srgb, var(--dash-text) 80%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/70,
+.bg-dashboard-card .text-white\/70,
+.bg-dashboard-muted .text-white\/70 {
+  color: color-mix(in srgb, var(--dash-text) 70%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/60,
+.bg-dashboard-card .text-white\/60,
+.bg-dashboard-muted .text-white\/60 {
+  color: color-mix(in srgb, var(--dash-text) 60%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/55,
+.bg-dashboard-card .text-white\/55,
+.bg-dashboard-muted .text-white\/55 {
+  color: color-mix(in srgb, var(--dash-text) 55%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/50,
+.bg-dashboard-card .text-white\/50,
+.bg-dashboard-muted .text-white\/50 {
+  color: color-mix(in srgb, var(--dash-text) 50%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/45,
+.bg-dashboard-card .text-white\/45,
+.bg-dashboard-muted .text-white\/45 {
+  color: color-mix(in srgb, var(--dash-text) 45%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/40,
+.bg-dashboard-card .text-white\/40,
+.bg-dashboard-muted .text-white\/40 {
+  color: color-mix(in srgb, var(--dash-text) 40%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/30,
+.bg-dashboard-card .text-white\/30,
+.bg-dashboard-muted .text-white\/30 {
+  color: color-mix(in srgb, var(--dash-text) 30%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/20,
+.bg-dashboard-card .text-white\/20,
+.bg-dashboard-muted .text-white\/20 {
+  color: color-mix(in srgb, var(--dash-text) 20%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/10,
+.bg-dashboard-card .text-white\/10,
+.bg-dashboard-muted .text-white\/10 {
+  color: color-mix(in srgb, var(--dash-text) 10%, transparent) !important;
+}
+
+/* Keep text white inside buttons or links styled with text-white in modal wrappers */
+.bg-dashboard-sidebar button.text-white,
+.bg-dashboard-sidebar button.text-white *,
+.bg-dashboard-sidebar button[type="submit"],
+.bg-dashboard-sidebar button[type="submit"] *,
+.bg-dashboard-card button.text-white,
+.bg-dashboard-card button.text-white *,
+.bg-dashboard-card button[type="submit"],
+.bg-dashboard-card button[type="submit"] *,
+.bg-dashboard-muted button.text-white,
+.bg-dashboard-muted button.text-white *,
+.bg-dashboard-muted button[type="submit"],
+.bg-dashboard-muted button[type="submit"] * {
+  color: #ffffff !important;
+}
+
+/* Category Empty State Illustrations color inversion for light theme white strokes/fills */
+.dashboard-theme .category-empty-state svg *[fill="white"],
+.dashboard-theme .category-empty-state svg *[fill="#F2F2F2"],
+.dashboard-theme .category-empty-state svg *[fill="#ffffff"] {
+  fill: var(--dash-text) !important;
+}
+.dashboard-theme .category-empty-state svg *[stroke="white"],
+.dashboard-theme .category-empty-state svg *[stroke="#F2F2F2"],
 .dashboard-theme .category-empty-state svg *[stroke="#ffffff"] {
   stroke: var(--dash-text) !important;
 }
@@ -2499,5 +2694,37 @@ html:not(.dashboard-theme-dark) .dashboard-header {
   fill: var(--dash-text) !important;
 }
 
+/* Ensure outlined buttons (Delete, Edit) in dashboard tab panels are visible and responsive */
+.dashboard-theme button.border-white.text-white {
+  border-color: var(--dash-border) !important;
+  color: var(--dash-text) !important;
+}
 
+.dashboard-theme button.border-white.text-white:hover {
+  border-color: var(--dash-accent) !important;
+  color: var(--dash-accent) !important;
+}
 
+/* Override to make sure outlined buttons inside Accordions on list views are responsive */
+.dashboard-theme .bg-dashboard-sidebar button.border-white.text-white,
+.dashboard-theme .bg-dashboard-sidebar button.border-white.text-white * {
+  border-color: var(--dash-border) !important;
+  color: var(--dash-text) !important;
+}
+
+.dashboard-theme .bg-dashboard-sidebar button.border-white.text-white:hover,
+.dashboard-theme .bg-dashboard-sidebar button.border-white.text-white:hover * {
+  border-color: var(--dash-accent) !important;
+  color: var(--dash-accent) !important;
+}
+
+/* Ensure bottom share buttons and text in list view My QR section are responsive and visible */
+.dashboard-theme .bg-dashboard-sidebar .border-t.border-white\/5,
+.dashboard-theme .bg-dashboard-sidebar .border-t.border-white\/5 *:not(.text-green-400) {
+  color: var(--dash-text) !important;
+}
+
+/* Ensure the QR code tagline pill text remains visible and black on its light background */
+.dashboard-theme [class*="bg-black"] p.bg-gray-200.text-black {
+  color: #000000 !important;
+}

@@ -63,7 +63,7 @@ const ReactivateConfirm = () => {
         noIndex={true}
       />
 
-      <div className="dashboard-theme min-h-screen flex font-poppins items-center justify-center bg-black text-white px-4 sm:px-6 py-10">
+      <div className="dashboard-theme dashboard-theme-dark min-h-screen flex font-poppins items-center justify-center bg-black text-white px-4 sm:px-6 py-10">
         <div className="relative w-full max-w-md mx-auto">
           <motion.div
             className="backdrop-blur-sm bg-dashboard-sidebar border border-dashboard p-8 rounded-2xl shadow-dashboard-elevated text-center"

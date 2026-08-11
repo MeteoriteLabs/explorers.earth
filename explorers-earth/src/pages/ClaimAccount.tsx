@@ -209,7 +209,7 @@ const ClaimAccount = () => {
         geoData={geoData}
       />
 
-      <div className="dashboard-theme flex items-center justify-center min-h-screen bg-black p-4">
+      <div className="dashboard-theme dashboard-theme-dark flex items-center justify-center min-h-screen bg-black p-4">
         <div className="relative w-full max-w-2xl bg-dashboard-sidebar rounded-lg shadow-dashboard-elevated p-4 md:p-6">
           {/* Stepper - Inside the form container */}
           <div className="mb-8">

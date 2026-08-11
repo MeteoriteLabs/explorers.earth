@@ -1,4 +1,4 @@
-import { memo, useState, useEffect, useMemo } from "react";
+import { memo, useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import useAuthStore from "../store/store";
 import Button from "../components/ui/Button";
@@ -168,6 +168,46 @@ const Home = memo(() => {
   const [activeTab, setActiveTab] = useState<
     "places" | "movies" | "books" | "games" | "music" | "guides" | "apps" | "products" | "people"
   >("places");
+
+  // Left/right swipe to move between category tabs on touch devices. The tab
+  // content stacks vertically (no horizontal card carousels), so a horizontal
+  // swipe never conflicts with an inner scroll. Swipes that start on the tab bar
+  // itself are ignored so it can still scroll horizontally.
+  const TAB_ORDER = [
+    "places", "movies", "books", "games", "music", "guides", "apps", "products", "people",
+  ] as const;
+  const tabBarRef = useRef<HTMLDivElement | null>(null);
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  const handleTabTouchStart = (e: React.TouchEvent) => {
+    if ((e.target as HTMLElement).closest?.(".home-tab-container")) {
+      swipeStartRef.current = null; // let the tab bar scroll
+      return;
+    }
+    const t = e.touches[0];
+    swipeStartRef.current = { x: t.clientX, y: t.clientY };
+  };
+
+  const handleTabTouchEnd = (e: React.TouchEvent) => {
+    const start = swipeStartRef.current;
+    swipeStartRef.current = null;
+    if (!start) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    // Require a clearly horizontal swipe so vertical scrolls never switch tabs.
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const idx = TAB_ORDER.indexOf(activeTab);
+    if (dx < 0 && idx < TAB_ORDER.length - 1) setActiveTab(TAB_ORDER[idx + 1]);
+    else if (dx > 0 && idx > 0) setActiveTab(TAB_ORDER[idx - 1]);
+  };
+
+  // Keep the active tab visible in the horizontally-scrollable tab bar (esp.
+  // after a swipe moves to a tab that was off-screen).
+  useEffect(() => {
+    const activeBtn = tabBarRef.current?.querySelector<HTMLElement>('[data-active="true"]');
+    activeBtn?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }, [activeTab]);
 
   // Inline Modal Creation States
   const [showCreatePlacesModal, setShowCreatePlacesModal] = useState<boolean>(false);
@@ -732,7 +772,7 @@ const Home = memo(() => {
     else if (activeTab === "people") setShowCreatePeopleModal(true);
   };
 
-  const handlePlacesSubmit = async (values: any) => {
+  const handlePlacesSubmit = async (values: any): Promise<boolean> => {
     const toastId = toast.loading("Creating Places list and uploading location image...");
     try {
       const placeDetails = await axios.get(
@@ -826,21 +866,31 @@ const Home = memo(() => {
       });
 
       if (response.data) {
-        const { data: refetched } = await refetchUserLists();
-        const updatedCity = refetched?.recommendationLists?.find(
-          (list: any) => list.List_Name === values.listName
-        );
-
-        if (updatedCity) {
-          setSelectedCity(updatedCity);
+        // Best-effort refresh — a refetch failure AFTER a successful create must
+        // NOT report failure (that would re-open/retry and create a duplicate).
+        try {
+          const { data: refetched } = await refetchUserLists();
+          const updatedCity = refetched?.recommendationLists?.find(
+            (list: any) => list.List_Name === values.listName
+          );
+          if (updatedCity) {
+            setSelectedCity(updatedCity);
+          }
+        } catch (refetchError) {
+          console.warn("Failed to refetch lists after creating a place:", refetchError);
         }
         toast.success("Places list created successfully!", { id: toastId });
         setShowCreatePlacesModal(false);
         navigate('/recommendations', { state: { justCreatedList: true } });
+        return true;
       }
+      // No data returned — treat as failure so the modal stays open.
+      toast.error("Failed to create places list", { id: toastId });
+      return false;
     } catch (error) {
       console.error(error);
       toast.error("Failed to create places list", { id: toastId });
+      return false;
     }
   };
 
@@ -881,7 +931,7 @@ const Home = memo(() => {
               } w-full mt-4`}
           >
 
-            <h1 className="text-2xl md:text-3xl font-bold font-poppins text-dashboard leading-tight md:leading-normal py-2 px-4 text-center">
+            <h1 className="text-xl md:text-3xl font-bold font-poppins text-dashboard leading-tight md:leading-normal py-2 px-4 text-center">
               {t("dashboard.home.welcomeBack")}, {user?.username}
             </h1>
             {!account?.Account_Name && (
@@ -917,7 +967,7 @@ const Home = memo(() => {
                     onClick={() => setShowProfileShareModal(true)}
                     className="absolute top-2 right-2 bg-[#3B82F6] hover:bg-[#2563EB] border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5 cursor-pointer z-10 transition-all shadow-md"
                   >
-                    <span className="text-[10px] font-bold text-white uppercase tracking-wider font-poppins">Share Profile</span>
+                    <span className="text-[10px] font-bold !text-white uppercase tracking-wider font-poppins">Share Profile</span>
                     <ShareIcon color="white" size={10} />
                   </div>
                 </div>
@@ -938,7 +988,7 @@ const Home = memo(() => {
                         <p className="text-base sm:text-lg md:text-xl font-bold text-dashboard">
                           {totalActiveListsCount}
                         </p>
-                        <p className="text-[hsl(var(--text-light))] font-poppins text-xs sm:text-xs truncate">
+                        <p className="text-dashboard-muted font-poppins text-xs sm:text-xs truncate">
                           Active Lists
                         </p>
                       </div>
@@ -948,7 +998,7 @@ const Home = memo(() => {
                         <p className="text-base sm:text-lg md:text-xl font-bold text-dashboard">
                           {totalRecommendationsCount}
                         </p>
-                        <p className="text-[hsl(var(--text-light))] font-poppins text-xs sm:text-xs truncate">
+                        <p className="text-dashboard-muted font-poppins text-xs sm:text-xs truncate">
                           Recommendations
                         </p>
                       </div>
@@ -958,7 +1008,7 @@ const Home = memo(() => {
                         <p className="text-base sm:text-lg md:text-xl font-bold text-dashboard">
                           {totalViewsCount}
                         </p>
-                        <p className="text-[hsl(var(--text-light))] font-poppins text-xs sm:text-xs truncate">
+                        <p className="text-dashboard-muted font-poppins text-xs sm:text-xs truncate">
                           Views
                         </p>
                       </div>
@@ -990,9 +1040,13 @@ const Home = memo(() => {
           {/* Public Profile Setup Accordion */}
           {!isProfileComplete && <ProfileSetupAccordion account={account} />}
 
-          <div className="w-full md:pb-6">
+          <div
+            className="w-full md:pb-6"
+            onTouchStart={handleTabTouchStart}
+            onTouchEnd={handleTabTouchEnd}
+          >
                 {/* Category Tabs Selector */}
-                <div className="home-tab-container bg-[var(--dash-tab-bg)] rounded-[28px] p-[3px] flex gap-1 mb-4 overflow-x-auto scrollbar-hide">
+                <div ref={tabBarRef} className="home-tab-container bg-[var(--dash-tab-bg)] rounded-[28px] p-[3px] flex gap-1 mb-4 overflow-x-auto scrollbar-hide">
                   {(
                     [
                       { id: "places", label: "Places", icon: "📍" },
@@ -1010,12 +1064,14 @@ const Home = memo(() => {
                     return (
                       <button
                         key={cat.id}
+                        data-active={isActive}
                         onClick={() => setActiveTab(cat.id)}
                         className={`flex-1 min-w-max bg-transparent border-none rounded-[24px] py-1.5 px-3 text-xs font-semibold font-poppins cursor-pointer whitespace-nowrap transition-all duration-200 ${
                           isActive
-                            ? "bg-dashboard-accent text-[var(--dash-accent-text)] font-bold"
+                            ? "font-bold"
                             : "text-dashboard-muted hover:text-dashboard"
                         }`}
+                        style={isActive ? { backgroundColor: 'var(--dash-accent)', color: '#ffffff' } : {}}
                       >
                         {cat.icon} {cat.label}
                       </button>

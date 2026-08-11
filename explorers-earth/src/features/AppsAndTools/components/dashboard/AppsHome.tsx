@@ -589,7 +589,14 @@ const AppsHome = () => {
           onClose={() => setShowCreateModal(false)}
           accountDocumentId={accountDocumentId}
           currentListCount={lists.length}
-          onCreated={() => refetch()}
+          onCreated={(newId?: string) => {
+            refetch();
+            if (newId) {
+              navigate(`/recommendations/apps/${newId}`, {
+                state: { justCreatedList: true },
+              });
+            }
+          }}
           username={user?.username || ""}
         />
       )}

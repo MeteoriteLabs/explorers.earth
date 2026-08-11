@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import { motion, AnimatePresence } from "framer-motion";
@@ -339,15 +339,24 @@ const GameListView = () => {
     }
     : null;
 
+  // One-shot guard against the BUG-3 re-render loop (see MovieListView for detail).
+  const promptShownRef = useRef(false);
+
   useEffect(() => {
-    if (location.state?.justAddedRecommendation && list && !list.Visibility) {
-      setListVisibilityPrompt({
-        isOpen: true,
-        listName: list.List_Name,
-      });
-      window.history.replaceState({}, document.title);
+    if (promptShownRef.current) return;
+    const wants =
+      location.state?.justAddedRecommendation || location.state?.justCreatedList;
+    if (!wants || !list) return;
+    // Never prompt to publish an empty list; wait until the first item is added.
+    // Do NOT set promptShownRef here, so a later render can still open the prompt.
+    if (games.length < 1) return;
+    promptShownRef.current = true;
+    if (!list.Visibility) {
+      setListVisibilityPrompt({ isOpen: true, listName: list.List_Name });
     }
-  }, [location.state, list]);
+    navigate(location.pathname, { replace: true, state: {} });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, location.pathname, list?.documentId, games.length, navigate]);
 
   const handlePinToggle = async (game: RecommendedGame) => {
     const willPin = !game.is_pinned;
