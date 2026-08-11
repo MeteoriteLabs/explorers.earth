@@ -1,11 +1,11 @@
 import React, { useRef } from "react";
-import ReactQuill, { Quill } from "react-quill-new";
+import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
-import * as Emoji from "quill2-emoji"; // Emoji plugin (Quill 2 compatible)
+// Side-effect import: quill2-emoji self-registers `modules/emoji-toolbar` and
+// `formats/emoji` onto the shared Quill instance at module load. (It does NOT
+// provide the emoji-textarea or emoji-shortname modules that quill-emoji@1 had.)
+import "quill2-emoji";
 import "quill2-emoji/dist/style.css"; // Emoji CSS
-
-// Register the emoji module with Quill 2 (quill2-emoji)
-Quill.register("modules/emoji", Emoji);
 
 interface TiptapEditorProps {
   value: string;
@@ -29,9 +29,7 @@ const TiptapEditor: React.FC<TiptapEditorProps> = ({
       [{ color: [] }, { background: [] }],
       [{ list: "ordered" }, { list: "bullet" }],
     ],
-    "emoji-toolbar": true, // Enable emoji toolbar button
-    "emoji-textarea": true, // Keep emoji textarea functionality
-    "emoji-shortname": true, // Keep emoji shortnames like :smile:
+    "emoji-toolbar": true, // Emoji toolbar button (only module quill2-emoji provides)
   };
 
   const formats = [
