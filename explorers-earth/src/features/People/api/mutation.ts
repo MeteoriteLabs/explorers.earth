@@ -106,6 +106,7 @@ export const CREATE_RECOMMENDED_PERSON = gql`
     $media_details: JSON
   ) {
     createRecommendedPerson(
+      status: PUBLISHED
       data: {
         name: $name
         username_handle: $username_handle
@@ -161,6 +162,7 @@ export const UPDATE_RECOMMENDED_PERSON = gql`
   ) {
     updateRecommendedPerson(
       documentId: $documentId
+      status: PUBLISHED
       data: {
         name: $name
         username_handle: $username_handle
@@ -214,6 +216,7 @@ export const TOGGLE_PERSON_PIN = gql`
   ) {
     updateRecommendedPerson(
       documentId: $documentId
+      status: PUBLISHED
       data: { is_pinned: $is_pinned, pin_order: $pin_order }
     ) {
       documentId

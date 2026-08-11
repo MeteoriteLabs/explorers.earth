@@ -210,6 +210,7 @@ export const TOGGLE_MOVIE_PIN = gql`
   ) {
     updateRecommendedMovie(
       documentId: $documentId
+      status: PUBLISHED
       data: { is_pinned: $is_pinned, pin_order: $pin_order }
     ) {
       documentId

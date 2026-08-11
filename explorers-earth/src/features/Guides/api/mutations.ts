@@ -64,7 +64,7 @@ export const CREATE_GUIDE_SECTION_MUTATION = gql`
 
 export const UPDATE_GUIDE_SECTION_MUTATION = gql`
   mutation UpdateGuideSection($documentId: ID!, $data: GuideSectionInput!) {
-    updateGuideSection(documentId: $documentId, data: $data) {
+    updateGuideSection(documentId: $documentId, status: PUBLISHED, data: $data) {
       documentId
       Title
       Sequence

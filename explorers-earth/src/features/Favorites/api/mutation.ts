@@ -87,7 +87,7 @@ export const deleteRecommendedPlaceMutation = gql`
 
 export const updateRecommendationPlaceMutation = gql`
   mutation update($documentId: ID!, $data: RecommendedPlaceInput!) {
-    updateRecommendedPlace(documentId: $documentId, data: $data) {
+    updateRecommendedPlace(documentId: $documentId, status: PUBLISHED, data: $data) {
       documentId
     }
   }
@@ -96,7 +96,7 @@ export const updateRecommendationPlaceMutation = gql`
 // Person-specific mutations (uses Person_Details JSON field instead of Place_Details)
 export const CreateRecommendedPersonMutation = gql`
   mutation CreateRecommendedPerson($data: RecommendedPlaceInput!) {
-    createRecommendedPlace(data: $data) {
+    createRecommendedPlace(status: PUBLISHED, data: $data) {
       documentId
     }
   }
@@ -104,7 +104,7 @@ export const CreateRecommendedPersonMutation = gql`
 
 export const updateRecommendedPersonMutation = gql`
   mutation updatePerson($documentId: ID!, $data: RecommendedPlaceInput!) {
-    updateRecommendedPlace(documentId: $documentId, data: $data) {
+    updateRecommendedPlace(documentId: $documentId, status: PUBLISHED, data: $data) {
       documentId
     }
   }

@@ -114,6 +114,7 @@ export const CREATE_RECOMMENDED_GAME = gql`
     $game_categories: [ID]
   ) {
     createRecommendedGame(
+      status: PUBLISHED
       data: {
         igdb_id: $igdb_id
         igdb_slug: $igdb_slug
@@ -168,6 +169,7 @@ export const UPDATE_RECOMMENDED_GAME = gql`
   ) {
     updateRecommendedGame(
       documentId: $documentId
+      status: PUBLISHED
       data: {
         user_recommendation_note: $user_recommendation_note
         user_rating: $user_rating
@@ -209,6 +211,7 @@ export const TOGGLE_GAME_PIN = gql`
   ) {
     updateRecommendedGame(
       documentId: $documentId
+      status: PUBLISHED
       data: { is_pinned: $is_pinned, pin_order: $pin_order }
     ) {
       documentId

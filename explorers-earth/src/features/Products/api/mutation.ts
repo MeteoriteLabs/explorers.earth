@@ -107,6 +107,7 @@ export const CREATE_RECOMMENDED_PRODUCT = gql`
     $product_category: ID
   ) {
     createRecommendedProduct(
+      status: PUBLISHED
       data: {
         product_url: $product_url
         title: $title
@@ -159,6 +160,7 @@ export const UPDATE_RECOMMENDED_PRODUCT = gql`
   ) {
     updateRecommendedProduct(
       documentId: $documentId
+      status: PUBLISHED
       data: {
         user_recommendation_note: $user_recommendation_note
         user_rating: $user_rating
@@ -208,6 +210,7 @@ export const TOGGLE_PRODUCT_PIN = gql`
   ) {
     updateRecommendedProduct(
       documentId: $documentId
+      status: PUBLISHED
       data: { is_pinned: $is_pinned, pin_order: $pin_order }
     ) {
       documentId
