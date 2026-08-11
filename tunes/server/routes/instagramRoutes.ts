@@ -25,7 +25,7 @@ function authenticateToken(req: Request, res: Response, next: NextFunction) {
     }
 
     try {
-        const decoded = jwt.decode(token);
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret');
         if (!decoded) {
             return res.status(403).json({ error: 'Invalid token' });
         }

@@ -98,7 +98,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       const token = req.headers.authorization.substring(7);
       try {
         // Decode JWT to validate
-        const decoded = jwt.decode(token) as any;
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret') as any;
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -161,7 +161,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret') as any;
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -220,7 +220,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret') as any;
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -282,7 +282,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret') as any;
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -355,7 +355,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret') as any;
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -442,7 +442,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret') as any;
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -559,7 +559,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret') as any;
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -673,7 +673,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret') as any;
         if (!decoded || !decoded.id) return res.status(401).json({ message: "Unauthorized - Invalid token" });
         if (decoded.exp && decoded.exp < Date.now() / 1000) return res.status(401).json({ message: "Unauthorized - Token expired" });
         const username = (req.query.username as string) || req.body.username || (req.headers['x-username'] as string);
@@ -785,7 +785,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret') as any;
         if (!decoded || !decoded.id) return res.status(401).json({ message: "Unauthorized - Invalid token" });
         if (decoded.exp && decoded.exp < Date.now() / 1000) return res.status(401).json({ message: "Unauthorized - Token expired" });
         const username = (req.query.username as string) || req.body.username || (req.headers['x-username'] as string);
@@ -916,7 +916,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret') as any;
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -1029,7 +1029,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret') as any;
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -1915,7 +1915,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       const token = req.headers.authorization.substring(7);
       try {
         // Decode JWT to validate
-        const decoded = jwt.decode(token) as any;
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret') as any;
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -2161,7 +2161,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       const token = req.headers.authorization.substring(7);
       try {
         // Decode JWT to validate it's a real token
-        const decoded = jwt.decode(token) as any;
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret') as any;
         if (!decoded || !decoded.id) {
           console.log('❌ Invalid JWT token');
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
@@ -2433,7 +2433,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       const token = req.headers.authorization.substring(7);
       try {
         // Decode JWT to validate
-        const decoded = jwt.decode(token) as any;
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret') as any;
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -2638,7 +2638,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret') as any;
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -2713,7 +2713,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       const token = req.headers.authorization.substring(7);
       try {
         // Decode JWT to validate
-        const decoded = jwt.decode(token) as any;
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret') as any;
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -2810,7 +2810,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       const token = req.headers.authorization.substring(7);
       try {
         // Decode JWT to validate it's a real token
-        const decoded = jwt.decode(token) as any;
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret') as any;
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -2869,7 +2869,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret') as any;
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -4312,7 +4312,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       const token = req.headers.authorization.substring(7);
       try {
         // Decode JWT to validate it's a real token
-        const decoded = jwt.decode(token) as any;
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret') as any;
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -4371,7 +4371,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = jwt.verify(token, process.env.STRAPI_JWT_SECRET || 'your-strapi-jwt-secret') as any;
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
