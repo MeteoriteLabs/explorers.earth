@@ -889,7 +889,7 @@ const RecommendationsHub = () => {
     // Default cache-first serves a stale (possibly empty) count after the user
     // creates a list elsewhere and returns to the hub, wrongly blocking
     // enable/pin via hasPublishedContent. Revalidate from network on mount, and
-    // guard the content check on countsLoading/countsError (see countsNotReady)
+    // guard the content check on countsLoading/countsError (see contentNotReady)
     // so we never validate against stale/undefined counts mid-revalidation.
     fetchPolicy: "cache-and-network",
   });
@@ -942,7 +942,11 @@ const RecommendationsHub = () => {
 
   // Music lives in LocalTunes (not Strapi); fetch the user's playlists so the hub
   // applies the same guest-visible-playlist guard that Settings and the modal use.
-  const { data: musicPlaylists } = useReactQuery<any[]>({
+  const {
+    data: musicPlaylists,
+    isLoading: musicLoading,
+    isError: musicError,
+  } = useReactQuery<any[]>({
     queryKey: ["tunes-playlists", user?.username],
     queryFn: () => localTunesRequest("GET", `/api/playlists?username=${user?.username}`),
     enabled: !!user?.username,
@@ -957,11 +961,24 @@ const RecommendationsHub = () => {
     return (countMap[cat.tabId] ?? 0) > 0;
   };
 
-  // hasPublishedContent reads countMap, but cache-and-network exposes stale/empty
-  // counts while the refresh is in flight (and cached-positive counts if the
-  // refresh failed). Mirror Settings.tsx: don't run the content check until the
-  // counts query has settled without error. Returns true (and toasts) if not ready.
-  const countsNotReady = (): boolean => {
+  // hasPublishedContent's data source differs by category: music reads the Local
+  // Tunes playlists (a separate React Query), everything else reads the Strapi
+  // count query (cache-and-network can expose stale/empty counts mid-revalidation).
+  // Guard on the RIGHT source's loading/error so we never validate against data
+  // that hasn't loaded — and don't block one category on another query's error.
+  // Returns true (and toasts) if the relevant source isn't ready.
+  const contentNotReady = (cat: CategoryConfig): boolean => {
+    if (cat.key === "music") {
+      if (musicLoading) {
+        toast.info("Checking your Music, please wait…");
+        return true;
+      }
+      if (musicError) {
+        toast.error("Couldn't verify your Music. Please try again.");
+        return true;
+      }
+      return false;
+    }
     if (countsLoading) {
       toast.info("Checking your published lists, please wait…");
       return true;
@@ -1031,7 +1048,7 @@ const RecommendationsHub = () => {
       // stale counts mid-revalidation) so we never wrongly reject a category that
       // actually has content.
       if (!visibleSet.has(cat.tabId)) {
-        if (countsNotReady()) return;
+        if (contentNotReady(cat)) return;
         if (!hasPublishedContent(cat)) {
           toast.error(`Create and publish at least 1 list in ${cat.label} before pinning it to your public profile.`);
           return;
@@ -1105,7 +1122,7 @@ const RecommendationsHub = () => {
       }
     } else {
       // Turn On Visibility
-      if (countsNotReady()) return;
+      if (contentNotReady(cat)) return;
       if (!hasPublishedContent(cat)) {
         toast.error(`Create and publish at least 1 list in ${cat.label} before enabling public visibility.`);
         return;
