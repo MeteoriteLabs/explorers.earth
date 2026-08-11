@@ -52,7 +52,7 @@ export const updateRecommendationListVisiblity = gql`
     $documentId: ID!
     $data: RecommendationListInput!
   ) {
-    updateRecommendationList(documentId: $documentId, data: $data) {
+    updateRecommendationList(documentId: $documentId, status: PUBLISHED, data: $data) {
       Visibility
     }
   }
@@ -63,7 +63,7 @@ export const updateRecommendedListMutation = gql`
     $documentId: ID!
     $data: RecommendationListInput!
   ) {
-    updateRecommendationList(documentId: $documentId, data: $data) {
+    updateRecommendationList(documentId: $documentId, status: PUBLISHED, data: $data) {
       List_Name
       Instagram_Media_URL
       List_Name_Details

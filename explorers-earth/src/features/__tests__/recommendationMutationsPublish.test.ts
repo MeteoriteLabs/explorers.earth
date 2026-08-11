@@ -59,3 +59,37 @@ describe("recommendation item mutations publish immediately (no hidden drafts)",
     });
   }
 });
+
+// List-level create + update must also publish, or the visibility toggle / list
+// edits write the draft while the published copy keeps its old Visibility — the
+// change never reaches the public page (RecommendationList/*List all have D&P).
+const listMustPublish: Record<string, DocumentNode> = {
+  CREATE_MOVIE_LIST: Movies.CREATE_MOVIE_LIST,
+  UPDATE_MOVIE_LIST: Movies.UPDATE_MOVIE_LIST,
+  CREATE_BOOK_LIST: Books.CREATE_BOOK_LIST,
+  UPDATE_BOOK_LIST: Books.UPDATE_BOOK_LIST,
+  CREATE_GAME_LIST: Games.CREATE_GAME_LIST,
+  UPDATE_GAME_LIST: Games.UPDATE_GAME_LIST,
+  CREATE_APP_LIST: Apps.CREATE_APP_LIST,
+  UPDATE_APP_LIST: Apps.UPDATE_APP_LIST,
+  CREATE_PERSON_LIST: People.CREATE_PERSON_LIST,
+  UPDATE_PERSON_LIST: People.UPDATE_PERSON_LIST,
+  CREATE_PRODUCT_LIST: Products.CREATE_PRODUCT_LIST,
+  UPDATE_PRODUCT_LIST: Products.UPDATE_PRODUCT_LIST,
+  // Places (Favorites) — list create + both list updates (the visibility toggle)
+  createRecommendationLinkMutation: Favorites.createRecommendationLinkMutation,
+  createRecommendationCategoryMutation: Favorites.createRecommendationCategoryMutation,
+  updateRecommendationListVisiblity: Favorites.updateRecommendationListVisiblity,
+  updateRecommendedListMutation: Favorites.updateRecommendedListMutation,
+  // Guides (guide create + update)
+  CREATE_GUIDE_MUTATION: Guides.CREATE_GUIDE_MUTATION,
+  UPDATE_GUIDE_MUTATION: Guides.UPDATE_GUIDE_MUTATION,
+};
+
+describe("recommendation LIST mutations publish immediately (visibility toggle reaches the public page)", () => {
+  for (const [name, doc] of Object.entries(listMustPublish)) {
+    it(`${name} sets status: PUBLISHED`, () => {
+      expect(publishes(doc)).toBe(true);
+    });
+  }
+});
