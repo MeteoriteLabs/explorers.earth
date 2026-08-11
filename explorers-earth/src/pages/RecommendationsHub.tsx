@@ -869,6 +869,9 @@ const RecommendationsHub = () => {
   const { data: accountData, refetch: refetchAccount } = useQuery(accountQuery, {
     variables: { filters: { username: { eq: user?.username } } },
     skip: !user?.username,
+    // Revalidate on every hub mount so pinned/visibility state isn't stale after
+    // returning from a category flow (default cache-first would serve old data).
+    fetchPolicy: "cache-and-network",
   });
 
   const account = accountData?.accounts?.[0];
@@ -879,6 +882,10 @@ const RecommendationsHub = () => {
   const { data: listCountsData } = useQuery(getPublicCategoryListCountsQuery, {
     variables: { accountDocumentId },
     skip: !accountDocumentId,
+    // Default cache-first serves a stale (possibly empty) count after the user
+    // creates a list elsewhere and returns to the hub, wrongly blocking
+    // enable/pin via hasPublishedContent. Revalidate from network on mount.
+    fetchPolicy: "cache-and-network",
   });
 
   const countMap: Record<string, number> = useMemo(() => ({
@@ -957,7 +964,7 @@ const RecommendationsHub = () => {
         toast.success(wasAuto
           ? `Unpinned ${cat.label}. Nav switched to manual mode.`
           : `Unpinned ${cat.label} from public navigation.`);
-        refetchAccount();
+        await refetchAccount();
       } catch (err: any) {
         toast.error(`Failed to unpin ${cat.label}: ${err.message || ""}`);
       } finally {
@@ -992,7 +999,7 @@ const RecommendationsHub = () => {
         toast.success(wasAuto
           ? `Pinned ${cat.label}. Nav switched to manual mode.`
           : `Pinned ${cat.label} to public navigation!`);
-        refetchAccount();
+        await refetchAccount();
       } catch (err: any) {
         toast.error(`Failed to pin ${cat.label}: ${err.message || ""}`);
       } finally {
@@ -1007,6 +1014,11 @@ const RecommendationsHub = () => {
       toast.error("Account data not loaded. Please try again.");
       return;
     }
+
+    // Serialize with the other account mutations (shares updatingKey with
+    // pin/unpin): don't start while one is in flight, so no handler derives its
+    // update from a stale account snapshot.
+    if (updatingKey !== null) return;
 
     const currentlyPublic = visibleSet.has(cat.tabId);
 
@@ -1024,7 +1036,7 @@ const RecommendationsHub = () => {
           },
         });
         toast.success(`${cat.label} public URL is now disabled.`);
-        refetchAccount();
+        await refetchAccount();
       } catch (err: any) {
         toast.error(`Failed to update ${cat.label} visibility: ${err.message || ""}`);
       } finally {
@@ -1048,7 +1060,7 @@ const RecommendationsHub = () => {
           },
         });
         toast.success(`${cat.label} public URL is now enabled!`);
-        refetchAccount();
+        await refetchAccount();
       } catch (err: any) {
         toast.error(`Failed to enable ${cat.label} visibility: ${err.message || ""}`);
       } finally {
