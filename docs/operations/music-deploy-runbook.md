@@ -1,4 +1,4 @@
-# Music immutable deployment and migration runbook (C2/C3)
+# Music immutable deployment and migration runbook (C2-C4)
 
 ## Authority and closed production gate
 
@@ -38,9 +38,11 @@ the external environment policy cannot be bypassed by that branch copy.
 `GATE_PROD must remain closed` if the API check is unavailable, the policy is
 absent or different, or `main` is not protected.
 
-## C3 same-image migration gate
+## C3/C4 same-image migration gate
 
-`0006_numeric_identity_lock` is the exact expected migration ID. The candidate
+`0007_identity_provider_snapshot` is the exact expected migration ID. The C4
+migration appends the mutable authoritative-provider snapshot without changing
+the immutable user/selected-Account ownership tuple. The candidate
 image contains the ordered SQL files and `run-migration-gate.js`; the one-shot
 gate takes the PostgreSQL advisory lock, verifies the checksum journal and
 catalog fingerprint, applies pending migrations transactionally, and writes an
@@ -55,7 +57,7 @@ Liveness remains process-only. The secure image ledger can retain historical
 `containment-no-schema-change` entries for audit and the permanent security
 floor, but they cease to be rollback targets as soon as the real C3 gate has
 migrated the database. All new images use
-`0006_numeric_identity_lock` and the
+`0007_identity_provider_snapshot` and the
 real migration gate. Because production catalog/row-count and restore evidence
 are still absent, an existing unversioned database is a conflict: there is no
 automatic baseline adoption, username/email matching, or authorized production
@@ -103,14 +105,14 @@ secure history remains the rollback allowlist. Missing, mismatched, malformed,
 or tampered schema-epoch authority fails closed before Docker. Marker parsing
 is versioned rather than coupled only to the newest image. The known ordered
 authority is `containment-no-schema-change`, then migrations `0002` through
-`0006`; authenticated historical rows remain byte-exact and valid, while an
+`0007`; authenticated historical rows remain byte-exact and valid, while an
 unknown marker or decreasing ledger/epoch rank fails closed. The executable
 conservatively adopts only two pre-epoch formats: a signed
 state/ledger ending at `0002` with no compatibility file, or the exact historical
 `music-schema-floor-v1` five-field HMAC record for `0003`. A missing `0003`
 floor, an unsigned partial file, or any reinterpreted v1 field fails before
 Docker. The candidate compatibility listener and exact-path denial route are
-installed before either format is upgraded directly to pending `0006`.
+installed before either format is upgraded directly to pending `0007`.
 For an upgrade, the higher signed epoch is written first and recovered only in that monotonic
 direction, then the signed floor advances to `pending` before the gate. From
 that point, older-marker rollback is rejected before Docker. Gate failure

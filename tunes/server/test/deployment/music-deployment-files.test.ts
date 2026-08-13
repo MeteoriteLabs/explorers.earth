@@ -52,6 +52,7 @@ describe("Music deployment authority files", () => {
     expect(ci).toContain("/app/migrations/0004_identity_delete_saga.sql");
     expect(ci).toContain("/app/migrations/0005_resource_bound_deletion_history.sql");
     expect(ci).toContain("/app/migrations/0006_numeric_identity_lock.sql");
+    expect(ci).toContain("/app/migrations/0007_identity_provider_snapshot.sql");
     expect(ci).toContain("/app/dist/server/deployment/run-registration-compat.js");
   });
 

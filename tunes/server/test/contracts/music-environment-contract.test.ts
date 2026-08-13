@@ -18,7 +18,7 @@ const validEnvironment = {
   MUSIC_RATE_LIMIT_PER_MINUTE: "60",
   MUSIC_PROVISIONING_KILL_SWITCH: "true",
   MUSIC_PROVISIONING_COHORT: "disabled",
-  MUSIC_EXPECTED_MIGRATION_ID: "0006_numeric_identity_lock",
+  MUSIC_EXPECTED_MIGRATION_ID: "0007_identity_provider_snapshot",
   MUSIC_RECONCILIATION_ENABLED: "false",
   MUSIC_RECONCILIATION_MAX_ROWS: "0",
 };

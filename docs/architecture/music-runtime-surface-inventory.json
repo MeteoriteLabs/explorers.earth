@@ -9,7 +9,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/auth-bridge-routes.ts",
-      "line": 13
+      "line": 14
     },
     {
       "method": "GET",
@@ -19,7 +19,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/auth-bridge-routes.ts",
-      "line": 14
+      "line": 15
     },
     {
       "method": "GET",
@@ -29,7 +29,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/auth-bridge-routes.ts",
-      "line": 15
+      "line": 16
     },
     {
       "method": "POST",
@@ -1369,7 +1369,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/routes/index.ts",
-      "line": 62
+      "line": 95
     },
     {
       "method": "GET",
@@ -1379,7 +1379,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/index.ts",
-      "line": 65
+      "line": 98
     },
     {
       "method": "POST",
@@ -1389,7 +1389,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/routes/index.ts",
-      "line": 97
+      "line": 130
     },
     {
       "method": "POST",
@@ -1440,6 +1440,16 @@
       "lifecycle": "request",
       "source": "tunes/server/routes/musicFixtureProbe.ts",
       "line": 18
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/identity/ensure",
+      "classification": "strapi-identity-boundary",
+      "ownerSource": "authoritative-strapi-user+selected-account",
+      "policy": "handler-level-unverified",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "line": 69
     },
     {
       "method": "POST",
@@ -1679,7 +1689,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/swagger.ts",
-      "line": 1892
+      "line": 1901
     },
     {
       "method": "GET",
@@ -1907,6 +1917,18 @@
       "lifecycle": "reactivation-token-cleanup",
       "source": "tunes/server/services/reactivation-service.ts",
       "line": 131
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/strapiIdentityGateway.ts",
+      "line": 271
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/strapiIdentityGateway.ts",
+      "line": 328
     },
     {
       "kind": "setTimeout",

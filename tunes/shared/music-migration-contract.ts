@@ -1,10 +1,11 @@
-export const EXPECTED_MUSIC_MIGRATION_ID = "0006_numeric_identity_lock" as const;
+export const EXPECTED_MUSIC_MIGRATION_ID = "0007_identity_provider_snapshot" as const;
 export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0001_runtime_baseline",
   "0002_identity_lifecycle",
   "0003_identity_lifecycle_hardening",
   "0004_identity_delete_saga",
   "0005_resource_bound_deletion_history",
+  "0006_numeric_identity_lock",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 export const LEGACY_CONTAINMENT_MIGRATION_MARKER = "containment-no-schema-change" as const;
@@ -15,6 +16,7 @@ export const DEPLOYABLE_MUSIC_MIGRATION_MARKERS = [
   "0003_identity_lifecycle_hardening",
   "0004_identity_delete_saga",
   "0005_resource_bound_deletion_history",
+  "0006_numeric_identity_lock",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 

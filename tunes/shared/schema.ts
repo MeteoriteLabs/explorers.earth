@@ -39,6 +39,7 @@ export const users = pgTable("users", {
   strapiAccountDocumentId: text("strapi_account_document_id").notNull().unique(),
   strapiUsernameSnapshot: text("strapi_username_snapshot"),
   strapiEmailSnapshot: text("strapi_email_snapshot"),
+  strapiProviderSnapshot: text("strapi_provider_snapshot").notNull().default("legacy-unknown").$type<"legacy-unknown" | "local" | "google">(),
   strapiAccountNameSnapshot: text("strapi_account_name_snapshot"),
   strapiAccountTypeSnapshot: text("strapi_account_type_snapshot"),
   strapiAccountMobileSnapshot: text("strapi_account_mobile_snapshot"),
@@ -432,6 +433,7 @@ export type MusicIdentityFields = Pick<typeof users.$inferSelect,
   | "strapiAccountDocumentId"
   | "strapiUsernameSnapshot"
   | "strapiEmailSnapshot"
+  | "strapiProviderSnapshot"
   | "strapiAccountNameSnapshot"
   | "strapiAccountTypeSnapshot"
   | "strapiAccountMobileSnapshot"

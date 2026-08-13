@@ -5,7 +5,7 @@ x-music-labels: &music-labels
   com.explorers.music.project: "explorers-music-fixture"
 
 x-tunes-fixture-image: &tunes-fixture-image
-  image: explorers-music-fixture-tunes:c3
+  image: explorers-music-fixture-tunes:c4
 
 services:
   postgres:
@@ -46,7 +46,7 @@ services:
       DATABASE_URL: postgresql://music:music@postgres:5432/music_fixture
       MUSIC_IMAGE_DIGEST: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
       MUSIC_IMAGE_COMMIT: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-      MUSIC_MIGRATION_MARKER: 0006_numeric_identity_lock
+      MUSIC_MIGRATION_MARKER: 0007_identity_provider_snapshot
       MUSIC_GATE_ATTESTATION_KEY: fixture-migration-gate-key-at-least-32-characters
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/fixture.json
     depends_on:
@@ -88,7 +88,9 @@ services:
       MUSIC_RATE_LIMIT_PER_MINUTE: "60"
       MUSIC_PROVISIONING_KILL_SWITCH: "true"
       MUSIC_PROVISIONING_COHORT: disabled
-      MUSIC_EXPECTED_MIGRATION_ID: 0006_numeric_identity_lock
+      MUSIC_NEW_ENTRY_KILL_SWITCH: "false"
+      MUSIC_COHORT_ENABLED: "false"
+      MUSIC_EXPECTED_MIGRATION_ID: 0007_identity_provider_snapshot
       MUSIC_RECONCILIATION_ENABLED: "false"
       MUSIC_RECONCILIATION_MAX_ROWS: "0"
     ports: ["127.0.0.1:55000:5000"]

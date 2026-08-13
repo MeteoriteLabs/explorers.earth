@@ -2,8 +2,8 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0006_numeric_identity_lock",
-    "files": ["0001_runtime_baseline.sql", "0002_identity_lifecycle.sql", "0003_identity_lifecycle_hardening.sql", "0004_identity_delete_saga.sql", "0005_resource_bound_deletion_history.sql", "0006_numeric_identity_lock.sql"],
+    "expectedId": "0007_identity_provider_snapshot",
+    "files": ["0001_runtime_baseline.sql", "0002_identity_lifecycle.sql", "0003_identity_lifecycle_hardening.sql", "0004_identity_delete_saga.sql", "0005_resource_bound_deletion_history.sql", "0006_numeric_identity_lock.sql", "0007_identity_provider_snapshot.sql"],
     "controlTables": ["music_schema_migrations", "music_identity_tombstones", "music_identity_lifecycle_operations"]
   },
   "generatedFrom": ["tunes/shared/schema.ts", "tunes/server/**/*.ts"],

@@ -1,5 +1,6 @@
 import { type Express } from 'express';
 import swaggerUi from 'swagger-ui-express';
+import { musicErrorOpenApiSchema, musicEnsureResponseOpenApiSchema, musicIdentityOpenApi } from '../shared/musicError';
 
 export const swaggerDocument = {
   openapi: '3.0.0',
@@ -16,6 +17,8 @@ export const swaggerDocument = {
   ],
   components: {
     schemas: {
+      MusicIdentityEnsureResponse: musicEnsureResponseOpenApiSchema,
+      MusicErrorEnvelope: musicErrorOpenApiSchema,
       User: {
         type: 'object',
         properties: {
@@ -112,6 +115,11 @@ export const swaggerDocument = {
       }
     },
     securitySchemes: {
+      strapiBearer: {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'Strapi JWT',
+      },
       sessionAuth: {
         type: 'apiKey',
         in: 'cookie',
@@ -120,6 +128,7 @@ export const swaggerDocument = {
     },
   },
   paths: {
+    '/music/identity/ensure': musicIdentityOpenApi.operation,
     '/playlist': {
       get: {
         tags: ['Playlist'],

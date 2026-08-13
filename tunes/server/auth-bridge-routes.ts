@@ -4,7 +4,8 @@ import { requestIdFor, sendContainmentError } from "./security-containment";
 /**
  * The browser-controlled identity bridge is intentionally retained only as a
  * fail-closed tombstone for old clients. There is no body-controlled owner
- * compatibility path. The future bodyless ensure endpoint belongs to C4.
+ * compatibility path. C4's bodyless ensure endpoint is registered separately
+ * and this tombstone remains for old clients.
  */
 export function setupAuthBridgeRoutes(app: Express) {
   const removed = (req: any, res: any) =>

@@ -2,6 +2,10 @@ import { createServer } from "node:http";
 
 const user = {
   documentId: "fixture-user-document-id",
+  username: "fixture-explorer",
+  email: "fixture-explorer@example.invalid",
+  provider: "local",
+  confirmed: true,
   blocked: false,
   is_subscribed: false,
   accounts: [{

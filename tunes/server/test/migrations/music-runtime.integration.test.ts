@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createServer, type Server as HttpServer } from "node:http";
 import request from "supertest";
 import { createApp } from "../../app";
 import { pool } from "../../db";
@@ -17,10 +18,30 @@ describePostgres("C3 real migrated runtime graph", () => {
   let app: Awaited<ReturnType<typeof createApp>>["app"];
   let server: Awaited<ReturnType<typeof createApp>>["server"];
   let userId: number;
+  let strapi: HttpServer;
+  const ensurePerson = `${suffix}_ensure_person`;
 
   beforeAll(async () => {
     process.env.STRAPI_JWT_SECRET = "runtime-strapi-jwt-secret-at-least-thirty-two-bytes";
     process.env.ALLOWED_ORIGINS = "https://explorers.example.test";
+    process.env.MUSIC_NEW_ENTRY_KILL_SWITCH = "false";
+    process.env.MUSIC_COHORT_ENABLED = "false";
+    strapi = createServer((incoming, response) => {
+      response.setHeader("content-type", "application/json");
+      if (incoming.url === "/api/users/me") return response.end(JSON.stringify({
+        documentId: ensurePerson, username: `${suffix}_ensure`, email: `${suffix}_ensure@example.invalid`,
+        provider: "local", confirmed: true, blocked: false,
+      }));
+      if (incoming.url?.startsWith("/api/accounts?")) return response.end(JSON.stringify({ data: [{
+        documentId: `${suffix}_ensure_account`, Account_Name: "Runtime Ensure", Account_Type: "Venue", mobile_number: "+15555550123",
+      }] }));
+      response.statusCode = 404;
+      return response.end(JSON.stringify({ error: "not found" }));
+    }).listen(0, "127.0.0.1");
+    await new Promise<void>((resolve) => strapi.once("listening", resolve));
+    const address = strapi.address();
+    if (!address || typeof address === "string") throw new Error("runtime Strapi did not bind");
+    process.env.STRAPI_URL = `http://127.0.0.1:${address.port}`;
     ({ app, server } = await createApp());
     const identity = await new MusicIdentityRepository(pool).createIdentity({
       username: suffix,
@@ -37,13 +58,29 @@ describePostgres("C3 real migrated runtime graph", () => {
 
   afterAll(async () => {
     server?.close();
+    strapi?.close();
     await pool.query("DROP TRIGGER IF EXISTS runtime_delete_failure ON playback_states").catch(() => undefined);
     await pool.query("DROP FUNCTION IF EXISTS runtime_fail_delete()").catch(() => undefined);
     await pool.query("DELETE FROM users WHERE id=$1", [userId]).catch(() => undefined);
+    await pool.query("DELETE FROM users WHERE strapi_user_document_id=$1", [ensurePerson]).catch(() => undefined);
+  });
+
+  it("runs the sole bodyless ensure through the real route graph and keeps legacy boundaries tombstoned", async () => {
+    const authorization = "Bearer runtime-proof-with-enough-entropy";
+    const first = await request(app).post("/api/music/identity/ensure").set("authorization", authorization).expect(200);
+    const second = await request(app).post("/api/music/identity/ensure").set("authorization", authorization).expect(200);
+    expect(second.body).toEqual(first.body);
+    expect(first.body).toMatchObject({ version: "music-identity/v1", identity: { status: "active" } });
+    expect(Number((await pool.query("SELECT count(*) AS count FROM users WHERE strapi_user_document_id=$1", [ensurePerson])).rows[0].count)).toBe(1);
+    await request(app).post("/api/music/identity/ensure").set("authorization", authorization).send({ username: "forged" }).expect(400);
+    await request(app).post("/api/auth/sync").send({ username: "forged" }).expect(401);
+    await request(app).post("/api/register").send({ username: "forged" }).expect(410);
+    await request(app).post("/graphql").send({ query: "mutation { deleteUsers { documentId } }" }).expect(410);
   });
 
   it("boots the real route graph and returns controlled identity tombstones without inserts or schema errors", async () => {
-    const before = Number((await pool.query("SELECT count(*) AS count FROM users")).rows[0].count);
+    const forgedNames = [`${suffix}_native`, `${suffix}_forged`];
+    const before = Number((await pool.query("SELECT count(*) AS count FROM users WHERE username=ANY($1::text[])", [forgedNames])).rows[0].count);
     for (const body of [
       { username: `${suffix}_native`, password: "native-password" },
       {
@@ -61,7 +98,7 @@ describePostgres("C3 real migrated runtime graph", () => {
       .expect(410).expect(({ body }) => expect(body.error?.code).toBe("GRAPHQL_PROXY_REMOVED"));
     await request(app).post("/api/auth/sync").send({ strapiUser: { username: "forged" } })
       .expect(401).expect(({ body }) => expect(body.error?.code).toBe("AUTH_REQUIRED"));
-    const after = Number((await pool.query("SELECT count(*) AS count FROM users")).rows[0].count);
+    const after = Number((await pool.query("SELECT count(*) AS count FROM users WHERE username=ANY($1::text[])", [forgedNames])).rows[0].count);
     expect(after).toBe(before);
   });
 

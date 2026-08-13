@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { MusicIdentityError } from "../../shared/musicError";
 
 export interface MusicIdentityProjection {
   id: number;
@@ -17,6 +18,23 @@ export interface CreateMusicIdentityInput {
   strapiAccountDocumentId: string;
   guestCapabilityHash: string;
   operationId: string;
+}
+
+export interface EnsureMusicIdentityInput {
+  userDocumentId: string;
+  accountDocumentId: string;
+  username: string;
+  email: string;
+  provider: "local" | "google";
+  accountName: string;
+  accountType: string;
+  accountMobile: string;
+  internalUsername: string;
+  password: string;
+  guestUrl: string;
+  guestCapabilityHash: string;
+  operationId: string;
+  requestId: string;
 }
 
 export interface TombstoneMusicIdentityInput {
@@ -65,8 +83,96 @@ async function lockIdentity(client: Pick<PoolClient, "query">, userDocumentId: s
   await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`music:account:${accountDocumentId}`]);
 }
 
+function validateEnsureInput(input: EnsureMusicIdentityInput): void {
+  const required = [
+    input.userDocumentId,input.accountDocumentId,input.username,input.email,input.accountName,input.accountType,
+    input.accountMobile,input.internalUsername,input.password,input.guestUrl,input.operationId,input.requestId,
+  ];
+  if (required.some((value) => !value || value.length > 512)
+      || !["local", "google"].includes(input.provider)
+      || !/^[a-f0-9]{64}$/.test(input.guestCapabilityHash)) {
+    throw new MusicIdentityError("REQUEST_INVALID", 400, "Music identity input is invalid.", "none", false);
+  }
+}
+
 export class MusicIdentityRepository {
-  constructor(private readonly pool: TransactionPool) {}
+  constructor(
+    private readonly pool: TransactionPool,
+    private readonly hooks: { afterWrite?: () => Promise<void> } = {},
+  ) {}
+
+  async ensureIdentity(input: EnsureMusicIdentityInput): Promise<MusicIdentityProjection> {
+    validateEnsureInput(input);
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT set_config('music.request_id',$1,true)", [input.requestId]);
+      await lockIdentity(client, input.userDocumentId, input.accountDocumentId);
+      const tombstone = await client.query(`SELECT strapi_user_document_id,strapi_account_document_id
+        FROM music_identity_tombstones
+        WHERE strapi_user_document_id=$1 OR strapi_account_document_id=$2`, [input.userDocumentId, input.accountDocumentId]);
+      if (tombstone.rowCount) {
+        throw new MusicIdentityError("IDENTITY_TOMBSTONED", 409, "This Music identity was permanently removed.", "contact_support", false, undefined, "tombstone");
+      }
+      const existing = await client.query<any>(`SELECT id,strapi_user_document_id,strapi_account_document_id,
+        identity_status,session_version FROM users
+        WHERE strapi_user_document_id=$1 OR strapi_account_document_id=$2 FOR UPDATE`, [input.userDocumentId, input.accountDocumentId]);
+      const row = existing.rows[0];
+      if (row) {
+        if (row.strapi_user_document_id === input.userDocumentId
+            && row.strapi_account_document_id !== input.accountDocumentId) {
+          throw new MusicIdentityError("ACCOUNT_SWITCH_CONFLICT", 409, "The selected Explorer Account cannot be changed automatically.", "contact_support", false, undefined, "account_switch");
+        }
+        if (row.strapi_user_document_id !== input.userDocumentId
+            || row.strapi_account_document_id !== input.accountDocumentId) {
+          throw new MusicIdentityError("IDENTITY_CONFLICT", 409, "The Explorer identity conflicts with an existing Music identity.", "contact_support", false, undefined, "immutable_collision");
+        }
+        if (row.identity_status === "suspended") {
+          throw new MusicIdentityError("IDENTITY_SUSPENDED", 403, "This Music identity is suspended.", "contact_support", false, undefined, "suspended");
+        }
+        if (row.identity_status === "pending_deletion") {
+          throw new MusicIdentityError("IDENTITY_PENDING_DELETION", 409, "This Music identity is pending deletion.", "contact_support", false, undefined, "pending_deletion");
+        }
+        const updated = await client.query<any>(`UPDATE users SET
+          venue_name=$2,strapi_username_snapshot=$3,strapi_email_snapshot=$4,strapi_provider_snapshot=$5,
+          strapi_account_name_snapshot=$2,strapi_account_type_snapshot=$6,strapi_account_mobile_snapshot=$7,
+          last_identity_sync_at=now(),updated_at=now()
+          WHERE id=$1
+          RETURNING id,strapi_user_document_id,strapi_account_document_id,identity_status,session_version`, [
+          row.id,input.accountName,input.username,input.email,input.provider,input.accountType,input.accountMobile,
+        ]);
+        await this.hooks.afterWrite?.();
+        await client.query("COMMIT");
+        return projection(updated.rows[0]);
+      }
+      const inserted = await client.query<any>(`INSERT INTO users(
+        username,password,email,guest_url,venue_name,strapi_user_document_id,strapi_account_document_id,
+        strapi_username_snapshot,strapi_email_snapshot,strapi_provider_snapshot,strapi_account_name_snapshot,
+        strapi_account_type_snapshot,strapi_account_mobile_snapshot,last_identity_sync_at,
+        guest_capability_hash,lifecycle_operation_id
+      ) VALUES ($1,$2,NULL,$3,$4,$5,$6,$7,$8,$9,$4,$10,$11,now(),$12,$13)
+      RETURNING id,strapi_user_document_id,strapi_account_document_id,identity_status,session_version`, [
+        input.internalUsername,input.password,input.guestUrl,input.accountName,input.userDocumentId,input.accountDocumentId,
+        input.username,input.email,input.provider,input.accountType,input.accountMobile,input.guestCapabilityHash,input.operationId,
+      ]);
+      await this.hooks.afterWrite?.();
+      await client.query("COMMIT");
+      return projection(inserted.rows[0]);
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      if (error instanceof MusicIdentityError) throw error;
+      const sqlCode = typeof error === "object" && error && "code" in error ? String((error as { code?: unknown }).code) : "";
+      if (["23505", "23514", "P0001"].includes(sqlCode)) {
+        throw new MusicIdentityError("IDENTITY_CONFLICT", 409, "The Explorer identity conflicts with an existing Music identity.", "contact_support", false, undefined, "constraint");
+      }
+      if (/^08/.test(sqlCode) || ["40001", "40P01", "53300", "53400", "55P03", "57P01", "57P03"].includes(sqlCode)) {
+        throw new MusicIdentityError("DATABASE_UNAVAILABLE", 503, "Music identity is temporarily unavailable.", "retry", true, 2);
+      }
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
 
   async findByExternalIdentity(strapiUserDocumentId: string): Promise<MusicIdentityProjection | undefined> {
     const result = await this.pool.query<{

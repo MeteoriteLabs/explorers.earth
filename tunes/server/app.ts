@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { assertContainmentStartup, containmentErrorHandler, installSafeConsole, requestIdFor } from "./security-containment";
+import { setupMusicIdentityBodylessPreflight } from "./routes/musicIdentityRoutes";
 
 /**
  * Builds the Express app with all middleware + routes wired, and returns it
@@ -36,6 +37,7 @@ export async function createApp(): Promise<{ app: express.Express; server: Serve
     res.setHeader("X-Request-Id", requestIdFor(req));
     next();
   });
+  setupMusicIdentityBodylessPreflight(app);
   app.use(express.json({ limit: "64kb" }));
   app.use(express.urlencoded({ extended: false, limit: "64kb" }));
   app.use(cookieParser(process.env.COOKIE_SECRET || 'dev-only-cookie-secret'));

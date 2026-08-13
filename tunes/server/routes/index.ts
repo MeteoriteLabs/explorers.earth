@@ -24,6 +24,12 @@ import { pool } from "../db";
 import { setupMusicHealthRoutes } from "../deployment/music-health";
 import { checkMusicDatabaseReadiness } from "../db/readiness";
 import { requestIdFor, sendContainmentError, setupNativeSessionContainment, setupOwnerContainment } from "../security-containment";
+import { setupMusicIdentityRoutes } from "./musicIdentityRoutes";
+import { BoundedIdentityRateLimiter } from "../middleware/identityRateLimit";
+import { StrapiIdentityGateway } from "../services/strapiIdentityGateway";
+import { MusicProjectionService } from "../services/musicProjectionService";
+import { MusicIdentityRepository } from "../repositories/musicIdentityRepository";
+import { resolveMusicEntryPolicy } from "../deployment/music-deployment";
 
 export function registerRoutes(app: Express, _storage: IStorage): Server {
   if (process.env.MUSIC_DEPLOYMENT_HEALTH_ENABLED === "true") {
@@ -39,6 +45,33 @@ export function registerRoutes(app: Express, _storage: IStorage): Server {
   setupSwagger(app);
 
   setupNativeSessionContainment(app);
+  const identityGateway = new StrapiIdentityGateway({
+    baseUrl: process.env.STRAPI_URL ?? "http://127.0.0.1:1337",
+    maxConcurrency: 8,
+    retries: 2,
+    connectTimeoutMs: Number(process.env.MUSIC_CONNECT_TIMEOUT_MS ?? 2_000),
+    readTimeoutMs: Number(process.env.MUSIC_READ_TIMEOUT_MS ?? 4_000),
+    overallTimeoutMs: 10_000,
+    cacheTtlMs: 30_000,
+    circuitFailureThreshold: Number(process.env.MUSIC_CIRCUIT_FAILURE_THRESHOLD ?? 3),
+    circuitOpenMs: 15_000,
+  });
+  const identityProjection = new MusicProjectionService(identityGateway, new MusicIdentityRepository(pool));
+  setupMusicIdentityRoutes(app, {
+    ensure: (proof, requestId) => identityProjection.ensure(proof, requestId),
+    entryEnabled: () => resolveMusicEntryPolicy({
+      killSwitch: process.env.MUSIC_NEW_ENTRY_KILL_SWITCH !== "false",
+      cohortEnabled: process.env.MUSIC_COHORT_ENABLED === "true",
+      inCohort: false,
+    }).newMusicEntryEnabled,
+    telemetry: () => ({ ...identityGateway.stats(), coalesced: identityProjection.stats().coalesced }),
+    metrics: (entry) => console.info("music_identity_metric", entry),
+    limiter: new BoundedIdentityRateLimiter({
+      limit: Number(process.env.MUSIC_RATE_LIMIT_PER_MINUTE ?? 30),
+      windowMs: 60_000,
+      maxEntries: 10_000,
+    }),
+  });
   setupAuthRoutes(app);
   setupOwnerContainment(app);
   const server = setupPlaylistRoutes(app);
