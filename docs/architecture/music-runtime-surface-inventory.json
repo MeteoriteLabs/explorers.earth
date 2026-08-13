@@ -99,7 +99,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/deployment/music-health.ts",
-      "line": 44
+      "line": 40
     },
     {
       "method": "GET",
@@ -109,7 +109,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/deployment/music-health.ts",
-      "line": 64
+      "line": 60
     },
     {
       "method": "GET",

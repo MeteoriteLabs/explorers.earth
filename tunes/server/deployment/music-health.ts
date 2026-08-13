@@ -34,11 +34,7 @@ export function setupMusicHealthRoutes(app: Express, input: { pool: Pick<Pool, "
   const image = deploymentImageFromEnvironment(env);
 
   app.get("/health/live", (_req, res) => {
-    try {
-      res.status(200).json(livenessStatus(image));
-    } catch {
-      res.status(503).json({ live: false, reason: "image-metadata-invalid" });
-    }
+    res.status(200).json(livenessStatus());
   });
 
   app.get("/health/ready", async (_req, res) => {

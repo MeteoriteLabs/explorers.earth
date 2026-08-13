@@ -3,27 +3,19 @@ name: Tunes production deploy authority
 on:
   workflow_call:
     inputs:
-      image_ref: { type: string, required: false }
-      digest: { type: string, required: false }
-      commit: { type: string, required: false }
-      operation: { type: string, required: false, default: deploy }
-      target_digest: { type: string, required: false }
+      digest: { type: string, required: true }
+      commit: { type: string, required: true }
   workflow_dispatch:
     inputs:
-      image_ref: { description: "Exact GHCR image@sha256 for deploy", required: false, type: string }
-      digest: { description: "Exact sha256 digest for deploy", required: false, type: string }
-      commit: { description: "Full 40-character source commit", required: false, type: string }
-      operation:
-        description: "Deploy a candidate or roll back to a retained secure digest"
+      target_digest:
+        description: "Previously retained secure digest to roll back to"
         required: true
-        default: deploy
-        type: choice
-        options: [deploy, rollback]
-      target_digest: { description: "Known retained digest for rollback", required: false, type: string }
+        type: string
 
 permissions:
   contents: read
   packages: read
+  attestations: read
 
 concurrency:
   group: tunes-production-deploy
@@ -31,30 +23,57 @@ concurrency:
 
 jobs:
   deploy:
-    # GATE-PROD remains closed until the independent C2 runtime rehearsal and
+    # GATE-PROD remains closed until external runtime evidence and explicit
     # production authorization set this repository variable to exactly `open`.
     if: vars.GATE_PROD == 'open'
     environment: tunes-production
     runs-on: ubuntu-24.04
     steps:
-      - name: Validate immutable request
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: tunes/deployment/music-deploy.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Derive and verify immutable request
+        id: request
         shell: bash
         env:
-          IMAGE_REF: ${{ inputs.image_ref }}
-          DIGEST: ${{ inputs.digest }}
-          COMMIT: ${{ inputs.commit }}
-          OPERATION: ${{ inputs.operation }}
-          TARGET_DIGEST: ${{ inputs.target_digest }}
+          CALL_DIGEST: ${{ inputs.digest }}
+          CALL_COMMIT: ${{ inputs.commit }}
+          ROLLBACK_DIGEST: ${{ inputs.target_digest }}
         run: |
           set -euo pipefail
-          [[ "$OPERATION" == deploy || "$OPERATION" == rollback ]]
-          if [[ "$OPERATION" == deploy ]]; then
-            [[ "$DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]
-            [[ "$COMMIT" =~ ^[a-f0-9]{40}$ ]]
-            [[ "$IMAGE_REF" == ghcr.io/*/explorers-tunes@"$DIGEST" ]]
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          [[ "$owner" =~ ^[a-z0-9]([a-z0-9_.-]{0,37}[a-z0-9])?$ ]]
+          IMAGE_REPOSITORY="ghcr.io/${owner}/explorers-tunes"
+          IMAGE_SOURCE="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+          if [[ "$GITHUB_EVENT_NAME" = workflow_dispatch ]]; then
+            operation=rollback
+            digest="$ROLLBACK_DIGEST"
+            commit=-
           else
-            [[ "$TARGET_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]
+            [[ "$GITHUB_WORKFLOW_REF" == "$GITHUB_REPOSITORY/.github/workflows/tunes.yml@refs/heads/main" ]]
+            operation=deploy
+            digest="$CALL_DIGEST"
+            commit="$CALL_COMMIT"
+            [[ "$commit" =~ ^[a-f0-9]{40}$ ]]
           fi
+          [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          {
+            echo "operation=$operation"
+            echo "digest=$digest"
+            echo "commit=$commit"
+            echo "repository=$IMAGE_REPOSITORY"
+            echo "source=$IMAGE_SOURCE"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Verify GitHub build provenance for normal deploy
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE_REPOSITORY: ${{ steps.request.outputs.repository }}
+          DIGEST: ${{ steps.request.outputs.digest }}
+        run: gh attestation verify "${IMAGE_REPOSITORY}@${DIGEST}" --repo "$GITHUB_REPOSITORY"
 
       - name: Configure pinned SSH host identity
         shell: bash
@@ -68,165 +87,58 @@ jobs:
           printf '%s\n' "$SSH_KEY" > "$HOME/.ssh/id_ed25519"
           printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
 
-      - name: Pull, gate, ready, and atomically promote
+      - name: Run checked-in transactional deploy executable
         shell: bash
         env:
           DEPLOY_HOST: ${{ secrets.HETZNER_HOST }}
           DEPLOY_USER: ${{ secrets.HETZNER_USER }}
-          IMAGE_REF: ${{ inputs.image_ref }}
-          DIGEST: ${{ inputs.digest }}
-          COMMIT: ${{ inputs.commit }}
-          OPERATION: ${{ inputs.operation }}
-          TARGET_DIGEST: ${{ inputs.target_digest }}
           GHCR_DEPLOY_USER: ${{ secrets.GHCR_DEPLOY_USER }}
           GHCR_DEPLOY_READ_TOKEN: ${{ secrets.GHCR_DEPLOY_READ_TOKEN }}
+          MUSIC_DEPLOY_STATE_HMAC_KEY: ${{ secrets.MUSIC_DEPLOY_STATE_HMAC_KEY }}
+          OPERATION: ${{ steps.request.outputs.operation }}
+          DIGEST: ${{ steps.request.outputs.digest }}
+          COMMIT: ${{ steps.request.outputs.commit }}
+          IMAGE_REPOSITORY: ${{ steps.request.outputs.repository }}
+          IMAGE_SOURCE: ${{ steps.request.outputs.source }}
         run: |
           set -euo pipefail
+          [[ "$DEPLOY_USER" =~ ^[A-Za-z_][A-Za-z0-9_-]{0,31}$ ]]
+          [[ "$DEPLOY_HOST" =~ ^([A-Za-z0-9][A-Za-z0-9.-]{0,252}|[0-9a-fA-F:]+)$ ]]
           [[ "$GHCR_DEPLOY_USER" =~ ^[A-Za-z0-9_.-]+$ ]]
-          cleanup_registry_auth() {
-            ssh -i "$HOME/.ssh/id_ed25519" "${DEPLOY_USER}@${DEPLOY_HOST}" docker logout ghcr.io >/dev/null 2>&1 || true
+          [[ ${#MUSIC_DEPLOY_STATE_HMAC_KEY} -ge 32 ]]
+          bundle="$(mktemp -d)"
+          archive="$(mktemp)"
+          cleanup() {
+            rm -f -- "$bundle/music-deploy.sh" "$bundle/request.txt" "$bundle/authority.txt" \
+              "$bundle/hmac.key" "$bundle/ghcr.token" "$archive"
+            rmdir -- "$bundle" 2>/dev/null || true
           }
-          trap cleanup_registry_auth EXIT
-          printf '%s' "$GHCR_DEPLOY_READ_TOKEN" | ssh -i "$HOME/.ssh/id_ed25519" \
-            "${DEPLOY_USER}@${DEPLOY_HOST}" docker login ghcr.io --username "$GHCR_DEPLOY_USER" --password-stdin
-          ssh -i "$HOME/.ssh/id_ed25519" "${DEPLOY_USER}@${DEPLOY_HOST}" bash -s -- \
-            "$OPERATION" "$IMAGE_REF" "$DIGEST" "$COMMIT" "$TARGET_DIGEST" <<'REMOTE'
-          set -euo pipefail
-          operation="$1"
-          requested_image="$2"
-          requested_digest="$3"
-          requested_commit="$4"
-          target_digest="$5"
-          marker="containment-no-schema-change"
-          root="/opt/explorers"
-          state_dir="$root/deployment-state"
-          state="$state_dir/music-state.env"
-          ledger="$state_dir/secure-images.tsv"
-          route_dir="$root/deployment-routing"
-          route="$route_dir/music-router.yml"
-          env_file="$root/production.env"
-
-          umask 077
-          test -r "$root/docker-compose.yml"
-          test -r "$env_file"
-          test -r "$state" || { echo "refusing unbootstrapped production state" >&2; exit 1; }
-          test -r "$ledger" || { echo "secure digest ledger missing" >&2; exit 1; }
-          test -r "$route" || { echo "active route missing" >&2; exit 1; }
-          set -a
-          . "$env_file"
-          . "$state"
-          set +a
-          test -n "$COMPOSE_PROJECT_NAME" || { echo "Compose project identity missing" >&2; exit 1; }
-
-          case "$ACTIVE_SLOT" in blue) candidate_slot=green ;; green) candidate_slot=blue ;; *) exit 1 ;; esac
-          candidate_service="tunes-$candidate_slot"
-
-          if [ "$operation" = rollback ]; then
-            target_line="$(awk -F '\t' -v digest="$target_digest" '$1 == digest { print NR; exit }' "$ledger")"
-            floor_line="$(awk -F '\t' -v digest="$ROLLBACK_FLOOR_DIGEST" '$1 == digest { print NR; exit }' "$ledger")"
-            test -n "$target_line" || { echo "rollback refused: unknown secure digest" >&2; exit 1; }
-            test -n "$floor_line" || { echo "rollback floor is not retained" >&2; exit 1; }
-            [ "$target_line" -ge "$floor_line" ] || { echo "rollback refused: older than containment floor" >&2; exit 1; }
-            IFS=$'\t' read -r requested_digest requested_image requested_commit retained_marker < <(sed -n "${target_line}p" "$ledger")
-            [ "$retained_marker" = "$marker" ] || { echo "rollback marker mismatch" >&2; exit 1; }
-          fi
-
-          [[ "$requested_digest" =~ ^sha256:[a-f0-9]{64}$ ]]
-          [[ "$requested_commit" =~ ^[a-f0-9]{40}$ ]]
-          [[ "$requested_image" == ghcr.io/*/explorers-tunes@"$requested_digest" ]]
-
-          export TUNES_CANDIDATE_IMAGE="$requested_image"
-          export TUNES_CANDIDATE_DIGEST="$requested_digest"
-          export TUNES_CANDIDATE_COMMIT="$requested_commit"
-          if [ "$candidate_slot" = blue ]; then
-            export TUNES_BLUE_IMAGE="$requested_image" TUNES_BLUE_DIGEST="$requested_digest" TUNES_BLUE_COMMIT="$requested_commit"
-          else
-            export TUNES_GREEN_IMAGE="$requested_image" TUNES_GREEN_DIGEST="$requested_digest" TUNES_GREEN_COMMIT="$requested_commit"
-          fi
-
-          compose() { docker compose -p "$COMPOSE_PROJECT_NAME" --project-directory "$root" -f "$root/docker-compose.yml" "$@"; }
-          docker pull "$requested_image"
-          docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$requested_image" | grep -Fx "$requested_image"
-
-          # Same candidate image, one shot. This C2 containment gate performs
-          # no schema change; C3 replaces it with the journal-backed DB runner.
-          compose --profile deployment run --rm --no-deps tunes-gate
-          compose up -d --no-deps "$candidate_service"
-
-          ready=false
-          for attempt in $(seq 1 30); do
-            if compose exec -T "$candidate_service" node -e \
-              "fetch('http://127.0.0.1:5000/health/ready').then(async r=>{const b=await r.json();if(!r.ok||b.digest!=='$requested_digest'||b.commit!=='$requested_commit'||b.migrationMarker!=='$marker')process.exit(1)}).catch(()=>process.exit(1))"; then
-              ready=true
-              break
-            fi
-            sleep 2
-          done
-          [ "$ready" = true ] || { compose stop "$candidate_service"; echo "candidate readiness failed; prior digest remains routed" >&2; exit 1; }
-
-          route_backup="$route.before-${requested_digest#sha256:}"
-          cp -- "$route" "$route_backup"
-          route_tmp="$route.tmp.$$"
-          cat > "$route_tmp" <<EOF
-          http:
-            routers:
-              tunes:
-                rule: Host(\`localtunes.earth\`)
-                priority: 200
-                entryPoints: [websecure]
-                tls:
-                  certResolver: letsencrypt
-                service: tunes-active
-            services:
-              tunes-active:
-                loadBalancer:
-                  servers:
-                    - url: http://${candidate_service}:5000
-          EOF
-          mv -- "$route_tmp" "$route"
-
-          promoted=false
-          for attempt in $(seq 1 15); do
-            if body="$(curl --fail --silent --show-error --max-time 5 https://localtunes.earth/health/ready)" \
-              && printf '%s' "$body" | compose exec -T "$candidate_service" node -e '
-                let input = "";
-                process.stdin.on("data", chunk => { input += chunk; });
-                process.stdin.on("end", () => {
-                  const b = JSON.parse(input);
-                  if (b.digest !== process.argv[1] || b.commit !== process.argv[2] || b.migrationMarker !== process.argv[3]) process.exit(1);
-                });
-              ' "$requested_digest" "$requested_commit" "$marker"; then
-              promoted=true
-              break
-            fi
-            sleep 2
-          done
-          if [ "$promoted" != true ]; then
-            mv -- "$route_backup" "$route"
-            compose stop "$candidate_service"
-            echo "promotion verification failed; exact prior route restored" >&2
-            exit 1
-          fi
-          rm -- "$route_backup"
-
-          if ! grep -Fq "$requested_digest" "$ledger"; then
-            printf '%s\t%s\t%s\t%s\n' "$requested_digest" "$requested_image" "$requested_commit" "$marker" >> "$ledger"
-          fi
-          state_tmp="$state.tmp.$$"
-          cat > "$state_tmp" <<EOF
-          COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME
-          ACTIVE_SLOT=$candidate_slot
-          ACTIVE_IMAGE_REF=$requested_image
-          ACTIVE_DIGEST=$requested_digest
-          ACTIVE_COMMIT=$requested_commit
-          ROLLBACK_FLOOR_DIGEST=$ROLLBACK_FLOOR_DIGEST
-          TUNES_BLUE_IMAGE=$TUNES_BLUE_IMAGE
-          TUNES_BLUE_DIGEST=$TUNES_BLUE_DIGEST
-          TUNES_BLUE_COMMIT=$TUNES_BLUE_COMMIT
-          TUNES_GREEN_IMAGE=$TUNES_GREEN_IMAGE
-          TUNES_GREEN_DIGEST=$TUNES_GREEN_DIGEST
-          TUNES_GREEN_COMMIT=$TUNES_GREEN_COMMIT
-          EOF
-          mv -- "$state_tmp" "$state"
-          printf 'active commit=%s digest=%s migration=%s slot=%s\n' "$requested_commit" "$requested_digest" "$marker" "$candidate_slot"
-          REMOTE
+          trap cleanup EXIT
+          install -m 700 tunes/deployment/music-deploy.sh "$bundle/music-deploy.sh"
+          printf '%s\n' music-deploy-request-v2 "operation=$OPERATION" "digest=$DIGEST" "commit=$COMMIT" compose_project=- legacy_service=- > "$bundle/request.txt"
+          printf '%s\n' music-deploy-authority-v1 "repository=$IMAGE_REPOSITORY" "source=$IMAGE_SOURCE" "ghcr_user=$GHCR_DEPLOY_USER" > "$bundle/authority.txt"
+          printf '%s' "$MUSIC_DEPLOY_STATE_HMAC_KEY" > "$bundle/hmac.key"
+          printf '%s' "$GHCR_DEPLOY_READ_TOKEN" > "$bundle/ghcr.token"
+          chmod 600 "$bundle"/*
+          tar -C "$bundle" -czf - . | base64 -w0 > "$archive"
+          # Only base64 reaches stdin. The remote command is fixed text: no caller
+          # input, digest, commit, package owner, or secret is interpolated into it.
+          ssh -i "$HOME/.ssh/id_ed25519" "${DEPLOY_USER}@${DEPLOY_HOST}" '
+            set -euo pipefail
+            incoming="$(mktemp -d /opt/explorers/deployment-transactions/incoming.XXXXXX)"
+            cleanup() {
+              rm -f -- "$incoming/music-deploy.sh" "$incoming/request.txt" "$incoming/authority.txt" \
+                "$incoming/hmac.key" "$incoming/ghcr.token"
+              rmdir -- "$incoming" 2>/dev/null || true
+            }
+            trap cleanup EXIT
+            base64 -d | tar -xzf - -C "$incoming"
+            chmod 700 "$incoming/music-deploy.sh"
+            chmod 600 "$incoming/request.txt" "$incoming/authority.txt" "$incoming/hmac.key" "$incoming/ghcr.token"
+            MUSIC_DEPLOY_REQUEST_FILE="$incoming/request.txt" \
+            MUSIC_DEPLOY_AUTHORITY_FILE="$incoming/authority.txt" \
+            MUSIC_DEPLOY_HMAC_KEY_FILE="$incoming/hmac.key" \
+            MUSIC_DEPLOY_GHCR_TOKEN_FILE="$incoming/ghcr.token" \
+            MUSIC_DEPLOY_EPHEMERAL_CREDENTIAL_FILES=1 \
+            bash "$incoming/music-deploy.sh"
+          ' < "$archive"

@@ -41,7 +41,10 @@ RUN npm run build
 FROM base AS runner
 ENV NODE_ENV=production
 ARG BUILD_COMMIT
+ARG BUILD_SOURCE
 LABEL org.opencontainers.image.revision=$BUILD_COMMIT \
+      org.opencontainers.image.source=$BUILD_SOURCE \
+      com.explorers.music.minimum-containment-commit="d226f7e4dc5a54195a59804ec729f72b5e8f10d7" \
       org.opencontainers.image.title="explorers-tunes"
 
 # Copy production dependencies and build output

@@ -15,7 +15,7 @@ const key = "test-attestation-key-that-is-long-enough";
 
 describe("Music liveness and readiness", () => {
   it("keeps process liveness independent from deployment dependencies", () => {
-    expect(livenessStatus(image)).toEqual({ live: true, ...image });
+    expect(livenessStatus()).toEqual({ live: true });
   });
 
   it("requires DB, mandatory secrets, upstream configuration, and exact same-image attestation", async () => {

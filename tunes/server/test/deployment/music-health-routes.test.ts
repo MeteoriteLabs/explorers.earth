@@ -19,7 +19,7 @@ afterEach(async () => {
   await Promise.all(directories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
 });
 
-async function appWithAttestation(databaseQuery: () => Promise<unknown>) {
+async function appWithAttestation(databaseQuery: () => Promise<unknown>, overrides: NodeJS.ProcessEnv = {}) {
   const directory = await mkdtemp(join(tmpdir(), "music-health-"));
   directories.push(directory);
   const path = join(directory, "gate.json");
@@ -40,12 +40,24 @@ async function appWithAttestation(databaseQuery: () => Promise<unknown>) {
       STRAPI_URL: "https://cms.example.test",
       MUSIC_NEW_ENTRY_KILL_SWITCH: "true",
       MUSIC_COHORT_ENABLED: "false",
+      ...overrides,
     },
   });
   return app;
 }
 
 describe("Music health endpoints", () => {
+  it("keeps liveness process-only when immutable metadata is invalid", async () => {
+    // Production break caught: a serving process is restarted because deployment metadata belongs in readiness.
+    const app = await appWithAttestation(async () => ({ rows: [{ ok: 1 }] }), { MUSIC_IMAGE_DIGEST: "invalid" });
+    const liveness = await request(app).get("/health/live");
+    expect(liveness.status).toBe(200);
+    expect(liveness.body).toEqual({ live: true });
+    const readiness = await request(app).get("/health/ready");
+    expect(readiness.status).toBe(503);
+    expect(readiness.body.reason).toBe("image-metadata-invalid");
+  });
+
   it("reports liveness while readiness independently fails DB", async () => {
     const app = await appWithAttestation(async () => { throw new Error("db unavailable"); });
     expect((await request(app).get("/health/live")).status).toBe(200);

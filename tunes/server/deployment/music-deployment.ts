@@ -139,9 +139,8 @@ export function resolveMusicEntryPolicy(input: { killSwitch: boolean; cohortEnab
   } as const;
 }
 
-export function livenessStatus(image: ImageCandidate) {
-  assertImageCandidate(image);
-  return { live: true as const, ...image };
+export function livenessStatus() {
+  return { live: true as const };
 }
 
 export type ReadinessResult = (ImageCandidate & { ready: true }) | (Partial<ImageCandidate> & { ready: false; reason: string });
@@ -183,6 +182,7 @@ export async function evaluateReadiness(input: {
 export function auditDeploymentAuthority(files: {
   ciWorkflow: string;
   deployWorkflow: string;
+  deployExecutable: string;
   rootCompose: string;
   tunesCompose: string;
   fixtureCompose: string;
@@ -193,6 +193,7 @@ export function auditDeploymentAuthority(files: {
     .join("\n");
   const ciWorkflow = uncomment(files.ciWorkflow);
   const deployWorkflow = uncomment(files.deployWorkflow);
+  const deployExecutable = uncomment(files.deployExecutable);
   const rootCompose = uncomment(files.rootCompose);
   const tunesCompose = uncomment(files.tunesCompose);
   const fixtureCompose = uncomment(files.fixtureCompose);
@@ -205,12 +206,13 @@ export function auditDeploymentAuthority(files: {
   requireText(ciWorkflow, "digest:", "CI must propagate the pushed digest");
   if (/explorers-tunes:latest|tags:[^\n]*latest/.test(ciWorkflow)) issues.push("CI must not publish a mutable tag");
   requireText(deployWorkflow, "workflow_call:", "deploy authority must be reusable from CI");
-  requireText(deployWorkflow, "music-router.yml", "deploy must atomically manage the Music route");
-  requireText(deployWorkflow, "containment-no-schema-change", "deploy must run the transitional containment gate");
-  requireText(deployWorkflow, "/health/ready", "deploy must gate promotion on readiness");
-  requireText(deployWorkflow, "mv --", "route and state promotion must be atomic");
+  requireText(deployWorkflow, "tunes/deployment/music-deploy.sh", "workflow must invoke the checked-in deploy executable");
+  requireText(deployExecutable, "music-router.yml", "deploy must atomically manage the Music route");
+  requireText(deployExecutable, "containment-no-schema-change", "deploy must run the transitional containment gate");
+  requireText(deployExecutable, "/health/ready", "deploy must gate promotion on readiness");
+  requireText(deployExecutable, "transaction_current", "deploy must recover through a durable transaction journal");
   for (const forbidden of ["scp-action", "docker compose down", "--build", "build-push-action"]) {
-    if (deployWorkflow.includes(forbidden)) issues.push(`deploy authority contains forbidden operation ${forbidden}`);
+    if (deployWorkflow.includes(forbidden) || deployExecutable.includes(forbidden)) issues.push(`deploy authority contains forbidden operation ${forbidden}`);
   }
   for (const name of ["tunes-blue:", "tunes-green:", "tunes-gate:", "--providers.file.directory=/deployment-routing"]) {
     requireText(rootCompose, name, `root Compose missing ${name}`);

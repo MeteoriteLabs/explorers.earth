@@ -27,6 +27,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
+      attestations: write
     outputs:
       image_ref: ${{ steps.push.outputs.image_ref }}
       digest: ${{ steps.push.outputs.digest }}
@@ -65,7 +67,9 @@ jobs:
           load: true
           push: false
           tags: ${{ steps.image.outputs.name }}:${{ github.sha }}
-          build-args: BUILD_COMMIT=${{ github.sha }}
+          build-args: |
+            BUILD_COMMIT=${{ github.sha }}
+            BUILD_SOURCE=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha,scope=explorers-tunes
           cache-to: type=gha,mode=max,scope=explorers-tunes
       - name: Prove gate entrypoint is in the exact image
@@ -101,17 +105,23 @@ jobs:
           [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
           echo "image_ref=${image_ref}" >> "$GITHUB_OUTPUT"
           echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+      - name: Attest the pushed image provenance
+        if: github.event_name != 'pull_request'
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: ${{ steps.image.outputs.name }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
 
   deploy-production:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: build-test-scan-push
     permissions:
       contents: read
       packages: read
+      attestations: read
     uses: ./.github/workflows/tunes-deploy.yml
     with:
-      image_ref: ${{ needs.build-test-scan-push.outputs.image_ref }}
       digest: ${{ needs.build-test-scan-push.outputs.digest }}
       commit: ${{ needs.build-test-scan-push.outputs.commit }}
-      operation: deploy
     secrets: inherit

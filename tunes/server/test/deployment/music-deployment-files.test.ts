@@ -25,6 +25,7 @@ describe("Music deployment authority files", () => {
     const result = auditDeploymentAuthority({
       ciWorkflow: read(".github/workflows/tunes.yml"),
       deployWorkflow: read(".github/workflows/tunes-deploy.yml"),
+      deployExecutable: read("tunes/deployment/music-deploy.sh"),
       rootCompose: read("docker-compose.yml"),
       tunesCompose: read("tunes/docker-compose.yml"),
       fixtureCompose: read("docker-compose.music-test.yml"),
@@ -50,9 +51,10 @@ describe("Music deployment authority files", () => {
 
   it("uses a read-packages-only remote GHCR credential and always logs it out", () => {
     const deploy = read(".github/workflows/tunes-deploy.yml");
+    const executable = read("tunes/deployment/music-deploy.sh");
     expect(deploy).toContain("GHCR_DEPLOY_READ_TOKEN");
-    expect(deploy).toContain("--password-stdin");
-    expect(deploy).toContain("docker logout ghcr.io");
+    expect(executable).toContain("--password-stdin");
+    expect(executable).toContain("logout ghcr.io");
     expect(deploy).not.toContain("secrets.GITHUB_TOKEN");
   });
 
@@ -72,21 +74,19 @@ describe("Music deployment authority files", () => {
   it("bootstraps the floor from a verified C2 image without assuming C1 has C2 health metadata", () => {
     // Production break caught: bootstrap asks a pre-C2 image for endpoints and labels it cannot contain.
     const runbook = read("docs/operations/music-deploy-runbook.md");
-    expect(runbook).toContain("first independently verified C2 immutable image");
-    expect(runbook).toContain("MINIMUM_CONTAINMENT_COMMIT=d226f7e4dc5a54195a59804ec729f72b5e8f10d7");
-    expect(runbook).toContain("test ! -e deployment-state/music-state.env");
-    expect(runbook).not.toMatch(/active_container=.*[\s\S]{0,800}health\/ready/);
-    expect(runbook).not.toContain("image revision is d226f7e4dc5a54195a59804ec729f72b5e8f10d7");
+    expect(runbook).toContain("first independently verified C2 image containing C1");
+    expect(runbook).toContain("d226f7e4dc5a54195a59804ec729f72b5e8f10d7");
+    expect(runbook).not.toMatch(/legacy_(?:container|service)=.*[\s\S]{0,500}health\/ready/);
     expect(runbook).not.toContain("docker compose ps tunes-blue");
     const orderedBootstrap = [
       "legacy_container=",
-      "url: http://${legacy_name}:5000",
-      "run --rm --no-deps tunes-gate",
-      "exec -T tunes-blue",
-      "url: http://tunes-blue:5000",
-      "https://localtunes.earth/health/ready",
-      "deployment-state/secure-images.tsv",
-      "docker stop \"$legacy_container\"",
+      "operation=bootstrap",
+      "ghcr.token:",
+      "bash tunes/deployment/music-deploy.sh",
+      "starts blue privately",
+      "atomically routes blue",
+      "authenticated manifest, permanent floor, and",
+      "stops the retained legacy container",
     ];
     let previous = -1;
     for (const step of orderedBootstrap) {
@@ -97,21 +97,21 @@ describe("Music deployment authority files", () => {
   });
 
   it("makes the private blue C1 hostile gate executable before first routing", () => {
-    const runbook = read("docs/operations/music-deploy-runbook.md");
-    const probe = runbook.indexOf("compose exec -T tunes-blue node --input-type=module");
-    const routeBlue = runbook.indexOf("sed 's#url: http://[^:]*:5000#url: http://tunes-blue:5000#'");
+    const executable = read("tunes/deployment/music-deploy.sh");
+    const probe = executable.indexOf("compose exec -T tunes-blue node --input-type=module");
+    const routeBlue = executable.indexOf('write_route "tunes-${candidate_slot}"');
     expect(probe).toBeGreaterThanOrEqual(0);
     expect(probe).toBeLessThan(routeBlue);
     for (const boundary of ["/api/auth/sync", "/graphql", "/api/subscriptions/user-plans/hostile", "socket.io-client"]) {
-      expect(runbook.slice(probe, routeBlue)).toContain(boundary);
+      expect(executable.slice(probe, routeBlue)).toContain(boundary);
     }
   });
 
   it("keeps file-provider routing unambiguous throughout bootstrap and later promotions", () => {
-    const deploy = read(".github/workflows/tunes-deploy.yml");
+    const deploy = read("tunes/deployment/music-deploy.sh");
     const compose = read("docker-compose.yml");
     const runbook = read("docs/operations/music-deploy-runbook.md");
-    expect(runbook).toContain("priority: 200");
+    expect(runbook).toContain("priority-200");
     expect(deploy).toContain("priority: 200");
     expect(compose).not.toContain("traefik.http.routers.tunes");
     expect(compose).not.toContain("traefik.enable: \"true\"\n      traefik.http.routers.tunes");
@@ -119,34 +119,29 @@ describe("Music deployment authority files", () => {
 
   it("renders valid legacy-bootstrap and promotion route YAML with priority and exact upstream", () => {
     // Production break caught: a syntactically valid workflow carries an invalid Traefik heredoc.
-    const runbookRoute = heredoc(read("docs/operations/music-deploy-runbook.md"), 'cat > "$route_tmp" <<EOF')
-      .replaceAll("${legacy_name}", "legacy-tunes").replaceAll("\\`", "`");
-    const deployRoute = heredoc(read(".github/workflows/tunes-deploy.yml"), 'cat > "$route_tmp" <<EOF')
-      .replaceAll("${candidate_service}", "tunes-green").replaceAll("\\`", "`");
-    const legacy = parseYaml(runbookRoute);
+    const routeTemplate = heredoc(read("tunes/deployment/music-deploy.sh"), 'cat > "$temporary" <<EOF');
+    const legacy = parseYaml(routeTemplate.replaceAll("${service}", "legacy-tunes").replaceAll("\\`", "`"));
+    const deployRoute = routeTemplate.replaceAll("${service}", "tunes-green").replaceAll("\\`", "`");
     const promotion = parseYaml(deployRoute);
-    expect(legacy.http.routers["tunes-cutover"]).toMatchObject({ priority: 200, service: "tunes-active" });
+    expect(legacy.http.routers.tunes).toMatchObject({ priority: 200, service: "tunes-active" });
     expect(legacy.http.services["tunes-active"].loadBalancer.servers[0].url).toBe("http://legacy-tunes:5000");
     expect(promotion.http.routers.tunes).toMatchObject({ priority: 200, service: "tunes-active" });
     expect(promotion.http.services["tunes-active"].loadBalancer.servers[0].url).toBe("http://tunes-green:5000");
   });
 
-  it("declares reusable rollback input without requiring deploy-only candidate fields", () => {
+  it("keeps reusable deploy inputs internal and manual dispatch rollback-only", () => {
     const workflow = parseYaml(read(".github/workflows/tunes-deploy.yml"));
-    const inputs = workflow.on.workflow_call.inputs;
-    expect(inputs.target_digest).toMatchObject({ type: "string", required: false });
-    for (const field of ["image_ref", "digest", "commit"]) expect(inputs[field].required).toBe(false);
-    const validation = read(".github/workflows/tunes-deploy.yml");
-    expect(validation.indexOf('if [[ "$OPERATION" == deploy ]]')).toBeLessThan(validation.indexOf('[[ "$IMAGE_REF" == ghcr.io/*/explorers-tunes@"$DIGEST" ]]'));
+    expect(Object.keys(workflow.on.workflow_call.inputs)).toEqual(["digest", "commit"]);
+    expect(Object.keys(workflow.on.workflow_dispatch.inputs)).toEqual(["target_digest"]);
   });
 
   it("retains a byte-exact route backup until public verification and restores it on failure", () => {
-    const deploy = read(".github/workflows/tunes-deploy.yml");
-    const copy = deploy.indexOf('cp -- "$route" "$route_backup"');
-    const promote = deploy.indexOf('mv -- "$route_tmp" "$route"', copy);
+    const deploy = read("tunes/deployment/music-deploy.sh");
+    const copy = deploy.indexOf('cp -- "$route_file" "$temporary/route.backup"');
+    const promote = deploy.indexOf('write_route "tunes-${candidate_slot}"', copy);
     const verify = deploy.indexOf("https://localtunes.earth/health/ready", promote);
-    const restore = deploy.indexOf('mv -- "$route_backup" "$route"', verify);
-    const remove = deploy.indexOf('rm -- "$route_backup"', restore);
+    const restore = deploy.indexOf("recover_transaction", verify);
+    const remove = deploy.indexOf('mv -- "$transaction_current" "$committed_transaction"', restore);
     expect(copy).toBeGreaterThanOrEqual(0);
     expect(promote).toBeGreaterThan(copy);
     expect(verify).toBeGreaterThan(promote);
@@ -156,12 +151,11 @@ describe("Music deployment authority files", () => {
 
   it("accepts a promoted public response only when digest, commit, and gate marker all match", () => {
     // Production break caught: the router reaches the new digest but reports stale deployment metadata.
-    const deploy = read(".github/workflows/tunes-deploy.yml");
+    const deploy = read("tunes/deployment/music-deploy.sh");
     const publicVerification = deploy.slice(deploy.indexOf("https://localtunes.earth/health/ready"));
-    expect(publicVerification).toContain('b.digest !== process.argv[1]');
-    expect(publicVerification).toContain('b.commit !== process.argv[2]');
-    expect(publicVerification).toContain('b.migrationMarker !== process.argv[3]');
-    expect(publicVerification).toContain('"$requested_digest" "$requested_commit" "$marker"');
+    expect(publicVerification).toContain('\\"digest\\":\\"$candidate_digest\\"');
+    expect(publicVerification).toContain('\\"commit\\":\\"$candidate_commit\\"');
+    expect(publicVerification).toContain('\\"migrationMarker\\":\\"$marker\\"');
   });
 
   it("requires every C1 production startup secret in Compose readiness", () => {
@@ -172,6 +166,14 @@ describe("Music deployment authority files", () => {
     expect(health).toContain("STRAPI_JWT_SECRET: env.STRAPI_JWT_SECRET");
   });
 
+  it("supplies the isolated production-mode fixture with every C1 startup prerequisite", () => {
+    // Production break caught: the real image exits before readiness because the
+    // disposable Compose contract omitted credentials enforced by C1 startup.
+    const fixture = read("docker-compose.music-test.yml");
+    expect(fixture).toContain("STRAPI_JWT_SECRET: fixture-strapi-jwt-secret-at-least-32-characters");
+    expect(fixture).toContain("ALLOWED_ORIGINS: http://127.0.0.1:55173");
+  });
+
   it("proves the built C2 commit contains C1 and carries the observed legacy Compose project through deploy", () => {
     // Production break caught: a new project creates a second Traefik instead of updating the legacy topology.
     const ci = read(".github/workflows/tunes.yml");
@@ -179,9 +181,9 @@ describe("Music deployment authority files", () => {
     const runbook = read("docs/operations/music-deploy-runbook.md");
     expect(ci).toContain("git merge-base --is-ancestor d226f7e4dc5a54195a59804ec729f72b5e8f10d7 \"$GITHUB_SHA\"");
     expect(runbook).toContain('legacy_project="$(docker inspect --format');
-    expect(runbook).toContain('compose() { docker compose -p "$legacy_project"');
-    expect(runbook).toContain("COMPOSE_PROJECT_NAME=$legacy_project");
-    expect(deploy).toContain('docker compose -p "$COMPOSE_PROJECT_NAME"');
+    expect(runbook).toContain("compose_project=<observed legacy Compose project>");
+    expect(deploy).toContain("tunes/deployment/music-deploy.sh");
+    expect(read("tunes/deployment/music-deploy.sh")).toContain('docker compose -p "$compose_project"');
   });
 
   it("does not accept comment-only deployment authority markers", () => {
@@ -207,6 +209,7 @@ describe("Music deployment authority files", () => {
     const issues = auditDeploymentAuthority({
       ciWorkflow: comments,
       deployWorkflow: comments,
+      deployExecutable: comments,
       rootCompose: comments,
       tunesCompose: comments,
       fixtureCompose: comments,

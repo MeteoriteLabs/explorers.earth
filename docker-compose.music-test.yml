@@ -50,7 +50,9 @@ services:
       DATABASE_URL_TEST: postgresql://music:music@127.0.0.1:55432/music_fixture
       STRAPI_URL: http://strapi:1337
       STRAPI_ACCESS_TOKEN: fixture-read-only-token
+      STRAPI_JWT_SECRET: fixture-strapi-jwt-secret-at-least-32-characters
       STRAPI_FIXTURE_URL: http://127.0.0.1:51337
+      ALLOWED_ORIGINS: http://127.0.0.1:55173
       MUSIC_MODE: fixture
       MUSIC_FIXTURE_VERSION: "1"
       SESSION_SECRET: fixture-session-secret-at-least-32-characters
