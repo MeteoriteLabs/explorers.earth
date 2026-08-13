@@ -4,6 +4,7 @@ import { log } from "./vite";
 import cookieParser from "cookie-parser";
 import type { Server } from "http";
 import { storage } from "./storage";
+import { assertContainmentStartup, containmentErrorHandler, installSafeConsole, requestIdFor } from "./security-containment";
 
 /**
  * Builds the Express app with all middleware + routes wired, and returns it
@@ -21,6 +22,8 @@ import { storage } from "./storage";
  *   server.listen(...)                                               request(app)...
  */
 export async function createApp(): Promise<{ app: express.Express; server: Server }> {
+  installSafeConsole();
+  assertContainmentStartup(process.env);
   const app = express();
 
   // Enable trust proxy FIRST, before any middleware
@@ -28,8 +31,12 @@ export async function createApp(): Promise<{ app: express.Express; server: Serve
   app.set("trust proxy", true);
 
   // Basic middleware setup
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: false }));
+  app.use((req, res, next) => {
+    res.setHeader("X-Request-Id", requestIdFor(req));
+    next();
+  });
+  app.use(express.json({ limit: "64kb" }));
+  app.use(express.urlencoded({ extended: false, limit: "64kb" }));
   app.use(cookieParser(process.env.COOKIE_SECRET || 'dev-only-cookie-secret'));
 
   // Serve favicon and related files directly from root and public directories
@@ -68,7 +75,7 @@ export async function createApp(): Promise<{ app: express.Express; server: Serve
       // Allow necessary headers
       res.header(
         "Access-Control-Allow-Headers",
-        "Origin, X-Requested-With, Content-Type, Accept, Cookie, Authorization, X-CSRF-Token, X-Username"
+        "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRF-Token"
       );
       // Allow necessary methods
       res.header(
@@ -101,15 +108,6 @@ export async function createApp(): Promise<{ app: express.Express; server: Serve
       console.log(`🟦 [Request Logger] ${req.method} ${req.originalUrl}`);
       console.log(`🟦 Path: ${path}`);
       console.log(`🟦 Content-Type: ${req.headers['content-type']}`);
-      if (isPost) {
-        // Log body preview for POST requests
-        try {
-          const bodyPreview = JSON.stringify(req.body).substring(0, 200);
-          console.log(`🟦 Body Preview: ${bodyPreview}...`);
-        } catch (e) {
-          console.log('🟦 Body not serializable');
-        }
-      }
       console.log(`🟦 ============================================\n`);
     }
 
@@ -132,11 +130,8 @@ export async function createApp(): Promise<{ app: express.Express; server: Serve
 
   // Error handling middleware (registered after routes, before the Vite/static
   // catch-all that the entrypoint adds — preserves the original ordering)
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    console.error('Error:', err);
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    res.status(status).json({ message });
+  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+    containmentErrorHandler(err, req, res);
   });
 
   return { app, server };

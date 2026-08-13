@@ -29,6 +29,8 @@ export interface LocalTunesUserResponse {
 export interface LocalTunesError {
   message: string;
   status?: number;
+  code?: string;
+  requestId?: string;
 }
 
 export interface SyncUserData {
@@ -44,40 +46,17 @@ export interface SyncUserData {
  * @returns Promise with sync result
  */
 export async function syncLocalTunesUser(
-  strapiUser: SyncUserData
-): Promise<{ success: boolean; user?: any; message?: string }> {
+  _strapiUser: SyncUserData
+): Promise<{ success: boolean; user?: any; message?: string; code?: string; requestId?: string }> {
   try {
     if (!LOCAL_TUNES_CONFIG.enabled) {
       console.log('Local Tunes integration disabled, skipping sync');
       return { success: true, message: 'Integration disabled' };
     }
 
-    console.log('Syncing user with LocalTunes:', strapiUser.username);
-
-    // We rely on the JWT token set in the interceptor for authentication
-    // The sync endpoint typically requires the user to be authenticated via JWT
-
-    // Note: For the initial sync after signup (where we might not rely on the interceptor 
-    // because auth state might not be fully settled in storage yet), we can pass the user data
-    // The backend sync endpoint likely expects { strapiUser: { ... } } body
-
-    // Check if we have a token in storage first
-    let tokenVerified = false;
-    const authStorage = localStorage.getItem('auth-storage');
-    if (authStorage) {
-      const authData = JSON.parse(authStorage);
-      if (authData?.state?.jwt) {
-        tokenVerified = true;
-      }
-    }
-
-    if (!tokenVerified) {
-      console.warn('⚠️ No JWT token found in storage before sync call. This might fail if the endpoint is protected.');
-    }
-
     const response = await localTunesClient.post(
       '/api/auth/sync',
-      { strapiUser },
+      undefined,
       {
         headers: {
           'Content-Type': 'application/json',
@@ -87,7 +66,6 @@ export async function syncLocalTunesUser(
       }
     );
 
-    console.log('LocalTunes user synced successfully:', response.data);
     return {
       success: true,
       user: response.data.user,
@@ -95,10 +73,12 @@ export async function syncLocalTunesUser(
     };
 
   } catch (error: any) {
-    console.error('Failed to sync LocalTunes user:', error);
+    const safeError = error.response?.data?.error;
     return {
       success: false,
-      message: error.response?.data?.message || 'Sync failed'
+      message: safeError?.message || 'Sync failed',
+      code: safeError?.code,
+      requestId: safeError?.requestId,
     };
   }
 }

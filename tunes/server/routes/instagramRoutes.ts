@@ -1,6 +1,6 @@
 import { Express, Request, Response, NextFunction } from 'express';
 import axios from 'axios';
-import jwt from 'jsonwebtoken';
+import { verifyStrapiToken } from '../security-containment';
 // @ts-ignore - JS utility files without type declarations
 import { scrapeInstagramProfile } from '../utils/instagramScraper.js';
 // @ts-ignore - JS utility files without type declarations
@@ -25,7 +25,7 @@ function authenticateToken(req: Request, res: Response, next: NextFunction) {
     }
 
     try {
-        const decoded = jwt.decode(token);
+        const decoded = verifyStrapiToken(token);
         if (!decoded) {
             return res.status(403).json({ error: 'Invalid token' });
         }

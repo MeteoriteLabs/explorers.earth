@@ -62,7 +62,7 @@ describe('apiClient', () => {
     // _capturedInterceptorOnFulfilled was grabbed at module-evaluation time
     // (before any beforeEach wipes mock.calls via vi.clearAllMocks()).
 
-    it('adds Authorization and X-Username headers from auth-storage', () => {
+    it('adds Authorization without mutable owner headers from auth-storage', () => {
       localStorage.setItem(
         'auth-storage',
         JSON.stringify({ state: { token: 'jwt-abc', user: { username: 'alice' } } })
@@ -73,7 +73,7 @@ describe('apiClient', () => {
       const config = _capturedInterceptorOnFulfilled({ headers: {} });
 
       expect(config.headers.Authorization).toBe('Bearer jwt-abc');
-      expect(config.headers['X-Username']).toBe('alice');
+      expect(config.headers['X-Username']).toBeUndefined();
     });
 
     it('omits auth headers when no token is stored', () => {

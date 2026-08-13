@@ -43,13 +43,7 @@ describe("syncLocalTunesUser", () => {
     });
     expect(post).toHaveBeenCalledWith(
       "/api/auth/sync",
-      {
-        strapiUser: {
-          id: "1",
-          username: "qa-user",
-          email: "qa@example.com",
-        },
-      },
+      undefined,
       expect.objectContaining({
         headers: {
           "Content-Type": "application/json",

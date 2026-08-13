@@ -11,16 +11,16 @@ import { themeSchema } from '@shared/schema';
 import { sql } from 'drizzle-orm';
 import { db } from './db';
 import passport from 'passport';
-import { randomBytes, createHash } from 'crypto';
+import { randomBytes, createHash, randomUUID } from 'crypto';
 import { sanitizeUser, publicUser } from './utils/sanitize-user';
 import { emailService } from './services/email-service';
 import { importYouTubeMusicPlaylist, importYouTubeMusicPlaylistToMain } from './services/youtube-playlist-import';
 import { importSpotifyPlaylist, importSpotifyPlaylistToMain } from './services/spotify-playlist-import';
 import { strapiService } from './services/strapi-service';
 import { extractYouTubeVideoId, isYouTubeUrl } from './utils/youtube';
-import jwt from 'jsonwebtoken';
+import { rejectLegacyBearerOwner } from './security-containment';
 import { extractDeviceInfo, extractBrowserInfo, extractOSInfo } from './auth';
-import { getGeoInfo } from './utils/geolocation';
+import { getGeoInfo } from './utils/geolocation'; import { allowedOrigins, errorEnvelope } from './security-containment';
 
 // Helper function for logging YouTube API usage
 async function logYouTubeAPIUsage(endpointType: 'search' | 'video_details', userId?: number) {
@@ -98,7 +98,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       const token = req.headers.authorization.substring(7);
       try {
         // Decode JWT to validate
-        const decoded = jwt.decode(token) as any;
+        const decoded = rejectLegacyBearerOwner();
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -161,7 +161,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = rejectLegacyBearerOwner();
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -172,7 +172,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
         }
 
         // Look up user
-        let usernameForLookup = req.query.username || req.headers['x-username'];
+        let usernameForLookup = req.query.username;
         if (!usernameForLookup && req.body.username) {
           usernameForLookup = req.body.username;
         }
@@ -220,7 +220,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = rejectLegacyBearerOwner();
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -229,7 +229,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
           return res.status(401).json({ message: "Unauthorized - Token expired" });
         }
         // Look up user
-        let usernameForLookup = req.query.username || req.headers['x-username'];
+        let usernameForLookup = req.query.username;
         if (!usernameForLookup && req.body.username) {
           usernameForLookup = req.body.username;
         }
@@ -282,7 +282,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = rejectLegacyBearerOwner();
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -291,7 +291,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
           return res.status(401).json({ message: "Unauthorized - Token expired" });
         }
         // Look up user
-        let usernameForLookup = req.query.username || req.headers['x-username'];
+        let usernameForLookup = req.query.username;
         if (!usernameForLookup && req.body.username) {
           usernameForLookup = req.body.username;
         }
@@ -355,7 +355,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = rejectLegacyBearerOwner();
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -364,7 +364,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
           return res.status(401).json({ message: "Unauthorized - Token expired" });
         }
         // Look up user
-        let usernameForLookup = req.query.username || req.headers['x-username'];
+        let usernameForLookup = req.query.username;
         if (!usernameForLookup && req.body.username) {
           usernameForLookup = req.body.username;
         }
@@ -442,7 +442,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = rejectLegacyBearerOwner();
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -450,8 +450,8 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
           return res.status(401).json({ message: "Unauthorized - Token expired" });
         }
         // Need username to map JWT → Neon DB user
-        // Check query param, body, and X-Username header (sent by the frontend axios interceptor)
-        const username = (req.query.username as string) || req.body.username || (req.headers['x-username'] as string);
+        // Legacy lookup is unreachable: rejectLegacyBearerOwner fails closed above.
+        const username = (req.query.username as string) || req.body.username;
         if (!username) {
           return res.status(401).json({ message: "Unauthorized - Username required" });
         }
@@ -559,15 +559,15 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = rejectLegacyBearerOwner();
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
         if (decoded.exp && decoded.exp < Date.now() / 1000) {
           return res.status(401).json({ message: "Unauthorized - Token expired" });
         }
-        // Check query param, body, and X-Username header (sent by the frontend axios interceptor)
-        const username = (req.query.username as string) || req.body.username || (req.headers['x-username'] as string);
+        // Legacy lookup is unreachable: rejectLegacyBearerOwner fails closed above.
+        const username = (req.query.username as string) || req.body.username;
         if (!username) {
           return res.status(401).json({ message: "Unauthorized - Username required" });
         }
@@ -673,10 +673,10 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = rejectLegacyBearerOwner();
         if (!decoded || !decoded.id) return res.status(401).json({ message: "Unauthorized - Invalid token" });
         if (decoded.exp && decoded.exp < Date.now() / 1000) return res.status(401).json({ message: "Unauthorized - Token expired" });
-        const username = (req.query.username as string) || req.body.username || (req.headers['x-username'] as string);
+        const username = (req.query.username as string) || req.body.username;
         if (!username) return res.status(401).json({ message: "Username required with JWT auth" });
         const user = await storage.getUserByUsername(username);
         if (!user) return res.status(404).json({ message: "User not found" });
@@ -785,10 +785,10 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = rejectLegacyBearerOwner();
         if (!decoded || !decoded.id) return res.status(401).json({ message: "Unauthorized - Invalid token" });
         if (decoded.exp && decoded.exp < Date.now() / 1000) return res.status(401).json({ message: "Unauthorized - Token expired" });
-        const username = (req.query.username as string) || req.body.username || (req.headers['x-username'] as string);
+        const username = (req.query.username as string) || req.body.username;
         if (!username) return res.status(401).json({ message: "Username required with JWT auth" });
         const user = await storage.getUserByUsername(username);
         if (!user) return res.status(404).json({ message: "User not found" });
@@ -916,7 +916,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = rejectLegacyBearerOwner();
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -925,7 +925,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
           return res.status(401).json({ message: "Unauthorized - Token expired" });
         }
         // Look up user
-        let usernameForLookup = req.query.username || req.headers['x-username'];
+        let usernameForLookup = req.query.username;
         if (!usernameForLookup && req.body.username) {
           usernameForLookup = req.body.username;
         }
@@ -1029,14 +1029,14 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = rejectLegacyBearerOwner();
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
         if (decoded.exp && decoded.exp < Date.now() / 1000) {
           return res.status(401).json({ message: "Unauthorized - Token expired" });
         }
-        let usernameForLookup = req.query.username || req.headers['x-username'];
+        let usernameForLookup = req.query.username;
         if (!usernameForLookup && req.body.username) usernameForLookup = req.body.username;
         if (usernameForLookup) {
           const user = await storage.getUserByUsername(usernameForLookup as string);
@@ -1915,7 +1915,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       const token = req.headers.authorization.substring(7);
       try {
         // Decode JWT to validate
-        const decoded = jwt.decode(token) as any;
+        const decoded = rejectLegacyBearerOwner();
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -1929,12 +1929,12 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
         // Look up Neon DB user by username from multiple sources
         // Priority: 1. body (for updates), 2. query params, 3. custom header
-        let usernameForLookup = req.body.currentUsername || req.body.username || req.query.username || req.headers['x-username'];
+        let usernameForLookup = req.body.currentUsername || req.body.username || req.query.username;
 
         if (!usernameForLookup) {
           console.error('❌ Username not found in body, query, or headers');
           return res.status(400).json({
-            message: "Username required with JWT auth. Please provide username in request body, query parameter, or X-Username header"
+            message: "Legacy bearer owner mapping is unavailable"
           });
         }
 
@@ -2161,7 +2161,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       const token = req.headers.authorization.substring(7);
       try {
         // Decode JWT to validate it's a real token
-        const decoded = jwt.decode(token) as any;
+        const decoded = rejectLegacyBearerOwner();
         if (!decoded || !decoded.id) {
           console.log('❌ Invalid JWT token');
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
@@ -2433,7 +2433,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       const token = req.headers.authorization.substring(7);
       try {
         // Decode JWT to validate
-        const decoded = jwt.decode(token) as any;
+        const decoded = rejectLegacyBearerOwner();
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -2446,12 +2446,12 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
         console.log('✅ User profile - JWT validated for Strapi user:', decoded.id);
 
         // Look up Neon DB user by username from body or query
-        let usernameForLookup = req.body.username || req.query.username || req.headers['x-username'];
+        let usernameForLookup = req.body.username || req.query.username;
 
         if (!usernameForLookup) {
           console.error('❌ Username not found in body, query, or headers');
           return res.status(400).json({
-            message: "Username required with JWT auth. Please provide username in request body, query parameter, or X-Username header"
+            message: "Legacy bearer owner mapping is unavailable"
           });
         }
 
@@ -2638,7 +2638,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = rejectLegacyBearerOwner();
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -2649,7 +2649,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
         }
 
         // Look up user
-        let usernameForLookup = req.query.username || req.headers['x-username'];
+        let usernameForLookup = req.query.username;
         if (!usernameForLookup && req.body.username) {
           usernameForLookup = req.body.username;
         }
@@ -2713,7 +2713,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       const token = req.headers.authorization.substring(7);
       try {
         // Decode JWT to validate
-        const decoded = jwt.decode(token) as any;
+        const decoded = rejectLegacyBearerOwner();
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -2726,7 +2726,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
         console.log('✅ Add song - JWT validated for Strapi user:', decoded.id);
 
         // Look up Neon DB user by username from query or header
-        let usernameForLookup = req.query.username || req.headers['x-username'];
+        let usernameForLookup = req.query.username;
 
         if (!usernameForLookup) { // Try to get from body if not in query headers
           usernameForLookup = req.body.username;
@@ -2810,7 +2810,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       const token = req.headers.authorization.substring(7);
       try {
         // Decode JWT to validate it's a real token
-        const decoded = jwt.decode(token) as any;
+        const decoded = rejectLegacyBearerOwner();
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -2822,8 +2822,8 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
         console.log('✅ Delete song - JWT validated for Strapi user:', decoded.id);
 
-        // Look up Neon DB user - check X-Username header first, then query param
-        const username = (req.headers['x-username'] as string) || (req.query.username as string);
+        // Legacy lookup is unreachable: rejectLegacyBearerOwner fails closed above.
+        const username = req.query.username as string;
         if (!username) {
           return res.status(400).json({ message: "Username required with JWT auth" });
         }
@@ -2869,16 +2869,15 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = rejectLegacyBearerOwner();
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
         if (decoded.exp && decoded.exp < Date.now() / 1000) {
           return res.status(401).json({ message: "Unauthorized - Token expired" });
         }
-        // Look up Neon DB user - check X-Username header first, then body/query
-        const username = (req.headers['x-username'] as string)
-          || req.body.username
+        // Legacy lookup is unreachable: rejectLegacyBearerOwner fails closed above.
+        const username = req.body.username
           || (req.query.username as string);
         if (!username) {
           return res.status(400).json({ message: "Username required with JWT auth" });
@@ -4312,7 +4311,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       const token = req.headers.authorization.substring(7);
       try {
         // Decode JWT to validate it's a real token
-        const decoded = jwt.decode(token) as any;
+        const decoded = rejectLegacyBearerOwner();
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -4324,8 +4323,8 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
         console.log('✅ Delete song - JWT validated for Strapi user:', decoded.id);
 
-        // Look up Neon DB user - check X-Username header first, then query param
-        const username = (req.headers['x-username'] as string) || (req.query.username as string);
+        // Legacy lookup is unreachable: rejectLegacyBearerOwner fails closed above.
+        const username = req.query.username as string;
         if (!username) {
           return res.status(400).json({ message: "Username required with JWT auth" });
         }
@@ -4371,16 +4370,15 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     else if (req.headers.authorization?.startsWith('Bearer ')) {
       const token = req.headers.authorization.substring(7);
       try {
-        const decoded = jwt.decode(token) as any;
+        const decoded = rejectLegacyBearerOwner();
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
         if (decoded.exp && decoded.exp < Date.now() / 1000) {
           return res.status(401).json({ message: "Unauthorized - Token expired" });
         }
-        // Look up Neon DB user - check X-Username header first, then body/query
-        const username = (req.headers['x-username'] as string)
-          || req.body.username
+        // Legacy lookup is unreachable: rejectLegacyBearerOwner fails closed above.
+        const username = req.body.username
           || (req.query.username as string);
         if (!username) {
           return res.status(400).json({ message: "Username required with JWT auth" });
@@ -5671,18 +5669,30 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
   const io = new SocketIOServer(httpServer, {
     path: '/ws',
     cors: {
-      origin: true,
+      origin: allowedOrigins(),
       credentials: true,
       methods: ["GET", "POST"]
     },
     transports: ['websocket', 'polling'],
     pingTimeout: 20000,
-    pingInterval: 10000
+    pingInterval: 10000,
+    maxHttpBufferSize: 64 * 1024,
+    allowRequest: (request, callback) => {
+      const origin = request.headers.origin;
+      const allowed = typeof origin === 'string' && allowedOrigins().includes(origin);
+      callback(allowed ? undefined : 'origin not allowed', allowed);
+    }
   });
 
   // Use session middleware with Socket.IO with better error handling
   io.use((socket, next) => {
     try {
+      const origin = socket.handshake.headers.origin;
+      if (typeof origin !== 'string' || !allowedOrigins().includes(origin)) {
+        const failure = new Error('origin not allowed') as Error & { data?: unknown };
+        failure.data = errorEnvelope('ORIGIN_FORBIDDEN', randomUUID());
+        return next(failure);
+      }
       // For guest connections, skip session check if guestUrl is provided
       const guestUrl = socket.handshake.query.guestUrl;
       if (guestUrl) {
@@ -5693,14 +5703,18 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       sessionMiddleware(socket.request as any, {} as any, (err: any) => {
         if (err) {
           console.error('Session middleware error:', err);
-          next(new Error('Authentication failed'));
+          const failure = new Error('Authentication failed') as Error & { data?: unknown };
+          failure.data = errorEnvelope('AUTH_INVALID', randomUUID());
+          next(failure);
           return;
         }
         next();
       });
     } catch (error) {
       console.error('Error in session middleware:', error);
-      next(new Error('Internal server error'));
+      const failure = new Error('Internal server error') as Error & { data?: unknown };
+      failure.data = errorEnvelope('INTERNAL_ERROR', randomUUID());
+      next(failure);
     }
   });
 
@@ -5714,20 +5728,19 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       // Extract guestUrl from handshake query
       const { guestUrl } = socket.handshake.query;
       let roomId: string | undefined;
+      let role: 'owner' | 'guest' | undefined;
 
       // Handle guest connections
       if (guestUrl && typeof guestUrl === 'string') {
         const user = await storage.getUserByGuestUrl(guestUrl);
         if (!user) {
-          console.log('Invalid guestUrl for Socket.IO connection:', guestUrl);
-          socket.emit('connection_status', {
-            status: 'error',
-            message: 'Invalid guest URL'
-          });
+          const requestId = randomUUID();
+          socket.emit('containment_error', errorEnvelope('AUTH_INVALID', requestId));
           socket.disconnect();
           return;
         }
         roomId = guestUrl;
+        role = 'guest';
       }
       // Handle authenticated host connections
       else {
@@ -5736,22 +5749,21 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
           const user = await storage.getUser(session.passport.user);
           if (user) {
             roomId = user.guestUrl;
+            role = 'owner';
             console.log('Authenticated host connection for user:', user.id);
           }
         }
 
         if (!roomId) {
-          console.log('No valid authentication or guestUrl provided');
-          socket.emit('connection_status', {
-            status: 'error',
-            message: 'Authentication required'
-          });
+          const requestId = randomUUID();
+          socket.emit('containment_error', errorEnvelope('AUTH_REQUIRED', requestId));
           socket.disconnect();
           return;
         }
       }
 
       // Join the room
+      if (!role) throw new Error('socket role not assigned');
       await socket.join(roomId);
 
       // Track clients in room
@@ -5760,28 +5772,62 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       }
       rooms.get(roomId)!.add(socket.id);
 
-      console.log(`Client ${socket.id} joined room ${roomId}, total clients:`, rooms.get(roomId)!.size);
+      console.log('music_socket_connected', { role, clientCount: rooms.get(roomId)!.size });
 
       // Send connection confirmation
       socket.emit('connection_status', {
         status: 'connected',
-        room: roomId
+        role
       });
 
-      // Handle player state updates
-      socket.on('player_state', (data) => {
-        console.log('Received player state update:', data);
-        try {
-          // Broadcast to all clients in the room except sender
-          socket.to(roomId!).emit('player_state', data);
-        } catch (error) {
-          console.error('Error broadcasting player state:', error);
+      const eventTimestamps: number[] = [];
+      const failSocket = (code: 'SOCKET_EVENT_FORBIDDEN' | 'SOCKET_PAYLOAD_INVALID' | 'RATE_LIMITED') => {
+        const requestId = randomUUID();
+        console.warn('music_socket_containment_failure', { code, requestId });
+        socket.emit('containment_error', errorEnvelope(code, requestId));
+      };
+      const acceptEvent = (data: unknown, maxBytes = 2048) => {
+        const now = Date.now();
+        while (eventTimestamps.length && eventTimestamps[0] < now - 60_000) eventTimestamps.shift();
+        if (eventTimestamps.length >= 10) {
+          failSocket('RATE_LIMITED');
+          return false;
         }
+        eventTimestamps.push(now);
+        try {
+          if (Buffer.byteLength(JSON.stringify(data), 'utf8') > maxBytes) throw new Error('large');
+        } catch {
+          failSocket('SOCKET_PAYLOAD_INVALID');
+          return false;
+        }
+        return true;
+      };
+
+      socket.on('player_state', (data) => {
+        if (role !== 'owner') return failSocket('SOCKET_EVENT_FORBIDDEN');
+        if (!acceptEvent(data) || !data || typeof data !== 'object') return;
+        const value = data as Record<string, unknown>;
+        if (typeof value.playing !== 'boolean' || Object.keys(value).some((key) => !['playing', 'position', 'externalId'].includes(key))) {
+          return failSocket('SOCKET_PAYLOAD_INVALID');
+        }
+        socket.to(roomId!).emit('player_state', data);
+      });
+
+      socket.on('guest_request', (data) => {
+        if (role !== 'guest') return failSocket('SOCKET_EVENT_FORBIDDEN');
+        if (!acceptEvent(data) || !data || typeof data !== 'object') return;
+        const value = data as Record<string, unknown>;
+        if (value.type !== 'song' || typeof value.externalId !== 'string' || value.externalId.length > 256 ||
+            Object.keys(value).some((key) => !['type', 'externalId'].includes(key))) {
+          return failSocket('SOCKET_PAYLOAD_INVALID');
+        }
+        const requestId = randomUUID();
+        socket.emit('guest_request_status', { status: 'accepted', requestId });
       });
 
       // Handle disconnection
       socket.on('disconnect', () => {
-        console.log(`Client ${socket.id} disconnected from room ${roomId}`);
+        console.log('music_socket_disconnected');
         if (roomId && rooms.has(roomId)) {
           rooms.get(roomId)!.delete(socket.id);
           if (rooms.get(roomId)!.size === 0) {
@@ -5792,10 +5838,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
     } catch (error) {
       console.error('Error handling Socket.IO connection:', error);
-      socket.emit('connection_status', {
-        status: 'error',
-        message: 'Server error'
-      });
+      socket.emit('containment_error', errorEnvelope('INTERNAL_ERROR', randomUUID()));
       socket.disconnect();
     }
   });
@@ -5894,8 +5937,8 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
         id: existingSetting.id,
         key,
         value,
-        description: existingSetting.description,
-        category: existingSetting.category,
+        description: existingSetting.description ?? undefined,
+        category: existingSetting.category ?? undefined,
         isSecret: existingSetting.isSecret,
         updatedBy: req.user!.id
       });

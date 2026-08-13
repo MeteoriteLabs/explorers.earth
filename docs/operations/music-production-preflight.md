@@ -1,5 +1,11 @@
 # Music production preflight — BLOCKING ABORT
 
+Before any release, rotate every previously exposed or default PostgreSQL,
+session, cookie, Strapi service-token, and Strapi JWT credential. Record the
+rotation evidence without secret values, verify old credentials are rejected,
+and keep PostgreSQL private with no published host port. This implementation
+does not perform production rotation or any other production mutation.
+
 Status: **BLOCKED; no production probe was attempted.** Production mutation is
 forbidden in C0. No safe separately supplied read-only Strapi or database
 credential was available in this worktree, so no topology, row-count,

@@ -21,6 +21,7 @@ import { setupReactivationRoutes } from "./reactivationRoutes";
 import scrapeRoutes from "./scrapeRoutes";
 import { setupMusicFixtureProbeRoute } from "./musicFixtureProbe";
 import { pool } from "../db";
+import { requestIdFor, sendContainmentError, setupNativeSessionContainment, setupOwnerContainment } from "../security-containment";
 
 export function registerRoutes(app: Express, _storage: IStorage): Server {
   if (process.env.MUSIC_MODE === "fixture") setupMusicFixtureProbeRoute(app, {
@@ -31,7 +32,9 @@ export function registerRoutes(app: Express, _storage: IStorage): Server {
   });
   setupSwagger(app);
 
+  setupNativeSessionContainment(app);
   setupAuthRoutes(app);
+  setupOwnerContainment(app);
   const server = setupPlaylistRoutes(app);
   setupAdminRoutes(app);
   setupStrapiRoutes(app);
@@ -86,44 +89,7 @@ export function registerRoutes(app: Express, _storage: IStorage): Server {
   
   // GraphQL Proxy for Strapi
   app.post("/graphql", async (req, res) => {
-    try {
-      const strapiUrl = process.env.STRAPI_URL;
-      const strapiToken = process.env.STRAPI_ACCESS_TOKEN;
-      
-      if (!strapiUrl) {
-        return res.status(500).json({ error: "STRAPI_URL not configured" });
-      }
-
-      const authHeader = req.headers.authorization;
-      const isAuthOperation = req.body?.query?.includes("login") || req.body?.query?.includes("register");
-      
-      const finalToken = isAuthOperation 
-        ? undefined 
-        : (authHeader || (strapiToken ? `Bearer ${strapiToken}` : undefined));
-      
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      
-      if (finalToken) {
-        headers["Authorization"] = finalToken;
-      }
-
-      const response = await fetch(`${strapiUrl}/graphql`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(req.body),
-      });
-
-      const data = await response.json();
-      res.status(response.status).json(data);
-    } catch (error) {
-      console.error("❌ GraphQL Proxy Error:", error);
-      res.status(500).json({ 
-        error: "GraphQL Proxy Error", 
-        message: error instanceof Error ? error.message : "Unknown error" 
-      });
-    }
+    return sendContainmentError(res, 410, "GRAPHQL_PROXY_REMOVED", requestIdFor(req));
   });
 
   return server;

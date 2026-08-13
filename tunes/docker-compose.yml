@@ -27,6 +27,7 @@ services:
       - STRAPI_ACCESS_TOKEN=${STRAPI_ACCESS_TOKEN}
       - STRAPI_GRAPHQL_ENDPOINT=${STRAPI_GRAPHQL_ENDPOINT}
       - STRAPI_API_KEY=${STRAPI_API_KEY}
+      - STRAPI_JWT_SECRET=${STRAPI_JWT_SECRET:?STRAPI_JWT_SECRET is required}
       - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
       - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
       - SPOTIFY_REFRESH_TOKEN=${SPOTIFY_REFRESH_TOKEN}
@@ -57,14 +58,12 @@ services:
   db:
     image: postgres:15-alpine
     environment:
-      - POSTGRES_USER=${DB_USER:-cosmic}
-      - POSTGRES_PASSWORD=${DB_PASS:-cosmicpass}
-      - POSTGRES_DB=${DB_NAME:-cosmic}
+      - POSTGRES_USER=${DB_USER:?DB_USER is required}
+      - POSTGRES_PASSWORD=${DB_PASS:?DB_PASS is required}
+      - POSTGRES_DB=${DB_NAME:?DB_NAME is required}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
     volumes:
       - postgres-data:/var/lib/postgresql/data
-    ports:
-      - "5433:5432"
     restart: unless-stopped
     networks:
       - cosmic-network

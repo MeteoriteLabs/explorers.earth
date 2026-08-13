@@ -44,14 +44,9 @@ localTunesClient.interceptors.request.use(
         const authData = JSON.parse(authStorage);
         // NOTE: Zustand persists token as `state.token` (not `state.jwt`)
         const token = authData?.state?.token ?? authData?.state?.jwt;
-        const username = authData?.state?.user?.username;
 
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
-        }
-        // X-Username header lets the server map the Strapi JWT → Neon DB user
-        if (username) {
-          config.headers['X-Username'] = username;
         }
       } catch (error) {
         console.error('Failed to parse auth storage:', error);
@@ -72,43 +67,8 @@ localTunesClient.interceptors.request.use(
 
 // Response interceptor for error handling and cookie extraction
 localTunesClient.interceptors.response.use(
-  (response) => {
-    // Extract session cookie from Set-Cookie header if present
-    const setCookieHeader = response.headers['set-cookie'];
-    if (setCookieHeader) {
-      // Handle both string and array formats
-      const cookies = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader];
-
-      for (const cookie of cookies) {
-        // Look for cosmic.sid cookie
-        const match = cookie.match(/cosmic\.sid=([^;]+)/);
-        if (match) {
-          sessionCookieValue = decodeURIComponent(match[1]);
-          console.log('✅ Extracted session cookie from response:', sessionCookieValue.substring(0, 20) + '...');
-          break;
-        }
-      }
-    }
-
-    return response;
-  },
+  (response) => response,
   (error) => {
-    // Also try to extract cookie from error response
-    if (error.response?.headers?.['set-cookie']) {
-      const setCookieHeader = error.response.headers['set-cookie'];
-      const cookies = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader];
-
-      for (const cookie of cookies) {
-        const match = cookie.match(/cosmic\.sid=([^;]+)/);
-        if (match) {
-          sessionCookieValue = decodeURIComponent(match[1]);
-          console.log('✅ Extracted session cookie from error response:', sessionCookieValue.substring(0, 20) + '...');
-          break;
-        }
-      }
-    }
-
-    console.error('Local Tunes API Error:', error);
     return Promise.reject(error);
   }
 );
@@ -253,10 +213,8 @@ const isSessionValid = (): boolean => {
     return false;
   }
 
-  // For fallback sessions, just check expiry
   if (storedSession.sessionId.startsWith('fallback-session-')) {
-    console.log('Using fallback session (cookies not accessible)');
-    return true;
+    return false;
   }
 
   // Session exists and is not expired
@@ -368,19 +326,7 @@ const authenticateWithLocalTunes = async () => {
 
       storeSession(session);
       console.log('✅ Successfully authenticated with Local Tunes using extracted session cookie');
-    } else {
-      // Fallback: Store session even without cookies (for cross-origin issues)
-      console.log('⚠️ Cookies not accessible, storing session with available data');
-      const fallbackSession: LocalTunesSession = {
-        csrfToken: csrfToken || 'fallback-token',
-        sessionId: 'fallback-session-' + Date.now(),
-        timestamp: Date.now(),
-        expiresAt: Date.now() + SESSION_DURATION
-      };
-
-      storeSession(fallbackSession);
-      console.log('✅ Successfully authenticated with Local Tunes and stored fallback session');
-    }
+    } else throw new Error('Music session cookie was not established');
   } catch (error) {
     console.error('❌ Failed to authenticate with Local Tunes:', error);
     throw error;

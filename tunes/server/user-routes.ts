@@ -1,6 +1,6 @@
 import { Express } from "express";
 import { storage } from "./storage";
-import jwt from "jsonwebtoken";
+import { rejectLegacyBearerOwner } from "./security-containment";
 import { extractDeviceInfo, extractBrowserInfo, extractOSInfo } from "./auth";
 import { getGeoInfo } from "./utils/geolocation";
 import { createHash } from "crypto";
@@ -102,7 +102,7 @@ export function setupUserRoutes(app: Express) {
       const token = req.headers.authorization.substring(7);
       try {
         // Decode JWT to validate
-        const decoded = jwt.decode(token) as any;
+        const decoded = rejectLegacyBearerOwner();
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -115,12 +115,12 @@ export function setupUserRoutes(app: Express) {
         console.log('✅ User devices - JWT validated for Strapi user:', decoded.id);
 
         // Look up Neon DB user by username from multiple sources
-        let usernameForLookup = req.query.username || req.headers['x-username'];
+        let usernameForLookup = req.query.username;
 
         if (!usernameForLookup) {
           console.error('❌ Username not found in query or headers');
           return res.status(400).json({
-            message: "Username required with JWT auth. Please provide username in query parameter or X-Username header"
+            message: "Legacy bearer owner mapping is unavailable"
           });
         }
 
@@ -255,7 +255,7 @@ export function setupUserRoutes(app: Express) {
       const token = req.headers.authorization.substring(7);
       try {
         // Decode JWT to validate
-        const decoded = jwt.decode(token) as any;
+        const decoded = rejectLegacyBearerOwner();
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
@@ -268,12 +268,12 @@ export function setupUserRoutes(app: Express) {
         console.log('✅ Terminate session - JWT validated for Strapi user:', decoded.id);
 
         // Look up Neon DB user by username from query or header
-        let usernameForLookup = req.query.username || req.headers['x-username'];
+        let usernameForLookup = req.query.username;
 
         if (!usernameForLookup) {
           console.error('❌ Username not found in query or headers');
           return res.status(400).json({
-            message: "Username required with JWT auth. Please provide username in query parameter or X-Username header"
+            message: "Legacy bearer owner mapping is unavailable"
           });
         }
 
