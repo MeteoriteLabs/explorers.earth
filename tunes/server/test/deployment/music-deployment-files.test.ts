@@ -44,9 +44,10 @@ describe("Music deployment authority files", () => {
     // Production break caught: Compose declares a migration gate command that was never copied into the runner image.
     const ci = read(".github/workflows/tunes.yml");
     const compose = read("docker-compose.yml");
-    const entrypoint = "dist/server/deployment/run-containment-gate.js";
-    expect(ci).toContain(`existsSync('/app/${entrypoint}')`);
-    expect(compose).toContain(`command: ["node", "${entrypoint}"]`);
+    const entrypoint = "dist/server/deployment/run-migration-gate.js";
+    expect(ci).toContain(`/app/${entrypoint}`);
+    expect(compose).toContain(entrypoint);
+    expect(ci).toContain("/app/migrations/0002_identity_lifecycle.sql");
   });
 
   it("uses a read-packages-only remote GHCR credential and always logs it out", () => {
@@ -159,7 +160,7 @@ describe("Music deployment authority files", () => {
     const publicVerification = deploy.slice(deploy.indexOf("https://localtunes.earth/health/ready"));
     expect(publicVerification).toContain('\\"digest\\":\\"$candidate_digest\\"');
     expect(publicVerification).toContain('\\"commit\\":\\"$candidate_commit\\"');
-    expect(publicVerification).toContain('\\"migrationMarker\\":\\"$marker\\"');
+    expect(publicVerification).toContain('\\"migrationMarker\\":\\"$candidate_marker\\"');
   });
 
   it("requires every C1 production startup secret in Compose readiness", () => {

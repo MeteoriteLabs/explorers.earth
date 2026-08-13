@@ -24,19 +24,15 @@ describe('POST /api/auth/sync — first-time Google user creation', () => {
   beforeAll(removeFresh);
   afterAll(removeFresh);
 
-  it('creates the Neon user from a fresh strapiUser and returns it (no secrets)', async () => {
+  it('rejects unauthenticated username/email adoption without creating a user', async () => {
     ({ app } = await createApp());
     const r = await request(app)
       .post('/api/auth/sync')
       .send({ strapiUser: { username: FRESH.username, email: FRESH.email } });
 
-    expect(r.status).toBe(200);
-    expect(r.body.user?.username).toBe(FRESH.username);
-    for (const k of ['password', 'otp', 'otpExpiry', 'emailVerificationToken']) {
-      expect(r.body.user[k]).toBeUndefined();
-    }
-    // Persisted in Neon
+    expect(r.status).toBe(401);
+    expect(r.body.error?.code).toBe('AUTH_REQUIRED');
     const persisted = await storage.getUserByUsername(FRESH.username);
-    expect(persisted?.email).toBe(FRESH.email);
+    expect(persisted).toBeUndefined();
   });
 });

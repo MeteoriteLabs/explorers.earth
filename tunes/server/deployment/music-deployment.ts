@@ -1,17 +1,21 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { EXPECTED_MUSIC_MIGRATION_ID, LEGACY_CONTAINMENT_MIGRATION_MARKER } from "../../shared/music-migration-contract";
 
-export const CONTAINMENT_MIGRATION_MARKER = "containment-no-schema-change" as const;
-export const GATE_KIND = "music-containment-deployment-gate-v1" as const;
+export const CONTAINMENT_MIGRATION_MARKER = LEGACY_CONTAINMENT_MIGRATION_MARKER;
+export const CURRENT_MIGRATION_MARKER = EXPECTED_MUSIC_MIGRATION_ID;
+export const GATE_KIND = "music-schema-deployment-gate-v2" as const;
+export const LEGACY_GATE_KIND = "music-containment-deployment-gate-v1" as const;
 
 export interface ImageCandidate {
   digest: string;
   commit: string;
-  migrationMarker: typeof CONTAINMENT_MIGRATION_MARKER;
+  migrationMarker: typeof CONTAINMENT_MIGRATION_MARKER | typeof CURRENT_MIGRATION_MARKER;
 }
 
 export interface GateAttestation extends ImageCandidate {
-  kind: typeof GATE_KIND;
-  schemaChanged: false;
+  kind: typeof GATE_KIND | typeof LEGACY_GATE_KIND;
+  schemaChanged: boolean;
+  migrationChecksum?: string;
   signature: string;
 }
 
@@ -35,33 +39,40 @@ export interface DeploymentRuntime {
 function assertImageCandidate(image: ImageCandidate): void {
   if (!/^sha256:[a-f0-9]{64}$/.test(image.digest)) throw new Error("image digest must be immutable sha256");
   if (!/^[a-f0-9]{40}$/.test(image.commit)) throw new Error("image commit must be a full git SHA");
-  if (image.migrationMarker !== CONTAINMENT_MIGRATION_MARKER) {
-    throw new Error(`C2 only permits ${CONTAINMENT_MIGRATION_MARKER}`);
+  if (![CONTAINMENT_MIGRATION_MARKER, CURRENT_MIGRATION_MARKER].includes(image.migrationMarker)) {
+    throw new Error(`unsupported migration marker ${image.migrationMarker}`);
   }
 }
 
-function canonicalGatePayload(image: ImageCandidate): string {
+function canonicalGatePayload(image: ImageCandidate, migrationChecksum?: string): string {
   assertImageCandidate(image);
-  return [GATE_KIND, image.digest, image.commit, image.migrationMarker, "schemaChanged=false"].join("\n");
+  const legacy = image.migrationMarker === CONTAINMENT_MIGRATION_MARKER;
+  if (!legacy && !/^[a-f0-9]{64}$/.test(migrationChecksum ?? "")) throw new Error("migration checksum is required");
+  return [legacy ? LEGACY_GATE_KIND : GATE_KIND, image.digest, image.commit, image.migrationMarker,
+    legacy ? "schemaChanged=false" : "schemaChanged=true", migrationChecksum ?? ""].join("\n");
 }
 
-export function createGateAttestation(image: ImageCandidate, key: string): GateAttestation {
+export function createGateAttestation(image: ImageCandidate, key: string, migrationChecksum?: string): GateAttestation {
   if (key.length < 32) throw new Error("gate attestation key must contain at least 32 characters");
+  const legacy = image.migrationMarker === CONTAINMENT_MIGRATION_MARKER;
   return {
-    kind: GATE_KIND,
+    kind: legacy ? LEGACY_GATE_KIND : GATE_KIND,
     ...image,
-    schemaChanged: false,
-    signature: createHmac("sha256", key).update(canonicalGatePayload(image)).digest("hex"),
+    schemaChanged: !legacy,
+    ...(legacy ? {} : { migrationChecksum }),
+    signature: createHmac("sha256", key).update(canonicalGatePayload(image, migrationChecksum)).digest("hex"),
   };
 }
 
 export function verifyGateAttestation(attestation: GateAttestation, expected: ImageCandidate, key: string): boolean {
   try {
     assertImageCandidate(expected);
-    if (attestation.kind !== GATE_KIND || attestation.schemaChanged !== false
+    const legacy = expected.migrationMarker === CONTAINMENT_MIGRATION_MARKER;
+    if (attestation.kind !== (legacy ? LEGACY_GATE_KIND : GATE_KIND) || attestation.schemaChanged !== !legacy
       || attestation.digest !== expected.digest || attestation.commit !== expected.commit
       || attestation.migrationMarker !== expected.migrationMarker) return false;
-    const expectedSignature = createGateAttestation(expected, key).signature;
+    if (!legacy && !/^[a-f0-9]{64}$/.test(attestation.migrationChecksum ?? "")) return false;
+    const expectedSignature = createGateAttestation(expected, key, attestation.migrationChecksum).signature;
     const actual = Buffer.from(attestation.signature, "hex");
     const wanted = Buffer.from(expectedSignature, "hex");
     return actual.length === wanted.length && timingSafeEqual(actual, wanted);
@@ -152,6 +163,7 @@ export async function evaluateReadiness(input: {
   requiredSecrets: Record<string, string | undefined>;
   upstreamUrls: Record<string, string | undefined>;
   databasePing: () => Promise<boolean>;
+  migrationState?: () => Promise<{ ready: boolean; currentId?: string; currentChecksum?: string }>;
 }): Promise<ReadinessResult> {
   try {
     assertImageCandidate(input.image);
@@ -172,6 +184,15 @@ export async function evaluateReadiness(input: {
   }
   if (!await input.databasePing().catch(() => false)) {
     return { ready: false, reason: "database-unreachable", ...input.image };
+  }
+  if (input.image.migrationMarker === CURRENT_MIGRATION_MARKER) {
+    let state: { ready: boolean; currentId?: string; currentChecksum?: string } | undefined;
+    try { state = await input.migrationState?.(); }
+    catch { state = { ready: false }; }
+    if (!state?.ready || state.currentId !== CURRENT_MIGRATION_MARKER
+      || state.currentChecksum !== input.attestation?.migrationChecksum) {
+      return { ready: false, reason: "migration-state-invalid", ...input.image };
+    }
   }
   if (!input.attestation || !verifyGateAttestation(input.attestation, input.image, input.attestationKey)) {
     return { ready: false, reason: "gate-attestation-mismatch", ...input.image };
@@ -208,7 +229,7 @@ export function auditDeploymentAuthority(files: {
   requireText(deployWorkflow, "workflow_call:", "deploy authority must be reusable from CI");
   requireText(deployWorkflow, "tunes/deployment/music-deploy.sh", "workflow must invoke the checked-in deploy executable");
   requireText(deployExecutable, "music-router.yml", "deploy must atomically manage the Music route");
-  requireText(deployExecutable, "containment-no-schema-change", "deploy must run the transitional containment gate");
+  requireText(deployExecutable, EXPECTED_MUSIC_MIGRATION_ID, "deploy must run the exact schema migration gate");
   requireText(deployExecutable, "/health/ready", "deploy must gate promotion on readiness");
   requireText(deployExecutable, "transaction_current", "deploy must recover through a durable transaction journal");
   for (const forbidden of ["scp-action", "docker compose down", "--build", "build-push-action"]) {

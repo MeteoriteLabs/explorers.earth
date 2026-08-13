@@ -8,7 +8,8 @@ readonly state_schema="music-state-v2"
 readonly ledger_schema="music-ledger-v2"
 readonly floor_schema="music-floor-v1"
 readonly journal_schema="music-transaction-v1"
-readonly marker="containment-no-schema-change"
+readonly legacy_marker="containment-no-schema-change"
+readonly current_marker="0002_identity_lifecycle"
 readonly minimum_containment_commit="d226f7e4dc5a54195a59804ec729f72b5e8f10d7"
 
 fail() {
@@ -168,6 +169,7 @@ ensure_private_directory "$state_dir" "$route_dir" "$transaction_dir"
 
 declare -a ledger_digests=()
 declare -a ledger_commits=()
+declare -a ledger_markers=()
 declare -A ledger_seen=()
 ledger_last_mac=""
 
@@ -177,6 +179,7 @@ validate_ledger() {
   [[ ${#ledger_rows[@]} -gt 0 ]] || fail "secure ledger is empty"
   ledger_digests=()
   ledger_commits=()
+  ledger_markers=()
   ledger_seen=()
   ledger_last_mac=""
   local expected_sequence=1
@@ -187,7 +190,7 @@ validate_ledger() {
       && "$sequence" == "$expected_sequence" \
       && "$digest_value" =~ ^sha256:[a-f0-9]{64}$ \
       && "$commit_value" =~ ^[a-f0-9]{40}$ \
-      && "$marker_value" == "$marker" \
+      && ( "$marker_value" == "$legacy_marker" || "$marker_value" == "$current_marker" ) \
       && "$mac" =~ ^[a-f0-9]{64}$ ]] || fail "secure ledger malformed or reordered"
     if [[ "$expected_sequence" -eq 1 ]]; then
       [[ "$previous_mac" == GENESIS ]] || fail "secure ledger genesis mismatch"
@@ -200,6 +203,7 @@ validate_ledger() {
     ledger_seen["$digest_value"]="$expected_sequence"
     ledger_digests+=("$digest_value")
     ledger_commits+=("$commit_value")
+    ledger_markers+=("$marker_value")
     ledger_last_mac="$mac"
     expected_sequence=$((expected_sequence + 1))
   done
@@ -377,10 +381,13 @@ if [[ "$operation" == bootstrap ]]; then
   candidate_slot=blue
   candidate_digest="$requested_digest"
   candidate_commit="$requested_commit"
+  candidate_marker="$current_marker"
   blue_digest="$candidate_digest"
   blue_commit="$candidate_commit"
+  blue_marker="$candidate_marker"
   green_digest="$candidate_digest"
   green_commit="$candidate_commit"
+  green_marker="$candidate_marker"
 else
   require_regular_file "$route_file"
   validate_ledger
@@ -390,8 +397,10 @@ else
   if [[ "$state_active_slot" == blue ]]; then candidate_slot=green; else candidate_slot=blue; fi
   blue_digest="$state_blue_digest"
   blue_commit="$state_blue_commit"
+  blue_marker="${ledger_markers[${ledger_seen[$blue_digest]}-1]}"
   green_digest="$state_green_digest"
   green_commit="$state_green_commit"
+  green_marker="${ledger_markers[${ledger_seen[$green_digest]}-1]}"
   if [[ "$operation" == rollback ]]; then
     target_sequence="${ledger_seen[$requested_digest]:-}"
     floor_sequence="${ledger_seen[$floor_digest]:-}"
@@ -399,16 +408,20 @@ else
     [[ "$target_sequence" -ge "$floor_sequence" ]] || fail "rollback refused: digest older than permanent floor"
     candidate_digest="$requested_digest"
     candidate_commit="${ledger_commits[target_sequence-1]}"
+    candidate_marker="${ledger_markers[target_sequence-1]}"
   else
     candidate_digest="$requested_digest"
     candidate_commit="$requested_commit"
+    candidate_marker="$current_marker"
   fi
   if [[ "$candidate_slot" == blue ]]; then
     blue_digest="$candidate_digest"
     blue_commit="$candidate_commit"
+    blue_marker="$candidate_marker"
   else
     green_digest="$candidate_digest"
     green_commit="$candidate_commit"
+    green_marker="$candidate_marker"
   fi
 fi
 
@@ -419,6 +432,12 @@ candidate_image="$repository@$candidate_digest"
 export TUNES_CANDIDATE_IMAGE="$candidate_image" TUNES_CANDIDATE_DIGEST="$candidate_digest" TUNES_CANDIDATE_COMMIT="$candidate_commit"
 export TUNES_BLUE_IMAGE="$repository@$blue_digest" TUNES_BLUE_DIGEST="$blue_digest" TUNES_BLUE_COMMIT="$blue_commit"
 export TUNES_GREEN_IMAGE="$repository@$green_digest" TUNES_GREEN_DIGEST="$green_digest" TUNES_GREEN_COMMIT="$green_commit"
+export TUNES_CANDIDATE_MIGRATION="$candidate_marker" TUNES_BLUE_MIGRATION="$blue_marker" TUNES_GREEN_MIGRATION="$green_marker"
+if [[ "$candidate_marker" == "$legacy_marker" ]]; then
+  export TUNES_GATE_ENTRYPOINT="dist/server/deployment/run-containment-gate.js"
+else
+  export TUNES_GATE_ENTRYPOINT="dist/server/deployment/run-migration-gate.js"
+fi
 
 auth_dir="$transaction_dir/registry-auth.$$"
 ensure_private_directory "$auth_dir"
@@ -462,7 +481,7 @@ compose up -d --no-deps "tunes-$candidate_slot"
 ready=false
 for _attempt in $(seq 1 30); do
   if compose exec -T "tunes-$candidate_slot" node -e \
-    "fetch('http://127.0.0.1:5000/health/ready').then(async r=>{const b=await r.json();if(!r.ok||b.digest!=='$candidate_digest'||b.commit!=='$candidate_commit'||b.migrationMarker!=='$marker')process.exit(1)}).catch(()=>process.exit(1))"; then
+    "fetch('http://127.0.0.1:5000/health/ready').then(async r=>{const b=await r.json();if(!r.ok||b.digest!=='$candidate_digest'||b.commit!=='$candidate_commit'||b.migrationMarker!=='$candidate_marker')process.exit(1)}).catch(()=>process.exit(1))"; then
     ready=true
     break
   fi
@@ -551,7 +570,7 @@ write_route "tunes-${candidate_slot}"
 maybe_failpoint after_route
 
 public_body="$("$curl_command" --fail --silent --show-error --max-time 5 https://localtunes.earth/health/ready)"
-expected_public_body="{\"ready\":true,\"digest\":\"$candidate_digest\",\"commit\":\"$candidate_commit\",\"migrationMarker\":\"$marker\"}"
+expected_public_body="{\"ready\":true,\"digest\":\"$candidate_digest\",\"commit\":\"$candidate_commit\",\"migrationMarker\":\"$candidate_marker\"}"
 if [[ "$public_body" != "$expected_public_body" ]]; then
   printf '%s\n' "public promotion metadata verification failed" >&2
   abort_transaction 1
@@ -560,18 +579,18 @@ fi
 if [[ "$operation" == bootstrap ]]; then
   sequence=1
   previous_mac=GENESIS
-  ledger_mac="$(hmac "$ledger_schema"$'\t'"$repository"$'\t'"$sequence"$'\t'"$candidate_digest"$'\t'"$candidate_commit"$'\t'"$marker"$'\t'"$previous_mac")"
+  ledger_mac="$(hmac "$ledger_schema"$'\t'"$repository"$'\t'"$sequence"$'\t'"$candidate_digest"$'\t'"$candidate_commit"$'\t'"$candidate_marker"$'\t'"$previous_mac")"
   ledger_temporary="$ledger_file.next.$$"
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$ledger_schema" "$sequence" "$candidate_digest" "$candidate_commit" "$marker" "$previous_mac" "$ledger_mac" > "$ledger_temporary"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$ledger_schema" "$sequence" "$candidate_digest" "$candidate_commit" "$candidate_marker" "$previous_mac" "$ledger_mac" > "$ledger_temporary"
   atomic_replace "$ledger_temporary" "$ledger_file"
 else
   if [[ -z "${ledger_seen[$candidate_digest]:-}" ]]; then
     sequence=$((${#ledger_digests[@]} + 1))
     previous_mac="$ledger_last_mac"
-    ledger_mac="$(hmac "$ledger_schema"$'\t'"$repository"$'\t'"$sequence"$'\t'"$candidate_digest"$'\t'"$candidate_commit"$'\t'"$marker"$'\t'"$previous_mac")"
+    ledger_mac="$(hmac "$ledger_schema"$'\t'"$repository"$'\t'"$sequence"$'\t'"$candidate_digest"$'\t'"$candidate_commit"$'\t'"$candidate_marker"$'\t'"$previous_mac")"
     ledger_temporary="$ledger_file.next.$$"
     cp -- "$ledger_file" "$ledger_temporary"
-    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$ledger_schema" "$sequence" "$candidate_digest" "$candidate_commit" "$marker" "$previous_mac" "$ledger_mac" >> "$ledger_temporary"
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$ledger_schema" "$sequence" "$candidate_digest" "$candidate_commit" "$candidate_marker" "$previous_mac" "$ledger_mac" >> "$ledger_temporary"
     atomic_replace "$ledger_temporary" "$ledger_file"
   fi
 fi
@@ -601,4 +620,4 @@ maybe_failpoint after_commit
 cleanup_transaction_directory "$committed_transaction"
 durable_directory "$transaction_dir"
 
-printf 'active commit=%s digest=%s migration=%s slot=%s\n' "$candidate_commit" "$candidate_digest" "$marker" "$candidate_slot"
+printf 'active commit=%s digest=%s migration=%s slot=%s\n' "$candidate_commit" "$candidate_digest" "$candidate_marker" "$candidate_slot"

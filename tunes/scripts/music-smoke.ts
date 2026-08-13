@@ -1,7 +1,9 @@
+const strapiHostPort = process.env.MUSIC_STRAPI_HOST_PORT ?? "51337";
+
 const endpoints = [
-  ["strapi health", "http://127.0.0.1:51337/health", "json"],
-  ["strapi identity", "http://127.0.0.1:51337/api/users/me", "json"],
-  ["strapi accounts", "http://127.0.0.1:51337/api/accounts", "json"],
+  ["strapi health", `http://127.0.0.1:${strapiHostPort}/health`, "json"],
+  ["strapi identity", `http://127.0.0.1:${strapiHostPort}/api/users/me`, "json"],
+  ["strapi accounts", `http://127.0.0.1:${strapiHostPort}/api/accounts`, "json"],
   ["Tunes application Strapi/PostgreSQL readiness", "http://127.0.0.1:55000/api/music-fixture/readiness", "json"],
   ["Explorers application", "http://127.0.0.1:55173/", "html"],
   ["Explorers-to-Tunes application path", "http://127.0.0.1:55173/api/music-fixture/readiness", "json"],

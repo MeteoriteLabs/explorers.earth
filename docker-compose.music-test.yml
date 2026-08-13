@@ -4,6 +4,9 @@ x-music-labels: &music-labels
   com.explorers.music.fixture: "true"
   com.explorers.music.project: "explorers-music-fixture"
 
+x-tunes-fixture-image: &tunes-fixture-image
+  image: explorers-music-fixture-tunes:c3
+
 services:
   postgres:
     image: postgres:15-alpine
@@ -25,7 +28,7 @@ services:
     image: node:22.12-alpine
     working_dir: /workspace
     command: ["node", "--experimental-strip-types", "tunes/scripts/music-fixture-server.ts", "--port", "1337"]
-    ports: ["127.0.0.1:51337:1337"]
+    ports: ["127.0.0.1:${MUSIC_STRAPI_HOST_PORT:-51337}:1337"]
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:1337/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
       interval: 2s
@@ -35,7 +38,25 @@ services:
     networks: [music-fixture]
     volumes: [./:/workspace:ro]
 
+  tunes-migrate:
+    <<: *tunes-fixture-image
+    command: ["node", "dist/server/deployment/run-migration-gate.js"]
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql://music:music@postgres:5432/music_fixture
+      MUSIC_IMAGE_DIGEST: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      MUSIC_IMAGE_COMMIT: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      MUSIC_MIGRATION_MARKER: 0002_identity_lifecycle
+      MUSIC_GATE_ATTESTATION_KEY: fixture-migration-gate-key-at-least-32-characters
+      MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/fixture.json
+    depends_on:
+      postgres: { condition: service_healthy }
+    labels: *music-labels
+    networks: [music-fixture]
+    volumes: [music-fixture-gates:/deployment-gates]
+
   tunes:
+    <<: *tunes-fixture-image
     build:
       context: ./tunes
       dockerfile: Dockerfile
@@ -67,13 +88,14 @@ services:
       MUSIC_RATE_LIMIT_PER_MINUTE: "60"
       MUSIC_PROVISIONING_KILL_SWITCH: "true"
       MUSIC_PROVISIONING_COHORT: disabled
-      MUSIC_EXPECTED_MIGRATION_ID: versioned-migrations-unavailable-c0
+      MUSIC_EXPECTED_MIGRATION_ID: 0002_identity_lifecycle
       MUSIC_RECONCILIATION_ENABLED: "false"
       MUSIC_RECONCILIATION_MAX_ROWS: "0"
     ports: ["127.0.0.1:55000:5000"]
     depends_on:
       postgres: { condition: service_healthy }
       strapi: { condition: service_healthy }
+      tunes-migrate: { condition: service_completed_successfully }
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:5000/api/music-fixture/readiness').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
       interval: 2s
@@ -109,4 +131,6 @@ networks:
 
 volumes:
   music-fixture-postgres:
+    labels: *music-labels
+  music-fixture-gates:
     labels: *music-labels

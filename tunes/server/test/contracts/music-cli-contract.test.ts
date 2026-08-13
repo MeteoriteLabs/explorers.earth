@@ -156,9 +156,9 @@ describe("music CLI output contract", () => {
     }
   });
 
-  it("safety-refuses db:migrate while C0 has no versioned migrations", () => {
-    // Production break caught: C0 could run drizzle-kit push against an ambient
-    // DATABASE_URL before a reviewed versioned migration exists.
+  it("safety-refuses db:migrate without an explicit disposable target", () => {
+    // Production break caught: a versioned migrator reads an ambient production
+    // DATABASE_URL when the operator did not explicitly select the test target.
     const result = runCli(["db:migrate", "--format", "json"], {
       ...process.env,
       DATABASE_URL: "postgresql://owner:secret@production.example.com:5432/music",
@@ -168,7 +168,7 @@ describe("music CLI output contract", () => {
     expect(JSON.parse(result.stdout)).toMatchObject({
       command: "db:migrate",
       status: "blocked",
-      phase: "migration-safety",
+      phase: "database-target",
     });
   });
 

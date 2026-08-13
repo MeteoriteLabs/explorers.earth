@@ -123,13 +123,13 @@ export function AuthProvider({ children, skipAuthCheck = false }: AuthProviderPr
       return failureCount < 3;
     },
     enabled: !skipAuthCheck,
-    // If this fails but we have local storage, don't show error
-    onError: (error) => {
-      if (localUser) {
-        console.log('Using cached user data from local storage due to API error:', error.message);
-      }
-    }
   });
+
+  // React Query v5 removed query-level onError callbacks. Preserve the cached
+  // identity fallback without weakening the query's typed result.
+  useEffect(() => {
+    if (error && localUser) console.log('Using cached user data from local storage due to API error:', error.message);
+  }, [error, localUser]);
   
   // Combine server and local data
   const user = serverUser || localUser;

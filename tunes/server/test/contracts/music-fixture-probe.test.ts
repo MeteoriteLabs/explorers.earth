@@ -31,6 +31,7 @@ describe("actual Tunes application fixture probe", () => {
     setupMusicFixtureProbeRoute(app, {
       mode: "fixture",
       databaseQuery: async (sql) => { queries.push(sql); return { rows: [{ database: "music_fixture", ready: 1 }] }; },
+      migrationReadiness: async () => ({ ready: true, currentId: "0002_identity_lifecycle" }),
       strapiUrl: `http://127.0.0.1:${address.port}`,
       fetchImpl: fetch,
     });
@@ -40,7 +41,7 @@ describe("actual Tunes application fixture probe", () => {
     expect(response.body).toMatchObject({
       status: "ready",
       application: "tunes",
-      boundaries: { database: "music_fixture", strapi: "ready" },
+      boundaries: { database: "music_fixture", migration: "0002_identity_lifecycle", strapi: "ready" },
       identity: { personDocumentId: "fixture-person", accountDocumentId: "fixture-account" },
     });
   });

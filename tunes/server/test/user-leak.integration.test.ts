@@ -9,6 +9,7 @@
  * It is intentionally separate from the pure-unit sanitize-user.test.ts (which
  * needs no DB). CI/local without Postgres should run only the unit suite.
  */
+import { createHash } from 'node:crypto';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../app';
@@ -21,6 +22,11 @@ const SEED = {
   password: 'scrypt$seeded-test-hash.salt',
   email: 'leak-test@example.com',
   otp: '999999',
+  venueName: 'Leak test venue',
+  strapiUserDocumentId: 'fixture-person-leak-test',
+  strapiAccountDocumentId: 'fixture-account-leak-test',
+  lifecycleOperationId: 'fixture-lifecycle-leak-test',
+  guestCapabilityHash: createHash('sha256').update('fixture-guest-capability-leak-test').digest('hex'),
 };
 
 let app: Awaited<ReturnType<typeof createApp>>['app'];
@@ -31,11 +37,7 @@ beforeAll(async () => {
   ({ app } = await createApp());
   // createUser assigns a random-hex guestUrl (see storage.createUser). Adjust the
   // seed fields here if the users table gains NOT NULL columns.
-  const created = await storage.createUser({
-    username: SEED.username,
-    password: SEED.password,
-    email: SEED.email,
-  } as any);
+  const created = await storage.createUser(SEED as any);
   seededUserId = created.id;
   seededGuestUrl = created.guestUrl;
   // Set the secret fields createUser may not populate, so we can prove they're stripped.
@@ -57,28 +59,22 @@ afterAll(async () => {
 describe('CRITICAL: user-returning responses strip secrets', () => {
   it('GET /api/auth/user-data → no secret fields', async () => {
     const r = await request(app).get(`/api/auth/user-data?username=${SEED.username}`);
-    expect(r.status).toBe(200);
-    expect(r.body.user).toBeTruthy(); // fail loudly if the response shape changed
-    for (const k of SECRETS) expect(r.body.user[k]).toBeUndefined();
-    expect(r.body.user.username).toBe(SEED.username); // self projection keeps these
-    expect(r.body.user.email).toBe(SEED.email);
+    expect(r.status).toBe(401);
+    for (const value of [SEED.password, SEED.otp, 'verif-seed-token']) expect(JSON.stringify(r.body)).not.toContain(value);
   });
 
   it('GET /api/auth/onboarding-status → no secret fields', async () => {
     const r = await request(app).get(`/api/auth/onboarding-status?username=${SEED.username}`);
-    expect(r.status).toBe(200);
-    expect(r.body.user).toBeTruthy();
-    for (const k of SECRETS) expect(r.body.user[k]).toBeUndefined();
+    expect(r.status).toBe(401);
+    for (const value of [SEED.password, SEED.otp, 'verif-seed-token']) expect(JSON.stringify(r.body)).not.toContain(value);
   });
 
   it('POST /api/auth/sync → no secret fields (SSO bootstrap, ungated)', async () => {
-    // The route reads req.body.strapiUser and 400s without strapiUser.username.
     const r = await request(app)
       .post('/api/auth/sync')
       .send({ strapiUser: { username: SEED.username, email: SEED.email } });
-    expect(r.status).toBe(200);
-    expect(r.body.user).toBeTruthy();
-    for (const k of SECRETS) expect(r.body.user[k]).toBeUndefined();
+    expect(r.status).toBe(401);
+    for (const value of [SEED.password, SEED.otp, 'verif-seed-token']) expect(JSON.stringify(r.body)).not.toContain(value);
   });
 
   it('GET /api/playlist/:guestUrl → publicUser projection (no secrets, no email/isAdmin)', async () => {

@@ -5,6 +5,7 @@ import { isAbsolute, join, resolve, win32 as windowsPath } from "node:path";
 import { parseMusicEnvironment } from "../server/config/music-environment.ts";
 import { MUSIC_COMPOSE_PROJECT, validateComposeModel, validateOwnedResources, type ComposeModel } from "./music-compose-safety.ts";
 import { OwnedProcessRunner } from "./music-process-runner.ts";
+import { EXPECTED_MUSIC_MIGRATION_ID } from "../shared/music-migration-contract.ts";
 
 export const MUSIC_CLI_SCHEMA_VERSION = "music-cli/v1";
 export const FIXTURE_SCHEMA_VERSION = "strapi-identity-fixture/v1";
@@ -38,8 +39,8 @@ export function validateStrapiFixture(fixture: StrapiIdentityFixture, options: {
 
 type OutputFormat = "human" | "json";
 type Mode = "fixture" | "live";
-interface ParsedArgs { command: string; mode: Mode; format: OutputFormat; detach: boolean; wait: boolean; volumes: boolean; confirmProject?: string; resume?: string; }
-interface RunResult { status: "success" | "failure" | "blocked"; phase: string; exitCode: number; artifacts?: string[]; checkpoint?: string; error?: string; }
+interface ParsedArgs { command: string; mode: Mode; format: OutputFormat; detach: boolean; wait: boolean; volumes: boolean; confirmProject?: string; confirmReset?: string; target?: string; resume?: string; }
+interface RunResult { status: "success" | "failure" | "blocked"; phase: string; exitCode: number; artifacts?: string[]; checkpoint?: string; error?: string; details?: unknown; }
 interface RunContext { commit: string; fixtureVersion: string; fixtureSchemaVersion: string; gateValues: Record<string, string>; environmentFingerprint: string; }
 
 const root = resolve(import.meta.dirname, "../..");
@@ -74,10 +75,12 @@ function parseArgs(args: string[]): ParsedArgs {
     else if (argument === "--wait") parsed.wait = true;
     else if (argument === "--volumes") parsed.volumes = true;
     else if (argument === "--confirm-project") parsed.confirmProject = args[++index];
+    else if (argument === "--confirm-reset") parsed.confirmReset = args[++index];
+    else if (argument === "--target") parsed.target = args[++index];
     else if (argument === "--resume") parsed.resume = args[++index];
     else throw new MusicCommandError(`unknown argument: ${argument}`, "arguments", EXIT.usage);
   }
-  if (!parsed.command || !["bootstrap", "doctor", "up", "test:smoke", "test:all", "down", "db:status", "db:migrate", "db:reset", "fixtures:capture"].includes(parsed.command)) throw new MusicCommandError("usage: music:<bootstrap|doctor|up|test:smoke|test:all|down|db:status|db:migrate|db:reset|fixtures:capture>", "arguments", EXIT.usage);
+  if (!parsed.command || !["bootstrap", "doctor", "up", "test:smoke", "test:all", "down", "db:status", "db:migrate", "db:verify", "db:reset", "fixtures:capture"].includes(parsed.command)) throw new MusicCommandError("usage: music:<bootstrap|doctor|up|test:smoke|test:all|down|db:status|db:migrate|db:verify|db:reset|fixtures:capture>", "arguments", EXIT.usage);
   if (!(["fixture", "live"] as string[]).includes(parsed.mode!)) throw new MusicCommandError("--mode must be fixture or live", "arguments", EXIT.usage);
   if (!(["human", "json"] as string[]).includes(parsed.format!)) throw new MusicCommandError("--format must be human or json", "arguments", EXIT.usage);
   return parsed as ParsedArgs;
@@ -208,6 +211,7 @@ const commandGuidance: Record<string, { success: string; failure: string; recove
   down: { success: "npm run music:doctor", failure: "npm run music:doctor", recovery: "inspect the checkpoint; no cleanup was attempted" },
   "db:status": { success: "review the runtime manifest", failure: "npm run music:doctor", recovery: "npm run music:down" },
   "db:migrate": { success: "npm run music:db:status", failure: "implement reviewed C3 migrations", recovery: "npm run music:db:status" },
+  "db:verify": { success: "review the verified journal", failure: "npm run music:db:status -- --target test", recovery: "npm run music:db:status -- --target test" },
   "db:reset": { success: "npm run music:up -- --detach --wait", failure: "npm run music:doctor", recovery: "npm run music:down" },
   "fixtures:capture": { success: "request TK identity-owner review", failure: "supply explicit read-only credentials or use fixture mode", recovery: "npm run music:fixtures:capture -- --mode fixture" },
   music: { success: "npm run music:doctor", failure: "review command usage", recovery: "npm run music:down" },
@@ -216,7 +220,7 @@ const commandGuidance: Record<string, { success: string; failure: string; recove
 function emit(id: string, command: string, format: OutputFormat, started: number, context: RunContext, result: RunResult): number {
   const checkpoint = result.checkpoint ?? writeCheckpoint(id, context, result);
   const guidance = commandGuidance[command] ?? commandGuidance.music;
-  const output = { schemaVersion: MUSIC_CLI_SCHEMA_VERSION, command, runId: id, status: result.status, phase: result.phase, durationMs: Date.now() - started, artifacts: result.artifacts ?? [], checkpoint, error: result.error ? sanitize(result.error) : undefined, nextCommand: result.status === "success" ? guidance.success : guidance.failure, recoveryCommand: guidance.recovery };
+  const output = { schemaVersion: MUSIC_CLI_SCHEMA_VERSION, command, runId: id, status: result.status, phase: result.phase, durationMs: Date.now() - started, artifacts: result.artifacts ?? [], checkpoint, error: result.error ? sanitize(result.error) : undefined, details: result.details === undefined ? undefined : redactStructuredData(result.details), nextCommand: result.status === "success" ? guidance.success : guidance.failure, recoveryCommand: guidance.recovery };
   if (format === "json") process.stdout.write(`${JSON.stringify(output)}\n`);
   else process.stdout.write(`${command}: ${result.status} (${result.phase})${output.error ? `\nerror: ${output.error}` : ""}\nnext: ${output.nextCommand}\nrecovery: ${output.recoveryCommand}\nartifacts: ${output.artifacts.join(", ") || "none"}\ncheckpoint: ${checkpoint}\n`);
   return result.exitCode;
@@ -247,7 +251,7 @@ async function runChild(id: string, command: "npm" | "docker" | "node", args: st
 function createTestEnv(): void {
   const path = join(root, ".env.music.test");
   if (existsSync(path)) { try { parseMusicEnvironment(readEnvFile(path)); return; } catch { /* replace invalid disposable configuration */ } }
-  writeFileSync(path, `MUSIC_MODE=fixture\nMUSIC_FIXTURE_VERSION=1\nSTRAPI_FIXTURE_URL=http://127.0.0.1:51337\nDATABASE_URL_TEST=postgresql://music:music@127.0.0.1:55432/music_fixture\nSESSION_SECRET=${randomBytes(32).toString("base64url")}\nCOOKIE_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_SIGNING_KEY_CURRENT_ID=fixture-current\nMUSIC_SIGNING_KEY_CURRENT_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_SIGNING_KEY_PREVIOUS_ID=fixture-previous\nMUSIC_SIGNING_KEY_PREVIOUS_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_CONNECT_TIMEOUT_MS=5000\nMUSIC_READ_TIMEOUT_MS=10000\nMUSIC_CIRCUIT_FAILURE_THRESHOLD=3\nMUSIC_RATE_LIMIT_PER_MINUTE=60\nMUSIC_PROVISIONING_KILL_SWITCH=true\nMUSIC_PROVISIONING_COHORT=disabled\nMUSIC_EXPECTED_MIGRATION_ID=versioned-migrations-unavailable-c0\nMUSIC_RECONCILIATION_ENABLED=false\nMUSIC_RECONCILIATION_MAX_ROWS=0\n`);
+  writeFileSync(path, `MUSIC_MODE=fixture\nMUSIC_FIXTURE_VERSION=1\nSTRAPI_FIXTURE_URL=http://127.0.0.1:51337\nDATABASE_URL_TEST=postgresql://music:music@127.0.0.1:55432/music_fixture\nSESSION_SECRET=${randomBytes(32).toString("base64url")}\nCOOKIE_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_SIGNING_KEY_CURRENT_ID=fixture-current\nMUSIC_SIGNING_KEY_CURRENT_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_SIGNING_KEY_PREVIOUS_ID=fixture-previous\nMUSIC_SIGNING_KEY_PREVIOUS_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_CONNECT_TIMEOUT_MS=5000\nMUSIC_READ_TIMEOUT_MS=10000\nMUSIC_CIRCUIT_FAILURE_THRESHOLD=3\nMUSIC_RATE_LIMIT_PER_MINUTE=60\nMUSIC_PROVISIONING_KILL_SWITCH=true\nMUSIC_PROVISIONING_COHORT=disabled\nMUSIC_EXPECTED_MIGRATION_ID=${EXPECTED_MUSIC_MIGRATION_ID}\nMUSIC_RECONCILIATION_ENABLED=false\nMUSIC_RECONCILIATION_MAX_ROWS=0\n`);
 }
 
 async function portAvailable(port: number): Promise<boolean> {
@@ -309,8 +313,46 @@ async function executeCommand(id: string, parsed: ParsedArgs): Promise<RunResult
   }
   if (parsed.command === "doctor") return await doctor(id);
   if (parsed.command === "fixtures:capture") return captureFixture(parsed.mode);
-  if (parsed.command === "db:migrate") return { status: "blocked", phase: "migration-safety", exitCode: EXIT.safety, error: "C0 has no reviewed versioned migration; db:migrate is disabled until C3" };
-  if (parsed.command === "db:status") return { status: "success", phase: "db-status", exitCode: EXIT.success, artifacts: [join(root, "fixtures/db/music-runtime-table-manifest.json")] };
+  if (["db:status", "db:migrate", "db:verify"].includes(parsed.command)) {
+    const [{ default: pg }, { inspectMusicDatabase, migrateMusicDatabase, validateDisposableDatabaseTarget, verifyMusicDatabase }] = await Promise.all([
+      import("pg"),
+      import("../server/db/migrate.ts"),
+    ]);
+    if (parsed.target !== "test") throw new SafetyError("database command requires explicit --target test", "database-target");
+    const environment = readEnvFile(existsSync(join(root, ".env.music.test")) ? join(root, ".env.music.test") : join(root, ".env.music.test.example"));
+    const target = validateDisposableDatabaseTarget({
+      databaseUrlTest: environment.DATABASE_URL_TEST,
+      databaseUrl: process.env.DATABASE_URL,
+      composeProject: MUSIC_COMPOSE_PROJECT,
+      confirmation: "RESET explorers-music-fixture/music_fixture",
+    });
+    const pool = new pg.Pool({ connectionString: environment.DATABASE_URL_TEST, max: 2 });
+    try {
+      const before = await inspectMusicDatabase(pool);
+      const preflight = writeArtifact(id, `${parsed.command.replace(":", "-")}-preflight.json`, JSON.stringify({
+        target, expectedId: EXPECTED_MUSIC_MIGRATION_ID, currentId: before.currentId ?? null, pendingIds: before.pendingIds,
+      }));
+      const state = parsed.command === "db:migrate"
+        ? await migrateMusicDatabase(pool)
+        : parsed.command === "db:verify"
+          ? await verifyMusicDatabase(pool)
+          : before;
+      const evidence = writeArtifact(id, `${parsed.command.replace(":", "-")}.json`, JSON.stringify({
+        target, expectedId: EXPECTED_MUSIC_MIGRATION_ID, currentIdBefore: before.currentId ?? null,
+        currentId: state.currentId ?? null, currentChecksum: state.currentChecksum ?? null,
+        ready: state.ready, pendingIds: state.pendingIds,
+      }));
+      return {
+        status: "success", phase: parsed.command.replace(":", "-"), exitCode: EXIT.success, artifacts: [preflight, evidence],
+        details: { target, expectedId: EXPECTED_MUSIC_MIGRATION_ID, currentIdBefore: before.currentId ?? null,
+          currentId: state.currentId ?? null, currentChecksum: state.currentChecksum ?? null, ready: state.ready, pendingIds: state.pendingIds },
+      };
+    } catch (error) {
+      throw new MusicCommandError(redactedError(error), parsed.command.replace(":", "-"), parsed.command === "db:verify" ? EXIT.verification : EXIT.prerequisite);
+    } finally {
+      await pool.end();
+    }
+  }
   if (parsed.command === "up") {
     const compose = await renderComposeModel(id);
     const result = await runChild(id, "docker", ["compose", "-p", MUSIC_COMPOSE_PROJECT, "-f", composeFile, "up", ...(parsed.detach ? ["--detach"] : []), ...(parsed.wait ? ["--wait"] : [])], "up", EXIT.dependency);
@@ -321,6 +363,13 @@ async function executeCommand(id: string, parsed: ParsedArgs): Promise<RunResult
   if (parsed.command === "down" || parsed.command === "db:reset") {
     const destructive = parsed.command === "db:reset" || parsed.volumes;
     if (destructive && (parsed.mode !== "fixture" || parsed.confirmProject !== MUSIC_COMPOSE_PROJECT)) throw new SafetyError(`destructive cleanup requires --mode fixture --confirm-project ${MUSIC_COMPOSE_PROJECT}`);
+    if (parsed.command === "db:reset") {
+      const { validateDisposableDatabaseTarget } = await import("../server/db/migrate.ts");
+      if (parsed.target !== "test") throw new SafetyError("db:reset requires explicit --target test", "database-target");
+      const environment = readEnvFile(existsSync(join(root, ".env.music.test")) ? join(root, ".env.music.test") : join(root, ".env.music.test.example"));
+      validateDisposableDatabaseTarget({ databaseUrlTest: environment.DATABASE_URL_TEST, databaseUrl: process.env.DATABASE_URL,
+        composeProject: parsed.confirmProject, confirmation: parsed.confirmReset });
+    }
     const compose = await renderComposeModel(id);
     const artifacts = [...compose.artifacts, ...(await inspectOwnedComposeResources(id, compose.model))];
     const result = await runChild(id, "docker", ["compose", "-p", MUSIC_COMPOSE_PROJECT, "-f", composeFile, "down", ...(destructive ? ["--volumes"] : [])], parsed.command === "db:reset" ? "db-reset" : "down", EXIT.dependency);

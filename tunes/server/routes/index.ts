@@ -22,6 +22,7 @@ import scrapeRoutes from "./scrapeRoutes";
 import { setupMusicFixtureProbeRoute } from "./musicFixtureProbe";
 import { pool } from "../db";
 import { setupMusicHealthRoutes } from "../deployment/music-health";
+import { checkMusicDatabaseReadiness } from "../db/readiness";
 import { requestIdFor, sendContainmentError, setupNativeSessionContainment, setupOwnerContainment } from "../security-containment";
 
 export function registerRoutes(app: Express, _storage: IStorage): Server {
@@ -31,6 +32,7 @@ export function registerRoutes(app: Express, _storage: IStorage): Server {
   if (process.env.MUSIC_MODE === "fixture") setupMusicFixtureProbeRoute(app, {
     mode: "fixture",
     databaseQuery: (sql) => pool.query(sql),
+    migrationReadiness: () => checkMusicDatabaseReadiness(pool),
     strapiUrl: process.env.STRAPI_URL ?? "",
     fetchImpl: fetch,
   });

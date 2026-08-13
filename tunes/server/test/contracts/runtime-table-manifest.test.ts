@@ -26,6 +26,7 @@ describe("runtime table manifest", () => {
     const manifest = JSON.parse(readFileSync(resolve(repositoryRoot, "fixtures/db/music-runtime-table-manifest.json"), "utf8"));
     expect(() => validateRuntimeTableManifest({
       manifestTables: manifest.tables.map((entry: { name: string }) => entry.name),
+      controlTables: manifest.migrationChain.controlTables,
       referencedTables: inventory.applicationTables,
       migratedTables: inventory.drizzleTables,
       unmanagedTables: manifest.tables.filter((entry: { managedBy: string }) => entry.managedBy === "unmanaged-raw-sql").map((entry: { name: string }) => entry.name),

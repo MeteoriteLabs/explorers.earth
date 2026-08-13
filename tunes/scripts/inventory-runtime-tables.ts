@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 export interface RuntimeTableManifestInput {
   manifestTables: string[];
+  controlTables?: string[];
   referencedTables: string[];
   migratedTables: string[];
   unmanagedTables?: string[];
@@ -53,7 +54,10 @@ export function inventoryRuntimeTables(repositoryRoot: string): RuntimeTableInve
 
 export function validateRuntimeTableManifest(input: RuntimeTableManifestInput): void {
   const unmanaged = new Set(input.unmanagedTables ?? []);
-  for (const table of input.referencedTables) if (!input.manifestTables.includes(table)) throw new Error(`${table} is referenced at runtime but missing from the manifest`);
+  const controls = new Set(input.controlTables ?? []);
+  for (const table of controls) if (input.manifestTables.includes(table)) throw new Error(`${table} cannot be both a runtime and control table`);
+  for (const table of input.referencedTables) if (!input.manifestTables.includes(table) && !controls.has(table)) throw new Error(`${table} is referenced at runtime but missing from the manifest`);
   for (const table of input.manifestTables) if (!input.migratedTables.includes(table) && !unmanaged.has(table)) throw new Error(`${table} is in the manifest but absent from a fresh migrated database`);
   for (const table of unmanaged) if (!input.referencedTables.includes(table)) throw new Error(`${table} is marked unmanaged but has no runtime reference`);
+  for (const table of controls) if (!input.referencedTables.includes(table)) throw new Error(`${table} control table has no runtime authority reference`);
 }

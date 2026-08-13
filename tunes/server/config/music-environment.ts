@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { EXPECTED_MUSIC_MIGRATION_ID } from "../../shared/music-migration-contract";
 
 const integerString = (name: string, minimum: number, maximum: number) =>
   z.string().regex(/^\d+$/, `${name} must be an integer`).transform(Number).refine((value) => value >= minimum && value <= maximum, `${name} must be between ${minimum} and ${maximum}`);
@@ -24,7 +25,7 @@ export const musicEnvironmentSchema = z.object({
   MUSIC_RATE_LIMIT_PER_MINUTE: integerString("MUSIC_RATE_LIMIT_PER_MINUTE", 1, 10_000),
   MUSIC_PROVISIONING_KILL_SWITCH: booleanString,
   MUSIC_PROVISIONING_COHORT: z.string().min(1),
-  MUSIC_EXPECTED_MIGRATION_ID: z.literal("versioned-migrations-unavailable-c0"),
+  MUSIC_EXPECTED_MIGRATION_ID: z.literal(EXPECTED_MUSIC_MIGRATION_ID),
   MUSIC_RECONCILIATION_ENABLED: booleanString,
   MUSIC_RECONCILIATION_MAX_ROWS: integerString("MUSIC_RECONCILIATION_MAX_ROWS", 0, 100_000),
 }).passthrough().superRefine((environment, context) => {

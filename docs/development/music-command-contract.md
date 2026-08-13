@@ -25,7 +25,8 @@ bare `node`.
 
 Root commands: `music:bootstrap`, `music:doctor`, `music:up`,
 `music:test:smoke`, `music:test:all`, `music:down`, `music:db:status`,
-`music:db:migrate`, `music:db:reset`, and `music:fixtures:capture`.
+`music:db:migrate`, `music:db:verify`, `music:db:reset`, and
+`music:fixtures:capture`.
 
 `music:bootstrap` creates only disposable secrets in ignored `.env.music.test`;
 it never requests payment or production API credentials. `music:down` retains
@@ -44,9 +45,17 @@ rejects a changed commit, fixture/schema version, validated gate values, or
 SHA-256 environment fingerprint. SIGINT/SIGTERM terminates only tracked child
 process trees before the atomic checkpoint is written.
 
-`music:db:migrate` always safety-refuses with exit 5 in C0. There is no reviewed
-versioned migration until C3, so it never invokes `drizzle-kit push` or reads an
-ambient `DATABASE_URL`.
+C3 database status, migrate, and verify require explicit `--target test` and
+read only the exact allowlisted `DATABASE_URL_TEST` target
+`127.0.0.1:55432/music_fixture`. They reject an ambient `DATABASE_URL` and emit
+redacted target, expected/current ID, checksum and pending-list evidence.
+Status and verify are read-only; migrate uses the checked-in forward-only
+checksummed chain and never invokes `drizzle-kit push`.
+
+Reset additionally requires `--mode fixture --target test --confirm-project
+explorers-music-fixture --confirm-reset "RESET
+explorers-music-fixture/music_fixture"`. It verifies the labeled Compose
+resources before removing only that project's disposable volumes.
 
 `music:fixtures:capture --mode live --format json` requires both
 `LIVE_STRAPI_URL` and `LIVE_STRAPI_READ_ONLY_CREDENTIAL`, then remains blocked

@@ -1,4 +1,4 @@
-# Music immutable deployment runbook (C2)
+# Music immutable deployment and migration runbook (C2/C3)
 
 ## Authority and closed production gate
 
@@ -38,16 +38,26 @@ the external environment policy cannot be bypassed by that branch copy.
 `GATE_PROD must remain closed` if the API check is unavailable, the policy is
 absent or different, or `main` is not protected.
 
-## Transitional C2 gate
+## C3 same-image migration gate
 
-`containment-no-schema-change` is a transitional deployment gate, not a database
-migration. The one-shot job uses the exact candidate image, proves PostgreSQL
-connectivity with `SELECT 1`, and creates an HMAC attestation bound to digest,
-commit, the literal marker, and `schemaChanged=false`. Application startup does
-not create it and session startup cannot create schema. Readiness independently
-proves DB connectivity, mandatory secrets, HTTPS upstream configuration, and the
-exact attestation. Liveness is process-only. C3 replaces this mechanism with a
-journal-backed database migration ID.
+`0002_identity_lifecycle` is the exact expected migration ID. The candidate
+image contains the ordered SQL files and `run-migration-gate.js`; the one-shot
+gate takes the PostgreSQL advisory lock, verifies the checksum journal and
+catalog fingerprint, applies pending migrations transactionally, and writes an
+HMAC attestation bound to digest, commit, migration ID, and the exact final
+migration checksum. A checksum change, missing or future journal row, catalog
+drift, unversioned application table, or partial migration fails before the
+candidate can become ready. Application/session startup never creates schema.
+
+Readiness independently proves connectivity, mandatory secrets, HTTPS upstream
+configuration, exact same-image attestation, and the live journal ID/checksum.
+Liveness remains process-only. The secure image ledger accepts old
+`containment-no-schema-change` entries only so a retained C2 floor remains a
+valid rollback target; all new images use `0002_identity_lifecycle` and the
+real migration gate. Because production catalog/row-count and restore evidence
+are still absent, an existing unversioned database is a conflict: there is no
+automatic baseline adoption, username/email matching, or authorized production
+migration path. `GATE_PROD` remains closed.
 
 ## Transaction and rollback authority
 

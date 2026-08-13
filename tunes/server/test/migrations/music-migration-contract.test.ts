@@ -1,0 +1,104 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+import { createRequire } from "node:module";
+import { EXPECTED_MUSIC_MIGRATION_ID } from "../../../shared/music-migration-contract";
+import {
+  createMigrationDefinition,
+  loadMusicMigrations,
+  validateDisposableDatabaseTarget,
+} from "../../db/migrate";
+
+const repositoryRoot = resolve(import.meta.dirname, "../../../..");
+const read = (path: string) => readFileSync(resolve(repositoryRoot, path), "utf8");
+const require = createRequire(import.meta.url);
+const { load: parseYaml } = require("js-yaml") as { load(source: string): any };
+
+describe("Music migration authority contracts", () => {
+  it("loads one ordered, contiguous, checksummed forward-only chain", () => {
+    const migrations = loadMusicMigrations(resolve(repositoryRoot, "tunes/migrations"));
+    expect(migrations.map(({ id }) => id)).toEqual([
+      "0001_runtime_baseline",
+      "0002_identity_lifecycle",
+    ]);
+    expect(EXPECTED_MUSIC_MIGRATION_ID).toBe(migrations.at(-1)?.id);
+    expect(migrations.every(({ checksum }) => /^[a-f0-9]{64}$/.test(checksum))).toBe(true);
+    expect(() => loadMusicMigrations(resolve(repositoryRoot, "tunes/server/test/fixtures/migrations-missing"))).toThrow();
+  });
+
+  it("declares every manifested runtime table and the durable identity tombstone", () => {
+    const manifest = JSON.parse(read("fixtures/db/music-runtime-table-manifest.json")) as { tables: Array<{ name: string }> };
+    expect(manifest.tables).toHaveLength(27);
+    const sql = loadMusicMigrations(resolve(repositoryRoot, "tunes/migrations")).map((migration) => migration.sql).join("\n");
+    for (const { name } of manifest.tables) expect(sql).toMatch(new RegExp(`CREATE TABLE(?: IF NOT EXISTS)? \\"?${name}\\"?`, "i"));
+    expect(sql).toMatch(/CREATE TABLE music_identity_tombstones/i);
+    expect(sql).toContain("strapi_user_document_id");
+    expect(sql).toContain("strapi_account_document_id");
+    expect(sql).toContain("guest_capability_hash");
+    expect(sql).not.toMatch(/guest_capability(?:_plaintext|_token|_secret)\s+TEXT/i);
+  });
+
+  it("keeps startup schema-free and makes the same-image gate run the real chain", () => {
+    const storage = read("tunes/server/storage.ts");
+    const packageJson = read("tunes/package.json");
+    const compose = read("docker-compose.yml");
+    const gate = read("tunes/server/deployment/run-migration-gate.ts");
+    expect(storage).toContain("createTableIfMissing: false");
+    expect(storage).not.toContain("createTableIfMissing: true");
+    expect(packageJson).not.toContain("drizzle-kit push");
+    expect(compose).toContain("dist/server/deployment/run-migration-gate.js");
+    expect(compose).toContain("MUSIC_MIGRATION_MARKER:");
+    expect(compose).toContain(EXPECTED_MUSIC_MIGRATION_ID);
+    expect(gate).toContain("migrateMusicDatabase");
+    expect(gate).not.toContain("containment-no-schema-change");
+  });
+
+  it("runs the PostgreSQL 15 integration chain in authoritative image CI", () => {
+    const workflow = read(".github/workflows/tunes.yml");
+    expect(workflow).toMatch(/image:\s*postgres:15-alpine/);
+    expect(workflow).toContain("MUSIC_C3_POSTGRES_TEST: \"1\"");
+    expect(workflow).toContain("DATABASE_URL_TEST: postgresql://music:music@127.0.0.1:55432/music_fixture");
+    expect(workflow).toContain("npm run test:integration");
+  });
+
+  it("permits a loopback-only Strapi host-port override for full fixture rehearsal", () => {
+    const compose = read("docker-compose.music-test.yml");
+    const smoke = read("tunes/scripts/music-smoke.ts");
+    expect(compose).toContain("127.0.0.1:${MUSIC_STRAPI_HOST_PORT:-51337}:1337");
+    expect(smoke).toContain('process.env.MUSIC_STRAPI_HOST_PORT ?? "51337"');
+    expect(compose).toContain("STRAPI_URL: http://strapi:1337");
+  });
+
+  it("builds the disposable Tunes image once and runs migration from that image", () => {
+    const compose = parseYaml(read("docker-compose.music-test.yml"));
+    expect(compose.services.tunes.image).toBe(compose.services["tunes-migrate"].image);
+    expect(compose.services.tunes.build).toBeDefined();
+    expect(compose.services["tunes-migrate"].build).toBeUndefined();
+    expect(compose.services["tunes-migrate"].command).toEqual([
+      "node",
+      "dist/server/deployment/run-migration-gate.js",
+    ]);
+  });
+
+  it("rejects non-fixture, ambient, and unresolved reset/migration targets", () => {
+    const valid = {
+      databaseUrlTest: "postgresql://music:music@127.0.0.1:55432/music_fixture",
+      composeProject: "explorers-music-fixture",
+      confirmation: "RESET explorers-music-fixture/music_fixture",
+    };
+    expect(validateDisposableDatabaseTarget(valid)).toMatchObject({ host: "127.0.0.1", port: 55432, database: "music_fixture" });
+    for (const candidate of [
+      { ...valid, databaseUrlTest: "postgresql://music:music@db:5432/music_fixture" },
+      { ...valid, databaseUrlTest: "postgresql://music:music@127.0.0.1:55432/production" },
+      { ...valid, composeProject: "explorers-production" },
+      { ...valid, confirmation: "yes" },
+      { ...valid, databaseUrl: "postgresql://owner:secret@production.example/music" },
+    ]) expect(() => validateDisposableDatabaseTarget(candidate)).toThrow();
+  });
+
+  it("computes the checksum from exact bytes, not a caller-supplied value", () => {
+    const original = createMigrationDefinition("0003_example", "SELECT 1;\n");
+    const modified = createMigrationDefinition("0003_example", "SELECT 2;\n");
+    expect(original.checksum).not.toBe(modified.checksum);
+  });
+});

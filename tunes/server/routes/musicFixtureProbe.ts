@@ -3,6 +3,7 @@ import type { Express } from "express";
 interface FixtureProbeDependencies {
   mode: "fixture";
   databaseQuery: (sql: string) => Promise<{ rows: Array<{ database: string; ready: number }> }>;
+  migrationReadiness: () => Promise<{ ready: boolean; currentId?: string }>;
   strapiUrl: string;
   fetchImpl: typeof fetch;
 }
@@ -17,6 +18,7 @@ export function setupMusicFixtureProbeRoute(app: Express, dependencies: FixtureP
   app.get("/api/music-fixture/readiness", async (_request, response) => {
     try {
       const databaseResult = await dependencies.databaseQuery("SELECT current_database() AS database, 1 AS ready");
+      const migration = await dependencies.migrationReadiness();
       const healthResponse = await dependencies.fetchImpl(`${dependencies.strapiUrl}/health`, { signal: AbortSignal.timeout(5_000) });
       const identityResponse = await dependencies.fetchImpl(`${dependencies.strapiUrl}/api/users/me`, { signal: AbortSignal.timeout(5_000) });
       if (!healthResponse.ok || !identityResponse.ok) throw new Error("fixture Strapi is not ready");
@@ -24,11 +26,11 @@ export function setupMusicFixtureProbeRoute(app: Express, dependencies: FixtureP
       const identity = await identityResponse.json() as FixtureIdentity;
       const database = databaseResult.rows[0];
       const account = identity.accounts?.[0];
-      if (database?.ready !== 1 || !identity.documentId || !account?.documentId) throw new Error("fixture boundary response is incomplete");
+      if (database?.ready !== 1 || !migration.ready || !identity.documentId || !account?.documentId) throw new Error("fixture boundary response is incomplete");
       response.json({
         status: "ready",
         application: "tunes",
-        boundaries: { database: database.database, strapi: health.status },
+        boundaries: { database: database.database, migration: migration.currentId, strapi: health.status },
         identity: { personDocumentId: identity.documentId, accountDocumentId: account.documentId },
       });
     } catch (error) {

@@ -24,6 +24,20 @@ permissions:
 jobs:
   build-test-scan-push:
     runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: music_fixture
+          POSTGRES_USER: music
+          POSTGRES_PASSWORD: music
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U music -d music_fixture"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 30
     permissions:
       contents: read
       packages: write
@@ -47,9 +61,13 @@ jobs:
           cache-dependency-path: tunes/package-lock.json
       - name: Test Tunes
         working-directory: tunes
+        env:
+          MUSIC_C3_POSTGRES_TEST: "1"
+          DATABASE_URL_TEST: postgresql://music:music@127.0.0.1:55432/music_fixture
         run: |
           npm ci --legacy-peer-deps
           npm test
+          npm run test:integration
           npm run music:types:scoped
           npm run music:types:baseline
       - uses: docker/setup-buildx-action@v3
@@ -77,7 +95,7 @@ jobs:
         run: >-
           docker run --rm --entrypoint node
           "${{ steps.image.outputs.name }}:${{ github.sha }}" -e
-          "const{existsSync}=require('node:fs');if(!existsSync('/app/dist/server/deployment/run-containment-gate.js'))process.exit(1)"
+          "const{existsSync}=require('node:fs');for(const p of ['/app/dist/server/deployment/run-migration-gate.js','/app/migrations/0001_runtime_baseline.sql','/app/migrations/0002_identity_lifecycle.sql'])if(!existsSync(p))process.exit(1)"
       - name: Scan the exact built image
         uses: anchore/scan-action@v7
         with:

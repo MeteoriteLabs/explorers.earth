@@ -1,5 +1,11 @@
 {
   "schemaVersion": "music-runtime-table-manifest/v1",
+  "migrationChain": {
+    "engine": "postgresql-15",
+    "expectedId": "0002_identity_lifecycle",
+    "files": ["0001_runtime_baseline.sql", "0002_identity_lifecycle.sql"],
+    "controlTables": ["music_schema_migrations", "music_identity_tombstones"]
+  },
   "generatedFrom": ["tunes/shared/schema.ts", "tunes/server/**/*.ts"],
   "tables": [
     { "name": "activity_logs", "managedBy": "drizzle", "family": "security-audit", "lifecycle": "retain-policy" },

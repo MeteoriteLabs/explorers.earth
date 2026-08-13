@@ -85,7 +85,7 @@ export class UserSyncService {
    */
   async getSyncedUser(strapiUsername: string): Promise<SelectUser | null> {
     try {
-      return await storage.getUserByUsername(strapiUsername);
+      return await storage.getUserByUsername(strapiUsername) ?? null;
     } catch (error) {
       console.error('Error getting synced user:', error);
       return null;

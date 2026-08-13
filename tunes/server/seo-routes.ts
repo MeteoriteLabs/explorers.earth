@@ -3,7 +3,7 @@ import { storage } from "./storage";
 import { z } from "zod";
 import { insertSeoSettingsSchema, users } from "@shared/schema";
 import { db } from "./db";
-import { isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 
 const TUNES_BASE_URL = "https://localtunes.earth";
 const EXPLORERS_BASE_URL = "https://explorers.earth";
@@ -80,11 +80,12 @@ async function generateTunesSitemap(): Promise<string> {
   ];
 
   try {
-    // Query all users with guest URLs (these are public playlist pages)
+    // Discoverability is an explicit policy bit. Guest capability hashes are
+    // never selected or rendered into a public listing.
     const venueUsers = await db
       .select({ guestUrl: users.guestUrl, updatedAt: users.updatedAt })
       .from(users)
-      .where(isNotNull(users.guestUrl));
+      .where(and(isNotNull(users.guestUrl), eq(users.guestDiscoverable, true)));
 
     for (const venue of venueUsers) {
       if (venue.guestUrl) {
