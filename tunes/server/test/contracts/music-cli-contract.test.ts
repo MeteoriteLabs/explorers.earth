@@ -115,6 +115,24 @@ describe("music CLI output contract", () => {
     }
   });
 
+  it("returns one typed JSON doctor diagnosis for malformed env-file syntax", () => {
+    // Production break caught: a line without '=' throws while constructing
+    // run context, before doctor can emit its categorized JSON result.
+    const environmentPath = join(repositoryRoot, ".env.music.test");
+    const previous = existsSync(environmentPath) ? readFileSync(environmentPath, "utf8") : undefined;
+    writeFileSync(environmentPath, "MUSIC_MODE=fixture\nMALFORMED_LINE_WITHOUT_EQUALS\n");
+    try {
+      const result = runCli(["doctor", "--format", "json"]);
+      const lines = result.stdout.trim().split(/\r?\n/);
+      expect(result.exitCode).toBe(3);
+      expect(lines).toHaveLength(1);
+      expect(JSON.parse(lines[0])).toMatchObject({ command: "doctor", status: "failure", phase: "doctor" });
+    } finally {
+      if (previous === undefined) rmSync(environmentPath, { force: true });
+      else writeFileSync(environmentPath, previous);
+    }
+  });
+
   it("refuses resume when the checkpoint commit differs", () => {
     // Production break caught: a resumed provisioning run could apply evidence
     // produced by another source revision.

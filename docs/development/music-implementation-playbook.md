@@ -17,6 +17,10 @@ npm run music:test:smoke
 npm run music:down
 ```
 
+The initial root `npm ci` is the only launcher prerequisite. It installs the
+root-owned `tsx`/typed-config runtime; `music:bootstrap` installs both child
+lockfiles and does not replace its own active root dependency tree.
+
 Use the canonical public JSON form `npm run --silent <music-command> --
 --format json`; `--silent` is required so stdout is exactly one machine-parseable
 JSON envelope. The target is ten minutes

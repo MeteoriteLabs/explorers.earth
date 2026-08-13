@@ -144,7 +144,9 @@ function fileHash(path: string): string {
 function buildRunContext(options: { allowInvalidEnvironment?: boolean } = {}): RunContext {
   const fixture = JSON.parse(readFileSync(join(root, "fixtures/strapi/music-identity/identity.fixture.json"), "utf8")) as StrapiIdentityFixture;
   const environmentFile = existsSync(join(root, ".env.music.test")) ? join(root, ".env.music.test") : join(root, ".env.music.test.example");
-  const rawEnvironment = readEnvFile(environmentFile);
+  let rawEnvironment: Record<string, string> = {};
+  try { rawEnvironment = readEnvFile(environmentFile); }
+  catch (error) { if (!options.allowInvalidEnvironment) throw error; }
   let environment: ReturnType<typeof parseMusicEnvironment> | undefined;
   try { environment = parseMusicEnvironment(rawEnvironment); }
   catch (error) { if (!options.allowInvalidEnvironment) throw error; }
@@ -302,7 +304,7 @@ async function executeCommand(id: string, parsed: ParsedArgs): Promise<RunResult
     createTestEnv(); parseMusicEnvironment(readEnvFile(join(root, ".env.music.test")));
     const fixture = JSON.parse(readFileSync(join(root, "fixtures/strapi/music-identity/identity.fixture.json"), "utf8")); validateStrapiFixture(fixture, { mode: "fixture" });
     const artifacts: string[] = [];
-    for (const args of [["ci"], ["ci", "--prefix", "tunes"], ["ci", "--prefix", "explorers-earth"]]) { const result = await runChild(id, "npm", args, "bootstrap-install", EXIT.prerequisite); artifacts.push(result.artifact); }
+    for (const args of [["ci", "--prefix", "tunes"], ["ci", "--prefix", "explorers-earth"]]) { const result = await runChild(id, "npm", args, "bootstrap-install", EXIT.prerequisite); artifacts.push(result.artifact); }
     return { status: "success", phase: "bootstrap", exitCode: EXIT.success, artifacts: [join(root, ".env.music.test"), ...artifacts] };
   }
   if (parsed.command === "doctor") return await doctor(id);

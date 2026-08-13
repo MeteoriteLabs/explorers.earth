@@ -2,8 +2,26 @@ import { spawn, type ChildProcess } from "node:child_process";
 
 export interface ChildResult { exitCode: number; stdout: string; stderr: string; }
 
+export interface OwnedProcessRunnerOptions {
+  platform?: NodeJS.Platform;
+  terminationGraceMs?: number;
+  forceKillWaitMs?: number;
+  sendUnixGroupSignal?: (child: ChildProcess, signal: NodeJS.Signals) => void | Promise<void>;
+}
+
 export class OwnedProcessRunner {
   private readonly children = new Set<ChildProcess>();
+  private readonly platform: NodeJS.Platform;
+  private readonly terminationGraceMs: number;
+  private readonly forceKillWaitMs: number;
+  private readonly injectedUnixGroupSignal?: OwnedProcessRunnerOptions["sendUnixGroupSignal"];
+
+  constructor(options: OwnedProcessRunnerOptions = {}) {
+    this.platform = options.platform ?? process.platform;
+    this.terminationGraceMs = options.terminationGraceMs ?? 1_000;
+    this.forceKillWaitMs = options.forceKillWaitMs ?? 1_000;
+    this.injectedUnixGroupSignal = options.sendUnixGroupSignal;
+  }
 
   async run(file: string, args: string[], options: { cwd: string; env?: NodeJS.ProcessEnv } ): Promise<ChildResult> {
     return await new Promise((resolve, reject) => {
@@ -12,7 +30,7 @@ export class OwnedProcessRunner {
         env: options.env,
         shell: false,
         windowsHide: true,
-        detached: process.platform !== "win32",
+        detached: this.platform !== "win32",
         stdio: ["ignore", "pipe", "pipe"],
       });
       this.children.add(child);
@@ -27,26 +45,51 @@ export class OwnedProcessRunner {
     });
   }
 
+  private async waitForClose(child: ChildProcess, timeoutMs: number): Promise<boolean> {
+    if (child.exitCode !== null || child.signalCode !== null) return true;
+    return await new Promise((resolveClosed) => {
+      let settled = false;
+      const finish = (closed: boolean) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        child.off("close", onClose);
+        child.off("error", onClose);
+        resolveClosed(closed);
+      };
+      const onClose = () => finish(true);
+      const timer = setTimeout(() => finish(false), timeoutMs);
+      timer.unref();
+      child.once("close", onClose);
+      child.once("error", onClose);
+      if (child.exitCode !== null || child.signalCode !== null) finish(true);
+    });
+  }
+
+  private async sendUnixGroupSignal(child: ChildProcess, signal: NodeJS.Signals): Promise<void> {
+    if (this.injectedUnixGroupSignal) return await this.injectedUnixGroupSignal(child, signal);
+    if (!child.pid) return;
+    try { process.kill(-child.pid, signal); }
+    catch { child.kill(signal); }
+  }
+
   async terminateAll(): Promise<void> {
-    const children = [...this.children];
+    const children = Array.from(this.children);
     await Promise.all(children.map(async (child) => {
       if (!child.pid) return;
-      const closed = child.exitCode !== null || child.signalCode !== null
-        ? Promise.resolve()
-        : new Promise<void>((resolveClosed) => {
-            child.once("close", () => resolveClosed());
-            child.once("error", () => resolveClosed());
-          });
-      if (process.platform === "win32") {
+      if (child.exitCode !== null || child.signalCode !== null) return;
+      if (this.platform === "win32") {
         await new Promise<void>((resolve) => {
           const killer = spawn("taskkill.exe", ["/PID", String(child.pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" });
           killer.once("close", () => resolve());
           killer.once("error", () => resolve());
         });
       } else {
-        try { process.kill(-child.pid, "SIGTERM"); } catch { child.kill("SIGTERM"); }
+        await this.sendUnixGroupSignal(child, "SIGTERM");
+        if (await this.waitForClose(child, this.terminationGraceMs)) return;
+        await this.sendUnixGroupSignal(child, "SIGKILL");
       }
-      await closed;
+      await this.waitForClose(child, this.forceKillWaitMs);
     }));
   }
 }

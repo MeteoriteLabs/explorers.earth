@@ -13,7 +13,7 @@
     "install:all": "npm install --prefix tunes && npm install --prefix explorers-earth",
     "db:push": "npm run db:push --prefix tunes",
     "build:all": "npm run build --prefix tunes && npm run build --prefix explorers-earth",
-    "music-cli": "npm exec --silent --prefix tunes -- tsx tunes/scripts/music-cli.ts",
+    "music-cli": "tsx tunes/scripts/music-cli.ts",
     "music:bootstrap": "npm run --silent music-cli -- bootstrap",
     "music:doctor": "npm run --silent music-cli -- doctor",
     "music:up": "npm run --silent music-cli -- up",
@@ -28,10 +28,12 @@
     "music:types:baseline": "npm run music:types:baseline --prefix tunes"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "tsx": "^4.23.12"
   },
   "dependencies": {
-    "@marsidev/react-turnstile": "^1.5.0"
+    "@marsidev/react-turnstile": "^1.5.0",
+    "zod": "^3.25.76"
   },
   "overrides": {
     "shell-quote": "^1.9.0"
