@@ -59,7 +59,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/auth.ts",
-      "line": 652
+      "line": 656
     },
     {
       "method": "GET",
@@ -69,7 +69,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/auth.ts",
-      "line": 718
+      "line": 722
     },
     {
       "method": "GET",
@@ -79,7 +79,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/auth.ts",
-      "line": 727
+      "line": 731
     },
     {
       "method": "GET",
@@ -699,7 +699,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 3383
+      "line": 3382
     },
     {
       "method": "GET",
@@ -709,7 +709,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 3429
+      "line": 3385
     },
     {
       "method": "POST",
@@ -719,7 +719,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 3455
+      "line": 3388
     },
     {
       "method": "GET",
@@ -729,7 +729,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 3513
+      "line": 3392
     },
     {
       "method": "GET",
@@ -739,7 +739,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 3529
+      "line": 3408
     },
     {
       "method": "GET",
@@ -749,7 +749,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 3569
+      "line": 3448
     },
     {
       "method": "GET",
@@ -759,7 +759,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 3611
+      "line": 3490
     },
     {
       "method": "GET",
@@ -769,7 +769,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 3690
+      "line": 3569
     },
     {
       "method": "GET",
@@ -779,7 +779,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 3706
+      "line": 3585
     },
     {
       "method": "POST",
@@ -789,7 +789,7 @@
       "policy": "passport.authenticate",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 3822
+      "line": 3701
     },
     {
       "method": "POST",
@@ -799,7 +799,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 3842
+      "line": 3721
     },
     {
       "method": "GET",
@@ -809,7 +809,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 3883
+      "line": 3762
     },
     {
       "method": "GET",
@@ -819,7 +819,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 3925
+      "line": 3804
     },
     {
       "method": "GET",
@@ -829,7 +829,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4002
+      "line": 3881
     },
     {
       "method": "POST",
@@ -839,7 +839,7 @@
       "policy": "passport.authenticate",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4118
+      "line": 3997
     },
     {
       "method": "POST",
@@ -849,7 +849,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4138
+      "line": 4017
     },
     {
       "method": "GET",
@@ -859,7 +859,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4178
+      "line": 4057
     },
     {
       "method": "POST",
@@ -869,7 +869,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4215
+      "line": 4094
     },
     {
       "method": "POST",
@@ -879,7 +879,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4246
+      "line": 4125
     },
     {
       "method": "DELETE",
@@ -889,7 +889,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "delete",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4300
+      "line": 4179
     },
     {
       "method": "PATCH",
@@ -899,7 +899,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4362
+      "line": 4241
     },
     {
       "method": "DELETE",
@@ -909,7 +909,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "delete",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4418
+      "line": 4297
     },
     {
       "method": "DELETE",
@@ -919,7 +919,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "delete",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4474
+      "line": 4353
     },
     {
       "method": "GET",
@@ -929,7 +929,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4495
+      "line": 4374
     },
     {
       "method": "PATCH",
@@ -939,7 +939,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4525
+      "line": 4404
     },
     {
       "method": "GET",
@@ -949,7 +949,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4549
+      "line": 4428
     },
     {
       "method": "DELETE",
@@ -959,7 +959,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "delete",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4567
+      "line": 4446
     },
     {
       "method": "GET",
@@ -969,7 +969,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4589
+      "line": 4468
     },
     {
       "method": "GET",
@@ -979,7 +979,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4608
+      "line": 4487
     },
     {
       "method": "GET",
@@ -989,7 +989,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4650
+      "line": 4529
     },
     {
       "method": "GET",
@@ -999,7 +999,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4727
+      "line": 4606
     },
     {
       "method": "POST",
@@ -1009,7 +1009,7 @@
       "policy": "passport.authenticate",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4843
+      "line": 4722
     },
     {
       "method": "POST",
@@ -1019,7 +1019,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4863
+      "line": 4742
     },
     {
       "method": "GET",
@@ -1029,7 +1029,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4902
+      "line": 4781
     },
     {
       "method": "PATCH",
@@ -1039,7 +1039,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4932
+      "line": 4811
     },
     {
       "method": "GET",
@@ -1049,7 +1049,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4956
+      "line": 4835
     },
     {
       "method": "DELETE",
@@ -1059,7 +1059,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "delete",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4974
+      "line": 4853
     },
     {
       "method": "GET",
@@ -1069,7 +1069,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 4996
+      "line": 4875
     },
     {
       "method": "GET",
@@ -1079,7 +1079,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5015
+      "line": 4894
     },
     {
       "method": "GET",
@@ -1089,7 +1089,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5057
+      "line": 4936
     },
     {
       "method": "GET",
@@ -1099,7 +1099,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5134
+      "line": 5013
     },
     {
       "method": "POST",
@@ -1109,7 +1109,7 @@
       "policy": "passport.authenticate",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5250
+      "line": 5129
     },
     {
       "method": "POST",
@@ -1119,7 +1119,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5270
+      "line": 5149
     },
     {
       "method": "GET",
@@ -1129,7 +1129,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5308
+      "line": 5187
     },
     {
       "method": "PATCH",
@@ -1139,7 +1139,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5338
+      "line": 5217
     },
     {
       "method": "GET",
@@ -1149,7 +1149,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5362
+      "line": 5241
     },
     {
       "method": "DELETE",
@@ -1159,7 +1159,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "delete",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5380
+      "line": 5259
     },
     {
       "method": "GET",
@@ -1169,7 +1169,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5402
+      "line": 5281
     },
     {
       "method": "GET",
@@ -1179,7 +1179,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5421
+      "line": 5300
     },
     {
       "method": "GET",
@@ -1189,7 +1189,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5463
+      "line": 5342
     },
     {
       "method": "GET",
@@ -1199,7 +1199,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5542
+      "line": 5421
     },
     {
       "method": "GET",
@@ -1209,7 +1209,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5564
+      "line": 5443
     },
     {
       "method": "POST",
@@ -1219,7 +1219,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5578
+      "line": 5457
     },
     {
       "method": "PUT",
@@ -1229,7 +1229,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5611
+      "line": 5490
     },
     {
       "method": "DELETE",
@@ -1239,7 +1239,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "delete",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5642
+      "line": 5521
     },
     {
       "method": "GET",
@@ -1249,7 +1249,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5847
+      "line": 5726
     },
     {
       "method": "GET",
@@ -1259,7 +1259,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5862
+      "line": 5741
     },
     {
       "method": "POST",
@@ -1269,7 +1269,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5882
+      "line": 5761
     },
     {
       "method": "PUT",
@@ -1279,7 +1279,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5917
+      "line": 5796
     },
     {
       "method": "DELETE",
@@ -1289,7 +1289,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "delete",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5952
+      "line": 5831
     },
     {
       "method": "GET",
@@ -1299,7 +1299,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5975
+      "line": 5854
     },
     {
       "method": "POST",
@@ -1309,7 +1309,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5997
+      "line": 5876
     },
     {
       "method": "POST",
@@ -1529,7 +1529,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/routes/subscriptionRoutes.ts",
-      "line": 18
+      "line": 14
     },
     {
       "method": "GET",
@@ -1539,7 +1539,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/routes/subscriptionRoutes.ts",
-      "line": 19
+      "line": 15
     },
     {
       "method": "GET",
@@ -1549,7 +1549,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/routes/subscriptionRoutes.ts",
-      "line": 22
+      "line": 18
     },
     {
       "method": "POST",
@@ -1559,7 +1559,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/routes/subscriptionRoutes.ts",
-      "line": 23
+      "line": 19
     },
     {
       "method": "GET",
@@ -1569,7 +1569,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/routes/subscriptionRoutes.ts",
-      "line": 26
+      "line": 22
     },
     {
       "method": "POST",
@@ -1579,7 +1579,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/routes/subscriptionRoutes.ts",
-      "line": 27
+      "line": 23
     },
     {
       "method": "PUT",
@@ -1589,7 +1589,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/routes/subscriptionRoutes.ts",
-      "line": 28
+      "line": 24
     },
     {
       "method": "GET",
@@ -1745,7 +1745,7 @@
       "ownerSource": "socket-session-or-room",
       "lifecycle": "event",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5724
+      "line": 5594
     },
     {
       "direction": "emit",
@@ -1754,7 +1754,7 @@
       "ownerSource": "socket-session-or-room",
       "lifecycle": "event",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5738
+      "line": 5608
     },
     {
       "direction": "emit",
@@ -1763,7 +1763,25 @@
       "ownerSource": "socket-session-or-room",
       "lifecycle": "event",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5759
+      "line": 5613
+    },
+    {
+      "direction": "emit",
+      "event": "containment_error",
+      "policy": "socket-connection",
+      "ownerSource": "socket-session-or-room",
+      "lifecycle": "event",
+      "source": "tunes/server/legacy-routes.ts",
+      "line": 5627
+    },
+    {
+      "direction": "emit",
+      "event": "containment_error",
+      "policy": "socket-connection",
+      "ownerSource": "socket-session-or-room",
+      "lifecycle": "event",
+      "source": "tunes/server/legacy-routes.ts",
+      "line": 5639
     },
     {
       "direction": "emit",
@@ -1772,7 +1790,7 @@
       "ownerSource": "socket-session-or-room",
       "lifecycle": "event",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5778
+      "line": 5659
     },
     {
       "direction": "emit",
@@ -1781,7 +1799,7 @@
       "ownerSource": "socket-session-or-room",
       "lifecycle": "event",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5787
+      "line": 5667
     },
     {
       "direction": "receive",
@@ -1790,7 +1808,7 @@
       "ownerSource": "socket-session-or-room",
       "lifecycle": "event",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5806
+      "line": 5684
     },
     {
       "direction": "emit",
@@ -1799,7 +1817,7 @@
       "ownerSource": "socket-session-or-room",
       "lifecycle": "event",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5813
+      "line": 5691
     },
     {
       "direction": "receive",
@@ -1808,7 +1826,16 @@
       "ownerSource": "socket-session-or-room",
       "lifecycle": "event",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5816
+      "line": 5694
+    },
+    {
+      "direction": "emit",
+      "event": "guest_request",
+      "policy": "socket-connection",
+      "ownerSource": "socket-session-or-room",
+      "lifecycle": "event",
+      "source": "tunes/server/legacy-routes.ts",
+      "line": 5703
     },
     {
       "direction": "emit",
@@ -1817,7 +1844,7 @@
       "ownerSource": "socket-session-or-room",
       "lifecycle": "event",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5825
+      "line": 5704
     },
     {
       "direction": "receive",
@@ -1826,7 +1853,7 @@
       "ownerSource": "socket-session-or-room",
       "lifecycle": "disconnect",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5829
+      "line": 5708
     },
     {
       "direction": "emit",
@@ -1835,7 +1862,7 @@
       "ownerSource": "socket-session-or-room",
       "lifecycle": "event",
       "source": "tunes/server/legacy-routes.ts",
-      "line": 5841
+      "line": 5720
     }
   ],
   "jobs": [

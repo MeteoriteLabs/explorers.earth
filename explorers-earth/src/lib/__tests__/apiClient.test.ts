@@ -54,7 +54,10 @@ describe('apiClient', () => {
       const error = new Error('Network error');
       (localTunesClient.request as any).mockRejectedValueOnce(error);
       
-      await expect(localTunesRequest('GET', '/test-url')).rejects.toThrow('Network error');
+      await expect(localTunesRequest('GET', '/test-url')).rejects.toMatchObject({
+        message: 'Music request failed.',
+        code: 'MUSIC_REQUEST_FAILED',
+      });
     });
   });
 
@@ -105,6 +108,22 @@ describe('apiClient', () => {
 
     it('isSessionValid returns false when no session', () => {
       expect(localTunesAPI.isSessionValid()).toBe(false);
+    });
+
+    it('never trusts or prints browser-readable Music session state', () => {
+      localStorage.setItem('localTunes_session', JSON.stringify({
+        csrfToken: 'raw-csrf-secret', sessionId: 'raw-session-secret', expiresAt: Date.now() + 60_000,
+      }));
+      localStorage.setItem('localtunes_cross_domain_auth', 'raw-cross-domain-secret');
+      const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+      expect(localTunesAPI.isSessionValid()).toBe(false);
+      localTunesAPI.debugSession();
+
+      expect(localStorage.getItem('localTunes_session')).toBeNull();
+      expect(localStorage.getItem('localtunes_cross_domain_auth')).toBeNull();
+      expect(JSON.stringify(log.mock.calls)).not.toContain('raw-session-secret');
+      expect(JSON.stringify(log.mock.calls)).not.toContain('raw-cross-domain-secret');
     });
   });
 

@@ -9,15 +9,7 @@ import { toast } from "sonner";
 import { EarthLoader } from "../components/EarthLoader";
 import { Check, Music2, Sparkles, Zap, Crown, X } from "lucide-react";
 import useAuthStore from "../store/store";
-import {
-  createLocalTunesUserWithRetry,
-  prepareLocalTunesUserData,
-  isLocalTunesEnabled
-} from "../services/localTunesService";
-import {
-  getCredentialsForLocalTunes,
-  removeUserCredentials
-} from "../utils/sessionCredentials";
+import { isLocalTunesEnabled } from "../services/localTunesService";
 import { isFreePlan } from "../services/paymentService";
 import { getSubscriptionPlans, getUserSubscriptionPlans, getSongLimits, updateSongLimit as updateSongLimitAPI, createSongLimit, createUserSubscriptionPlan } from "../services/subscriptionService";
 
@@ -115,7 +107,7 @@ const SubscriptionPlans = ({
     refetchOnWindowFocus: false,
   });
 
-  const { data: userAccountData, refetch: refetchUserAccount } = useQuery(GET_USER_ACCOUNT_QUERY, {
+  const { refetch: refetchUserAccount } = useQuery(GET_USER_ACCOUNT_QUERY, {
     variables: { documentId: authUser?.documentId },
     skip: !authUser?.documentId,
     fetchPolicy: 'cache-and-network', // Always fetch fresh data
@@ -367,11 +359,6 @@ const SubscriptionPlans = ({
       // Step 4: Handle LocalTunes integration and verify both registration and subscription are successful
       const accountDocumentId = refreshedUserAccountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
       let localTunesIntegrated = refreshedUserAccountData?.usersPermissionsUser?.accounts?.[0]?.localtunes_integrated === "Yes";
-      const accountName = refreshedUserAccountData?.usersPermissionsUser?.accounts?.[0]?.Account_Name ||
-        userAccountData?.usersPermissionsUser?.accounts?.[0]?.Account_Name ||
-        state?.formData?.accountName ||
-        authUser.username || '';
-
       let localTunesRegistrationSuccessful = false;
 
       if (fromOnboarding) {
@@ -404,53 +391,7 @@ const SubscriptionPlans = ({
           // User is not integrated yet - this should not happen if flow is correct
           // (registration should happen before showing subscription plans)
           // But handle it gracefully just in case
-          console.log('User not integrated yet. Attempting to create Local Tunes account...');
-
-          const storedCredentials = getCredentialsForLocalTunes();
-
-          if (storedCredentials) {
-            const localTunesUserData = prepareLocalTunesUserData({
-              username: authUser.username || '',
-              email: storedCredentials.email,
-              password: storedCredentials.password,
-              accountName: accountName,
-              businessName: accountName,
-            });
-
-            const localTunesResult = await createLocalTunesUserWithRetry(localTunesUserData);
-
-            if (localTunesResult) {
-              console.log('Local Tunes account created successfully');
-
-              // Update localtunes_integrated in Account
-              if (accountDocumentId) {
-                try {
-                  await updateAccount({
-                    variables: {
-                      documentId: accountDocumentId,
-                      data: {
-                        localtunes_integrated: "Yes"
-                      }
-                    }
-                  });
-                  console.log('Account localtunes_integrated updated successfully');
-                  localTunesIntegrated = true;
-                  localTunesRegistrationSuccessful = true;
-                } catch (updateError) {
-                  console.warn('Failed to update account localtunes_integrated:', updateError);
-                }
-              }
-
-              toast.success('Local Tunes account created successfully!');
-              removeUserCredentials();
-            } else {
-              console.log('Local Tunes account creation failed');
-              toast.info('Subscription activated. Local Tunes account creation will be available later.');
-            }
-          } else {
-            console.log('No stored credentials for Local Tunes');
-            toast.info('Subscription activated. Please connect to Local Tunes from the Music or Settings page.');
-          }
+          toast.info('Subscription activated. Music account setup is temporarily unavailable.');
         }
       } else {
         // Not from Music/Settings and not onboarding - no LocalTunes integration required

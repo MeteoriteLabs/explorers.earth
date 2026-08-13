@@ -11,15 +11,7 @@ import Modal from "../components/ui/Modal";
 import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
 import useAuthStore from "../store/store";
-import {
-  createLocalTunesUserWithRetry,
-  prepareLocalTunesUserData,
-  isLocalTunesEnabled
-} from "../services/localTunesService";
-import {
-  getCredentialsForLocalTunes
-} from "../utils/sessionCredentials";
-import { loginQuery } from "../features/Authentication/api/mutation";
+import { isLocalTunesEnabled } from "../services/localTunesService";
 import MusicDashboard from "../components/MusicDashboard";
 
 const getUserAccountQuery = gql`
@@ -109,7 +101,7 @@ const MusicSkeleton = () => {
 
 const MusicPage = () => {
   const { user: authUser } = useAuthStore();
-  const [isConnecting, setIsConnecting] = useState(false);
+  const [isConnecting] = useState(false);
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [password, setPassword] = useState("");
@@ -157,9 +149,6 @@ const MusicPage = () => {
 
   // Mutation to update localtunes_integrated field
   const [updateAccount] = useMutation(updateAccountMutation);
-
-  // Mutation for password validation
-  const [validatePassword] = useMutation(loginQuery);
 
   // Get the localtunes_integrated status from the user's account data
   const localTunesIntegratedValue = userData?.usersPermissionsUser?.accounts?.[0]?.localtunes_integrated;
@@ -224,131 +213,13 @@ const MusicPage = () => {
       return;
     }
 
-    const storedCredentials = getCredentialsForLocalTunes();
-
-    if (storedCredentials) {
-      await connectWithStoredCredentialsAndShowPlans(storedCredentials);
-    } else {
-      setShowPasswordModal(true);
-    }
-  };
-
-  const connectWithStoredCredentialsAndShowPlans = async (storedCredentials: any) => {
-    setIsConnecting(true);
-    try {
-
-      console.log('Registering with Local Tunes from Music page with stored credentials...');
-
-      // Prepare Local Tunes user data
-      // Username should be same as explorers username
-
-      const localTunesUserData = prepareLocalTunesUserData({
-        username: authUser!.username,
-        email: authUser!.email,
-        password: storedCredentials.password,
-        accountName: authUser!.username,
-        businessName: authUser!.username,
-      });
-
-      const result = await createLocalTunesUserWithRetry(localTunesUserData);
-
-      if (result) {
-        await updateAccount({
-          variables: {
-            documentId: accountDocumentId,
-            data: {
-              localtunes_integrated: "Yes"
-            }
-          }
-        });
-
-        await refetch();
-        toast.success('Local Tunes account created successfully!');
-      } else {
-        toast.error('Failed to register with Local Tunes. Please try again.');
-      }
-    } catch (error) {
-      console.error('Failed to connect to Local Tunes:', error);
-      toast.error('Failed to connect to Local Tunes. Please try again.');
-    } finally {
-      setIsConnecting(false);
-    }
-  };
-
-
-  // Function to validate explorers password
-  const validateexplorersPassword = async (username: string, password: string): Promise<boolean> => {
-    try {
-      await validatePassword({
-        variables: {
-          input: {
-            identifier: username,
-            password: password
-          }
-        }
-      });
-      return true;
-    } catch (error: any) {
-      console.log('Password validation failed:', error.message);
-      return false;
-    }
+    toast.info('Music account setup is temporarily unavailable.');
   };
 
   const connectWithManualPassword = async () => {
-    if (!password.trim()) {
-      toast.error('Please enter your password');
-      return;
-    }
-
-    setIsConnecting(true);
-    try {
-      console.log('Validating explorers password before connecting to Local Tunes...');
-
-      const isPasswordValid = await validateexplorersPassword(authUser!.username, password);
-
-      if (!isPasswordValid) {
-        toast.error('Invalid password. Please check your explorers password and try again.');
-        setIsConnecting(false);
-        return;
-      }
-
-      console.log('Password validated successfully. Registering with Local Tunes...');
-
-      // Prepare Local Tunes user data with validated password
-      // Username should be same as explorers username
-      const localTunesUserData = prepareLocalTunesUserData({
-        username: authUser!.username,
-        email: authUser!.email,
-        password: password,
-        accountName: authUser!.username,
-        businessName: authUser!.username,
-      });
-
-      const result = await createLocalTunesUserWithRetry(localTunesUserData);
-
-      if (result) {
-        await updateAccount({
-          variables: {
-            documentId: accountDocumentId,
-            data: {
-              localtunes_integrated: "Yes"
-            }
-          }
-        });
-
-        setShowPasswordModal(false);
-        setPassword("");
-        await refetch();
-        toast.success('Local Tunes account created successfully!');
-      } else {
-        toast.error('Failed to register with Local Tunes. Please try again.');
-      }
-    } catch (error) {
-      console.error('Failed to connect to Local Tunes:', error);
-      toast.error('Failed to connect to Local Tunes. Please try again.');
-    } finally {
-      setIsConnecting(false);
-    }
+    setShowPasswordModal(false);
+    setPassword("");
+    toast.info('Music account setup is temporarily unavailable.');
   };
 
   if (!isLocalTunesEnabled()) {

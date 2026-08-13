@@ -285,8 +285,7 @@ export function setupAuth(app: Express) {
   // Configure cookie parser with secret
   app.use(cookieParser(cookieSecret));
 
-  // Always trust proxies on Replit environment regardless of environment
-  app.set('trust proxy', true); // true instead of 1 to trust all proxies
+  // Proxy trust is configured once by app.ts from the explicit bounded hop count.
 
   // Log session setup with more details
   console.log('Session setup with PostgreSQL store', {
@@ -297,6 +296,7 @@ export function setupAuth(app: Express) {
 
   // Create session middleware with dynamic domain handling
   const sessionMiddleware = session(sessionSettings);
+  app.set('music session middleware', sessionMiddleware);
 
   // Wrap the session middleware to handle domain dynamically
   app.use((req, res, next) => {
@@ -575,8 +575,11 @@ export function setupAuth(app: Express) {
         }
       }
 
-      // Log in the user after registration
-      req.login(user, (err) => {
+      // Rotate before post-registration login so a supplied session identifier
+      // cannot survive the authentication boundary.
+      req.session.regenerate((rotationError) => {
+        if (rotationError) return res.status(500).json({ message: "Registration succeeded but login failed" });
+        req.login(user, (err) => {
         if (err) {
           console.error('Login error after registration:', err);
           return res.status(500).json({ message: "Registration succeeded but login failed" });
@@ -639,6 +642,7 @@ export function setupAuth(app: Express) {
             emailVerificationSent: emailSent
           });
         });
+      });
       });
     } catch (error) {
       console.error('Registration error:', error);

@@ -11,6 +11,7 @@ export type ContainmentCode =
   | "CSRF_INVALID"
   | "ORIGIN_FORBIDDEN"
   | "GRAPHQL_PROXY_REMOVED"
+  | "SERVICE_CREDENTIAL_ROUTE_REMOVED"
   | "LEGACY_IDENTITY_ROUTE_REMOVED"
   | "LEGACY_OWNER_ROUTE_REMOVED"
   | "ADMIN_REQUIRED"
@@ -29,6 +30,7 @@ const SAFE_MESSAGES: Record<ContainmentCode, { message: string; action: string; 
   CSRF_INVALID: { message: "The request could not be verified.", action: "refresh", retryable: true },
   ORIGIN_FORBIDDEN: { message: "This origin is not allowed.", action: "stop", retryable: false },
   GRAPHQL_PROXY_REMOVED: { message: "This GraphQL endpoint is no longer available.", action: "upgrade_client", retryable: false },
+  SERVICE_CREDENTIAL_ROUTE_REMOVED: { message: "This service credential endpoint is no longer available.", action: "upgrade_client", retryable: false },
   LEGACY_IDENTITY_ROUTE_REMOVED: { message: "This identity endpoint is no longer available.", action: "upgrade_client", retryable: false },
   LEGACY_OWNER_ROUTE_REMOVED: { message: "This owner-targeted endpoint is no longer available.", action: "upgrade_client", retryable: false },
   ADMIN_REQUIRED: { message: "Administrator permission is required.", action: "stop", retryable: false },
@@ -83,17 +85,40 @@ export function rejectLegacyBearerOwner(): RejectedLegacyOwner {
   throw new Error("Verified Strapi bearer requires the Music identity gateway");
 }
 
+const LIMITER_CAPACITY = 1024;
 const authAttempts = new Map<string, { count: number; resetAt: number }>();
 
-function limited(key: string, limit: number, windowMs: number): boolean {
+function evictLimiterEntries(now: number): void {
+  authAttempts.forEach((value, key) => {
+    if (value.resetAt <= now) authAttempts.delete(key);
+  });
+  while (authAttempts.size >= LIMITER_CAPACITY) authAttempts.delete(authAttempts.keys().next().value!);
+}
+
+export function consumeContainmentLimit(key: string, limit: number, windowMs: number): boolean {
   const now = Date.now();
   const current = authAttempts.get(key);
   if (!current || current.resetAt <= now) {
+    evictLimiterEntries(now);
     authAttempts.set(key, { count: 1, resetAt: now + windowMs });
     return false;
   }
   current.count += 1;
   return current.count > limit;
+}
+
+export function containmentLimiterStats() {
+  evictLimiterEntries(Date.now());
+  return { size: authAttempts.size, capacity: LIMITER_CAPACITY };
+}
+
+export function resetContainmentLimiters(): void {
+  if (process.env.NODE_ENV === "production") throw new Error("Limiter reset is unavailable in production");
+  authAttempts.clear();
+}
+
+function clientAddress(req: Request): string {
+  return req.socket.remoteAddress ?? "unknown";
 }
 
 function exactOrigin(req: Request): boolean {
@@ -108,13 +133,22 @@ function validCsrf(req: Request): boolean {
 }
 
 const NATIVE_MUTATIONS = new Set(["/api/login", "/api/register", "/api/logout"]);
+const PUBLIC_CAPABILITY_MUTATIONS = [/^\/api\/verify-email\/[^/]+$/, /^\/api\/user\/request-reactivation$/];
 
 export function setupNativeSessionContainment(app: Express): void {
   app.use((req, res, next) => {
     const requestId = requestIdFor(req);
     res.setHeader("X-Request-Id", requestId);
-    if (!NATIVE_MUTATIONS.has(req.path) || !["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return next();
-    if (limited(`auth:${req.ip}`, 30, 60_000)) return sendContainmentError(res, 429, "RATE_LIMITED", requestId);
+    if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return next();
+    if (PUBLIC_CAPABILITY_MUTATIONS.some((pattern) => pattern.test(req.path))) {
+      if (consumeContainmentLimit(`capability:${clientAddress(req)}:${req.path.split("/").slice(0, 3).join("/")}`, 20, 60_000)) {
+        return sendContainmentError(res, 429, "RATE_LIMITED", requestId);
+      }
+      return next();
+    }
+    const nativeSessionMutation = NATIVE_MUTATIONS.has(req.path) || /(?:^|;\s*)cosmic\.sid=/.test(req.headers.cookie ?? "");
+    if (!nativeSessionMutation) return next();
+    if (NATIVE_MUTATIONS.has(req.path) && consumeContainmentLimit(`auth:${clientAddress(req)}`, 30, 60_000)) return sendContainmentError(res, 429, "RATE_LIMITED", requestId);
     if (!exactOrigin(req)) return sendContainmentError(res, 403, "ORIGIN_FORBIDDEN", requestId);
     if (!validCsrf(req)) return sendContainmentError(res, 403, "CSRF_INVALID", requestId);
     next();
@@ -155,18 +189,22 @@ export function setupOwnerContainment(app: Express): void {
     if (req.path === "/graphql" || req.path === "/api/strapi/graphql") {
       return sendContainmentError(res, 410, "GRAPHQL_PROXY_REMOVED", requestId);
     }
+    if (req.path === "/api/strapi/config" || req.path === "/api/debug/strapi") {
+      return sendContainmentError(res, 410, "SERVICE_CREDENTIAL_ROUTE_REMOVED", requestId);
+    }
 
     if (req.path === "/api/playlist/songs" && req.method === "POST" && typeof req.query.guestUrl === "string") {
       if (!/^[A-Za-z0-9_-]{8,128}$/.test(req.query.guestUrl)) return sendContainmentError(res, 400, "AMBIGUOUS_OWNER_INPUT", requestId);
       if (!exactOrigin(req)) return sendContainmentError(res, 403, "ORIGIN_FORBIDDEN", requestId);
-      if (limited(`guest:${req.ip}:${req.query.guestUrl}`, 20, 60_000)) return sendContainmentError(res, 429, "RATE_LIMITED", requestId);
+      if (consumeContainmentLimit(`guest:${clientAddress(req)}:${req.query.guestUrl}`, 20, 60_000)) return sendContainmentError(res, 429, "RATE_LIMITED", requestId);
       return next();
     }
 
     const identityRoute = ["/api/auth/sync", "/api/auth/user-data", "/api/auth/onboarding-status"].includes(req.path);
-    const protectedRoute = identityRoute || (isProtected(req.path) && !req.path.startsWith("/api/subscriptions/plans"));
+    const publicCapability = req.path === "/api/user/request-reactivation" || req.path === "/api/user/reactivate";
+    const protectedRoute = identityRoute || (isProtected(req.path) && !publicCapability);
     if (!protectedRoute) return next();
-    if (identityRoute && limited(`legacy-identity:${req.ip}`, 30, 60_000)) {
+    if (identityRoute && consumeContainmentLimit(`legacy-identity:${clientAddress(req)}`, 30, 60_000)) {
       return sendContainmentError(res, 429, "RATE_LIMITED", requestId);
     }
 

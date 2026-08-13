@@ -28,7 +28,8 @@ export async function createApp(): Promise<{ app: express.Express; server: Serve
 
   // Enable trust proxy FIRST, before any middleware
   // This is critical for secure cookies to work properly
-  app.set("trust proxy", true);
+  const proxyHops = Number.parseInt(process.env.TRUST_PROXY_HOPS ?? "0", 10);
+  app.set("trust proxy", Number.isInteger(proxyHops) && proxyHops >= 0 && proxyHops <= 4 ? proxyHops : 0);
 
   // Basic middleware setup
   app.use((req, res, next) => {

@@ -97,8 +97,8 @@ export function setupReactivationRoutes(app: Express): void {
 
     // Fire and forget — always return generic success
     // (requestReactivation catches and logs its own errors)
-    requestReactivation(normalizedEmail).catch((err) => {
-      console.error('❌ Unhandled reactivation request error:', err);
+    requestReactivation(normalizedEmail).catch(() => {
+      console.error('public_reactivation_request_failed');
     });
 
     return res.status(200).json({

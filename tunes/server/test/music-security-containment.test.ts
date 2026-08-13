@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import jwt from "jsonwebtoken";
 import { io as createSocket, type Socket } from "socket.io-client";
@@ -14,14 +14,18 @@ const OWNER = {
   isAdmin: false,
   suspendedAt: null,
 };
+const REGISTERED = { ...OWNER, id: 77, username: "registered", email: null, guestUrl: "public-room-registered" };
 
 vi.mock("../storage", async () => {
   const session = (await import("express-session")).default;
   return { storage: {
     sessionStore: new session.MemoryStore(),
-    getUserByGuestUrl: vi.fn(async (guestUrl: string) => guestUrl === OWNER.guestUrl ? OWNER : guestUrl === "public-room-other" ? { ...OWNER, id: 42, guestUrl } : undefined),
-    getUser: vi.fn(async (id: number) => id === OWNER.id ? OWNER : undefined),
+    getUserByGuestUrl: vi.fn(async (guestUrl: string) => /^public-room-[a-z]+$/.test(guestUrl) ? (guestUrl === OWNER.guestUrl ? OWNER : { ...OWNER, id: 42, guestUrl }) : undefined),
+    getUser: vi.fn(async (id: number) => id === OWNER.id ? OWNER : id === REGISTERED.id ? REGISTERED : undefined),
     getUserByUsername: vi.fn(async (username: string) => username === OWNER.username ? OWNER : undefined),
+    getUserByEmail: vi.fn(async () => undefined),
+    createUser: vi.fn(async () => REGISTERED),
+    createUserProfile: vi.fn(async () => undefined),
     getUserByExternalId: vi.fn(async (id: number) => id === 9001 ? OWNER : undefined),
     logYoutubeApiUsage: vi.fn(async () => undefined),
     createUserSession: vi.fn(async () => undefined),
@@ -34,6 +38,7 @@ vi.mock("../services/user-sync-service", () => ({
 
 const { createApp } = await import("../app");
 const { storage } = await import("../storage");
+const { resetContainmentLimiters } = await import("../security-containment");
 
 function expectErrorEnvelope(response: request.Response, code: string) {
   expect(response.headers["x-request-id"]).toMatch(/^[0-9a-f-]{36}$/i);
@@ -64,6 +69,7 @@ describe("Music standalone containment REST boundary", () => {
   afterAll(() => server?.close());
 
   beforeEach(() => {
+    resetContainmentLimiters();
     vi.restoreAllMocks();
     vi.clearAllMocks();
     global.fetch = vi.fn(async () => new Response(JSON.stringify({ data: { deleteUsers: true } }), { status: 200 })) as typeof fetch;
@@ -113,6 +119,19 @@ describe("Music standalone containment REST boundary", () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["GET", "/api/strapi/config"],
+    ["GET", "/api/debug/strapi"],
+    ["POST", "/api/strapi/graphql"],
+  ])("tombstones every Strapi service-credential alias before upstream access: %s %s", async (method, path) => {
+    process.env.STRAPI_ACCESS_TOKEN = "server-service-token-never-return";
+    const response = await request(app)[method.toLowerCase() as "get"](path).send({ query: "mutation { deleteUsers }" });
+    expect(response.status).toBe(410);
+    expectErrorEnvelope(response, path.endsWith("graphql") ? "GRAPHQL_PROXY_REMOVED" : "SERVICE_CREDENTIAL_ROUTE_REMOVED");
+    expect(JSON.stringify(response.body)).not.toContain(process.env.STRAPI_ACCESS_TOKEN);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
   it("denies suspended verified identities without exposing lifecycle state", async () => {
     const token = jwt.sign({ id: 9001, suspended: true }, TEST_JWT_SECRET, { expiresIn: "5m" });
     const response = await request(app).get("/api/playlists").set("Authorization", `Bearer ${token}`);
@@ -131,6 +150,19 @@ describe("Music standalone containment REST boundary", () => {
     const response = await request(app)[method.toLowerCase() as "get"](path).send(body);
     expect(response.status).toBe(401);
     expectErrorEnvelope(response, "AUTH_REQUIRED");
+  });
+
+  it("disables subscription plan service-token reads for unauthenticated and authenticated callers", async () => {
+    const unauthenticated = await request(app).get("/api/subscriptions/plans");
+    expect(unauthenticated.status).toBe(401);
+    expectErrorEnvelope(unauthenticated, "AUTH_REQUIRED");
+
+    const token = jwt.sign({ id: 9001 }, TEST_JWT_SECRET, { expiresIn: "5m" });
+    const authenticated = await request(app).get("/api/subscriptions/plans/paid-plan").set("Authorization", `Bearer ${token}`);
+    expect(authenticated.status).toBe(410);
+    expectErrorEnvelope(authenticated, "LEGACY_OWNER_ROUTE_REMOVED");
+    expect(JSON.stringify(authenticated.body)).not.toContain("raw upstream subscription failure");
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it("returns a bounded-body typed failure before echoing secret or PII", async () => {
@@ -216,6 +248,77 @@ describe("Music standalone containment REST boundary", () => {
     expectErrorEnvelope(response, "RATE_LIMITED");
   });
 
+  it("cannot bypass auth throttling with spoofed forwarded addresses and keeps bounded limiter state", async () => {
+    const { consumeContainmentLimit, containmentLimiterStats } = await import("../security-containment");
+    let response!: request.Response;
+    for (let index = 0; index < 40; index += 1) {
+      response = await request(app).post("/api/login").set("X-Forwarded-For", `198.51.100.${index}`).send({});
+    }
+    expect(response.status).toBe(429);
+    for (let index = 0; index < 1400; index += 1) {
+      consumeContainmentLimit(`hostile-cardinality-${index}`, 1, 60_000);
+    }
+    expect(containmentLimiterStats().size).toBeLessThanOrEqual(containmentLimiterStats().capacity);
+    expect(app.get("trust proxy")).not.toBe(true);
+  });
+
+  it("tombstones cross-user subscription resources for authenticated principals without upstream errors", async () => {
+    const agent = await authenticatedAgent();
+    const response = await agent.get("/api/subscriptions/user-plans/victim-resource-c");
+    expect(response.status).toBe(410);
+    expectErrorEnvelope(response, "LEGACY_OWNER_ROUTE_REMOVED");
+    expect(JSON.stringify(response.body)).not.toContain("victim-resource-c");
+
+    const tokenB = jwt.sign({ id: 902 }, process.env.STRAPI_JWT_SECRET!, { algorithm: "HS256", expiresIn: "5m" });
+    const tokenResponse = await request(app)
+      .get("/api/subscriptions/song-limits/resource-c")
+      .set("Authorization", `Bearer ${tokenB}`);
+    expect(tokenResponse.status).toBe(410);
+    expectErrorEnvelope(tokenResponse, "LEGACY_OWNER_ROUTE_REMOVED");
+  });
+
+  it("preserves narrow public capability flows while CSRF-protecting session mutations", async () => {
+    const verification = await request(app).post("/api/verify-email/not-a-valid-capability");
+    expect(verification.status).not.toBe(403);
+    expect(verification.body.error?.code).not.toBe("CSRF_INVALID");
+    const reactivation = await request(app).post("/api/user/request-reactivation").send({});
+    expect(reactivation.status).toBe(400);
+    expect(reactivation.body.error?.code).not.toBe("CSRF_INVALID");
+
+    const agent = await authenticatedAgent();
+    const blocked = await agent.post("/api/resend-verification");
+    expect(blocked.status).toBe(403);
+    expectErrorEnvelope(blocked, "ORIGIN_FORBIDDEN");
+  });
+
+  async function authenticatedAgent() {
+    const agent = request.agent(app);
+    const csrf = await agent.get("/api/csrf-token");
+    const csrfCookie = (csrf.headers["set-cookie"] as unknown as string[]).find((value) => value.startsWith("XSRF-TOKEN="))!;
+    const login = await agent.post("/api/login")
+      .set("Origin", "https://explorers.example.test")
+      .set("X-CSRF-Token", csrf.body.token)
+      .set("Cookie", csrfCookie.split(";")[0])
+      .send({ username: OWNER.username, password: "correct horse battery staple" });
+    expect(login.status).toBe(200);
+    return agent;
+  }
+
+  it("rotates an attacker-supplied session before post-registration login", async () => {
+    const agent = request.agent(app);
+    const csrf = await agent.get("/api/csrf-token");
+    const csrfCookie = (csrf.headers["set-cookie"] as unknown as string[]).find((value) => value.startsWith("XSRF-TOKEN="))!;
+    const response = await agent.post("/api/register")
+      .set("Origin", "https://explorers.example.test")
+      .set("X-CSRF-Token", csrf.body.token)
+      .set("Cookie", `cosmic.sid=s%3Aattacker-registration.invalid; ${csrfCookie.split(";")[0]}`)
+      .send({ username: REGISTERED.username, password: "registration-password" });
+    expect(response.status).toBe(201);
+    const sessionCookie = (response.headers["set-cookie"] as unknown as string[]).find((value) => value.startsWith("cosmic.sid="));
+    expect(sessionCookie).toBeTruthy();
+    expect(sessionCookie).not.toContain("attacker-registration");
+  });
+
   it("rotates the native session on login, uses hardened cookies, and invalidates logout", async () => {
     const agent = request.agent(app);
     const csrf = await agent.get("/api/csrf-token").set("X-Forwarded-Proto", "https");
@@ -286,14 +389,22 @@ describe("Music production startup containment", () => {
 });
 
 describe("Music Socket.IO containment", () => {
+  let app: Awaited<ReturnType<typeof createApp>>["app"];
   let server: Awaited<ReturnType<typeof createApp>>["server"];
   let url: string;
   const sockets: Socket[] = [];
 
+  beforeEach(() => resetContainmentLimiters());
+  afterEach(() => {
+    sockets.splice(0).forEach((socket) => socket.close());
+  });
+
   beforeAll(async () => {
+    const { hashPassword } = await import("../auth");
+    OWNER.password = await hashPassword("correct horse battery staple");
     process.env.STRAPI_JWT_SECRET = TEST_JWT_SECRET;
     process.env.ALLOWED_ORIGINS = "https://explorers.example.test";
-    ({ server } = await createApp());
+    ({ app, server } = await createApp());
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     const address = server.address();
     if (!address || typeof address === "string") throw new Error("test server did not bind");
@@ -312,6 +423,27 @@ describe("Music Socket.IO containment", () => {
       socket.once("connect", () => resolve(socket));
       socket.once("connect_error", reject);
     });
+  }
+
+  function containmentFailure(options: Parameters<typeof createSocket>[1]): Promise<Record<string, any>> {
+    return new Promise((resolve) => {
+      const socket = createSocket(url, { path: "/ws", transports: ["websocket"], reconnection: false, ...options });
+      sockets.push(socket);
+      socket.once("containment_error", resolve);
+      socket.once("connect_error", (error: any) => resolve(error.data));
+    });
+  }
+
+  async function ownerSessionCookie(): Promise<string> {
+    const agent = request.agent(app);
+    const csrf = await agent.get("/api/csrf-token");
+    const csrfCookie = (csrf.headers["set-cookie"] as unknown as string[]).find((value) => value.startsWith("XSRF-TOKEN="))!;
+    const login = await agent.post("/api/login")
+      .set("Origin", "https://explorers.example.test")
+      .set("X-CSRF-Token", csrf.body.token)
+      .set("Cookie", csrfCookie.split(";")[0])
+      .send({ username: OWNER.username, password: "correct horse battery staple" });
+    return (login.headers["set-cookie"] as unknown as string[]).find((value) => value.startsWith("cosmic.sid="))!.split(";")[0];
   }
 
   it("rejects a socket origin outside the exact allowlist", async () => {
@@ -343,6 +475,31 @@ describe("Music Socket.IO containment", () => {
     }
   });
 
+  it("delivers a valid guest request only to the authenticated owner room", async () => {
+    const cookie = await ownerSessionCookie();
+    const owner = await connect({ extraHeaders: { Origin: "https://explorers.example.test", Cookie: cookie } });
+    const other = await connect({ extraHeaders: { Origin: "https://explorers.example.test" }, query: { guestUrl: "public-room-other" } });
+    let leaked = false;
+    other.on("guest_request", () => { leaked = true; });
+    const delivered = new Promise<Record<string, unknown>>((resolve) => owner.once("guest_request", resolve));
+    const guest = await connect({ extraHeaders: { Origin: "https://explorers.example.test" }, query: { guestUrl: OWNER.guestUrl } });
+    guest.emit("guest_request", { type: "song", externalId: "yt:delivered" });
+    await expect(delivered).resolves.toEqual(expect.objectContaining({ type: "song", externalId: "yt:delivered", requestId: expect.any(String) }));
+    await new Promise<void>((resolve) => setTimeout(resolve, 25));
+    expect(leaked).toBe(false);
+  });
+
+  it("denies a suspended owner socket", async () => {
+    const cookie = await ownerSessionCookie();
+    OWNER.suspendedAt = new Date() as any;
+    try {
+      const failure = await containmentFailure({ extraHeaders: { Origin: "https://explorers.example.test", Cookie: cookie } });
+      expect(failure.error).toEqual(expect.objectContaining({ code: "AUTH_SUSPENDED" }));
+    } finally {
+      OWNER.suspendedAt = null;
+    }
+  });
+
   it("rate-limits guest events per socket", async () => {
     const guest = await connect({ extraHeaders: { Origin: "https://explorers.example.test" }, query: { guestUrl: OWNER.guestUrl } });
     const failures: Record<string, any>[] = [];
@@ -351,6 +508,18 @@ describe("Music Socket.IO containment", () => {
       guest.emit("guest_request", { type: "song", externalId: `yt:${index}` });
     }
     await vi.waitFor(() => expect(failures.some((failure) => failure.error?.code === "RATE_LIMITED")).toBe(true));
+  });
+
+  it("retains a guest rate limit across reconnects", async () => {
+    const options = { extraHeaders: { Origin: "https://explorers.example.test" }, query: { guestUrl: "public-room-reconnect" } };
+    const first = await connect(options);
+    for (let index = 0; index < 10; index += 1) first.emit("guest_request", { type: "song", externalId: `yt:first-${index}` });
+    await new Promise<void>((resolve) => setTimeout(resolve, 25));
+    first.close();
+    const second = await connect(options);
+    const failure = new Promise<Record<string, any>>((resolve) => second.once("containment_error", resolve));
+    second.emit("guest_request", { type: "song", externalId: "yt:bypass" });
+    await expect(failure).resolves.toEqual({ error: expect.objectContaining({ code: "RATE_LIMITED" }) });
   });
 
   it("isolates guest events and capabilities between rooms", async () => {

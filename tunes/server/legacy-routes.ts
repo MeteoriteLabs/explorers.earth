@@ -18,7 +18,7 @@ import { importYouTubeMusicPlaylist, importYouTubeMusicPlaylistToMain } from './
 import { importSpotifyPlaylist, importSpotifyPlaylistToMain } from './services/spotify-playlist-import';
 import { strapiService } from './services/strapi-service';
 import { extractYouTubeVideoId, isYouTubeUrl } from './utils/youtube';
-import { rejectLegacyBearerOwner } from './security-containment';
+import { consumeContainmentLimit, rejectLegacyBearerOwner, requestIdFor, sendContainmentError } from './security-containment';
 import { extractDeviceInfo, extractBrowserInfo, extractOSInfo } from './auth';
 import { getGeoInfo } from './utils/geolocation'; import { allowedOrigins, errorEnvelope } from './security-containment';
 
@@ -3379,135 +3379,14 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
     }
   });
 
-  // Debug endpoint to test Strapi connection
-  app.get("/api/debug/strapi", async (req, res) => {
-    try {
-      const config = {
-        strapiUrl: process.env.STRAPI_URL || 'NOT SET',
-        accessToken: process.env.STRAPI_ACCESS_TOKEN ? 'SET (hidden)' : 'NOT SET',
-        isConfigured: !!(process.env.STRAPI_URL && process.env.STRAPI_ACCESS_TOKEN)
-      };
+  app.get("/api/debug/strapi", (req, res) =>
+    sendContainmentError(res, 410, 'SERVICE_CREDENTIAL_ROUTE_REMOVED', requestIdFor(req)));
 
-      if (!config.isConfigured) {
-        return res.json({
-          status: 'error',
-          message: 'Strapi environment variables not configured',
-          config
-        });
-      }
+  app.get("/api/strapi/config", (req, res) =>
+    sendContainmentError(res, 410, 'SERVICE_CREDENTIAL_ROUTE_REMOVED', requestIdFor(req)));
 
-      // Try to make a simple query to test connection
-      try {
-        const testResult = await strapiService.findSongLimitByUsername('test_user_12345');
-        res.json({
-          status: 'success',
-          message: 'Strapi connection is working',
-          config: {
-            ...config,
-            accessToken: 'SET (hidden)'
-          },
-          testQuery: testResult ? 'Found test record' : 'No test record found (this is normal)'
-        });
-      } catch (error) {
-        res.json({
-          status: 'error',
-          message: 'Strapi connection failed',
-          config,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
-      }
-    } catch (error) {
-      res.status(500).json({
-        status: 'error',
-        message: 'Debug endpoint error',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  // Get Strapi configuration for client
-  app.get("/api/strapi/config", async (req, res) => {
-    try {
-      const strapiUrl = process.env.STRAPI_URL;
-      const accessToken = process.env.STRAPI_ACCESS_TOKEN;
-
-      if (!strapiUrl || !accessToken) {
-        return res.status(500).json({
-          error: 'Strapi configuration is missing on the server'
-        });
-      }
-
-      // Return the URL and token to the client
-      // Note: In production, you might want to use a more secure approach
-      res.json({
-        strapiUrl: strapiUrl.endsWith('/') ? strapiUrl.slice(0, -1) : strapiUrl,
-        accessToken,
-      });
-    } catch (error) {
-      console.error('Error getting Strapi config:', error);
-      res.status(500).json({
-        error: 'Failed to get Strapi configuration'
-      });
-    }
-  });
-
-  // Strapi GraphQL proxy endpoint
-  app.post("/api/strapi/graphql", async (req, res) => {
-    try {
-      const { query, variables } = req.body;
-
-      if (!query) {
-        return res.status(400).json({
-          errors: [{ message: 'GraphQL query is required' }]
-        });
-      }
-
-      const strapiUrl = process.env.STRAPI_URL;
-      const accessToken = process.env.STRAPI_ACCESS_TOKEN;
-
-      if (!strapiUrl || !accessToken) {
-        return res.status(500).json({
-          errors: [{ message: 'Strapi configuration is missing. Please set STRAPI_URL and STRAPI_ACCESS_TOKEN environment variables.' }]
-        });
-      }
-
-      const graphqlEndpoint = `${strapiUrl}/graphql`;
-
-      const response = await fetch(graphqlEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          query,
-          variables,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Strapi API error response:', errorText);
-        return res.status(response.status).json({
-          errors: [{ message: `Strapi API error: ${response.status} ${response.statusText}` }]
-        });
-      }
-
-      const result = await response.json();
-
-      if (result.errors && result.errors.length > 0) {
-        console.error('GraphQL errors:', result.errors);
-        return res.status(400).json(result);
-      }
-
-      res.json(result);
-    } catch (error) {
-      console.error('Strapi GraphQL proxy error:', error);
-      res.status(500).json({
-        errors: [{ message: error instanceof Error ? error.message : 'Unknown error occurred' }]
-      });
-    }
-  });
+  app.post("/api/strapi/graphql", (req, res) =>
+    sendContainmentError(res, 410, 'GRAPHQL_PROXY_REMOVED', requestIdFor(req)));
 
   // Video details endpoint
   app.get("/api/youtube/video/:id", async (req, res) => {
@@ -5663,7 +5542,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
   });
 
   const httpServer = createServer(app);
-  const sessionMiddleware = app.get('session middleware');
+  const sessionMiddleware = app.get('music session middleware');
 
   // Socket.IO setup with better error handling
   const io = new SocketIOServer(httpServer, {
@@ -5683,6 +5562,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       callback(allowed ? undefined : 'origin not allowed', allowed);
     }
   });
+  io.engine.use(sessionMiddleware);
 
   // Use session middleware with Socket.IO with better error handling
   io.use((socket, next) => {
@@ -5699,17 +5579,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
         return next();
       }
 
-      // Otherwise, try to get session
-      sessionMiddleware(socket.request as any, {} as any, (err: any) => {
-        if (err) {
-          console.error('Session middleware error:', err);
-          const failure = new Error('Authentication failed') as Error & { data?: unknown };
-          failure.data = errorEnvelope('AUTH_INVALID', randomUUID());
-          next(failure);
-          return;
-        }
-        next();
-      });
+      next();
     } catch (error) {
       console.error('Error in session middleware:', error);
       const failure = new Error('Internal server error') as Error & { data?: unknown };
@@ -5739,6 +5609,11 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
           socket.disconnect();
           return;
         }
+        if ((user as any).suspendedAt || (user as any).isSuspended) {
+          socket.emit('containment_error', errorEnvelope('AUTH_SUSPENDED', randomUUID()));
+          socket.disconnect();
+          return;
+        }
         roomId = guestUrl;
         role = 'guest';
       }
@@ -5748,6 +5623,11 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
         if (session?.passport?.user) {
           const user = await storage.getUser(session.passport.user);
           if (user) {
+            if ((user as any).suspendedAt || (user as any).isSuspended) {
+              socket.emit('containment_error', errorEnvelope('AUTH_SUSPENDED', randomUUID()));
+              socket.disconnect();
+              return;
+            }
             roomId = user.guestUrl;
             role = 'owner';
             console.log('Authenticated host connection for user:', user.id);
@@ -5765,6 +5645,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       // Join the room
       if (!role) throw new Error('socket role not assigned');
       await socket.join(roomId);
+      if (role === 'owner') await socket.join(`music-owner:${roomId}`);
 
       // Track clients in room
       if (!rooms.has(roomId)) {
@@ -5780,20 +5661,17 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
         role
       });
 
-      const eventTimestamps: number[] = [];
       const failSocket = (code: 'SOCKET_EVENT_FORBIDDEN' | 'SOCKET_PAYLOAD_INVALID' | 'RATE_LIMITED') => {
         const requestId = randomUUID();
         console.warn('music_socket_containment_failure', { code, requestId });
         socket.emit('containment_error', errorEnvelope(code, requestId));
       };
       const acceptEvent = (data: unknown, maxBytes = 2048) => {
-        const now = Date.now();
-        while (eventTimestamps.length && eventTimestamps[0] < now - 60_000) eventTimestamps.shift();
-        if (eventTimestamps.length >= 10) {
+        const address = socket.handshake.address || 'unknown';
+        if (consumeContainmentLimit(`socket:${role}:${address}:${roomId}`, 10, 60_000)) {
           failSocket('RATE_LIMITED');
           return false;
         }
-        eventTimestamps.push(now);
         try {
           if (Buffer.byteLength(JSON.stringify(data), 'utf8') > maxBytes) throw new Error('large');
         } catch {
@@ -5822,6 +5700,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
           return failSocket('SOCKET_PAYLOAD_INVALID');
         }
         const requestId = randomUUID();
+        io.to(`music-owner:${roomId}`).emit('guest_request', { type: 'song', externalId: value.externalId, requestId });
         socket.emit('guest_request_status', { status: 'accepted', requestId });
       });
 
