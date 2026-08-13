@@ -21,9 +21,13 @@ import { setupReactivationRoutes } from "./reactivationRoutes";
 import scrapeRoutes from "./scrapeRoutes";
 import { setupMusicFixtureProbeRoute } from "./musicFixtureProbe";
 import { pool } from "../db";
+import { setupMusicHealthRoutes } from "../deployment/music-health";
 import { requestIdFor, sendContainmentError, setupNativeSessionContainment, setupOwnerContainment } from "../security-containment";
 
 export function registerRoutes(app: Express, _storage: IStorage): Server {
+  if (process.env.MUSIC_DEPLOYMENT_HEALTH_ENABLED === "true") {
+    setupMusicHealthRoutes(app, { pool });
+  }
   if (process.env.MUSIC_MODE === "fixture") setupMusicFixtureProbeRoute(app, {
     mode: "fixture",
     databaseQuery: (sql) => pool.query(sql),

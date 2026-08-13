@@ -30,7 +30,7 @@ function classificationFor(path: string, policy: string): string {
   if (["/api/login", "/api/logout", "/api/check", "/api/csrf-token"].includes(path)) return "native-session";
   if (path.startsWith("/api/admin/")) return "admin-handler-review-required";
   if (policy !== "none") return "authenticated";
-  if (["/api/playlist/:guestUrl", "/robots.txt", "/sitemap.xml", "/api/explorers-sitemap.xml", "/itunes-api/search"].includes(path)) return "public";
+  if (["/api/playlist/:guestUrl", "/robots.txt", "/sitemap.xml", "/api/explorers-sitemap.xml", "/itunes-api/search", "/health/live", "/health/ready", "/api/music-entry/status"].includes(path)) return "public";
   if (/:(?:userId|username|sessionId)\b/.test(path) || path === "/api/auth/sync") return "owner-handler-review-required";
   return "handler-authorization-unknown";
 }

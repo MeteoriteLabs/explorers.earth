@@ -243,7 +243,7 @@ export class DatabaseStorage implements IStorage {
       this.sessionStore = new PgStore({
         pool: pool,
         tableName: 'session', // Default
-        createTableIfMissing: true,
+        createTableIfMissing: false,
         pruneSessionInterval: 60 * 60 // Prune expired sessions every hour (in seconds)
       });
       console.log("Session store initialized successfully");

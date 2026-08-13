@@ -40,6 +40,9 @@ RUN npm run build
 # Production image
 FROM base AS runner
 ENV NODE_ENV=production
+ARG BUILD_COMMIT
+LABEL org.opencontainers.image.revision=$BUILD_COMMIT \
+      org.opencontainers.image.title="explorers-tunes"
 
 # Copy production dependencies and build output
 COPY --from=deps /app/node_modules ./node_modules
@@ -53,6 +56,9 @@ COPY shared ./shared
 
 # Expose application port
 EXPOSE 5000
+
+HEALTHCHECK --interval=15s --timeout=3s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:5000/health/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 
 # Set the default command
 CMD ["node", "dist/server/index.js"]

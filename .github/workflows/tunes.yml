@@ -1,90 +1,117 @@
-name: Deploy tunes to Hetzner
+name: Tunes immutable image CI
 
 on:
-  push:
-    branches:
-      - main
+  pull_request:
     paths:
-      - 'tunes/**'
+      - tunes/**
+      - docker-compose.yml
+      - docker-compose.music-test.yml
+      - .github/workflows/tunes.yml
+      - .github/workflows/tunes-deploy.yml
+  push:
+    branches: [main]
+    paths:
+      - tunes/**
+      - docker-compose.yml
+      - docker-compose.music-test.yml
+      - .github/workflows/tunes.yml
+      - .github/workflows/tunes-deploy.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-
+  build-test-scan-push:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_ref: ${{ steps.push.outputs.image_ref }}
+      digest: ${{ steps.push.outputs.digest }}
+      commit: ${{ github.sha }}
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      # 🚀 Upload code (FIXED: no nested folders)
-      - name: Upload Code to Hetzner
-        uses: appleboy/scp-action@v0.1.7
+      - uses: actions/checkout@v4
         with:
-          host: ${{ secrets.TUNES_DEPLOY_HOST }}
-          username: deploy
-          key: ${{ secrets.TUNES_DEPLOY_KEY }}
-          port: 22
-          source: "tunes"
-          target: "/home/deploy/tunes"
-          overwrite: true
-          rm: true
-
-      # 🚀 Run deployment
-      - name: Run Docker Compose on Server
-        uses: appleboy/ssh-action@v1.0.0
+          fetch-depth: 0
+      - name: Prove C1 containment ancestry
+        shell: bash
+        run: git merge-base --is-ancestor d226f7e4dc5a54195a59804ec729f72b5e8f10d7 "$GITHUB_SHA"
+      - uses: actions/setup-node@v4
         with:
-          host: ${{ secrets.TUNES_DEPLOY_HOST }}
-          username: deploy
-          key: ${{ secrets.TUNES_DEPLOY_KEY }}
-          port: 22
-          script: |
-            set -e
+          node-version: 22.12.0
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - name: Test Tunes
+        working-directory: tunes
+        run: |
+          npm ci --legacy-peer-deps
+          npm test
+          npm run music:types:scoped
+          npm run music:types:baseline
+      - uses: docker/setup-buildx-action@v3
+      - name: Resolve immutable image name
+        id: image
+        shell: bash
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "name=ghcr.io/${owner}/explorers-tunes" >> "$GITHUB_OUTPUT"
+      - name: Build Tunes exactly once
+        uses: docker/build-push-action@v6
+        with:
+          context: ./tunes
+          file: ./tunes/Dockerfile
+          load: true
+          push: false
+          tags: ${{ steps.image.outputs.name }}:${{ github.sha }}
+          build-args: BUILD_COMMIT=${{ github.sha }}
+          cache-from: type=gha,scope=explorers-tunes
+          cache-to: type=gha,mode=max,scope=explorers-tunes
+      - name: Prove gate entrypoint is in the exact image
+        shell: bash
+        run: >-
+          docker run --rm --entrypoint node
+          "${{ steps.image.outputs.name }}:${{ github.sha }}" -e
+          "const{existsSync}=require('node:fs');if(!existsSync('/app/dist/server/deployment/run-containment-gate.js'))process.exit(1)"
+      - name: Scan the exact built image
+        uses: anchore/scan-action@v7
+        with:
+          image: ${{ steps.image.outputs.name }}:${{ github.sha }}
+          fail-build: true
+          severity-cutoff: high
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push and expose registry digest
+        if: github.event_name != 'pull_request'
+        id: push
+        shell: bash
+        env:
+          IMAGE_NAME: ${{ steps.image.outputs.name }}
+        run: |
+          set -euo pipefail
+          docker push "${IMAGE_NAME}:${GITHUB_SHA}"
+          image_ref="$(docker inspect --format '{{index .RepoDigests 0}}' "${IMAGE_NAME}:${GITHUB_SHA}")"
+          digest="${image_ref##*@}"
+          [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          echo "image_ref=${image_ref}" >> "$GITHUB_OUTPUT"
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
 
-            echo "✅ Connected to server"
-
-            cd /home/deploy/tunes/tunes
-
-            echo "🔁 Recreating .env file"
-            cat > .env <<EOF
-            DATABASE_URL=${{ secrets.DATABASE_URL }}
-            SESSION_SECRET=${{ secrets.SESSION_SECRET }}
-            COOKIE_SECRET=${{ secrets.COOKIE_SECRET }}
-            EMAIL_HOST=${{ secrets.EMAIL_HOST }}
-            EMAIL_PORT=${{ secrets.EMAIL_PORT }}
-            EMAIL_USER=${{ secrets.EMAIL_USER }}
-            EMAIL_PASS=${{ secrets.EMAIL_PASS }}
-            EMAIL_FROM=${{ secrets.EMAIL_FROM }}
-            YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}
-            CLARITY_PROJECT_ID=${{ secrets.CLARITY_PROJECT_ID }}
-            ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }}
-            STRAPI_URL=${{ secrets.STRAPI_URL }}
-            STRAPI_ACCESS_TOKEN=${{ secrets.STRAPI_ACCESS_TOKEN }}
-            STRAPI_GRAPHQL_ENDPOINT=${{ secrets.STRAPI_GRAPHQL_ENDPOINT }}
-            STRAPI_API_KEY=${{ secrets.STRAPI_API_KEY }}
-            SPOTIFY_CLIENT_ID=${{ secrets.SPOTIFY_CLIENT_ID }}
-            SPOTIFY_CLIENT_SECRET=${{ secrets.SPOTIFY_CLIENT_SECRET }}
-            SPOTIFY_REFRESH_TOKEN=${{ secrets.SPOTIFY_REFRESH_TOKEN }}
-            SPOTIFY_REDIRECT_URI=${{ secrets.SPOTIFY_REDIRECT_URI }}
-            RAZORPAY_KEY_ID_DEV=${{ secrets.RAZORPAY_KEY_ID_DEV }}
-            RAZORPAY_KEY_SECRET_DEV=${{ secrets.RAZORPAY_KEY_SECRET_DEV }}
-            RAZORPAY_PLAN_ID_MONTHLY_DEV=${{ secrets.RAZORPAY_PLAN_ID_MONTHLY_DEV }}
-            RAZORPAY_PLAN_ID_MONTHLY_PRO_DEV=${{ secrets.RAZORPAY_PLAN_ID_MONTHLY_PRO_DEV }}
-            RAZORPAY_PLAN_ID_YEARLY_DEV=${{ secrets.RAZORPAY_PLAN_ID_YEARLY_DEV }}
-            RAZORPAY_PLAN_ID_YEARLY_PRO_DEV=${{ secrets.RAZORPAY_PLAN_ID_YEARLY_PRO_DEV }}
-            RAZORPAY_KEY_ID_PROD=${{ secrets.RAZORPAY_KEY_ID_PROD }}
-            RAZORPAY_KEY_SECRET_PROD=${{ secrets.RAZORPAY_KEY_SECRET_PROD }}
-            RAZORPAY_PLAN_ID_MONTHLY_PROD=${{ secrets.RAZORPAY_PLAN_ID_MONTHLY_PROD }}
-            RAZORPAY_PLAN_ID_MONTHLY_PRO_PROD=${{ secrets.RAZORPAY_PLAN_ID_MONTHLY_PRO_PROD }}
-            RAZORPAY_PLAN_ID_YEARLY_PROD=${{ secrets.RAZORPAY_PLAN_ID_YEARLY_PROD }}
-            RAZORPAY_PLAN_ID_YEARLY_PRO_PROD=${{ secrets.RAZORPAY_PLAN_ID_YEARLY_PRO_PROD }}
-            VITE_API_URL=${{ secrets.VITE_API_URL }}
-            VITE_REST_API_URL=${{ secrets.VITE_REST_API_URL }}
-            VITE_PUBLIC_ACCESS_TOKEN=${{ secrets.VITE_PUBLIC_ACCESS_TOKEN }}
-            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
-            EOF
-
-            echo "🐳 Restarting docker containers..."
-
-            docker compose down
-            docker compose up -d --build
-
-            echo "✅ Deployment completed successfully"
+  deploy-production:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build-test-scan-push
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/tunes-deploy.yml
+    with:
+      image_ref: ${{ needs.build-test-scan-push.outputs.image_ref }}
+      digest: ${{ needs.build-test-scan-push.outputs.digest }}
+      commit: ${{ needs.build-test-scan-push.outputs.commit }}
+      operation: deploy
+    secrets: inherit
