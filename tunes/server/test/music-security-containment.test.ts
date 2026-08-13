@@ -447,7 +447,17 @@ describe("Music standalone containment REST boundary", () => {
     return agent;
   }
 
-  it("rotates an attacker-supplied session before post-registration login", async () => {
+  it.each([
+    ["omitted", { username: REGISTERED.username, password: "registration-password" }],
+    ["malicious", {
+      username: REGISTERED.username,
+      password: "registration-password",
+      strapiUserId: 9001,
+      strapiDocumentId: "attacker-document",
+      accountDocumentId: "attacker-account",
+      lifecycleOperationId: "attacker-operation",
+    }],
+  ])("tombstones native registration at the central boundary for %s server identity fields", async (_kind, body) => {
     const agent = request.agent(app);
     const csrf = await agent.get("/api/csrf-token");
     const csrfCookie = (csrf.headers["set-cookie"] as unknown as string[]).find((value) => value.startsWith("XSRF-TOKEN="))!;
@@ -455,11 +465,10 @@ describe("Music standalone containment REST boundary", () => {
       .set("Origin", "https://explorers.example.test")
       .set("X-CSRF-Token", csrf.body.token)
       .set("Cookie", `cosmic.sid=s%3Aattacker-registration.invalid; ${csrfCookie.split(";")[0]}`)
-      .send({ username: REGISTERED.username, password: "registration-password" });
-    expect(response.status).toBe(201);
-    const sessionCookie = (response.headers["set-cookie"] as unknown as string[]).find((value) => value.startsWith("cosmic.sid="));
-    expect(sessionCookie).toBeTruthy();
-    expect(sessionCookie).not.toContain("attacker-registration");
+      .send(body);
+    expect(response.status).toBe(410);
+    expectErrorEnvelope(response, "LEGACY_IDENTITY_ROUTE_REMOVED");
+    expect(storage.createUser).not.toHaveBeenCalled();
   });
 
   it("rotates the native session on login, uses hardened cookies, and invalidates logout", async () => {

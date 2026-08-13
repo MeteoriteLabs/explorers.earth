@@ -142,6 +142,12 @@ export function setupNativeSessionContainment(app: Express): void {
   app.use((req, res, next) => {
     const requestId = requestIdFor(req);
     res.setHeader("X-Request-Id", requestId);
+    // Native registration cannot establish the Strapi/Account identity tuple.
+    // Stop it at the first shared pre-handler boundary so omitted or forged
+    // server-owned identifiers can never reach storage.createUser().
+    if (req.method === "POST" && req.path === "/api/register") {
+      return sendContainmentError(res, 410, "LEGACY_IDENTITY_ROUTE_REMOVED", requestId);
+    }
     if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return next();
     if (PUBLIC_CAPABILITY_MUTATIONS.some((pattern) => pattern.test(req.path))) {
       if (consumeContainmentLimit(`capability:${clientAddress(req)}:${req.path.split("/").slice(0, 3).join("/")}`, 20, 60_000)) {

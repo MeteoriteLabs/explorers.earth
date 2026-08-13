@@ -2,9 +2,9 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0002_identity_lifecycle",
-    "files": ["0001_runtime_baseline.sql", "0002_identity_lifecycle.sql"],
-    "controlTables": ["music_schema_migrations", "music_identity_tombstones"]
+    "expectedId": "0003_identity_lifecycle_hardening",
+    "files": ["0001_runtime_baseline.sql", "0002_identity_lifecycle.sql", "0003_identity_lifecycle_hardening.sql"],
+    "controlTables": ["music_schema_migrations", "music_identity_tombstones", "music_identity_lifecycle_operations"]
   },
   "generatedFrom": ["tunes/shared/schema.ts", "tunes/server/**/*.ts"],
   "tables": [

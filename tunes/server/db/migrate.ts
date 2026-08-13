@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Pool, PoolClient } from "pg";
-import { EXPECTED_MUSIC_MIGRATION_ID } from "../../shared/music-migration-contract";
+import { EXPECTED_MUSIC_MIGRATION_CHAIN, EXPECTED_MUSIC_MIGRATION_ID } from "../../shared/music-migration-contract";
 
 const JOURNAL_TABLE = "music_schema_migrations";
 const ADVISORY_LOCK_KEY = 7_346_283_104;
@@ -59,7 +59,7 @@ export function loadMusicMigrations(directory = defaultMigrationDirectory()): Mu
   return migrations;
 }
 
-function assertCanonicalChain(migrations: MusicMigration[]): void {
+function assertCanonicalChain(migrations: MusicMigration[], expectedIds: readonly string[]): void {
   if (!migrations.length) throw new Error("music migration chain is empty");
   migrations.forEach((migration, index) => {
     const expected = String(index + 1).padStart(4, "0");
@@ -68,6 +68,22 @@ function assertCanonicalChain(migrations: MusicMigration[]): void {
       throw new Error(`migration checksum object mismatch: ${migration.id}`);
     }
   });
+  const actualIds = migrations.map(({ id }) => id);
+  if (actualIds.length !== expectedIds.length || actualIds.some((id, index) => id !== expectedIds[index])) {
+    throw new Error(`exact production migration chain mismatch: expected=${expectedIds.join(",")} actual=${actualIds.join(",")}`);
+  }
+}
+
+export interface MusicMigrationOptions {
+  migrations?: MusicMigration[];
+  /** Deliberately failing/instrumented chains are only legal inside Vitest. */
+  testOnlyExpectedIds?: readonly string[];
+}
+
+function resolveExpectedIds(options: MusicMigrationOptions): readonly string[] {
+  if (!options.testOnlyExpectedIds) return EXPECTED_MUSIC_MIGRATION_CHAIN;
+  if (process.env.NODE_ENV !== "test") throw new Error("test-only migration chain is forbidden outside tests");
+  return options.testOnlyExpectedIds;
 }
 
 async function tableNames(client: Pick<PoolClient, "query">): Promise<string[]> {
@@ -112,9 +128,22 @@ async function schemaFingerprint(client: Pick<PoolClient, "query">): Promise<str
      FROM pg_constraint x JOIN pg_class c ON c.oid=x.conrelid JOIN pg_namespace n ON n.oid=c.relnamespace
      WHERE n.nspname='public' ORDER BY c.relname,x.conname`,
     `SELECT tablename, indexname, indexdef FROM pg_indexes WHERE schemaname='public' ORDER BY tablename,indexname`,
-    `SELECT event_object_table AS table_name, trigger_name, action_timing, event_manipulation, action_statement
-     FROM information_schema.triggers WHERE trigger_schema='public' ORDER BY event_object_table,trigger_name,event_manipulation`,
-    `SELECT c.relname AS sequence_name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    `SELECT c.relname AS table_name, t.tgname AS trigger_name, pg_get_triggerdef(t.oid,true) AS definition,
+       pn.nspname AS function_schema, p.proname AS function_name
+     FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace
+     JOIN pg_proc p ON p.oid=t.tgfoid JOIN pg_namespace pn ON pn.oid=p.pronamespace
+     WHERE n.nspname='public' AND NOT t.tgisinternal ORDER BY c.relname,t.tgname`,
+    `SELECT n.nspname AS function_schema, p.proname AS function_name,
+       pg_get_function_identity_arguments(p.oid) AS identity_arguments, pg_get_functiondef(p.oid) AS definition
+     FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+     WHERE n.nspname='public' ORDER BY p.proname,identity_arguments`,
+    `SELECT c.relname AS sequence_name, format_type(s.seqtypid,NULL) AS data_type,
+       s.seqstart::text AS start_value,s.seqincrement::text AS increment_by,s.seqmax::text AS max_value,
+       s.seqmin::text AS min_value,s.seqcache::text AS cache_size,s.seqcycle AS cycle,
+       oc.relname AS owned_table,a.attname AS owned_column,d.deptype AS ownership_type
+     FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_sequence s ON s.seqrelid=c.oid
+     LEFT JOIN pg_depend d ON d.classid='pg_class'::regclass AND d.objid=c.oid AND d.deptype IN ('a','i')
+     LEFT JOIN pg_class oc ON oc.oid=d.refobjid LEFT JOIN pg_attribute a ON a.attrelid=d.refobjid AND a.attnum=d.refobjsubid
      WHERE n.nspname='public' AND c.relkind='S' ORDER BY c.relname`,
   ];
   const catalog: unknown[] = [];
@@ -138,8 +167,8 @@ function validateJournal(rows: JournalRow[], migrations: MusicMigration[]): void
   });
 }
 
-async function inspectWithClient(client: Pick<PoolClient, "query">, migrations: MusicMigration[]): Promise<MusicMigrationState> {
-  assertCanonicalChain(migrations);
+async function inspectWithClient(client: Pick<PoolClient, "query">, migrations: MusicMigration[], expectedIds: readonly string[]): Promise<MusicMigrationState> {
+  assertCanonicalChain(migrations, expectedIds);
   const expectedId = migrations.at(-1)!.id;
   const tables = await tableNames(client);
   const hasJournal = tables.includes(JOURNAL_TABLE);
@@ -182,25 +211,29 @@ async function inspectWithClient(client: Pick<PoolClient, "query">, migrations: 
   };
 }
 
-export async function inspectMusicDatabase(pool: Pick<Pool, "connect">, options: { migrations?: MusicMigration[] } = {}): Promise<MusicMigrationState> {
+export async function inspectMusicDatabase(pool: Pick<Pool, "connect">, options: MusicMigrationOptions = {}): Promise<MusicMigrationState> {
+  const migrations = options.migrations ?? loadMusicMigrations();
+  const expectedIds = resolveExpectedIds(options);
+  assertCanonicalChain(migrations, expectedIds);
   const client = await pool.connect();
   try {
     await client.query("SELECT pg_advisory_lock($1)", [ADVISORY_LOCK_KEY]);
-    return await inspectWithClient(client, options.migrations ?? loadMusicMigrations());
+    return await inspectWithClient(client, migrations, expectedIds);
   } finally {
     await client.query("SELECT pg_advisory_unlock($1)", [ADVISORY_LOCK_KEY]).catch(() => undefined);
     client.release();
   }
 }
 
-export async function migrateMusicDatabase(pool: Pick<Pool, "connect">, options: { migrations?: MusicMigration[] } = {}): Promise<MusicMigrationState> {
+export async function migrateMusicDatabase(pool: Pick<Pool, "connect">, options: MusicMigrationOptions = {}): Promise<MusicMigrationState> {
   const migrations = options.migrations ?? loadMusicMigrations();
-  assertCanonicalChain(migrations);
+  const expectedIds = resolveExpectedIds(options);
+  assertCanonicalChain(migrations, expectedIds);
   const client = await pool.connect();
   const newlyApplied: string[] = [];
   try {
     await client.query("SELECT pg_advisory_lock($1)", [ADVISORY_LOCK_KEY]);
-    let state = await inspectWithClient(client, migrations);
+    let state = await inspectWithClient(client, migrations, expectedIds);
     if (state.conflictTables?.length) {
       throw new Error(`unversioned application tables conflict; sanitized inventory=${JSON.stringify(state.conflictTables)}`);
     }
@@ -218,7 +251,7 @@ export async function migrateMusicDatabase(pool: Pick<Pool, "connect">, options:
         await client.query("ROLLBACK");
         throw error;
       }
-      state = await inspectWithClient(client, migrations);
+      state = await inspectWithClient(client, migrations, expectedIds);
     }
     for (const migration of migrations.slice(state.appliedIds.length)) {
       await client.query("BEGIN");
@@ -236,7 +269,7 @@ export async function migrateMusicDatabase(pool: Pick<Pool, "connect">, options:
         throw error;
       }
     }
-    const complete = await inspectWithClient(client, migrations);
+    const complete = await inspectWithClient(client, migrations, expectedIds);
     if (!complete.ready) throw new Error(`migration chain stopped before ${complete.expectedId}`);
     return { ...complete, appliedIds: newlyApplied };
   } finally {
@@ -245,9 +278,9 @@ export async function migrateMusicDatabase(pool: Pick<Pool, "connect">, options:
   }
 }
 
-export async function verifyMusicDatabase(pool: Pick<Pool, "connect">, options: { migrations?: MusicMigration[] } = {}): Promise<MusicMigrationState> {
+export async function verifyMusicDatabase(pool: Pick<Pool, "connect">, options: MusicMigrationOptions = {}): Promise<MusicMigrationState> {
   const migrations = options.migrations ?? loadMusicMigrations();
-  const state = await inspectMusicDatabase(pool, { migrations });
+  const state = await inspectMusicDatabase(pool, { migrations, testOnlyExpectedIds: options.testOnlyExpectedIds });
   if (state.conflictTables?.length) throw new Error(`unversioned application tables conflict; sanitized inventory=${JSON.stringify(state.conflictTables)}`);
   if (!state.ready || state.currentId !== migrations.at(-1)?.id) throw new Error(`database is not at expected migration ${migrations.at(-1)?.id}`);
   return state;

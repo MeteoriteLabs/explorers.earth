@@ -818,10 +818,6 @@ export class DatabaseStorage implements IStorage {
     console.log('Starting user deletion process for ID:', id);
 
     try {
-      // Clean up sessions first outside the transaction
-      // This prevents issues with session store operations
-      await this.cleanupUserSessions(id);
-
       // Get a raw database connection for direct SQL operations
       const connection = this.getConnection();
 
@@ -925,6 +921,10 @@ export class DatabaseStorage implements IStorage {
         // If we get here, commit the transaction
         await connection.query('COMMIT');
         console.log('User deletion completed successfully');
+        // Database sessions were transactional; now clear fallback memory sessions.
+        if (this.sessionStore instanceof MemoryStore) {
+          await this.cleanupUserSessions(id);
+        }
       } catch (txError) {
         // If anything goes wrong, roll back
         await connection.query('ROLLBACK');

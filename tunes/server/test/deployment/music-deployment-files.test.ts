@@ -48,6 +48,7 @@ describe("Music deployment authority files", () => {
     expect(ci).toContain(`/app/${entrypoint}`);
     expect(compose).toContain(entrypoint);
     expect(ci).toContain("/app/migrations/0002_identity_lifecycle.sql");
+    expect(ci).toContain("/app/migrations/0003_identity_lifecycle_hardening.sql");
   });
 
   it("uses a read-packages-only remote GHCR credential and always logs it out", () => {

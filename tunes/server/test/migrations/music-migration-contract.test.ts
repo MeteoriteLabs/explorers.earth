@@ -1,11 +1,12 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createRequire } from "node:module";
 import { EXPECTED_MUSIC_MIGRATION_ID } from "../../../shared/music-migration-contract";
 import {
   createMigrationDefinition,
   loadMusicMigrations,
+  migrateMusicDatabase,
   validateDisposableDatabaseTarget,
 } from "../../db/migrate";
 
@@ -20,6 +21,7 @@ describe("Music migration authority contracts", () => {
     expect(migrations.map(({ id }) => id)).toEqual([
       "0001_runtime_baseline",
       "0002_identity_lifecycle",
+      "0003_identity_lifecycle_hardening",
     ]);
     expect(EXPECTED_MUSIC_MIGRATION_ID).toBe(migrations.at(-1)?.id);
     expect(migrations.every(({ checksum }) => /^[a-f0-9]{64}$/.test(checksum))).toBe(true);
@@ -51,6 +53,18 @@ describe("Music migration authority contracts", () => {
     expect(compose).toContain(EXPECTED_MUSIC_MIGRATION_ID);
     expect(gate).toContain("migrateMusicDatabase");
     expect(gate).not.toContain("containment-no-schema-change");
+  });
+
+  it("has one native registration handler and tombstones it before auth route registration", () => {
+    const serverRoot = resolve(repositoryRoot, "tunes/server");
+    const productionSources = readdirSync(serverRoot, { recursive: true, withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".ts") && !entry.parentPath.replaceAll("\\", "/").includes("/test"))
+      .map((entry) => readFileSync(resolve(entry.parentPath, entry.name), "utf8"))
+      .join("\n");
+    expect(productionSources.match(/\.post\(\s*["']\/api\/register["']/g)).toHaveLength(1);
+    const routeIndex = read("tunes/server/routes/index.ts");
+    expect(routeIndex.indexOf("setupNativeSessionContainment(app)")).toBeLessThan(routeIndex.indexOf("setupAuthRoutes(app)"));
+    expect(read("tunes/server/security-containment.ts")).toMatch(/req\.method === "POST" && req\.path === "\/api\/register"[\s\S]*LEGACY_IDENTITY_ROUTE_REMOVED/);
   });
 
   it("runs the PostgreSQL 15 integration chain in authoritative image CI", () => {
@@ -100,5 +114,14 @@ describe("Music migration authority contracts", () => {
     const original = createMigrationDefinition("0003_example", "SELECT 1;\n");
     const modified = createMigrationDefinition("0003_example", "SELECT 2;\n");
     expect(original.checksum).not.toBe(modified.checksum);
+  });
+
+  it("rejects any non-production chain before opening a database connection", async () => {
+    const production = loadMusicMigrations(resolve(repositoryRoot, "tunes/migrations"));
+    const appended = createMigrationDefinition("0004_unapproved", "SELECT 1;\n");
+    const connect = vi.fn();
+    await expect(migrateMusicDatabase({ connect } as never, { migrations: [...production, appended] }))
+      .rejects.toThrow(/exact production migration chain/i);
+    expect(connect).not.toHaveBeenCalled();
   });
 });

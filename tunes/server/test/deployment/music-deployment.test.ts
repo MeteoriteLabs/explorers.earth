@@ -18,6 +18,11 @@ const candidate: ImageCandidate = {
   commit: "2222222222222222222222222222222222222222",
   migrationMarker: "containment-no-schema-change",
 };
+const schemaCandidate: ImageCandidate = {
+  digest: `sha256:${"4".repeat(64)}`,
+  commit: "4444444444444444444444444444444444444444",
+  migrationMarker: "0003_identity_lifecycle_hardening",
+};
 
 function initialState(): DeploymentState {
   return {
@@ -25,6 +30,7 @@ function initialState(): DeploymentState {
     active: prior,
     secureHistory: [prior],
     rollbackFloorDigest: prior.digest,
+    migrationCompatibilityFloorDigest: undefined,
   };
 }
 
@@ -122,6 +128,22 @@ describe("immutable Music deployment rehearsal", () => {
 
     await expect(controller.rollback(`sha256:${"9".repeat(64)}`)).rejects.toThrow("unknown secure digest");
     await expect(controller.rollback(prior.digest)).rejects.toThrow("older than rollback floor");
+  });
+
+  it("advances a distinct schema-compatibility floor after the irreversible migration gate", async () => {
+    const fake = runtime("readiness");
+    fake.implementation.runContainmentGate = async (image) => {
+      fake.events.push(`gate:${image.digest}`);
+      return createGateAttestation(image, "test-attestation-key-that-is-long-enough", "a".repeat(64));
+    };
+    const controller = new DeploymentController(initialState(), fake.implementation, "test-attestation-key-that-is-long-enough");
+
+    await expect(controller.deploy(schemaCandidate)).rejects.toThrow("candidate readiness failed");
+
+    expect(controller.snapshot().active.digest).toBe(prior.digest);
+    expect(controller.snapshot().migrationCompatibilityFloorDigest).toBe(schemaCandidate.digest);
+    expect(fake.serving()).toBe(prior.digest);
+    await expect(controller.rollback(prior.digest)).rejects.toThrow(/schema compatibility floor/i);
   });
 });
 

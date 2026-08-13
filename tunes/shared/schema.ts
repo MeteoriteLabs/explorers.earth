@@ -51,8 +51,11 @@ export const users = pgTable("users", {
   lastReconciledAt: timestamp("last_reconciled_at", { withTimezone: true }),
   reconciliationObservationVersion: bigint("reconciliation_observation_version", { mode: "number" }).notNull().default(0),
   reconciliationMismatchCount: integer("reconciliation_mismatch_count").notNull().default(0),
-  lifecycleOperationId: text("lifecycle_operation_id").notNull().unique(),
-  lifecycleState: text("lifecycle_state").notNull().default("none").$type<"none" | "requested" | "running" | "completed" | "failed">(),
+  // Points to the migration-owned music_identity_lifecycle_operations control
+  // table. It remains raw-repository-owned so legacy Drizzle insert/update
+  // shapes cannot gain a lifecycle-operation mass-assignment surface.
+  lifecycleOperationId: text("lifecycle_operation_id").notNull(),
+  lifecycleState: text("lifecycle_state").notNull().default("none").$type<"none" | "requested" | "running" | "completed" | "failed" | "cancelled">(),
   lifecycleAttemptCount: integer("lifecycle_attempt_count").notNull().default(0),
   lifecycleLastAttemptAt: timestamp("lifecycle_last_attempt_at", { withTimezone: true }),
   lifecycleErrorCode: text("lifecycle_error_code"),

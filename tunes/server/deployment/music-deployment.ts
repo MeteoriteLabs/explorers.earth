@@ -24,6 +24,8 @@ export interface DeploymentState {
   active: ImageCandidate;
   secureHistory: ImageCandidate[];
   rollbackFloorDigest: string;
+  /** Image provenance that first completed the irreversible current-schema gate. */
+  migrationCompatibilityFloorDigest?: string;
 }
 
 export interface DeploymentRuntime {
@@ -102,11 +104,19 @@ export class DeploymentController {
     const candidateSlot = previous.activeSlot === "blue" ? "green" : "blue";
     let candidateStarted = false;
     let promotionAttempted = false;
+    let migrationFloorAdvanced = false;
     try {
       await this.runtime.pull(candidate);
       const attestation = await this.runtime.runContainmentGate(candidate);
       if (!verifyGateAttestation(attestation, candidate, this.attestationKey)) {
         throw new Error("gate attestation mismatch");
+      }
+      if (candidate.migrationMarker === CURRENT_MIGRATION_MARKER && !previous.migrationCompatibilityFloorDigest) {
+        // The schema gate is irreversible even if candidate readiness or
+        // promotion later fails. Preserve this floor while old traffic stays
+        // serving so no subsequent rollback can start a pre-schema image.
+        migrationFloorAdvanced = true;
+        this.state = { ...previous, migrationCompatibilityFloorDigest: candidate.digest };
       }
       await this.runtime.startPrivateCandidate(candidateSlot, candidate);
       candidateStarted = true;
@@ -122,10 +132,15 @@ export class DeploymentController {
         secureHistory: previous.secureHistory.some((image) => image.digest === candidate.digest)
           ? previous.secureHistory
           : [...previous.secureHistory, candidate],
+        migrationCompatibilityFloorDigest: migrationFloorAdvanced
+          ? candidate.digest
+          : previous.migrationCompatibilityFloorDigest,
       };
       return this.snapshot();
     } catch (error) {
-      this.state = previous;
+      this.state = migrationFloorAdvanced
+        ? { ...previous, migrationCompatibilityFloorDigest: candidate.digest }
+        : previous;
       if (candidateStarted) {
         if (promotionAttempted) await this.runtime.restoreTraffic(previous.activeSlot, previous.active);
         await this.runtime.stopCandidate(candidateSlot);
@@ -139,6 +154,10 @@ export class DeploymentController {
     if (targetIndex < 0) throw new Error("rollback refused: unknown secure digest");
     const floorIndex = this.state.secureHistory.findIndex((image) => image.digest === this.state.rollbackFloorDigest);
     if (targetIndex < floorIndex) throw new Error("rollback refused: digest is older than rollback floor");
+    if (this.state.migrationCompatibilityFloorDigest
+        && this.state.secureHistory[targetIndex].migrationMarker !== CURRENT_MIGRATION_MARKER) {
+      throw new Error("rollback refused: digest is older than schema compatibility floor");
+    }
     return this.deploy(this.state.secureHistory[targetIndex]);
   }
 }

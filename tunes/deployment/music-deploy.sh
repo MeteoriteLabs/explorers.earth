@@ -7,9 +7,10 @@ readonly request_schema="music-deploy-request-v2"
 readonly state_schema="music-state-v2"
 readonly ledger_schema="music-ledger-v2"
 readonly floor_schema="music-floor-v1"
+readonly compatibility_floor_schema="music-schema-floor-v1"
 readonly journal_schema="music-transaction-v1"
 readonly legacy_marker="containment-no-schema-change"
-readonly current_marker="0002_identity_lifecycle"
+readonly current_marker="0003_identity_lifecycle_hardening"
 readonly minimum_containment_commit="d226f7e4dc5a54195a59804ec729f72b5e8f10d7"
 
 fail() {
@@ -161,6 +162,7 @@ route_file="$route_dir/music-router.yml"
 state_file="$state_dir/music-state.tsv"
 ledger_file="$state_dir/secure-images.tsv"
 floor_file="$state_dir/music-floor.tsv"
+compatibility_floor_file="$state_dir/music-schema-floor.tsv"
 transaction_current="$transaction_dir/current"
 
 ensure_private_directory "$state_dir" "$route_dir" "$transaction_dir"
@@ -225,6 +227,34 @@ validate_floor() {
   [[ "$mac" == "$expected_mac" ]] || fail "rollback floor HMAC mismatch"
   [[ "${ledger_digests[0]}" == "$floor_digest" && "${ledger_commits[0]}" == "$floor_commit" ]] \
     || fail "rollback floor invariant mismatch"
+}
+
+compatibility_floor_digest=""
+compatibility_floor_commit=""
+validate_compatibility_floor() {
+  require_regular_file "$compatibility_floor_file"
+  mapfile -t compatibility_rows < "$compatibility_floor_file"
+  [[ ${#compatibility_rows[@]} -eq 1 ]] || fail "schema compatibility floor malformed"
+  local schema marker mac extra expected_mac
+  IFS=$'\t' read -r schema compatibility_floor_digest compatibility_floor_commit marker mac extra <<< "${compatibility_rows[0]}"
+  [[ "$schema" == "$compatibility_floor_schema" && -z "${extra:-}" \
+    && "$compatibility_floor_digest" =~ ^sha256:[a-f0-9]{64}$ \
+    && "$compatibility_floor_commit" =~ ^[a-f0-9]{40}$ \
+    && "$marker" == "$current_marker" \
+    && "$mac" =~ ^[a-f0-9]{64}$ ]] || fail "schema compatibility floor malformed"
+  expected_mac="$(hmac "$compatibility_floor_schema"$'\t'"$repository"$'\t'"$compatibility_floor_digest"$'\t'"$compatibility_floor_commit"$'\t'"$marker")"
+  [[ "$mac" == "$expected_mac" ]] || fail "schema compatibility floor HMAC mismatch"
+}
+
+write_compatibility_floor() {
+  local digest_value="$1" commit_value="$2"
+  local mac temporary
+  mac="$(hmac "$compatibility_floor_schema"$'\t'"$repository"$'\t'"$digest_value"$'\t'"$commit_value"$'\t'"$current_marker")"
+  temporary="$compatibility_floor_file.next.$$"
+  printf '%s\t%s\t%s\t%s\t%s\n' "$compatibility_floor_schema" "$digest_value" "$commit_value" "$current_marker" "$mac" > "$temporary"
+  atomic_replace "$temporary" "$compatibility_floor_file"
+  compatibility_floor_digest="$digest_value"
+  compatibility_floor_commit="$commit_value"
 }
 
 state_compose_project=""
@@ -388,11 +418,26 @@ if [[ "$operation" == bootstrap ]]; then
   green_digest="$candidate_digest"
   green_commit="$candidate_commit"
   green_marker="$candidate_marker"
+  if [[ -e "$compatibility_floor_file" ]]; then
+    validate_compatibility_floor
+    [[ "$compatibility_floor_digest" == "$candidate_digest" && "$compatibility_floor_commit" == "$candidate_commit" ]] \
+      || fail "bootstrap schema compatibility floor candidate mismatch"
+  fi
 else
   require_regular_file "$route_file"
   validate_ledger
   validate_floor
   validate_state
+  if [[ -e "$compatibility_floor_file" ]]; then
+    validate_compatibility_floor
+  else
+    for known_marker in "${ledger_markers[@]}"; do
+      [[ "$known_marker" == "$legacy_marker" ]] || fail "schema compatibility floor missing after schema migration"
+    done
+    active_sequence="${ledger_seen[$state_active_digest]}"
+    [[ "${ledger_markers[active_sequence-1]}" == "$legacy_marker" ]] \
+      || fail "schema compatibility floor missing for active schema image"
+  fi
   compose_project="$state_compose_project"
   if [[ "$state_active_slot" == blue ]]; then candidate_slot=green; else candidate_slot=blue; fi
   blue_digest="$state_blue_digest"
@@ -409,6 +454,10 @@ else
     candidate_digest="$requested_digest"
     candidate_commit="${ledger_commits[target_sequence-1]}"
     candidate_marker="${ledger_markers[target_sequence-1]}"
+    if [[ -e "$compatibility_floor_file" ]]; then
+      [[ "$candidate_marker" == "$current_marker" ]] \
+        || fail "rollback refused: digest older than schema compatibility floor"
+    fi
   else
     candidate_digest="$requested_digest"
     candidate_commit="$requested_commit"
@@ -477,15 +526,29 @@ if [[ "$operation" == bootstrap ]]; then
   "$curl_command" --fail --silent --show-error --max-time 5 https://localtunes.earth/ >/dev/null
 fi
 compose --profile deployment run --rm --no-deps tunes-gate
+if [[ "$candidate_marker" == "$current_marker" && ! -e "$compatibility_floor_file" ]]; then
+  # The same-image schema gate is irreversible. Persist its independently
+  # authenticated compatibility floor before starting or routing a candidate;
+  # traffic may remain on the old additive-compatible app, but future rollback
+  # can never start a containment-only image against the migrated database.
+  write_compatibility_floor "$candidate_digest" "$candidate_commit"
+fi
 compose up -d --no-deps "tunes-$candidate_slot"
 ready=false
-for _attempt in $(seq 1 30); do
+readiness_attempts=30
+readiness_delay=2
+if [[ "${MUSIC_DEPLOY_TEST_MODE:-0}" == 1 ]]; then
+  readiness_attempts="${MUSIC_DEPLOY_TEST_READINESS_ATTEMPTS:-30}"
+  [[ "$readiness_attempts" =~ ^[1-9][0-9]?$ ]] || fail "invalid test readiness attempts"
+  readiness_delay=0
+fi
+for _attempt in $(seq 1 "$readiness_attempts"); do
   if compose exec -T "tunes-$candidate_slot" node -e \
     "fetch('http://127.0.0.1:5000/health/ready').then(async r=>{const b=await r.json();if(!r.ok||b.digest!=='$candidate_digest'||b.commit!=='$candidate_commit'||b.migrationMarker!=='$candidate_marker')process.exit(1)}).catch(()=>process.exit(1))"; then
     ready=true
     break
   fi
-  sleep 2
+  sleep "$readiness_delay"
 done
 [[ "$ready" == true ]] || { compose stop "tunes-$candidate_slot"; fail "candidate readiness failed"; }
 

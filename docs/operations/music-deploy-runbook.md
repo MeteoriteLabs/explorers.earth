@@ -40,7 +40,7 @@ absent or different, or `main` is not protected.
 
 ## C3 same-image migration gate
 
-`0002_identity_lifecycle` is the exact expected migration ID. The candidate
+`0003_identity_lifecycle_hardening` is the exact expected migration ID. The candidate
 image contains the ordered SQL files and `run-migration-gate.js`; the one-shot
 gate takes the PostgreSQL advisory lock, verifies the checksum journal and
 catalog fingerprint, applies pending migrations transactionally, and writes an
@@ -51,9 +51,11 @@ candidate can become ready. Application/session startup never creates schema.
 
 Readiness independently proves connectivity, mandatory secrets, HTTPS upstream
 configuration, exact same-image attestation, and the live journal ID/checksum.
-Liveness remains process-only. The secure image ledger accepts old
-`containment-no-schema-change` entries only so a retained C2 floor remains a
-valid rollback target; all new images use `0002_identity_lifecycle` and the
+Liveness remains process-only. The secure image ledger can retain historical
+`containment-no-schema-change` entries for audit and the permanent security
+floor, but they cease to be rollback targets as soon as the real C3 gate has
+migrated the database. All new images use
+`0003_identity_lifecycle_hardening` and the
 real migration gate. Because production catalog/row-count and restore evidence
 are still absent, an existing unversioned database is a conflict: there is no
 automatic baseline adoption, username/email matching, or authorized production
@@ -76,6 +78,16 @@ executable rejects symlinks, wrong production ownership/mode, malformed or
 truncated records, duplicates, reordered rows, chain failures, state/ledger
 mismatches, and floor changes. `music-floor.tsv` is a separately authenticated
 authority and must equal the first manifest entry. Its first digest is permanent.
+`music-schema-floor.tsv` is a second HMAC-authenticated authority with a
+different purpose: immediately after the irreversible C3 migration gate, it
+records the digest/commit that first executed the live schema gate. It is written
+before candidate startup and is deliberately not reverted if later readiness
+or promotion fails; the prior healthy app remains routed, while every future
+rollback must use the exact current migration marker. The gate-running digest
+need not have been promoted: this authority records the schema epoch and gate
+provenance, while secure history remains the rollback allowlist. A missing,
+malformed, or tampered schema floor after C3 fails closed
+before Docker.
 The checked-in `music-hmac.mjs` helper reads the mode-0600 HMAC key path directly
 with Node's crypto API. Key bytes never enter a child-process argument, exported
 environment variable, or log. Node 22 is therefore a deployment-control runtime
@@ -173,8 +185,10 @@ and atomically promotes it. Manual workflow dispatch is only:
 target_digest=sha256:<digest already present in authenticated secure manifest>
 ```
 
-Rollback rejects unknown digests and anything before the separately authenticated
-permanent floor. OCI source/revision/minimum-containment checks still apply.
+Rollback rejects unknown digests, anything before the separately authenticated
+permanent security floor, and—once the schema gate has run—every image without
+the exact current schema marker. OCI source/revision/minimum-containment checks
+still apply.
 
 The server controls default closed:
 
@@ -192,7 +206,8 @@ The exact executable process suite injects crashes after journal creation,
 route replacement, manifest write, floor write, state write, and durable commit;
 the next invocation must recover before its first Docker action and never replace
 the currently public slot. It also covers raw metacharacters/newlines, arbitrary
-owners, OCI mismatches, journal/state/floor tamper, and duplicate/malformed/
+owners, OCI mismatches, journal/state/security-floor/schema-floor tamper, an old
+C2 image against the C3 schema, and duplicate/malformed/
 truncated/reordered manifests.
 
 Before `GATE_PROD` can open, retain output from the disposable real-Docker

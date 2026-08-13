@@ -28,6 +28,7 @@ interface RunOptions {
   ociContainment?: string;
   publicResponseMode?: "nonzero" | "invalid-json";
   slot?: "blue" | "green";
+  candidateReadinessFailure?: boolean;
 }
 
 describe("checked-in production Music deploy executable", () => {
@@ -72,6 +73,7 @@ if [[ "$*" == *"org.opencontainers.image.source"* ]]; then printf '%s\\n' "\${MU
 if [[ "$*" == *"com.explorers.music.minimum-containment-commit"* ]]; then printf '%s\\n' "\${MUSIC_DEPLOY_TEST_OCI_CONTAINMENT:-d226f7e4dc5a54195a59804ec729f72b5e8f10d7}"; exit 0; fi
 if [[ "$*" == *" compose "* || "$1" == "compose" ]]; then
   service="\${!#}"
+  if [[ "\${MUSIC_DEPLOY_TEST_READINESS_FAILURE:-}" == 1 && "$*" == *" exec -T tunes-"* ]]; then exit 75; fi
   if [[ "$*" == *" up "* ]] && grep -Fq "http://\${service}:5000" "$route"; then
     echo "refusing to replace the currently public slot: $service" >&2
     exit 73
@@ -89,7 +91,7 @@ if [[ "\${!#}" == "https://localtunes.earth/" ]]; then grep -Fq 'http://legacy-t
 grep -Fq "http://tunes-$MUSIC_DEPLOY_TEST_SLOT:5000" "$MUSIC_DEPLOY_ROOT/deployment-routing/music-router.yml"
 if [[ "\${MUSIC_DEPLOY_TEST_PUBLIC_RESPONSE_MODE:-}" == nonzero ]]; then printf '${publicResponseSentinel}'; exit 22; fi
 if [[ "\${MUSIC_DEPLOY_TEST_PUBLIC_RESPONSE_MODE:-}" == invalid-json ]]; then printf '${publicResponseSentinel}'; exit 0; fi
-printf '{"ready":true,"digest":"%s","commit":"%s","migrationMarker":"0002_identity_lifecycle"}\\n' "$MUSIC_DEPLOY_TEST_DIGEST" "$MUSIC_DEPLOY_TEST_COMMIT"
+printf '{"ready":true,"digest":"%s","commit":"%s","migrationMarker":"0003_identity_lifecycle_hardening"}\\n' "$MUSIC_DEPLOY_TEST_DIGEST" "$MUSIC_DEPLOY_TEST_COMMIT"
 `;
     const node = `#!/usr/bin/env bash
 set -euo pipefail
@@ -101,9 +103,11 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     writeFileSync(join(fakeBin, "docker"), docker);
     writeFileSync(join(fakeBin, "curl"), curl);
     writeFileSync(join(fakeBin, "node"), node);
+    writeFileSync(join(fakeBin, "sleep"), "#!/usr/bin/env bash\nexit 0\n");
     chmodSync(join(fakeBin, "docker"), 0o755);
     chmodSync(join(fakeBin, "curl"), 0o755);
     chmodSync(join(fakeBin, "node"), 0o755);
+    chmodSync(join(fakeBin, "sleep"), 0o755);
   });
 
   afterEach(() => rmSync(sandbox, { recursive: true, force: true }));
@@ -134,12 +138,14 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
         MUSIC_DEPLOY_TEST_EVENT_LOG: shellPath(eventLog),
         MUSIC_DEPLOY_TEST_CURL_COMMAND: shellPath(join(fakeBin, "curl")),
         MUSIC_DEPLOY_TEST_DIGEST: requestedDigest,
-        MUSIC_DEPLOY_TEST_COMMIT: requestedCommit === "-" ? commit("a") : requestedCommit,
+        MUSIC_DEPLOY_TEST_COMMIT: requestedCommit === "-" ? (options.ociCommit ?? commit("a")) : requestedCommit,
         MUSIC_DEPLOY_TEST_SLOT: options.slot ?? (operation === "bootstrap" ? "blue" : "green"),
         MUSIC_DEPLOY_TEST_OCI_COMMIT: options.ociCommit ?? "",
         MUSIC_DEPLOY_TEST_OCI_SOURCE: options.ociSource ?? "",
         MUSIC_DEPLOY_TEST_OCI_CONTAINMENT: options.ociContainment ?? "",
         MUSIC_DEPLOY_TEST_PUBLIC_RESPONSE_MODE: options.publicResponseMode ?? "",
+        MUSIC_DEPLOY_TEST_READINESS_FAILURE: options.candidateReadinessFailure ? "1" : "0",
+        MUSIC_DEPLOY_TEST_READINESS_ATTEMPTS: options.candidateReadinessFailure ? "1" : "30",
         MUSIC_DEPLOY_TEST_REAL_NODE: shellPath(process.execPath),
         MUSIC_DEPLOY_TEST_NODE_ARGV_LOG: shellPath(join(sandbox, "node-argv.log")),
         MUSIC_DEPLOY_TEST_NODE_ENV_LOG: shellPath(join(sandbox, "node-env.log")),
@@ -158,11 +164,32 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(result.status, result.stderr).toBe(0);
   }
 
+  function seedLegacyAuthority() {
+    const priorDigest = digest("a");
+    const priorCommit = commit("a");
+    const ledgerPayload = ["music-ledger-v2", repository, "1", priorDigest, priorCommit, "containment-no-schema-change", "GENESIS"].join("\t");
+    writeFileSync(join(root, "deployment-state/secure-images.tsv"), [
+      "music-ledger-v2", "1", priorDigest, priorCommit, "containment-no-schema-change", "GENESIS",
+      createHmac("sha256", hmacSentinel).update(ledgerPayload).digest("hex"),
+    ].join("\t") + "\n");
+    const floorPayload = ["music-floor-v1", repository, priorDigest, priorCommit].join("\t");
+    writeFileSync(join(root, "deployment-state/music-floor.tsv"), [
+      "music-floor-v1", priorDigest, priorCommit,
+      createHmac("sha256", hmacSentinel).update(floorPayload).digest("hex"),
+    ].join("\t") + "\n");
+    const stateValues = ["legacy-project", "blue", priorDigest, priorCommit, priorDigest, priorCommit, priorDigest, priorCommit];
+    const statePayload = ["music-state-v2", repository, ...stateValues].join("\t");
+    writeFileSync(join(root, "deployment-state/music-state.tsv"), [
+      "music-state-v2", ...stateValues, createHmac("sha256", hmacSentinel).update(statePayload).digest("hex"),
+    ].join("\t") + "\n");
+    writeFileSync(join(root, "deployment-routing/music-router.yml"), "http:\n  routers:\n    tunes:\n      service: tunes-active\n  services:\n    tunes-active:\n      loadBalancer:\n        servers:\n          - url: http://tunes-blue:5000\n");
+  }
+
   it("bootstraps through the exact executable with one visible route and signed state", () => {
     // Production break caught: the runbook diverges from production transaction behavior.
     bootstrap();
     expect(readFileSync(join(root, "deployment-routing/music-router.yml"), "utf8")).toContain("http://tunes-blue:5000");
-    for (const file of ["music-state.tsv", "secure-images.tsv", "music-floor.tsv"]) {
+    for (const file of ["music-state.tsv", "secure-images.tsv", "music-floor.tsv", "music-schema-floor.tsv"]) {
       expect(readFileSync(join(root, "deployment-state", file), "utf8")).toMatch(/\t[a-f0-9]{64}\n?$/);
     }
     expect(existsSync(join(root, "deployment-transactions/current"))).toBe(false);
@@ -170,6 +197,38 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(events).toContain("curl --fail --silent --show-error --max-time 5 https://localtunes.earth/ | route=http://legacy-tunes:5000");
     expect(events).toContain(`docker pull ${repository}@${digest("a")}`);
   });
+
+  it("keeps legacy traffic serving but permanently rejects C2 rollback after the C3 schema gate", () => {
+    seedLegacyAuthority();
+    const priorRoute = readFileSync(join(root, "deployment-routing/music-router.yml"), "utf8");
+    const priorLedger = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8");
+    const failedCandidate = run("deploy", digest("b"), commit("b"), { candidateReadinessFailure: true });
+    expect(failedCandidate.status).not.toBe(0);
+    expect(readFileSync(join(root, "deployment-routing/music-router.yml"), "utf8")).toBe(priorRoute);
+    expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8")).toBe(priorLedger);
+    expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8")).toContain(digest("b"));
+    const gateEvents = readFileSync(eventLog, "utf8");
+    expect(gateEvents).toContain("tunes-gate");
+    expect(gateEvents).toContain("route=http://tunes-blue:5000");
+
+    // The digest that first ran the irreversible gate may never be promoted.
+    // Later images declaring the exact C3 marker must still form a usable
+    // rollback history; the compatibility authority is a schema epoch, not a
+    // requirement that the gate-running digest appear in the secure ledger.
+    const firstCompatibleDeploy = run("deploy", digest("c"), commit("c"));
+    expect(firstCompatibleDeploy.status, firstCompatibleDeploy.stderr).toBe(0);
+    const secondCompatibleDeploy = run("deploy", digest("d"), commit("d"), { slot: "blue" });
+    expect(secondCompatibleDeploy.status, secondCompatibleDeploy.stderr).toBe(0);
+    const compatibleRollback = run("rollback", digest("c"), "-", { ociCommit: commit("c"), slot: "green" });
+    expect(compatibleRollback.status, compatibleRollback.stderr).toBe(0);
+
+    writeFileSync(eventLog, "");
+    const refusedRollback = run("rollback", digest("a"), "-");
+    expect(refusedRollback.status).not.toBe(0);
+    expect(refusedRollback.stderr).toMatch(/schema compatibility floor/i);
+    expect(readFileSync(eventLog, "utf8")).toBe("");
+    expect(readFileSync(join(root, "deployment-routing/music-router.yml"), "utf8")).toContain("http://tunes-green:5000");
+  }, 20_000);
 
   it.each([
     ["digest metacharacter", `${digest("b")};touch-pwned`, commit("b"), []],
@@ -265,7 +324,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     // child process command line where another same-host process can read it.
     bootstrap();
     const row = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").trim().split("\t");
-    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0002_identity_lifecycle", "GENESIS"].join("\t");
+    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0003_identity_lifecycle_hardening", "GENESIS"].join("\t");
     expect(row[6]).toBe(createHmac("sha256", hmacSentinel).update(expectedPayload).digest("hex"));
 
     const deployed = run("deploy", digest("b"), commit("b"));
@@ -291,18 +350,20 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("transaction journal HMAC mismatch");
     expect(readFileSync(eventLog, "utf8")).toBe("");
-  });
+  }, 20_000);
 
-  it.each(["state", "floor"])("rejects %s authority tamper before Docker", (authority) => {
+  it.each(["state", "floor", "schema-floor"])("rejects %s authority tamper before Docker", (authority) => {
     // Production break caught: mutable host state changes the active slot or permanent rollback floor.
     bootstrap();
-    const path = join(root, "deployment-state", authority === "state" ? "music-state.tsv" : "music-floor.tsv");
+    const path = join(root, "deployment-state", authority === "state" ? "music-state.tsv"
+      : authority === "floor" ? "music-floor.tsv" : "music-schema-floor.tsv");
     const bytes = readFileSync(path, "utf8");
     writeFileSync(path, bytes.replace(/[a-f0-9](\r?\n)?$/, "0$1"));
     writeFileSync(eventLog, "");
     const result = run("deploy", digest("b"), commit("b"));
     expect(result.status).not.toBe(0);
-    expect(result.stderr).toMatch(authority === "state" ? /deployment state (HMAC mismatch|malformed)/ : /rollback floor (HMAC mismatch|malformed)/);
+    expect(result.stderr).toMatch(authority === "state" ? /deployment state (HMAC mismatch|malformed)/
+      : authority === "floor" ? /rollback floor (HMAC mismatch|malformed)/ : /schema compatibility floor (HMAC mismatch|malformed)/);
     expect(readFileSync(eventLog, "utf8")).toBe("");
   });
 
