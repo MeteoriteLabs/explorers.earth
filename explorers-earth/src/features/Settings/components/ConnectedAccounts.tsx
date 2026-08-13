@@ -6,9 +6,6 @@ import { toast } from "sonner";
 import { isLocalTunesEnabled } from "../../../services/localTunesService";
 
 import { useQuery, useMutation } from "@apollo/client";
-import Modal from "../../../components/ui/Modal";
-import EyeOffIcon from "../../../assets/icons/EyeOffIcon";
-import EyeOnIcon from "../../../assets/icons/EyeOnIcon";
 import { getUserAccountQuery, updateAccountMutation } from "../api/mutation";
 import useAuthStore from "../../../store/store";
 
@@ -16,9 +13,6 @@ const ConnectedAccounts = memo(() => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isConnecting] = useState(false);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [password, setPassword] = useState("");
-  const [passwordVisible, setPasswordVisible] = useState(false);
   const [localTunesPublicLink, setLocalTunesPublicLink] = useState("");
   const [isUpdatingLink, setIsUpdatingLink] = useState(false);
 
@@ -132,12 +126,6 @@ const ConnectedAccounts = memo(() => {
 
     // User has selected a plan, proceed with connection
     await handleConnectLocalTunesAfterPlanSelection();
-  };
-
-  const connectWithManualPassword = async () => {
-    setShowPasswordModal(false);
-    setPassword("");
-    toast.info('Music account setup is temporarily unavailable.');
   };
 
   if (!isLocalTunesEnabled()) {
@@ -281,69 +269,6 @@ const ConnectedAccounts = memo(() => {
           </div>
         </div>
       </div>
-
-      {/* Password Modal for Manual Connection */}
-      {showPasswordModal && (
-        <Modal
-          isOpen={showPasswordModal}
-          onClose={() => {
-            setShowPasswordModal(false);
-            setPassword("");
-          }}
-        >
-          <div className="dashboard-theme flex flex-col gap-6 w-full mx-auto min-w-[300px] sm:min-w-[500px] md:min-w-[600px] max-w-2xl py-4 sm:py-6 md:py-8 px-6 sm:px-8 md:px-12">
-            <h2 className="dt-heading mb-2">
-              Connect to Local Tunes
-            </h2>
-
-            <p className="dt-label text-dashboard-muted">
-              Enter your explorers password to create your Local Tunes account. We'll use your existing username and email.
-            </p>
-
-            <div className="flex flex-col gap-2">
-              <label className="dt-label text-sm font-medium">
-                Password
-              </label>
-              <div className="relative w-full">
-                <input
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  type={passwordVisible ? "text" : "password"}
-                  placeholder="Enter your password"
-                  className="w-full dt-input"
-                  autoComplete="current-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setPasswordVisible(!passwordVisible)}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400 hover:text-dashboard transition-colors"
-                >
-                  {passwordVisible ? <EyeOnIcon /> : <EyeOffIcon />}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-6">
-              <Button
-                btnText="Cancel"
-                size="small"
-                variant="secondary"
-                onClickHandler={() => {
-                  setShowPasswordModal(false);
-                  setPassword("");
-                }}
-              />
-              <Button
-                btnText={isConnecting ? "Connecting..." : "Connect"}
-                size="small"
-                variant="primary"
-                onClickHandler={connectWithManualPassword}
-                disabled={isConnecting || !password.trim()}
-              />
-            </div>
-          </div>
-        </Modal>
-      )}
     </>
   );
 });

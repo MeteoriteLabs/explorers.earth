@@ -3257,25 +3257,11 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
 
   app.post("/api/youtube/search", async (req, res) => {
     const { query, pageToken } = req.body;
-    console.log('YouTube search request:', {
-      query,
-      pageToken,
-      userId: req.user?.id,
-      isAuthenticated: req.isAuthenticated()
-    });
 
     try {
       if (!process.env.YOUTUBE_API_KEY) {
-        throw new Error("YouTube API key is not configured");
+        return sendContainmentError(res, 503, 'INTERNAL_ERROR', requestIdFor(req));
       }
-
-      // Log the YouTube API key length for debugging (don't log the actual key)
-      console.log('YouTube API key length:', process.env.YOUTUBE_API_KEY.length);
-
-      // Log the search API usage with enhanced debugging
-      console.log('Attempting to log YouTube API usage for user:', req.user?.id);
-      await logYouTubeAPIUsage('search', req.user?.id);
-      console.log('Successfully logged YouTube API usage');
 
       const params = new URLSearchParams({
         part: 'snippet',
@@ -3290,7 +3276,6 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       }
 
       const apiUrl = `https://www.googleapis.com/youtube/v3/search?${params.toString()}`;
-      console.log('Making YouTube API request to:', apiUrl.replace(process.env.YOUTUBE_API_KEY, '[REDACTED]'));
 
       const response = await fetch(apiUrl, {
         headers: {
@@ -3300,14 +3285,7 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('YouTube API error response:', errorData);
-
-        if (response.status === 403) {
-          const errorMessage = errorData.error?.message || "API key validation failed";
-          throw new Error(`YouTube API error: ${errorMessage}`);
-        }
-        throw new Error(`YouTube API error: ${errorData.error?.message || response.statusText}`);
+        return sendContainmentError(res, 502, 'INTERNAL_ERROR', requestIdFor(req));
       }
 
       const data = await response.json();
@@ -3318,64 +3296,10 @@ export function setupLegacyRemainingRoutes(app: Express): Server {
         timestampUTC: new Date().toISOString()
       });
 
-      // Send response immediately to user
-      res.json(data);
-
-      // Track song search in Strapi after successful API response (non-blocking)
-      // This runs in the background and won't delay the user's response
-      console.log('🔍 [STRAPI] Checking Strapi tracking conditions:', {
-        isAuthenticated: req.isAuthenticated(),
-        userId: req.user?.id,
-        username: req.user?.username,
-        userObject: req.user ? { id: req.user.id, username: req.user.username } : null,
-        hasUser: !!req.user
-      });
-
-      // Get username - try from req.user first, then request body (for guests), then fetch from DB if needed
-      let username: string | undefined = req.user?.username || req.body.username;
-
-      // If username is not available but user ID is, fetch from database
-      if (!username && req.user?.id) {
-        try {
-          const user = await storage.getUser(req.user.id);
-          username = user?.username;
-          console.log(`🔍 [STRAPI] Fetched username from DB: ${username}`);
-        } catch (error) {
-          console.error('❌ [STRAPI] Failed to fetch user from DB:', error);
-        }
-      }
-
-      if (username) {
-        console.log(`📊 [STRAPI] Starting Strapi tracking for username: ${username}`);
-        console.log(`📊 [STRAPI] About to call strapiService.incrementSongRequests('${username}')`);
-
-        // Make the GraphQL call - this should appear in network tab
-        try {
-          // Await the Strapi call to ensure it runs
-          const result = await strapiService.incrementSongRequests(username);
-          console.log(`✅ [STRAPI] Successfully tracked song search in Strapi for user: ${username}, song_requests: ${result.song_requests}`);
-        } catch (strapiError) {
-          console.error(`❌ [STRAPI] Failed to track song search in Strapi for user: ${username}:`, strapiError);
-          if (strapiError instanceof Error) {
-            console.error(`❌ [STRAPI] Error details:`, strapiError.message);
-            console.error(`❌ [STRAPI] Error stack:`, strapiError.stack);
-          }
-        }
-      } else {
-        console.log('⚠️ [STRAPI] Skipping Strapi tracking - username not available:', {
-          isAuthenticated: req.isAuthenticated(),
-          hasUser: !!req.user,
-          hasUsername: !!req.user?.username,
-          userId: req.user?.id,
-          fetchedUsername: username
-        });
-      }
-    } catch (error) {
-      console.error('Error in YouTube search:', error);
-      res.status(500).json({
-        message: "Failed to search YouTube",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
+      // Containment search is read-only: return before every legacy owner/quota path below.
+      return res.json(data);
+    } catch {
+      return sendContainmentError(res, 502, 'INTERNAL_ERROR', requestIdFor(req));
     }
   });
 

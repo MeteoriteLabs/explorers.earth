@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { EarthLoader } from "../components/EarthLoader";
 import Button from "../components/ui/Button";
-import Modal from "../components/ui/Modal";
 import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
 import useAuthStore from "../store/store";
@@ -102,10 +101,6 @@ const MusicSkeleton = () => {
 const MusicPage = () => {
   const { user: authUser } = useAuthStore();
   const [isConnecting] = useState(false);
-
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [password, setPassword] = useState("");
-  const [passwordVisible, setPasswordVisible] = useState(false);
 
   // Query to get current user's account with localtunes_integrated status
   const { data: userData, loading: accountLoading, refetch } = useQuery(getUserAccountQuery, {
@@ -213,12 +208,6 @@ const MusicPage = () => {
       return;
     }
 
-    toast.info('Music account setup is temporarily unavailable.');
-  };
-
-  const connectWithManualPassword = async () => {
-    setShowPasswordModal(false);
-    setPassword("");
     toast.info('Music account setup is temporarily unavailable.');
   };
 
@@ -380,7 +369,7 @@ const MusicPage = () => {
                       </div>
 
                       <p className="text-gray-400 text-xs mt-4 text-center">
-                        Your explorers account information will be used to create your Local Tunes account.
+                        Music account setup is temporarily unavailable.
                       </p>
                     </div>
                   </div>
@@ -389,76 +378,6 @@ const MusicPage = () => {
             )}
           </motion.div>
         </div>
-
-        {/* Password Modal for Manual Connection */}
-        {showPasswordModal && (
-          <Modal
-            isOpen={showPasswordModal}
-            onClose={() => {
-              setShowPasswordModal(false);
-              setPassword("");
-            }}
-          >
-            <div className="dashboard-theme flex flex-col gap-6 w-full mx-auto min-w-[300px] sm:min-w-[500px] md:min-w-[600px] max-w-2xl py-4 sm:py-6 md:py-8 px-6 sm:px-8 md:px-12">
-              <h2 className="dt-heading mb-2">
-                Connect to Local Tunes
-              </h2>
-
-              <p className="dt-label text-white-muted">
-                Enter your explorers password to create your Local Tunes account. We'll use your existing username and email.
-              </p>
-
-              <div className="flex flex-col gap-2">
-                <label className="dt-label">Password</label>
-                <div className="relative">
-                  <input
-                    type={passwordVisible ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    className="w-full p-3 border border-dashboard bg-dashboard-muted rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-dashboard-accent"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setPasswordVisible(!passwordVisible)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-                  >
-                    {passwordVisible ? (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 mt-6">
-                <Button
-                  btnText="Cancel"
-                  size="small"
-                  variant="secondary"
-                  onClickHandler={() => {
-                    setShowPasswordModal(false);
-                    setPassword("");
-                  }}
-                />
-                <Button
-                  btnText={isConnecting ? "Connecting..." : "Connect"}
-                  size="small"
-                  variant="primary"
-                  onClickHandler={connectWithManualPassword}
-                  isLoading={isConnecting}
-                  disabled={isConnecting || !password.trim()}
-                />
-              </div>
-            </div>
-          </Modal>
-        )}
       </div>
       {visibilityPrompt && accountDocumentId && (
         <CategoryVisibilityModal

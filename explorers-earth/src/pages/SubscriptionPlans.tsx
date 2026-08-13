@@ -12,6 +12,7 @@ import useAuthStore from "../store/store";
 import { isLocalTunesEnabled } from "../services/localTunesService";
 import { isFreePlan } from "../services/paymentService";
 import { getSubscriptionPlans, getUserSubscriptionPlans, getSongLimits, updateSongLimit as updateSongLimitAPI, createSongLimit, createUserSubscriptionPlan } from "../services/subscriptionService";
+import { MUSIC_SUBSCRIPTION_FLOWS_ENABLED, MusicSubscriptionUnavailable } from "../components/MusicSubscriptionContainment";
 
 
 const UPDATE_USER_IS_SUBSCRIBED_MUTATION = gql`
@@ -78,7 +79,7 @@ interface SubscriptionPlansProps {
   fromOnboarding?: boolean;
 }
 
-const SubscriptionPlans = ({
+const ActiveSubscriptionPlans = ({
   onComplete,
   fromMusic: propFromMusic,
   fromSettings: propFromSettings,
@@ -940,6 +941,11 @@ const SubscriptionPlans = ({
       `}</style>
     </div>
   );
+};
+
+const SubscriptionPlans = (props: SubscriptionPlansProps) => {
+  if (!MUSIC_SUBSCRIPTION_FLOWS_ENABLED) return <MusicSubscriptionUnavailable />;
+  return <ActiveSubscriptionPlans {...props} />;
 };
 
 export default SubscriptionPlans;

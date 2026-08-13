@@ -24,6 +24,7 @@ import {
   removeUserCredentials,
 } from '../utils/sessionCredentials';
 import { createUserSubscriptionPlan, getSongLimits, updateSongLimit as updateSongLimitAPI, createSongLimit } from '../services/subscriptionService';
+import { MUSIC_SUBSCRIPTION_FLOWS_ENABLED, MusicSubscriptionUnavailable } from '../components/MusicSubscriptionContainment';
 
 
 const UPDATE_USER_IS_SUBSCRIBED_MUTATION = gql`
@@ -91,7 +92,7 @@ interface LocationState {
   formData?: FormData;
 }
 
-const Checkout = () => {
+const ActiveCheckout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState | null;
@@ -1177,6 +1178,11 @@ const Checkout = () => {
       `}</style>
     </div>
   );
+};
+
+const Checkout = () => {
+  if (!MUSIC_SUBSCRIPTION_FLOWS_ENABLED) return <MusicSubscriptionUnavailable />;
+  return <ActiveCheckout />;
 };
 
 export default Checkout;

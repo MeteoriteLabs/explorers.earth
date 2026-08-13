@@ -8,6 +8,7 @@ export type ContainmentCode =
   | "AUTH_SUSPENDED"
   | "AMBIGUOUS_CREDENTIALS"
   | "AMBIGUOUS_OWNER_INPUT"
+  | "REQUEST_INVALID"
   | "CSRF_INVALID"
   | "ORIGIN_FORBIDDEN"
   | "GRAPHQL_PROXY_REMOVED"
@@ -27,6 +28,7 @@ const SAFE_MESSAGES: Record<ContainmentCode, { message: string; action: string; 
   AUTH_SUSPENDED: { message: "This Music account is unavailable.", action: "contact_support", retryable: false },
   AMBIGUOUS_CREDENTIALS: { message: "Use exactly one authentication method.", action: "retry", retryable: false },
   AMBIGUOUS_OWNER_INPUT: { message: "Owner fields are not accepted.", action: "retry", retryable: false },
+  REQUEST_INVALID: { message: "The request is invalid.", action: "retry", retryable: false },
   CSRF_INVALID: { message: "The request could not be verified.", action: "refresh", retryable: true },
   ORIGIN_FORBIDDEN: { message: "This origin is not allowed.", action: "stop", retryable: false },
   GRAPHQL_PROXY_REMOVED: { message: "This GraphQL endpoint is no longer available.", action: "upgrade_client", retryable: false },
@@ -134,6 +136,7 @@ function validCsrf(req: Request): boolean {
 
 const NATIVE_MUTATIONS = new Set(["/api/login", "/api/register", "/api/logout"]);
 const PUBLIC_CAPABILITY_MUTATIONS = [/^\/api\/verify-email\/[^/]+$/, /^\/api\/user\/request-reactivation$/];
+const YOUTUBE_SEARCH_PATH = "/api/youtube/search";
 
 export function setupNativeSessionContainment(app: Express): void {
   app.use((req, res, next) => {
@@ -144,6 +147,10 @@ export function setupNativeSessionContainment(app: Express): void {
       if (consumeContainmentLimit(`capability:${clientAddress(req)}:${req.path.split("/").slice(0, 3).join("/")}`, 20, 60_000)) {
         return sendContainmentError(res, 429, "RATE_LIMITED", requestId);
       }
+      return next();
+    }
+    if (req.method === "POST" && req.path === YOUTUBE_SEARCH_PATH) {
+      if (!exactOrigin(req)) return sendContainmentError(res, 403, "ORIGIN_FORBIDDEN", requestId);
       return next();
     }
     const nativeSessionMutation = NATIVE_MUTATIONS.has(req.path) || /(?:^|;\s*)cosmic\.sid=/.test(req.headers.cookie ?? "");
@@ -232,6 +239,22 @@ export function setupOwnerContainment(app: Express): void {
 
     if (identityRoute) return sendContainmentError(res, 410, "LEGACY_IDENTITY_ROUTE_REMOVED", requestId);
     if (hasOwnerInput(req)) return sendContainmentError(res, 400, "AMBIGUOUS_OWNER_INPUT", requestId);
+    if (req.method === "POST" && req.path === YOUTUBE_SEARCH_PATH) {
+      if (!exactOrigin(req)) return sendContainmentError(res, 403, "ORIGIN_FORBIDDEN", requestId);
+      const body = req.body;
+      const bodyKeys = body && typeof body === "object" && !Array.isArray(body) ? Object.keys(body) : [];
+      const validKeys = bodyKeys.every((key) => key === "query" || key === "pageToken");
+      const validQuery = typeof body?.query === "string" && body.query.trim().length > 0 && body.query.length <= 200;
+      const validPageToken = body?.pageToken === undefined || (typeof body.pageToken === "string" && body.pageToken.length <= 512);
+      if (!validKeys || !validQuery || !validPageToken) return sendContainmentError(res, 400, "REQUEST_INVALID", requestId);
+      const principalKey = request.containmentPrincipal.kind === "session"
+        ? `session:${request.containmentPrincipal.userId}`
+        : `strapi:${request.containmentPrincipal.externalId}`;
+      if (consumeContainmentLimit(`youtube-search:${clientAddress(req)}:${principalKey}`, 30, 60_000)) {
+        return sendContainmentError(res, 429, "RATE_LIMITED", requestId);
+      }
+      return next();
+    }
     if (request.containmentPrincipal.kind === "strapi") return sendContainmentError(res, 410, "LEGACY_OWNER_ROUTE_REMOVED", requestId);
     if (req.path.startsWith("/api/admin") && !request.containmentPrincipal.isAdmin) {
       return sendContainmentError(res, 403, "ADMIN_REQUIRED", requestId);

@@ -95,16 +95,8 @@ async function containedImport(config: { method: string; url: string; data: any;
 }
 
 export const youtubeAPI = {
-  search: (query: string, pageToken?: string) => {
-    let username: string | undefined;
-    try {
-      const authStorage = localStorage.getItem('auth-storage');
-      if (authStorage) username = JSON.parse(authStorage)?.state?.user?.username;
-    } catch {
-      // Invalid application auth state is treated as anonymous.
-    }
-    return localTunesRequest('POST', '/api/youtube/search', { query, pageToken, username });
-  },
+  search: (query: string, pageToken?: string) =>
+    localTunesRequest('POST', '/api/youtube/search', { query, pageToken }),
   getVideoFromUrl: (url: string, guestUrl?: string) => {
     const params = guestUrl ? `?guestUrl=${encodeURIComponent(guestUrl)}` : '';
     return localTunesRequest('POST', `/api/youtube/video-from-url${params}`, { url });

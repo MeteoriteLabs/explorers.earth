@@ -84,6 +84,17 @@ describe("contained Music client", () => {
       expect(source, relativePath).not.toContain("prepareLocalTunesUserData");
     }
 
+    for (const relativePath of ["src/pages/Music.tsx", "src/features/Settings/components/ConnectedAccounts.tsx"]) {
+      const source = readFileSync(resolve(process.cwd(), relativePath), "utf8");
+      expect(source, relativePath).not.toContain('type="password"');
+      expect(source, relativePath).not.toContain("showPasswordModal");
+      expect(source, relativePath).not.toContain("connectWithManualPassword");
+      expect(source, relativePath).not.toContain("Enter your explorers password");
+      expect(source, relativePath).not.toContain("setPassword(");
+      expect(source, relativePath).not.toContain("passwordVisible");
+      expect(source, relativePath).not.toMatch(/create (?:your )?Local Tunes account/i);
+    }
+
     for (const relativePath of ["src/services/ssoService.ts", "src/lib/apiClient.ts", "src/utils/cookieSetter.ts"]) {
       const source = readFileSync(resolve(process.cwd(), relativePath), "utf8");
       expect(source, relativePath).not.toMatch(/(?:localStorage|sessionStorage)\.setItem\(['\"](?:localTunes_session|localtunes_cross_domain_auth)['\"]/);

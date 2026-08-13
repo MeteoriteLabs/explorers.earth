@@ -277,6 +277,125 @@ describe("Music standalone containment REST boundary", () => {
     expectErrorEnvelope(tokenResponse, "LEGACY_OWNER_ROUTE_REMOVED");
   });
 
+  it("allows only a verified bearer with an exact origin to reach read-only YouTube search", async () => {
+    process.env.YOUTUBE_API_KEY = "youtube-test-key";
+    global.fetch = vi.fn(async () => new Response(JSON.stringify({
+      items: [{ id: { videoId: "video-1" }, snippet: { title: "Result" } }],
+      nextPageToken: "page-2",
+    }), { status: 200 })) as typeof fetch;
+    const token = jwt.sign({ id: 9001 }, TEST_JWT_SECRET, { expiresIn: "5m" });
+
+    const response = await request(app)
+      .post("/api/youtube/search")
+      .set("Authorization", `Bearer ${token}`)
+      .set("Origin", "https://explorers.example.test")
+      .send({ query: "safe search", pageToken: "page-1" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.items[0].id.videoId).toBe("video-1");
+    expect(global.fetch).toHaveBeenCalledOnce();
+    expect(storage.getUserByUsername).not.toHaveBeenCalled();
+  });
+
+  it("allows a verified native session to search without turning the read-only POST into a CSRF mutation", async () => {
+    process.env.YOUTUBE_API_KEY = "youtube-test-key";
+    global.fetch = vi.fn(async () => new Response(JSON.stringify({
+      items: [{ id: { videoId: "session-video" }, snippet: { title: "Session result" } }],
+    }), { status: 200 })) as typeof fetch;
+    const agent = await authenticatedAgent();
+
+    const response = await agent
+      .post("/api/youtube/search")
+      .set("Origin", "https://explorers.example.test")
+      .send({ query: "session search" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.items[0].id.videoId).toBe("session-video");
+    expect(global.fetch).toHaveBeenCalledOnce();
+  });
+
+  it("validates and rate-limits the bounded YouTube search capability before upstream access", async () => {
+    process.env.YOUTUBE_API_KEY = "youtube-test-key";
+    global.fetch = vi.fn(async () => new Response(JSON.stringify({ items: [] }), { status: 200 })) as typeof fetch;
+    const token = jwt.sign({ id: 9001 }, TEST_JWT_SECRET, { expiresIn: "5m" });
+
+    const missingOrigin = await request(app)
+      .post("/api/youtube/search")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ query: "safe search" });
+    expect(missingOrigin.status).toBe(403);
+    expectErrorEnvelope(missingOrigin, "ORIGIN_FORBIDDEN");
+
+    const oversizedQuery = await request(app)
+      .post("/api/youtube/search")
+      .set("Authorization", `Bearer ${token}`)
+      .set("Origin", "https://explorers.example.test")
+      .send({ query: "x".repeat(201) });
+    expect(oversizedQuery.status).toBe(400);
+    expectErrorEnvelope(oversizedQuery, "REQUEST_INVALID");
+    expect(global.fetch).not.toHaveBeenCalled();
+
+    let response!: request.Response;
+    for (let index = 0; index < 31; index += 1) {
+      response = await request(app)
+        .post("/api/youtube/search")
+        .set("Authorization", `Bearer ${token}`)
+        .set("Origin", "https://explorers.example.test")
+        .send({ query: `safe search ${index}` });
+    }
+    expect(response.status).toBe(429);
+    expectErrorEnvelope(response, "RATE_LIMITED");
+    expect(global.fetch).toHaveBeenCalledTimes(30);
+  });
+
+  it("rejects owner input, invalid/mixed/suspended credentials, and every other YouTube mutation", async () => {
+    const token = jwt.sign({ id: 9001 }, TEST_JWT_SECRET, { expiresIn: "5m" });
+    const ownerInput = await request(app)
+      .post("/api/youtube/search")
+      .set("Authorization", `Bearer ${token}`)
+      .set("Origin", "https://explorers.example.test")
+      .send({ query: "safe search", username: "owner" });
+    expect(ownerInput.status).toBe(400);
+    expectErrorEnvelope(ownerInput, "AMBIGUOUS_OWNER_INPUT");
+
+    const malformed = await request(app)
+      .post("/api/youtube/search")
+      .set("Authorization", "Bearer malformed")
+      .set("Origin", "https://explorers.example.test")
+      .send({ query: "safe search" });
+    expect(malformed.status).toBe(401);
+    expectErrorEnvelope(malformed, "AUTH_INVALID");
+
+    const suspendedToken = jwt.sign({ id: 9001, suspended: true }, TEST_JWT_SECRET, { expiresIn: "5m" });
+    const suspended = await request(app)
+      .post("/api/youtube/search")
+      .set("Authorization", `Bearer ${suspendedToken}`)
+      .set("Origin", "https://explorers.example.test")
+      .send({ query: "safe search" });
+    expect(suspended.status).toBe(403);
+    expectErrorEnvelope(suspended, "AUTH_SUSPENDED");
+
+    const agent = await authenticatedAgent();
+    const csrf = await agent.get("/api/csrf-token");
+    const mixed = await agent
+      .post("/api/youtube/search")
+      .set("Authorization", `Bearer ${token}`)
+      .set("Origin", "https://explorers.example.test")
+      .set("X-CSRF-Token", csrf.body.token)
+      .send({ query: "safe search" });
+    expect(mixed.status).toBe(400);
+    expectErrorEnvelope(mixed, "AMBIGUOUS_CREDENTIALS");
+
+    const otherMutation = await request(app)
+      .post("/api/youtube/video-from-url")
+      .set("Authorization", `Bearer ${token}`)
+      .set("Origin", "https://explorers.example.test")
+      .send({ url: "https://youtu.be/video-1" });
+    expect(otherMutation.status).toBe(410);
+    expectErrorEnvelope(otherMutation, "LEGACY_OWNER_ROUTE_REMOVED");
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
   it("preserves narrow public capability flows while CSRF-protecting session mutations", async () => {
     const verification = await request(app).post("/api/verify-email/not-a-valid-capability");
     expect(verification.status).not.toBe(403);

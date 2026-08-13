@@ -130,13 +130,16 @@ describe('apiClient', () => {
   describe('youtubeAPI', () => {
     it('search calls correct endpoint', async () => {
       (localTunesClient.request as any).mockResolvedValueOnce({ data: { items: [] } });
+      localStorage.setItem('auth-storage', JSON.stringify({
+        state: { token: 'valid-bearer', user: { username: 'browser-controlled-owner' } },
+      }));
       
       await youtubeAPI.search('test query');
       
       expect(localTunesClient.request).toHaveBeenCalledWith({
         method: 'POST',
         url: '/api/youtube/search',
-        data: { query: 'test query', pageToken: undefined, username: undefined },
+        data: { query: 'test query', pageToken: undefined },
       });
     });
   });
