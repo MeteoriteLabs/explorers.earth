@@ -17,15 +17,21 @@ npm run music:test:smoke
 npm run music:down
 ```
 
-Run with `--format json` when collecting evidence. The target is ten minutes
+Use the canonical public JSON form `npm run --silent <music-command> --
+--format json`; `--silent` is required so stdout is exactly one machine-parseable
+JSON envelope. The target is ten minutes
 cold and five minutes warm on Windows and Ubuntu; record actual timing in the
 run artifact. Use only `docker-compose.music-test.yml`, project
 `explorers-music-fixture`, PostgreSQL 15, deterministic fixture Strapi and the
 generated disposable `.env.music.test`. The isolated topology exposes fake
-Strapi on `127.0.0.1:51337`, the Tunes contract harness on `127.0.0.1:55000`,
-and the Explorers contract harness on `127.0.0.1:55173`; health dependencies
-gate each service. `music:test:smoke` verifies health, current-user and Account
-responses, the Tunes person/Account projection, and Explorers readiness.
+Strapi on `127.0.0.1:51337`, an actual production build/process of Tunes on
+`127.0.0.1:55000`, and an actual Explorers build served by its Nginx process on
+`127.0.0.1:55173`; health dependencies gate each service. A fixture-only Tunes
+readiness route queries PostgreSQL and reads the fake Strapi current-user
+contract. Explorers' fixture Nginx configuration proxies that same route to
+Tunes without any production endpoint. `music:test:smoke` verifies direct
+Strapi evidence, Tunes -> PostgreSQL/Strapi mediation, the Explorers build, and
+the Explorers -> Tunes path.
 
 ## Safety sequence
 

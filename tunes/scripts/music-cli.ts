@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, renameSync, statfsSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, statfsSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { isAbsolute, join, resolve, win32 as windowsPath } from "node:path";
 import { parseMusicEnvironment } from "../server/config/music-environment.ts";
@@ -89,6 +89,18 @@ function sanitize(value: string): string {
     .replace(/\b(password|secret|token|api[_-]?key|authorization)\b\s*[:=]\s*[^\s,}]+/gi, "$1=[REDACTED]")
     .replace(/Bearer\s+[A-Za-z0-9._~-]+/gi, "Bearer [REDACTED]");
 }
+const sensitiveStructuredKey = /(?:password|secret|token|authorization|api[_-]?key|credential)/i;
+export function redactStructuredData(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redactStructuredData);
+  if (value && typeof value === "object") return Object.fromEntries(
+    Object.entries(value).map(([key, nested]) => [key, sensitiveStructuredKey.test(key) ? "[REDACTED]" : redactStructuredData(nested)]),
+  );
+  return typeof value === "string" ? sanitize(value) : value;
+}
+function sanitizeStructuredOutput(value: string): string {
+  try { return JSON.stringify(redactStructuredData(JSON.parse(value))); }
+  catch { return sanitize(value); }
+}
 function redactedError(value: unknown): string { return sanitize(value instanceof Error ? value.message : String(value)); }
 function runId(): string { return `${new Date().toISOString().replace(/[-:.TZ]/g, "")}-${randomBytes(4).toString("hex")}`; }
 function runDirectory(id: string): string { const directory = join(artifactRoot, id); mkdirSync(directory, { recursive: true }); return directory; }
@@ -98,15 +110,16 @@ function readEnvFile(file: string): Record<string, string> {
   return Object.fromEntries(readFileSync(file, "utf8").split(/\r?\n/).filter((line) => line.trim() && !line.trimStart().startsWith("#")).map((line) => { const separator = line.indexOf("="); if (separator < 1) throw new Error(`invalid environment line in ${file}`); return [line.slice(0, separator), line.slice(separator + 1)]; }));
 }
 
-function gitDirectory(): string {
-  const dotGit = join(root, ".git");
+function gitDirectory(repositoryRoot: string): string {
+  const dotGit = join(repositoryRoot, ".git");
+  if (statSync(dotGit).isDirectory()) return dotGit;
   const contents = readFileSync(dotGit, "utf8").trim();
   if (!contents.startsWith("gitdir:")) return dotGit;
   const path = contents.slice("gitdir:".length).trim();
-  return isAbsolute(path) ? path : resolve(root, path);
+  return isAbsolute(path) ? path : resolve(repositoryRoot, path);
 }
-function readGitSha(): string {
-  const gitDir = gitDirectory();
+export function readGitSha(repositoryRoot = root): string {
+  const gitDir = gitDirectory(repositoryRoot);
   const head = readFileSync(join(gitDir, "HEAD"), "utf8").trim();
   if (!head.startsWith("ref:")) return head;
   const reference = head.slice("ref:".length).trim();
@@ -120,34 +133,54 @@ function readGitSha(): string {
   return packed.split(" ")[0];
 }
 
-function buildRunContext(): RunContext {
+export function createEnvironmentFingerprint(input: unknown): string {
+  return createHash("sha256").update(JSON.stringify(input)).digest("hex");
+}
+
+function fileHash(path: string): string {
+  return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
+function buildRunContext(options: { allowInvalidEnvironment?: boolean } = {}): RunContext {
   const fixture = JSON.parse(readFileSync(join(root, "fixtures/strapi/music-identity/identity.fixture.json"), "utf8")) as StrapiIdentityFixture;
   const environmentFile = existsSync(join(root, ".env.music.test")) ? join(root, ".env.music.test") : join(root, ".env.music.test.example");
   const rawEnvironment = readEnvFile(environmentFile);
-  const environment = parseMusicEnvironment(rawEnvironment);
+  let environment: ReturnType<typeof parseMusicEnvironment> | undefined;
+  try { environment = parseMusicEnvironment(rawEnvironment); }
+  catch (error) { if (!options.allowInvalidEnvironment) throw error; }
   const gateValues = {
-    MUSIC_PROVISIONING_KILL_SWITCH: String(environment.MUSIC_PROVISIONING_KILL_SWITCH),
-    MUSIC_PROVISIONING_COHORT: environment.MUSIC_PROVISIONING_COHORT,
-    MUSIC_RECONCILIATION_ENABLED: String(environment.MUSIC_RECONCILIATION_ENABLED),
-    MUSIC_RECONCILIATION_MAX_ROWS: String(environment.MUSIC_RECONCILIATION_MAX_ROWS),
-    MUSIC_EXPECTED_MIGRATION_ID: environment.MUSIC_EXPECTED_MIGRATION_ID,
+    MUSIC_PROVISIONING_KILL_SWITCH: String(environment?.MUSIC_PROVISIONING_KILL_SWITCH ?? rawEnvironment.MUSIC_PROVISIONING_KILL_SWITCH ?? "invalid"),
+    MUSIC_PROVISIONING_COHORT: environment?.MUSIC_PROVISIONING_COHORT ?? rawEnvironment.MUSIC_PROVISIONING_COHORT ?? "invalid",
+    MUSIC_RECONCILIATION_ENABLED: String(environment?.MUSIC_RECONCILIATION_ENABLED ?? rawEnvironment.MUSIC_RECONCILIATION_ENABLED ?? "invalid"),
+    MUSIC_RECONCILIATION_MAX_ROWS: String(environment?.MUSIC_RECONCILIATION_MAX_ROWS ?? rawEnvironment.MUSIC_RECONCILIATION_MAX_ROWS ?? "invalid"),
+    MUSIC_EXPECTED_MIGRATION_ID: environment?.MUSIC_EXPECTED_MIGRATION_ID ?? rawEnvironment.MUSIC_EXPECTED_MIGRATION_ID ?? "invalid",
   };
   let databaseTarget = "missing";
   try { const database = new URL(rawEnvironment.DATABASE_URL_TEST); databaseTarget = `${database.protocol}//${database.hostname}:${database.port}${database.pathname}`; } catch { databaseTarget = "invalid"; }
-  const environmentFingerprint = createHash("sha256").update(JSON.stringify({
+  const configurationHashes = Object.fromEntries([
+    composeFile,
+    "fixtures/strapi/music-identity/identity.fixture.json",
+    ".env.music.example",
+    ".env.music.test.example",
+    "package.json",
+    "tunes/package.json",
+  ].map((file) => [file, fileHash(join(root, file))]));
+  configurationHashes["active-environment"] = fileHash(environmentFile);
+  const environmentFingerprint = createEnvironmentFingerprint({
     platform: process.platform,
     arch: process.arch,
     node: process.version,
     composeProject: MUSIC_COMPOSE_PROJECT,
     databaseTarget,
-    mode: environment.MUSIC_MODE,
-    fixtureUrl: environment.STRAPI_FIXTURE_URL,
+    mode: environment?.MUSIC_MODE ?? "invalid",
+    fixtureUrl: environment?.STRAPI_FIXTURE_URL ?? "invalid",
     fixtureVersion: fixture.fixtureVersion,
     fixtureSchemaVersion: fixture.schemaVersion,
-    signingKeyIds: [environment.MUSIC_SIGNING_KEY_CURRENT_ID, environment.MUSIC_SIGNING_KEY_PREVIOUS_ID],
-    controls: [environment.MUSIC_CONNECT_TIMEOUT_MS, environment.MUSIC_READ_TIMEOUT_MS, environment.MUSIC_CIRCUIT_FAILURE_THRESHOLD, environment.MUSIC_RATE_LIMIT_PER_MINUTE],
+    signingKeyIds: [environment?.MUSIC_SIGNING_KEY_CURRENT_ID ?? "invalid", environment?.MUSIC_SIGNING_KEY_PREVIOUS_ID ?? "invalid"],
+    controls: [environment?.MUSIC_CONNECT_TIMEOUT_MS ?? "invalid", environment?.MUSIC_READ_TIMEOUT_MS ?? "invalid", environment?.MUSIC_CIRCUIT_FAILURE_THRESHOLD ?? "invalid", environment?.MUSIC_RATE_LIMIT_PER_MINUTE ?? "invalid"],
     gateValues,
-  })).digest("hex");
+    configurationHashes,
+  });
   return { commit: readGitSha(), fixtureVersion: fixture.fixtureVersion, fixtureSchemaVersion: fixture.schemaVersion, gateValues, environmentFingerprint };
 }
 
@@ -204,7 +237,7 @@ function executable(command: "npm" | "docker" | "node"): { file: string; args: s
 async function runChild(id: string, command: "npm" | "docker" | "node", args: string[], phase: string, failureExitCode: number): Promise<{ stdout: string; stderr: string; artifact: string }> {
   const resolved = executable(command);
   const result = await runner.run(resolved.file, [...resolved.args, ...args], { cwd: root, env: process.env });
-  const artifact = writeArtifact(id, `child-${String(++childSequence).padStart(3, "0")}-${phase}.log`, `$ ${command} ${args.join(" ")}\nexit=${result.exitCode}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
+  const artifact = writeArtifact(id, `child-${String(++childSequence).padStart(3, "0")}-${phase}.log`, `$ ${command} ${args.join(" ")}\nexit=${result.exitCode}\nstdout:\n${sanitizeStructuredOutput(result.stdout)}\nstderr:\n${sanitizeStructuredOutput(result.stderr)}`);
   if (result.exitCode !== 0) throw new MusicCommandError(`${command} ${args.join(" ")} failed with exit ${result.exitCode}; see ${artifact}`, phase, failureExitCode);
   return { ...result, artifact };
 }
@@ -281,7 +314,7 @@ async function executeCommand(id: string, parsed: ParsedArgs): Promise<RunResult
     const result = await runChild(id, "docker", ["compose", "-p", MUSIC_COMPOSE_PROJECT, "-f", composeFile, "up", ...(parsed.detach ? ["--detach"] : []), ...(parsed.wait ? ["--wait"] : [])], "up", EXIT.dependency);
     return { status: "success", phase: "up", exitCode: EXIT.success, artifacts: [...compose.artifacts, result.artifact] };
   }
-  if (parsed.command === "test:smoke") { const result = await runChild(id, "node", ["tunes/scripts/music-smoke.ts"], "smoke", EXIT.verification); return { status: "success", phase: "smoke", exitCode: EXIT.success, artifacts: [result.artifact] }; }
+  if (parsed.command === "test:smoke") { const result = await runChild(id, "npm", ["exec", "--silent", "--prefix", "tunes", "--", "tsx", "tunes/scripts/music-smoke.ts"], "smoke", EXIT.verification); return { status: "success", phase: "smoke", exitCode: EXIT.success, artifacts: [result.artifact] }; }
   if (parsed.command === "test:all") { const result = await runChild(id, "npm", ["test", "--prefix", "tunes"], "all-tests", EXIT.verification); return { status: "success", phase: "all-tests", exitCode: EXIT.success, artifacts: [result.artifact] }; }
   if (parsed.command === "down" || parsed.command === "db:reset") {
     const destructive = parsed.command === "db:reset" || parsed.volumes;
@@ -298,7 +331,7 @@ async function main(): Promise<number> {
   const id = runId(); const started = Date.now(); let parsed: ParsedArgs;
   try { parsed = parseArgs(process.argv.slice(2)); } catch (error) { const context = buildRunContext(); const failure = error instanceof MusicCommandError ? error : new MusicCommandError(redactedError(error), "arguments", EXIT.usage); return emit(id, "music", "human", started, context, { status: "failure", phase: failure.phase, exitCode: failure.exitCode, error: redactedError(failure) }); }
   if (parsed.command === "bootstrap") createTestEnv();
-  const context = buildRunContext();
+  const context = buildRunContext({ allowInvalidEnvironment: parsed.command === "doctor" });
   activeRun = { id, command: parsed.command, format: parsed.format, started, context };
   if (parsed.resume) { try { assertResume(parsed.resume, context); } catch (error) { const failure = error as MusicCommandError; return emit(id, parsed.command, parsed.format, started, context, { status: "failure", phase: failure.phase, exitCode: failure.exitCode, error: redactedError(failure) }); } }
   try { return emit(id, parsed.command, parsed.format, started, context, await executeCommand(id, parsed)); }
@@ -309,10 +342,17 @@ async function main(): Promise<number> {
 async function interrupted(): Promise<void> {
   if (!activeRun) process.exit(EXIT.interrupted);
   const run = activeRun;
-  await runner.terminateAll();
-  const checkpoint = writeCheckpoint(run.id, run.context, { status: "failure", phase: "interrupted", exitCode: EXIT.interrupted });
+  let checkpoint = "";
+  await terminateBeforeCheckpoint(
+    () => runner.terminateAll(),
+    () => { checkpoint = writeCheckpoint(run.id, run.context, { status: "failure", phase: "interrupted", exitCode: EXIT.interrupted }); },
+  );
   emit(run.id, run.command, run.format, run.started, run.context, { status: "failure", phase: "interrupted", exitCode: EXIT.interrupted, checkpoint });
   process.exit(EXIT.interrupted);
+}
+export async function terminateBeforeCheckpoint(terminate: () => Promise<void>, checkpoint: () => void): Promise<void> {
+  await terminate();
+  checkpoint();
 }
 process.once("SIGINT", () => { void interrupted(); });
 process.once("SIGTERM", () => { void interrupted(); });

@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import ts from "typescript";
 
-interface RouteSurface { method: string; path: string; classification: string; ownerSource: string; policy: string; lifecycle: string; source: string; line: number; }
+export interface RouteSurface { method: string; path: string; classification: string; ownerSource: string; policy: string; lifecycle: string; source: string; line: number; }
 interface EventSurface { direction: "receive" | "emit"; event: string; policy: string; ownerSource: string; lifecycle: string; source: string; line: number; }
 interface JobSurface { kind: "setInterval" | "setTimeout"; lifecycle: string; source: string; line: number; }
 export interface RuntimeSurfaceInventory { schemaVersion: "music-runtime-surface-inventory/v1"; routes: RouteSurface[]; events: EventSurface[]; jobs: JobSurface[]; }
@@ -28,16 +28,32 @@ function policyFor(text: string): string {
 function classificationFor(path: string, policy: string): string {
   if (path === "/graphql" || path.includes("strapi/graphql")) return "service-token-proxy";
   if (["/api/login", "/api/logout", "/api/check", "/api/csrf-token"].includes(path)) return "native-session";
-  return policy === "none" ? "public" : "authenticated";
+  if (path.startsWith("/api/admin/")) return "admin-handler-review-required";
+  if (policy !== "none") return "authenticated";
+  if (["/api/playlist/:guestUrl", "/robots.txt", "/sitemap.xml", "/api/explorers-sitemap.xml", "/itunes-api/search"].includes(path)) return "public";
+  if (/:(?:userId|username|sessionId)\b/.test(path) || path === "/api/auth/sync") return "owner-handler-review-required";
+  return "handler-authorization-unknown";
 }
 
 function ownerFor(path: string, policy: string): string {
+  if (path.startsWith("/api/admin/")) return /:userId\b/.test(path) ? "authenticated-admin-principal+path.userId" : "authenticated-admin-principal";
   if (path === "/api/auth/sync") return "request.body.strapiUser";
   if (path.includes(":guestUrl")) return "path.guestUrl";
   if (path.includes(":userId")) return "path.userId";
   if (path.includes(":username")) return "path.username";
   if (path.includes(":sessionId")) return "path.sessionId";
   return policy === "none" ? "handler-derived-or-none" : "authenticated-principal";
+}
+
+export function assertNoUnclassifiedSensitiveSurfaces(routes: RouteSurface[]): void {
+  for (const route of routes) {
+    const admin = route.path.startsWith("/api/admin/");
+    const owner = /:(?:userId|username|sessionId)\b/.test(route.path) || route.path === "/api/auth/sync";
+    if ((admin && (route.classification !== "admin-handler-review-required" || !route.ownerSource.includes("admin-principal"))) ||
+        (owner && !admin && route.classification === "handler-authorization-unknown")) {
+      throw new Error(`unclassified sensitive surface ${route.method} ${route.path}`);
+    }
+  }
 }
 
 function lifecycleFor(path: string, method: string): string {
@@ -65,8 +81,12 @@ export function inventoryRuntimeSurfaces(repositoryRoot: string): RuntimeSurface
           const path = literal(node.arguments[0]);
           if (["get", "post", "put", "patch", "delete", "use"].includes(method) && path?.startsWith("/")) {
             const middleware = node.arguments.slice(1, -1).map((argument) => argument.getText(sourceFile)).join(" ");
-            const policy = policyFor(middleware);
-            routes.push({ method: method.toUpperCase(), path, classification: classificationFor(path, policy), ownerSource: ownerFor(path, policy), policy, lifecycle: lifecycleFor(path, method.toUpperCase()), source, line });
+            const routePolicy = policyFor(middleware);
+            const classification = classificationFor(path, routePolicy);
+            let policy = routePolicy;
+            if (classification === "public") policy = "explicit-public-contract";
+            else if (policy === "none") policy = "handler-level-unverified";
+            routes.push({ method: method.toUpperCase(), path, classification, ownerSource: ownerFor(path, routePolicy), policy, lifecycle: lifecycleFor(path, method.toUpperCase()), source, line });
           }
           const event = literal(node.arguments[0]);
           if ((method === "on" || method === "emit") && event && /^(?:io|socket|this\.io)/.test(target)) {
@@ -81,6 +101,7 @@ export function inventoryRuntimeSurfaces(repositoryRoot: string): RuntimeSurface
     visit(sourceFile);
   }
   const compare = (left: { source: string; line: number }, right: { source: string; line: number }) => left.source.localeCompare(right.source) || left.line - right.line;
+  assertNoUnclassifiedSensitiveSurfaces(routes);
   return { schemaVersion: "music-runtime-surface-inventory/v1", routes: routes.sort(compare), events: events.sort(compare), jobs: jobs.sort(compare) };
 }
 

@@ -2,9 +2,9 @@ const endpoints = [
   ["strapi health", "http://127.0.0.1:51337/health"],
   ["strapi identity", "http://127.0.0.1:51337/api/users/me"],
   ["strapi accounts", "http://127.0.0.1:51337/api/accounts"],
-  ["tunes health", "http://127.0.0.1:55000/health"],
-  ["tunes identity projection", "http://127.0.0.1:55000/api/smoke"],
-  ["explorers health", "http://127.0.0.1:55173/health"],
+  ["Tunes application Strapi/PostgreSQL readiness", "http://127.0.0.1:55000/api/music-fixture/readiness"],
+  ["Explorers application", "http://127.0.0.1:55173/"],
+  ["Explorers-to-Tunes application path", "http://127.0.0.1:55173/api/music-fixture/readiness"],
 ] as const;
 
 export {};

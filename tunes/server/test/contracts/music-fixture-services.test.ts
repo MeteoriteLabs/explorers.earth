@@ -5,7 +5,7 @@ describe("deterministic Music fixture services", () => {
   it("serves the repository-shaped Strapi current-user contract", () => {
     // Production break caught: fixture Strapi reports only version metadata, so
     // smoke tests never exercise identity, Account, lifecycle, or entitlement.
-    expect(fixtureResponse("strapi", "/api/users/me")).toMatchObject({
+    expect(fixtureResponse("/api/users/me")).toMatchObject({
       status: 200,
       body: {
         documentId: "fixture-user-document-id",

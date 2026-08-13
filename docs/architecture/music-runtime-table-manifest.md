@@ -63,7 +63,12 @@ The generated route/event/job matrix is committed at
 discovered method/path or event, public/native/service classification, owner
 source, middleware/policy, lifecycle, source file, and line. It is regenerated
 by `tunes/scripts/inventory-runtime-surfaces.ts` and equality-tested against a
-fresh repository scan. Registered REST sources include `auth.ts`
+fresh repository scan. Only a small reviewed allowlist is classified public;
+missing route middleware is `handler-authorization-unknown`, owner-bearing
+surfaces are `owner-handler-review-required`, and admin paths are
+`admin-handler-review-required` rather than inferred public. Generation fails
+if an owner/admin surface lacks its explicit risk classification. Registered
+REST sources include `auth.ts`
 (login/register/logout/check/CSRF),
 `auth-bridge-routes.ts` (sync/user-data/onboarding), `user-routes.ts`
 (user/devices), `legacy-routes.ts` (playlists, queue, public guest playlists,

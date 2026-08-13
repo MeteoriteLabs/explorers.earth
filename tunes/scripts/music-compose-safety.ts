@@ -4,7 +4,12 @@ export const MUSIC_FIXTURE_LABELS = {
   "com.explorers.music.project": MUSIC_COMPOSE_PROJECT,
 } as const;
 
-interface ComposeResource { labels?: Record<string, string> | string[]; }
+interface ComposeResource {
+  labels?: Record<string, string> | string[];
+  image?: string;
+  command?: string | string[];
+  build?: { context?: string; dockerfile?: string };
+}
 export interface ComposeModel {
   name?: string;
   services?: Record<string, ComposeResource>;
@@ -30,6 +35,12 @@ export function validateComposeModel(model: ComposeModel): void {
   for (const [name, network] of Object.entries(model.networks ?? {})) assertFixtureLabels("network", name, network);
   for (const [name, volume] of Object.entries(model.volumes ?? {})) assertFixtureLabels("volume", name, volume);
   for (const service of ["postgres", "strapi", "tunes", "explorers"]) if (!model.services?.[service]) throw new Error(`Compose model is missing required service ${service}`);
+  const tunes = model.services?.tunes;
+  const explorers = model.services?.explorers;
+  const normalizedTunesContext = tunes?.build?.context?.replaceAll("\\", "/");
+  const normalizedExplorersContext = explorers?.build?.context?.replaceAll("\\", "/");
+  if (!normalizedTunesContext?.endsWith("/tunes") || tunes?.build?.dockerfile !== "Dockerfile") throw new Error("tunes must build the actual application");
+  if (!normalizedExplorersContext?.endsWith("/explorers-earth") || explorers?.build?.dockerfile !== "Dockerfile") throw new Error("explorers must build the actual application");
   if (!Object.keys(model.networks ?? {}).length) throw new Error("Compose model has no labeled network");
   if (!Object.keys(model.volumes ?? {}).length) throw new Error("Compose model has no labeled volume");
 }

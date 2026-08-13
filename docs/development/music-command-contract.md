@@ -6,6 +6,11 @@ command. JSON is a single final object with `schemaVersion`, `command`,
 `runId`, `status`, `phase`, `durationMs`, `artifacts`, `checkpoint`, and a
 redacted `error` when present.
 
+The documented public JSON invocation is `npm run --silent <music-command> --
+--format json`. The root scripts use the Tunes-installed `tsx` runtime, which is
+supported at the repository's pinned minimum Node 22.12.0; do not invoke the
+TypeScript entrypoint with bare `node`.
+
 | Exit | Meaning |
 | --- | --- |
 | 0 | successful verification/action |

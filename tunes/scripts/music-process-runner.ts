@@ -31,6 +31,12 @@ export class OwnedProcessRunner {
     const children = [...this.children];
     await Promise.all(children.map(async (child) => {
       if (!child.pid) return;
+      const closed = child.exitCode !== null || child.signalCode !== null
+        ? Promise.resolve()
+        : new Promise<void>((resolveClosed) => {
+            child.once("close", () => resolveClosed());
+            child.once("error", () => resolveClosed());
+          });
       if (process.platform === "win32") {
         await new Promise<void>((resolve) => {
           const killer = spawn("taskkill.exe", ["/PID", String(child.pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" });
@@ -40,6 +46,7 @@ export class OwnedProcessRunner {
       } else {
         try { process.kill(-child.pid, "SIGTERM"); } catch { child.kill("SIGTERM"); }
       }
+      await closed;
     }));
   }
 }

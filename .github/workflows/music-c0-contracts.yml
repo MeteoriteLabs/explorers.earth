@@ -36,6 +36,8 @@ jobs:
           cache: npm
           cache-dependency-path: tunes/package-lock.json
       - run: npm ci --prefix tunes
+      - name: Prove public JSON command on Node 22.12
+        run: npm run --silent music:fixtures:capture -- --format json
       - run: npm test --prefix tunes -- --run server/test/contracts
       - run: npm run music:types:scoped
       - run: npm run music:types:baseline

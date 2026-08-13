@@ -19,8 +19,16 @@ import { setupEmailRoutes } from "./emailRoutes";
 import { setupPageRoutes } from "./pageRoutes";
 import { setupReactivationRoutes } from "./reactivationRoutes";
 import scrapeRoutes from "./scrapeRoutes";
+import { setupMusicFixtureProbeRoute } from "./musicFixtureProbe";
+import { pool } from "../db";
 
 export function registerRoutes(app: Express, _storage: IStorage): Server {
+  if (process.env.MUSIC_MODE === "fixture") setupMusicFixtureProbeRoute(app, {
+    mode: "fixture",
+    databaseQuery: (sql) => pool.query(sql),
+    strapiUrl: process.env.STRAPI_URL ?? "",
+    fetchImpl: fetch,
+  });
   setupSwagger(app);
 
   setupAuthRoutes(app);
