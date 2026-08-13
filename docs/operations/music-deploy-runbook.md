@@ -40,7 +40,7 @@ absent or different, or `main` is not protected.
 
 ## C3 same-image migration gate
 
-`0005_resource_bound_deletion_history` is the exact expected migration ID. The candidate
+`0006_numeric_identity_lock` is the exact expected migration ID. The candidate
 image contains the ordered SQL files and `run-migration-gate.js`; the one-shot
 gate takes the PostgreSQL advisory lock, verifies the checksum journal and
 catalog fingerprint, applies pending migrations transactionally, and writes an
@@ -55,7 +55,7 @@ Liveness remains process-only. The secure image ledger can retain historical
 `containment-no-schema-change` entries for audit and the permanent security
 floor, but they cease to be rollback targets as soon as the real C3 gate has
 migrated the database. All new images use
-`0005_resource_bound_deletion_history` and the
+`0006_numeric_identity_lock` and the
 real migration gate. Because production catalog/row-count and restore evidence
 are still absent, an existing unversioned database is a conflict: there is no
 automatic baseline adoption, username/email matching, or authorized production
@@ -64,8 +64,12 @@ migration path. `GATE_PROD` remains closed.
 Deletion replay is resource-bound at this schema epoch: finalized lifecycle and
 tombstone history records the retired numeric `users.id` without a foreign key
 to the removed row. A replay succeeds only for the exact numeric user ID and
-operation ID pair. The ID column is immutable, the user sequence is non-cycling,
-and the insert trigger rejects explicit reuse of a retired numeric ID.
+operation ID pair. The ID column is immutable and the user sequence is
+non-cycling. Every user insert and authorized deletion takes the same
+external-user, selected-Account, then numeric-user advisory-lock order before a
+row or unique-index lock; the insert trigger rechecks retired numeric IDs after
+that serialization. Explicit IDs and a reset sequence therefore cannot race a
+committing deletion or reuse a retired ID.
 
 ## Transaction and rollback authority
 
@@ -96,7 +100,22 @@ the general route while every future rollback must use the exact current
 migration marker. The gate-running digest need not have been promoted: this
 authority records the conservative schema epoch and gate provenance, while
 secure history remains the rollback allowlist. Missing, mismatched, malformed,
-or tampered schema-epoch authority fails closed before Docker.
+or tampered schema-epoch authority fails closed before Docker. Marker parsing
+is versioned rather than coupled only to the newest image. The known ordered
+authority is `containment-no-schema-change`, then migrations `0002` through
+`0006`; authenticated historical rows remain byte-exact and valid, while an
+unknown marker or decreasing ledger/epoch rank fails closed. The executable
+conservatively adopts only two pre-epoch formats: a signed
+state/ledger ending at `0002` with no compatibility file, or the exact historical
+`music-schema-floor-v1` five-field HMAC record for `0003`. A missing `0003`
+floor, an unsigned partial file, or any reinterpreted v1 field fails before
+Docker. The candidate compatibility listener and exact-path denial route are
+installed before either format is upgraded directly to pending `0006`.
+For an upgrade, the higher signed epoch is written first and recovered only in that monotonic
+direction, then the signed floor advances to `pending` before the gate. From
+that point, older-marker rollback is rejected before Docker. Gate failure
+retains the pending epoch and compatibility route so the exact candidate can
+retry; success advances the same marker to `current`.
 The checked-in `music-hmac.mjs` helper reads the mode-0600 HMAC key path directly
 with Node's crypto API. Key bytes never enter a child-process argument, exported
 environment variable, or log. Node 22 is therefore a deployment-control runtime

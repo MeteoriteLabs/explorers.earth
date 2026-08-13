@@ -1,5 +1,10 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { EXPECTED_MUSIC_MIGRATION_ID, LEGACY_CONTAINMENT_MIGRATION_MARKER } from "../../shared/music-migration-contract";
+import {
+  DEPLOYABLE_MUSIC_MIGRATION_MARKERS,
+  EXPECTED_MUSIC_MIGRATION_ID,
+  LEGACY_CONTAINMENT_MIGRATION_MARKER,
+  type DeployableMusicMigrationMarker,
+} from "../../shared/music-migration-contract";
 
 export const CONTAINMENT_MIGRATION_MARKER = LEGACY_CONTAINMENT_MIGRATION_MARKER;
 export const CURRENT_MIGRATION_MARKER = EXPECTED_MUSIC_MIGRATION_ID;
@@ -9,7 +14,7 @@ export const LEGACY_GATE_KIND = "music-containment-deployment-gate-v1" as const;
 export interface ImageCandidate {
   digest: string;
   commit: string;
-  migrationMarker: typeof CONTAINMENT_MIGRATION_MARKER | typeof CURRENT_MIGRATION_MARKER;
+  migrationMarker: DeployableMusicMigrationMarker;
 }
 
 export interface GateAttestation extends ImageCandidate {
@@ -41,7 +46,7 @@ export interface DeploymentRuntime {
 function assertImageCandidate(image: ImageCandidate): void {
   if (!/^sha256:[a-f0-9]{64}$/.test(image.digest)) throw new Error("image digest must be immutable sha256");
   if (!/^[a-f0-9]{40}$/.test(image.commit)) throw new Error("image commit must be a full git SHA");
-  if (![CONTAINMENT_MIGRATION_MARKER, CURRENT_MIGRATION_MARKER].includes(image.migrationMarker)) {
+  if (!(DEPLOYABLE_MUSIC_MIGRATION_MARKERS as readonly string[]).includes(image.migrationMarker)) {
     throw new Error(`unsupported migration marker ${image.migrationMarker}`);
   }
 }

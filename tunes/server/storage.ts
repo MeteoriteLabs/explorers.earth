@@ -815,8 +815,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteUser(id: number, requestedOperationId?: string): Promise<MusicIdentityDeletionResult> {
-    // Keep selection, saga validation, dependent cleanup, and finalization in
-    // one transaction. The identity advisory locks precede the row lock to
+    // Keep selection, saga validation, cleanup, and finalization in one transaction; identity locks
     // preserve the database primitive's global lock order. A prepared deletion
     // owns its operation ID; callers may replay it but cannot substitute one.
     // Active administrative deletion gets an unpredictable internal ID. The
@@ -844,6 +843,7 @@ export class DatabaseStorage implements IStorage {
         }
         await connection.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`music:user:${initialIdentity.strapi_user_document_id}`]);
         await connection.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`music:account:${initialIdentity.strapi_account_document_id}`]);
+        await connection.query("SELECT lock_music_numeric_user_id($1::integer)", [id]);
         const identity = (await connection.query(`SELECT identity_status,session_version,lifecycle_operation_id
           FROM users WHERE id=$1 FOR UPDATE`, [id])).rows[0];
         if (!identity) throw new LifecycleOperationConflictError();

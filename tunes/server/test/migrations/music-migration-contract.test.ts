@@ -2,7 +2,11 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { createRequire } from "node:module";
-import { EXPECTED_MUSIC_MIGRATION_ID } from "../../../shared/music-migration-contract";
+import {
+  DEPLOYABLE_MUSIC_MIGRATION_MARKERS,
+  EXPECTED_MUSIC_MIGRATION_ID,
+  musicMigrationMarkerRank,
+} from "../../../shared/music-migration-contract";
 import {
   createMigrationDefinition,
   loadMusicMigrations,
@@ -24,10 +28,24 @@ describe("Music migration authority contracts", () => {
       "0003_identity_lifecycle_hardening",
       "0004_identity_delete_saga",
       "0005_resource_bound_deletion_history",
+      "0006_numeric_identity_lock",
     ]);
     expect(EXPECTED_MUSIC_MIGRATION_ID).toBe(migrations.at(-1)?.id);
     expect(migrations.every(({ checksum }) => /^[a-f0-9]{64}$/.test(checksum))).toBe(true);
     expect(() => loadMusicMigrations(resolve(repositoryRoot, "tunes/server/test/fixtures/migrations-missing"))).toThrow();
+  });
+
+  it("defines one explicit ordered deployment marker authority", () => {
+    expect(DEPLOYABLE_MUSIC_MIGRATION_MARKERS).toEqual([
+      "containment-no-schema-change",
+      "0002_identity_lifecycle",
+      "0003_identity_lifecycle_hardening",
+      "0004_identity_delete_saga",
+      "0005_resource_bound_deletion_history",
+      "0006_numeric_identity_lock",
+    ]);
+    expect(DEPLOYABLE_MUSIC_MIGRATION_MARKERS.map(musicMigrationMarkerRank)).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(musicMigrationMarkerRank("9999_unknown")).toBeUndefined();
   });
 
   it("declares every manifested runtime table and the durable identity tombstone", () => {
@@ -126,7 +144,7 @@ describe("Music migration authority contracts", () => {
 
   it("rejects any non-production chain before opening a database connection", async () => {
     const production = loadMusicMigrations(resolve(repositoryRoot, "tunes/migrations"));
-    const appended = createMigrationDefinition("0006_unapproved", "SELECT 1;\n");
+    const appended = createMigrationDefinition("0007_unapproved", "SELECT 1;\n");
     const connect = vi.fn();
     await expect(migrateMusicDatabase({ connect } as never, { migrations: [...production, appended] }))
       .rejects.toThrow(/exact production migration chain/i);

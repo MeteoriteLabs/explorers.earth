@@ -32,6 +32,8 @@ interface RunOptions {
   slot?: "blue" | "green";
   candidateReadinessFailure?: boolean;
   gateCommittedCrash?: boolean;
+  gateFailure?: boolean;
+  expectedMarkerOverride?: string;
 }
 
 describe("checked-in production Music deploy executable", () => {
@@ -80,6 +82,10 @@ if [[ "$*" == *" compose "* || "$1" == "compose" ]]; then
     printf 'database migration committed before gate process loss\n' >> "$MUSIC_DEPLOY_TEST_EVENT_LOG"
     exit 99
   fi
+  if [[ "\${MUSIC_DEPLOY_TEST_GATE_FAILURE:-}" == 1 && "$*" == *"tunes-gate"* ]]; then
+    printf 'database migration gate failed before commit\n' >> "$MUSIC_DEPLOY_TEST_EVENT_LOG"
+    exit 74
+  fi
   if [[ "\${MUSIC_DEPLOY_TEST_READINESS_FAILURE:-}" == 1 \
     && ( "$*" == *" exec -T tunes-blue "* || "$*" == *" exec -T tunes-green "* ) ]]; then exit 75; fi
   if [[ "$*" == *" up "* ]] && grep -Fq "http://\${service}:5000" "$route"; then
@@ -106,7 +112,7 @@ if [[ "\${!#}" == "https://localtunes.earth/" ]]; then grep -Fq 'http://legacy-t
 grep -Fq "http://tunes-$MUSIC_DEPLOY_TEST_SLOT:5000" "$MUSIC_DEPLOY_ROOT/deployment-routing/music-router.yml"
 if [[ "\${MUSIC_DEPLOY_TEST_PUBLIC_RESPONSE_MODE:-}" == nonzero ]]; then printf '${publicResponseSentinel}'; exit 22; fi
 if [[ "\${MUSIC_DEPLOY_TEST_PUBLIC_RESPONSE_MODE:-}" == invalid-json ]]; then printf '${publicResponseSentinel}'; exit 0; fi
-printf '{"ready":true,"digest":"%s","commit":"%s","migrationMarker":"0005_resource_bound_deletion_history"}\\n' "$MUSIC_DEPLOY_TEST_DIGEST" "$MUSIC_DEPLOY_TEST_COMMIT"
+printf '{"ready":true,"digest":"%s","commit":"%s","migrationMarker":"%s"}\\n' "$MUSIC_DEPLOY_TEST_DIGEST" "$MUSIC_DEPLOY_TEST_COMMIT" "$MUSIC_DEPLOY_TEST_CURRENT_MARKER"
 `;
     const node = `#!/usr/bin/env bash
 set -euo pipefail
@@ -161,6 +167,9 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
         MUSIC_DEPLOY_TEST_PUBLIC_RESPONSE_MODE: options.publicResponseMode ?? "",
         MUSIC_DEPLOY_TEST_READINESS_FAILURE: options.candidateReadinessFailure ? "1" : "0",
         MUSIC_DEPLOY_TEST_GATE_COMMITTED_CRASH: options.gateCommittedCrash ? "1" : "0",
+        MUSIC_DEPLOY_TEST_GATE_FAILURE: options.gateFailure ? "1" : "0",
+        MUSIC_DEPLOY_TEST_CURRENT_MARKER: options.expectedMarkerOverride ?? "0006_numeric_identity_lock",
+        MUSIC_DEPLOY_TEST_CURRENT_MARKER_OVERRIDE: options.expectedMarkerOverride ?? "",
         MUSIC_DEPLOY_TEST_READINESS_ATTEMPTS: options.candidateReadinessFailure ? "1" : "30",
         MUSIC_DEPLOY_TEST_REAL_NODE: shellPath(process.execPath),
         MUSIC_DEPLOY_TEST_NODE_ARGV_LOG: shellPath(join(sandbox, "node-argv.log")),
@@ -200,6 +209,214 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     ].join("\t") + "\n");
     writeFileSync(join(root, "deployment-routing/music-router.yml"), "http:\n  routers:\n    tunes:\n      service: tunes-active\n  services:\n    tunes-active:\n      loadBalancer:\n        servers:\n          - url: http://tunes-blue:5000\n");
   }
+
+  function seedVersionedAuthority(marker: string) {
+    bootstrap();
+    const priorDigest = digest("a");
+    const priorCommit = commit("a");
+    const ledgerPayload = ["music-ledger-v2", repository, "1", priorDigest, priorCommit, marker, "GENESIS"].join("\t");
+    writeFileSync(join(root, "deployment-state/secure-images.tsv"), [
+      "music-ledger-v2", "1", priorDigest, priorCommit, marker, "GENESIS",
+      createHmac("sha256", hmacSentinel).update(ledgerPayload).digest("hex"),
+    ].join("\t") + "\n");
+    for (const [relativePath, schema] of [
+      ["deployment-state/music-schema-floor.tsv", "music-schema-floor-v2"],
+      ["deployment-transactions/schema-epoch.tsv", "music-schema-epoch-v1"],
+    ] as const) {
+      const payload = [schema, repository, priorDigest, priorCommit, marker, "current"].join("\t");
+      writeFileSync(join(root, relativePath), [
+        schema, priorDigest, priorCommit, marker, "current",
+        createHmac("sha256", hmacSentinel).update(payload).digest("hex"),
+      ].join("\t") + "\n");
+    }
+    writeFileSync(eventLog, "");
+  }
+
+  function seedHistoricalAuthority(marker: string) {
+    seedVersionedAuthority(marker);
+    if (marker === "0002_identity_lifecycle") {
+      rmSync(join(root, "deployment-state/music-schema-floor.tsv"));
+      rmSync(join(root, "deployment-transactions/schema-epoch.tsv"));
+    } else if (marker === "0003_identity_lifecycle_hardening") {
+      const schema = "music-schema-floor-v1";
+      const payload = [schema, repository, digest("a"), commit("a"), marker].join("\t");
+      writeFileSync(join(root, "deployment-state/music-schema-floor.tsv"), [
+        schema, digest("a"), commit("a"), marker,
+        createHmac("sha256", hmacSentinel).update(payload).digest("hex"),
+      ].join("\t") + "\n");
+      rmSync(join(root, "deployment-transactions/schema-epoch.tsv"));
+    }
+    if (marker === "0002_identity_lifecycle" || marker === "0003_identity_lifecycle_hardening") {
+      writeFileSync(join(root, "deployment-routing/music-router.yml"), "http:\n  routers:\n    tunes:\n      service: tunes-active\n  services:\n    tunes-active:\n      loadBalancer:\n        servers:\n          - url: http://tunes-blue:5000\n");
+    }
+    writeFileSync(eventLog, "");
+  }
+
+  it("upgrades authenticated 0004 deployment authority to 0005 without rewriting history", () => {
+    seedVersionedAuthority("0004_identity_delete_saga");
+    const historicalLedger = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8");
+
+    const result = run("deploy", digest("b"), commit("b"), {
+      expectedMarkerOverride: "0005_resource_bound_deletion_history",
+    });
+
+    expect(result.status, result.stderr).toBe(0);
+    const upgradedLedger = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8");
+    expect(upgradedLedger.startsWith(historicalLedger)).toBe(true);
+    expect(upgradedLedger).toContain("0005_resource_bound_deletion_history");
+    expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
+      .toContain("\t0005_resource_bound_deletion_history\tcurrent\t");
+    expect(readFileSync(join(root, "deployment-transactions/schema-epoch.tsv"), "utf8"))
+      .toContain("\t0005_resource_bound_deletion_history\tcurrent\t");
+  }, 20_000);
+
+  it.each([
+    "containment-no-schema-change",
+    "0002_identity_lifecycle",
+    "0003_identity_lifecycle_hardening",
+    "0004_identity_delete_saga",
+    "0005_resource_bound_deletion_history",
+  ])("upgrades authenticated historical marker %s directly to production 0006", (historicalMarker) => {
+    if (historicalMarker === "containment-no-schema-change") seedLegacyAuthority();
+    else seedHistoricalAuthority(historicalMarker);
+    const historicalLedger = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8");
+
+    const interrupted = run("deploy", digest("b"), commit("b"), { failpoint: "after_epoch_before_gate" });
+    expect(interrupted.status).toBe(99);
+    expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
+      .toContain("\t0006_numeric_identity_lock\tpending\t");
+    expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8")).toBe(historicalLedger);
+
+    writeFileSync(eventLog, "");
+    const refused = run("rollback", digest("a"), "-");
+    expect(refused.status).not.toBe(0);
+    expect(refused.stderr).toMatch(/schema compatibility floor/i);
+    expect(readFileSync(eventLog, "utf8")).toBe("");
+
+    const recovered = run("deploy", digest("b"), commit("b"));
+    expect(recovered.status, recovered.stderr).toBe(0);
+    expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").startsWith(historicalLedger)).toBe(true);
+    expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
+      .toContain("\t0006_numeric_identity_lock\tcurrent\t");
+  }, 40_000);
+
+  it.each([
+    ["0003 missing its historical floor", () => {
+      seedHistoricalAuthority("0003_identity_lifecycle_hardening");
+      rmSync(join(root, "deployment-state/music-schema-floor.tsv"));
+    }],
+    ["0002 with an unsigned partial floor", () => {
+      seedHistoricalAuthority("0002_identity_lifecycle");
+      writeFileSync(join(root, "deployment-state/music-schema-floor.tsv"),
+        `music-schema-floor-v1\t${digest("a")}\t${commit("a")}\t0002_identity_lifecycle\n`);
+    }],
+  ])("refuses %s before Docker", (_case, arrange) => {
+    arrange();
+    writeFileSync(eventLog, "");
+    const result = run("deploy", digest("b"), commit("b"));
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toMatch(/schema compatibility floor (missing|malformed)/i);
+    expect(readFileSync(eventLog, "utf8")).toBe("");
+  }, 20_000);
+
+  it("does not adopt a valid v1 floor until signed state and ledger validate", () => {
+    seedHistoricalAuthority("0003_identity_lifecycle_hardening");
+    const state = join(root, "deployment-state/music-state.tsv");
+    const bytes = readFileSync(state, "utf8");
+    writeFileSync(state, bytes.replace(/([a-f0-9])(\r?\n)?$/, (_match, last, ending) =>
+      `${last === "0" ? "1" : "0"}${ending ?? ""}`));
+    writeFileSync(eventLog, "");
+
+    const result = run("deploy", digest("b"), commit("b"));
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toMatch(/deployment state (HMAC mismatch|malformed)/);
+    expect(existsSync(join(root, "deployment-transactions/schema-epoch.tsv"))).toBe(false);
+    expect(readFileSync(eventLog, "utf8")).toBe("");
+  }, 20_000);
+
+  it.each([
+    ["before pending", { failpoint: "before_epoch" }, false],
+    ["after pending", { failpoint: "after_epoch_before_gate" }, true],
+    ["gate failure", { gateFailure: true }, true],
+    ["database committed before gate return", { gateCommittedCrash: true }, true],
+    ["after current", { failpoint: "after_current_floor" }, true],
+  ] as const)("recovers a 0004 to 0005 authority upgrade failure %s monotonically", (_label, failure, crossedPending) => {
+    seedVersionedAuthority("0004_identity_delete_saga");
+    const historicalLedger = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8");
+    const failed = run("deploy", digest("b"), commit("b"), {
+      ...failure,
+      expectedMarkerOverride: "0005_resource_bound_deletion_history",
+    });
+    expect(failed.status).not.toBe(0);
+    expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8")).toBe(historicalLedger);
+    const schemaFloor = readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8");
+    expect(schemaFloor).toContain(crossedPending
+      ? "\t0005_resource_bound_deletion_history\t"
+      : "\t0004_identity_delete_saga\tcurrent\t");
+
+    if (crossedPending) {
+      writeFileSync(eventLog, "");
+      const refused = run("rollback", digest("a"), "-", {
+        expectedMarkerOverride: "0005_resource_bound_deletion_history",
+      });
+      expect(refused.status).not.toBe(0);
+      expect(refused.stderr).toMatch(/schema compatibility floor/i);
+      expect(readFileSync(eventLog, "utf8")).toBe("");
+    }
+
+    const recovered = run("deploy", digest("b"), commit("b"), {
+      expectedMarkerOverride: "0005_resource_bound_deletion_history",
+    });
+    expect(recovered.status, recovered.stderr).toBe(0);
+    expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").startsWith(historicalLedger)).toBe(true);
+    expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
+      .toContain("\t0005_resource_bound_deletion_history\tcurrent\t");
+  }, 30_000);
+
+  it("rejects authenticated unknown and marker-downgraded authorities before Docker", () => {
+    seedVersionedAuthority("0004_identity_delete_saga");
+    const epochPath = join(root, "deployment-transactions/schema-epoch.tsv");
+    const floorPath = join(root, "deployment-state/music-schema-floor.tsv");
+    const originalEpoch = readFileSync(epochPath, "utf8");
+    const originalFloor = readFileSync(floorPath, "utf8");
+
+    const floorSchema = "music-schema-floor-v2";
+    const floorPayload = [floorSchema, repository, digest("a"), commit("a"), "0005_resource_bound_deletion_history", "current"].join("\t");
+    writeFileSync(floorPath, [floorSchema, digest("a"), commit("a"), "0005_resource_bound_deletion_history", "current",
+      createHmac("sha256", hmacSentinel).update(floorPayload).digest("hex")].join("\t") + "\n");
+    writeFileSync(eventLog, "");
+    const downgrade = run("deploy", digest("b"), commit("b"));
+    expect(downgrade.status).not.toBe(0);
+    expect(downgrade.stderr).toMatch(/downgrade|reordered/i);
+    expect(readFileSync(eventLog, "utf8")).toBe("");
+
+    const epochSchema = "music-schema-epoch-v1";
+    const unknown = "9999_unknown_marker";
+    const epochPayload = [epochSchema, repository, digest("a"), commit("a"), unknown, "current"].join("\t");
+    writeFileSync(epochPath, [epochSchema, digest("a"), commit("a"), unknown, "current",
+      createHmac("sha256", hmacSentinel).update(epochPayload).digest("hex")].join("\t") + "\n");
+    const unknownResult = run("deploy", digest("b"), commit("b"));
+    expect(unknownResult.status).not.toBe(0);
+    expect(unknownResult.stderr).toMatch(/unknown migration marker/i);
+    expect(readFileSync(eventLog, "utf8")).toBe("");
+
+    writeFileSync(epochPath, originalEpoch);
+    writeFileSync(floorPath, originalFloor);
+    const ledgerSchema = "music-ledger-v2";
+    const firstPayload = [ledgerSchema, repository, "1", digest("a"), commit("a"), "0005_resource_bound_deletion_history", "GENESIS"].join("\t");
+    const firstMac = createHmac("sha256", hmacSentinel).update(firstPayload).digest("hex");
+    const secondPayload = [ledgerSchema, repository, "2", digest("b"), commit("b"), "0004_identity_delete_saga", firstMac].join("\t");
+    const secondMac = createHmac("sha256", hmacSentinel).update(secondPayload).digest("hex");
+    writeFileSync(join(root, "deployment-state/secure-images.tsv"), [
+      [ledgerSchema, "1", digest("a"), commit("a"), "0005_resource_bound_deletion_history", "GENESIS", firstMac].join("\t"),
+      [ledgerSchema, "2", digest("b"), commit("b"), "0004_identity_delete_saga", firstMac, secondMac].join("\t"),
+      "",
+    ].join("\n"));
+    const reordered = run("deploy", digest("c"), commit("c"));
+    expect(reordered.status).not.toBe(0);
+    expect(reordered.stderr).toMatch(/ledger malformed or reordered/i);
+    expect(readFileSync(eventLog, "utf8")).toBe("");
+  }, 20_000);
 
   it("bootstraps through the exact executable with one visible route and signed state", () => {
     // Production break caught: the runbook diverges from production transaction behavior.
@@ -416,7 +633,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     // child process command line where another same-host process can read it.
     bootstrap();
     const row = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").trim().split("\t");
-    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0005_resource_bound_deletion_history", "GENESIS"].join("\t");
+    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0006_numeric_identity_lock", "GENESIS"].join("\t");
     expect(row[6]).toBe(createHmac("sha256", hmacSentinel).update(expectedPayload).digest("hex"));
 
     const deployed = run("deploy", digest("b"), commit("b"));
@@ -452,7 +669,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
       : join(root, "deployment-state", authority === "state" ? "music-state.tsv"
         : authority === "floor" ? "music-floor.tsv" : "music-schema-floor.tsv");
     const bytes = readFileSync(path, "utf8");
-    writeFileSync(path, bytes.replace(/[a-f0-9](\r?\n)?$/, "0$1"));
+    writeFileSync(path, bytes.replace(/([a-f0-9])(\r?\n)?$/, (_match, last, ending) => `${last === "0" ? "1" : "0"}${ending ?? ""}`));
     writeFileSync(eventLog, "");
     const result = run("deploy", digest("b"), commit("b"));
     expect(result.status).not.toBe(0);

@@ -7,17 +7,46 @@ readonly request_schema="music-deploy-request-v2"
 readonly state_schema="music-state-v2"
 readonly ledger_schema="music-ledger-v2"
 readonly floor_schema="music-floor-v1"
+readonly legacy_compatibility_floor_schema="music-schema-floor-v1"
 readonly compatibility_floor_schema="music-schema-floor-v2"
 readonly schema_epoch_schema="music-schema-epoch-v1"
 readonly journal_schema="music-transaction-v1"
 readonly legacy_marker="containment-no-schema-change"
-readonly current_marker="0005_resource_bound_deletion_history"
+readonly production_current_marker="0006_numeric_identity_lock"
+readonly -a known_markers=(
+  "$legacy_marker"
+  "0002_identity_lifecycle"
+  "0003_identity_lifecycle_hardening"
+  "0004_identity_delete_saga"
+  "0005_resource_bound_deletion_history"
+  "$production_current_marker"
+)
+current_marker="$production_current_marker"
+if [[ "${MUSIC_DEPLOY_TEST_MODE:-0}" == 1 && -n "${MUSIC_DEPLOY_TEST_CURRENT_MARKER_OVERRIDE:-}" ]]; then
+  current_marker="$MUSIC_DEPLOY_TEST_CURRENT_MARKER_OVERRIDE"
+fi
+readonly current_marker
 readonly minimum_containment_commit="d226f7e4dc5a54195a59804ec729f72b5e8f10d7"
 
 fail() {
   printf '%s\n' "$*" >&2
   exit 1
 }
+
+marker_rank() {
+  local candidate="$1" index
+  for index in "${!known_markers[@]}"; do
+    if [[ "${known_markers[index]}" == "$candidate" ]]; then
+      printf '%s\n' "$index"
+      return 0
+    fi
+  done
+  return 1
+}
+
+current_marker_rank="$(marker_rank "$current_marker")" || fail "current migration marker is unknown"
+[[ "$current_marker_rank" -gt 0 ]] || fail "current migration marker cannot be containment"
+readonly current_marker_rank
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "required command missing: $1"
@@ -187,14 +216,16 @@ validate_ledger() {
   ledger_seen=()
   ledger_last_mac=""
   local expected_sequence=1
-  local row schema sequence digest_value commit_value marker_value previous_mac mac extra expected_mac
+  local previous_marker_rank=-1
+  local row schema sequence digest_value commit_value marker_value marker_value_rank previous_mac mac extra expected_mac
   for row in "${ledger_rows[@]}"; do
     IFS=$'\t' read -r schema sequence digest_value commit_value marker_value previous_mac mac extra <<< "$row"
+    marker_value_rank="$(marker_rank "$marker_value")" || fail "secure ledger contains unknown migration marker"
     [[ "$schema" == "$ledger_schema" && -z "${extra:-}" \
       && "$sequence" == "$expected_sequence" \
       && "$digest_value" =~ ^sha256:[a-f0-9]{64}$ \
       && "$commit_value" =~ ^[a-f0-9]{40}$ \
-      && ( "$marker_value" == "$legacy_marker" || "$marker_value" == "$current_marker" ) \
+      && "$marker_value_rank" -ge "$previous_marker_rank" \
       && "$mac" =~ ^[a-f0-9]{64}$ ]] || fail "secure ledger malformed or reordered"
     if [[ "$expected_sequence" -eq 1 ]]; then
       [[ "$previous_mac" == GENESIS ]] || fail "secure ledger genesis mismatch"
@@ -209,6 +240,7 @@ validate_ledger() {
     ledger_commits+=("$commit_value")
     ledger_markers+=("$marker_value")
     ledger_last_mac="$mac"
+    previous_marker_rank="$marker_value_rank"
     expected_sequence=$((expected_sequence + 1))
   done
 }
@@ -233,65 +265,99 @@ validate_floor() {
 
 compatibility_floor_digest=""
 compatibility_floor_commit=""
+compatibility_floor_marker=""
+compatibility_floor_marker_rank=""
 compatibility_floor_state=""
+compatibility_floor_format=""
 validate_compatibility_floor() {
   require_regular_file "$compatibility_floor_file"
   mapfile -t compatibility_rows < "$compatibility_floor_file"
   [[ ${#compatibility_rows[@]} -eq 1 ]] || fail "schema compatibility floor malformed"
-  local schema marker mac extra expected_mac
-  IFS=$'\t' read -r schema compatibility_floor_digest compatibility_floor_commit marker compatibility_floor_state mac extra <<< "${compatibility_rows[0]}"
-  [[ "$schema" == "$compatibility_floor_schema" && -z "${extra:-}" \
-    && "$compatibility_floor_digest" =~ ^sha256:[a-f0-9]{64}$ \
+  local schema mac extra expected_mac
+  schema="${compatibility_rows[0]%%$'\t'*}"
+  if [[ "$schema" == "$legacy_compatibility_floor_schema" ]]; then
+    IFS=$'\t' read -r schema compatibility_floor_digest compatibility_floor_commit compatibility_floor_marker mac extra <<< "${compatibility_rows[0]}"
+    compatibility_floor_state=current
+    [[ -z "${extra:-}" && "$compatibility_floor_marker" == "0003_identity_lifecycle_hardening" ]] \
+      || fail "schema compatibility floor malformed"
+    expected_mac="$(hmac "$legacy_compatibility_floor_schema"$'\t'"$repository"$'\t'"$compatibility_floor_digest"$'\t'"$compatibility_floor_commit"$'\t'"$compatibility_floor_marker")"
+  elif [[ "$schema" == "$compatibility_floor_schema" ]]; then
+    IFS=$'\t' read -r schema compatibility_floor_digest compatibility_floor_commit compatibility_floor_marker compatibility_floor_state mac extra <<< "${compatibility_rows[0]}"
+    [[ -z "${extra:-}" && ( "$compatibility_floor_state" == pending || "$compatibility_floor_state" == current ) ]] \
+      || fail "schema compatibility floor malformed"
+    expected_mac="$(hmac "$compatibility_floor_schema"$'\t'"$repository"$'\t'"$compatibility_floor_digest"$'\t'"$compatibility_floor_commit"$'\t'"$compatibility_floor_marker"$'\t'"$compatibility_floor_state")"
+  else
+    fail "schema compatibility floor malformed"
+  fi
+  compatibility_floor_marker_rank="$(marker_rank "$compatibility_floor_marker")" \
+    || fail "schema compatibility floor contains unknown migration marker"
+  [[ "$compatibility_floor_digest" =~ ^sha256:[a-f0-9]{64}$ \
     && "$compatibility_floor_commit" =~ ^[a-f0-9]{40}$ \
-    && "$marker" == "$current_marker" \
-    && ( "$compatibility_floor_state" == pending || "$compatibility_floor_state" == current ) \
+    && "$compatibility_floor_marker_rank" -gt 0 \
+    && "$compatibility_floor_marker_rank" -le "$current_marker_rank" \
     && "$mac" =~ ^[a-f0-9]{64}$ ]] || fail "schema compatibility floor malformed"
-  expected_mac="$(hmac "$compatibility_floor_schema"$'\t'"$repository"$'\t'"$compatibility_floor_digest"$'\t'"$compatibility_floor_commit"$'\t'"$marker"$'\t'"$compatibility_floor_state")"
   [[ "$mac" == "$expected_mac" ]] || fail "schema compatibility floor HMAC mismatch"
+  compatibility_floor_format="$schema"
 }
 
 write_compatibility_floor() {
-  local digest_value="$1" commit_value="$2" state_value="$3"
+  local digest_value="$1" commit_value="$2" state_value="$3" marker_value="${4:-$current_marker}" marker_value_rank
   [[ "$state_value" == pending || "$state_value" == current ]] || fail "invalid schema compatibility floor state"
+  marker_value_rank="$(marker_rank "$marker_value")" || fail "invalid schema compatibility floor marker"
+  [[ "$marker_value_rank" -gt 0 && "$marker_value_rank" -le "$current_marker_rank" ]] \
+    || fail "invalid schema compatibility floor marker"
   local mac temporary
-  mac="$(hmac "$compatibility_floor_schema"$'\t'"$repository"$'\t'"$digest_value"$'\t'"$commit_value"$'\t'"$current_marker"$'\t'"$state_value")"
+  mac="$(hmac "$compatibility_floor_schema"$'\t'"$repository"$'\t'"$digest_value"$'\t'"$commit_value"$'\t'"$marker_value"$'\t'"$state_value")"
   temporary="$compatibility_floor_file.next.$$"
-  printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$compatibility_floor_schema" "$digest_value" "$commit_value" "$current_marker" "$state_value" "$mac" > "$temporary"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$compatibility_floor_schema" "$digest_value" "$commit_value" "$marker_value" "$state_value" "$mac" > "$temporary"
   atomic_replace "$temporary" "$compatibility_floor_file"
   compatibility_floor_digest="$digest_value"
   compatibility_floor_commit="$commit_value"
+  compatibility_floor_marker="$marker_value"
+  compatibility_floor_marker_rank="$marker_value_rank"
   compatibility_floor_state="$state_value"
+  compatibility_floor_format="$compatibility_floor_schema"
 }
 
 schema_epoch_digest=""
 schema_epoch_commit=""
+schema_epoch_marker=""
+schema_epoch_marker_rank=""
 schema_epoch_state=""
 validate_schema_epoch() {
   require_regular_file "$schema_epoch_file"
   mapfile -t epoch_rows < "$schema_epoch_file"
   [[ ${#epoch_rows[@]} -eq 1 ]] || fail "schema epoch journal malformed"
-  local schema marker mac extra expected_mac
-  IFS=$'\t' read -r schema schema_epoch_digest schema_epoch_commit marker schema_epoch_state mac extra <<< "${epoch_rows[0]}"
+  local schema mac extra expected_mac
+  IFS=$'\t' read -r schema schema_epoch_digest schema_epoch_commit schema_epoch_marker schema_epoch_state mac extra <<< "${epoch_rows[0]}"
+  schema_epoch_marker_rank="$(marker_rank "$schema_epoch_marker")" \
+    || fail "schema epoch journal contains unknown migration marker"
   [[ "$schema" == "$schema_epoch_schema" && -z "${extra:-}" \
     && "$schema_epoch_digest" =~ ^sha256:[a-f0-9]{64}$ \
     && "$schema_epoch_commit" =~ ^[a-f0-9]{40}$ \
-    && "$marker" == "$current_marker" \
+    && "$schema_epoch_marker_rank" -gt 0 \
+    && "$schema_epoch_marker_rank" -le "$current_marker_rank" \
     && ( "$schema_epoch_state" == preparing || "$schema_epoch_state" == pending || "$schema_epoch_state" == current ) \
     && "$mac" =~ ^[a-f0-9]{64}$ ]] || fail "schema epoch journal malformed"
-  expected_mac="$(hmac "$schema_epoch_schema"$'\t'"$repository"$'\t'"$schema_epoch_digest"$'\t'"$schema_epoch_commit"$'\t'"$marker"$'\t'"$schema_epoch_state")"
+  expected_mac="$(hmac "$schema_epoch_schema"$'\t'"$repository"$'\t'"$schema_epoch_digest"$'\t'"$schema_epoch_commit"$'\t'"$schema_epoch_marker"$'\t'"$schema_epoch_state")"
   [[ "$mac" == "$expected_mac" ]] || fail "schema epoch journal HMAC mismatch"
 }
 
 write_schema_epoch() {
-  local digest_value="$1" commit_value="$2" state_value="$3"
+  local digest_value="$1" commit_value="$2" state_value="$3" marker_value="${4:-$current_marker}" marker_value_rank
   [[ "$state_value" == preparing || "$state_value" == pending || "$state_value" == current ]] || fail "invalid schema epoch state"
+  marker_value_rank="$(marker_rank "$marker_value")" || fail "invalid schema epoch marker"
+  [[ "$marker_value_rank" -gt 0 && "$marker_value_rank" -le "$current_marker_rank" ]] \
+    || fail "invalid schema epoch marker"
   local mac temporary
-  mac="$(hmac "$schema_epoch_schema"$'\t'"$repository"$'\t'"$digest_value"$'\t'"$commit_value"$'\t'"$current_marker"$'\t'"$state_value")"
+  mac="$(hmac "$schema_epoch_schema"$'\t'"$repository"$'\t'"$digest_value"$'\t'"$commit_value"$'\t'"$marker_value"$'\t'"$state_value")"
   temporary="$schema_epoch_file.next.$$"
-  printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$schema_epoch_schema" "$digest_value" "$commit_value" "$current_marker" "$state_value" "$mac" > "$temporary"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$schema_epoch_schema" "$digest_value" "$commit_value" "$marker_value" "$state_value" "$mac" > "$temporary"
   atomic_replace "$temporary" "$schema_epoch_file"
   schema_epoch_digest="$digest_value"
   schema_epoch_commit="$commit_value"
+  schema_epoch_marker="$marker_value"
+  schema_epoch_marker_rank="$marker_value_rank"
   schema_epoch_state="$state_value"
 }
 
@@ -300,20 +366,33 @@ recover_schema_epoch() {
   if [[ -e "$schema_epoch_file" ]]; then validate_schema_epoch; has_epoch=1; fi
   if [[ -e "$compatibility_floor_file" ]]; then validate_compatibility_floor; has_floor=1; fi
   if [[ "$has_floor" == 1 && "$has_epoch" == 0 ]]; then
-    write_schema_epoch "$compatibility_floor_digest" "$compatibility_floor_commit" "$compatibility_floor_state"
+    write_schema_epoch "$compatibility_floor_digest" "$compatibility_floor_commit" "$compatibility_floor_state" "$compatibility_floor_marker"
     has_epoch=1
   elif [[ "$has_floor" == 0 && "$has_epoch" == 1 && "$schema_epoch_state" != preparing ]]; then
-    write_compatibility_floor "$schema_epoch_digest" "$schema_epoch_commit" "$schema_epoch_state"
+    write_compatibility_floor "$schema_epoch_digest" "$schema_epoch_commit" "$schema_epoch_state" "$schema_epoch_marker"
     has_floor=1
   fi
   if [[ "$has_floor" == 1 && "$has_epoch" == 1 ]]; then
-    [[ "$compatibility_floor_digest" == "$schema_epoch_digest" \
-      && "$compatibility_floor_commit" == "$schema_epoch_commit" ]] || fail "schema epoch authority mismatch"
-    if [[ "$compatibility_floor_state" == current || "$schema_epoch_state" == current ]]; then
-      [[ "$compatibility_floor_state" == current ]] || write_compatibility_floor "$schema_epoch_digest" "$schema_epoch_commit" current
-      [[ "$schema_epoch_state" == current ]] || write_schema_epoch "$schema_epoch_digest" "$schema_epoch_commit" current
-    elif [[ "$compatibility_floor_state" != "$schema_epoch_state" ]]; then
-      write_schema_epoch "$compatibility_floor_digest" "$compatibility_floor_commit" "$compatibility_floor_state"
+    if [[ "$schema_epoch_marker_rank" -gt "$compatibility_floor_marker_rank" ]]; then
+      # The executable always writes the higher authenticated epoch first.
+      # A crash before the floor write is therefore recoverable and must move
+      # the floor forward; the reverse ordering can only be a downgrade.
+      [[ "$schema_epoch_state" != preparing ]] || fail "schema epoch authority mismatch"
+      write_compatibility_floor "$schema_epoch_digest" "$schema_epoch_commit" "$schema_epoch_state" "$schema_epoch_marker"
+    elif [[ "$schema_epoch_marker_rank" -lt "$compatibility_floor_marker_rank" ]]; then
+      fail "schema epoch marker downgrade or reordered authority"
+    else
+      [[ "$compatibility_floor_marker" == "$schema_epoch_marker" \
+        && "$compatibility_floor_digest" == "$schema_epoch_digest" \
+        && "$compatibility_floor_commit" == "$schema_epoch_commit" ]] || fail "schema epoch authority mismatch"
+      if [[ "$compatibility_floor_state" == current || "$schema_epoch_state" == current ]]; then
+        [[ "$compatibility_floor_state" == current ]] \
+          || write_compatibility_floor "$schema_epoch_digest" "$schema_epoch_commit" current "$schema_epoch_marker"
+        [[ "$schema_epoch_state" == current ]] \
+          || write_schema_epoch "$schema_epoch_digest" "$schema_epoch_commit" current "$schema_epoch_marker"
+      elif [[ "$compatibility_floor_state" != "$schema_epoch_state" ]]; then
+        write_schema_epoch "$compatibility_floor_digest" "$compatibility_floor_commit" "$compatibility_floor_state" "$compatibility_floor_marker"
+      fi
     fi
   fi
 }
@@ -434,7 +513,6 @@ recover_transaction() {
 }
 
 recover_transaction
-recover_schema_epoch
 
 write_route() {
   local service="$1"
@@ -499,6 +577,7 @@ EOF
 if [[ "$operation" == bootstrap ]]; then
   [[ ! -e "$state_file" && ! -e "$ledger_file" && ! -e "$floor_file" ]] \
     || fail "bootstrap refuses existing deployment authority"
+  recover_schema_epoch
   compose_project="$requested_compose_project"
   legacy_service="$requested_legacy_service"
   if [[ -e "$route_file" ]]; then
@@ -529,14 +608,18 @@ else
   validate_ledger
   validate_floor
   validate_state
+  recover_schema_epoch
   if [[ -e "$compatibility_floor_file" ]]; then
     validate_compatibility_floor
   else
     for known_marker in "${ledger_markers[@]}"; do
-      [[ "$known_marker" == "$legacy_marker" ]] || fail "schema compatibility floor missing after schema migration"
+      known_marker_rank="$(marker_rank "$known_marker")" || fail "secure ledger contains unknown migration marker"
+      [[ "$known_marker_rank" -le 1 ]] || fail "schema compatibility floor missing after schema migration"
     done
     active_sequence="${ledger_seen[$state_active_digest]}"
-    [[ "${ledger_markers[active_sequence-1]}" == "$legacy_marker" ]] \
+    active_marker_rank="$(marker_rank "${ledger_markers[active_sequence-1]}")" \
+      || fail "secure ledger contains unknown migration marker"
+    [[ "$active_marker_rank" -le 1 ]] \
       || fail "schema compatibility floor missing for active schema image"
   fi
   compose_project="$state_compose_project"
@@ -557,7 +640,8 @@ else
     candidate_commit="${ledger_commits[target_sequence-1]}"
     candidate_marker="${ledger_markers[target_sequence-1]}"
     if [[ -e "$compatibility_floor_file" ]]; then
-      [[ "$candidate_marker" == "$current_marker" ]] \
+      candidate_marker_rank="$(marker_rank "$candidate_marker")" || fail "rollback refused: unknown migration marker"
+      [[ "$candidate_marker_rank" -ge "$compatibility_floor_marker_rank" ]] \
         || fail "rollback refused: digest older than schema compatibility floor"
     fi
   else
@@ -576,9 +660,22 @@ else
   fi
 fi
 
+candidate_marker_rank="$(marker_rank "$candidate_marker")" || fail "candidate migration marker is unknown"
+if [[ -e "$compatibility_floor_file" ]]; then
+  [[ "$candidate_marker_rank" -ge "$compatibility_floor_marker_rank" ]] \
+    || fail "candidate refused: migration marker older than schema compatibility floor"
+  if [[ "$compatibility_floor_state" == pending ]]; then
+    [[ "$candidate_marker_rank" -eq "$compatibility_floor_marker_rank" \
+      && "$candidate_digest" == "$compatibility_floor_digest" \
+      && "$candidate_commit" == "$compatibility_floor_commit" ]] \
+      || fail "candidate refused: pending schema epoch must be retried exactly"
+  fi
+fi
+
 provider_file_count="$(find "$route_dir" -maxdepth 1 -type f \( -name '*.yml' -o -name '*.yaml' \) | wc -l | tr -d ' ')"
 [[ "$provider_file_count" == 1 ]] || fail "exactly one Traefik provider file is required"
-if [[ -e "$compatibility_floor_file" ]]; then
+if [[ -e "$compatibility_floor_file" \
+  && ( "$compatibility_floor_state" == pending || "$compatibility_floor_marker_rank" -eq "$current_marker_rank" ) ]]; then
   grep -Fq 'PathRegexp(`(?i)^/api/register/?$`)' "$route_file" || fail "schema compatibility route missing"
   grep -Fq 'url: http://tunes-register-compat:5100' "$route_file" || fail "schema compatibility service route missing"
 fi
@@ -648,6 +745,17 @@ probe_registration_denial() {
     || fail "registration compatibility response mismatch"
 }
 
+install_registration_compatibility_route() {
+  compose --profile deployment up -d --no-deps tunes-register-compat
+  compose exec -T tunes-register-compat node -e \
+    "fetch('http://127.0.0.1:5100/health/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+  compose exec -T tunes-register-compat node -e \
+    "fetch('http://127.0.0.1:5100/api/register',{method:'POST',headers:{'content-type':'application/json'},body:'{}'}).then(async r=>{const b=await r.json();if(r.status!==410||b?.error?.code!=='LEGACY_IDENTITY_ROUTE_REMOVED')process.exit(1)}).catch(()=>process.exit(1))"
+  write_route "$active_service" true
+  probe_registration_denial '{}'
+  probe_registration_denial '{"strapiUserDocumentId":"forged-person","strapiAccountDocumentId":"forged-account","lifecycleOperationId":"forged-operation","guestCapabilityHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}'
+}
+
 if [[ "$operation" == bootstrap ]]; then
   compose up -d --no-deps traefik
   "$curl_command" --fail --silent --show-error --max-time 5 https://localtunes.earth/ >/dev/null
@@ -661,27 +769,34 @@ if [[ ! -e "$compatibility_floor_file" ]]; then
     [[ "$schema_epoch_state" == preparing && "$schema_epoch_digest" == "$candidate_digest" \
       && "$schema_epoch_commit" == "$candidate_commit" ]] || fail "schema epoch preparing candidate mismatch"
   fi
-  compose --profile deployment up -d --no-deps tunes-register-compat
-  compose exec -T tunes-register-compat node -e \
-    "fetch('http://127.0.0.1:5100/health/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
-  compose exec -T tunes-register-compat node -e \
-    "fetch('http://127.0.0.1:5100/api/register',{method:'POST',headers:{'content-type':'application/json'},body:'{}'}).then(async r=>{const b=await r.json();if(r.status!==410||b?.error?.code!=='LEGACY_IDENTITY_ROUTE_REMOVED')process.exit(1)}).catch(()=>process.exit(1))"
-  write_route "$active_service" true
-  probe_registration_denial '{}'
-  probe_registration_denial '{"strapiUserDocumentId":"forged-person","strapiAccountDocumentId":"forged-account","lifecycleOperationId":"forged-operation","guestCapabilityHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}'
+  install_registration_compatibility_route
   maybe_failpoint before_epoch
-  write_compatibility_floor "$candidate_digest" "$candidate_commit" pending
   write_schema_epoch "$candidate_digest" "$candidate_commit" pending
+  write_compatibility_floor "$candidate_digest" "$candidate_commit" pending
   maybe_failpoint after_epoch_before_gate
 else
-  probe_registration_denial '{}'
+  if [[ "$operation" != rollback && "$candidate_marker_rank" -gt "$compatibility_floor_marker_rank" ]]; then
+    install_registration_compatibility_route
+    maybe_failpoint before_epoch
+    # The higher signed epoch is durable first. Recovery recognizes this one
+    # direction as an interrupted monotonic upgrade and advances the floor.
+    write_schema_epoch "$candidate_digest" "$candidate_commit" pending "$candidate_marker"
+    write_compatibility_floor "$candidate_digest" "$candidate_commit" pending "$candidate_marker"
+    maybe_failpoint after_epoch_before_gate
+  else
+    probe_registration_denial '{}'
+  fi
 fi
 
 compose --profile deployment run --rm --no-deps tunes-gate
 validate_compatibility_floor
 if [[ "$compatibility_floor_state" == pending ]]; then
-  write_compatibility_floor "$compatibility_floor_digest" "$compatibility_floor_commit" current
-  write_schema_epoch "$compatibility_floor_digest" "$compatibility_floor_commit" current
+  [[ "$candidate_marker_rank" -eq "$compatibility_floor_marker_rank" \
+    && "$candidate_digest" == "$compatibility_floor_digest" \
+    && "$candidate_commit" == "$compatibility_floor_commit" ]] \
+    || fail "gate candidate does not match pending schema epoch"
+  write_compatibility_floor "$compatibility_floor_digest" "$compatibility_floor_commit" current "$compatibility_floor_marker"
+  write_schema_epoch "$compatibility_floor_digest" "$compatibility_floor_commit" current "$compatibility_floor_marker"
 fi
 maybe_failpoint after_current_floor
 compose up -d --no-deps "tunes-$candidate_slot"
