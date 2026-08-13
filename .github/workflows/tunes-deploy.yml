@@ -22,16 +22,37 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  production-authority-preflight:
+    # Non-main dispatches always run and fail this no-secret job. On main, the
+    # external-policy API check is required only when production is enabled.
+    if: github.ref != 'refs/heads/main' || vars.GATE_PROD == 'open'
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: tunes/deployment/verify-production-environment-policy.mjs
+          sparse-checkout-cone-mode: false
+      - name: Require main as the sole protected production branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tunes/deployment/verify-production-environment-policy.mjs
+
   deploy:
     # GATE-PROD remains closed until external runtime evidence and explicit
     # production authorization set this repository variable to exactly `open`.
-    if: vars.GATE_PROD == 'open'
+    needs: production-authority-preflight
+    if: needs.production-authority-preflight.result == 'success' && github.ref == 'refs/heads/main' && vars.GATE_PROD == 'open'
     environment: tunes-production
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: tunes/deployment/music-deploy.sh
+          sparse-checkout: |
+            tunes/deployment/music-deploy.sh
+            tunes/deployment/music-hmac.mjs
           sparse-checkout-cone-mode: false
 
       - name: Derive and verify immutable request
@@ -102,22 +123,26 @@ jobs:
           IMAGE_SOURCE: ${{ steps.request.outputs.source }}
         run: |
           set -euo pipefail
+          hmac_key_value="$MUSIC_DEPLOY_STATE_HMAC_KEY"
+          unset MUSIC_DEPLOY_STATE_HMAC_KEY
           [[ "$DEPLOY_USER" =~ ^[A-Za-z_][A-Za-z0-9_-]{0,31}$ ]]
           [[ "$DEPLOY_HOST" =~ ^([A-Za-z0-9][A-Za-z0-9.-]{0,252}|[0-9a-fA-F:]+)$ ]]
           [[ "$GHCR_DEPLOY_USER" =~ ^[A-Za-z0-9_.-]+$ ]]
-          [[ ${#MUSIC_DEPLOY_STATE_HMAC_KEY} -ge 32 ]]
+          [[ ${#hmac_key_value} -ge 32 ]]
           bundle="$(mktemp -d)"
           archive="$(mktemp)"
           cleanup() {
-            rm -f -- "$bundle/music-deploy.sh" "$bundle/request.txt" "$bundle/authority.txt" \
+            rm -f -- "$bundle/music-deploy.sh" "$bundle/music-hmac.mjs" "$bundle/request.txt" "$bundle/authority.txt" \
               "$bundle/hmac.key" "$bundle/ghcr.token" "$archive"
             rmdir -- "$bundle" 2>/dev/null || true
           }
           trap cleanup EXIT
           install -m 700 tunes/deployment/music-deploy.sh "$bundle/music-deploy.sh"
+          install -m 600 tunes/deployment/music-hmac.mjs "$bundle/music-hmac.mjs"
           printf '%s\n' music-deploy-request-v2 "operation=$OPERATION" "digest=$DIGEST" "commit=$COMMIT" compose_project=- legacy_service=- > "$bundle/request.txt"
           printf '%s\n' music-deploy-authority-v1 "repository=$IMAGE_REPOSITORY" "source=$IMAGE_SOURCE" "ghcr_user=$GHCR_DEPLOY_USER" > "$bundle/authority.txt"
-          printf '%s' "$MUSIC_DEPLOY_STATE_HMAC_KEY" > "$bundle/hmac.key"
+          printf '%s' "$hmac_key_value" > "$bundle/hmac.key"
+          unset hmac_key_value
           printf '%s' "$GHCR_DEPLOY_READ_TOKEN" > "$bundle/ghcr.token"
           chmod 600 "$bundle"/*
           tar -C "$bundle" -czf - . | base64 -w0 > "$archive"
@@ -127,17 +152,18 @@ jobs:
             set -euo pipefail
             incoming="$(mktemp -d /opt/explorers/deployment-transactions/incoming.XXXXXX)"
             cleanup() {
-              rm -f -- "$incoming/music-deploy.sh" "$incoming/request.txt" "$incoming/authority.txt" \
+              rm -f -- "$incoming/music-deploy.sh" "$incoming/music-hmac.mjs" "$incoming/request.txt" "$incoming/authority.txt" \
                 "$incoming/hmac.key" "$incoming/ghcr.token"
               rmdir -- "$incoming" 2>/dev/null || true
             }
             trap cleanup EXIT
             base64 -d | tar -xzf - -C "$incoming"
             chmod 700 "$incoming/music-deploy.sh"
-            chmod 600 "$incoming/request.txt" "$incoming/authority.txt" "$incoming/hmac.key" "$incoming/ghcr.token"
+            chmod 600 "$incoming/music-hmac.mjs" "$incoming/request.txt" "$incoming/authority.txt" "$incoming/hmac.key" "$incoming/ghcr.token"
             MUSIC_DEPLOY_REQUEST_FILE="$incoming/request.txt" \
             MUSIC_DEPLOY_AUTHORITY_FILE="$incoming/authority.txt" \
             MUSIC_DEPLOY_HMAC_KEY_FILE="$incoming/hmac.key" \
+            MUSIC_DEPLOY_HMAC_HELPER_FILE="$incoming/music-hmac.mjs" \
             MUSIC_DEPLOY_GHCR_TOKEN_FILE="$incoming/ghcr.token" \
             MUSIC_DEPLOY_EPHEMERAL_CREDENTIAL_FILES=1 \
             bash "$incoming/music-deploy.sh"

@@ -22,6 +22,22 @@ string is placed in remote command text.
 closed until external rehearsal evidence and production approval exist. This
 task does not authorize opening it or running any production command below.
 
+Before `GATE_PROD` can open, repository administrators must configure the
+`tunes-production` environment deployment branch policy to **protected branches only**
+(`protected_branches=true`, `custom_branch_policies=false`), and main must be the sole protected branch.
+GitHub then also refuses a tag or fork whose name matches protected `main`.
+Administrators must independently confirm main is protected. The workflow's
+no-environment preflight verifies all of those facts through the GitHub API
+before the environment-bearing job is eligible. A
+non-main dispatch fails in that preflight, and the deploy job also has a
+job-level `refs/heads/main` condition evaluated before environment access. The
+production credentials are environment-scoped only; repository- or
+organization-scoped copies of those credentials are forbidden. The
+YAML check is not the security boundary: a branch can edit its own YAML, while
+the external environment policy cannot be bypassed by that branch copy.
+`GATE_PROD must remain closed` if the API check is unavailable, the policy is
+absent or different, or `main` is not protected.
+
 ## Transitional C2 gate
 
 `containment-no-schema-change` is a transitional deployment gate, not a database
@@ -50,6 +66,10 @@ executable rejects symlinks, wrong production ownership/mode, malformed or
 truncated records, duplicates, reordered rows, chain failures, state/ledger
 mismatches, and floor changes. `music-floor.tsv` is a separately authenticated
 authority and must equal the first manifest entry. Its first digest is permanent.
+The checked-in `music-hmac.mjs` helper reads the mode-0600 HMAC key path directly
+with Node's crypto API. Key bytes never enter a child-process argument, exported
+environment variable, or log. Node 22 is therefore a deployment-control runtime
+prerequisite on the host; it is not used to build application source there.
 
 ## One-time legacy-to-blue bootstrap
 
@@ -125,8 +145,12 @@ state; commits the journal; and only then stops the retained legacy container.
 The registry config and token are cleaned on exit.
 
 At every provider transition exactly one `.yml`/`.yaml` file is visible in
-`deployment-routing`. A normal failure restores the exact legacy bytes. A kill
-or host crash leaves the durable journal for mandatory next-run recovery.
+`deployment-routing`. Once the durable journal exists, an armed error handler
+restores exact route/ledger/state/floor bytes and stops the candidate for any
+ordinary command, transport, HTTP, or response-validation failure. It emits only
+a fixed typed failure and never the untrusted public response body. The handler
+is disarmed only after the commit rename and directory sync. A kill or host crash
+leaves the durable journal for mandatory next-run recovery.
 
 ## Normal deploy, rollback, and incident controls
 

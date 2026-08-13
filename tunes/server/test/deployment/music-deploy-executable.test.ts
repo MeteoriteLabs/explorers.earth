@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { createHmac } from "node:crypto";
 import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -11,6 +12,8 @@ const digest = (character: string) => `sha256:${character.repeat(64)}`;
 const commit = (character: string) => character.repeat(40);
 const repository = "ghcr.io/explorers-earth/explorers-tunes";
 const source = "https://github.com/explorers-earth/explorers.earth";
+const hmacSentinel = "state-hmac-key-with-at-least-thirty-two-bytes";
+const publicResponseSentinel = "UNTRUSTED_PUBLIC_RESPONSE_SENTINEL";
 
 function shellPath(path: string): string {
   const normalized = path.replaceAll("\\", "/");
@@ -23,6 +26,7 @@ interface RunOptions {
   ociCommit?: string;
   ociSource?: string;
   ociContainment?: string;
+  publicResponseMode?: "nonzero" | "invalid-json";
   slot?: "blue" | "green";
 }
 
@@ -49,7 +53,7 @@ describe("checked-in production Music deploy executable", () => {
     mkdirSync(fakeBin, { recursive: true });
     writeFileSync(join(root, "docker-compose.yml"), "services: {}\n");
     writeFileSync(join(root, "production.env"), "MUSIC_GATE_ATTESTATION_KEY=test-only\n");
-    writeFileSync(keyFile, "state-hmac-key-with-at-least-thirty-two-bytes");
+    writeFileSync(keyFile, hmacSentinel);
     writeFileSync(tokenFile, "read-only-ghcr-test-token");
     chmodSync(keyFile, 0o600);
     chmodSync(tokenFile, 0o600);
@@ -83,12 +87,23 @@ test "$count" = 1
 printf 'curl %s | route=%s\\n' "$*" "$(grep -Eo 'http://[^ ]+:5000' "$MUSIC_DEPLOY_ROOT/deployment-routing/music-router.yml" | tail -1)" >> "$MUSIC_DEPLOY_TEST_EVENT_LOG"
 if [[ "\${!#}" == "https://localtunes.earth/" ]]; then grep -Fq 'http://legacy-tunes:5000' "$MUSIC_DEPLOY_ROOT/deployment-routing/music-router.yml"; printf 'legacy-ok'; exit 0; fi
 grep -Fq "http://tunes-$MUSIC_DEPLOY_TEST_SLOT:5000" "$MUSIC_DEPLOY_ROOT/deployment-routing/music-router.yml"
+if [[ "\${MUSIC_DEPLOY_TEST_PUBLIC_RESPONSE_MODE:-}" == nonzero ]]; then printf '${publicResponseSentinel}'; exit 22; fi
+if [[ "\${MUSIC_DEPLOY_TEST_PUBLIC_RESPONSE_MODE:-}" == invalid-json ]]; then printf '${publicResponseSentinel}'; exit 0; fi
 printf '{"ready":true,"digest":"%s","commit":"%s","migrationMarker":"containment-no-schema-change"}\\n' "$MUSIC_DEPLOY_TEST_DIGEST" "$MUSIC_DEPLOY_TEST_COMMIT"
+`;
+    const node = `#!/usr/bin/env bash
+set -euo pipefail
+printf 'node %s\\n' "$*" >> "$MUSIC_DEPLOY_TEST_NODE_ARGV_LOG"
+env >> "$MUSIC_DEPLOY_TEST_NODE_ENV_LOG"
+sleep 0.05
+exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
 `;
     writeFileSync(join(fakeBin, "docker"), docker);
     writeFileSync(join(fakeBin, "curl"), curl);
+    writeFileSync(join(fakeBin, "node"), node);
     chmodSync(join(fakeBin, "docker"), 0o755);
     chmodSync(join(fakeBin, "curl"), 0o755);
+    chmodSync(join(fakeBin, "node"), 0o755);
   });
 
   afterEach(() => rmSync(sandbox, { recursive: true, force: true }));
@@ -124,6 +139,10 @@ printf '{"ready":true,"digest":"%s","commit":"%s","migrationMarker":"containment
         MUSIC_DEPLOY_TEST_OCI_COMMIT: options.ociCommit ?? "",
         MUSIC_DEPLOY_TEST_OCI_SOURCE: options.ociSource ?? "",
         MUSIC_DEPLOY_TEST_OCI_CONTAINMENT: options.ociContainment ?? "",
+        MUSIC_DEPLOY_TEST_PUBLIC_RESPONSE_MODE: options.publicResponseMode ?? "",
+        MUSIC_DEPLOY_TEST_REAL_NODE: shellPath(process.execPath),
+        MUSIC_DEPLOY_TEST_NODE_ARGV_LOG: shellPath(join(sandbox, "node-argv.log")),
+        MUSIC_DEPLOY_TEST_NODE_ENV_LOG: shellPath(join(sandbox, "node-env.log")),
         MUSIC_DEPLOY_TEST_MODE: "1",
         MUSIC_DEPLOY_FAILPOINT: options.failpoint ?? "",
     });
@@ -216,6 +235,49 @@ printf '{"ready":true,"digest":"%s","commit":"%s","migrationMarker":"containment
     expect(existsSync(join(root, "deployment-transactions/current"))).toBe(false);
   }, 20_000);
 
+  it.each(["nonzero", "invalid-json"] as const)("restores every prior authority and stops the candidate on public %s failure", (publicResponseMode) => {
+    // Production break caught: set -e exits on curl transport/HTTP failure after
+    // promotion, leaving the candidate public until a later deploy recovers it.
+    bootstrap();
+    const prior = Object.fromEntries([
+      ["route", join(root, "deployment-routing/music-router.yml")],
+      ["ledger", join(root, "deployment-state/secure-images.tsv")],
+      ["state", join(root, "deployment-state/music-state.tsv")],
+      ["floor", join(root, "deployment-state/music-floor.tsv")],
+    ].map(([name, path]) => [name, readFileSync(path, "utf8")]));
+    writeFileSync(eventLog, "");
+
+    const failed = run("deploy", digest("b"), commit("b"), { publicResponseMode });
+
+    expect(failed.status).not.toBe(0);
+    expect(readFileSync(join(root, "deployment-routing/music-router.yml"), "utf8")).toBe(prior.route);
+    expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8")).toBe(prior.ledger);
+    expect(readFileSync(join(root, "deployment-state/music-state.tsv"), "utf8")).toBe(prior.state);
+    expect(readFileSync(join(root, "deployment-state/music-floor.tsv"), "utf8")).toBe(prior.floor);
+    expect(existsSync(join(root, "deployment-transactions/current"))).toBe(false);
+    const events = readFileSync(eventLog, "utf8");
+    expect(events).toContain("stop tunes-green | route=http://tunes-blue:5000");
+    expect(failed.stderr).not.toContain(publicResponseSentinel);
+  }, 20_000);
+
+  it("keeps the HMAC key out of helper argv and environment while producing stable MACs", () => {
+    // Production break caught: openssl -hmac places the authority key in a
+    // child process command line where another same-host process can read it.
+    bootstrap();
+    const row = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").trim().split("\t");
+    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "containment-no-schema-change", "GENESIS"].join("\t");
+    expect(row[6]).toBe(createHmac("sha256", hmacSentinel).update(expectedPayload).digest("hex"));
+
+    const deployed = run("deploy", digest("b"), commit("b"));
+    expect(deployed.status, deployed.stderr).toBe(0);
+    const argv = readFileSync(join(sandbox, "node-argv.log"), "utf8");
+    const environment = readFileSync(join(sandbox, "node-env.log"), "utf8");
+    expect(argv).toContain("music-hmac.mjs");
+    expect(argv).not.toContain(hmacSentinel);
+    expect(environment).not.toContain(hmacSentinel);
+    expect(deployed.stderr).not.toContain(hmacSentinel);
+  }, 20_000);
+
   it("fails closed on a tampered incomplete journal before Docker or slot selection", () => {
     // Production break caught: recovery trusts attacker-edited backup metadata.
     bootstrap();
@@ -267,5 +329,6 @@ printf '{"ready":true,"digest":"%s","commit":"%s","migrationMarker":"containment
       expect(result.stderr).toContain("secure ledger");
       expect(readFileSync(eventLog, "utf8")).toBe("");
     },
+    20_000,
   );
 });

@@ -135,18 +135,22 @@ describe("Music deployment authority files", () => {
     expect(Object.keys(workflow.on.workflow_dispatch.inputs)).toEqual(["target_digest"]);
   });
 
-  it("retains a byte-exact route backup until public verification and restores it on failure", () => {
+  it("retains a byte-exact route backup under an armed error trap until durable commit", () => {
     const deploy = read("tunes/deployment/music-deploy.sh");
     const copy = deploy.indexOf('cp -- "$route_file" "$temporary/route.backup"');
+    const arm = deploy.indexOf("trap 'abort_transaction $?' ERR", copy);
     const promote = deploy.indexOf('write_route "tunes-${candidate_slot}"', copy);
     const verify = deploy.indexOf("https://localtunes.earth/health/ready", promote);
-    const restore = deploy.indexOf("recover_transaction", verify);
-    const remove = deploy.indexOf('mv -- "$transaction_current" "$committed_transaction"', restore);
+    const abort = deploy.indexOf("abort_transaction 1", verify);
+    const commit = deploy.indexOf('mv -- "$transaction_current" "$committed_transaction"', abort);
+    const disarm = deploy.indexOf("trap - ERR", commit);
     expect(copy).toBeGreaterThanOrEqual(0);
-    expect(promote).toBeGreaterThan(copy);
+    expect(arm).toBeGreaterThan(copy);
+    expect(promote).toBeGreaterThan(arm);
     expect(verify).toBeGreaterThan(promote);
-    expect(restore).toBeGreaterThan(verify);
-    expect(remove).toBeGreaterThan(restore);
+    expect(abort).toBeGreaterThan(verify);
+    expect(commit).toBeGreaterThan(abort);
+    expect(disarm).toBeGreaterThan(commit);
   });
 
   it("accepts a promoted public response only when digest, commit, and gate marker all match", () => {

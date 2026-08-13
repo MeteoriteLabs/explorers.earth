@@ -64,4 +64,51 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(deploy).toContain('rm -f -- "$bundle/music-deploy.sh"');
     expect(deploy).toContain('rm -f -- "$incoming/music-deploy.sh"');
   });
+
+  it("unexports the injected HMAC secret before the first child process", () => {
+    // Secret break caught: mktemp/install/tar/ssh inherit the GitHub-injected
+    // HMAC bytes even though only the protected key file needs them.
+    const workflow = parseYaml(read(".github/workflows/tunes-deploy.yml"));
+    const run = workflow.jobs.deploy.steps.find((step: any) => step.name === "Run checked-in transactional deploy executable").run as string;
+    const capture = run.indexOf('hmac_key_value="$MUSIC_DEPLOY_STATE_HMAC_KEY"');
+    const unexport = run.indexOf("unset MUSIC_DEPLOY_STATE_HMAC_KEY");
+    const firstChild = run.indexOf('bundle="$(mktemp -d)"');
+    const persist = run.indexOf('printf \'%s\' "$hmac_key_value" > "$bundle/hmac.key"');
+    const eraseShellValue = run.indexOf("unset hmac_key_value");
+    expect(capture).toBeGreaterThan(-1);
+    expect(unexport).toBeGreaterThan(capture);
+    expect(firstChild).toBeGreaterThan(unexport);
+    expect(persist).toBeGreaterThan(firstChild);
+    expect(eraseShellValue).toBeGreaterThan(persist);
+  });
+
+  it("gates the environment-bearing job on a no-secret protected-main policy preflight", () => {
+    // Production break caught: a branch dispatch enters tunes-production before
+    // proving the ref and external environment policy are protected-main only.
+    const workflow = parseYaml(read(".github/workflows/tunes-deploy.yml"));
+    const preflight = workflow.jobs["production-authority-preflight"];
+    const deploy = workflow.jobs.deploy;
+    expect(preflight).toBeDefined();
+    expect(preflight.environment).toBeUndefined();
+    expect(JSON.stringify(preflight)).not.toContain("secrets.");
+    expect(preflight.if).toContain("github.ref != 'refs/heads/main'");
+    expect(preflight.if).toContain("vars.GATE_PROD == 'open'");
+    expect(preflight.steps.some((step: any) => String(step.run ?? "").includes("verify-production-environment-policy.mjs"))).toBe(true);
+    expect(deploy.needs).toBe("production-authority-preflight");
+    expect(deploy.if).toContain("github.ref == 'refs/heads/main'");
+    expect(deploy.if).toContain("needs.production-authority-preflight.result == 'success'");
+    expect(deploy.environment).toBe("tunes-production");
+  });
+
+  it("documents protected-main environment policy as a prerequisite rather than a YAML guarantee", () => {
+    const runbook = read("docs/operations/music-deploy-runbook.md");
+    const prose = runbook.replace(/\s+/g, " ");
+    expect(prose).toContain("deployment branch policy");
+    expect(prose).toContain("protected branches only");
+    expect(prose).toContain("main must be the sole protected branch");
+    expect(prose).toContain("main is protected");
+    expect(prose).toContain("production credentials are environment-scoped only");
+    expect(prose).toContain("YAML check is not the security boundary");
+    expect(prose).toContain("GATE_PROD must remain closed");
+  });
 });

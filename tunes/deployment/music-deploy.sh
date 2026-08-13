@@ -24,6 +24,14 @@ require_safe_root() {
   [[ "$1" == /* && "$1" != / && "$1" != /opt && "$1" != /opt/ ]] || fail "unsafe deployment root"
 }
 
+require_code_file() {
+  local path="$1"
+  [[ -f "$path" && ! -L "$path" ]] || fail "regular deployment code file required: $path"
+  if [[ "${MUSIC_DEPLOY_TEST_MODE:-0}" != 1 ]]; then
+    [[ -O "$path" ]] || fail "deployment code file has wrong owner: $path"
+  fi
+}
+
 require_regular_file() {
   local path="$1"
   [[ -f "$path" && ! -L "$path" ]] || fail "secure regular file required: $path"
@@ -72,6 +80,8 @@ authority_file="${MUSIC_DEPLOY_AUTHORITY_FILE:-}"
 ghcr_user="${MUSIC_DEPLOY_GHCR_USER:-}"
 repository="${MUSIC_DEPLOY_EXPECTED_REPOSITORY:-}"
 expected_source="${MUSIC_DEPLOY_EXPECTED_SOURCE:-}"
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+hmac_helper_file="${MUSIC_DEPLOY_HMAC_HELPER_FILE:-$script_dir/music-hmac.mjs}"
 
 if [[ -n "$authority_file" ]]; then
   require_regular_file "$authority_file"
@@ -93,8 +103,9 @@ require_safe_root "$root"
 require_regular_file "$request_file"
 require_regular_file "$hmac_key_file"
 require_regular_file "$ghcr_token_file"
+require_code_file "$hmac_helper_file"
 require_command docker
-require_command openssl
+require_command node
 require_command sha256sum
 require_command sync
 curl_command=curl
@@ -105,12 +116,11 @@ else
   require_command curl
 fi
 
-hmac_key="$(<"$hmac_key_file")"
-[[ ${#hmac_key} -ge 32 && "$hmac_key" != *$'\n'* && "$hmac_key" != *$'\r'* ]] || fail "state HMAC key is invalid"
-
 hmac() {
-  printf '%s' "$1" | openssl dgst -sha256 -hmac "$hmac_key" -r | awk '{print $1}'
+  printf '%s' "$1" | node "$hmac_helper_file" "$hmac_key_file"
 }
+
+hmac "" >/dev/null || fail "state HMAC key is invalid"
 
 mapfile -t request_lines < "$request_file"
 if [[ ${#request_lines[@]} -ne 6 \
@@ -513,7 +523,28 @@ maybe_failpoint() {
   fi
 }
 
+transaction_committing=""
+abort_transaction() {
+  local status="${1:-1}"
+  trap - ERR
+  set +e
+  if [[ ! -e "$transaction_current" && -n "$transaction_committing" && -d "$transaction_committing" ]]; then
+    mv -- "$transaction_committing" "$transaction_current"
+    durable_directory "$transaction_dir"
+  fi
+  recover_transaction
+  local recovery_status=$?
+  compose stop "tunes-$candidate_slot" >/dev/null 2>&1
+  if [[ "$recovery_status" -eq 0 ]]; then
+    printf '%s\n' "deployment transaction aborted; exact prior authority restored" >&2
+  else
+    printf '%s\n' "deployment transaction recovery failed; journal retained" >&2
+  fi
+  exit "$status"
+}
+
 create_transaction
+trap 'abort_transaction $?' ERR
 maybe_failpoint after_journal
 
 write_route "tunes-${candidate_slot}"
@@ -522,9 +553,8 @@ maybe_failpoint after_route
 public_body="$("$curl_command" --fail --silent --show-error --max-time 5 https://localtunes.earth/health/ready)"
 expected_public_body="{\"ready\":true,\"digest\":\"$candidate_digest\",\"commit\":\"$candidate_commit\",\"migrationMarker\":\"$marker\"}"
 if [[ "$public_body" != "$expected_public_body" ]]; then
-  recover_transaction
-  compose stop "tunes-$candidate_slot" || true
-  fail "public promotion metadata mismatch: received=$public_body"
+  printf '%s\n' "public promotion metadata verification failed" >&2
+  abort_transaction 1
 fi
 
 if [[ "$operation" == bootstrap ]]; then
@@ -562,8 +592,10 @@ atomic_replace "$state_temporary" "$state_file"
 maybe_failpoint after_state
 
 committed_transaction="$transaction_dir/committed-${candidate_digest#sha256:}-$$"
+transaction_committing="$committed_transaction"
 mv -- "$transaction_current" "$committed_transaction"
 durable_directory "$transaction_dir"
+trap - ERR
 if [[ "$operation" == bootstrap ]]; then docker stop "$legacy_service" >/dev/null; fi
 maybe_failpoint after_commit
 cleanup_transaction_directory "$committed_transaction"
