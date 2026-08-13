@@ -65,7 +65,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     const present = new Set(tables.rows.map(({ table_name }) => table_name));
     for (const table of manifest.tables) expect(present.has(table.name), table.name).toBe(true);
     expect(first.currentId).toBe(EXPECTED_MUSIC_MIGRATION_ID);
-    expect(first.appliedIds).toEqual(["0001_runtime_baseline", "0002_identity_lifecycle", "0003_identity_lifecycle_hardening", "0004_identity_delete_saga"]);
+    expect(first.appliedIds).toEqual(["0001_runtime_baseline", "0002_identity_lifecycle", "0003_identity_lifecycle_hardening", "0004_identity_delete_saga", "0005_resource_bound_deletion_history"]);
     expect(second.appliedIds).toEqual([]);
     expect(verified.ready).toBe(true);
     await pool.end();
@@ -285,6 +285,15 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     await repository.transitionIdentity({
       strapiUserDocumentId: "person-lifecycle", operationId: "reactivate-2", kind: "reactivate", targetStatus: "active",
     });
+    await repository.transitionIdentity({
+      strapiUserDocumentId: "person-lifecycle", operationId: "delete-again", kind: "request_deletion", targetStatus: "pending_deletion",
+    });
+    await repository.transitionIdentity({
+      strapiUserDocumentId: "person-lifecycle", operationId: "cancel-again", kind: "cancel_deletion", targetStatus: "suspended",
+    });
+    await repository.transitionIdentity({
+      strapiUserDocumentId: "person-lifecycle", operationId: "reactivate-again", kind: "reactivate", targetStatus: "active",
+    });
     await repository.createIdentity({
       username: "delete-from-suspended",
       password: "disabled-native-password",
@@ -308,10 +317,25 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     };
     await repository.tombstoneIdentity(finalize);
     await expect(repository.tombstoneIdentity(finalize)).resolves.toBeUndefined();
-    expect((await pool.query("SELECT lifecycle_operation_id FROM music_identity_tombstones WHERE strapi_user_document_id=$1", [finalize.strapiUserDocumentId])).rows[0])
-      .toEqual({ lifecycle_operation_id: "delete-2" });
+    expect((await pool.query(`SELECT t.lifecycle_operation_id,t.music_user_id,o.music_user_id AS operation_music_user_id
+      FROM music_identity_tombstones t
+      JOIN music_identity_lifecycle_operations o ON o.operation_id=t.lifecycle_operation_id
+      WHERE t.strapi_user_document_id=$1`, [finalize.strapiUserDocumentId])).rows[0])
+      .toEqual({ lifecycle_operation_id: "delete-2", music_user_id: deletedFromSuspended.id, operation_music_user_id: deletedFromSuspended.id });
+    await expectRejected(pool, `INSERT INTO users
+      (id,username,password,guest_url,venue_name,strapi_user_document_id,strapi_account_document_id,
+       guest_capability_hash,lifecycle_operation_id)
+      VALUES ($1,'numeric-reuse','disabled','numeric-reuse-slug','Venue','person-numeric-reuse',
+        'account-numeric-reuse',$2,'provision-numeric-reuse')`, [deletedFromSuspended.id, "7".repeat(64)]);
+    expect((await pool.query("SELECT count(*)::int AS count FROM music_identity_lifecycle_operations WHERE operation_id='provision-numeric-reuse'")).rows[0].count).toBe(0);
+    await expectRejected(pool, "UPDATE music_identity_tombstones SET music_user_id=music_user_id+1 WHERE lifecycle_operation_id='delete-2'");
+    await expectRejected(pool, "UPDATE music_identity_lifecycle_operations SET music_user_id=music_user_id+1 WHERE operation_id='delete-2'");
+    expect((await pool.query(`SELECT count(*)::int AS count FROM pg_constraint
+      WHERE contype='f' AND conrelid IN ('music_identity_tombstones'::regclass,'music_identity_lifecycle_operations'::regclass)
+        AND confrelid='users'::regclass`)).rows[0].count).toBe(0);
+    expect((await pool.query("SELECT seqcycle FROM pg_sequence WHERE seqrelid='users_id_seq'::regclass")).rows[0].seqcycle).toBe(false);
     expect((await pool.query("SELECT operation_id FROM music_identity_lifecycle_operations WHERE strapi_user_document_id='person-lifecycle' ORDER BY created_at,operation_id")).rows.map((row) => row.operation_id))
-      .toEqual(expect.arrayContaining(["provision-lifecycle", "suspend-1", "reactivate-1", "delete-1", "cancel-1", "reactivate-2"]));
+      .toEqual(expect.arrayContaining(["provision-lifecycle", "suspend-1", "reactivate-1", "delete-1", "cancel-1", "reactivate-2", "delete-again", "cancel-again", "reactivate-again"]));
     await expectRejected(pool, "UPDATE users SET identity_status='suspended' WHERE strapi_user_document_id='person-lifecycle'");
     await expectRejected(pool, "UPDATE users SET identity_status='pending_deletion' WHERE strapi_user_document_id='person-lifecycle'");
     await pool.end();
@@ -409,20 +433,20 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     const pool = await freshDatabase("concurrency");
     const secondPool = new pg.Pool({ connectionString: (pool as unknown as { options: { connectionString: string } }).options.connectionString, max: 2 });
     const [left, right] = await Promise.all([migrateMusicDatabase(pool), migrateMusicDatabase(secondPool)]);
-    expect([...left.appliedIds, ...right.appliedIds].sort()).toEqual(["0001_runtime_baseline", "0002_identity_lifecycle", "0003_identity_lifecycle_hardening", "0004_identity_delete_saga"]);
-    const failure = createMigrationDefinition("0005_deliberate_failure", "CREATE TABLE must_rollback(id integer); SELECT missing_function();");
+    expect([...left.appliedIds, ...right.appliedIds].sort()).toEqual(["0001_runtime_baseline", "0002_identity_lifecycle", "0003_identity_lifecycle_hardening", "0004_identity_delete_saga", "0005_resource_bound_deletion_history"]);
+    const failure = createMigrationDefinition("0006_deliberate_failure", "CREATE TABLE must_rollback(id integer); SELECT missing_function();");
     await expect(migrateMusicDatabase(pool, {
       migrations: [...loadMusicMigrations(), failure],
-      testOnlyExpectedIds: ["0001_runtime_baseline", "0002_identity_lifecycle", "0003_identity_lifecycle_hardening", "0004_identity_delete_saga", "0005_deliberate_failure"],
+      testOnlyExpectedIds: ["0001_runtime_baseline", "0002_identity_lifecycle", "0003_identity_lifecycle_hardening", "0004_identity_delete_saga", "0005_resource_bound_deletion_history", "0006_deliberate_failure"],
     })).rejects.toThrow();
     expect((await pool.query("SELECT to_regclass('public.must_rollback') AS value")).rows[0].value).toBeNull();
-    expect((await pool.query("SELECT count(*)::int AS count FROM music_schema_migrations WHERE id='0005_deliberate_failure'")).rows[0].count).toBe(0);
+    expect((await pool.query("SELECT count(*)::int AS count FROM music_schema_migrations WHERE id='0006_deliberate_failure'")).rows[0].count).toBe(0);
     await secondPool.end();
     await pool.end();
   });
 
   it("rejects an appended production chain before any fresh or migrated database write", async () => {
-    const appended = createMigrationDefinition("0005_unapproved", "CREATE TABLE forbidden_chain_write(id integer);\n");
+    const appended = createMigrationDefinition("0006_unapproved", "CREATE TABLE forbidden_chain_write(id integer);\n");
     const chain = [...loadMusicMigrations(), appended];
     const fresh = await freshDatabase("appended_fresh");
     await expect(migrateMusicDatabase(fresh, { migrations: chain })).rejects.toThrow(/exact production migration chain/i);
@@ -444,7 +468,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     await migrateMusicDatabase(pool);
     const chain = loadMusicMigrations();
     await expect(migrateMusicDatabase(pool, { migrations: [
-      createMigrationDefinition(chain[0].id, `${chain[0].sql}\n-- tampered`), chain[1], chain[2], chain[3],
+      createMigrationDefinition(chain[0].id, `${chain[0].sql}\n-- tampered`), chain[1], chain[2], chain[3], chain[4],
     ] })).rejects.toThrow("checksum");
     await pool.query("ALTER TABLE users ADD COLUMN unreviewed_drift text");
     await expect(verifyMusicDatabase(pool)).rejects.toThrow("drift");

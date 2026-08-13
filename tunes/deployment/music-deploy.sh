@@ -11,7 +11,7 @@ readonly compatibility_floor_schema="music-schema-floor-v2"
 readonly schema_epoch_schema="music-schema-epoch-v1"
 readonly journal_schema="music-transaction-v1"
 readonly legacy_marker="containment-no-schema-change"
-readonly current_marker="0004_identity_delete_saga"
+readonly current_marker="0005_resource_bound_deletion_history"
 readonly minimum_containment_commit="d226f7e4dc5a54195a59804ec729f72b5e8f10d7"
 
 fail() {

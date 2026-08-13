@@ -43,11 +43,15 @@ describe("registration compatibility process", () => {
     });
   }
 
-  async function rawRequest(port: number, chunks: Array<{ bytes: string; delayMs?: number }>): Promise<string> {
+  async function rawRequest(
+    port: number,
+    chunks: Array<{ bytes: string; delayMs?: number }>,
+    hardTimeoutMs = 5_000,
+  ): Promise<string> {
     return new Promise((resolveResponse, reject) => {
       const socket = connect(port, "127.0.0.1");
       let response = "";
-      const timeout = setTimeout(() => { socket.destroy(); reject(new Error("raw request timed out")); }, 5_000);
+      const timeout = setTimeout(() => { socket.destroy(); reject(new Error("raw request timed out")); }, hardTimeoutMs);
       socket.setEncoding("utf8");
       socket.on("data", (data) => { response += data; });
       socket.on("error", reject);
@@ -121,4 +125,23 @@ describe("registration compatibility process", () => {
     expect(slow).not.toContain("LEGACY_IDENTITY_ROUTE_REMOVED");
     expect(slow).toMatch(/^HTTP\/1\.1 408 |^$/);
   }, 15_000);
+
+  it("enforces partial-header and keep-alive socket deadlines", async () => {
+    const baseUrl = await start();
+    const port = Number(new URL(baseUrl).port);
+
+    const partialStartedAt = Date.now();
+    const partial = await rawRequest(port, [{
+      bytes: "POST /api/register HTTP/1.1\r\nHost: localtunes.earth\r\nX-Incomplete: ",
+    }], 3_250);
+    expect(partial).not.toContain("LEGACY_IDENTITY_ROUTE_REMOVED");
+    expect(Date.now() - partialStartedAt).toBeLessThanOrEqual(3_000);
+
+    const keepAliveStartedAt = Date.now();
+    const keepAlive = await rawRequest(port, [{ bytes: [
+      "GET /health/live HTTP/1.1", "Host: localtunes.earth", "", "",
+    ].join("\r\n") }], 2_250);
+    expect(keepAlive).toMatch(/^HTTP\/1\.1 200 /);
+    expect(Date.now() - keepAliveStartedAt).toBeLessThanOrEqual(2_000);
+  }, 10_000);
 });

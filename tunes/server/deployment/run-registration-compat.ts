@@ -20,7 +20,17 @@ function sendJson(response: import("node:http").ServerResponse, status: number, 
   response.end(encoded);
 }
 
-const server = createServer((request, response) => {
+// These deadlines must be constructor options. Node schedules incomplete-header
+// expiry from the constructor's connection-check interval; assigning
+// `headersTimeout` after construction leaves the default 30 second sweep in
+// effect even when the property itself reports a smaller value.
+const server = createServer({
+  headersTimeout: requestTimeoutMs,
+  requestTimeout: requestTimeoutMs,
+  keepAliveTimeout: 1_000,
+  keepAliveTimeoutBuffer: 0,
+  connectionsCheckingInterval: 250,
+}, (request, response) => {
   const pathname = pathnameFromRequestTarget(request.url);
   if (request.method === "GET" && pathname === "/health/live") {
     sendJson(response, 200, { status: "live" });
@@ -64,9 +74,6 @@ const server = createServer((request, response) => {
   sendJson(response, 404, { error: { code: "NOT_FOUND" } });
 });
 
-server.headersTimeout = requestTimeoutMs;
-server.requestTimeout = requestTimeoutMs;
-server.keepAliveTimeout = 1_000;
 server.maxHeadersCount = 32;
 server.maxConnections = 128;
 

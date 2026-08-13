@@ -147,6 +147,39 @@ describePostgres("C3 real migrated runtime graph", () => {
 
     await expect(storage.deleteUser(identity.id)).resolves.toMatchObject({ operationId, finalized: true });
     await expect(storage.deleteUser(identity.id, operationId)).resolves.toMatchObject({ operationId, finalized: false });
+    const boundHistory = (await pool.query(`SELECT t.music_user_id AS tombstone_user_id,
+      o.music_user_id AS operation_user_id
+      FROM music_identity_tombstones t
+      JOIN music_identity_lifecycle_operations o ON o.operation_id=t.lifecycle_operation_id
+      WHERE t.lifecycle_operation_id=$1`, [operationId])).rows[0];
+    expect(boundHistory).toEqual({ tombstone_user_id: identity.id, operation_user_id: identity.id });
+
+    const historyBeforeConflict = (await pool.query(`SELECT
+      (SELECT count(*)::int FROM music_identity_tombstones) AS tombstones,
+      (SELECT count(*)::int FROM music_identity_lifecycle_operations) AS operations`)).rows[0];
+    await expect(storage.deleteUser(identity.id + 1_000_000, operationId))
+      .rejects.toMatchObject({ code: "LIFECYCLE_OPERATION_CONFLICT" });
+    await expect(storage.deleteUser(identity.id, `${operationId}_wrong`))
+      .rejects.toMatchObject({ code: "LIFECYCLE_OPERATION_CONFLICT" });
+    expect((await pool.query(`SELECT
+      (SELECT count(*)::int FROM music_identity_tombstones) AS tombstones,
+      (SELECT count(*)::int FROM music_identity_lifecycle_operations) AS operations`)).rows[0]).toEqual(historyBeforeConflict);
+
+    const unrelated = await new MusicIdentityRepository(pool).createIdentity({
+      username: `${suffix}_unrelated`, password: "disabled", guestUrl: `${suffix}_unrelated_guest`, venueName: "Unrelated Venue",
+      strapiUserDocumentId: `${suffix}_unrelated_person`, strapiAccountDocumentId: `${suffix}_unrelated_account`,
+      guestCapabilityHash: "6".repeat(64), operationId: `${suffix}_unrelated_provision`,
+    });
+    const unrelatedHistoryBefore = (await pool.query(`SELECT
+      (SELECT count(*)::int FROM music_identity_tombstones) AS tombstones,
+      (SELECT count(*)::int FROM music_identity_lifecycle_operations) AS operations`)).rows[0];
+    await expect(storage.deleteUser(unrelated.id, operationId))
+      .rejects.toMatchObject({ code: "LIFECYCLE_OPERATION_CONFLICT" });
+    expect((await pool.query("SELECT count(*)::int AS count FROM users WHERE id=$1", [unrelated.id])).rows[0].count).toBe(1);
+    expect((await pool.query(`SELECT
+      (SELECT count(*)::int FROM music_identity_tombstones) AS tombstones,
+      (SELECT count(*)::int FROM music_identity_lifecycle_operations) AS operations`)).rows[0]).toEqual(unrelatedHistoryBefore);
+    await storage.deleteUser(unrelated.id);
     expect((await pool.query(`SELECT count(*)::int AS count FROM music_identity_tombstones
       WHERE lifecycle_operation_id=$1`, [operationId])).rows[0].count).toBe(1);
     expect((await pool.query(`SELECT count(*)::int AS count FROM music_identity_lifecycle_operations

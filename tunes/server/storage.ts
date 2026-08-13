@@ -836,8 +836,8 @@ export class DatabaseStorage implements IStorage {
           if (!requestedOperationId) throw new LifecycleOperationConflictError();
           const completed = (await connection.query(`SELECT 1 FROM music_identity_tombstones t
             JOIN music_identity_lifecycle_operations o ON o.operation_id=t.lifecycle_operation_id
-            WHERE t.lifecycle_operation_id=$1 AND o.operation_kind='delete'
-              AND o.operation_state='completed' AND o.operation_phase='finalized'`, [requestedOperationId])).rows[0];
+            WHERE t.lifecycle_operation_id=$1 AND o.operation_kind='delete' AND t.music_user_id=$2
+              AND o.music_user_id=$2 AND o.operation_state='completed' AND o.operation_phase='finalized'`, [requestedOperationId,id])).rows[0];
           if (!completed) throw new LifecycleOperationConflictError();
           await connection.query('COMMIT');
           return { operationId: requestedOperationId, finalized: false };

@@ -40,7 +40,7 @@ absent or different, or `main` is not protected.
 
 ## C3 same-image migration gate
 
-`0004_identity_delete_saga` is the exact expected migration ID. The candidate
+`0005_resource_bound_deletion_history` is the exact expected migration ID. The candidate
 image contains the ordered SQL files and `run-migration-gate.js`; the one-shot
 gate takes the PostgreSQL advisory lock, verifies the checksum journal and
 catalog fingerprint, applies pending migrations transactionally, and writes an
@@ -55,11 +55,17 @@ Liveness remains process-only. The secure image ledger can retain historical
 `containment-no-schema-change` entries for audit and the permanent security
 floor, but they cease to be rollback targets as soon as the real C3 gate has
 migrated the database. All new images use
-`0004_identity_delete_saga` and the
+`0005_resource_bound_deletion_history` and the
 real migration gate. Because production catalog/row-count and restore evidence
 are still absent, an existing unversioned database is a conflict: there is no
 automatic baseline adoption, username/email matching, or authorized production
 migration path. `GATE_PROD` remains closed.
+
+Deletion replay is resource-bound at this schema epoch: finalized lifecycle and
+tombstone history records the retired numeric `users.id` without a foreign key
+to the removed row. A replay succeeds only for the exact numeric user ID and
+operation ID pair. The ID column is immutable, the user sequence is non-cycling,
+and the insert trigger rejects explicit reuse of a retired numeric ID.
 
 ## Transaction and rollback authority
 

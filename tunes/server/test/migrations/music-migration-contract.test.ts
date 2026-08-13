@@ -23,6 +23,7 @@ describe("Music migration authority contracts", () => {
       "0002_identity_lifecycle",
       "0003_identity_lifecycle_hardening",
       "0004_identity_delete_saga",
+      "0005_resource_bound_deletion_history",
     ]);
     expect(EXPECTED_MUSIC_MIGRATION_ID).toBe(migrations.at(-1)?.id);
     expect(migrations.every(({ checksum }) => /^[a-f0-9]{64}$/.test(checksum))).toBe(true);
@@ -37,6 +38,9 @@ describe("Music migration authority contracts", () => {
     expect(sql).toMatch(/CREATE TABLE music_identity_tombstones/i);
     expect(sql).toContain("strapi_user_document_id");
     expect(sql).toContain("strapi_account_document_id");
+    expect(sql).toMatch(/music_identity_(?:tombstones|lifecycle_operations)[\s\S]*music_user_id/i);
+    expect(sql).toMatch(/music_user_id[\s\S]*IS DISTINCT FROM[\s\S]*OLD\.music_user_id/i);
+    expect(sql).toMatch(/tombstone\.music_user_id\s*=\s*p_user_id/i);
     expect(sql).toContain("guest_capability_hash");
     expect(sql).not.toMatch(/guest_capability(?:_plaintext|_token|_secret)\s+TEXT/i);
   });
@@ -122,7 +126,7 @@ describe("Music migration authority contracts", () => {
 
   it("rejects any non-production chain before opening a database connection", async () => {
     const production = loadMusicMigrations(resolve(repositoryRoot, "tunes/migrations"));
-    const appended = createMigrationDefinition("0005_unapproved", "SELECT 1;\n");
+    const appended = createMigrationDefinition("0006_unapproved", "SELECT 1;\n");
     const connect = vi.fn();
     await expect(migrateMusicDatabase({ connect } as never, { migrations: [...production, appended] }))
       .rejects.toThrow(/exact production migration chain/i);

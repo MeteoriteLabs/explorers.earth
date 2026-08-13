@@ -186,12 +186,13 @@ export class MusicIdentityRepository {
       if (!locked) throw new Error("immutable external identity not found");
       const operationKind = input.kind === "request_deletion" ? "delete" : input.kind;
       const operation = await client.query<any>(`SELECT operation_id,strapi_user_document_id,strapi_account_document_id,
-        operation_kind,requested_identity_status,operation_state,result_session_version,operation_phase
+        music_user_id,operation_kind,requested_identity_status,operation_state,result_session_version,operation_phase
         FROM music_identity_lifecycle_operations WHERE operation_id=$1`, [input.operationId]);
       if (operation.rows[0]) {
         const prior = operation.rows[0];
         if (prior.strapi_user_document_id !== input.strapiUserDocumentId
             || prior.strapi_account_document_id !== locked.strapi_account_document_id
+            || prior.music_user_id !== locked.id
             || prior.operation_kind !== operationKind
             || prior.requested_identity_status !== input.targetStatus) throw new Error("lifecycle operation mismatch");
         if (prior.operation_state !== "completed" || !prior.result_session_version) throw new Error("lifecycle operation is incomplete");
@@ -218,9 +219,9 @@ export class MusicIdentityRepository {
         || input.targetStatus === "pending_deletion";
       const resultSessionVersion = locked.session_version + (invalidatesSession ? 1 : 0);
       await client.query(`INSERT INTO music_identity_lifecycle_operations(
-        operation_id,strapi_user_document_id,strapi_account_document_id,operation_kind,requested_identity_status,operation_phase
-      ) VALUES ($1,$2,$3,$4,$5,$6)`, [
-        input.operationId,input.strapiUserDocumentId,locked.strapi_account_document_id,operationKind,input.targetStatus,
+        operation_id,strapi_user_document_id,strapi_account_document_id,music_user_id,operation_kind,requested_identity_status,operation_phase
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [
+        input.operationId,input.strapiUserDocumentId,locked.strapi_account_document_id,locked.id,operationKind,input.targetStatus,
         input.kind === "request_deletion" ? "prepared" : "single",
       ]);
       await client.query(`UPDATE music_identity_lifecycle_operations

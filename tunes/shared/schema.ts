@@ -67,6 +67,37 @@ export const users = pgTable("users", {
   guestDiscoverable: boolean("guest_discoverable").notNull().default(false),
 });
 
+// Migration-owned idempotency history. `musicUserId` deliberately has no
+// reference to users: it must survive the user row and bind deletion replay to
+// the retired numeric resource rather than only to a caller-provided saga ID.
+export const musicIdentityLifecycleOperations = pgTable("music_identity_lifecycle_operations", {
+  operationId: text("operation_id").primaryKey(),
+  strapiUserDocumentId: text("strapi_user_document_id").notNull(),
+  strapiAccountDocumentId: text("strapi_account_document_id").notNull(),
+  musicUserId: integer("music_user_id"),
+  operationKind: text("operation_kind").notNull(),
+  requestedIdentityStatus: text("requested_identity_status").notNull(),
+  operationState: text("operation_state").notNull().default("requested"),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  resultSessionVersion: integer("result_session_version"),
+  errorCode: text("error_code"),
+  operationPhase: text("operation_phase").notNull().default("single"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const musicIdentityTombstones = pgTable("music_identity_tombstones", {
+  strapiUserDocumentId: text("strapi_user_document_id").primaryKey(),
+  strapiAccountDocumentId: text("strapi_account_document_id").notNull().unique(),
+  musicUserId: integer("music_user_id").unique(),
+  reason: text("reason").notNull(),
+  lifecycleOperationId: text("lifecycle_operation_id").notNull().unique()
+    .references(() => musicIdentityLifecycleOperations.operationId),
+  retentionStage: text("retention_stage").notNull().default("tombstone-retained"),
+  sourceUpdatedAt: timestamp("source_updated_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // Add playlists table
 export const playlists = pgTable("playlists", {
   id: serial("id").primaryKey(),
