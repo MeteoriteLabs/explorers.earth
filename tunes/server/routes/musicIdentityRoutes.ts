@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Express, Request, Response } from "express";
 import {
   MusicIdentityError,
+  MUSIC_IDENTITY_RESPONSE_STATUSES,
   musicErrorEnvelope,
   type MusicEnsureResponse,
 } from "../../shared/musicError";
@@ -29,6 +30,8 @@ export interface MusicIdentityRouteDependencies {
   fingerprint?: (proof: string) => string;
   requestIdFactory?: () => string;
   entryEnabled?: () => boolean;
+  trustedProxyHops?: 0 | 1;
+  isTrustedProxy?: (peerAddress: string | undefined) => boolean;
   telemetry?: () => {
     upstreamCalls: number;
     retries: number;
@@ -80,7 +83,11 @@ export function setupMusicIdentityRoutes(app: Express, dependencies: MusicIdenti
       if (dependencies.entryEnabled?.() === false) {
         throw new MusicIdentityError("ENTRY_DISABLED", 503, "Music identity entry is temporarily disabled.", "retry", true, 60);
       }
-      const rate = dependencies.limiter.check(req.socket.remoteAddress ?? "unknown", fingerprint(proof));
+      const peerAddress = req.socket.remoteAddress;
+      const source = dependencies.trustedProxyHops === 1 && dependencies.isTrustedProxy?.(peerAddress)
+        ? (req.ip ?? peerAddress ?? "unknown")
+        : (peerAddress ?? "unknown");
+      const rate = dependencies.limiter.check(source, fingerprint(proof));
       if (!rate.allowed) {
         throw new MusicIdentityError("RATE_LIMITED", 429, "Too many Music identity attempts.", "retry", true, rate.retryAfterSeconds ?? 1);
       }
@@ -102,8 +109,8 @@ export function setupMusicIdentityRoutes(app: Express, dependencies: MusicIdenti
       const error = safeError(cause);
       outcome = safeOutcome(error);
       status = error.status;
-      if ((status === 429 || status === 503) && error.retryAfterSeconds) {
-        res.setHeader("Retry-After", String(error.retryAfterSeconds));
+      if (status === 429 || status === 503) {
+        res.setHeader("Retry-After", String(error.retryAfterSeconds ?? 1));
       }
       return res.status(status).json(musicErrorEnvelope(error, requestId));
     } finally {
@@ -167,7 +174,9 @@ function invalidRequest(): MusicIdentityError {
 }
 
 function safeError(cause: unknown): MusicIdentityError {
-  if (cause instanceof MusicIdentityError) return cause;
+  if (cause instanceof MusicIdentityError
+      && cause.status !== 200
+      && (MUSIC_IDENTITY_RESPONSE_STATUSES as readonly number[]).includes(cause.status)) return cause;
   const code = typeof cause === "object" && cause && "code" in cause ? String((cause as { code?: unknown }).code) : "";
   if (["ECONNREFUSED", "ECONNRESET", "ETIMEDOUT", "57P01", "57P03", "08006"].includes(code)) {
     return new MusicIdentityError("DATABASE_UNAVAILABLE", 503, "Music identity is temporarily unavailable.", "retry", true, 2);

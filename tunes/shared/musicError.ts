@@ -2,6 +2,8 @@ import { z } from "zod";
 
 export const MUSIC_ERROR_VERSION = "music-error/v1" as const;
 export const MUSIC_IDENTITY_VERSION = "music-identity/v1" as const;
+export const MUSIC_IDENTITY_RESPONSE_STATUSES = [200, 400, 401, 403, 409, 429, 500, 502, 503] as const;
+export type MusicIdentityResponseStatus = typeof MUSIC_IDENTITY_RESPONSE_STATUSES[number];
 
 export const musicIdentityStatusSchema = z.literal("active");
 /** The ensure operation has no JSON request entity. */
@@ -50,6 +52,9 @@ export type MusicEnsureResponse = z.infer<typeof musicEnsureResponseSchema>;
 export type MusicErrorEnvelope = z.infer<typeof musicErrorEnvelopeSchema>;
 export type MusicErrorCode = z.infer<typeof musicErrorCodeSchema>;
 export type MusicErrorAction = MusicErrorEnvelope["error"]["action"];
+export type MusicIdentityClientResponse =
+  | { status: 200; requestId: string; body: MusicEnsureResponse }
+  | { status: Exclude<MusicIdentityResponseStatus, 200>; requestId: string; retryAfterSeconds?: number; body: MusicErrorEnvelope };
 
 export class MusicIdentityError extends Error {
   constructor(
@@ -77,6 +82,37 @@ export function musicErrorEnvelope(error: MusicIdentityError, requestId: string)
       requestId,
     },
   };
+}
+
+export function parseMusicIdentityClientResponse(
+  status: number,
+  headers: Headers | Record<string, string | string[] | undefined>,
+  body: unknown,
+): MusicIdentityClientResponse {
+  if (!(MUSIC_IDENTITY_RESPONSE_STATUSES as readonly number[]).includes(status)) {
+    throw new Error(`undocumented Music identity status ${status}`);
+  }
+  const requestId = responseHeader(headers, "x-request-id");
+  if (!requestId || requestId.length > 64) throw new Error("X-Request-Id response header is required");
+  if (status === 200) {
+    return { status: 200, requestId, body: musicEnsureResponseSchema.parse(body) };
+  }
+  const errorBody = musicErrorEnvelopeSchema.parse(body);
+  if (errorBody.error.requestId !== requestId) throw new Error("X-Request-Id must equal the error requestId");
+  const errorStatus = status as Exclude<MusicIdentityResponseStatus, 200>;
+  if (status === 429 || status === 503) {
+    const retryAfter = responseHeader(headers, "retry-after");
+    if (!retryAfter || !/^[1-9][0-9]*$/.test(retryAfter)) throw new Error("Retry-After integer-seconds response header is required");
+    return { status: errorStatus, requestId, retryAfterSeconds: Number(retryAfter), body: errorBody };
+  }
+  return { status: errorStatus, requestId, body: errorBody };
+}
+
+function responseHeader(headers: Headers | Record<string, string | string[] | undefined>, name: string): string | undefined {
+  if (headers instanceof Headers) return headers.get(name) ?? undefined;
+  const entry = Object.entries(headers).find(([key]) => key.toLowerCase() === name);
+  const value = entry?.[1];
+  return Array.isArray(value) ? value[0] : value;
 }
 
 export const musicEnsureResponseOpenApiSchema = {
@@ -118,8 +154,26 @@ export const musicErrorOpenApiSchema = {
   },
 } as const;
 
-const errorResponse = (description: string) => ({
+const requestIdResponseHeader = {
+  description: "Bounded request correlation identifier",
+  required: true,
+  schema: { type: "string", minLength: 1, maxLength: 64 },
+} as const;
+
+const retryAfterResponseHeader = {
+  description: "Minimum whole seconds before retrying",
+  required: true,
+  schema: { type: "string", pattern: "^[1-9][0-9]*$" },
+} as const;
+
+const responseHeaders = (retryAfter = false) => ({
+  "X-Request-Id": requestIdResponseHeader,
+  ...(retryAfter ? { "Retry-After": retryAfterResponseHeader } : {}),
+});
+
+const errorResponse = (description: string, retryAfter = false) => ({
   description,
+  headers: responseHeaders(retryAfter),
   content: { "application/json": { schema: { $ref: "#/components/schemas/MusicErrorEnvelope" } } },
 });
 
@@ -133,16 +187,17 @@ export const musicIdentityOpenApi = {
       responses: {
         "200": {
           description: "Stable Music identity projection",
+          headers: responseHeaders(),
           content: { "application/json": { schema: { $ref: "#/components/schemas/MusicIdentityEnsureResponse" } } },
         },
         "400": errorResponse("Invalid bodyless request"),
         "401": errorResponse("Missing or invalid Strapi proof"),
         "403": errorResponse("Explorer is not eligible"),
         "409": errorResponse("Immutable identity or lifecycle conflict"),
-        "429": errorResponse("Bounded rate limit"),
+        "429": errorResponse("Bounded rate limit", true),
         "500": errorResponse("Safe internal failure"),
         "502": errorResponse("Malformed authoritative response"),
-        "503": errorResponse("Temporary upstream or database failure"),
+        "503": errorResponse("Temporary upstream or database failure", true),
       },
     },
   },

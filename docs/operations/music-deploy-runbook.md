@@ -223,6 +223,33 @@ four-request-per-second rate limiter with burst four. Its `sourceCriterion` is
 deliberately omitted: Traefik's default criterion is the direct remote address,
 so caller-supplied `X-Forwarded-For` values cannot create new buckets.
 
+## C4 identity gateway startup and admission controls
+
+Tunes validates the complete Music identity configuration before registering
+routes or listening. Live mode accepts only the exact allowlisted HTTPS
+`STRAPI_URL` origin. It rejects credentials, paths, queries, fragments, and any
+DNS answer that is private, loopback, link-local, documentation, multicast, or
+otherwise non-public. The gateway then pins the validated address set in its
+HTTPS lookup while retaining the declared hostname for TLS, so a later DNS
+answer cannot redirect a request. Fixture mode accepts only its separately
+declared exact `MUSIC_FIXTURE_STRAPI_ORIGIN` and does not perform live DNS.
+
+Production uses one exact proxy peer, not a caller-controlled hop count. Compose
+assigns Traefik `${TRAEFIK_PROXY_IP:-172.31.250.2}` inside
+`${TRAEFIK_PROXY_SUBNET:-172.31.250.0/24}` and gives Tunes the same value as
+`MUSIC_TRUSTED_PROXY_IP`. Operators must choose a dedicated non-conflicting
+subnet before first deployment and must change the subnet and peer IP together.
+Tunes honors `X-Forwarded-For` only when the direct socket peer equals that IP;
+otherwise the socket address is the rate-limit source. Do not expose a Tunes
+port directly or add another proxy without updating and rehearsing this exact
+peer contract.
+
+All concurrency, queue, deadline, retry, cache, circuit, rate, and cardinality
+settings are bounded integers with cross-field validation. Startup fails before
+listen when a value is missing, malformed, non-finite, out of range, or when a
+queue/deadline relationship is unsafe. `429` and `503` always carry a bounded
+integer `Retry-After`, and every documented response carries `X-Request-Id`.
+
 Administrative deletion is one identity saga. If the row is already
 `pending_deletion`, storage reuses its locked operation ID; a caller-supplied
 different ID fails with `LIFECYCLE_OPERATION_CONFLICT` before child cleanup. An

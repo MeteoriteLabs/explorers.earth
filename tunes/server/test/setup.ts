@@ -6,6 +6,11 @@
 process.env.NODE_ENV = 'test';
 process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'test-session-secret';
 process.env.COOKIE_SECRET = process.env.COOKIE_SECRET || 'test-cookie-secret';
+process.env.MUSIC_MODE = 'fixture';
+process.env.STRAPI_URL = 'http://strapi:1337';
+process.env.MUSIC_FIXTURE_STRAPI_ORIGIN = 'http://strapi:1337';
+process.env.TRUST_PROXY_HOPS = '0';
+delete process.env.MUSIC_TRUSTED_PROXY_IP;
 // The integration suite CREATES + DELETES a user. NEVER inherit an ambient
 // DATABASE_URL (it could point at dev/prod): use DATABASE_URL_TEST if provided,
 // otherwise a local throwaway. Any inherited DATABASE_URL is deliberately ignored.

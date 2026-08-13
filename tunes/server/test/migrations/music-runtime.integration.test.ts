@@ -42,6 +42,7 @@ describePostgres("C3 real migrated runtime graph", () => {
     const address = strapi.address();
     if (!address || typeof address === "string") throw new Error("runtime Strapi did not bind");
     process.env.STRAPI_URL = `http://127.0.0.1:${address.port}`;
+    process.env.MUSIC_FIXTURE_STRAPI_ORIGIN = process.env.STRAPI_URL;
     ({ app, server } = await createApp());
     const identity = await new MusicIdentityRepository(pool).createIdentity({
       username: suffix,

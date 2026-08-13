@@ -38,6 +38,7 @@ export interface StrapiIdentityGatewayOptions {
   baseUrl: string;
   fetchImpl?: typeof fetch;
   maxConcurrency: number;
+  maxPending: number;
   retries: number;
   connectTimeoutMs: number;
   readTimeoutMs: number;
@@ -47,6 +48,7 @@ export interface StrapiIdentityGatewayOptions {
   circuitOpenMs: number;
   now?: () => number;
   random?: () => number;
+  sleep?: (milliseconds: number) => Promise<void>;
 }
 
 interface CacheEntry {
@@ -55,30 +57,83 @@ interface CacheEntry {
 }
 
 type CircuitState = "closed" | "open" | "half-open";
+interface CircuitAdmission { generation: number; probe: boolean }
 
-class Semaphore {
-  private active = 0;
-  private readonly queue: Array<() => void> = [];
+class AdmissionLimitError extends Error {
+  constructor() {
+    super("bounded upstream admission refused");
+    this.name = "AdmissionLimitError";
+  }
+}
 
-  constructor(private readonly maximum: number) {}
+interface Waiter {
+  resolve: () => void;
+  reject: (error: Error) => void;
+  timer: NodeJS.Timeout;
+}
 
-  async use<T>(operation: () => Promise<T>): Promise<T> {
-    await this.acquire();
+class BoundedSemaphore {
+  private activeCount = 0;
+  private readonly queue: Waiter[] = [];
+  private peakPendingCount = 0;
+
+  constructor(private readonly maximum: number, private readonly maximumPending: number) {}
+
+  async use<T>(operation: () => Promise<T>, deadline: number, now: () => number): Promise<T> {
+    await this.acquire(deadline, now);
     try {
+      if (now() >= deadline) throw new AdmissionLimitError();
       return await operation();
     } finally {
-      this.active -= 1;
-      this.queue.shift()?.();
+      this.release();
     }
   }
 
-  private async acquire(): Promise<void> {
-    if (this.active < this.maximum) {
-      this.active += 1;
+  stats(): { active: number; pending: number; peakPending: number } {
+    return { active: this.activeCount, pending: this.pending(), peakPending: this.peakPendingCount };
+  }
+
+  private pending(): number {
+    return this.activeCount + this.queue.length;
+  }
+
+  private async acquire(deadline: number, now: () => number): Promise<void> {
+    const remaining = deadline - now();
+    if (remaining <= 0 || this.pending() >= this.maximumPending) throw new AdmissionLimitError();
+    if (this.activeCount < this.maximum) {
+      this.activeCount += 1;
+      this.peakPendingCount = Math.max(this.peakPendingCount, this.pending());
       return;
     }
-    await new Promise<void>((resolve) => this.queue.push(resolve));
-    this.active += 1;
+    await new Promise<void>((resolve, reject) => {
+      const waiter: Waiter = {
+        resolve,
+        reject,
+        timer: setTimeout(() => {
+          const index = this.queue.indexOf(waiter);
+          if (index >= 0) this.queue.splice(index, 1);
+          reject(new AdmissionLimitError());
+        }, remaining),
+      };
+      this.queue.push(waiter);
+      this.peakPendingCount = Math.max(this.peakPendingCount, this.pending());
+    });
+  }
+
+  private release(): void {
+    const waiter = this.queue.shift();
+    if (waiter) {
+      clearTimeout(waiter.timer);
+      waiter.resolve();
+      return;
+    }
+    this.activeCount -= 1;
+  }
+}
+
+class GatewayUnavailableError extends MusicIdentityError {
+  constructor(retryAfterSeconds: number, readonly countsTowardCircuit: boolean) {
+    super("UPSTREAM_UNAVAILABLE", 503, "Music identity is temporarily unavailable.", "retry", true, retryAfterSeconds);
   }
 }
 
@@ -90,9 +145,11 @@ export class StrapiIdentityGateway {
   private readonly fetchImpl: typeof fetch;
   private readonly now: () => number;
   private readonly random: () => number;
-  private readonly semaphore: Semaphore;
+  private readonly sleep: (milliseconds: number) => Promise<void>;
+  private readonly semaphore: BoundedSemaphore;
   private readonly cache = new Map<string, CacheEntry>();
   private circuitState: CircuitState = "closed";
+  private circuitGeneration = 0;
   private consecutiveFailures = 0;
   private openedUntil = 0;
   private probeActive = false;
@@ -103,14 +160,27 @@ export class StrapiIdentityGateway {
   private circuitRejections = 0;
 
   constructor(private readonly options: StrapiIdentityGatewayOptions) {
-    if (!/^https?:\/\//.test(options.baseUrl) || options.maxConcurrency < 1 || options.maxConcurrency > 64
-        || options.retries < 0 || options.retries > 3 || options.cacheTtlMs < 0 || options.cacheTtlMs > 30_000) {
+    let url: URL;
+    try { url = new URL(options.baseUrl); }
+    catch { throw new Error("invalid bounded Strapi identity gateway configuration"); }
+    const integers = [options.maxConcurrency, options.maxPending, options.retries, options.connectTimeoutMs,
+      options.readTimeoutMs, options.overallTimeoutMs, options.cacheTtlMs, options.circuitFailureThreshold,
+      options.circuitOpenMs];
+    if (!["http:", "https:"].includes(url.protocol) || url.origin !== options.baseUrl
+        || !integers.every(Number.isSafeInteger)
+        || options.maxConcurrency < 1 || options.maxConcurrency > 64
+        || options.maxPending < options.maxConcurrency || options.maxPending > 128
+        || options.retries < 0 || options.retries > 3
+        || options.connectTimeoutMs < 1 || options.readTimeoutMs < 1 || options.overallTimeoutMs < 1
+        || options.cacheTtlMs < 0 || options.cacheTtlMs > 30_000
+        || options.circuitFailureThreshold < 1 || options.circuitOpenMs < 1) {
       throw new Error("invalid bounded Strapi identity gateway configuration");
     }
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.now = options.now ?? Date.now;
     this.random = options.random ?? Math.random;
-    this.semaphore = new Semaphore(options.maxConcurrency);
+    this.sleep = options.sleep ?? ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+    this.semaphore = new BoundedSemaphore(options.maxConcurrency, options.maxPending);
   }
 
   async resolve(proof: string, requestId: string): Promise<ResolvedStrapiIdentity> {
@@ -122,16 +192,19 @@ export class StrapiIdentityGateway {
     }
     this.cacheMisses += 1;
     if (cached) this.cache.delete(fingerprint);
-    this.assertCircuitAvailable();
+    const admission = this.admitCircuit();
     try {
-      const value = await this.resolveFresh(proof, requestId);
-      this.recordSuccess();
-      this.cache.set(fingerprint, { value, expiresAt: this.now() + this.options.cacheTtlMs });
-      this.pruneCache();
+      const value = await this.resolveFresh(proof, requestId, admission);
+      const current = this.recordSuccess(admission);
+      if (current) {
+        this.cache.set(fingerprint, { value, expiresAt: this.now() + this.options.cacheTtlMs });
+        this.pruneCache();
+      }
       return value;
     } catch (error) {
-      if (error instanceof MusicIdentityError && [502, 503].includes(error.status)) this.recordFailure();
-      else this.releaseProbe();
+      if (isCircuitFailure(error)) this.recordFailure(admission);
+      else if (error instanceof GatewayUnavailableError) this.recordNeutral(admission);
+      else this.recordSuccess(admission);
       throw error;
     }
   }
@@ -144,26 +217,32 @@ export class StrapiIdentityGateway {
   stats(): {
     cacheEntries: number;
     circuitState: CircuitState;
+    circuitGeneration: number;
     upstreamCalls: number;
     retries: number;
     cacheHits: number;
     cacheMisses: number;
     circuitRejections: number;
+    active: number;
+    pending: number;
+    peakPending: number;
   } {
     return {
       cacheEntries: this.cache.size,
       circuitState: this.circuitState,
+      circuitGeneration: this.circuitGeneration,
       upstreamCalls: this.upstreamCalls,
       retries: this.retries,
       cacheHits: this.cacheHits,
       cacheMisses: this.cacheMisses,
       circuitRejections: this.circuitRejections,
+      ...this.semaphore.stats(),
     };
   }
 
-  private async resolveFresh(proof: string, requestId: string): Promise<ResolvedStrapiIdentity> {
+  private async resolveFresh(proof: string, requestId: string, admission: CircuitAdmission): Promise<ResolvedStrapiIdentity> {
     const deadline = this.now() + this.options.overallTimeoutMs;
-    const userBody = await this.requestJson("/api/users/me", proof, requestId, deadline);
+    const userBody = await this.requestJson("/api/users/me", proof, requestId, deadline, admission);
     const parsedUser = strapiUserSchema.safeParse(userBody);
     if (!parsedUser.success) throw malformed();
     const user = parsedUser.data;
@@ -177,7 +256,7 @@ export class StrapiIdentityGateway {
       "filters[users_permissions_user][documentId][$eq]": user.documentId,
       "pagination[pageSize]": "50",
     });
-    const accountBody = await this.requestJson(`/api/accounts?${params.toString()}`, proof, requestId, deadline);
+    const accountBody = await this.requestJson(`/api/accounts?${params.toString()}`, proof, requestId, deadline, admission);
     const parsedAccounts = strapiAccountsSchema.safeParse(accountBody);
     if (!parsedAccounts.success) throw malformed();
     const completed = parsedAccounts.data.data.filter((account) =>
@@ -201,17 +280,23 @@ export class StrapiIdentityGateway {
     };
   }
 
-  private async requestJson(path: string, proof: string, requestId: string, deadline: number): Promise<unknown> {
+  private async requestJson(
+    path: string,
+    proof: string,
+    requestId: string,
+    deadline: number,
+    admission: CircuitAdmission,
+  ): Promise<unknown> {
     for (let attempt = 0; attempt <= this.options.retries; attempt += 1) {
-      const remaining = deadline - this.now();
-      if (remaining <= 0) throw unavailable();
+      if (deadline - this.now() <= 0) throw unavailable(2, true);
       try {
         const result = await this.semaphore.use(async () => {
-          if (this.circuitState === "open" && this.now() < this.openedUntil) throw unavailable();
+          this.assertAdmissionCurrent(admission);
+          const remaining = deadline - this.now();
+          if (remaining <= 0) throw new AdmissionLimitError();
           const controller = new AbortController();
-          let response: Response;
           this.upstreamCalls += 1;
-          response = await withDeadline(
+          const response = await withDeadline(
             this.fetchImpl(new URL(path, this.options.baseUrl), {
               method: "GET",
               headers: {
@@ -224,14 +309,14 @@ export class StrapiIdentityGateway {
             Math.min(remaining, this.options.connectTimeoutMs),
             controller,
           );
-          if (response!.status >= 400) return { response: response!, body: undefined };
+          if (response.status >= 400) return { response, body: undefined };
           const body = await withDeadline(
-            response!.text(),
+            response.text(),
             Math.min(this.options.readTimeoutMs, Math.max(1, deadline - this.now())),
             controller,
           );
-          return { response: response!, body };
-        });
+          return { response, body };
+        }, deadline, this.now);
         const { response } = result;
         if (response.status === 401 || response.status === 403) {
           throw new MusicIdentityError("AUTH_INVALID", 401, "The Explorer proof is invalid or expired.", "authenticate", false);
@@ -243,71 +328,101 @@ export class StrapiIdentityGateway {
             await this.backoff(response.headers.get("retry-after"), deadline);
             continue;
           }
-          throw unavailable(response.headers.get("retry-after"));
+          throw unavailable(clientRetryAfterSeconds(parseRetryAfterMs(response.headers.get("retry-after"), this.now())), true);
         }
         const body = result.body ?? "";
         if (body.length > 128 * 1024) throw malformed();
-        try {
-          return JSON.parse(body);
-        } catch {
-          throw malformed();
-        }
+        try { return JSON.parse(body); }
+        catch { throw malformed(); }
       } catch (error) {
         if (error instanceof MusicIdentityError) throw error;
+        if (error instanceof AdmissionLimitError) throw unavailable(1, false);
         if (attempt < this.options.retries) {
           this.retries += 1;
           await this.backoff(null, deadline);
           continue;
         }
-        throw unavailable();
+        throw unavailable(2, true);
       }
     }
-    throw unavailable();
+    throw unavailable(2, true);
   }
 
   private async backoff(retryAfter: string | null, deadline: number): Promise<void> {
-    const seconds = retryAfter && /^\d{1,3}$/.test(retryAfter) ? Number(retryAfter) : 0;
-    const delay = Math.min(Math.max(seconds * 1_000, 10 + Math.floor(this.random() * 20)), 1_000, Math.max(0, deadline - this.now()));
-    if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+    const lowerBound = parseRetryAfterMs(retryAfter, this.now());
+    const jitter = 10 + Math.floor(this.random() * 20);
+    const delay = Math.max(lowerBound ?? 0, jitter);
+    if (delay > deadline - this.now()) {
+      throw unavailable(clientRetryAfterSeconds(lowerBound), true);
+    }
+    await this.sleep(delay);
+    if (this.now() > deadline) throw unavailable(clientRetryAfterSeconds(lowerBound), true);
   }
 
-  private assertCircuitAvailable(): void {
-    if (this.circuitState !== "open") {
-      if (this.circuitState === "half-open" && this.probeActive) {
+  private admitCircuit(): CircuitAdmission {
+    if (this.circuitState === "closed") return { generation: this.circuitGeneration, probe: false };
+    if (this.circuitState === "open") {
+      if (this.now() < this.openedUntil) {
         this.circuitRejections += 1;
-        throw unavailable("1");
+        throw unavailable(Math.max(1, Math.ceil((this.openedUntil - this.now()) / 1_000)), false);
       }
-      return;
+      this.circuitState = "half-open";
+      this.probeActive = true;
+      return { generation: this.circuitGeneration, probe: true };
     }
-    if (this.now() < this.openedUntil) {
-      this.circuitRejections += 1;
-      throw unavailable(String(Math.max(1, Math.ceil((this.openedUntil - this.now()) / 1_000))));
-    }
-    this.circuitState = "half-open";
-    if (this.probeActive) {
-      this.circuitRejections += 1;
-      throw unavailable("1");
-    }
-    this.probeActive = true;
+    this.circuitRejections += 1;
+    throw unavailable(1, false);
   }
 
-  private recordFailure(): void {
-    this.releaseProbe();
+  private assertAdmissionCurrent(admission: CircuitAdmission): void {
+    if (admission.generation !== this.circuitGeneration
+        || this.circuitState === "open"
+        || (this.circuitState === "half-open" && !admission.probe)) {
+      throw unavailable(Math.max(1, Math.ceil((this.openedUntil - this.now()) / 1_000)), false);
+    }
+  }
+
+  private recordFailure(admission: CircuitAdmission): boolean {
+    if (admission.generation !== this.circuitGeneration) return false;
+    if (admission.probe && this.circuitState === "half-open") {
+      this.openCircuit();
+      return true;
+    }
+    if (this.circuitState !== "closed") return false;
     this.consecutiveFailures += 1;
-    if (this.consecutiveFailures >= this.options.circuitFailureThreshold) {
-      this.circuitState = "open";
-      this.openedUntil = this.now() + this.options.circuitOpenMs;
+    if (this.consecutiveFailures >= this.options.circuitFailureThreshold) this.openCircuit();
+    return true;
+  }
+
+  private recordSuccess(admission: CircuitAdmission): boolean {
+    if (admission.generation !== this.circuitGeneration) return false;
+    if (admission.probe) {
+      if (this.circuitState !== "half-open" || !this.probeActive) return false;
+      this.circuitState = "closed";
+      this.probeActive = false;
+      this.consecutiveFailures = 0;
+      this.circuitGeneration += 1;
+      return true;
+    }
+    if (this.circuitState !== "closed") return false;
+    this.consecutiveFailures = 0;
+    return true;
+  }
+
+  private recordNeutral(admission: CircuitAdmission): void {
+    if (admission.generation === this.circuitGeneration
+        && admission.probe
+        && this.circuitState === "half-open") {
+      this.openCircuit();
     }
   }
 
-  private recordSuccess(): void {
-    this.consecutiveFailures = 0;
-    this.circuitState = "closed";
-    this.releaseProbe();
-  }
-
-  private releaseProbe(): void {
+  private openCircuit(): void {
+    this.circuitState = "open";
+    this.openedUntil = this.now() + this.options.circuitOpenMs;
     this.probeActive = false;
+    this.consecutiveFailures = 0;
+    this.circuitGeneration += 1;
   }
 
   private pruneCache(): void {
@@ -336,11 +451,35 @@ async function withDeadline<T>(operation: Promise<T>, timeoutMs: number, control
   }
 }
 
+export function parseRetryAfterMs(value: string | null, now: number): number | undefined {
+  if (!value) return undefined;
+  if (/^[0-9]+$/.test(value)) {
+    const seconds = Number(value);
+    return !Number.isSafeInteger(seconds) || seconds > Number.MAX_SAFE_INTEGER / 1_000
+      ? Number.MAX_SAFE_INTEGER
+      : seconds * 1_000;
+  }
+  if (!/^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), [0-9]{2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) [0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2} GMT$/.test(value)) {
+    return undefined;
+  }
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? Math.max(0, timestamp - now) : undefined;
+}
+
+function clientRetryAfterSeconds(milliseconds: number | undefined): number {
+  if (milliseconds === undefined) return 2;
+  return Math.max(1, Math.min(3_600, Math.ceil(milliseconds / 1_000)));
+}
+
 function malformed(): MusicIdentityError {
   return new MusicIdentityError("UPSTREAM_MALFORMED", 502, "Explorer returned an invalid identity response.", "retry", true, 2);
 }
 
-function unavailable(retryAfter?: string | null): MusicIdentityError {
-  const seconds = retryAfter && /^\d{1,3}$/.test(retryAfter) ? Math.max(1, Number(retryAfter)) : 2;
-  return new MusicIdentityError("UPSTREAM_UNAVAILABLE", 503, "Music identity is temporarily unavailable.", "retry", true, seconds);
+function unavailable(retryAfterSeconds: number, countsTowardCircuit: boolean): MusicIdentityError {
+  return new GatewayUnavailableError(Math.max(1, Math.min(3_600, retryAfterSeconds)), countsTowardCircuit);
+}
+
+function isCircuitFailure(error: unknown): boolean {
+  if (error instanceof GatewayUnavailableError) return error.countsTowardCircuit;
+  return error instanceof MusicIdentityError && error.status === 502;
 }

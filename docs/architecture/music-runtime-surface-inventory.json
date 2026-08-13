@@ -1369,7 +1369,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/routes/index.ts",
-      "line": 95
+      "line": 101
     },
     {
       "method": "GET",
@@ -1379,7 +1379,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/index.ts",
-      "line": 98
+      "line": 104
     },
     {
       "method": "POST",
@@ -1389,7 +1389,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/routes/index.ts",
-      "line": 130
+      "line": 136
     },
     {
       "method": "POST",
@@ -1449,7 +1449,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicIdentityRoutes.ts",
-      "line": 69
+      "line": 72
     },
     {
       "method": "POST",
@@ -1922,13 +1922,19 @@
       "kind": "setTimeout",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/services/strapiIdentityGateway.ts",
-      "line": 271
+      "line": 112
     },
     {
       "kind": "setTimeout",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/services/strapiIdentityGateway.ts",
-      "line": 328
+      "line": 182
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/strapiIdentityGateway.ts",
+      "line": 443
     },
     {
       "kind": "setTimeout",

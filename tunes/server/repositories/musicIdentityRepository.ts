@@ -134,12 +134,12 @@ export class MusicIdentityRepository {
           throw new MusicIdentityError("IDENTITY_PENDING_DELETION", 409, "This Music identity is pending deletion.", "contact_support", false, undefined, "pending_deletion");
         }
         const updated = await client.query<any>(`UPDATE users SET
-          venue_name=$2,strapi_username_snapshot=$3,strapi_email_snapshot=$4,strapi_provider_snapshot=$5,
-          strapi_account_name_snapshot=$2,strapi_account_type_snapshot=$6,strapi_account_mobile_snapshot=$7,
+          strapi_username_snapshot=$2,strapi_email_snapshot=$3,strapi_provider_snapshot=$4,
+          strapi_account_name_snapshot=$5,strapi_account_type_snapshot=$6,strapi_account_mobile_snapshot=$7,
           last_identity_sync_at=now(),updated_at=now()
           WHERE id=$1
           RETURNING id,strapi_user_document_id,strapi_account_document_id,identity_status,session_version`, [
-          row.id,input.accountName,input.username,input.email,input.provider,input.accountType,input.accountMobile,
+          row.id,input.username,input.email,input.provider,input.accountName,input.accountType,input.accountMobile,
         ]);
         await this.hooks.afterWrite?.();
         await client.query("COMMIT");

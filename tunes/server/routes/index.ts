@@ -30,8 +30,9 @@ import { StrapiIdentityGateway } from "../services/strapiIdentityGateway";
 import { MusicProjectionService } from "../services/musicProjectionService";
 import { MusicIdentityRepository } from "../repositories/musicIdentityRepository";
 import { resolveMusicEntryPolicy } from "../deployment/music-deployment";
+import type { MusicIdentityRuntimeConfig } from "../config/music-identity-config";
 
-export function registerRoutes(app: Express, _storage: IStorage): Server {
+export function registerRoutes(app: Express, _storage: IStorage, musicConfig: MusicIdentityRuntimeConfig): Server {
   if (process.env.MUSIC_DEPLOYMENT_HEALTH_ENABLED === "true") {
     setupMusicHealthRoutes(app, { pool });
   }
@@ -46,17 +47,19 @@ export function registerRoutes(app: Express, _storage: IStorage): Server {
 
   setupNativeSessionContainment(app);
   const identityGateway = new StrapiIdentityGateway({
-    baseUrl: process.env.STRAPI_URL ?? "http://127.0.0.1:1337",
-    maxConcurrency: 8,
-    retries: 2,
-    connectTimeoutMs: Number(process.env.MUSIC_CONNECT_TIMEOUT_MS ?? 2_000),
-    readTimeoutMs: Number(process.env.MUSIC_READ_TIMEOUT_MS ?? 4_000),
-    overallTimeoutMs: 10_000,
-    cacheTtlMs: 30_000,
-    circuitFailureThreshold: Number(process.env.MUSIC_CIRCUIT_FAILURE_THRESHOLD ?? 3),
-    circuitOpenMs: 15_000,
+    baseUrl: musicConfig.strapiOrigin,
+    fetchImpl: musicConfig.fetchImpl,
+    maxConcurrency: musicConfig.maxConcurrency,
+    maxPending: musicConfig.maxPending,
+    retries: musicConfig.retries,
+    connectTimeoutMs: musicConfig.connectTimeoutMs,
+    readTimeoutMs: musicConfig.readTimeoutMs,
+    overallTimeoutMs: musicConfig.overallTimeoutMs,
+    cacheTtlMs: musicConfig.cacheTtlMs,
+    circuitFailureThreshold: musicConfig.circuitFailureThreshold,
+    circuitOpenMs: musicConfig.circuitOpenMs,
   });
-  const identityProjection = new MusicProjectionService(identityGateway, new MusicIdentityRepository(pool));
+  const identityProjection = new MusicProjectionService(identityGateway, new MusicIdentityRepository(pool), musicConfig.maxInflight);
   setupMusicIdentityRoutes(app, {
     ensure: (proof, requestId) => identityProjection.ensure(proof, requestId),
     entryEnabled: () => resolveMusicEntryPolicy({
@@ -64,12 +67,15 @@ export function registerRoutes(app: Express, _storage: IStorage): Server {
       cohortEnabled: process.env.MUSIC_COHORT_ENABLED === "true",
       inCohort: false,
     }).newMusicEntryEnabled,
+    trustedProxyHops: musicConfig.trustedProxyHops,
+    isTrustedProxy: musicConfig.isTrustedProxy,
     telemetry: () => ({ ...identityGateway.stats(), coalesced: identityProjection.stats().coalesced }),
     metrics: (entry) => console.info("music_identity_metric", entry),
     limiter: new BoundedIdentityRateLimiter({
-      limit: Number(process.env.MUSIC_RATE_LIMIT_PER_MINUTE ?? 30),
+      limit: musicConfig.rateLimitPerMinute,
+      globalLimit: musicConfig.globalRateLimitPerMinute,
       windowMs: 60_000,
-      maxEntries: 10_000,
+      maxEntries: musicConfig.rateMaxEntries,
     }),
   });
   setupAuthRoutes(app);

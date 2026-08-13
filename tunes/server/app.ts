@@ -6,6 +6,7 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { assertContainmentStartup, containmentErrorHandler, installSafeConsole, requestIdFor } from "./security-containment";
 import { setupMusicIdentityBodylessPreflight } from "./routes/musicIdentityRoutes";
+import { resolveMusicIdentityRuntimeConfig } from "./config/music-identity-config";
 
 /**
  * Builds the Express app with all middleware + routes wired, and returns it
@@ -24,13 +25,13 @@ import { setupMusicIdentityBodylessPreflight } from "./routes/musicIdentityRoute
  */
 export async function createApp(): Promise<{ app: express.Express; server: Server }> {
   installSafeConsole();
+  const musicIdentityConfig = await resolveMusicIdentityRuntimeConfig(process.env);
   assertContainmentStartup(process.env);
   const app = express();
 
   // Enable trust proxy FIRST, before any middleware
   // This is critical for secure cookies to work properly
-  const proxyHops = Number.parseInt(process.env.TRUST_PROXY_HOPS ?? "0", 10);
-  app.set("trust proxy", Number.isInteger(proxyHops) && proxyHops >= 0 && proxyHops <= 4 ? proxyHops : 0);
+  app.set("trust proxy", (peerAddress: string) => musicIdentityConfig.isTrustedProxy(peerAddress));
 
   // Basic middleware setup
   app.use((req, res, next) => {
@@ -129,7 +130,7 @@ export async function createApp(): Promise<{ app: express.Express; server: Serve
   });
 
   console.log('Starting server initialization...');
-  const server = await registerRoutes(app, storage);
+  const server = await registerRoutes(app, storage, musicIdentityConfig);
 
   // Error handling middleware (registered after routes, before the Vite/static
   // catch-all that the entrypoint adds — preserves the original ordering)

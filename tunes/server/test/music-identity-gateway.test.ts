@@ -8,6 +8,7 @@ import {
 } from "../../shared/musicError";
 import {
   StrapiIdentityGateway,
+  parseRetryAfterMs,
   type ResolvedStrapiIdentity,
 } from "../services/strapiIdentityGateway";
 import { BoundedIdentityRateLimiter } from "../middleware/identityRateLimit";
@@ -40,6 +41,7 @@ function gateway(fetchImpl: typeof fetch, overrides: Partial<ConstructorParamete
     baseUrl: "https://strapi.invalid",
     fetchImpl,
     maxConcurrency: 2,
+    maxPending: 4,
     retries: 1,
     connectTimeoutMs: 100,
     readTimeoutMs: 100,
@@ -165,6 +167,203 @@ describe("Strapi identity gateway", () => {
     expect(fetchImpl.mock.calls.length).toBe(calls + 1);
   });
 
+  it("hard-caps active plus waiting distinct work and never starts a fetch after the overall deadline", async () => {
+    let active = 0;
+    let peak = 0;
+    const fetchImpl = vi.fn<typeof fetch>(async () => {
+      active += 1;
+      peak = Math.max(peak, active);
+      await new Promise((resolve) => setTimeout(resolve, 35));
+      active -= 1;
+      return response({}, 401);
+    });
+    const bounded = gateway(fetchImpl, {
+      maxConcurrency: 2,
+      maxPending: 3,
+      retries: 0,
+      connectTimeoutMs: 100,
+      overallTimeoutMs: 100,
+    });
+    const work = Array.from({ length: 20 }, (_, index) =>
+      bounded.resolve(`rotating-proof-${index}-with-entropy`, `bounded-${index}`));
+    const settledWork = Promise.allSettled(work);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(bounded.stats()).toMatchObject({ active: 2, pending: 3 });
+    const results = await settledWork;
+    expect(results.every((item) => item.status === "rejected")).toBe(true);
+    expect(peak).toBeLessThanOrEqual(2);
+    expect(bounded.stats().peakPending).toBeLessThanOrEqual(3);
+
+    const queuedFetch = vi.fn<typeof fetch>(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      return response({}, 401);
+    });
+    const deadlineBounded = gateway(queuedFetch, {
+      maxConcurrency: 1,
+      maxPending: 2,
+      retries: 0,
+      connectTimeoutMs: 100,
+      overallTimeoutMs: 15,
+    });
+    const first = deadlineBounded.resolve("first-deadline-proof", "deadline-1");
+    const second = deadlineBounded.resolve("second-deadline-proof", "deadline-2");
+    const deadlineResults = Promise.allSettled([first, second]);
+    await deadlineResults;
+    expect(queuedFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps an opened circuit generation closed to stale success and stale failure races", async () => {
+    let releaseLateBody!: (body: string) => void;
+    const lateBody = new Promise<string>((resolve) => { releaseLateBody = resolve; });
+    const raceFetch = vi.fn<typeof fetch>(async (url, init) => {
+      const proof = new Headers(init?.headers).get("authorization") ?? "";
+      if (proof.includes("late-success")) {
+        if (String(url).includes("/users/me")) return response(user);
+        return { status: 200, headers: new Headers(), text: () => lateBody } as Response;
+      }
+      return response({}, 503);
+    });
+    const raced = gateway(raceFetch, {
+      maxConcurrency: 4,
+      maxPending: 8,
+      retries: 0,
+      circuitFailureThreshold: 2,
+      circuitOpenMs: 1_000,
+    });
+    const late = raced.resolve("late-success-proof", "late-request");
+    while (raceFetch.mock.calls.length < 2) await new Promise((resolve) => setTimeout(resolve, 0));
+    await Promise.allSettled([
+      raced.resolve("threshold-failure-one", "failure-1"),
+      raced.resolve("threshold-failure-two", "failure-2"),
+    ]);
+    expect(raced.stats().circuitState).toBe("open");
+    releaseLateBody(JSON.stringify({ data: [completeAccount] }));
+    await late;
+    expect(raced.stats().circuitState).toBe("open");
+
+    let now = 10_000;
+    let releaseStaleFailure!: (value: Response) => void;
+    const staleFailure = new Promise<Response>((resolve) => { releaseStaleFailure = resolve; });
+    const staleFetch = vi.fn<typeof fetch>(async (url, init) => {
+      const proof = new Headers(init?.headers).get("authorization") ?? "";
+      if (proof.includes("stale-failure")) return staleFailure;
+      if (proof.includes("open-now")) return response({}, 503);
+      return String(url).includes("/users/me") ? response(user) : response({ data: [completeAccount] });
+    });
+    const generations = gateway(staleFetch, {
+      maxConcurrency: 4,
+      maxPending: 8,
+      retries: 0,
+      circuitFailureThreshold: 1,
+      circuitOpenMs: 10,
+      now: () => now,
+    });
+    const stale = generations.resolve("stale-failure-proof", "stale-request");
+    while (staleFetch.mock.calls.length < 1) await new Promise((resolve) => setTimeout(resolve, 0));
+    await expect(generations.resolve("open-now-proof", "open-request")).rejects.toMatchObject({ code: "UPSTREAM_UNAVAILABLE" });
+    now += 11;
+    const probes = await Promise.allSettled(Array.from({ length: 5 }, (_, index) =>
+      generations.resolve(`probe-proof-${index}`, `probe-${index}`)));
+    expect(probes.filter((item) => item.status === "fulfilled")).toHaveLength(1);
+    expect(staleFetch.mock.calls.filter(([url]) => String(url).includes("/users/me"))).toHaveLength(3);
+    expect(generations.stats().circuitState).toBe("closed");
+    releaseStaleFailure(response({}, 503));
+    await Promise.allSettled([stale]);
+    expect(generations.stats().circuitState).toBe("closed");
+  });
+
+  it("does not close a half-open circuit when its designated probe expires before fetching", async () => {
+    let clock = 0;
+    let advanceOnRead = false;
+    const fetchImpl = vi.fn<typeof fetch>(async () => response({}, 503));
+    const bounded = gateway(fetchImpl, {
+      retries: 0,
+      circuitFailureThreshold: 1,
+      circuitOpenMs: 100,
+      overallTimeoutMs: 100,
+      now: () => {
+        const current = clock;
+        if (advanceOnRead) clock += 50;
+        return current;
+      },
+    });
+    await expect(bounded.resolve("open-circuit-proof", "open-request"))
+      .rejects.toMatchObject({ code: "UPSTREAM_UNAVAILABLE" });
+    clock = 101;
+    advanceOnRead = true;
+    await expect(bounded.resolve("expired-probe-proof", "probe-request"))
+      .rejects.toMatchObject({ code: "UPSTREAM_UNAVAILABLE" });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(bounded.stats().circuitState).toBe("open");
+  });
+
+  it("does not retry before delta-seconds or HTTP-date Retry-After and refuses waits beyond its deadline", async () => {
+    vi.useFakeTimers();
+    try {
+      const start = Date.UTC(2026, 7, 14, 0, 0, 0);
+      vi.setSystemTime(start);
+      for (const retryAfter of ["2", new Date(start + 2_000).toUTCString()]) {
+        const calls: number[] = [];
+        const fetchImpl = vi.fn<typeof fetch>(async (url) => {
+          calls.push(Date.now());
+          if (calls.length === 1) return response({}, 503, { "retry-after": retryAfter });
+          return String(url).includes("/users/me") ? response(user) : response({ data: [completeAccount] });
+        });
+        const operation = gateway(fetchImpl, { overallTimeoutMs: 5_000, connectTimeoutMs: 500 }).resolve("retry-proof-with-entropy", "retry-request");
+        await vi.advanceTimersByTimeAsync(1_999);
+        expect(fetchImpl).toHaveBeenCalledTimes(1);
+        await vi.advanceTimersByTimeAsync(1);
+        await expect(operation).resolves.toMatchObject({ userDocumentId: "user-doc-1" });
+        expect(calls[1] - calls[0]).toBeGreaterThanOrEqual(2_000);
+        vi.setSystemTime(start);
+      }
+
+      const beyond = vi.fn<typeof fetch>().mockResolvedValue(response({}, 503, { "retry-after": "120" }));
+      let rejected: MusicIdentityError | undefined;
+      gateway(beyond, { overallTimeoutMs: 1_000, connectTimeoutMs: 500 }).resolve("beyond-proof-with-entropy", "beyond-request")
+        .catch((error) => { rejected = error; });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(rejected).toMatchObject({ code: "UPSTREAM_UNAVAILABLE", retryAfterSeconds: 120 });
+      expect(beyond).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("parses Retry-After safely and uses injected time/sleep without violating the lower bound", async () => {
+    const start = Date.UTC(2026, 7, 14, 0, 0, 0);
+    expect(parseRetryAfterMs("2", start)).toBe(2_000);
+    expect(parseRetryAfterMs(new Date(start + 3_000).toUTCString(), start)).toBe(3_000);
+    expect(parseRetryAfterMs(new Date(start - 3_000).toUTCString(), start)).toBe(0);
+    expect(parseRetryAfterMs("-1", start)).toBeUndefined();
+    expect(parseRetryAfterMs("not-a-date", start)).toBeUndefined();
+    expect(parseRetryAfterMs("999999999999999999999", start)).toBe(Number.MAX_SAFE_INTEGER);
+
+    let now = start;
+    const sleeps: number[] = [];
+    const callTimes: number[] = [];
+    const fetchImpl = vi.fn<typeof fetch>(async (url) => {
+      callTimes.push(now);
+      if (callTimes.length === 1) return response({}, 503, { "retry-after": "2" });
+      return String(url).includes("/users/me") ? response(user) : response({ data: [completeAccount] });
+    });
+    await gateway(fetchImpl, {
+      now: () => now,
+      random: () => 0,
+      sleep: async (milliseconds) => { sleeps.push(milliseconds); now += milliseconds; },
+      overallTimeoutMs: 5_000,
+      connectTimeoutMs: 500,
+    }).resolve("injected-time-proof", "injected-time-request");
+    expect(sleeps).toEqual([2_000]);
+    expect(callTimes[1] - callTimes[0]).toBeGreaterThanOrEqual(2_000);
+
+    const huge = vi.fn<typeof fetch>().mockResolvedValue(response({}, 503, { "retry-after": "999999999999999999999" }));
+    await expect(gateway(huge, { overallTimeoutMs: 1_000, connectTimeoutMs: 500 })
+      .resolve("huge-retry-proof", "huge-retry-request"))
+      .rejects.toMatchObject({ code: "UPSTREAM_UNAVAILABLE", retryAfterSeconds: 3_600 });
+    expect(huge).toHaveBeenCalledTimes(1);
+  });
+
   it("exposes exact shared success and versioned safe error contracts", () => {
     expect(musicEnsureRequestSchema.parse(undefined)).toBeUndefined();
     expect(() => musicEnsureRequestSchema.parse({})).toThrow();
@@ -186,6 +385,11 @@ describe("Strapi identity gateway", () => {
       "200", "400", "401", "403", "409", "429", "500", "502", "503",
     ]);
     expect(musicIdentityOpenApi.operation.post).not.toHaveProperty("requestBody");
+    for (const [status, contract] of Object.entries(musicIdentityOpenApi.operation.post.responses)) {
+      expect(contract.headers).toHaveProperty("X-Request-Id");
+      if (["429", "503"].includes(status)) expect(contract.headers).toHaveProperty("Retry-After");
+      else expect(contract.headers).not.toHaveProperty("Retry-After");
+    }
   });
 });
 
@@ -202,5 +406,36 @@ describe("bounded identity rate limiter", () => {
     expect(limiter.size()).toBeLessThanOrEqual(3);
     now += 101;
     expect(limiter.check("ip:a", "fp:a").allowed).toBe(true);
+  });
+
+  it("has a global attempt budget and refuses saturated new keys without evicting/resetting existing buckets", () => {
+    const limiter = new BoundedIdentityRateLimiter({
+      limit: 1,
+      globalLimit: 4,
+      windowMs: 60_000,
+      maxEntries: 4,
+    });
+    expect(limiter.check("ip:a", "fp:a").allowed).toBe(true);
+    expect(limiter.check("ip:b", "fp:b").allowed).toBe(true);
+    expect(limiter.check("ip:c", "fp:c")).toMatchObject({ allowed: false, saturated: true });
+    expect(limiter.size()).toBe(4);
+    expect(limiter.check("ip:a", "fp:a").allowed).toBe(false);
+    expect(limiter.check("ip:d", "fp:d").allowed).toBe(false);
+  });
+
+  it("refills the server-wide global token bucket continuously", () => {
+    let now = 10_000;
+    const limiter = new BoundedIdentityRateLimiter({
+      limit: 10,
+      globalLimit: 2,
+      windowMs: 1_000,
+      maxEntries: 20,
+      now: () => now,
+    });
+    expect(limiter.check("ip:a", "fp:a").allowed).toBe(true);
+    expect(limiter.check("ip:b", "fp:b").allowed).toBe(true);
+    expect(limiter.check("ip:c", "fp:c").allowed).toBe(false);
+    now += 500;
+    expect(limiter.check("ip:c", "fp:c").allowed).toBe(true);
   });
 });

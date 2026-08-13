@@ -2,7 +2,12 @@ import express from "express";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import { setupMusicIdentityBodylessPreflight, setupMusicIdentityRoutes } from "../routes/musicIdentityRoutes";
-import { MusicIdentityError, musicErrorEnvelopeSchema } from "../../shared/musicError";
+import {
+  MUSIC_IDENTITY_RESPONSE_STATUSES,
+  MusicIdentityError,
+  musicErrorEnvelopeSchema,
+  parseMusicIdentityClientResponse,
+} from "../../shared/musicError";
 import { BoundedIdentityRateLimiter } from "../middleware/identityRateLimit";
 
 function appFor(ensure = vi.fn(async () => ({
@@ -25,6 +30,25 @@ function appFor(ensure = vi.fn(async () => ({
     entryEnabled: () => entryEnabled,
   });
   return { app, ensure, logs };
+}
+
+function proxyAppFor(ensure: ReturnType<typeof vi.fn>) {
+  const app = express();
+  const isTrustedProxy = (peer: string | undefined) => peer === "127.0.0.1" || peer === "::ffff:127.0.0.1" || peer === "::1";
+  app.set("trust proxy", isTrustedProxy);
+  setupMusicIdentityBodylessPreflight(app);
+  setupMusicIdentityRoutes(app, {
+    ensure,
+    trustedProxyHops: 1,
+    isTrustedProxy,
+    limiter: new BoundedIdentityRateLimiter({
+      limit: 1,
+      globalLimit: 10,
+      windowMs: 60_000,
+      maxEntries: 16,
+    }),
+  });
+  return app;
 }
 
 describe("POST /api/music/identity/ensure", () => {
@@ -99,6 +123,40 @@ describe("POST /api/music/identity/ensure", () => {
     expect(serialized).not.toContain("stack");
   });
 
+  it("keeps every runtime status, body, and mandatory header in shared/OpenAPI client parity", async () => {
+    const cases: Array<[number, () => Promise<never>]> = [
+      [400, async () => { throw new MusicIdentityError("REQUEST_INVALID", 400, "Invalid request.", "none", false); }],
+      [401, async () => { throw new MusicIdentityError("AUTH_INVALID", 401, "Invalid proof.", "authenticate", false); }],
+      [403, async () => { throw new MusicIdentityError("IDENTITY_INELIGIBLE", 403, "Ineligible.", "complete_onboarding", false); }],
+      [409, async () => { throw new MusicIdentityError("IDENTITY_CONFLICT", 409, "Conflict.", "contact_support", false); }],
+      [429, async () => { throw new MusicIdentityError("RATE_LIMITED", 429, "Rate limited.", "retry", true, 7); }],
+      [502, async () => { throw new MusicIdentityError("UPSTREAM_MALFORMED", 502, "Malformed upstream.", "retry", true); }],
+      [503, async () => { throw new MusicIdentityError("UPSTREAM_UNAVAILABLE", 503, "Unavailable.", "retry", true, 9); }],
+    ];
+    const success = await request(appFor().app).post("/api/music/identity/ensure")
+      .set("authorization", "Bearer parity-proof-with-entropy");
+    expect(parseMusicIdentityClientResponse(success.status, success.headers, success.body).status).toBe(200);
+    for (const [status, operation] of cases) {
+      const response = await request(appFor(vi.fn(operation)).app).post("/api/music/identity/ensure")
+        .set("authorization", `Bearer parity-proof-${status}-with-entropy`);
+      expect(response.status).toBe(status);
+      expect(parseMusicIdentityClientResponse(response.status, response.headers, response.body).status).toBe(status);
+    }
+    const internal = await request(appFor(vi.fn(async () => { throw new Error("sentinel stack"); })).app)
+      .post("/api/music/identity/ensure").set("authorization", "Bearer parity-internal-proof");
+    expect(internal.status).toBe(500);
+    expect(parseMusicIdentityClientResponse(internal.status, internal.headers, internal.body).status).toBe(500);
+    const undocumented = await request(appFor(vi.fn(async () => {
+      throw new MusicIdentityError("REQUEST_INVALID", 418, "Undocumented.", "none", false);
+    })).app).post("/api/music/identity/ensure").set("authorization", "Bearer undocumented-proof-with-entropy");
+    expect(undocumented.status).toBe(500);
+    expect(MUSIC_IDENTITY_RESPONSE_STATUSES).toEqual([200, 400, 401, 403, 409, 429, 500, 502, 503]);
+    expect(() => parseMusicIdentityClientResponse(503, { "x-request-id": "request" }, {
+      version: "music-error/v1",
+      error: { code: "UPSTREAM_UNAVAILABLE", message: "Unavailable.", action: "retry", retryable: true, requestId: "request" },
+    })).toThrow(/Retry-After/);
+  });
+
   it("coalesces the whole 50-way operation for one proof", async () => {
     let calls = 0;
     const ensure = vi.fn(async () => {
@@ -130,6 +188,27 @@ describe("POST /api/music/identity/ensure", () => {
     expect(service.stats().inflight).toBe(0);
   });
 
+  it("hard-caps distinct whole-operation single-flight entries", async () => {
+    let release!: () => void;
+    const blocked = new Promise<void>((resolve) => { release = resolve; });
+    const { MusicProjectionService } = await import("../services/musicProjectionService");
+    const service = new MusicProjectionService({
+      resolve: async () => {
+        await blocked;
+        throw new MusicIdentityError("AUTH_INVALID", 401, "The Explorer proof is invalid or expired.", "authenticate", false);
+      },
+    }, { ensureIdentity: vi.fn() } as never, 2);
+    const work = [
+      service.ensure("distinct-proof-one", "request-one"),
+      service.ensure("distinct-proof-two", "request-two"),
+      service.ensure("distinct-proof-three", "request-three"),
+    ];
+    expect(service.stats()).toMatchObject({ inflight: 2, peakInflight: 2 });
+    await expect(work[2]).rejects.toMatchObject({ code: "UPSTREAM_UNAVAILABLE", status: 503 });
+    release();
+    await Promise.allSettled(work.slice(0, 2));
+  });
+
   it("keeps the exact upstream budget at two calls for a 50-way same-proof load", async () => {
     const { StrapiIdentityGateway } = await import("../services/strapiIdentityGateway");
     const fetchImpl = vi.fn<typeof fetch>()
@@ -145,6 +224,7 @@ describe("POST /api/music/identity/ensure", () => {
       }] }), { status: 200 }));
     const gateway = new StrapiIdentityGateway({
       baseUrl: "https://strapi.invalid", fetchImpl, maxConcurrency: 2, retries: 0,
+      maxPending: 4,
       connectTimeoutMs: 100, readTimeoutMs: 100, overallTimeoutMs: 500, cacheTtlMs: 1_000,
       circuitFailureThreshold: 2, circuitOpenMs: 100,
     });
@@ -178,5 +258,100 @@ describe("POST /api/music/identity/ensure", () => {
     expect(ensure).toHaveBeenCalledTimes(3);
     expect(responses.filter(({ status }) => status === 429)).toHaveLength(17);
     expect(responses.every(({ body }) => musicErrorEnvelopeSchema.safeParse(body).success)).toBe(true);
+  });
+
+  it("uses only the rightmost client set by one trusted proxy hop and ignores forged XFF prefixes", async () => {
+    const ensure = vi.fn(async () => ({
+      id: 52,
+      strapiUserDocumentId: "proxy-user",
+      strapiAccountDocumentId: "proxy-account",
+      identityStatus: "active" as const,
+      sessionVersion: 1,
+    }));
+    const app = proxyAppFor(ensure);
+    const bearer = "Bearer proof-with-proxy-entropy";
+    await request(app).post("/api/music/identity/ensure")
+      .set("authorization", bearer).set("x-forwarded-for", "192.0.2.10, 203.0.113.20").expect(200);
+    const forged = await request(app).post("/api/music/identity/ensure")
+      .set("authorization", bearer).set("x-forwarded-for", "198.51.100.99, 203.0.113.20");
+    expect(forged.status).toBe(429);
+    expect(forged.headers["retry-after"]).toBeTruthy();
+    await request(app).post("/api/music/identity/ensure")
+      .set("authorization", "Bearer second-proof-with-proxy-entropy")
+      .set("x-forwarded-for", "192.0.2.10, 203.0.113.21").expect(200);
+    expect(ensure).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores all forwarded addresses when the direct peer is not the configured proxy", async () => {
+    const ensure = vi.fn(async () => ({
+      id: 53,
+      strapiUserDocumentId: "direct-user",
+      strapiAccountDocumentId: "direct-account",
+      identityStatus: "active" as const,
+      sessionVersion: 1,
+    }));
+    const app = express();
+    app.set("trust proxy", 1);
+    setupMusicIdentityRoutes(app, {
+      ensure,
+      trustedProxyHops: 1,
+      isTrustedProxy: () => false,
+      limiter: new BoundedIdentityRateLimiter({ limit: 1, windowMs: 60_000, maxEntries: 10 }),
+    });
+    await request(app).post("/api/music/identity/ensure")
+      .set("authorization", "Bearer direct-proof-with-enough-entropy")
+      .set("x-forwarded-for", "203.0.113.10").expect(200);
+    await request(app).post("/api/music/identity/ensure")
+      .set("authorization", "Bearer direct-proof-with-enough-entropy")
+      .set("x-forwarded-for", "203.0.113.11").expect(429);
+  });
+
+  it("bounds multi-source rotating proofs behind one trusted proxy across limiter, inflight map, queue, and fetch", async () => {
+    const { StrapiIdentityGateway } = await import("../services/strapiIdentityGateway");
+    const { MusicProjectionService } = await import("../services/musicProjectionService");
+    let activeFetches = 0;
+    let peakFetches = 0;
+    const fetchImpl = vi.fn<typeof fetch>(async () => {
+      activeFetches += 1;
+      peakFetches = Math.max(peakFetches, activeFetches);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      activeFetches -= 1;
+      return new Response("{}", { status: 401 });
+    });
+    const gateway = new StrapiIdentityGateway({
+      baseUrl: "https://strapi.invalid",
+      fetchImpl,
+      maxConcurrency: 2,
+      maxPending: 4,
+      retries: 0,
+      connectTimeoutMs: 100,
+      readTimeoutMs: 100,
+      overallTimeoutMs: 200,
+      cacheTtlMs: 0,
+      circuitFailureThreshold: 100,
+      circuitOpenMs: 100,
+    });
+    const service = new MusicProjectionService(gateway, { ensureIdentity: vi.fn() }, 5);
+    const app = express();
+    const isTrustedProxy = (peer: string | undefined) => peer === "127.0.0.1" || peer === "::ffff:127.0.0.1" || peer === "::1";
+    app.set("trust proxy", isTrustedProxy);
+    setupMusicIdentityBodylessPreflight(app);
+    setupMusicIdentityRoutes(app, {
+      ensure: (proof, requestId) => service.ensure(proof, requestId),
+      trustedProxyHops: 1,
+      isTrustedProxy,
+      limiter: new BoundedIdentityRateLimiter({ limit: 100, globalLimit: 100, windowMs: 60_000, maxEntries: 100 }),
+    });
+    const responses = await Promise.all(Array.from({ length: 20 }, (_, index) => request(app)
+      .post("/api/music/identity/ensure")
+      .set("authorization", `Bearer rotating-proxy-proof-${index}-entropy`)
+      .set("x-forwarded-for", `192.0.2.${index + 1}, 203.0.113.${index + 1}`)));
+    expect(responses.every(({ status }) => status === 401 || status === 503)).toBe(true);
+    expect(responses.filter(({ status }) => status === 503)
+      .every(({ headers }) => /^[1-9][0-9]*$/.test(headers["retry-after"]))).toBe(true);
+    expect(gateway.stats().peakPending).toBeLessThanOrEqual(4);
+    expect(service.stats().peakInflight).toBeLessThanOrEqual(5);
+    expect(peakFetches).toBeLessThanOrEqual(2);
+    expect(fetchImpl.mock.calls.length).toBeLessThanOrEqual(4);
   });
 });

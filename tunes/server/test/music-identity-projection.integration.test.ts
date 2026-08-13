@@ -54,9 +54,11 @@ describePg("C4 atomic Music identity projection on PostgreSQL 15", () => {
   it("creates once, converges mutable snapshots, and preserves immutable state/content/settings", async () => {
     const repository = new MusicIdentityRepository(pool);
     const first = await repository.ensureIdentity(input());
-    await pool.query("UPDATE users SET allow_song_requests=false,session_version=7 WHERE id=$1", [first.id]);
+    await pool.query(`UPDATE users SET venue_name='Owner Venue',allow_song_requests=false,
+      allow_guest_play_on_device=false,allow_playlist_sharing=true,allow_recently_played_visibility=false,
+      theme='{"primary":"#112233"}'::jsonb,session_version=7 WHERE id=$1`, [first.id]);
     await pool.query("INSERT INTO playlists(user_id,name) VALUES ($1,'Keep me')", [first.id]);
-    const capability = (await pool.query("SELECT guest_capability_hash,lifecycle_operation_id FROM users WHERE id=$1", [first.id])).rows[0];
+    const before = (await pool.query("SELECT row_to_json(users) AS value FROM users WHERE id=$1", [first.id])).rows[0].value;
 
     const repeated = await repository.ensureIdentity(input({
       username: "renamed",
@@ -77,7 +79,7 @@ describePg("C4 atomic Music identity projection on PostgreSQL 15", () => {
     expect(row).toMatchObject({
       username: "explorer-stable-1",
       email: null,
-      venue_name: "Renamed Room",
+      venue_name: "Owner Venue",
       strapi_username_snapshot: "renamed",
       strapi_email_snapshot: "renamed@example.invalid",
       strapi_provider_snapshot: "google",
@@ -86,11 +88,20 @@ describePg("C4 atomic Music identity projection on PostgreSQL 15", () => {
       strapi_account_mobile_snapshot: "+15555550199",
       strapi_user_document_id: "user-doc-1",
       strapi_account_document_id: "account-doc-1",
-      guest_capability_hash: capability.guest_capability_hash,
-      lifecycle_operation_id: capability.lifecycle_operation_id,
+      guest_capability_hash: before.guest_capability_hash,
+      lifecycle_operation_id: before.lifecycle_operation_id,
       allow_song_requests: false,
       session_version: 7,
     });
+    const after = (await pool.query("SELECT row_to_json(users) AS value FROM users WHERE id=$1", [first.id])).rows[0].value;
+    const mutableSnapshots = ["strapi_username_snapshot", "strapi_email_snapshot", "strapi_provider_snapshot",
+      "strapi_account_name_snapshot", "strapi_account_type_snapshot", "strapi_account_mobile_snapshot",
+      "last_identity_sync_at", "updated_at"];
+    for (const key of mutableSnapshots) {
+      delete before[key];
+      delete after[key];
+    }
+    expect(after).toEqual(before);
     expect(Number((await pool.query("SELECT count(*) FROM playlists WHERE user_id=$1", [first.id])).rows[0].count)).toBe(1);
   });
 

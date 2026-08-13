@@ -20,11 +20,17 @@ export interface ProjectionRepository {
 export class MusicProjectionService {
   private readonly inflight = new Map<string, Promise<MusicIdentityProjection>>();
   private coalesced = 0;
+  private peakInflight = 0;
 
   constructor(
     private readonly gateway: Pick<StrapiIdentityGateway, "resolve"> & Partial<Pick<StrapiIdentityGateway, "clear">>,
     private readonly repository: ProjectionRepository,
-  ) {}
+    private readonly maxInflight = 32,
+  ) {
+    if (!Number.isSafeInteger(maxInflight) || maxInflight < 1 || maxInflight > 128) {
+      throw new Error("Music projection max inflight must be a bounded integer");
+    }
+  }
 
   ensure(proof: string, requestId: string): Promise<MusicIdentityProjection> {
     const fingerprint = fingerprintStrapiProof(proof);
@@ -33,15 +39,21 @@ export class MusicProjectionService {
       this.coalesced += 1;
       return existing;
     }
+    if (this.inflight.size >= this.maxInflight) {
+      return Promise.reject(new MusicIdentityError(
+        "UPSTREAM_UNAVAILABLE", 503, "Music identity is temporarily unavailable.", "retry", true, 1,
+      ));
+    }
     const operation = this.run(proof, requestId).finally(() => {
       if (this.inflight.get(fingerprint) === operation) this.inflight.delete(fingerprint);
     });
     this.inflight.set(fingerprint, operation);
+    this.peakInflight = Math.max(this.peakInflight, this.inflight.size);
     return operation;
   }
 
-  stats(): { inflight: number; coalesced: number } {
-    return { inflight: this.inflight.size, coalesced: this.coalesced };
+  stats(): { inflight: number; peakInflight: number; coalesced: number } {
+    return { inflight: this.inflight.size, peakInflight: this.peakInflight, coalesced: this.coalesced };
   }
 
   private async run(proof: string, requestId: string): Promise<MusicIdentityProjection> {
