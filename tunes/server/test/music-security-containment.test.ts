@@ -36,7 +36,7 @@ vi.mock("../services/user-sync-service", () => ({
   userSyncService: { syncUser: vi.fn(async () => OWNER) },
 }));
 
-const { createApp } = await import("../app");
+const { createValidatedApp: createApp } = await import("../config/music-startup");
 const { storage } = await import("../storage");
 const { resetContainmentLimiters } = await import("../security-containment");
 

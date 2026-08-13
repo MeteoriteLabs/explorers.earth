@@ -12,7 +12,7 @@
 import { createHash } from 'node:crypto';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
-import { createApp } from '../app';
+import { createValidatedApp as createApp } from '../config/music-startup';
 import { storage } from '../storage';
 
 const SECRETS = ['password', 'otp', 'otpExpiry', 'emailVerificationToken', 'emailVerificationExpiry'] as const;

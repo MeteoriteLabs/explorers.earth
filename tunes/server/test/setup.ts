@@ -1,16 +1,31 @@
 // Vitest global setup — runs before any test file imports app code.
 // Sets env BEFORE any module that reads it at import time (db.ts creates its
-// pool on import). Pure-unit tests (sanitize-user) don't import the app, so the
-// placeholder DATABASE_URL is only consumed by the integration tests, which
-// require a reachable Postgres (set DATABASE_URL_TEST in your env to override).
+// pool on import). Pure-unit tests (sanitize-user) don't import the app. The
+// C0 fixture contract deliberately fixes its test database to loopback:55432.
 process.env.NODE_ENV = 'test';
-process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'test-session-secret';
-process.env.COOKIE_SECRET = process.env.COOKIE_SECRET || 'test-cookie-secret';
+process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'test-session-secret-at-least-32-characters';
+process.env.COOKIE_SECRET = process.env.COOKIE_SECRET || 'test-cookie-secret-at-least-32-characters';
 process.env.MUSIC_MODE = 'fixture';
 process.env.STRAPI_URL = 'http://strapi:1337';
 process.env.MUSIC_FIXTURE_STRAPI_ORIGIN = 'http://strapi:1337';
 process.env.TRUST_PROXY_HOPS = '0';
 delete process.env.MUSIC_TRUSTED_PROXY_IP;
+process.env.MUSIC_FIXTURE_VERSION = '1';
+process.env.STRAPI_FIXTURE_URL = 'http://127.0.0.1:51337';
+process.env.DATABASE_URL_TEST = 'postgresql://music:music@127.0.0.1:55432/music_fixture';
+process.env.MUSIC_SIGNING_KEY_CURRENT_ID = 'fixture-current';
+process.env.MUSIC_SIGNING_KEY_CURRENT_SECRET = 'fixture-current-secret-at-least-32-characters';
+process.env.MUSIC_SIGNING_KEY_PREVIOUS_ID = 'fixture-previous';
+process.env.MUSIC_SIGNING_KEY_PREVIOUS_SECRET = 'fixture-previous-secret-at-least-32-characters';
+process.env.MUSIC_CONNECT_TIMEOUT_MS = '5000';
+process.env.MUSIC_READ_TIMEOUT_MS = '10000';
+process.env.MUSIC_CIRCUIT_FAILURE_THRESHOLD = '3';
+process.env.MUSIC_RATE_LIMIT_PER_MINUTE = '60';
+process.env.MUSIC_PROVISIONING_KILL_SWITCH = 'true';
+process.env.MUSIC_PROVISIONING_COHORT = 'disabled';
+process.env.MUSIC_EXPECTED_MIGRATION_ID = '0007_identity_provider_snapshot';
+process.env.MUSIC_RECONCILIATION_ENABLED = 'false';
+process.env.MUSIC_RECONCILIATION_MAX_ROWS = '0';
 // The integration suite CREATES + DELETES a user. NEVER inherit an ambient
 // DATABASE_URL (it could point at dev/prod): use DATABASE_URL_TEST if provided,
 // otherwise a local throwaway. Any inherited DATABASE_URL is deliberately ignored.

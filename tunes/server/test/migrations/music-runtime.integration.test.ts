@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createServer, type Server as HttpServer } from "node:http";
 import request from "supertest";
-import { createApp } from "../../app";
+import { createValidatedApp as createApp } from "../../config/music-startup";
 import { pool } from "../../db";
 import { MusicIdentityRepository } from "../../repositories/musicIdentityRepository";
 import { storage } from "../../storage";

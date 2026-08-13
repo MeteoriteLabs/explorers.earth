@@ -12,6 +12,17 @@ interface Bucket {
   touchedAt: number;
 }
 
+interface BucketReservation {
+  allowed: true;
+  rollback: () => void;
+}
+
+interface BucketDenial {
+  allowed: false;
+  retryAfterSeconds: number;
+  saturated?: boolean;
+}
+
 export interface IdentityRateLimitResult {
   allowed: boolean;
   retryAfterSeconds?: number;
@@ -39,33 +50,61 @@ export class BoundedIdentityRateLimiter {
   check(source: string, fingerprint: string): IdentityRateLimitResult {
     const now = this.now();
     this.prune(now);
-    const globalResult = this.consumeGlobal(now);
-    if (!globalResult.allowed) return globalResult;
-    const sourceResult = this.consume(this.sourceBuckets, source, now, this.sourceCapacity());
+    const sourceResult = this.reserve(this.sourceBuckets, source, now, this.sourceCapacity());
     if (!sourceResult.allowed) return sourceResult;
-    return this.consume(this.fingerprintBuckets, fingerprint, now, this.fingerprintCapacity());
+    const fingerprintResult = this.reserve(this.fingerprintBuckets, fingerprint, now, this.fingerprintCapacity());
+    if (!fingerprintResult.allowed) {
+      sourceResult.rollback();
+      return fingerprintResult;
+    }
+    const globalResult = this.consumeGlobal(now);
+    if (!globalResult.allowed) {
+      fingerprintResult.rollback();
+      sourceResult.rollback();
+      return globalResult;
+    }
+    return { allowed: true };
   }
 
   size(): number {
     return this.sourceBuckets.size + this.fingerprintBuckets.size;
   }
 
-  private consume(buckets: Map<string, Bucket>, key: string, now: number, capacity: number): IdentityRateLimitResult {
+  private reserve(
+    buckets: Map<string, Bucket>,
+    key: string,
+    now: number,
+    capacity: number,
+  ): BucketDenial | BucketReservation {
     let bucket = buckets.get(key);
-    if (!bucket || bucket.resetAt <= now) {
-      if (!bucket && buckets.size >= capacity) {
+    const created = !bucket;
+    if (!bucket) {
+      if (buckets.size >= capacity) {
         return { allowed: false, retryAfterSeconds: 1, saturated: true };
       }
       bucket = { count: 0, resetAt: now + this.options.windowMs, touchedAt: now };
     }
+    if (bucket.count >= this.options.limit) {
+      return {
+        allowed: false,
+        retryAfterSeconds: Math.max(1, Math.ceil((bucket.resetAt - now) / 1_000)),
+      };
+    }
+    const previousTouchedAt = bucket.touchedAt;
     bucket.count += 1;
     bucket.touchedAt = now;
     buckets.delete(key);
     buckets.set(key, bucket);
-    if (bucket.count <= this.options.limit) return { allowed: true };
     return {
-      allowed: false,
-      retryAfterSeconds: Math.max(1, Math.ceil((bucket.resetAt - now) / 1_000)),
+      allowed: true,
+      rollback: () => {
+        if (buckets.get(key) !== bucket) return;
+        if (created) buckets.delete(key);
+        else {
+          bucket.count -= 1;
+          bucket.touchedAt = previousTouchedAt;
+        }
+      },
     };
   }
 

@@ -6,7 +6,7 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { assertContainmentStartup, containmentErrorHandler, installSafeConsole, requestIdFor } from "./security-containment";
 import { setupMusicIdentityBodylessPreflight } from "./routes/musicIdentityRoutes";
-import { resolveMusicIdentityRuntimeConfig } from "./config/music-identity-config";
+import type { MusicIdentityRuntimeConfig } from "./config/music-identity-config";
 
 /**
  * Builds the Express app with all middleware + routes wired, and returns it
@@ -23,9 +23,8 @@ import { resolveMusicIdentityRuntimeConfig } from "./config/music-identity-confi
  *   setupVite / serveStatic
  *   server.listen(...)                                               request(app)...
  */
-export async function createApp(): Promise<{ app: express.Express; server: Server }> {
+export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig): Promise<{ app: express.Express; server: Server }> {
   installSafeConsole();
-  const musicIdentityConfig = await resolveMusicIdentityRuntimeConfig(process.env);
   assertContainmentStartup(process.env);
   const app = express();
 

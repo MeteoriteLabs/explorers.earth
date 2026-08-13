@@ -225,8 +225,12 @@ so caller-supplied `X-Forwarded-For` values cannot create new buckets.
 
 ## C4 identity gateway startup and admission controls
 
-Tunes validates the complete Music identity configuration before registering
-routes or listening. Live mode accepts only the exact allowlisted HTTPS
+Tunes has one discriminated bootstrap before importing the application graph,
+registering routes, or listening. `fixture` mode first enforces the complete
+C0 fixture contract and then the bounded identity controls. `live` mode does
+not require fixture database, signing, provisioning, or reconciliation values;
+it invokes the asynchronous C4 validator exactly once. Live mode accepts only
+the exact allowlisted HTTPS
 `STRAPI_URL` origin. It rejects credentials, paths, queries, fragments, and any
 DNS answer that is private, loopback, link-local, documentation, multicast, or
 otherwise non-public. The gateway then pins the validated address set in its
@@ -249,6 +253,9 @@ settings are bounded integers with cross-field validation. Startup fails before
 listen when a value is missing, malformed, non-finite, out of range, or when a
 queue/deadline relationship is unsafe. `429` and `503` always carry a bounded
 integer `Retry-After`, and every documented response carries `X-Request-Id`.
+Admission reserves source and fingerprint capacity before the global tier.
+Local refusal consumes no global token; global refusal atomically rolls back
+the local reservations, including newly created cardinality entries.
 
 Administrative deletion is one identity saga. If the row is already
 `pending_deletion`, storage reuses its locked operation ID; a caller-supplied

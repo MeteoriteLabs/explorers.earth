@@ -438,4 +438,42 @@ describe("bounded identity rate limiter", () => {
     now += 500;
     expect(limiter.check("ip:c", "fp:c").allowed).toBe(true);
   });
+
+  it("does not spend global capacity when an already-throttled source is denied", () => {
+    const limiter = new BoundedIdentityRateLimiter({ limit: 1, globalLimit: 2, windowMs: 60_000, maxEntries: 20 });
+    expect(limiter.check("ip:attacker", "fp:first").allowed).toBe(true);
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      expect(limiter.check("ip:attacker", `fp:rotate-${attempt}`).allowed).toBe(false);
+    }
+    expect(limiter.check("ip:legitimate", "fp:legitimate").allowed).toBe(true);
+    expect(limiter.check("ip:third", "fp:third").allowed).toBe(false);
+  });
+
+  it("rolls back local reservations and new cardinality when the global tier refuses", () => {
+    let now = 0;
+    const limiter = new BoundedIdentityRateLimiter({
+      limit: 2,
+      globalLimit: 2,
+      windowMs: 1_000,
+      maxEntries: 20,
+      now: () => now,
+    });
+    expect(limiter.check("ip:a", "fp:a").allowed).toBe(true);
+    expect(limiter.check("ip:b", "fp:b").allowed).toBe(true);
+    expect(limiter.size()).toBe(4);
+    expect(limiter.check("ip:a", "fp:a").allowed).toBe(false);
+    expect(limiter.check("ip:new", "fp:new").allowed).toBe(false);
+    expect(limiter.size()).toBe(4);
+    now = 500;
+    expect(limiter.check("ip:a", "fp:a").allowed).toBe(true);
+    expect(limiter.check("ip:a", "fp:a").allowed).toBe(false);
+  });
+
+  it("admits no more than the global cap under concurrent rotating keys", async () => {
+    const limiter = new BoundedIdentityRateLimiter({ limit: 10, globalLimit: 7, windowMs: 60_000, maxEntries: 200 });
+    const results = await Promise.all(Array.from({ length: 50 }, async (_unused, index) =>
+      limiter.check(`ip:${index}`, `fp:${index}`)));
+    expect(results.filter(({ allowed }) => allowed)).toHaveLength(7);
+    expect(limiter.size()).toBe(14);
+  });
 });
