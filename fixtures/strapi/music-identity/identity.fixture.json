@@ -4,10 +4,22 @@
   "capturedAt": "1970-01-01T00:00:00.000Z",
   "identities": [
     {
-      "user": { "id": "fixture-person-001" },
-      "accounts": [{ "id": "fixture-account-001", "completed": true }]
+      "user": {
+        "documentId": "fixture-person-001",
+        "blocked": false,
+        "is_subscribed": false,
+        "accounts": [
+          {
+            "documentId": "fixture-account-001",
+            "Account_Name": "Fixture Explorer",
+            "Account_Type": "Personal",
+            "mobile_number": "+00000000000",
+            "localtunes_integrated": "No"
+          }
+        ]
+      }
     }
   ],
   "pagination": { "page": 1, "pageCount": 1, "pageSize": 100, "total": 1 },
-  "serviceToken": { "operations": ["GET /api/users", "GET /api/accounts"] }
+  "serviceToken": { "operations": ["GET /api/users/me", "GET /api/accounts"] }
 }

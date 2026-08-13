@@ -14,7 +14,9 @@
     "db:push": "drizzle-kit push",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:integration": "vitest run --config vitest.integration.config.ts"
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "music:types:scoped": "tsc --project tsconfig.music-c0.json --pretty false --incremental false",
+    "music:types:baseline": "node scripts/music-typescript-baseline.ts --compare"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.36.3",

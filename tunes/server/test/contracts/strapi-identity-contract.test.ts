@@ -1,108 +1,129 @@
 import { describe, expect, it } from "vitest";
 import { validateStrapiFixture } from "../../../scripts/music-cli.ts";
 
-describe("Strapi identity fixture contract", () => {
-  it("rejects a live fixture capture without an explicit read-only credential", () => {
-    // Production break caught: a live probe could silently fall back to ambient
-    // credentials and expose or mutate a production Strapi tenant.
-    expect(() =>
-      validateStrapiFixture(
-        {
-          schemaVersion: "strapi-identity-fixture/v1",
-          fixtureVersion: "1",
-          identities: [
-            {
-              user: { id: "person-1" },
-              accounts: [{ id: "account-1", completed: true }],
-            },
-          ],
-        },
-        { mode: "live", readOnlyCredential: undefined },
-      ),
-    ).toThrow("LIVE_STRAPI_READ_ONLY_CREDENTIAL is required");
-  });
+const validIdentity = {
+  user: {
+    documentId: "fixture-user-document-id",
+    blocked: false,
+    is_subscribed: false,
+    accounts: [
+      {
+        documentId: "fixture-account-document-id",
+        Account_Name: "Fixture Explorer",
+        Account_Type: "Personal",
+        mobile_number: "+10000000000",
+        localtunes_integrated: "No" as const,
+      },
+    ],
+  },
+};
 
-  it("rejects a fixture that omits the immutable person identifier", () => {
-    // Production break caught: provisioning could create Music state for an
-    // anonymous or remapped person.
+describe("Strapi identity fixture contract", () => {
+  it("rejects a current-user response without its immutable documentId", () => {
+    // Production break caught: provisioning could key a Music identity from a
+    // mutable username or Strapi numeric id instead of the v5 documentId.
     expect(() =>
       validateStrapiFixture(
         {
           schemaVersion: "strapi-identity-fixture/v1",
           fixtureVersion: "1",
-          identities: [{ user: {}, accounts: [{ id: "account-1", completed: true }] }],
+          identities: [{ user: { ...validIdentity.user, documentId: "" } }],
+          pagination: { page: 1, pageCount: 1, pageSize: 100, total: 1 },
+          serviceToken: { operations: ["GET /api/users/me", "GET /api/accounts"] },
         },
         { mode: "fixture" },
       ),
-    ).toThrow("identity[0].user.id is required");
+    ).toThrow("identity[0].user.documentId is required");
   });
 
-  it("rejects ambiguous completed Account selections", () => {
-    // Production break caught: a person could be bound to the wrong Account.
+  it("rejects a current-user response without lifecycle and entitlement fields", () => {
+    // Production break caught: a partial Strapi response could provision a
+    // blocked person or infer premium entitlement from an absent field.
     expect(() =>
       validateStrapiFixture(
         {
           schemaVersion: "strapi-identity-fixture/v1",
           fixtureVersion: "1",
-          identities: [
-            {
-              user: { id: "person-1" },
-              accounts: [
-                { id: "account-1", completed: true },
-                { id: "account-2", completed: true },
-              ],
-            },
-          ],
+          identities: [{ user: { ...validIdentity.user, blocked: undefined } }],
+          pagination: { page: 1, pageCount: 1, pageSize: 100, total: 1 },
+          serviceToken: { operations: ["GET /api/users/me", "GET /api/accounts"] },
+        },
+        { mode: "fixture" },
+      ),
+    ).toThrow("identity[0].user.blocked must be boolean");
+  });
+
+  it("rejects an Account whose persisted Music enrollment field drifts", () => {
+    // Production break caught: truthy or renamed enrollment values could be
+    // mistaken for the repository's persisted Yes/No semantics.
+    const account = { ...validIdentity.user.accounts[0], localtunes_integrated: true };
+    expect(() =>
+      validateStrapiFixture(
+        {
+          schemaVersion: "strapi-identity-fixture/v1",
+          fixtureVersion: "1",
+          identities: [{ user: { ...validIdentity.user, accounts: [account] } }],
+          pagination: { page: 1, pageCount: 1, pageSize: 100, total: 1 },
+          serviceToken: { operations: ["GET /api/users/me", "GET /api/accounts"] },
+        } as never,
+        { mode: "fixture" },
+      ),
+    ).toThrow("localtunes_integrated must be Yes or No");
+  });
+
+  it("rejects semantically impossible pagination", () => {
+    // Production break caught: a syntactically complete but impossible page
+    // envelope could make reconciliation treat a truncated capture as complete.
+    expect(() =>
+      validateStrapiFixture(
+        {
+          schemaVersion: "strapi-identity-fixture/v1",
+          fixtureVersion: "1",
+          identities: [validIdentity],
+          pagination: { page: 2, pageCount: 1, pageSize: 100, total: 1 },
+          serviceToken: { operations: ["GET /api/users/me", "GET /api/accounts"] },
+        },
+        { mode: "fixture" },
+      ),
+    ).toThrow("pagination metadata is inconsistent");
+  });
+
+  it("rejects ambiguous completed Accounts because the repository has no selection field", () => {
+    // Production break caught: accounts[0] is unordered, so provisioning could
+    // bind a person to the wrong immutable Account context.
+    const secondAccount = { ...validIdentity.user.accounts[0], documentId: "fixture-account-document-id-2" };
+    expect(() =>
+      validateStrapiFixture(
+        {
+          schemaVersion: "strapi-identity-fixture/v1",
+          fixtureVersion: "1",
+          identities: [{ user: { ...validIdentity.user, accounts: [...validIdentity.user.accounts, secondAccount] } }],
+          pagination: { page: 1, pageCount: 1, pageSize: 100, total: 1 },
+          serviceToken: { operations: ["GET /api/users/me", "GET /api/accounts"] },
         },
         { mode: "fixture" },
       ),
     ).toThrow("identity[0] has ambiguous completed Accounts");
   });
 
-  it("rejects schema drift and truncated pagination metadata", () => {
-    // Production break caught: an incomplete or changed Strapi list response
-    // would silently skip eligible people during provisioning.
-    expect(() =>
-      validateStrapiFixture(
-        {
-          schemaVersion: "strapi-identity-fixture/v0" as "strapi-identity-fixture/v1",
-          fixtureVersion: "1",
-          identities: [],
-          pagination: { page: 1, pageCount: 2 },
-        },
-        { mode: "fixture" },
-      ),
-    ).toThrow("unsupported fixture schema");
+  it("rejects schema drift, incomplete pagination, and write-capable service tokens", () => {
+    const base = {
+      fixtureVersion: "1",
+      identities: [validIdentity],
+      pagination: { page: 1, pageCount: 1, pageSize: 100, total: 1 },
+      serviceToken: { operations: ["GET /api/users/me", "GET /api/accounts"] },
+    };
+    expect(() => validateStrapiFixture({ ...base, schemaVersion: "strapi-identity-fixture/v0" } as never, { mode: "fixture" })).toThrow("unsupported fixture schema");
+    expect(() => validateStrapiFixture({ ...base, schemaVersion: "strapi-identity-fixture/v1", pagination: { page: 1, pageCount: 1, pageSize: 100 } }, { mode: "fixture" })).toThrow("pagination metadata is truncated");
+    expect(() => validateStrapiFixture({ ...base, schemaVersion: "strapi-identity-fixture/v1", serviceToken: { operations: ["DELETE /api/users/1"] } }, { mode: "fixture" })).toThrow("service token operation must be read-only");
   });
 
-  it("rejects truncated pagination metadata", () => {
-    // Production break caught: the final page can be silently omitted.
+  it("requires explicit read-only credentials before live validation", () => {
     expect(() =>
       validateStrapiFixture(
-        {
-          schemaVersion: "strapi-identity-fixture/v1",
-          fixtureVersion: "1",
-          identities: [],
-          pagination: { page: 1, pageCount: 1, pageSize: 100 },
-        },
-        { mode: "fixture" },
+        { schemaVersion: "strapi-identity-fixture/v1", fixtureVersion: "1", identities: [validIdentity] },
+        { mode: "live" },
       ),
-    ).toThrow("pagination metadata is truncated");
-  });
-
-  it("rejects a service token fixture with a write operation", () => {
-    // Production break caught: a read-only preflight credential could delete
-    // production identity records.
-    expect(() =>
-      validateStrapiFixture(
-        {
-          schemaVersion: "strapi-identity-fixture/v1",
-          fixtureVersion: "1",
-          identities: [],
-          serviceToken: { operations: ["GET /api/users", "DELETE /api/users/person-1"] },
-        },
-        { mode: "fixture" },
-      ),
-    ).toThrow("service token operation must be read-only");
+    ).toThrow("LIVE_STRAPI_READ_ONLY_CREDENTIAL is required");
   });
 });

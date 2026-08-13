@@ -20,7 +20,9 @@
     "music:db:status": "npm run music-cli -- db:status",
     "music:db:migrate": "npm run music-cli -- db:migrate",
     "music:db:reset": "npm run music-cli -- db:reset",
-    "music:fixtures:capture": "npm run music-cli -- fixtures:capture"
+    "music:fixtures:capture": "npm run music-cli -- fixtures:capture",
+    "music:types:scoped": "npm run music:types:scoped --prefix tunes",
+    "music:types:baseline": "npm run music:types:baseline --prefix tunes"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

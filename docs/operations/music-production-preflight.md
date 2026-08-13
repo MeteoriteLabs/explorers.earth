@@ -27,7 +27,12 @@ unavailable. An empty DB inspection alone is insufficient.
 
 ## Required Strapi proof
 
-Capture sanitized schemas for current user, one completed Account selection,
-entitlement fields, complete pagination metadata, block/reactivate/delete
-lifecycle, and service-token permissions. The fixture contract rejects missing
-IDs, ambiguity, schema drift, pagination truncation and write privileges.
+Capture sanitized schemas using immutable Strapi v5 `documentId` for the
+current user and Account. Repository evidence defines a completed Account as
+truthy `Account_Name`, `Account_Type`, and `mobile_number`; it exposes no
+persisted selection field, so multiple completed Accounts are ambiguous and
+must be refused. Entitlement/lifecycle evidence includes user `blocked` and
+`is_subscribed` booleans plus Account `localtunes_integrated` as exact `Yes` or
+`No`, complete semantic pagination, block/reactivate/delete behavior, and
+service-token permissions. The local fixture proves these verified shapes but
+does not substitute for the blocked live lifecycle/pagination proof.

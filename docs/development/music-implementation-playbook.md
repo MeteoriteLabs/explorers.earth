@@ -21,18 +21,26 @@ Run with `--format json` when collecting evidence. The target is ten minutes
 cold and five minutes warm on Windows and Ubuntu; record actual timing in the
 run artifact. Use only `docker-compose.music-test.yml`, project
 `explorers-music-fixture`, PostgreSQL 15, deterministic fixture Strapi and the
-generated disposable `.env.music.test`.
+generated disposable `.env.music.test`. The isolated topology exposes fake
+Strapi on `127.0.0.1:51337`, the Tunes contract harness on `127.0.0.1:55000`,
+and the Explorers contract harness on `127.0.0.1:55173`; health dependencies
+gate each service. `music:test:smoke` verifies health, current-user and Account
+responses, the Tunes person/Account projection, and Explorers readiness.
 
 ## Safety sequence
 
 1. Run `music:doctor`; it checks Node >=22.12, npm/Compose availability,
-   required files, test environment, and an unsafe `DATABASE_URL` target.
+   required files, typed/ranged control values, fixture version and gates, free
+   ports/disk, and the exact disposable `DATABASE_URL_TEST` target. The same
+   typed schema is invoked by Tunes startup whenever `MUSIC_MODE` is enabled.
 2. Never call live Strapi without `--mode live`, a separate read-only
    credential, and TK's identity-owner endpoint review.
 3. Preserve fixture volumes by default. Use `music:down -- --volumes
    --confirm-project explorers-music-fixture` only for the labeled project.
 4. Before C12 production mutation, obtain TK's separate explicit approval and
    a signed preflight. A local empty database is not proof.
+5. `music:db:migrate` is deliberately disabled until reviewed versioned
+   migrations are introduced in C3; schema push is not a migration substitute.
 
 ## Incident recovery
 

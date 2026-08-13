@@ -1,4 +1,9 @@
 name: explorers-music-fixture
+
+x-music-labels: &music-labels
+  com.explorers.music.fixture: "true"
+  com.explorers.music.project: "explorers-music-fixture"
+
 services:
   postgres:
     image: postgres:15-alpine
@@ -6,34 +11,72 @@ services:
       POSTGRES_DB: music_fixture
       POSTGRES_USER: music
       POSTGRES_PASSWORD: music
-    ports:
-      - "127.0.0.1:55432:5432"
+    ports: ["127.0.0.1:55432:5432"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U music -d music_fixture"]
       interval: 2s
       timeout: 3s
       retries: 20
-    labels:
-      com.explorers.music.fixture: "true"
-      com.explorers.music.project: "explorers-music-fixture"
-    volumes:
-      - music-fixture-postgres:/var/lib/postgresql/data
-  strapi-fixture:
+    labels: *music-labels
+    networks: [music-fixture]
+    volumes: [music-fixture-postgres:/var/lib/postgresql/data]
+
+  strapi:
     image: node:22-alpine
-    working_dir: /fixture
-    command: ["node", "-e", "require('http').createServer((_,r)=>r.end(JSON.stringify({schemaVersion:'strapi-identity-fixture/v1',fixtureVersion:'1'}))).listen(1337)"]
-    ports:
-      - "127.0.0.1:51337:1337"
+    working_dir: /workspace
+    command: ["node", "tunes/scripts/music-fixture-server.ts", "--service", "strapi", "--port", "1337"]
+    ports: ["127.0.0.1:51337:1337"]
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:1337').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:1337/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
       interval: 2s
       timeout: 3s
       retries: 20
-    labels:
-      com.explorers.music.fixture: "true"
-      com.explorers.music.project: "explorers-music-fixture"
+    labels: *music-labels
+    networks: [music-fixture]
+    volumes: [./:/workspace:ro]
+
+  tunes:
+    image: node:22-alpine
+    working_dir: /workspace
+    command: ["node", "tunes/scripts/music-fixture-server.ts", "--service", "tunes", "--port", "5000"]
+    environment:
+      DATABASE_URL_TEST: postgresql://music:music@postgres:5432/music_fixture
+      STRAPI_FIXTURE_URL: http://strapi:1337
+    ports: ["127.0.0.1:55000:5000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      strapi: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:5000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    labels: *music-labels
+    networks: [music-fixture]
+    volumes: [./:/workspace:ro]
+
+  explorers:
+    image: node:22-alpine
+    working_dir: /workspace
+    command: ["node", "tunes/scripts/music-fixture-server.ts", "--service", "explorers", "--port", "5173"]
+    environment:
+      TUNES_FIXTURE_URL: http://tunes:5000
+    ports: ["127.0.0.1:55173:5173"]
+    depends_on:
+      tunes: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:5173/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    labels: *music-labels
+    networks: [music-fixture]
+    volumes: [./:/workspace:ro]
+
+networks:
+  music-fixture:
+    labels: *music-labels
+
 volumes:
   music-fixture-postgres:
-    labels:
-      com.explorers.music.fixture: "true"
-      com.explorers.music.project: "explorers-music-fixture"
+    labels: *music-labels

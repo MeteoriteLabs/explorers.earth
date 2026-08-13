@@ -24,8 +24,22 @@ Root commands: `music:bootstrap`, `music:doctor`, `music:up`,
 it never requests payment or production API credentials. `music:down` retains
 volumes. Volume deletion requires `--volumes --confirm-project
 explorers-music-fixture`; reset additionally requires `--mode fixture` and the
-same confirmation. Resume must reject a changed commit, fixture version, gate
-values, or environment fingerprint recorded in the checkpoint.
+same confirmation. Before cleanup, the CLI renders the Compose model, resolves
+and inspects every actual container, network, and volume, and refuses absent,
+unlabeled, mismatched, or production-like resources. Project-name confirmation
+alone is never sufficient.
+
+Child output is captured and sanitized under `.artifacts/music-runs/<runId>`;
+JSON stdout contains exactly one envelope. Verification, prerequisite,
+dependency, and safety failures retain their distinct exit categories, with
+phase-specific next and recovery commands. Resume uses the actual Git SHA and
+rejects a changed commit, fixture/schema version, validated gate values, or
+SHA-256 environment fingerprint. SIGINT/SIGTERM terminates only tracked child
+process trees before the atomic checkpoint is written.
+
+`music:db:migrate` always safety-refuses with exit 5 in C0. There is no reviewed
+versioned migration until C3, so it never invokes `drizzle-kit push` or reads an
+ambient `DATABASE_URL`.
 
 `music:fixtures:capture --mode live --format json` requires both
 `LIVE_STRAPI_URL` and `LIVE_STRAPI_READ_ONLY_CREDENTIAL`, then remains blocked

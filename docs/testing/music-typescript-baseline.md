@@ -6,12 +6,16 @@ Captured before C0 implementation on 2026-08-13 using Node v24.14.0:
 npm run check --prefix tunes
 ```
 
-The normalized baseline is **245 diagnostics in 26 files** (exit 2). It is an
-existing regression baseline, not an acceptance of new diagnostics. The
-dominant sources are TanStack Query typing, legacy routes/storage implicit
-types, dashboard/playlist response types, and stale schema-field references.
-The regression gate is `npm run check --prefix tunes`; prove it detects a
-deliberate diagnostic in an isolated change, then remove that change before
-commit. Explorers' `tsc -b` could not be run through the root resolver in this
-checkout (`npx` reported TypeScript unavailable); that setup defect is recorded
-as a preflight concern, not hidden.
+The full normalized baseline is committed in
+`docs/testing/music-typescript-baseline.txt`: **245 exact diagnostics in 26
+files** (compiler exit 2). It is an existing regression baseline, not an
+acceptance of new diagnostics. The normalizer joins continuation lines and
+normalizes path separators, then the gate fails when the current diagnostic set
+contains any entry absent from the baseline. Resolved diagnostics do not block.
+
+Run `npm run music:types:baseline` for the normalized set-difference gate and
+`npm run music:types:scoped` for a zero-diagnostic check over every C0 script,
+contract test, and shared server environment module. Both run on Ubuntu and
+Windows in `.github/workflows/music-c0-contracts.yml`. The behavioral test
+injects a deliberate synthetic diagnostic and proves the comparator rejects it;
+no deliberate source defect remains in the tree.

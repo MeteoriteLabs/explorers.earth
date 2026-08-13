@@ -1,0 +1,43 @@
+name: Music C0 contracts
+
+on:
+  pull_request:
+    paths:
+      - "tunes/**"
+      - "fixtures/**"
+      - "docker-compose.music-test.yml"
+      - ".env.music*.example"
+      - ".github/workflows/music-c0-contracts.yml"
+  push:
+    branches: [main, develop]
+    paths:
+      - "tunes/**"
+      - "fixtures/**"
+      - "docker-compose.music-test.yml"
+      - ".env.music*.example"
+      - ".github/workflows/music-c0-contracts.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    name: Music contracts (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.12"
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - run: npm ci --prefix tunes
+      - run: npm test --prefix tunes -- --run server/test/contracts
+      - run: npm run music:types:scoped
+      - run: npm run music:types:baseline
+      - if: runner.os == 'Linux'
+        run: docker compose -p explorers-music-fixture -f docker-compose.music-test.yml config --quiet

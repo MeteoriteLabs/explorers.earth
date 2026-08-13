@@ -1,7 +1,13 @@
 import dotenv from "dotenv";
+import { parseMusicEnvironment } from "./config/music-environment";
 
 // Load environment variables from .env file
 dotenv.config();
+
+// When the Music identity controls are enabled, startup and the CLI use the
+// same typed, fail-closed environment contract. Existing deployments that do
+// not opt into MUSIC_MODE remain untouched during C0.
+if (process.env.MUSIC_MODE) parseMusicEnvironment(process.env);
 
 // ─── Global crash safety nets ────────────────────────────────────────────────
 // Log and exit on uncaught exceptions/rejections so the process manager (Docker) can restart the server cleanly
