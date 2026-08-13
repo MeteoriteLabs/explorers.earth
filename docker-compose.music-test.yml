@@ -1,0 +1,39 @@
+name: explorers-music-fixture
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: music_fixture
+      POSTGRES_USER: music
+      POSTGRES_PASSWORD: music
+    ports:
+      - "127.0.0.1:55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U music -d music_fixture"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    labels:
+      com.explorers.music.fixture: "true"
+      com.explorers.music.project: "explorers-music-fixture"
+    volumes:
+      - music-fixture-postgres:/var/lib/postgresql/data
+  strapi-fixture:
+    image: node:22-alpine
+    working_dir: /fixture
+    command: ["node", "-e", "require('http').createServer((_,r)=>r.end(JSON.stringify({schemaVersion:'strapi-identity-fixture/v1',fixtureVersion:'1'}))).listen(1337)"]
+    ports:
+      - "127.0.0.1:51337:1337"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:1337').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    labels:
+      com.explorers.music.fixture: "true"
+      com.explorers.music.project: "explorers-music-fixture"
+volumes:
+  music-fixture-postgres:
+    labels:
+      com.explorers.music.fixture: "true"
+      com.explorers.music.project: "explorers-music-fixture"

@@ -9,7 +9,18 @@
     "dev:explorers-earth": "npm run dev --prefix explorers-earth",
     "install:all": "npm install --prefix tunes && npm install --prefix explorers-earth",
     "db:push": "npm run db:push --prefix tunes",
-    "build:all": "npm run build --prefix tunes && npm run build --prefix explorers-earth"
+    "build:all": "npm run build --prefix tunes && npm run build --prefix explorers-earth",
+    "music-cli": "node tunes/scripts/music-cli.ts",
+    "music:bootstrap": "npm run music-cli -- bootstrap",
+    "music:doctor": "npm run music-cli -- doctor",
+    "music:up": "npm run music-cli -- up",
+    "music:test:smoke": "npm run music-cli -- test:smoke",
+    "music:test:all": "npm run music-cli -- test:all",
+    "music:down": "npm run music-cli -- down",
+    "music:db:status": "npm run music-cli -- db:status",
+    "music:db:migrate": "npm run music-cli -- db:migrate",
+    "music:db:reset": "npm run music-cli -- db:reset",
+    "music:fixtures:capture": "npm run music-cli -- fixtures:capture"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
