@@ -116,6 +116,14 @@ direction, then the signed floor advances to `pending` before the gate. From
 that point, older-marker rollback is rejected before Docker. Gate failure
 retains the pending epoch and compatibility route so the exact candidate can
 retry; success advances the same marker to `current`.
+After signed ledger, permanent floor, and state validation, the schema floor
+must be at least the maximum authenticated ledger marker before epoch recovery
+may write. It may be higher for a pending gate whose image was not promoted,
+but replaying older valid v1 or v2 floor/epoch bytes beside newer history fails
+before Docker without changing any authority file. Because every state digest
+and commit must resolve to the signed ledger, the ledger maximum also covers the
+active state's marker. A missing schema floor remains valid only when every
+ledger marker is containment or `0002`.
 The checked-in `music-hmac.mjs` helper reads the mode-0600 HMAC key path directly
 with Node's crypto API. Key bytes never enter a child-process argument, exported
 environment variable, or log. Node 22 is therefore a deployment-control runtime

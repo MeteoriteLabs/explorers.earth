@@ -205,6 +205,7 @@ declare -a ledger_commits=()
 declare -a ledger_markers=()
 declare -A ledger_seen=()
 ledger_last_mac=""
+ledger_max_marker_rank=-1
 
 validate_ledger() {
   require_regular_file "$ledger_file"
@@ -215,6 +216,7 @@ validate_ledger() {
   ledger_markers=()
   ledger_seen=()
   ledger_last_mac=""
+  ledger_max_marker_rank=-1
   local expected_sequence=1
   local previous_marker_rank=-1
   local row schema sequence digest_value commit_value marker_value marker_value_rank previous_mac mac extra expected_mac
@@ -241,6 +243,7 @@ validate_ledger() {
     ledger_markers+=("$marker_value")
     ledger_last_mac="$mac"
     previous_marker_rank="$marker_value_rank"
+    ledger_max_marker_rank="$marker_value_rank"
     expected_sequence=$((expected_sequence + 1))
   done
 }
@@ -608,9 +611,22 @@ else
   validate_ledger
   validate_floor
   validate_state
+  if [[ -e "$compatibility_floor_file" ]]; then
+    validate_compatibility_floor
+  fi
+  if [[ -e "$schema_epoch_file" ]]; then validate_schema_epoch; fi
+  if [[ -e "$compatibility_floor_file" ]]; then
+    [[ "$compatibility_floor_marker_rank" -ge "$ledger_max_marker_rank" ]] \
+      || fail "schema compatibility floor is older than secure ledger authority"
+  else
+    [[ "$ledger_max_marker_rank" -le 1 ]] \
+      || fail "schema compatibility floor missing after schema migration"
+  fi
   recover_schema_epoch
   if [[ -e "$compatibility_floor_file" ]]; then
     validate_compatibility_floor
+    [[ "$compatibility_floor_marker_rank" -ge "$ledger_max_marker_rank" ]] \
+      || fail "schema compatibility floor is older than secure ledger authority"
   else
     for known_marker in "${ledger_markers[@]}"; do
       known_marker_rank="$(marker_rank "$known_marker")" || fail "secure ledger contains unknown migration marker"

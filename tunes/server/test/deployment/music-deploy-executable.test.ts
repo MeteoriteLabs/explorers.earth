@@ -252,6 +252,64 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     writeFileSync(eventLog, "");
   }
 
+  function seedNewerAuthorityWithReplayedFloor(format: "v2-0004" | "v1-0003") {
+    const olderMarker = format === "v2-0004" ? "0004_identity_delete_saga" : "0003_identity_lifecycle_hardening";
+    seedVersionedAuthority(olderMarker);
+    const ledgerSchema = "music-ledger-v2";
+    const firstPayload = [ledgerSchema, repository, "1", digest("a"), commit("a"), olderMarker, "GENESIS"].join("\t");
+    const firstMac = createHmac("sha256", hmacSentinel).update(firstPayload).digest("hex");
+    const secondPayload = [ledgerSchema, repository, "2", digest("b"), commit("b"), "0006_numeric_identity_lock", firstMac].join("\t");
+    const secondMac = createHmac("sha256", hmacSentinel).update(secondPayload).digest("hex");
+    writeFileSync(join(root, "deployment-state/secure-images.tsv"), [
+      [ledgerSchema, "1", digest("a"), commit("a"), olderMarker, "GENESIS", firstMac].join("\t"),
+      [ledgerSchema, "2", digest("b"), commit("b"), "0006_numeric_identity_lock", firstMac, secondMac].join("\t"),
+      "",
+    ].join("\n"));
+    const stateValues = ["legacy-project", "green", digest("b"), commit("b"), digest("a"), commit("a"), digest("b"), commit("b")];
+    const statePayload = ["music-state-v2", repository, ...stateValues].join("\t");
+    writeFileSync(join(root, "deployment-state/music-state.tsv"), [
+      "music-state-v2", ...stateValues,
+      createHmac("sha256", hmacSentinel).update(statePayload).digest("hex"),
+    ].join("\t") + "\n");
+    if (format === "v2-0004") {
+      for (const [relativePath, schema] of [
+        ["deployment-state/music-schema-floor.tsv", "music-schema-floor-v2"],
+        ["deployment-transactions/schema-epoch.tsv", "music-schema-epoch-v1"],
+      ] as const) {
+        const payload = [schema, repository, digest("a"), commit("a"), olderMarker, "current"].join("\t");
+        writeFileSync(join(root, relativePath), [schema, digest("a"), commit("a"), olderMarker, "current",
+          createHmac("sha256", hmacSentinel).update(payload).digest("hex")].join("\t") + "\n");
+      }
+    } else {
+      const schema = "music-schema-floor-v1";
+      const payload = [schema, repository, digest("a"), commit("a"), olderMarker].join("\t");
+      writeFileSync(join(root, "deployment-state/music-schema-floor.tsv"), [schema, digest("a"), commit("a"), olderMarker,
+        createHmac("sha256", hmacSentinel).update(payload).digest("hex")].join("\t") + "\n");
+      rmSync(join(root, "deployment-transactions/schema-epoch.tsv"));
+    }
+    writeFileSync(eventLog, "");
+  }
+
+  const authorityPaths = [
+    "deployment-state/secure-images.tsv",
+    "deployment-state/music-state.tsv",
+    "deployment-state/music-floor.tsv",
+    "deployment-state/music-schema-floor.tsv",
+    "deployment-transactions/schema-epoch.tsv",
+  ] as const;
+
+  function snapshotAuthority() {
+    return authorityPaths.map((relativePath) => [relativePath,
+      existsSync(join(root, relativePath)) ? readFileSync(join(root, relativePath)) : undefined] as const);
+  }
+
+  function expectAuthorityUnchanged(snapshot: ReturnType<typeof snapshotAuthority>) {
+    for (const [relativePath, bytes] of snapshot) {
+      expect(existsSync(join(root, relativePath)), relativePath).toBe(bytes !== undefined);
+      if (bytes !== undefined) expect(readFileSync(join(root, relativePath)), relativePath).toEqual(bytes);
+    }
+  }
+
   it("upgrades authenticated 0004 deployment authority to 0005 without rewriting history", () => {
     seedVersionedAuthority("0004_identity_delete_saga");
     const historicalLedger = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8");
@@ -332,6 +390,43 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(result.stderr).toMatch(/deployment state (HMAC mismatch|malformed)/);
     expect(existsSync(join(root, "deployment-transactions/schema-epoch.tsv"))).toBe(false);
     expect(readFileSync(eventLog, "utf8")).toBe("");
+  }, 20_000);
+
+  it.each([
+    ["v2 0004", "v2-0004", "deploy"],
+    ["v2 0004", "v2-0004", "rollback"],
+    ["v1 0003", "v1-0003", "deploy"],
+    ["v1 0003", "v1-0003", "rollback"],
+  ] as const)("refuses replayed %s authority (%s) behind a newer ledger on %s without writes", (_label, format, operation) => {
+    seedNewerAuthorityWithReplayedFloor(format);
+    const authority = snapshotAuthority();
+    const result = operation === "deploy"
+      ? run("deploy", digest("c"), commit("c"))
+      : run("rollback", digest("a"), "-");
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toMatch(/schema compatibility floor.*secure ledger/i);
+    expect(readFileSync(eventLog, "utf8")).toBe("");
+    expectAuthorityUnchanged(authority);
+  }, 20_000);
+
+  it("accepts a legitimate pending schema floor ahead of promoted ledger history", () => {
+    seedVersionedAuthority("0004_identity_delete_saga");
+    for (const [relativePath, schema] of [
+      ["deployment-state/music-schema-floor.tsv", "music-schema-floor-v2"],
+      ["deployment-transactions/schema-epoch.tsv", "music-schema-epoch-v1"],
+    ] as const) {
+      const payload = [schema, repository, digest("b"), commit("b"), "0006_numeric_identity_lock", "pending"].join("\t");
+      writeFileSync(join(root, relativePath), [schema, digest("b"), commit("b"), "0006_numeric_identity_lock", "pending",
+        createHmac("sha256", hmacSentinel).update(payload).digest("hex")].join("\t") + "\n");
+    }
+    writeFileSync(eventLog, "");
+
+    const result = run("deploy", digest("b"), commit("b"));
+    expect(result.status, result.stderr).toBe(0);
+    expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
+      .toContain("\t0006_numeric_identity_lock\tcurrent\t");
+    expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8"))
+      .toContain(`\t${digest("b")}\t${commit("b")}\t0006_numeric_identity_lock\t`);
   }, 20_000);
 
   it.each([
