@@ -164,9 +164,12 @@ only Traefik under the observed Compose project; logs into GHCR with an isolated
 temporary Docker config; pulls and verifies the canonical digest and OCI labels;
 starts the same-candidate-image `tunes-register-compat` process without database
 configuration and verifies its process-only liveness and shared typed 410; then
-atomically adds the priority-1000 exact `POST /api/register` route to that
-process while leaving every other request on legacy. Public omitted and forged
-registration probes must return the bounded, non-reflecting typed 410. Only then
+atomically adds the priority-1000 `POST` route for the complete Express-default
+registration path family (ASCII case-insensitive `/api/register`, with at most
+one trailing slash and query parsing kept separate) to that process while
+leaving every other path on legacy. Extra path segments and double slashes are
+not part of the denial route. Public omitted and forged registration probes
+must return the bounded, non-reflecting typed 410. Only then
 does it persist the pending schema epoch and run the same-image gate. It then
 starts blue privately; checks readiness; runs the C1
 REST, GraphQL, subscription, and hostile Socket.IO origin probes; creates the
@@ -176,6 +179,21 @@ state; commits the journal; and only then stops the retained legacy container.
 The registry config and token are cleaned on exit. The exact-path denial remains
 installed through promotion, gate/readiness failure, and reboot; recovery must
 never restore route bytes that remove it after the schema epoch is pending.
+
+The compatibility listener accepts at most 8 KiB whether a body has a declared
+length or uses chunked transfer, returns the shared typed 413 on excess, and
+enforces two-second header/request timeouts, a one-second keep-alive timeout,
+32 headers, and 128 concurrent sockets. Traefik additionally applies a
+four-request-per-second rate limiter with burst four. Its `sourceCriterion` is
+deliberately omitted: Traefik's default criterion is the direct remote address,
+so caller-supplied `X-Forwarded-For` values cannot create new buckets.
+
+Administrative deletion is one identity saga. If the row is already
+`pending_deletion`, storage reuses its locked operation ID; a caller-supplied
+different ID fails with `LIFECYCLE_OPERATION_CONFLICT` before child cleanup. An
+active administrative delete generates a cryptographically random operation
+ID, returns it to the caller, and records it through the database primitive.
+Retrying a finalized deletion with that exact ID is idempotent.
 
 At every provider transition exactly one `.yml`/`.yaml` file is visible in
 `deployment-routing`. Once the durable journal exists, an armed error handler

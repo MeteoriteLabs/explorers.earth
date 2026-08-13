@@ -445,12 +445,13 @@ write_route() {
 http:
   routers:
     tunes-register-compat:
-      rule: Host(\`localtunes.earth\`) && Path(\`/api/register\`) && Method(\`POST\`)
+      rule: Host(\`localtunes.earth\`) && PathRegexp(\`(?i)^/api/register/?$\`) && Method(\`POST\`)
       priority: 1000
       entryPoints: [websecure]
       tls:
         certResolver: letsencrypt
       service: tunes-register-compat
+      middlewares: [tunes-register-rate-limit]
     tunes:
       rule: Host(\`localtunes.earth\`)
       priority: 200
@@ -467,6 +468,12 @@ http:
       loadBalancer:
         servers:
           - url: http://${service}:5000
+  middlewares:
+    tunes-register-rate-limit:
+      rateLimit:
+        average: 4
+        period: 1s
+        burst: 4
 EOF
   else
     cat > "$temporary" <<EOF
@@ -572,7 +579,7 @@ fi
 provider_file_count="$(find "$route_dir" -maxdepth 1 -type f \( -name '*.yml' -o -name '*.yaml' \) | wc -l | tr -d ' ')"
 [[ "$provider_file_count" == 1 ]] || fail "exactly one Traefik provider file is required"
 if [[ -e "$compatibility_floor_file" ]]; then
-  grep -Fq 'Path(`/api/register`)' "$route_file" || fail "schema compatibility route missing"
+  grep -Fq 'PathRegexp(`(?i)^/api/register/?$`)' "$route_file" || fail "schema compatibility route missing"
   grep -Fq 'url: http://tunes-register-compat:5100' "$route_file" || fail "schema compatibility service route missing"
 fi
 

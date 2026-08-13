@@ -114,11 +114,45 @@ describePostgres("C3 real migrated runtime graph", () => {
 
     await pool.query("DROP TRIGGER runtime_delete_failure ON playback_states");
     await pool.query("DROP FUNCTION runtime_fail_delete()");
-    await storage.deleteUser(userId);
+    const activeDeletion = await storage.deleteUser(userId);
+    expect(activeDeletion.operationId).toMatch(/^storage-delete:[a-f0-9]{64}$/);
     for (const table of rawTables) {
       expect(Number((await pool.query(`SELECT count(*) AS count FROM ${table} WHERE user_id=$1`, [userId])).rows[0].count), table).toBe(0);
     }
     expect(Number((await pool.query("SELECT count(*) AS count FROM users WHERE id=$1", [userId])).rows[0].count)).toBe(0);
-    expect(Number((await pool.query("SELECT count(*) AS count FROM music_identity_tombstones WHERE strapi_user_document_id=$1", [`${suffix}_person`])).rows[0].count)).toBe(1);
+    const activeTombstone = (await pool.query(`SELECT lifecycle_operation_id FROM music_identity_tombstones
+      WHERE strapi_user_document_id=$1`, [`${suffix}_person`])).rows[0];
+    expect(activeTombstone.lifecycle_operation_id).toBe(activeDeletion.operationId);
+    expect((await pool.query(`SELECT operation_phase FROM music_identity_lifecycle_operations
+      WHERE operation_id=$1`, [activeDeletion.operationId])).rows[0].operation_phase).toBe("finalized");
+  });
+
+  it("finalizes and retries one prepared storage deletion saga without partial cleanup on conflict", async () => {
+    const identity = await new MusicIdentityRepository(pool).createIdentity({
+      username: `${suffix}_saga`, password: "disabled", guestUrl: `${suffix}_saga_guest`, venueName: "Saga Venue",
+      strapiUserDocumentId: `${suffix}_saga_person`, strapiAccountDocumentId: `${suffix}_saga_account`,
+      guestCapabilityHash: "8".repeat(64), operationId: `${suffix}_saga_provision`,
+    });
+    for (const table of rawTables) await pool.query(`INSERT INTO ${table}(user_id) VALUES ($1)`, [identity.id]);
+    const operationId = `${suffix}_delete_saga`;
+    await new MusicIdentityRepository(pool).transitionIdentity({
+      strapiUserDocumentId: `${suffix}_saga_person`, operationId, kind: "request_deletion", targetStatus: "pending_deletion",
+    });
+
+    await expect(storage.deleteUser(identity.id, `${suffix}_conflict`)).rejects.toMatchObject({ code: "LIFECYCLE_OPERATION_CONFLICT" });
+    for (const table of rawTables) {
+      expect(Number((await pool.query(`SELECT count(*) AS count FROM ${table} WHERE user_id=$1`, [identity.id])).rows[0].count), table).toBe(1);
+    }
+    expect(Number((await pool.query("SELECT count(*) AS count FROM users WHERE id=$1", [identity.id])).rows[0].count)).toBe(1);
+
+    await expect(storage.deleteUser(identity.id)).resolves.toMatchObject({ operationId, finalized: true });
+    await expect(storage.deleteUser(identity.id, operationId)).resolves.toMatchObject({ operationId, finalized: false });
+    expect((await pool.query(`SELECT count(*)::int AS count FROM music_identity_tombstones
+      WHERE lifecycle_operation_id=$1`, [operationId])).rows[0].count).toBe(1);
+    expect((await pool.query(`SELECT count(*)::int AS count FROM music_identity_lifecycle_operations
+      WHERE operation_id=$1 AND operation_phase='finalized'`, [operationId])).rows[0].count).toBe(1);
+    for (const table of rawTables) {
+      expect(Number((await pool.query(`SELECT count(*) AS count FROM ${table} WHERE user_id=$1`, [identity.id])).rows[0].count), table).toBe(0);
+    }
   });
 });

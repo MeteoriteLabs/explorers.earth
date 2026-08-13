@@ -471,6 +471,29 @@ describe("Music standalone containment REST boundary", () => {
     expect(storage.createUser).not.toHaveBeenCalled();
   });
 
+  it.each([
+    "/api/register",
+    "/api/register/",
+    "/API/REGISTER",
+    "/aPi/ReGiStEr/?source=legacy",
+  ])("tombstones every Express registration alias at the central boundary: %s", async (path) => {
+    const response = await request(app).post(path).send({
+      username: REGISTERED.username,
+      password: "registration-password",
+      strapiUserDocumentId: "forged-person",
+      strapiAccountDocumentId: "forged-account",
+    });
+    expect(response.status).toBe(410);
+    expectErrorEnvelope(response, "LEGACY_IDENTITY_ROUTE_REMOVED");
+    expect(storage.createUser).not.toHaveBeenCalled();
+  });
+
+  it.each(["/api/register//", "/api/register/extra"])("does not widen registration containment to %s", async (path) => {
+    const response = await request(app).post(path).send({});
+    expect(response.status).toBe(404);
+    expect(storage.createUser).not.toHaveBeenCalled();
+  });
+
   it("rotates the native session on login, uses hardened cookies, and invalidates logout", async () => {
     const agent = request.agent(app);
     const csrf = await agent.get("/api/csrf-token").set("X-Forwarded-Proto", "https");

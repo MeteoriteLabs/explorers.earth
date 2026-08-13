@@ -67,7 +67,8 @@ describe("Music migration authority contracts", () => {
     expect(productionSources.match(/\.post\(\s*["']\/api\/register["']/g)).toHaveLength(1);
     const routeIndex = read("tunes/server/routes/index.ts");
     expect(routeIndex.indexOf("setupNativeSessionContainment(app)")).toBeLessThan(routeIndex.indexOf("setupAuthRoutes(app)"));
-    expect(read("tunes/server/security-containment.ts")).toMatch(/req\.method === "POST" && req\.path === "\/api\/register"[\s\S]*LEGACY_IDENTITY_ROUTE_REMOVED/);
+    expect(read("tunes/server/security-containment.ts")).toMatch(/req\.method === "POST" && isNativeRegistrationPath\(req\.path\)[\s\S]*LEGACY_IDENTITY_ROUTE_REMOVED/);
+    expect(read("tunes/server/registration-route-contract.ts")).toContain("/^\\/[aA][pP][iI]\\/[rR][eE][gG][iI][sS][tT][eE][rR]\\/?$/");
   });
 
   it("runs the PostgreSQL 15 integration chain in authoritative image CI", () => {

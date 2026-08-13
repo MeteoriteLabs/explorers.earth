@@ -96,7 +96,7 @@ count="$(find "$MUSIC_DEPLOY_ROOT/deployment-routing" -maxdepth 1 -type f \\( -n
 test "$count" = 1
 printf 'curl %s | route=%s\\n' "$*" "$(grep -Eo 'http://[^ ]+:5000' "$MUSIC_DEPLOY_ROOT/deployment-routing/music-router.yml" | tail -1)" >> "$MUSIC_DEPLOY_TEST_EVENT_LOG"
 if [[ "$*" == *"/api/register"* ]]; then
-  grep -Fq 'Path(\`/api/register\`)' "$MUSIC_DEPLOY_ROOT/deployment-routing/music-router.yml"
+  grep -Fq 'PathRegexp(\`(?i)^/api/register/?$\`)' "$MUSIC_DEPLOY_ROOT/deployment-routing/music-router.yml"
   grep -Fq 'priority: 1000' "$MUSIC_DEPLOY_ROOT/deployment-routing/music-router.yml"
   grep -Fq 'http://tunes-register-compat:5100' "$MUSIC_DEPLOY_ROOT/deployment-routing/music-router.yml"
   printf '{"error":{"code":"LEGACY_IDENTITY_ROUTE_REMOVED","message":"This identity endpoint is no longer available.","action":"upgrade_client","retryable":false,"requestId":"compat-test-request"}}\\n410'
@@ -258,17 +258,24 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(failed.status).not.toBe(0);
     const route = readFileSync(join(root, "deployment-routing/music-router.yml"), "utf8");
     const parsedRoute = parseYaml(route);
-    expect(route, `${failed.stderr}\n${readFileSync(eventLog, "utf8")}`).toContain("rule: Host(`localtunes.earth`) && Path(`/api/register`) && Method(`POST`)");
+    expect(route, `${failed.stderr}\n${readFileSync(eventLog, "utf8")}`).toContain("rule: Host(`localtunes.earth`) && PathRegexp(`(?i)^/api/register/?$`) && Method(`POST`)");
     expect(parsedRoute.http.routers["tunes-register-compat"]).toMatchObject({
-      rule: "Host(`localtunes.earth`) && Path(`/api/register`) && Method(`POST`)",
+      rule: "Host(`localtunes.earth`) && PathRegexp(`(?i)^/api/register/?$`) && Method(`POST`)",
       priority: 1000,
       service: "tunes-register-compat",
+      middlewares: ["tunes-register-rate-limit"],
     });
     expect(parsedRoute.http.services["tunes-register-compat"].loadBalancer.servers).toEqual([
       { url: "http://tunes-register-compat:5100" },
     ]);
     expect(parsedRoute.http.routers.tunes).toMatchObject({ priority: 200, service: "tunes-active" });
     expect(parsedRoute.http.services["tunes-active"].loadBalancer.servers).toEqual([{ url: "http://tunes-blue:5000" }]);
+    expect(parsedRoute.http.middlewares["tunes-register-rate-limit"].rateLimit).toMatchObject({
+      average: 4,
+      period: "1s",
+      burst: 4,
+    });
+    expect(parsedRoute.http.middlewares["tunes-register-rate-limit"].rateLimit.sourceCriterion).toBeUndefined();
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8")).toBe(priorLedger);
     const events = readFileSync(eventLog, "utf8");
     const omitted = events.indexOf("curl --silent --show-error --max-time 5 --request POST --data {} https://localtunes.earth/api/register");

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Express, NextFunction, Request, Response } from "express";
 import jwt, { type JwtPayload } from "jsonwebtoken";
 import { errorEnvelope, type ContainmentCode } from "./containment-error-contract";
+import { isNativeRegistrationPath } from "./registration-route-contract";
 
 export { errorEnvelope, type ContainmentCode } from "./containment-error-contract";
 
@@ -103,7 +104,7 @@ export function setupNativeSessionContainment(app: Express): void {
     // Native registration cannot establish the Strapi/Account identity tuple.
     // Stop it at the first shared pre-handler boundary so omitted or forged
     // server-owned identifiers can never reach storage.createUser().
-    if (req.method === "POST" && req.path === "/api/register") {
+    if (req.method === "POST" && isNativeRegistrationPath(req.path)) {
       return sendContainmentError(res, 410, "LEGACY_IDENTITY_ROUTE_REMOVED", requestId);
     }
     if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return next();

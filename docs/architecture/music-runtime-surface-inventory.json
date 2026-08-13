@@ -1897,6 +1897,12 @@
   ],
   "jobs": [
     {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/deployment/run-registration-compat.ts",
+      "line": 48
+    },
+    {
       "kind": "setInterval",
       "lifecycle": "reactivation-token-cleanup",
       "source": "tunes/server/services/reactivation-service.ts",
