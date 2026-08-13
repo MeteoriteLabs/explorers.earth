@@ -22,6 +22,7 @@ describe("Music migration authority contracts", () => {
       "0001_runtime_baseline",
       "0002_identity_lifecycle",
       "0003_identity_lifecycle_hardening",
+      "0004_identity_delete_saga",
     ]);
     expect(EXPECTED_MUSIC_MIGRATION_ID).toBe(migrations.at(-1)?.id);
     expect(migrations.every(({ checksum }) => /^[a-f0-9]{64}$/.test(checksum))).toBe(true);
@@ -49,10 +50,12 @@ describe("Music migration authority contracts", () => {
     expect(storage).not.toContain("createTableIfMissing: true");
     expect(packageJson).not.toContain("drizzle-kit push");
     expect(compose).toContain("dist/server/deployment/run-migration-gate.js");
+    expect(compose).toContain("dist/server/deployment/run-registration-compat.js");
     expect(compose).toContain("MUSIC_MIGRATION_MARKER:");
     expect(compose).toContain(EXPECTED_MUSIC_MIGRATION_ID);
     expect(gate).toContain("migrateMusicDatabase");
     expect(gate).not.toContain("containment-no-schema-change");
+    expect((JSON.parse(packageJson).scripts.build as string)).toContain("server/deployment/run-registration-compat.ts");
   });
 
   it("has one native registration handler and tombstones it before auth route registration", () => {
@@ -118,7 +121,7 @@ describe("Music migration authority contracts", () => {
 
   it("rejects any non-production chain before opening a database connection", async () => {
     const production = loadMusicMigrations(resolve(repositoryRoot, "tunes/migrations"));
-    const appended = createMigrationDefinition("0004_unapproved", "SELECT 1;\n");
+    const appended = createMigrationDefinition("0005_unapproved", "SELECT 1;\n");
     const connect = vi.fn();
     await expect(migrateMusicDatabase({ connect } as never, { migrations: [...production, appended] }))
       .rejects.toThrow(/exact production migration chain/i);

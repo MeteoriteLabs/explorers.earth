@@ -914,8 +914,8 @@ export class DatabaseStorage implements IStorage {
         await connection.query(`DELETE FROM user_profiles WHERE user_id = $1`, [id]);
         console.log('Deleted user profile');
 
-        // Finally, delete the user
-        await connection.query(`DELETE FROM users WHERE id = $1`, [id]);
+        // Finally, finalize the identity deletion through the one lock-ordered DB primitive.
+        await connection.query(`SELECT finalize_music_identity_deletion($1::integer,$2::text,$3::text)`, [id, `storage-delete:${id}`, 'storage-delete']);
         console.log('Deleted user record');
 
         // If we get here, commit the transaction

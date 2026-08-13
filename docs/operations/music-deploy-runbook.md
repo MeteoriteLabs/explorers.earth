@@ -40,7 +40,7 @@ absent or different, or `main` is not protected.
 
 ## C3 same-image migration gate
 
-`0003_identity_lifecycle_hardening` is the exact expected migration ID. The candidate
+`0004_identity_delete_saga` is the exact expected migration ID. The candidate
 image contains the ordered SQL files and `run-migration-gate.js`; the one-shot
 gate takes the PostgreSQL advisory lock, verifies the checksum journal and
 catalog fingerprint, applies pending migrations transactionally, and writes an
@@ -55,7 +55,7 @@ Liveness remains process-only. The secure image ledger can retain historical
 `containment-no-schema-change` entries for audit and the permanent security
 floor, but they cease to be rollback targets as soon as the real C3 gate has
 migrated the database. All new images use
-`0003_identity_lifecycle_hardening` and the
+`0004_identity_delete_saga` and the
 real migration gate. Because production catalog/row-count and restore evidence
 are still absent, an existing unversioned database is a conflict: there is no
 automatic baseline adoption, username/email matching, or authorized production
@@ -79,15 +79,18 @@ truncated records, duplicates, reordered rows, chain failures, state/ledger
 mismatches, and floor changes. `music-floor.tsv` is a separately authenticated
 authority and must equal the first manifest entry. Its first digest is permanent.
 `music-schema-floor.tsv` is a second HMAC-authenticated authority with a
-different purpose: immediately after the irreversible C3 migration gate, it
-records the digest/commit that first executed the live schema gate. It is written
-before candidate startup and is deliberately not reverted if later readiness
-or promotion fails; the prior healthy app remains routed, while every future
-rollback must use the exact current migration marker. The gate-running digest
-need not have been promoted: this authority records the schema epoch and gate
-provenance, while secure history remains the rollback allowlist. A missing,
-malformed, or tampered schema floor after C3 fails closed
-before Docker.
+different purpose. Before the irreversible C3 gate is invoked, the executable
+records the candidate digest/commit and exact marker as `pending`; the separate
+authenticated `deployment-transactions/schema-epoch.tsv` recovery journal
+records the same epoch. From `pending` onward every legacy-marker rollback is
+refused before Docker, even if the gate or host dies. After the gate returns,
+both authorities advance atomically to `current`. They are deliberately not
+reverted if later readiness or promotion fails; the prior healthy app remains
+the general route while every future rollback must use the exact current
+migration marker. The gate-running digest need not have been promoted: this
+authority records the conservative schema epoch and gate provenance, while
+secure history remains the rollback allowlist. Missing, mismatched, malformed,
+or tampered schema-epoch authority fails closed before Docker.
 The checked-in `music-hmac.mjs` helper reads the mode-0600 HMAC key path directly
 with Node's crypto API. Key bytes never enter a child-process argument, exported
 environment variable, or log. Node 22 is therefore a deployment-control runtime
@@ -159,12 +162,20 @@ The executable performs the complete transition: it atomically installs the
 priority-200 file route to the still-serving observed legacy service; recreates
 only Traefik under the observed Compose project; logs into GHCR with an isolated
 temporary Docker config; pulls and verifies the canonical digest and OCI labels;
-runs the same-image gate; starts blue privately; checks readiness; runs the C1
+starts the same-candidate-image `tunes-register-compat` process without database
+configuration and verifies its process-only liveness and shared typed 410; then
+atomically adds the priority-1000 exact `POST /api/register` route to that
+process while leaving every other request on legacy. Public omitted and forged
+registration probes must return the bounded, non-reflecting typed 410. Only then
+does it persist the pending schema epoch and run the same-image gate. It then
+starts blue privately; checks readiness; runs the C1
 REST, GraphQL, subscription, and hostile Socket.IO origin probes; creates the
 durable transaction; atomically routes blue; verifies exact public
 digest/commit/marker; writes the authenticated manifest, permanent floor, and
 state; commits the journal; and only then stops the retained legacy container.
-The registry config and token are cleaned on exit.
+The registry config and token are cleaned on exit. The exact-path denial remains
+installed through promotion, gate/readiness failure, and reboot; recovery must
+never restore route bytes that remove it after the schema epoch is pending.
 
 At every provider transition exactly one `.yml`/`.yaml` file is visible in
 `deployment-routing`. Once the durable journal exists, an armed error handler
@@ -215,7 +226,8 @@ rehearsal showing:
 
 - no database host port or default credential in rendered Compose;
 - the candidate remains private before readiness;
-- gate/readiness failures retain the exact previous route;
+- gate/readiness failures retain the exact previous general-service target and
+  the persistent higher-priority registration denial;
 - labels and readiness match commit/digest/marker;
 - atomic promotion and exact rollback work;
 - unknown and pre-floor rollback are refused;

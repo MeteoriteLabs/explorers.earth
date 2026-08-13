@@ -7,10 +7,11 @@ readonly request_schema="music-deploy-request-v2"
 readonly state_schema="music-state-v2"
 readonly ledger_schema="music-ledger-v2"
 readonly floor_schema="music-floor-v1"
-readonly compatibility_floor_schema="music-schema-floor-v1"
+readonly compatibility_floor_schema="music-schema-floor-v2"
+readonly schema_epoch_schema="music-schema-epoch-v1"
 readonly journal_schema="music-transaction-v1"
 readonly legacy_marker="containment-no-schema-change"
-readonly current_marker="0003_identity_lifecycle_hardening"
+readonly current_marker="0004_identity_delete_saga"
 readonly minimum_containment_commit="d226f7e4dc5a54195a59804ec729f72b5e8f10d7"
 
 fail() {
@@ -163,6 +164,7 @@ state_file="$state_dir/music-state.tsv"
 ledger_file="$state_dir/secure-images.tsv"
 floor_file="$state_dir/music-floor.tsv"
 compatibility_floor_file="$state_dir/music-schema-floor.tsv"
+schema_epoch_file="$transaction_dir/schema-epoch.tsv"
 transaction_current="$transaction_dir/current"
 
 ensure_private_directory "$state_dir" "$route_dir" "$transaction_dir"
@@ -231,30 +233,89 @@ validate_floor() {
 
 compatibility_floor_digest=""
 compatibility_floor_commit=""
+compatibility_floor_state=""
 validate_compatibility_floor() {
   require_regular_file "$compatibility_floor_file"
   mapfile -t compatibility_rows < "$compatibility_floor_file"
   [[ ${#compatibility_rows[@]} -eq 1 ]] || fail "schema compatibility floor malformed"
   local schema marker mac extra expected_mac
-  IFS=$'\t' read -r schema compatibility_floor_digest compatibility_floor_commit marker mac extra <<< "${compatibility_rows[0]}"
+  IFS=$'\t' read -r schema compatibility_floor_digest compatibility_floor_commit marker compatibility_floor_state mac extra <<< "${compatibility_rows[0]}"
   [[ "$schema" == "$compatibility_floor_schema" && -z "${extra:-}" \
     && "$compatibility_floor_digest" =~ ^sha256:[a-f0-9]{64}$ \
     && "$compatibility_floor_commit" =~ ^[a-f0-9]{40}$ \
     && "$marker" == "$current_marker" \
+    && ( "$compatibility_floor_state" == pending || "$compatibility_floor_state" == current ) \
     && "$mac" =~ ^[a-f0-9]{64}$ ]] || fail "schema compatibility floor malformed"
-  expected_mac="$(hmac "$compatibility_floor_schema"$'\t'"$repository"$'\t'"$compatibility_floor_digest"$'\t'"$compatibility_floor_commit"$'\t'"$marker")"
+  expected_mac="$(hmac "$compatibility_floor_schema"$'\t'"$repository"$'\t'"$compatibility_floor_digest"$'\t'"$compatibility_floor_commit"$'\t'"$marker"$'\t'"$compatibility_floor_state")"
   [[ "$mac" == "$expected_mac" ]] || fail "schema compatibility floor HMAC mismatch"
 }
 
 write_compatibility_floor() {
-  local digest_value="$1" commit_value="$2"
+  local digest_value="$1" commit_value="$2" state_value="$3"
+  [[ "$state_value" == pending || "$state_value" == current ]] || fail "invalid schema compatibility floor state"
   local mac temporary
-  mac="$(hmac "$compatibility_floor_schema"$'\t'"$repository"$'\t'"$digest_value"$'\t'"$commit_value"$'\t'"$current_marker")"
+  mac="$(hmac "$compatibility_floor_schema"$'\t'"$repository"$'\t'"$digest_value"$'\t'"$commit_value"$'\t'"$current_marker"$'\t'"$state_value")"
   temporary="$compatibility_floor_file.next.$$"
-  printf '%s\t%s\t%s\t%s\t%s\n' "$compatibility_floor_schema" "$digest_value" "$commit_value" "$current_marker" "$mac" > "$temporary"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$compatibility_floor_schema" "$digest_value" "$commit_value" "$current_marker" "$state_value" "$mac" > "$temporary"
   atomic_replace "$temporary" "$compatibility_floor_file"
   compatibility_floor_digest="$digest_value"
   compatibility_floor_commit="$commit_value"
+  compatibility_floor_state="$state_value"
+}
+
+schema_epoch_digest=""
+schema_epoch_commit=""
+schema_epoch_state=""
+validate_schema_epoch() {
+  require_regular_file "$schema_epoch_file"
+  mapfile -t epoch_rows < "$schema_epoch_file"
+  [[ ${#epoch_rows[@]} -eq 1 ]] || fail "schema epoch journal malformed"
+  local schema marker mac extra expected_mac
+  IFS=$'\t' read -r schema schema_epoch_digest schema_epoch_commit marker schema_epoch_state mac extra <<< "${epoch_rows[0]}"
+  [[ "$schema" == "$schema_epoch_schema" && -z "${extra:-}" \
+    && "$schema_epoch_digest" =~ ^sha256:[a-f0-9]{64}$ \
+    && "$schema_epoch_commit" =~ ^[a-f0-9]{40}$ \
+    && "$marker" == "$current_marker" \
+    && ( "$schema_epoch_state" == preparing || "$schema_epoch_state" == pending || "$schema_epoch_state" == current ) \
+    && "$mac" =~ ^[a-f0-9]{64}$ ]] || fail "schema epoch journal malformed"
+  expected_mac="$(hmac "$schema_epoch_schema"$'\t'"$repository"$'\t'"$schema_epoch_digest"$'\t'"$schema_epoch_commit"$'\t'"$marker"$'\t'"$schema_epoch_state")"
+  [[ "$mac" == "$expected_mac" ]] || fail "schema epoch journal HMAC mismatch"
+}
+
+write_schema_epoch() {
+  local digest_value="$1" commit_value="$2" state_value="$3"
+  [[ "$state_value" == preparing || "$state_value" == pending || "$state_value" == current ]] || fail "invalid schema epoch state"
+  local mac temporary
+  mac="$(hmac "$schema_epoch_schema"$'\t'"$repository"$'\t'"$digest_value"$'\t'"$commit_value"$'\t'"$current_marker"$'\t'"$state_value")"
+  temporary="$schema_epoch_file.next.$$"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$schema_epoch_schema" "$digest_value" "$commit_value" "$current_marker" "$state_value" "$mac" > "$temporary"
+  atomic_replace "$temporary" "$schema_epoch_file"
+  schema_epoch_digest="$digest_value"
+  schema_epoch_commit="$commit_value"
+  schema_epoch_state="$state_value"
+}
+
+recover_schema_epoch() {
+  local has_epoch=0 has_floor=0
+  if [[ -e "$schema_epoch_file" ]]; then validate_schema_epoch; has_epoch=1; fi
+  if [[ -e "$compatibility_floor_file" ]]; then validate_compatibility_floor; has_floor=1; fi
+  if [[ "$has_floor" == 1 && "$has_epoch" == 0 ]]; then
+    write_schema_epoch "$compatibility_floor_digest" "$compatibility_floor_commit" "$compatibility_floor_state"
+    has_epoch=1
+  elif [[ "$has_floor" == 0 && "$has_epoch" == 1 && "$schema_epoch_state" != preparing ]]; then
+    write_compatibility_floor "$schema_epoch_digest" "$schema_epoch_commit" "$schema_epoch_state"
+    has_floor=1
+  fi
+  if [[ "$has_floor" == 1 && "$has_epoch" == 1 ]]; then
+    [[ "$compatibility_floor_digest" == "$schema_epoch_digest" \
+      && "$compatibility_floor_commit" == "$schema_epoch_commit" ]] || fail "schema epoch authority mismatch"
+    if [[ "$compatibility_floor_state" == current || "$schema_epoch_state" == current ]]; then
+      [[ "$compatibility_floor_state" == current ]] || write_compatibility_floor "$schema_epoch_digest" "$schema_epoch_commit" current
+      [[ "$schema_epoch_state" == current ]] || write_schema_epoch "$schema_epoch_digest" "$schema_epoch_commit" current
+    elif [[ "$compatibility_floor_state" != "$schema_epoch_state" ]]; then
+      write_schema_epoch "$compatibility_floor_digest" "$compatibility_floor_commit" "$compatibility_floor_state"
+    fi
+  fi
 }
 
 state_compose_project=""
@@ -373,11 +434,42 @@ recover_transaction() {
 }
 
 recover_transaction
+recover_schema_epoch
 
 write_route() {
   local service="$1"
+  local include_registration_compat="${2:-false}"
   local temporary="$route_file.next.$$"
-  cat > "$temporary" <<EOF
+  if [[ "$include_registration_compat" == true ]]; then
+    cat > "$temporary" <<EOF
+http:
+  routers:
+    tunes-register-compat:
+      rule: Host(\`localtunes.earth\`) && Path(\`/api/register\`) && Method(\`POST\`)
+      priority: 1000
+      entryPoints: [websecure]
+      tls:
+        certResolver: letsencrypt
+      service: tunes-register-compat
+    tunes:
+      rule: Host(\`localtunes.earth\`)
+      priority: 200
+      entryPoints: [websecure]
+      tls:
+        certResolver: letsencrypt
+      service: tunes-active
+  services:
+    tunes-register-compat:
+      loadBalancer:
+        servers:
+          - url: http://tunes-register-compat:5100
+    tunes-active:
+      loadBalancer:
+        servers:
+          - url: http://${service}:5000
+EOF
+  else
+    cat > "$temporary" <<EOF
 http:
   routers:
     tunes:
@@ -393,6 +485,7 @@ http:
         servers:
           - url: http://${service}:5000
 EOF
+  fi
   atomic_replace "$temporary" "$route_file"
 }
 
@@ -406,12 +499,13 @@ if [[ "$operation" == bootstrap ]]; then
     [[ "$(grep -Ec "url: http://${legacy_service}:5000$" "$route_file")" == 1 ]] \
       || fail "bootstrap legacy route does not match observed service"
   else
-    write_route "$legacy_service"
+    write_route "$legacy_service" false
   fi
   candidate_slot=blue
   candidate_digest="$requested_digest"
   candidate_commit="$requested_commit"
   candidate_marker="$current_marker"
+  active_service="$legacy_service"
   blue_digest="$candidate_digest"
   blue_commit="$candidate_commit"
   blue_marker="$candidate_marker"
@@ -440,6 +534,7 @@ else
   fi
   compose_project="$state_compose_project"
   if [[ "$state_active_slot" == blue ]]; then candidate_slot=green; else candidate_slot=blue; fi
+  active_service="tunes-${state_active_slot}"
   blue_digest="$state_blue_digest"
   blue_commit="$state_blue_commit"
   blue_marker="${ledger_markers[${ledger_seen[$blue_digest]}-1]}"
@@ -476,9 +571,14 @@ fi
 
 provider_file_count="$(find "$route_dir" -maxdepth 1 -type f \( -name '*.yml' -o -name '*.yaml' \) | wc -l | tr -d ' ')"
 [[ "$provider_file_count" == 1 ]] || fail "exactly one Traefik provider file is required"
+if [[ -e "$compatibility_floor_file" ]]; then
+  grep -Fq 'Path(`/api/register`)' "$route_file" || fail "schema compatibility route missing"
+  grep -Fq 'url: http://tunes-register-compat:5100' "$route_file" || fail "schema compatibility service route missing"
+fi
 
 candidate_image="$repository@$candidate_digest"
 export TUNES_CANDIDATE_IMAGE="$candidate_image" TUNES_CANDIDATE_DIGEST="$candidate_digest" TUNES_CANDIDATE_COMMIT="$candidate_commit"
+export TUNES_COMPAT_IMAGE="$candidate_image"
 export TUNES_BLUE_IMAGE="$repository@$blue_digest" TUNES_BLUE_DIGEST="$blue_digest" TUNES_BLUE_COMMIT="$blue_commit"
 export TUNES_GREEN_IMAGE="$repository@$green_digest" TUNES_GREEN_DIGEST="$green_digest" TUNES_GREEN_COMMIT="$green_commit"
 export TUNES_CANDIDATE_MIGRATION="$candidate_marker" TUNES_BLUE_MIGRATION="$blue_marker" TUNES_GREEN_MIGRATION="$green_marker"
@@ -521,18 +621,62 @@ compose() {
     -f "$root/docker-compose.yml" "$@"
 }
 
+maybe_failpoint() {
+  if [[ "${MUSIC_DEPLOY_TEST_MODE:-0}" == 1 && "${MUSIC_DEPLOY_FAILPOINT:-}" == "$1" ]]; then
+    printf 'injected crash at %s\n' "$1" >&2
+    trap - EXIT
+    exit 99
+  fi
+}
+
+probe_registration_denial() {
+  local payload="$1" response status body
+  response="$("$curl_command" --silent --show-error --max-time 5 --request POST \
+    --data "$payload" https://localtunes.earth/api/register --write-out $'\n%{http_code}')"
+  status="${response##*$'\n'}"
+  body="${response%$'\n'*}"
+  [[ "$status" == 410 ]] || fail "registration compatibility route status mismatch"
+  printf '%s' "$body" | node -e \
+    "let b='';process.stdin.on('data',c=>b+=c).on('end',()=>{try{const v=JSON.parse(b);if(v?.error?.code!=='LEGACY_IDENTITY_ROUTE_REMOVED'||v.error.retryable!==false||!v.error.requestId)process.exit(1)}catch{process.exit(1)}})" \
+    || fail "registration compatibility response mismatch"
+}
+
 if [[ "$operation" == bootstrap ]]; then
   compose up -d --no-deps traefik
   "$curl_command" --fail --silent --show-error --max-time 5 https://localtunes.earth/ >/dev/null
 fi
-compose --profile deployment run --rm --no-deps tunes-gate
-if [[ "$candidate_marker" == "$current_marker" && ! -e "$compatibility_floor_file" ]]; then
-  # The same-image schema gate is irreversible. Persist its independently
-  # authenticated compatibility floor before starting or routing a candidate;
-  # traffic may remain on the old additive-compatible app, but future rollback
-  # can never start a containment-only image against the migrated database.
-  write_compatibility_floor "$candidate_digest" "$candidate_commit"
+
+if [[ ! -e "$compatibility_floor_file" ]]; then
+  if [[ ! -e "$schema_epoch_file" ]]; then
+    write_schema_epoch "$candidate_digest" "$candidate_commit" preparing
+  else
+    validate_schema_epoch
+    [[ "$schema_epoch_state" == preparing && "$schema_epoch_digest" == "$candidate_digest" \
+      && "$schema_epoch_commit" == "$candidate_commit" ]] || fail "schema epoch preparing candidate mismatch"
+  fi
+  compose --profile deployment up -d --no-deps tunes-register-compat
+  compose exec -T tunes-register-compat node -e \
+    "fetch('http://127.0.0.1:5100/health/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+  compose exec -T tunes-register-compat node -e \
+    "fetch('http://127.0.0.1:5100/api/register',{method:'POST',headers:{'content-type':'application/json'},body:'{}'}).then(async r=>{const b=await r.json();if(r.status!==410||b?.error?.code!=='LEGACY_IDENTITY_ROUTE_REMOVED')process.exit(1)}).catch(()=>process.exit(1))"
+  write_route "$active_service" true
+  probe_registration_denial '{}'
+  probe_registration_denial '{"strapiUserDocumentId":"forged-person","strapiAccountDocumentId":"forged-account","lifecycleOperationId":"forged-operation","guestCapabilityHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}'
+  maybe_failpoint before_epoch
+  write_compatibility_floor "$candidate_digest" "$candidate_commit" pending
+  write_schema_epoch "$candidate_digest" "$candidate_commit" pending
+  maybe_failpoint after_epoch_before_gate
+else
+  probe_registration_denial '{}'
 fi
+
+compose --profile deployment run --rm --no-deps tunes-gate
+validate_compatibility_floor
+if [[ "$compatibility_floor_state" == pending ]]; then
+  write_compatibility_floor "$compatibility_floor_digest" "$compatibility_floor_commit" current
+  write_schema_epoch "$compatibility_floor_digest" "$compatibility_floor_commit" current
+fi
+maybe_failpoint after_current_floor
 compose up -d --no-deps "tunes-$candidate_slot"
 ready=false
 readiness_attempts=30
@@ -597,14 +741,6 @@ create_transaction() {
   durable_directory "$transaction_dir"
 }
 
-maybe_failpoint() {
-  if [[ "${MUSIC_DEPLOY_TEST_MODE:-0}" == 1 && "${MUSIC_DEPLOY_FAILPOINT:-}" == "$1" ]]; then
-    printf 'injected crash at %s\n' "$1" >&2
-    trap - EXIT
-    exit 99
-  fi
-}
-
 transaction_committing=""
 abort_transaction() {
   local status="${1:-1}"
@@ -629,7 +765,7 @@ create_transaction
 trap 'abort_transaction $?' ERR
 maybe_failpoint after_journal
 
-write_route "tunes-${candidate_slot}"
+write_route "tunes-${candidate_slot}" true
 maybe_failpoint after_route
 
 public_body="$("$curl_command" --fail --silent --show-error --max-time 5 https://localtunes.earth/health/ready)"

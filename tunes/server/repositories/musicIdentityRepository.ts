@@ -33,6 +33,15 @@ export interface TransitionMusicIdentityInput {
   targetStatus: MusicIdentityProjection["identityStatus"];
 }
 
+export class StaleLifecycleOperationError extends Error {
+  readonly code = "STALE_LIFECYCLE_OPERATION" as const;
+
+  constructor(operationId: string) {
+    super(`lifecycle operation is stale: ${operationId}`);
+    this.name = "StaleLifecycleOperationError";
+  }
+}
+
 type TransactionPool = Pick<Pool, "query" | "connect">;
 
 function projection(row: {
@@ -123,9 +132,8 @@ export class MusicIdentityRepository {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
-      await lockIdentity(client, input.strapiUserDocumentId, input.strapiAccountDocumentId);
       const existingTombstone = await client.query<any>(`SELECT strapi_user_document_id,strapi_account_document_id,lifecycle_operation_id
-        FROM music_identity_tombstones WHERE strapi_user_document_id=$1 OR strapi_account_document_id=$2 FOR UPDATE`,
+        FROM music_identity_tombstones WHERE strapi_user_document_id=$1 OR strapi_account_document_id=$2`,
       [input.strapiUserDocumentId, input.strapiAccountDocumentId]);
       if (existingTombstone.rows[0]) {
         const row = existingTombstone.rows[0];
@@ -135,18 +143,17 @@ export class MusicIdentityRepository {
         await client.query("COMMIT");
         return;
       }
-      const live = await client.query<any>(`SELECT strapi_user_document_id,strapi_account_document_id FROM users
-        WHERE strapi_user_document_id=$1 OR strapi_account_document_id=$2 FOR UPDATE`,
+      const live = await client.query<any>(`SELECT id,strapi_user_document_id,strapi_account_document_id FROM users
+        WHERE strapi_user_document_id=$1 OR strapi_account_document_id=$2`,
       [input.strapiUserDocumentId, input.strapiAccountDocumentId]);
       if (live.rows[0] && (live.rows[0].strapi_user_document_id !== input.strapiUserDocumentId
           || live.rows[0].strapi_account_document_id !== input.strapiAccountDocumentId)) {
         throw new Error("immutable external identity mismatch");
       }
       if (live.rows[0]) {
-        await client.query("SELECT set_config('music.lifecycle_operation_id',$1,true),set_config('music.lifecycle_delete_reason',$2,true)", [
-          input.operationId,input.reason,
+        await client.query("SELECT finalize_music_identity_deletion($1::integer,$2::text,$3::text)", [
+          live.rows[0].id,input.operationId,input.reason,
         ]);
-        await client.query("DELETE FROM users WHERE strapi_user_document_id=$1", [input.strapiUserDocumentId]);
       }
       if (!live.rows[0]) {
         await client.query(`INSERT INTO music_identity_tombstones
@@ -176,16 +183,23 @@ export class MusicIdentityRepository {
       await lockIdentity(client, row.strapi_user_document_id, row.strapi_account_document_id);
       const locked = (await client.query<any>(`SELECT id,strapi_user_document_id,strapi_account_document_id,
         identity_status,session_version,lifecycle_operation_id FROM users WHERE id=$1 FOR UPDATE`, [row.id])).rows[0];
+      if (!locked) throw new Error("immutable external identity not found");
+      const operationKind = input.kind === "request_deletion" ? "delete" : input.kind;
       const operation = await client.query<any>(`SELECT operation_id,strapi_user_document_id,strapi_account_document_id,
-        operation_kind,requested_identity_status,operation_state,result_session_version
+        operation_kind,requested_identity_status,operation_state,result_session_version,operation_phase
         FROM music_identity_lifecycle_operations WHERE operation_id=$1`, [input.operationId]);
       if (operation.rows[0]) {
         const prior = operation.rows[0];
         if (prior.strapi_user_document_id !== input.strapiUserDocumentId
             || prior.strapi_account_document_id !== locked.strapi_account_document_id
-            || prior.operation_kind !== input.kind
+            || prior.operation_kind !== operationKind
             || prior.requested_identity_status !== input.targetStatus) throw new Error("lifecycle operation mismatch");
         if (prior.operation_state !== "completed" || !prior.result_session_version) throw new Error("lifecycle operation is incomplete");
+        if (locked.lifecycle_operation_id !== input.operationId
+            || locked.identity_status !== input.targetStatus
+            || locked.session_version !== prior.result_session_version) {
+          throw new StaleLifecycleOperationError(input.operationId);
+        }
         await client.query("COMMIT");
         return {
           id: locked.id,
@@ -204,9 +218,10 @@ export class MusicIdentityRepository {
         || input.targetStatus === "pending_deletion";
       const resultSessionVersion = locked.session_version + (invalidatesSession ? 1 : 0);
       await client.query(`INSERT INTO music_identity_lifecycle_operations(
-        operation_id,strapi_user_document_id,strapi_account_document_id,operation_kind,requested_identity_status
-      ) VALUES ($1,$2,$3,$4,$5)`, [
-        input.operationId,input.strapiUserDocumentId,locked.strapi_account_document_id,input.kind,input.targetStatus,
+        operation_id,strapi_user_document_id,strapi_account_document_id,operation_kind,requested_identity_status,operation_phase
+      ) VALUES ($1,$2,$3,$4,$5,$6)`, [
+        input.operationId,input.strapiUserDocumentId,locked.strapi_account_document_id,operationKind,input.targetStatus,
+        input.kind === "request_deletion" ? "prepared" : "single",
       ]);
       await client.query(`UPDATE music_identity_lifecycle_operations
         SET operation_state='running',attempt_count=attempt_count+1 WHERE operation_id=$1`, [input.operationId]);

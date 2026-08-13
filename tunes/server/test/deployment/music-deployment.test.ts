@@ -21,7 +21,7 @@ const candidate: ImageCandidate = {
 const schemaCandidate: ImageCandidate = {
   digest: `sha256:${"4".repeat(64)}`,
   commit: "4444444444444444444444444444444444444444",
-  migrationMarker: "0003_identity_lifecycle_hardening",
+  migrationMarker: "0004_identity_delete_saga",
 };
 
 function initialState(): DeploymentState {
