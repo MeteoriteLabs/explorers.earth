@@ -396,6 +396,30 @@ describe("Music standalone containment REST boundary", () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
+  it("tombstones non-search YouTube routes for native sessions before handlers run", async () => {
+    process.env.YOUTUBE_API_KEY = "youtube-test-key";
+    global.fetch = vi.fn(async () => new Response(JSON.stringify({ items: [] }), { status: 200 })) as typeof fetch;
+    const handlerLog = vi.spyOn(console, "log");
+    const agent = await authenticatedAgent();
+    const csrf = await agent.get("/api/csrf-token");
+
+    const post = await agent
+      .post("/api/youtube/video-from-url")
+      .set("Origin", "https://explorers.example.test")
+      .set("X-CSRF-Token", csrf.body.token)
+      .send({ url: "https://youtu.be/native-session-must-not-reach-handler" });
+    expect(post.status).toBe(410);
+    expectErrorEnvelope(post, "LEGACY_OWNER_ROUTE_REMOVED");
+
+    const get = await agent.get("/api/youtube/video/native-session-must-not-reach-handler");
+    expect(get.status).toBe(410);
+    expectErrorEnvelope(get, "LEGACY_OWNER_ROUTE_REMOVED");
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(storage.logYoutubeApiUsage).not.toHaveBeenCalled();
+    expect(handlerLog.mock.calls.flat().join(" ")).not.toContain("YouTube video-from-url endpoint HIT");
+  });
+
   it("preserves narrow public capability flows while CSRF-protecting session mutations", async () => {
     const verification = await request(app).post("/api/verify-email/not-a-valid-capability");
     expect(verification.status).not.toBe(403);

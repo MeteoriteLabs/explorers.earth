@@ -255,6 +255,9 @@ export function setupOwnerContainment(app: Express): void {
       }
       return next();
     }
+    if (req.path.startsWith("/api/youtube/")) {
+      return sendContainmentError(res, 410, "LEGACY_OWNER_ROUTE_REMOVED", requestId);
+    }
     if (request.containmentPrincipal.kind === "strapi") return sendContainmentError(res, 410, "LEGACY_OWNER_ROUTE_REMOVED", requestId);
     if (req.path.startsWith("/api/admin") && !request.containmentPrincipal.isAdmin) {
       return sendContainmentError(res, 403, "ADMIN_REQUIRED", requestId);
