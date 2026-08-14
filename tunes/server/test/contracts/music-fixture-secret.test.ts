@@ -840,6 +840,91 @@ describe("fixture bundle rotation transaction", () => {
     },
   );
 
+  it.each([
+    ["after-final-validation", "pathname-swap"],
+    ["after-final-validation", "same-inode-rewrite"],
+    ["after-handle-close", "pathname-swap"],
+    ["after-handle-close", "same-inode-rewrite"],
+  ] as const)("binds the selected legacy destination through %s %s", (stage, race) => {
+    if (process.platform !== "win32") return;
+    const root = fixtureRoot();
+    const tokenDirectory = join(root, ".artifacts", "music-token-secrets");
+    mkdirSync(tokenDirectory, { recursive: true });
+    const pathsA: fixtureSecrets.FixtureAuthorityPaths = {
+      tokenPath: join(tokenDirectory, `current-${"1".repeat(32)}`),
+      migratorPasswordPath: join(tokenDirectory, `current-${"2".repeat(32)}`),
+      runtimePasswordPath: join(tokenDirectory, `current-${"3".repeat(32)}`),
+    };
+    const pathsB: fixtureSecrets.FixtureAuthorityPaths = {
+      tokenPath: join(tokenDirectory, `current-${"4".repeat(32)}`),
+      migratorPasswordPath: join(tokenDirectory, `current-${"5".repeat(32)}`),
+      runtimePasswordPath: join(tokenDirectory, `current-${"6".repeat(32)}`),
+    };
+    for (const [index, path] of Object.values(pathsA).entries()) {
+      writeFileSync(path, Buffer.alloc(32, 0x61 + index).toString("base64url"), { mode: 0o600 });
+    }
+    for (const [index, path] of Object.values(pathsB).entries()) {
+      writeFileSync(path, Buffer.alloc(32, 0x71 + index).toString("base64url"), { mode: 0o600 });
+    }
+    const pointer = join(root, ".env.music.test");
+    const parkedA = join(root, `late-a-${stage}-${race}`);
+    const rawBPath = join(root, `late-b-${stage}-${race}`);
+    const rawA = environment(root, pathsA, "late-authority-A");
+    const rawB = environment(root, pathsB, "late-authority-B");
+    expect(Buffer.byteLength(rawA)).toBe(Buffer.byteLength(rawB));
+    writeFileSync(pointer, rawA, { mode: 0o600 });
+    if (race === "pathname-swap") writeFileSync(rawBPath, rawB, { mode: 0o600 });
+    const credentialSnapshots = [...Object.values(pathsA), ...Object.values(pathsB)]
+      .map((path) => [path, readFileSync(path)] as const);
+    let injected = false;
+    const mutateDestination = () => {
+      if (injected) return;
+      injected = true;
+      if (race === "pathname-swap") {
+        renameSync(pointer, parkedA);
+        renameSync(rawBPath, pointer);
+      } else {
+        writeFileSync(pointer, rawB, { mode: 0o600 });
+      }
+    };
+    type BoundReplace = (source: string, destination: string, expected?: unknown) => void;
+    const legacyUpgrade = {
+      afterLegacyFinalValidation: stage === "after-final-validation" ? mutateDestination : undefined,
+      durableReplace: ((source: string, destination: string, expected?: unknown) => {
+        if (destination === pointer && !injected) mutateDestination();
+        (fixtureSecrets.replaceFixtureMetadataDurably as unknown as (
+          source: string,
+          destination: string,
+          dependencies: fixtureSecrets.FixtureDurableReplaceDependencies,
+          expected?: unknown,
+        ) => void)(source, destination, {}, expected);
+      }) as BoundReplace,
+    };
+    const dependencies = {
+      ...authorityWithSeed(stage === "after-final-validation" ? 0x25 : 0x26),
+      legacyUpgrade,
+    } as unknown as RotationDependencies;
+
+    expect(() => rotate(root, (paths) => environment(root, paths, "must-not-overwrite-B"), dependencies))
+      .toThrow(expect.objectContaining({ code: "MUSIC_FIXTURE_ENVIRONMENT_PUBLISH_FAILED" }));
+    expect(injected).toBe(true);
+    expect(readFileSync(pointer, "utf8")).toBe(rawB);
+    if (race === "pathname-swap") expect(readFileSync(parkedA, "utf8")).toBe(rawA);
+    for (const [path, bytes] of credentialSnapshots) expect(readFileSync(path)).toEqual(bytes);
+    expect(readdirSync(join(root, ".artifacts", "music-environment-generations"))
+      .filter((name) => lstatSync(join(root, ".artifacts", "music-environment-generations", name)).size > 0)).toHaveLength(0);
+
+    let retryPriorLength = -1;
+    expect(() => rotate(root, (paths) => environment(root, paths, "current-after-late-B"), {
+      ...authorityWithSeed(stage === "after-final-validation" ? 0x27 : 0x28),
+      afterJournalCommit: () => {
+        retryPriorLength = JSON.parse(readFileSync(activeJournalPath(root), "utf8")).prior.length;
+      },
+    })).not.toThrow();
+    expect(retryPriorLength).toBe(4);
+    expect(fixtureSecrets.readFixtureMusicEnvironment(root)).toContain("ROTATION_LABEL=current-after-late-B");
+  }, 45_000);
+
   it("preserves byte-exact raw legacy authority when its precommit upgrade is interrupted and retries", () => {
     const root = fixtureRoot();
     const tokenDirectory = join(root, ".artifacts", "music-token-secrets");

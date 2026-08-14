@@ -57,6 +57,18 @@ export interface FixtureDurableReplaceDependencies {
   inspectWindowsIdentity?: (path: string) => FixtureWindowsNativeIdentity;
 }
 
+export interface FixtureReplaceDestinationAuthority {
+  stat: BigIntStats;
+  sha256: string;
+  windows?: FixtureWindowsNativeIdentity;
+}
+
+type FixtureDurableReplace = (
+  source: string,
+  destination: string,
+  expectedDestination?: FixtureReplaceDestinationAuthority,
+) => void;
+
 export interface FixtureWindowsNativeIdentity {
   volumeSerial: string;
   fileId: string;
@@ -70,6 +82,7 @@ export function replaceFixtureMetadataDurably(
   sourcePath: string,
   destinationPath: string,
   dependencies: FixtureDurableReplaceDependencies = {},
+  expectedDestination?: FixtureReplaceDestinationAuthority,
 ): void {
   const source = resolve(sourcePath);
   const destination = resolve(destinationPath);
@@ -81,22 +94,22 @@ export function replaceFixtureMetadataDurably(
   assertNoLinkedAncestors(destination);
   const before = lstatSync(source, { bigint: true });
   assertOwnedRegularFile(before);
-  if (existsSync(destination)) {
-    const destinationBefore = lstatSync(destination, { bigint: true });
-    assertOwnedRegularFile(destinationBefore);
-  }
   const platform = dependencies.platform ?? process.platform;
   if (platform === "win32") {
     const inspect = dependencies.inspectWindowsIdentity ?? inspectWindowsNativeIdentity;
     const sourceParentBefore = lstatSync(dirname(source), { bigint: true });
-    const destinationBefore = existsSync(destination) ? lstatSync(destination, { bigint: true }) : undefined;
+    const destinationBefore = expectedDestination?.stat
+      ?? (existsSync(destination) ? lstatSync(destination, { bigint: true }) : undefined);
     const sourceIdentity = inspect(source);
     const parentIdentity = inspect(dirname(source));
-    const destinationIdentity = destinationBefore ? inspect(destination) : undefined;
+    const destinationIdentity = expectedDestination?.windows
+      ?? (destinationBefore ? inspect(destination) : undefined);
+    if (expectedDestination && !expectedDestination.windows) throw fixtureEnvironmentError("metadata-replace");
+    if (destinationBefore) assertOwnedRegularFile(destinationBefore);
     if (!sameIdentity(before, lstatSync(source, { bigint: true }))
         || !sameIdentity(sourceParentBefore, lstatSync(dirname(source), { bigint: true }))
-        || (destinationBefore && (!existsSync(destination)
-          || !sameIdentity(destinationBefore, lstatSync(destination, { bigint: true }))))) {
+        || (!expectedDestination && destinationBefore && (!existsSync(destination)
+          || !sameReplaceDestinationStat(destinationBefore, lstatSync(destination, { bigint: true }))))) {
       throw fixtureEnvironmentError("metadata-replace");
     }
     dependencies.beforeWindowsReplace?.();
@@ -111,6 +124,7 @@ export function replaceFixtureMetadataDurably(
     if (!committed) throw fixtureEnvironmentError("metadata-replace");
     return;
   } else {
+    if (expectedDestination) assertReplaceDestinationAuthority(destination, expectedDestination);
     (dependencies.rename ?? renameSync)(source, destination);
     (dependencies.syncDirectory ?? syncDirectory)(dirname(destination));
   }
@@ -189,6 +203,27 @@ function sameWindowsNativeIdentity(left: FixtureWindowsNativeIdentity, right: Fi
     && left.sha256 === right.sha256;
 }
 
+function sameReplaceDestinationStat(expected: BigIntStats, actual: BigIntStats): boolean {
+  return sameIdentity(expected, actual)
+    && expected.mode === actual.mode
+    && expected.nlink === actual.nlink
+    && expected.size === actual.size;
+}
+
+function assertReplaceDestinationAuthority(path: string, expected: FixtureReplaceDestinationAuthority): void {
+  const opened = openAndReadOwnedFile(path, 131_072, true);
+  try {
+    if (!sameReplaceDestinationStat(expected.stat, opened.stat)
+        || createHash("sha256").update(opened.bytes).digest("hex") !== expected.sha256
+        || !descriptorStillContains(opened.descriptor, opened.stat, opened.bytes)
+        || !sameReplaceDestinationStat(expected.stat, lstatSync(path, { bigint: true }))) {
+      throw fixtureEnvironmentError("metadata-replace");
+    }
+  } finally {
+    closeDescriptor(opened.descriptor, {}, basename(path));
+  }
+}
+
 function windowsDestinationMatches(
   source: string,
   destination: string,
@@ -226,8 +261,9 @@ export interface FixtureEnvironmentPersistenceDependencies extends FixtureMusicT
   afterReferenceRename?: () => void;
   retainPreviousAuthority?: boolean;
   prewrittenGeneration?: { path: string; stat: BigIntStats };
-  durableReplace?: (source: string, destination: string) => void;
+  durableReplace?: FixtureDurableReplace;
   expectedLegacyAuthority?: FixtureLegacyAuthoritySnapshot;
+  afterLegacyFinalValidation?: () => void;
 }
 
 export interface FixtureEnvironmentReadDependencies {
@@ -283,7 +319,7 @@ export interface FixtureAuthorityRotationDependencies {
     close?: typeof closeSync;
     rename?: typeof renameSync;
   };
-  durableReplace?: (source: string, destination: string) => void;
+  durableReplace?: FixtureDurableReplace;
 }
 
 export function prepareFixtureMusicTokenSecret(
@@ -631,7 +667,10 @@ export function rotateFixtureMusicAuthority(
       ...credentialSecrets.map((secret) => Buffer.from(secret).toString("base64url")).map((secret) => Buffer.from(secret, "ascii")),
       environmentBytes,
     ];
-    const durableReplace = dependencies.durableReplace ?? replaceFixtureMetadataDurably;
+    const durableReplace: FixtureDurableReplace = dependencies.durableReplace
+      ?? ((source, destination, expectedDestination) => {
+        replaceFixtureMetadataDurably(source, destination, {}, expectedDestination);
+      });
     for (let index = 0; index < 4; index += 1) {
       const kind = index === 3 ? "environment" : "credential";
       dependencies.beforeCandidateCreate?.(kind, index);
@@ -837,10 +876,11 @@ export function persistFixtureMusicEnvironment(
   let authorityDescriptor: number | undefined;
   let referenceDescriptor: number | undefined;
   let generationOpened: BigIntStats | undefined;
+  let replaceDestinationAuthority: FixtureReplaceDestinationAuthority | undefined;
   let referenceCommitted = false;
   try {
     if (dependencies.expectedLegacyAuthority) {
-      assertBoundLegacyAuthority(referencePath, dependencies.expectedLegacyAuthority, previous);
+      assertBoundLegacyAuthority(referencePath, dependencies.expectedLegacyAuthority, previous, false);
     }
     if (dependencies.prewrittenGeneration) {
       if (!sameResolvedPath(dependencies.prewrittenGeneration.path, generationPath)) throw fixtureEnvironmentError(generationName);
@@ -926,7 +966,13 @@ export function persistFixtureMusicEnvironment(
     // pointer rename therefore still leaves its pathname and bytes intact.
     if (previous.legacyDescriptor !== undefined) {
       if (dependencies.expectedLegacyAuthority) {
-        assertBoundLegacyAuthority(referencePath, dependencies.expectedLegacyAuthority, previous);
+        replaceDestinationAuthority = assertBoundLegacyAuthority(
+          referencePath,
+          dependencies.expectedLegacyAuthority,
+          previous,
+          true,
+        );
+        dependencies.afterLegacyFinalValidation?.();
       } else if (!previous.legacyStat || !previous.legacyBytes
           || !sameIdentity(previous.legacyStat, lstatSync(referencePath, { bigint: true }))
           || !descriptorStillContains(previous.legacyDescriptor, previous.legacyStat, previous.legacyBytes)) {
@@ -939,12 +985,15 @@ export function persistFixtureMusicEnvironment(
         dependencies.expectedLegacyAuthority.descriptor = undefined;
       }
     }
-    const durableReferenceReplace = dependencies.durableReplace
-      ?? (dependencies.rename ? ((source: string, destination: string) => {
+    const durableReferenceReplace: FixtureDurableReplace = dependencies.durableReplace
+      ?? (dependencies.rename ? ((source: string, destination: string, expectedDestination) => {
+        if (expectedDestination) assertReplaceDestinationAuthority(destination, expectedDestination);
         dependencies.rename!(source, destination);
         if (process.platform !== "win32") (dependencies.syncDirectory ?? syncDirectory)(dirname(destination));
-      }) : replaceFixtureMetadataDurably);
-    try { durableReferenceReplace(referenceTemporaryPath, referencePath); }
+      }) : ((source, destination, expectedDestination) => {
+        replaceFixtureMetadataDurably(source, destination, {}, expectedDestination);
+      }));
+    try { durableReferenceReplace(referenceTemporaryPath, referencePath, replaceDestinationAuthority); }
     catch (renameError) {
       if (!referenceMatches(referencePath, reference, generationPath, generationOpened, { generationName, digest, size: bytes.length })) throw renameError;
     }
@@ -1197,18 +1246,29 @@ function assertBoundLegacyAuthority(
   referencePath: string,
   expected: FixtureLegacyAuthoritySnapshot,
   observed: ReturnType<typeof readPreviousFixtureEnvironmentAuthority>,
-): void {
+  captureReplaceAuthority: boolean,
+): FixtureReplaceDestinationAuthority | undefined {
   if (expected.descriptor === undefined
       || observed.legacyDescriptor === undefined
       || !observed.legacyStat
       || !observed.legacyBytes
       || !sameIdentity(expected.stat, observed.legacyStat)
       || !expected.bytes.equals(observed.legacyBytes)
-      || !sameIdentity(expected.stat, lstatSync(referencePath, { bigint: true }))
       || !descriptorStillContains(expected.descriptor, expected.stat, expected.bytes)
-      || !descriptorStillContains(observed.legacyDescriptor, observed.legacyStat, observed.legacyBytes)) {
+      || !descriptorStillContains(observed.legacyDescriptor, observed.legacyStat, observed.legacyBytes)
+      || !sameReplaceDestinationStat(expected.stat, lstatSync(referencePath, { bigint: true }))) {
     throw fixtureEnvironmentError(basename(referencePath));
   }
+  if (!captureReplaceAuthority) return undefined;
+  const sha256 = createHash("sha256").update(expected.bytes).digest("hex");
+  const windows = process.platform === "win32" ? inspectWindowsNativeIdentity(referencePath) : undefined;
+  if ((windows && (windows.size !== expected.bytes.length || windows.sha256 !== sha256))
+      || !descriptorStillContains(expected.descriptor, expected.stat, expected.bytes)
+      || !descriptorStillContains(observed.legacyDescriptor, observed.legacyStat, observed.legacyBytes)
+      || !sameReplaceDestinationStat(expected.stat, lstatSync(referencePath, { bigint: true }))) {
+    throw fixtureEnvironmentError(basename(referencePath));
+  }
+  return { stat: expected.stat, sha256, windows };
 }
 
 function fixtureCredentialPaths(environment: { contents: string }): string[] {
