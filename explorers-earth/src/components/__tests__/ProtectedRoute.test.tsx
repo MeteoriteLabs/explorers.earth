@@ -103,6 +103,7 @@ describe("ProtectedRoute onboarding gate", () => {
       operation: {
         operationId: "durable-operation", status: "pending_deletion", phase: "prepared", state: "requested",
         boundaryCrossed: true, retryable: true, deadLetter: false,
+        upstreamUserDocumentId: "user-document-a", upstreamAccountDocumentId: "account-document-a",
       },
     }), { status: 200 })));
     renderAt("/settings");

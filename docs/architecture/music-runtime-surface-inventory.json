@@ -400,7 +400,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/index.ts",
-      "line": 135
+      "line": 137
     },
     {
       "method": "GET",
@@ -426,8 +426,8 @@
       "method": "POST",
       "path": "/api/music/identity/lifecycle/prepare",
       "classification": "strapi-identity-boundary",
-      "ownerSource": "none",
-      "policy": "c5-mint-boundary",
+      "ownerSource": "authoritative-strapi-user+stored-account-binding",
+      "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicIdentityRoutes.ts",
       "line": 196
@@ -436,8 +436,8 @@
       "method": "GET",
       "path": "/api/music/identity/lifecycle/status",
       "classification": "strapi-identity-boundary",
-      "ownerSource": "none",
-      "policy": "c5-mint-boundary",
+      "ownerSource": "authoritative-strapi-user+stored-account-binding",
+      "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicIdentityRoutes.ts",
       "line": 197
@@ -446,8 +446,8 @@
       "method": "POST",
       "path": "/api/music/identity/lifecycle/boundary",
       "classification": "strapi-identity-boundary",
-      "ownerSource": "none",
-      "policy": "c5-mint-boundary",
+      "ownerSource": "authoritative-strapi-user+stored-account-binding",
+      "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicIdentityRoutes.ts",
       "line": 198
@@ -456,11 +456,21 @@
       "method": "POST",
       "path": "/api/music/identity/lifecycle/cancel",
       "classification": "strapi-identity-boundary",
-      "ownerSource": "none",
-      "policy": "c5-mint-boundary",
+      "ownerSource": "authoritative-strapi-user+stored-account-binding",
+      "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicIdentityRoutes.ts",
       "line": 199
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/identity/lifecycle/suspend",
+      "classification": "strapi-identity-boundary",
+      "ownerSource": "authoritative-strapi-user+stored-account-binding",
+      "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
+      "lifecycle": "suspend",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "line": 200
     },
     {
       "method": "GET",
@@ -470,7 +480,7 @@
       "policy": "c5-principal+local-lifecycle+owner-sql",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicIdentityRoutes.ts",
-      "line": 203
+      "line": 235
     },
     {
       "method": "GET",
@@ -480,7 +490,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicOpenApiRoutes.ts",
-      "line": 393
+      "line": 411
     },
     {
       "method": "GET",
@@ -780,7 +790,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "reactivate",
       "source": "tunes/server/routes/reactivationRoutes.ts",
-      "line": 84
+      "line": 86
     },
     {
       "method": "GET",
@@ -790,7 +800,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "reactivate",
       "source": "tunes/server/routes/reactivationRoutes.ts",
-      "line": 115
+      "line": 117
     },
     {
       "method": "GET",
@@ -942,7 +952,7 @@
       "kind": "setInterval",
       "lifecycle": "reactivation-token-cleanup",
       "source": "tunes/server/services/reactivation-service.ts",
-      "line": 131
+      "line": 134
     },
     {
       "kind": "setTimeout",
@@ -984,7 +994,7 @@
       "kind": "setInterval",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/workers/musicLifecycleWorker.ts",
-      "line": 97
+      "line": 96
     }
   ]
 }

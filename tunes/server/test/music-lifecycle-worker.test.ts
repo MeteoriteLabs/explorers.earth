@@ -11,6 +11,11 @@ const operation = {
   leaseUpdatedAt: "2026-08-14T12:00:00.000Z",
 };
 
+function claimQueue<T>(operations: T[]) {
+  const queue = [...operations];
+  return vi.fn(async ({ batchSize }: { batchSize: number }) => queue.splice(0, batchSize));
+}
+
 describe("music lifecycle worker", () => {
   it("finalizes only authoritative absence and leaves present or unknown identities intact", async () => {
     // Break caught: destructive cleanup on presence, uncertainty, or an upstream outage.
@@ -20,7 +25,7 @@ describe("music lifecycle worker", () => {
       { ...operation, operationId: "delete-operation-c", musicUserId: 9, userDocumentId: "user-document-c" },
     ];
     const repository = {
-      claimDueDeletions: vi.fn(async () => claimed),
+      claimDueDeletions: claimQueue(claimed),
       finalizeDeletion: vi.fn(async () => true),
       recordDeletionObservation: vi.fn(async () => undefined),
       recordDeletionFailure: vi.fn(async () => undefined),
@@ -35,6 +40,32 @@ describe("music lifecycle worker", () => {
     expect(repository.finalizeDeletion).toHaveBeenCalledTimes(1);
     expect(repository.finalizeDeletion).toHaveBeenCalledWith(operation);
     expect(repository.recordDeletionObservation).toHaveBeenCalledTimes(2);
+  });
+
+  it("claims each item immediately before proof instead of leasing a waiting batch", async () => {
+    // Break caught: a shared ten-item lease expires while later operations wait behind a slow first proof.
+    let releaseFirst!: () => void;
+    const firstProof = new Promise<void>((resolve) => { releaseFirst = resolve; });
+    const available = [
+      operation,
+      { ...operation, operationId: "delete-operation-b", musicUserId: 8, userDocumentId: "user-document-b" },
+    ];
+    const repository = {
+      claimDueDeletions: vi.fn(async ({ batchSize }: { batchSize: number }) => available.splice(0, batchSize)),
+      finalizeDeletion: vi.fn(async () => true),
+      recordDeletionObservation: vi.fn(async () => undefined),
+      recordDeletionFailure: vi.fn(async () => undefined),
+    };
+    const proveAbsence = vi.fn(async ({ userDocumentId }: { userDocumentId: string }) => {
+      if (userDocumentId === "user-document-a") await firstProof;
+      return "present" as const;
+    });
+
+    const running = runMusicLifecycleWorkerOnce({ repository, proveAbsence, maxAttempts: 5, batchSize: 10 });
+    await vi.waitFor(() => expect(proveAbsence).toHaveBeenCalledOnce());
+    expect(repository.claimDueDeletions).toHaveBeenCalledWith({ batchSize: 1, maxAttempts: 5 });
+    releaseFirst();
+    await expect(running).resolves.toEqual({ claimed: 2, finalized: 0, deferred: 2, deadLettered: 0 });
   });
 
   it("dead-letters at the bounded maximum and exposes a manual repair seam", async () => {
@@ -58,8 +89,7 @@ describe("music lifecycle worker", () => {
     expect(repository.recordDeletionObservation).toHaveBeenCalledWith(exhausted, "outage", true);
   });
 
-  it("normalizes thrown absence checks to outage and passes an explicit scan timestamp", async () => {
-    const now = new Date("2026-08-14T12:00:00.000Z");
+  it("normalizes thrown absence checks to outage without passing replica wall time", async () => {
     const repository = {
       claimDueDeletions: vi.fn(async () => [operation]),
       finalizeDeletion: vi.fn(async () => true),
@@ -67,9 +97,9 @@ describe("music lifecycle worker", () => {
       recordDeletionFailure: vi.fn(async () => undefined),
     };
     await expect(runMusicLifecycleWorkerOnce({
-      repository, proveAbsence: async () => { throw new Error("secret outage"); }, maxAttempts: 5, batchSize: 1, now,
+      repository, proveAbsence: async () => { throw new Error("secret outage"); }, maxAttempts: 5, batchSize: 1,
     })).resolves.toEqual({ claimed: 1, finalized: 0, deferred: 1, deadLettered: 0 });
-    expect(repository.claimDueDeletions).toHaveBeenCalledWith({ now, batchSize: 1, maxAttempts: 5 });
+    expect(repository.claimDueDeletions).toHaveBeenCalledWith({ batchSize: 1, maxAttempts: 5 });
     expect(repository.recordDeletionObservation).toHaveBeenCalledWith(operation, "outage", false);
   });
 
@@ -91,7 +121,7 @@ describe("music lifecycle worker", () => {
       { ...operation, operationId: "delete-operation-c", musicUserId: 9, userDocumentId: "user-document-c" },
     ];
     const repository = {
-      claimDueDeletions: vi.fn(async () => claimed),
+      claimDueDeletions: claimQueue(claimed),
       finalizeDeletion: vi.fn(async (candidate: typeof operation) => {
         if (candidate.operationId === operation.operationId) throw new Error("retention failure");
         return true;
@@ -118,7 +148,7 @@ describe("music lifecycle worker", () => {
       { ...operation, operationId: "observation-stale", userDocumentId: "observation-stale", attemptCount: 5 },
     ];
     const repository = {
-      claimDueDeletions: vi.fn(async () => claimed),
+      claimDueDeletions: claimQueue(claimed),
       finalizeDeletion: vi.fn(async () => { throw new Error("retention failure"); }),
       recordDeletionObservation: vi.fn(async () => { throw new Error("observation failure"); }),
       recordDeletionFailure: vi.fn(async (candidate: typeof operation) => !candidate.operationId.endsWith("stale")),

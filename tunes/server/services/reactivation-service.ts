@@ -121,6 +121,9 @@ If you didn't request this, you can safely ignore this email.
 
 interface ReactivationEntry {
   strapiUserId: string;   // Strapi numeric user ID (as string from REST response)
+  userDocumentId: string;
+  accountDocumentId: string;
+  operationId: string;
   email: string;
   expiresAt: number;      // Unix ms timestamp
 }
@@ -130,21 +133,23 @@ const tokenStore = new Map<string, ReactivationEntry>();
 // Clean up expired tokens every hour
 setInterval(() => {
   const now = Date.now();
-  for (const [token, entry] of tokenStore.entries()) {
+  tokenStore.forEach((entry, token) => {
     if (now > entry.expiresAt) {
       tokenStore.delete(token);
     }
-  }
+  });
 }, 60 * 60 * 1000);
 
 // ─── Strapi REST helpers ───────────────────────────────────────────────────────
 
 interface StrapiUser {
   id: number;
+  documentId: string;
   username: string;
   email: string;
   blocked: boolean;
   confirmed: boolean;
+  accounts?: Array<{ documentId?: string }>;
 }
 
 /**
@@ -159,7 +164,7 @@ async function findBlockedUserByEmail(email: string): Promise<StrapiUser | null>
     throw new Error('STRAPI_URL or STRAPI_ACCESS_TOKEN is not configured');
   }
 
-  const url = `${strapiUrl}/api/users?filters[email][$eq]=${encodeURIComponent(email)}&filters[blocked][$eq]=true`;
+  const url = `${strapiUrl}/api/users?filters[email][$eq]=${encodeURIComponent(email)}&filters[blocked][$eq]=true&populate=accounts`;
 
   const response = await fetch(url, {
     headers: {
@@ -229,6 +234,12 @@ export async function requestReactivation(email: string): Promise<void> {
       console.log('ℹ️ No blocked user found for email:', email);
       return;
     }
+    if (typeof user.documentId !== 'string' || user.documentId.length === 0
+        || !Array.isArray(user.accounts) || user.accounts.length !== 1
+        || typeof user.accounts[0]?.documentId !== 'string' || user.accounts[0].documentId.length === 0) {
+      console.error('reactivation_identity_binding_invalid');
+      return;
+    }
 
     // Generate a secure random token (same approach as email-service)
     const token = crypto.randomBytes(32).toString('hex');
@@ -237,6 +248,9 @@ export async function requestReactivation(email: string): Promise<void> {
     // Store token
     tokenStore.set(token, {
       strapiUserId: String(user.id),
+      userDocumentId: user.documentId,
+      accountDocumentId: user.accounts[0].documentId,
+      operationId: crypto.randomUUID(),
       email: user.email,
       expiresAt,
     });
@@ -292,7 +306,10 @@ export async function requestReactivation(email: string): Promise<void> {
  * Returns a result object so the route can respond appropriately.
  */
 export async function confirmReactivation(
-  token: string
+  token: string,
+  dependencies: {
+    reactivateMusic(input: { userDocumentId: string; accountDocumentId: string; operationId: string }): Promise<void>;
+  },
 ): Promise<{ success: boolean; error?: string }> {
   if (!token) {
     return { success: false, error: 'Token is required' };
@@ -310,6 +327,15 @@ export async function confirmReactivation(
   }
 
   const userId = parseInt(entry.strapiUserId, 10);
+  try {
+    await dependencies.reactivateMusic({
+      userDocumentId: entry.userDocumentId,
+      accountDocumentId: entry.accountDocumentId,
+      operationId: entry.operationId,
+    });
+  } catch {
+    return { success: false, error: 'Failed to reactivate account. Please try again.' };
+  }
   const unblocked = await unblockStrapiUser(userId);
 
   if (!unblocked) {

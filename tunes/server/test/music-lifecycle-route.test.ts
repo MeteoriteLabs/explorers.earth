@@ -27,6 +27,7 @@ function appFor(overrides: Record<string, unknown> = {}, routeOverrides: Record<
     status: vi.fn(async () => status),
     markDeletionBoundary: vi.fn(async () => ({ ...status, boundaryCrossed: true, state: "requested" as const })),
     cancelDeletion: vi.fn(async () => ({ ...status, identityStatus: "suspended" as const, state: "cancelled" as const })),
+    suspendFromProof: vi.fn(async () => ({ identityStatus: "suspended" as const })),
     ...overrides,
   };
   setupMusicIdentityRoutes(app, {
@@ -70,6 +71,17 @@ describe("mounted Music lifecycle identity boundary", () => {
     });
     expect(JSON.stringify(response.body)).not.toContain("musicUserId");
     expect(lifecycle.prepareDeletion).toHaveBeenCalledWith("b".repeat(32), "request-prepare");
+  });
+
+  it("mounts bodyless authoritative suspension for the real Explorer deactivation flow", async () => {
+    // Break caught: Settings blocks Strapi while Music remains active and old C5/socket/public authority survives.
+    const { app, lifecycle } = appFor();
+    const response = await request(app).post("/api/music/identity/lifecycle/suspend")
+      .set("Authorization", `Bearer ${"b".repeat(32)}`)
+      .set("X-Request-Id", "request-suspend")
+      .expect(200);
+    expect(response.body).toEqual({ version: "music-lifecycle/v1", identity: { status: "suspended" } });
+    expect(lifecycle.suspendFromProof).toHaveBeenCalledWith("b".repeat(32), "request-suspend");
   });
 
   it("rejects bodies, query owner hints, and Music credentials on every mutation", async () => {

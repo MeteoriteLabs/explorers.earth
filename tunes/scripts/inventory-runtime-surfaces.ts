@@ -75,6 +75,7 @@ function classificationFor(method: string, path: string, priorClassification: st
 
 function ownerFor(path: string, classification: string): string {
   if (path === "/api/music/identity/ensure") return "authoritative-strapi-user+selected-account";
+  if (path.startsWith("/api/music/identity/lifecycle/")) return "authoritative-strapi-user+stored-account-binding";
   if (classification === "local-music-owner" || classification === "paid-local-music-owner") return "req.musicPrincipal.musicUserId";
   if (classification === "guest-capability") return path !== "/api/playlist/:guestUrl"
     ? "hashed-guest-capability"
@@ -94,6 +95,7 @@ export function assertNoUnclassifiedSensitiveSurfaces(routes: RouteSurface[]): v
 
 function lifecycleFor(path: string, method: string): string {
   if (path.includes("reactivat")) return "reactivate";
+  if (path.endsWith("/lifecycle/suspend")) return "suspend";
   if (path.includes("block") || path.includes("deactiv")) return "block-or-deactivate";
   if (method === "DELETE") return "delete";
   return "request";
@@ -127,7 +129,9 @@ export function inventoryRuntimeSurfaces(repositoryRoot: string): RuntimeSurface
             else if (classification === "paid-local-music-owner") policy = "c5-principal+local-lifecycle+fresh-entitlement+owner-sql";
             else if (classification === "guest-capability") policy = "hashed-capability+guest-allowlist";
             else if (classification.endsWith("tombstone")) policy = "fail-closed-tombstone";
-            else if (classification === "strapi-identity-boundary") policy = "c5-mint-boundary";
+            else if (classification === "strapi-identity-boundary") policy = path === "/api/music/identity/ensure"
+              ? "c5-mint-boundary"
+              : "authoritative-strapi-bearer+immutable-binding+lifecycle-state";
             else if (classification === "native-session") policy = "standalone-native-only";
             routes.push({ method: method.toUpperCase(), path, classification, ownerSource: ownerFor(path, classification), policy, lifecycle: lifecycleFor(path, method.toUpperCase()), source, line });
           }

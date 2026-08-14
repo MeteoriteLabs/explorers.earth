@@ -101,13 +101,13 @@ const publicationAction = {
   schema: { type: "string", enum: ["publish", "unpublish"] },
 };
 
-const lifecycleOperation = (summary: string) => ({
+const lifecycleOperation = (summary: string, responseSchema = "MusicLifecycleResponse") => ({
   summary,
   description: "Bodyless Explorer identity-boundary operation. Browser owner, user, Account, document, username, and email selectors are forbidden.",
   security: explorerSecurity,
   parameters: [requestIdParameter],
   responses: {
-    "200": success("Durable Music lifecycle status.", ref("MusicLifecycleResponse")),
+    "200": success("Durable Music lifecycle status.", ref(responseSchema)),
     "400": failure("The bodyless lifecycle request is invalid.", ["REQUEST_INVALID"]),
     "401": failure("The authoritative Explorer proof is missing or invalid.", ["AUTH_REQUIRED", "AUTH_INVALID"]),
     "409": failure("The lifecycle operation conflicts or can no longer be cancelled.", ["IDENTITY_CONFLICT", "LIFECYCLE_NOT_FOUND", "LIFECYCLE_CANCEL_FORBIDDEN"]),
@@ -165,6 +165,9 @@ const paths = {
   },
   "/api/music/identity/lifecycle/cancel": {
     post: lifecycleOperation("Cancel deletion before the upstream attempt boundary"),
+  },
+  "/api/music/identity/lifecycle/suspend": {
+    post: lifecycleOperation("Suspend Music before Explorer account deactivation", "MusicSuspensionResponse"),
   },
   "/api/playlists": {
     get: ownerOperation({ summary: "List owner saved playlists", status: "200", response: { type: "array", items: ref("Playlist") } }),
@@ -350,13 +353,28 @@ export const MUSIC_OPENAPI_DOCUMENT = {
           version: { type: "string", const: "music-lifecycle/v1" },
           operation: {
             type: "object", additionalProperties: false,
-            required: ["operationId", "status", "phase", "state", "boundaryCrossed", "retryable", "deadLetter"],
+            required: [
+              "operationId", "status", "phase", "state", "boundaryCrossed", "retryable", "deadLetter",
+              "upstreamUserDocumentId", "upstreamAccountDocumentId",
+            ],
             properties: {
               operationId: { type: "string", minLength: 1, maxLength: 128 },
               status: { type: "string", enum: ["pending_deletion", "suspended", "tombstoned"] },
               phase: { type: "string", enum: ["prepared", "finalized"] },
               state: { type: "string", enum: ["completed", "requested", "running", "failed", "cancelled"] },
               boundaryCrossed: { type: "boolean" }, retryable: { type: "boolean" }, deadLetter: { type: "boolean" },
+              upstreamUserDocumentId: { type: "string", minLength: 1, maxLength: 512 },
+              upstreamAccountDocumentId: { type: "string", minLength: 1, maxLength: 512 },
+            },
+          },
+        },
+      },
+      MusicSuspensionResponse: {
+        type: "object", additionalProperties: false, required: ["version", "identity"], properties: {
+          version: { type: "string", const: "music-lifecycle/v1" },
+          identity: {
+            type: "object", additionalProperties: false, required: ["status"], properties: {
+              status: { type: "string", const: "suspended" },
             },
           },
         },

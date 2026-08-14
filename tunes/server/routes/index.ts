@@ -106,7 +106,9 @@ export function registerRoutes(
   setupCanonicalMusicRoutes(app, canonicalDependencies);
   setupMusicOpenApiRoutes(app);
   setupAuthRoutes(app);
-  setupReactivationRoutes(app);
+  setupReactivationRoutes(app, {
+    reactivateMusic: async (identity) => { await lifecycle.reactivateBoundIdentity(identity); },
+  });
   setupMusicSurfaceBoundary(app, canonicalDependencies);
   setupOwnerContainment(app);
   const server = setupPlaylistRoutes(app, {

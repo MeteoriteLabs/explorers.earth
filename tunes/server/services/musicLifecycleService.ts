@@ -111,10 +111,43 @@ export class MusicLifecycleService {
     return result;
   }
 
+  async suspendFromProof(proof: string, requestId: string): Promise<MusicIdentityProjection> {
+    const authoritative = await this.gateway.resolve(proof, requestId);
+    const binding = await this.repository.lifecycleBinding(authoritative.userDocumentId);
+    if (authoritative.userDocumentId !== binding.userDocumentId
+        || authoritative.accountDocumentId !== binding.accountDocumentId) {
+      throw new MusicIdentityError(
+        "IDENTITY_CONFLICT", 409,
+        "The Explorer identity does not match the durable Music owner.", "contact_support", false, undefined, "lifecycle",
+      );
+    }
+    return this.suspend(binding.userDocumentId);
+  }
+
   async reactivate(strapiUserDocumentId: string): Promise<MusicIdentityProjection> {
     return this.repository.transitionIdentity({
       strapiUserDocumentId,
       operationId: this.operationIdFactory(),
+      kind: "reactivate",
+      targetStatus: "active",
+    });
+  }
+
+  async reactivateBoundIdentity(input: {
+    userDocumentId: string;
+    accountDocumentId: string;
+    operationId: string;
+  }): Promise<MusicIdentityProjection> {
+    const binding = await this.repository.lifecycleBinding(input.userDocumentId);
+    if (binding.userDocumentId !== input.userDocumentId || binding.accountDocumentId !== input.accountDocumentId) {
+      throw new MusicIdentityError(
+        "IDENTITY_CONFLICT", 409,
+        "The Explorer identity does not match the durable Music owner.", "contact_support", false, undefined, "lifecycle",
+      );
+    }
+    return this.repository.transitionIdentity({
+      strapiUserDocumentId: binding.userDocumentId,
+      operationId: input.operationId,
       kind: "reactivate",
       targetStatus: "active",
     });

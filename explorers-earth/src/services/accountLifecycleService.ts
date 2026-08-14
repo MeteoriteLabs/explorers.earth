@@ -13,6 +13,11 @@ export interface AccountLifecycleStatus {
   };
 }
 
+export interface AccountSuspensionStatus {
+  version: "music-lifecycle/v1";
+  identity: { status: "suspended" };
+}
+
 export class AccountLifecycleError extends Error {
   constructor(
     readonly code: string,
@@ -34,7 +39,11 @@ export function createAccountLifecycleService(input: {
   const origin = normalizeOrigin(input.baseUrl);
   const fetchImpl = input.fetchImpl ?? fetch;
 
-  const request = async (method: "GET" | "POST", action: "prepare" | "status" | "boundary" | "cancel") => {
+  const request = async <T>(
+    method: "GET" | "POST",
+    action: "prepare" | "status" | "boundary" | "cancel" | "suspend",
+    parse: (body: unknown) => T,
+  ) => {
     const bearer = input.getBearer();
     if (!bearer || !/^[A-Za-z0-9._~-]{16,4096}$/.test(bearer)) {
       throw new AccountLifecycleError("AUTH_REQUIRED", 401, "Sign in again to continue account deletion.", false);
@@ -48,32 +57,39 @@ export function createAccountLifecycleService(input: {
     } catch {
       throw new AccountLifecycleError("SERVICE_UNAVAILABLE", 503, "Account deletion is temporarily unavailable.", true);
     }
-    const body = await response.json().catch(() => undefined) as any;
+    const body = await response.json().catch(() => undefined) as unknown;
     if (!response.ok) {
+      const errorBody = isRecord(body) && isRecord(body.error) ? body.error : undefined;
       throw new AccountLifecycleError(
-        typeof body?.error?.code === "string" ? body.error.code : "SERVICE_UNAVAILABLE",
+        typeof errorBody?.code === "string" ? errorBody.code : "SERVICE_UNAVAILABLE",
         response.status,
-        typeof body?.error?.message === "string" ? body.error.message : "Account deletion is temporarily unavailable.",
-        body?.error?.retryable === true,
-        typeof body?.error?.requestId === "string" ? body.error.requestId : response.headers.get("x-request-id") ?? undefined,
+        typeof errorBody?.message === "string" ? errorBody.message : "Account deletion is temporarily unavailable.",
+        errorBody?.retryable === true,
+        typeof errorBody?.requestId === "string" ? errorBody.requestId : response.headers.get("x-request-id") ?? undefined,
       );
     }
-    return body as AccountLifecycleStatus;
+    return parse(body);
   };
 
-  const prepare = () => request("POST", "prepare");
-  const status = () => request("GET", "status");
-  const markBoundary = () => request("POST", "boundary");
-  const cancel = () => request("POST", "cancel");
-  const requireDeletableOperation = (result: AccountLifecycleStatus) => {
+  const prepare = () => request("POST", "prepare", parseLifecycleStatus);
+  const status = () => request("GET", "status", parseLifecycleStatus);
+  const markBoundary = () => request("POST", "boundary", parseLifecycleStatus);
+  const cancel = () => request("POST", "cancel", parseLifecycleStatus);
+  const suspend = () => request("POST", "suspend", parseSuspensionStatus);
+  const requireDeletableOperation = (result: AccountLifecycleStatus, boundaryRequired = false) => {
     if (result.operation.status !== "pending_deletion"
         || result.operation.phase !== "prepared"
         || result.operation.deadLetter
-        || typeof result.operation.upstreamUserDocumentId !== "string"
-        || typeof result.operation.upstreamAccountDocumentId !== "string") {
+        || result.operation.state === "cancelled") {
       throw new AccountLifecycleError(
         "LIFECYCLE_TERMINAL", 409,
         "Account deletion is complete or requires manual review.", false,
+      );
+    }
+    if (boundaryRequired && result.operation.boundaryCrossed !== true) {
+      throw new AccountLifecycleError(
+        "LIFECYCLE_RESPONSE_INVALID", 409,
+        "Music did not acknowledge the irreversible account-deletion boundary. Try again.", true,
       );
     }
   };
@@ -89,7 +105,7 @@ export function createAccountLifecycleService(input: {
     const prepared = await prepare();
     requireDeletableOperation(prepared);
     const boundary = await markBoundary();
-    requireDeletableOperation(boundary);
+    requireDeletableOperation(boundary, true);
     if (prepared.operation.operationId !== boundary.operation.operationId
         || prepared.operation.upstreamUserDocumentId !== boundary.operation.upstreamUserDocumentId
         || prepared.operation.upstreamAccountDocumentId !== boundary.operation.upstreamAccountDocumentId) {
@@ -129,7 +145,73 @@ export function createAccountLifecycleService(input: {
     }
     dependencies.clearAuth();
   };
-  return { prepare, status, markBoundary, cancel, deleteAccount };
+  return { prepare, status, markBoundary, cancel, suspend, deleteAccount };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isIdentifier(value: unknown): value is string {
+  return typeof value === "string" && value.length >= 1 && value.length <= 512 && value.trim() === value;
+}
+
+function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  const actual = Object.keys(value);
+  return actual.length === keys.length && keys.every((key) => Object.prototype.hasOwnProperty.call(value, key));
+}
+
+function parseLifecycleStatus(value: unknown): AccountLifecycleStatus {
+  const operation = isRecord(value) && isRecord(value.operation) ? value.operation : undefined;
+  const status = operation?.status;
+  const phase = operation?.phase;
+  const state = operation?.state;
+  const commonValid = isRecord(value)
+    && hasExactKeys(value, ["version", "operation"])
+    && value.version === "music-lifecycle/v1"
+    && operation !== undefined
+    && hasExactKeys(operation, [
+      "operationId", "status", "phase", "state", "boundaryCrossed", "retryable", "deadLetter",
+      "upstreamUserDocumentId", "upstreamAccountDocumentId",
+    ])
+    && isIdentifier(operation.operationId)
+    && isIdentifier(operation.upstreamUserDocumentId)
+    && isIdentifier(operation.upstreamAccountDocumentId)
+    && typeof operation.boundaryCrossed === "boolean"
+    && typeof operation.retryable === "boolean"
+    && typeof operation.deadLetter === "boolean";
+  const combinationValid = status === "pending_deletion"
+    ? phase === "prepared" && (operation?.boundaryCrossed === false
+      ? state === "completed" && operation.retryable === false && operation.deadLetter === false
+      : operation?.deadLetter === true
+        ? state === "failed" && operation.retryable === false
+        : ["requested", "running"].includes(String(state)) && operation?.retryable === true)
+    : status === "suspended"
+      ? phase === "prepared" && ["completed", "cancelled"].includes(String(state))
+        && operation?.boundaryCrossed === false && operation.retryable === false && operation.deadLetter === false
+      : status === "tombstoned"
+        ? phase === "finalized" && state === "completed" && operation?.boundaryCrossed === true
+          && operation.retryable === false && operation.deadLetter === false
+        : false;
+  if (!commonValid || !combinationValid) {
+    throw new AccountLifecycleError(
+      "LIFECYCLE_RESPONSE_INVALID", 502,
+      "Music returned an invalid account lifecycle response. Try again.", true,
+    );
+  }
+  return value as unknown as AccountLifecycleStatus;
+}
+
+function parseSuspensionStatus(value: unknown): AccountSuspensionStatus {
+  if (!isRecord(value) || !hasExactKeys(value, ["version", "identity"])
+      || value.version !== "music-lifecycle/v1" || !isRecord(value.identity)
+      || !hasExactKeys(value.identity, ["status"]) || value.identity.status !== "suspended") {
+    throw new AccountLifecycleError(
+      "LIFECYCLE_RESPONSE_INVALID", 502,
+      "Music returned an invalid account suspension response. Try again.", true,
+    );
+  }
+  return value as unknown as AccountSuspensionStatus;
 }
 
 function normalizeOrigin(raw: string): string {

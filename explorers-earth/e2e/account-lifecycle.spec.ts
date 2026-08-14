@@ -24,7 +24,14 @@ async function mockSettings(
   context: BrowserContext,
   operation: LifecycleOperation,
   events: string[] = [],
-  options: { loseAccountDeleteResponseOnce?: boolean; statusMode?: "normal" | "delayed" | "error"; additionalAccount?: boolean } = {},
+  options: {
+    loseAccountDeleteResponseOnce?: boolean;
+    statusMode?: "normal" | "delayed" | "error";
+    additionalAccount?: boolean;
+    provider?: "google" | "local";
+    suspensionUnavailable?: boolean;
+    strapiBlockUnconfirmed?: boolean;
+  } = {},
 ) {
   let accountPresent = true;
   let loseAccountDeleteResponse = options.loseAccountDeleteResponseOnce === true;
@@ -32,6 +39,12 @@ async function mockSettings(
   await context.route("**/api/music/identity/lifecycle/**", async (route) => {
     const action = new URL(route.request().url()).pathname.split("/").at(-1)!;
     events.push(action);
+    if (action === "suspend" && options.suspensionUnavailable) {
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: {
+        code: "LIFECYCLE_UNAVAILABLE", message: "Music lifecycle is unavailable.", retryable: true,
+      } }) });
+      return;
+    }
     if (action === "status" && options.statusMode === "delayed") await new Promise((resolve) => setTimeout(resolve, 2_000));
     if (action === "status" && options.statusMode === "error") {
       await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: {
@@ -41,6 +54,14 @@ async function mockSettings(
     }
     if (action === "cancel") {
       operation = { ...operation, status: "suspended", state: "cancelled", boundaryCrossed: false, retryable: false };
+    }
+    if (action === "suspend") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ version: "music-lifecycle/v1", identity: { status: "suspended" } }),
+      });
+      return;
     }
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(envelope(operation)) });
   });
@@ -55,12 +76,20 @@ async function mockSettings(
     };
     const currentUser = {
       id: "mock-user-123", documentId: "mock-user-123", username: "testuser", email: "test@explorers.earth",
-      blocked: false, provider: "google", accounts: accountPresent
+      blocked: false, provider: options.provider ?? "google", accounts: accountPresent
         ? options.additionalAccount ? [account, { ...account, documentId: "account-document-b" }] : [account]
         : [],
     };
     let data: Record<string, unknown>;
-    if (query.includes("mutation DeleteExplorerAccount")) {
+    if (query.includes("mutation login")) {
+      events.push("login");
+      data = { login: { jwt: "mock-jwt-token-xyz", user: currentUser } };
+    } else if (query.includes("mutation UpdateUsersPermissionsUser")) {
+      events.push("strapi-block");
+      data = options.strapiBlockUnconfirmed
+        ? { updateUsersPermissionsUser: { data: null } }
+        : { updateUsersPermissionsUser: { data: { ...currentUser, blocked: true } } };
+    } else if (query.includes("mutation DeleteExplorerAccount")) {
       events.push("account-delete");
       accountPresent = false;
       if (loseAccountDeleteResponse) {
@@ -94,6 +123,53 @@ async function mockSettings(
     });
   });
 }
+
+for (const provider of ["google", "local"] as const) {
+  test(`${provider} account deactivation suspends Music before blocking Strapi`, async ({ context, page }) => {
+    const events: string[] = [];
+    await mockSettings(context, {
+      operationId: "delete-operation-durable", status: "suspended", phase: "prepared", state: "cancelled",
+      boundaryCrossed: false, retryable: false, deadLetter: false,
+    }, events, { provider });
+    await page.goto("/settings");
+    await page.getByRole("button", { name: "Deactivate your account?" }).click();
+    if (provider === "local") await page.getByPlaceholder("Enter your current password").fill("valid-password");
+    await page.getByRole("button", { name: "Deactivate My Account" }).click();
+    await expect(page).toHaveURL(/\/login$/);
+    expect(events.filter((event) => ["login", "suspend", "strapi-block"].includes(event))).toEqual(
+      provider === "local" ? ["login", "suspend", "strapi-block"] : ["suspend", "strapi-block"],
+    );
+  });
+}
+
+test("Music suspension outage leaves Strapi and browser authority active for retry", async ({ context, page }) => {
+  const events: string[] = [];
+  await mockSettings(context, {
+    operationId: "delete-operation-durable", status: "suspended", phase: "prepared", state: "cancelled",
+    boundaryCrossed: false, retryable: false, deadLetter: false,
+  }, events, { suspensionUnavailable: true });
+  await page.goto("/settings");
+  await page.getByRole("button", { name: "Deactivate your account?" }).click();
+  await page.getByRole("button", { name: "Deactivate My Account" }).click();
+  await expect(page).toHaveURL(/\/settings$/);
+  expect(events.filter((event) => event === "strapi-block")).toEqual([]);
+  expect(await page.evaluate(() => localStorage.getItem("auth-storage"))).toContain("mock-jwt-token-xyz");
+});
+
+test("an unconfirmed Strapi block leaves the suspended transition resumable without reporting success", async ({ context, page }) => {
+  const events: string[] = [];
+  await mockSettings(context, {
+    operationId: "delete-operation-durable", status: "suspended", phase: "prepared", state: "cancelled",
+    boundaryCrossed: false, retryable: false, deadLetter: false,
+  }, events, { strapiBlockUnconfirmed: true });
+  await page.goto("/settings");
+  await page.getByRole("button", { name: "Deactivate your account?" }).click();
+  await page.getByRole("button", { name: "Deactivate My Account" }).click();
+  await expect.poll(() => events.filter((event) => event === "strapi-block").length).toBe(1);
+  await expect(page).toHaveURL(/\/settings$/);
+  expect(events.filter((event) => ["suspend", "strapi-block"].includes(event))).toEqual(["suspend", "strapi-block"]);
+  expect(await page.evaluate(() => localStorage.getItem("auth-storage"))).toContain("mock-jwt-token-xyz");
+});
 
 async function assertNoLifecyclePersistence(page: Page) {
   const persisted = await page.evaluate(() => ({

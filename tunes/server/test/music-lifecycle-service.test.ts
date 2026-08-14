@@ -201,6 +201,28 @@ describe("MusicLifecycleService", () => {
     expect(h.disconnectOwner).toHaveBeenCalledWith(41);
   });
 
+  it("suspends only the exact authoritative Explorer tuple", async () => {
+    const h = harness();
+    h.repository.transitionIdentity.mockResolvedValue({
+      id: 41, strapiUserDocumentId: identity.userDocumentId, strapiAccountDocumentId: identity.accountDocumentId,
+      identityStatus: "suspended", sessionVersion: 8,
+    });
+    const service = new MusicLifecycleService(h.gateway, h.repository, {
+      operationIdFactory: () => "suspend-proof-operation",
+      disconnectOwner: h.disconnectOwner,
+    });
+
+    await expect(service.suspendFromProof("authoritative-proof", "request-suspend")).resolves.toMatchObject({
+      id: 41, identityStatus: "suspended",
+    });
+    expect(h.gateway.resolve).toHaveBeenCalledWith("authoritative-proof", "request-suspend");
+    expect(h.repository.lifecycleBinding).toHaveBeenCalledWith(identity.userDocumentId);
+
+    h.gateway.resolve.mockResolvedValueOnce({ ...identity, accountDocumentId: "account-document-other" });
+    await expect(service.suspendFromProof("authoritative-proof", "request-conflict"))
+      .rejects.toMatchObject({ code: "IDENTITY_CONFLICT" });
+  });
+
   it("resolves every browser lifecycle action from the authoritative tuple", async () => {
     const h = harness();
     const service = new MusicLifecycleService(h.gateway, h.repository, {
@@ -234,5 +256,34 @@ describe("MusicLifecycleService", () => {
       targetStatus: "active",
     }));
     expect(h.disconnectOwner).not.toHaveBeenCalled();
+  });
+
+  it("reactivates only the immutable tuple carried by the public confirmation token", async () => {
+    const h = harness();
+    h.repository.transitionIdentity.mockResolvedValue({
+      id: 41, strapiUserDocumentId: identity.userDocumentId, strapiAccountDocumentId: identity.accountDocumentId,
+      identityStatus: "active", sessionVersion: 9,
+    });
+    const service = new MusicLifecycleService(h.gateway, h.repository, { disconnectOwner: h.disconnectOwner });
+    const input = {
+      userDocumentId: identity.userDocumentId,
+      accountDocumentId: identity.accountDocumentId,
+      operationId: "reactivation-token-operation",
+    };
+
+    await expect(service.reactivateBoundIdentity(input)).resolves.toMatchObject({ id: 41, sessionVersion: 9 });
+    expect(h.repository.transitionIdentity).toHaveBeenCalledWith({
+      strapiUserDocumentId: identity.userDocumentId,
+      operationId: input.operationId,
+      kind: "reactivate",
+      targetStatus: "active",
+    });
+
+    h.repository.lifecycleBinding.mockResolvedValueOnce({
+      userDocumentId: identity.userDocumentId,
+      accountDocumentId: "account-document-other",
+      identityStatus: "suspended",
+    });
+    await expect(service.reactivateBoundIdentity(input)).rejects.toMatchObject({ code: "IDENTITY_CONFLICT" });
   });
 });

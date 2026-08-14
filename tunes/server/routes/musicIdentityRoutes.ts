@@ -34,7 +34,7 @@ export interface MusicIdentityRouteDependencies {
   ensure: (proof: string, requestId: string) => Promise<MusicIdentityProjection>;
   mintCredential: (identity: MusicIdentityProjection) => MintedMusicToken;
   resolvePrincipal: (token: string) => Promise<MusicPrincipal>;
-  lifecycle?: Pick<MusicLifecycleService, "prepareDeletion" | "status" | "markDeletionBoundary" | "cancelDeletion">;
+  lifecycle?: Pick<MusicLifecycleService, "prepareDeletion" | "status" | "markDeletionBoundary" | "cancelDeletion" | "suspendFromProof">;
   isMusicCredential?: (token: string) => boolean;
   limiter: BoundedIdentityRateLimiter;
   logger?: (entry: Record<string, unknown>) => void;
@@ -197,6 +197,38 @@ export function setupMusicIdentityRoutes(app: Express, dependencies: MusicIdenti
     app.get("/api/music/identity/lifecycle/status", lifecycleHandler("status", (proof, requestId) => lifecycle.status(proof, requestId)));
     app.post("/api/music/identity/lifecycle/boundary", lifecycleHandler("boundary", (proof, requestId) => lifecycle.markDeletionBoundary(proof, requestId)));
     app.post("/api/music/identity/lifecycle/cancel", lifecycleHandler("cancel", (proof, requestId) => lifecycle.cancelDeletion(proof, requestId)));
+    app.post("/api/music/identity/lifecycle/suspend", async (req: Request, res: Response) => {
+      const requestId = validRequestId(req.get("x-request-id")) ?? requestIdFactory();
+      res.setHeader("X-Request-Id", requestId);
+      let status = 500;
+      let outcome = "internal_error";
+      try {
+        assertBodylessLifecycleRequest(req);
+        const proof = strictBearer(req);
+        if (dependencies.isMusicCredential?.(proof)) {
+          throw new MusicIdentityError("AUTH_INVALID", 401, "An Explorer bearer proof is required.", "authenticate", false);
+        }
+        const peerAddress = req.socket.remoteAddress;
+        const source = dependencies.trustedProxyHops === 1 && dependencies.isTrustedProxy?.(peerAddress)
+          ? (req.ip ?? peerAddress ?? "unknown") : (peerAddress ?? "unknown");
+        const rate = dependencies.limiter.check(source, fingerprint(proof));
+        if (!rate.allowed) {
+          throw new MusicIdentityError("RATE_LIMITED", 429, "Too many Music lifecycle attempts.", "retry", true, rate.retryAfterSeconds ?? 1);
+        }
+        const value = await lifecycle.suspendFromProof(proof, requestId);
+        status = 200;
+        outcome = "completed";
+        return res.status(200).json({ version: "music-lifecycle/v1", identity: { status: value.identityStatus } });
+      } catch (cause) {
+        const error = safeError(cause);
+        status = error.status;
+        outcome = safeOutcome(error);
+        if (status === 429 || status === 503) res.setHeader("Retry-After", String(error.retryAfterSeconds ?? 1));
+        return res.status(status).json(musicErrorEnvelope(error, requestId));
+      } finally {
+        logger({ event: "music_lifecycle_suspend", requestId, outcome, status });
+      }
+    });
   }
 
   const principalMiddleware = createMusicPrincipalMiddleware(dependencies.resolvePrincipal);

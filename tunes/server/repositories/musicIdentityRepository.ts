@@ -471,6 +471,10 @@ export class MusicIdentityRepository {
           sessionVersion: prior.result_session_version,
         };
       }
+      if ((input.kind === "suspend" || input.kind === "reactivate") && locked.identity_status === input.targetStatus) {
+        await client.query("COMMIT");
+        return projection(locked);
+      }
       const valid = (locked.identity_status === "active" && input.targetStatus === "suspended" && input.kind === "suspend")
         || (locked.identity_status === "suspended" && input.targetStatus === "active" && input.kind === "reactivate")
         || (["active", "suspended"].includes(locked.identity_status) && input.targetStatus === "pending_deletion" && input.kind === "request_deletion")
@@ -707,8 +711,8 @@ export class MusicIdentityRepository {
     }
   }
 
-  async claimDueDeletions(input: { now: Date; batchSize: number; maxAttempts: number }): Promise<ClaimedLifecycleDeletion[]> {
-    if (!Number.isSafeInteger(input.batchSize) || input.batchSize < 1 || input.batchSize > 100
+  async claimDueDeletions(input: { batchSize: number; maxAttempts: number }): Promise<ClaimedLifecycleDeletion[]> {
+    if (input.batchSize !== 1
         || !Number.isSafeInteger(input.maxAttempts) || input.maxAttempts < 1 || input.maxAttempts > 100) {
       throw new MusicIdentityError("REQUEST_INVALID", 400, "Music lifecycle worker input is invalid.", "none", false);
     }
@@ -721,8 +725,8 @@ export class MusicIdentityRepository {
         WHERE u.identity_status='pending_deletion' AND u.lifecycle_retention_stage='upstream-delete-attempted'
           AND u.lifecycle_state='running' AND o.operation_kind='delete'
           AND o.operation_phase='prepared' AND o.operation_state='completed'
-          AND o.attempt_count >= $2 AND COALESCE(o.error_code,'') NOT LIKE 'MANUAL_REPAIR_REARMED:%'
-          AND o.updated_at + interval '45 seconds' <= $1
+          AND o.attempt_count >= $1 AND COALESCE(o.error_code,'') NOT LIKE 'MANUAL_REPAIR_REARMED:%'
+          AND o.updated_at + interval '45 seconds' <= clock_timestamp()
         FOR UPDATE OF u,o SKIP LOCKED
       ), operation_failure AS (
         UPDATE music_identity_lifecycle_operations o SET error_code=CASE
@@ -732,7 +736,7 @@ export class MusicIdentityRepository {
         FROM exhausted e WHERE o.operation_id=e.operation_id
       )
       UPDATE users u SET lifecycle_state='failed',lifecycle_error_code='DEAD_LETTER:WORKER_LEASE_EXPIRED'
-      FROM exhausted e WHERE u.id=e.id`, [input.now,input.maxAttempts]);
+      FROM exhausted e WHERE u.id=e.id`, [input.maxAttempts]);
       const due = await client.query<any>(`SELECT u.id,u.strapi_user_document_id,u.strapi_account_document_id,
         u.lifecycle_operation_id,o.attempt_count
         FROM users u JOIN music_identity_lifecycle_operations o ON o.operation_id=u.lifecycle_operation_id
@@ -740,11 +744,11 @@ export class MusicIdentityRepository {
           AND u.lifecycle_state IN ('requested','failed','running') AND o.operation_kind='delete'
           AND o.operation_phase='prepared' AND o.operation_state='completed'
           AND COALESCE(u.lifecycle_error_code,'') NOT LIKE 'DEAD_LETTER:%'
-          AND (o.attempt_count < $3 OR o.error_code LIKE 'MANUAL_REPAIR_REARMED:%')
-          AND ((u.lifecycle_state='running' AND o.updated_at + interval '45 seconds' <= $1)
+          AND (o.attempt_count < $2 OR o.error_code LIKE 'MANUAL_REPAIR_REARMED:%')
+          AND ((u.lifecycle_state='running' AND o.updated_at + interval '45 seconds' <= clock_timestamp())
             OR (u.lifecycle_state IN ('requested','failed')
-              AND o.updated_at + make_interval(secs => LEAST(300,power(2,GREATEST(0,o.attempt_count-1)))::integer) <= $1))
-        ORDER BY o.updated_at,o.operation_id FOR UPDATE OF u SKIP LOCKED LIMIT $2`, [input.now,input.batchSize,input.maxAttempts]);
+              AND o.updated_at + make_interval(secs => LEAST(300,power(2,GREATEST(0,o.attempt_count-1)))::integer) <= clock_timestamp()))
+        ORDER BY o.updated_at,o.operation_id FOR UPDATE OF u SKIP LOCKED LIMIT $1`, [input.batchSize,input.maxAttempts]);
       const claimed: ClaimedLifecycleDeletion[] = [];
       for (const row of due.rows) {
         const operation = (await client.query<any>(`UPDATE music_identity_lifecycle_operations
@@ -754,7 +758,7 @@ export class MusicIdentityRepository {
           WHERE operation_id=$1 RETURNING attempt_count,updated_at::text AS lease_updated_at`, [row.lifecycle_operation_id])).rows[0];
         const attempt = operation.attempt_count;
         await client.query(`UPDATE users SET lifecycle_state='running',lifecycle_attempt_count=$2,
-          lifecycle_last_attempt_at=$3,lifecycle_error_code=NULL WHERE id=$1`, [row.id,attempt,input.now]);
+          lifecycle_last_attempt_at=$3::timestamptz,lifecycle_error_code=NULL WHERE id=$1`, [row.id,attempt,operation.lease_updated_at]);
         claimed.push({
           operationId: row.lifecycle_operation_id,
           musicUserId: row.id,

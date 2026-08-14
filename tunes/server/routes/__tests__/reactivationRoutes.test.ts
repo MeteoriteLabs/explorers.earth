@@ -16,6 +16,7 @@ import {
   reactivationGlobalLimiter,
   REACTIVATION_GLOBAL_MAX,
 } from '../reactivationRoutes';
+import { confirmReactivation } from '../../services/reactivation-service';
 
 const REQ = '/api/user/request-reactivation';
 
@@ -26,6 +27,17 @@ function buildApp() {
   setupReactivationRoutes(app);
   return app;
 }
+
+it('passes the production Music reactivation transition into token confirmation', async () => {
+  // Break caught: Strapi is unblocked but the durable Music owner remains suspended.
+  const reactivateMusic = vi.fn(async () => undefined);
+  const app = express();
+  app.use(express.json());
+  setupReactivationRoutes(app, { reactivateMusic });
+
+  await request(app).get('/api/user/reactivate?token=valid-token').expect(200);
+  expect(confirmReactivation).toHaveBeenCalledWith('valid-token', { reactivateMusic });
+});
 
 beforeEach(() => {
   // The global limiter uses a constant key shared across the whole module, so

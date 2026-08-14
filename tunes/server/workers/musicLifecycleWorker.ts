@@ -10,7 +10,7 @@ export interface ClaimedLifecycleDeletion {
 }
 
 interface LifecycleWorkerRepository {
-  claimDueDeletions(input: { now: Date; batchSize: number; maxAttempts: number }): Promise<ClaimedLifecycleDeletion[]>;
+  claimDueDeletions(input: { batchSize: number; maxAttempts: number }): Promise<ClaimedLifecycleDeletion[]>;
   finalizeDeletion(operation: ClaimedLifecycleDeletion): Promise<boolean>;
   recordDeletionObservation(operation: ClaimedLifecycleDeletion, observation: Exclude<AuthoritativeAbsence, "absent">, deadLetter: boolean): Promise<boolean | void>;
   recordDeletionFailure(operation: ClaimedLifecycleDeletion, stage: "observation" | "finalize", deadLetter: boolean): Promise<boolean | void>;
@@ -26,17 +26,16 @@ export async function runMusicLifecycleWorkerOnce(input: {
   proveAbsence: (identity: { userDocumentId: string; accountDocumentId: string }) => Promise<AuthoritativeAbsence>;
   maxAttempts: number;
   batchSize: number;
-  now?: Date;
 }): Promise<{ claimed: number; finalized: number; deferred: number; deadLettered: number }> {
-  const operations = await input.repository.claimDueDeletions({
-    now: input.now ?? new Date(),
-    batchSize: input.batchSize,
-    maxAttempts: input.maxAttempts,
-  });
+  let claimed = 0;
   let finalized = 0;
   let deferred = 0;
   let deadLettered = 0;
-  for (const operation of operations) {
+  for (let index = 0; index < input.batchSize; index += 1) {
+    const operations = await input.repository.claimDueDeletions({ batchSize: 1, maxAttempts: input.maxAttempts });
+    const operation = operations[0];
+    if (!operation) break;
+    claimed += 1;
     let observation: AuthoritativeAbsence;
     try {
       observation = await input.proveAbsence({
@@ -75,7 +74,7 @@ export async function runMusicLifecycleWorkerOnce(input: {
       } catch { /* contain this item; do not abort later identities */ }
     }
   }
-  return { claimed: operations.length, finalized, deferred, deadLettered };
+  return { claimed, finalized, deferred, deadLettered };
 }
 
 export async function manuallyRepairMusicDeletion(input: {

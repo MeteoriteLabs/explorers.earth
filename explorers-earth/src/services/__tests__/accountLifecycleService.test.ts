@@ -16,6 +16,12 @@ const pending = {
     upstreamAccountDocumentId: "account-document-a",
   },
 };
+const crossed = { ...pending, operation: {
+  ...pending.operation, state: "requested" as const, boundaryCrossed: true, retryable: true,
+} };
+const acknowledgedLifecycleFetch = async (input: string | URL | Request) => new Response(JSON.stringify(
+  new URL(String(input)).pathname.endsWith("/boundary") ? crossed : pending,
+), { status: 200 });
 
 describe("account lifecycle service", () => {
   it("uses distinct Account and user GraphQL operations", () => {
@@ -32,7 +38,7 @@ describe("account lifecycle service", () => {
     const order: string[] = [];
     const fetchImpl = vi.fn(async (url: string) => {
       order.push(url.endsWith("/prepare") ? "prepare" : "boundary");
-      return new Response(JSON.stringify(pending), {
+      return new Response(JSON.stringify(url.endsWith("/prepare") ? pending : crossed), {
         status: 200,
         headers: { "content-type": "application/json", "x-request-id": "request-a" },
       });
@@ -57,6 +63,59 @@ describe("account lifecycle service", () => {
     expect(order).toEqual(["prepare", "boundary", "account", "user", "logout"]);
   });
 
+  it("refuses a 2xx boundary response that does not acknowledge the irreversible boundary", async () => {
+    // Break caught: stale boundaryCrossed=false unlocks the upstream Account/user mutations.
+    const service = createAccountLifecycleService({
+      baseUrl: "https://music.example",
+      getBearer: () => "authoritative-bearer-proof",
+      fetchImpl: async () => new Response(JSON.stringify(pending), { status: 200 }),
+    });
+    const readAccountPresence = vi.fn(async () => ({ status: "absent" as const }));
+    const deleteExplorerAccount = vi.fn(async () => "account-document-a");
+    const deleteExplorerUser = vi.fn(async () => "user-document-a");
+    const clearAuth = vi.fn();
+
+    await expect(service.deleteAccount({ readAccountPresence, deleteExplorerAccount, deleteExplorerUser, clearAuth }))
+      .rejects.toMatchObject({ name: "AccountLifecycleError", code: "LIFECYCLE_RESPONSE_INVALID" });
+    expect(readAccountPresence).not.toHaveBeenCalled();
+    expect(deleteExplorerAccount).not.toHaveBeenCalled();
+    expect(deleteExplorerUser).not.toHaveBeenCalled();
+    expect(clearAuth).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { label: "wrong version", response: { ...crossed, version: "music-lifecycle/v2" } },
+    { label: "empty operation", response: { ...crossed, operation: { ...crossed.operation, operationId: "" } } },
+    { label: "empty tuple", response: { ...crossed, operation: { ...crossed.operation, upstreamAccountDocumentId: "" } } },
+    { label: "cancelled running state", response: { ...crossed, operation: { ...crossed.operation, state: "cancelled" } } },
+    { label: "missing operation", response: { version: "music-lifecycle/v1" } },
+    { label: "wrong primitive", response: { ...crossed, operation: { ...crossed.operation, boundaryCrossed: "true" } } },
+    { label: "unexpected root member", response: { ...crossed, unchecked: true } },
+    { label: "unexpected operation member", response: { ...crossed, operation: { ...crossed.operation, unchecked: true } } },
+    { label: "uncrossed requested state", response: { ...pending, operation: { ...pending.operation, state: "requested" } } },
+    { label: "crossed completed state", response: { ...crossed, operation: { ...crossed.operation, state: "completed" } } },
+    { label: "dead letter without failed state", response: { ...crossed, operation: { ...crossed.operation, deadLetter: true } } },
+  ])("fails closed on a malformed $label boundary DTO", async ({ response }) => {
+    // Break caught: unchecked JSON reaches GraphQL merely because HTTP returned 2xx.
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(pending), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(response), { status: 200 }));
+    const service = createAccountLifecycleService({
+      baseUrl: "https://music.example", getBearer: () => "authoritative-bearer-proof", fetchImpl: fetchImpl as typeof fetch,
+    });
+    const readAccountPresence = vi.fn(async () => ({ status: "absent" as const }));
+    const clearAuth = vi.fn();
+
+    await expect(service.deleteAccount({
+      readAccountPresence,
+      deleteExplorerAccount: async () => "account-document-a",
+      deleteExplorerUser: async () => "user-document-a",
+      clearAuth,
+    })).rejects.toMatchObject({ name: "AccountLifecycleError", code: "LIFECYCLE_RESPONSE_INVALID" });
+    expect(readAccountPresence).not.toHaveBeenCalled();
+    expect(clearAuth).not.toHaveBeenCalled();
+  });
+
   it.each(["error", "null", "wrong-document", "unknown"] as const)(
     "never deletes the user when Account deletion ends as %s",
     async (outcome) => {
@@ -64,7 +123,7 @@ describe("account lifecycle service", () => {
       const service = createAccountLifecycleService({
         baseUrl: "https://music.example",
         getBearer: () => "authoritative-bearer-proof",
-        fetchImpl: async () => new Response(JSON.stringify(pending), { status: 200 }),
+        fetchImpl: acknowledgedLifecycleFetch as typeof fetch,
       });
       const deleteExplorerUser = vi.fn(async () => "user-document-a");
       const clearAuth = vi.fn();
@@ -93,7 +152,7 @@ describe("account lifecycle service", () => {
     const service = createAccountLifecycleService({
       baseUrl: "https://music.example",
       getBearer: () => "authoritative-bearer-proof",
-      fetchImpl: async () => new Response(JSON.stringify(pending), { status: 200 }),
+      fetchImpl: acknowledgedLifecycleFetch as typeof fetch,
     });
     const deleteExplorerAccount = vi.fn(async () => "account-document-a");
     const deleteExplorerUser = vi.fn(async () => "user-document-a");
@@ -116,7 +175,7 @@ describe("account lifecycle service", () => {
       getBearer: () => "authoritative-bearer-proof",
       fetchImpl: async () => new Response(JSON.stringify({
         ...pending,
-        operation: { ...pending.operation, boundaryCrossed: true, state: "requested" },
+        operation: { ...pending.operation, boundaryCrossed: true, state: "requested", retryable: true },
       }), { status: 200 }),
     });
     const readAccountPresence = vi.fn(async (expectedAccountDocumentId: string) => {
@@ -141,7 +200,10 @@ describe("account lifecycle service", () => {
       .mockResolvedValueOnce(new Response(JSON.stringify(pending), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
         ...pending,
-        operation: { ...pending.operation, upstreamAccountDocumentId: "account-document-b" },
+        operation: {
+          ...pending.operation, upstreamAccountDocumentId: "account-document-b",
+          boundaryCrossed: true, state: "requested", retryable: true,
+        },
       }), { status: 200 }));
     const service = createAccountLifecycleService({
       baseUrl: "https://music.example",
@@ -163,7 +225,7 @@ describe("account lifecycle service", () => {
     const service = createAccountLifecycleService({
       baseUrl: "https://music.example",
       getBearer: () => "authoritative-bearer-proof",
-      fetchImpl: async () => new Response(JSON.stringify(pending), { status: 200 }),
+      fetchImpl: acknowledgedLifecycleFetch as typeof fetch,
     });
     const clearAuth = vi.fn();
 
@@ -250,6 +312,41 @@ describe("account lifecycle service", () => {
     ]);
   });
 
+  it("accepts the exact durable suspended lifecycle state", async () => {
+    const suspended = { ...pending, operation: {
+      ...pending.operation, status: "suspended" as const, state: "cancelled" as const,
+    } };
+    const service = createAccountLifecycleService({
+      baseUrl: "https://music.example", getBearer: () => "authoritative-bearer-proof",
+      fetchImpl: async () => new Response(JSON.stringify(suspended), { status: 200 }),
+    });
+    await expect(service.status()).resolves.toEqual(suspended);
+  });
+
+  it("accepts only the exact bodyless suspension acknowledgement", async () => {
+    const valid = { version: "music-lifecycle/v1", identity: { status: "suspended" } };
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify(valid), { status: 200 }));
+    const service = createAccountLifecycleService({
+      baseUrl: "https://music.example", getBearer: () => "authoritative-bearer-proof", fetchImpl: fetchImpl as typeof fetch,
+    });
+    await expect(service.suspend()).resolves.toEqual(valid);
+    expect(fetchImpl).toHaveBeenCalledWith("https://music.example/api/music/identity/lifecycle/suspend", {
+      method: "POST", headers: { Authorization: "Bearer authoritative-bearer-proof" },
+    });
+
+    for (const invalid of [
+      { ...valid, unchecked: true },
+      { ...valid, identity: { ...valid.identity, unchecked: true } },
+      { ...valid, identity: { status: "active" } },
+    ]) {
+      const invalidService = createAccountLifecycleService({
+        baseUrl: "https://music.example", getBearer: () => "authoritative-bearer-proof",
+        fetchImpl: async () => new Response(JSON.stringify(invalid), { status: 200 }),
+      });
+      await expect(invalidService.suspend()).rejects.toMatchObject({ code: "LIFECYCLE_RESPONSE_INVALID" });
+    }
+  });
+
   it("returns typed authentication, transport, and server errors without clearing auth", async () => {
     const missing = createAccountLifecycleService({ baseUrl: "https://music.example", getBearer: () => undefined });
     await expect(missing.prepare()).rejects.toMatchObject({ name: "AccountLifecycleError", code: "AUTH_REQUIRED", status: 401, retryable: false });
@@ -273,7 +370,7 @@ describe("account lifecycle service", () => {
     const clearAuth = vi.fn();
     const upstreamFailure = createAccountLifecycleService({
       baseUrl: "https://music.example", getBearer: () => "authoritative-bearer-proof",
-      fetchImpl: async () => new Response(JSON.stringify(pending), { status: 200 }),
+      fetchImpl: acknowledgedLifecycleFetch as typeof fetch,
     });
     await expect(upstreamFailure.deleteAccount({
       readAccountPresence: async () => ({ status: "present", accountDocumentId: "account-document-a" }),

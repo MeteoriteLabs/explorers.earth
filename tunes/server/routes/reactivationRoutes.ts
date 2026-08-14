@@ -72,7 +72,9 @@ export const reactivationGlobalLimiter = rateLimit({
   },
 });
 
-export function setupReactivationRoutes(app: Express): void {
+export function setupReactivationRoutes(app: Express, dependencies?: {
+  reactivateMusic(input: { userDocumentId: string; accountDocumentId: string; operationId: string }): Promise<void>;
+}): void {
 
   /**
    * POST /api/user/request-reactivation
@@ -119,7 +121,10 @@ export function setupReactivationRoutes(app: Express): void {
       return res.status(400).json({ success: false, error: 'Token is required' });
     }
 
-    const result = await confirmReactivation(token);
+    if (!dependencies) {
+      return res.status(503).json({ success: false, error: 'Account reactivation is temporarily unavailable.' });
+    }
+    const result = await confirmReactivation(token, dependencies);
 
     if (!result.success) {
       return res.status(400).json(result);

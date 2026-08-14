@@ -622,12 +622,16 @@ const Settings = memo(() => {
 
       // Proceed with account deactivation/activation
       try {
+        if (!userBlocked) await accountLifecycle.suspend();
         const response = await updateBlockedStatus({
           variables: {
             updateUsersPermissionsUserId: user?.id,
             data: { blocked: !userBlocked },
           },
         });
+        if (response.data?.updateUsersPermissionsUser?.data?.blocked !== !userBlocked) {
+          throw new Error("Explorer account status update was not confirmed.");
+        }
         if (response.data) {
           toast.success(
             userBlocked

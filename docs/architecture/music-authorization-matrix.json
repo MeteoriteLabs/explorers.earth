@@ -286,6 +286,25 @@
       }
     },
     {
+      "method": "POST",
+      "path": "/api/music/identity/lifecycle/suspend",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "decision": "strapi-identity",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
       "method": "GET",
       "path": "/api/music/identity/current",
       "source": "tunes/server/routes/musicIdentityRoutes.ts",

@@ -5,7 +5,7 @@ import { MusicDomainRepository } from "../repositories/musicDomainRepository";
 import { MusicIdentityRepository, type EnsureMusicIdentityInput } from "../repositories/musicIdentityRepository";
 import { MusicPrincipalService } from "../middleware/musicPrincipal";
 import { MusicTokenService } from "../services/musicTokenService";
-import { manuallyRepairMusicDeletion } from "../workers/musicLifecycleWorker";
+import { manuallyRepairMusicDeletion, runMusicLifecycleWorkerOnce } from "../workers/musicLifecycleWorker";
 
 const exactTarget = process.env.DATABASE_URL_TEST ?? "postgresql://music_migrator:music@127.0.0.1:55432/music_fixture";
 const enabled = process.env.MUSIC_C7_POSTGRES_TEST === "1";
@@ -31,6 +31,25 @@ function identityInput(suffix: string): EnsureMusicIdentityInput {
     operationId: `provision-${suffix}`,
     requestId: `request-${suffix}`,
   };
+}
+
+async function ageOperations(operationIds: string[], seconds: number): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("ALTER TABLE music_identity_lifecycle_operations DISABLE TRIGGER music_lifecycle_operation_state");
+    await client.query(
+      "UPDATE music_identity_lifecycle_operations SET updated_at=clock_timestamp()-make_interval(secs => $2) WHERE operation_id=ANY($1::text[])",
+      [operationIds, seconds],
+    );
+    await client.query("ALTER TABLE music_identity_lifecycle_operations ENABLE TRIGGER music_lifecycle_operation_state");
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
@@ -133,10 +152,11 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
       userDocumentId: "c7-user-finalize", accountDocumentId: "c7-account-finalize", operationId: "delete-finalize",
     });
     await repository.markDeletionBoundary({ userDocumentId: "c7-user-finalize", accountDocumentId: "c7-account-finalize" });
+    await ageOperations(["delete-finalize"], 2);
 
     const [first, second] = await Promise.all([
-      repository.claimDueDeletions({ now: new Date(Date.now() + 600_000), batchSize: 10, maxAttempts: 5 }),
-      repository.claimDueDeletions({ now: new Date(Date.now() + 600_000), batchSize: 10, maxAttempts: 5 }),
+      repository.claimDueDeletions({ batchSize: 1, maxAttempts: 5 }),
+      repository.claimDueDeletions({ batchSize: 1, maxAttempts: 5 }),
     ]);
     const targetClaims = [...first, ...second].filter(({ operationId }) => operationId === "delete-finalize");
     expect(targetClaims).toHaveLength(1);
@@ -168,7 +188,8 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
       userDocumentId: "c7-user-rollback", accountDocumentId: "c7-account-rollback", operationId: "delete-rollback",
     });
     await base.markDeletionBoundary({ userDocumentId: "c7-user-rollback", accountDocumentId: "c7-account-rollback" });
-    const claimed = (await base.claimDueDeletions({ now: new Date(Date.now() + 600_000), batchSize: 10, maxAttempts: 5 }))
+    await ageOperations(["delete-rollback"], 2);
+    const claimed = (await base.claimDueDeletions({ batchSize: 1, maxAttempts: 5 }))
       .find(({ operationId }) => operationId === "delete-rollback")!;
     const failing = new MusicIdentityRepository(pool, {
       afterRetentionCleanup: async () => { throw new Error("injected-retention-failure"); },
@@ -241,13 +262,15 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
       userDocumentId: "c7-user-retry", accountDocumentId: "c7-account-retry", operationId: "delete-retry",
     });
     await repository.markDeletionBoundary({ userDocumentId: "c7-user-retry", accountDocumentId: "c7-account-retry" });
-    const first = (await repository.claimDueDeletions({ now: new Date(Date.now() + 10_000), batchSize: 20, maxAttempts: 3 }))
+    await ageOperations(["delete-retry"], 2);
+    const first = (await repository.claimDueDeletions({ batchSize: 1, maxAttempts: 3 }))
       .find(({ operationId }) => operationId === "delete-retry")!;
     await repository.recordDeletionObservation(first, "present", false);
     expect(Number((await pool.query("SELECT count(*) FROM playlists WHERE user_id=$1", [projection.id])).rows[0].count)).toBe(1);
-    const immediate = await repository.claimDueDeletions({ now: new Date(), batchSize: 20, maxAttempts: 3 });
+    const immediate = await repository.claimDueDeletions({ batchSize: 1, maxAttempts: 3 });
     expect(immediate.some(({ operationId }) => operationId === "delete-retry")).toBe(false);
-    const second = (await repository.claimDueDeletions({ now: new Date(Date.now() + 600_000), batchSize: 20, maxAttempts: 3 }))
+    await ageOperations(["delete-retry"], 3);
+    const second = (await repository.claimDueDeletions({ batchSize: 1, maxAttempts: 3 }))
       .find(({ operationId }) => operationId === "delete-retry")!;
     await repository.recordDeletionObservation(second, "outage", true);
     await expect(repository.lifecycleStatus({ userDocumentId: "c7-user-retry", accountDocumentId: "c7-account-retry" }))
@@ -256,7 +279,8 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
       operationId: second.operationId,
       rearmDeletion: (operationId) => repository.rearmDeletion(operationId),
     })).resolves.toBe(true);
-    const repaired = (await repository.claimDueDeletions({ now: new Date(Date.now() + 600_000), batchSize: 20, maxAttempts: 3 }))
+    await ageOperations(["delete-retry"], 5);
+    const repaired = (await repository.claimDueDeletions({ batchSize: 1, maxAttempts: 3 }))
       .find(({ operationId }) => operationId === "delete-retry")!;
     expect(repaired.attemptCount).toBeGreaterThan(second.attemptCount);
     await expect(repository.finalizeDeletion(repaired)).resolves.toBe(true);
@@ -272,19 +296,18 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
       userDocumentId: "c7-user-repair-crash", accountDocumentId: "c7-account-repair-crash", operationId: "delete-repair-crash",
     });
     await repository.markDeletionBoundary({ userDocumentId: "c7-user-repair-crash", accountDocumentId: "c7-account-repair-crash" });
-    const first = (await repository.claimDueDeletions({
-      now: new Date(Date.now() + 10_000), batchSize: 20, maxAttempts: 2,
-    })).find(({ operationId }) => operationId === "delete-repair-crash")!;
+    await ageOperations(["delete-repair-crash"], 2);
+    const first = (await repository.claimDueDeletions({ batchSize: 1, maxAttempts: 2 }))
+      .find(({ operationId }) => operationId === "delete-repair-crash")!;
     await repository.recordDeletionObservation(first, "outage", true);
     await expect(repository.rearmDeletion("delete-repair-crash")).resolves.toBe(true);
-    const repairedAt = new Date(Date.now() + 600_000);
-    const repaired = (await repository.claimDueDeletions({ now: repairedAt, batchSize: 20, maxAttempts: 2 }))
+    await ageOperations(["delete-repair-crash"], 3);
+    const repaired = (await repository.claimDueDeletions({ batchSize: 1, maxAttempts: 2 }))
       .find(({ operationId }) => operationId === "delete-repair-crash")!;
     expect(repaired.attemptCount).toBeGreaterThan(2);
 
-    const afterExpiredLease = await repository.claimDueDeletions({
-      now: new Date(repairedAt.getTime() + 46_000), batchSize: 20, maxAttempts: 2,
-    });
+    await ageOperations(["delete-repair-crash"], 46);
+    const afterExpiredLease = await repository.claimDueDeletions({ batchSize: 1, maxAttempts: 2 });
     expect(afterExpiredLease.some(({ operationId }) => operationId === "delete-repair-crash")).toBe(false);
     await expect(repository.lifecycleStatus({
       userDocumentId: "c7-user-repair-crash", accountDocumentId: "c7-account-repair-crash",
@@ -303,15 +326,85 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
     await repository.markDeletionBoundary({
       userDocumentId: "c7-user-crash-recovery", accountDocumentId: "c7-account-crash-recovery",
     });
-    const first = (await repository.claimDueDeletions({
-      now: new Date(Date.now() + 10_000), batchSize: 20, maxAttempts: 5,
-    })).find(({ operationId }) => operationId === "delete-crash-recovery")!;
+    await ageOperations(["delete-crash-recovery"], 2);
+    const first = (await repository.claimDueDeletions({ batchSize: 1, maxAttempts: 5 }))
+      .find(({ operationId }) => operationId === "delete-crash-recovery")!;
     expect(first.attemptCount).toBe(2);
 
-    const reclaimed = (await repository.claimDueDeletions({
-      now: new Date(Date.now() + 600_000), batchSize: 20, maxAttempts: 5,
-    })).find(({ operationId }) => operationId === "delete-crash-recovery");
+    await ageOperations(["delete-crash-recovery"], 46);
+    const reclaimed = (await repository.claimDueDeletions({ batchSize: 1, maxAttempts: 5 }))
+      .find(({ operationId }) => operationId === "delete-crash-recovery");
     expect(reclaimed).toMatchObject({ operationId: "delete-crash-recovery", attemptCount: 3 });
+  });
+
+  it("claims immediately before each proof so a slow item never leases the rest of a ten-item scan", async () => {
+    // Break caught: one 10-item claim leases later identities while the first 30s proof is still in flight.
+    const firstReplica = new MusicIdentityRepository(pool);
+    const secondReplica = new MusicIdentityRepository(pool);
+    const operationIds: string[] = [];
+    const operationByUser = new Map<string, string>();
+    for (let index = 0; index < 10; index += 1) {
+      const suffix = `per-item-${String(index).padStart(2, "0")}`;
+      const operationId = `delete-${suffix}`;
+      operationIds.push(operationId);
+      operationByUser.set(`c7-user-${suffix}`, operationId);
+      await firstReplica.ensureIdentity(identityInput(suffix));
+      await firstReplica.prepareDeletion({
+        userDocumentId: `c7-user-${suffix}`,
+        accountDocumentId: `c7-account-${suffix}`,
+        operationId,
+      });
+      await firstReplica.markDeletionBoundary({
+        userDocumentId: `c7-user-${suffix}`,
+        accountDocumentId: `c7-account-${suffix}`,
+      });
+    }
+    await ageOperations(operationIds, 2);
+    await expect(firstReplica.claimDueDeletions({ batchSize: 10, maxAttempts: 5 }))
+      .rejects.toMatchObject({ code: "REQUEST_INVALID" });
+
+    let releaseFirstProof!: () => void;
+    let notifyFirstProof!: (userDocumentId: string) => void;
+    const firstProofStarted = new Promise<string>((resolve) => { notifyFirstProof = resolve; });
+    const firstProofRelease = new Promise<void>((resolve) => { releaseFirstProof = resolve; });
+    const firstRun = runMusicLifecycleWorkerOnce({
+      repository: firstReplica,
+      maxAttempts: 5,
+      batchSize: 10,
+      proveAbsence: async ({ userDocumentId }) => {
+        notifyFirstProof(userDocumentId);
+        await firstProofRelease;
+        return "present";
+      },
+    });
+    const firstUserDocumentId = await firstProofStarted;
+    const firstOperationId = operationByUser.get(firstUserDocumentId)!;
+    const waitingOperationIds = operationIds.filter((operationId) => operationId !== firstOperationId);
+
+    // Simulate the old shared-lease deadline passing for every still-waiting item.
+    // They remain unclaimed until replica B begins each proof, so none can be reclaimed.
+    await ageOperations(waitingOperationIds, 46);
+    const secondRun = await runMusicLifecycleWorkerOnce({
+      repository: secondReplica,
+      maxAttempts: 5,
+      batchSize: 10,
+      proveAbsence: async () => "present",
+    });
+    expect(secondRun).toEqual({ claimed: 9, finalized: 0, deferred: 9, deadLettered: 0 });
+    const whileSlow = (await pool.query(
+      "SELECT operation_id,attempt_count FROM music_identity_lifecycle_operations WHERE operation_id=ANY($1::text[])",
+      [operationIds],
+    )).rows;
+    expect(whileSlow.find(({ operation_id }) => operation_id === firstOperationId)?.attempt_count).toBe(2);
+    expect(whileSlow.filter(({ operation_id }) => operation_id !== firstOperationId).every(({ attempt_count }) => attempt_count === 2)).toBe(true);
+
+    releaseFirstProof();
+    await expect(firstRun).resolves.toEqual({ claimed: 1, finalized: 0, deferred: 1, deadLettered: 0 });
+    const results = (await pool.query(
+      "SELECT attempt_count,error_code FROM music_identity_lifecycle_operations WHERE operation_id=ANY($1::text[])",
+      [operationIds],
+    )).rows;
+    expect(results.every(({ attempt_count, error_code }) => attempt_count === 2 && !String(error_code ?? "").startsWith("DEAD_LETTER:"))).toBe(true);
   });
 
   it("fences two worker replicas by the exact attempt lease epoch", async () => {
@@ -324,13 +417,18 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
       userDocumentId: "c7-user-worker-fence", accountDocumentId: "c7-account-worker-fence", operationId: "delete-worker-fence",
     });
     await firstReplica.markDeletionBoundary({ userDocumentId: "c7-user-worker-fence", accountDocumentId: "c7-account-worker-fence" });
-    const claimAt = new Date(Date.now() + 2_000);
-    const claimA = (await firstReplica.claimDueDeletions({ now: claimAt, batchSize: 10, maxAttempts: 5 }))
+    await ageOperations(["delete-worker-fence"], 2);
+    const claimA = (await firstReplica.claimDueDeletions({ batchSize: 1, maxAttempts: 5 }))
       .find(({ operationId }) => operationId === "delete-worker-fence")!;
     expect(claimA.leaseUpdatedAt).toEqual(expect.any(String));
-    const premature = await secondReplica.claimDueDeletions({ now: new Date(claimAt.getTime() + 30_000), batchSize: 10, maxAttempts: 5 });
+    const premature = await secondReplica.claimDueDeletions({
+      batchSize: 1, maxAttempts: 5, now: new Date(Date.now() + 86_400_000),
+    } as { batchSize: number; maxAttempts: number });
     expect(premature.some(({ operationId }) => operationId === "delete-worker-fence")).toBe(false);
-    const claimB = (await secondReplica.claimDueDeletions({ now: new Date(claimAt.getTime() + 46_000), batchSize: 10, maxAttempts: 5 }))
+    await ageOperations(["delete-worker-fence"], 46);
+    const claimB = (await secondReplica.claimDueDeletions({
+      batchSize: 1, maxAttempts: 5, now: new Date(Date.now() - 86_400_000),
+    } as { batchSize: number; maxAttempts: number }))
       .find(({ operationId }) => operationId === "delete-worker-fence")!;
     expect(claimB.attemptCount).toBe(claimA.attemptCount + 1);
     expect(claimB.leaseUpdatedAt).not.toBe(claimA.leaseUpdatedAt);
