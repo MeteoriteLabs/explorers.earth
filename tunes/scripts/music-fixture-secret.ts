@@ -53,6 +53,17 @@ export interface FixtureDurableReplaceDependencies {
   rename?: typeof renameSync;
   syncDirectory?: (path: string) => void;
   runWindowsHelper?: (source: string, destination: string) => { status: number | null; error?: Error };
+  beforeWindowsReplace?: () => void;
+  inspectWindowsIdentity?: (path: string) => FixtureWindowsNativeIdentity;
+}
+
+export interface FixtureWindowsNativeIdentity {
+  volumeSerial: string;
+  fileId: string;
+  attributes: number;
+  linkCount: number;
+  size: number;
+  sha256: string;
 }
 
 export function replaceFixtureMetadataDurably(
@@ -76,9 +87,29 @@ export function replaceFixtureMetadataDurably(
   }
   const platform = dependencies.platform ?? process.platform;
   if (platform === "win32") {
-    const run = dependencies.runWindowsHelper ?? runWindowsWriteThroughHelper;
-    const result = run(source, destination);
-    if (result.error || result.status !== 0) throw fixtureEnvironmentError("metadata-replace");
+    const inspect = dependencies.inspectWindowsIdentity ?? inspectWindowsNativeIdentity;
+    const sourceParentBefore = lstatSync(dirname(source), { bigint: true });
+    const destinationBefore = existsSync(destination) ? lstatSync(destination, { bigint: true }) : undefined;
+    const sourceIdentity = inspect(source);
+    const parentIdentity = inspect(dirname(source));
+    const destinationIdentity = destinationBefore ? inspect(destination) : undefined;
+    if (!sameIdentity(before, lstatSync(source, { bigint: true }))
+        || !sameIdentity(sourceParentBefore, lstatSync(dirname(source), { bigint: true }))
+        || (destinationBefore && (!existsSync(destination)
+          || !sameIdentity(destinationBefore, lstatSync(destination, { bigint: true }))))) {
+      throw fixtureEnvironmentError("metadata-replace");
+    }
+    dependencies.beforeWindowsReplace?.();
+    const result = dependencies.runWindowsHelper
+      ? dependencies.runWindowsHelper(source, destination)
+      : runWindowsWriteThroughHelper(source, destination, sourceIdentity, parentIdentity, destinationIdentity);
+    const committed = windowsDestinationMatches(source, destination, before, sourceIdentity, inspect);
+    if (result.error || result.status !== 0) {
+      if (committed) return;
+      throw fixtureEnvironmentError("metadata-replace");
+    }
+    if (!committed) throw fixtureEnvironmentError("metadata-replace");
+    return;
   } else {
     (dependencies.rename ?? renameSync)(source, destination);
     (dependencies.syncDirectory ?? syncDirectory)(dirname(destination));
@@ -87,7 +118,44 @@ export function replaceFixtureMetadataDurably(
   if (!sameIdentity(before, after) || existsSync(source)) throw fixtureEnvironmentError("metadata-replace");
 }
 
-function runWindowsWriteThroughHelper(source: string, destination: string): { status: number | null; error?: Error } {
+function runWindowsWriteThroughHelper(
+  source: string,
+  destination: string,
+  sourceIdentity: FixtureWindowsNativeIdentity,
+  parentIdentity: FixtureWindowsNativeIdentity,
+  destinationIdentity: FixtureWindowsNativeIdentity | undefined,
+): { status: number | null; error?: Error } {
+  return runWindowsNativeHelper([
+    "replace",
+    source,
+    destination,
+    ...encodeWindowsNativeIdentity(sourceIdentity, true),
+    ...encodeWindowsNativeIdentity(parentIdentity, false),
+    destinationIdentity ? "1" : "0",
+    ...(destinationIdentity ? encodeWindowsNativeIdentity(destinationIdentity, true) : ["none", "none", "none", "none", "none", "none"]),
+  ]);
+}
+
+function inspectWindowsNativeIdentity(path: string): FixtureWindowsNativeIdentity {
+  const result = runWindowsNativeHelper(["inspect", path]);
+  if (result.error || result.status !== 0 || !result.stdout) throw fixtureEnvironmentError("metadata-inspect");
+  try {
+    const parsed = JSON.parse(result.stdout.trim()) as FixtureWindowsNativeIdentity;
+    if (!/^[a-f0-9]{8}$/.test(parsed.volumeSerial)
+        || !/^[a-f0-9]{16}$/.test(parsed.fileId)
+        || !Number.isSafeInteger(parsed.attributes) || parsed.attributes < 0
+        || !Number.isSafeInteger(parsed.linkCount) || parsed.linkCount < 1
+        || !Number.isSafeInteger(parsed.size) || parsed.size < 0 || parsed.size > 131_072
+        || !(parsed.sha256 === "-" || /^[a-f0-9]{64}$/.test(parsed.sha256))) {
+      throw fixtureEnvironmentError("metadata-inspect");
+    }
+    return parsed;
+  } catch {
+    throw fixtureEnvironmentError("metadata-inspect");
+  }
+}
+
+function runWindowsNativeHelper(arguments_: string[]): { status: number | null; error?: Error; stdout?: string } {
   const helper = join(dirname(fileURLToPath(import.meta.url)), "windows-write-through.ps1");
   if (!existsSync(helper)) return { status: null, error: new Error("helper unavailable") };
   const result = spawnSync("powershell.exe", [
@@ -98,15 +166,44 @@ function runWindowsWriteThroughHelper(source: string, destination: string): { st
     "Bypass",
     "-File",
     helper,
-    "replace",
-    source,
-    destination,
+    ...arguments_,
   ], {
     encoding: "utf8",
     windowsHide: true,
     timeout: 15_000,
   });
-  return { status: result.status, error: result.error };
+  return { status: result.status, error: result.error, stdout: result.stdout };
+}
+
+function encodeWindowsNativeIdentity(identity: FixtureWindowsNativeIdentity, includeContent: boolean): string[] {
+  const base = [identity.volumeSerial, identity.fileId, String(identity.attributes), String(identity.linkCount)];
+  return includeContent ? [...base, String(identity.size), identity.sha256] : base;
+}
+
+function sameWindowsNativeIdentity(left: FixtureWindowsNativeIdentity, right: FixtureWindowsNativeIdentity): boolean {
+  return left.volumeSerial === right.volumeSerial
+    && left.fileId === right.fileId
+    && left.attributes === right.attributes
+    && left.linkCount === right.linkCount
+    && left.size === right.size
+    && left.sha256 === right.sha256;
+}
+
+function windowsDestinationMatches(
+  source: string,
+  destination: string,
+  sourceNodeIdentity: BigIntStats,
+  expected: FixtureWindowsNativeIdentity,
+  inspect: (path: string) => FixtureWindowsNativeIdentity,
+): boolean {
+  if (existsSync(source) || !existsSync(destination)) return false;
+  try {
+    const destinationNodeIdentity = lstatSync(destination, { bigint: true });
+    return sameIdentity(sourceNodeIdentity, destinationNodeIdentity)
+      && sameWindowsNativeIdentity(expected, inspect(destination));
+  } catch {
+    return false;
+  }
 }
 
 export interface FixtureMusicTokenSecretDependencies {
@@ -1252,9 +1349,13 @@ function validateFixtureRotationGraph(root: string, journal: FixtureRotationJour
   }
   const candidatePaths = journal.candidate.map((candidate) => candidate.relativePath);
   const priorPaths = journal.prior.map((prior) => prior.relativePath);
+  const authorityIdentities = [...journal.candidate, ...journal.prior]
+    .filter((authority) => authority.fileDev !== undefined && authority.fileIno !== undefined)
+    .map((authority) => `${authority.fileDev}:${authority.fileIno}`);
   if (candidatePaths.some((path, index) => candidatePaths.indexOf(path) !== index)
       || priorPaths.some((path, index) => priorPaths.indexOf(path) !== index)
-      || candidatePaths.some((path) => priorPaths.includes(path))) {
+      || candidatePaths.some((path) => priorPaths.includes(path))
+      || authorityIdentities.some((identity, index) => authorityIdentities.indexOf(identity) !== index)) {
     throw new FixtureSecretCleanupError("rotation-authority-overlap");
   }
   const target = parseFixtureEnvironmentReference(journal.targetReference);
@@ -1267,7 +1368,7 @@ function validateFixtureRotationGraph(root: string, journal: FixtureRotationJour
     .update(journal.priorReference === null ? Buffer.alloc(0) : Buffer.from(journal.priorReference, "ascii"))
     .digest("hex");
   if (journal.priorPointerSha256 !== expectedPriorHash) throw new FixtureSecretCleanupError("rotation-prior-reference");
-  if (![0, 3, 4].includes(journal.prior.length)
+  if (![0, 4].includes(journal.prior.length)
       || journal.prior.slice(0, 3).some((authority) => authority.kind !== "credential")
       || (journal.prior.length === 4 && journal.prior[3]!.kind !== "environment")) {
     throw new FixtureSecretCleanupError("rotation-prior-graph");
@@ -1275,7 +1376,9 @@ function validateFixtureRotationGraph(root: string, journal: FixtureRotationJour
   if (journal.prior.length === 4) {
     if (journal.priorReference === null) throw new FixtureSecretCleanupError("rotation-prior-reference");
     const priorReference = parseFixtureEnvironmentReference(journal.priorReference);
-    if (basename(journal.prior[3]!.relativePath) !== priorReference.generationName) {
+    if (basename(journal.prior[3]!.relativePath) !== priorReference.generationName
+        || journal.prior[3]!.size !== priorReference.size
+        || journal.prior[3]!.sha256 !== priorReference.digest) {
       throw new FixtureSecretCleanupError("rotation-prior-reference");
     }
   }
@@ -1451,6 +1554,7 @@ function cleanupAllocatedFixtureAuthority(root: string, intent: FixtureAuthority
   const directory = dirname(path);
   const directoryStat = lstatSync(directory, { bigint: true });
   const before = lstatSync(path, { bigint: true });
+  assertOwnedRegularFile(before);
   if (directoryStat.dev.toString() !== intent.directoryDev || directoryStat.ino.toString() !== intent.directoryIno
       || before.dev.toString() !== intent.fileDev || before.ino.toString() !== intent.fileIno) {
     throw new FixtureSecretCleanupError(basename(path));
@@ -1460,6 +1564,7 @@ function cleanupAllocatedFixtureAuthority(root: string, intent: FixtureAuthority
   let failed = false;
   try {
     const opened = fstatSync(descriptor, { bigint: true });
+    assertOwnedRegularFile(opened);
     if (opened.dev.toString() !== intent.fileDev || opened.ino.toString() !== intent.fileIno
         || !sameIdentity(opened, lstatSync(path, { bigint: true }))) throw fixtureSecretError();
     eraseDescriptor(descriptor, {});

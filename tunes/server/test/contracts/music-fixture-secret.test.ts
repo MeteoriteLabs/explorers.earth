@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { chmodSync, closeSync, constants, existsSync, fsyncSync, ftruncateSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, readdirSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync, writeSync } from "node:fs";
+import { chmodSync, closeSync, constants, existsSync, fsyncSync, ftruncateSync, linkSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, readdirSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -240,13 +240,20 @@ describe("fixture environment secret persistence", () => {
     beforePublish?: () => void;
     syncDirectory?: (path: string) => void;
     afterReferenceCommit?: () => void;
+    durableReplace?: (source: string, destination: string) => void;
   };
   type Persist = (root: string, contents: string, dependencies?: PersistenceDependencies) => string;
 
   function requiredPersist(): Persist {
     const candidate = (fixtureSecrets as unknown as { persistFixtureMusicEnvironment?: Persist }).persistFixtureMusicEnvironment;
     expect(candidate, "secure environment persistence API is required").toBeTypeOf("function");
-    return candidate!;
+    return (root, contents, dependencies = {}) => candidate!(root, contents, dependencies.rename
+      ? dependencies
+      : {
+          ...dependencies,
+          durableReplace: dependencies.durableReplace
+            ?? ((source, destination) => renameSync(source, destination)),
+        });
   }
 
   it("never follows or overwrites a precreated attacker temporary leaf", () => {
@@ -291,11 +298,11 @@ describe("fixture environment secret persistence", () => {
     if (failure === "rename") dependencies.rename = () => { throw new Error("environment-rename-sentinel"); };
 
     expect(() => requiredPersist()(root, secret, dependencies as PersistenceDependencies))
-      .toThrow(/fixture environment|publish|secure/i);
+      .toThrow(/fixture environment|publish|secure|cleanup/i);
     expect(readFileSync(destination, "utf8")).toBe(previous);
     const byte = failure === "short-write" ? 0x62 : failure === "sync" ? 0x63 : 0x64;
     const generation = join(root, ".artifacts", "music-environment-generations", `generation-${Buffer.alloc(16, byte).toString("hex")}`);
-    expect(readFileSync(generation, "utf8")).toBe("");
+    expect(!existsSync(generation) || readFileSync(generation, "utf8") === "").toBe(true);
     expect(readdirSync(root).filter((name) => name.endsWith(".tmp")).every((name) => !readFileSync(join(root, name), "utf8").includes("raw-secret-residue-sentinel"))).toBe(true);
   });
 
@@ -673,6 +680,30 @@ describe("fixture bundle rotation transaction", () => {
     const values = Object.fromEntries(contents.trim().split(/\r?\n/).map((line) => line.split("=", 2)));
     return ["MUSIC_TOKEN_SECRET_FILE_HOST", "MUSIC_DB_MIGRATOR_SECRET_FILE_HOST", "MUSIC_DB_RUNTIME_SECRET_FILE_HOST"]
       .map((key) => resolve(root, values[key]!));
+  }
+
+  function authoritySnapshot(root: string, path: string, kind: "credential" | "environment"): Record<string, unknown> {
+    const directory = lstatSync(resolve(path, ".."), { bigint: true });
+    const file = lstatSync(path, { bigint: true });
+    const bytes = readFileSync(path);
+    return {
+      kind,
+      relativePath: relative(root, path).replace(/\\/g, "/"),
+      directoryDev: directory.dev.toString(),
+      directoryIno: directory.ino.toString(),
+      fileDev: file.dev.toString(),
+      fileIno: file.ino.toString(),
+      size: bytes.length,
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+    };
+  }
+
+  function activeJournalPath(root: string): string {
+    const directory = join(root, ".artifacts", "music-rotation-journals");
+    const name = readdirSync(directory).find((candidate) => fixtureRotationJournalForTest(candidate)
+      && lstatSync(join(directory, candidate)).size > 0);
+    if (!name) throw new Error("active fixture rotation journal is required");
+    return join(directory, name);
   }
 
   it("preserves the complete prior bundle when replacement credential creation fails", () => {
@@ -1179,6 +1210,153 @@ describe("fixture bundle rotation transaction", () => {
     },
   );
 
+  it("rejects rewritten prior environment metadata that disagrees with the unchanged prior reference", () => {
+    const root = fixtureRoot();
+    rotate(root, (paths) => environment(root, paths, "prior"), authorityWithSeed(0x3a));
+    const priorReference = readFileSync(join(root, ".env.music.test"), "utf8");
+    const priorGenerationName = priorReference.match(/generation=(generation-[a-f0-9]{32})/)![1]!;
+    const priorGeneration = join(root, ".artifacts", "music-environment-generations", priorGenerationName);
+    const priorEnvironment = readFileSync(priorGeneration);
+    const priorCredentials = credentialPaths(root, priorEnvironment.toString("utf8"));
+    const priorCredentialBytes = priorCredentials.map((path) => readFileSync(path));
+    const outsideCredentials = [0, 1, 2].map((index) => {
+      const path = join(root, ".artifacts", "music-token-secrets", `current-${Buffer.alloc(16, 0xe1 + index).toString("hex")}`);
+      writeFileSync(path, Buffer.alloc(43, 0xe1 + index), { mode: 0o600 });
+      return path;
+    });
+    const outsideBytes = outsideCredentials.map((path) => readFileSync(path));
+    let journalPath = "";
+    let rewrittenBytes = Buffer.alloc(0);
+
+    expect(() => rotate(root, (paths) => environment(root, paths, "candidate"), {
+      ...authorityWithSeed(0x4a),
+      afterJournalCommit: () => {
+        journalPath = activeJournalPath(root);
+        const parsed = JSON.parse(readFileSync(journalPath, "utf8")) as {
+          prior: Array<Record<string, unknown>>;
+        };
+        const rewritten = environment(root, {
+          tokenPath: outsideCredentials[0]!,
+          migratorPasswordPath: outsideCredentials[1]!,
+          runtimePasswordPath: outsideCredentials[2]!,
+        }, "rewritten-prior");
+        rewrittenBytes = Buffer.from(rewritten);
+        writeFileSync(priorGeneration, rewritten);
+        parsed.prior = [
+          ...outsideCredentials.map((path) => authoritySnapshot(root, path, "credential")),
+          authoritySnapshot(root, priorGeneration, "environment"),
+        ];
+        writeFileSync(journalPath, JSON.stringify(parsed));
+        throw new Error("prior-reference-metadata-rewrite-sentinel");
+      },
+    })).toThrow();
+
+    expect(readFileSync(priorGeneration)).toEqual(rewrittenBytes);
+    expect(priorCredentials.map((path) => readFileSync(path))).toEqual(priorCredentialBytes);
+    expect(outsideCredentials.map((path) => readFileSync(path))).toEqual(outsideBytes);
+    expect(lstatSync(journalPath).size).toBeGreaterThan(0);
+  });
+
+  it("rejects unbound three-credential legacy recovery redirected to unrelated authority", () => {
+    const root = fixtureRoot();
+    rotate(root, (paths) => environment(root, paths, "prior"), authorityWithSeed(0x3b));
+    const priorReference = readFileSync(join(root, ".env.music.test"));
+    const prior = fixtureSecrets.readFixtureMusicEnvironment(root);
+    const priorCredentials = credentialPaths(root, prior);
+    const priorBytes = priorCredentials.map((path) => readFileSync(path));
+    const outsideCredentials = [0, 1, 2].map((index) => {
+      const path = join(root, ".artifacts", "music-token-secrets", `current-${Buffer.alloc(16, 0xd1 + index).toString("hex")}`);
+      writeFileSync(path, Buffer.alloc(43, 0xd1 + index), { mode: 0o600 });
+      return path;
+    });
+    const outsideBytes = outsideCredentials.map((path) => readFileSync(path));
+    let journalPath = "";
+    let committedPointer = Buffer.alloc(0);
+
+    expect(() => rotate(root, (paths) => environment(root, paths, "candidate"), {
+      ...authorityWithSeed(0x4b),
+      afterJournalCommit: () => {
+        committedPointer = readFileSync(join(root, ".env.music.test"));
+        journalPath = activeJournalPath(root);
+        const parsed = JSON.parse(readFileSync(journalPath, "utf8")) as {
+          prior: Array<Record<string, unknown>>;
+        };
+        parsed.prior = outsideCredentials.map((path) => authoritySnapshot(root, path, "credential"));
+        writeFileSync(journalPath, JSON.stringify(parsed));
+        throw new Error("legacy-prior-redirection-sentinel");
+      },
+    })).toThrow();
+
+    expect(committedPointer).not.toEqual(priorReference);
+    expect(readFileSync(join(root, ".env.music.test"))).toEqual(committedPointer);
+    expect(priorCredentials.map((path) => readFileSync(path))).toEqual(priorBytes);
+    expect(outsideCredentials.map((path) => readFileSync(path))).toEqual(outsideBytes);
+    expect(lstatSync(journalPath).size).toBeGreaterThan(0);
+  });
+
+  it("rejects candidate and prior path aliases that share one native file identity", () => {
+    const root = fixtureRoot();
+    rotate(root, (paths) => environment(root, paths, "prior"), authorityWithSeed(0x3c));
+    const prior = fixtureSecrets.readFixtureMusicEnvironment(root);
+    const priorCredentials = credentialPaths(root, prior);
+    const priorBytes = priorCredentials.map((path) => readFileSync(path));
+    let candidateCredential = "";
+    let displacedCandidate = "";
+    let journalPath = "";
+
+    expect(() => rotate(root, (paths) => {
+      candidateCredential = paths.tokenPath;
+      displacedCandidate = join(root, "displaced-candidate-identity");
+      return environment(root, paths, "candidate");
+    }, {
+      ...authorityWithSeed(0x4c),
+      afterJournalCommit: () => {
+        renameSync(candidateCredential, displacedCandidate);
+        linkSync(priorCredentials[0]!, candidateCredential);
+        journalPath = activeJournalPath(root);
+        const parsed = JSON.parse(readFileSync(journalPath, "utf8")) as {
+          candidate: Array<Record<string, unknown>>;
+        };
+        parsed.candidate[0] = {
+          ...authoritySnapshot(root, candidateCredential, "credential"),
+          role: "token",
+          state: "complete",
+        };
+        writeFileSync(journalPath, JSON.stringify(parsed));
+        throw new Error("candidate-prior-inode-alias-sentinel");
+      },
+    })).toThrow();
+
+    expect(priorCredentials.map((path) => readFileSync(path))).toEqual(priorBytes);
+    expect(readFileSync(candidateCredential)).toEqual(priorBytes[0]);
+    expect(lstatSync(journalPath).size).toBeGreaterThan(0);
+  });
+
+  it("does not truncate an unrelated hard-link from a journal-bound allocated candidate", () => {
+    const root = fixtureRoot();
+    rotate(root, (paths) => environment(root, paths, "prior"), authorityWithSeed(0x3d));
+    const priorPointer = readFileSync(join(root, ".env.music.test"));
+    const outside = join(root, "unrelated-hard-link");
+    const outsideBytes = Buffer.from("unrelated-hard-link-must-remain");
+    let journalPath = "";
+
+    expect(() => rotate(root, (paths) => environment(root, paths, "candidate"), {
+      ...authorityWithSeed(0x4d),
+      afterCandidateAllocatedBeforeWrite: (_kind, index) => {
+        if (index !== 0) return;
+        const candidate = rotationCredentialPath(root, 0x4d, "token");
+        linkSync(candidate, outside);
+        writeFileSync(outside, outsideBytes);
+        journalPath = activeJournalPath(root);
+        throw new Error("allocated-hard-link-sentinel");
+      },
+    })).toThrow();
+
+    expect(readFileSync(join(root, ".env.music.test"))).toEqual(priorPointer);
+    expect(readFileSync(outside)).toEqual(outsideBytes);
+    expect(lstatSync(journalPath).size).toBeGreaterThan(0);
+  });
+
   it.each([0, 1, 2, 3])("recovers a hard exit during candidate %s write using its journal-bound inode", (candidateIndex) => {
     const root = fixtureRoot();
     rotate(root, (paths) => environment(root, paths, "prior"), authorityWithSeed(0x8a));
@@ -1318,6 +1496,172 @@ describe("fixture bundle rotation transaction", () => {
     expect(readFileSync(failingDestination, "utf8")).toBe("retained");
   }, 20_000);
 
+  it("does not accept a successful helper status unless the exact validated source identity committed", () => {
+    if (process.platform !== "win32") return;
+    const root = fixtureRoot();
+    const source = join(root, "validated-source.tmp");
+    const destination = join(root, "prior-authority.ref");
+    const expected = Buffer.from("expected-new-authority");
+    const prior = Buffer.from("prior-authority-must-remain");
+    writeFileSync(source, expected, { mode: 0o600 });
+    writeFileSync(destination, prior, { mode: 0o600 });
+
+    expect(() => fixtureSecrets.replaceFixtureMetadataDurably(source, destination, {
+      platform: "win32",
+      runWindowsHelper: () => ({ status: 0 }),
+    })).toThrow(/fixture environment/i);
+
+    expect(readFileSync(destination)).toEqual(prior);
+    expect(readFileSync(source)).toEqual(expected);
+  });
+
+  it("makes the real Windows helper reject a source swap inside the native identity boundary", () => {
+    if (process.platform !== "win32") return;
+    const root = fixtureRoot();
+    const source = join(root, "real-source-swap.tmp");
+    const destination = join(root, "real-source-swap.ref");
+    const parked = join(root, "real-source-swap.parked");
+    const expected = Buffer.from("real-expected-source");
+    const prior = Buffer.from("real-prior-destination");
+    const attacker = Buffer.from("real-attacker-source");
+    writeFileSync(source, expected, { mode: 0o600 });
+    writeFileSync(destination, prior, { mode: 0o600 });
+
+    expect(() => fixtureSecrets.replaceFixtureMetadataDurably(source, destination, {
+      beforeWindowsReplace: () => {
+        renameSync(source, parked);
+        writeFileSync(source, attacker, { mode: 0o600 });
+      },
+    } as fixtureSecrets.FixtureDurableReplaceDependencies & { beforeWindowsReplace: () => void })).toThrow(/fixture environment/i);
+
+    expect(readFileSync(destination)).toEqual(prior);
+    expect(readFileSync(parked)).toEqual(expected);
+    expect(readFileSync(source)).toEqual(attacker);
+  }, 20_000);
+
+  it("makes the real Windows helper reject a same-inode source rewrite before rename", () => {
+    if (process.platform !== "win32") return;
+    const root = fixtureRoot();
+    const source = join(root, "real-rewrite.tmp");
+    const destination = join(root, "real-rewrite.ref");
+    const expected = Buffer.from("expected-source-bytes");
+    const attacker = Buffer.from("attacker-source-bytes");
+    const prior = Buffer.from("prior-destination");
+    expect(attacker.length).toBe(expected.length);
+    writeFileSync(source, expected, { mode: 0o600 });
+    writeFileSync(destination, prior, { mode: 0o600 });
+
+    expect(() => fixtureSecrets.replaceFixtureMetadataDurably(source, destination, {
+      beforeWindowsReplace: () => writeFileSync(source, attacker),
+    } as fixtureSecrets.FixtureDurableReplaceDependencies & { beforeWindowsReplace: () => void })).toThrow(/fixture environment/i);
+
+    expect(readFileSync(destination)).toEqual(prior);
+    expect(readFileSync(source)).toEqual(attacker);
+  }, 20_000);
+
+  it("makes the real Windows helper reject a destination swap without touching either identity", () => {
+    if (process.platform !== "win32") return;
+    const root = fixtureRoot();
+    const source = join(root, "real-destination-swap.tmp");
+    const destination = join(root, "real-destination-swap.ref");
+    const parked = join(root, "real-destination-swap.parked");
+    const expected = Buffer.from("expected-new-destination");
+    const prior = Buffer.from("prior-destination-identity");
+    const attacker = Buffer.from("attacker-destination-identity");
+    writeFileSync(source, expected, { mode: 0o600 });
+    writeFileSync(destination, prior, { mode: 0o600 });
+
+    expect(() => fixtureSecrets.replaceFixtureMetadataDurably(source, destination, {
+      beforeWindowsReplace: () => {
+        renameSync(destination, parked);
+        writeFileSync(destination, attacker, { mode: 0o600 });
+      },
+    } as fixtureSecrets.FixtureDurableReplaceDependencies & { beforeWindowsReplace: () => void })).toThrow(/fixture environment/i);
+
+    expect(readFileSync(source)).toEqual(expected);
+    expect(readFileSync(destination)).toEqual(attacker);
+    expect(readFileSync(parked)).toEqual(prior);
+  }, 20_000);
+
+  it("makes the real Windows helper reject an ancestor junction swap without touching outside files", () => {
+    if (process.platform !== "win32") return;
+    const container = fixtureRoot();
+    const authority = join(container, "authority");
+    const parkedAuthority = join(container, "authority-parked");
+    const outside = join(container, "outside");
+    mkdirSync(authority);
+    mkdirSync(outside);
+    const source = join(authority, "junction-source.tmp");
+    const destination = join(authority, "junction-destination.ref");
+    const outsideSource = join(outside, "junction-source.tmp");
+    const outsideDestination = join(outside, "junction-destination.ref");
+    writeFileSync(source, "owned-source", { mode: 0o600 });
+    writeFileSync(destination, "owned-prior", { mode: 0o600 });
+    writeFileSync(outsideSource, "outside-source", { mode: 0o600 });
+    writeFileSync(outsideDestination, "outside-destination", { mode: 0o600 });
+    let swapped = false;
+    try {
+      expect(() => fixtureSecrets.replaceFixtureMetadataDurably(source, destination, {
+        beforeWindowsReplace: () => {
+          renameSync(authority, parkedAuthority);
+          symlinkSync(outside, authority, "junction");
+          swapped = true;
+        },
+      } as fixtureSecrets.FixtureDurableReplaceDependencies & { beforeWindowsReplace: () => void })).toThrow(/fixture environment/i);
+      expect(swapped).toBe(true);
+      expect(readFileSync(join(parkedAuthority, "junction-source.tmp"), "utf8")).toBe("owned-source");
+      expect(readFileSync(join(parkedAuthority, "junction-destination.ref"), "utf8")).toBe("owned-prior");
+      expect(readFileSync(outsideSource, "utf8")).toBe("outside-source");
+      expect(readFileSync(outsideDestination, "utf8")).toBe("outside-destination");
+    } finally {
+      if (swapped) unlinkSync(authority);
+    }
+  }, 20_000);
+
+  it("reconciles an injected Windows helper error after the exact source identity committed", () => {
+    if (process.platform !== "win32") return;
+    const root = fixtureRoot();
+    const source = join(root, "committed-uncertain.tmp");
+    const destination = join(root, "committed-uncertain.ref");
+    const expected = Buffer.from("committed-source-identity");
+    writeFileSync(source, expected, { mode: 0o600 });
+    writeFileSync(destination, "prior", { mode: 0o600 });
+
+    expect(() => fixtureSecrets.replaceFixtureMetadataDurably(source, destination, {
+      platform: "win32",
+      runWindowsHelper: (validatedSource, validatedDestination) => {
+        const helper = resolve("scripts/windows-write-through.ps1");
+        const inspect = (path: string) => {
+          const result = spawnSync("powershell.exe", [
+            "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+            "-File", helper, "inspect", path,
+          ], { encoding: "utf8", windowsHide: true, timeout: 15_000 });
+          expect(result.status, result.stderr).toBe(0);
+          return JSON.parse(result.stdout) as fixtureSecrets.FixtureWindowsNativeIdentity;
+        };
+        const sourceIdentity = inspect(validatedSource);
+        const parentIdentity = inspect(resolve(validatedSource, ".."));
+        const destinationIdentity = inspect(validatedDestination);
+        const encode = (identity: fixtureSecrets.FixtureWindowsNativeIdentity, content: boolean) => [
+          identity.volumeSerial, identity.fileId, String(identity.attributes), String(identity.linkCount),
+          ...(content ? [String(identity.size), identity.sha256] : []),
+        ];
+        const result = spawnSync("powershell.exe", [
+          "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+          "-File", helper, "replace", validatedSource, validatedDestination,
+          ...encode(sourceIdentity, true), ...encode(parentIdentity, false), "1",
+          ...encode(destinationIdentity, true),
+        ], { encoding: "utf8", windowsHide: true, timeout: 15_000 });
+        expect(result.status, result.stderr).toBe(0);
+        // Model loss of the successful helper exit status after the real
+        // handle-bound commit; the caller must reconcile exact identity.
+        return { status: 19 };
+      },
+    })).not.toThrow();
+    expect(existsSync(source)).toBe(false);
+    expect(readFileSync(destination)).toEqual(expected);
+  });
+
   it.each([0, 1, 2, 3])("recovers a hard exit after candidate %s creation but before journal update", (candidateIndex) => {
     const root = fixtureRoot();
     rotate(root, (paths) => environment(root, paths, "prior"), authorityWithSeed(0x91));
@@ -1328,6 +1672,7 @@ describe("fixture bundle rotation transaction", () => {
     const moduleUrl = pathToFileURL(resolve("scripts/music-fixture-secret.ts")).href;
     const seed = 0xa1 + candidateIndex * 4;
     const script = `
+      import { renameSync } from 'node:fs';
       import { rotateFixtureMusicAuthority } from ${JSON.stringify(moduleUrl)};
       const root = process.env.MUSIC_CRASH_ROOT;
       const candidateIndex = Number(process.env.MUSIC_CRASH_INDEX);
@@ -1339,6 +1684,7 @@ describe("fixture bundle rotation transaction", () => {
         + 'MUSIC_DB_RUNTIME_SECRET_FILE_HOST=' + rel(paths.runtimePasswordPath) + '\\nROTATION_LABEL=crash\\n', {
           credentialNameBytes: (index) => Buffer.alloc(16, seed + index),
           credentialSecretBytes: (index) => Buffer.alloc(32, seed + index),
+          durableReplace: (source, destination) => renameSync(source, destination),
           persistence: { randomNameBytes: () => Buffer.alloc(16, seed + 3) },
           afterCandidateCreatedBeforeJournalUpdate: (_kind, index) => {
             if (index === candidateIndex) process.exit(86);
@@ -1432,6 +1778,7 @@ describe("fixture bundle rotation transaction", () => {
       const priorCredentials = credentialPaths(root, prior);
       const moduleUrl = pathToFileURL(resolve("scripts/music-fixture-secret.ts")).href;
       const script = `
+        import { renameSync } from 'node:fs';
         import { rotateFixtureMusicAuthority } from ${JSON.stringify(moduleUrl)};
         const root = process.env.MUSIC_CRASH_ROOT;
         const phase = process.env.MUSIC_CRASH_PHASE;
@@ -1442,6 +1789,7 @@ describe("fixture bundle rotation transaction", () => {
           + 'MUSIC_DB_RUNTIME_SECRET_FILE_HOST=' + rel(paths.runtimePasswordPath) + '\\nROTATION_LABEL=recovered-new\\n', {
             credentialNameBytes: (index) => Buffer.alloc(16, 0x25 + index),
             credentialSecretBytes: (index) => Buffer.alloc(32, 0x25 + index),
+            durableReplace: (source, destination) => renameSync(source, destination),
             persistence: {
               randomNameBytes: () => Buffer.alloc(16, 0x28),
               afterReferenceRename: () => { if (phase === 'pointer-renamed') process.exit(87); },
