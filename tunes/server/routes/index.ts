@@ -23,8 +23,22 @@ import { MusicDomainRepository } from "../repositories/musicDomainRepository";
 import { createYouTubeReadService } from "../services/youtubeReadService";
 import { setupCanonicalMusicRoutes, setupMusicSurfaceBoundary } from "./musicSurfaceRoutes";
 import { setupMusicOpenApiRoutes } from "./musicOpenApiRoutes";
+import { MusicLifecycleService } from "../services/musicLifecycleService";
+import { MusicOwnerSocketRegistry } from "../socket/musicSocketServer";
+import {
+  runMusicLifecycleWorkerOnce,
+  startMusicLifecycleWorker,
+  type AuthoritativeAbsence,
+} from "../workers/musicLifecycleWorker";
 
-export function registerRoutes(app: Express, _storage: IStorage, musicConfig: MusicIdentityRuntimeConfig): Server {
+export function registerRoutes(
+  app: Express,
+  _storage: IStorage,
+  musicConfig: MusicIdentityRuntimeConfig,
+  lifecycleAbsenceProof: {
+    proveAbsence(identity: { userDocumentId: string; accountDocumentId: string }): Promise<AuthoritativeAbsence>;
+  },
+): Server {
   if (process.env.MUSIC_DEPLOYMENT_HEALTH_ENABLED === "true") {
     setupMusicHealthRoutes(app, { pool });
   }
@@ -53,10 +67,19 @@ export function registerRoutes(app: Express, _storage: IStorage, musicConfig: Mu
   const identityProjection = new MusicProjectionService(identityGateway, identityRepository, musicConfig.maxInflight);
   const musicTokens = new MusicTokenService(musicConfig.musicToken);
   const musicPrincipals = new MusicPrincipalService(musicTokens, identityRepository);
+  const ownerSocketRegistry = new MusicOwnerSocketRegistry();
+  const lifecycle = new MusicLifecycleService(identityGateway, identityRepository, {
+    disconnectOwner: (musicUserId) => ownerSocketRegistry.disconnectOwner(musicUserId),
+  });
   setupMusicIdentityRoutes(app, {
     ensure: (proof, requestId) => identityProjection.ensure(proof, requestId),
     mintCredential: (identity) => musicTokens.mint(identity),
     resolvePrincipal: (token) => musicPrincipals.resolve(token),
+    lifecycle,
+    isMusicCredential: (token) => {
+      try { musicTokens.verify(token); return true; }
+      catch { return false; }
+    },
     entryEnabled: () => resolveMusicEntryPolicy({
       killSwitch: process.env.MUSIC_NEW_ENTRY_KILL_SWITCH !== "false",
       cohortEnabled: process.env.MUSIC_COHORT_ENABLED === "true",
@@ -90,8 +113,23 @@ export function registerRoutes(app: Express, _storage: IStorage, musicConfig: Mu
     allowedOrigins: canonicalDependencies.allowedOrigins,
     ownerCredentials: createMusicSocketCredentialVerifier(musicPrincipals),
     resolveGuestCapability: (capability) => musicDomain.resolveGuestSocketAuthority(capability),
+    ownerRegistry: ownerSocketRegistry,
   });
   setupSeoRoutes(app, { listPublishedMusicPlaylists: () => musicDomain.listPublishedMusicPlaylists() });
+  const lifecycleWorker = startMusicLifecycleWorker({
+    intervalMs: 30_000,
+    onError: () => console.error("music_lifecycle_worker_failed"),
+    runOnce: async () => {
+      const result = await runMusicLifecycleWorkerOnce({
+        repository: identityRepository,
+        proveAbsence: (identity) => lifecycleAbsenceProof.proveAbsence(identity),
+        maxAttempts: 5,
+        batchSize: 10,
+      });
+      if (result.claimed > 0) console.info("music_lifecycle_worker", result);
+    },
+  });
+  server.once("close", () => lifecycleWorker.stop());
 
   // iTunes Search Proxy
   app.get("/itunes-api/search", async (req, res) => {

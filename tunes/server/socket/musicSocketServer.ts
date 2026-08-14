@@ -10,6 +10,22 @@ interface OwnerCredentialVerifier {
   recheck(context: MusicSocketCredentialContext): Promise<MusicPrincipal>;
 }
 
+export class MusicOwnerSocketRegistry {
+  private disconnect: ((musicUserId: number) => Promise<void>) | undefined;
+
+  bind(disconnect: (musicUserId: number) => Promise<void>): void {
+    if (this.disconnect) throw new Error("Music owner socket registry is already bound");
+    this.disconnect = disconnect;
+  }
+
+  async disconnectOwner(musicUserId: number): Promise<void> {
+    if (!Number.isSafeInteger(musicUserId) || musicUserId < 1 || !this.disconnect) {
+      throw new Error("Music owner socket registry is unavailable");
+    }
+    await this.disconnect(musicUserId);
+  }
+}
+
 export interface MusicSocketDependencies {
   allowedOrigins: string[];
   ownerCredentials: OwnerCredentialVerifier;
@@ -20,6 +36,7 @@ export interface MusicSocketDependencies {
   } | undefined>;
   eventLimit?: number;
   eventWindowMs?: number;
+  ownerRegistry?: MusicOwnerSocketRegistry;
 }
 
 type SocketAuthority =
@@ -37,6 +54,16 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
       const origin = request.headers.origin;
       callback(origin && dependencies.allowedOrigins.includes(origin) ? undefined : "origin not allowed", !!origin && dependencies.allowedOrigins.includes(origin));
     },
+  });
+  dependencies.ownerRegistry?.bind(async (musicUserId) => {
+    const sockets = await io.in(`music-owner:${musicUserId}`).fetchSockets();
+    await Promise.all(sockets.map(async (socket) => {
+      socket.emit("music_error", musicErrorEnvelope(
+        new MusicIdentityError("TOKEN_REVOKED", 401, "The Music credential has been revoked.", "authenticate", false),
+        randomUUID(),
+      ));
+      socket.disconnect(true);
+    }));
   });
   const limiter = new Map<string, { count: number; resetAt: number }>();
   const eventLimit = dependencies.eventLimit ?? 10;

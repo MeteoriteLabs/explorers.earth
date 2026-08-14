@@ -15,6 +15,7 @@ import {
   type MusicPrincipal,
 } from "../middleware/musicPrincipal";
 import type { MintedMusicToken } from "../services/musicTokenService";
+import type { MusicLifecycleService, MusicLifecycleStatus } from "../services/musicLifecycleService";
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
 const BEARER_PATTERN = /^Bearer ([A-Za-z0-9._~-]{16,4096})$/;
@@ -33,6 +34,8 @@ export interface MusicIdentityRouteDependencies {
   ensure: (proof: string, requestId: string) => Promise<MusicIdentityProjection>;
   mintCredential: (identity: MusicIdentityProjection) => MintedMusicToken;
   resolvePrincipal: (token: string) => Promise<MusicPrincipal>;
+  lifecycle?: Pick<MusicLifecycleService, "prepareDeletion" | "status" | "markDeletionBoundary" | "cancelDeletion">;
+  isMusicCredential?: (token: string) => boolean;
   limiter: BoundedIdentityRateLimiter;
   logger?: (entry: Record<string, unknown>) => void;
   fingerprint?: (proof: string) => string;
@@ -63,7 +66,7 @@ export interface MusicIdentityRouteDependencies {
 /** Reject bytes before the global JSON/urlencoded parsers can inspect them. */
 export function setupMusicIdentityBodylessPreflight(app: Express): void {
   app.use((req, res, next) => {
-    if (req.method !== "POST" || !/^\/api\/music\/identity\/ensure$/.test(req.path)) return next();
+    if (req.method !== "POST" || !/^\/api\/music\/identity\/(?:ensure|lifecycle\/(?:prepare|boundary|cancel))$/.test(req.path)) return next();
     const contentLength = req.get("content-length");
     if ((!contentLength || contentLength === "0") && !req.get("transfer-encoding")) return next();
     const requestId = validRequestId(req.get("x-request-id")) ?? randomUUID();
@@ -150,6 +153,52 @@ export function setupMusicIdentityRoutes(app: Express, dependencies: MusicIdenti
     }
   });
 
+  if (dependencies.lifecycle) {
+    const lifecycle = dependencies.lifecycle;
+    const lifecycleHandler = (
+      action: "prepare" | "status" | "boundary" | "cancel",
+      operation: (proof: string, requestId: string) => Promise<MusicLifecycleStatus>,
+    ) => async (req: Request, res: Response) => {
+        const requestId = validRequestId(req.get("x-request-id")) ?? requestIdFactory();
+        res.setHeader("X-Request-Id", requestId);
+        let status = 500;
+        let outcome = "internal_error";
+        try {
+          assertBodylessLifecycleRequest(req);
+          const proof = strictBearer(req);
+          if (dependencies.isMusicCredential?.(proof)) {
+            throw new MusicIdentityError("AUTH_INVALID", 401, "An Explorer bearer proof is required.", "authenticate", false);
+          }
+          if (action === "prepare" && dependencies.entryEnabled?.() === false) {
+            throw new MusicIdentityError("ENTRY_DISABLED", 503, "Music identity entry is temporarily disabled.", "retry", true, 60);
+          }
+          const peerAddress = req.socket.remoteAddress;
+          const source = dependencies.trustedProxyHops === 1 && dependencies.isTrustedProxy?.(peerAddress)
+            ? (req.ip ?? peerAddress ?? "unknown") : (peerAddress ?? "unknown");
+          const rate = dependencies.limiter.check(source, fingerprint(proof));
+          if (!rate.allowed) {
+            throw new MusicIdentityError("RATE_LIMITED", 429, "Too many Music lifecycle attempts.", "retry", true, rate.retryAfterSeconds ?? 1);
+          }
+          const value = await operation(proof, requestId);
+          status = 200;
+          outcome = value.deadLetter ? "dead_letter" : value.state;
+          return res.status(200).json(lifecycleEnvelope(value));
+        } catch (cause) {
+          const error = safeError(cause);
+          status = error.status;
+          outcome = safeOutcome(error);
+          if (status === 429 || status === 503) res.setHeader("Retry-After", String(error.retryAfterSeconds ?? 1));
+          return res.status(status).json(musicErrorEnvelope(error, requestId));
+        } finally {
+          logger({ event: `music_lifecycle_${action}`, requestId, outcome, status });
+        }
+    };
+    app.post("/api/music/identity/lifecycle/prepare", lifecycleHandler("prepare", (proof, requestId) => lifecycle.prepareDeletion(proof, requestId)));
+    app.get("/api/music/identity/lifecycle/status", lifecycleHandler("status", (proof, requestId) => lifecycle.status(proof, requestId)));
+    app.post("/api/music/identity/lifecycle/boundary", lifecycleHandler("boundary", (proof, requestId) => lifecycle.markDeletionBoundary(proof, requestId)));
+    app.post("/api/music/identity/lifecycle/cancel", lifecycleHandler("cancel", (proof, requestId) => lifecycle.cancelDeletion(proof, requestId)));
+  }
+
   const principalMiddleware = createMusicPrincipalMiddleware(dependencies.resolvePrincipal);
   app.get(
     "/api/music/identity/current",
@@ -198,6 +247,29 @@ function assertBodylessOwnershipRequest(req: Request): void {
   if (Object.keys(req.query).length > 0 || OWNER_HEADERS.some((header) => req.get(header) !== undefined)) {
     throw invalidRequest();
   }
+}
+
+function assertBodylessLifecycleRequest(req: Request): void {
+  const contentLength = req.get("content-length");
+  if ((contentLength && contentLength !== "0") || req.get("transfer-encoding")
+      || Object.keys(req.query).length > 0 || OWNER_HEADERS.some((header) => req.get(header) !== undefined)) {
+    throw new MusicIdentityError("REQUEST_INVALID", 400, "Music lifecycle requests must be bodyless and contain no owner input.", "none", false);
+  }
+}
+
+function lifecycleEnvelope(value: MusicLifecycleStatus) {
+  return {
+    version: "music-lifecycle/v1" as const,
+    operation: {
+      operationId: value.operationId,
+      status: value.identityStatus,
+      phase: value.phase,
+      state: value.state,
+      boundaryCrossed: value.boundaryCrossed,
+      retryable: value.retryable,
+      deadLetter: value.deadLetter,
+    },
+  };
 }
 
 function invalidRequest(): MusicIdentityError {

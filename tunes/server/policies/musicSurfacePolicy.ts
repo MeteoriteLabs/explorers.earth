@@ -102,7 +102,7 @@ const OWNER_PREFIXES = [
 export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "path" | "classification">): MusicSurfaceDecision {
   if (route.classification === "admin-tombstone") return "admin-tombstone";
   if (route.classification === "tombstone") return "tombstone";
-  if (route.path === "/api/music/identity/ensure") return "strapi-identity";
+  if (route.path === "/api/music/identity/ensure" || route.path.startsWith("/api/music/identity/lifecycle/")) return "strapi-identity";
   if (route.path === "/api/music/identity/current") return "owner";
   if (route.path === "/api/music/entitlement" || route.path === "/api/music/dashboard") return "owner";
   if (route.path === "/api/playlist/:guestUrl") return "guest";
@@ -140,6 +140,7 @@ function allowedFor(decision: MusicSurfaceDecision) {
 export function authorizationMatrixFromInventory(inventory: {
   routes: RuntimeRouteSurface[];
   events: RuntimeEventSurface[];
+  jobs?: Array<{ kind: string; lifecycle: string; source: string; line: number }>;
   retirementMatchers?: Array<{
     family: string;
     path: string;
@@ -164,6 +165,11 @@ export function authorizationMatrixFromInventory(inventory: {
           : event.event === "player_state" ? "owner" : "tombstone";
       return { direction: event.direction, event: event.event, source: event.source, decision, allowed: allowedFor(decision) };
     }),
+    jobs: (inventory.jobs ?? []).map(({ line: _line, ...job }) => ({
+      ...job,
+      decision: "internal-service" as const,
+      allowed: { internalService: true, browser: false, public: false },
+    })),
     retirementMatchers: (inventory.retirementMatchers ?? []).map((rule) => ({
       ...rule,
       decision: rule.classification,

@@ -27,6 +27,12 @@ import { useTranslation } from "react-i18next";
 import LanguageSelector, { LANGUAGES } from "./components/LanguageSelector";
 import ConnectedAccounts from "./components/ConnectedAccounts";
 import { getPublicCategoryListCountsQuery } from "../PublicHome/api/query";
+import {
+  AccountLifecycleError,
+  createAccountLifecycleService,
+  type AccountLifecycleStatus,
+} from "../../services/accountLifecycleService";
+import AccountDeletionLifecyclePanel from "./components/AccountDeletionLifecyclePanel";
 
 
 const providerQuery = gql`
@@ -79,6 +85,7 @@ const Settings = memo(() => {
   const [deleteConfirmation, setDeleteConfirmation] = useState<string>("");
   const [deleteAccountLoading, setDeleteAccountLoading] =
     useState<boolean>(false);
+  const [deletionLifecycle, setDeletionLifecycle] = useState<AccountLifecycleStatus["operation"] | null>(null);
   // Password visibility states for delete account modal
   const [deletePasswordVisible, setDeletePasswordVisible] = useState<boolean>(false);
   const [deletePasswordConfirmVisible, setDeletePasswordConfirmVisible] = useState<boolean>(false);
@@ -162,6 +169,38 @@ const Settings = memo(() => {
 
   const [deleteAccount] = useMutation(deleteAccountMutation);
   const { t, i18n } = useTranslation();
+  const accountLifecycle = useMemo(() => createAccountLifecycleService({
+    baseUrl: import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth",
+    getBearer: () => useAuthStore.getState().token ?? undefined,
+  }), []);
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    const refresh = async () => {
+      try {
+        const result = await accountLifecycle.status();
+        if (!active) return;
+        setDeletionLifecycle(result.operation);
+        if (result.operation.status === "pending_deletion") {
+          setShowDeleteAccountModal(true);
+          setDeleteStep(4);
+        }
+      } catch (error) {
+        if (error instanceof AccountLifecycleError
+            && ["LIFECYCLE_NOT_FOUND", "AUTH_REQUIRED", "AUTH_INVALID"].includes(error.code)) return;
+      }
+    };
+    void refresh();
+    const onVisibility = () => { if (document.visibilityState === "visible") void refresh(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", refresh);
+    return () => {
+      active = false;
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [accountLifecycle, user]);
 
   // Helper to get the current language and handle settings search matching
   const currentLanguage = LANGUAGES.find((lang) => lang.code === i18n.language) || LANGUAGES[0];
@@ -680,11 +719,7 @@ const Settings = memo(() => {
       }
 
       // Proceed with account deletion
-      if (
-        !accountData ||
-        !accountData.accounts ||
-        !accountData.accounts[0]?.documentId
-      ) {
+      if (!currentAccount?.documentId && !accountData?.accounts?.[0]?.documentId) {
         toast.error(
           t("settings.account.changePassword.accountDocumentIdNotFound")
         );
@@ -692,38 +727,7 @@ const Settings = memo(() => {
         return;
       }
 
-      await deleteAccount({
-        variables: {
-          deleteUsersPermissionsUserId: user?.id,
-          filters: {
-            documentId: {
-              eq: user?.documentId,
-            },
-          },
-          deleteAccountDocumentId2: accountData.accounts[0].documentId,
-          documentId: user?.documentId,
-        },
-      });
-      toast.success(t("settings.account.deleteAccount.step4.successMessage"));
-      setShowDeleteAccountModal(false);
-      setDeleteStep(1);
-
-      // Clear all storage on account deletion
-      logout();
-
-      localStorage.removeItem("auth-storage");
-      localStorage.removeItem("qrtoken");
-      localStorage.removeItem("localTunes_session");
-      sessionStorage.removeItem("explorers_user_credentials");
-      localStorage.clear();
-      sessionStorage.clear();
-
-      // Clear all cookies
-      document.cookie.split(";").forEach(function (c) {
-        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-      });
-
-      navigate("/login");
+      await performDurableAccountDeletion();
     } catch (error) {
       console.error(error);
       // Check if it's a login error (invalid password) - only for manual auth users
@@ -732,6 +736,68 @@ const Settings = memo(() => {
       } else {
         toast.error(t("settings.account.changePassword.deleteAccountFailed"));
       }
+    } finally {
+      setDeleteAccountLoading(false);
+    }
+  };
+
+  const clearDeletedAccountAuth = () => {
+    logout();
+    localStorage.removeItem("auth-storage");
+    localStorage.removeItem("qrtoken");
+    localStorage.removeItem("localTunes_session");
+    sessionStorage.removeItem("explorers_user_credentials");
+    localStorage.clear();
+    sessionStorage.clear();
+    document.cookie.split(";").forEach((cookie) => {
+      document.cookie = cookie.replace(/^ +/, "").replace(/=.*/, `=;expires=${new Date().toUTCString()};path=/`);
+    });
+    navigate("/login");
+  };
+
+  const performDurableAccountDeletion = async () => {
+    const accountDocumentId = currentAccount?.documentId ?? accountData?.accounts?.[0]?.documentId;
+    if (!accountDocumentId) {
+      throw new AccountLifecycleError("REQUEST_INVALID", 400, t("settings.account.changePassword.accountDocumentIdNotFound"), false);
+    }
+    await accountLifecycle.deleteAccount({
+      upstreamDelete: async () => {
+        await deleteAccount({
+          variables: {
+            deleteUsersPermissionsUserId: user?.id,
+            filters: { documentId: { eq: user?.documentId } },
+            deleteAccountDocumentId2: accountDocumentId,
+            documentId: user?.documentId,
+          },
+        });
+      },
+      clearAuth: clearDeletedAccountAuth,
+    });
+    toast.success(t("settings.account.deleteAccount.step4.successMessage"));
+  };
+
+  const cancelDurableDeletion = async () => {
+    setDeleteAccountLoading(true);
+    try {
+      const result = await accountLifecycle.cancel();
+      setDeletionLifecycle(result.operation);
+      setShowDeleteAccountModal(false);
+      setDeleteStep(1);
+      toast.success("Account deletion was cancelled. Music remains paused until reactivation.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Account deletion could not be cancelled.");
+    } finally {
+      setDeleteAccountLoading(false);
+    }
+  };
+
+  const retryDurableDeletion = async () => {
+    setDeleteAccountLoading(true);
+    try {
+      await performDurableAccountDeletion();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Account deletion could not be resumed.");
+      try { setDeletionLifecycle((await accountLifecycle.status()).operation); } catch { /* keep the last durable view */ }
     } finally {
       setDeleteAccountLoading(false);
     }
@@ -1680,6 +1746,13 @@ const Settings = memo(() => {
                   disabled={deleteAccountLoading}
                 />
               </div>
+              {deletionLifecycle && (
+                <AccountDeletionLifecyclePanel
+                  status={deletionLifecycle}
+                  onCancel={() => void cancelDurableDeletion()}
+                  onRetry={() => void retryDurableDeletion()}
+                />
+              )}
             </div>
           </Modal>
         )

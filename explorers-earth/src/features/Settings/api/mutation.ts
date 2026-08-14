@@ -36,6 +36,9 @@ export const deleteAccountMutation = gql`
     deleteRecommendationList(documentId: $documentId) {
       documentId
     }
+    deleteAccount(documentId: $deleteAccountDocumentId2) {
+      documentId
+    }
     deleteUsersPermissionsUser(id: $deleteUsersPermissionsUserId) {
       data {
         accounts(filters: $filters) {
@@ -46,9 +49,6 @@ export const deleteAccountMutation = gql`
           Addresss
         }
       }
-    }
-    deleteAccount(documentId: $deleteAccountDocumentId2) {
-      documentId
     }
   }
 `;

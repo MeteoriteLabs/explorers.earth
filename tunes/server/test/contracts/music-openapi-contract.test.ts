@@ -69,7 +69,9 @@ describe("Music OpenAPI 3.1 executable contract", () => {
 
   it("documents C5, origin, guest header, publication, and entitlement semantics", () => {
     for (const { method, path, operation } of operations()) {
-      const isOwner = !path.includes("/identity/ensure") && !path.includes("{guestUrl}") && path !== "/api-docs";
+      const isIdentityBoundary = path.includes("/identity/ensure") || path.includes("/identity/lifecycle/");
+      const isOwner = !isIdentityBoundary && !path.includes("{guestUrl}") && path !== "/api-docs";
+      if (isIdentityBoundary) expect(operation.security, `${method} ${path}`).toContainEqual({ explorerProof: [] });
       if (isOwner) expect(operation.security, `${method} ${path}`).toContainEqual({ musicCredential: [] });
       if (isOwner && method !== "get" || path.endsWith("/{guestUrl}/requests")) {
         expect(operation.parameters, `${method} ${path} requires an exact Origin`).toContainEqual(expect.objectContaining({

@@ -8,6 +8,7 @@ import { assertContainmentStartup, containmentErrorHandler, installSafeConsole, 
 import { setupMusicIdentityBodylessPreflight } from "./routes/musicIdentityRoutes";
 import type { MusicIdentityRuntimeConfig } from "./config/music-identity-config";
 import { MusicIdentityError, musicErrorEnvelope } from "../shared/musicError";
+import { StrapiIdentityAbsenceProof } from "./services/strapiIdentityAbsenceProof";
 
 /**
  * Builds the Express app with all middleware + routes wired, and returns it
@@ -140,7 +141,15 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig)
   });
 
   console.log('Starting server initialization...');
-  const server = await registerRoutes(app, storage, musicIdentityConfig);
+  const identityAbsenceProof = new StrapiIdentityAbsenceProof({
+    baseUrl: musicIdentityConfig.strapiOrigin,
+    accessToken: process.env.STRAPI_ACCESS_TOKEN ?? "",
+    fetchImpl: musicIdentityConfig.fetchImpl,
+    timeoutMs: musicIdentityConfig.overallTimeoutMs,
+  });
+  const server = await registerRoutes(app, storage, musicIdentityConfig, {
+    proveAbsence: (identity) => identityAbsenceProof.prove(identity),
+  });
 
   // Error handling middleware (registered after routes, before the Vite/static
   // catch-all that the entrypoint adds — preserves the original ordering)

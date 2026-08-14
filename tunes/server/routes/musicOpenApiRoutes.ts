@@ -101,6 +101,23 @@ const publicationAction = {
   schema: { type: "string", enum: ["publish", "unpublish"] },
 };
 
+const lifecycleOperation = (summary: string) => ({
+  summary,
+  description: "Bodyless Explorer identity-boundary operation. Browser owner, user, Account, document, username, and email selectors are forbidden.",
+  security: explorerSecurity,
+  parameters: [requestIdParameter],
+  responses: {
+    "200": success("Durable Music lifecycle status.", ref("MusicLifecycleResponse")),
+    "400": failure("The bodyless lifecycle request is invalid.", ["REQUEST_INVALID"]),
+    "401": failure("The authoritative Explorer proof is missing or invalid.", ["AUTH_REQUIRED", "AUTH_INVALID"]),
+    "409": failure("The lifecycle operation conflicts or can no longer be cancelled.", ["IDENTITY_CONFLICT", "LIFECYCLE_NOT_FOUND", "LIFECYCLE_CANCEL_FORBIDDEN"]),
+    "429": failure("The identity boundary is rate limited.", ["RATE_LIMITED"], true),
+    "500": failure("A safe internal failure occurred.", ["INTERNAL_ERROR"]),
+    "502": failure("The authoritative Explorer response is malformed.", ["UPSTREAM_MALFORMED"]),
+    "503": failure("The identity boundary is temporarily unavailable.", ["UPSTREAM_UNAVAILABLE", "DATABASE_UNAVAILABLE"], true),
+  },
+});
+
 const paths = {
   "/api-docs": {
     get: {
@@ -136,6 +153,18 @@ const paths = {
       status: "200",
       response: ref("MusicPrincipalResponse"),
     }),
+  },
+  "/api/music/identity/lifecycle/prepare": {
+    post: lifecycleOperation("Prepare durable Music deletion and revoke live Music authority"),
+  },
+  "/api/music/identity/lifecycle/status": {
+    get: lifecycleOperation("Read durable Music deletion status after reload"),
+  },
+  "/api/music/identity/lifecycle/boundary": {
+    post: lifecycleOperation("Durably mark the upstream deletion-attempt boundary"),
+  },
+  "/api/music/identity/lifecycle/cancel": {
+    post: lifecycleOperation("Cancel deletion before the upstream attempt boundary"),
   },
   "/api/playlists": {
     get: ownerOperation({ summary: "List owner saved playlists", status: "200", response: { type: "array", items: ref("Playlist") } }),
@@ -316,6 +345,22 @@ export const MUSIC_OPENAPI_DOCUMENT = {
       MusicError: musicErrorOpenApiSchema,
       MusicIdentityEnsureResponse: musicEnsureResponseOpenApiSchema,
       MusicPrincipalResponse: musicPrincipalResponseOpenApiSchema,
+      MusicLifecycleResponse: {
+        type: "object", additionalProperties: false, required: ["version", "operation"], properties: {
+          version: { type: "string", const: "music-lifecycle/v1" },
+          operation: {
+            type: "object", additionalProperties: false,
+            required: ["operationId", "status", "phase", "state", "boundaryCrossed", "retryable", "deadLetter"],
+            properties: {
+              operationId: { type: "string", minLength: 1, maxLength: 128 },
+              status: { type: "string", enum: ["pending_deletion", "suspended", "tombstoned"] },
+              phase: { type: "string", enum: ["prepared", "finalized"] },
+              state: { type: "string", enum: ["completed", "requested", "running", "failed", "cancelled"] },
+              boundaryCrossed: { type: "boolean" }, retryable: { type: "boolean" }, deadLetter: { type: "boolean" },
+            },
+          },
+        },
+      },
       PlaylistInput: { type: "object", additionalProperties: false, required: ["name"], properties: { name: { type: "string", minLength: 1, maxLength: 120 }, description: { type: ["string", "null"], maxLength: 2_000 } } },
       SongInput: { type: "object", additionalProperties: false, required: ["youtubeId", "title", "artist", "thumbnailUrl"], properties: { youtubeId: { type: "string", minLength: 1, maxLength: 1_024 }, title: { type: "string", minLength: 1, maxLength: 1_024 }, artist: { type: "string", minLength: 1, maxLength: 1_024 }, thumbnailUrl: { type: "string", minLength: 1, maxLength: 1_024 } } },
       Song: { type: "object", additionalProperties: false, required: ["id", "userId", "youtubeId", "title", "artist", "thumbnailUrl", "position", "status", "playedAt"], properties: { id: { type: "integer", minimum: 1 }, userId: { type: "integer", minimum: 1 }, youtubeId: { type: "string" }, title: { type: "string" }, artist: { type: "string" }, thumbnailUrl: { type: "string" }, position: { type: "integer", minimum: 0 }, status: { type: "string", enum: ["queued", "playing", "played"] }, playedAt: { type: ["string", "null"], format: "date-time" } } },

@@ -2,7 +2,7 @@ import express from "express";
 import { io as connectSocket, type Socket } from "socket.io-client";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { MusicPrincipalError } from "../middleware/musicPrincipal";
-import { createMusicSocketServer } from "../socket/musicSocketServer";
+import { createMusicSocketServer, MusicOwnerSocketRegistry } from "../socket/musicSocketServer";
 
 describe("canonical C5 owner and guest capability socket", () => {
   const sockets: Socket[] = [];
@@ -11,6 +11,7 @@ describe("canonical C5 owner and guest capability socket", () => {
   let expired = false;
   let internalFailure = false;
   let server: ReturnType<typeof createMusicSocketServer>;
+  const ownerRegistry = new MusicOwnerSocketRegistry();
   let url: string;
 
   beforeAll(async () => {
@@ -34,6 +35,7 @@ describe("canonical C5 owner and guest capability socket", () => {
           : undefined;
       },
       eventLimit: 3,
+      ownerRegistry,
     });
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     const address = server.address();
@@ -98,6 +100,21 @@ describe("canonical C5 owner and guest capability socket", () => {
     owner.emit("player_state", { playing: true, position: 1 });
     await expect(ownerFailure).resolves.toEqual({ version: "music-error/v1", error: expect.objectContaining({ code: "TOKEN_EXPIRED" }) });
     expired = false;
+  });
+
+  it("disconnects every live owner socket immediately through the lifecycle registry", async () => {
+    // Break caught: prepare/suspend relies on the next socket event instead of immediate eviction.
+    const first = await connect({ token: "aaa.bbb.ccc" });
+    const second = await connect({ token: "aaa.bbb.ccc" });
+    const disconnected = Promise.all([
+      new Promise<void>((resolve) => first.once("disconnect", () => resolve())),
+      new Promise<void>((resolve) => second.once("disconnect", () => resolve())),
+    ]);
+
+    await ownerRegistry.disconnectOwner(41);
+    await disconnected;
+    expect(first.connected).toBe(false);
+    expect(second.connected).toBe(false);
   });
 
   it("evicts a revoked guest before a valid owner broadcasts to guest recipients", async () => {
