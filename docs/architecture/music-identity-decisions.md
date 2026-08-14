@@ -41,10 +41,11 @@ Those capabilities are derived and enforced server-side from the authoritative e
 
 Raw pre-generation `.env.music.test` files are not product data and are not a
 supported migration source. They are rejected without mutation or secret
-reflection. Recovery requires the exact fixture project confirmation and a
-guarded cleanup/re-bootstrap that validates workspace ownership, zeroes only
-verified fixture artifacts, never follows credential paths found in the raw
-file, and creates a fresh versioned authority bundle.
+reflection. Exact fixture project confirmation grants no exception. Recovery
+is external to the application: preserve source changes according to operator
+policy, discard the entire disposable worktree, and create a clean checkout.
+No application command interprets, converts, or erases raw legacy fixture
+authority.
 
 This deliberately removes the legacy auto-upgrade path. On the supported
 Windows host, a destination handle strict enough to prevent a concurrent entry
@@ -54,16 +55,12 @@ validate-close-to-commit class unless a separately verified exchange protocol
 is introduced. Disposable fixture compatibility does not justify that
 cross-platform transaction surface.
 
-The guarded cleanup itself is a durable transaction. It records a non-secret
-cleanup intent before the first destructive write and keeps it until every
-recognized secret leaf has been erased through a verified descriptor. The raw
-unsupported pointer is erased last. Commands refuse to create or rotate a
-bundle while the intent is pending, so interruption can only require an
-idempotent retry; it cannot turn partial cleanup into new fixture authority.
-Destructive access remains bound to the authorized repository root and
-artifact-directory identities. Windows holds native no-delete-share handles
-for the full ancestor/directory graph and erases the verified leaf handle;
-POSIX holds the directory and leaf descriptors through truncation and fsync.
+An in-worktree cleanup manifest cannot authenticate itself across a hard exit:
+the manifest and any colocated key share the same mutable authority boundary.
+An ephemeral key is lost, and a public or self-derived key is forgeable. The
+application therefore does not offer guarded in-place raw cleanup rather than
+claiming an unsigned advisory record is an authority. Normal versioned fixture
+rotation and normal supported-authority teardown remain unchanged.
 
 ## Revisit when
 

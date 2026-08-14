@@ -331,25 +331,14 @@ creating credentials, generations, journals, or a new pointer with
 `MUSIC_FIXTURE_LEGACY_ENVIRONMENT_UNSUPPORTED` and secret-free recovery
 guidance.
 
-Because this is disposable fixture state, recovery is an explicit guarded
-cleanup/re-bootstrap rather than a compatibility migration:
-
-```powershell
-npm run music:bootstrap -- --mode fixture --confirm-project explorers-music-fixture
-```
-
-That path first verifies the repository/root ownership boundary, the exact
-fixture project confirmation, and the absence of a non-empty pending rotation
-journal. Before erasing anything it durably publishes a non-secret cleanup
-intent bound to the captured repository root and artifact-directory identities.
-It descriptor-zeroes recognized fixture-owned generated leaves without
-interpreting variables, erases the unsupported raw pointer last, proves no old
-nonzero fixture artifact remains, and erases the intent only after all verified
-descriptors close successfully. A wrong project, linked or unowned path,
-pending journal or cleanup intent, cleanup failure, or concurrent identity
-change fails closed. The ordinary unconfirmed bootstrap remains read-only on
-raw authority, and rotation refuses a pending cleanup intent before creating a
-candidate.
+Because the state is disposable and there is no independent authentication
+anchor outside its mutable worktree, the application provides no in-place raw
+cleanup or compatibility migration. `--confirm-project` does not override this
+refusal. Commit and push source changes according to operator policy, discard
+the entire disposable worktree, create a clean checkout, and bootstrap there.
+Do not copy `.env.music.test`, `.artifacts/`, credential leaves, or generated
+fixture state into the replacement checkout. No application command interprets
+or erases the abandoned raw state.
 
 Bootstrap rotates one four-resource authority bundle: the environment
 generation, Music signing-key leaf, migrator-password leaf, and runtime-password
@@ -402,12 +391,11 @@ Bootstrap/down/reset cleanup never pathname-unlinks an artifact: it
 truncates and durably syncs only a verified descriptor. A truncate, sync, close,
 or digest failure makes the command nonzero with
 `MUSIC_FIXTURE_SECRET_CLEANUP_FAILED` and only the exact random leaf identifier.
-Each destructive open is checked beneath the originally authorized native
-root/ancestor/directory graph; a directory replacement aborts before touching
-the replacement tree. Retry the same guarded fixture cleanup after correcting
-the filesystem error; the durable intent resumes artifacts-first/pointer-last
-cleanup and success leaves zero-byte non-secret tombstones. Never delete the
-reported path by hand or broaden cleanup outside the fixture project.
+This paragraph applies only to normal supported pointer/generation authority;
+it never grants raw legacy cleanup. Retry normal supported-authority cleanup
+after correcting the filesystem error; success leaves a zero-byte non-secret
+tombstone. Never delete a reported path by hand or broaden cleanup outside the
+fixture project.
 
 ## C5 local Music credential keys and emergency revocation
 

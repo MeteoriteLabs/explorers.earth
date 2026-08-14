@@ -40,6 +40,16 @@ function snapshotAuthorityDirectory(path: string): Record<string, string> {
   return Object.fromEntries(readdirSync(path).sort().map((name) => [name, readFileSync(join(path, name)).toString("base64")]));
 }
 
+function restoreAuthorityDirectory(path: string, snapshot: Record<string, string>): void {
+  mkdirSync(path, { recursive: true });
+  for (const name of readdirSync(path)) {
+    if (!(name in snapshot)) rmSync(join(path, name), { force: true });
+  }
+  for (const [name, bytes] of Object.entries(snapshot)) {
+    writeFileSync(join(path, name), Buffer.from(bytes, "base64"), { mode: 0o600 });
+  }
+}
+
 describe("music CLI output contract", () => {
   it("rotates fixture authority without erasing the prior bundle before pointer commit", () => {
     const source = readFileSync(join(tunesRoot, "scripts", "music-cli.ts"), "utf8");
@@ -48,8 +58,8 @@ describe("music CLI output contract", () => {
     const rotation = source.slice(start, end);
     expect(rotation).not.toContain("cleanupAllFixtureMusicTokenSecrets(root)");
     expect(rotation).toContain("rotateFixtureMusicAuthority");
-    expect(rotation).toContain("cleanupUnsupportedFixtureEnvironmentForRebootstrap");
-    expect(rotation).toContain("confirmedProject");
+    expect(rotation).not.toContain("cleanupUnsupportedFixtureEnvironmentForRebootstrap");
+    expect(rotation).not.toContain("confirmedProject");
     expect(rotation).not.toContain("legacyUpgrade");
   });
 
@@ -80,7 +90,9 @@ describe("music CLI output contract", () => {
         status: "blocked",
         phase: "fixture-authority",
       });
-      expect(result.stdout).toContain("guarded cleanup/re-bootstrap");
+      expect(result.stdout).toContain("MUSIC_FIXTURE_LEGACY_ENVIRONMENT_UNSUPPORTED");
+      expect(result.stdout).toContain("discard");
+      expect(result.stdout).not.toContain("cleanup/re-bootstrap");
       expect(result.stdout).not.toContain("RAW_FIXTURE_SECRET_SENTINEL");
       expect(readFileSync(environmentPath, "utf8")).toBe(raw);
       expect(credentials.map((path) => readFileSync(path))).toEqual(credentialBytes);
@@ -89,6 +101,86 @@ describe("music CLI output contract", () => {
       writeFileSync(environmentPath, pointerBefore, { mode: 0o600 });
     }
   });
+
+  const unsupportedAuthorityCommands = [
+    { name: "confirmed bootstrap", args: ["bootstrap", "--mode", "fixture", "--confirm-project", "explorers-music-fixture"] },
+    { name: "doctor", args: ["doctor"] },
+    { name: "up", args: ["up", "--detach", "--wait"] },
+    { name: "smoke", args: ["test:smoke"] },
+    { name: "full test", args: ["test:all"] },
+    { name: "down", args: ["down", "--mode", "fixture", "--volumes", "--confirm-project", "explorers-music-fixture"] },
+    { name: "database status", args: ["db:status", "--target", "test"] },
+    { name: "database migrate", args: ["db:migrate", "--target", "test"] },
+    { name: "database verify", args: ["db:verify", "--target", "test"] },
+    { name: "database reset", args: ["db:reset", "--mode", "fixture", "--target", "test", "--volumes", "--confirm-project", "explorers-music-fixture"] },
+    { name: "fixture capture", args: ["fixtures:capture"] },
+  ];
+  const unsupportedAuthorityKinds = [
+    { name: "raw", contents: "RAW_FIXTURE_SECRET_SENTINEL=must-not-be-reflected\n" },
+    { name: "malformed", contents: "MALFORMED_RAW_FIXTURE_SECRET_SENTINEL_WITHOUT_EQUALS\n" },
+  ];
+
+  it.each(unsupportedAuthorityCommands.flatMap((command) => unsupportedAuthorityKinds.map((authority) => ({ command, authority }))))(
+    "refuses $command.name with $authority.name fixture authority before any in-app mutation",
+    ({ command, authority }) => {
+      // Production break caught: an exact project confirmation turns raw
+      // fixture bytes into cleanup authority and reaches npm/Docker work.
+      const environmentPath = join(repositoryRoot, ".env.music.test");
+      const pointerBefore = readFileSync(environmentPath);
+      const authorityDirectories = [
+        join(repositoryRoot, ".artifacts", "music-token-secrets"),
+        join(repositoryRoot, ".artifacts", "music-environment-generations"),
+        join(repositoryRoot, ".artifacts", "music-rotation-journals"),
+      ];
+      const authorityBefore = authorityDirectories.map(snapshotAuthorityDirectory);
+      const cleanupIntent = join(repositoryRoot, ".artifacts", "music-fixture-cleanup.intent");
+      const cleanupIntentBefore = existsSync(cleanupIntent) ? readFileSync(cleanupIntent) : undefined;
+      const fakeDirectory = mkdtempSync(join(tmpdir(), "music-cli-no-mutation-"));
+      const mutationMarker = join(fakeDirectory, "child-invoked");
+      const fakeNpm = join(fakeDirectory, "npm-cli.cjs");
+      writeFileSync(fakeNpm, "require('node:fs').writeFileSync(process.env.MUSIC_TEST_MUTATION_MARKER, 'invoked');\n");
+      writeFileSync(environmentPath, authority.contents, { mode: 0o600 });
+      try {
+        const result = runCli([...command.args, "--format", "json"], {
+          ...process.env,
+          npm_execpath: fakeNpm,
+          MUSIC_TEST_MUTATION_MARKER: mutationMarker,
+        });
+        const lines = result.stdout.trim().split(/\r?\n/);
+        expect(result.exitCode).toBe(5);
+        expect(lines).toHaveLength(1);
+        const envelope = JSON.parse(lines[0]!) as {
+          status: string;
+          phase: string;
+          error: string;
+          artifacts: string[];
+          nextCommand: string;
+          recoveryCommand: string;
+        };
+        expect(envelope).toMatchObject({ status: "blocked", phase: "fixture-authority", artifacts: [] });
+        expect(envelope.error).toContain("MUSIC_FIXTURE_LEGACY_ENVIRONMENT_UNSUPPORTED");
+        expect(envelope.error).toContain("discard");
+        expect(envelope.error).not.toContain("cleanup/re-bootstrap");
+        expect(envelope.nextCommand).toContain("discard");
+        expect(envelope.recoveryCommand).toContain("clean checkout");
+        expect(envelope.nextCommand).not.toContain("npm run");
+        expect(envelope.recoveryCommand).not.toContain("npm run");
+        expect(result.stdout).not.toContain("RAW_FIXTURE_SECRET_SENTINEL");
+        expect(result.stdout).not.toContain("MALFORMED_RAW_FIXTURE_SECRET_SENTINEL");
+        expect(readFileSync(environmentPath, "utf8")).toBe(authority.contents);
+        expect(authorityDirectories.map(snapshotAuthorityDirectory)).toEqual(authorityBefore);
+        expect(existsSync(mutationMarker)).toBe(false);
+        expect(existsSync(cleanupIntent) ? readFileSync(cleanupIntent) : undefined).toEqual(cleanupIntentBefore);
+      } finally {
+        writeFileSync(environmentPath, pointerBefore, { mode: 0o600 });
+        authorityDirectories.forEach((path, index) => restoreAuthorityDirectory(path, authorityBefore[index]!));
+        if (cleanupIntentBefore === undefined) rmSync(cleanupIntent, { force: true });
+        else writeFileSync(cleanupIntent, cleanupIntentBefore, { mode: 0o600 });
+        rmSync(fakeDirectory, { recursive: true, force: true });
+      }
+    },
+    30_000,
+  );
 
   it("emits only a JSON envelope through the documented public root command", () => {
     // Production break caught: tests bypass the npm entrypoint, while the
@@ -165,7 +257,9 @@ describe("music CLI output contract", () => {
     // emit its documented JSON failure and recovery guidance.
     const environmentPath = join(repositoryRoot, ".env.music.test");
     const previous = existsSync(environmentPath) ? readFileSync(environmentPath, "utf8") : undefined;
-    writeFileSync(environmentPath, "MUSIC_MODE=fixture\nDATABASE_URL_TEST=postgresql://production.example/music\n");
+    const generationDirectory = join(repositoryRoot, ".artifacts", "music-environment-generations");
+    const generationsBefore = snapshotAuthorityDirectory(generationDirectory);
+    persistFixtureMusicEnvironment(repositoryRoot, "MUSIC_MODE=fixture\nDATABASE_URL_TEST=postgresql://production.example/music\n");
     try {
       const result = runCli(["doctor", "--format", "json"]);
       expect(result.exitCode).toBe(3);
@@ -173,6 +267,7 @@ describe("music CLI output contract", () => {
     } finally {
       if (previous === undefined) rmSync(environmentPath, { force: true });
       else writeFileSync(environmentPath, previous);
+      restoreAuthorityDirectory(generationDirectory, generationsBefore);
     }
   });
 
@@ -181,7 +276,9 @@ describe("music CLI output contract", () => {
     // run context, before doctor can emit its categorized JSON result.
     const environmentPath = join(repositoryRoot, ".env.music.test");
     const previous = existsSync(environmentPath) ? readFileSync(environmentPath, "utf8") : undefined;
-    writeFileSync(environmentPath, "MUSIC_MODE=fixture\nMALFORMED_LINE_WITHOUT_EQUALS\n");
+    const generationDirectory = join(repositoryRoot, ".artifacts", "music-environment-generations");
+    const generationsBefore = snapshotAuthorityDirectory(generationDirectory);
+    persistFixtureMusicEnvironment(repositoryRoot, "MUSIC_MODE=fixture\nMALFORMED_LINE_WITHOUT_EQUALS\n");
     try {
       const result = runCli(["doctor", "--format", "json"]);
       const lines = result.stdout.trim().split(/\r?\n/);
@@ -191,6 +288,7 @@ describe("music CLI output contract", () => {
     } finally {
       if (previous === undefined) rmSync(environmentPath, { force: true });
       else writeFileSync(environmentPath, previous);
+      restoreAuthorityDirectory(generationDirectory, generationsBefore);
     }
   });
 

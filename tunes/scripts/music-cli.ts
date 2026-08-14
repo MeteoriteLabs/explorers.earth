@@ -7,11 +7,9 @@ import { MUSIC_COMPOSE_PROJECT, validateComposeModel, validateOwnedResources, ty
 import { OwnedProcessRunner } from "./music-process-runner.ts";
 import { EXPECTED_MUSIC_MIGRATION_ID } from "../shared/music-migration-contract.ts";
 import {
-  cleanupUnsupportedFixtureEnvironmentForRebootstrap,
-  FixtureCleanupPendingError,
-  FixtureCleanupScopeError,
   FixtureSecretCleanupError,
   FixtureUnsupportedLegacyEnvironmentError,
+  inspectFixtureEnvironmentAuthority,
   readFixtureMusicEnvironment,
   rotateFixtureMusicAuthority,
   withAllFixtureMusicSecretsCleanup,
@@ -245,7 +243,14 @@ const commandGuidance: Record<string, { success: string; failure: string; recove
 function emit(id: string, command: string, format: OutputFormat, started: number, context: RunContext, result: RunResult): number {
   const checkpoint = result.checkpoint ?? writeCheckpoint(id, context, result);
   const guidance = commandGuidance[command] ?? commandGuidance.music;
-  const output = { schemaVersion: MUSIC_CLI_SCHEMA_VERSION, command, runId: id, status: result.status, phase: result.phase, durationMs: Date.now() - started, artifacts: result.artifacts ?? [], checkpoint, error: result.error ? sanitize(result.error) : undefined, details: result.details === undefined ? undefined : redactStructuredData(result.details), nextCommand: result.status === "success" ? guidance.success : guidance.failure, recoveryCommand: guidance.recovery };
+  const unsupportedLegacy = result.error?.includes("MUSIC_FIXTURE_LEGACY_ENVIRONMENT_UNSUPPORTED") ?? false;
+  const nextCommand = unsupportedLegacy
+    ? "preserve source changes according to operator policy, then discard the disposable worktree"
+    : result.status === "success" ? guidance.success : guidance.failure;
+  const recoveryCommand = unsupportedLegacy
+    ? "create a clean checkout without copying fixture authority"
+    : guidance.recovery;
+  const output = { schemaVersion: MUSIC_CLI_SCHEMA_VERSION, command, runId: id, status: result.status, phase: result.phase, durationMs: Date.now() - started, artifacts: result.artifacts ?? [], checkpoint, error: result.error ? sanitize(result.error) : undefined, details: result.details === undefined ? undefined : redactStructuredData(result.details), nextCommand, recoveryCommand };
   if (format === "json") process.stdout.write(`${JSON.stringify(output)}\n`);
   else process.stdout.write(`${command}: ${result.status} (${result.phase})${output.error ? `\nerror: ${output.error}` : ""}\nnext: ${output.nextCommand}\nrecovery: ${output.recoveryCommand}\nartifacts: ${output.artifacts.join(", ") || "none"}\ncheckpoint: ${checkpoint}\n`);
   return result.exitCode;
@@ -273,19 +278,11 @@ async function runChild(id: string, command: "npm" | "docker" | "node", args: st
   return { ...result, artifact };
 }
 
-function createTestEnv(confirmedProject?: string): void {
-  const rotate = () => rotateFixtureMusicAuthority(root, ({ tokenPath, migratorPasswordPath, runtimePasswordPath }) => {
+function createTestEnv(): void {
+  rotateFixtureMusicAuthority(root, ({ tokenPath, migratorPasswordPath, runtimePasswordPath }) => {
     const fixturePath = (value: string) => `./${relative(root, value).replace(/\\/g, "/")}`;
     return `MUSIC_MODE=fixture\nMUSIC_FIXTURE_VERSION=1\nSTRAPI_URL=http://strapi:1337\nMUSIC_FIXTURE_STRAPI_ORIGIN=http://strapi:1337\nTRUST_PROXY_HOPS=0\nSTRAPI_FIXTURE_URL=http://127.0.0.1:51337\nDATABASE_URL_TEST=postgresql://music_migrator@127.0.0.1:55432/music_fixture\nMUSIC_DATABASE_HOST=postgres\nMUSIC_DATABASE_PORT=5432\nMUSIC_DATABASE_NAME=music_fixture\nMUSIC_DATABASE_USER=music_runtime_login\nMUSIC_DATABASE_MIGRATOR_USER=music_migrator\nMUSIC_DATABASE_PASSWORD_FILE=/run/secrets/music-db-runtime\nMUSIC_TOKEN_SECRET_FILE_HOST=${fixturePath(tokenPath)}\nMUSIC_DB_MIGRATOR_SECRET_FILE_HOST=${fixturePath(migratorPasswordPath)}\nMUSIC_DB_RUNTIME_SECRET_FILE_HOST=${fixturePath(runtimePasswordPath)}\nSESSION_SECRET=${randomBytes(32).toString("base64url")}\nCOOKIE_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_SIGNING_KEY_CURRENT_ID=fixture-current\nMUSIC_SIGNING_KEY_CURRENT_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_SIGNING_KEY_PREVIOUS_ID=fixture-previous\nMUSIC_SIGNING_KEY_PREVIOUS_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_TOKEN_CURRENT_KID=fixture-current\nMUSIC_TOKEN_CURRENT_SECRET_FILE=/run/secrets/music-token/current\nMUSIC_TOKEN_LIFETIME_SECONDS=600\nMUSIC_TOKEN_CLOCK_SKEW_SECONDS=15\nMUSIC_CONNECT_TIMEOUT_MS=5000\nMUSIC_READ_TIMEOUT_MS=10000\nMUSIC_CIRCUIT_FAILURE_THRESHOLD=3\nMUSIC_RATE_LIMIT_PER_MINUTE=60\nMUSIC_PROVISIONING_KILL_SWITCH=true\nMUSIC_PROVISIONING_COHORT=disabled\nMUSIC_EXPECTED_MIGRATION_ID=${EXPECTED_MUSIC_MIGRATION_ID}\nMUSIC_RECONCILIATION_ENABLED=false\nMUSIC_RECONCILIATION_MAX_ROWS=0\n`;
   });
-  try {
-    rotate();
-  } catch (error) {
-    if (!(error instanceof FixtureUnsupportedLegacyEnvironmentError || error instanceof FixtureCleanupPendingError)
-        || confirmedProject === undefined) throw error;
-    cleanupUnsupportedFixtureEnvironmentForRebootstrap(root, confirmedProject);
-    rotate();
-  }
 }
 
 async function fixtureMigratorUrl(environment: Record<string, string>): Promise<string> {
@@ -425,16 +422,24 @@ async function executeCommand(id: string, parsed: ParsedArgs): Promise<RunResult
 async function main(): Promise<number> {
   const id = runId(); const started = Date.now(); let parsed: ParsedArgs;
   try { parsed = parseArgs(process.argv.slice(2)); } catch (error) { const context = buildRunContext(); const failure = error instanceof MusicCommandError ? error : new MusicCommandError(redactedError(error), "arguments", EXIT.usage); return emit(id, "music", "human", started, context, { status: "failure", phase: failure.phase, exitCode: failure.exitCode, error: redactedError(failure) }); }
+  if (inspectFixtureEnvironmentAuthority(root) === "unsupported") {
+    const error = new FixtureUnsupportedLegacyEnvironmentError();
+    const context = buildRunContext({ allowInvalidEnvironment: true });
+    return emit(id, parsed.command, parsed.format, started, context, {
+      status: "blocked",
+      phase: "fixture-authority",
+      exitCode: EXIT.safety,
+      error: redactedError(error),
+    });
+  }
   // A resume checkpoint is validated against the existing fixture authority.
   // Never rotate or erase credentials before that fail-closed comparison.
   if (parsed.command === "bootstrap" && !parsed.resume) {
     try {
-      createTestEnv(parsed.confirmProject);
+      createTestEnv();
     } catch (error) {
       const context = buildRunContext({ allowInvalidEnvironment: true });
       const safetyFailure = error instanceof FixtureUnsupportedLegacyEnvironmentError
-        || error instanceof FixtureCleanupPendingError
-        || error instanceof FixtureCleanupScopeError
         || error instanceof FixtureSecretCleanupError;
       const failure = new MusicCommandError(redactedError(error), "fixture-authority", safetyFailure ? EXIT.safety : EXIT.dependency);
       return emit(id, parsed.command, parsed.format, started, context, {
