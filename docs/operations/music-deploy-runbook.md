@@ -332,13 +332,24 @@ references.
 Bootstrap rotates one four-resource authority bundle: the environment
 generation, Music signing-key leaf, migrator-password leaf, and runtime-password
 leaf. It snapshots the exact prior directory/file identities, sizes, and
-SHA-256 digests before creating replacements. A non-secret, descriptor-written
-rotation journal records both complete sets before the pointer switch. Until
-the exact new pointer is reconciled, failure erases only the new unreferenced
-set and leaves the prior pointer and four resources byte-exact. After that
-switch, no error path may erase the new set. Prior resources are retired only
-when their captured identities and digests still match; mismatch is a typed
-cleanup failure that leaves both attacker and displaced bytes untouched.
+SHA-256 digests before creating replacements. Candidate names, expected byte
+counts/digests, and the operation ID are chosen first. A non-secret v2 intent
+journal is file- and parent-directory-synced before the first candidate secret
+is created. Each credential and the environment generation is then
+descriptor-validated and parent-directory-synced; an atomic, file-synced,
+renamed, and parent-synced journal update records its exact device/inode only
+after durable creation. The journal contains metadata and hashes only, never
+raw environment or credential bytes.
+
+Immediately before the pointer rename and during recovery, all four candidates
+are reopened and matched against their recorded directory/file identities,
+sizes, and SHA-256 digests. The pointer rename remains provisional until its
+parent directory is synced and the candidate bundle is revalidated. Until that
+exact commit is durable, failure erases only matching new unreferenced leaves
+and leaves the prior pointer and four resources byte-exact. After that switch,
+no error path may erase the new set. Prior resources are retired only when
+their captured identities and digests still match; mismatch is a typed cleanup
+failure that leaves both attacker and displaced bytes untouched.
 Bootstrap/down/reset reconcile any pending journal before other cleanup, so a
 restart deterministically retires the old set after commit or the candidate set
 before commit. Successful retirement leaves zero-byte tombstones and zeroes the
