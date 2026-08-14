@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,16 +22,16 @@ export default function ImportYouTubePlaylist({ playlistId }: Props) {
   const [url, setUrl] = useState("");
 
   const importMutation = useMutation({
-    mutationFn: async (playlistUrl: string) => {
-      return apiRequest<{
+    mutationFn: async (playlistUrl: string): Promise<{
         sourcePlaylistId: string;
         videosFetched: number;
         videosAdded: number;
         targetPlaylistId: number;
         status: string;
-      }>("POST", `/api/playlists/${playlistId}/import-youtube`, {
-        url: playlistUrl,
-      });
+      }> => {
+      void playlistUrl;
+      void playlistId;
+      throw new Error("YouTube playlist import requires a separately authorized Music entitlement.");
     },
     onSuccess: (data) => {
       // Invalidate playlists query to refresh the data

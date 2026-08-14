@@ -1,6 +1,6 @@
 import type { MusicIdentityProjection } from "../repositories/musicIdentityRepository";
 import { MusicTokenError, type MusicTokenService } from "../services/musicTokenService";
-import type { RequestHandler } from "express";
+import type { Request, RequestHandler } from "express";
 
 export interface MusicPrincipal {
   musicUserId: number;
@@ -83,23 +83,30 @@ export function createMusicPrincipalMiddleware(
 ): RequestHandler {
   return async (req, _res, next) => {
     try {
-      const authorizationFields: string[] = [];
-      for (let index = 0; index < req.rawHeaders.length; index += 2) {
-        if (req.rawHeaders[index]?.toLowerCase() === "authorization") {
-          authorizationFields.push(req.rawHeaders[index + 1] ?? "");
-        }
-      }
-      if (authorizationFields.length !== 1) {
-        throw new MusicPrincipalError("TOKEN_INVALID", 401, "A single Music bearer credential is required.");
-      }
-      const match = MUSIC_BEARER_PATTERN.exec(authorizationFields[0]);
-      if (!match) throw new MusicPrincipalError("TOKEN_INVALID", 401, "The Music credential is invalid.");
-      req.musicPrincipal = await resolvePrincipal(match[1]);
+      req.musicPrincipal = await resolveMusicPrincipalRequest(req, resolvePrincipal);
       next();
     } catch (error) {
       next(error);
     }
   };
+}
+
+export async function resolveMusicPrincipalRequest(
+  req: Pick<Request, "rawHeaders">,
+  resolvePrincipal: (token: string) => Promise<MusicPrincipal>,
+): Promise<MusicPrincipal> {
+  const authorizationFields: string[] = [];
+  for (let index = 0; index < req.rawHeaders.length; index += 2) {
+    if (req.rawHeaders[index]?.toLowerCase() === "authorization") {
+      authorizationFields.push(req.rawHeaders[index + 1] ?? "");
+    }
+  }
+  if (authorizationFields.length !== 1) {
+    throw new MusicPrincipalError("TOKEN_INVALID", 401, "A single Music bearer credential is required.");
+  }
+  const match = MUSIC_BEARER_PATTERN.exec(authorizationFields[0]);
+  if (!match) throw new MusicPrincipalError("TOKEN_INVALID", 401, "The Music credential is invalid.");
+  return resolvePrincipal(match[1]);
 }
 
 export function assertMusicResourceOwner(principal: MusicPrincipal, musicUserId: number): void {

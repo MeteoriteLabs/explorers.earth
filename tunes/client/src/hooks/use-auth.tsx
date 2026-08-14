@@ -20,6 +20,7 @@ import {
   hasValidSSOAuth
 } from "../lib/authStorage";
 import { useAuthStore } from "@/stores/authStore";
+import { musicPrincipalForRequest } from "@/lib/musicCredential";
 
 type AuthContextType = {
   user: SelectUser | null;
@@ -90,17 +91,16 @@ export function AuthProvider({ children, skipAuthCheck = false }: AuthProviderPr
     }
 
     console.log('🔄 Fetching Neon DB user for:', strapiUser.username);
-    fetch(`/api/auth/user-data?username=${encodeURIComponent(strapiUser.username)}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.user) {
-          console.log('✅ Loaded Neon DB user data for:', strapiUser.username);
-          setLocalUser(data.user);
-        } else {
-          console.warn('⚠️ Neon DB user not found for:', strapiUser.username);
-        }
-      })
+    musicPrincipalForRequest()
+      .then(identity => setLocalUser({ ...strapiUser, id: identity.musicUserId } as unknown as SelectUser))
       .catch(err => console.error('Failed to fetch Neon user:', err));
+
+
+
+
+
+
+
   }, [skipAuthCheck, strapiIsAuthenticated, strapiUser?.username]);
 
   // Query server for user data, with fallback to local storage

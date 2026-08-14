@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -36,33 +35,7 @@ export default function ImportPlaylistModal({
   const [validationError, setValidationError] = useState<string>("");
 
   const importMutation = useMutation({
-    mutationFn: async ({ playlistUrl, platform }: { playlistUrl: string; platform: "youtube" | "spotify" }) => {
-      const platformEndpoint = platform === "youtube" ? "youtube" : "spotify";
-      
-      // For saved playlists
-      if (playlistId) {
-        const res = await apiRequest("POST", `/api/playlists/${playlistId}/import-${platformEndpoint}`, {
-          url: playlistUrl,
-        });
-        return await res.json() as {
-          sourcePlaylistId: string;
-          videosFetched?: number;
-          songsFetched?: number;
-          videosAdded?: number;
-          songsAdded?: number;
-          targetPlaylistId: number;
-          status: string;
-        };
-      }
-
-      // For main playlist (including guest access)
-      const apiUrl = guestUrl
-        ? `/api/playlist/import-${platformEndpoint}?guestUrl=${encodeURIComponent(guestUrl)}`
-        : `/api/playlist/import-${platformEndpoint}`;
-      const res = await apiRequest("POST", apiUrl, {
-        url: playlistUrl,
-      });
-      return await res.json() as {
+    mutationFn: async ({ playlistUrl, platform }: { playlistUrl: string; platform: "youtube" | "spotify" }): Promise<{
         sourcePlaylistId?: string;
         sourcePlaylistUri?: string;
         videosFetched?: number;
@@ -70,7 +43,10 @@ export default function ImportPlaylistModal({
         videosAdded?: number;
         songsAdded?: number;
         status: string;
-      };
+      }> => {
+      void playlistUrl;
+      void platform;
+      throw new Error("Playlist import is unavailable until a fresh server-derived entitlement can authorize it.");
     },
     onSuccess: (data, variables) => {
       // Invalidate the appropriate queries based on context

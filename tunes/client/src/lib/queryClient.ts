@@ -1,17 +1,29 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getCsrfToken } from "./csrf";
+import { acquireGuestMusicCapability, clearGuestMusicCapability, getGuestMusicCapability, isMusicOwnerRequest, musicCredentialForRequest } from "./musicCredential";
 
-/** Read the logged-in username from the persisted Zustand auth store in localStorage. */
-function getAuthUsername(): string | null {
-  try {
-    const raw = localStorage.getItem('auth-storage');
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return parsed?.state?.user?.username ?? null;
-  } catch {
-    return null;
-  }
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -44,15 +56,10 @@ export async function apiRequest(
   }
 
   // Add JWT token from localStorage (Strapi auth)
-  const token = localStorage.getItem('qrtoken');
+  const musicOwnerRequest = isMusicOwnerRequest(url);
+  const token = musicOwnerRequest ? await musicCredentialForRequest() : localStorage.getItem('qrtoken');
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  // Add username so the server can map the Strapi JWT to the Neon DB user
-  const authUsername = getAuthUsername();
-  if (authUsername) {
-    headers["X-Username"] = authUsername;
   }
 
   // Add CSRF token using our standardized function
@@ -67,7 +74,7 @@ export async function apiRequest(
 
   // Prepare request body with CSRF token if needed
   let body = data;
-  if (data && typeof data === 'object' && !Array.isArray(data)) {
+  if (!musicOwnerRequest && data && typeof data === 'object' && !Array.isArray(data)) {
     body = {
       ...data,
       _csrf: csrfToken
@@ -167,15 +174,13 @@ export const getQueryFn: <T>(options: GetQueryFnOptions) => QueryFunction<T> =
         };
 
         // Add JWT token from localStorage (Strapi auth)
-        const token = localStorage.getItem('qrtoken');
+        const token = isMusicOwnerRequest(url) ? await musicCredentialForRequest() : localStorage.getItem('qrtoken');
         if (token) {
           headers["Authorization"] = `Bearer ${token}`;
         }
-
-        // Add username so the server can map the Strapi JWT to the Neon DB user
-        const authUsername = getAuthUsername();
-        if (authUsername) {
-          headers["X-Username"] = authUsername;
+        if (/^\/api\/playlist\/[^/]+$/.test(url)) {
+          const guestCapability = getGuestMusicCapability();
+          if (guestCapability) headers["X-Music-Guest-Capability"] = guestCapability;
         }
 
         // Add CSRF token to headers using our helper function
@@ -185,11 +190,19 @@ export const getQueryFn: <T>(options: GetQueryFnOptions) => QueryFunction<T> =
           headers["X-CSRF-Token"] = csrfToken;
         }
 
-        const res = await fetch(url, {
+        let res = await fetch(url, {
           credentials: "include",
           mode: "cors",
           headers
         });
+        if (res.status === 404 && /^\/api\/playlist\/[^/]+$/.test(url)) {
+          clearGuestMusicCapability();
+          const capability = acquireGuestMusicCapability();
+          if (capability) {
+            const retryHeaders = { ...headers, "X-Music-Guest-Capability": capability };
+            res = await fetch(url, { credentials: "include", mode: "cors", headers: retryHeaders });
+          }
+        }
 
         // Handle 503 Service Unavailable with exponential backoff
         if (res.status === 503) {
@@ -250,7 +263,7 @@ export const queryClient = new QueryClient({
           return true;
         }
       }),
-      retry: (failureCount, error: any, context) => {
+      retry: (failureCount: number, error: any) => {
         // Don't retry expected auth failures
         if (error instanceof Error &&
           error.message === "Unauthorized" &&
@@ -260,7 +273,7 @@ export const queryClient = new QueryClient({
 
         // Retry server errors (like 503 Service Unavailable) more aggressively
         if (error && error.status >= 500 && error.status < 600) {
-          console.warn(`Retrying server error (${error.status}) for ${context?.queryKey}. Attempt ${failureCount + 1}`);
+          console.warn(`Retrying server error (${error.status}). Attempt ${failureCount + 1}`);
           return failureCount < 5; // More retries for server errors
         }
 

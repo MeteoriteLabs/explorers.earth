@@ -7,6 +7,7 @@ import { storage } from "./storage";
 import { assertContainmentStartup, containmentErrorHandler, installSafeConsole, requestIdFor } from "./security-containment";
 import { setupMusicIdentityBodylessPreflight } from "./routes/musicIdentityRoutes";
 import type { MusicIdentityRuntimeConfig } from "./config/music-identity-config";
+import { MusicIdentityError, musicErrorEnvelope } from "../shared/musicError";
 
 /**
  * Builds the Express app with all middleware + routes wired, and returns it
@@ -35,6 +36,16 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig)
   // Basic middleware setup
   app.use((req, res, next) => {
     res.setHeader("X-Request-Id", requestIdFor(req));
+    next();
+  });
+  app.use((req, res, next) => {
+    const declared = req.get("content-length");
+    if (declared && /^\d+$/.test(declared) && Number(declared) > 64 * 1024) {
+      const requestId = requestIdFor(req);
+      return res.status(413).json(musicErrorEnvelope(new MusicIdentityError(
+        "PAYLOAD_TOO_LARGE", 413, "The Music request payload is too large.", "none", false,
+      ), requestId));
+    }
     next();
   });
   setupMusicIdentityBodylessPreflight(app);
@@ -78,7 +89,7 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig)
       // Allow necessary headers
       res.header(
         "Access-Control-Allow-Headers",
-        "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRF-Token"
+        "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRF-Token, X-Music-Guest-Capability"
       );
       // Allow necessary methods
       res.header(

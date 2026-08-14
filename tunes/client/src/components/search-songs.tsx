@@ -6,6 +6,7 @@ import React from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { acquireGuestMusicCapability, guestMusicRequest } from "@/lib/musicCredential";
 import { useToast } from "@/hooks/use-toast";
 import { useUserSubscriptionPlanInfo } from "@/lib/strapi-queries";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -159,16 +160,11 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
   const addSongMutation = useMutation({
     mutationFn: async (songData: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }) => {
       if (playlistId) {
-        return apiRequest("POST", `/api/playlists/${playlistId}/songs${user?.username ? `?username=${user.username}` : ""}`, {
-          songs: [songData],
-        });
+        return apiRequest("POST", `/api/playlists/${playlistId}/songs`, songData);
       }
-      const url = guestUrl
-        ? `/api/playlist/songs?guestUrl=${encodeURIComponent(guestUrl)}`
-        : user?.username
-          ? `/api/playlist/songs?username=${user.username}`
-          : "/api/playlist/songs";
-      return apiRequest("POST", url, songData);
+      return guestUrl
+        ? guestMusicRequest(acquireGuestMusicCapability() ?? "", songData)
+        : apiRequest("POST", "/api/playlist/songs", songData);
     },
     onSuccess: () => {
       if (playlistId) {
@@ -186,12 +182,7 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
   const fetchResults = async (q: string, pageToken?: string) => {
     if (!q.trim()) return null;
     try {
-      const response = await fetch("/api/youtube/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ query: q, pageToken, username: usernameForCheck }),
-      });
+      const response = await apiRequest("POST", "/api/youtube/search", { query: q, pageToken });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || `Search failed: ${response.statusText}`);
@@ -206,12 +197,7 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
 
   const fetchVideoFromUrl = async (url: string): Promise<SearchResult | null> => {
     try {
-      const response = await fetch("/api/youtube/video-from-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ url }),
-      });
+      const response = await apiRequest("POST", "/api/youtube/video-from-url", { url });
       const ct = response.headers.get("content-type");
       if (ct?.includes("text/html")) throw new Error("Endpoint not available");
       if (!response.ok) {
@@ -286,45 +272,18 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
 
       // Build API URL — same pattern as import-playlist-modal.tsx
       let playlistApiUrl: string;
-      const resolvedUsername = user?.username || usernameForCheck;
       if (playlistId) {
         // Saved playlist — always append username so JWT auth branch can resolve user
-        playlistApiUrl = resolvedUsername
-          ? `/api/playlists/${playlistId}/import-${platform}?username=${encodeURIComponent(resolvedUsername)}`
-          : `/api/playlists/${playlistId}/import-${platform}`;
-      } else if (guestUrl) {
-        playlistApiUrl = `/api/playlist/import-${platform}?guestUrl=${encodeURIComponent(guestUrl)}`;
+        playlistApiUrl = `/api/playlists/${playlistId}/import-${platform}`;
       } else {
         // Authenticated user with JWT — server needs username to map JWT → Neon DB user
-        playlistApiUrl = resolvedUsername
-          ? `/api/playlist/import-${platform}?username=${encodeURIComponent(resolvedUsername)}`
-          : `/api/playlist/import-${platform}`;
+        playlistApiUrl = `/api/playlist/import-${platform}`;
       }
 
       setIsImporting(true);
       try {
-        const res = await apiRequest("POST", playlistApiUrl, { url: val });
-        // Parse count from response (same as import-playlist-modal.tsx)
-        const data = res && typeof res === "object" ? res as any : {};
-        const addedCount = platform === "youtube"
-          ? (Number(data.videosAdded) || 0)
-          : (Number(data.songsAdded) || 0);
-        toast({
-          title: "Playlist imported",
-          description: addedCount > 0
-            ? `Added ${addedCount} song${addedCount !== 1 ? "s" : ""} from ${platform === "youtube" ? "YouTube" : "Spotify"} playlist`
-            : "Songs have been added to your queue",
-        });
-        setInputValue("");
-        // Invalidate the right query
-        if (playlistId) {
-          queryClient.invalidateQueries({ queryKey: ["/api/playlists", user?.id] });
-        } else {
-          const playlistUrl = guestUrl || user?.guestUrl;
-          if (playlistUrl) {
-            queryClient.invalidateQueries({ queryKey: [`/api/playlist/${playlistUrl}`] });
-          }
-        }
+        void playlistApiUrl;
+        throw new Error("Playlist import requires a separately authorized Music entitlement.");
       } catch (error) {
         const msg = error instanceof Error ? error.message : "";
         if (msg.toLowerCase().includes('private') || msg.toLowerCase().includes('public')) {

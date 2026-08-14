@@ -1,7 +1,6 @@
 import { Express } from "express";
 import { storage } from "./storage";
-import { z } from "zod";
-import { insertSeoSettingsSchema, users } from "@shared/schema";
+import { playlists, users } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, isNotNull } from "drizzle-orm";
 
@@ -63,9 +62,6 @@ ${entries}
  * Generate dynamic tunes sitemap with real venue guest URLs
  */
 async function generateTunesSitemap(): Promise<string> {
-  const cached = getCachedSitemap("tunes");
-  if (cached) return cached;
-
   const urls: Array<{ loc: string; lastmod?: string; changefreq?: string; priority?: number }> = [
     // Static pages
     { loc: `${TUNES_BASE_URL}/`, changefreq: "weekly", priority: 1.0 },
@@ -83,8 +79,9 @@ async function generateTunesSitemap(): Promise<string> {
     // Discoverability is an explicit policy bit. Guest capability hashes are
     // never selected or rendered into a public listing.
     const venueUsers = await db
-      .select({ guestUrl: users.guestUrl, updatedAt: users.updatedAt })
+      .selectDistinct({ guestUrl: users.guestUrl, updatedAt: users.updatedAt })
       .from(users)
+      .innerJoin(playlists, and(eq(playlists.userId, users.id), eq(playlists.isVisibleToGuests, true)))
       .where(and(isNotNull(users.guestUrl), eq(users.guestDiscoverable, true)));
 
     for (const venue of venueUsers) {
@@ -105,7 +102,6 @@ async function generateTunesSitemap(): Promise<string> {
   }
 
   const xml = buildSitemapXml(urls);
-  setCachedSitemap("tunes", xml);
   return xml;
 }
 
@@ -181,55 +177,6 @@ async function generateExplorersSitemap(): Promise<string> {
  * @param app Express application instance
  */
 export function setupSeoRoutes(app: Express) {
-  // Get SEO settings
-  app.get("/api/seo", async (req, res) => {
-    try {
-      const settings = await storage.getSeoSettings();
-
-      if (!settings) {
-        return res.status(404).json({ message: "SEO settings not found" });
-      }
-
-      return res.json(settings);
-    } catch (error) {
-      console.error("Error getting SEO settings:", error);
-      return res.status(500).json({ message: "Error getting SEO settings" });
-    }
-  });
-
-  // Update SEO settings - super admin only
-  app.put("/api/seo", async (req, res) => {
-    // Only allow the super admin user (yapral27) to update SEO settings
-    if (!req.isAuthenticated() || req.user!.username !== 'yapral27') {
-      return res.status(403).json({ message: "Unauthorized access" });
-    }
-
-    try {
-      // Validate the update data
-      const updateSchema = insertSeoSettingsSchema.partial();
-      const validateResult = updateSchema.safeParse(req.body);
-
-      if (!validateResult.success) {
-        return res.status(400).json({
-          message: "Invalid SEO settings data",
-          errors: validateResult.error.format()
-        });
-      }
-
-      // Add the current user's ID as the updater
-      const updates = {
-        ...validateResult.data,
-        updatedBy: req.user!.id
-      };
-
-      const updatedSettings = await storage.updateSeoSettings(updates);
-      return res.json(updatedSettings);
-    } catch (error) {
-      console.error("Error updating SEO settings:", error);
-      return res.status(500).json({ message: "Error updating SEO settings" });
-    }
-  });
-
   // Get robots.txt content
   app.get("/robots.txt", async (req, res) => {
     try {
@@ -251,7 +198,7 @@ export function setupSeoRoutes(app: Express) {
   app.get("/sitemap.xml", async (req, res) => {
     try {
       const xml = await generateTunesSitemap();
-      return res.type("application/xml").set("Cache-Control", "public, max-age=3600").send(xml);
+      return res.type("application/xml").set("Cache-Control", "no-store").send(xml);
     } catch (error) {
       console.error("Error generating tunes sitemap:", error);
       // Fallback: try DB-stored sitemap

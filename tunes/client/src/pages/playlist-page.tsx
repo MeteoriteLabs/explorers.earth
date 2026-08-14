@@ -11,7 +11,7 @@ import SearchSongs from "@/components/search-songs";
 import { Music2, Volume2, Share2, Copy, History, Search, PlayCircle, ChevronDown, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { acquireGuestMusicCapability, getGuestMusicCapability, guestMusicRequest } from "@/lib/musicCredential";
 import {
   Accordion,
   AccordionContent,
@@ -199,11 +199,7 @@ export default function PlaylistPage() {
   // Add new mutation for adding songs to queue
   const addSongToQueueMutation = useMutation({
     mutationFn: async (song: Song) => {
-      const params = new URLSearchParams();
-      if (guestUrl) {
-        params.append('guestUrl', guestUrl);
-      }
-      return apiRequest("POST", `/api/playlist/songs?${params}`, {
+      return guestMusicRequest(acquireGuestMusicCapability() ?? "", {
         youtubeId: song.youtubeId,
         title: song.title,
         artist: song.artist,
@@ -230,8 +226,8 @@ export default function PlaylistPage() {
   // Delete single song mutation
   const deleteSongMutation = useMutation({
     mutationFn: async (songId: number) => {
-      console.log('Attempting to delete song:', songId);
-      return apiRequest("DELETE", `/api/playlist/songs/${songId}`);
+      void songId;
+      throw new Error("Guests cannot remove owner queue or history entries.");
     },
     onSuccess: () => {
       if (guestUrl) {
@@ -255,8 +251,8 @@ export default function PlaylistPage() {
   // Delete multiple songs mutation
   const deleteMultipleSongsMutation = useMutation({
     mutationFn: async (songIds: number[]) => {
-      console.log('Attempting to delete multiple songs:', songIds);
-      return apiRequest("DELETE", `/api/playlist/songs/bulk`, { songIds });
+      void songIds;
+      throw new Error("Guests cannot remove owner queue or history entries.");
     },
     onSuccess: () => {
       if (guestUrl) {
@@ -281,18 +277,13 @@ export default function PlaylistPage() {
   const addMultipleSongsMutation = useMutation({
     mutationFn: async (songs: Song[]) => {
       console.log('Adding multiple songs:', songs);
-      const params = new URLSearchParams();
-      if (guestUrl) {
-        params.append('guestUrl', guestUrl);
-      }
-
+      const capability = acquireGuestMusicCapability() ?? "";
       const addPromises = songs.map(song =>
-        apiRequest("POST", `/api/playlist/songs?${params}`, {
+        guestMusicRequest(capability, {
           youtubeId: song.youtubeId,
           title: song.title,
           artist: song.artist,
           thumbnailUrl: song.thumbnailUrl,
-          position: 999,
         })
       );
 
@@ -326,7 +317,7 @@ export default function PlaylistPage() {
   // Clear history mutation
   const clearHistoryMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("DELETE", `/api/playlist/history`);
+      throw new Error("Guests cannot clear owner playback history.");
     },
     onSuccess: () => {
       if (guestUrl) {
@@ -401,6 +392,15 @@ export default function PlaylistPage() {
   };
 
   const handleShare = async () => {
+
+
+
+
+
+
+
+
+
     console.log('Share button clicked, guestUrl:', guestUrl);
     if (!guestUrl) {
       console.error('No guestUrl available');
@@ -851,7 +851,7 @@ export default function PlaylistPage() {
                           fetchCurrentSong={async () => {
                             if (!guestUrl) return undefined;
                             try {
-                              const response = await fetch(`/api/playlist/${guestUrl}`);
+                              const response = await fetch(`/api/playlist/${guestUrl}`, { headers: getGuestMusicCapability() ? { "X-Music-Guest-Capability": getGuestMusicCapability()! } : undefined });
                               const data = await response.json();
                               return data.currentlyPlaying;
                             } catch (error) {

@@ -1,29 +1,15 @@
 import type { Express } from "express";
 import type { Server } from "http";
 import type { IStorage } from "../storage";
-import { setupSwagger } from "../swagger";
-import { setupUserRoutes } from "../user-routes";
-import { setupPaymentRoutes } from "./paymentRoutes";
-import { setupSubscriptionRoutes } from "./subscriptionRoutes";
-import { setupGeminiRoutes } from "./geminiRoutes";
-import { setupInstagramRoutes } from "./instagramRoutes";
-import { setupGoogleOAuthRoutes } from "../google-oauth-routes";
-import { setupAuthBridgeRoutes } from "../auth-bridge-routes";
 import { setupSeoRoutes } from "../seo-routes";
 import { setupAuthRoutes } from "./authRoutes";
 import { setupPlaylistRoutes } from "./playlistRoutes";
-import { setupAdminRoutes } from "./adminRoutes";
-import { setupStrapiRoutes } from "./strapiRoutes";
-import { setupYoutubeRoutes } from "./youtubeRoutes";
-import { setupEmailRoutes } from "./emailRoutes";
-import { setupPageRoutes } from "./pageRoutes";
 import { setupReactivationRoutes } from "./reactivationRoutes";
-import scrapeRoutes from "./scrapeRoutes";
 import { setupMusicFixtureProbeRoute } from "./musicFixtureProbe";
 import { pool } from "../db";
 import { setupMusicHealthRoutes } from "../deployment/music-health";
 import { checkMusicDatabaseReadiness } from "../db/readiness";
-import { requestIdFor, sendContainmentError, setupNativeSessionContainment, setupOwnerContainment } from "../security-containment";
+import { setupNativeSessionContainment, setupOwnerContainment } from "../security-containment";
 import { setupMusicIdentityRoutes } from "./musicIdentityRoutes";
 import { BoundedIdentityRateLimiter } from "../middleware/identityRateLimit";
 import { StrapiIdentityGateway } from "../services/strapiIdentityGateway";
@@ -32,7 +18,11 @@ import { MusicIdentityRepository } from "../repositories/musicIdentityRepository
 import { resolveMusicEntryPolicy } from "../deployment/music-deployment";
 import type { MusicIdentityRuntimeConfig } from "../config/music-identity-config";
 import { MusicTokenService } from "../services/musicTokenService";
-import { MusicPrincipalService } from "../middleware/musicPrincipal";
+import { createMusicSocketCredentialVerifier, MusicPrincipalService } from "../middleware/musicPrincipal";
+import { MusicDomainRepository } from "../repositories/musicDomainRepository";
+import { createYouTubeReadService } from "../services/youtubeReadService";
+import { setupCanonicalMusicRoutes, setupMusicSurfaceBoundary } from "./musicSurfaceRoutes";
+import { setupMusicOpenApiRoutes } from "./musicOpenApiRoutes";
 
 export function registerRoutes(app: Express, _storage: IStorage, musicConfig: MusicIdentityRuntimeConfig): Server {
   if (process.env.MUSIC_DEPLOYMENT_HEALTH_ENABLED === "true") {
@@ -45,8 +35,6 @@ export function registerRoutes(app: Express, _storage: IStorage, musicConfig: Mu
     strapiUrl: process.env.STRAPI_URL ?? "",
     fetchImpl: fetch,
   });
-  setupSwagger(app);
-
   setupNativeSessionContainment(app);
   const identityGateway = new StrapiIdentityGateway({
     baseUrl: musicConfig.strapiOrigin,
@@ -85,27 +73,25 @@ export function registerRoutes(app: Express, _storage: IStorage, musicConfig: Mu
       maxEntries: musicConfig.rateMaxEntries,
     }),
   });
+  const musicDomain = new MusicDomainRepository(pool);
+  const canonicalDependencies = {
+    repository: musicDomain,
+    resolvePrincipal: (token: string) => musicPrincipals.resolve(token),
+    allowedOrigins: process.env.ALLOWED_ORIGINS?.split(",").map((value) => value.trim()).filter(Boolean) ?? ["http://localhost:5173"],
+    youtube: createYouTubeReadService(process.env.YOUTUBE_API_KEY),
+  };
+  setupCanonicalMusicRoutes(app, canonicalDependencies);
+  setupMusicOpenApiRoutes(app);
   setupAuthRoutes(app);
+  setupMusicSurfaceBoundary(app, canonicalDependencies);
   setupOwnerContainment(app);
-  const server = setupPlaylistRoutes(app);
-  setupAdminRoutes(app);
-  setupStrapiRoutes(app);
-  setupYoutubeRoutes(app);
-  setupEmailRoutes(app);
-  setupPageRoutes(app);
+  const server = setupPlaylistRoutes(app, {
+    allowedOrigins: canonicalDependencies.allowedOrigins,
+    ownerCredentials: createMusicSocketCredentialVerifier(musicPrincipals),
+    resolveGuestCapability: (capability) => musicDomain.resolveGuestSocketAuthority(capability),
+  });
   setupReactivationRoutes(app);
-
-  setupUserRoutes(app);
-  setupPaymentRoutes(app);
-  setupSubscriptionRoutes(app);
-  setupGeminiRoutes(app);
-  setupInstagramRoutes(app);
-  setupGoogleOAuthRoutes(app);
-  setupAuthBridgeRoutes(app);
   setupSeoRoutes(app);
-
-  // Scraper Routes
-  app.use("/api", scrapeRoutes);
 
   // iTunes Search Proxy
   app.get("/itunes-api/search", async (req, res) => {
@@ -139,10 +125,5 @@ export function registerRoutes(app: Express, _storage: IStorage, musicConfig: Mu
     }
   });
   
-  // GraphQL Proxy for Strapi
-  app.post("/graphql", async (req, res) => {
-    return sendContainmentError(res, 410, "GRAPHQL_PROXY_REMOVED", requestIdFor(req));
-  });
-
   return server;
 }

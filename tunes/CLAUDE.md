@@ -38,10 +38,10 @@ server/
 ├── index.ts            # Express app entry point, Vite middleware, server startup
 ├── auth.ts             # Passport.js config, session setup, login/register logic
 ├── jwt-auth-middleware.ts # JWT validation middleware (dual auth: session + JWT)
-├── legacy-routes.ts    # Legacy playlist/user routes with multi-auth fallback
+├── routes/musicSurfaceRoutes.ts # Canonical C5 Music owner/guest routes
 ├── storage.ts          # Database access layer (all DB queries)
 ├── db.ts               # Drizzle + Neon connection setup
-├── swagger.ts          # OpenAPI spec (served at /api-docs)
+├── routes/musicOpenApiRoutes.ts # Minimal typed OpenAPI spec (served at /api-docs)
 ├── routes/
 │   ├── index.ts                # Route registration
 │   ├── authRoutes.ts           # Auth endpoints
@@ -127,7 +127,7 @@ npm run db:push          # Push schema to database
 1. Create `server/routes/newRoute.ts`
 2. Register in `server/routes/index.ts`
 3. Add DB queries in `server/storage.ts`
-4. Add Swagger docs in `server/swagger.ts`
+4. Add typed OpenAPI paths in `server/routes/musicOpenApiRoutes.ts`
 
 **Add a new database table:**
 1. Define table + insert schema in `shared/schema.ts`

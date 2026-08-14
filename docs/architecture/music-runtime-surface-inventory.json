@@ -1,42 +1,119 @@
 {
   "schemaVersion": "music-runtime-surface-inventory/v1",
+  "retiredSurfaces": [
+    {
+      "family": "legacy-browser-identity",
+      "disposition": "typed-410-boundary",
+      "reason": "Browser-selected identity bridges cannot establish Music ownership."
+    },
+    {
+      "family": "graphql-service-proxy",
+      "disposition": "typed-410-boundary",
+      "reason": "Unrestricted service-token GraphQL authority is prohibited."
+    },
+    {
+      "family": "legacy-admin",
+      "disposition": "typed-410-boundary",
+      "reason": "No internal Music admin principal exists."
+    },
+    {
+      "family": "swagger",
+      "disposition": "canonical-replacement",
+      "reason": "A minimal typed OpenAPI document describes only live canonical endpoints."
+    },
+    {
+      "family": "legacy-mixed-auth-owner-handlers",
+      "disposition": "canonical-replacement-or-typed-410",
+      "reason": "C5 owner routes replace product-required operations; the remainder retire fail-closed."
+    },
+    {
+      "family": "request",
+      "disposition": "canonical-replacement",
+      "reason": "Guest requests use the capability-only REST/socket allowlist."
+    },
+    {
+      "family": "queue",
+      "disposition": "canonical-replacement",
+      "reason": "Owner queue read/update/delete operations use principal-predicated SQL."
+    },
+    {
+      "family": "playlist",
+      "disposition": "canonical-replacement",
+      "reason": "Saved and active playlists use principal-predicated canonical routes."
+    },
+    {
+      "family": "settings",
+      "disposition": "canonical-replacement-or-typed-410",
+      "reason": "Playlist visibility is canonical; legacy identity/system settings retire."
+    },
+    {
+      "family": "device",
+      "disposition": "typed-410-boundary",
+      "reason": "Device-session authority remains outside the local Music principal."
+    },
+    {
+      "family": "analytics",
+      "disposition": "typed-410-boundary",
+      "reason": "Legacy mixed-auth analytics lacks a local scoped repository."
+    },
+    {
+      "family": "subscription",
+      "disposition": "typed-410-boundary",
+      "reason": "Caller-target subscription handlers are prohibited; entitlement is server-derived."
+    },
+    {
+      "family": "youtube",
+      "disposition": "canonical-replacement-or-typed-410",
+      "reason": "Typed C5 read-only search/video lookup remains; every broad or mutating sibling retires."
+    },
+    {
+      "family": "playback",
+      "disposition": "canonical-replacement",
+      "reason": "Playback state changes require C5 and owner-predicated queue SQL."
+    },
+    {
+      "family": "venue",
+      "disposition": "typed-410-boundary",
+      "reason": "Venue identity mutations remain authoritative in Explorer identity."
+    },
+    {
+      "family": "public",
+      "disposition": "canonical-replacement",
+      "reason": "Explicit publication and hashed capability reads replace implicit guest URLs."
+    },
+    {
+      "family": "admin",
+      "disposition": "typed-410-boundary",
+      "reason": "No internal Music admin principal exists."
+    },
+    {
+      "family": "payment",
+      "disposition": "typed-410-boundary",
+      "reason": "Legacy caller-target payment mutations cannot derive server authority safely."
+    },
+    {
+      "family": "scrape",
+      "disposition": "typed-410-boundary",
+      "reason": "Unrestricted scrape and image proxy operations are not Music owner functions."
+    },
+    {
+      "family": "instagram",
+      "disposition": "typed-410-boundary",
+      "reason": "The legacy mixed-auth upstream proxy is not an approved Music surface."
+    },
+    {
+      "family": "gemini",
+      "disposition": "typed-410-boundary",
+      "reason": "The legacy paid upstream proxy has no approved server-derived operation."
+    }
+  ],
   "routes": [
-    {
-      "method": "POST",
-      "path": "/api/auth/sync",
-      "classification": "owner-handler-review-required",
-      "ownerSource": "request.body.strapiUser",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/auth-bridge-routes.ts",
-      "line": 14
-    },
-    {
-      "method": "GET",
-      "path": "/api/auth/user-data",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/auth-bridge-routes.ts",
-      "line": 15
-    },
-    {
-      "method": "GET",
-      "path": "/api/auth/onboarding-status",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/auth-bridge-routes.ts",
-      "line": 16
-    },
     {
       "method": "POST",
       "path": "/api/login",
       "classification": "native-session",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
+      "ownerSource": "native-session-only",
+      "policy": "standalone-native-only",
       "lifecycle": "request",
       "source": "tunes/server/auth.ts",
       "line": 390
@@ -44,9 +121,9 @@
     {
       "method": "POST",
       "path": "/api/register",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/auth.ts",
       "line": 481
@@ -55,8 +132,8 @@
       "method": "POST",
       "path": "/api/logout",
       "classification": "native-session",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
+      "ownerSource": "native-session-only",
+      "policy": "standalone-native-only",
       "lifecycle": "request",
       "source": "tunes/server/auth.ts",
       "line": 656
@@ -65,8 +142,8 @@
       "method": "GET",
       "path": "/api/check",
       "classification": "native-session",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
+      "ownerSource": "native-session-only",
+      "policy": "standalone-native-only",
       "lifecycle": "request",
       "source": "tunes/server/auth.ts",
       "line": 722
@@ -75,8 +152,8 @@
       "method": "GET",
       "path": "/api/csrf-token",
       "classification": "native-session",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
+      "ownerSource": "native-session-only",
+      "policy": "standalone-native-only",
       "lifecycle": "request",
       "source": "tunes/server/auth.ts",
       "line": 731
@@ -85,7 +162,7 @@
       "method": "GET",
       "path": "/health/live",
       "classification": "public",
-      "ownerSource": "handler-derived-or-none",
+      "ownerSource": "none",
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/deployment/music-health.ts",
@@ -95,7 +172,7 @@
       "method": "GET",
       "path": "/health/ready",
       "classification": "public",
-      "ownerSource": "handler-derived-or-none",
+      "ownerSource": "none",
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/deployment/music-health.ts",
@@ -105,7 +182,7 @@
       "method": "GET",
       "path": "/api/music-entry/status",
       "classification": "public",
-      "ownerSource": "handler-derived-or-none",
+      "ownerSource": "none",
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/deployment/music-health.ts",
@@ -113,1330 +190,20 @@
     },
     {
       "method": "GET",
-      "path": "/api/connect/google",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/google-oauth-routes.ts",
-      "line": 18
-    },
-    {
-      "method": "GET",
-      "path": "/api/playlists",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 84
-    },
-    {
-      "method": "POST",
-      "path": "/api/playlists",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 153
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/playlists/:playlistId",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "delete",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 212
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/playlists/:playlistId",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 274
-    },
-    {
-      "method": "POST",
-      "path": "/api/playlists/:playlistId/songs",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 347
-    },
-    {
-      "method": "POST",
-      "path": "/api/playlist/import-youtube",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 425
-    },
-    {
-      "method": "POST",
-      "path": "/api/playlist/import-spotify",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 542
-    },
-    {
-      "method": "POST",
-      "path": "/api/playlists/:id/import-spotify",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 664
-    },
-    {
-      "method": "POST",
-      "path": "/api/playlists/:id/import-youtube",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 777
-    },
-    {
-      "method": "GET",
-      "path": "/api/playlists/:playlistId",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 882
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/playlists/:playlistId/songs/:songId",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "delete",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 908
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/playlists/:playlistId/reorder",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 973
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/playlists/:playlistId/visibility",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1021
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/reset-password",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1086
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/users/:userId/resend-verification",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal+path.userId",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1114
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/users/:userId/reset-password",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal+path.userId",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1175
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/team",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1213
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/team",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1230
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/admin/team/:memberId",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1247
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/admin/team/:memberId",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "delete",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1265
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/tokens",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1286
-    },
-    {
-      "method": "GET",
-      "path": "/api/user/tokens",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1311
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/tokens",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1337
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/admin/tokens/:tokenId/deactivate",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "block-or-deactivate",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1398
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/admin/tokens/:tokenId",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "delete",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1417
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/email/templates",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1440
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/email/templates",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1458
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/email/templates/:templateId",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1491
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/admin/email/templates/:templateId",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1515
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/admin/email/templates/:templateId",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "delete",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1550
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/email/logs",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1571
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/email/logs/:id",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1592
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/email/logs/status/:status",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1638
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/email/stats",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1660
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/email/verify",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1692
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/email/test",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1731
-    },
-    {
-      "method": "POST",
-      "path": "/api/email/send",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1808
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/admin/users/:userId",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal+path.userId",
-      "policy": "handler-level-unverified",
-      "lifecycle": "delete",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1874
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/user",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 1902
-    },
-    {
-      "method": "GET",
-      "path": "/api/user/profile",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 2143
-    },
-    {
-      "method": "GET",
-      "path": "/api/verify-email",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 2220
-    },
-    {
-      "method": "POST",
-      "path": "/api/verify-email/:token",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 2295
-    },
-    {
-      "method": "POST",
-      "path": "/api/resend-verification",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 2370
-    },
-    {
-      "method": "POST",
-      "path": "/api/user/profile",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 2420
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/user/profile",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "delete",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 2497
-    },
-    {
-      "method": "POST",
-      "path": "/api/user/change-password",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 2515
-    },
-    {
-      "method": "GET",
-      "path": "/api/playlist/:guestUrl",
-      "classification": "public",
-      "ownerSource": "path.guestUrl",
-      "policy": "explicit-public-contract",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 2537
-    },
-    {
-      "method": "POST",
-      "path": "/api/playlist/currently-playing",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 2627
-    },
-    {
-      "method": "POST",
-      "path": "/api/playlist/songs",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 2698
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/playlist/songs/:songId",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "delete",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 2799
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/playlist/songs/:songId/position",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 2861
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/playlist/songs/bulk",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "delete",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 2917
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/playlist/history",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "delete",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 2973
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/users",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 2994
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/admin/users/:userId/account-manager",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal+path.userId",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3025
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/users/:userId/activity",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal+path.userId",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3049
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/admin/users/:userId",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal+path.userId",
-      "policy": "handler-level-unverified",
-      "lifecycle": "delete",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3067
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/stats",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3089
-    },
-    {
-      "method": "POST",
-      "path": "/api/youtube/video-from-url",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3144
-    },
-    {
-      "method": "POST",
-      "path": "/api/youtube/search",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3258
-    },
-    {
-      "method": "GET",
-      "path": "/api/debug/strapi",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3306
-    },
-    {
-      "method": "GET",
-      "path": "/api/strapi/config",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3309
-    },
-    {
-      "method": "POST",
-      "path": "/api/strapi/graphql",
-      "classification": "service-token-proxy",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3312
-    },
-    {
-      "method": "GET",
-      "path": "/api/youtube/video/:id",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3316
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/youtube-stats",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3332
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/system",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3372
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/finance/youtube-costs",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3414
-    },
-    {
-      "method": "GET",
-      "path": "/api/youtube/video/:id",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3493
-    },
-    {
-      "method": "GET",
-      "path": "/api/user/analytics",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3509
-    },
-    {
-      "method": "POST",
-      "path": "/api/login",
-      "classification": "native-session",
-      "ownerSource": "authenticated-principal",
-      "policy": "passport.authenticate",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3625
-    },
-    {
-      "method": "POST",
-      "path": "/api/logout",
-      "classification": "native-session",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3645
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/system",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3686
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/finance/youtube-costs",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3728
-    },
-    {
-      "method": "GET",
-      "path": "/api/user/analytics",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3805
-    },
-    {
-      "method": "POST",
-      "path": "/api/login",
-      "classification": "native-session",
-      "ownerSource": "authenticated-principal",
-      "policy": "passport.authenticate",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3921
-    },
-    {
-      "method": "POST",
-      "path": "/api/logout",
-      "classification": "native-session",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3941
-    },
-    {
-      "method": "GET",
-      "path": "/api/playlist/:guestUrl",
-      "classification": "public",
-      "ownerSource": "path.guestUrl",
-      "policy": "explicit-public-contract",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 3981
-    },
-    {
-      "method": "POST",
-      "path": "/api/playlist/currently-playing",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4018
-    },
-    {
-      "method": "POST",
-      "path": "/api/playlist/songs",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4049
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/playlist/songs/:songId",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "delete",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4103
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/playlist/songs/:songId/position",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4165
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/playlist/songs/bulk",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "delete",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4221
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/playlist/history",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "delete",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4277
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/users",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4298
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/admin/users/:userId/account-manager",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal+path.userId",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4328
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/users/:userId/activity",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal+path.userId",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4352
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/admin/users/:userId",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal+path.userId",
-      "policy": "handler-level-unverified",
-      "lifecycle": "delete",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4370
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/stats",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4392
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/system",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4411
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/finance/youtube-costs",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4453
-    },
-    {
-      "method": "GET",
-      "path": "/api/user/analytics",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4530
-    },
-    {
-      "method": "POST",
-      "path": "/api/login",
-      "classification": "native-session",
-      "ownerSource": "authenticated-principal",
-      "policy": "passport.authenticate",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4646
-    },
-    {
-      "method": "POST",
-      "path": "/api/logout",
-      "classification": "native-session",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4666
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/users",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4705
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/admin/users/:userId/account-manager",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal+path.userId",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4735
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/users/:userId/activity",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal+path.userId",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4759
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/admin/users/:userId",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal+path.userId",
-      "policy": "handler-level-unverified",
-      "lifecycle": "delete",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4777
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/stats",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4799
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/system",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4818
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/finance/youtube-costs",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4860
-    },
-    {
-      "method": "GET",
-      "path": "/api/user/analytics",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 4937
-    },
-    {
-      "method": "POST",
-      "path": "/api/login",
-      "classification": "native-session",
-      "ownerSource": "authenticated-principal",
-      "policy": "passport.authenticate",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5053
-    },
-    {
-      "method": "POST",
-      "path": "/api/logout",
-      "classification": "native-session",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5073
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/users",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5111
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/admin/users/:userId/account-manager",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal+path.userId",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5141
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/users/:userId/activity",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal+path.userId",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5165
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/admin/users/:userId",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal+path.userId",
-      "policy": "handler-level-unverified",
-      "lifecycle": "delete",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5183
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/stats",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5205
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/system",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5224
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/finance/youtube-costs",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5266
-    },
-    {
-      "method": "GET",
-      "path": "/api/page-contents/:slug",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5345
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/page-contents",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5367
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/page-contents",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5381
-    },
-    {
-      "method": "PUT",
-      "path": "/api/admin/page-contents/:slug",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5414
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/admin/page-contents/:slug",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "delete",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5445
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/system-settings",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5650
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/system-settings/:key",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5665
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/system-settings",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5685
-    },
-    {
-      "method": "PUT",
-      "path": "/api/admin/system-settings/:key",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5720
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/admin/system-settings/:key",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "delete",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5755
-    },
-    {
-      "method": "GET",
-      "path": "/api/system-settings/:key",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5778
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/system-settings",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5800
-    },
-    {
-      "method": "POST",
-      "path": "/api/gemini/generate",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/geminiRoutes.ts",
-      "line": 48
-    },
-    {
-      "method": "GET",
-      "path": "/api/gemini/models",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/geminiRoutes.ts",
-      "line": 51
-    },
-    {
-      "method": "USE",
-      "path": "/api",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/index.ts",
-      "line": 108
-    },
-    {
-      "method": "GET",
       "path": "/itunes-api/search",
       "classification": "public",
-      "ownerSource": "handler-derived-or-none",
+      "ownerSource": "none",
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/index.ts",
-      "line": 111
-    },
-    {
-      "method": "POST",
-      "path": "/graphql",
-      "classification": "service-token-proxy",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/index.ts",
-      "line": 143
-    },
-    {
-      "method": "POST",
-      "path": "/api/instagram/extract",
-      "classification": "authenticated",
-      "ownerSource": "authenticated-principal",
-      "policy": "authenticateToken",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/instagramRoutes.ts",
-      "line": 55
-    },
-    {
-      "method": "POST",
-      "path": "/api/instagram/profile",
-      "classification": "authenticated",
-      "ownerSource": "authenticated-principal",
-      "policy": "authenticateToken",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/instagramRoutes.ts",
-      "line": 143
-    },
-    {
-      "method": "POST",
-      "path": "/api/instagram/account-posts",
-      "classification": "authenticated",
-      "ownerSource": "authenticated-principal",
-      "policy": "authenticateToken",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/instagramRoutes.ts",
-      "line": 220
-    },
-    {
-      "method": "GET",
-      "path": "/api/instagram/media-proxy",
-      "classification": "authenticated",
-      "ownerSource": "authenticated-principal",
-      "policy": "authenticateToken",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/instagramRoutes.ts",
-      "line": 316
+      "line": 97
     },
     {
       "method": "GET",
       "path": "/api/music-fixture/readiness",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicFixtureProbe.ts",
       "line": 18
@@ -1446,7 +213,7 @@
       "path": "/api/music/identity/ensure",
       "classification": "strapi-identity-boundary",
       "ownerSource": "authoritative-strapi-user+selected-account",
-      "policy": "handler-level-unverified",
+      "policy": "c5-mint-boundary",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicIdentityRoutes.ts",
       "line": 80
@@ -1454,69 +221,589 @@
     {
       "method": "GET",
       "path": "/api/music/identity/current",
-      "classification": "local-music-principal",
-      "ownerSource": "verified-subject-derived-numeric-owner",
-      "policy": "handler-level-unverified",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicIdentityRoutes.ts",
       "line": 154
     },
     {
-      "method": "POST",
-      "path": "/api/payments/create-order",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
+      "method": "GET",
+      "path": "/api-docs",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
       "lifecycle": "request",
-      "source": "tunes/server/routes/paymentRoutes.ts",
-      "line": 103
+      "source": "tunes/server/routes/musicOpenApiRoutes.ts",
+      "line": 44
     },
     {
-      "method": "POST",
-      "path": "/api/payments/verify-payment",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
+      "method": "ALL",
+      "path": "/graphql",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
       "lifecycle": "request",
-      "source": "tunes/server/routes/paymentRoutes.ts",
-      "line": 110
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
     },
     {
-      "method": "POST",
-      "path": "/api/payments/create-subscription",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
+      "method": "ALL",
+      "path": "/api",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
       "lifecycle": "request",
-      "source": "tunes/server/routes/paymentRoutes.ts",
-      "line": 117
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
     },
     {
-      "method": "POST",
-      "path": "/api/payments/verify-subscription",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
+      "method": "ALL",
+      "path": "/api/strapi/graphql",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
       "lifecycle": "request",
-      "source": "tunes/server/routes/paymentRoutes.ts",
-      "line": 124
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/strapi/config",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/debug/strapi",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/auth/*",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/register",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/connect/google",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/admin/*",
+      "classification": "admin-tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/page-contents/*",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/verify-email*",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/resend-verification",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/user/*",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/system-settings/*",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/youtube/*",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/instagram/*",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/payments/*",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/subscriptions/*",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/gemini/*",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/email/*",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/seo",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/apps/*",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/products/*",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/people/*",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/proxy-image",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/apps/*",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/products/*",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/people/*",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/proxy-image",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
+    },
+    {
+      "method": "ALL",
+      "path": "/api/playlist/import-*",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 0
     },
     {
       "method": "GET",
-      "path": "/api/payments/subscriptions/:customerId",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
+      "path": "/api/playlists",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
       "lifecycle": "request",
-      "source": "tunes/server/routes/paymentRoutes.ts",
-      "line": 131
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 89
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlists",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 93
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlists/:playlistId",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 100
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/playlists/:playlistId",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 108
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlists/:playlistId",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 120
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlists/:playlistId/songs",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 127
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlists/:playlistId/songs/:songId",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 137
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/playlists/:playlistId/reorder",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 146
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/playlists/:playlistId/visibility",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 157
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlist/songs",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 168
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/dashboard",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 172
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlist/songs",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 176
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlist/currently-playing",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 180
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlist/songs/bulk",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 191
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlist/songs/:songId",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 200
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/playlist/songs/:songId/position",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 207
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlist/history",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 221
+    },
+    {
+      "method": "POST",
+      "path": "/api/youtube/search",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 225
+    },
+    {
+      "method": "POST",
+      "path": "/api/youtube/video-from-url",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 237
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/guest-capability/rotate",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 249
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/guest-capability/revoke",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 257
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/publication/:action",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 261
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/paid/import",
+      "classification": "paid-local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+fresh-entitlement+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 271
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/entitlement",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 281
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlist/:guestUrl",
+      "classification": "guest-capability",
+      "ownerSource": "hashed-guest-capability-or-explicit-publication",
+      "policy": "hashed-capability+guest-allowlist",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 297
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/guest/request",
+      "classification": "guest-capability",
+      "ownerSource": "hashed-guest-capability",
+      "policy": "hashed-capability+guest-allowlist",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 316
     },
     {
       "method": "POST",
       "path": "/api/user/request-reactivation",
-      "classification": "authenticated",
-      "ownerSource": "authenticated-principal",
-      "policy": "Limiter",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
       "lifecycle": "reactivate",
       "source": "tunes/server/routes/reactivationRoutes.ts",
       "line": 84
@@ -1524,395 +811,124 @@
     {
       "method": "GET",
       "path": "/api/user/reactivate",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
       "lifecycle": "reactivate",
       "source": "tunes/server/routes/reactivationRoutes.ts",
       "line": 115
     },
     {
-      "method": "POST",
-      "path": "/apps/scrape-url",
-      "classification": "authenticated",
-      "ownerSource": "authenticated-principal",
-      "policy": "Limiter",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/scrapeRoutes.ts",
-      "line": 18
-    },
-    {
-      "method": "POST",
-      "path": "/products/scrape-link",
-      "classification": "authenticated",
-      "ownerSource": "authenticated-principal",
-      "policy": "Limiter",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/scrapeRoutes.ts",
-      "line": 40
-    },
-    {
-      "method": "POST",
-      "path": "/people/scrape-profile",
-      "classification": "authenticated",
-      "ownerSource": "authenticated-principal",
-      "policy": "Limiter",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/scrapeRoutes.ts",
-      "line": 57
-    },
-    {
-      "method": "GET",
-      "path": "/proxy-image",
-      "classification": "authenticated",
-      "ownerSource": "authenticated-principal",
-      "policy": "Limiter",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/scrapeRoutes.ts",
-      "line": 75
-    },
-    {
-      "method": "GET",
-      "path": "/api/subscriptions/plans",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/subscriptionRoutes.ts",
-      "line": 14
-    },
-    {
-      "method": "GET",
-      "path": "/api/subscriptions/plans/:planId",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/subscriptionRoutes.ts",
-      "line": 15
-    },
-    {
-      "method": "GET",
-      "path": "/api/subscriptions/user-plans/:userId",
-      "classification": "owner-handler-review-required",
-      "ownerSource": "path.userId",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/subscriptionRoutes.ts",
-      "line": 18
-    },
-    {
-      "method": "POST",
-      "path": "/api/subscriptions/user-plans",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/subscriptionRoutes.ts",
-      "line": 19
-    },
-    {
-      "method": "GET",
-      "path": "/api/subscriptions/song-limits/:username",
-      "classification": "owner-handler-review-required",
-      "ownerSource": "path.username",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/subscriptionRoutes.ts",
-      "line": 22
-    },
-    {
-      "method": "POST",
-      "path": "/api/subscriptions/song-limits",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/subscriptionRoutes.ts",
-      "line": 23
-    },
-    {
-      "method": "PUT",
-      "path": "/api/subscriptions/song-limits/:documentId",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/subscriptionRoutes.ts",
-      "line": 24
-    },
-    {
-      "method": "GET",
-      "path": "/api/seo",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/seo-routes.ts",
-      "line": 185
-    },
-    {
-      "method": "PUT",
-      "path": "/api/seo",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/seo-routes.ts",
-      "line": 201
-    },
-    {
       "method": "GET",
       "path": "/robots.txt",
       "classification": "public",
-      "ownerSource": "handler-derived-or-none",
+      "ownerSource": "none",
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/seo-routes.ts",
-      "line": 234
+      "line": 181
     },
     {
       "method": "GET",
       "path": "/sitemap.xml",
       "classification": "public",
-      "ownerSource": "handler-derived-or-none",
+      "ownerSource": "none",
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/seo-routes.ts",
-      "line": 251
+      "line": 198
     },
     {
       "method": "GET",
       "path": "/api/explorers-sitemap.xml",
       "classification": "public",
-      "ownerSource": "handler-derived-or-none",
+      "ownerSource": "none",
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/seo-routes.ts",
-      "line": 272
-    },
-    {
-      "method": "USE",
-      "path": "/api-docs",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/swagger.ts",
-      "line": 1914
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/user/:userId",
-      "classification": "admin-handler-review-required",
-      "ownerSource": "authenticated-admin-principal+path.userId",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/user-routes.ts",
-      "line": 15
-    },
-    {
-      "method": "GET",
-      "path": "/api/user",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/user-routes.ts",
-      "line": 74
-    },
-    {
-      "method": "GET",
-      "path": "/api/user/devices",
-      "classification": "handler-authorization-unknown",
-      "ownerSource": "handler-derived-or-none",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/user-routes.ts",
-      "line": 89
-    },
-    {
-      "method": "POST",
-      "path": "/api/user/devices/:sessionId/terminate",
-      "classification": "owner-handler-review-required",
-      "ownerSource": "path.sessionId",
-      "policy": "handler-level-unverified",
-      "lifecycle": "request",
-      "source": "tunes/server/user-routes.ts",
-      "line": 240
+      "line": 219
     }
   ],
   "events": [
     {
-      "direction": "emit",
-      "event": "message",
-      "policy": "socket-connection",
-      "ownerSource": "socket-session-or-room",
-      "lifecycle": "event",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 2099
-    },
-    {
-      "direction": "emit",
-      "event": "message",
-      "policy": "socket-connection",
-      "ownerSource": "socket-session-or-room",
-      "lifecycle": "event",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 2106
-    },
-    {
-      "direction": "emit",
-      "event": "message",
-      "policy": "socket-connection",
-      "ownerSource": "socket-session-or-room",
-      "lifecycle": "event",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 2113
-    },
-    {
-      "direction": "emit",
-      "event": "message",
-      "policy": "socket-connection",
-      "ownerSource": "socket-session-or-room",
-      "lifecycle": "event",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 2120
-    },
-    {
-      "direction": "emit",
-      "event": "message",
-      "policy": "socket-connection",
-      "ownerSource": "socket-session-or-room",
-      "lifecycle": "event",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 2127
-    },
-    {
       "direction": "receive",
       "event": "connection",
-      "policy": "session-middleware",
-      "ownerSource": "socket-session-or-room",
+      "classification": "c5-or-guest-handshake",
+      "policy": "event-time-recheck+role-allowlist",
+      "ownerSource": "socket.musicPrincipal",
       "lifecycle": "event",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5518
-    },
-    {
-      "direction": "emit",
-      "event": "containment_error",
-      "policy": "socket-connection",
-      "ownerSource": "socket-session-or-room",
-      "lifecycle": "event",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5532
-    },
-    {
-      "direction": "emit",
-      "event": "containment_error",
-      "policy": "socket-connection",
-      "ownerSource": "socket-session-or-room",
-      "lifecycle": "event",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5537
-    },
-    {
-      "direction": "emit",
-      "event": "containment_error",
-      "policy": "socket-connection",
-      "ownerSource": "socket-session-or-room",
-      "lifecycle": "event",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5551
-    },
-    {
-      "direction": "emit",
-      "event": "containment_error",
-      "policy": "socket-connection",
-      "ownerSource": "socket-session-or-room",
-      "lifecycle": "event",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5563
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 83
     },
     {
       "direction": "emit",
       "event": "connection_status",
-      "policy": "socket-connection",
-      "ownerSource": "socket-session-or-room",
+      "classification": "socket-response",
+      "policy": "event-time-recheck+role-allowlist",
+      "ownerSource": "socket.musicPrincipal",
       "lifecycle": "event",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5583
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 87
     },
     {
       "direction": "emit",
-      "event": "containment_error",
-      "policy": "socket-connection",
-      "ownerSource": "socket-session-or-room",
+      "event": "music_error",
+      "classification": "socket-response",
+      "policy": "event-time-recheck+role-allowlist",
+      "ownerSource": "socket.musicPrincipal",
       "lifecycle": "event",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5591
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 91
     },
     {
       "direction": "receive",
       "event": "player_state",
-      "policy": "socket-connection",
-      "ownerSource": "socket-session-or-room",
+      "classification": "local-music-owner-event",
+      "policy": "event-time-recheck+role-allowlist",
+      "ownerSource": "socket.musicPrincipal",
       "lifecycle": "event",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5608
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 115
     },
     {
       "direction": "emit",
       "event": "player_state",
-      "policy": "socket-connection",
-      "ownerSource": "socket-session-or-room",
+      "classification": "socket-response",
+      "policy": "event-time-recheck+role-allowlist",
+      "ownerSource": "socket.musicPrincipal",
       "lifecycle": "event",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5615
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 122
     },
     {
       "direction": "receive",
       "event": "guest_request",
-      "policy": "socket-connection",
-      "ownerSource": "socket-session-or-room",
+      "classification": "guest-capability-event",
+      "policy": "event-time-recheck+role-allowlist",
+      "ownerSource": "hashed-guest-capability",
       "lifecycle": "event",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5618
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 126
     },
     {
       "direction": "emit",
       "event": "guest_request",
-      "policy": "socket-connection",
-      "ownerSource": "socket-session-or-room",
+      "classification": "socket-response",
+      "policy": "event-time-recheck+role-allowlist",
+      "ownerSource": "hashed-guest-capability",
       "lifecycle": "event",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5627
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 135
     },
     {
       "direction": "emit",
       "event": "guest_request_status",
-      "policy": "socket-connection",
-      "ownerSource": "socket-session-or-room",
+      "classification": "socket-response",
+      "policy": "event-time-recheck+role-allowlist",
+      "ownerSource": "socket.musicPrincipal",
       "lifecycle": "event",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5628
-    },
-    {
-      "direction": "receive",
-      "event": "disconnect",
-      "policy": "socket-connection",
-      "ownerSource": "socket-session-or-room",
-      "lifecycle": "disconnect",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5632
-    },
-    {
-      "direction": "emit",
-      "event": "containment_error",
-      "policy": "socket-connection",
-      "ownerSource": "socket-session-or-room",
-      "lifecycle": "event",
-      "source": "tunes/server/legacy-routes.ts",
-      "line": 5644
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 136
     }
   ],
   "jobs": [

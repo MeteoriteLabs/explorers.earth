@@ -121,15 +121,16 @@ export default function SettingsPage() {
 
   // Fetch user device sessions
   const { data: deviceSessions, isLoading: isLoadingDevices, refetch: refetchDevices } = useQuery<DeviceSession[]>({
-    queryKey: [`/api/user/devices?username=${user?.username || ''}`],
-    enabled: !!user,
+    queryKey: ["/api/user/devices"],
+    enabled: false,
+    initialData: [],
   });
 
   // Terminate session mutation
   const terminateSessionMutation = useMutation({
     mutationFn: async (sessionId: number) => {
-      // Include username for JWT auth
-      await apiRequest('POST', `/api/user/devices/${sessionId}/terminate?username=${user?.username}`);
+      void sessionId;
+      await Promise.reject(new Error("Music device sessions are managed in Explorer settings."));
     },
     onSuccess: () => {
       refetchDevices();
@@ -182,10 +183,8 @@ export default function SettingsPage() {
 
   const onPasswordChange = async (data: PasswordChangeValues) => {
     try {
-      await apiRequest("POST", "/api/user/change-password", {
-        currentPassword: data.currentPassword,
-        newPassword: data.newPassword
-      });
+      void data;
+      await Promise.reject(new Error("Music passwords are managed by your Explorer identity."));
 
       toast({
         title: "Password updated",
@@ -203,90 +202,91 @@ export default function SettingsPage() {
   };
 
   const onEmailSubmit = async (data: EmailFormValues) => {
-    try {
-      // Update the email through the PATCH /api/user endpoint
-      await apiRequest("PATCH", "/api/user", {
-        username: user?.username,  // Required for JWT auth
-        email: data.email
-      });
-
-      // Update the cache with the new email
-      const updatedUser = {
-        ...user,
-        email: data.email
-      };
-
-      queryClient.setQueryData(["/api/user"], updatedUser);
-
-      // Update local storage to persist across page refreshes
-      if (updatedUser) {
-        saveUserToStorage(updatedUser as any);
-      }
-
-      // Refetch user data to ensure consistency
-      await refetchUser();
-
-      toast({
-        title: "Email updated",
-        description: "Your email has been updated successfully."
-      });
-    } catch (error) {
-      toast({
-        title: "Failed to update email",
-        description: error instanceof Error ? error.message : "Could not update your email. Please try again.",
-        variant: "destructive"
-      });
-
-      // Revert form on error
-      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-    }
+    emailForm.reset({ email: user?.email || data.email });
+    toast({
+      title: "Managed by Explorer identity",
+      description: "Email changes must be made in your Explorer identity settings.",
+      variant: "destructive"
+    });
   };
 
   const onUsernameSubmit = async (data: UsernameFormValues) => {
-    try {
-      // Update the username through the PATCH /api/user endpoint
-      await apiRequest("PATCH", "/api/user", {
-        currentUsername: user?.username,  // Required for JWT auth when changing username
-        username: data.username
-      });
-
-      // Update the cache with the new username
-      const updatedUser = {
-        ...user,
-        username: data.username
-      };
-
-      queryClient.setQueryData(["/api/user"], updatedUser);
-
-      // Update local storage to persist across page refreshes
-      if (updatedUser) {
-        saveUserToStorage(updatedUser as any);
-      }
-
-      // Refetch user data to ensure consistency with server
-      await refetchUser();
-
-      toast({
-        title: "Username updated",
-        description: "Your username has been updated successfully."
-      });
-
-      // Reset the form to mark it as not dirty
-      usernameForm.reset({ username: data.username });
-    } catch (error) {
-      toast({
-        title: "Failed to update username",
-        description: error instanceof Error ? error.message : "Could not update your username. Please try again.",
-        variant: "destructive"
-      });
-
-      // Revert form on error
-      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      usernameForm.reset({ username: user?.username || "" });
-    }
+    usernameForm.reset({ username: user?.username || data.username });
+    toast({
+      title: "Managed by Explorer identity",
+      description: "Username changes must be made in your Explorer identity settings.",
+      variant: "destructive"
+    });
   };
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   // Settings form initialization
+
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsFormSchema),
     defaultValues: {
@@ -374,7 +374,6 @@ export default function SettingsPage() {
   const onSubmit = async (data: SettingsFormValues) => {
     try {
       const updateData = {
-        username: user?.username,  // Required for JWT auth
         venueName: data.venueName,
         theme: {
           primary: data.primaryColor,
@@ -395,6 +394,7 @@ export default function SettingsPage() {
 
       // Optimistically update cache with all changes
       const updatedUser = {
+
         ...user,
         venueName: data.venueName,
         theme: {
@@ -406,7 +406,6 @@ export default function SettingsPage() {
         allowPlaylistSharing: data.allowPlaylistSharing,
         allowRecentlyPlayedVisibility: data.allowRecentlyPlayedVisibility
       };
-
       queryClient.setQueryData(["/api/user"], updatedUser);
 
       // Update local storage to persist across page refreshes
@@ -415,7 +414,8 @@ export default function SettingsPage() {
       }
 
       // Make the API request
-      await apiRequest("PATCH", "/api/user", updateData);
+      void updateData;
+      await Promise.reject(new Error("Music profile settings are managed in Explorer."));
 
       // Update guest playlist if needed
       if (user?.guestUrl) {
@@ -511,17 +511,8 @@ export default function SettingsPage() {
 
   const onProfileSubmit = async (data: ProfileFormValues) => {
     try {
-      // Include username for JWT auth
-      await apiRequest("POST", "/api/user/profile", {
-        ...data,
-        username: user?.username  // Required for JWT auth
-      });
-      await queryClient.invalidateQueries({ queryKey: ["/api/user/profile"] });
-
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully."
-      });
+      void data;
+      await Promise.reject(new Error("Music profile settings are managed in Explorer."));
     } catch (error) {
       toast({
         title: "Failed to update profile",

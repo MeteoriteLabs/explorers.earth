@@ -11,15 +11,39 @@ describe("runtime route/event/job inventory", () => {
     // Socket event, or scheduled lifecycle job that was hand-summarized only.
     const inventory = inventoryRuntimeSurfaces(repositoryRoot);
     expect(inventory.routes).toEqual(expect.arrayContaining([
-      expect.objectContaining({ method: "POST", path: "/api/auth/sync", ownerSource: "request.body.strapiUser", classification: "owner-handler-review-required" }),
       expect.objectContaining({ method: "POST", path: "/api/music/identity/ensure", ownerSource: "authoritative-strapi-user+selected-account", classification: "strapi-identity-boundary" }),
-      expect.objectContaining({ method: "GET", path: "/api/music/identity/current", ownerSource: "verified-subject-derived-numeric-owner", classification: "local-music-principal" }),
-      expect.objectContaining({ method: "GET", path: "/api/playlist/:guestUrl", classification: "public", ownerSource: "path.guestUrl" }),
-      expect.objectContaining({ method: "POST", path: "/graphql", classification: "service-token-proxy" }),
-      expect.objectContaining({ method: "GET", path: "/api/admin/team", classification: "admin-handler-review-required", ownerSource: "authenticated-admin-principal" }),
+      expect.objectContaining({ method: "GET", path: "/api/music/identity/current", ownerSource: "req.musicPrincipal.musicUserId", classification: "local-music-owner" }),
+      expect.objectContaining({ method: "GET", path: "/api/playlists", ownerSource: "req.musicPrincipal.musicUserId", classification: "local-music-owner" }),
+      expect.objectContaining({ method: "GET", path: "/api/playlist/:guestUrl", classification: "guest-capability", ownerSource: "hashed-guest-capability-or-explicit-publication" }),
+    ]));
+    expect(inventory.retiredSurfaces).toEqual(expect.arrayContaining([
+      expect.objectContaining({ family: "legacy-browser-identity", disposition: "typed-410-boundary" }),
+      expect.objectContaining({ family: "graphql-service-proxy", disposition: "typed-410-boundary" }),
+      expect.objectContaining({ family: "legacy-admin", disposition: "typed-410-boundary" }),
+      expect.objectContaining({ family: "legacy-mixed-auth-owner-handlers", disposition: "canonical-replacement-or-typed-410" }),
+    ]));
+    expect(inventory.retiredSurfaces.map(({ family }) => family)).toEqual(expect.arrayContaining([
+      "request", "queue", "playlist", "settings", "device", "analytics", "subscription",
+      "youtube", "playback", "venue", "public", "admin", "payment", "scrape", "instagram", "gemini",
+    ]));
+    expect(inventory.routes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ method: "ALL", path: "/api/auth/*", classification: "tombstone" }),
+      expect.objectContaining({ method: "ALL", path: "/graphql", classification: "tombstone" }),
+      expect.objectContaining({ method: "ALL", path: "/api/admin/*", classification: "admin-tombstone" }),
+      expect.objectContaining({ method: "ALL", path: "/apps/*", classification: "tombstone" }),
+      expect.objectContaining({ method: "ALL", path: "/products/*", classification: "tombstone" }),
+      expect.objectContaining({ method: "ALL", path: "/people/*", classification: "tombstone" }),
+      expect.objectContaining({ method: "ALL", path: "/proxy-image", classification: "tombstone" }),
+      expect.objectContaining({ method: "ALL", path: "/api/playlist/import-*", classification: "tombstone" }),
+      expect.objectContaining({ method: "GET", path: "/api/music/entitlement", classification: "local-music-owner" }),
+      expect.objectContaining({ method: "GET", path: "/api/music/dashboard", classification: "local-music-owner" }),
     ]));
     expect(inventory.routes.filter((route) => route.policy === "none").every((route) => route.classification !== "public")).toBe(true);
     expect(inventory.events).toEqual(expect.arrayContaining([expect.objectContaining({ direction: "receive", event: "player_state" })]));
+    expect(inventory.routes.some((route) => [
+      "handler-authorization-unknown", "owner-handler-review-required", "admin-handler-review-required", "service-token-proxy",
+    ].includes(route.classification))).toBe(false);
+    expect(inventory.events.every((event) => event.classification !== "unclassified")).toBe(true);
     expect(inventory.jobs).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "setInterval", lifecycle: "reactivation-token-cleanup" })]));
   });
 

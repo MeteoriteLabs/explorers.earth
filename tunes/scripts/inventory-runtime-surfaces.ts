@@ -1,11 +1,50 @@
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import ts from "typescript";
+import { decisionForRoute, type MusicSurfaceDecision } from "../server/policies/musicSurfacePolicy";
 
 export interface RouteSurface { method: string; path: string; classification: string; ownerSource: string; policy: string; lifecycle: string; source: string; line: number; }
-interface EventSurface { direction: "receive" | "emit"; event: string; policy: string; ownerSource: string; lifecycle: string; source: string; line: number; }
+interface EventSurface { direction: "receive" | "emit"; event: string; classification: string; policy: string; ownerSource: string; lifecycle: string; source: string; line: number; }
 interface JobSurface { kind: "setInterval" | "setTimeout"; lifecycle: string; source: string; line: number; }
-export interface RuntimeSurfaceInventory { schemaVersion: "music-runtime-surface-inventory/v1"; routes: RouteSurface[]; events: EventSurface[]; jobs: JobSurface[]; }
+interface RetiredSurface {
+  family: string;
+  disposition: "canonical-replacement" | "typed-410-boundary" | "canonical-replacement-or-typed-410";
+  reason: string;
+}
+export interface RuntimeSurfaceInventory { schemaVersion: "music-runtime-surface-inventory/v1"; retiredSurfaces: RetiredSurface[]; routes: RouteSurface[]; events: EventSurface[]; jobs: JobSurface[]; }
+
+const RETIRED_SURFACES: RetiredSurface[] = [
+  { family: "legacy-browser-identity", disposition: "typed-410-boundary", reason: "Browser-selected identity bridges cannot establish Music ownership." },
+  { family: "graphql-service-proxy", disposition: "typed-410-boundary", reason: "Unrestricted service-token GraphQL authority is prohibited." },
+  { family: "legacy-admin", disposition: "typed-410-boundary", reason: "No internal Music admin principal exists." },
+  { family: "swagger", disposition: "canonical-replacement", reason: "A minimal typed OpenAPI document describes only live canonical endpoints." },
+  { family: "legacy-mixed-auth-owner-handlers", disposition: "canonical-replacement-or-typed-410", reason: "C5 owner routes replace product-required operations; the remainder retire fail-closed." },
+  { family: "request", disposition: "canonical-replacement", reason: "Guest requests use the capability-only REST/socket allowlist." },
+  { family: "queue", disposition: "canonical-replacement", reason: "Owner queue read/update/delete operations use principal-predicated SQL." },
+  { family: "playlist", disposition: "canonical-replacement", reason: "Saved and active playlists use principal-predicated canonical routes." },
+  { family: "settings", disposition: "canonical-replacement-or-typed-410", reason: "Playlist visibility is canonical; legacy identity/system settings retire." },
+  { family: "device", disposition: "typed-410-boundary", reason: "Device-session authority remains outside the local Music principal." },
+  { family: "analytics", disposition: "typed-410-boundary", reason: "Legacy mixed-auth analytics lacks a local scoped repository." },
+  { family: "subscription", disposition: "typed-410-boundary", reason: "Caller-target subscription handlers are prohibited; entitlement is server-derived." },
+  { family: "youtube", disposition: "canonical-replacement-or-typed-410", reason: "Typed C5 read-only search/video lookup remains; every broad or mutating sibling retires." },
+  { family: "playback", disposition: "canonical-replacement", reason: "Playback state changes require C5 and owner-predicated queue SQL." },
+  { family: "venue", disposition: "typed-410-boundary", reason: "Venue identity mutations remain authoritative in Explorer identity." },
+  { family: "public", disposition: "canonical-replacement", reason: "Explicit publication and hashed capability reads replace implicit guest URLs." },
+  { family: "admin", disposition: "typed-410-boundary", reason: "No internal Music admin principal exists." },
+  { family: "payment", disposition: "typed-410-boundary", reason: "Legacy caller-target payment mutations cannot derive server authority safely." },
+  { family: "scrape", disposition: "typed-410-boundary", reason: "Unrestricted scrape and image proxy operations are not Music owner functions." },
+  { family: "instagram", disposition: "typed-410-boundary", reason: "The legacy mixed-auth upstream proxy is not an approved Music surface." },
+  { family: "gemini", disposition: "typed-410-boundary", reason: "The legacy paid upstream proxy has no approved server-derived operation." },
+];
+
+const BOUNDARY_PATHS = [
+  "/graphql", "/api", "/api/strapi/graphql", "/api/strapi/config", "/api/debug/strapi",
+  "/api/auth/*", "/api/register", "/api/connect/google", "/api/admin/*", "/api/page-contents/*",
+  "/api/verify-email*", "/api/resend-verification", "/api/user/*", "/api/system-settings/*",
+  "/api/youtube/*", "/api/instagram/*", "/api/payments/*", "/api/subscriptions/*", "/api/gemini/*",
+  "/api/email/*", "/api/seo", "/api/apps/*", "/api/products/*", "/api/people/*", "/api/proxy-image",
+  "/apps/*", "/products/*", "/people/*", "/proxy-image", "/api/playlist/import-*",
+] as const;
 
 function files(directory: string): string[] {
   return readdirSync(directory).flatMap((name) => {
@@ -25,36 +64,37 @@ function policyFor(text: string): string {
   return policies.length ? policies.join("+") : "none";
 }
 
-function classificationFor(path: string, policy: string): string {
-  if (path === "/api/music/identity/ensure") return "strapi-identity-boundary";
-  if (path === "/api/music/identity/current") return "local-music-principal";
-  if (path === "/graphql" || path.includes("strapi/graphql")) return "service-token-proxy";
-  if (["/api/login", "/api/logout", "/api/check", "/api/csrf-token"].includes(path)) return "native-session";
-  if (path.startsWith("/api/admin/")) return "admin-handler-review-required";
-  if (policy !== "none") return "authenticated";
-  if (["/api/playlist/:guestUrl", "/robots.txt", "/sitemap.xml", "/api/explorers-sitemap.xml", "/itunes-api/search", "/health/live", "/health/ready", "/api/music-entry/status"].includes(path)) return "public";
-  if (/:(?:userId|username|sessionId)\b/.test(path) || path === "/api/auth/sync") return "owner-handler-review-required";
-  return "handler-authorization-unknown";
+function classificationFor(method: string, path: string, priorClassification: string): string {
+  const decision = decisionForRoute({ method, path, classification: priorClassification });
+  const classifications: Record<MusicSurfaceDecision, string> = {
+    public: "public",
+    "strapi-identity": "strapi-identity-boundary",
+    owner: "local-music-owner",
+    "paid-owner": "paid-local-music-owner",
+    guest: "guest-capability",
+    "native-session": "native-session",
+    tombstone: "tombstone",
+    "admin-tombstone": "admin-tombstone",
+    "owner-or-guest": "c5-or-guest-handshake",
+    unclassified: "unclassified",
+  };
+  return classifications[decision];
 }
 
-function ownerFor(path: string, policy: string): string {
+function ownerFor(path: string, classification: string): string {
   if (path === "/api/music/identity/ensure") return "authoritative-strapi-user+selected-account";
-  if (path === "/api/music/identity/current") return "verified-subject-derived-numeric-owner";
-  if (path.startsWith("/api/admin/")) return /:userId\b/.test(path) ? "authenticated-admin-principal+path.userId" : "authenticated-admin-principal";
-  if (path === "/api/auth/sync") return "request.body.strapiUser";
-  if (path.includes(":guestUrl")) return "path.guestUrl";
-  if (path.includes(":userId")) return "path.userId";
-  if (path.includes(":username")) return "path.username";
-  if (path.includes(":sessionId")) return "path.sessionId";
-  return policy === "none" ? "handler-derived-or-none" : "authenticated-principal";
+  if (classification === "local-music-owner" || classification === "paid-local-music-owner") return "req.musicPrincipal.musicUserId";
+  if (classification === "guest-capability") return path === "/api/music/guest/request"
+    ? "hashed-guest-capability"
+    : "hashed-guest-capability-or-explicit-publication";
+  if (classification === "admin-tombstone" || classification === "tombstone") return "none-fail-closed";
+  if (classification === "native-session") return "native-session-only";
+  return "none";
 }
 
 export function assertNoUnclassifiedSensitiveSurfaces(routes: RouteSurface[]): void {
   for (const route of routes) {
-    const admin = route.path.startsWith("/api/admin/");
-    const owner = /:(?:userId|username|sessionId)\b/.test(route.path) || route.path === "/api/auth/sync";
-    if ((admin && (route.classification !== "admin-handler-review-required" || !route.ownerSource.includes("admin-principal"))) ||
-        (owner && !admin && route.classification === "handler-authorization-unknown")) {
+    if (["unclassified", "handler-authorization-unknown", "owner-handler-review-required", "admin-handler-review-required", "service-token-proxy"].includes(route.classification)) {
       throw new Error(`unclassified sensitive surface ${route.method} ${route.path}`);
     }
   }
@@ -86,15 +126,27 @@ export function inventoryRuntimeSurfaces(repositoryRoot: string): RuntimeSurface
           if (["get", "post", "put", "patch", "delete", "use"].includes(method) && path?.startsWith("/")) {
             const middleware = node.arguments.slice(1, -1).map((argument) => argument.getText(sourceFile)).join(" ");
             const routePolicy = policyFor(middleware);
-            const classification = classificationFor(path, routePolicy);
+            const legacyClassification = routePolicy !== "none" ? "authenticated" : "handler-authorization-unknown";
+            const classification = classificationFor(method.toUpperCase(), path, legacyClassification);
             let policy = routePolicy;
             if (classification === "public") policy = "explicit-public-contract";
-            else if (policy === "none") policy = "handler-level-unverified";
-            routes.push({ method: method.toUpperCase(), path, classification, ownerSource: ownerFor(path, routePolicy), policy, lifecycle: lifecycleFor(path, method.toUpperCase()), source, line });
+            else if (classification === "local-music-owner") policy = "c5-principal+local-lifecycle+owner-sql";
+            else if (classification === "paid-local-music-owner") policy = "c5-principal+local-lifecycle+fresh-entitlement+owner-sql";
+            else if (classification === "guest-capability") policy = "hashed-capability+guest-allowlist";
+            else if (classification.endsWith("tombstone")) policy = "fail-closed-tombstone";
+            else if (classification === "strapi-identity-boundary") policy = "c5-mint-boundary";
+            else if (classification === "native-session") policy = "standalone-native-only";
+            routes.push({ method: method.toUpperCase(), path, classification, ownerSource: ownerFor(path, classification), policy, lifecycle: lifecycleFor(path, method.toUpperCase()), source, line });
           }
           const event = literal(node.arguments[0]);
           if ((method === "on" || method === "emit") && event && /^(?:io|socket|this\.io)/.test(target)) {
-            events.push({ direction: method === "on" ? "receive" : "emit", event, policy: event === "connection" ? "session-middleware" : "socket-connection", ownerSource: "socket-session-or-room", lifecycle: event === "disconnect" ? "disconnect" : "event", source, line });
+            const direction = method === "on" ? "receive" : "emit";
+            const classification = direction === "emit" ? "socket-response"
+              : event === "connection" ? "c5-or-guest-handshake"
+                : event === "player_state" ? "local-music-owner-event"
+                  : event === "guest_request" ? "guest-capability-event"
+                    : event === "disconnect" ? "socket-lifecycle" : "tombstone-event";
+            events.push({ direction, event, classification, policy: "event-time-recheck+role-allowlist", ownerSource: event === "guest_request" ? "hashed-guest-capability" : "socket.musicPrincipal", lifecycle: event === "disconnect" ? "disconnect" : "event", source, line });
           }
         } else if (ts.isIdentifier(node.expression) && (node.expression.text === "setInterval" || node.expression.text === "setTimeout")) {
           jobs.push({ kind: node.expression.text, lifecycle: source.includes("reactivation-service") ? "reactivation-token-cleanup" : "scheduled-callback", source, line });
@@ -105,8 +157,27 @@ export function inventoryRuntimeSurfaces(repositoryRoot: string): RuntimeSurface
     visit(sourceFile);
   }
   const compare = (left: { source: string; line: number }, right: { source: string; line: number }) => left.source.localeCompare(right.source) || left.line - right.line;
+  for (const path of BOUNDARY_PATHS) {
+    const classification = path.startsWith("/api/admin/") ? "admin-tombstone" : "tombstone";
+    routes.push({
+      method: "ALL",
+      path,
+      classification,
+      ownerSource: "none-fail-closed",
+      policy: "fail-closed-tombstone",
+      lifecycle: "request",
+      source: "tunes/server/routes/musicSurfaceRoutes.ts",
+      line: 0,
+    });
+  }
   assertNoUnclassifiedSensitiveSurfaces(routes);
-  return { schemaVersion: "music-runtime-surface-inventory/v1", routes: routes.sort(compare), events: events.sort(compare), jobs: jobs.sort(compare) };
+  return {
+    schemaVersion: "music-runtime-surface-inventory/v1",
+    retiredSurfaces: RETIRED_SURFACES,
+    routes: routes.sort(compare),
+    events: events.sort(compare),
+    jobs: jobs.sort(compare),
+  };
 }
 
 export function writeRuntimeSurfaceInventory(repositoryRoot: string): string {
