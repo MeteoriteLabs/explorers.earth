@@ -48,7 +48,9 @@ describe("Explorer reactivation Music lifecycle composition", () => {
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       if (init?.method === "PUT") {
         events.push("strapi-unblock");
-        return new Response("{}", { status: putSucceeds ? 200 : 503 });
+        return putSucceeds
+          ? Response.json({ ...user, blocked: false })
+          : new Response("{}", { status: 503 });
       }
       if (new URL(String(input)).pathname === `/api/users/${user.id}`) return Response.json(user);
       return Response.json([user]);
@@ -77,7 +79,7 @@ describe("Explorer reactivation Music lifecycle composition", () => {
 
   it("keeps Strapi blocked and the token retryable while Music is unavailable", async () => {
     const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-      if (init?.method === "PUT") return new Response("{}", { status: 200 });
+      if (init?.method === "PUT") return Response.json({ ...user, blocked: false });
       if (new URL(String(input)).pathname === `/api/users/${user.id}`) return Response.json(user);
       return Response.json([user]);
     });
@@ -92,6 +94,31 @@ describe("Explorer reactivation Music lifecycle composition", () => {
     const recoveredMusic = vi.fn(async () => undefined);
     await expect(confirmReactivation(token, { reactivateMusic: recoveredMusic })).resolves.toEqual({ success: true });
     expect(recoveredMusic).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    { label: "an empty object", body: {} },
+    { label: "a null body", body: null },
+    { label: "a still-blocked user", body: user },
+    { label: "a mismatched numeric user", body: { ...user, id: user.id + 1, blocked: false } },
+    { label: "a mismatched immutable user", body: { ...user, documentId: "replacement-user-document", blocked: false } },
+    { label: "a mismatched immutable Account", body: { ...user, blocked: false, accounts: [{ documentId: "replacement-account-document" }] } },
+  ])("retains the token and exact Music operation when unblock returns 2xx with $label", async ({ body }) => {
+    // Break caught: response.ok is mistaken for proof that the exact immutable Strapi tuple is unblocked.
+    const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      if (init?.method === "PUT") return Response.json(body);
+      if (new URL(String(input)).pathname === `/api/users/${user.id}`) return Response.json(user);
+      return Response.json([user]);
+    });
+    vi.stubGlobal("fetch", fetchImpl);
+    await requestReactivation(user.email);
+    const token = fetchToken();
+    const reactivateMusic = vi.fn(async () => undefined);
+
+    await expect(confirmReactivation(token, { reactivateMusic })).resolves.toMatchObject({ success: false });
+    await expect(confirmReactivation(token, { reactivateMusic })).resolves.toMatchObject({ success: false });
+    expect(reactivateMusic).toHaveBeenCalledTimes(2);
+    expect(reactivateMusic.mock.calls[1]).toEqual(reactivateMusic.mock.calls[0]);
   });
 
   it.each([

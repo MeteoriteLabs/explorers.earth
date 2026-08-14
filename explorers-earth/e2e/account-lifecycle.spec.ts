@@ -32,10 +32,13 @@ async function mockSettings(
     musicNotPresent?: boolean;
     suspensionUnavailable?: boolean;
     strapiBlockUnconfirmed?: boolean;
+    cancelAsNotPresent?: boolean;
+    loseCancelResponseOnce?: boolean;
   } = {},
 ) {
   let accountPresent = true;
   let loseAccountDeleteResponse = options.loseAccountDeleteResponseOnce === true;
+  let loseCancelResponse = options.loseCancelResponseOnce === true;
   await setupMockAuthentication(context);
   await context.route("**/api/music/identity/lifecycle/**", async (route) => {
     const action = new URL(route.request().url()).pathname.split("/").at(-1)!;
@@ -54,7 +57,18 @@ async function mockSettings(
       return;
     }
     if (action === "cancel") {
-      operation = { ...operation, status: "suspended", state: "cancelled", boundaryCrossed: false, retryable: false };
+      operation = {
+        ...operation,
+        status: options.cancelAsNotPresent ? "not_present" : "suspended",
+        state: "cancelled",
+        boundaryCrossed: false,
+        retryable: false,
+      };
+      if (loseCancelResponse) {
+        loseCancelResponse = false;
+        await route.abort("connectionreset");
+        return;
+      }
     }
     if (action === "suspend") {
       await route.fulfill({
@@ -215,6 +229,23 @@ test("pending deletion survives reload and a second tab, then cancels only befor
   await assertNoLifecyclePersistence(page);
   await page.getByRole("button", { name: "Cancel deletion" }).click();
   await expect(page.getByText("Account deletion is prepared. Music access is paused.")).toBeHidden();
+});
+
+test("a lost nullable cancel response reloads the exact cancelled terminal state without another prepare", async ({ context, page }) => {
+  // Break caught: a never-provisioned cancellation is collapsed to LIFECYCLE_NOT_FOUND after the response is lost.
+  const events: string[] = [];
+  await mockSettings(context, {
+    operationId: "delete-operation-durable", status: "pending_deletion", phase: "prepared", state: "completed",
+    boundaryCrossed: false, retryable: false, deadLetter: false,
+  }, events, { cancelAsNotPresent: true, loseCancelResponseOnce: true });
+  await page.goto("/settings");
+  await page.getByRole("button", { name: "Cancel deletion" }).click();
+  await expect.poll(() => events.filter((event) => event === "cancel").length).toBe(1);
+  await page.reload();
+  await expect(page.getByText("Account deletion is prepared. Music access is paused.")).toBeHidden();
+  await expect(page.getByRole("button", { name: "Delete your account?" })).toBeVisible();
+  expect(events.filter((event) => event === "prepare")).toEqual([]);
+  await assertNoLifecyclePersistence(page);
 });
 
 test("a crossed-boundary retry preserves ordering and completes at login", async ({ context, page }) => {

@@ -11,6 +11,20 @@ export interface MusicIdentityProjection {
   sessionVersion: number;
 }
 
+export interface MusicIdentityNotPresentProjection {
+  identityStatus: "not_present";
+  strapiUserDocumentId: string;
+  strapiAccountDocumentId: string;
+}
+
+export type BoundMusicIdentityLifecycleResult = MusicIdentityProjection | MusicIdentityNotPresentProjection;
+
+export interface BoundMusicIdentityLifecycleInput {
+  userDocumentId: string;
+  accountDocumentId: string;
+  operationId: string;
+}
+
 export interface CreateMusicIdentityInput {
   username: string;
   password: string;
@@ -94,6 +108,14 @@ function projection(row: {
   };
 }
 
+function notPresentProjection(input: Pick<BoundMusicIdentityLifecycleInput, "userDocumentId" | "accountDocumentId">): MusicIdentityNotPresentProjection {
+  return {
+    identityStatus: "not_present",
+    strapiUserDocumentId: input.userDocumentId,
+    strapiAccountDocumentId: input.accountDocumentId,
+  };
+}
+
 async function lockIdentity(client: Pick<PoolClient, "query">, userDocumentId: string, accountDocumentId: string): Promise<void> {
   await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`music:user:${userDocumentId}`]);
   await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`music:account:${accountDocumentId}`]);
@@ -140,6 +162,23 @@ export class MusicIdentityRepository {
         WHERE strapi_user_document_id=$1 OR strapi_account_document_id=$2`, [input.userDocumentId, input.accountDocumentId]);
       if (tombstone.rowCount) {
         throw new MusicIdentityError("IDENTITY_TOMBSTONED", 409, "This Music identity was permanently removed.", "contact_support", false, undefined, "tombstone");
+      }
+      const nullableAuthority = (await client.query<any>(`SELECT operation_id,strapi_user_document_id,
+        strapi_account_document_id,operation_kind,error_code,created_at
+        FROM music_identity_lifecycle_operations
+        WHERE music_user_id IS NULL AND operation_kind IN ('delete','suspend','reactivate')
+          AND (strapi_user_document_id=$1 OR strapi_account_document_id=$2)
+        ORDER BY created_at DESC,operation_id DESC FOR UPDATE`, [input.userDocumentId,input.accountDocumentId])).rows;
+      if (nullableAuthority.some((operation) => operation.strapi_user_document_id !== input.userDocumentId
+          || operation.strapi_account_document_id !== input.accountDocumentId)) throw lifecycleConflict();
+      const pendingDeletion = nullableAuthority.find((operation) => operation.operation_kind === "delete"
+        && !String(operation.error_code ?? "").startsWith("NO_LOCAL:CANCELLED"));
+      if (pendingDeletion) {
+        throw new MusicIdentityError("IDENTITY_PENDING_DELETION", 409, "This Music identity is pending deletion.", "contact_support", false, undefined, "pending_deletion");
+      }
+      const availabilityAuthority = nullableAuthority.find((operation) => ["suspend", "reactivate"].includes(operation.operation_kind));
+      if (availabilityAuthority?.operation_kind === "suspend") {
+        throw new MusicIdentityError("IDENTITY_SUSPENDED", 403, "This Music identity is suspended.", "contact_support", false, undefined, "suspended");
       }
       const existing = await client.query<any>(`SELECT id,strapi_user_document_id,strapi_account_document_id,
         identity_status,session_version FROM users
@@ -512,6 +551,145 @@ export class MusicIdentityRepository {
     }
   }
 
+  async suspendIdentity(input: BoundMusicIdentityLifecycleInput): Promise<BoundMusicIdentityLifecycleResult> {
+    return this.boundAvailabilityTransition(input, "suspend");
+  }
+
+  async reactivateIdentity(input: BoundMusicIdentityLifecycleInput): Promise<BoundMusicIdentityLifecycleResult> {
+    return this.boundAvailabilityTransition(input, "reactivate");
+  }
+
+  private async boundAvailabilityTransition(
+    input: BoundMusicIdentityLifecycleInput,
+    kind: "suspend" | "reactivate",
+  ): Promise<BoundMusicIdentityLifecycleResult> {
+    if (!input.userDocumentId || !input.accountDocumentId || !input.operationId
+        || [input.userDocumentId,input.accountDocumentId,input.operationId].some((value) => value.length > 512)) {
+      throw new MusicIdentityError("REQUEST_INVALID", 400, "Music lifecycle input is invalid.", "none", false);
+    }
+    const targetStatus = kind === "suspend" ? "suspended" : "active";
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      await lockIdentity(client, input.userDocumentId, input.accountDocumentId);
+      const collision = (await client.query<any>(`SELECT operation_id,strapi_user_document_id,
+        strapi_account_document_id,music_user_id,operation_kind,requested_identity_status,
+        operation_state,result_session_version,error_code
+        FROM music_identity_lifecycle_operations WHERE operation_id=$1 FOR UPDATE`, [input.operationId])).rows[0];
+      if (collision && (collision.strapi_user_document_id !== input.userDocumentId
+          || collision.strapi_account_document_id !== input.accountDocumentId
+          || collision.operation_kind !== kind || collision.requested_identity_status !== targetStatus)) {
+        throw lifecycleConflict();
+      }
+      const tombstones = (await client.query<any>(`SELECT strapi_user_document_id,strapi_account_document_id
+        FROM music_identity_tombstones
+        WHERE strapi_user_document_id=$1 OR strapi_account_document_id=$2`, [input.userDocumentId,input.accountDocumentId])).rows;
+      if (tombstones.some((row) => row.strapi_user_document_id !== input.userDocumentId
+          || row.strapi_account_document_id !== input.accountDocumentId) || tombstones.length > 1) throw lifecycleConflict();
+      if (tombstones[0]) {
+        await client.query("COMMIT");
+        return notPresentProjection(input);
+      }
+      const liveRows = (await client.query<any>(`SELECT id,strapi_user_document_id,strapi_account_document_id,
+        identity_status,session_version,lifecycle_operation_id FROM users
+        WHERE strapi_user_document_id=$1 OR strapi_account_document_id=$2 FOR UPDATE`, [
+        input.userDocumentId,input.accountDocumentId,
+      ])).rows;
+      const live = liveRows[0];
+      if (liveRows.some((row) => row.strapi_user_document_id !== input.userDocumentId
+          || row.strapi_account_document_id !== input.accountDocumentId) || liveRows.length > 1) throw lifecycleConflict();
+      const nullableAuthority = (await client.query<any>(`SELECT operation_id,strapi_user_document_id,
+        strapi_account_document_id,operation_kind,requested_identity_status,operation_state,
+        result_session_version,error_code,created_at FROM music_identity_lifecycle_operations
+        WHERE music_user_id IS NULL AND operation_kind IN ('delete','suspend','reactivate')
+          AND (strapi_user_document_id=$1 OR strapi_account_document_id=$2)
+        ORDER BY created_at DESC,operation_id DESC FOR UPDATE`, [input.userDocumentId,input.accountDocumentId])).rows;
+      if (nullableAuthority.some((operation) => operation.strapi_user_document_id !== input.userDocumentId
+          || operation.strapi_account_document_id !== input.accountDocumentId)) throw lifecycleConflict();
+      const pendingDeletion = nullableAuthority.find((operation) => operation.operation_kind === "delete"
+        && !String(operation.error_code ?? "").startsWith("NO_LOCAL:CANCELLED"));
+
+      if (live) {
+        if (collision) {
+          if (collision.music_user_id !== live.id || collision.operation_state !== "completed"
+              || collision.result_session_version !== live.session_version
+              || live.lifecycle_operation_id !== input.operationId || live.identity_status !== targetStatus) {
+            throw lifecycleConflict();
+          }
+          await client.query("COMMIT");
+          return projection(live);
+        }
+        if (live.identity_status === "pending_deletion") {
+          if (kind === "reactivate") throw lifecycleConflict();
+          await client.query("COMMIT");
+          return projection(live);
+        }
+        if (live.identity_status === targetStatus) {
+          await client.query("COMMIT");
+          return projection(live);
+        }
+        const valid = (kind === "suspend" && live.identity_status === "active")
+          || (kind === "reactivate" && live.identity_status === "suspended");
+        if (!valid || pendingDeletion) throw lifecycleConflict();
+        const nextSessionVersion = live.session_version + 1;
+        await client.query(`INSERT INTO music_identity_lifecycle_operations(
+          operation_id,strapi_user_document_id,strapi_account_document_id,music_user_id,
+          operation_kind,requested_identity_status,operation_phase
+        ) VALUES ($1,$2,$3,$4,$5,$6,'single')`, [
+          input.operationId,input.userDocumentId,input.accountDocumentId,live.id,kind,targetStatus,
+        ]);
+        await client.query(`UPDATE music_identity_lifecycle_operations
+          SET operation_state='running',attempt_count=1 WHERE operation_id=$1`, [input.operationId]);
+        await client.query(`UPDATE music_identity_lifecycle_operations
+          SET operation_state='completed',result_session_version=$2 WHERE operation_id=$1`, [input.operationId,nextSessionVersion]);
+        const updated = (await client.query<any>(`UPDATE users SET identity_status=$2,session_version=$3,
+          lifecycle_operation_id=$4,lifecycle_state='completed',lifecycle_attempt_count=lifecycle_attempt_count+1,
+          lifecycle_last_attempt_at=now(),lifecycle_error_code=NULL,
+          guest_capability_revoked_at=CASE WHEN $2='suspended' THEN now() ELSE guest_capability_revoked_at END,
+          guest_discoverable=CASE WHEN $2='suspended' THEN false ELSE guest_discoverable END,
+          updated_at=now() WHERE id=$1
+          RETURNING id,strapi_user_document_id,strapi_account_document_id,identity_status,session_version`, [
+          live.id,targetStatus,nextSessionVersion,input.operationId,
+        ])).rows[0];
+        await this.hooks.afterWrite?.();
+        await client.query("COMMIT");
+        return projection(updated);
+      }
+
+      if (pendingDeletion) {
+        if (kind === "reactivate") throw lifecycleConflict();
+        await client.query("COMMIT");
+        return notPresentProjection(input);
+      }
+      const availabilityAuthority = nullableAuthority.find((operation) => ["suspend", "reactivate"].includes(operation.operation_kind));
+      if (collision) {
+        if (collision.music_user_id !== null || collision.operation_state !== "completed"
+            || availabilityAuthority?.operation_id !== input.operationId) throw lifecycleConflict();
+        await client.query("COMMIT");
+        return notPresentProjection(input);
+      }
+      if (availabilityAuthority?.operation_kind === kind || (kind === "reactivate" && !availabilityAuthority)) {
+        await client.query("COMMIT");
+        return notPresentProjection(input);
+      }
+      const errorCode = kind === "suspend" ? "NO_LOCAL:SUSPENDED" : "NO_LOCAL:REACTIVATED";
+      await client.query(`INSERT INTO music_identity_lifecycle_operations(
+        operation_id,strapi_user_document_id,strapi_account_document_id,music_user_id,operation_kind,
+        requested_identity_status,operation_state,attempt_count,operation_phase,error_code,created_at,updated_at
+      ) VALUES ($1,$2,$3,NULL,$4,$5,'completed',1,'single',$6,clock_timestamp(),clock_timestamp())`, [
+        input.operationId,input.userDocumentId,input.accountDocumentId,kind,targetStatus,errorCode,
+      ]);
+      await this.hooks.afterWrite?.();
+      await client.query("COMMIT");
+      return notPresentProjection(input);
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw normalizeLifecycleError(error);
+    } finally {
+      client.release();
+    }
+  }
+
   async prepareDeletion(input: {
     userDocumentId: string;
     accountDocumentId: string;
@@ -546,7 +724,7 @@ export class MusicIdentityRepository {
         const priorRows = (await client.query<any>(`SELECT * FROM music_identity_lifecycle_operations
           WHERE music_user_id IS NULL AND operation_kind='delete'
             AND (strapi_user_document_id=$1 OR strapi_account_document_id=$2)
-          ORDER BY created_at DESC FOR UPDATE`, [input.userDocumentId,input.accountDocumentId])).rows;
+          ORDER BY created_at DESC,operation_id DESC FOR UPDATE`, [input.userDocumentId,input.accountDocumentId])).rows;
         if (priorRows.some((row) => row.strapi_user_document_id !== input.userDocumentId
             || row.strapi_account_document_id !== input.accountDocumentId)) throw lifecycleConflict();
         const prior = priorRows.find((row) => !String(row.error_code ?? "").startsWith("NO_LOCAL:CANCELLED"));
@@ -558,8 +736,9 @@ export class MusicIdentityRepository {
         if (collision.rowCount) throw lifecycleConflict();
         const created = (await client.query<any>(`INSERT INTO music_identity_lifecycle_operations(
           operation_id,strapi_user_document_id,strapi_account_document_id,music_user_id,operation_kind,
-          requested_identity_status,operation_state,attempt_count,operation_phase,error_code
-        ) VALUES ($1,$2,$3,NULL,'delete','pending_deletion','completed',1,'prepared','NO_LOCAL:PREPARED') RETURNING *`, [
+          requested_identity_status,operation_state,attempt_count,operation_phase,error_code,created_at,updated_at
+        ) VALUES ($1,$2,$3,NULL,'delete','pending_deletion','completed',1,'prepared','NO_LOCAL:PREPARED',
+          clock_timestamp(),clock_timestamp()) RETURNING *`, [
           input.operationId,input.userDocumentId,input.accountDocumentId,
         ])).rows[0];
         await this.hooks.afterWrite?.();
@@ -616,6 +795,10 @@ export class MusicIdentityRepository {
     userDocumentId: string;
     accountDocumentId: string;
     identityStatus: "active" | "suspended" | "pending_deletion";
+  } | {
+    disposition: "cancelled" | "suspended_absent";
+    userDocumentId: string;
+    accountDocumentId: string;
   } | { disposition: "not_present" }> {
     const client = await this.pool.connect();
     try {
@@ -646,22 +829,45 @@ export class MusicIdentityRepository {
       }
       if (!live.rows[0]) {
         const noLocal = await client.query<any>(accountDocumentId
-          ? `SELECT strapi_user_document_id,strapi_account_document_id,error_code,operation_phase
-            FROM music_identity_lifecycle_operations WHERE music_user_id IS NULL AND operation_kind='delete'
+          ? `SELECT operation_id,strapi_user_document_id,strapi_account_document_id,
+              operation_kind,error_code,operation_phase,created_at
+            FROM music_identity_lifecycle_operations WHERE music_user_id IS NULL
+              AND operation_kind IN ('delete','suspend','reactivate')
               AND (strapi_user_document_id=$1 OR strapi_account_document_id=$2)
-            ORDER BY created_at DESC LIMIT 2 FOR UPDATE`
-          : `SELECT strapi_user_document_id,strapi_account_document_id,error_code,operation_phase
-            FROM music_identity_lifecycle_operations WHERE music_user_id IS NULL AND operation_kind='delete'
-              AND strapi_user_document_id=$1 ORDER BY created_at DESC LIMIT 2 FOR UPDATE`,
+            ORDER BY created_at DESC,operation_id DESC FOR UPDATE`
+          : `SELECT operation_id,strapi_user_document_id,strapi_account_document_id,
+              operation_kind,error_code,operation_phase,created_at
+            FROM music_identity_lifecycle_operations WHERE music_user_id IS NULL
+              AND operation_kind IN ('delete','suspend','reactivate')
+              AND strapi_user_document_id=$1 ORDER BY created_at DESC,operation_id DESC FOR UPDATE`,
         accountDocumentId ? [userDocumentId, accountDocumentId] : [userDocumentId]);
-        const operation = noLocal.rows[0];
+        const durableAccountDocumentId = noLocal.rows[0]?.strapi_account_document_id;
         if (noLocal.rows.some((row) => row.strapi_user_document_id !== userDocumentId
-            || (accountDocumentId && row.strapi_account_document_id !== accountDocumentId))) throw lifecycleConflict();
-        if (operation && !String(operation.error_code ?? "").startsWith("NO_LOCAL:CANCELLED")) {
+            || row.strapi_account_document_id !== (accountDocumentId ?? durableAccountDocumentId))) throw lifecycleConflict();
+        const pendingDeletion = noLocal.rows.find((row) => row.operation_kind === "delete"
+          && !String(row.error_code ?? "").startsWith("NO_LOCAL:CANCELLED"));
+        if (pendingDeletion) {
           await client.query("COMMIT");
           return {
-            disposition: "present", userDocumentId: operation.strapi_user_document_id,
-            accountDocumentId: operation.strapi_account_document_id, identityStatus: "pending_deletion",
+            disposition: "present", userDocumentId: pendingDeletion.strapi_user_document_id,
+            accountDocumentId: pendingDeletion.strapi_account_document_id, identityStatus: "pending_deletion",
+          };
+        }
+        const cancelledDeletion = noLocal.rows.find((row) => row.operation_kind === "delete"
+          && String(row.error_code ?? "").startsWith("NO_LOCAL:CANCELLED"));
+        if (cancelledDeletion) {
+          await client.query("COMMIT");
+          return {
+            disposition: "cancelled", userDocumentId: cancelledDeletion.strapi_user_document_id,
+            accountDocumentId: cancelledDeletion.strapi_account_document_id,
+          };
+        }
+        const availabilityAuthority = noLocal.rows.find((row) => ["suspend", "reactivate"].includes(row.operation_kind));
+        if (availabilityAuthority?.operation_kind === "suspend") {
+          await client.query("COMMIT");
+          return {
+            disposition: "suspended_absent", userDocumentId: availabilityAuthority.strapi_user_document_id,
+            accountDocumentId: availabilityAuthority.strapi_account_document_id,
           };
         }
         await client.query("COMMIT");
@@ -725,7 +931,7 @@ export class MusicIdentityRepository {
       const operations = await this.pool.query<any>(`SELECT * FROM music_identity_lifecycle_operations
         WHERE music_user_id IS NULL AND operation_kind='delete'
           AND (strapi_user_document_id=$1 OR strapi_account_document_id=$2)
-        ORDER BY created_at DESC`, [input.userDocumentId,input.accountDocumentId]);
+        ORDER BY created_at DESC,operation_id DESC`, [input.userDocumentId,input.accountDocumentId]);
       if (!operations.rows[0]) throw new MusicIdentityError("LIFECYCLE_NOT_FOUND", 409, "No Music deletion is pending.", "none", false);
       if (operations.rows.some((operation) => operation.strapi_user_document_id !== input.userDocumentId
           || operation.strapi_account_document_id !== input.accountDocumentId)) throw lifecycleConflict();
@@ -757,7 +963,7 @@ export class MusicIdentityRepository {
         const operations = (await client.query<any>(`SELECT * FROM music_identity_lifecycle_operations
           WHERE music_user_id IS NULL AND operation_kind='delete'
             AND (strapi_user_document_id=$1 OR strapi_account_document_id=$2)
-          ORDER BY created_at DESC FOR UPDATE`, [input.userDocumentId,input.accountDocumentId])).rows;
+          ORDER BY created_at DESC,operation_id DESC FOR UPDATE`, [input.userDocumentId,input.accountDocumentId])).rows;
         const operation = operations[0];
         if (!operation || operations.some((row) => row.strapi_user_document_id !== input.userDocumentId
             || row.strapi_account_document_id !== input.accountDocumentId)
@@ -811,10 +1017,14 @@ export class MusicIdentityRepository {
         const operations = (await client.query<any>(`SELECT * FROM music_identity_lifecycle_operations
           WHERE music_user_id IS NULL AND operation_kind='delete'
             AND (strapi_user_document_id=$1 OR strapi_account_document_id=$2)
-          ORDER BY created_at DESC FOR UPDATE`, [input.userDocumentId,input.accountDocumentId])).rows;
+          ORDER BY created_at DESC,operation_id DESC FOR UPDATE`, [input.userDocumentId,input.accountDocumentId])).rows;
         const operation = operations[0];
         if (!operation || operations.some((row) => row.strapi_user_document_id !== input.userDocumentId
             || row.strapi_account_document_id !== input.accountDocumentId)) throw lifecycleConflict();
+        if (String(operation.error_code) === "NO_LOCAL:CANCELLED") {
+          await client.query("COMMIT");
+          return noLocalLifecycleStatus(operation);
+        }
         if (String(operation.error_code) !== "NO_LOCAL:PREPARED") {
           throw new MusicIdentityError("LIFECYCLE_CANCEL_FORBIDDEN", 409, "Music deletion can no longer be cancelled.", "contact_support", false);
         }

@@ -212,7 +212,11 @@ async function resolveCurrentReactivationIdentity(userId: number): Promise<Strap
 /**
  * Set blocked = false on a Strapi user by their numeric ID.
  */
-async function unblockStrapiUser(userId: number): Promise<boolean> {
+async function unblockStrapiUser(expected: {
+  id: number;
+  documentId: string;
+  accountDocumentId: string;
+}): Promise<boolean> {
   const strapiUrl = process.env.STRAPI_URL;
   const strapiToken = process.env.STRAPI_ACCESS_TOKEN;
 
@@ -220,7 +224,7 @@ async function unblockStrapiUser(userId: number): Promise<boolean> {
     throw new Error('STRAPI_URL or STRAPI_ACCESS_TOKEN is not configured');
   }
 
-  const response = await fetch(`${strapiUrl}/api/users/${userId}`, {
+  const response = await fetch(`${strapiUrl}/api/users/${expected.id}`, {
     method: 'PUT',
     headers: {
       Authorization: `Bearer ${strapiToken}`,
@@ -235,7 +239,19 @@ async function unblockStrapiUser(userId: number): Promise<boolean> {
     return false;
   }
 
-  console.log(`✅ Strapi user ${userId} unblocked successfully`);
+  try {
+    const value: unknown = await response.json();
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+    const candidate = value as Partial<StrapiUser>;
+    if (candidate.id !== expected.id || candidate.documentId !== expected.documentId
+        || candidate.blocked !== false || !Array.isArray(candidate.accounts)
+        || candidate.accounts.length !== 1
+        || candidate.accounts[0]?.documentId !== expected.accountDocumentId) return false;
+  } catch {
+    return false;
+  }
+
+  console.log(`✅ Strapi user ${expected.id} unblocked successfully`);
   return true;
 }
 
@@ -363,7 +379,11 @@ export async function confirmReactivation(
   } catch {
     return { success: false, error: 'Failed to reactivate account. Please try again.' };
   }
-  const unblocked = current.blocked === false || await unblockStrapiUser(userId);
+  const unblocked = current.blocked === false || await unblockStrapiUser({
+    id: userId,
+    documentId: entry.userDocumentId,
+    accountDocumentId: entry.accountDocumentId,
+  });
 
   if (!unblocked) {
     return { success: false, error: 'Failed to reactivate account. Please try again.' };

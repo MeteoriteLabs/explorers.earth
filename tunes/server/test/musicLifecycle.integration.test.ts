@@ -4,6 +4,7 @@ import { migrateMusicDatabase } from "../db/migrate";
 import { MusicDomainRepository } from "../repositories/musicDomainRepository";
 import { MusicIdentityRepository, type EnsureMusicIdentityInput } from "../repositories/musicIdentityRepository";
 import { MusicPrincipalService } from "../middleware/musicPrincipal";
+import { MusicLifecycleService } from "../services/musicLifecycleService";
 import { MusicTokenService } from "../services/musicTokenService";
 import { manuallyRepairMusicDeletion, runMusicLifecycleWorkerOnce } from "../workers/musicLifecycleWorker";
 
@@ -131,6 +132,164 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
       .rejects.toMatchObject({ code: "IDENTITY_CONFLICT" });
   });
 
+  it("fences ensure behind a nullable deletion both before and after the upstream boundary", async () => {
+    // Break caught: ensure creates an active owner after a never-provisioned tuple entered durable deletion.
+    const repository = new MusicIdentityRepository(pool);
+    const tuple = { userDocumentId: "c7-user-nullable-delete-guard", accountDocumentId: "c7-account-nullable-delete-guard" };
+    await repository.prepareDeletion({ ...tuple, operationId: "delete-nullable-guard" });
+
+    await expect(repository.ensureIdentity(identityInput("nullable-delete-guard")))
+      .rejects.toMatchObject({ code: "IDENTITY_PENDING_DELETION" });
+    await repository.markDeletionBoundary(tuple);
+    await expect(repository.ensureIdentity(identityInput("nullable-delete-guard")))
+      .rejects.toMatchObject({ code: "IDENTITY_PENDING_DELETION" });
+    expect(Number((await pool.query("SELECT count(*) FROM users WHERE strapi_user_document_id=$1", [tuple.userDocumentId])).rows[0].count)).toBe(0);
+
+    await ageOperations(["delete-nullable-guard"], 2);
+    const claim = (await repository.claimDueDeletions({ batchSize: 1, maxAttempts: 5 }))
+      .find(({ operationId }) => operationId === "delete-nullable-guard")!;
+    await expect(repository.finalizeDeletion(claim)).resolves.toBe(true);
+    await expect(repository.ensureIdentity(identityInput("nullable-delete-guard")))
+      .rejects.toMatchObject({ code: "IDENTITY_TOMBSTONED" });
+  });
+
+  it("serializes prepare-first against a second repository ensure without creating an active owner", async () => {
+    // Break caught: a nullable prepare commits while an already-waiting ensure ignores its durable authority.
+    let releaseWrite!: () => void;
+    let reportWrite!: () => void;
+    const writeEntered = new Promise<void>((resolve) => { reportWrite = resolve; });
+    const holdWrite = new Promise<void>((resolve) => { releaseWrite = resolve; });
+    const prepareRepository = new MusicIdentityRepository(pool, { afterWrite: async () => { reportWrite(); await holdWrite; } });
+    const ensureRepository = new MusicIdentityRepository(pool);
+    const tuple = { userDocumentId: "c7-user-prepare-race-first", accountDocumentId: "c7-account-prepare-race-first" };
+
+    const preparing = prepareRepository.prepareDeletion({ ...tuple, operationId: "delete-prepare-race-first" });
+    await writeEntered;
+    const ensuring = ensureRepository.ensureIdentity(identityInput("prepare-race-first"));
+    releaseWrite();
+
+    await expect(preparing).resolves.toMatchObject({ musicUserId: null, identityStatus: "pending_deletion" });
+    await expect(ensuring).rejects.toMatchObject({ code: "IDENTITY_PENDING_DELETION" });
+    expect(Number((await pool.query("SELECT count(*) FROM users WHERE strapi_user_document_id=$1", [tuple.userDocumentId])).rows[0].count)).toBe(0);
+  });
+
+  it("serializes ensure-first against a second repository prepare into one pending numeric owner", async () => {
+    // Break caught: opposite queue order leaves an active owner alongside a nullable deletion operation.
+    let releaseWrite!: () => void;
+    let reportWrite!: () => void;
+    const writeEntered = new Promise<void>((resolve) => { reportWrite = resolve; });
+    const holdWrite = new Promise<void>((resolve) => { releaseWrite = resolve; });
+    const ensureRepository = new MusicIdentityRepository(pool, { afterWrite: async () => { reportWrite(); await holdWrite; } });
+    const prepareRepository = new MusicIdentityRepository(pool);
+    const tuple = { userDocumentId: "c7-user-ensure-race-first", accountDocumentId: "c7-account-ensure-race-first" };
+
+    const ensuring = ensureRepository.ensureIdentity(identityInput("ensure-race-first"));
+    await writeEntered;
+    const preparing = prepareRepository.prepareDeletion({ ...tuple, operationId: "delete-ensure-race-first" });
+    releaseWrite();
+
+    const ensured = await ensuring;
+    await expect(preparing).resolves.toMatchObject({ musicUserId: ensured.id, identityStatus: "pending_deletion" });
+    expect(Number((await pool.query(`SELECT count(*) FROM music_identity_lifecycle_operations
+      WHERE strapi_user_document_id=$1 AND music_user_id IS NULL`, [tuple.userDocumentId])).rows[0].count)).toBe(0);
+    await expect(prepareRepository.findByExternalIdentity(tuple.userDocumentId))
+      .resolves.toMatchObject({ id: ensured.id, identityStatus: "pending_deletion" });
+  });
+
+  it("serializes absent-suspend-first against ensure and leaves no active owner", async () => {
+    // Break caught: a suspended Explorer can provision while the nullable suspension transaction commits.
+    let releaseWrite!: () => void;
+    let reportWrite!: () => void;
+    const writeEntered = new Promise<void>((resolve) => { reportWrite = resolve; });
+    const holdWrite = new Promise<void>((resolve) => { releaseWrite = resolve; });
+    const suspendRepository = new MusicIdentityRepository(pool, { afterWrite: async () => { reportWrite(); await holdWrite; } });
+    const ensureRepository = new MusicIdentityRepository(pool);
+    const tuple = { userDocumentId: "c7-user-suspend-race-first", accountDocumentId: "c7-account-suspend-race-first" };
+
+    const suspending = (suspendRepository as MusicIdentityRepository & {
+      suspendIdentity(input: typeof tuple & { operationId: string }): Promise<{ identityStatus: string }>;
+    }).suspendIdentity({ ...tuple, operationId: "suspend-race-first" });
+    await writeEntered;
+    const ensuring = ensureRepository.ensureIdentity(identityInput("suspend-race-first"));
+    releaseWrite();
+
+    await expect(suspending).resolves.toMatchObject({ identityStatus: "not_present" });
+    await expect(ensuring).rejects.toMatchObject({ code: "IDENTITY_SUSPENDED" });
+    expect(Number((await pool.query("SELECT count(*) FROM users WHERE strapi_user_document_id=$1", [tuple.userDocumentId])).rows[0].count)).toBe(0);
+  });
+
+  it("serializes ensure-first against absent suspension into one suspended numeric owner", async () => {
+    // Break caught: suspension records a nullable no-op after a concurrent ensure already created an active owner.
+    let releaseWrite!: () => void;
+    let reportWrite!: () => void;
+    const writeEntered = new Promise<void>((resolve) => { reportWrite = resolve; });
+    const holdWrite = new Promise<void>((resolve) => { releaseWrite = resolve; });
+    const ensureRepository = new MusicIdentityRepository(pool, { afterWrite: async () => { reportWrite(); await holdWrite; } });
+    const suspendRepository = new MusicIdentityRepository(pool);
+    const tuple = { userDocumentId: "c7-user-ensure-before-suspend", accountDocumentId: "c7-account-ensure-before-suspend" };
+
+    const ensuring = ensureRepository.ensureIdentity(identityInput("ensure-before-suspend"));
+    await writeEntered;
+    let suspending: Promise<{ id?: number; identityStatus: string }>;
+    try {
+      suspending = (suspendRepository as MusicIdentityRepository & {
+        suspendIdentity(input: typeof tuple & { operationId: string }): Promise<{ id?: number; identityStatus: string }>;
+      }).suspendIdentity({ ...tuple, operationId: "suspend-after-ensure" });
+    } finally {
+      releaseWrite();
+    }
+
+    const ensured = await ensuring;
+    await expect(suspending).resolves.toMatchObject({ id: ensured.id, identityStatus: "suspended" });
+    await expect(suspendRepository.findByExternalIdentity(tuple.userDocumentId))
+      .resolves.toMatchObject({ id: ensured.id, identityStatus: "suspended", sessionVersion: ensured.sessionVersion + 1 });
+  });
+
+  it("persists an absent suspension guard until exact reactivation and keeps token/public authority unavailable", async () => {
+    // Break caught: a transient not-present acknowledgement lets ensure provision an active owner after deactivation.
+    const repository = new MusicIdentityRepository(pool);
+    const tuple = { userDocumentId: "c7-user-absent-suspend-guard", accountDocumentId: "c7-account-absent-suspend-guard" };
+    const service = new MusicLifecycleService({
+      resolve: async () => ({
+        ...identityInput("absent-suspend-guard"),
+        ...tuple,
+        username: "absent-suspend-guard",
+        provider: "local" as const,
+      }),
+      resolveUser: async () => ({ userDocumentId: tuple.userDocumentId }),
+    }, repository, {
+      operationIdFactory: () => "suspend-absent-guard",
+      disconnectOwner: async () => undefined,
+    });
+
+    await expect(service.suspendFromProof("proof", "request-suspend-guard")).resolves.toMatchObject({ identityStatus: "not_present" });
+    expect(Number((await pool.query(`SELECT count(*) FROM music_identity_lifecycle_operations
+      WHERE operation_id='suspend-absent-guard' AND music_user_id IS NULL`, [])).rows[0].count)).toBe(1);
+    await expect(repository.ensureIdentity(identityInput("absent-suspend-guard")))
+      .rejects.toMatchObject({ code: "IDENTITY_SUSPENDED" });
+    await expect(repository.resolveCredentialSubject(tuple.userDocumentId)).resolves.toEqual({ identity: undefined, tombstoned: false });
+    const tokens = new MusicTokenService({
+      current: { kid: "c7-absent-suspend", secret: Buffer.alloc(32, 23).toString("base64url") },
+      tokenLifetimeSeconds: 600,
+      clockSkewSeconds: 0,
+    });
+    const impossibleCredential = tokens.mint({
+      id: 999_999,
+      strapiUserDocumentId: tuple.userDocumentId,
+      strapiAccountDocumentId: tuple.accountDocumentId,
+      identityStatus: "active",
+      sessionVersion: 1,
+    }).token;
+    await expect(new MusicPrincipalService(tokens, repository).resolve(impossibleCredential))
+      .rejects.toMatchObject({ code: "TOKEN_REVOKED" });
+    await expect(new MusicDomainRepository(pool).resolveGuestResource("c7-public-absent-suspend-guard")).resolves.toBeUndefined();
+
+    await expect(service.reactivateBoundIdentity({ ...tuple, operationId: "reactivate-absent-guard" }))
+      .resolves.toMatchObject({ identityStatus: "not_present" });
+    await expect(repository.ensureIdentity(identityInput("absent-suspend-guard")))
+      .resolves.toMatchObject({ identityStatus: "active" });
+  });
+
   it("cancels and retries an absent-identity deletion without swallowing outage or tuple conflict", async () => {
     const repository = new MusicIdentityRepository(pool);
     const tuple = { userDocumentId: "c7-user-absent-retry", accountDocumentId: "c7-account-absent-retry" };
@@ -138,6 +297,24 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
     const cancelled = await repository.cancelDeletion({ ...tuple, operationId: "cancel-absent" });
     expect(cancelled).toMatchObject({ musicUserId: null, identityStatus: "not_present", state: "cancelled" });
     await expect(repository.lifecycleStatus(tuple)).resolves.toMatchObject({ identityStatus: "not_present", state: "cancelled" });
+    await expect(repository.cancelDeletion({ ...tuple, operationId: "cancel-absent-lost-response" }))
+      .resolves.toEqual(cancelled);
+    await expect(repository.lifecycleStatus(tuple)).resolves.toEqual(cancelled);
+    const service = new MusicLifecycleService({
+      resolveUser: async () => ({ userDocumentId: tuple.userDocumentId }),
+      resolve: async () => ({
+        ...identityInput("absent-retry"), ...tuple, username: "absent-retry", provider: "local" as const,
+      }),
+    }, repository, {
+      operationIdFactory: () => "cancel-absent-service-replay",
+      disconnectOwner: async () => undefined,
+    });
+    await expect(service.status("proof", "request-cancel-status-reload")).resolves.toMatchObject({
+      musicUserId: null, identityStatus: "not_present", state: "cancelled", boundaryCrossed: false,
+      upstreamUserDocumentId: tuple.userDocumentId, upstreamAccountDocumentId: tuple.accountDocumentId,
+    });
+    await expect(service.cancelDeletion("proof", "request-cancel-lost-response"))
+      .resolves.toMatchObject({ musicUserId: null, identityStatus: "not_present", state: "cancelled" });
     await expect(repository.markDeletionBoundary({ ...tuple, accountDocumentId: "replacement-account" }))
       .rejects.toMatchObject({ code: "IDENTITY_CONFLICT" });
 
@@ -291,18 +468,22 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
     const oldCredential = tokens.mint(projection).token;
     await pool.query("INSERT INTO playlists(user_id,name,is_visible_to_guests) VALUES ($1,'preserved',true)", [projection.id]);
     await pool.query("UPDATE users SET guest_discoverable=true WHERE id=$1", [projection.id]);
-    const suspended = await repository.transitionIdentity({
-      strapiUserDocumentId: "c7-user-suspend", operationId: "suspend-c7", kind: "suspend", targetStatus: "suspended",
+    const suspended = await repository.suspendIdentity({
+      userDocumentId: "c7-user-suspend", accountDocumentId: "c7-account-suspend", operationId: "suspend-c7",
     });
+    expect(suspended.identityStatus).not.toBe("not_present");
+    if (suspended.identityStatus === "not_present") throw new Error("numeric suspension unexpectedly absent");
     expect(suspended).toMatchObject({ id: projection.id, identityStatus: "suspended", sessionVersion: projection.sessionVersion + 1 });
     await expect(principals.resolve(oldCredential)).rejects.toMatchObject({ code: "IDENTITY_SUSPENDED" });
     expect(await new MusicDomainRepository(pool).resolveGuestResource("c7-public-suspend")).toBeUndefined();
-    const reactivated = await repository.transitionIdentity({
-      strapiUserDocumentId: "c7-user-suspend", operationId: "reactivate-c7", kind: "reactivate", targetStatus: "active",
+    const reactivated = await repository.reactivateIdentity({
+      userDocumentId: "c7-user-suspend", accountDocumentId: "c7-account-suspend", operationId: "reactivate-c7",
     });
+    expect(reactivated.identityStatus).not.toBe("not_present");
+    if (reactivated.identityStatus === "not_present") throw new Error("numeric reactivation unexpectedly absent");
     expect(reactivated).toMatchObject({ id: projection.id, identityStatus: "active", sessionVersion: suspended.sessionVersion + 1 });
-    const replay = await repository.transitionIdentity({
-      strapiUserDocumentId: "c7-user-suspend", operationId: "reactivate-c7", kind: "reactivate", targetStatus: "active",
+    const replay = await repository.reactivateIdentity({
+      userDocumentId: "c7-user-suspend", accountDocumentId: "c7-account-suspend", operationId: "reactivate-c7",
     });
     expect(replay).toEqual(reactivated);
     await expect(principals.resolve(oldCredential)).rejects.toMatchObject({ code: "TOKEN_REVOKED" });

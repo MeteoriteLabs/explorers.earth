@@ -116,6 +116,43 @@ describe("mounted Music lifecycle identity boundary", () => {
     expect(response.body.operation).toMatchObject({ state: "failed", deadLetter: true, retryable: false });
   });
 
+  it("serves the exact cancelled no-local terminal DTO after a lost cancel response", async () => {
+    const cancelled = {
+      ...status,
+      musicUserId: null,
+      identityStatus: "not_present" as const,
+      state: "cancelled" as const,
+    };
+    const { app, lifecycle } = appFor({
+      status: vi.fn(async () => cancelled),
+      cancelDeletion: vi.fn(async () => cancelled),
+    });
+    const headers = { Authorization: `Bearer ${"b".repeat(32)}` };
+
+    const cancelledResponse = await request(app).post("/api/music/identity/lifecycle/cancel")
+      .set(headers).expect(200);
+    const reloadResponse = await request(app).get("/api/music/identity/lifecycle/status")
+      .set(headers).expect(200);
+    const expected = {
+      version: "music-lifecycle/v1",
+      operation: {
+        operationId: status.operationId,
+        status: "not_present",
+        phase: "prepared",
+        state: "cancelled",
+        boundaryCrossed: false,
+        retryable: false,
+        deadLetter: false,
+        upstreamUserDocumentId: "user-document-a",
+        upstreamAccountDocumentId: "account-document-a",
+      },
+    };
+    expect(cancelledResponse.body).toEqual(expected);
+    expect(reloadResponse.body).toEqual(expected);
+    expect(lifecycle.cancelDeletion).toHaveBeenCalledOnce();
+    expect(lifecycle.status).toHaveBeenCalledOnce();
+  });
+
   it("applies new-entry admission to prepare without blocking durable recovery", async () => {
     // Break caught: a disabled cohort can start deletion, or the kill switch strands an existing operation.
     const { app, lifecycle } = appFor({}, { entryEnabled: () => false });

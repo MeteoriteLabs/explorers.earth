@@ -36,6 +36,16 @@ function harness() {
       accountDocumentId: identity.accountDocumentId,
       identityStatus: "active" as const,
     })),
+    suspendIdentity: vi.fn(async () => ({
+      identityStatus: "not_present" as const,
+      strapiUserDocumentId: identity.userDocumentId,
+      strapiAccountDocumentId: identity.accountDocumentId,
+    })),
+    reactivateIdentity: vi.fn(async () => ({
+      identityStatus: "not_present" as const,
+      strapiUserDocumentId: identity.userDocumentId,
+      strapiAccountDocumentId: identity.accountDocumentId,
+    })),
     transitionIdentity: vi.fn(),
   };
   const gateway = {
@@ -207,9 +217,14 @@ describe("MusicLifecycleService", () => {
 
   it("suspends only the exact authoritative Explorer tuple", async () => {
     const h = harness();
-    h.repository.transitionIdentity.mockResolvedValue({
-      id: 41, strapiUserDocumentId: identity.userDocumentId, strapiAccountDocumentId: identity.accountDocumentId,
-      identityStatus: "suspended", sessionVersion: 8,
+    h.repository.suspendIdentity.mockImplementation(async (input) => {
+      if (input.accountDocumentId !== identity.accountDocumentId) {
+        throw new MusicIdentityError("IDENTITY_CONFLICT", 409, "Identity conflict.", "contact_support", false);
+      }
+      return {
+        id: 41, strapiUserDocumentId: identity.userDocumentId, strapiAccountDocumentId: identity.accountDocumentId,
+        identityStatus: "suspended" as const, sessionVersion: 8,
+      };
     });
     const service = new MusicLifecycleService(h.gateway, h.repository, {
       operationIdFactory: () => "suspend-proof-operation",
@@ -220,7 +235,11 @@ describe("MusicLifecycleService", () => {
       id: 41, identityStatus: "suspended",
     });
     expect(h.gateway.resolve).toHaveBeenCalledWith("authoritative-proof", "request-suspend");
-    expect(h.repository.lifecycleBinding).toHaveBeenCalledWith(identity.userDocumentId, identity.accountDocumentId);
+    expect(h.repository.suspendIdentity).toHaveBeenCalledWith({
+      userDocumentId: identity.userDocumentId,
+      accountDocumentId: identity.accountDocumentId,
+      operationId: "suspend-proof-operation",
+    });
 
     h.gateway.resolve.mockResolvedValueOnce({ ...identity, accountDocumentId: "account-document-other" });
     await expect(service.suspendFromProof("authoritative-proof", "request-conflict"))
@@ -247,8 +266,49 @@ describe("MusicLifecycleService", () => {
       accountDocumentId: identity.accountDocumentId,
       operationId: "absence-noop-operation",
     })).resolves.toEqual(expected);
+    expect(h.repository.suspendIdentity).toHaveBeenCalledWith({
+      userDocumentId: identity.userDocumentId,
+      accountDocumentId: identity.accountDocumentId,
+      operationId: "absence-noop-operation",
+    });
+    expect(h.repository.reactivateIdentity).toHaveBeenCalledWith({
+      userDocumentId: identity.userDocumentId,
+      accountDocumentId: identity.accountDocumentId,
+      operationId: "absence-noop-operation",
+    });
     expect(h.repository.transitionIdentity).not.toHaveBeenCalled();
     expect(h.disconnectOwner).not.toHaveBeenCalled();
+  });
+
+  it("recovers exact cancelled nullable status and cancel after a lost response", async () => {
+    // Break caught: the cancelled durable tuple is collapsed to generic absence on reload.
+    const h = harness();
+    const cancelled = {
+      ...h.status,
+      musicUserId: null,
+      identityStatus: "not_present" as const,
+      state: "cancelled" as const,
+    };
+    h.repository.lifecycleBinding.mockResolvedValue({
+      disposition: "cancelled",
+      userDocumentId: identity.userDocumentId,
+      accountDocumentId: identity.accountDocumentId,
+    } as never);
+    h.repository.lifecycleStatus.mockResolvedValue(cancelled);
+    h.repository.cancelDeletion.mockResolvedValue(cancelled);
+    const service = new MusicLifecycleService(h.gateway, h.repository, {
+      operationIdFactory: () => "cancel-retry-operation",
+      disconnectOwner: h.disconnectOwner,
+    });
+
+    await expect(service.status("authoritative-proof", "request-cancelled-reload")).resolves.toMatchObject({
+      identityStatus: "not_present", state: "cancelled", boundaryCrossed: false,
+      upstreamUserDocumentId: identity.userDocumentId,
+      upstreamAccountDocumentId: identity.accountDocumentId,
+    });
+    await expect(service.cancelDeletion("authoritative-proof", "request-cancelled-retry"))
+      .resolves.toMatchObject({ identityStatus: "not_present", state: "cancelled", boundaryCrossed: false });
+    expect(h.gateway.resolve).not.toHaveBeenCalled();
   });
 
   it("prepares durable deletion authority for a never-provisioned tuple without inventing an owner", async () => {
@@ -340,9 +400,14 @@ describe("MusicLifecycleService", () => {
 
   it("reactivates only the immutable tuple carried by the public confirmation token", async () => {
     const h = harness();
-    h.repository.transitionIdentity.mockResolvedValue({
-      id: 41, strapiUserDocumentId: identity.userDocumentId, strapiAccountDocumentId: identity.accountDocumentId,
-      identityStatus: "active", sessionVersion: 9,
+    h.repository.reactivateIdentity.mockImplementation(async (candidate) => {
+      if (candidate.accountDocumentId !== identity.accountDocumentId) {
+        throw new MusicIdentityError("IDENTITY_CONFLICT", 409, "Identity conflict.", "contact_support", false);
+      }
+      return {
+        id: 41, strapiUserDocumentId: identity.userDocumentId, strapiAccountDocumentId: identity.accountDocumentId,
+        identityStatus: "active" as const, sessionVersion: 9,
+      };
     });
     const service = new MusicLifecycleService(h.gateway, h.repository, { disconnectOwner: h.disconnectOwner });
     const input = {
@@ -352,19 +417,9 @@ describe("MusicLifecycleService", () => {
     };
 
     await expect(service.reactivateBoundIdentity(input)).resolves.toMatchObject({ id: 41, sessionVersion: 9 });
-    expect(h.repository.transitionIdentity).toHaveBeenCalledWith({
-      strapiUserDocumentId: identity.userDocumentId,
-      operationId: input.operationId,
-      kind: "reactivate",
-      targetStatus: "active",
-    });
+    expect(h.repository.reactivateIdentity).toHaveBeenCalledWith(input);
 
-    h.repository.lifecycleBinding.mockResolvedValueOnce({
-      disposition: "present",
-      userDocumentId: identity.userDocumentId,
-      accountDocumentId: "account-document-other",
-      identityStatus: "suspended",
-    });
-    await expect(service.reactivateBoundIdentity(input)).rejects.toMatchObject({ code: "IDENTITY_CONFLICT" });
+    await expect(service.reactivateBoundIdentity({ ...input, accountDocumentId: "account-document-other" }))
+      .rejects.toMatchObject({ code: "IDENTITY_CONFLICT" });
   });
 });
