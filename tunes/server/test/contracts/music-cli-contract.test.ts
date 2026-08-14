@@ -36,6 +36,15 @@ function runCli(args: string[], env: NodeJS.ProcessEnv = process.env) {
 }
 
 describe("music CLI output contract", () => {
+  it("rotates fixture authority without erasing the prior bundle before pointer commit", () => {
+    const source = readFileSync(join(tunesRoot, "scripts", "music-cli.ts"), "utf8");
+    const start = source.indexOf("function createTestEnv");
+    const end = source.indexOf("async function fixtureMigratorUrl", start);
+    const rotation = source.slice(start, end);
+    expect(rotation).not.toContain("cleanupAllFixtureMusicTokenSecrets(root)");
+    expect(rotation).toContain("rotateFixtureMusicAuthority");
+  });
+
   it("emits only a JSON envelope through the documented public root command", () => {
     // Production break caught: tests bypass the npm entrypoint, while the
     // documented command prepends npm banners that break JSON parsers.

@@ -327,8 +327,24 @@ the child process environment. Docker Compose is never given `--env-file`, so
 it cannot reopen a secret pathname after validation. A reference or generation
 race fails closed. Bootstrap may replace a verified owned legacy
 `.env.music.test`; ordinary resume/doctor operations reject legacy or invalid
-references. After reference commit, the previous verified generation is
-zeroed. Bootstrap/down/reset cleanup never pathname-unlinks an artifact: it
+references.
+
+Bootstrap rotates one four-resource authority bundle: the environment
+generation, Music signing-key leaf, migrator-password leaf, and runtime-password
+leaf. It snapshots the exact prior directory/file identities, sizes, and
+SHA-256 digests before creating replacements. A non-secret, descriptor-written
+rotation journal records both complete sets before the pointer switch. Until
+the exact new pointer is reconciled, failure erases only the new unreferenced
+set and leaves the prior pointer and four resources byte-exact. After that
+switch, no error path may erase the new set. Prior resources are retired only
+when their captured identities and digests still match; mismatch is a typed
+cleanup failure that leaves both attacker and displaced bytes untouched.
+Bootstrap/down/reset reconcile any pending journal before other cleanup, so a
+restart deterministically retires the old set after commit or the candidate set
+before commit. Successful retirement leaves zero-byte tombstones and zeroes the
+non-secret journal.
+
+Bootstrap/down/reset cleanup never pathname-unlinks an artifact: it
 truncates and durably syncs only a verified descriptor. A truncate, sync, close,
 or digest failure makes the command nonzero with
 `MUSIC_FIXTURE_SECRET_CLEANUP_FAILED` and only the exact random leaf identifier.

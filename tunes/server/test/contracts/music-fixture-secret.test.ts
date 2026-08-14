@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { chmodSync, closeSync, constants, fsyncSync, ftruncateSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, readdirSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
+import { basename, join, relative, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   cleanupAllFixtureMusicTokenSecrets,
@@ -590,4 +590,280 @@ describe("fixture environment secret persistence", () => {
       finally { closeSync(descriptor); }
     } })).toThrow(/fixture environment|publish/i);
   });
+
+  it("keeps the committed generation readable when a postcommit callback fails", () => {
+    const root = fixtureRoot();
+    requiredPersist()(root, "SESSION_SECRET=prior-authority\n", {
+      randomNameBytes: () => Buffer.alloc(16, 0x78),
+    });
+    const current = "SESSION_SECRET=committed-authority\n";
+    expect(() => requiredPersist()(root, current, {
+      randomNameBytes: () => Buffer.alloc(16, 0x79),
+      afterReferenceCommit: () => { throw new Error("postcommit-callback-sentinel"); },
+    })).toThrow(expect.objectContaining({ code: "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED" }));
+
+    expect((fixtureSecrets as unknown as { readFixtureMusicEnvironment: (root: string) => string }).readFixtureMusicEnvironment(root)).toBe(current);
+    const generation = join(root, ".artifacts", "music-environment-generations", `generation-${Buffer.alloc(16, 0x79).toString("hex")}`);
+    expect(readFileSync(generation, "utf8")).toBe(current);
+  });
+
+  it("binds postcommit prior-generation cleanup to the captured inode and digest", () => {
+    const root = fixtureRoot();
+    const prior = "SESSION_SECRET=prior-authority\n";
+    const current = "SESSION_SECRET=current-authority\n";
+    requiredPersist()(root, prior, { randomNameBytes: () => Buffer.alloc(16, 0x7a) });
+    const priorGeneration = join(root, ".artifacts", "music-environment-generations", `generation-${Buffer.alloc(16, 0x7a).toString("hex")}`);
+    const displaced = join(root, "displaced-prior-generation");
+    const attacker = "ATTACKER_ENV=do_not_mutate____\n";
+    expect(Buffer.byteLength(attacker)).toBe(Buffer.byteLength(prior));
+
+    expect(() => requiredPersist()(root, current, {
+      randomNameBytes: () => Buffer.alloc(16, 0x7b),
+      afterReferenceCommit: () => {
+        renameSync(priorGeneration, displaced);
+        writeFileSync(priorGeneration, attacker, { mode: 0o600 });
+      },
+    })).toThrow(expect.objectContaining({ code: "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED" }));
+    expect((fixtureSecrets as unknown as { readFixtureMusicEnvironment: (root: string) => string }).readFixtureMusicEnvironment(root)).toBe(current);
+    expect(readFileSync(priorGeneration, "utf8")).toBe(attacker);
+    expect(readFileSync(displaced, "utf8")).toBe(prior);
+  });
+});
+
+describe("fixture bundle rotation transaction", () => {
+  type RotationDependencies = fixtureSecrets.FixtureAuthorityRotationDependencies;
+  const rotate = fixtureSecrets.rotateFixtureMusicAuthority;
+  const recover = fixtureSecrets.recoverFixtureAuthorityRotations;
+
+  function prepareWithSeed(seed: number): RotationDependencies["prepareSecret"] {
+    return (root, index) => prepareFixtureMusicTokenSecret(root, () => Buffer.alloc(32, seed + index), {
+      randomNameBytes: () => Buffer.alloc(16, seed + index),
+    });
+  }
+
+  function environment(root: string, paths: fixtureSecrets.FixtureAuthorityPaths, label: string): string {
+    const fixturePath = (path: string) => `./${relative(root, path).replace(/\\/g, "/")}`;
+    return `MUSIC_TOKEN_SECRET_FILE_HOST=${fixturePath(paths.tokenPath)}\nMUSIC_DB_MIGRATOR_SECRET_FILE_HOST=${fixturePath(paths.migratorPasswordPath)}\nMUSIC_DB_RUNTIME_SECRET_FILE_HOST=${fixturePath(paths.runtimePasswordPath)}\nROTATION_LABEL=${label}\n`;
+  }
+
+  function credentialPaths(root: string, contents: string): string[] {
+    const values = Object.fromEntries(contents.trim().split(/\r?\n/).map((line) => line.split("=", 2)));
+    return ["MUSIC_TOKEN_SECRET_FILE_HOST", "MUSIC_DB_MIGRATOR_SECRET_FILE_HOST", "MUSIC_DB_RUNTIME_SECRET_FILE_HOST"]
+      .map((key) => resolve(root, values[key]!));
+  }
+
+  it("preserves the complete prior bundle when replacement credential creation fails", () => {
+    const root = fixtureRoot();
+    rotate(root, (paths) => environment(root, paths, "prior"), { prepareSecret: prepareWithSeed(0x21) });
+    const priorPointer = readFileSync(join(root, ".env.music.test"));
+    const priorEnvironment = fixtureSecrets.readFixtureMusicEnvironment(root);
+    const priorCredentials = credentialPaths(root, priorEnvironment);
+    const priorBytes = priorCredentials.map((path) => readFileSync(path));
+    const candidateFirst = join(root, ".artifacts", "music-token-secrets", `current-${Buffer.alloc(16, 0x31).toString("hex")}`);
+
+    expect(() => rotate(root, (paths) => environment(root, paths, "candidate"), {
+      prepareSecret: (repositoryRoot, index) => {
+        if (index === 1) throw new Error("replacement-credential-write-sentinel");
+        return prepareFixtureMusicTokenSecret(repositoryRoot, () => Buffer.alloc(32, 0x31), {
+          randomNameBytes: () => Buffer.alloc(16, 0x31),
+        });
+      },
+    })).toThrow(/replacement-credential-write-sentinel/);
+    expect(readFileSync(join(root, ".env.music.test"))).toEqual(priorPointer);
+    expect(fixtureSecrets.readFixtureMusicEnvironment(root)).toBe(priorEnvironment);
+    expect(priorCredentials.map((path) => readFileSync(path))).toEqual(priorBytes);
+    expect(lstatSync(candidateFirst).size).toBe(0);
+  });
+
+  it("retires only the exact prior bundle after a successful pointer commit", () => {
+    const root = fixtureRoot();
+    rotate(root, (paths) => environment(root, paths, "prior"), { prepareSecret: prepareWithSeed(0x41) });
+    const priorEnvironment = fixtureSecrets.readFixtureMusicEnvironment(root);
+    const priorCredentials = credentialPaths(root, priorEnvironment);
+    const priorReference = readFileSync(join(root, ".env.music.test"), "utf8");
+    const priorGeneration = join(root, ".artifacts", "music-environment-generations", priorReference.match(/generation=(generation-[a-f0-9]{32})/)![1]!);
+
+    rotate(root, (paths) => environment(root, paths, "current"), { prepareSecret: prepareWithSeed(0x51) });
+    const current = fixtureSecrets.readFixtureMusicEnvironment(root);
+    expect(current).toContain("ROTATION_LABEL=current");
+    for (const path of [...priorCredentials, priorGeneration]) expect(lstatSync(path).size).toBe(0);
+    for (const path of credentialPaths(root, current)) expect(lstatSync(path).size).toBeGreaterThan(0);
+    expect(readdirSync(join(root, ".artifacts", "music-rotation-journals"))
+      .filter((name) => fixtureRotationJournalForTest(name))
+      .every((name) => lstatSync(join(root, ".artifacts", "music-rotation-journals", name)).size === 0)).toBe(true);
+    expect(() => recover(root)).not.toThrow();
+  });
+
+  it("rolls back only candidate leaves when environment publication fails before commit", () => {
+    const root = fixtureRoot();
+    rotate(root, (paths) => environment(root, paths, "prior"), { prepareSecret: prepareWithSeed(0x61) });
+    const priorPointer = readFileSync(join(root, ".env.music.test"));
+    const priorEnvironment = fixtureSecrets.readFixtureMusicEnvironment(root);
+    const priorCredentials = credentialPaths(root, priorEnvironment);
+    const priorBytes = priorCredentials.map((path) => readFileSync(path));
+
+    expect(() => rotate(root, (paths) => environment(root, paths, "candidate"), {
+      prepareSecret: prepareWithSeed(0x71),
+      persistence: {
+        randomNameBytes: () => Buffer.alloc(16, 0x74),
+        beforePublish: () => { throw new Error("precommit-publish-sentinel"); },
+      },
+    })).toThrow(/precommit-publish-sentinel|fixture environment/i);
+    expect(readFileSync(join(root, ".env.music.test"))).toEqual(priorPointer);
+    expect(fixtureSecrets.readFixtureMusicEnvironment(root)).toBe(priorEnvironment);
+    expect(priorCredentials.map((path) => readFileSync(path))).toEqual(priorBytes);
+    for (const byte of [0x71, 0x72, 0x73]) {
+      expect(lstatSync(join(root, ".artifacts", "music-token-secrets", `current-${Buffer.alloc(16, byte).toString("hex")}`)).size).toBe(0);
+    }
+    expect(lstatSync(join(root, ".artifacts", "music-environment-generations", `generation-${Buffer.alloc(16, 0x74).toString("hex")}`)).size).toBe(0);
+  });
+
+  it("uses the retained zero-generation pointer as precommit authority after down", () => {
+    const root = fixtureRoot();
+    rotate(root, (paths) => environment(root, paths, "prior"), { prepareSecret: prepareWithSeed(0x25) });
+    cleanupAllFixtureMusicTokenSecrets(root);
+    const retainedPointer = readFileSync(join(root, ".env.music.test"));
+
+    expect(() => rotate(root, (paths) => environment(root, paths, "candidate"), {
+      prepareSecret: prepareWithSeed(0x35),
+      persistence: {
+        randomNameBytes: () => Buffer.alloc(16, 0x38),
+        beforePublish: () => { throw new Error("post-down-precommit-sentinel"); },
+      },
+    })).toThrow();
+    expect(readFileSync(join(root, ".env.music.test"))).toEqual(retainedPointer);
+    for (const byte of [0x35, 0x36, 0x37]) {
+      expect(lstatSync(join(root, ".artifacts", "music-token-secrets", `current-${Buffer.alloc(16, byte).toString("hex")}`)).size).toBe(0);
+    }
+    expect(lstatSync(join(root, ".artifacts", "music-environment-generations", `generation-${Buffer.alloc(16, 0x38).toString("hex")}`)).size).toBe(0);
+    expect(() => recover(root)).not.toThrow();
+  });
+
+  it("does not switch authority when durable rotation-journal publication fails", () => {
+    const root = fixtureRoot();
+    rotate(root, (paths) => environment(root, paths, "prior"), { prepareSecret: prepareWithSeed(0x26) });
+    const priorPointer = readFileSync(join(root, ".env.music.test"));
+    const prior = fixtureSecrets.readFixtureMusicEnvironment(root);
+    const priorCredentialBytes = credentialPaths(root, prior).map((path) => readFileSync(path));
+
+    expect(() => rotate(root, (paths) => environment(root, paths, "candidate"), {
+      prepareSecret: prepareWithSeed(0x36),
+      persistence: { randomNameBytes: () => Buffer.alloc(16, 0x39) },
+      syncJournalDirectory: () => { throw new Error("journal-directory-sync-sentinel"); },
+    } as RotationDependencies & { syncJournalDirectory: (path: string) => void })).toThrow(/journal|fixture environment/i);
+    expect(readFileSync(join(root, ".env.music.test"))).toEqual(priorPointer);
+    expect(fixtureSecrets.readFixtureMusicEnvironment(root)).toBe(prior);
+    expect(credentialPaths(root, prior).map((path) => readFileSync(path))).toEqual(priorCredentialBytes);
+    expect(() => recover(root)).not.toThrow();
+  });
+
+  it.each(["generation-write", "generation-fsync", "generation-close", "pointer-rename"] as const)(
+    "preserves prior authority at the %s precommit failure phase",
+    (phase) => {
+      const root = fixtureRoot();
+      rotate(root, (paths) => environment(root, paths, "prior"), { prepareSecret: prepareWithSeed(0xa1) });
+      const priorPointer = readFileSync(join(root, ".env.music.test"));
+      const priorEnvironment = fixtureSecrets.readFixtureMusicEnvironment(root);
+      const priorCredentials = credentialPaths(root, priorEnvironment);
+      const priorBytes = priorCredentials.map((path) => readFileSync(path));
+      const persistence: fixtureSecrets.FixtureEnvironmentPersistenceDependencies = {
+        randomNameBytes: () => Buffer.alloc(16, 0xb4),
+      };
+      if (phase === "generation-write") persistence.write = (() => 3) as typeof writeSync;
+      if (phase === "generation-fsync") persistence.sync = () => { throw new Error("candidate-fsync-sentinel"); };
+      if (phase === "generation-close") persistence.close = () => { throw new Error("candidate-close-sentinel"); };
+      if (phase === "pointer-rename") persistence.rename = () => { throw new Error("pointer-rename-sentinel"); };
+
+      expect(() => rotate(root, (paths) => environment(root, paths, "candidate"), {
+        prepareSecret: prepareWithSeed(0xb1),
+        persistence,
+      })).toThrow();
+      expect(readFileSync(join(root, ".env.music.test"))).toEqual(priorPointer);
+      expect(fixtureSecrets.readFixtureMusicEnvironment(root)).toBe(priorEnvironment);
+      expect(priorCredentials.map((path) => readFileSync(path))).toEqual(priorBytes);
+      for (const byte of [0xb1, 0xb2, 0xb3]) {
+        expect(lstatSync(join(root, ".artifacts", "music-token-secrets", `current-${Buffer.alloc(16, byte).toString("hex")}`)).size).toBe(0);
+      }
+      expect(lstatSync(join(root, ".artifacts", "music-environment-generations", `generation-${Buffer.alloc(16, 0xb4).toString("hex")}`)).size).toBe(0);
+    },
+  );
+
+  it.each(["callback", "generation-close"] as const)(
+    "keeps current authority complete after the %s postcommit failure phase",
+    (phase) => {
+      const root = fixtureRoot();
+      rotate(root, (paths) => environment(root, paths, "prior"), { prepareSecret: prepareWithSeed(0xc1) });
+      const prior = fixtureSecrets.readFixtureMusicEnvironment(root);
+      const priorCredentials = credentialPaths(root, prior);
+      let closeCalls = 0;
+      const persistence: fixtureSecrets.FixtureEnvironmentPersistenceDependencies = {
+        randomNameBytes: () => Buffer.alloc(16, 0xd4),
+        afterReferenceCommit: phase === "callback" ? () => { throw new Error("postcommit-callback-sentinel"); } : undefined,
+        close: phase === "generation-close" ? (descriptor) => {
+          closeCalls += 1;
+          if (closeCalls === 3) throw new Error("postcommit-close-sentinel");
+          closeSync(descriptor);
+        } : undefined,
+      };
+
+      expect(() => rotate(root, (paths) => environment(root, paths, "current"), {
+        prepareSecret: prepareWithSeed(0xd1),
+        persistence,
+      })).toThrow(expect.objectContaining({ code: "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED" }));
+      const current = fixtureSecrets.readFixtureMusicEnvironment(root);
+      expect(current).toContain("ROTATION_LABEL=current");
+      for (const path of credentialPaths(root, current)) expect(lstatSync(path).size).toBeGreaterThan(0);
+      for (const path of priorCredentials) expect(lstatSync(path).size).toBe(0);
+      const reference = readFileSync(join(root, ".env.music.test"), "utf8");
+      const generation = join(root, ".artifacts", "music-environment-generations", reference.match(/generation=(generation-[a-f0-9]{32})/)![1]!);
+      expect(lstatSync(generation).size).toBeGreaterThan(0);
+      expect(() => recover(root)).not.toThrow();
+    },
+  );
+
+  it("keeps new authority live and retries exact old-credential cleanup after a swap", () => {
+    const root = fixtureRoot();
+    rotate(root, (paths) => environment(root, paths, "prior"), { prepareSecret: prepareWithSeed(0x81) });
+    const priorEnvironment = fixtureSecrets.readFixtureMusicEnvironment(root);
+    const priorCredentials = credentialPaths(root, priorEnvironment);
+    const swapped = priorCredentials[0]!;
+    const displaced = join(root, "displaced-prior-credential");
+    const attackerPreserved = join(root, "attacker-preserved-after-repair");
+    const attacker = Buffer.alloc(readFileSync(swapped).length, 0x5a);
+
+    expect(() => rotate(root, (paths) => environment(root, paths, "current"), {
+      prepareSecret: prepareWithSeed(0x91),
+      persistence: { afterReferenceCommit: () => {
+        renameSync(swapped, displaced);
+        writeFileSync(swapped, attacker, { mode: 0o600 });
+      } },
+    })).toThrow(expect.objectContaining({ code: "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED" }));
+    const current = fixtureSecrets.readFixtureMusicEnvironment(root);
+    expect(current).toContain("ROTATION_LABEL=current");
+    for (const path of credentialPaths(root, current)) expect(lstatSync(path).size).toBeGreaterThan(0);
+    expect(readFileSync(swapped)).toEqual(attacker);
+    expect(lstatSync(displaced).size).toBeGreaterThan(0);
+    expect(readdirSync(join(root, ".artifacts", "music-rotation-journals")).some((name) => {
+      return fixtureRotationJournalForTest(name) && lstatSync(join(root, ".artifacts", "music-rotation-journals", name)).size > 0;
+    })).toBe(true);
+    expect(() => cleanupAllFixtureMusicTokenSecrets(root)).toThrow(expect.objectContaining({
+      code: "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED",
+    }));
+    expect(readFileSync(swapped)).toEqual(attacker);
+    expect(fixtureSecrets.readFixtureMusicEnvironment(root)).toBe(current);
+
+    renameSync(swapped, attackerPreserved);
+    renameSync(displaced, swapped);
+    recover(root);
+    expect(readFileSync(attackerPreserved)).toEqual(attacker);
+    expect(lstatSync(swapped).size).toBe(0);
+    expect(fixtureSecrets.readFixtureMusicEnvironment(root)).toBe(current);
+    expect(readdirSync(join(root, ".artifacts", "music-rotation-journals"))
+      .filter((name) => fixtureRotationJournalForTest(name))
+      .every((name) => lstatSync(join(root, ".artifacts", "music-rotation-journals", name)).size === 0)).toBe(true);
+  });
+
+  function fixtureRotationJournalForTest(name: string): boolean {
+    return /^rotation-[a-f0-9]{32}\.json$/.test(name);
+  }
 });
