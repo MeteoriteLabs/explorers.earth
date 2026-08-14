@@ -40,7 +40,16 @@ export function inventoryRuntimeTables(repositoryRoot: string): RuntimeTableInve
       ...[...source.matchAll(/\.query\s*\(\s*'((?:\\.|[^'])*)'/g)].map((match) => match[1]),
       ...[...source.matchAll(/\.query\s*\(\s*"((?:\\.|[^"])*)"/g)].map((match) => match[1]),
     ];
-    for (const statement of statements) for (const match of statement.matchAll(/\b(?:DELETE\s+FROM|FROM|JOIN|UPDATE|INTO)\s+["']?([a-z_][a-z0-9_]*)["']?/gi)) rawSqlTables.add(match[1].toLowerCase());
+    for (const statement of statements) {
+      const commonTableExpressions = new Set(
+        [...statement.matchAll(/(?:\bWITH|,)\s*([a-z_][a-z0-9_]*)\s+AS\s*\(/gi)].map((match) => match[1].toLowerCase()),
+      );
+      for (const match of statement.matchAll(/\b(?:DELETE\s+FROM|FROM|JOIN|UPDATE(?!\s+OF\b)|INTO)\s+["']?([a-z_][a-z0-9_]*)["']?/gi)) {
+        const table = match[1].toLowerCase();
+        const following = statement.slice((match.index ?? 0) + match[0].length).trimStart();
+        if (!commonTableExpressions.has(table) && !following.startsWith("(")) rawSqlTables.add(table);
+      }
+    }
   }
   const systemTables = sorted([...rawSqlTables].filter((table) => table.startsWith("pg_") || table.startsWith("information_schema")));
   const applicationRawSqlTables = sorted([...rawSqlTables].filter((table) => !systemTables.includes(table)));

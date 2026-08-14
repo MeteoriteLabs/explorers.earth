@@ -41,10 +41,10 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig)
   app.use((req, res, next) => {
     const declared = req.get("content-length");
     if (declared && /^\d+$/.test(declared) && Number(declared) > 64 * 1024) {
-      const requestId = requestIdFor(req);
-      req.resume(); return req.once("end", () => res.status(413).json(musicErrorEnvelope(new MusicIdentityError(
-        "PAYLOAD_TOO_LARGE", 413, "The Music request payload is too large.", "none", false,
-      ), requestId)));
+      const requestId = requestIdFor(req); let sent = false;
+      const reject = () => { if (sent) return; sent = true; res.setHeader("Connection", "close"); res.status(413).json(musicErrorEnvelope(new MusicIdentityError("PAYLOAD_TOO_LARGE", 413, "The Music request payload is too large.", "none", false), requestId)); };
+      const deadline = setTimeout(reject, 25); deadline.unref();
+      req.once("end", reject); req.resume(); return;
     }
     next();
   });

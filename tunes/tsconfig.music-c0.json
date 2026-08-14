@@ -3,13 +3,15 @@
   "compilerOptions": {
     "incremental": false,
     "noEmit": true,
-    "target": "ES2022"
+    "target": "ES2022",
+    "types": ["node", "vite/client", "passport"]
   },
   "include": [
     "scripts/inventory-runtime-surfaces.ts",
     "scripts/inventory-runtime-tables.ts",
     "scripts/music-*.ts",
     "server/config/music-environment.ts",
+    "server/types/express.d.ts",
     "server/test/contracts/*.test.ts"
   ],
   "exclude": []

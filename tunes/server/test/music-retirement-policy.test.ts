@@ -19,4 +19,18 @@ describe("executable Music retirement matcher", () => {
     expect(matchRetiredMusicSurface("/%E0%A4%A")).toBeUndefined();
     expect(matchRetiredMusicSurface("/definitely-live")).toBeUndefined();
   });
+
+  it("keeps exact account-reactivation operations live while retiring other user aliases", () => {
+    // Break caught: the broad /api/user prefix shadows the two live recovery handlers.
+    expect(matchRetiredMusicSurface("/api/user/request-reactivation")).toBeUndefined();
+    expect(matchRetiredMusicSurface("/API/USER/reactivate?token=missing")).toBeUndefined();
+    expect(matchRetiredMusicSurface("/API/%75SER/DEVICE/")).toEqual(expect.objectContaining({
+      family: "venue",
+      path: "/api/user",
+    }));
+    expect(matchRetiredMusicSurface("/api/user/reactivate/extra")).toEqual(expect.objectContaining({
+      family: "venue",
+      path: "/api/user",
+    }));
+  });
 });

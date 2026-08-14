@@ -85,9 +85,17 @@ export class MusicDomainRepository {
 
   async addPlaylistSong(musicUserId: number, playlistId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }) {
     return this.withAdvisoryLock(SAVED_PLAYLIST_LOCK, playlistId, async (client) => (await client.query(
-        `INSERT INTO playlist_songs(playlist_id,youtube_id,title,artist,thumbnail_url,position)
-         SELECT p.id,$3,$4,$5,$6,COALESCE((SELECT MAX(ps.position)+1 FROM playlist_songs ps WHERE ps.playlist_id=$2),0)
-         FROM playlists p WHERE p.user_id=$1 AND p.id=$2
+        `WITH owned AS (
+           SELECT id FROM playlists WHERE user_id=$1 AND id=$2
+         ), ordered AS (
+           SELECT ps.id,(row_number() OVER (ORDER BY ps.position,ps.id)-1)::integer AS desired_position
+             FROM playlist_songs ps WHERE ps.playlist_id=(SELECT id FROM owned)
+         ), normalized AS (
+           UPDATE playlist_songs ps SET position=o.desired_position FROM ordered o WHERE ps.id=o.id
+         )
+         INSERT INTO playlist_songs(playlist_id,youtube_id,title,artist,thumbnail_url,position)
+         SELECT p.id,$3,$4,$5,$6,(SELECT count(*)::integer FROM ordered)
+         FROM owned p
          RETURNING id,playlist_id,youtube_id,title,artist,thumbnail_url,position,added_at`,
         [musicUserId, playlistId, input.youtubeId, input.title, input.artist, input.thumbnailUrl],
       )).rows[0]);
@@ -102,11 +110,26 @@ export class MusicDomainRepository {
   }
 
   async reorderPlaylistSong(musicUserId: number, playlistId: number, songId: number, position: number): Promise<boolean> {
-    return (await this.pool.query(
-      `UPDATE playlist_songs ps SET position=$4 FROM playlists p
-       WHERE p.user_id=$1 AND ps.playlist_id=$2 AND p.id=ps.playlist_id AND ps.id=$3`,
-      [musicUserId, playlistId, songId, position],
-    )).rowCount === 1;
+    return this.withAdvisoryLock(SAVED_PLAYLIST_LOCK, playlistId, async (client) => {
+      const ids = (await client.query(
+        `SELECT ps.id FROM playlist_songs ps JOIN playlists p ON p.id=ps.playlist_id
+          WHERE p.user_id=$1 AND p.id=$2 ORDER BY ps.position,ps.id FOR UPDATE OF ps`,
+        [musicUserId, playlistId],
+      )).rows.map(({ id }) => id as number);
+      const current = ids.indexOf(songId);
+      if (current < 0) return false;
+      ids.splice(current, 1);
+      ids.splice(Math.max(0, Math.min(position, ids.length)), 0, songId);
+      await client.query(
+        `WITH desired AS (
+           SELECT id,(ordinality-1)::integer AS position FROM unnest($3::integer[]) WITH ORDINALITY AS item(id,ordinality)
+         )
+         UPDATE playlist_songs ps SET position=d.position FROM desired d,playlists p
+          WHERE p.user_id=$1 AND p.id=$2 AND ps.playlist_id=p.id AND ps.id=d.id`,
+        [musicUserId, playlistId, ids],
+      );
+      return true;
+    });
   }
 
   async setPlaylistVisibility(musicUserId: number, playlistId: number, visible: boolean): Promise<boolean> {
@@ -139,8 +162,14 @@ export class MusicDomainRepository {
 
   async addSong(musicUserId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }) {
     return this.withAdvisoryLock(QUEUE_MUTATION_LOCK, musicUserId, async (client) => (await client.query(
-        `INSERT INTO songs(user_id,youtube_id,title,artist,thumbnail_url,position,status)
-         VALUES ($1,$2,$3,$4,$5,(SELECT COALESCE(MAX(position),-1)+1 FROM songs WHERE user_id=$1 AND status='queued'),'queued')
+        `WITH ordered AS (
+           SELECT id,(row_number() OVER (ORDER BY position,id)-1)::integer AS desired_position
+             FROM songs WHERE user_id=$1 AND status IN ('queued','playing')
+         ), normalized AS (
+           UPDATE songs s SET position=o.desired_position FROM ordered o WHERE s.user_id=$1 AND s.id=o.id
+         )
+         INSERT INTO songs(user_id,youtube_id,title,artist,thumbnail_url,position,status)
+         VALUES ($1,$2,$3,$4,$5,(SELECT count(*)::integer FROM ordered),'queued')
          RETURNING id,user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at`,
         [musicUserId, input.youtubeId, input.title, input.artist, input.thumbnailUrl],
       )).rows[0]);
@@ -169,10 +198,27 @@ export class MusicDomainRepository {
   }
 
   async updateSongPosition(musicUserId: number, songId: number, position: number) {
-    return (await this.pool.query(
-      "UPDATE songs SET position=$3 WHERE user_id=$1 AND id=$2 AND status='queued' RETURNING id,user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at",
-      [musicUserId, songId, position],
-    )).rows[0];
+    return this.withAdvisoryLock(QUEUE_MUTATION_LOCK, musicUserId, async (client) => {
+      const rows = (await client.query(
+        "SELECT id,status FROM songs WHERE user_id=$1 AND status IN ('queued','playing') ORDER BY position,id FOR UPDATE",
+        [musicUserId],
+      )).rows as Array<{ id: number; status: string }>;
+      const current = rows.findIndex(({ id, status }) => id === songId && status === "queued");
+      if (current < 0) return undefined;
+      const [target] = rows.splice(current, 1);
+      rows.splice(Math.max(0, Math.min(position, rows.length)), 0, target);
+      await client.query(
+        `WITH desired AS (
+           SELECT id,(ordinality-1)::integer AS position FROM unnest($2::integer[]) WITH ORDINALITY AS item(id,ordinality)
+         )
+         UPDATE songs s SET position=d.position FROM desired d WHERE s.user_id=$1 AND s.id=d.id`,
+        [musicUserId, rows.map(({ id }) => id)],
+      );
+      return (await client.query(
+        "SELECT id,user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at FROM songs WHERE user_id=$1 AND id=$2 AND status='queued'",
+        [musicUserId, songId],
+      )).rows[0];
+    });
   }
 
   async removeSong(musicUserId: number, songId: number): Promise<boolean> {
@@ -235,7 +281,8 @@ export class MusicDomainRepository {
         ) ORDER BY played.played_at DESC) FILTER (WHERE played.id IS NOT NULL),'[]'::jsonb)
           FROM (SELECT * FROM songs ps WHERE ps.user_id=u.id AND ps.status='played' ORDER BY ps.played_at DESC LIMIT 50) played) AS played_songs,
         (SELECT COALESCE(jsonb_agg(jsonb_build_object(
-          'id',p.id,'name',p.name,'description',p.description,'isVisibleToGuests',p.is_visible_to_guests,
+          'id',p.id,'userId',p.user_id,'name',p.name,'description',p.description,'isVisibleToGuests',p.is_visible_to_guests,
+          'createdAt',p.created_at,'updatedAt',p.updated_at,
           'songs',(SELECT COALESCE(jsonb_agg(jsonb_build_object(
             'id',j.id,'playlistId',j.playlist_id,'youtubeId',j.youtube_id,'title',j.title,'artist',j.artist,
             'thumbnailUrl',j.thumbnail_url,'position',j.position,'addedAt',j.added_at

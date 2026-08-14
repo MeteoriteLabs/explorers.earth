@@ -5,6 +5,7 @@ export interface RetiredMusicRouteRule {
   path: string;
   match: "exact" | "prefix";
   classification: RetiredMusicClassification;
+  exclusions?: readonly string[];
 }
 
 /** Executable source of truth for legacy paths mounted behind canonical routes. */
@@ -22,7 +23,10 @@ export const RETIRED_MUSIC_ROUTE_RULES: readonly RetiredMusicRouteRule[] = [
   { family: "settings", path: "/api/page-contents", match: "prefix", classification: "tombstone" },
   { family: "legacy-browser-identity", path: "/api/verify-email", match: "prefix", classification: "tombstone" },
   { family: "legacy-browser-identity", path: "/api/resend-verification", match: "exact", classification: "tombstone" },
-  { family: "venue", path: "/api/user", match: "prefix", classification: "tombstone" },
+  {
+    family: "venue", path: "/api/user", match: "prefix", classification: "tombstone",
+    exclusions: ["/api/user/request-reactivation", "/api/user/reactivate"],
+  },
   { family: "settings", path: "/api/system-settings", match: "prefix", classification: "tombstone" },
   { family: "youtube", path: "/api/youtube", match: "prefix", classification: "tombstone" },
   { family: "instagram", path: "/api/instagram", match: "prefix", classification: "tombstone" },
@@ -63,7 +67,8 @@ export function normalizeMusicRoutePath(rawPath: string): string | undefined {
 export function matchRetiredMusicSurface(rawPath: string): RetiredMusicRouteRule | undefined {
   const path = normalizeMusicRoutePath(rawPath);
   if (!path) return undefined;
-  return RETIRED_MUSIC_ROUTE_RULES.find((rule) => rule.match === "exact"
-    ? path === rule.path
-    : path === rule.path || path.startsWith(`${rule.path}/`));
+  return RETIRED_MUSIC_ROUTE_RULES.find((rule) => {
+    if (rule.exclusions?.includes(path)) return false;
+    return rule.match === "exact" ? path === rule.path : path === rule.path || path.startsWith(`${rule.path}/`);
+  });
 }

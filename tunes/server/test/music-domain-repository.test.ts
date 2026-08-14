@@ -64,7 +64,7 @@ describe("MusicDomainRepository owner predicates", () => {
       expect(call.values[0]).toBe(23);
     }
     expect(harness.calls[2].text.toLowerCase()).toMatch(/id\s*=\s*\$2/);
-    expect(harness.calls[3].text.toLowerCase()).toMatch(/id\s*=\s*\$2/);
+    expect(harness.calls[3].text.toLowerCase()).toContain("status in ('queued','playing')");
     expect(harness.calls[4].text.toLowerCase()).toMatch(/id\s*=\s*\$2/);
   });
 
@@ -94,7 +94,9 @@ describe("MusicDomainRepository owner predicates", () => {
     await repository.setPlaylistVisibility(29, 80, true);
     expect(harness.calls.every((call) => call.values[0] === 29)).toBe(true);
     expect(harness.calls.every((call) => /user_id\s*=\s*\$1/.test(call.text.toLowerCase()))).toBe(true);
-    expect(harness.calls.slice(1, 3).every((call) => /playlist_id\s*=\s*\$2/.test(call.text.toLowerCase()))).toBe(true);
+    expect(harness.calls[1].text.toLowerCase()).toMatch(/playlist_id\s*=\s*\$2/);
+    expect(harness.calls[2].text.toLowerCase()).toContain("join playlists p on p.id=ps.playlist_id");
+    expect(harness.calls[2].text.toLowerCase()).toContain("p.id=$2");
   });
 
   it("rotates and revokes a guest capability only for the resolved owner", async () => {

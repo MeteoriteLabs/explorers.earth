@@ -107,6 +107,7 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
   if (route.path === "/api/music/entitlement" || route.path === "/api/music/dashboard") return "owner";
   if (route.path === "/api/playlist/:guestUrl") return "guest";
   if (route.path === "/api/playlist/:guestUrl/requests") return "guest";
+  if (route.path === "/api/playlist/:guestUrl/youtube/search" || route.path === "/api/playlist/:guestUrl/youtube/video-from-url") return "guest";
   if (PUBLIC_PATHS.has(route.path) || route.classification === "public") return "public";
   if (route.path.startsWith("/api/admin/")) return "admin-tombstone";
   if (route.path === "/graphql" || route.path === "/api/strapi/graphql"
@@ -139,12 +140,19 @@ function allowedFor(decision: MusicSurfaceDecision) {
 export function authorizationMatrixFromInventory(inventory: {
   routes: RuntimeRouteSurface[];
   events: RuntimeEventSurface[];
+  retirementMatchers?: Array<{
+    family: string;
+    path: string;
+    match: "exact" | "prefix";
+    classification: "tombstone" | "admin-tombstone";
+    exclusions?: readonly string[];
+  }>;
 }) {
   return {
     routes: inventory.routes.map((route) => {
       const decision = decisionForRoute(route);
       const allowed = allowedFor(decision);
-      if (route.path === "/api/playlist/:guestUrl/requests") allowed.unauthenticated = false;
+      if (decision === "guest" && route.method !== "GET") allowed.unauthenticated = false;
       return { method: route.method, path: route.path, source: route.source, decision, allowed };
     }),
     events: inventory.events.map((event) => {
@@ -156,5 +164,10 @@ export function authorizationMatrixFromInventory(inventory: {
           : event.event === "player_state" ? "owner" : "tombstone";
       return { direction: event.direction, event: event.event, source: event.source, decision, allowed: allowedFor(decision) };
     }),
+    retirementMatchers: (inventory.retirementMatchers ?? []).map((rule) => ({
+      ...rule,
+      decision: rule.classification,
+      allowed: allowedFor(rule.classification),
+    })),
   };
 }

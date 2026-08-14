@@ -76,7 +76,7 @@ function classificationFor(method: string, path: string, priorClassification: st
 function ownerFor(path: string, classification: string): string {
   if (path === "/api/music/identity/ensure") return "authoritative-strapi-user+selected-account";
   if (classification === "local-music-owner" || classification === "paid-local-music-owner") return "req.musicPrincipal.musicUserId";
-  if (classification === "guest-capability") return path === "/api/playlist/:guestUrl/requests"
+  if (classification === "guest-capability") return path !== "/api/playlist/:guestUrl"
     ? "hashed-guest-capability"
     : "hashed-guest-capability-or-explicit-publication";
   if (classification === "admin-tombstone" || classification === "tombstone") return "none-fail-closed";

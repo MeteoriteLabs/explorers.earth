@@ -89,13 +89,13 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
   const mutation = (...handlers: RequestHandler[]) => owner(originGuard, ...handlers);
 
   app.get("/api/playlists", ...owner(async (req, res, next) => {
-    try { res.status(200).json(await dependencies.repository.listPlaylists(req.musicPrincipal!.musicUserId)); } catch (error) { next(error); }
+    try { res.status(200).json((await dependencies.repository.listPlaylists(req.musicPrincipal!.musicUserId)).map(playlistDto)); } catch (error) { next(error); }
   }));
 
   app.post("/api/playlists", ...mutation(async (req, res, next) => {
     try {
       const input = playlistInput(req.body);
-      res.status(201).json(await dependencies.repository.createPlaylist(req.musicPrincipal!.musicUserId, input));
+      res.status(201).json(playlistDto(await dependencies.repository.createPlaylist(req.musicPrincipal!.musicUserId, input)));
     } catch (error) { next(error); }
   }));
 
@@ -103,7 +103,7 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
     try {
       const playlist = await dependencies.repository.getPlaylist(req.musicPrincipal!.musicUserId, positiveId(req.params.playlistId));
       if (!playlist) throw notFound();
-      res.status(200).json(playlist);
+      res.status(200).json(playlistDto(playlist));
     } catch (error) { next(error); }
   }));
 
@@ -115,7 +115,7 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
         playlistInput(req.body),
       );
       if (!playlist) throw notFound();
-      res.status(200).json(playlist);
+      res.status(200).json(playlistDto(playlist));
     } catch (error) { next(error); }
   }));
 
@@ -132,7 +132,7 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
         req.musicPrincipal!.musicUserId, positiveId(req.params.playlistId), songInput(req.body),
       );
       if (!song) throw notFound();
-      res.status(201).json(song);
+      res.status(201).json(playlistSongDto(song));
     } catch (error) { next(error); }
   }));
 
@@ -168,15 +168,15 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
   }));
 
   app.get("/api/playlist/songs", ...owner(async (req, res, next) => {
-    try { res.status(200).json(await dependencies.repository.listQueue(req.musicPrincipal!.musicUserId)); } catch (error) { next(error); }
+    try { res.status(200).json((await dependencies.repository.listQueue(req.musicPrincipal!.musicUserId)).map(songDto)); } catch (error) { next(error); }
   }));
 
   app.get("/api/music/dashboard", ...owner(async (req, res, next) => {
-    try { res.status(200).json(await dependencies.repository.ownerDashboard(req.musicPrincipal!.musicUserId)); } catch (error) { next(error); }
+    try { res.status(200).json(dashboardDto(await dependencies.repository.ownerDashboard(req.musicPrincipal!.musicUserId))); } catch (error) { next(error); }
   }));
 
   app.post("/api/playlist/songs", ...mutation(async (req, res, next) => {
-    try { res.status(201).json(await dependencies.repository.addSong(req.musicPrincipal!.musicUserId, songInput(req.body))); } catch (error) { next(error); }
+    try { res.status(201).json(songDto(await dependencies.repository.addSong(req.musicPrincipal!.musicUserId, songInput(req.body)))); } catch (error) { next(error); }
   }));
 
   app.post("/api/playlist/currently-playing", ...mutation(async (req, res, next) => {
@@ -186,7 +186,7 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
       const song = await dependencies.repository.setPlaying(req.musicPrincipal!.musicUserId, songId);
       if (songId === null) return res.status(204).end();
       if (!song) throw notFound();
-      res.status(200).json(song);
+      res.status(200).json(songDto(song));
     } catch (error) { next(error); }
   }));
 
@@ -216,7 +216,7 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
         req.body.position,
       );
       if (!song) throw notFound();
-      res.status(200).json(song);
+      res.status(200).json(songDto(song));
     } catch (error) { next(error); }
   }));
 
@@ -311,7 +311,34 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
       const resource = await dependencies.repository.resolveGuestResource(req.params.guestUrl, capability);
       if (!resource || !["unlisted", "public"].includes(resource.state) || !resource.playlist) throw notFound();
       if (resource.noindex) res.setHeader("X-Robots-Tag", "noindex, nofollow");
-      res.status(200).json(resource.playlist);
+      res.status(200).json(publicPlaylistDto(resource.playlist));
+    } catch (error) { next(error); }
+  });
+
+  app.post("/api/playlist/:guestUrl/youtube/search", identify, originGuard, async (req, res, next) => {
+    try {
+      const authority = await guestRequestAuthority(req, dependencies);
+      if (!dependencies.youtube || !req.body || typeof req.body.query !== "string"
+          || req.body.query.trim().length < 1 || req.body.query.length > 200
+          || Object.keys(req.body).some((key) => !["query", "pageToken"].includes(key))
+          || (req.body.pageToken !== undefined && (typeof req.body.pageToken !== "string" || req.body.pageToken.length > 256))) {
+        throw new MusicIdentityError("REQUEST_INVALID", 400, "The YouTube search input is invalid.", "none", false);
+      }
+      void authority;
+      res.status(200).json(await dependencies.youtube.search({ query: req.body.query.trim(), pageToken: req.body.pageToken }));
+    } catch (error) { next(error); }
+  });
+
+  app.post("/api/playlist/:guestUrl/youtube/video-from-url", identify, originGuard, async (req, res, next) => {
+    try {
+      await guestRequestAuthority(req, dependencies);
+      if (!dependencies.youtube || !req.body || typeof req.body.url !== "string" || req.body.url.length > 2_048
+          || Object.keys(req.body).some((key) => key !== "url")) {
+        throw new MusicIdentityError("REQUEST_INVALID", 400, "The YouTube URL is invalid.", "none", false);
+      }
+      const video = await dependencies.youtube.videoFromUrl(req.body.url);
+      if (!video) throw notFound();
+      res.status(200).json(video);
     } catch (error) { next(error); }
   });
 
@@ -325,7 +352,7 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
       }
       const authority = await dependencies.repository.resolveGuestRequestAuthority(req.params.guestUrl, capability);
       if (!authority?.active || !authority.allowSongRequests) throw invalidGuestCapability();
-      res.status(201).json(await dependencies.repository.addSong(authority.musicUserId, songInput(req.body)));
+      res.status(201).json(songDto(await dependencies.repository.addSong(authority.musicUserId, songInput(req.body))));
     } catch (error) { next(error); }
   });
 
@@ -372,6 +399,101 @@ function hasForbiddenOwnerInput(req: Request): boolean {
     || !!req.body && typeof req.body === "object" && !Array.isArray(req.body) && Object.keys(req.body).some((key) => OWNER_KEYS.has(key));
 }
 
+type DtoRecord = Record<string, unknown>;
+
+function record(value: unknown): DtoRecord {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as DtoRecord : {};
+}
+
+function property(source: DtoRecord, camelCase: string, snakeCase: string = camelCase): unknown {
+  return source[camelCase] ?? source[snakeCase];
+}
+
+function dateTime(value: unknown): string | null | undefined {
+  if (value === null) return null;
+  if (value === undefined) return undefined;
+  return value instanceof Date ? value.toISOString() : String(value);
+}
+
+function songDto(value: unknown) {
+  const source = record(value);
+  return {
+    id: property(source, "id"),
+    userId: property(source, "userId", "user_id"),
+    youtubeId: property(source, "youtubeId", "youtube_id"),
+    title: property(source, "title"),
+    artist: property(source, "artist"),
+    thumbnailUrl: property(source, "thumbnailUrl", "thumbnail_url"),
+    position: property(source, "position"),
+    status: property(source, "status"),
+    playedAt: dateTime(property(source, "playedAt", "played_at")) ?? null,
+  };
+}
+
+function playlistSongDto(value: unknown) {
+  const source = record(value);
+  return {
+    id: property(source, "id"),
+    playlistId: property(source, "playlistId", "playlist_id"),
+    youtubeId: property(source, "youtubeId", "youtube_id"),
+    title: property(source, "title"),
+    artist: property(source, "artist"),
+    thumbnailUrl: property(source, "thumbnailUrl", "thumbnail_url"),
+    position: property(source, "position"),
+    addedAt: dateTime(property(source, "addedAt", "added_at")),
+  };
+}
+
+function playlistDto(value: unknown) {
+  const source = record(value);
+  const songs = property(source, "songs");
+  return {
+    id: property(source, "id"),
+    userId: property(source, "userId", "user_id"),
+    name: property(source, "name"),
+    description: property(source, "description") ?? null,
+    isVisibleToGuests: property(source, "isVisibleToGuests", "is_visible_to_guests") === true,
+    createdAt: dateTime(property(source, "createdAt", "created_at")),
+    updatedAt: dateTime(property(source, "updatedAt", "updated_at")),
+    songs: Array.isArray(songs) ? songs.map(playlistSongDto) : [],
+  };
+}
+
+function dashboardDto(value: unknown) {
+  const source = record(value);
+  const songs = property(source, "songs");
+  const playedSongs = property(source, "playedSongs", "played_songs");
+  const currentlyPlaying = property(source, "currentlyPlaying", "currently_playing");
+  return {
+    songs: Array.isArray(songs) ? songs.map(songDto) : [],
+    currentlyPlaying: currentlyPlaying ? songDto(currentlyPlaying) : null,
+    playedSongs: Array.isArray(playedSongs) ? playedSongs.map(songDto) : [],
+  };
+}
+
+function publicPlaylistDto(value: unknown) {
+  const source = record(value);
+  const user = record(property(source, "user"));
+  const playlists = property(source, "playlists");
+  return {
+    ...dashboardDto(source),
+    user: {
+      id: property(user, "id"),
+      username: property(user, "username"),
+      guestUrl: property(user, "guestUrl", "guest_url"),
+      venueName: property(user, "venueName", "venue_name") ?? null,
+      theme: property(user, "theme") ?? null,
+      allowSongRequests: property(user, "allowSongRequests", "allow_song_requests") === true,
+      allowGuestPlayOnDevice: property(user, "allowGuestPlayOnDevice", "allow_guest_play_on_device") === true,
+      allowPlaylistSharing: property(user, "allowPlaylistSharing", "allow_playlist_sharing") === true,
+      allowRecentlyPlayedVisibility: property(user, "allowRecentlyPlayedVisibility", "allow_recently_played_visibility") === true,
+    },
+    allowGuestPlayOnDevice: property(source, "allowGuestPlayOnDevice", "allow_guest_play_on_device") === true,
+    allowRecentlyPlayedVisibility: property(source, "allowRecentlyPlayedVisibility", "allow_recently_played_visibility") === true,
+    playlists: Array.isArray(playlists) ? playlists.map(playlistDto) : [],
+  };
+}
+
 function positiveId(value: string): number {
   const id = Number(value);
   if (!Number.isSafeInteger(id) || id < 1) throw new MusicIdentityError("REQUEST_INVALID", 400, "The resource identifier is invalid.", "none", false);
@@ -409,6 +531,18 @@ function notFound() {
 
 function invalidGuestCapability() {
   return new MusicIdentityError("GUEST_CAPABILITY_INVALID", 403, "The guest capability is invalid.", "none", false);
+}
+
+async function guestRequestAuthority(req: Request, dependencies: CanonicalMusicRouteDependencies) {
+  const capability = req.get("x-music-guest-capability") ?? "";
+  if (!/^[A-Za-z0-9_-]{43}$/.test(capability)) throw invalidGuestCapability();
+  const capabilityHash = hashGuestCapability(capability);
+  if (consumeContainmentLimit(`c6-guest-lookup:${capabilityHash}`, 30, 60_000)) {
+    throw new MusicIdentityError("RATE_LIMITED", 429, "Too many Music requests.", "retry", true, 60);
+  }
+  const authority = await dependencies.repository.resolveGuestRequestAuthority(req.params.guestUrl, capability);
+  if (!authority?.active || !authority.allowSongRequests) throw invalidGuestCapability();
+  return authority;
 }
 
 function safeRouteError(cause: unknown): MusicIdentityError {

@@ -193,6 +193,61 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     expect((await pool.query("SELECT count(*)::int AS count FROM songs WHERE user_id=$1 AND status='playing'", [b.id])).rows[0].count).toBe(1);
   });
 
+  it("normalizes active queue and saved-playlist positions through playback and competing reorders", async () => {
+    // Break caught: playing rows are omitted from MAX(position), and reorder writes duplicate occupied positions without locks.
+    const a = await identities.ensureIdentity(identityInput("reorder-a"));
+    const b = await identities.ensureIdentity(identityInput("reorder-b"));
+    const only = await domain.addSong(a.id, {
+      youtubeId: "only", title: "Only", artist: "A", thumbnailUrl: "https://img/only",
+    }) as { id: number };
+    await domain.setPlaying(a.id, only.id);
+    await Promise.all(Array.from({ length: 4 }, (_, index) => domain.addSong(a.id, {
+      youtubeId: `after-playing-${index}`, title: `After ${index}`, artist: "A", thumbnailUrl: `https://img/after-${index}`,
+    })));
+    const activeBeforeReorder = (await pool.query(
+      "SELECT id,position,status FROM songs WHERE user_id=$1 AND status IN ('queued','playing') ORDER BY position,id",
+      [a.id],
+    )).rows as Array<{ id: number; position: number; status: string }>;
+    expect(activeBeforeReorder.map(({ position }) => position)).toEqual([0, 1, 2, 3, 4]);
+    expect(activeBeforeReorder.filter(({ status }) => status === "playing")).toHaveLength(1);
+
+    const queued = activeBeforeReorder.filter(({ status }) => status === "queued");
+    await Promise.all([
+      domain.updateSongPosition(a.id, queued[2].id, 0),
+      domain.updateSongPosition(a.id, queued[3].id, 0),
+    ]);
+    const activeAfterReorder = (await pool.query(
+      "SELECT position,status FROM songs WHERE user_id=$1 AND status IN ('queued','playing') ORDER BY position,id",
+      [a.id],
+    )).rows as Array<{ position: number; status: string }>;
+    expect(activeAfterReorder.map(({ position }) => position)).toEqual([0, 1, 2, 3, 4]);
+    expect(new Set(activeAfterReorder.map(({ position }) => position)).size).toBe(5);
+    expect(activeAfterReorder.filter(({ status }) => status === "playing")).toHaveLength(1);
+
+    const playlistA = await domain.createPlaylist(a.id, { name: "A reorder", description: null }) as { id: number };
+    const saved = await Promise.all(Array.from({ length: 4 }, (_, index) => domain.addPlaylistSong(a.id, playlistA.id, {
+      youtubeId: `saved-reorder-${index}`, title: `Saved reorder ${index}`, artist: "A", thumbnailUrl: `https://img/saved-reorder-${index}`,
+    }))) as Array<{ id: number }>;
+    await Promise.all([
+      domain.reorderPlaylistSong(a.id, playlistA.id, saved[2].id, 1),
+      domain.reorderPlaylistSong(a.id, playlistA.id, saved[3].id, 1),
+    ]);
+    const savedAfterReorder = (await pool.query(
+      "SELECT position FROM playlist_songs WHERE playlist_id=$1 ORDER BY position,id",
+      [playlistA.id],
+    )).rows.map(({ position }) => position);
+    expect(savedAfterReorder).toEqual([0, 1, 2, 3]);
+    expect(new Set(savedAfterReorder).size).toBe(4);
+
+    const bSong = await domain.addSong(b.id, { youtubeId: "b-stable", title: "B stable", artist: "B", thumbnailUrl: "https://img/b-stable" }) as { id: number };
+    const bPlaylist = await domain.createPlaylist(b.id, { name: "B stable", description: null }) as { id: number };
+    const bSaved = await domain.addPlaylistSong(b.id, bPlaylist.id, { youtubeId: "b-saved", title: "B saved", artist: "B", thumbnailUrl: "https://img/b-saved" }) as { id: number };
+    expect(await domain.updateSongPosition(a.id, bSong.id, 0)).toBeUndefined();
+    expect(await domain.reorderPlaylistSong(a.id, bPlaylist.id, bSaved.id, 0)).toBe(false);
+    expect((await pool.query("SELECT position FROM songs WHERE id=$1", [bSong.id])).rows[0].position).toBe(0);
+    expect((await pool.query("SELECT position FROM playlist_songs WHERE id=$1", [bSaved.id])).rows[0].position).toBe(0);
+  });
+
   it("lists only active explicitly discoverable users with a visible playlist for the sitemap", async () => {
     // Break caught: lifecycle, unlisted, revoked, and zero-visible Music pages entered discovery.
     const suffixes = ["sitemap-live", "sitemap-suspended", "sitemap-pending", "sitemap-private", "sitemap-unlisted", "sitemap-revoked", "sitemap-zero"];

@@ -83,6 +83,7 @@ export function registerRoutes(app: Express, _storage: IStorage, musicConfig: Mu
   setupCanonicalMusicRoutes(app, canonicalDependencies);
   setupMusicOpenApiRoutes(app);
   setupAuthRoutes(app);
+  setupReactivationRoutes(app);
   setupMusicSurfaceBoundary(app, canonicalDependencies);
   setupOwnerContainment(app);
   const server = setupPlaylistRoutes(app, {
@@ -90,7 +91,6 @@ export function registerRoutes(app: Express, _storage: IStorage, musicConfig: Mu
     ownerCredentials: createMusicSocketCredentialVerifier(musicPrincipals),
     resolveGuestCapability: (capability) => musicDomain.resolveGuestSocketAuthority(capability),
   });
-  setupReactivationRoutes(app);
   setupSeoRoutes(app, { listPublishedMusicPlaylists: () => musicDomain.listPublishedMusicPlaylists() });
 
   // iTunes Search Proxy

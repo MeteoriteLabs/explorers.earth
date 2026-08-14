@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { request as rawHttpRequest } from "node:http";
 import request from "supertest";
 import jwt from "jsonwebtoken";
 
@@ -186,6 +187,27 @@ describe("C1 containment floor under the C6 principal boundary", () => {
     expectRequestBoundError(response, "SURFACE_REMOVED");
   });
 
+  it("mounts both public reactivation handlers ahead of the broad user retirement boundary", async () => {
+    // Break caught: inventory says these routes are public while the mounted catch-all returns 410 first.
+    const requestMissingEmail = await request(app).post("/api/user/request-reactivation").send({});
+    const confirmMissingToken = await request(app).get("/api/user/reactivate");
+    expect(requestMissingEmail.status).toBe(400);
+    expect(requestMissingEmail.body).toEqual({ message: "Email is required" });
+    expect(confirmMissingToken.status).toBe(400);
+    expect(confirmMissingToken.body).toEqual({ success: false, error: "Token is required" });
+
+    for (const [method, path] of [
+      ["get", "/API/%75SER/DEVICE/"],
+      ["post", "/api/user/reactivate/extra"],
+      ["patch", "/api/user/analytics"],
+    ] as const) {
+      const retired = await request(app)[method](path).set("Origin", "https://explorers.example.test");
+      expect(retired.status).toBe(410);
+      expect(retired.body.version).toBe("music-error/v1");
+      expectRequestBoundError(retired, "SURFACE_REMOVED");
+    }
+  });
+
   it("rejects native-session and Strapi bearer substitution on owner surfaces", async () => {
     const strapi = jwt.sign({ id: 9001 }, TEST_JWT_SECRET, { expiresIn: "5m" });
     const sessionOnly = await request(app).get("/api/playlists").set("Cookie", "cosmic.sid=fake-native-session");
@@ -276,6 +298,46 @@ describe("C1 containment floor under the C6 principal boundary", () => {
       requestId: "oversize-request-id",
     }));
     expect(JSON.stringify(response.body)).not.toContain("oversize-sensitive-sentinel");
+  });
+
+  it("rejects a declared oversized prefix promptly without awaiting attacker-controlled end", async () => {
+    // Break caught: Content-Length is known excessive, but the server waits forever for the peer to finish.
+    if (!server.listening) await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("raw containment server did not bind");
+    const startedAt = performance.now();
+    const result = await new Promise<{ status: number; headers: Record<string, string | string[] | undefined>; body: string }>((resolve, reject) => {
+      const client = rawHttpRequest({
+        host: "127.0.0.1",
+        port: address.port,
+        method: "POST",
+        path: "/api/playlist/songs",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": String(1024 * 1024),
+          "X-Request-Id": "raw-oversize-request-id",
+        },
+      }, (response) => {
+        let body = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk) => { body += chunk; });
+        response.on("end", () => { clearTimeout(timeout); resolve({ status: response.statusCode ?? 0, headers: response.headers, body }); });
+      });
+      const timeout = setTimeout(() => { client.destroy(); reject(new Error("oversized prefix response exceeded 500ms")); }, 500);
+      timeout.unref();
+      client.on("error", reject);
+      client.write('{"password":"never-reflect');
+    });
+
+    expect(performance.now() - startedAt).toBeLessThan(500);
+    expect(result.status).toBe(413);
+    expect(result.headers["x-request-id"]).toBe("raw-oversize-request-id");
+    expect(result.headers.connection).toBe("close");
+    expect(JSON.parse(result.body)).toEqual({
+      version: "music-error/v1",
+      error: expect.objectContaining({ code: "PAYLOAD_TOO_LARGE", requestId: "raw-oversize-request-id" }),
+    });
+    expect(result.body).not.toContain("never-reflect");
   });
 
   it("does not reflect an unsafe caller request id", async () => {

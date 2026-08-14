@@ -60,7 +60,7 @@ describe("canonical Music REST surfaces", () => {
     expect((await request(app).get("/api/music/dashboard")).status).toBe(401);
     const response = await request(app).get("/api/music/dashboard").set("Authorization", "Bearer aaa.bbb.ccc");
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ songs: [], playedSongs: [] });
+    expect(response.body).toEqual({ songs: [], currentlyPlaying: null, playedSongs: [] });
     expect(calls).toContainEqual(["dashboard", 11]);
   });
 
@@ -260,6 +260,23 @@ describe("canonical Music REST surfaces", () => {
       .send({ youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" });
     expect(invalid.status).toBe(403);
     expect(invalid.body.error.code).toBe("GUEST_CAPABILITY_INVALID");
+  });
+
+  it("binds guest search and URL lookup to the same per-slug capability without C5 authority", async () => {
+    // Break caught: the public request UI called owner-only /api/youtube routes and minted a C5 credential.
+    const { app, repository } = appFor();
+    const headers = { Origin: "https://explorers.example", "X-Music-Guest-Capability": "G".repeat(43) };
+    const search = await request(app).post("/api/playlist/owner-a/youtube/search").set(headers).send({ query: "music" });
+    expect(search.status).toBe(200);
+    expect(search.body.items[0].id.videoId).toBe("yt");
+    const video = await request(app).post("/api/playlist/owner-a/youtube/video-from-url").set(headers)
+      .send({ url: "https://youtu.be/abcdefghijk" });
+    expect(video.status).toBe(200);
+    expect(repository.resolveGuestRequestAuthority).toHaveBeenCalledTimes(2);
+    expect(repository.resolveGuestRequestAuthority).toHaveBeenCalledWith("owner-a", "G".repeat(43));
+    expect((await request(app).post("/api/playlist/owner-b/youtube/search").set(headers).send({ query: "music" })).status).toBe(403);
+    expect((await request(app).post("/api/playlist/owner-a/youtube/search").set("Origin", "https://explorers.example").send({ query: "music" })).status).toBe(403);
+    expect((await request(app).post("/api/playlist/owner-a/youtube/search").set("X-Music-Guest-Capability", "G".repeat(43)).send({ query: "music" })).status).toBe(403);
   });
 
   it("returns a safe internal error instead of misclassifying a repository failure as an invalid token", async () => {

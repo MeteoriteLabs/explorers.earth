@@ -5,6 +5,8 @@ import {
   acquireGuestMusicCapability,
   getGuestMusicCapability,
   guestMusicRequest,
+  guestMusicSearch,
+  guestMusicVideoFromUrl,
   isMusicOwnerRequest,
   musicCredentialForRequest,
   musicPrincipalForRequest,
@@ -144,6 +146,41 @@ describe("C5 browser credential adapter", () => {
       headers: expect.objectContaining({ "X-Music-Guest-Capability": capability }),
     }));
     expect(JSON.stringify(fetchMock.mock.calls[0][1]?.body)).not.toContain(capability);
+  });
+
+  it("uses the same slug-bound header authority for bounded guest search and URL lookup", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ items: [] }), {
+      status: 200, headers: { "Content-Type": "application/json" },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const capability = "S".repeat(43);
+    await guestMusicSearch(capability, { query: "song", pageToken: "next" }, "owner-a");
+    await guestMusicVideoFromUrl(capability, "https://youtu.be/abcdefghijk", "owner-a");
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      "/api/playlist/owner-a/youtube/search",
+      "/api/playlist/owner-a/youtube/video-from-url",
+    ]);
+    for (const [url, init] of fetchMock.mock.calls) {
+      expect(String(url)).not.toContain(capability);
+      expect(JSON.stringify(init?.body)).not.toContain(capability);
+      expect(init?.headers).toEqual(expect.objectContaining({ "X-Music-Guest-Capability": capability }));
+      expect(init?.headers).not.toHaveProperty("Authorization");
+    }
+  });
+
+  it("rejects malformed guest lookup authority before fetch", async () => {
+    vi.stubGlobal("fetch", vi.fn());
+    await expect(guestMusicSearch("short", { query: "song" }, "owner-a")).rejects.toThrow("valid guest capability");
+    await expect(guestMusicSearch("S".repeat(43), { query: "song" }, "bad/slug")).rejects.toThrow("valid guest playlist slug");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [429, { error: { message: "slow down" } }, "slow down"],
+    [500, undefined, "Guest Music request failed"],
+  ] as const)("fails closed on non-capability guest lookup HTTP %s", async (status, body, message) => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(body ? JSON.stringify(body) : "not-json", { status })));
+    await expect(guestMusicSearch("S".repeat(43), { query: "song" }, "owner-a")).rejects.toThrow(message);
   });
 
   it("stores guest capabilities per public slug and never reuses A authority on B", () => {
@@ -290,5 +327,17 @@ describe("C5 browser credential adapter", () => {
     vi.stubGlobal("fetch", vi.fn(async () => denial));
     await expect(guestMusicRequest("G".repeat(43), { youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" }, "owner-a"))
       .rejects.toThrow(message);
+  });
+
+  it("clears only the denied slug on a stale capability 403 and leaves an explicit reacquire signal", async () => {
+    setGuestMusicCapability("A".repeat(43), "owner-a");
+    setGuestMusicCapability("B".repeat(43), "owner-b");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: { message: "stale" } }), {
+      status: 403, headers: { "Content-Type": "application/json" },
+    })));
+    await expect(guestMusicRequest("A".repeat(43), { youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" }, "owner-a"))
+      .rejects.toMatchObject({ name: "GuestCapabilityRequiredError", guestUrl: "owner-a" });
+    expect(getGuestMusicCapability("owner-a")).toBeUndefined();
+    expect(getGuestMusicCapability("owner-b")).toBe("B".repeat(43));
   });
 });

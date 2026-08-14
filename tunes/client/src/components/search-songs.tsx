@@ -6,7 +6,8 @@ import React from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { acquireGuestMusicCapability, guestMusicRequest } from "@/lib/musicCredential";
+import { acquireGuestMusicCapability, GuestCapabilityRequiredError, guestMusicRequest, guestMusicSearch, guestMusicVideoFromUrl } from "@/lib/musicCredential";
+import GuestCapabilityImport from "@/components/guest-capability-import";
 import { useToast } from "@/hooks/use-toast";
 import { useUserSubscriptionPlanInfo } from "@/lib/strapi-queries";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -82,10 +83,10 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
     songsQuota,
     isLoading: isLoadingSubscription,
     isActivePlan,
-  } = useUserSubscriptionPlanInfo(usernameForCheck || undefined);
+  } = useUserSubscriptionPlanInfo(guestUrl ? undefined : usernameForCheck || undefined);
 
-  const isLimitReached = songsQuota > 0 && songRequests >= songsQuota;
-  const isPlanExpired = !isLoadingSubscription && !isActivePlan;
+  const isLimitReached = !guestUrl && songsQuota > 0 && songRequests >= songsQuota;
+  const isPlanExpired = !guestUrl && !isLoadingSubscription && !isActivePlan;
 
   const [mode, setMode] = useState<SearchMode>("search");
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -101,6 +102,7 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [searchId, setSearchId] = useState(Date.now());
   const [hasSearched, setHasSearched] = useState(false);
+  const [guestCapabilityRequired, setGuestCapabilityRequired] = useState(false);
 
   const chevronBtnRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -168,6 +170,7 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
       toast({ title: "Success", description: playlistId ? "Song added to playlist" : "Song added to queue" });
     },
     onError: (error) => {
+      if (error instanceof GuestCapabilityRequiredError) setGuestCapabilityRequired(true);
       toast({ title: "Failed to add song", description: error instanceof Error ? error.message : "Could not add song", variant: "destructive" });
     },
   });
@@ -175,7 +178,9 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
   const fetchResults = async (q: string, pageToken?: string) => {
     if (!q.trim()) return null;
     try {
-      const response = await apiRequest("POST", "/api/youtube/search", { query: q, pageToken });
+      const response = guestUrl
+        ? await guestMusicSearch(acquireGuestMusicCapability(guestUrl) ?? "", { query: q, pageToken }, guestUrl)
+        : await apiRequest("POST", "/api/youtube/search", { query: q, pageToken });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || `Search failed: ${response.statusText}`);
@@ -183,6 +188,7 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
       const data = await response.json();
       return { items: data.items || [], nextPageToken: data.nextPageToken || null };
     } catch (error) {
+      if (error instanceof GuestCapabilityRequiredError) setGuestCapabilityRequired(true);
       toast({ title: "Search failed", description: error instanceof Error ? error.message : "Could not search", variant: "destructive" });
       return null;
     }
@@ -190,7 +196,9 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
 
   const fetchVideoFromUrl = async (url: string): Promise<SearchResult | null> => {
     try {
-      const response = await apiRequest("POST", "/api/youtube/video-from-url", { url });
+      const response = guestUrl
+        ? await guestMusicVideoFromUrl(acquireGuestMusicCapability(guestUrl) ?? "", url, guestUrl)
+        : await apiRequest("POST", "/api/youtube/video-from-url", { url });
       const ct = response.headers.get("content-type");
       if (ct?.includes("text/html")) throw new Error("Endpoint not available");
       if (!response.ok) {
@@ -199,6 +207,7 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
       }
       return await response.json();
     } catch (error) {
+      if (error instanceof GuestCapabilityRequiredError) setGuestCapabilityRequired(true);
       toast({ title: "Failed to fetch video", description: error instanceof Error ? error.message : "Could not fetch", variant: "destructive" });
       return null;
     }
@@ -346,6 +355,10 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
 
   return (
     <div className="w-full space-y-0">
+      {guestUrl && guestCapabilityRequired && <div className="mb-4 space-y-3">
+        <p role="alert" className="text-sm text-destructive">Guest access expired. Paste the owner's latest handoff to request songs again.</p>
+        <GuestCapabilityImport guestUrl={guestUrl} onImported={() => setGuestCapabilityRequired(false)} />
+      </div>}
       {/* ── Quota / plan alerts ───────────────────────────────────────── */}
       {isPlanExpired && (
         <Alert variant="destructive" className="py-2.5 px-4 mb-3">

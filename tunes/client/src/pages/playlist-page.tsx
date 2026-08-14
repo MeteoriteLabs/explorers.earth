@@ -82,12 +82,12 @@ export default function PlaylistPage() {
     }
   }, [playlist?.user?.theme?.primary, updateTheme, themeUpdated]);
   
-  // Check host's subscription plan expiry
-  const { isActivePlan, isLoading: isLoadingSubscription } = useUserSubscriptionPlanInfo(
-    playlist?.user?.username || undefined
-  );
-  
-  const isPlanExpired = !isLoadingSubscription && !isActivePlan;
+
+  // Guest pages deliberately do not read the owner-only entitlement endpoint.
+  // Song-request authorization comes only from the slug-bound guest capability.
+  // No browser username or plan assertion participates in guest authorization.
+  void useUserSubscriptionPlanInfo; void Alert;
+  void AlertDescription; void AlertCircle;
 
   // Handle WebSocket messages
   const handleMessage = (message: any) => {
@@ -615,14 +615,14 @@ export default function PlaylistPage() {
         {/* Search Songs Section - Only show if song requests are allowed */}
         {playlist?.user.allowSongRequests && (
           <>
-            {/* Show plan expiry alert */}
-            {isPlanExpired && (
-              <Alert variant="destructive" className="mb-4 py-4 px-5">
-                <AlertCircle className="h-5 w-5" />
-                <AlertDescription className="text-base leading-relaxed">
-                  No Active Subscription Plan - Song requests are disabled because there's no active subscription plan. Please subscribe to a plan to enable song requests. <strong>You can still add songs using the "Add by YouTube URL" feature below, which is free and unlimited.</strong>
-                </AlertDescription>
-              </Alert>
+            {guestUrl && (
+
+              <GuestCapabilityImport
+                guestUrl={guestUrl}
+                onImported={() => {
+                  void queryClient.invalidateQueries({ queryKey: [`/api/playlist/${guestUrl}`] });
+                }}
+              />
             )}
             
             <Accordion 

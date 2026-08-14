@@ -25,12 +25,22 @@ describe("generated full Music authorization matrix", () => {
     expect(matrix.events).toEqual(expect.arrayContaining([
       expect.objectContaining({ direction: "receive", event: "connection", decision: "owner-or-guest" }),
     ]));
+    const retirementMatchers = (matrix as typeof matrix & { retirementMatchers?: unknown[] }).retirementMatchers;
+    expect(retirementMatchers).toHaveLength(inventory.retirementMatchers.length);
+    expect(retirementMatchers).toEqual(expect.arrayContaining(inventory.retirementMatchers.map((rule) => expect.objectContaining({
+      family: rule.family,
+      path: rule.path,
+      match: rule.match,
+      classification: rule.classification,
+      decision: rule.classification,
+    }))));
   });
 
   it("contains every required hostile role column and no permissive admin fallback", () => {
     const inventory = inventoryRuntimeSurfaces(repositoryRoot);
     const matrix = authorizationMatrixFromInventory(inventory);
-    for (const entry of [...matrix.routes, ...matrix.events]) {
+    const retirementMatchers = (matrix as typeof matrix & { retirementMatchers: Array<{ allowed: Record<string, boolean>; decision: string }> }).retirementMatchers;
+    for (const entry of [...matrix.routes, ...matrix.events, ...retirementMatchers]) {
       expect(Object.keys(entry.allowed).sort()).toEqual([
         "guestInvalid", "guestRevoked", "guestValid", "internalAdmin", "nativeSession", "otherUser",
         "owner", "pendingDeletion", "staleEntitlement", "suspended", "unauthenticated",

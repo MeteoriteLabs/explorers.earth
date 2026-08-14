@@ -40,6 +40,13 @@ export function acquireGuestMusicCapability(guestUrl: string): string | undefine
   return getGuestMusicCapability(guestUrl);
 }
 
+export class GuestCapabilityRequiredError extends Error {
+  readonly name = "GuestCapabilityRequiredError";
+  constructor(readonly guestUrl: string, message: string) {
+    super(message);
+  }
+}
+
 /** Creates the owner-to-guest handoff text. The capability is a body line, never URL material. */
 export function guestCapabilityHandoff(capability: string, guestUrl: string, origin = window.location.origin): string {
   if (!GUEST_CAPABILITY_PATTERN.test(capability)) throw new Error("A valid guest capability is required.");
@@ -143,16 +150,39 @@ export async function guestMusicRequest(
 ): Promise<Response> {
   if (!GUEST_CAPABILITY_PATTERN.test(capability)) throw new Error("A valid guest capability is required.");
   if (!GUEST_SLUG_PATTERN.test(guestUrl)) throw new Error("A valid guest playlist slug is required.");
-  const response = await fetch(`/api/playlist/${encodeURIComponent(guestUrl)}/requests`, {
+  return guestMusicFetch(capability, guestUrl, "requests", song);
+}
+
+export async function guestMusicSearch(
+  capability: string,
+  input: { query: string; pageToken?: string },
+  guestUrl: string,
+): Promise<Response> {
+  return guestMusicFetch(capability, guestUrl, "youtube/search", input);
+}
+
+export async function guestMusicVideoFromUrl(capability: string, url: string, guestUrl: string): Promise<Response> {
+  return guestMusicFetch(capability, guestUrl, "youtube/video-from-url", { url });
+}
+
+async function guestMusicFetch(capability: string, guestUrl: string, operation: string, body: unknown): Promise<Response> {
+  if (!GUEST_CAPABILITY_PATTERN.test(capability)) throw new Error("A valid guest capability is required.");
+  if (!GUEST_SLUG_PATTERN.test(guestUrl)) throw new Error("A valid guest playlist slug is required.");
+  const response = await fetch(`/api/playlist/${encodeURIComponent(guestUrl)}/${operation}`, {
     method: "POST",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
       "X-Music-Guest-Capability": capability,
     },
-    body: JSON.stringify(song),
+    body: JSON.stringify(body),
     credentials: "include",
   });
+  if (response.status === 403) {
+    const denied = await response.json().catch(() => undefined);
+    clearGuestMusicCapability(guestUrl);
+    throw new GuestCapabilityRequiredError(guestUrl, denied?.error?.message || "Guest Music request failed.");
+  }
   if (!response.ok) {
     const body = await response.json().catch(() => undefined);
     throw new Error(body?.error?.message || "Guest Music request failed.");

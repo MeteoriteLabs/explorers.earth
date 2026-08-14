@@ -190,7 +190,11 @@
       "family": "venue",
       "path": "/api/user",
       "match": "prefix",
-      "classification": "tombstone"
+      "classification": "tombstone",
+      "exclusions": [
+        "/api/user/request-reactivation",
+        "/api/user/reactivate"
+      ]
     },
     {
       "family": "settings",
@@ -436,7 +440,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicOpenApiRoutes.ts",
-      "line": 305
+      "line": 343
     },
     {
       "method": "GET",
@@ -690,13 +694,33 @@
     },
     {
       "method": "POST",
-      "path": "/api/playlist/:guestUrl/requests",
+      "path": "/api/playlist/:guestUrl/youtube/search",
       "classification": "guest-capability",
       "ownerSource": "hashed-guest-capability",
       "policy": "hashed-capability+guest-allowlist",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
       "line": 318
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlist/:guestUrl/youtube/video-from-url",
+      "classification": "guest-capability",
+      "ownerSource": "hashed-guest-capability",
+      "policy": "hashed-capability+guest-allowlist",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 332
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlist/:guestUrl/requests",
+      "classification": "guest-capability",
+      "ownerSource": "hashed-guest-capability",
+      "policy": "hashed-capability+guest-allowlist",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 345
     },
     {
       "method": "ALL",
@@ -706,7 +730,7 @@
       "policy": "normalized-executable-retirement-matcher",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "line": 352
+      "line": 379
     },
     {
       "method": "POST",
@@ -852,6 +876,12 @@
     }
   ],
   "jobs": [
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/app.ts",
+      "line": 46
+    },
     {
       "kind": "setTimeout",
       "lifecycle": "scheduled-callback",
