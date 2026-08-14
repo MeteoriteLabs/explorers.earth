@@ -1,4 +1,5 @@
 import { createHash, randomBytes as secureRandomBytes } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import {
   closeSync,
   constants,
@@ -19,6 +20,7 @@ import {
   type BigIntStats,
 } from "node:fs";
 import { basename, dirname, join, parse, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 export const FIXTURE_MUSIC_TOKEN_SECRET_DIRECTORY_RELATIVE_PATH = join(".artifacts", "music-token-secrets");
 export const FIXTURE_MUSIC_ENVIRONMENT_DIRECTORY_RELATIVE_PATH = join(".artifacts", "music-environment-generations");
@@ -28,7 +30,7 @@ const fixtureEnvironmentGenerationName = /^generation-[a-f0-9]{32}$/;
 const fixtureEnvironmentReferenceTemporaryName = /^\.env\.music\.test\.reference-[a-f0-9]{32}\.tmp$/;
 const fixtureEnvironmentReferenceHeader = "music-fixture-env/v1";
 const fixtureRotationJournalName = /^rotation-[a-f0-9]{32}\.json$/;
-const fixtureRotationJournalTemporaryName = /^\.rotation-update-[a-f0-9]{32}\.tmp$/;
+const fixtureRotationJournalTemporaryName = /^\.rotation-(?:update|intent)-[a-f0-9]{32}\.tmp$/;
 
 export class FixtureSecretCleanupError extends Error {
   readonly code = "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED";
@@ -44,6 +46,67 @@ export class FixtureEnvironmentPersistenceError extends Error {
     super(`Fixture environment publish failed for target ${targetId}`);
     this.name = "FixtureEnvironmentPersistenceError";
   }
+}
+
+export interface FixtureDurableReplaceDependencies {
+  platform?: NodeJS.Platform;
+  rename?: typeof renameSync;
+  syncDirectory?: (path: string) => void;
+  runWindowsHelper?: (source: string, destination: string) => { status: number | null; error?: Error };
+}
+
+export function replaceFixtureMetadataDurably(
+  sourcePath: string,
+  destinationPath: string,
+  dependencies: FixtureDurableReplaceDependencies = {},
+): void {
+  const source = resolve(sourcePath);
+  const destination = resolve(destinationPath);
+  if (dirname(source) !== dirname(destination) || sameResolvedPath(source, destination)
+      || /[\0\r\n]/.test(source) || /[\0\r\n]/.test(destination)) {
+    throw fixtureEnvironmentError("metadata-replace");
+  }
+  assertNoLinkedAncestors(source);
+  assertNoLinkedAncestors(destination);
+  const before = lstatSync(source, { bigint: true });
+  assertOwnedRegularFile(before);
+  if (existsSync(destination)) {
+    const destinationBefore = lstatSync(destination, { bigint: true });
+    assertOwnedRegularFile(destinationBefore);
+  }
+  const platform = dependencies.platform ?? process.platform;
+  if (platform === "win32") {
+    const run = dependencies.runWindowsHelper ?? runWindowsWriteThroughHelper;
+    const result = run(source, destination);
+    if (result.error || result.status !== 0) throw fixtureEnvironmentError("metadata-replace");
+  } else {
+    (dependencies.rename ?? renameSync)(source, destination);
+    (dependencies.syncDirectory ?? syncDirectory)(dirname(destination));
+  }
+  const after = lstatSync(destination, { bigint: true });
+  if (!sameIdentity(before, after) || existsSync(source)) throw fixtureEnvironmentError("metadata-replace");
+}
+
+function runWindowsWriteThroughHelper(source: string, destination: string): { status: number | null; error?: Error } {
+  const helper = join(dirname(fileURLToPath(import.meta.url)), "windows-write-through.ps1");
+  if (!existsSync(helper)) return { status: null, error: new Error("helper unavailable") };
+  const result = spawnSync("powershell.exe", [
+    "-NoLogo",
+    "-NoProfile",
+    "-NonInteractive",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-File",
+    helper,
+    "replace",
+    source,
+    destination,
+  ], {
+    encoding: "utf8",
+    windowsHide: true,
+    timeout: 15_000,
+  });
+  return { status: result.status, error: result.error };
 }
 
 export interface FixtureMusicTokenSecretDependencies {
@@ -65,6 +128,8 @@ export interface FixtureEnvironmentPersistenceDependencies extends FixtureMusicT
   beforeReferenceCommit?: (state: FixtureEnvironmentCommitState) => void;
   afterReferenceRename?: () => void;
   retainPreviousAuthority?: boolean;
+  prewrittenGeneration?: { path: string; stat: BigIntStats };
+  durableReplace?: (source: string, destination: string) => void;
 }
 
 export interface FixtureEnvironmentReadDependencies {
@@ -96,9 +161,17 @@ export interface FixtureAuthorityPaths {
 }
 
 export interface FixtureAuthorityRotationDependencies {
+  operationIdBytes?: () => Buffer;
   credentialNameBytes?: (index: number) => Buffer;
   credentialSecretBytes?: (index: number) => Buffer;
+  candidateWrite?: typeof writeSync;
+  candidateSync?: typeof fsyncSync;
+  candidateClose?: typeof closeSync;
   beforeCandidateCreate?: (kind: "credential" | "environment", index: number) => void;
+  afterCandidateAllocatedBeforeWrite?: (kind: "credential" | "environment", index: number) => void;
+  afterCandidateWriteBeforeSync?: (kind: "credential" | "environment", index: number) => void;
+  afterCandidateSyncBeforeClose?: (kind: "credential" | "environment", index: number) => void;
+  afterCandidateCloseBeforeComplete?: (kind: "credential" | "environment", index: number) => void;
   afterCandidateCreatedBeforeJournalUpdate?: (kind: "credential" | "environment", index: number) => void;
   afterJournalCommit?: () => void;
   syncCandidateDirectory?: (path: string) => void;
@@ -111,6 +184,7 @@ export interface FixtureAuthorityRotationDependencies {
     close?: typeof closeSync;
     rename?: typeof renameSync;
   };
+  durableReplace?: (source: string, destination: string) => void;
 }
 
 export function prepareFixtureMusicTokenSecret(
@@ -128,6 +202,9 @@ export function prepareFixtureMusicTokenSecret(
   const nameBytes = (dependencies.randomNameBytes ?? secureRandomBytes)(16);
   if (!Buffer.isBuffer(nameBytes) || nameBytes.length !== 16) throw fixtureSecretError();
   const tokenPath = join(tokenDirectory, `current-${nameBytes.toString("hex")}`);
+  const creationPath = process.platform === "win32"
+    ? join(tokenDirectory, `.standalone-create-${nameBytes.toString("hex")}.tmp`)
+    : tokenPath;
   assertExactTokenPath(root, tokenPath);
   const secret = randomBytes(32);
   if (!Buffer.isBuffer(secret) || secret.length < 32) throw fixtureSecretError();
@@ -141,12 +218,23 @@ export function prepareFixtureMusicTokenSecret(
   let descriptor: number | undefined;
   let opened: BigIntStats | undefined;
   try {
-    descriptor = openFile(tokenPath, flags, 0o600);
+    descriptor = openFile(creationPath, flags, 0o600);
     opened = fstatSync(descriptor, { bigint: true });
     assertOwnedRegularFile(opened);
     if (!sameIdentity(directoryBefore, lstatSync(tokenDirectory, { bigint: true }))) throw fixtureSecretError();
     assertNoLinkedAncestors(tokenPath);
     fchmodSync(descriptor, 0o600);
+    if (process.platform === "win32") {
+      // Publish only an empty, non-secret inode by pathname. Secret material is
+      // written through the descriptor reopened on that exact durable inode.
+      fsyncSync(descriptor);
+      closeSync(descriptor);
+      descriptor = undefined;
+      replaceFixtureMetadataDurably(creationPath, tokenPath);
+      descriptor = openFile(tokenPath, constants.O_RDWR, 0o600);
+      const reopened = fstatSync(descriptor, { bigint: true });
+      if (!sameIdentity(opened, reopened) || reopened.size !== BigInt(0)) throw fixtureSecretError();
+    }
     const bytes = Buffer.from(encoded, "ascii");
     if (writeFile(descriptor, bytes, 0, bytes.length, 0) !== bytes.length) throw fixtureSecretError();
     syncFile(descriptor);
@@ -164,7 +252,8 @@ export function prepareFixtureMusicTokenSecret(
   if (!opened || !sameIdentity(opened, final)
       || !sameIdentity(directoryBefore, lstatSync(tokenDirectory, { bigint: true }))) throw fixtureSecretError();
   if (process.platform !== "win32" && (final.mode & BigInt(0o077)) !== BigInt(0)) throw fixtureSecretError();
-  (dependencies.syncDirectory ?? syncDirectory)(tokenDirectory);
+  if (dependencies.syncDirectory) dependencies.syncDirectory(tokenDirectory);
+  else if (process.platform !== "win32") syncDirectory(tokenDirectory);
   return tokenPath;
 }
 
@@ -357,19 +446,18 @@ export function rotateFixtureMusicAuthority(
   ensureOwnedDirectory(artifactDirectory);
   ensureOwnedDirectory(tokenDirectory);
   ensureOwnedDirectory(generationDirectory);
-  const credentialNames = Array.from({ length: 3 }, (_, index) => {
-    const bytes = dependencies.credentialNameBytes?.(index) ?? secureRandomBytes(16);
-    if (!Buffer.isBuffer(bytes) || bytes.length !== 16) throw fixtureSecretError();
-    return Buffer.from(bytes);
-  });
+  const operationBytes = dependencies.operationIdBytes?.()
+    ?? dependencies.credentialNameBytes?.(0)
+    ?? secureRandomBytes(16);
+  if (!Buffer.isBuffer(operationBytes) || operationBytes.length !== 16) throw fixtureSecretError();
+  const operationId = Buffer.from(operationBytes).toString("hex");
   const credentialSecrets = Array.from({ length: 3 }, (_, index) => {
     const bytes = dependencies.credentialSecretBytes?.(index) ?? secureRandomBytes(32);
     if (!Buffer.isBuffer(bytes) || bytes.length < 32) throw fixtureSecretError();
     return Buffer.from(bytes);
   });
-  const generationRandom = (dependencies.persistence?.randomNameBytes ?? secureRandomBytes)(16);
-  if (!Buffer.isBuffer(generationRandom) || generationRandom.length !== 16) throw fixtureEnvironmentError("rotation-plan");
-  const candidatePaths = credentialNames.map((bytes) => join(tokenDirectory, `current-${bytes.toString("hex")}`));
+  const roles: FixtureAuthorityRole[] = ["token", "migrator", "runtime", "environment"];
+  const candidatePaths = roles.slice(0, 3).map((role) => join(tokenDirectory, `current-${operationBoundLeafId(operationId, role)}`));
   const paths: FixtureAuthorityPaths = {
     tokenPath: candidatePaths[0]!,
     migratorPasswordPath: candidatePaths[1]!,
@@ -383,7 +471,9 @@ export function rotateFixtureMusicAuthority(
   }
   const environmentBytes = Buffer.from(contents, "utf8");
   if (!environmentBytes.length || environmentBytes.length > 65_536) throw fixtureEnvironmentError("rotation-environment");
-  const generationName = `generation-${generationRandom.toString("hex")}`;
+  const generationId = operationBoundLeafId(operationId, "environment");
+  const generationRandom = Buffer.from(generationId, "hex");
+  const generationName = `generation-${generationId}`;
   const generationPath = join(generationDirectory, generationName);
   const targetReference = encodeFixtureEnvironmentReference({
     generationName,
@@ -391,12 +481,18 @@ export function rotateFixtureMusicAuthority(
     size: environmentBytes.length,
   });
   const candidatePlans: FixtureAuthorityIntent[] = [
-    ...candidatePaths.map((path, index) => plannedFixtureAuthority(root, path, "credential", Buffer.from(credentialSecrets[index]!).toString("base64url"))),
-    plannedFixtureAuthority(root, generationPath, "environment", environmentBytes),
+    ...candidatePaths.map((path, index) => plannedFixtureAuthority(
+      root,
+      path,
+      "credential",
+      roles[index]!,
+      Buffer.from(credentialSecrets[index]!).toString("base64url"),
+    )),
+    plannedFixtureAuthority(root, generationPath, "environment", "environment", environmentBytes),
   ];
   let journal: FixtureRotationJournal = {
-    schemaVersion: "music-fixture-rotation/v2",
-    operationId: secureRandomBytes(16).toString("hex"),
+    schemaVersion: "music-fixture-rotation/v3",
+    operationId,
     phase: "intent",
     rootDev: lstatSync(root, { bigint: true }).dev.toString(),
     rootIno: lstatSync(root, { bigint: true }).ino.toString(),
@@ -408,18 +504,37 @@ export function rotateFixtureMusicAuthority(
   };
   let journalName: string | undefined;
   try {
-    journalName = writeFixtureRotationJournal(root, journal, dependencies.syncJournalDirectory, dependencies.journal);
-    for (let index = 0; index < 3; index += 1) {
-      dependencies.beforeCandidateCreate?.("credential", index);
-      const path = prepareFixtureMusicTokenSecret(root, () => credentialSecrets[index]!, {
-        randomNameBytes: () => credentialNames[index]!,
-        syncDirectory: dependencies.syncCandidateDirectory,
-      });
-      if (!sameResolvedPath(path, candidatePaths[index]!)) throw fixtureEnvironmentError("rotation-candidate");
-      dependencies.afterCandidateCreatedBeforeJournalUpdate?.("credential", index);
-      journal = materializeRotationCandidate(root, journal, index);
-      journal.phase = `credential-${index + 1}` as FixtureRotationPhase;
-      replaceFixtureRotationJournal(root, journalName, journal, dependencies.syncJournalDirectory, dependencies.journal);
+    journalName = writeFixtureRotationJournal(root, journal, dependencies.syncJournalDirectory, dependencies.journal, dependencies.durableReplace);
+    const candidateBytes = [
+      ...credentialSecrets.map((secret) => Buffer.from(secret).toString("base64url")).map((secret) => Buffer.from(secret, "ascii")),
+      environmentBytes,
+    ];
+    const durableReplace = dependencies.durableReplace ?? replaceFixtureMetadataDurably;
+    for (let index = 0; index < 4; index += 1) {
+      const kind = index === 3 ? "environment" : "credential";
+      dependencies.beforeCandidateCreate?.(kind, index);
+      const allocated = allocateFixtureCandidate(
+        root,
+        journal.candidate[index]!,
+        operationId,
+        durableReplace,
+        dependencies.syncCandidateDirectory,
+      );
+      const allocatedCandidates = journal.candidate.slice();
+      allocatedCandidates[index] = allocated.snapshot;
+      journal = { ...journal, candidate: allocatedCandidates };
+      replaceFixtureRotationJournal(root, journalName, journal, dependencies.syncJournalDirectory, dependencies.journal, dependencies.durableReplace);
+      dependencies.afterCandidateAllocatedBeforeWrite?.(kind, index);
+      const completed = completeFixtureCandidate(root, allocated, candidateBytes[index]!, kind, index, dependencies);
+      dependencies.afterCandidateCreatedBeforeJournalUpdate?.(kind, index);
+      const completedCandidates = journal.candidate.slice();
+      completedCandidates[index] = completed;
+      journal = {
+        ...journal,
+        candidate: completedCandidates,
+        phase: index < 3 ? `credential-${index + 1}` as FixtureRotationPhase : "ready",
+      };
+      replaceFixtureRotationJournal(root, journalName, journal, dependencies.syncJournalDirectory, dependencies.journal, dependencies.durableReplace);
     }
     const callerBeforeCommit = dependencies.persistence?.beforeReferenceCommit;
     const callerAfterCommit = dependencies.persistence?.afterReferenceCommit;
@@ -427,12 +542,14 @@ export function rotateFixtureMusicAuthority(
       ...dependencies.persistence,
       randomNameBytes: () => generationRandom,
       retainPreviousAuthority: true,
+      prewrittenGeneration: {
+        path: generationPath,
+        stat: lstatSync(generationPath, { bigint: true }),
+      },
+      durableReplace: dependencies.persistence?.durableReplace
+        ?? (dependencies.persistence?.rename ? undefined : durableReplace),
       beforeReferenceCommit: (state) => {
         if (state.targetReference !== targetReference) throw fixtureEnvironmentError("rotation-reference");
-        dependencies.afterCandidateCreatedBeforeJournalUpdate?.("environment", 3);
-        journal = materializeRotationCandidate(root, journal, 3);
-        journal.phase = "ready";
-        replaceFixtureRotationJournal(root, journalName!, journal, dependencies.syncJournalDirectory, dependencies.journal);
         callerBeforeCommit?.(state);
         validateRotationCandidates(root, journal);
       },
@@ -446,7 +563,7 @@ export function rotateFixtureMusicAuthority(
           throw new FixtureSecretCleanupError(journalName!);
         }
         journal.phase = "committed";
-        replaceFixtureRotationJournal(root, journalName!, journal, dependencies.syncJournalDirectory, dependencies.journal);
+        replaceFixtureRotationJournal(root, journalName!, journal, dependencies.syncJournalDirectory, dependencies.journal, dependencies.durableReplace);
         dependencies.afterJournalCommit?.();
         if (callbackError) throw callbackError;
       },
@@ -489,15 +606,21 @@ export function recoverFixtureAuthorityRotations(repositoryRoot: string): void {
     }
     try {
       let journal = parseFixtureRotationJournal(opened.bytes.toString("utf8"));
+      if (name !== `rotation-${journal.operationId}.json`) throw new FixtureSecretCleanupError(name);
       const journalRoot = lstatSync(root, { bigint: true });
       if (journalRoot.dev.toString() !== journal.rootDev || journalRoot.ino.toString() !== journal.rootIno) {
         throw new FixtureSecretCleanupError(name);
       }
       const pointer = readCurrentPointerBytes(root);
+      validateFixtureRotationGraph(root, journal);
       const committed = pointer.toString("ascii") === journal.targetReference;
       const precommit = createHash("sha256").update(pointer).digest("hex") === journal.priorPointerSha256;
       if (!committed && !precommit) throw new FixtureSecretCleanupError(name);
       if (precommit) {
+        if (journal.priorReference !== null && pointer.toString("ascii") !== journal.priorReference) {
+          throw new FixtureSecretCleanupError(name);
+        }
+        validatePriorFixtureBundle(root, journal, false);
         cleanupRotationCandidates(root, journal);
       } else {
         try {
@@ -507,12 +630,14 @@ export function recoverFixtureAuthorityRotations(repositoryRoot: string): void {
           throw new FixtureSecretCleanupError(name);
         }
         if (journal.phase !== "committed") {
-          syncDirectory(root);
-          const candidateDirectories = journal.candidate.map((candidate) => dirname(resolve(root, candidate.relativePath)));
-          for (let index = 0; index < candidateDirectories.length; index += 1) {
-            const directory = candidateDirectories[index]!;
-            if (candidateDirectories.indexOf(directory) !== index) continue;
-            syncDirectory(directory);
+          if (process.platform !== "win32") {
+            syncDirectory(root);
+            const candidateDirectories = journal.candidate.map((candidate) => dirname(resolve(root, candidate.relativePath)));
+            for (let index = 0; index < candidateDirectories.length; index += 1) {
+              const directory = candidateDirectories[index]!;
+              if (candidateDirectories.indexOf(directory) !== index) continue;
+              syncDirectory(directory);
+            }
           }
           validateRotationCandidates(root, journal);
           journal = { ...journal, phase: "committed" };
@@ -523,6 +648,7 @@ export function recoverFixtureAuthorityRotations(repositoryRoot: string): void {
           opened.stat = replaced.stat;
           opened.bytes = replaced.bytes;
         }
+        validatePriorFixtureBundle(root, journal, true);
         for (const authority of journal.prior) cleanupFixtureAuthority(root, authority);
       }
       zeroOpenedRotationJournal(path, opened.descriptor, opened.stat, opened.bytes, name);
@@ -554,6 +680,9 @@ export function persistFixtureMusicEnvironment(
   const generationName = `generation-${random.toString("hex")}`;
   if (!fixtureEnvironmentGenerationName.test(generationName)) throw fixtureEnvironmentError("unknown");
   const generationPath = join(generationDirectory, generationName);
+  const generationCreationPath = !dependencies.prewrittenGeneration && process.platform === "win32"
+    ? join(generationDirectory, `.generation-create-${random.toString("hex")}.tmp`)
+    : generationPath;
   const referenceTemporaryName = `.env.music.test.reference-${random.toString("hex")}.tmp`;
   const referenceTemporaryPath = join(root, referenceTemporaryName);
   const bytes = Buffer.from(contents, "utf8");
@@ -569,24 +698,43 @@ export function persistFixtureMusicEnvironment(
   let generationOpened: BigIntStats | undefined;
   let referenceCommitted = false;
   try {
-    generationDescriptor = (dependencies.open ?? openSync)(generationPath, flags, 0o600);
-    generationOpened = fstatSync(generationDescriptor, { bigint: true });
-    assertOwnedRegularFile(generationOpened);
-    if (!sameIdentity(generationDirectoryBefore, lstatSync(generationDirectory, { bigint: true }))) {
-      throw fixtureEnvironmentError(generationName);
+    if (dependencies.prewrittenGeneration) {
+      if (!sameResolvedPath(dependencies.prewrittenGeneration.path, generationPath)) throw fixtureEnvironmentError(generationName);
+      generationOpened = dependencies.prewrittenGeneration.stat;
+      assertFixtureEnvironmentGeneration(lstatSync(generationPath, { bigint: true }), generationOpened, bytes.length, generationName);
+    } else {
+      generationDescriptor = (dependencies.open ?? openSync)(generationCreationPath, flags, 0o600);
+      generationOpened = fstatSync(generationDescriptor, { bigint: true });
+      assertOwnedRegularFile(generationOpened);
+      if (!sameIdentity(generationDirectoryBefore, lstatSync(generationDirectory, { bigint: true }))) {
+        throw fixtureEnvironmentError(generationName);
+      }
+      fchmodSync(generationDescriptor, 0o600);
+      if (process.platform === "win32") {
+        // As with credential generations, publish a durable zero-byte inode
+        // first and put secret bytes only through its verified descriptor.
+        fsyncSync(generationDescriptor);
+        closeSync(generationDescriptor);
+        generationDescriptor = undefined;
+        (dependencies.durableReplace ?? replaceFixtureMetadataDurably)(generationCreationPath, generationPath);
+        generationDescriptor = (dependencies.open ?? openSync)(generationPath, constants.O_RDWR, 0o600);
+        const reopened = fstatSync(generationDescriptor, { bigint: true });
+        if (!sameIdentity(generationOpened, reopened) || reopened.size !== BigInt(0)) {
+          throw fixtureEnvironmentError(generationName);
+        }
+      }
+      if ((dependencies.write ?? writeSync)(generationDescriptor, bytes, 0, bytes.length, 0) !== bytes.length) {
+        throw fixtureEnvironmentError(generationName);
+      }
+      (dependencies.sync ?? fsyncSync)(generationDescriptor);
+      const afterWrite = fstatSync(generationDescriptor, { bigint: true });
+      assertOwnedRegularFile(afterWrite);
+      if (!sameIdentity(generationOpened, afterWrite) || afterWrite.size !== BigInt(bytes.length)) {
+        throw fixtureEnvironmentError(generationName);
+      }
+      closeDescriptor(generationDescriptor, dependencies, generationName);
+      generationDescriptor = undefined;
     }
-    fchmodSync(generationDescriptor, 0o600);
-    if ((dependencies.write ?? writeSync)(generationDescriptor, bytes, 0, bytes.length, 0) !== bytes.length) {
-      throw fixtureEnvironmentError(generationName);
-    }
-    (dependencies.sync ?? fsyncSync)(generationDescriptor);
-    const afterWrite = fstatSync(generationDescriptor, { bigint: true });
-    assertOwnedRegularFile(afterWrite);
-    if (!sameIdentity(generationOpened, afterWrite) || afterWrite.size !== BigInt(bytes.length)) {
-      throw fixtureEnvironmentError(generationName);
-    }
-    closeDescriptor(generationDescriptor, dependencies, generationName);
-    generationDescriptor = undefined;
 
     const closedGeneration = lstatSync(generationPath, { bigint: true });
     assertFixtureEnvironmentGeneration(closedGeneration, generationOpened, bytes.length, generationName);
@@ -596,7 +744,10 @@ export function persistFixtureMusicEnvironment(
     if (createHash("sha256").update(readFileSync(authorityDescriptor)).digest("hex") !== digest) {
       throw fixtureEnvironmentError(generationName);
     }
-    (dependencies.syncDirectory ?? syncDirectory)(generationDirectory);
+    if (!dependencies.prewrittenGeneration) {
+      if (dependencies.syncDirectory) dependencies.syncDirectory(generationDirectory);
+      else if (process.platform !== "win32") syncDirectory(generationDirectory);
+    }
     const afterGenerationSync = lstatSync(generationPath, { bigint: true });
     assertFixtureEnvironmentGeneration(afterGenerationSync, generationOpened, bytes.length, generationName);
 
@@ -625,7 +776,6 @@ export function persistFixtureMusicEnvironment(
     });
     dependencies.beforePublish?.();
     if (!sameIdentity(rootBefore, lstatSync(root, { bigint: true }))) throw fixtureEnvironmentError(referenceTemporaryName);
-    (dependencies.syncDirectory ?? syncDirectory)(root);
     assertFixtureEnvironmentGeneration(lstatSync(generationPath, { bigint: true }), generationOpened, bytes.length, generationName);
     // Windows will not atomically replace an open legacy fixed env file. A
     // legacy descriptor is closed only at this final boundary; a failed
@@ -634,12 +784,16 @@ export function persistFixtureMusicEnvironment(
       closeDescriptor(previous.legacyDescriptor, {}, basename(referencePath));
       previous.legacyDescriptor = undefined;
     }
-    try { (dependencies.rename ?? renameSync)(referenceTemporaryPath, referencePath); }
+    const durableReferenceReplace = dependencies.durableReplace
+      ?? (dependencies.rename ? ((source: string, destination: string) => {
+        dependencies.rename!(source, destination);
+        if (process.platform !== "win32") (dependencies.syncDirectory ?? syncDirectory)(dirname(destination));
+      }) : replaceFixtureMetadataDurably);
+    try { durableReferenceReplace(referenceTemporaryPath, referencePath); }
     catch (renameError) {
       if (!referenceMatches(referencePath, reference, generationPath, generationOpened, { generationName, digest, size: bytes.length })) throw renameError;
     }
     dependencies.afterReferenceRename?.();
-    (dependencies.syncDirectory ?? syncDirectory)(root);
     if (!referenceMatches(referencePath, reference, generationPath, generationOpened, { generationName, digest, size: bytes.length })) {
       throw fixtureEnvironmentError(referenceTemporaryName);
     }
@@ -747,9 +901,13 @@ interface FixtureEnvironmentGenerationAuthority {
 }
 
 type FixtureRotationPhase = "intent" | "credential-1" | "credential-2" | "credential-3" | "ready" | "committed";
+type FixtureAuthorityRole = "token" | "migrator" | "runtime" | "environment";
+type FixtureAuthorityState = "planned" | "allocated" | "complete";
 
 interface FixtureAuthorityIntent {
   kind: "environment" | "credential";
+  role: FixtureAuthorityRole;
+  state: FixtureAuthorityState;
   relativePath: string;
   directoryDev: string;
   directoryIno: string;
@@ -760,7 +918,7 @@ interface FixtureAuthorityIntent {
 }
 
 interface FixtureRotationJournal {
-  schemaVersion: "music-fixture-rotation/v2";
+  schemaVersion: "music-fixture-rotation/v3";
   operationId: string;
   phase: FixtureRotationPhase;
   rootDev: string;
@@ -906,6 +1064,7 @@ function plannedFixtureAuthority(
   root: string,
   path: string,
   kind: FixtureAuthorityIntent["kind"],
+  role: FixtureAuthorityRole,
   contents: Buffer | string,
 ): FixtureAuthorityIntent {
   const absolute = resolve(path);
@@ -918,6 +1077,8 @@ function plannedFixtureAuthority(
   if (!bytes.length || bytes.length > 65_536) throw fixtureEnvironmentError("rotation-candidate");
   return {
     kind,
+    role,
+    state: "planned",
     relativePath: relative(root, absolute).replace(/\\/g, "/"),
     directoryDev: directoryStat.dev.toString(),
     directoryIno: directoryStat.ino.toString(),
@@ -926,17 +1087,121 @@ function plannedFixtureAuthority(
   };
 }
 
+function operationBoundLeafId(operationId: string, role: FixtureAuthorityRole): string {
+  if (!/^[a-f0-9]{32}$/.test(operationId)) throw fixtureEnvironmentError("rotation-operation");
+  return createHash("sha256").update(`music-fixture-authority/v1\0${operationId}\0${role}`, "utf8").digest("hex").slice(0, 32);
+}
+
+interface AllocatedFixtureCandidate {
+  descriptor: number;
+  snapshot: FixtureAuthorityIntent;
+}
+
+function allocateFixtureCandidate(
+  root: string,
+  intent: FixtureAuthorityIntent,
+  operationId: string,
+  durableReplace: (source: string, destination: string) => void,
+  candidateDirectoryBarrier?: (path: string) => void,
+): AllocatedFixtureCandidate {
+  const path = resolve(root, intent.relativePath);
+  assertFixtureAuthorityPath(root, path, intent.kind);
+  const directory = dirname(path);
+  const noFollow = process.platform === "win32" ? 0 : constants.O_NOFOLLOW;
+  const flags = constants.O_RDWR | constants.O_CREAT | constants.O_EXCL | noFollow;
+  if (process.platform === "win32") {
+    const temporary = join(directory, `.allocate-${operationId}-${intent.role}.tmp`);
+    const temporaryDescriptor = openSync(temporary, flags, 0o600);
+    let failed = false;
+    try {
+      const opened = fstatSync(temporaryDescriptor, { bigint: true });
+      assertOwnedRegularFile(opened);
+      fchmodSync(temporaryDescriptor, 0o600);
+      fsyncSync(temporaryDescriptor);
+      if (fstatSync(temporaryDescriptor, { bigint: true }).size !== BigInt(0)) throw fixtureEnvironmentError("rotation-allocation");
+    } catch { failed = true; }
+    try { closeSync(temporaryDescriptor); } catch { failed = true; }
+    if (failed) throw fixtureEnvironmentError("rotation-allocation");
+    durableReplace(temporary, path);
+  }
+  const descriptor = openSync(path, process.platform === "win32" ? constants.O_RDWR : flags, 0o600);
+  try {
+    const opened = fstatSync(descriptor, { bigint: true });
+    assertOwnedRegularFile(opened);
+    fchmodSync(descriptor, 0o600);
+    fsyncSync(descriptor);
+    const currentDirectory = lstatSync(directory, { bigint: true });
+    if (currentDirectory.dev.toString() !== intent.directoryDev || currentDirectory.ino.toString() !== intent.directoryIno
+        || opened.size !== BigInt(0) || !sameIdentity(opened, lstatSync(path, { bigint: true }))) {
+      throw fixtureEnvironmentError("rotation-allocation");
+    }
+    if (candidateDirectoryBarrier) candidateDirectoryBarrier(directory);
+    else if (process.platform !== "win32") syncDirectory(directory);
+    return {
+      descriptor,
+      snapshot: {
+        ...intent,
+        state: "allocated",
+        fileDev: opened.dev.toString(),
+        fileIno: opened.ino.toString(),
+      },
+    };
+  } catch (error) {
+    try { closeSync(descriptor); } catch { /* typed allocation failure below */ }
+    throw error;
+  }
+}
+
+function completeFixtureCandidate(
+  root: string,
+  allocated: AllocatedFixtureCandidate,
+  bytes: Buffer,
+  kind: "credential" | "environment",
+  index: number,
+  dependencies: FixtureAuthorityRotationDependencies,
+): FixtureAuthorityIntent {
+  const { descriptor, snapshot } = allocated;
+  let closed = false;
+  try {
+    const write = dependencies.candidateWrite ?? writeSync;
+    if (write(descriptor, bytes, 0, bytes.length, 0) !== bytes.length) throw fixtureEnvironmentError("rotation-write");
+    dependencies.afterCandidateWriteBeforeSync?.(kind, index);
+    (dependencies.candidateSync ?? fsyncSync)(descriptor);
+    dependencies.afterCandidateSyncBeforeClose?.(kind, index);
+    const after = fstatSync(descriptor, { bigint: true });
+    if (after.dev.toString() !== snapshot.fileDev || after.ino.toString() !== snapshot.fileIno
+        || after.size !== BigInt(bytes.length)
+        || createHash("sha256").update(readFileSync(descriptor)).digest("hex") !== snapshot.sha256) {
+      throw fixtureEnvironmentError("rotation-write");
+    }
+    (dependencies.candidateClose ?? closeSync)(descriptor);
+    closed = true;
+    dependencies.afterCandidateCloseBeforeComplete?.(kind, index);
+    const observed = captureFixtureAuthority(root, resolve(root, snapshot.relativePath), snapshot.kind);
+    if (!authorityMatchesIntent(observed, snapshot)) throw fixtureEnvironmentError("rotation-write");
+    return { ...observed, role: snapshot.role, state: "complete" };
+  } catch (error) {
+    if (!closed) {
+      try { closeSync(descriptor); } catch { /* recovery owns the journal-bound inode */ }
+    }
+    throw error;
+  }
+}
+
 function materializeRotationCandidate(root: string, journal: FixtureRotationJournal, index: number): FixtureRotationJournal {
   const intent = journal.candidate[index];
   if (!intent) throw fixtureEnvironmentError("rotation-candidate");
   const observed = captureFixtureAuthority(root, resolve(root, intent.relativePath), intent.kind);
   if (!authorityMatchesIntent(observed, intent)) throw fixtureEnvironmentError("rotation-candidate");
   const candidate = journal.candidate.slice();
-  candidate[index] = observed;
+  candidate[index] = { ...observed, role: intent.role, state: "complete" };
   return { ...journal, candidate };
 }
 
-function authorityMatchesIntent(observed: FixtureAuthoritySnapshot, intent: FixtureAuthorityIntent): boolean {
+function authorityMatchesIntent(
+  observed: FixtureAuthoritySnapshot,
+  intent: FixtureAuthorityIntent | FixtureAuthoritySnapshot,
+): boolean {
   return observed.kind === intent.kind
     && observed.relativePath === intent.relativePath
     && observed.directoryDev === intent.directoryDev
@@ -948,15 +1213,110 @@ function authorityMatchesIntent(observed: FixtureAuthoritySnapshot, intent: Fixt
 }
 
 function validateRotationCandidates(root: string, journal: FixtureRotationJournal): FixtureAuthoritySnapshot[] {
-  return journal.candidate.map((intent) => {
-    if (!intent.fileDev || !intent.fileIno) throw new FixtureSecretCleanupError(basename(intent.relativePath));
+  const observed = journal.candidate.map((intent) => {
+    if (intent.state !== "complete" || !intent.fileDev || !intent.fileIno) {
+      throw new FixtureSecretCleanupError(basename(intent.relativePath));
+    }
     const observed = captureFixtureAuthority(root, resolve(root, intent.relativePath), intent.kind);
     if (!authorityMatchesIntent(observed, intent)) throw new FixtureSecretCleanupError(basename(intent.relativePath));
     return observed;
   });
+  const environment = journal.candidate[3]!;
+  const environmentContents = readFileSync(resolve(root, environment.relativePath), "utf8");
+  const referenced = fixtureCredentialPaths({ contents: environmentContents })
+    .map((path) => relative(root, resolve(root, path)).replace(/\\/g, "/"));
+  if (referenced.some((path, index) => path !== journal.candidate[index]!.relativePath)) {
+    throw new FixtureSecretCleanupError("rotation-candidate-graph");
+  }
+  return observed;
+}
+
+function validateFixtureRotationGraph(root: string, journal: FixtureRotationJournal): void {
+  const roles: FixtureAuthorityRole[] = ["token", "migrator", "runtime", "environment"];
+  const expectedPaths = [
+    ...roles.slice(0, 3).map((role) => relative(
+      root,
+      join(root, FIXTURE_MUSIC_TOKEN_SECRET_DIRECTORY_RELATIVE_PATH, `current-${operationBoundLeafId(journal.operationId, role)}`),
+    ).replace(/\\/g, "/")),
+    relative(
+      root,
+      join(root, FIXTURE_MUSIC_ENVIRONMENT_DIRECTORY_RELATIVE_PATH, `generation-${operationBoundLeafId(journal.operationId, "environment")}`),
+    ).replace(/\\/g, "/"),
+  ];
+  for (let index = 0; index < journal.candidate.length; index += 1) {
+    const candidate = journal.candidate[index]!;
+    const expectedKind = index === 3 ? "environment" : "credential";
+    if (candidate.role !== roles[index] || candidate.kind !== expectedKind || candidate.relativePath !== expectedPaths[index]) {
+      throw new FixtureSecretCleanupError("rotation-candidate-graph");
+    }
+  }
+  const candidatePaths = journal.candidate.map((candidate) => candidate.relativePath);
+  const priorPaths = journal.prior.map((prior) => prior.relativePath);
+  if (candidatePaths.some((path, index) => candidatePaths.indexOf(path) !== index)
+      || priorPaths.some((path, index) => priorPaths.indexOf(path) !== index)
+      || candidatePaths.some((path) => priorPaths.includes(path))) {
+    throw new FixtureSecretCleanupError("rotation-authority-overlap");
+  }
+  const target = parseFixtureEnvironmentReference(journal.targetReference);
+  const candidateEnvironment = journal.candidate[3]!;
+  if (basename(candidateEnvironment.relativePath) !== target.generationName
+      || candidateEnvironment.size !== target.size || candidateEnvironment.sha256 !== target.digest) {
+    throw new FixtureSecretCleanupError("rotation-reference-graph");
+  }
+  const expectedPriorHash = createHash("sha256")
+    .update(journal.priorReference === null ? Buffer.alloc(0) : Buffer.from(journal.priorReference, "ascii"))
+    .digest("hex");
+  if (journal.priorPointerSha256 !== expectedPriorHash) throw new FixtureSecretCleanupError("rotation-prior-reference");
+  if (![0, 3, 4].includes(journal.prior.length)
+      || journal.prior.slice(0, 3).some((authority) => authority.kind !== "credential")
+      || (journal.prior.length === 4 && journal.prior[3]!.kind !== "environment")) {
+    throw new FixtureSecretCleanupError("rotation-prior-graph");
+  }
+  if (journal.prior.length === 4) {
+    if (journal.priorReference === null) throw new FixtureSecretCleanupError("rotation-prior-reference");
+    const priorReference = parseFixtureEnvironmentReference(journal.priorReference);
+    if (basename(journal.prior[3]!.relativePath) !== priorReference.generationName) {
+      throw new FixtureSecretCleanupError("rotation-prior-reference");
+    }
+  }
+}
+
+function validatePriorFixtureBundle(root: string, journal: FixtureRotationJournal, allowRetired: boolean): void {
+  if (journal.prior.length === 0) return;
+  const live: boolean[] = [];
+  for (const authority of journal.prior) {
+    validateFixtureAuthoritySnapshot(authority);
+    const path = resolve(root, authority.relativePath);
+    assertFixtureAuthorityPath(root, path, authority.kind);
+    const current = lstatSync(path, { bigint: true });
+    if (current.dev.toString() !== authority.fileDev || current.ino.toString() !== authority.fileIno) {
+      throw new FixtureSecretCleanupError(basename(path));
+    }
+    if (current.size === BigInt(0)) {
+      if (!allowRetired) throw new FixtureSecretCleanupError(basename(path));
+      live.push(false);
+      continue;
+    }
+    const observed = captureFixtureAuthority(root, path, authority.kind);
+    if (!authorityMatchesIntent(observed, authority)) throw new FixtureSecretCleanupError(basename(path));
+    live.push(true);
+  }
+  if (journal.prior.length !== 4) return;
+  if (!live[3]) {
+    if (live.some(Boolean)) throw new FixtureSecretCleanupError("rotation-prior-graph");
+    return;
+  }
+  const environmentContents = readFileSync(resolve(root, journal.prior[3]!.relativePath), "utf8");
+  const referenced = fixtureCredentialPaths({ contents: environmentContents })
+    .map((path) => relative(root, resolve(root, path)).replace(/\\/g, "/"));
+  if (referenced.some((path, index) => path !== journal.prior[index]!.relativePath)) {
+    throw new FixtureSecretCleanupError("rotation-prior-graph");
+  }
 }
 
 function restorePriorFixtureReference(root: string, journal: FixtureRotationJournal): void {
+  validateFixtureRotationGraph(root, journal);
+  validatePriorFixtureBundle(root, journal, false);
   if (journal.priorReference === null) throw new FixtureSecretCleanupError("rotation-prior-reference");
   const parsed = parseFixtureEnvironmentReference(journal.priorReference);
   const priorEnvironment = journal.prior.find((authority) => authority.kind === "environment"
@@ -1023,7 +1383,7 @@ function cleanupFixtureAuthority(root: string, snapshot: FixtureAuthoritySnapsho
     throw new FixtureSecretCleanupError(targetId);
   }
   if (before.size === BigInt(0)) {
-    syncDirectory(directory);
+    if (process.platform !== "win32") syncDirectory(directory);
     return;
   }
   const noFollow = process.platform === "win32" ? 0 : constants.O_NOFOLLOW;
@@ -1041,7 +1401,9 @@ function cleanupFixtureAuthority(root: string, snapshot: FixtureAuthoritySnapsho
     eraseDescriptor(descriptor, {});
   } catch { failed = true; }
   try { closeSync(descriptor); } catch { failed = true; }
-  try { syncDirectory(directory); } catch { failed = true; }
+  if (process.platform !== "win32") {
+    try { syncDirectory(directory); } catch { failed = true; }
+  }
   if (failed) throw new FixtureSecretCleanupError(targetId);
 }
 
@@ -1053,13 +1415,21 @@ function cleanupRotationCandidates(root: string, journal: FixtureRotationJournal
       if (!existsSync(path)) continue;
       const current = lstatSync(path, { bigint: true });
       const directory = lstatSync(dirname(path), { bigint: true });
+      if (intent.state === "planned") {
+        if (current.size !== BigInt(0)) throw new FixtureSecretCleanupError(basename(path));
+        continue;
+      }
       if (current.size === BigInt(0)) {
         if (directory.dev.toString() !== intent.directoryDev || directory.ino.toString() !== intent.directoryIno
             || (intent.fileDev !== undefined && current.dev.toString() !== intent.fileDev)
             || (intent.fileIno !== undefined && current.ino.toString() !== intent.fileIno)) {
           throw new FixtureSecretCleanupError(basename(path));
         }
-        syncDirectory(dirname(path));
+        if (process.platform !== "win32") syncDirectory(dirname(path));
+        continue;
+      }
+      if (intent.state === "allocated") {
+        cleanupAllocatedFixtureAuthority(root, intent);
         continue;
       }
       const observed = captureFixtureAuthority(root, path, intent.kind);
@@ -1070,6 +1440,32 @@ function cleanupRotationCandidates(root: string, journal: FixtureRotationJournal
     }
   }
   if (failure) throw failure;
+}
+
+function cleanupAllocatedFixtureAuthority(root: string, intent: FixtureAuthorityIntent): void {
+  if (intent.state !== "allocated" || !intent.fileDev || !intent.fileIno) {
+    throw new FixtureSecretCleanupError("rotation-allocated");
+  }
+  const path = resolve(root, intent.relativePath);
+  assertFixtureAuthorityPath(root, path, intent.kind);
+  const directory = dirname(path);
+  const directoryStat = lstatSync(directory, { bigint: true });
+  const before = lstatSync(path, { bigint: true });
+  if (directoryStat.dev.toString() !== intent.directoryDev || directoryStat.ino.toString() !== intent.directoryIno
+      || before.dev.toString() !== intent.fileDev || before.ino.toString() !== intent.fileIno) {
+    throw new FixtureSecretCleanupError(basename(path));
+  }
+  const noFollow = process.platform === "win32" ? 0 : constants.O_NOFOLLOW;
+  const descriptor = openSync(path, constants.O_RDWR | noFollow, 0o600);
+  let failed = false;
+  try {
+    const opened = fstatSync(descriptor, { bigint: true });
+    if (opened.dev.toString() !== intent.fileDev || opened.ino.toString() !== intent.fileIno
+        || !sameIdentity(opened, lstatSync(path, { bigint: true }))) throw fixtureSecretError();
+    eraseDescriptor(descriptor, {});
+  } catch { failed = true; }
+  try { closeSync(descriptor); } catch { failed = true; }
+  if (failed) throw new FixtureSecretCleanupError(basename(path));
 }
 
 function assertFixtureAuthorityPath(root: string, path: string, kind: FixtureAuthoritySnapshot["kind"]): void {
@@ -1096,20 +1492,19 @@ function writeFixtureRotationJournal(
   journal: FixtureRotationJournal,
   syncJournalDirectory: (path: string) => void = syncDirectory,
   dependencies: NonNullable<FixtureAuthorityRotationDependencies["journal"]> = {},
+  durableReplace?: (source: string, destination: string) => void,
 ): string {
   const artifactDirectory = join(root, ".artifacts");
   const directory = join(artifactDirectory, "music-rotation-journals");
   ensureOwnedDirectory(artifactDirectory);
   ensureOwnedDirectory(directory);
   assertNoLinkedAncestors(directory);
-  const randomBytes = (dependencies.randomNameBytes ?? secureRandomBytes)(16);
-  if (!Buffer.isBuffer(randomBytes) || randomBytes.length !== 16) throw fixtureEnvironmentError("rotation-journal");
-  const random = randomBytes.toString("hex");
-  const name = `rotation-${random}.json`;
+  const name = `rotation-${journal.operationId}.json`;
   const path = join(directory, name);
+  const temporary = join(directory, `.rotation-intent-${journal.operationId}.tmp`);
   const bytes = Buffer.from(JSON.stringify(journal), "utf8");
   const noFollow = process.platform === "win32" ? 0 : constants.O_NOFOLLOW;
-  const descriptor = openSync(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | noFollow, 0o600);
+  const descriptor = openSync(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | noFollow, 0o600);
   let failed = false;
   try {
     const opened = fstatSync(descriptor, { bigint: true });
@@ -1125,8 +1520,7 @@ function writeFixtureRotationJournal(
   }
   try { (dependencies.close ?? closeSync)(descriptor); } catch { failed = true; }
   if (failed) throw fixtureEnvironmentError(name);
-  try { syncJournalDirectory(directory); }
-  catch { throw fixtureEnvironmentError(name); }
+  durableReplaceWithTestSeams(temporary, path, durableReplace, dependencies.rename, syncJournalDirectory);
   return name;
 }
 
@@ -1136,6 +1530,7 @@ function replaceFixtureRotationJournal(
   journal: FixtureRotationJournal,
   syncJournalDirectory: (path: string) => void = syncDirectory,
   dependencies: NonNullable<FixtureAuthorityRotationDependencies["journal"]> = {},
+  durableReplace?: (source: string, destination: string) => void,
 ): void {
   if (!fixtureRotationJournalName.test(name)) throw fixtureEnvironmentError("rotation-journal");
   const directory = join(root, ".artifacts", "music-rotation-journals");
@@ -1161,13 +1556,31 @@ function replaceFixtureRotationJournal(
   } catch { failed = true; }
   try { (dependencies.close ?? closeSync)(descriptor); } catch { failed = true; }
   if (failed) throw fixtureEnvironmentError(name);
-  (dependencies.rename ?? renameSync)(temporary, target);
-  syncJournalDirectory(directory);
+  durableReplaceWithTestSeams(temporary, target, durableReplace, dependencies.rename, syncJournalDirectory);
+}
+
+function durableReplaceWithTestSeams(
+  source: string,
+  destination: string,
+  durableReplace: ((source: string, destination: string) => void) | undefined,
+  rename: typeof renameSync | undefined,
+  directoryBarrier: (path: string) => void,
+): void {
+  if (rename || directoryBarrier !== syncDirectory) {
+    (rename ?? renameSync)(source, destination);
+    directoryBarrier(dirname(destination));
+    return;
+  }
+  if (durableReplace) {
+    durableReplace(source, destination);
+    return;
+  }
+  replaceFixtureMetadataDurably(source, destination);
 }
 
 function parseFixtureRotationJournal(contents: string): FixtureRotationJournal {
   const value = JSON.parse(contents) as FixtureRotationJournal;
-  if (value?.schemaVersion !== "music-fixture-rotation/v2"
+  if (value?.schemaVersion !== "music-fixture-rotation/v3"
       || !/^[a-f0-9]{32}$/.test(value.operationId)
       || !["intent", "credential-1", "credential-2", "credential-3", "ready", "committed"].includes(value.phase)
       || !/^\d+$/.test(value.rootDev) || !/^\d+$/.test(value.rootIno)
@@ -1180,25 +1593,29 @@ function parseFixtureRotationJournal(contents: string): FixtureRotationJournal {
       || value.prior.length > 4 || value.candidate.length !== 4) throw fixtureEnvironmentError("rotation-journal");
   for (const snapshot of value.prior) validateFixtureAuthoritySnapshot(snapshot);
   for (const intent of value.candidate) validateFixtureAuthorityIntent(intent);
-  const materialized = value.candidate.filter((candidate) => candidate.fileDev && candidate.fileIno).length;
+  const completed = value.candidate.filter((candidate) => candidate.state === "complete").length;
   const minimum = value.phase === "intent" ? 0
     : value.phase === "credential-1" ? 1
       : value.phase === "credential-2" ? 2
         : value.phase === "credential-3" ? 3
           : 4;
-  if (materialized < minimum) throw fixtureEnvironmentError("rotation-journal");
+  if (completed < minimum) throw fixtureEnvironmentError("rotation-journal");
   return value;
 }
 
 function validateFixtureAuthorityIntent(value: FixtureAuthorityIntent): void {
   if (!value || !["environment", "credential"].includes(value.kind)
+      || !["token", "migrator", "runtime", "environment"].includes(value.role)
+      || !["planned", "allocated", "complete"].includes(value.state)
       || typeof value.relativePath !== "string" || value.relativePath.includes("..") || value.relativePath.includes(":")
       || !/^\d+$/.test(value.directoryDev) || !/^\d+$/.test(value.directoryIno)
       || !Number.isSafeInteger(value.size) || value.size < 1 || value.size > 65_536
       || !/^[a-f0-9]{64}$/.test(value.sha256)
-      || !((value.fileDev === undefined && value.fileIno === undefined)
-        || (typeof value.fileDev === "string" && /^\d+$/.test(value.fileDev)
-          && typeof value.fileIno === "string" && /^\d+$/.test(value.fileIno)))) {
+      || !((value.state === "planned" && value.fileDev === undefined && value.fileIno === undefined)
+        || (value.state !== "planned"
+          && typeof value.fileDev === "string" && /^\d+$/.test(value.fileDev)
+          && typeof value.fileIno === "string" && /^\d+$/.test(value.fileIno))
+      )) {
     throw fixtureEnvironmentError("rotation-journal");
   }
 }
@@ -1220,8 +1637,7 @@ function publishFixtureReference(root: string, reference: string, targetId: stri
   } catch { failed = true; }
   try { closeSync(descriptor); } catch { failed = true; }
   if (failed) throw new FixtureSecretCleanupError(targetId);
-  renameSync(temporary, target);
-  syncDirectory(root);
+  replaceFixtureMetadataDurably(temporary, target);
   if (!readCurrentPointerBytes(root).equals(bytes)) throw new FixtureSecretCleanupError(targetId);
 }
 
@@ -1247,7 +1663,9 @@ function zeroOpenedRotationJournal(path: string, readDescriptor: number, expecte
     eraseDescriptor(descriptor, {});
   } catch { failed = true; }
   try { closeSync(descriptor); } catch { failed = true; }
-  try { syncDirectory(dirname(path)); } catch { failed = true; }
+  if (process.platform !== "win32") {
+    try { syncDirectory(dirname(path)); } catch { failed = true; }
+  }
   if (failed) throw new FixtureSecretCleanupError(targetId);
 }
 
@@ -1487,7 +1905,7 @@ function closeDescriptor(
 }
 
 function syncDirectory(path: string): void {
-  if (process.platform === "win32") return;
+  if (process.platform === "win32") throw fixtureEnvironmentError("windows-directory-fsync-unsupported");
   const descriptor = openSync(path, constants.O_RDONLY);
   let failed = false;
   try {

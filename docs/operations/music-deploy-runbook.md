@@ -333,13 +333,20 @@ Bootstrap rotates one four-resource authority bundle: the environment
 generation, Music signing-key leaf, migrator-password leaf, and runtime-password
 leaf. It snapshots the exact prior directory/file identities, sizes, and
 SHA-256 digests before creating replacements. Candidate names, expected byte
-counts/digests, and the operation ID are chosen first. A non-secret v2 intent
-journal is file- and parent-directory-synced before the first candidate secret
-is created. Each credential and the environment generation is then
-descriptor-validated and parent-directory-synced; an atomic, file-synced,
-renamed, and parent-synced journal update records its exact device/inode only
-after durable creation. The journal contains metadata and hashes only, never
-raw environment or credential bytes.
+counts/digests, operation-bound role/name grammar, and the operation ID are
+chosen first. A non-secret v3 intent journal is durably published before the
+first candidate secret is created. Candidate and prior paths must be unique and
+disjoint, and the journal's prior pointer and both environment-to-credential
+graphs must match their exact captured authority; recovery rejects a replay,
+redirected path, duplicate, or incomplete graph without mutation.
+
+Each candidate starts as an exclusive zero-byte leaf. Its directory and file
+device/inode are durably journaled before secret bytes are written through the
+same open descriptor. A later atomic journal phase records the verified final
+size and SHA-256 only after file sync and close. Thus a hard exit during any
+write is recoverable by exact journal-bound inode; a name, size, or attacker-
+supplied digest alone never authorizes erasure. The journal contains metadata
+and hashes only, never raw environment or credential bytes.
 
 Immediately before the pointer rename and during recovery, all four candidates
 are reopened and matched against their recorded directory/file identities,
@@ -350,6 +357,15 @@ and leaves the prior pointer and four resources byte-exact. After that switch,
 no error path may erase the new set. Prior resources are retired only when
 their captured identities and digests still match; mismatch is a typed cleanup
 failure that leaves both attacker and displaced bytes untouched.
+On POSIX, durable metadata publication is file fsync, atomic rename, and parent
+directory fsync. Windows does not treat directory fsync as available: the
+checked-in bounded helper uses `MoveFileExW` with
+`MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH` for candidate entry,
+journal update, and pointer publication. The helper receives paths only, never
+secret values, and an unavailable/nonzero helper fails closed before the next
+transaction phase. Descriptor truncation plus file fsync remains the durability
+barrier for retirement because it does not change directory metadata.
+
 Bootstrap/down/reset reconcile any pending journal before other cleanup, so a
 restart deterministically retires the old set after commit or the candidate set
 before commit. Successful retirement leaves zero-byte tombstones and zeroes the
