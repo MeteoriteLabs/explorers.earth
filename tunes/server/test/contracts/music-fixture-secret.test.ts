@@ -714,6 +714,65 @@ describe("fixture bundle rotation transaction", () => {
     return `MUSIC_TOKEN_SECRET_FILE_HOST=${fixturePath(paths.tokenPath)}\nMUSIC_DB_MIGRATOR_SECRET_FILE_HOST=${fixturePath(paths.migratorPasswordPath)}\nMUSIC_DB_RUNTIME_SECRET_FILE_HOST=${fixturePath(paths.runtimePasswordPath)}\nROTATION_LABEL=${label}\n`;
   }
 
+  type UnsupportedCleanupKind = "token" | "environment" | "journal" | "temporary" | "pointer";
+  type UnsupportedCleanupPhase = "before-open" | "before-truncate" | "after-truncate" | "after-fsync" | "after-close";
+  type UnsupportedCleanupDependencies = {
+    afterAuthorityCaptured?: () => void;
+    beforeLeafOpen?: (kind: UnsupportedCleanupKind, path: string) => void;
+    onCleanupPhase?: (kind: UnsupportedCleanupKind, phase: UnsupportedCleanupPhase) => void;
+    platform?: NodeJS.Platform;
+    descriptor?: {
+      truncate?: (descriptor: number, kind: UnsupportedCleanupKind) => void;
+      sync?: (descriptor: number, kind: UnsupportedCleanupKind) => void;
+      close?: (descriptor: number, kind: UnsupportedCleanupKind) => void;
+    };
+  };
+  const cleanupUnsupported = (fixtureSecrets as unknown as {
+    cleanupUnsupportedFixtureEnvironmentForRebootstrap: (
+      root: string,
+      project: string,
+      dependencies?: UnsupportedCleanupDependencies,
+    ) => void;
+  }).cleanupUnsupportedFixtureEnvironmentForRebootstrap;
+
+  function unsupportedAuthority(root: string, seed: string): {
+    pointer: string;
+    token: string;
+    generation: string;
+    journal: string;
+    bytes: Map<string, Buffer>;
+  } {
+    const tokenDirectory = join(root, ".artifacts", "music-token-secrets");
+    const generationDirectory = join(root, ".artifacts", "music-environment-generations");
+    const journalDirectory = join(root, ".artifacts", "music-rotation-journals");
+    mkdirSync(tokenDirectory, { recursive: true });
+    mkdirSync(generationDirectory, { recursive: true });
+    mkdirSync(journalDirectory, { recursive: true });
+    const pointer = join(root, ".env.music.test");
+    const token = join(tokenDirectory, `current-${seed.repeat(32)}`);
+    const generation = join(generationDirectory, `generation-${seed.repeat(32)}`);
+    const journal = join(journalDirectory, `rotation-${seed.repeat(32)}.json`);
+    const bytes = new Map<string, Buffer>([
+      [pointer, Buffer.from(`RAW_FIXTURE_AUTHORITY=${seed}-must-not-be-read\n`)],
+      [token, Buffer.from(`old-token-${seed}`)],
+      [generation, Buffer.from(`old-generation-${seed}`)],
+      [journal, Buffer.from(`{"nonsecret":"old-journal-${seed}"}`)],
+    ]);
+    for (const [path, value] of bytes) writeFileSync(path, value, { mode: 0o600 });
+    return { pointer, token, generation, journal, bytes };
+  }
+
+  function nonzeroFixtureLeaves(root: string): { credentials: number; generations: number; journals: number } {
+    const count = (directory: string, pattern: RegExp) => existsSync(directory)
+      ? readdirSync(directory).filter((name) => pattern.test(name) && lstatSync(join(directory, name)).size > 0).length
+      : 0;
+    return {
+      credentials: count(join(root, ".artifacts", "music-token-secrets"), /^current-[a-f0-9]{32}$/),
+      generations: count(join(root, ".artifacts", "music-environment-generations"), /^generation-[a-f0-9]{32}$/),
+      journals: count(join(root, ".artifacts", "music-rotation-journals"), /^rotation-[a-f0-9]{32}\.json$/),
+    };
+  }
+
   function credentialPaths(root: string, contents: string): string[] {
     const values = Object.fromEntries(contents.trim().split(/\r?\n/).map((line) => line.split("=", 2)));
     return ["MUSIC_TOKEN_SECRET_FILE_HOST", "MUSIC_DB_MIGRATOR_SECRET_FILE_HOST", "MUSIC_DB_RUNTIME_SECRET_FILE_HOST"]
@@ -816,22 +875,239 @@ describe("fixture bundle rotation transaction", () => {
     const raw = Buffer.from(`MUSIC_TOKEN_SECRET_FILE_HOST=${outside}\nRAW_SECRET=never-parse-this\n`);
     const pointer = join(root, ".env.music.test");
     writeFileSync(pointer, raw, { mode: 0o600 });
-    const cleanup = (fixtureSecrets as unknown as {
-      cleanupUnsupportedFixtureEnvironmentForRebootstrap: (root: string, project: string) => void;
-    }).cleanupUnsupportedFixtureEnvironmentForRebootstrap;
-
-    expect(() => cleanup(root, "wrong-project")).toThrow(/project|scope|fixture/i);
+    expect(() => cleanupUnsupported(root, "wrong-project")).toThrow(/project|scope|fixture/i);
     expect(readFileSync(pointer)).toEqual(raw);
     expect(generated.map((path) => readFileSync(path))).toEqual(generatedBytes);
     expect(readFileSync(outside)).toEqual(outsideBytes);
 
-    expect(() => cleanup(root, "explorers-music-fixture")).not.toThrow();
+    expect(() => cleanupUnsupported(root, "explorers-music-fixture")).not.toThrow();
     expect(readFileSync(pointer)).toHaveLength(0);
     expect(generated.map((path) => readFileSync(path))).toEqual(generatedBytes.map(() => Buffer.alloc(0)));
     expect(readFileSync(outside)).toEqual(outsideBytes);
     expect(() => rotate(root, (paths) => environment(root, paths, "clean-rebootstrap"), authorityWithSeed(0x43))).not.toThrow();
     expect(fixtureSecrets.readFixtureMusicEnvironment(root)).toContain("ROTATION_LABEL=clean-rebootstrap");
-  });
+  }, 30_000);
+
+  it("keeps the raw retry discriminator until every recognized old leaf is safely retired", () => {
+    const root = fixtureRoot();
+    const authority = unsupportedAuthority(root, "a");
+    writeFileSync(authority.journal, "", { mode: 0o600 });
+    const outsideLink = join(root, "outside-hard-link-must-remain");
+    linkSync(authority.token, outsideLink);
+    const rawBefore = readFileSync(authority.pointer);
+    let candidateBuilds = 0;
+
+    expect(() => cleanupUnsupported(root, "explorers-music-fixture")).toThrow(expect.objectContaining({
+      code: "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED",
+    }));
+    expect(readFileSync(authority.pointer)).toEqual(rawBefore);
+    expect(readFileSync(authority.token)).toEqual(authority.bytes.get(authority.token));
+    expect(() => rotate(root, (paths) => {
+      candidateBuilds += 1;
+      return environment(root, paths, "must-not-bootstrap-with-residue");
+    }, authorityWithSeed(0x71))).toThrow(expect.objectContaining({
+      code: "MUSIC_FIXTURE_LEGACY_ENVIRONMENT_UNSUPPORTED",
+    }));
+    expect(candidateBuilds).toBe(0);
+
+    unlinkSync(outsideLink);
+    expect(() => cleanupUnsupported(root, "explorers-music-fixture")).not.toThrow();
+    expect(() => rotate(root, (paths) => environment(root, paths, "clean-retry"), authorityWithSeed(0x72))).not.toThrow();
+    expect(nonzeroFixtureLeaves(root)).toEqual({ credentials: 3, generations: 1, journals: 0 });
+  }, 30_000);
+
+  it.each(["token", "environment", "journal"] as const)(
+    "keeps raw cleanup authority across a hard exit after the %s phase and retries before rotation",
+    (targetKind) => {
+      const root = fixtureRoot();
+      const authority = unsupportedAuthority(root, targetKind === "token" ? "b" : targetKind === "environment" ? "c" : "d");
+      const moduleUrl = pathToFileURL(resolve("scripts/music-fixture-secret.ts")).href;
+      const script = `
+        import { cleanupUnsupportedFixtureEnvironmentForRebootstrap } from ${JSON.stringify(moduleUrl)};
+        cleanupUnsupportedFixtureEnvironmentForRebootstrap(process.env.MUSIC_CLEANUP_ROOT, 'explorers-music-fixture', {
+          onCleanupPhase: (kind, phase) => {
+            if (kind === process.env.MUSIC_CLEANUP_KIND && phase === 'after-close') process.exit(83);
+          },
+        });
+      `;
+      const child = spawnSync(process.execPath, ["--import", "tsx", "--input-type=module", "--eval", script], {
+        cwd: process.cwd(),
+        env: { ...process.env, MUSIC_CLEANUP_ROOT: root, MUSIC_CLEANUP_KIND: targetKind },
+        encoding: "utf8",
+        timeout: 30_000,
+      });
+
+      expect(child.status, child.stderr).toBe(83);
+      expect(readFileSync(authority.pointer)).toEqual(authority.bytes.get(authority.pointer));
+      expect(() => cleanupUnsupported(root, "explorers-music-fixture")).not.toThrow();
+      expect(() => rotate(root, (paths) => environment(root, paths, `retry-${targetKind}`), authorityWithSeed(0x73))).not.toThrow();
+      expect(nonzeroFixtureLeaves(root)).toEqual({ credentials: 3, generations: 1, journals: 0 });
+    },
+    45_000,
+  );
+
+  it.each(["before-truncate", "after-truncate", "after-fsync", "after-close"] as const)(
+    "leaves no old nonzero residue across the raw pointer %s crash boundary",
+    (targetPhase) => {
+      const root = fixtureRoot();
+      unsupportedAuthority(root, targetPhase === "before-truncate" ? "e" : targetPhase === "after-truncate" ? "f" : targetPhase === "after-fsync" ? "1" : "2");
+      const moduleUrl = pathToFileURL(resolve("scripts/music-fixture-secret.ts")).href;
+      const script = `
+        import { cleanupUnsupportedFixtureEnvironmentForRebootstrap } from ${JSON.stringify(moduleUrl)};
+        cleanupUnsupportedFixtureEnvironmentForRebootstrap(process.env.MUSIC_CLEANUP_ROOT, 'explorers-music-fixture', {
+          onCleanupPhase: (kind, phase) => {
+            if (kind === 'pointer' && phase === process.env.MUSIC_CLEANUP_PHASE) process.exit(84);
+          },
+        });
+      `;
+      const child = spawnSync(process.execPath, ["--import", "tsx", "--input-type=module", "--eval", script], {
+        cwd: process.cwd(),
+        env: { ...process.env, MUSIC_CLEANUP_ROOT: root, MUSIC_CLEANUP_PHASE: targetPhase },
+        encoding: "utf8",
+        timeout: 30_000,
+      });
+
+      expect(child.status, child.stderr).toBe(84);
+      expect(nonzeroFixtureLeaves(root)).toEqual({ credentials: 0, generations: 0, journals: 0 });
+      if (targetPhase !== "before-truncate") {
+        let candidateBuilds = 0;
+        expect(() => rotate(root, (paths) => {
+          candidateBuilds += 1;
+          return environment(root, paths, `unsafe-pointer-${targetPhase}`);
+        }, authorityWithSeed(0x7a))).toThrow(expect.objectContaining({
+          code: "MUSIC_FIXTURE_CLEANUP_PENDING",
+        }));
+        expect(candidateBuilds).toBe(0);
+      }
+      expect(() => cleanupUnsupported(root, "explorers-music-fixture")).not.toThrow();
+      expect(() => rotate(root, (paths) => environment(root, paths, `retry-pointer-${targetPhase}`), authorityWithSeed(0x74))).not.toThrow();
+      expect(nonzeroFixtureLeaves(root)).toEqual({ credentials: 3, generations: 1, journals: 0 });
+    },
+    45_000,
+  );
+
+  it.each(["truncate", "fsync", "close"] as const)(
+    "fails closed at the raw pointer descriptor %s syscall and retries without old residue",
+    (operation) => {
+      const root = fixtureRoot();
+      const authority = unsupportedAuthority(root, operation === "truncate" ? "5" : operation === "fsync" ? "6" : "7");
+      let injected = false;
+      const descriptor = {
+        truncate: (file: number, kind: UnsupportedCleanupKind) => {
+          if (kind === "pointer" && operation === "truncate") { injected = true; throw new Error("truncate-sentinel"); }
+          ftruncateSync(file, 0);
+        },
+        sync: (file: number, kind: UnsupportedCleanupKind) => {
+          if (kind === "pointer" && operation === "fsync") { injected = true; throw new Error("fsync-sentinel"); }
+          fsyncSync(file);
+        },
+        close: (file: number, kind: UnsupportedCleanupKind) => {
+          closeSync(file);
+          if (kind === "pointer" && operation === "close") { injected = true; throw new Error("close-sentinel"); }
+        },
+      };
+
+      expect(() => cleanupUnsupported(root, "explorers-music-fixture", {
+        descriptor,
+      })).toThrow(expect.objectContaining({ code: "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED" }));
+      expect(injected).toBe(true);
+      expect(nonzeroFixtureLeaves(root)).toEqual({ credentials: 0, generations: 0, journals: 0 });
+      if (operation === "truncate") expect(readFileSync(authority.pointer)).toEqual(authority.bytes.get(authority.pointer));
+      else expect(readFileSync(authority.pointer)).toHaveLength(0);
+
+      expect(() => cleanupUnsupported(root, "explorers-music-fixture")).not.toThrow();
+      expect(() => rotate(root, (paths) => environment(root, paths, `retry-syscall-${operation}`), authorityWithSeed(0x76))).not.toThrow();
+      expect(nonzeroFixtureLeaves(root)).toEqual({ credentials: 3, generations: 1, journals: 0 });
+    },
+    45_000,
+  );
+
+  it.each(["root", "ancestor", "token-directory", "before-pointer"] as const)(
+    "binds destructive cleanup to the authorized %s identity and never touches a replacement tree",
+    (swapKind) => {
+      const container = fixtureRoot();
+      const ancestor = join(container, "authorized-parent");
+      const root = join(ancestor, "project");
+      const parkedRoot = join(ancestor, "project-parked");
+      const parkedAncestor = join(container, "authorized-parent-parked");
+      const replacementAncestor = join(container, "replacement-parent");
+      const replacementRoot = join(replacementAncestor, "project");
+      mkdirSync(root, { recursive: true });
+      mkdirSync(replacementRoot, { recursive: true });
+      const original = unsupportedAuthority(root, "3");
+      const replacement = unsupportedAuthority(replacementRoot, "4");
+      writeFileSync(original.journal, "", { mode: 0o600 });
+      writeFileSync(replacement.journal, "", { mode: 0o600 });
+      const originalBytes = new Map([...original.bytes.keys()].map((path) => [relative(root, path), readFileSync(path)]));
+      const replacementBytes = new Map([...replacement.bytes.keys()].map((path) => [relative(replacementRoot, path), readFileSync(path)]));
+      let restored = false;
+
+      const swapAncestor = () => {
+        renameSync(ancestor, parkedAncestor);
+        renameSync(replacementAncestor, ancestor);
+      };
+      const swapRoot = () => {
+        renameSync(root, parkedRoot);
+        renameSync(replacementRoot, root);
+      };
+      const swapTokenDirectory = () => {
+        const originalDirectory = join(root, ".artifacts", "music-token-secrets");
+        const parkedDirectory = `${originalDirectory}-parked`;
+        const replacementDirectory = join(replacementRoot, ".artifacts", "music-token-secrets");
+        renameSync(originalDirectory, parkedDirectory);
+        renameSync(replacementDirectory, originalDirectory);
+      };
+      try {
+        expect(() => cleanupUnsupported(root, "explorers-music-fixture", {
+          afterAuthorityCaptured: () => {
+            if (swapKind === "root") swapRoot();
+            if (swapKind === "ancestor") swapAncestor();
+          },
+          beforeLeafOpen: (kind) => {
+            if (swapKind === "token-directory" && kind === "token") swapTokenDirectory();
+            if (swapKind === "before-pointer" && kind === "pointer") swapAncestor();
+          },
+        })).toThrow(expect.objectContaining({ code: "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED" }));
+      } finally {
+        if (existsSync(parkedRoot)) {
+          renameSync(root, replacementRoot);
+          renameSync(parkedRoot, root);
+          restored = true;
+        } else if (existsSync(parkedAncestor)) {
+          if (existsSync(ancestor)) renameSync(ancestor, replacementAncestor);
+          renameSync(parkedAncestor, ancestor);
+          restored = true;
+        }
+      }
+      expect(restored || swapKind === "token-directory").toBe(true);
+      for (const [path, bytes] of originalBytes) {
+        const originalPath = swapKind === "token-directory" && path.includes("music-token-secrets")
+          ? join(root, ".artifacts", "music-token-secrets-parked", basename(path))
+          : join(root, path);
+        const expected = swapKind === "before-pointer" && basename(originalPath) !== ".env.music.test"
+          ? Buffer.alloc(0)
+          : bytes;
+        expect(readFileSync(originalPath)).toEqual(expected);
+      }
+      for (const [path, bytes] of replacementBytes) {
+        const replacementPath = swapKind === "token-directory" && path.includes("music-token-secrets")
+          ? join(root, ".artifacts", "music-token-secrets", basename(path))
+          : join(replacementRoot, path);
+        expect(readFileSync(replacementPath)).toEqual(bytes);
+      }
+      if (swapKind === "token-directory") {
+        const active = join(root, ".artifacts", "music-token-secrets");
+        const parked = `${active}-parked`;
+        const replacementDirectory = join(replacementRoot, ".artifacts", "music-token-secrets");
+        renameSync(active, replacementDirectory);
+        renameSync(parked, active);
+      }
+      expect(() => cleanupUnsupported(root, "explorers-music-fixture")).not.toThrow();
+      expect(() => rotate(root, (paths) => environment(root, paths, `retry-swap-${swapKind}`), authorityWithSeed(0x75))).not.toThrow();
+      expect(nonzeroFixtureLeaves(root)).toEqual({ credentials: 3, generations: 1, journals: 0 });
+    },
+    45_000,
+  );
 
   it("contains no raw legacy selection, conversion, or upgrade hook", () => {
     const source = readFileSync(resolve("scripts/music-fixture-secret.ts"), "utf8");

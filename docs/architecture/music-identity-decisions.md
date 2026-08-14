@@ -54,6 +54,17 @@ validate-close-to-commit class unless a separately verified exchange protocol
 is introduced. Disposable fixture compatibility does not justify that
 cross-platform transaction surface.
 
+The guarded cleanup itself is a durable transaction. It records a non-secret
+cleanup intent before the first destructive write and keeps it until every
+recognized secret leaf has been erased through a verified descriptor. The raw
+unsupported pointer is erased last. Commands refuse to create or rotate a
+bundle while the intent is pending, so interruption can only require an
+idempotent retry; it cannot turn partial cleanup into new fixture authority.
+Destructive access remains bound to the authorized repository root and
+artifact-directory identities. Windows holds native no-delete-share handles
+for the full ancestor/directory graph and erases the verified leaf handle;
+POSIX holds the directory and leaf descriptors through truncation and fsync.
+
 ## Revisit when
 
 - Music should be created only on first use instead of after onboarding.

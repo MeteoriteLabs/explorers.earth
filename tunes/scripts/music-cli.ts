@@ -8,6 +8,7 @@ import { OwnedProcessRunner } from "./music-process-runner.ts";
 import { EXPECTED_MUSIC_MIGRATION_ID } from "../shared/music-migration-contract.ts";
 import {
   cleanupUnsupportedFixtureEnvironmentForRebootstrap,
+  FixtureCleanupPendingError,
   FixtureCleanupScopeError,
   FixtureSecretCleanupError,
   FixtureUnsupportedLegacyEnvironmentError,
@@ -280,7 +281,8 @@ function createTestEnv(confirmedProject?: string): void {
   try {
     rotate();
   } catch (error) {
-    if (!(error instanceof FixtureUnsupportedLegacyEnvironmentError) || confirmedProject === undefined) throw error;
+    if (!(error instanceof FixtureUnsupportedLegacyEnvironmentError || error instanceof FixtureCleanupPendingError)
+        || confirmedProject === undefined) throw error;
     cleanupUnsupportedFixtureEnvironmentForRebootstrap(root, confirmedProject);
     rotate();
   }
@@ -431,6 +433,7 @@ async function main(): Promise<number> {
     } catch (error) {
       const context = buildRunContext({ allowInvalidEnvironment: true });
       const safetyFailure = error instanceof FixtureUnsupportedLegacyEnvironmentError
+        || error instanceof FixtureCleanupPendingError
         || error instanceof FixtureCleanupScopeError
         || error instanceof FixtureSecretCleanupError;
       const failure = new MusicCommandError(redactedError(error), "fixture-authority", safetyFailure ? EXIT.safety : EXIT.dependency);

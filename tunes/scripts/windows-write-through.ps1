@@ -1,6 +1,6 @@
 param(
   [Parameter(Mandatory = $true, Position = 0)]
-  [ValidateSet('inspect', 'replace')]
+  [ValidateSet('inspect', 'replace', 'erase')]
   [string]$Operation,
 
   [Parameter(ValueFromRemainingArguments = $true)]
@@ -110,6 +110,10 @@ public static class MusicFixtureNativeAuthority {
         long distance,
         out long newPosition,
         uint moveMethod);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetEndOfFile(SafeFileHandle file);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -376,12 +380,79 @@ public static class MusicFixtureNativeAuthority {
             }
         }
     }
+
+    public static void Erase(string[] args) {
+        if (args == null || args.Length < 13) throw new InvalidOperationException("Native erase arguments are invalid.");
+        string requestedLeaf = Path.GetFullPath(args[0]);
+        string leafName = Path.GetFileName(requestedLeaf);
+        if (String.IsNullOrWhiteSpace(leafName) || leafName.IndexOfAny(new char[] { '\\', '/', '\0', '\r', '\n' }) >= 0) {
+            throw new InvalidOperationException("Native erase leaf name is invalid.");
+        }
+        int directoryCount = Int32.Parse(args[7], System.Globalization.CultureInfo.InvariantCulture);
+        if (directoryCount < 1 || directoryCount > 64 || args.Length != 8 + directoryCount * 5) {
+            throw new InvalidOperationException("Native erase directory authority is invalid.");
+        }
+
+        SafeFileHandle[] directories = new SafeFileHandle[directoryCount];
+        try {
+            string previousFinal = null;
+            for (int index = 0; index < directoryCount; index++) {
+                int offset = 8 + index * 5;
+                string directoryPath = Path.GetFullPath(args[offset]);
+                SafeFileHandle directory = Open(
+                    directoryPath,
+                    FILE_TRAVERSE | FILE_READ_ATTRIBUTES | SYNCHRONIZE,
+                    FILE_SHARE_READ | FILE_SHARE_WRITE,
+                    true);
+                directories[index] = directory;
+                Identity identity = InspectHandle(directory, false, false);
+                RequireDirectory(identity);
+                RequireIdentity(identity, args, offset + 1, false);
+                string finalPath = FinalPath(directory);
+                if (previousFinal != null && !finalPath.StartsWith(
+                    previousFinal.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar,
+                    StringComparison.OrdinalIgnoreCase)) {
+                    throw new InvalidOperationException("Native erase directory graph changed.");
+                }
+                previousFinal = finalPath;
+            }
+
+            SafeFileHandle parent = directories[directoryCount - 1];
+            string lockedLeaf = Path.Combine(FinalPath(parent), leafName);
+            using (SafeFileHandle leaf = Open(
+                lockedLeaf,
+                GENERIC_READ | GENERIC_WRITE | FILE_READ_ATTRIBUTES | SYNCHRONIZE,
+                FILE_SHARE_READ,
+                false)) {
+                RequireIdentity(InspectHandle(leaf, true, true), args, 1, true);
+                long ignored;
+                if (!SetFilePointerEx(leaf, 0, out ignored, 0)) throw NativeFailure("authority erase seek");
+                if (!SetEndOfFile(leaf)) throw NativeFailure("authority erase truncate");
+                if (!FlushFileBuffers(leaf)) throw NativeFailure("authority erase flush");
+                Identity retired = InspectHandle(leaf, true, true);
+                if (retired.VolumeSerial != Hex32(args[1])
+                    || retired.FileId != Hex64(args[2])
+                    || retired.Size != 0) {
+                    throw new InvalidOperationException("Native erased authority changed identity.");
+                }
+            }
+        } finally {
+            for (int index = directories.Length - 1; index >= 0; index--) {
+                if (directories[index] != null) directories[index].Dispose();
+            }
+        }
+    }
 }
 '@
 
 if ($Operation -eq 'inspect') {
   if ($NativeArguments.Count -ne 1) { throw 'Inspect arguments are invalid.' }
   [MusicFixtureNativeAuthority]::InspectJson($NativeArguments[0])
+  exit 0
+}
+
+if ($Operation -eq 'erase') {
+  [MusicFixtureNativeAuthority]::Erase($NativeArguments)
   exit 0
 }
 

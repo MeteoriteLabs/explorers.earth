@@ -340,12 +340,16 @@ npm run music:bootstrap -- --mode fixture --confirm-project explorers-music-fixt
 
 That path first verifies the repository/root ownership boundary, the exact
 fixture project confirmation, and the absence of a non-empty pending rotation
-journal. It descriptor-zeroes the unsupported raw file without interpreting
-its variables, cleans only recognized fixture-owned generated leaves, and then
-creates a fresh four-resource authority bundle. A wrong project, linked or
-unowned path, pending journal, cleanup failure, or concurrent identity change
-fails closed. The ordinary unconfirmed bootstrap remains read-only on raw
-authority.
+journal. Before erasing anything it durably publishes a non-secret cleanup
+intent bound to the captured repository root and artifact-directory identities.
+It descriptor-zeroes recognized fixture-owned generated leaves without
+interpreting variables, erases the unsupported raw pointer last, proves no old
+nonzero fixture artifact remains, and erases the intent only after all verified
+descriptors close successfully. A wrong project, linked or unowned path,
+pending journal or cleanup intent, cleanup failure, or concurrent identity
+change fails closed. The ordinary unconfirmed bootstrap remains read-only on
+raw authority, and rotation refuses a pending cleanup intent before creating a
+candidate.
 
 Bootstrap rotates one four-resource authority bundle: the environment
 generation, Music signing-key leaf, migrator-password leaf, and runtime-password
@@ -398,9 +402,12 @@ Bootstrap/down/reset cleanup never pathname-unlinks an artifact: it
 truncates and durably syncs only a verified descriptor. A truncate, sync, close,
 or digest failure makes the command nonzero with
 `MUSIC_FIXTURE_SECRET_CLEANUP_FAILED` and only the exact random leaf identifier.
-Retry the same guarded fixture cleanup after correcting the filesystem error;
-success leaves a zero-byte non-secret tombstone. Never delete the reported path
-by hand or broaden cleanup outside the fixture project.
+Each destructive open is checked beneath the originally authorized native
+root/ancestor/directory graph; a directory replacement aborts before touching
+the replacement tree. Retry the same guarded fixture cleanup after correcting
+the filesystem error; the durable intent resumes artifacts-first/pointer-last
+cleanup and success leaves zero-byte non-secret tombstones. Never delete the
+reported path by hand or broaden cleanup outside the fixture project.
 
 ## C5 local Music credential keys and emergency revocation
 
