@@ -286,13 +286,20 @@ and revocation-history update/delete, enables the history trigger `ALWAYS`, and
 sets explicit default privileges for objects created by subsequent migrations.
 The one-shot candidate gate mounts both files only for this bounded step. It
 authenticates as the migrator, validates owner and role-bootstrap authority,
-applies the chain, provisions/rotates the separate restricted `LOGIN` through a
+and, before migration, rejects any pre-existing `music_runtime` capability
+whose attributes are unsafe or which is itself a member of another role.
+It then applies the chain, provisions/rotates the separate restricted `LOGIN` through a
 parameterized security-definer function, connects as that login, and executes
 the hostile privilege attestation. The attestation must prove the runtime login
 cannot set `session_replication_role`, write the migration journal, update or
 delete revocation history, alter/drop its trigger, replace its function, own an
-application object, or inherit any role except `music_runtime`. The migration
-attestation file is written only after those checks succeed.
+application object, or inherit any role except `music_runtime`. It recursively
+checks both the login and capability membership closures twice, rejects cycles
+or any direct/transitive role beyond the one login-to-capability edge, and
+executes the allowed capability `SET ROLE` plus a denied migrator-role attempt
+on the real runtime session. Any role-graph change between snapshots fails
+closed. The migration attestation file is written only after those checks
+succeed.
 
 The Tunes application mounts only the runtime credential and independently
 authenticates and checks the restricted role before importing routes or binding
@@ -306,6 +313,18 @@ has exactly the safe attributes above. Missing files, legacy inline
 `DATABASE_URL`/password values, ownership mismatch, unsafe membership, failed
 runtime authentication, or any hostile-attestation success is a hard preflight
 failure before promotion.
+
+Disposable bootstrap writes `.env.music.test` only through a cryptographically
+named exclusive/no-follow mode-0600 descriptor, fsyncs the complete contents,
+and atomically publishes it after rechecking the directory and prior file. A
+failed write leaves the prior environment byte-exact and erases only the pinned
+temporary descriptor. Credential and environment cleanup never pathname-unlinks
+an artifact. It truncates and durably syncs the verified descriptor; a truncate,
+sync, or close failure makes bootstrap/down/reset nonzero with
+`MUSIC_FIXTURE_SECRET_CLEANUP_FAILED` and only the exact random leaf identifier.
+Retry the same guarded fixture cleanup after correcting the filesystem error;
+success leaves a zero-byte non-secret tombstone. Never delete the reported path
+by hand or broaden cleanup outside the fixture project.
 
 ## C5 local Music credential keys and emergency revocation
 

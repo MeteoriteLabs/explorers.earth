@@ -12,6 +12,7 @@ import {
   openSync,
   realpathSync,
   readdirSync,
+  renameSync,
   writeSync,
   type BigIntStats,
 } from "node:fs";
@@ -19,13 +20,37 @@ import { basename, dirname, join, parse, relative, resolve } from "node:path";
 
 export const FIXTURE_MUSIC_TOKEN_SECRET_DIRECTORY_RELATIVE_PATH = join(".artifacts", "music-token-secrets");
 const fixtureTokenName = /^current-[a-f0-9]{32}$/;
+const fixtureEnvironmentTemporaryName = /^\.env\.music\.test\.[a-f0-9]{32}\.tmp$/;
+
+export class FixtureSecretCleanupError extends Error {
+  readonly code = "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED";
+  constructor(readonly targetId: string) {
+    super(`Fixture secret cleanup failed for target ${targetId}`);
+    this.name = "FixtureSecretCleanupError";
+  }
+}
+
+export class FixtureEnvironmentPersistenceError extends Error {
+  readonly code = "MUSIC_FIXTURE_ENVIRONMENT_PUBLISH_FAILED";
+  constructor(readonly targetId: string) {
+    super(`Fixture environment publish failed for target ${targetId}`);
+    this.name = "FixtureEnvironmentPersistenceError";
+  }
+}
 
 export interface FixtureMusicTokenSecretDependencies {
   randomNameBytes?: (size: number) => Buffer;
   open?: (path: string, flags: number, mode: number) => number;
   write?: typeof writeSync;
-  fsync?: typeof fsyncSync;
+  sync?: typeof fsyncSync;
+  truncate?: typeof ftruncateSync;
+  close?: typeof closeSync;
   beforeErase?: () => void;
+}
+
+export interface FixtureEnvironmentPersistenceDependencies extends FixtureMusicTokenSecretDependencies {
+  rename?: typeof renameSync;
+  beforePublish?: () => void;
 }
 
 export function prepareFixtureMusicTokenSecret(
@@ -52,7 +77,7 @@ export function prepareFixtureMusicTokenSecret(
   const flags = constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | noFollow;
   const openFile = dependencies.open ?? openSync;
   const writeFile = dependencies.write ?? writeSync;
-  const syncFile = dependencies.fsync ?? fsyncSync;
+  const syncFile = dependencies.sync ?? fsyncSync;
   let descriptor: number | undefined;
   let opened: BigIntStats | undefined;
   try {
@@ -68,11 +93,11 @@ export function prepareFixtureMusicTokenSecret(
     const afterWrite = fstatSync(descriptor, { bigint: true });
     assertOwnedRegularFile(afterWrite);
     if (!sameIdentity(opened, afterWrite) || afterWrite.size !== BigInt(bytes.length)) throw fixtureSecretError();
-  } catch (error) {
-    if (descriptor !== undefined) eraseDescriptor(descriptor);
+    closeDescriptor(descriptor, dependencies, basename(tokenPath));
+    descriptor = undefined;
+  } catch {
+    if (descriptor !== undefined) eraseAndCloseDescriptor(descriptor, dependencies, basename(tokenPath));
     throw fixtureSecretError();
-  } finally {
-    if (descriptor !== undefined) closeSync(descriptor);
   }
   const final = lstatSync(tokenPath, { bigint: true });
   assertOwnedRegularFile(final);
@@ -106,37 +131,185 @@ export function cleanupFixtureMusicTokenSecret(
   } catch {
     throw fixtureSecretError();
   }
+  let failed = false;
   try {
     const opened = fstatSync(descriptor, { bigint: true });
     assertOwnedRegularFile(opened);
     if (!sameIdentity(before, opened)
         || !sameIdentity(directoryBefore, lstatSync(tokenDirectory, { bigint: true }))) throw fixtureSecretError();
     dependencies.beforeErase?.();
-    eraseDescriptor(descriptor);
-  } finally {
-    closeSync(descriptor);
+    eraseDescriptor(descriptor, dependencies);
+  } catch {
+    failed = true;
   }
+  try {
+    (dependencies.close ?? closeSync)(descriptor);
+  } catch {
+    failed = true;
+  }
+  if (failed) throw new FixtureSecretCleanupError(basename(exactTokenPath));
 }
 
 export function cleanupAllFixtureMusicTokenSecrets(repositoryRoot: string): void {
-  const { tokenDirectory } = fixtureDirectories(repositoryRoot);
-  if (!existsSync(tokenDirectory)) return;
-  assertNoLinkedAncestors(tokenDirectory);
-  assertOwnedDirectory(tokenDirectory);
-  for (const name of readdirSync(tokenDirectory)) {
-    if (fixtureTokenName.test(name)) cleanupFixtureMusicTokenSecret(repositoryRoot, join(tokenDirectory, name));
+  const { root, tokenDirectory } = fixtureDirectories(repositoryRoot);
+  let failure: FixtureSecretCleanupError | undefined;
+  if (existsSync(tokenDirectory)) {
+    assertNoLinkedAncestors(tokenDirectory);
+    assertOwnedDirectory(tokenDirectory);
+    for (const name of readdirSync(tokenDirectory)) {
+      if (!fixtureTokenName.test(name)) continue;
+      try {
+        cleanupFixtureMusicTokenSecret(repositoryRoot, join(tokenDirectory, name));
+      } catch (error) {
+        failure ??= error instanceof FixtureSecretCleanupError
+          ? error
+          : new FixtureSecretCleanupError(name);
+      }
+    }
   }
+  assertNoLinkedAncestors(root);
+  assertOwnedDirectory(root);
+  for (const name of readdirSync(root)) {
+    if (!fixtureEnvironmentTemporaryName.test(name)) continue;
+    try {
+      cleanupFixtureEnvironmentTemporary(repositoryRoot, join(root, name));
+    } catch (error) {
+      failure ??= error instanceof FixtureSecretCleanupError
+        ? error
+        : new FixtureSecretCleanupError(name);
+    }
+  }
+  if (failure) throw failure;
+}
+
+export function cleanupFixtureEnvironmentTemporary(
+  repositoryRoot: string,
+  exactTemporaryPath: string,
+  dependencies: FixtureMusicTokenSecretDependencies = {},
+): void {
+  const root = resolve(repositoryRoot);
+  const absolute = resolve(exactTemporaryPath);
+  const targetId = basename(absolute);
+  if (dirname(absolute) !== root || !fixtureEnvironmentTemporaryName.test(targetId)) {
+    throw new FixtureSecretCleanupError(fixtureEnvironmentTemporaryName.test(targetId) ? targetId : "unknown");
+  }
+  assertNoLinkedAncestors(absolute);
+  assertOwnedDirectory(root);
+  if (!existsSync(absolute)) return;
+  if (!sameResolvedPath(realpathSync(absolute), absolute)) throw new FixtureSecretCleanupError(targetId);
+  const directoryBefore = lstatSync(root, { bigint: true });
+  const before = lstatSync(absolute, { bigint: true });
+  assertOwnedRegularFile(before);
+  const noFollow = process.platform === "win32" ? 0 : constants.O_NOFOLLOW;
+  let descriptor: number;
+  try {
+    descriptor = (dependencies.open ?? openSync)(absolute, constants.O_RDWR | noFollow, 0o600);
+  } catch {
+    throw new FixtureSecretCleanupError(targetId);
+  }
+  let failed = false;
+  try {
+    const opened = fstatSync(descriptor, { bigint: true });
+    assertOwnedRegularFile(opened);
+    if (!sameIdentity(before, opened) || !sameIdentity(directoryBefore, lstatSync(root, { bigint: true }))) {
+      throw new FixtureSecretCleanupError(targetId);
+    }
+    dependencies.beforeErase?.();
+    eraseDescriptor(descriptor, dependencies);
+  } catch {
+    failed = true;
+  }
+  try {
+    (dependencies.close ?? closeSync)(descriptor);
+  } catch {
+    failed = true;
+  }
+  if (failed) throw new FixtureSecretCleanupError(targetId);
 }
 
 export async function withFixtureMusicTokenSecretCleanup<T>(
   repositoryRoot: string,
   exactTokenPath: string,
   action: () => Promise<T>,
+  dependencies: FixtureMusicTokenSecretDependencies = {},
 ): Promise<T> {
   try {
     return await action();
   } finally {
-    cleanupFixtureMusicTokenSecret(repositoryRoot, exactTokenPath);
+    cleanupFixtureMusicTokenSecret(repositoryRoot, exactTokenPath, dependencies);
+  }
+}
+
+export function persistFixtureMusicEnvironment(
+  repositoryRoot: string,
+  contents: string,
+  dependencies: FixtureEnvironmentPersistenceDependencies = {},
+): string {
+  const root = resolve(repositoryRoot);
+  const destination = join(root, ".env.music.test");
+  assertNoLinkedAncestors(destination);
+  assertOwnedDirectory(root);
+  const directoryBefore = lstatSync(root, { bigint: true });
+  const destinationBefore = existsSync(destination) ? lstatSync(destination, { bigint: true }) : undefined;
+  if (destinationBefore) {
+    assertOwnedRegularFile(destinationBefore);
+    if (!sameResolvedPath(realpathSync(destination), destination)) throw fixtureSecretError();
+  }
+  const random = (dependencies.randomNameBytes ?? secureRandomBytes)(16);
+  if (!Buffer.isBuffer(random) || random.length !== 16) throw fixtureEnvironmentError("unknown");
+  const temporaryName = `.env.music.test.${random.toString("hex")}.tmp`;
+  if (!fixtureEnvironmentTemporaryName.test(temporaryName)) throw fixtureEnvironmentError("unknown");
+  const temporary = join(root, temporaryName);
+  const bytes = Buffer.from(contents, "utf8");
+  if (!bytes.length || bytes.length > 65_536) throw fixtureEnvironmentError(temporaryName);
+  const noFollow = process.platform === "win32" ? 0 : constants.O_NOFOLLOW;
+  const flags = constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | noFollow;
+  let descriptor: number | undefined;
+  let opened: BigIntStats | undefined;
+  try {
+    descriptor = (dependencies.open ?? openSync)(temporary, flags, 0o600);
+    opened = fstatSync(descriptor, { bigint: true });
+    assertOwnedRegularFile(opened);
+    if (!sameIdentity(directoryBefore, lstatSync(root, { bigint: true }))) throw fixtureEnvironmentError(temporaryName);
+    assertNoLinkedAncestors(temporary);
+    fchmodSync(descriptor, 0o600);
+    if ((dependencies.write ?? writeSync)(descriptor, bytes, 0, bytes.length, 0) !== bytes.length) {
+      throw fixtureEnvironmentError(temporaryName);
+    }
+    (dependencies.sync ?? fsyncSync)(descriptor);
+    const afterWrite = fstatSync(descriptor, { bigint: true });
+    assertOwnedRegularFile(afterWrite);
+    if (!sameIdentity(opened, afterWrite) || afterWrite.size !== BigInt(bytes.length)) throw fixtureEnvironmentError(temporaryName);
+    dependencies.beforePublish?.();
+    assertOwnedDirectory(root);
+    if (!sameIdentity(directoryBefore, lstatSync(root, { bigint: true }))) throw fixtureEnvironmentError(temporaryName);
+    if (destinationBefore) {
+      const current = lstatSync(destination, { bigint: true });
+      assertOwnedRegularFile(current);
+      if (!sameIdentity(destinationBefore, current)) throw fixtureEnvironmentError(temporaryName);
+    } else if (existsSync(destination)) {
+      throw fixtureEnvironmentError(temporaryName);
+    }
+    (dependencies.rename ?? renameSync)(temporary, destination);
+    const final = lstatSync(destination, { bigint: true });
+    assertOwnedRegularFile(final);
+    if (!sameIdentity(opened, final) || !sameIdentity(directoryBefore, lstatSync(root, { bigint: true }))) {
+      throw fixtureEnvironmentError(temporaryName);
+    }
+    if (process.platform !== "win32" && (final.mode & BigInt(0o077)) !== BigInt(0)) {
+      throw fixtureEnvironmentError(temporaryName);
+    }
+    syncDirectory(root);
+    closeDescriptor(descriptor, dependencies, temporaryName);
+    descriptor = undefined;
+    return destination;
+  } catch (error) {
+    if (descriptor !== undefined) {
+      eraseAndCloseDescriptor(descriptor, dependencies, temporaryName);
+      descriptor = undefined;
+    }
+    if (error instanceof FixtureSecretCleanupError) throw error;
+    throw fixtureEnvironmentError(temporaryName);
   }
 }
 
@@ -219,15 +392,63 @@ function sameResolvedPath(left: string, right: string): boolean {
     : normalizedLeft === normalizedRight;
 }
 
-function eraseDescriptor(descriptor: number): void {
+function eraseDescriptor(descriptor: number, dependencies: FixtureMusicTokenSecretDependencies): void {
+  (dependencies.truncate ?? ftruncateSync)(descriptor, 0);
+  (dependencies.sync ?? fsyncSync)(descriptor);
+}
+
+function eraseAndCloseDescriptor(
+  descriptor: number,
+  dependencies: FixtureMusicTokenSecretDependencies,
+  targetId: string,
+): never | void {
+  let failed = false;
   try {
-    ftruncateSync(descriptor, 0);
+    eraseDescriptor(descriptor, dependencies);
+  } catch {
+    failed = true;
+  }
+  try {
+    (dependencies.close ?? closeSync)(descriptor);
+  } catch {
+    failed = true;
+  }
+  if (failed) throw new FixtureSecretCleanupError(targetId);
+}
+
+function closeDescriptor(
+  descriptor: number,
+  dependencies: FixtureMusicTokenSecretDependencies,
+  targetId: string,
+): void {
+  try {
+    (dependencies.close ?? closeSync)(descriptor);
+  } catch {
+    throw new FixtureSecretCleanupError(targetId);
+  }
+}
+
+function syncDirectory(path: string): void {
+  if (process.platform === "win32") return;
+  const descriptor = openSync(path, constants.O_RDONLY);
+  let failed = false;
+  try {
     fsyncSync(descriptor);
   } catch {
-    // The caller still fails closed. No pathname mutation is attempted.
+    failed = true;
   }
+  try {
+    closeSync(descriptor);
+  } catch {
+    failed = true;
+  }
+  if (failed) throw fixtureEnvironmentError("environment-directory");
 }
 
 function fixtureSecretError(): Error {
   return new Error("Fixture signing key must be an exact owned regular artifact file");
+}
+
+function fixtureEnvironmentError(targetId: string): FixtureEnvironmentPersistenceError {
+  return new FixtureEnvironmentPersistenceError(targetId);
 }

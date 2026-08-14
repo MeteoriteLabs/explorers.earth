@@ -207,4 +207,22 @@ describe("music CLI output contract", () => {
     expect(lines).toHaveLength(1);
     expect(JSON.parse(lines[0])).toMatchObject({ command: "test:smoke", phase: "smoke", status: "failure" });
   });
+
+  it("returns a typed nonzero cleanup failure with only the exact recovery target identifier", () => {
+    // Production break caught: down/reset reports success or only the action
+    // error after a credential erasure syscall fails.
+    const targetId = `.env.music.test.${"a".repeat(32)}.tmp`;
+    const target = join(repositoryRoot, targetId);
+    mkdirSync(target);
+    try {
+      const result = runCli(["down", "--format", "json"]);
+      const envelope = JSON.parse(result.stdout) as { status: string; error?: string };
+      expect(result.exitCode).not.toBe(0);
+      expect(envelope.status).toBe("failure");
+      expect(envelope.error).toContain(targetId);
+      expect(envelope.error).not.toContain(repositoryRoot);
+    } finally {
+      rmSync(target, { recursive: true, force: true });
+    }
+  });
 });

@@ -9,6 +9,25 @@ export interface MusicRuntimeLoginInput {
   password: string;
 }
 
+interface MusicRoleAttributes {
+  canLogin: boolean;
+  inherit: boolean;
+  superuser: boolean;
+  createRole: boolean;
+  createDb: boolean;
+  replication: boolean;
+  bypassRls: boolean;
+}
+
+export interface MusicRuntimeRoleGraph {
+  loginRole: string;
+  loginAttributes?: MusicRoleAttributes;
+  capabilityAttributes?: MusicRoleAttributes;
+  loginClosure: string[];
+  capabilityClosure: string[];
+  cycleDetected: boolean;
+}
+
 export async function assertMusicMigratorAuthority(
   ownerPool: Pick<Pool, "query">,
   input: { runtimeLoginRole: string },
@@ -30,6 +49,123 @@ export async function assertMusicMigratorAuthority(
   }
 }
 
+export async function assertMusicRuntimeCapabilityPreflight(
+  ownerPool: Pick<Pool, "query">,
+): Promise<void> {
+  const existing = (await ownerPool.query<{
+    rolcanlogin: boolean; rolinherit: boolean; rolsuper: boolean; rolcreaterole: boolean;
+    rolcreatedb: boolean; rolreplication: boolean; rolbypassrls: boolean; membership_count: number;
+  }>(`SELECT role.rolcanlogin,role.rolinherit,role.rolsuper,role.rolcreaterole,
+      role.rolcreatedb,role.rolreplication,role.rolbypassrls,
+      (SELECT count(*)::int FROM pg_auth_members membership WHERE membership.member=role.oid) AS membership_count
+    FROM pg_roles role WHERE role.rolname=$1`, [capabilityRole])).rows[0];
+  if (!existing) return;
+  if (existing.rolcanlogin || !existing.rolinherit || existing.rolsuper || existing.rolcreaterole
+      || existing.rolcreatedb || existing.rolreplication || existing.rolbypassrls
+      || existing.membership_count !== 0) {
+    throw new Error("runtime capability role has unsafe attributes or membership");
+  }
+}
+
+export async function readMusicRuntimeRoleGraph(
+  pool: Pick<Pool, "query">,
+  loginRole: string,
+): Promise<MusicRuntimeRoleGraph> {
+  if (!safeRoleName.test(loginRole) || loginRole === capabilityRole || loginRole === "postgres") {
+    throw new Error("runtime database login is invalid");
+  }
+  const rows = (await pool.query<{
+    source_role: string; rolcanlogin: boolean; rolinherit: boolean; rolsuper: boolean;
+    rolcreaterole: boolean; rolcreatedb: boolean; rolreplication: boolean; rolbypassrls: boolean;
+    granted_role: string | null; cycle: boolean;
+  }>(`WITH RECURSIVE music_role_closure(source_oid,granted_oid,path,cycle) AS (
+      SELECT source.oid,membership.roleid,ARRAY[source.oid,membership.roleid],membership.roleid=source.oid
+      FROM pg_roles source
+      JOIN pg_auth_members membership ON membership.member=source.oid
+      WHERE source.rolname IN ($1,$2)
+      UNION ALL
+      SELECT closure.source_oid,membership.roleid,closure.path||membership.roleid,
+        membership.roleid=ANY(closure.path)
+      FROM music_role_closure closure
+      JOIN pg_auth_members membership ON membership.member=closure.granted_oid
+      WHERE NOT closure.cycle
+    )
+    SELECT source.rolname AS source_role,source.rolcanlogin,source.rolinherit,source.rolsuper,
+      source.rolcreaterole,source.rolcreatedb,source.rolreplication,source.rolbypassrls,
+      granted.rolname AS granted_role,COALESCE(closure.cycle,false) AS cycle
+    FROM pg_roles source
+    LEFT JOIN music_role_closure closure ON closure.source_oid=source.oid
+    LEFT JOIN pg_roles granted ON granted.oid=closure.granted_oid
+    WHERE source.rolname IN ($1,$2)
+    ORDER BY source.rolname,granted.rolname`, [loginRole, capabilityRole])).rows;
+  const attributes = (role: string): MusicRoleAttributes | undefined => {
+    const row = rows.find((candidate) => candidate.source_role === role);
+    return row ? {
+      canLogin: row.rolcanlogin,
+      inherit: row.rolinherit,
+      superuser: row.rolsuper,
+      createRole: row.rolcreaterole,
+      createDb: row.rolcreatedb,
+      replication: row.rolreplication,
+      bypassRls: row.rolbypassrls,
+    } : undefined;
+  };
+  const closure = (role: string) => Array.from(new Set(rows
+    .filter((row) => row.source_role === role && row.granted_role)
+    .map((row) => row.granted_role!))).sort();
+  return {
+    loginRole,
+    loginAttributes: attributes(loginRole),
+    capabilityAttributes: attributes(capabilityRole),
+    loginClosure: closure(loginRole),
+    capabilityClosure: closure(capabilityRole),
+    cycleDetected: rows.some((row) => row.cycle),
+  };
+}
+
+export function validateMusicRuntimeRoleGraph(graph: MusicRuntimeRoleGraph): void {
+  const safeAttributes = (attributes: MusicRoleAttributes | undefined, canLogin: boolean) => Boolean(attributes
+    && attributes.canLogin === canLogin && attributes.inherit
+    && !attributes.superuser && !attributes.createRole && !attributes.createDb
+    && !attributes.replication && !attributes.bypassRls);
+  if (!graph || !safeRoleName.test(graph.loginRole) || graph.loginRole === capabilityRole
+      || graph.cycleDetected || !safeAttributes(graph.loginAttributes, true)
+      || !safeAttributes(graph.capabilityAttributes, false)
+      || graph.loginClosure.length !== 1 || graph.loginClosure[0] !== capabilityRole
+      || graph.capabilityClosure.length !== 0) {
+    throw new Error("runtime database role graph has unsafe attributes, cycle, or membership");
+  }
+}
+
+export async function assertMusicRuntimeSetRoleBoundary(
+  runtimePool: Pick<Pool, "connect">,
+  forbiddenRole: string,
+): Promise<void> {
+  if (!safeRoleName.test(forbiddenRole) || forbiddenRole === capabilityRole) {
+    throw new Error("runtime database role boundary is invalid");
+  }
+  const client = await runtimePool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SET LOCAL ROLE music_runtime");
+    const current = (await client.query<{ current_user: string }>("SELECT current_user")).rows[0]?.current_user;
+    if (current !== capabilityRole) throw new Error("runtime database SET ROLE boundary failed");
+    let denied = false;
+    try {
+      await client.query("SELECT set_config('role',$1,true)", [forbiddenRole]);
+    } catch (error) {
+      denied = (error as { code?: unknown }).code === "42501";
+    }
+    await client.query("ROLLBACK").catch(() => undefined);
+    if (!denied) throw new Error("runtime database SET ROLE boundary failed");
+  } catch {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw new Error("runtime database SET ROLE boundary failed");
+  } finally {
+    client.release();
+  }
+}
+
 export async function provisionMusicRuntimeLogin(
   ownerPool: Pick<Pool, "query">,
   input: MusicRuntimeLoginInput,
@@ -46,23 +182,13 @@ export async function verifyMusicRuntimeLogin(
   if (!safeRoleName.test(input.loginRole) || input.loginRole === capabilityRole || input.loginRole === "postgres") {
     throw new Error("runtime database login is invalid");
   }
-  const role = (await ownerPool.query<{
-    rolcanlogin: boolean; rolsuper: boolean; rolcreaterole: boolean; rolcreatedb: boolean;
-    rolreplication: boolean; rolbypassrls: boolean; memberships: string[];
-  }>(`SELECT login.rolcanlogin,login.rolsuper,login.rolcreaterole,login.rolcreatedb,
-      login.rolreplication,login.rolbypassrls,
-      COALESCE(array_agg(granted.rolname::text ORDER BY granted.rolname::text) FILTER (WHERE granted.rolname IS NOT NULL),'{}'::text[]) AS memberships
-    FROM pg_roles login
-    LEFT JOIN pg_auth_members membership ON membership.member=login.oid
-    LEFT JOIN pg_roles granted ON granted.oid=membership.roleid
-    WHERE login.rolname=$1
-    GROUP BY login.rolcanlogin,login.rolsuper,login.rolcreaterole,login.rolcreatedb,login.rolreplication,login.rolbypassrls`,
-  [input.loginRole])).rows[0];
-  if (!role || !role.rolcanlogin || role.rolsuper || role.rolcreaterole || role.rolcreatedb
-      || role.rolreplication || role.rolbypassrls
-      || role.memberships.length !== 1 || role.memberships[0] !== capabilityRole) {
-    throw new Error("runtime database login has unsafe attributes or membership");
+  const initialGraph = await readMusicRuntimeRoleGraph(ownerPool, input.loginRole);
+  validateMusicRuntimeRoleGraph(initialGraph);
+  const ownerRole = (await ownerPool.query<{ current_user: string }>("SELECT current_user")).rows[0]?.current_user;
+  if (!ownerRole || !safeRoleName.test(ownerRole) || ownerRole === capabilityRole || ownerRole === input.loginRole) {
+    throw new Error("runtime database owner role is invalid");
   }
+  await assertMusicRuntimeSetRoleBoundary(runtimePool, ownerRole);
 
   const runtime = (await runtimePool.query<{
     current_user: string; can_read_journal: boolean; can_write_journal: boolean;
@@ -95,6 +221,11 @@ export async function verifyMusicRuntimeLogin(
     "DROP TRIGGER music_credential_revocation_history_immutability ON music_credential_revocation_operations",
     "CREATE OR REPLACE FUNCTION reject_music_credential_revocation_history_mutation() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN OLD; END $$",
   ]) await requirePrivilegeDenial(runtimePool, statement);
+  const finalGraph = await readMusicRuntimeRoleGraph(ownerPool, input.loginRole);
+  validateMusicRuntimeRoleGraph(finalGraph);
+  if (JSON.stringify(finalGraph) !== JSON.stringify(initialGraph)) {
+    throw new Error("runtime database role graph changed during attestation");
+  }
 }
 
 function validateInput(input: MusicRuntimeLoginInput): void {

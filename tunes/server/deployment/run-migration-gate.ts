@@ -2,7 +2,7 @@ import { mkdir, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { resolveMusicDatabaseConnection } from "../config/music-database-config";
 import { migrateMusicDatabase } from "../db/migrate";
-import { assertMusicMigratorAuthority, provisionMusicRuntimeLogin, verifyMusicRuntimeLogin } from "../db/music-runtime-role";
+import { assertMusicMigratorAuthority, assertMusicRuntimeCapabilityPreflight, provisionMusicRuntimeLogin, verifyMusicRuntimeLogin } from "../db/music-runtime-role";
 import { createGateAttestation, CURRENT_MIGRATION_MARKER } from "./music-deployment";
 import { deploymentImageFromEnvironment } from "./music-health";
 
@@ -27,6 +27,7 @@ async function run(): Promise<void> {
   let runtimePool: InstanceType<typeof pg.Pool> | undefined;
   try {
     await assertMusicMigratorAuthority(ownerPool, { runtimeLoginRole: runtime.user });
+    await assertMusicRuntimeCapabilityPreflight(ownerPool);
     const migration = await migrateMusicDatabase(ownerPool);
     if (!migration.ready || migration.currentId !== CURRENT_MIGRATION_MARKER || !migration.currentChecksum) {
       throw new Error("exact migration journal state was not reached");
