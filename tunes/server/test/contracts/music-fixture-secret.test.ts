@@ -235,6 +235,7 @@ describe("fixture environment secret persistence", () => {
     truncate?: typeof ftruncateSync;
     rename?: typeof renameSync;
     beforePublish?: () => void;
+    syncDirectory?: (path: string) => void;
   };
   type Persist = (root: string, contents: string, dependencies?: PersistenceDependencies) => string;
 
@@ -290,6 +291,93 @@ describe("fixture environment secret persistence", () => {
     const temporaryLeaves = readdirSync(root).filter((name) => name.startsWith(".env.music.test.") && name.endsWith(".tmp"));
     expect(temporaryLeaves).toHaveLength(1);
     expect(temporaryLeaves.map((name) => readFileSync(join(root, name), "utf8"))).toEqual([""]);
+  });
+
+  it.each(["close", "directory-sync"] as const)("finishes %s before commit and preserves the prior environment on failure", (failure) => {
+    // Production break caught: close/directory durability runs after rename,
+    // so an injected failure truncates the newly published destination and
+    // has already destroyed the byte-exact prior environment.
+    const root = fixtureRoot();
+    const destination = join(root, ".env.music.test");
+    const previous = "PREVIOUS=byte-exact\n";
+    const secret = "SESSION_SECRET=must-remain-unpublished\n";
+    writeFileSync(destination, previous, { mode: 0o600 });
+    const before = lstatSync(destination);
+    let closeCalls = 0;
+    const dependencies: PersistenceDependencies = {
+      randomNameBytes: () => Buffer.alloc(16, failure === "close" ? 0x68 : 0x69),
+    };
+    if (failure === "close") {
+      dependencies.close = (descriptor) => {
+        closeCalls += 1;
+        if (closeCalls === 1) throw new Error("environment-close-sentinel");
+        return closeSync(descriptor);
+      };
+    } else {
+      dependencies.syncDirectory = () => { throw new Error("environment-directory-sync-sentinel"); };
+    }
+
+    expect(() => requiredPersist()(root, secret, dependencies)).toThrow(/fixture environment|publish|cleanup/i);
+    const after = lstatSync(destination);
+    expect(readFileSync(destination, "utf8")).toBe(previous);
+    expect({ dev: after.dev, ino: after.ino, mode: after.mode }).toEqual({ dev: before.dev, ino: before.ino, mode: before.mode });
+    const temporaryLeaves = readdirSync(root).filter((name) => name.startsWith(".env.music.test.") && name.endsWith(".tmp"));
+    expect(temporaryLeaves).toHaveLength(1);
+    expect(readFileSync(join(root, temporaryLeaves[0]!), "utf8")).toBe("");
+  });
+
+  it("validates the opened temporary inode before commit and never publishes or mutates an attacker replacement", () => {
+    // Production break caught: final temporary-path validation happens only
+    // after rename, when the prior destination has already been replaced.
+    const root = fixtureRoot();
+    const destination = join(root, ".env.music.test");
+    const previous = "PREVIOUS=byte-exact\n";
+    const temporaryName = `.env.music.test.${Buffer.alloc(16, 0x6a).toString("hex")}.tmp`;
+    const temporary = join(root, temporaryName);
+    const displaced = join(root, "opened-temp-displaced-by-attacker");
+    writeFileSync(destination, previous, { mode: 0o600 });
+    const before = lstatSync(destination);
+
+    expect(() => requiredPersist()(root, "SESSION_SECRET=opened-secret-sentinel\n", {
+      randomNameBytes: () => Buffer.alloc(16, 0x6a),
+      beforePublish: () => {
+        renameSync(temporary, displaced);
+        writeFileSync(temporary, "attacker-replacement-must-not-change", { mode: 0o640 });
+      },
+    })).toThrow(/fixture environment|publish|cleanup/i);
+
+    const after = lstatSync(destination);
+    expect(readFileSync(destination, "utf8")).toBe(previous);
+    expect({ dev: after.dev, ino: after.ino, mode: after.mode }).toEqual({ dev: before.dev, ino: before.ino, mode: before.mode });
+    expect(readFileSync(temporary, "utf8")).toBe("attacker-replacement-must-not-change");
+    expect(readFileSync(displaced, "utf8")).toBe("");
+  });
+
+  it("treats an observed completed atomic rename as committed and restarts deterministically", () => {
+    // Production break caught: a rename wrapper that reports uncertainty
+    // after committing routes the published destination through temp erasure.
+    const root = fixtureRoot();
+    const destination = join(root, ".env.music.test");
+    const first = "SESSION_SECRET=first-committed-value\n";
+    const second = "SESSION_SECRET=restart-value\n";
+    writeFileSync(destination, "PREVIOUS=byte-exact\n", { mode: 0o600 });
+
+    const result = requiredPersist()(root, first, {
+      randomNameBytes: () => Buffer.alloc(16, 0x6b),
+      rename: (source, target) => {
+        renameSync(source, target);
+        throw new Error("rename-result-uncertain-after-commit");
+      },
+    });
+    expect(result).toBe(destination);
+    expect(readFileSync(destination, "utf8")).toBe(first);
+    expect(readdirSync(root).filter((name) => name.endsWith(".tmp"))).toHaveLength(0);
+
+    expect(requiredPersist()(root, second, {
+      randomNameBytes: () => Buffer.alloc(16, 0x6c),
+    })).toBe(destination);
+    expect(readFileSync(destination, "utf8")).toBe(second);
+    expect(readdirSync(root).filter((name) => name.endsWith(".tmp"))).toHaveLength(0);
   });
 
   it("rejects an ancestor swap before publish without mutating the outside target or prior environment", () => {

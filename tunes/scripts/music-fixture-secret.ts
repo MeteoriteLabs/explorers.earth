@@ -51,6 +51,7 @@ export interface FixtureMusicTokenSecretDependencies {
 export interface FixtureEnvironmentPersistenceDependencies extends FixtureMusicTokenSecretDependencies {
   rename?: typeof renameSync;
   beforePublish?: () => void;
+  syncDirectory?: (path: string) => void;
 }
 
 export function prepareFixtureMusicTokenSecret(
@@ -283,6 +284,14 @@ export function persistFixtureMusicEnvironment(
     dependencies.beforePublish?.();
     assertOwnedDirectory(root);
     if (!sameIdentity(directoryBefore, lstatSync(root, { bigint: true }))) throw fixtureEnvironmentError(temporaryName);
+    const temporaryBeforeCommit = lstatSync(temporary, { bigint: true });
+    assertOwnedRegularFile(temporaryBeforeCommit);
+    if (!sameIdentity(opened, temporaryBeforeCommit) || temporaryBeforeCommit.size !== BigInt(bytes.length)) {
+      throw fixtureEnvironmentError(temporaryName);
+    }
+    if (process.platform !== "win32" && (temporaryBeforeCommit.mode & BigInt(0o077)) !== BigInt(0)) {
+      throw fixtureEnvironmentError(temporaryName);
+    }
     if (destinationBefore) {
       const current = lstatSync(destination, { bigint: true });
       assertOwnedRegularFile(current);
@@ -290,26 +299,121 @@ export function persistFixtureMusicEnvironment(
     } else if (existsSync(destination)) {
       throw fixtureEnvironmentError(temporaryName);
     }
-    (dependencies.rename ?? renameSync)(temporary, destination);
-    const final = lstatSync(destination, { bigint: true });
-    assertOwnedRegularFile(final);
-    if (!sameIdentity(opened, final) || !sameIdentity(directoryBefore, lstatSync(root, { bigint: true }))) {
-      throw fixtureEnvironmentError(temporaryName);
-    }
-    if (process.platform !== "win32" && (final.mode & BigInt(0o077)) !== BigInt(0)) {
-      throw fixtureEnvironmentError(temporaryName);
-    }
-    syncDirectory(root);
     closeDescriptor(descriptor, dependencies, temporaryName);
     descriptor = undefined;
+
+    // The rename below is the only publication commit point. Every fallible
+    // descriptor, identity, mode, and directory-durability operation is
+    // complete before it; successful rename has no cleanup afterward.
+    const closedTemporary = lstatSync(temporary, { bigint: true });
+    assertOwnedRegularFile(closedTemporary);
+    if (!sameIdentity(opened, closedTemporary) || closedTemporary.size !== BigInt(bytes.length)
+        || !sameIdentity(directoryBefore, lstatSync(root, { bigint: true }))) {
+      throw fixtureEnvironmentError(temporaryName);
+    }
+    if (process.platform !== "win32" && (closedTemporary.mode & BigInt(0o077)) !== BigInt(0)) {
+      throw fixtureEnvironmentError(temporaryName);
+    }
+    (dependencies.syncDirectory ?? syncDirectory)(root);
+    assertDestinationUnchanged(destination, destinationBefore, temporaryName);
+    (dependencies.rename ?? renameSync)(temporary, destination);
     return destination;
   } catch (error) {
     if (descriptor !== undefined) {
-      eraseAndCloseDescriptor(descriptor, dependencies, temporaryName);
+      let cleanupFailure: unknown;
+      try {
+        eraseAndCloseDescriptor(descriptor, dependencies, temporaryName);
+      } catch (cleanupError) {
+        cleanupFailure = cleanupError;
+      }
       descriptor = undefined;
+      if (opened) {
+        try {
+          eraseTemporaryIfExpectedIdentity(root, temporary, directoryBefore, opened, dependencies);
+        } catch (pathCleanupError) {
+          cleanupFailure ??= pathCleanupError;
+        }
+      }
+      if (cleanupFailure) throw cleanupFailure;
+    } else if (opened && observedIdentity(destination, opened) && !existsSync(temporary)) {
+      // A rename adapter may report uncertainty after the atomic rename has
+      // committed. The destination is now authoritative; never truncate it.
+      return destination;
+    } else if (opened) {
+      eraseTemporaryIfExpectedIdentity(root, temporary, directoryBefore, opened, dependencies);
     }
     if (error instanceof FixtureSecretCleanupError) throw error;
     throw fixtureEnvironmentError(temporaryName);
+  }
+}
+
+function assertDestinationUnchanged(
+  destination: string,
+  destinationBefore: BigIntStats | undefined,
+  targetId: string,
+): void {
+  if (destinationBefore) {
+    const current = lstatSync(destination, { bigint: true });
+    assertOwnedRegularFile(current);
+    if (!sameIdentity(destinationBefore, current)) throw fixtureEnvironmentError(targetId);
+  } else if (existsSync(destination)) {
+    throw fixtureEnvironmentError(targetId);
+  }
+}
+
+function eraseTemporaryIfExpectedIdentity(
+  root: string,
+  temporary: string,
+  directoryBefore: BigIntStats,
+  expected: BigIntStats,
+  dependencies: FixtureMusicTokenSecretDependencies,
+): void {
+  if (!existsSync(temporary)) return;
+  const targetId = basename(temporary);
+  let before: BigIntStats;
+  try {
+    assertNoLinkedAncestors(temporary);
+    if (!sameIdentity(directoryBefore, lstatSync(root, { bigint: true }))) return;
+    before = lstatSync(temporary, { bigint: true });
+    assertOwnedRegularFile(before);
+    if (!sameIdentity(expected, before)) return;
+  } catch {
+    throw new FixtureSecretCleanupError(targetId);
+  }
+  const noFollow = process.platform === "win32" ? 0 : constants.O_NOFOLLOW;
+  let cleanupDescriptor: number;
+  try {
+    cleanupDescriptor = (dependencies.open ?? openSync)(temporary, constants.O_RDWR | noFollow, 0o600);
+  } catch {
+    throw new FixtureSecretCleanupError(targetId);
+  }
+  let failed = false;
+  try {
+    const current = fstatSync(cleanupDescriptor, { bigint: true });
+    assertOwnedRegularFile(current);
+    if (!sameIdentity(expected, current)
+        || !sameIdentity(directoryBefore, lstatSync(root, { bigint: true }))) {
+      throw new FixtureSecretCleanupError(targetId);
+    }
+    eraseDescriptor(cleanupDescriptor, dependencies);
+  } catch {
+    failed = true;
+  }
+  try {
+    (dependencies.close ?? closeSync)(cleanupDescriptor);
+  } catch {
+    failed = true;
+  }
+  if (failed) throw new FixtureSecretCleanupError(targetId);
+}
+
+function observedIdentity(path: string, expected: BigIntStats): boolean {
+  try {
+    const current = lstatSync(path, { bigint: true });
+    assertOwnedRegularFile(current);
+    return sameIdentity(current, expected);
+  } catch {
+    return false;
   }
 }
 
