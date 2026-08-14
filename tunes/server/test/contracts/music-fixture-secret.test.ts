@@ -769,6 +769,77 @@ describe("fixture bundle rotation transaction", () => {
       .every((name) => lstatSync(join(root, ".artifacts", "music-rotation-journals", name)).size === 0)).toBe(true);
   });
 
+  it.each(["pathname-swap", "same-inode-rewrite"] as const)(
+    "refuses an early legacy %s before publishing the selected snapshot",
+    (race) => {
+      const root = fixtureRoot();
+      const tokenDirectory = join(root, ".artifacts", "music-token-secrets");
+      mkdirSync(tokenDirectory, { recursive: true });
+      const pathsA: fixtureSecrets.FixtureAuthorityPaths = {
+        tokenPath: join(tokenDirectory, `current-${"a".repeat(32)}`),
+        migratorPasswordPath: join(tokenDirectory, `current-${"b".repeat(32)}`),
+        runtimePasswordPath: join(tokenDirectory, `current-${"c".repeat(32)}`),
+      };
+      const pathsB: fixtureSecrets.FixtureAuthorityPaths = {
+        tokenPath: join(tokenDirectory, `current-${"d".repeat(32)}`),
+        migratorPasswordPath: join(tokenDirectory, `current-${"e".repeat(32)}`),
+        runtimePasswordPath: join(tokenDirectory, `current-${"f".repeat(32)}`),
+      };
+      for (const [index, path] of Object.values(pathsA).entries()) {
+        writeFileSync(path, Buffer.alloc(32, 0x31 + index).toString("base64url"), { mode: 0o600 });
+      }
+      for (const [index, path] of Object.values(pathsB).entries()) {
+        writeFileSync(path, Buffer.alloc(32, 0x51 + index).toString("base64url"), { mode: 0o600 });
+      }
+      const pointer = join(root, ".env.music.test");
+      const parkedA = join(root, "legacy-a-parked");
+      const rawBPath = join(root, "legacy-b-candidate");
+      const rawA = environment(root, pathsA, "legacy-authority-A");
+      const rawB = environment(root, pathsB, "legacy-authority-B");
+      expect(Buffer.byteLength(rawA)).toBe(Buffer.byteLength(rawB));
+      writeFileSync(pointer, rawA, { mode: 0o600 });
+      if (race === "pathname-swap") writeFileSync(rawBPath, rawB, { mode: 0o600 });
+      const credentialSnapshots = [...Object.values(pathsA), ...Object.values(pathsB)]
+        .map((path) => [path, readFileSync(path)] as const);
+
+      const dependencies = authorityWithSeed(race === "pathname-swap" ? 0x15 : 0x16);
+      let injected = false;
+      Object.defineProperty(dependencies, "legacyUpgrade", {
+        configurable: true,
+        get: () => {
+          if (!injected) {
+            injected = true;
+            if (race === "pathname-swap") {
+              renameSync(pointer, parkedA);
+              renameSync(rawBPath, pointer);
+            } else {
+              writeFileSync(pointer, rawB, { mode: 0o600 });
+            }
+          }
+          return { durableReplace: (source: string, destination: string) => renameSync(source, destination) };
+        },
+      });
+
+      expect(() => rotate(root, (paths) => environment(root, paths, "must-not-publish-A"), dependencies))
+        .toThrow(expect.objectContaining({ code: "MUSIC_FIXTURE_ENVIRONMENT_PUBLISH_FAILED" }));
+      expect(readFileSync(pointer, "utf8")).toBe(rawB);
+      if (race === "pathname-swap") expect(readFileSync(parkedA, "utf8")).toBe(rawA);
+      for (const [path, bytes] of credentialSnapshots) expect(readFileSync(path)).toEqual(bytes);
+      expect(readdirSync(join(root, ".artifacts", "music-environment-generations"))
+        .filter((name) => lstatSync(join(root, ".artifacts", "music-environment-generations", name)).size > 0)).toHaveLength(0);
+
+      let retryPriorLength = -1;
+      expect(() => rotate(root, (paths) => environment(root, paths, "current-after-B"), {
+        ...authorityWithSeed(race === "pathname-swap" ? 0x17 : 0x18),
+        afterJournalCommit: () => {
+          retryPriorLength = JSON.parse(readFileSync(activeJournalPath(root), "utf8")).prior.length;
+        },
+      })).not.toThrow();
+      expect(retryPriorLength).toBe(4);
+      expect(fixtureSecrets.readFixtureMusicEnvironment(root)).toContain("ROTATION_LABEL=current-after-B");
+    },
+  );
+
   it("preserves byte-exact raw legacy authority when its precommit upgrade is interrupted and retries", () => {
     const root = fixtureRoot();
     const tokenDirectory = join(root, ".artifacts", "music-token-secrets");
