@@ -4,6 +4,10 @@ import { validateStrapiFixture } from "../../../scripts/music-cli.ts";
 const validIdentity = {
   user: {
     documentId: "fixture-user-document-id",
+    username: "fixture-explorer",
+    email: "fixture-explorer@example.invalid",
+    provider: "local" as const,
+    confirmed: true,
     blocked: false,
     is_subscribed: false,
     accounts: [
@@ -116,6 +120,55 @@ describe("Strapi identity fixture contract", () => {
     expect(() => validateStrapiFixture({ ...base, schemaVersion: "strapi-identity-fixture/v0" } as never, { mode: "fixture" })).toThrow("unsupported fixture schema");
     expect(() => validateStrapiFixture({ ...base, schemaVersion: "strapi-identity-fixture/v1", pagination: { page: 1, pageCount: 1, pageSize: 100 } }, { mode: "fixture" })).toThrow("pagination metadata is truncated");
     expect(() => validateStrapiFixture({ ...base, schemaVersion: "strapi-identity-fixture/v1", serviceToken: { operations: ["DELETE /api/users/1"] } }, { mode: "fixture" })).toThrow("service token operation must be read-only");
+  });
+
+  it("rejects a read-only service token with operations beyond the exact fixture allowlist", () => {
+    const fixture = {
+      schemaVersion: "strapi-identity-fixture/v1" as const,
+      fixtureVersion: "1",
+      identities: [validIdentity],
+      reconciliation: {
+        schemaVersion: "strapi-music-reconciliation/v1",
+        sourceSnapshot: "fixture-snapshot",
+        sourceChecksum: "a".repeat(64),
+      },
+      pagination: { page: 1, pageCount: 1, pageSize: 100, total: 1 },
+      serviceToken: {
+        operations: [
+          "GET /api/users/me",
+          "GET /api/accounts",
+          "GET /api/music-identities",
+          "POST /graphql query:MusicIdentityAbsence",
+          "GET /api/admin/users",
+        ],
+      },
+    };
+    expect(() => validateStrapiFixture(fixture, { mode: "fixture" }))
+      .toThrow("service token operations must match the exact fixture allowlist");
+  });
+
+  it("requires a complete, internally exact reconciliation source fixture", () => {
+    const base = {
+      schemaVersion: "strapi-identity-fixture/v1" as const,
+      fixtureVersion: "1",
+      identities: [validIdentity],
+      reconciliation: {
+        schemaVersion: "strapi-music-reconciliation/v1",
+        sourceSnapshot: "fixture-snapshot",
+        sourceChecksum: "a".repeat(64),
+      },
+      pagination: { page: 1, pageCount: 1, pageSize: 100, total: 1 },
+      serviceToken: { operations: [
+        "GET /api/users/me",
+        "GET /api/accounts",
+        "GET /api/music-identities",
+        "POST /graphql query:MusicIdentityAbsence",
+      ] },
+    };
+    expect(() => validateStrapiFixture({ ...base, reconciliation: undefined }, { mode: "fixture" }))
+      .toThrow("reconciliation fixture metadata is required");
+    expect(() => validateStrapiFixture({ ...base, pagination: { ...base.pagination, total: 2 } }, { mode: "fixture" }))
+      .toThrow("pagination metadata is inconsistent");
   });
 
   it("requires explicit read-only credentials before live validation", () => {

@@ -26,6 +26,10 @@ vi.mock("../storage", async () => {
   } };
 });
 
+vi.mock("../services/musicReconciliationSuspensionListener", () => ({
+  startMusicReconciliationSuspensionListener: vi.fn(async () => ({ stop: vi.fn(async () => undefined) })),
+}));
+
 const { createValidatedApp } = await import("../config/music-startup");
 const { storage } = await import("../storage");
 const { resetContainmentLimiters } = await import("../security-containment");

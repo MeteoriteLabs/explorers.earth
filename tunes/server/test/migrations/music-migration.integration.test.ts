@@ -604,6 +604,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
       databaseQuery: (sql) => pool.query(sql) as never,
       migrationReadiness: () => checkMusicDatabaseReadiness(pool),
       strapiUrl: "http://fixture",
+      strapiReadToken: "fixture-read-only-token",
       fetchImpl: (async (url: string | URL) => new Response(JSON.stringify(String(url).endsWith("/health")
         ? { status: "ready" }
         : { documentId: "person-1", accounts: [{ documentId: "account-1" }] }), { status: 200, headers: { "content-type": "application/json" } })) as typeof fetch,

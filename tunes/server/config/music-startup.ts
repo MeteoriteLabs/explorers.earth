@@ -9,9 +9,7 @@ import {
 import { resolveMusicDatabaseConnection } from "./music-database-config";
 import type { MusicDatabaseConnection } from "./music-database-config";
 import {
-  assertMusicRuntimeSetRoleBoundary,
-  readMusicRuntimeRoleGraph,
-  validateMusicRuntimeRoleGraph,
+  verifyMusicRuntimeDatabaseConnection,
 } from "../db/music-runtime-role";
 
 type Environment = Record<string, string | undefined>;
@@ -37,40 +35,6 @@ async function loadProductionRuntime(): Promise<MusicServerRuntime> {
   return { createApp, setupVite, serveStatic };
 }
 
-async function verifyProductionDatabaseConnection(
-  connection: MusicDatabaseConnection,
-  migratorRole: string,
-): Promise<void> {
-  const { default: pg } = await import("pg");
-  const pool = new pg.Pool({ connectionString: connection.connectionString, max: 1 });
-  try {
-    const initialGraph = await readMusicRuntimeRoleGraph(pool, connection.user);
-    validateMusicRuntimeRoleGraph(initialGraph);
-    const result = await pool.query<{
-      current_user: string;
-      can_create_database_objects: boolean;
-      can_create_schema_objects: boolean;
-    }>(`SELECT current_user,
-        has_database_privilege(current_user,current_database(),'CREATE') AS can_create_database_objects,
-        has_schema_privilege(current_user,'public','CREATE') AS can_create_schema_objects`);
-    const role = result.rows[0];
-    if (!role || role.current_user !== connection.user
-        || role.can_create_database_objects || role.can_create_schema_objects) {
-      throw new Error("runtime database authentication or role attestation failed");
-    }
-    await assertMusicRuntimeSetRoleBoundary(pool, migratorRole);
-    const finalGraph = await readMusicRuntimeRoleGraph(pool, connection.user);
-    validateMusicRuntimeRoleGraph(finalGraph);
-    if (JSON.stringify(finalGraph) !== JSON.stringify(initialGraph)) {
-      throw new Error("runtime database authentication or role attestation failed");
-    }
-  } catch {
-    throw new Error("runtime database authentication or role attestation failed");
-  } finally {
-    await pool.end().catch(() => undefined);
-  }
-}
-
 /** The only startup discriminator. No routes, storage, or listener are loaded before it succeeds. */
 export async function validateMusicStartupEnvironment(
   environment: Environment,
@@ -81,7 +45,7 @@ export async function validateMusicStartupEnvironment(
   const config = await resolveMusicIdentityRuntimeConfig(environment, dependencies);
   const database = await resolveMusicDatabaseConnection(environment, "runtime", dependencies);
   if (dependencies.verifyDatabaseConnection) await dependencies.verifyDatabaseConnection(database);
-  else await verifyProductionDatabaseConnection(database, environment.MUSIC_DATABASE_MIGRATOR_USER ?? "");
+  else await verifyMusicRuntimeDatabaseConnection(database, environment.MUSIC_DATABASE_MIGRATOR_USER ?? "");
   environment.DATABASE_URL = database.connectionString;
   return config;
 }

@@ -30,15 +30,17 @@ import {
   startMusicLifecycleWorker,
   type AuthoritativeAbsence,
 } from "../workers/musicLifecycleWorker";
+import { startMusicReconciliationSuspensionListener } from "../services/musicReconciliationSuspensionListener";
 
-export function registerRoutes(
+export async function registerRoutes(
   app: Express,
   _storage: IStorage,
   musicConfig: Omit<MusicIdentityRuntimeConfig, "lifecycleProofToken">,
   lifecycleAbsenceProof: {
     proveAbsence(identity: { userDocumentId: string; accountDocumentId: string }): Promise<AuthoritativeAbsence>;
+    fixtureReadToken?: string;
   },
-): Server {
+): Promise<Server> {
   if (process.env.MUSIC_DEPLOYMENT_HEALTH_ENABLED === "true") {
     setupMusicHealthRoutes(app, { pool });
   }
@@ -47,6 +49,7 @@ export function registerRoutes(
     databaseQuery: (sql) => pool.query(sql),
     migrationReadiness: () => checkMusicDatabaseReadiness(pool),
     strapiUrl: process.env.STRAPI_URL ?? "",
+    strapiReadToken: lifecycleAbsenceProof.fixtureReadToken ?? "",
     fetchImpl: fetch,
   });
   setupNativeSessionContainment(app);
@@ -117,6 +120,30 @@ export function registerRoutes(
     resolveGuestCapability: (capability) => musicDomain.resolveGuestSocketAuthority(capability),
     ownerRegistry: ownerSocketRegistry,
   });
+  let suspensionSafetyFailed = false;
+  const failClosedSuspensionSafety = (): void => {
+    if (suspensionSafetyFailed) return;
+    suspensionSafetyFailed = true;
+    const wasListening = server.listening;
+    if (wasListening) server.close();
+    void ownerSocketRegistry.disconnectAllSockets().catch(() => {
+      console.error("music_reconciliation_socket_shutdown_failed");
+    }).finally(() => {
+      if (!wasListening) server.emit("error", new Error("Music reconciliation suspension safety failed"));
+    });
+  };
+  const suspensionListener = await startMusicReconciliationSuspensionListener({
+    pool,
+    disconnectOwner: (musicUserId) => ownerSocketRegistry.disconnectOwner(musicUserId),
+    onDisconnectError: () => {
+      console.error("music_reconciliation_owner_disconnect_failed");
+      failClosedSuspensionSafety();
+    },
+    onFatal: () => {
+      console.error("music_reconciliation_suspension_listener_failed");
+      failClosedSuspensionSafety();
+    },
+  });
   setupSeoRoutes(app, { listPublishedMusicPlaylists: () => musicDomain.listPublishedMusicPlaylists() });
   const lifecycleWorker = startMusicLifecycleWorker({
     intervalMs: 30_000,
@@ -131,7 +158,12 @@ export function registerRoutes(
       if (result.claimed > 0) console.info("music_lifecycle_worker", result);
     },
   });
-  server.once("close", () => lifecycleWorker.stop());
+  server.once("close", () => {
+    lifecycleWorker.stop();
+    void suspensionListener.stop().catch(() => {
+      console.error("music_reconciliation_suspension_listener_stop_failed");
+    });
+  });
 
   // iTunes Search Proxy
   app.get("/itunes-api/search", async (req, res) => {

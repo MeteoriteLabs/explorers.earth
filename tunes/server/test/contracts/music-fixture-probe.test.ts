@@ -11,9 +11,15 @@ describe("actual Tunes application fixture probe", () => {
   it("mediates one request across the Strapi and PostgreSQL boundaries", async () => {
     // Production break caught: smoke hits a renamed fixture server and never
     // executes a Tunes application route, Strapi fetch, or database query.
+    const upstreamRequests: Array<{ url?: string; authorization?: string }> = [];
     const strapi = createServer((incoming, response) => {
+      upstreamRequests.push({ url: incoming.url, authorization: incoming.headers.authorization });
       response.setHeader("content-type", "application/json");
       if (incoming.url === "/health") return response.end(JSON.stringify({ status: "ready" }));
+      if (incoming.headers.authorization !== "Bearer fixture-read-only-token") {
+        response.statusCode = 401;
+        return response.end(JSON.stringify({ error: "unauthorized" }));
+      }
       return response.end(JSON.stringify({
         documentId: "fixture-person",
         blocked: false,
@@ -33,11 +39,16 @@ describe("actual Tunes application fixture probe", () => {
       databaseQuery: async (sql) => { queries.push(sql); return { rows: [{ database: "music_fixture", ready: 1 }] }; },
       migrationReadiness: async () => ({ ready: true, currentId: "0010_least_privilege_runtime_role" }),
       strapiUrl: `http://127.0.0.1:${address.port}`,
+      strapiReadToken: "fixture-read-only-token",
       fetchImpl: fetch,
     });
 
     const response = await request(app).get("/api/music-fixture/readiness").expect(200);
     expect(queries).toEqual(["SELECT current_database() AS database, 1 AS ready"]);
+    expect(upstreamRequests).toEqual([
+      { url: "/health", authorization: undefined },
+      { url: "/api/users/me", authorization: "Bearer fixture-read-only-token" },
+    ]);
     expect(response.body).toMatchObject({
       status: "ready",
       application: "tunes",
@@ -56,5 +67,18 @@ describe("actual Tunes application fixture probe", () => {
       strapiUrl: "http://127.0.0.1:1",
       fetchImpl: fetch,
     } as never)).toThrow("only be registered in fixture mode");
+  });
+
+  it("fails closed before registration without a valid fixture read token", () => {
+    for (const strapiReadToken of ["", " token", "token\n"]) {
+      expect(() => setupMusicFixtureProbeRoute(express(), {
+        mode: "fixture",
+        databaseQuery: async () => ({ rows: [] }),
+        migrationReadiness: async () => ({ ready: false }),
+        strapiUrl: "http://127.0.0.1:1",
+        strapiReadToken,
+        fetchImpl: fetch,
+      })).toThrow("requires a valid read-only Strapi token");
+    }
   });
 });

@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { parseMusicEnvironment } from "../../config/music-environment.ts";
+import { normalizeMusicFixtureChildEnvironment, parseMusicEnvironment } from "../../config/music-environment.ts";
 
 const validEnvironment = {
   MUSIC_MODE: "fixture",
   MUSIC_FIXTURE_VERSION: "1",
+  MUSIC_STRAPI_HOST_PORT: "51337",
   STRAPI_FIXTURE_URL: "http://127.0.0.1:51337",
   DATABASE_URL_TEST: "postgresql://music_migrator@127.0.0.1:55432/music_fixture",
   MUSIC_DATABASE_HOST: "postgres",
@@ -59,9 +60,31 @@ describe("server-side Music environment contract", () => {
   it("rejects a non-loopback Strapi fixture URL", () => {
     // Production break caught: fixture mode can silently call a live Strapi
     // host even though its database remains disposable.
-    expect(() => parseMusicEnvironment({ ...validEnvironment, STRAPI_FIXTURE_URL: "https://strapi.example.com" })).toThrow(
-      "STRAPI_FIXTURE_URL must exactly target http://127.0.0.1:51337",
-    );
+    expect(() => parseMusicEnvironment({ ...validEnvironment, STRAPI_FIXTURE_URL: "https://strapi.example.com" })).toThrow(/loopback Strapi fixture/i);
+  });
+
+  it("binds a distinct explicit loopback Strapi port into authenticated fixture authority", () => {
+    expect(parseMusicEnvironment({
+      ...validEnvironment,
+      MUSIC_STRAPI_HOST_PORT: "52359",
+      STRAPI_FIXTURE_URL: "http://127.0.0.1:52359",
+    })).toMatchObject({ MUSIC_STRAPI_HOST_PORT: 52359, STRAPI_FIXTURE_URL: "http://127.0.0.1:52359" });
+    for (const invalid of [
+      { MUSIC_STRAPI_HOST_PORT: "52359", STRAPI_FIXTURE_URL: "http://127.0.0.1:51337" },
+      { MUSIC_STRAPI_HOST_PORT: "55000", STRAPI_FIXTURE_URL: "http://127.0.0.1:55000" },
+      { MUSIC_STRAPI_HOST_PORT: "52359", STRAPI_FIXTURE_URL: "http://127.0.0.2:52359" },
+      { MUSIC_STRAPI_HOST_PORT: "", STRAPI_FIXTURE_URL: "http://127.0.0.1:51337" },
+    ]) expect(() => parseMusicEnvironment({ ...validEnvironment, ...invalid })).toThrow();
+  });
+
+  it("normalizes legacy authenticated fixture authority ahead of ambient child overrides", () => {
+    const { MUSIC_STRAPI_HOST_PORT: _legacyMissing, ...legacyEnvironment } = validEnvironment;
+    const normalized = normalizeMusicFixtureChildEnvironment(legacyEnvironment);
+    expect(normalized).toMatchObject({
+      MUSIC_STRAPI_HOST_PORT: "51337",
+      STRAPI_FIXTURE_URL: "http://127.0.0.1:51337",
+    });
+    expect({ MUSIC_STRAPI_HOST_PORT: "52359", ...normalized }.MUSIC_STRAPI_HOST_PORT).toBe("51337");
   });
 
   it("rejects out-of-range controls and unsafe recorded gates", () => {

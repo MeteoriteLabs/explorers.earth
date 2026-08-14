@@ -10,6 +10,9 @@ Status: **BLOCKED; no production probe was attempted.** Production mutation is
 forbidden in C0. No safe separately supplied read-only Strapi or database
 credential was available in this worktree, so no topology, row-count,
 container/volume, access-log, backup timestamp, or restore result is claimed.
+No direct/session-affine PostgreSQL and dedicated `LISTEN` capacity proof was
+available either; transaction pooling or a stateless HTTP database transport
+cannot satisfy the reconciliation advisory-lock/listener contract.
 
 The repository's root Compose file describes a production-shaped PostgreSQL 15
 service (`db`) with volume `postgres-data`, a Tunes service whose

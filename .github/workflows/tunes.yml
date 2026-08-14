@@ -4,18 +4,24 @@ on:
   pull_request:
     paths:
       - tunes/**
+      - .env.music.example
+      - .env.music.test.example
       - docker-compose.yml
       - docker-compose.music-test.yml
       - .github/workflows/tunes.yml
       - .github/workflows/tunes-deploy.yml
+      - .github/workflows/music-reconcile.yml
   push:
     branches: [main]
     paths:
       - tunes/**
+      - .env.music.example
+      - .env.music.test.example
       - docker-compose.yml
       - docker-compose.music-test.yml
       - .github/workflows/tunes.yml
       - .github/workflows/tunes-deploy.yml
+      - .github/workflows/music-reconcile.yml
   workflow_dispatch:
 
 permissions:
@@ -63,11 +69,14 @@ jobs:
         working-directory: tunes
         env:
           MUSIC_C3_POSTGRES_TEST: "1"
+          MUSIC_C8_POSTGRES_TEST: "1"
           DATABASE_URL_TEST: postgresql://music_migrator:music@127.0.0.1:55432/music_fixture
         run: |
           npm ci --legacy-peer-deps
           npm test
           npm run test:integration
+          npm run test:music-c8:coverage
+          npm run test:music-c8:repository-coverage
           npm run music:types:scoped
           npm run music:types:baseline
       - uses: docker/setup-buildx-action@v3

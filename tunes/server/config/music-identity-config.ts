@@ -49,6 +49,13 @@ export interface MusicIdentityRuntimeConfig {
   lifecycleProofToken: string;
 }
 
+export interface MusicIdentityTransportConfig {
+  strapiOrigin: string;
+  pinnedAddresses: string[];
+  lookup: MusicIdentityRuntimeConfig["lookup"];
+  fetchImpl: typeof fetch;
+}
+
 const integerBounds = {
   MUSIC_IDENTITY_MAX_CONCURRENCY: [1, 32],
   MUSIC_IDENTITY_MAX_PENDING: [1, 128],
@@ -100,34 +107,20 @@ export async function resolveMusicIdentityRuntimeConfig(
   const musicToken = await resolveMusicTokenConfiguration(environment, mode, dependencies);
   const lifecycleProofToken = await resolveLifecycleProofToken(environment, mode, dependencies);
 
-  let pinnedAddresses: string[] = [];
-  let fetchImpl: typeof fetch = fetch;
-  if (mode === "fixture") {
-    const fixtureOrigin = parseOrigin(environment.MUSIC_FIXTURE_STRAPI_ORIGIN, "MUSIC_FIXTURE_STRAPI_ORIGIN");
-    if (url.origin !== fixtureOrigin.origin) throw new Error("STRAPI_URL must equal the exact fixture origin");
-  } else {
-    if (url.protocol !== "https:") throw new Error("live STRAPI_URL must be an HTTPS origin");
-    const allowed = parseAllowedOrigins(environment.MUSIC_STRAPI_ALLOWED_ORIGINS);
-    if (!allowed.includes(url.origin)) throw new Error("STRAPI_URL origin is not allowlisted");
-    const hostname = unbracket(url.hostname);
-    const resolveAddresses = dependencies.resolveAddresses ?? defaultResolver;
-    pinnedAddresses = uniqueAddresses(isIP(hostname) ? [hostname] : await resolveAddresses(hostname));
-    if (pinnedAddresses.length === 0 || pinnedAddresses.some((address) => !isPublicAddress(address))) {
-      throw new Error("live STRAPI_URL must resolve only to public addresses");
-    }
-    fetchImpl = createPinnedHttpsFetch(url.origin, hostname, pinnedAddresses, controls.MUSIC_IDENTITY_MAX_CONCURRENCY);
-  }
-  const lookup = createPinnedLookup(unbracket(url.hostname), pinnedAddresses);
+  const transport = await resolveTransport(
+    environment,
+    mode,
+    url,
+    controls.MUSIC_IDENTITY_MAX_CONCURRENCY,
+    dependencies,
+  );
   return {
     mode,
-    strapiOrigin: url.origin,
+    ...transport,
     trustedProxyHops,
     trustedProxyAddress,
     isTrustedProxy: (peerAddress) => trustedProxyAddress !== undefined
       && normalizePeerAddress(peerAddress) === trustedProxyAddress,
-    pinnedAddresses,
-    lookup,
-    fetchImpl,
     maxConcurrency: controls.MUSIC_IDENTITY_MAX_CONCURRENCY,
     maxPending: controls.MUSIC_IDENTITY_MAX_PENDING,
     maxInflight: controls.MUSIC_IDENTITY_MAX_INFLIGHT,
@@ -143,6 +136,54 @@ export async function resolveMusicIdentityRuntimeConfig(
     rateMaxEntries: controls.MUSIC_IDENTITY_RATE_MAX_ENTRIES,
     musicToken,
     lifecycleProofToken,
+  };
+}
+
+/** Resolves only the SSRF-resistant Strapi transport used by read-only commands. */
+export async function resolveMusicIdentityTransportConfig(
+  environment: Environment,
+  dependencies: MusicIdentityConfigDependencies = {},
+): Promise<MusicIdentityTransportConfig> {
+  const mode = environment.MUSIC_MODE;
+  if (mode !== "live" && mode !== "fixture") throw new Error("MUSIC_MODE must be live or fixture");
+  const url = parseOrigin(environment.STRAPI_URL, "STRAPI_URL");
+  const maxConcurrency = parseBoundedInteger(
+    "MUSIC_IDENTITY_MAX_CONCURRENCY",
+    environment.MUSIC_IDENTITY_MAX_CONCURRENCY ?? defaults.MUSIC_IDENTITY_MAX_CONCURRENCY,
+    ...integerBounds.MUSIC_IDENTITY_MAX_CONCURRENCY,
+  );
+  return resolveTransport(environment, mode, url, maxConcurrency, dependencies);
+}
+
+async function resolveTransport(
+  environment: Environment,
+  mode: "live" | "fixture",
+  url: URL,
+  maxConcurrency: number,
+  dependencies: MusicIdentityConfigDependencies,
+): Promise<MusicIdentityTransportConfig> {
+  let pinnedAddresses: string[] = [];
+  let fetchImpl: typeof fetch = fetch;
+  if (mode === "fixture") {
+    const fixtureOrigin = parseOrigin(environment.MUSIC_FIXTURE_STRAPI_ORIGIN, "MUSIC_FIXTURE_STRAPI_ORIGIN");
+    if (url.origin !== fixtureOrigin.origin) throw new Error("STRAPI_URL must equal the exact fixture origin");
+  } else {
+    if (url.protocol !== "https:") throw new Error("live STRAPI_URL must be an HTTPS origin");
+    const allowed = parseAllowedOrigins(environment.MUSIC_STRAPI_ALLOWED_ORIGINS);
+    if (!allowed.includes(url.origin)) throw new Error("STRAPI_URL origin is not allowlisted");
+    const hostname = unbracket(url.hostname);
+    const resolveAddresses = dependencies.resolveAddresses ?? defaultResolver;
+    pinnedAddresses = uniqueAddresses(isIP(hostname) ? [hostname] : await resolveAddresses(hostname));
+    if (pinnedAddresses.length === 0 || pinnedAddresses.some((address) => !isPublicAddress(address))) {
+      throw new Error("live STRAPI_URL must resolve only to public addresses");
+    }
+    fetchImpl = createPinnedHttpsFetch(url.origin, hostname, pinnedAddresses, maxConcurrency);
+  }
+  return {
+    strapiOrigin: url.origin,
+    pinnedAddresses,
+    lookup: createPinnedLookup(unbracket(url.hostname), pinnedAddresses),
+    fetchImpl,
   };
 }
 

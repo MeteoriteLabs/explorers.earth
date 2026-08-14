@@ -13,6 +13,12 @@ describe("canonical C5 owner and guest capability socket", () => {
   let pauseAdmission = false;
   let admissionStarted: (() => void) | undefined;
   let resumeAdmission: (() => void) | undefined;
+  let pauseOwnerHandshake = false;
+  let ownerHandshakeStarted: (() => void) | undefined;
+  let resumeOwnerHandshake: (() => void) | undefined;
+  let pauseGuestHandshake = false;
+  let guestHandshakeStarted: (() => void) | undefined;
+  let resumeGuestHandshake: (() => void) | undefined;
   let server: ReturnType<typeof createMusicSocketServer>;
   const ownerRegistry = new MusicOwnerSocketRegistry();
   let url: string;
@@ -23,6 +29,11 @@ describe("canonical C5 owner and guest capability socket", () => {
       ownerCredentials: {
         handshake: async ({ token }) => {
           if (token !== "aaa.bbb.ccc") throw new MusicPrincipalError("TOKEN_INVALID", 401, "invalid");
+          if (pauseOwnerHandshake) {
+            pauseOwnerHandshake = false;
+            ownerHandshakeStarted?.();
+            await new Promise<void>((resolve) => { resumeOwnerHandshake = resolve; });
+          }
           if (expired) throw new MusicPrincipalError("TOKEN_EXPIRED", 401, "expired");
           return { token, principal: { musicUserId: 41, subject: "owner-41", accountDocumentId: "account", sessionVersion: 2 } };
         },
@@ -37,6 +48,11 @@ describe("canonical C5 owner and guest capability socket", () => {
         },
       },
       resolveGuestCapability: async (candidate) => {
+        if (pauseGuestHandshake) {
+          pauseGuestHandshake = false;
+          guestHandshakeStarted?.();
+          await new Promise<void>((resolve) => { resumeGuestHandshake = resolve; });
+        }
         if (internalFailure) throw new Error("repository detail");
         return candidate === capability && !revoked
           ? { musicUserId: 41, active: true, allowSongRequests: true }
@@ -63,6 +79,12 @@ describe("canonical C5 owner and guest capability socket", () => {
     pauseAdmission = false;
     admissionStarted = undefined;
     resumeAdmission = undefined;
+    pauseOwnerHandshake = false;
+    ownerHandshakeStarted = undefined;
+    resumeOwnerHandshake = undefined;
+    pauseGuestHandshake = false;
+    guestHandshakeStarted = undefined;
+    resumeGuestHandshake = undefined;
   });
 
   function connect(auth: Record<string, string>, origin = "https://explorers.example") {
@@ -200,5 +222,32 @@ describe("canonical C5 owner and guest capability socket", () => {
     reconnected.emit("guest_request", { type: "song", externalId: "yt:again" });
     await expect(rateFailure).resolves.toEqual({ version: "music-error/v1", error: expect.objectContaining({ code: "RATE_LIMITED" }) });
     expect(vi.isMockFunction(server.listen)).toBe(false);
+  });
+
+  it("closes global admission before disconnecting sockets when suspension-listener safety fails", async () => {
+    // Break caught: a handshake awaiting credential resolution survives the one-time Socket.IO disconnect sweep.
+    const owner = await connect({ token: "aaa.bbb.ccc" });
+    const guest = await connect({ guestCapability: capability });
+    pauseOwnerHandshake = true;
+    pauseGuestHandshake = true;
+    const ownerStarted = new Promise<void>((resolve) => { ownerHandshakeStarted = resolve; });
+    const guestStarted = new Promise<void>((resolve) => { guestHandshakeStarted = resolve; });
+    const pendingOwner = connect({ token: "aaa.bbb.ccc" });
+    const pendingGuest = connect({ guestCapability: capability });
+    await Promise.all([ownerStarted, guestStarted]);
+    const disconnected = Promise.all([
+      new Promise<void>((resolve) => owner.once("disconnect", () => resolve())),
+      new Promise<void>((resolve) => guest.once("disconnect", () => resolve())),
+    ]);
+
+    await ownerRegistry.disconnectAllSockets();
+    resumeOwnerHandshake?.();
+    resumeGuestHandshake?.();
+
+    await disconnected;
+    await expect(pendingOwner).rejects.toMatchObject({ data: { error: { code: "TOKEN_INVALID" } } });
+    await expect(pendingGuest).rejects.toMatchObject({ data: { error: { code: "TOKEN_INVALID" } } });
+    expect(owner.connected).toBe(false);
+    expect(guest.connected).toBe(false);
   });
 });

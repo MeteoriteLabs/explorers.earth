@@ -46,6 +46,9 @@ export function inventoryRuntimeTables(repositoryRoot: string): RuntimeTableInve
       );
       for (const match of statement.matchAll(/\b(?:DELETE\s+FROM|FROM|JOIN|UPDATE(?!\s+OF\b)|INTO)\s+["']?([a-z_][a-z0-9_]*)["']?/gi)) {
         const table = match[1].toLowerCase();
+        const statementOffset = statement.lastIndexOf(";", match.index ?? 0) + 1;
+        const statementPrefix = statement.slice(statementOffset, match.index);
+        if (/^\s*(?:GRANT|REVOKE)\b/i.test(statementPrefix)) continue;
         const following = statement.slice((match.index ?? 0) + match[0].length).trimStart();
         if (!commonTableExpressions.has(table) && !following.startsWith("(")) rawSqlTables.add(table);
       }

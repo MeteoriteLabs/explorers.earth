@@ -28,6 +28,46 @@ export interface MusicRuntimeRoleGraph {
   cycleDetected: boolean;
 }
 
+export interface MusicRuntimeDatabaseConnection {
+  connectionString: string;
+  user: string;
+}
+
+export async function verifyMusicRuntimeDatabaseConnection(
+  connection: MusicRuntimeDatabaseConnection,
+  migratorRole: string,
+): Promise<void> {
+  const { default: pg } = await import("pg");
+  const pool = new pg.Pool({ connectionString: connection.connectionString, max: 1 });
+  try {
+    const initialGraph = await readMusicRuntimeRoleGraph(pool, connection.user);
+    validateMusicRuntimeRoleGraph(initialGraph);
+    const result = await pool.query<{
+      current_user: string;
+      can_create_database_objects: boolean;
+      can_create_schema_objects: boolean;
+    }>(`SELECT current_user,
+        has_database_privilege(current_user,current_database(),'CREATE') AS can_create_database_objects,
+        has_schema_privilege(current_user,'public','CREATE') AS can_create_schema_objects`);
+    const role = result.rows[0];
+    if (!role || role.current_user !== connection.user
+        || role.can_create_database_objects || role.can_create_schema_objects) {
+      throw new Error("runtime database authentication or role attestation failed");
+    }
+    await assertMusicRuntimeSetRoleBoundary(pool, migratorRole);
+    await assertMusicRuntimeDirectPrivilegeBoundary(pool, connection.user);
+    const finalGraph = await readMusicRuntimeRoleGraph(pool, connection.user);
+    validateMusicRuntimeRoleGraph(finalGraph);
+    if (JSON.stringify(finalGraph) !== JSON.stringify(initialGraph)) {
+      throw new Error("runtime database authentication or role attestation failed");
+    }
+  } catch {
+    throw new Error("runtime database authentication or role attestation failed");
+  } finally {
+    await pool.end().catch(() => undefined);
+  }
+}
+
 export async function assertMusicMigratorAuthority(
   ownerPool: Pick<Pool, "query">,
   input: { runtimeLoginRole: string },
@@ -189,7 +229,18 @@ export async function verifyMusicRuntimeLogin(
     throw new Error("runtime database owner role is invalid");
   }
   await assertMusicRuntimeSetRoleBoundary(runtimePool, ownerRole);
+  await assertMusicRuntimeDirectPrivilegeBoundary(runtimePool, input.loginRole);
+  const finalGraph = await readMusicRuntimeRoleGraph(ownerPool, input.loginRole);
+  validateMusicRuntimeRoleGraph(finalGraph);
+  if (JSON.stringify(finalGraph) !== JSON.stringify(initialGraph)) {
+    throw new Error("runtime database role graph changed during attestation");
+  }
+}
 
+async function assertMusicRuntimeDirectPrivilegeBoundary(
+  runtimePool: Pick<Pool, "query" | "connect">,
+  loginRole: string,
+): Promise<void> {
   const runtime = (await runtimePool.query<{
     current_user: string; can_read_journal: boolean; can_write_journal: boolean;
     can_insert_history: boolean; can_update_history: boolean; can_delete_history: boolean;
@@ -205,7 +256,7 @@ export async function verifyMusicRuntimeLogin(
         OR EXISTS (SELECT 1 FROM pg_namespace WHERE nspname='public' AND nspowner=(SELECT oid FROM pg_roles WHERE rolname=current_user))
         OR EXISTS (SELECT 1 FROM pg_class WHERE relnamespace='public'::regnamespace AND relowner=(SELECT oid FROM pg_roles WHERE rolname=current_user))
         OR EXISTS (SELECT 1 FROM pg_proc WHERE pronamespace='public'::regnamespace AND proowner=(SELECT oid FROM pg_roles WHERE rolname=current_user)) AS owns_authority_object`)).rows[0];
-  if (!runtime || runtime.current_user !== input.loginRole || !runtime.can_read_journal || runtime.can_write_journal
+  if (!runtime || runtime.current_user !== loginRole || !runtime.can_read_journal || runtime.can_write_journal
       || !runtime.can_insert_history || runtime.can_update_history || runtime.can_delete_history
       || runtime.can_provision_login || runtime.owns_authority_object) {
     throw new Error("runtime database privilege matrix is unsafe");
@@ -221,11 +272,6 @@ export async function verifyMusicRuntimeLogin(
     "DROP TRIGGER music_credential_revocation_history_immutability ON music_credential_revocation_operations",
     "CREATE OR REPLACE FUNCTION reject_music_credential_revocation_history_mutation() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN OLD; END $$",
   ]) await requirePrivilegeDenial(runtimePool, statement);
-  const finalGraph = await readMusicRuntimeRoleGraph(ownerPool, input.loginRole);
-  validateMusicRuntimeRoleGraph(finalGraph);
-  if (JSON.stringify(finalGraph) !== JSON.stringify(initialGraph)) {
-    throw new Error("runtime database role graph changed during attestation");
-  }
 }
 
 function validateInput(input: MusicRuntimeLoginInput): void {

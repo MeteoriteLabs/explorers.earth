@@ -12,11 +12,22 @@ interface OwnerCredentialVerifier {
 
 export class MusicOwnerSocketRegistry {
   private disconnect: ((musicUserId: number) => Promise<void>) | undefined;
+  private disconnectAll: (() => Promise<void>) | undefined;
   private readonly epochs = new Map<number, number>();
+  private admissionEpoch = 0;
+  private admissionsOpen = true;
 
-  bind(disconnect: (musicUserId: number) => Promise<void>): void {
+  bind(disconnect: (musicUserId: number) => Promise<void>, disconnectAll?: () => Promise<void>): void {
     if (this.disconnect) throw new Error("Music owner socket registry is already bound");
     this.disconnect = disconnect;
+    this.disconnectAll = disconnectAll;
+  }
+
+  async disconnectAllSockets(): Promise<void> {
+    if (!this.disconnectAll) throw new Error("Music socket registry is unavailable");
+    this.admissionsOpen = false;
+    this.admissionEpoch += 1;
+    await this.disconnectAll();
   }
 
   async disconnectOwner(musicUserId: number): Promise<void> {
@@ -33,6 +44,14 @@ export class MusicOwnerSocketRegistry {
 
   isCurrent(musicUserId: number, epoch: number): boolean {
     return this.captureEpoch(musicUserId) === epoch;
+  }
+
+  captureAdmissionEpoch(): number {
+    return this.admissionEpoch;
+  }
+
+  isAdmissionCurrent(epoch: number): boolean {
+    return this.admissionsOpen && this.admissionEpoch === epoch;
   }
 }
 
@@ -65,16 +84,19 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
       callback(origin && dependencies.allowedOrigins.includes(origin) ? undefined : "origin not allowed", !!origin && dependencies.allowedOrigins.includes(origin));
     },
   });
-  dependencies.ownerRegistry?.bind(async (musicUserId) => {
-    const sockets = await io.in(`music-owner:${musicUserId}`).fetchSockets();
-    await Promise.all(sockets.map(async (socket) => {
-      socket.emit("music_error", musicErrorEnvelope(
-        new MusicIdentityError("TOKEN_REVOKED", 401, "The Music credential has been revoked.", "authenticate", false),
-        randomUUID(),
-      ));
-      socket.disconnect(true);
-    }));
-  });
+  dependencies.ownerRegistry?.bind(
+    async (musicUserId) => {
+      const sockets = await io.in(`music-owner:${musicUserId}`).fetchSockets();
+      await Promise.all(sockets.map(async (socket) => {
+        socket.emit("music_error", musicErrorEnvelope(
+          new MusicIdentityError("TOKEN_REVOKED", 401, "The Music credential has been revoked.", "authenticate", false),
+          randomUUID(),
+        ));
+        socket.disconnect(true);
+      }));
+    },
+    async () => { io.disconnectSockets(true); },
+  );
   const limiter = new Map<string, { count: number; resetAt: number }>();
   const eventLimit = dependencies.eventLimit ?? 10;
   const eventWindowMs = dependencies.eventWindowMs ?? 60_000;
@@ -115,6 +137,8 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
 
   io.use(async (socket, next) => {
     try {
+      const admissionEpoch = dependencies.ownerRegistry?.captureAdmissionEpoch();
+      if (admissionEpoch !== undefined && !dependencies.ownerRegistry?.isAdmissionCurrent(admissionEpoch)) throw admissionUnavailable();
       const origin = socket.handshake.headers.origin;
       if (!origin || !dependencies.allowedOrigins.includes(origin)) throw routeError("ORIGIN_FORBIDDEN", 403, "The socket origin is not allowed.");
       const auth = socket.handshake.auth;
@@ -141,7 +165,9 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
           rateKey: `guest:${createHash("sha256").update(capability).digest("hex")}`,
         };
       }
+      if (admissionEpoch !== undefined && !dependencies.ownerRegistry?.isAdmissionCurrent(admissionEpoch)) throw admissionUnavailable();
       socket.data.musicAuthority = authority;
+      socket.data.musicAdmissionEpoch = admissionEpoch;
       next();
     } catch (cause) {
       const error = safeSocketError(cause);
@@ -153,19 +179,26 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
 
   io.on("connection", async (socket: Socket) => {
     const authority = socket.data.musicAuthority as SocketAuthority;
+    const admissionEpoch = socket.data.musicAdmissionEpoch as number | undefined;
+    const admissionIsCurrent = () => admissionEpoch === undefined
+      || dependencies.ownerRegistry?.isAdmissionCurrent(admissionEpoch) === true;
     const room = authority.role === "owner"
       ? `music-owner:${authority.musicUserId}`
       : `music-guest:${authority.musicUserId}`;
     const ownerEpoch = authority.role === "owner"
       ? dependencies.ownerRegistry?.captureEpoch(authority.musicUserId)
       : undefined;
-    if (!await authorityIsCurrent(authority, authority.role)
+    if (!admissionIsCurrent()
+        || !await authorityIsCurrent(authority, authority.role)
+        || !admissionIsCurrent()
         || ownerEpoch !== undefined && !dependencies.ownerRegistry?.isCurrent(authority.musicUserId, ownerEpoch)) {
       socket.disconnect(true);
       return;
     }
     await socket.join(room);
-    if (!await authorityIsCurrent(authority, authority.role)
+    if (!admissionIsCurrent()
+        || !await authorityIsCurrent(authority, authority.role)
+        || !admissionIsCurrent()
         || ownerEpoch !== undefined && !dependencies.ownerRegistry?.isCurrent(authority.musicUserId, ownerEpoch)) {
       await socket.leave(room);
       socket.disconnect(true);
@@ -250,6 +283,10 @@ function validGuestRequest(value: unknown): boolean {
 
 function guestInvalid() {
   return routeError("GUEST_CAPABILITY_INVALID", 401, "The guest capability is invalid.");
+}
+
+function admissionUnavailable() {
+  return new MusicPrincipalError("TOKEN_INVALID", 401, "Music socket admission is unavailable.");
 }
 
 function routeError(code: MusicIdentityError["code"], status: number, message: string) {

@@ -400,7 +400,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/index.ts",
-      "line": 137
+      "line": 167
     },
     {
       "method": "GET",
@@ -842,7 +842,7 @@
       "ownerSource": "socket.musicPrincipal",
       "lifecycle": "event",
       "source": "tunes/server/socket/musicSocketServer.ts",
-      "line": 71
+      "line": 91
     },
     {
       "direction": "emit",
@@ -852,7 +852,7 @@
       "ownerSource": "socket.musicPrincipal",
       "lifecycle": "event",
       "source": "tunes/server/socket/musicSocketServer.ts",
-      "line": 107
+      "line": 129
     },
     {
       "direction": "receive",
@@ -862,7 +862,7 @@
       "ownerSource": "socket.musicPrincipal",
       "lifecycle": "event",
       "source": "tunes/server/socket/musicSocketServer.ts",
-      "line": 154
+      "line": 180
     },
     {
       "direction": "emit",
@@ -872,7 +872,7 @@
       "ownerSource": "socket.musicPrincipal",
       "lifecycle": "event",
       "source": "tunes/server/socket/musicSocketServer.ts",
-      "line": 174
+      "line": 207
     },
     {
       "direction": "emit",
@@ -882,7 +882,7 @@
       "ownerSource": "socket.musicPrincipal",
       "lifecycle": "event",
       "source": "tunes/server/socket/musicSocketServer.ts",
-      "line": 178
+      "line": 211
     },
     {
       "direction": "receive",
@@ -892,7 +892,7 @@
       "ownerSource": "socket.musicPrincipal",
       "lifecycle": "event",
       "source": "tunes/server/socket/musicSocketServer.ts",
-      "line": 206
+      "line": 239
     },
     {
       "direction": "emit",
@@ -902,7 +902,7 @@
       "ownerSource": "recipient.hashed-guest-capability",
       "lifecycle": "event",
       "source": "tunes/server/socket/musicSocketServer.ts",
-      "line": 214
+      "line": 247
     },
     {
       "direction": "receive",
@@ -912,7 +912,7 @@
       "ownerSource": "hashed-guest-capability",
       "lifecycle": "event",
       "source": "tunes/server/socket/musicSocketServer.ts",
-      "line": 217
+      "line": 250
     },
     {
       "direction": "emit",
@@ -922,7 +922,7 @@
       "ownerSource": "recipient.socket.musicPrincipal",
       "lifecycle": "event",
       "source": "tunes/server/socket/musicSocketServer.ts",
-      "line": 227
+      "line": 260
     },
     {
       "direction": "emit",
@@ -932,7 +932,7 @@
       "ownerSource": "socket.musicPrincipal",
       "lifecycle": "event",
       "source": "tunes/server/socket/musicSocketServer.ts",
-      "line": 228
+      "line": 261
     }
   ],
   "jobs": [

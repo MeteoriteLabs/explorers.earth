@@ -3,19 +3,25 @@ name: Music C0 contracts
 on:
   pull_request:
     paths:
+      - "package.json"
       - "tunes/**"
       - "fixtures/**"
       - "docker-compose.music-test.yml"
       - ".env.music*.example"
       - ".github/workflows/music-c0-contracts.yml"
+      - ".github/workflows/music-reconcile.yml"
+      - "docs/operations/music-reconciliation-runbook.md"
   push:
     branches: [main, develop]
     paths:
+      - "package.json"
       - "tunes/**"
       - "fixtures/**"
       - "docker-compose.music-test.yml"
       - ".env.music*.example"
       - ".github/workflows/music-c0-contracts.yml"
+      - ".github/workflows/music-reconcile.yml"
+      - "docs/operations/music-reconciliation-runbook.md"
 
 permissions:
   contents: read

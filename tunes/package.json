@@ -14,6 +14,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:music-c8:coverage": "vitest run server/test/music-reconciler.test.ts server/test/reconcileMusicIdentitiesCommand.test.ts server/test/musicReconciliationConfig.test.ts server/test/musicReconciliationSuspensionListener.test.ts --coverage.enabled=true --coverage.provider=v8 --coverage.reporter=text --coverage.all=true --coverage.include=server/services/musicReconciler.ts --coverage.include=server/commands/reconcileMusicIdentities.ts --coverage.include=server/config/music-reconciliation-config.ts --coverage.include=server/services/musicReconciliationSuspensionListener.ts --coverage.thresholds.lines=100 --coverage.thresholds.branches=100 --coverage.thresholds.functions=100 --coverage.thresholds.statements=100",
+    "test:music-c8:repository-coverage": "vitest run --config vitest.integration.config.ts server/test/musicReconciler.integration.test.ts server/test/reconciliationRepository.integration.test.ts --coverage.enabled=true --coverage.provider=v8 --coverage.reporter=text --coverage.all=true --coverage.include=server/repositories/reconciliationRepository.ts --coverage.thresholds.lines=100 --coverage.thresholds.branches=100 --coverage.thresholds.functions=100 --coverage.thresholds.statements=100",
     "music:types:scoped": "tsc --project tsconfig.music-c0.json --pretty false --incremental false",
     "music:types:baseline": "tsx scripts/music-typescript-baseline.ts --compare"
   },
@@ -119,6 +121,7 @@
     "@replit/vite-plugin-cartographer": "^0.0.2",
     "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
     "@tailwindcss/typography": "^0.5.15",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
     "@types/connect-pg-simple": "^7.0.3",
@@ -133,6 +136,7 @@
     "@types/supertest": "^7.2.0",
     "@types/ws": "^8.5.13",
     "@vitejs/plugin-react": "^6.0.2",
+    "@vitest/coverage-v8": "^4.1.9",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "autoprefixer": "^10.4.20",
@@ -153,7 +157,11 @@
   "overrides": {
     "ws": "^8.21.0",
     "qs": "6.15.2",
-    "tsx": { "esbuild": "0.25.12" },
-    "@esbuild-kit/core-utils": { "esbuild": "0.25.12" }
+    "tsx": {
+      "esbuild": "0.25.12"
+    },
+    "@esbuild-kit/core-utils": {
+      "esbuild": "0.25.12"
+    }
   }
 }

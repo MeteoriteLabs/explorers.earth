@@ -11,6 +11,11 @@
     "scripts/inventory-runtime-tables.ts",
     "scripts/music-*.ts",
     "server/config/music-environment.ts",
+    "server/config/music-reconciliation-config.ts",
+    "server/commands/reconcileMusicIdentities.ts",
+    "server/repositories/reconciliationRepository.ts",
+    "server/services/musicReconciler.ts",
+    "server/services/musicReconciliationSuspensionListener.ts",
     "server/types/express.d.ts",
     "server/test/contracts/*.test.ts"
   ],

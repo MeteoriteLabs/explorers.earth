@@ -150,6 +150,7 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig)
   });
   const server = await registerRoutes(app, storage, routeMusicConfig, {
     proveAbsence: (identity) => identityAbsenceProof.prove(identity),
+    fixtureReadToken: musicIdentityConfig.mode === "fixture" ? lifecycleProofToken : undefined,
   });
 
   // Error handling middleware (registered after routes, before the Vite/static

@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -21,6 +21,17 @@ function writeEmptyPackage(checkout: string, directory: string): void {
 }
 
 describe("clean Music bootstrap", () => {
+  it("rebuilds service images from the checked-out source before startup", () => {
+    // Production break caught: a fixed Compose image tag from an earlier
+    // checkout is reused, so an exact-commit rehearsal runs stale server code.
+    const source = readFileSync(join(repositoryRoot, "tunes", "scripts", "music-cli.ts"), "utf8");
+    const start = source.indexOf('if (parsed.command === "up")');
+    const end = source.indexOf('if (parsed.command === "test:smoke")', start);
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(end).toBeGreaterThan(start);
+    expect(source.slice(start, end)).toContain('"up", "--build"');
+  });
+
   it("starts through the root lockfile before child dependencies exist", () => {
     // Production break caught: the root bootstrap launcher asks Tunes for tsx
     // before bootstrap has installed Tunes, so a clean checkout cannot start.

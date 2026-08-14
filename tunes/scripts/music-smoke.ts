@@ -12,7 +12,12 @@ const endpoints = [
 export {};
 
 for (const [name, url, representation] of endpoints) {
-  const response = await fetch(url, { signal: AbortSignal.timeout(5_000) });
+  const response = await fetch(url, {
+    signal: AbortSignal.timeout(5_000),
+    ...(name === "strapi identity" || name === "strapi accounts"
+      ? { headers: { authorization: "Bearer fixture-read-only-token" } }
+      : {}),
+  });
   if (!response.ok) throw new Error(`${name} returned HTTP ${response.status}`);
   const contentType = response.headers.get("content-type") ?? "";
   if (representation === "html") {

@@ -1,8 +1,15 @@
 import { createHash, randomBytes } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, renameSync, statfsSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { isAbsolute, join, relative, resolve, win32 as windowsPath } from "node:path";
-import { parseMusicEnvironment } from "../server/config/music-environment.ts";
+import {
+  DEFAULT_MUSIC_FIXTURE_STRAPI_HOST_PORT,
+  normalizeMusicFixtureChildEnvironment,
+  parseMusicEnvironment,
+  parseMusicFixtureStrapiHostPort,
+  resolveMusicFixtureStrapiUrl,
+} from "../server/config/music-environment.ts";
 import { MUSIC_COMPOSE_PROJECT, validateComposeModel, validateOwnedResources, type ComposeModel } from "./music-compose-safety.ts";
 import { OwnedProcessRunner } from "./music-process-runner.ts";
 import { EXPECTED_MUSIC_MIGRATION_ID } from "../shared/music-migration-contract.ts";
@@ -19,11 +26,26 @@ import { readSecureMusicSecretFile } from "../server/config/secure-music-secret-
 export const MUSIC_CLI_SCHEMA_VERSION = "music-cli/v1";
 export const FIXTURE_SCHEMA_VERSION = "strapi-identity-fixture/v1";
 export const EXIT = { success: 0, verification: 1, usage: 2, prerequisite: 3, dependency: 4, safety: 5, interrupted: 130 } as const;
+export const MUSIC_RECONCILIATION_AUTHORITY_FILES = [
+  "fixtures/strapi/music-identity/identity.fixture.json",
+  "package.json",
+  "package-lock.json",
+  "tunes/package.json",
+  "tunes/package-lock.json",
+  "tunes/scripts/music-cli.ts",
+  "tunes/server/commands/reconcileMusicIdentities.ts",
+  "tunes/server/config/music-environment.ts",
+  "tunes/server/config/music-identity-config.ts",
+  "tunes/server/config/music-reconciliation-config.ts",
+  "tunes/server/repositories/reconciliationRepository.ts",
+  "tunes/server/services/musicReconciler.ts",
+] as const;
 
 export interface StrapiIdentityFixture {
   schemaVersion: "strapi-identity-fixture/v1";
   fixtureVersion: string;
-  identities: Array<{ user: { documentId?: string; blocked?: boolean; is_subscribed?: boolean; accounts: Array<{ documentId?: string; Account_Name?: string; Account_Type?: string; mobile_number?: string; localtunes_integrated?: "Yes" | "No" }> } }>;
+  identities: Array<{ user: { documentId?: string; username?: string; email?: string; provider?: "local" | "google"; confirmed?: boolean; blocked?: boolean; is_subscribed?: boolean; accounts: Array<{ documentId?: string; Account_Name?: string; Account_Type?: string; mobile_number?: string; localtunes_integrated?: "Yes" | "No" }> } }>;
+  reconciliation?: { schemaVersion?: string; sourceSnapshot?: string; sourceChecksum?: string };
   pagination?: { page?: number; pageCount?: number; pageSize?: number; total?: number };
   serviceToken?: { operations: string[] };
 }
@@ -34,6 +56,10 @@ export function validateStrapiFixture(fixture: StrapiIdentityFixture, options: {
   if (options.mode === "live" && !options.readOnlyCredential) throw new Error("LIVE_STRAPI_READ_ONLY_CREDENTIAL is required");
   fixture.identities.forEach((identity, index) => {
     if (!identity.user.documentId) throw new Error(`identity[${index}].user.documentId is required`);
+    if (!identity.user.username) throw new Error(`identity[${index}].user.username is required`);
+    if (!identity.user.email || !/^[^@\s]+@[^@\s]+$/.test(identity.user.email)) throw new Error(`identity[${index}].user.email is required`);
+    if (identity.user.provider !== "local" && identity.user.provider !== "google") throw new Error(`identity[${index}].user.provider is invalid`);
+    if (identity.user.confirmed !== true) throw new Error(`identity[${index}].user.confirmed must be true`);
     if (typeof identity.user.blocked !== "boolean") throw new Error(`identity[${index}].user.blocked must be boolean`);
     if (typeof identity.user.is_subscribed !== "boolean") throw new Error(`identity[${index}].user.is_subscribed must be boolean`);
     const completed = identity.user.accounts.filter((account) => account.Account_Name && account.Account_Type && account.mobile_number);
@@ -41,16 +67,48 @@ export function validateStrapiFixture(fixture: StrapiIdentityFixture, options: {
     if (!completed[0].documentId) throw new Error(`identity[${index}].accounts completed Account documentId is required`);
     if (completed[0].localtunes_integrated !== "Yes" && completed[0].localtunes_integrated !== "No") throw new Error(`identity[${index}].accounts completed Account localtunes_integrated must be Yes or No`);
   });
-  if (fixture.pagination && (!Number.isInteger(fixture.pagination.page) || !Number.isInteger(fixture.pagination.pageCount) || !Number.isInteger(fixture.pagination.pageSize) || !Number.isInteger(fixture.pagination.total))) throw new Error("pagination metadata is truncated");
-  if (fixture.pagination && (fixture.pagination.page! < 1 || fixture.pagination.pageCount! < 1 || fixture.pagination.page! > fixture.pagination.pageCount! || fixture.pagination.pageSize! < 1 || fixture.pagination.total! < fixture.identities.length)) throw new Error("pagination metadata is inconsistent");
-  if (fixture.serviceToken?.operations.some((operation) => !operation.startsWith("GET ") && !operation.startsWith("HEAD "))) throw new Error("service token operation must be read-only");
+  if (!fixture.pagination) throw new Error("pagination metadata is required");
+  if (!Number.isInteger(fixture.pagination.page) || !Number.isInteger(fixture.pagination.pageCount) || !Number.isInteger(fixture.pagination.pageSize) || !Number.isInteger(fixture.pagination.total)) throw new Error("pagination metadata is truncated");
+  const expectedPageCount = Math.max(1, Math.ceil(fixture.identities.length / fixture.pagination.pageSize!));
+  if (fixture.pagination.page !== 1 || fixture.pagination.pageCount !== expectedPageCount
+      || fixture.pagination.pageSize! < 1 || fixture.pagination.total !== fixture.identities.length) throw new Error("pagination metadata is inconsistent");
+  const persistedAbsenceRead = "POST /graphql query:MusicIdentityAbsence";
+  if (fixture.serviceToken?.operations.some((operation) => !operation.startsWith("GET ")
+      && !operation.startsWith("HEAD ") && operation !== persistedAbsenceRead)) throw new Error("service token operation must be read-only");
+  if (!fixture.serviceToken || JSON.stringify([...fixture.serviceToken.operations].sort()) !== JSON.stringify([
+    "GET /api/accounts",
+    "GET /api/music-identities",
+    "GET /api/users/me",
+    persistedAbsenceRead,
+  ])) throw new Error("service token operations must match the exact fixture allowlist");
+  if (!fixture.reconciliation) throw new Error("reconciliation fixture metadata is required");
+  if (fixture.reconciliation.schemaVersion !== "strapi-music-reconciliation/v1"
+      || !fixture.reconciliation.sourceSnapshot
+      || !/^[a-f0-9]{64}$/.test(fixture.reconciliation.sourceChecksum ?? "")) {
+    throw new Error("reconciliation fixture metadata is invalid");
+  }
+  const canonical = fixture.identities.map(({ user }) => {
+    const account = user.accounts.find((value) => value.Account_Name && value.Account_Type && value.mobile_number)!;
+    return {
+      userDocumentId: user.documentId,
+      accountDocumentId: account.documentId,
+      username: user.username,
+      email: user.email,
+      provider: user.provider,
+      accountName: account.Account_Name,
+      accountType: account.Account_Type,
+      accountMobile: account.mobile_number,
+    };
+  }).sort((left, right) => left.userDocumentId!.localeCompare(right.userDocumentId!));
+  const checksum = createHash("sha256").update(canonical.map((identity) => JSON.stringify(identity)).join("\n")).digest("hex");
+  if (checksum !== fixture.reconciliation.sourceChecksum) throw new Error("reconciliation fixture checksum is inconsistent");
 }
 
 type OutputFormat = "human" | "json";
 type Mode = "fixture" | "live";
-interface ParsedArgs { command: string; mode: Mode; format: OutputFormat; detach: boolean; wait: boolean; volumes: boolean; confirmProject?: string; confirmReset?: string; target?: string; resume?: string; }
-interface RunResult { status: "success" | "failure" | "blocked"; phase: string; exitCode: number; artifacts?: string[]; checkpoint?: string; error?: string; details?: unknown; }
-interface RunContext { commit: string; fixtureVersion: string; fixtureSchemaVersion: string; gateValues: Record<string, string>; environmentFingerprint: string; }
+export interface ParsedArgs { command: string; mode: Mode; format: OutputFormat; detach: boolean; wait: boolean; volumes: boolean; confirmProject?: string; confirmReset?: string; target?: string; resume?: string; checkpoint?: string; reconciliationMode: "dry-run" | "apply"; approvalToken?: string; }
+interface RunResult { status: "success" | "failure" | "blocked"; phase: string; exitCode: number; artifacts?: string[]; checkpoint?: string; error?: string; details?: unknown; summary?: string; }
+export interface RunContext { commit: string; fixtureVersion: string; fixtureSchemaVersion: string; gateValues: Record<string, string>; environmentFingerprint: string; }
 
 const root = resolve(import.meta.dirname, "../..");
 const artifactRoot = join(root, ".artifacts", "music-runs");
@@ -58,7 +116,7 @@ const composeFile = "docker-compose.music-test.yml";
 const composeArguments = ["compose", "-p", MUSIC_COMPOSE_PROJECT, "-f", composeFile];
 const requiredFiles = [composeFile, ".env.music.example", ".env.music.test.example", "fixtures/strapi/music-identity/identity.fixture.json", "fixtures/db/music-runtime-table-manifest.json"];
 const runner = new OwnedProcessRunner();
-let activeRun: { id: string; command: string; format: OutputFormat; started: number; context: RunContext } | undefined;
+let activeRun: { id: string; command: string; format: OutputFormat; started: number; context: RunContext; reconciliationCheckpoint?: string } | undefined;
 let childSequence = 0;
 let activeFixtureEnvironment: Record<string, string> = {};
 
@@ -75,27 +133,49 @@ class MusicCommandError extends Error {
 class ResumeMismatchError extends MusicCommandError { constructor(message: string) { super(message, "resume", EXIT.prerequisite); } }
 class SafetyError extends MusicCommandError { constructor(message: string, phase = "cleanup-safety") { super(message, phase, EXIT.safety); } }
 
-function parseArgs(args: string[]): ParsedArgs {
-  const parsed: Partial<ParsedArgs> = { mode: "fixture", format: "human", detach: false, wait: false, volumes: false };
+export function parseMusicCliArguments(args: string[]): ParsedArgs {
+  const parsed: Partial<ParsedArgs> = { mode: "fixture", format: "human", detach: false, wait: false, volumes: false, reconciliationMode: "dry-run" };
+  let explicitDryRun = false;
+  let explicitApply = false;
+  const value = (index: number, flag: string): string => {
+    const candidate = args[index + 1];
+    if (!candidate || candidate.startsWith("--")) throw new MusicCommandError(`${flag} requires a value`, "arguments", EXIT.usage);
+    return candidate;
+  };
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
     if (!argument.startsWith("--") && !parsed.command) parsed.command = argument;
-    else if (argument === "--mode") parsed.mode = args[++index] as Mode;
-    else if (argument === "--format") parsed.format = args[++index] as OutputFormat;
+    else if (argument === "--mode") parsed.mode = value(index++, argument) as Mode;
+    else if (argument === "--format") parsed.format = value(index++, argument) as OutputFormat;
     else if (argument === "--detach") parsed.detach = true;
     else if (argument === "--wait") parsed.wait = true;
     else if (argument === "--volumes") parsed.volumes = true;
-    else if (argument === "--confirm-project") parsed.confirmProject = args[++index];
-    else if (argument === "--confirm-reset") parsed.confirmReset = args[++index];
-    else if (argument === "--target") parsed.target = args[++index];
-    else if (argument === "--resume") parsed.resume = args[++index];
+    else if (argument === "--confirm-project") parsed.confirmProject = value(index++, argument);
+    else if (argument === "--confirm-reset") parsed.confirmReset = value(index++, argument);
+    else if (argument === "--target") parsed.target = value(index++, argument);
+    else if (argument === "--resume") parsed.resume = value(index++, argument);
+    else if (argument === "--checkpoint") parsed.checkpoint = value(index++, argument);
+    else if (argument === "--approval-token") parsed.approvalToken = value(index++, argument);
+    else if (argument === "--dry-run") { explicitDryRun = true; parsed.reconciliationMode = "dry-run"; }
+    else if (argument === "--apply") { explicitApply = true; parsed.reconciliationMode = "apply"; }
     else throw new MusicCommandError(`unknown argument: ${argument}`, "arguments", EXIT.usage);
   }
-  if (!parsed.command || !["bootstrap", "doctor", "up", "test:smoke", "test:all", "down", "db:status", "db:migrate", "db:verify", "db:reset", "fixtures:capture"].includes(parsed.command)) throw new MusicCommandError("usage: music:<bootstrap|doctor|up|test:smoke|test:all|down|db:status|db:migrate|db:verify|db:reset|fixtures:capture>", "arguments", EXIT.usage);
+  if (!parsed.command || !["bootstrap", "doctor", "up", "test:smoke", "test:all", "down", "db:status", "db:migrate", "db:verify", "db:reset", "fixtures:capture", "reconcile"].includes(parsed.command)) throw new MusicCommandError("usage: music:<bootstrap|doctor|up|test:smoke|test:all|down|db:status|db:migrate|db:verify|db:reset|fixtures:capture|reconcile>", "arguments", EXIT.usage);
   if (!(["fixture", "live"] as string[]).includes(parsed.mode!)) throw new MusicCommandError("--mode must be fixture or live", "arguments", EXIT.usage);
   if (!(["human", "json"] as string[]).includes(parsed.format!)) throw new MusicCommandError("--format must be human or json", "arguments", EXIT.usage);
+  const reconciliationFlags = explicitDryRun || explicitApply || parsed.checkpoint !== undefined || parsed.approvalToken !== undefined;
+  if (parsed.command !== "reconcile" && reconciliationFlags) throw new MusicCommandError("reconciliation flags require the reconcile command", "arguments", EXIT.usage);
+  if (parsed.command === "reconcile") {
+    if (explicitDryRun && explicitApply) throw new MusicCommandError("--dry-run and --apply are mutually exclusive", "arguments", EXIT.usage);
+    if (parsed.reconciliationMode === "apply") {
+      if (!parsed.resume) throw new MusicCommandError("--apply requires --resume with a reviewed checkpoint", "arguments", EXIT.usage);
+      if (!parsed.approvalToken || !/^[a-f0-9]{64}$/.test(parsed.approvalToken)) throw new MusicCommandError("--apply requires an exact 64-character approval token", "arguments", EXIT.usage);
+    } else if (parsed.approvalToken) throw new MusicCommandError("--approval-token is valid only with --apply", "arguments", EXIT.usage);
+  }
   return parsed as ParsedArgs;
 }
+
+const parseArgs = parseMusicCliArguments;
 
 function sanitize(value: string): string {
   return value
@@ -157,6 +237,61 @@ export function createEnvironmentFingerprint(input: unknown): string {
   return createHash("sha256").update(JSON.stringify(input)).digest("hex");
 }
 
+export function assertLiveMusicReconciliationWorktreeClean(status?: string): void {
+  const worktreeStatus = status ?? execFileSync(
+    "git",
+    ["status", "--porcelain=v1", "--untracked-files=all"],
+    { cwd: root, encoding: "utf8", windowsHide: true },
+  );
+  if (worktreeStatus.trim()) {
+    throw new SafetyError("Live reconciliation requires a clean tracked worktree.", "reconciliation-code-authority");
+  }
+}
+
+export function createLiveMusicReconciliationRunContext(input: {
+  base: RunContext;
+  environment: Record<string, string | undefined>;
+  sourceUrl: string;
+  databaseUrl: string;
+  serviceToken: string;
+}): RunContext {
+  const database = new URL(input.databaseUrl);
+  const gateNames = [
+    "MUSIC_RECONCILIATION_ENVIRONMENT",
+    "MUSIC_RECONCILIATION_APPLY_ENABLED",
+    "MUSIC_RECONCILIATION_LIVE_CONTRACT_VERIFIED",
+    "MUSIC_RECONCILIATION_ENABLED",
+    "MUSIC_RECONCILIATION_MAX_ROWS",
+  ] as const;
+  const gateValues = Object.fromEntries(gateNames.map((name) => [name, input.environment[name] ?? "unset"]));
+  const serviceTokenAuthority = createEnvironmentFingerprint({
+    file: input.environment.STRAPI_RECONCILIATION_TOKEN_FILE ?? "unset",
+    content: createHash("sha256").update(input.serviceToken).digest("hex"),
+  });
+  const databaseAuthority = createEnvironmentFingerprint({
+    file: input.environment.MUSIC_DATABASE_PASSWORD_FILE ?? "unset",
+    credential: createHash("sha256").update(database.password).digest("hex"),
+  });
+  const environmentFingerprint = createEnvironmentFingerprint({
+    codeAuthority: input.base.environmentFingerprint,
+    platform: process.platform,
+    arch: process.arch,
+    node: process.version,
+    sourceUrl: new URL(input.sourceUrl).origin,
+    database: {
+      protocol: database.protocol,
+      hostname: database.hostname,
+      port: database.port,
+      pathname: database.pathname,
+      username: database.username,
+    },
+    serviceTokenAuthority,
+    databaseAuthority,
+    gateValues,
+  });
+  return { ...input.base, gateValues, environmentFingerprint };
+}
+
 function fileHash(path: string): string {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
@@ -174,10 +309,10 @@ function buildRunContext(options: { allowInvalidEnvironment?: boolean; useExampl
     rawEnvironment = parseEnvironmentContents(environmentContents, "guarded fixture environment generation");
   }
   catch (error) { if (!options.allowInvalidEnvironment) throw error; }
-  activeFixtureEnvironment = rawEnvironment;
   let environment: ReturnType<typeof parseMusicEnvironment> | undefined;
   try { environment = parseMusicEnvironment(rawEnvironment); }
   catch (error) { if (!options.allowInvalidEnvironment) throw error; }
+  activeFixtureEnvironment = environment ? normalizeMusicFixtureChildEnvironment(rawEnvironment) : rawEnvironment;
   const gateValues = {
     MUSIC_PROVISIONING_KILL_SWITCH: String(environment?.MUSIC_PROVISIONING_KILL_SWITCH ?? rawEnvironment.MUSIC_PROVISIONING_KILL_SWITCH ?? "invalid"),
     MUSIC_PROVISIONING_COHORT: environment?.MUSIC_PROVISIONING_COHORT ?? rawEnvironment.MUSIC_PROVISIONING_COHORT ?? "invalid",
@@ -214,6 +349,23 @@ function buildRunContext(options: { allowInvalidEnvironment?: boolean; useExampl
   return { commit: readGitSha(), fixtureVersion: fixture.fixtureVersion, fixtureSchemaVersion: fixture.schemaVersion, gateValues, environmentFingerprint };
 }
 
+export function createTrackedMusicReconciliationAuthorityFingerprint(repositoryRoot = root): string {
+  return createEnvironmentFingerprint(Object.fromEntries(
+    MUSIC_RECONCILIATION_AUTHORITY_FILES.map((file) => [file, fileHash(join(repositoryRoot, file))]),
+  ));
+}
+
+function buildTrackedReconciliationContext(): RunContext {
+  const fixture = JSON.parse(readFileSync(join(root, "fixtures/strapi/music-identity/identity.fixture.json"), "utf8")) as StrapiIdentityFixture;
+  return {
+    commit: readGitSha(),
+    fixtureVersion: fixture.fixtureVersion,
+    fixtureSchemaVersion: fixture.schemaVersion,
+    gateValues: {},
+    environmentFingerprint: createTrackedMusicReconciliationAuthorityFingerprint(),
+  };
+}
+
 function writeCheckpoint(id: string, context: RunContext, result: RunResult): string {
   const target = join(runDirectory(id), "checkpoint.json");
   const temporary = `${target}.${process.pid}.tmp`;
@@ -225,6 +377,15 @@ function assertResume(path: string, context: RunContext): void {
   const checkpoint = JSON.parse(readFileSync(path, "utf8")) as Partial<RunContext>;
   for (const key of ["commit", "fixtureVersion", "fixtureSchemaVersion", "environmentFingerprint"] as const) if (checkpoint[key] !== context[key]) throw new ResumeMismatchError(`resume checkpoint ${key} does not match`);
   if (JSON.stringify(checkpoint.gateValues) !== JSON.stringify(context.gateValues)) throw new ResumeMismatchError("resume checkpoint gateValues do not match");
+}
+
+export function resolveMusicReconciliationCheckpointPath(path: string | undefined, id: string): string {
+  const target = path ? resolve(root, path) : join(runDirectory(id), "reconciliation-checkpoint.json");
+  const relationship = relative(artifactRoot, target);
+  if (!relationship || relationship.startsWith("..") || isAbsolute(relationship) || !target.endsWith(".json")) {
+    throw new SafetyError("reconciliation checkpoints must be JSON files under .artifacts/music-runs", "reconciliation-checkpoint");
+  }
+  return target;
 }
 
 const commandGuidance: Record<string, { success: string; failure: string; recovery: string }> = {
@@ -239,6 +400,7 @@ const commandGuidance: Record<string, { success: string; failure: string; recove
   "db:verify": { success: "review the verified journal", failure: "npm run music:db:status -- --target test", recovery: "npm run music:db:status -- --target test" },
   "db:reset": { success: "npm run music:up -- --detach --wait", failure: "npm run music:doctor", recovery: "npm run music:down" },
   "fixtures:capture": { success: "request TK identity-owner review", failure: "supply explicit read-only credentials or use fixture mode", recovery: "npm run music:fixtures:capture -- --mode fixture" },
+  reconcile: { success: "review the reconciliation checkpoint; keep the first production run report-only", failure: "inspect the redacted reconciliation report", recovery: "rerun npm run music:reconcile -- --dry-run" },
   music: { success: "npm run music:doctor", failure: "review command usage", recovery: "npm run music:down" },
 };
 
@@ -254,7 +416,7 @@ function emit(id: string, command: string, format: OutputFormat, started: number
     : guidance.recovery;
   const output = { schemaVersion: MUSIC_CLI_SCHEMA_VERSION, command, runId: id, status: result.status, phase: result.phase, durationMs: Date.now() - started, artifacts: result.artifacts ?? [], checkpoint, error: result.error ? sanitize(result.error) : undefined, details: result.details === undefined ? undefined : redactStructuredData(result.details), nextCommand, recoveryCommand };
   if (format === "json") process.stdout.write(`${JSON.stringify(output)}\n`);
-  else process.stdout.write(`${command}: ${result.status} (${result.phase})${output.error ? `\nerror: ${output.error}` : ""}\nnext: ${output.nextCommand}\nrecovery: ${output.recoveryCommand}\nartifacts: ${output.artifacts.join(", ") || "none"}\ncheckpoint: ${checkpoint}\n`);
+  else process.stdout.write(`${command}: ${result.status} (${result.phase})${output.error ? `\nerror: ${output.error}` : ""}${result.summary ? `\n${sanitize(result.summary)}` : ""}\nnext: ${output.nextCommand}\nrecovery: ${output.recoveryCommand}\nartifacts: ${output.artifacts.join(", ") || "none"}\ncheckpoint: ${checkpoint}\n`);
   return result.exitCode;
 }
 
@@ -281,9 +443,11 @@ async function runChild(id: string, command: "npm" | "docker" | "node", args: st
 }
 
 function createTestEnv(): void {
+  const fixtureStrapiHostPort = parseMusicFixtureStrapiHostPort(process.env.MUSIC_STRAPI_HOST_PORT);
+  const fixtureStrapiUrl = resolveMusicFixtureStrapiUrl(fixtureStrapiHostPort);
   rotateFixtureMusicAuthority(root, ({ tokenPath, migratorPasswordPath, runtimePasswordPath }) => {
     const fixturePath = (value: string) => `./${relative(root, value).replace(/\\/g, "/")}`;
-    return `MUSIC_MODE=fixture\nMUSIC_FIXTURE_VERSION=1\nSTRAPI_URL=http://strapi:1337\nMUSIC_FIXTURE_STRAPI_ORIGIN=http://strapi:1337\nTRUST_PROXY_HOPS=0\nSTRAPI_FIXTURE_URL=http://127.0.0.1:51337\nDATABASE_URL_TEST=postgresql://music_migrator@127.0.0.1:55432/music_fixture\nMUSIC_DATABASE_HOST=postgres\nMUSIC_DATABASE_PORT=5432\nMUSIC_DATABASE_NAME=music_fixture\nMUSIC_DATABASE_USER=music_runtime_login\nMUSIC_DATABASE_MIGRATOR_USER=music_migrator\nMUSIC_DATABASE_PASSWORD_FILE=/run/secrets/music-db-runtime\nMUSIC_TOKEN_SECRET_FILE_HOST=${fixturePath(tokenPath)}\nMUSIC_DB_MIGRATOR_SECRET_FILE_HOST=${fixturePath(migratorPasswordPath)}\nMUSIC_DB_RUNTIME_SECRET_FILE_HOST=${fixturePath(runtimePasswordPath)}\nSESSION_SECRET=${randomBytes(32).toString("base64url")}\nCOOKIE_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_SIGNING_KEY_CURRENT_ID=fixture-current\nMUSIC_SIGNING_KEY_CURRENT_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_SIGNING_KEY_PREVIOUS_ID=fixture-previous\nMUSIC_SIGNING_KEY_PREVIOUS_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_TOKEN_CURRENT_KID=fixture-current\nMUSIC_TOKEN_CURRENT_SECRET_FILE=/run/secrets/music-token/current\nMUSIC_TOKEN_LIFETIME_SECONDS=600\nMUSIC_TOKEN_CLOCK_SKEW_SECONDS=15\nMUSIC_CONNECT_TIMEOUT_MS=5000\nMUSIC_READ_TIMEOUT_MS=10000\nMUSIC_CIRCUIT_FAILURE_THRESHOLD=3\nMUSIC_RATE_LIMIT_PER_MINUTE=60\nMUSIC_PROVISIONING_KILL_SWITCH=true\nMUSIC_PROVISIONING_COHORT=disabled\nMUSIC_EXPECTED_MIGRATION_ID=${EXPECTED_MUSIC_MIGRATION_ID}\nMUSIC_RECONCILIATION_ENABLED=false\nMUSIC_RECONCILIATION_MAX_ROWS=0\n`;
+    return `MUSIC_MODE=fixture\nMUSIC_FIXTURE_VERSION=1\nSTRAPI_URL=http://strapi:1337\nMUSIC_FIXTURE_STRAPI_ORIGIN=http://strapi:1337\nTRUST_PROXY_HOPS=0\nMUSIC_STRAPI_HOST_PORT=${fixtureStrapiHostPort}\nSTRAPI_FIXTURE_URL=${fixtureStrapiUrl}\nDATABASE_URL_TEST=postgresql://music_migrator@127.0.0.1:55432/music_fixture\nMUSIC_DATABASE_HOST=postgres\nMUSIC_DATABASE_PORT=5432\nMUSIC_DATABASE_NAME=music_fixture\nMUSIC_DATABASE_USER=music_runtime_login\nMUSIC_DATABASE_MIGRATOR_USER=music_migrator\nMUSIC_DATABASE_PASSWORD_FILE=/run/secrets/music-db-runtime\nMUSIC_TOKEN_SECRET_FILE_HOST=${fixturePath(tokenPath)}\nMUSIC_DB_MIGRATOR_SECRET_FILE_HOST=${fixturePath(migratorPasswordPath)}\nMUSIC_DB_RUNTIME_SECRET_FILE_HOST=${fixturePath(runtimePasswordPath)}\nSESSION_SECRET=${randomBytes(32).toString("base64url")}\nCOOKIE_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_SIGNING_KEY_CURRENT_ID=fixture-current\nMUSIC_SIGNING_KEY_CURRENT_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_SIGNING_KEY_PREVIOUS_ID=fixture-previous\nMUSIC_SIGNING_KEY_PREVIOUS_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_TOKEN_CURRENT_KID=fixture-current\nMUSIC_TOKEN_CURRENT_SECRET_FILE=/run/secrets/music-token/current\nMUSIC_TOKEN_LIFETIME_SECONDS=600\nMUSIC_TOKEN_CLOCK_SKEW_SECONDS=15\nMUSIC_CONNECT_TIMEOUT_MS=5000\nMUSIC_READ_TIMEOUT_MS=10000\nMUSIC_CIRCUIT_FAILURE_THRESHOLD=3\nMUSIC_RATE_LIMIT_PER_MINUTE=60\nMUSIC_PROVISIONING_KILL_SWITCH=true\nMUSIC_PROVISIONING_COHORT=disabled\nMUSIC_EXPECTED_MIGRATION_ID=${EXPECTED_MUSIC_MIGRATION_ID}\nMUSIC_RECONCILIATION_ENABLED=false\nMUSIC_RECONCILIATION_MAX_ROWS=0\nMUSIC_RECONCILIATION_ENVIRONMENT=fixture\nMUSIC_RECONCILIATION_APPLY_ENABLED=false\nMUSIC_RECONCILIATION_LIVE_CONTRACT_VERIFIED=false\nMUSIC_RECONCILIATION_PAGE_SIZE=100\nMUSIC_RECONCILIATION_SCAN_MAX_ROWS=1000\nMUSIC_RECONCILIATION_BATCH_SIZE=100\nMUSIC_RECONCILIATION_MAX_CHANGE_ABSOLUTE=0\nMUSIC_RECONCILIATION_MAX_CHANGE_PERCENT=0\nMUSIC_RECONCILIATION_MAX_PAGES=100\nMUSIC_RECONCILIATION_SCAN_TIMEOUT_MS=300000\nMUSIC_RECONCILIATION_TIMEOUT_MS=10000\nMUSIC_RECONCILIATION_MAX_RESPONSE_BYTES=1048576\nMUSIC_RECONCILIATION_MAX_CANONICAL_BYTES=16777216\nMUSIC_RECONCILIATION_DB_LOCK_TIMEOUT_MS=5000\nMUSIC_RECONCILIATION_DB_STATEMENT_TIMEOUT_MS=120000\nMUSIC_RECONCILIATION_DB_IDLE_TRANSACTION_TIMEOUT_MS=30000\nSTRAPI_RECONCILIATION_TOKEN=fixture-read-only-token\n`;
   });
 }
 
@@ -328,13 +492,17 @@ async function doctor(id: string): Promise<RunResult> {
   const [major, minor] = process.versions.node.split(".").map(Number);
   if (major < 22 || (major === 22 && minor < 12)) failures.push("Node >=22.12 is required; fix: nvm use");
   for (const file of requiredFiles) if (!existsSync(join(root, file))) failures.push(`missing ${file}; fix: restore the repository file`);
-  try { parseMusicEnvironment(readActiveFixtureEnvironment()); } catch (error) { failures.push(`invalid fixture environment reference: ${redactedError(error)}; fix: npm run music:bootstrap`); }
+  let fixtureStrapiHostPort = DEFAULT_MUSIC_FIXTURE_STRAPI_HOST_PORT;
+  try {
+    const environment = parseMusicEnvironment(readActiveFixtureEnvironment());
+    fixtureStrapiHostPort = environment.MUSIC_STRAPI_HOST_PORT;
+  } catch (error) { failures.push(`invalid fixture environment reference: ${redactedError(error)}; fix: npm run music:bootstrap`); }
   for (const example of [".env.music.example", ".env.music.test.example"]) try { parseMusicEnvironment(readEnvFile(join(root, example))); } catch (error) { failures.push(`invalid ${example}: ${redactedError(error)}; fix: restore the typed example`); }
   try { const npm = await runChild(id, "npm", ["--version"], "npm-version", EXIT.prerequisite); artifacts.push(npm.artifact); } catch (error) { failures.push(redactedError(error)); }
   try { const compose = await renderComposeModel(id); artifacts.push(...compose.artifacts); } catch (error) { failures.push(redactedError(error)); }
   try { const docker = await runChild(id, "docker", ["info"], "docker-daemon", EXIT.prerequisite); artifacts.push(docker.artifact); } catch { failures.push("Docker daemon is unavailable; fix: start Docker Desktop or the Docker daemon"); }
   if (statfsSync(root).bavail * statfsSync(root).bsize < 2 * 1024 * 1024 * 1024) failures.push("less than 2 GiB free disk space; fix: free disk space");
-  for (const port of [55432, 51337, 55000, 55173]) if (!(await portAvailable(port))) failures.push(`fixture port ${port} is occupied; fix: stop the conflicting process`);
+  for (const port of [55_432, fixtureStrapiHostPort, 55_000, 55_173]) if (!(await portAvailable(port))) failures.push(`fixture port ${port} is occupied; fix: stop the conflicting process`);
   return failures.length ? { status: "failure", phase: "doctor", exitCode: EXIT.prerequisite, error: failures.join(" | "), artifacts } : { status: "success", phase: "doctor", exitCode: EXIT.success, artifacts };
 }
 
@@ -344,7 +512,7 @@ function captureFixture(mode: Mode): RunResult {
   return { status: "blocked", phase: "live-fixture-capture", exitCode: EXIT.safety, error: "live capture requires TK identity-owner endpoint allowlist review; no probe was attempted" };
 }
 
-async function executeCommand(id: string, parsed: ParsedArgs): Promise<RunResult> {
+async function executeCommand(id: string, parsed: ParsedArgs, context: RunContext): Promise<RunResult> {
   if (parsed.command === "bootstrap") {
     parseMusicEnvironment(readActiveFixtureEnvironment());
     const fixture = JSON.parse(readFileSync(join(root, "fixtures/strapi/music-identity/identity.fixture.json"), "utf8")); validateStrapiFixture(fixture, { mode: "fixture" });
@@ -354,6 +522,146 @@ async function executeCommand(id: string, parsed: ParsedArgs): Promise<RunResult
   }
   if (parsed.command === "doctor") return await doctor(id);
   if (parsed.command === "fixtures:capture") return captureFixture(parsed.mode);
+  if (parsed.command === "reconcile") {
+    if (parsed.mode === "live") assertLiveMusicReconciliationWorktreeClean();
+    const environment = parsed.mode === "fixture"
+      ? readActiveFixtureEnvironment()
+      : Object.fromEntries(Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined));
+    const [{ parseMusicReconciliationCommandConfig, validateMusicReconciliationServiceToken }, command, { MusicReconciler }, { ReconciliationRepository }, { default: pg }] = await Promise.all([
+      import("../server/config/music-reconciliation-config.ts"),
+      import("../server/commands/reconcileMusicIdentities.ts"),
+      import("../server/services/musicReconciler.ts"),
+      import("../server/repositories/reconciliationRepository.ts"),
+      import("pg"),
+    ]);
+    let config: ReturnType<typeof parseMusicReconciliationCommandConfig>;
+    try { config = parseMusicReconciliationCommandConfig(environment); }
+    catch (error) {
+      const message = redactedError(error);
+      if (/blocked until|Production reconciliation apply/i.test(message)) throw new SafetyError(message, "reconciliation-config");
+      throw new MusicCommandError(message, "reconciliation-config", EXIT.usage);
+    }
+    const checkpointPath = activeRun?.reconciliationCheckpoint
+      ?? resolveMusicReconciliationCheckpointPath(parsed.checkpoint, id);
+    const resumePath = parsed.resume ? resolveMusicReconciliationCheckpointPath(parsed.resume, id) : undefined;
+    let serviceToken: string;
+    let databaseUrl: string;
+    let fetchImpl: typeof fetch = fetch;
+    let reconciliationContext = context;
+    if (parsed.mode === "fixture") {
+      serviceToken = config.serviceToken!;
+      const runtimePasswordPath = resolve(root, environment.MUSIC_DB_RUNTIME_SECRET_FILE_HOST ?? "");
+      const runtimePassword = await readSecureMusicSecretFile(runtimePasswordPath, { mode: "fixture" });
+      const target = new URL(environment.DATABASE_URL_TEST);
+      target.username = environment.MUSIC_DATABASE_USER;
+      target.password = runtimePassword;
+      databaseUrl = target.toString();
+    } else {
+      serviceToken = validateMusicReconciliationServiceToken(
+        await readSecureMusicSecretFile(config.serviceTokenFile!, { mode: "live" }),
+      );
+      const [{ resolveMusicDatabaseConnection }, { resolveMusicIdentityTransportConfig }, { verifyMusicRuntimeDatabaseConnection }] = await Promise.all([
+        import("../server/config/music-database-config.ts"),
+        import("../server/config/music-identity-config.ts"),
+        import("../server/db/music-runtime-role.ts"),
+      ]);
+      const database = await resolveMusicDatabaseConnection(environment, "runtime");
+      await verifyMusicRuntimeDatabaseConnection(database, environment.MUSIC_DATABASE_MIGRATOR_USER ?? "");
+      const transport = await resolveMusicIdentityTransportConfig(environment);
+      databaseUrl = database.connectionString;
+      fetchImpl = transport.fetchImpl;
+      reconciliationContext = createLiveMusicReconciliationRunContext({
+        base: context,
+        environment,
+        sourceUrl: config.sourceUrl,
+        databaseUrl,
+        serviceToken,
+      });
+      if (activeRun) activeRun.context = reconciliationContext;
+    }
+    const pool = new pg.Pool({ connectionString: databaseUrl, max: 2 });
+    try {
+      if (parsed.mode === "live") {
+        const { checkMusicDatabaseReadiness } = await import("../server/db/readiness.ts");
+        const readiness = await checkMusicDatabaseReadiness(pool);
+        if (!readiness.ready) {
+          throw new SafetyError("Live reconciliation requires the exact verified Music migration.", "reconciliation-database-readiness");
+        }
+      }
+      const source = new command.HttpMusicReconciliationSource({
+        baseUrl: config.sourceUrl,
+        serviceToken,
+        timeoutMs: config.timeoutMs,
+        maxResponseBytes: config.maxResponseBytes,
+        fetchImpl,
+      });
+      const report = await command.reconcileMusicIdentities({
+        reconciler: new MusicReconciler(source, new ReconciliationRepository(pool)),
+        checkpointPath,
+        resumePath,
+        context: {
+          commit: reconciliationContext.commit,
+          fixtureVersion: reconciliationContext.fixtureVersion,
+          fixtureSchemaVersion: reconciliationContext.fixtureSchemaVersion,
+          environment: config.environment,
+          environmentFingerprint: reconciliationContext.environmentFingerprint,
+          gateValues: reconciliationContext.gateValues,
+          thresholds: {
+            pageSize: config.pageSize,
+            maxRows: config.maxRows,
+            batchSize: config.batchSize,
+            maxChangeAbsolute: config.maxChangeAbsolute,
+            maxChangePercent: config.maxChangePercent,
+            maxPages: config.maxPages,
+            scanTimeoutMs: config.scanTimeoutMs,
+            requestTimeoutMs: config.timeoutMs,
+            maxResponseBytes: config.maxResponseBytes,
+            maxCanonicalBytes: config.maxCanonicalBytes,
+            databaseLockTimeoutMs: config.databaseLockTimeoutMs,
+            databaseStatementTimeoutMs: config.databaseStatementTimeoutMs,
+            databaseIdleTransactionTimeoutMs: config.databaseIdleTransactionTimeoutMs,
+          },
+        },
+        run: {
+          runId: id,
+          environment: config.environment,
+          applyEnabled: config.applyEnabled,
+          requestedMode: parsed.reconciliationMode,
+          approvalToken: parsed.approvalToken,
+          pageSize: config.pageSize,
+          maxRows: config.maxRows,
+          batchSize: config.batchSize,
+          maxChangeAbsolute: config.maxChangeAbsolute,
+          maxChangePercent: config.maxChangePercent,
+          maxPages: config.maxPages,
+          scanTimeoutMs: config.scanTimeoutMs,
+          requestTimeoutMs: config.timeoutMs,
+          maxResponseBytes: config.maxResponseBytes,
+          maxCanonicalBytes: config.maxCanonicalBytes,
+          databaseLockTimeoutMs: config.databaseLockTimeoutMs,
+          databaseStatementTimeoutMs: config.databaseStatementTimeoutMs,
+          databaseIdleTransactionTimeoutMs: config.databaseIdleTransactionTimeoutMs,
+        },
+      });
+      const unavailable = report.anomalies.some((value) => value.code === "SOURCE_UNAVAILABLE" || value.code === "DATABASE_UNAVAILABLE");
+      return {
+        status: report.status === "success" ? "success" : "blocked",
+        phase: report.status === "success" ? "reconcile" : "reconcile-safety",
+        exitCode: report.status === "success" ? EXIT.success : unavailable ? EXIT.dependency : EXIT.safety,
+        artifacts: [checkpointPath],
+        checkpoint: checkpointPath,
+       details: report,
+       summary: command.formatMusicReconciliationReport(report, "human"),
+      };
+    } catch (error) {
+      if (error instanceof command.MusicReconciliationResumeError) {
+        throw new ResumeMismatchError(redactedError(error));
+      }
+      throw error;
+    } finally {
+      await pool.end().catch(() => undefined);
+    }
+  }
   if (["db:status", "db:migrate", "db:verify"].includes(parsed.command)) {
     const [{ default: pg }, { inspectMusicDatabase, migrateMusicDatabase, validateDisposableDatabaseTarget, verifyMusicDatabase }] = await Promise.all([
       import("pg"),
@@ -396,7 +704,7 @@ async function executeCommand(id: string, parsed: ParsedArgs): Promise<RunResult
   }
   if (parsed.command === "up") {
     const compose = await renderComposeModel(id);
-    const result = await runChild(id, "docker", [...composeArguments, "up", ...(parsed.detach ? ["--detach"] : []), ...(parsed.wait ? ["--wait"] : [])], "up", EXIT.dependency);
+    const result = await runChild(id, "docker", [...composeArguments, "up", "--build", ...(parsed.detach ? ["--detach"] : []), ...(parsed.wait ? ["--wait"] : [])], "up", EXIT.dependency);
     return { status: "success", phase: "up", exitCode: EXIT.success, artifacts: [...compose.artifacts, result.artifact] };
   }
   if (parsed.command === "test:smoke") { const result = await runChild(id, "npm", ["exec", "--silent", "--prefix", "tunes", "--", "tsx", "tunes/scripts/music-smoke.ts"], "smoke", EXIT.verification); return { status: "success", phase: "smoke", exitCode: EXIT.success, artifacts: [result.artifact] }; }
@@ -423,12 +731,18 @@ async function executeCommand(id: string, parsed: ParsedArgs): Promise<RunResult
 
 async function main(): Promise<number> {
   const id = runId(); const started = Date.now(); let parsed: ParsedArgs;
+  const rawArguments = process.argv.slice(2);
+  const liveReconciliationIntent = rawArguments[0] === "reconcile"
+    && rawArguments.some((value, index) => value === "--mode" && rawArguments[index + 1] === "live");
   // Classify only the fixed repository authority before touching untrusted
   // command arguments. If full parsing fails, unsupported authority still
   // wins and uses the CLI's safe default command/format.
-  const unsupportedFixtureAuthority = inspectFixtureEnvironmentAuthority(root) === "unsupported";
-  try { parsed = parseArgs(process.argv.slice(2)); } catch (error) {
-    const context = buildRunContext({ allowInvalidEnvironment: unsupportedFixtureAuthority });
+  const unsupportedFixtureAuthority = !liveReconciliationIntent
+    && inspectFixtureEnvironmentAuthority(root) === "unsupported";
+  try { parsed = parseArgs(rawArguments); } catch (error) {
+    const context = liveReconciliationIntent
+      ? buildTrackedReconciliationContext()
+      : buildRunContext({ allowInvalidEnvironment: unsupportedFixtureAuthority });
     if (unsupportedFixtureAuthority) {
       const authorityError = new FixtureUnsupportedLegacyEnvironmentError();
       return emit(id, "music", "human", started, context, { status: "blocked", phase: "fixture-authority", exitCode: EXIT.safety, error: redactedError(authorityError) });
@@ -436,7 +750,9 @@ async function main(): Promise<number> {
     const failure = error instanceof MusicCommandError ? error : new MusicCommandError(redactedError(error), "arguments", EXIT.usage);
     return emit(id, "music", "human", started, context, { status: "failure", phase: failure.phase, exitCode: failure.exitCode, error: redactedError(failure) });
   }
-  if (unsupportedFixtureAuthority || inspectFixtureEnvironmentAuthority(root) === "unsupported") {
+  const requiresFixtureAuthority = !(parsed.command === "reconcile" && parsed.mode === "live");
+  if (requiresFixtureAuthority
+      && (unsupportedFixtureAuthority || inspectFixtureEnvironmentAuthority(root) === "unsupported")) {
     const error = new FixtureUnsupportedLegacyEnvironmentError();
     const context = buildRunContext({ allowInvalidEnvironment: true });
     return emit(id, parsed.command, parsed.format, started, context, {
@@ -464,17 +780,24 @@ async function main(): Promise<number> {
       });
     }
   }
-  const context = buildRunContext({
-    allowInvalidEnvironment: parsed.command === "doctor",
-    // The aggregate cleanup wrapper is the destructive authority. A retired
-    // pointer needs only a non-secret render context so a repeated teardown
-    // can reach that wrapper; populated or malformed inventories still fail
-    // authentication before the action is allowed to run.
-    useExampleForRetiredEnvironment: parsed.command === "down" || parsed.command === "db:reset",
-  });
-  activeRun = { id, command: parsed.command, format: parsed.format, started, context };
-  if (parsed.resume) { try { assertResume(parsed.resume, context); } catch (error) { const failure = error as MusicCommandError; return emit(id, parsed.command, parsed.format, started, context, { status: "failure", phase: failure.phase, exitCode: failure.exitCode, error: redactedError(failure) }); } }
-  try { return emit(id, parsed.command, parsed.format, started, context, await executeCommand(id, parsed)); }
+  const context = parsed.command === "reconcile" && parsed.mode === "live"
+    ? buildTrackedReconciliationContext()
+    : buildRunContext({
+      allowInvalidEnvironment: parsed.command === "doctor",
+      // The aggregate cleanup wrapper is the destructive authority. A retired
+      // pointer needs only a non-secret render context so a repeated teardown
+      // can reach that wrapper; populated or malformed inventories still fail
+      // authentication before the action is allowed to run.
+      useExampleForRetiredEnvironment: parsed.command === "down" || parsed.command === "db:reset",
+    });
+  let reconciliationCheckpoint: string | undefined;
+  if (parsed.command === "reconcile") {
+    try { reconciliationCheckpoint = resolveMusicReconciliationCheckpointPath(parsed.checkpoint, id); }
+    catch (error) { const failure = error as MusicCommandError; return emit(id, parsed.command, parsed.format, started, context, { status: "blocked", phase: failure.phase, exitCode: failure.exitCode, error: redactedError(failure) }); }
+  }
+  activeRun = { id, command: parsed.command, format: parsed.format, started, context, reconciliationCheckpoint };
+  if (parsed.resume && parsed.command !== "reconcile") { try { assertResume(parsed.resume, context); } catch (error) { const failure = error as MusicCommandError; return emit(id, parsed.command, parsed.format, started, context, { status: "failure", phase: failure.phase, exitCode: failure.exitCode, error: redactedError(failure) }); } }
+  try { return emit(id, parsed.command, parsed.format, started, context, await executeCommand(id, parsed, context)); }
   catch (error) { const failure = error instanceof MusicCommandError ? error : new MusicCommandError(redactedError(error), "execution", EXIT.dependency); return emit(id, parsed.command, parsed.format, started, context, { status: failure.exitCode === EXIT.safety ? "blocked" : "failure", phase: failure.phase, exitCode: failure.exitCode, error: redactedError(failure) }); }
   finally { activeRun = undefined; }
 }
@@ -485,14 +808,20 @@ async function interrupted(): Promise<void> {
   let checkpoint = "";
   await terminateBeforeCheckpoint(
     () => runner.terminateAll(),
-    () => { checkpoint = writeCheckpoint(run.id, run.context, { status: "failure", phase: "interrupted", exitCode: EXIT.interrupted }); },
+    async () => {
+      if (run.reconciliationCheckpoint) {
+        const { interruptMusicReconciliationCheckpoint } = await import("../server/commands/reconcileMusicIdentities.ts");
+        if (await interruptMusicReconciliationCheckpoint(run.reconciliationCheckpoint)) checkpoint = run.reconciliationCheckpoint;
+      }
+      if (!checkpoint) checkpoint = writeCheckpoint(run.id, run.context, { status: "failure", phase: "interrupted", exitCode: EXIT.interrupted });
+    },
   );
   emit(run.id, run.command, run.format, run.started, run.context, { status: "failure", phase: "interrupted", exitCode: EXIT.interrupted, checkpoint });
   process.exit(EXIT.interrupted);
 }
-export async function terminateBeforeCheckpoint(terminate: () => Promise<void>, checkpoint: () => void): Promise<void> {
+export async function terminateBeforeCheckpoint(terminate: () => Promise<void>, checkpoint: () => void | Promise<void>): Promise<void> {
   await terminate();
-  checkpoint();
+  await checkpoint();
 }
 process.once("SIGINT", () => { void interrupted(); });
 process.once("SIGTERM", () => { void interrupted(); });
