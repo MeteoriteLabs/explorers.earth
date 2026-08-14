@@ -263,7 +263,11 @@ export function auditDeploymentAuthority(files: {
     requireText(rootCompose, name, `root Compose missing ${name}`);
   }
   if (/ghcr\.io\/[^\n]+:(?:latest|\$\{IMAGE_TAG)/.test(rootCompose)) issues.push("root Compose contains a mutable Tunes image");
-  if (!/POSTGRES_PASSWORD:\s*\$\{DB_PASS:\?/.test(rootCompose)) issues.push("database credentials must fail closed");
+  if (!/POSTGRES_PASSWORD_FILE:\s*\/run\/secrets\/music-db-migrator/.test(rootCompose)
+      || !/\$\{DB_MIGRATOR_PASSWORD_FILE_HOST:\?[^}]+\}:\/run\/secrets\/music-db-migrator:ro/.test(rootCompose)
+      || /POSTGRES_PASSWORD:\s|DATABASE_URL:\s*postgres/.test(rootCompose)) {
+    issues.push("database credentials must fail closed");
+  }
   const dbSection = rootCompose.match(/\n  db:\n([\s\S]*?)(?=\n  [a-zA-Z][\w-]*:\n)/)?.[1] ?? "";
   if (/\n\s+ports:/.test(dbSection)) issues.push("production database must not publish a port");
   requireText(tunesCompose, "status: superseded", "Tunes Compose must be explicitly superseded");

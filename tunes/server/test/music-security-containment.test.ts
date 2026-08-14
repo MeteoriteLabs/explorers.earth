@@ -36,7 +36,20 @@ vi.mock("../services/user-sync-service", () => ({
   userSyncService: { syncUser: vi.fn(async () => OWNER) },
 }));
 
-const { createValidatedApp: createApp } = await import("../config/music-startup");
+const { createValidatedApp } = await import("../config/music-startup");
+const createApp = async () => {
+  const inheritedDatabaseUrl = process.env.DATABASE_URL;
+  delete process.env.DATABASE_URL;
+  try {
+    return await createValidatedApp(process.env, {
+      readSecretFile: async () => Buffer.alloc(32, 0x6d).toString("base64url"),
+      verifyDatabaseConnection: async () => undefined,
+    });
+  } finally {
+    if (inheritedDatabaseUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = inheritedDatabaseUrl;
+  }
+};
 const { storage } = await import("../storage");
 const { resetContainmentLimiters } = await import("../security-containment");
 
@@ -537,7 +550,7 @@ describe("Music production startup containment", () => {
     const saved = { ...process.env };
     process.env.NODE_ENV = "production";
     delete process.env.STRAPI_JWT_SECRET;
-    process.env.DATABASE_URL = "postgresql://cosmic:cosmicpass@db/cosmic";
+    delete process.env.DATABASE_URL;
     await expect(createApp()).rejects.toThrow(/STRAPI_JWT_SECRET|credential|default/i);
     process.env = saved;
   });
@@ -545,7 +558,7 @@ describe("Music production startup containment", () => {
   it("marks production session and CSRF cookies Secure", async () => {
     const saved = { ...process.env };
     process.env.NODE_ENV = "production";
-    process.env.DATABASE_URL = "postgresql://music_prod:long-random-password@private-db.internal/music";
+    delete process.env.DATABASE_URL;
     process.env.SESSION_SECRET = "session-secret-with-at-least-thirty-two-characters";
     process.env.COOKIE_SECRET = "cookie-secret-with-at-least-thirty-two-characters";
     process.env.STRAPI_JWT_SECRET = TEST_JWT_SECRET;

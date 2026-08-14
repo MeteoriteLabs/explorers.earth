@@ -20,6 +20,15 @@ const require = createRequire(import.meta.url);
 const { load: parseYaml } = require("js-yaml") as { load(source: string): any };
 
 describe("Music migration authority contracts", () => {
+  it("ends with append-only runtime role grants and an ALWAYS revocation trigger", () => {
+    expect(EXPECTED_MUSIC_MIGRATION_ID).toBe("0010_least_privilege_runtime_role");
+    const migration = loadMusicMigrations().at(-1);
+    expect(migration?.id).toBe("0010_least_privilege_runtime_role");
+    expect(migration?.sql).toMatch(/CREATE ROLE music_runtime NOLOGIN/i);
+    expect(migration?.sql).toMatch(/ENABLE ALWAYS TRIGGER music_credential_revocation_history_immutability/i);
+    expect(migration?.sql).toMatch(/REVOKE (?:INSERT|UPDATE|DELETE|ALL)[\s\S]+music_schema_migrations/i);
+    expect(migration?.sql).toMatch(/ALTER DEFAULT PRIVILEGES[\s\S]+music_runtime/i);
+  });
   it("loads one ordered, contiguous, checksummed forward-only chain", () => {
     const migrations = loadMusicMigrations(resolve(repositoryRoot, "tunes/migrations"));
     expect(migrations.map(({ id }) => id)).toEqual([
@@ -32,6 +41,7 @@ describe("Music migration authority contracts", () => {
       "0007_identity_provider_snapshot",
       "0008_credential_revocation_operations",
       "0009_credential_revocation_history_immutability",
+      "0010_least_privilege_runtime_role",
     ]);
     expect(EXPECTED_MUSIC_MIGRATION_ID).toBe(migrations.at(-1)?.id);
     expect(migrations.every(({ checksum }) => /^[a-f0-9]{64}$/.test(checksum))).toBe(true);
@@ -49,8 +59,9 @@ describe("Music migration authority contracts", () => {
       "0007_identity_provider_snapshot",
       "0008_credential_revocation_operations",
       "0009_credential_revocation_history_immutability",
+      "0010_least_privilege_runtime_role",
     ]);
-    expect(DEPLOYABLE_MUSIC_MIGRATION_MARKERS.map(musicMigrationMarkerRank)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(DEPLOYABLE_MUSIC_MIGRATION_MARKERS.map(musicMigrationMarkerRank)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
     expect(musicMigrationMarkerRank("9999_unknown")).toBeUndefined();
   });
 
@@ -110,7 +121,7 @@ describe("Music migration authority contracts", () => {
     const workflow = read(".github/workflows/tunes.yml");
     expect(workflow).toMatch(/image:\s*postgres:15-alpine/);
     expect(workflow).toContain("MUSIC_C3_POSTGRES_TEST: \"1\"");
-    expect(workflow).toContain("DATABASE_URL_TEST: postgresql://music:music@127.0.0.1:55432/music_fixture");
+    expect(workflow).toContain("DATABASE_URL_TEST: postgresql://music_migrator:music@127.0.0.1:55432/music_fixture");
     expect(workflow).toContain("npm run test:integration");
   });
 
@@ -157,7 +168,7 @@ describe("Music migration authority contracts", () => {
 
   it("rejects any non-production chain before opening a database connection", async () => {
     const production = loadMusicMigrations(resolve(repositoryRoot, "tunes/migrations"));
-    const appended = createMigrationDefinition("0010_unapproved", "SELECT 1;\n");
+    const appended = createMigrationDefinition("0011_unapproved", "SELECT 1;\n");
     const connect = vi.fn();
     await expect(migrateMusicDatabase({ connect } as never, { migrations: [...production, appended] }))
       .rejects.toThrow(/exact production migration chain/i);

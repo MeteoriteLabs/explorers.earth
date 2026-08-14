@@ -7,7 +7,12 @@ name: explorers-production
 x-tunes-environment: &tunes-environment
   NODE_ENV: production
   PORT: "5000"
-  DATABASE_URL: postgresql://${DB_USER:?DB_USER is required}:${DB_PASS:?DB_PASS is required}@db:5432/${DB_NAME:?DB_NAME is required}
+  MUSIC_DATABASE_HOST: db
+  MUSIC_DATABASE_PORT: "5432"
+  MUSIC_DATABASE_NAME: ${DB_NAME:?DB_NAME is required}
+  MUSIC_DATABASE_USER: ${DB_RUNTIME_USER:?DB_RUNTIME_USER is required}
+  MUSIC_DATABASE_MIGRATOR_USER: ${DB_MIGRATOR_USER:?DB_MIGRATOR_USER is required}
+  MUSIC_DATABASE_PASSWORD_FILE: /run/secrets/music-db-runtime
   SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
   COOKIE_SECRET: ${COOKIE_SECRET:?COOKIE_SECRET is required}
   STRAPI_URL: ${STRAPI_URL:?STRAPI_URL is required}
@@ -74,6 +79,7 @@ x-tunes-service: &tunes-service
   volumes:
     - music-gate-attestations:/deployment-gates:ro
     - ${MUSIC_TOKEN_SECRET_DIRECTORY_HOST:?MUSIC_TOKEN_SECRET_DIRECTORY_HOST is required}:/run/secrets/music-token:ro
+    - ${DB_RUNTIME_PASSWORD_FILE_HOST:?DB_RUNTIME_PASSWORD_FILE_HOST is required}:/run/secrets/music-db-runtime:ro
   networks:
     - proxy
     - internal
@@ -115,11 +121,12 @@ services:
     image: postgres:15-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USER:?DB_USER is required}
-      POSTGRES_PASSWORD: ${DB_PASS:?DB_PASS is required}
+      POSTGRES_USER: ${DB_MIGRATOR_USER:?DB_MIGRATOR_USER is required}
+      POSTGRES_PASSWORD_FILE: /run/secrets/music-db-migrator
       POSTGRES_DB: ${DB_NAME:?DB_NAME is required}
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ${DB_MIGRATOR_PASSWORD_FILE_HOST:?DB_MIGRATOR_PASSWORD_FILE_HOST is required}:/run/secrets/music-db-migrator:ro
     networks:
       - internal
     healthcheck:
@@ -135,13 +142,13 @@ services:
       <<: *tunes-environment
       MUSIC_IMAGE_DIGEST: ${TUNES_BLUE_DIGEST:?TUNES_BLUE_DIGEST is required}
       MUSIC_IMAGE_COMMIT: ${TUNES_BLUE_COMMIT:?TUNES_BLUE_COMMIT is required}
-      MUSIC_MIGRATION_MARKER: ${TUNES_BLUE_MIGRATION:-0009_credential_revocation_history_immutability}
+      MUSIC_MIGRATION_MARKER: ${TUNES_BLUE_MIGRATION:-0010_least_privilege_runtime_role}
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/${TUNES_BLUE_DIGEST:?TUNES_BLUE_DIGEST is required}.json
     labels:
       com.explorers.music.slot: blue
       com.explorers.music.commit: ${TUNES_BLUE_COMMIT:?TUNES_BLUE_COMMIT is required}
       com.explorers.music.digest: ${TUNES_BLUE_DIGEST:?TUNES_BLUE_DIGEST is required}
-      com.explorers.music.migration: ${TUNES_BLUE_MIGRATION:-0009_credential_revocation_history_immutability}
+      com.explorers.music.migration: ${TUNES_BLUE_MIGRATION:-0010_least_privilege_runtime_role}
 
   tunes-green:
     <<: *tunes-service
@@ -150,13 +157,13 @@ services:
       <<: *tunes-environment
       MUSIC_IMAGE_DIGEST: ${TUNES_GREEN_DIGEST:?TUNES_GREEN_DIGEST is required}
       MUSIC_IMAGE_COMMIT: ${TUNES_GREEN_COMMIT:?TUNES_GREEN_COMMIT is required}
-      MUSIC_MIGRATION_MARKER: ${TUNES_GREEN_MIGRATION:-0009_credential_revocation_history_immutability}
+      MUSIC_MIGRATION_MARKER: ${TUNES_GREEN_MIGRATION:-0010_least_privilege_runtime_role}
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/${TUNES_GREEN_DIGEST:?TUNES_GREEN_DIGEST is required}.json
     labels:
       com.explorers.music.slot: green
       com.explorers.music.commit: ${TUNES_GREEN_COMMIT:?TUNES_GREEN_COMMIT is required}
       com.explorers.music.digest: ${TUNES_GREEN_DIGEST:?TUNES_GREEN_DIGEST is required}
-      com.explorers.music.migration: ${TUNES_GREEN_MIGRATION:-0009_credential_revocation_history_immutability}
+      com.explorers.music.migration: ${TUNES_GREEN_MIGRATION:-0010_least_privilege_runtime_role}
 
   tunes-gate:
     profiles: [deployment]
@@ -164,10 +171,17 @@ services:
     restart: "no"
     command: ["node", "${TUNES_GATE_ENTRYPOINT:-dist/server/deployment/run-migration-gate.js}"]
     environment:
-      DATABASE_URL: postgresql://${DB_USER:?DB_USER is required}:${DB_PASS:?DB_PASS is required}@db:5432/${DB_NAME:?DB_NAME is required}
+      MUSIC_MODE: live
+      MUSIC_DATABASE_HOST: db
+      MUSIC_DATABASE_PORT: "5432"
+      MUSIC_DATABASE_NAME: ${DB_NAME:?DB_NAME is required}
+      MUSIC_DATABASE_USER: ${DB_MIGRATOR_USER:?DB_MIGRATOR_USER is required}
+      MUSIC_DATABASE_PASSWORD_FILE: /run/secrets/music-db-migrator
+      MUSIC_RUNTIME_DATABASE_USER: ${DB_RUNTIME_USER:?DB_RUNTIME_USER is required}
+      MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: /run/secrets/music-db-runtime
       MUSIC_IMAGE_DIGEST: ${TUNES_CANDIDATE_DIGEST:?TUNES_CANDIDATE_DIGEST is required}
       MUSIC_IMAGE_COMMIT: ${TUNES_CANDIDATE_COMMIT:?TUNES_CANDIDATE_COMMIT is required}
-      MUSIC_MIGRATION_MARKER: ${TUNES_CANDIDATE_MIGRATION:-0009_credential_revocation_history_immutability}
+      MUSIC_MIGRATION_MARKER: ${TUNES_CANDIDATE_MIGRATION:-0010_least_privilege_runtime_role}
       MUSIC_GATE_ATTESTATION_KEY: ${MUSIC_GATE_ATTESTATION_KEY:?MUSIC_GATE_ATTESTATION_KEY is required}
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/${TUNES_CANDIDATE_DIGEST:?TUNES_CANDIDATE_DIGEST is required}.json
     depends_on:
@@ -175,6 +189,8 @@ services:
         condition: service_healthy
     volumes:
       - music-gate-attestations:/deployment-gates
+      - ${DB_MIGRATOR_PASSWORD_FILE_HOST:?DB_MIGRATOR_PASSWORD_FILE_HOST is required}:/run/secrets/music-db-migrator:ro
+      - ${DB_RUNTIME_PASSWORD_FILE_HOST:?DB_RUNTIME_PASSWORD_FILE_HOST is required}:/run/secrets/music-db-runtime:ro
     networks:
       - internal
 

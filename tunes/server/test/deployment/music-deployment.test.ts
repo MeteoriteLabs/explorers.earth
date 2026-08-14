@@ -21,7 +21,7 @@ const candidate: ImageCandidate = {
 const schemaCandidate: ImageCandidate = {
   digest: `sha256:${"4".repeat(64)}`,
   commit: "4444444444444444444444444444444444444444",
-  migrationMarker: "0009_credential_revocation_history_immutability",
+  migrationMarker: "0010_least_privilege_runtime_role",
 };
 
 function initialState(): DeploymentState {

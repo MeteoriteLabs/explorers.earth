@@ -12,17 +12,19 @@ services:
     image: postgres:15-alpine
     environment:
       POSTGRES_DB: music_fixture
-      POSTGRES_USER: music
-      POSTGRES_PASSWORD: music
+      POSTGRES_USER: music_migrator
+      POSTGRES_PASSWORD_FILE: /run/secrets/music-db-migrator
     ports: ["127.0.0.1:55432:5432"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U music -d music_fixture"]
+      test: ["CMD-SHELL", "pg_isready -U music_migrator -d music_fixture"]
       interval: 2s
       timeout: 3s
       retries: 20
     labels: *music-labels
     networks: [music-fixture]
-    volumes: [music-fixture-postgres:/var/lib/postgresql/data]
+    volumes:
+      - music-fixture-postgres:/var/lib/postgresql/data
+      - ${MUSIC_DB_MIGRATOR_SECRET_FILE_HOST:?MUSIC_DB_MIGRATOR_SECRET_FILE_HOST is required}:/run/secrets/music-db-migrator:ro
 
   strapi:
     image: node:22.12-alpine
@@ -43,17 +45,27 @@ services:
     command: ["node", "dist/server/deployment/run-migration-gate.js"]
     restart: "no"
     environment:
-      DATABASE_URL: postgresql://music:music@postgres:5432/music_fixture
+      MUSIC_MODE: fixture
+      MUSIC_DATABASE_HOST: postgres
+      MUSIC_DATABASE_PORT: "5432"
+      MUSIC_DATABASE_NAME: music_fixture
+      MUSIC_DATABASE_USER: music_migrator
+      MUSIC_DATABASE_PASSWORD_FILE: /run/secrets/music-db-migrator
+      MUSIC_RUNTIME_DATABASE_USER: music_runtime_login
+      MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: /run/secrets/music-db-runtime
       MUSIC_IMAGE_DIGEST: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
       MUSIC_IMAGE_COMMIT: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-      MUSIC_MIGRATION_MARKER: 0009_credential_revocation_history_immutability
+      MUSIC_MIGRATION_MARKER: 0010_least_privilege_runtime_role
       MUSIC_GATE_ATTESTATION_KEY: fixture-migration-gate-key-at-least-32-characters
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/fixture.json
     depends_on:
       postgres: { condition: service_healthy }
     labels: *music-labels
     networks: [music-fixture]
-    volumes: [music-fixture-gates:/deployment-gates]
+    volumes:
+      - music-fixture-gates:/deployment-gates
+      - ${MUSIC_DB_MIGRATOR_SECRET_FILE_HOST:?MUSIC_DB_MIGRATOR_SECRET_FILE_HOST is required}:/run/secrets/music-db-migrator:ro
+      - ${MUSIC_DB_RUNTIME_SECRET_FILE_HOST:?MUSIC_DB_RUNTIME_SECRET_FILE_HOST is required}:/run/secrets/music-db-runtime:ro
 
   tunes:
     <<: *tunes-fixture-image
@@ -67,8 +79,12 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5000
-      DATABASE_URL: postgresql://music:music@postgres:5432/music_fixture
-      DATABASE_URL_TEST: postgresql://music:music@127.0.0.1:55432/music_fixture
+      MUSIC_DATABASE_HOST: postgres
+      MUSIC_DATABASE_PORT: "5432"
+      MUSIC_DATABASE_NAME: music_fixture
+      MUSIC_DATABASE_USER: music_runtime_login
+      MUSIC_DATABASE_MIGRATOR_USER: music_migrator
+      MUSIC_DATABASE_PASSWORD_FILE: /run/secrets/music-db-runtime
       STRAPI_URL: http://strapi:1337
       MUSIC_FIXTURE_STRAPI_ORIGIN: http://strapi:1337
       TRUST_PROXY_HOPS: "0"
@@ -105,7 +121,7 @@ services:
       MUSIC_PROVISIONING_COHORT: disabled
       MUSIC_NEW_ENTRY_KILL_SWITCH: "false"
       MUSIC_COHORT_ENABLED: "false"
-      MUSIC_EXPECTED_MIGRATION_ID: 0009_credential_revocation_history_immutability
+      MUSIC_EXPECTED_MIGRATION_ID: 0010_least_privilege_runtime_role
       MUSIC_RECONCILIATION_ENABLED: "false"
       MUSIC_RECONCILIATION_MAX_ROWS: "0"
     ports: ["127.0.0.1:55000:5000"]
@@ -120,7 +136,9 @@ services:
       retries: 20
     labels: *music-labels
     networks: [music-fixture]
-    volumes: [./.artifacts/music-token-secrets:/run/secrets/music-token:ro]
+    volumes:
+      - ${MUSIC_TOKEN_SECRET_FILE_HOST:?MUSIC_TOKEN_SECRET_FILE_HOST is required}:/run/secrets/music-token/current:ro
+      - ${MUSIC_DB_RUNTIME_SECRET_FILE_HOST:?MUSIC_DB_RUNTIME_SECRET_FILE_HOST is required}:/run/secrets/music-db-runtime:ro
 
   explorers:
     build:

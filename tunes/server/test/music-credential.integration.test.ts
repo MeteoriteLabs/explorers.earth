@@ -6,7 +6,7 @@ import { MusicPrincipalService } from "../middleware/musicPrincipal";
 import { MusicIdentityRepository, type EnsureMusicIdentityInput } from "../repositories/musicIdentityRepository";
 import { MusicTokenService } from "../services/musicTokenService";
 
-const exactTarget = "postgresql://music:music@127.0.0.1:55432/music_fixture";
+const exactTarget = process.env.DATABASE_URL_TEST ?? "postgresql://music_migrator:music@127.0.0.1:55432/music_fixture";
 const enabled = process.env.MUSIC_C5_POSTGRES_TEST === "1";
 const describePg = enabled ? describe.sequential : describe.skip;
 const databaseName = `music_c5_credentials_${process.pid}`;

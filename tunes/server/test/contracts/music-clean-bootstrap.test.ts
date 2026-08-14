@@ -39,6 +39,7 @@ describe("clean Music bootstrap", () => {
         "tunes/scripts/music-compose-safety.ts",
         "tunes/scripts/music-process-runner.ts",
         "tunes/server/config/music-environment.ts",
+        "tunes/server/config/secure-music-secret-file.ts",
         "tunes/shared/music-migration-contract.ts",
       ]) copyRepositoryFile(checkout, file);
       writeEmptyPackage(checkout, "tunes");

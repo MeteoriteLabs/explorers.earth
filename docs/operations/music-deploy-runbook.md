@@ -40,8 +40,9 @@ absent or different, or `main` is not protected.
 
 ## C3-C5 same-image migration gate
 
-`0009_credential_revocation_history_immutability` is the exact expected migration ID. The
-C5 migration appends durable, exact-operation credential-revocation authority
+`0010_least_privilege_runtime_role` is the exact expected migration ID. The
+C5 chain appends durable, exact-operation credential-revocation authority,
+immutable revocation history, and the least-privilege runtime boundary
 without changing the immutable user/selected-Account ownership tuple. Each
 operation binds a lowercase UUIDv4, numeric Music resource, immutable Explorer
 user/Account tuple, closed internal reason, and expected/result session version.
@@ -61,7 +62,7 @@ Liveness remains process-only. The secure image ledger can retain historical
 `containment-no-schema-change` entries for audit and the permanent security
 floor, but they cease to be rollback targets as soon as the real C3 gate has
 migrated the database. All new images use
-`0009_credential_revocation_history_immutability` and the
+`0010_least_privilege_runtime_role` and the
 real migration gate. Because production catalog/row-count and restore evidence
 are still absent, an existing unversioned database is a conflict: there is no
 automatic baseline adoption, username/email matching, or authorized production
@@ -109,14 +110,14 @@ secure history remains the rollback allowlist. Missing, mismatched, malformed,
 or tampered schema-epoch authority fails closed before Docker. Marker parsing
 is versioned rather than coupled only to the newest image. The known ordered
 authority is `containment-no-schema-change`, then migrations `0002` through
-`0007`; authenticated historical rows remain byte-exact and valid, while an
+`0010`; authenticated historical rows remain byte-exact and valid, while an
 unknown marker or decreasing ledger/epoch rank fails closed. The executable
 conservatively adopts only two pre-epoch formats: a signed
 state/ledger ending at `0002` with no compatibility file, or the exact historical
 `music-schema-floor-v1` five-field HMAC record for `0003`. A missing `0003`
 floor, an unsigned partial file, or any reinterpreted v1 field fails before
 Docker. The candidate compatibility listener and exact-path denial route are
-installed before either format is upgraded directly to pending `0007`.
+installed before either format is upgraded directly to pending `0010`.
 For an upgrade, the higher signed epoch is written first and recovered only in that monotonic
 direction, then the signed floor advances to `pending` before the gate. From
 that point, older-marker rollback is rejected before Docker. Gate failure
@@ -267,6 +268,44 @@ different ID fails with `LIFECYCLE_OPERATION_CONFLICT` before child cleanup. An
 active administrative delete generates a cryptographically random operation
 ID, returns it to the caller, and records it through the database primitive.
 Retrying a finalized deletion with that exact ID is idempotent.
+
+## C5 database authority cutover
+
+Production uses two independent, canonical-base64url credential files owned by
+root and mode `0600`: one for the existing database owner/migrator login and one
+for the application runtime login. `DB_MIGRATOR_USER` must be the role that owns
+the database and `public` schema and can create roles. `DB_RUNTIME_USER` must be
+a distinct safe role name; it must not already have superuser, database-create,
+role-create, replication, bypass-RLS, object ownership, or membership in any
+owner/migrator role. Never put either password in an environment variable,
+connection-string file, Compose value, command argument, image, or log.
+
+Migration `0010` creates the fixed `music_runtime` capability as `NOLOGIN`,
+grants current DML/sequence/function access, revokes migration-journal writes
+and revocation-history update/delete, enables the history trigger `ALWAYS`, and
+sets explicit default privileges for objects created by subsequent migrations.
+The one-shot candidate gate mounts both files only for this bounded step. It
+authenticates as the migrator, validates owner and role-bootstrap authority,
+applies the chain, provisions/rotates the separate restricted `LOGIN` through a
+parameterized security-definer function, connects as that login, and executes
+the hostile privilege attestation. The attestation must prove the runtime login
+cannot set `session_replication_role`, write the migration journal, update or
+delete revocation history, alter/drop its trigger, replace its function, own an
+application object, or inherit any role except `music_runtime`. The migration
+attestation file is written only after those checks succeed.
+
+The Tunes application mounts only the runtime credential and independently
+authenticates and checks the restricted role before importing routes or binding
+a listener. It never mounts or reads the migrator credential. The database
+container and gate mount the migrator credential; only the gate additionally
+mounts the runtime credential. For an existing environment, keep `GATE_PROD`
+closed until an operator has backed up the database, confirmed the configured
+migrator is the actual database/schema owner with role-create authority, and
+confirmed that an existing proposed runtime role is either absent or already
+has exactly the safe attributes above. Missing files, legacy inline
+`DATABASE_URL`/password values, ownership mismatch, unsafe membership, failed
+runtime authentication, or any hostile-attestation success is a hard preflight
+failure before promotion.
 
 ## C5 local Music credential keys and emergency revocation
 

@@ -1,4 +1,4 @@
-export const EXPECTED_MUSIC_MIGRATION_ID = "0009_credential_revocation_history_immutability" as const;
+export const EXPECTED_MUSIC_MIGRATION_ID = "0010_least_privilege_runtime_role" as const;
 export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0001_runtime_baseline",
   "0002_identity_lifecycle",
@@ -8,6 +8,7 @@ export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0006_numeric_identity_lock",
   "0007_identity_provider_snapshot",
   "0008_credential_revocation_operations",
+  "0009_credential_revocation_history_immutability",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 export const LEGACY_CONTAINMENT_MIGRATION_MARKER = "containment-no-schema-change" as const;
@@ -21,6 +22,7 @@ export const DEPLOYABLE_MUSIC_MIGRATION_MARKERS = [
   "0006_numeric_identity_lock",
   "0007_identity_provider_snapshot",
   "0008_credential_revocation_operations",
+  "0009_credential_revocation_history_immutability",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 

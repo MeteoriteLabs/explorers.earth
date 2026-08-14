@@ -1,12 +1,13 @@
 import { createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, statfsSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
-import { isAbsolute, join, resolve, win32 as windowsPath } from "node:path";
+import { isAbsolute, join, relative, resolve, win32 as windowsPath } from "node:path";
 import { parseMusicEnvironment } from "../server/config/music-environment.ts";
 import { MUSIC_COMPOSE_PROJECT, validateComposeModel, validateOwnedResources, type ComposeModel } from "./music-compose-safety.ts";
 import { OwnedProcessRunner } from "./music-process-runner.ts";
 import { EXPECTED_MUSIC_MIGRATION_ID } from "../shared/music-migration-contract.ts";
-import { prepareFixtureMusicTokenSecret, withFixtureMusicTokenSecretCleanup } from "./music-fixture-secret.ts";
+import { cleanupAllFixtureMusicTokenSecrets, prepareFixtureMusicTokenSecret, withAllFixtureMusicSecretsCleanup } from "./music-fixture-secret.ts";
+import { readSecureMusicSecretFile } from "../server/config/secure-music-secret-file.ts";
 
 export const MUSIC_CLI_SCHEMA_VERSION = "music-cli/v1";
 export const FIXTURE_SCHEMA_VERSION = "strapi-identity-fixture/v1";
@@ -47,6 +48,7 @@ interface RunContext { commit: string; fixtureVersion: string; fixtureSchemaVers
 const root = resolve(import.meta.dirname, "../..");
 const artifactRoot = join(root, ".artifacts", "music-runs");
 const composeFile = "docker-compose.music-test.yml";
+const composeArguments = ["compose", "--env-file", ".env.music.test", "-p", MUSIC_COMPOSE_PROJECT, "-f", composeFile];
 const requiredFiles = [composeFile, ".env.music.example", ".env.music.test.example", "fixtures/strapi/music-identity/identity.fixture.json", "fixtures/db/music-runtime-table-manifest.json"];
 const runner = new OwnedProcessRunner();
 let activeRun: { id: string; command: string; format: OutputFormat; started: number; context: RunContext } | undefined;
@@ -251,9 +253,27 @@ async function runChild(id: string, command: "npm" | "docker" | "node", args: st
 
 function createTestEnv(): void {
   const path = join(root, ".env.music.test");
-  prepareFixtureMusicTokenSecret(root);
-  if (existsSync(path)) { try { parseMusicEnvironment(readEnvFile(path)); return; } catch { /* replace invalid disposable configuration */ } }
-  writeFileSync(path, `MUSIC_MODE=fixture\nMUSIC_FIXTURE_VERSION=1\nSTRAPI_URL=http://strapi:1337\nMUSIC_FIXTURE_STRAPI_ORIGIN=http://strapi:1337\nTRUST_PROXY_HOPS=0\nSTRAPI_FIXTURE_URL=http://127.0.0.1:51337\nDATABASE_URL_TEST=postgresql://music:music@127.0.0.1:55432/music_fixture\nSESSION_SECRET=${randomBytes(32).toString("base64url")}\nCOOKIE_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_SIGNING_KEY_CURRENT_ID=fixture-current\nMUSIC_SIGNING_KEY_CURRENT_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_SIGNING_KEY_PREVIOUS_ID=fixture-previous\nMUSIC_SIGNING_KEY_PREVIOUS_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_TOKEN_CURRENT_KID=fixture-current\nMUSIC_TOKEN_CURRENT_SECRET_FILE=/run/secrets/music-token/current\nMUSIC_TOKEN_LIFETIME_SECONDS=600\nMUSIC_TOKEN_CLOCK_SKEW_SECONDS=15\nMUSIC_CONNECT_TIMEOUT_MS=5000\nMUSIC_READ_TIMEOUT_MS=10000\nMUSIC_CIRCUIT_FAILURE_THRESHOLD=3\nMUSIC_RATE_LIMIT_PER_MINUTE=60\nMUSIC_PROVISIONING_KILL_SWITCH=true\nMUSIC_PROVISIONING_COHORT=disabled\nMUSIC_EXPECTED_MIGRATION_ID=${EXPECTED_MUSIC_MIGRATION_ID}\nMUSIC_RECONCILIATION_ENABLED=false\nMUSIC_RECONCILIATION_MAX_ROWS=0\n`);
+  cleanupAllFixtureMusicTokenSecrets(root);
+  const temporary = `${path}.${process.pid}.tmp`;
+  try {
+    const tokenPath = prepareFixtureMusicTokenSecret(root);
+    const migratorPasswordPath = prepareFixtureMusicTokenSecret(root);
+    const runtimePasswordPath = prepareFixtureMusicTokenSecret(root);
+    const fixturePath = (value: string) => `./${relative(root, value).replace(/\\/g, "/")}`;
+    writeFileSync(temporary, `MUSIC_MODE=fixture\nMUSIC_FIXTURE_VERSION=1\nSTRAPI_URL=http://strapi:1337\nMUSIC_FIXTURE_STRAPI_ORIGIN=http://strapi:1337\nTRUST_PROXY_HOPS=0\nSTRAPI_FIXTURE_URL=http://127.0.0.1:51337\nDATABASE_URL_TEST=postgresql://music_migrator@127.0.0.1:55432/music_fixture\nMUSIC_DATABASE_HOST=postgres\nMUSIC_DATABASE_PORT=5432\nMUSIC_DATABASE_NAME=music_fixture\nMUSIC_DATABASE_USER=music_runtime_login\nMUSIC_DATABASE_MIGRATOR_USER=music_migrator\nMUSIC_DATABASE_PASSWORD_FILE=/run/secrets/music-db-runtime\nMUSIC_TOKEN_SECRET_FILE_HOST=${fixturePath(tokenPath)}\nMUSIC_DB_MIGRATOR_SECRET_FILE_HOST=${fixturePath(migratorPasswordPath)}\nMUSIC_DB_RUNTIME_SECRET_FILE_HOST=${fixturePath(runtimePasswordPath)}\nSESSION_SECRET=${randomBytes(32).toString("base64url")}\nCOOKIE_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_SIGNING_KEY_CURRENT_ID=fixture-current\nMUSIC_SIGNING_KEY_CURRENT_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_SIGNING_KEY_PREVIOUS_ID=fixture-previous\nMUSIC_SIGNING_KEY_PREVIOUS_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_TOKEN_CURRENT_KID=fixture-current\nMUSIC_TOKEN_CURRENT_SECRET_FILE=/run/secrets/music-token/current\nMUSIC_TOKEN_LIFETIME_SECONDS=600\nMUSIC_TOKEN_CLOCK_SKEW_SECONDS=15\nMUSIC_CONNECT_TIMEOUT_MS=5000\nMUSIC_READ_TIMEOUT_MS=10000\nMUSIC_CIRCUIT_FAILURE_THRESHOLD=3\nMUSIC_RATE_LIMIT_PER_MINUTE=60\nMUSIC_PROVISIONING_KILL_SWITCH=true\nMUSIC_PROVISIONING_COHORT=disabled\nMUSIC_EXPECTED_MIGRATION_ID=${EXPECTED_MUSIC_MIGRATION_ID}\nMUSIC_RECONCILIATION_ENABLED=false\nMUSIC_RECONCILIATION_MAX_ROWS=0\n`);
+    renameSync(temporary, path);
+  } catch (error) {
+    cleanupAllFixtureMusicTokenSecrets(root);
+    throw error;
+  }
+}
+
+async function fixtureMigratorUrl(environment: Record<string, string>): Promise<string> {
+  const path = resolve(root, environment.MUSIC_DB_MIGRATOR_SECRET_FILE_HOST ?? "");
+  const password = await readSecureMusicSecretFile(path, { mode: "fixture" });
+  const url = new URL(environment.DATABASE_URL_TEST);
+  url.password = password;
+  return url.toString();
 }
 
 async function portAvailable(port: number): Promise<boolean> {
@@ -261,7 +281,7 @@ async function portAvailable(port: number): Promise<boolean> {
 }
 
 async function renderComposeModel(id: string): Promise<{ model: ComposeModel; artifacts: string[] }> {
-  const rendered = await runChild(id, "docker", ["compose", "-p", MUSIC_COMPOSE_PROJECT, "-f", composeFile, "config", "--format", "json"], "compose-config", EXIT.prerequisite);
+  const rendered = await runChild(id, "docker", [...composeArguments, "config", "--format", "json"], "compose-config", EXIT.prerequisite);
   const model = JSON.parse(rendered.stdout) as ComposeModel;
   validateComposeModel(model);
   return { model, artifacts: [rendered.artifact] };
@@ -269,7 +289,7 @@ async function renderComposeModel(id: string): Promise<{ model: ComposeModel; ar
 
 async function inspectOwnedComposeResources(id: string, model: ComposeModel): Promise<string[]> {
   const artifacts: string[] = [];
-  const ps = await runChild(id, "docker", ["compose", "-p", MUSIC_COMPOSE_PROJECT, "-f", composeFile, "ps", "-a", "-q"], "compose-ps", EXIT.dependency); artifacts.push(ps.artifact);
+  const ps = await runChild(id, "docker", [...composeArguments, "ps", "-a", "-q"], "compose-ps", EXIT.dependency); artifacts.push(ps.artifact);
   const ids = ps.stdout.split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
   if (!ids.length) throw new SafetyError("no owned fixture containers were found; cleanup refused");
   const inspectedContainers = await runChild(id, "docker", ["inspect", ...ids], "inspect-containers", EXIT.dependency); artifacts.push(inspectedContainers.artifact);
@@ -328,7 +348,7 @@ async function executeCommand(id: string, parsed: ParsedArgs): Promise<RunResult
       composeProject: MUSIC_COMPOSE_PROJECT,
       confirmation: "RESET explorers-music-fixture/music_fixture",
     });
-    const pool = new pg.Pool({ connectionString: environment.DATABASE_URL_TEST, max: 2 });
+    const pool = new pg.Pool({ connectionString: await fixtureMigratorUrl(environment), max: 2 });
     try {
       const before = await inspectMusicDatabase(pool);
       const preflight = writeArtifact(id, `${parsed.command.replace(":", "-")}-preflight.json`, JSON.stringify({
@@ -357,13 +377,13 @@ async function executeCommand(id: string, parsed: ParsedArgs): Promise<RunResult
   }
   if (parsed.command === "up") {
     const compose = await renderComposeModel(id);
-    const result = await runChild(id, "docker", ["compose", "-p", MUSIC_COMPOSE_PROJECT, "-f", composeFile, "up", ...(parsed.detach ? ["--detach"] : []), ...(parsed.wait ? ["--wait"] : [])], "up", EXIT.dependency);
+    const result = await runChild(id, "docker", [...composeArguments, "up", ...(parsed.detach ? ["--detach"] : []), ...(parsed.wait ? ["--wait"] : [])], "up", EXIT.dependency);
     return { status: "success", phase: "up", exitCode: EXIT.success, artifacts: [...compose.artifacts, result.artifact] };
   }
   if (parsed.command === "test:smoke") { const result = await runChild(id, "npm", ["exec", "--silent", "--prefix", "tunes", "--", "tsx", "tunes/scripts/music-smoke.ts"], "smoke", EXIT.verification); return { status: "success", phase: "smoke", exitCode: EXIT.success, artifacts: [result.artifact] }; }
   if (parsed.command === "test:all") { const result = await runChild(id, "npm", ["test", "--prefix", "tunes"], "all-tests", EXIT.verification); return { status: "success", phase: "all-tests", exitCode: EXIT.success, artifacts: [result.artifact] }; }
   if (parsed.command === "down" || parsed.command === "db:reset") {
-    return await withFixtureMusicTokenSecretCleanup(root, async () => {
+    return await withAllFixtureMusicSecretsCleanup(root, async () => {
       const destructive = parsed.command === "db:reset" || parsed.volumes;
       if (destructive && (parsed.mode !== "fixture" || parsed.confirmProject !== MUSIC_COMPOSE_PROJECT)) throw new SafetyError(`destructive cleanup requires --mode fixture --confirm-project ${MUSIC_COMPOSE_PROJECT}`);
       if (parsed.command === "db:reset") {
@@ -375,7 +395,7 @@ async function executeCommand(id: string, parsed: ParsedArgs): Promise<RunResult
       }
       const compose = await renderComposeModel(id);
       const artifacts = [...compose.artifacts, ...(await inspectOwnedComposeResources(id, compose.model))];
-      const result = await runChild(id, "docker", ["compose", "-p", MUSIC_COMPOSE_PROJECT, "-f", composeFile, "down", ...(destructive ? ["--volumes"] : [])], parsed.command === "db:reset" ? "db-reset" : "down", EXIT.dependency);
+      const result = await runChild(id, "docker", [...composeArguments, "down", ...(destructive ? ["--volumes"] : [])], parsed.command === "db:reset" ? "db-reset" : "down", EXIT.dependency);
       return { status: "success", phase: parsed.command === "db:reset" ? "db-reset" : "down", exitCode: EXIT.success, artifacts: [...artifacts, result.artifact] };
     });
   }
@@ -385,7 +405,9 @@ async function executeCommand(id: string, parsed: ParsedArgs): Promise<RunResult
 async function main(): Promise<number> {
   const id = runId(); const started = Date.now(); let parsed: ParsedArgs;
   try { parsed = parseArgs(process.argv.slice(2)); } catch (error) { const context = buildRunContext(); const failure = error instanceof MusicCommandError ? error : new MusicCommandError(redactedError(error), "arguments", EXIT.usage); return emit(id, "music", "human", started, context, { status: "failure", phase: failure.phase, exitCode: failure.exitCode, error: redactedError(failure) }); }
-  if (parsed.command === "bootstrap") createTestEnv();
+  // A resume checkpoint is validated against the existing fixture authority.
+  // Never rotate or erase credentials before that fail-closed comparison.
+  if (parsed.command === "bootstrap" && !parsed.resume) createTestEnv();
   const context = buildRunContext({ allowInvalidEnvironment: parsed.command === "doctor" });
   activeRun = { id, command: parsed.command, format: parsed.format, started, context };
   if (parsed.resume) { try { assertResume(parsed.resume, context); } catch (error) { const failure = error as MusicCommandError; return emit(id, parsed.command, parsed.format, started, context, { status: "failure", phase: failure.phase, exitCode: failure.exitCode, error: redactedError(failure) }); } }

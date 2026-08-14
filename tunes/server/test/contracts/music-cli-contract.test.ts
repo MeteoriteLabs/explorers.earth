@@ -138,6 +138,12 @@ describe("music CLI output contract", () => {
     // produced by another source revision.
     const checkpointDirectory = mkdtempSync(join(tmpdir(), "music-cli-contract-"));
     const checkpoint = join(checkpointDirectory, "checkpoint.json");
+    const environmentPath = join(repositoryRoot, ".env.music.test");
+    const environmentBefore = readFileSync(environmentPath, "utf8");
+    const environmentValues = Object.fromEntries(environmentBefore.trim().split(/\r?\n/).map((line) => line.split("=", 2)));
+    const credentialPaths = ["MUSIC_TOKEN_SECRET_FILE_HOST", "MUSIC_DB_MIGRATOR_SECRET_FILE_HOST", "MUSIC_DB_RUNTIME_SECRET_FILE_HOST"]
+      .map((name) => resolve(repositoryRoot, environmentValues[name]));
+    const credentialBytesBefore = credentialPaths.map((path) => readFileSync(path));
     const captured = JSON.parse(runCli(["fixtures:capture", "--format", "json"]).stdout) as { checkpoint: string };
     const currentCheckpoint = JSON.parse(readFileSync(captured.checkpoint, "utf8")) as Record<string, unknown>;
     writeFileSync(checkpoint, JSON.stringify({ ...currentCheckpoint, commit: "previous-commit" }));
@@ -154,6 +160,8 @@ describe("music CLI output contract", () => {
       expect(failure.status).toBe(3);
       expect(failure.stdout).toContain("resume checkpoint commit does not match");
     }
+    expect(readFileSync(environmentPath, "utf8")).toBe(environmentBefore);
+    expect(credentialPaths.map((path) => readFileSync(path))).toEqual(credentialBytesBefore);
   });
 
   it("safety-refuses db:migrate without an explicit disposable target", () => {

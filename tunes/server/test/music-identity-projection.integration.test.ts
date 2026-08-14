@@ -6,7 +6,7 @@ import {
   type EnsureMusicIdentityInput,
 } from "../repositories/musicIdentityRepository";
 
-const exactTarget = "postgresql://music:music@127.0.0.1:55432/music_fixture";
+const exactTarget = process.env.DATABASE_URL_TEST ?? "postgresql://music_migrator:music@127.0.0.1:55432/music_fixture";
 const enabled = process.env.MUSIC_C4_POSTGRES_TEST === "1";
 const describePg = enabled ? describe.sequential : describe.skip;
 let admin: pg.Pool;

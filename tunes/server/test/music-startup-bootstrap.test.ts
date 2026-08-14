@@ -11,15 +11,26 @@ import {
 const repositoryRoot = resolve(import.meta.dirname, "../../..");
 const signingRoot = mkdtempSync(resolve(tmpdir(), "music-startup-key-"));
 const signingPath = resolve(signingRoot, "current");
+const runtimeDatabasePasswordPath = resolve(signingRoot, "database-runtime");
 writeFileSync(signingPath, Buffer.alloc(32, 0x61).toString("base64url"), { mode: 0o600 });
+writeFileSync(runtimeDatabasePasswordPath, Buffer.alloc(32, 0x62).toString("base64url"), { mode: 0o600 });
 chmodSync(signingPath, 0o600);
+chmodSync(runtimeDatabasePasswordPath, 0o600);
 afterAll(() => rmSync(signingRoot, { recursive: true, force: true }));
 
 function withSigningFile(environment: Record<string, string>): Record<string, string> {
+  const fixture = environment.MUSIC_MODE === "fixture";
   return {
     ...environment,
     MUSIC_TOKEN_CURRENT_SECRET: "",
     MUSIC_TOKEN_CURRENT_SECRET_FILE: signingPath,
+    DATABASE_URL: "",
+    MUSIC_DATABASE_HOST: fixture ? "postgres" : "db",
+    MUSIC_DATABASE_PORT: "5432",
+    MUSIC_DATABASE_NAME: fixture ? "music_fixture" : "music",
+    MUSIC_DATABASE_USER: "music_runtime_login",
+    MUSIC_DATABASE_MIGRATOR_USER: "music_migrator",
+    MUSIC_DATABASE_PASSWORD_FILE: runtimeDatabasePasswordPath,
   };
 }
 
@@ -35,8 +46,12 @@ function renderedProductionEnvironment(): Record<string, string> {
   const environment = {
     ...process.env,
     ACME_EMAIL: "ops@example.invalid",
-    DB_USER: "music",
-    DB_PASS: "fixture-production-password",
+    DB_USER: "legacy-owner",
+    DB_PASS: "legacy-owner-password-sentinel",
+    DB_MIGRATOR_USER: "music_migrator",
+    DB_MIGRATOR_PASSWORD_FILE_HOST: "C:/fixture/db-migrator",
+    DB_RUNTIME_USER: "music_runtime_login",
+    DB_RUNTIME_PASSWORD_FILE_HOST: "C:/fixture/db-runtime",
     DB_NAME: "music",
     SESSION_SECRET: "production-session-secret-at-least-32-characters",
     COOKIE_SECRET: "production-cookie-secret-at-least-32-characters",
@@ -104,16 +119,43 @@ describe("discriminated Music startup bootstrap", () => {
       return ["8.8.8.8", "2606:4700:4700::1111"];
     });
     const loadRuntime = vi.fn(async () => {
+      expect(environment.DATABASE_URL).toMatch(/^postgresql:\/\/music_runtime_login:[A-Za-z0-9_-]+@db:5432\/music$/);
       events.push("load-routes");
       return controlledRuntime(events);
     });
     await startMusicServer(environment, {
       resolveAddresses: resolver,
+      verifyDatabaseConnection: async () => { events.push("verify-runtime-db"); },
       loadRuntime,
     });
     expect(resolver).toHaveBeenCalledTimes(1);
     expect(loadRuntime).toHaveBeenCalledTimes(1);
-    expect(events).toEqual(["resolve-dns", "load-routes", "create-app", "static", "listen"]);
+    expect(events).toEqual(["resolve-dns", "verify-runtime-db", "load-routes", "create-app", "static", "listen"]);
+  });
+
+  it("rejects a wrong runtime database credential before importing routes or binding", async () => {
+    const loadRuntime = vi.fn(async () => controlledRuntime([]));
+    const verifyDatabaseConnection = vi.fn(async () => { throw new Error("runtime database authentication failed"); });
+    await expect(startMusicServer(withSigningFile(renderedProductionEnvironment()), {
+      resolveAddresses: async () => ["8.8.8.8"],
+      verifyDatabaseConnection,
+      loadRuntime,
+    } as never)).rejects.toThrow(/database authentication/i);
+    expect(verifyDatabaseConnection).toHaveBeenCalledTimes(1);
+    expect(loadRuntime).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["missing runtime user", { MUSIC_DATABASE_USER: "" }],
+    ["missing runtime secret", { MUSIC_DATABASE_PASSWORD_FILE: "" }],
+    ["owner/migrator runtime user", { MUSIC_DATABASE_USER: "music_migrator" }],
+  ])("rejects %s before importing routes or binding", async (_label, override) => {
+    const loadRuntime = vi.fn(async () => controlledRuntime([]));
+    await expect(startMusicServer({ ...withSigningFile(renderedProductionEnvironment()), ...override }, {
+      resolveAddresses: async () => ["8.8.8.8"],
+      loadRuntime,
+    })).rejects.toThrow(/database|runtime|credential|role|secret/i);
+    expect(loadRuntime).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -135,6 +177,7 @@ describe("discriminated Music startup bootstrap", () => {
     const events: string[] = [];
     await startMusicServer(fixture, {
       resolveAddresses: async () => { throw new Error("fixture startup must not resolve DNS"); },
+      verifyDatabaseConnection: async () => undefined,
       loadRuntime: async () => {
         events.push("load-routes");
         return controlledRuntime(events);
