@@ -100,6 +100,14 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       id: 7, user_id: 11, name: "Saved list", description: null, is_visible_to_guests: true,
       created_at: addedAt, updated_at: addedAt, songs: [savedRow],
     };
+    const youtubeVideo = {
+      id: { videoId: "abcdefghijk" },
+      snippet: {
+        title: "Video",
+        channelTitle: "Channel",
+        thumbnails: { default: { url: "https://img/video" } },
+      },
+    };
     const publicPlaylist = {
       songs: [{ id: 41, userId: 11, youtubeId: "public-video", title: "Public", artist: "Artist", thumbnailUrl: "https://img/public", position: 0, status: "playing", playedAt: null }],
       currentlyPlaying: { id: 41, userId: 11, youtubeId: "public-video", title: "Public", artist: "Artist", thumbnailUrl: "https://img/public", position: 0, status: "playing", playedAt: null },
@@ -135,12 +143,13 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       now: () => new Date("2026-08-14T10:00:01.000Z"),
       publicRateLimited: () => false,
       youtube: {
-        search: async () => ({ items: [{ id: { videoId: "video" }, snippet: { title: "Video" } }], nextPageToken: null }),
-        videoFromUrl: async () => ({ id: { videoId: "video" }, snippet: { title: "Video" } }),
+        search: async () => ({ items: [youtubeVideo], nextPageToken: null }),
+        videoFromUrl: async () => youtubeVideo,
       },
     });
     const ownerRead = { Authorization: "Bearer aaa.bbb.ccc" };
     const ownerWrite = { ...ownerRead, Origin: "https://explorers.example" };
+    const guestWrite = { Origin: "https://explorers.example", "X-Music-Guest-Capability": "G".repeat(43) };
     const songInput = { youtubeId: "video", title: "Video", artist: "Artist", thumbnailUrl: "https://img/video" };
     const cases = [
       ["get", "/api/playlists", "/api/playlists", 200, undefined, ownerRead],
@@ -155,10 +164,12 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       ["get", "/api/music/dashboard", "/api/music/dashboard", 200, undefined, ownerRead],
       ["post", "/api/youtube/search", "/api/youtube/search", 200, { query: "video" }, ownerWrite],
       ["post", "/api/youtube/video-from-url", "/api/youtube/video-from-url", 200, { url: "https://youtu.be/abcdefghijk" }, ownerWrite],
+      ["post", "/api/playlist/{guestUrl}/youtube/search", "/api/playlist/public-owner/youtube/search", 200, { query: "video" }, guestWrite],
+      ["post", "/api/playlist/{guestUrl}/youtube/video-from-url", "/api/playlist/public-owner/youtube/video-from-url", 200, { url: "https://youtu.be/abcdefghijk" }, guestWrite],
       ["post", "/api/music/guest-capability/rotate", "/api/music/guest-capability/rotate", 200, undefined, ownerWrite],
       ["get", "/api/music/entitlement", "/api/music/entitlement", 200, undefined, ownerRead],
       ["get", "/api/playlist/{guestUrl}", "/api/playlist/public-owner", 200, undefined, {}],
-      ["post", "/api/playlist/{guestUrl}/requests", "/api/playlist/public-owner/requests", 201, songInput, { Origin: "https://explorers.example", "X-Music-Guest-Capability": "G".repeat(43) }],
+      ["post", "/api/playlist/{guestUrl}/requests", "/api/playlist/public-owner/requests", 201, songInput, guestWrite],
     ] as const;
 
     const dereferenced = await SwaggerParser.dereference(JSON.parse(JSON.stringify(MUSIC_OPENAPI_DOCUMENT)) as never) as any;
@@ -198,5 +209,22 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     expect((MUSIC_OPENAPI_DOCUMENT.components.schemas.EntitlementResponse.properties.state as { enum: readonly string[] }).enum)
       .toEqual(["unknown", "included", "eligible", "entitled", "revoked"]);
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas).toHaveProperty("PublicUser");
+
+    const videoSchema = validator.compile(dereferenced.components.schemas.YouTubeVideo);
+    expect(videoSchema(youtubeVideo)).toBe(true);
+    expect(videoSchema({ ...youtubeVideo, unexpected: true }), JSON.stringify(videoSchema.errors)).toBe(false);
+    expect(videoSchema({ ...youtubeVideo, snippet: { title: "Video", thumbnails: youtubeVideo.snippet.thumbnails } }), JSON.stringify(videoSchema.errors)).toBe(false);
+    expect(videoSchema({ ...youtubeVideo, id: { videoId: "too-short" } }), JSON.stringify(videoSchema.errors)).toBe(false);
+
+    const searchSchema = validator.compile(dereferenced.components.schemas.YouTubeSearchResponse);
+    expect(searchSchema({ items: [youtubeVideo], nextPageToken: null })).toBe(true);
+    expect(searchSchema({ items: [youtubeVideo] }), JSON.stringify(searchSchema.errors)).toBe(false);
+    expect(searchSchema({ items: [youtubeVideo], nextPageToken: null, unexpected: true }), JSON.stringify(searchSchema.errors)).toBe(false);
+
+    const publicUserSchema = validator.compile(dereferenced.components.schemas.PublicUser);
+    expect(publicUserSchema(publicPlaylist.user)).toBe(true);
+    expect(publicUserSchema({ ...publicPlaylist.user, theme: null })).toBe(true);
+    expect(publicUserSchema({ ...publicPlaylist.user, theme: {} }), JSON.stringify(publicUserSchema.errors)).toBe(false);
+    expect(publicUserSchema({ ...publicPlaylist.user, theme: { primary: "#123456", unexpected: true } }), JSON.stringify(publicUserSchema.errors)).toBe(false);
   });
 });

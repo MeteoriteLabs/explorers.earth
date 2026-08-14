@@ -25,6 +25,18 @@ export class MusicDomainRepository {
     }
   }
 
+  private async normalizeActiveQueue(client: PoolClient, musicUserId: number): Promise<void> {
+    await client.query(
+      `WITH ordered AS (
+         SELECT id,(row_number() OVER (ORDER BY position,id)-1)::integer AS desired_position
+           FROM songs WHERE user_id=$1 AND status IN ('queued','playing')
+       )
+       UPDATE songs s SET position=o.desired_position FROM ordered o
+        WHERE s.user_id=$1 AND s.id=o.id`,
+      [musicUserId],
+    );
+  }
+
   async listPlaylists(musicUserId: number) {
     return (await this.pool.query(
       `SELECT p.id,
@@ -182,9 +194,10 @@ export class MusicDomainRepository {
           "UPDATE songs SET status='played',played_at=now() WHERE user_id=$1 AND status='playing'",
           [musicUserId],
         );
+        await this.normalizeActiveQueue(client, musicUserId);
         return null;
       }
-      return (await client.query(
+      const activated = (await client.query(
         `WITH previous AS (
            UPDATE songs SET status='played',played_at=now()
             WHERE user_id=$1 AND status='playing' AND id<>$2
@@ -192,6 +205,12 @@ export class MusicDomainRepository {
          UPDATE songs SET status='playing',played_at=NULL
           WHERE user_id=$1 AND id=$2
          RETURNING id,user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at`,
+        [musicUserId, songId],
+      )).rows[0];
+      if (!activated) return undefined;
+      await this.normalizeActiveQueue(client, musicUserId);
+      return (await client.query(
+        "SELECT id,user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at FROM songs WHERE user_id=$1 AND id=$2 AND status='playing'",
         [musicUserId, songId],
       )).rows[0];
     });

@@ -248,6 +248,81 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     expect((await pool.query("SELECT position FROM playlist_songs WHERE id=$1", [bSaved.id])).rows[0].position).toBe(0);
   });
 
+  it("normalizes every history replay, stop, and competing playback transition without crossing owners", async () => {
+    // Break caught: replaying a historical row restores its stale occupied position and null stop leaves active gaps.
+    const ownerA = await identities.ensureIdentity(identityInput("replay-a"));
+    const ownerB = await identities.ensureIdentity(identityInput("replay-b-owner"));
+    const songA = await domain.addSong(ownerA.id, {
+      youtubeId: "replay-a", title: "Replay A", artist: "A", thumbnailUrl: "https://img/replay-a",
+    }) as { id: number };
+    const songB = await domain.addSong(ownerA.id, {
+      youtubeId: "replay-b", title: "Replay B", artist: "A", thumbnailUrl: "https://img/replay-b",
+    }) as { id: number };
+    const songC = await domain.addSong(ownerA.id, {
+      youtubeId: "replay-c", title: "Replay C", artist: "A", thumbnailUrl: "https://img/replay-c",
+    }) as { id: number };
+    const otherSongs = await Promise.all(["one", "two"].map(async (name) => domain.addSong(ownerB.id, {
+      youtubeId: `other-${name}`, title: `Other ${name}`, artist: "B", thumbnailUrl: `https://img/other-${name}`,
+    }))) as Array<{ id: number }>;
+    await domain.setPlaying(ownerB.id, otherSongs[1].id);
+    const ownerBBefore = (await pool.query(
+      "SELECT id,position,status,played_at FROM songs WHERE user_id=$1 ORDER BY id",
+      [ownerB.id],
+    )).rows;
+
+    await domain.setPlaying(ownerA.id, songB.id);
+    await domain.setPlaying(ownerA.id, songA.id);
+    const songD = await domain.addSong(ownerA.id, {
+      youtubeId: "replay-d", title: "Replay D", artist: "A", thumbnailUrl: "https://img/replay-d",
+    }) as { id: number };
+    expect((await pool.query("SELECT position,status FROM songs WHERE id=$1", [songB.id])).rows[0])
+      .toEqual({ position: 1, status: "played" });
+
+    await domain.setPlaying(ownerA.id, songB.id);
+    const afterReplay = (await pool.query(
+      "SELECT id,position,status FROM songs WHERE user_id=$1 AND status IN ('queued','playing') ORDER BY position,id",
+      [ownerA.id],
+    )).rows as Array<{ id: number; position: number; status: string }>;
+    expect(afterReplay.map(({ position }) => position)).toEqual([0, 1, 2]);
+    expect(new Set(afterReplay.map(({ position }) => position)).size).toBe(3);
+    expect(afterReplay.filter(({ status }) => status === "playing")).toEqual([
+      expect.objectContaining({ id: songB.id }),
+    ]);
+
+    await domain.setPlaying(ownerA.id, null);
+    const afterStop = (await pool.query(
+      "SELECT position,status FROM songs WHERE user_id=$1 AND status IN ('queued','playing') ORDER BY position,id",
+      [ownerA.id],
+    )).rows as Array<{ position: number; status: string }>;
+    expect(afterStop.map(({ position }) => position)).toEqual([0, 1]);
+    expect(afterStop.every(({ status }) => status === "queued")).toBe(true);
+
+    await Promise.all([
+      domain.setPlaying(ownerA.id, songB.id),
+      domain.updateSongPosition(ownerA.id, songD.id, 0),
+      domain.setPlaying(ownerA.id, songC.id),
+    ]);
+    const afterCompetition = (await pool.query(
+      "SELECT position,status FROM songs WHERE user_id=$1 AND status IN ('queued','playing') ORDER BY position,id",
+      [ownerA.id],
+    )).rows as Array<{ position: number; status: string }>;
+    expect(afterCompetition.map(({ position }) => position)).toEqual([0, 1]);
+    expect(new Set(afterCompetition.map(({ position }) => position)).size).toBe(2);
+    expect(afterCompetition.filter(({ status }) => status === "playing")).toHaveLength(1);
+
+    await domain.setPlaying(ownerA.id, null);
+    const afterCompetingStop = (await pool.query(
+      "SELECT position,status FROM songs WHERE user_id=$1 AND status IN ('queued','playing') ORDER BY position,id",
+      [ownerA.id],
+    )).rows as Array<{ position: number; status: string }>;
+    expect(afterCompetingStop.map(({ position }) => position)).toEqual([0]);
+    expect(afterCompetingStop.every(({ status }) => status === "queued")).toBe(true);
+    expect((await pool.query(
+      "SELECT id,position,status,played_at FROM songs WHERE user_id=$1 ORDER BY id",
+      [ownerB.id],
+    )).rows).toEqual(ownerBBefore);
+  });
+
   it("lists only active explicitly discoverable users with a visible playlist for the sitemap", async () => {
     // Break caught: lifecycle, unlisted, revoked, and zero-visible Music pages entered discovery.
     const suffixes = ["sitemap-live", "sitemap-suspended", "sitemap-pending", "sitemap-private", "sitemap-unlisted", "sitemap-revoked", "sitemap-zero"];
