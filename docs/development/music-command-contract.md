@@ -38,7 +38,16 @@ command returns the same typed
 generation, credential, journal, or pointer mutation. After preserving source
 changes according to operator policy, discard the entire disposable worktree
 and create a clean checkout; no application command interprets or erases raw
-legacy fixture state.
+legacy fixture state. This safety admission precedes full command, mode,
+format, option, and resume validation; an invalid invocation therefore cannot
+bypass the refusal and uses the safe default human output format when its
+requested format cannot be trusted.
+
+Aggregate fixture teardown authenticates supported pointer/generation
+authority before its action and again before its first erase. If the action
+replaces that authority with raw or malformed bytes, teardown fails with the
+same typed refusal and leaves every credential, generation, journal, temporary,
+and unrelated file byte-exact.
 
 `music:down` retains volumes. Volume deletion requires `--volumes --confirm-project
 explorers-music-fixture`; reset additionally requires `--mode fixture` and the

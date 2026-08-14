@@ -9,6 +9,7 @@ import {
   cleanupAllFixtureMusicTokenSecrets,
   cleanupFixtureMusicTokenSecret,
   prepareFixtureMusicTokenSecret,
+  withAllFixtureMusicSecretsCleanup,
 } from "../../../scripts/music-fixture-secret";
 import * as fixtureSecrets from "../../../scripts/music-fixture-secret";
 
@@ -22,6 +23,19 @@ function fixtureRoot(): string {
   const root = mkdtempSync(join(tmpdir(), "music-fixture-secret-"));
   roots.push(root);
   return root;
+}
+
+function snapshotFixtureTree(root: string): Record<string, string> {
+  const snapshot: Record<string, string> = {};
+  const visit = (directory: string): void => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) visit(path);
+      else if (entry.isFile()) snapshot[relative(root, path).replace(/\\/g, "/")] = readFileSync(path).toString("base64");
+    }
+  };
+  visit(root);
+  return snapshot;
 }
 
 type WindowsNativeIdentity = fixtureSecrets.FixtureWindowsNativeIdentity;
@@ -719,6 +733,98 @@ describe("fixture bundle rotation transaction", () => {
     return ["MUSIC_TOKEN_SECRET_FILE_HOST", "MUSIC_DB_MIGRATOR_SECRET_FILE_HOST", "MUSIC_DB_RUNTIME_SECRET_FILE_HOST"]
       .map((key) => resolve(root, values[key]!));
   }
+
+  function replacePointerWithUnsupportedAuthority(root: string, kind: "raw" | "malformed"): Buffer {
+    const current = fixtureSecrets.readFixtureMusicEnvironment(root);
+    const pointer = kind === "raw"
+      ? Buffer.from(`${current}RAW_AGGREGATE_CLEANUP_SENTINEL=must-not-be-reflected\n`)
+      : Buffer.from("music-fixture-env/v1\ngeneration=not-authority\nsha256=MALFORMED_AGGREGATE_CLEANUP_SENTINEL\nsize=nope\n");
+    writeFileSync(join(root, ".env.music.test"), pointer, { mode: 0o600 });
+    writeFileSync(join(root, `.env.music.test.${"a".repeat(32)}.tmp`), "temporary-secret-must-remain", { mode: 0o600 });
+    writeFileSync(join(root, "unrelated-byte-sentinel"), "unrelated-must-remain", { mode: 0o600 });
+    return pointer;
+  }
+
+  it.each(["raw", "malformed"] as const)(
+    "refuses direct aggregate cleanup for %s unsupported authority before the first erase",
+    (kind) => {
+      // Production break caught: aggregate cleanup catches the invalid pointer
+      // and proceeds to erase grammar-matching credentials and generations.
+      const root = fixtureRoot();
+      rotate(root, (paths) => environment(root, paths, "prior"), authorityWithSeed(kind === "raw" ? 0x13 : 0x14));
+      replacePointerWithUnsupportedAuthority(root, kind);
+      const before = snapshotFixtureTree(root);
+
+      expect(() => cleanupAllFixtureMusicTokenSecrets(root)).toThrow(expect.objectContaining({
+        name: "FixtureUnsupportedLegacyEnvironmentError",
+        code: "MUSIC_FIXTURE_LEGACY_ENVIRONMENT_UNSUPPORTED",
+      }));
+      expect(snapshotFixtureTree(root)).toEqual(before);
+    },
+  );
+
+  it.each(["raw", "malformed"] as const)(
+    "refuses aggregate wrapper entry for %s unsupported authority before running the action",
+    async (kind) => {
+      // Production break caught: the wrapper runs caller work and reaches its
+      // erasing finally block even though entry authority is unsupported.
+      const root = fixtureRoot();
+      rotate(root, (paths) => environment(root, paths, "prior"), authorityWithSeed(kind === "raw" ? 0x15 : 0x16));
+      replacePointerWithUnsupportedAuthority(root, kind);
+      const before = snapshotFixtureTree(root);
+      let actionCalled = false;
+
+      await expect(withAllFixtureMusicSecretsCleanup(root, async () => {
+        actionCalled = true;
+      })).rejects.toMatchObject({
+        name: "FixtureUnsupportedLegacyEnvironmentError",
+        code: "MUSIC_FIXTURE_LEGACY_ENVIRONMENT_UNSUPPORTED",
+      });
+      expect(actionCalled).toBe(false);
+      expect(snapshotFixtureTree(root)).toEqual(before);
+    },
+  );
+
+  it("refuses wrapper cleanup when supported authority becomes raw inside the action", async () => {
+    // Production break caught: a supported entry can be replaced with raw
+    // bytes before finally, after which aggregate cleanup erases the bundle.
+    const root = fixtureRoot();
+    rotate(root, (paths) => environment(root, paths, "prior"), authorityWithSeed(0x17));
+    const directoriesBefore = snapshotFixtureTree(root);
+    const raw = Buffer.from("RAW_WRAPPER_REPLACEMENT_SENTINEL=must-remain-byte-exact\n");
+
+    await expect(withAllFixtureMusicSecretsCleanup(root, async () => {
+      writeFileSync(join(root, ".env.music.test"), raw, { mode: 0o600 });
+    })).rejects.toMatchObject({
+      name: "FixtureUnsupportedLegacyEnvironmentError",
+      code: "MUSIC_FIXTURE_LEGACY_ENVIRONMENT_UNSUPPORTED",
+    });
+    const after = snapshotFixtureTree(root);
+    expect(after[".env.music.test"]).toBe(raw.toString("base64"));
+    expect(Object.fromEntries(Object.entries(after).filter(([path]) => path !== ".env.music.test")))
+      .toEqual(Object.fromEntries(Object.entries(directoriesBefore).filter(([path]) => path !== ".env.music.test")));
+  });
+
+  it("authenticates the supported pointer and generation before running a wrapper action", async () => {
+    // Production break caught: wrapper entry checks only pointer syntax, so a
+    // replaced referenced generation still permits Docker/destructive work.
+    const root = fixtureRoot();
+    rotate(root, (paths) => environment(root, paths, "prior"), authorityWithSeed(0x18));
+    const pointer = readFileSync(join(root, ".env.music.test"), "utf8");
+    const generationName = pointer.match(/generation=(generation-[a-f0-9]{32})/)![1]!;
+    const generation = join(root, ".artifacts", "music-environment-generations", generationName);
+    const displaced = join(root, "displaced-supported-generation");
+    renameSync(generation, displaced);
+    writeFileSync(generation, Buffer.alloc(lstatSync(displaced).size, 0x5c), { mode: 0o600 });
+    const before = snapshotFixtureTree(root);
+    let actionCalled = false;
+
+    await expect(withAllFixtureMusicSecretsCleanup(root, async () => {
+      actionCalled = true;
+    })).rejects.toMatchObject({ code: "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED", targetId: generationName });
+    expect(actionCalled).toBe(false);
+    expect(snapshotFixtureTree(root)).toEqual(before);
+  });
 
   function authoritySnapshot(root: string, path: string, kind: "credential" | "environment"): Record<string, unknown> {
     const directory = lstatSync(resolve(path, ".."), { bigint: true });

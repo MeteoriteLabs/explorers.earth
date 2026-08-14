@@ -60,7 +60,10 @@ the manifest and any colocated key share the same mutable authority boundary.
 An ephemeral key is lost, and a public or self-derived key is forgeable. The
 application therefore does not offer guarded in-place raw cleanup rather than
 claiming an unsigned advisory record is an authority. Normal versioned fixture
-rotation and normal supported-authority teardown remain unchanged.
+rotation and normal supported-authority teardown remain unchanged. The
+unsupported-authority check precedes full CLI argument parsing and is repeated
+at both aggregate-teardown entry and the post-action cleanup boundary, so
+argument errors or an action-time pointer replacement cannot reopen cleanup.
 
 ## Revisit when
 

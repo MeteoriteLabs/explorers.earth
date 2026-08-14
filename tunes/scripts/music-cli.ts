@@ -421,8 +421,20 @@ async function executeCommand(id: string, parsed: ParsedArgs): Promise<RunResult
 
 async function main(): Promise<number> {
   const id = runId(); const started = Date.now(); let parsed: ParsedArgs;
-  try { parsed = parseArgs(process.argv.slice(2)); } catch (error) { const context = buildRunContext(); const failure = error instanceof MusicCommandError ? error : new MusicCommandError(redactedError(error), "arguments", EXIT.usage); return emit(id, "music", "human", started, context, { status: "failure", phase: failure.phase, exitCode: failure.exitCode, error: redactedError(failure) }); }
-  if (inspectFixtureEnvironmentAuthority(root) === "unsupported") {
+  // Classify only the fixed repository authority before touching untrusted
+  // command arguments. If full parsing fails, unsupported authority still
+  // wins and uses the CLI's safe default command/format.
+  const unsupportedFixtureAuthority = inspectFixtureEnvironmentAuthority(root) === "unsupported";
+  try { parsed = parseArgs(process.argv.slice(2)); } catch (error) {
+    const context = buildRunContext({ allowInvalidEnvironment: unsupportedFixtureAuthority });
+    if (unsupportedFixtureAuthority) {
+      const authorityError = new FixtureUnsupportedLegacyEnvironmentError();
+      return emit(id, "music", "human", started, context, { status: "blocked", phase: "fixture-authority", exitCode: EXIT.safety, error: redactedError(authorityError) });
+    }
+    const failure = error instanceof MusicCommandError ? error : new MusicCommandError(redactedError(error), "arguments", EXIT.usage);
+    return emit(id, "music", "human", started, context, { status: "failure", phase: failure.phase, exitCode: failure.exitCode, error: redactedError(failure) });
+  }
+  if (unsupportedFixtureAuthority || inspectFixtureEnvironmentAuthority(root) === "unsupported") {
     const error = new FixtureUnsupportedLegacyEnvironmentError();
     const context = buildRunContext({ allowInvalidEnvironment: true });
     return emit(id, parsed.command, parsed.format, started, context, {

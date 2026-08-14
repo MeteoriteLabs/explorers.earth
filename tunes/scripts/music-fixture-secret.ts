@@ -440,12 +440,31 @@ export function cleanupFixtureMusicTokenSecret(
   if (failed) throw new FixtureSecretCleanupError(basename(exactTokenPath));
 }
 
+function authenticateAggregateCleanupAuthority(root: string): FixtureEnvironmentReference | undefined {
+  const authorityState = inspectFixtureEnvironmentAuthority(root);
+  if (authorityState === "unsupported") throw new FixtureUnsupportedLegacyEnvironmentError();
+  if (authorityState !== "reference") return undefined;
+  const referenceBytes = readCurrentPointerBytes(root);
+  let currentEnvironment: FixtureEnvironmentReference | undefined;
+  try {
+    currentEnvironment = parseFixtureEnvironmentReference(referenceBytes.toString("ascii"));
+    readFixtureMusicEnvironment(root);
+    if (!readCurrentPointerBytes(root).equals(referenceBytes)) throw fixtureEnvironmentError("aggregate-cleanup-authority");
+    return currentEnvironment;
+  } catch {
+    if (inspectFixtureEnvironmentAuthority(root) === "unsupported") throw new FixtureUnsupportedLegacyEnvironmentError();
+    throw new FixtureSecretCleanupError(currentEnvironment?.generationName ?? "generation-unknown");
+  }
+}
+
 export function cleanupAllFixtureMusicTokenSecrets(repositoryRoot: string): void {
   const { root, tokenDirectory } = fixtureDirectories(repositoryRoot);
+  authenticateAggregateCleanupAuthority(root);
   // A pending bundle transaction owns retirement ordering. Resolve it before
   // any aggregate cleanup so an attacker swap cannot fall through to the
   // older name-only fixture tombstone path.
   recoverFixtureAuthorityRotations(root);
+  const currentEnvironment = authenticateAggregateCleanupAuthority(root);
   let failure: FixtureSecretCleanupError | undefined;
   if (existsSync(tokenDirectory)) {
     assertNoLinkedAncestors(tokenDirectory);
@@ -462,19 +481,6 @@ export function cleanupAllFixtureMusicTokenSecrets(repositoryRoot: string): void
     }
   }
   const generationDirectory = join(root, FIXTURE_MUSIC_ENVIRONMENT_DIRECTORY_RELATIVE_PATH);
-  let currentEnvironment: FixtureEnvironmentReference | undefined;
-  const referencePath = join(root, ".env.music.test");
-  if (existsSync(referencePath)) {
-    try {
-      const reference = openAndReadOwnedFile(referencePath, 512, false);
-      try { currentEnvironment = parseFixtureEnvironmentReference(reference.bytes.toString("ascii")); }
-      finally { closeDescriptor(reference.descriptor, {}, basename(referencePath)); }
-    } catch {
-      // A legacy/invalid pointer is never authority for erasing a referenced
-      // non-empty generation. Bootstrap may replace a verified owned legacy
-      // file; resume/down remain fail-closed.
-    }
-  }
   if (existsSync(generationDirectory)) {
     assertNoLinkedAncestors(generationDirectory);
     assertOwnedDirectory(generationDirectory);
@@ -1957,6 +1963,7 @@ export async function withAllFixtureMusicSecretsCleanup<T>(
   repositoryRoot: string,
   action: () => Promise<T>,
 ): Promise<T> {
+  authenticateAggregateCleanupAuthority(resolve(repositoryRoot));
   try {
     return await action();
   } finally {

@@ -28,10 +28,10 @@ function runCli(args: string[], env: NodeJS.ProcessEnv = process.env) {
       env,
       stdio: ["ignore", "pipe", "pipe"],
     });
-    return { exitCode: 0, stdout };
+    return { exitCode: 0, stdout, stderr: "" };
   } catch (error) {
-    const failure = error as { status?: number; stdout?: string };
-    return { exitCode: failure.status, stdout: failure.stdout ?? "" };
+    const failure = error as { status?: number; stdout?: string; stderr?: string };
+    return { exitCode: failure.status, stdout: failure.stdout ?? "", stderr: failure.stderr ?? "" };
   }
 }
 
@@ -117,7 +117,7 @@ describe("music CLI output contract", () => {
   ];
   const unsupportedAuthorityKinds = [
     { name: "raw", contents: "RAW_FIXTURE_SECRET_SENTINEL=must-not-be-reflected\n" },
-    { name: "malformed", contents: "MALFORMED_RAW_FIXTURE_SECRET_SENTINEL_WITHOUT_EQUALS\n" },
+    { name: "malformed", contents: "music-fixture-env/v1\ngeneration=not-authority\nsha256=MALFORMED_RAW_FIXTURE_SECRET_SENTINEL\nsize=nope\n" },
   ];
 
   it.each(unsupportedAuthorityCommands.flatMap((command) => unsupportedAuthorityKinds.map((authority) => ({ command, authority }))))(
@@ -176,6 +176,65 @@ describe("music CLI output contract", () => {
         authorityDirectories.forEach((path, index) => restoreAuthorityDirectory(path, authorityBefore[index]!));
         if (cleanupIntentBefore === undefined) rmSync(cleanupIntent, { force: true });
         else writeFileSync(cleanupIntent, cleanupIntentBefore, { mode: 0o600 });
+        rmSync(fakeDirectory, { recursive: true, force: true });
+      }
+    },
+    30_000,
+  );
+
+  const unsupportedAuthorityArgumentCases = [
+    { name: "invalid mode", args: ["doctor", "--mode", "invalid", "--format", "json"], parsed: false },
+    { name: "invalid format", args: ["doctor", "--format", "yaml"], parsed: false },
+    { name: "unknown option", args: ["doctor", "--unknown-option", "sentinel", "--format", "json"], parsed: false },
+    { name: "missing command", args: ["--format", "json"], parsed: false },
+    { name: "unknown command", args: ["unknown-command", "--format", "json"], parsed: false },
+    { name: "malformed resume syntax", args: ["bootstrap", "--resume", "--format", "json"], parsed: false },
+    { name: "valid resume", args: ["bootstrap", "--resume", "C:\\must-not-be-read\\checkpoint.json", "--format", "json"], parsed: true },
+  ];
+
+  it.each(unsupportedAuthorityArgumentCases.flatMap((argumentCase) => unsupportedAuthorityKinds.map((authority) => ({ argumentCase, authority }))))(
+    "lets $authority.name unsupported authority win over $argumentCase.name before argument handling",
+    ({ argumentCase, authority }) => {
+      // Production break caught: full argument parsing or resume validation
+      // throws before raw fixture authority receives the one safety response.
+      const environmentPath = join(repositoryRoot, ".env.music.test");
+      const pointerBefore = readFileSync(environmentPath);
+      const authorityDirectories = [
+        join(repositoryRoot, ".artifacts", "music-token-secrets"),
+        join(repositoryRoot, ".artifacts", "music-environment-generations"),
+        join(repositoryRoot, ".artifacts", "music-rotation-journals"),
+      ];
+      const authorityBefore = authorityDirectories.map(snapshotAuthorityDirectory);
+      const fakeDirectory = mkdtempSync(join(tmpdir(), "music-cli-preparse-no-mutation-"));
+      const mutationMarker = join(fakeDirectory, "child-invoked");
+      const fakeNpm = join(fakeDirectory, "npm-cli.cjs");
+      writeFileSync(fakeNpm, "require('node:fs').writeFileSync(process.env.MUSIC_TEST_MUTATION_MARKER, 'invoked');\n");
+      writeFileSync(environmentPath, authority.contents, { mode: 0o600 });
+      try {
+        const result = runCli(argumentCase.args, {
+          ...process.env,
+          npm_execpath: fakeNpm,
+          MUSIC_TEST_MUTATION_MARKER: mutationMarker,
+        });
+        expect(result.exitCode).toBe(5);
+        expect(result.stderr).toBe("");
+        expect((result.stdout.match(/MUSIC_FIXTURE_LEGACY_ENVIRONMENT_UNSUPPORTED/g) ?? [])).toHaveLength(1);
+        expect(result.stdout).toContain("fixture-authority");
+        expect(result.stdout).toContain("discard");
+        expect(result.stdout).toContain("clean checkout");
+        expect(result.stdout).not.toContain("RAW_FIXTURE_SECRET_SENTINEL");
+        expect(result.stdout).not.toContain("MALFORMED_RAW_FIXTURE_SECRET_SENTINEL");
+        expect(result.stdout).not.toContain("at main");
+        if (argumentCase.parsed) {
+          expect(result.stdout.trim().split(/\r?\n/)).toHaveLength(1);
+          expect(JSON.parse(result.stdout)).toMatchObject({ command: "bootstrap", status: "blocked", phase: "fixture-authority" });
+        }
+        expect(readFileSync(environmentPath, "utf8")).toBe(authority.contents);
+        expect(authorityDirectories.map(snapshotAuthorityDirectory)).toEqual(authorityBefore);
+        expect(existsSync(mutationMarker)).toBe(false);
+      } finally {
+        writeFileSync(environmentPath, pointerBefore, { mode: 0o600 });
+        authorityDirectories.forEach((path, index) => restoreAuthorityDirectory(path, authorityBefore[index]!));
         rmSync(fakeDirectory, { recursive: true, force: true });
       }
     },
