@@ -141,4 +141,10 @@ describe("Strapi identity absence proof", () => {
     expect(routes).toContain("startMusicLifecycleWorker");
     expect(routes).toMatch(/server\.once\("close",\s*\(\)\s*=>\s*lifecycleWorker\.stop\(\)\)/);
   });
+
+  it("removes the proof credential before passing runtime configuration to route composition", () => {
+    const app = readFileSync(new URL("../app.ts", import.meta.url), "utf8");
+    expect(app).toContain("const { lifecycleProofToken, ...routeMusicConfig } = musicIdentityConfig");
+    expect(app).toContain("registerRoutes(app, storage, routeMusicConfig");
+  });
 });

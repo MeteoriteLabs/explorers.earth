@@ -11,13 +11,34 @@ type LifecycleOperation = {
   deadLetter: boolean;
 };
 
-const envelope = (operation: LifecycleOperation) => ({ version: "music-lifecycle/v1", operation });
+const envelope = (operation: LifecycleOperation) => ({
+  version: "music-lifecycle/v1",
+  operation: {
+    ...operation,
+    upstreamUserDocumentId: "mock-user-123",
+    upstreamAccountDocumentId: "account-document-123",
+  },
+});
 
-async function mockSettings(context: BrowserContext, operation: LifecycleOperation, events: string[] = []) {
+async function mockSettings(
+  context: BrowserContext,
+  operation: LifecycleOperation,
+  events: string[] = [],
+  options: { loseAccountDeleteResponseOnce?: boolean; statusMode?: "normal" | "delayed" | "error"; additionalAccount?: boolean } = {},
+) {
+  let accountPresent = true;
+  let loseAccountDeleteResponse = options.loseAccountDeleteResponseOnce === true;
   await setupMockAuthentication(context);
   await context.route("**/api/music/identity/lifecycle/**", async (route) => {
     const action = new URL(route.request().url()).pathname.split("/").at(-1)!;
     events.push(action);
+    if (action === "status" && options.statusMode === "delayed") await new Promise((resolve) => setTimeout(resolve, 2_000));
+    if (action === "status" && options.statusMode === "error") {
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: {
+        code: "UPSTREAM_UNAVAILABLE", message: "Lifecycle state unavailable.", retryable: true,
+      } }) });
+      return;
+    }
     if (action === "cancel") {
       operation = { ...operation, status: "suspended", state: "cancelled", boundaryCrossed: false, retryable: false };
     }
@@ -34,20 +55,30 @@ async function mockSettings(context: BrowserContext, operation: LifecycleOperati
     };
     const currentUser = {
       id: "mock-user-123", documentId: "mock-user-123", username: "testuser", email: "test@explorers.earth",
-      blocked: false, provider: "google", accounts: [account],
+      blocked: false, provider: "google", accounts: accountPresent
+        ? options.additionalAccount ? [account, { ...account, documentId: "account-document-b" }] : [account]
+        : [],
     };
     let data: Record<string, unknown>;
-    if (query.includes("mutation DeleteAccount")) {
-      events.push("upstream-delete");
+    if (query.includes("mutation DeleteExplorerAccount")) {
+      events.push("account-delete");
+      accountPresent = false;
+      if (loseAccountDeleteResponse) {
+        loseAccountDeleteResponse = false;
+        await route.abort("connectionreset");
+        return;
+      }
+      data = { deleteAccount: { documentId: "account-document-123" } };
+    } else if (query.includes("mutation DeleteExplorerUser")) {
+      events.push("user-delete");
       data = {
         deleteRecommendationList: { documentId: "mock-user-123" },
-        deleteUsersPermissionsUser: { data: { accounts: [{ Account_Name: "Test", Account_Type: "Explorer", documentId: "account-document-123", Bio: null, Addresss: null }] } },
-        deleteAccount: { documentId: "account-document-123" },
+        deleteUsersPermissionsUser: { data: { documentId: "mock-user-123", accounts: [{ Account_Name: "Test", Account_Type: "Explorer", documentId: "account-document-123", Bio: null, Addresss: null }] } },
       };
     } else if (query.includes("CheckOnboardingStatus")) {
       data = { usersPermissionsUser: currentUser };
     } else if (query.includes("query Account")) {
-      data = { accounts: [account] };
+      data = { accounts: accountPresent ? [account] : [] };
     } else if (query.includes("usersPermissionsUser")) {
       data = { usersPermissionsUser: currentUser };
     } else {
@@ -102,16 +133,81 @@ test("a crossed-boundary retry preserves ordering and completes at login", async
   await page.goto("/settings");
   await page.getByRole("button", { name: "Retry account deletion" }).click();
   await expect(page).toHaveURL(/\/login$/);
-  expect(events.slice(-3)).toEqual(["prepare", "boundary", "upstream-delete"]);
+  expect(events.filter((event) => ["prepare", "boundary", "account-delete", "user-delete"].includes(event)).slice(-4))
+    .toEqual(["prepare", "boundary", "account-delete", "user-delete"]);
+});
+
+test("a crossed-boundary retry refuses any additional Account outside the durable tuple", async ({ context, page }) => {
+  const events: string[] = [];
+  await mockSettings(context, {
+    operationId: "delete-operation-durable", status: "pending_deletion", phase: "prepared", state: "requested",
+    boundaryCrossed: true, retryable: true, deadLetter: false,
+  }, events, { additionalAccount: true });
+  await page.goto("/settings");
+  await page.getByRole("button", { name: "Retry account deletion" }).click();
+  await expect(page.getByText("The Explorer Account state could not be verified. Try again without signing out.")).toBeVisible();
+  await expect(page).toHaveURL(/\/settings$/);
+  expect(events.filter((event) => ["account-delete", "user-delete"].includes(event))).toEqual([]);
+});
+
+test("a lost Account mutation response keeps user authority and reload resumes with only the user deletion", async ({ context, page }) => {
+  // Break caught: ambiguous Account deletion is followed by user deletion in the same request/attempt.
+  const events: string[] = [];
+  await mockSettings(context, {
+    operationId: "delete-operation-durable", status: "pending_deletion", phase: "prepared", state: "requested",
+    boundaryCrossed: true, retryable: true, deadLetter: false,
+  }, events, { loseAccountDeleteResponseOnce: true });
+  await page.goto("/settings");
+  await page.getByRole("button", { name: "Retry account deletion" }).click();
+  await expect.poll(() => events.filter((event) => event === "account-delete").length).toBe(1);
+  await expect(page).toHaveURL(/\/settings$/);
+  expect(events.filter((event) => event === "account-delete")).toHaveLength(1);
+  expect(events.filter((event) => event === "user-delete")).toHaveLength(0);
+
+  await page.reload();
+  await page.getByRole("button", { name: "Retry account deletion" }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  expect(events.filter((event) => event === "account-delete")).toHaveLength(1);
+  expect(events.filter((event) => event === "user-delete")).toHaveLength(1);
 });
 
 test("dead-letter escalation is typed and offers no destructive retry", async ({ context, page }) => {
+  const events: string[] = [];
   await mockSettings(context, {
     operationId: "delete-operation-durable", status: "pending_deletion", phase: "prepared", state: "failed",
     boundaryCrossed: true, retryable: false, deadLetter: true,
-  });
+  }, events);
   await page.goto("/settings");
   await expect(page.getByRole("alert")).toContainText("manual review");
   await expect(page.getByRole("button", { name: /retry account deletion|cancel deletion/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /delete (?:your|my) account/i })).toHaveCount(0);
+  expect(events.filter((event) => ["prepare", "boundary", "account-delete", "user-delete"].includes(event))).toEqual([]);
   await assertNoLifecyclePersistence(page);
 });
+
+test("finalized deletion hides every ordinary delete entry point and performs no destructive call", async ({ context, page }) => {
+  // Break caught: tombstoned reload exposes a fresh confirmation saga.
+  const events: string[] = [];
+  await mockSettings(context, {
+    operationId: "delete-operation-durable", status: "tombstoned", phase: "finalized", state: "completed",
+    boundaryCrossed: true, retryable: false, deadLetter: false,
+  }, events);
+  await page.goto("/settings");
+  await expect(page.getByRole("button", { name: /delete (?:your|my) account/i })).toHaveCount(0);
+  expect(events.filter((event) => ["prepare", "boundary", "account-delete", "user-delete"].includes(event))).toEqual([]);
+  await assertNoLifecyclePersistence(page);
+});
+
+for (const statusMode of ["delayed", "error"] as const) {
+  test(`unresolved ${statusMode} lifecycle authority fails closed before any destructive control`, async ({ context, page }) => {
+    const events: string[] = [];
+    await mockSettings(context, {
+      operationId: "delete-operation-durable", status: "pending_deletion", phase: "prepared", state: "completed",
+      boundaryCrossed: false, retryable: false, deadLetter: false,
+    }, events, { statusMode });
+    await page.goto("/settings");
+    await page.waitForTimeout(500);
+    await expect(page.getByRole("button", { name: /delete (?:your|my) account/i })).toHaveCount(0);
+    expect(events.filter((event) => ["prepare", "boundary", "account-delete", "user-delete"].includes(event))).toEqual([]);
+  });
+}

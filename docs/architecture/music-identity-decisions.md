@@ -37,6 +37,23 @@ Those capabilities are derived and enforced server-side from the authoritative e
 - Lifecycle, suspension, deletion tombstones, reconciliation, and retention apply to every automatically projected identity.
 - Product activation metrics must distinguish identity creation from meaningful Music use such as first open, first playlist, first share/request, and return use.
 
+### Deletion absence-proof authority
+
+The lifecycle worker may finalize personal Music data only after an immutable-ID
+read proves that both the Explorer user and selected Account are absent. Live
+runtime startup therefore requires a dedicated
+`STRAPI_LIFECYCLE_PROOF_TOKEN_FILE`, loaded through the secure secret-file
+boundary. It must not alias the generic `STRAPI_ACCESS_TOKEN`, is never exposed
+to routes or logs, and its Strapi role must allow the exact read-only absence
+query while forbidding representative mutations. Production deployment remains
+gated until operators mount and authorize that separate credential; missing,
+inline, aliased, or unsafe authority fails startup before the worker starts.
+
+The disposable five-service fixture is the sole exception to file-backed live
+authority. It may use only the exact deterministic `fixture-read-only-token`,
+whose fixture contract contains read operations only. No production credential
+or generic live write authority is an accepted fallback.
+
 ### Disposable fixture authority compatibility
 
 Raw pre-generation `.env.music.test` files are not product data and are not a

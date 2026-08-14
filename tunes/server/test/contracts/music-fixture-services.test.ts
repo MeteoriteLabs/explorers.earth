@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fixtureResponse } from "../../../scripts/music-fixture-server.ts";
+import { fixtureGraphqlResponse, fixtureResponse } from "../../../scripts/music-fixture-server.ts";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -22,6 +22,46 @@ describe("deterministic Music fixture services", () => {
         }],
       },
     });
+  });
+
+  it("allows only the exact immutable-ID absence proof for the deterministic credential", () => {
+    const allowed = fixtureGraphqlResponse({
+      authorization: "Bearer fixture-read-only-token",
+      query: `query MusicIdentityAbsence($userDocumentId: ID!, $accountDocumentId: ID!) {
+        usersPermissionsUser(documentId: $userDocumentId) { documentId }
+        account(documentId: $accountDocumentId) { documentId }
+      }`,
+      variables: {
+        userDocumentId: "fixture-user-document-id",
+        accountDocumentId: "fixture-account-document-id",
+      },
+    });
+    expect(allowed).toEqual({ status: 200, body: { data: {
+      usersPermissionsUser: { documentId: "fixture-user-document-id" },
+      account: { documentId: "fixture-account-document-id" },
+    } } });
+
+    const mutation = fixtureGraphqlResponse({
+      authorization: "Bearer fixture-read-only-token",
+      query: "mutation { deleteAccount(documentId: \"fixture-account-document-id\") { documentId } }",
+      variables: {},
+    });
+    expect(mutation.status).toBe(403);
+    expect(JSON.stringify(mutation.body)).not.toContain("fixture-read-only-token");
+
+    const appendedRead = fixtureGraphqlResponse({
+      authorization: "Bearer fixture-read-only-token",
+      query: `query MusicIdentityAbsence($userDocumentId: ID!, $accountDocumentId: ID!) {
+        usersPermissionsUser(documentId: $userDocumentId) { documentId }
+        account(documentId: $accountDocumentId) { documentId }
+        systemSettings { id }
+      }`,
+      variables: {
+        userDocumentId: "fixture-user-document-id",
+        accountDocumentId: "fixture-account-document-id",
+      },
+    });
+    expect(appendedRead.status).toBe(403);
   });
 
   it("accepts Explorers HTML while requiring JSON from fixture APIs", async () => {

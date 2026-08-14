@@ -268,6 +268,8 @@ function lifecycleEnvelope(value: MusicLifecycleStatus) {
       boundaryCrossed: value.boundaryCrossed,
       retryable: value.retryable,
       deadLetter: value.deadLetter,
+      upstreamUserDocumentId: value.upstreamUserDocumentId,
+      upstreamAccountDocumentId: value.upstreamAccountDocumentId,
     },
   };
 }

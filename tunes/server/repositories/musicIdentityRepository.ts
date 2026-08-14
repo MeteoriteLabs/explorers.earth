@@ -121,7 +121,11 @@ function validateEnsureInput(input: EnsureMusicIdentityInput): void {
 export class MusicIdentityRepository {
   constructor(
     private readonly pool: TransactionPool,
-    private readonly hooks: { afterWrite?: () => Promise<void>; beforeFinalize?: () => Promise<void> } = {},
+    private readonly hooks: {
+      afterWrite?: () => Promise<void>;
+      beforeFinalize?: () => Promise<void>;
+      afterRetentionCleanup?: () => Promise<void>;
+    } = {},
   ) {}
 
   async ensureIdentity(input: EnsureMusicIdentityInput): Promise<MusicIdentityProjection> {
@@ -473,7 +477,8 @@ export class MusicIdentityRepository {
         || (locked.identity_status === "pending_deletion" && input.targetStatus === "suspended" && input.kind === "cancel_deletion");
       if (!valid) throw new Error(`invalid identity lifecycle transition: ${locked.identity_status} -> ${input.targetStatus}`);
       const invalidatesSession = (locked.identity_status === "active" && input.targetStatus === "suspended")
-        || input.targetStatus === "pending_deletion";
+        || input.targetStatus === "pending_deletion"
+        || input.kind === "reactivate";
       const resultSessionVersion = locked.session_version + (invalidatesSession ? 1 : 0);
       await client.query(`INSERT INTO music_identity_lifecycle_operations(
         operation_id,strapi_user_document_id,strapi_account_document_id,music_user_id,operation_kind,requested_identity_status,operation_phase
@@ -559,6 +564,23 @@ export class MusicIdentityRepository {
     } finally {
       client.release();
     }
+  }
+
+  async lifecycleBinding(userDocumentId: string): Promise<{
+    userDocumentId: string;
+    accountDocumentId: string;
+    identityStatus: "active" | "suspended" | "pending_deletion";
+  }> {
+    const row = (await this.pool.query<any>(`SELECT strapi_user_document_id,strapi_account_document_id,identity_status
+      FROM users WHERE strapi_user_document_id=$1`, [userDocumentId])).rows[0];
+    if (!row || !["active", "suspended", "pending_deletion"].includes(row.identity_status)) {
+      throw new MusicIdentityError("LIFECYCLE_NOT_FOUND", 409, "No Music lifecycle identity is available.", "none", false);
+    }
+    return {
+      userDocumentId: row.strapi_user_document_id,
+      accountDocumentId: row.strapi_account_document_id,
+      identityStatus: row.identity_status,
+    };
   }
 
   async lifecycleStatus(input: { userDocumentId: string; accountDocumentId: string }): Promise<MusicLifecycleStatus> {
@@ -693,6 +715,24 @@ export class MusicIdentityRepository {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
+      await client.query(`WITH exhausted AS (
+        SELECT u.id,o.operation_id
+        FROM users u JOIN music_identity_lifecycle_operations o ON o.operation_id=u.lifecycle_operation_id
+        WHERE u.identity_status='pending_deletion' AND u.lifecycle_retention_stage='upstream-delete-attempted'
+          AND u.lifecycle_state='running' AND o.operation_kind='delete'
+          AND o.operation_phase='prepared' AND o.operation_state='completed'
+          AND o.attempt_count >= $2 AND COALESCE(o.error_code,'') NOT LIKE 'MANUAL_REPAIR_REARMED:%'
+          AND o.updated_at + interval '45 seconds' <= $1
+        FOR UPDATE OF u,o SKIP LOCKED
+      ), operation_failure AS (
+        UPDATE music_identity_lifecycle_operations o SET error_code=CASE
+          WHEN o.error_code LIKE 'MANUAL_REPAIR_CLAIMED:%'
+            THEN 'DEAD_LETTER:WORKER_LEASE_EXPIRED|' || o.error_code
+          ELSE 'DEAD_LETTER:WORKER_LEASE_EXPIRED' END
+        FROM exhausted e WHERE o.operation_id=e.operation_id
+      )
+      UPDATE users u SET lifecycle_state='failed',lifecycle_error_code='DEAD_LETTER:WORKER_LEASE_EXPIRED'
+      FROM exhausted e WHERE u.id=e.id`, [input.now,input.maxAttempts]);
       const due = await client.query<any>(`SELECT u.id,u.strapi_user_document_id,u.strapi_account_document_id,
         u.lifecycle_operation_id,o.attempt_count
         FROM users u JOIN music_identity_lifecycle_operations o ON o.operation_id=u.lifecycle_operation_id
@@ -700,12 +740,19 @@ export class MusicIdentityRepository {
           AND u.lifecycle_state IN ('requested','failed','running') AND o.operation_kind='delete'
           AND o.operation_phase='prepared' AND o.operation_state='completed'
           AND COALESCE(u.lifecycle_error_code,'') NOT LIKE 'DEAD_LETTER:%'
-          AND o.updated_at + make_interval(secs => LEAST(300,power(2,GREATEST(0,o.attempt_count-1)))::integer) <= $1
-        ORDER BY o.updated_at,o.operation_id FOR UPDATE OF u SKIP LOCKED LIMIT $2`, [input.now,input.batchSize]);
+          AND (o.attempt_count < $3 OR o.error_code LIKE 'MANUAL_REPAIR_REARMED:%')
+          AND ((u.lifecycle_state='running' AND o.updated_at + interval '45 seconds' <= $1)
+            OR (u.lifecycle_state IN ('requested','failed')
+              AND o.updated_at + make_interval(secs => LEAST(300,power(2,GREATEST(0,o.attempt_count-1)))::integer) <= $1))
+        ORDER BY o.updated_at,o.operation_id FOR UPDATE OF u SKIP LOCKED LIMIT $2`, [input.now,input.batchSize,input.maxAttempts]);
       const claimed: ClaimedLifecycleDeletion[] = [];
       for (const row of due.rows) {
-        const attempt = Math.min(row.attempt_count + 1, input.maxAttempts);
-        await client.query("UPDATE music_identity_lifecycle_operations SET attempt_count=$2,error_code=NULL WHERE operation_id=$1", [row.lifecycle_operation_id,attempt]);
+        const operation = (await client.query<any>(`UPDATE music_identity_lifecycle_operations
+          SET attempt_count=attempt_count+1,
+            error_code=CASE WHEN error_code LIKE 'MANUAL_REPAIR_REARMED:%'
+              THEN replace(error_code,'MANUAL_REPAIR_REARMED:','MANUAL_REPAIR_CLAIMED:') ELSE NULL END
+          WHERE operation_id=$1 RETURNING attempt_count,updated_at::text AS lease_updated_at`, [row.lifecycle_operation_id])).rows[0];
+        const attempt = operation.attempt_count;
         await client.query(`UPDATE users SET lifecycle_state='running',lifecycle_attempt_count=$2,
           lifecycle_last_attempt_at=$3,lifecycle_error_code=NULL WHERE id=$1`, [row.id,attempt,input.now]);
         claimed.push({
@@ -714,6 +761,7 @@ export class MusicIdentityRepository {
           userDocumentId: row.strapi_user_document_id,
           accountDocumentId: row.strapi_account_document_id,
           attemptCount: attempt,
+          leaseUpdatedAt: String(operation.lease_updated_at),
         });
       }
       await client.query("COMMIT");
@@ -730,50 +778,129 @@ export class MusicIdentityRepository {
     operation: ClaimedLifecycleDeletion,
     observation: "present" | "unknown" | "outage",
     deadLetter: boolean,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const code = deadLetter ? `DEAD_LETTER:${observation.toUpperCase()}` : `UPSTREAM_${observation.toUpperCase()}`;
     const state = deadLetter ? "failed" : "requested";
-    const updated = await this.pool.query(`UPDATE users SET lifecycle_state=$2,lifecycle_error_code=$3
-      WHERE id=$1 AND identity_status='pending_deletion' AND lifecycle_operation_id=$4 AND lifecycle_state='running'`, [
-      operation.musicUserId,state,code,operation.operationId,
-    ]);
-    if (updated.rowCount !== 1) throw lifecycleConflict();
-    await this.pool.query("UPDATE music_identity_lifecycle_operations SET error_code=$2 WHERE operation_id=$1", [operation.operationId,code]);
+    return this.recordDeletionOutcome(operation, state, code);
+  }
+
+  async recordDeletionFailure(
+    operation: ClaimedLifecycleDeletion,
+    stage: "observation" | "finalize",
+    deadLetter: boolean,
+  ): Promise<boolean> {
+    const code = deadLetter ? `DEAD_LETTER:WORKER_${stage.toUpperCase()}` : `WORKER_${stage.toUpperCase()}_FAILED`;
+    return this.recordDeletionOutcome(operation, deadLetter ? "failed" : "requested", code);
+  }
+
+  async rearmDeletion(operationId: string): Promise<boolean> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const row = (await client.query<any>(`SELECT u.id,o.attempt_count
+        FROM users u JOIN music_identity_lifecycle_operations o ON o.operation_id=u.lifecycle_operation_id
+        WHERE o.operation_id=$1 AND u.identity_status='pending_deletion'
+          AND u.lifecycle_state='failed' AND u.lifecycle_error_code LIKE 'DEAD_LETTER:%'
+          AND o.operation_kind='delete' AND o.operation_phase='prepared' AND o.operation_state='completed'
+        FOR UPDATE OF u,o`, [operationId])).rows[0];
+      if (!row) {
+        await client.query("ROLLBACK");
+        return false;
+      }
+      const audit = `MANUAL_REPAIR_REARMED:attempt=${row.attempt_count}`;
+      await client.query("UPDATE music_identity_lifecycle_operations SET error_code=$2 WHERE operation_id=$1", [operationId,audit]);
+      await client.query(`UPDATE users SET lifecycle_state='requested',lifecycle_error_code=$2,
+        lifecycle_last_attempt_at=now() WHERE id=$1`, [row.id,audit]);
+      await client.query("COMMIT");
+      return true;
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw normalizeLifecycleError(error);
+    } finally {
+      client.release();
+    }
   }
 
   async finalizeDeletion(operation: ClaimedLifecycleDeletion): Promise<boolean> {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
-      const identity = (await client.query<any>(`SELECT id,lifecycle_operation_id,lifecycle_retention_stage
-        FROM users WHERE id=$1 FOR UPDATE`, [operation.musicUserId])).rows[0];
+      const identity = (await client.query<any>(`SELECT u.id,u.lifecycle_operation_id,u.lifecycle_retention_stage
+        FROM users u JOIN music_identity_lifecycle_operations o ON o.operation_id=u.lifecycle_operation_id
+        WHERE u.id=$1 AND u.strapi_user_document_id=$2 AND u.strapi_account_document_id=$3
+          AND u.identity_status='pending_deletion' AND u.lifecycle_state='running'
+          AND u.lifecycle_retention_stage='upstream-delete-attempted'
+          AND o.operation_id=$4 AND o.attempt_count=$5 AND o.updated_at=$6::timestamptz
+          AND o.operation_kind='delete' AND o.operation_phase='prepared' AND o.operation_state='completed'
+        FOR UPDATE OF u,o`, [
+        operation.musicUserId,operation.userDocumentId,operation.accountDocumentId,operation.operationId,
+        operation.attemptCount,operation.leaseUpdatedAt,
+      ])).rows[0];
       if (!identity) {
         const replay = await client.query(`SELECT 1 FROM music_identity_tombstones t
           JOIN music_identity_lifecycle_operations o ON o.operation_id=t.lifecycle_operation_id
           WHERE t.music_user_id=$1 AND t.lifecycle_operation_id=$2 AND o.operation_phase='finalized'`, [operation.musicUserId,operation.operationId]);
-        if (!replay.rowCount) throw lifecycleConflict();
+        if (!replay.rowCount) {
+          await client.query("ROLLBACK");
+          return false;
+        }
         await client.query("COMMIT");
         return false;
       }
-      if (identity.lifecycle_operation_id !== operation.operationId
-          || identity.lifecycle_retention_stage !== "upstream-delete-attempted") throw lifecycleConflict();
       await client.query("UPDATE users SET lifecycle_retention_stage='cleanup-running',lifecycle_state='running' WHERE id=$1", [operation.musicUserId]);
       await this.hooks.beforeFinalize?.();
-      await client.query("DELETE FROM email_logs WHERE api_token_id IN (SELECT id FROM api_tokens WHERE user_id=$1)", [operation.musicUserId]);
+      await client.query(`DELETE FROM email_logs
+        WHERE api_token_id IN (SELECT id FROM api_tokens WHERE user_id=$1)
+          OR template_id IN (SELECT id FROM email_templates WHERE created_by=$1)`, [operation.musicUserId]);
       await client.query("DELETE FROM api_tokens WHERE user_id=$1", [operation.musicUserId]);
       await client.query("DELETE FROM email_templates WHERE created_by=$1", [operation.musicUserId]);
-      await client.query("UPDATE page_contents SET created_by=NULL WHERE created_by=$1", [operation.musicUserId]);
+      await client.query("DELETE FROM page_contents WHERE created_by=$1", [operation.musicUserId]);
       await client.query("UPDATE page_contents SET updated_by=NULL WHERE updated_by=$1", [operation.musicUserId]);
       await client.query("UPDATE seo_settings SET updated_by=NULL WHERE updated_by=$1", [operation.musicUserId]);
       await client.query("UPDATE system_settings SET updated_by=NULL WHERE updated_by=$1", [operation.musicUserId]);
       await client.query("UPDATE youtube_api_usage SET user_id=NULL WHERE user_id=$1", [operation.musicUserId]);
       await client.query("DELETE FROM session WHERE sess->'passport'->>'user'=$1 OR sess->>'userId'=$1", [String(operation.musicUserId)]);
+      await this.hooks.afterRetentionCleanup?.();
       const finalized = await client.query("SELECT finalize_music_identity_deletion($1::integer,$2::text,$3::text) AS finalized", [
         operation.musicUserId,operation.operationId,"authoritative-absence",
       ]);
       await client.query("UPDATE music_identity_tombstones SET retention_stage='classified-v1' WHERE lifecycle_operation_id=$1", [operation.operationId]);
       await client.query("COMMIT");
       return finalized.rows[0].finalized === true;
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw normalizeLifecycleError(error);
+    } finally {
+      client.release();
+    }
+  }
+
+  private async recordDeletionOutcome(
+    operation: ClaimedLifecycleDeletion,
+    state: "requested" | "failed",
+    code: string,
+  ): Promise<boolean> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const current = await client.query(`SELECT 1
+        FROM users u JOIN music_identity_lifecycle_operations o ON o.operation_id=u.lifecycle_operation_id
+        WHERE u.id=$1 AND u.strapi_user_document_id=$2 AND u.strapi_account_document_id=$3
+          AND u.identity_status='pending_deletion' AND u.lifecycle_state='running'
+          AND o.operation_id=$4 AND o.attempt_count=$5 AND o.updated_at=$6::timestamptz
+          AND o.operation_kind='delete' AND o.operation_phase='prepared' AND o.operation_state='completed'
+        FOR UPDATE OF u,o`, [
+        operation.musicUserId,operation.userDocumentId,operation.accountDocumentId,operation.operationId,
+        operation.attemptCount,operation.leaseUpdatedAt,
+      ]);
+      if (!current.rowCount) {
+        await client.query("ROLLBACK");
+        return false;
+      }
+      await client.query("UPDATE users SET lifecycle_state=$2,lifecycle_error_code=$3 WHERE id=$1", [operation.musicUserId,state,code]);
+      await client.query("UPDATE music_identity_lifecycle_operations SET error_code=$2 WHERE operation_id=$1", [operation.operationId,code]);
+      await client.query("COMMIT");
+      return true;
     } catch (error) {
       await client.query("ROLLBACK").catch(() => undefined);
       throw normalizeLifecycleError(error);

@@ -76,6 +76,11 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
     expect(row.session_version).toBe(projection.sessionVersion + 1);
     expect(row.guest_discoverable).toBe(false);
     expect(row.guest_capability_revoked_at).not.toBeNull();
+    await expect(repository.lifecycleBinding("c7-user-prepare")).resolves.toEqual({
+      userDocumentId: "c7-user-prepare",
+      accountDocumentId: "c7-account-prepare",
+      identityStatus: "pending_deletion",
+    });
     await expect(new MusicDomainRepository(pool).resolveGuestResource("c7-public-prepare")).resolves.toBeUndefined();
   });
 
@@ -114,7 +119,16 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
     await pool.query("INSERT INTO guest_interactions(user_id,guest_id,interaction_type) VALUES ($1,'pii-guest','view')", [projection.id]);
     await pool.query("INSERT INTO activity_logs(user_id,event_type,event_data) VALUES ($1,'login','{\"email\":\"pii@example.invalid\"}')", [projection.id]);
     await pool.query("INSERT INTO playlists(user_id,name) VALUES ($1,'private content')", [projection.id]);
-    await pool.query("INSERT INTO api_tokens(token,name,user_id,scopes) VALUES ('secret-token','secret',$1,'{}')", [projection.id]);
+    const tokenId = (await pool.query("INSERT INTO api_tokens(token,name,user_id,scopes) VALUES ('secret-token','secret',$1,'{}') RETURNING id", [projection.id])).rows[0].id;
+    const templateId = (await pool.query(`INSERT INTO email_templates(name,subject,html_content,text_content,variables,created_by)
+      VALUES ('private-template','private subject','private html','private text','{"email":"private@example.invalid"}',$1) RETURNING id`, [projection.id])).rows[0].id;
+    await pool.query(`INSERT INTO email_logs(recipient,subject,template_id,status,error_message,api_token_id,message_id,metadata,variables)
+      VALUES ('recipient@example.invalid','token subject',NULL,'failed','private error',$1,'private-message-token','{"email":"private@example.invalid"}','private variables')`, [tokenId]);
+    await pool.query(`INSERT INTO email_logs(recipient,subject,template_id,status,error_message,api_token_id,message_id,metadata,variables)
+      VALUES ('recipient2@example.invalid','template subject',$1,'failed','private error',NULL,'private-message-template','{"email":"private2@example.invalid"}','private variables')`, [templateId]);
+    const sharedOwner = await repository.ensureIdentity(identityInput("shared-page-owner"));
+    await pool.query("INSERT INTO page_contents(slug,title,content,created_by,updated_by) VALUES ('private-page','Private','private body',$1,$1)", [projection.id]);
+    await pool.query("INSERT INTO page_contents(slug,title,content,created_by,updated_by) VALUES ('shared-page','Shared','shared body',$1,$2)", [sharedOwner.id,projection.id]);
     await repository.prepareDeletion({
       userDocumentId: "c7-user-finalize", accountDocumentId: "c7-account-finalize", operationId: "delete-finalize",
     });
@@ -133,6 +147,10 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
     expect(Number((await pool.query("SELECT count(*) FROM users WHERE id=$1", [projection.id])).rows[0].count)).toBe(0);
     expect((await pool.query("SELECT user_id FROM youtube_api_usage WHERE endpoint_type='search'")).rows[0].user_id).toBeNull();
     expect(Number((await pool.query("SELECT count(*) FROM guest_interactions WHERE user_id=$1", [projection.id])).rows[0].count)).toBe(0);
+    expect(Number((await pool.query("SELECT count(*) FROM email_logs WHERE id IN (SELECT id FROM email_logs WHERE recipient LIKE 'recipient%@example.invalid')")).rows[0].count)).toBe(0);
+    expect(Number((await pool.query("SELECT count(*) FROM page_contents WHERE slug='private-page'")).rows[0].count)).toBe(0);
+    expect((await pool.query("SELECT created_by,updated_by,content FROM page_contents WHERE slug='shared-page'")).rows[0])
+      .toEqual({ created_by: sharedOwner.id, updated_by: null, content: "shared body" });
     const tombstone = (await pool.query("SELECT music_user_id,lifecycle_operation_id,retention_stage FROM music_identity_tombstones WHERE strapi_user_document_id='c7-user-finalize'")).rows[0];
     expect(tombstone).toEqual({ music_user_id: projection.id, lifecycle_operation_id: "delete-finalize", retention_stage: "classified-v1" });
     await expect(repository.ensureIdentity(identityInput("finalize"))).rejects.toMatchObject({ code: "IDENTITY_TOMBSTONED" });
@@ -143,6 +161,9 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
     const base = new MusicIdentityRepository(pool);
     const projection = await base.ensureIdentity(identityInput("rollback"));
     await pool.query("INSERT INTO playlists(user_id,name) VALUES ($1,'must survive rollback')", [projection.id]);
+    const tokenId = (await pool.query("INSERT INTO api_tokens(token,name,user_id,scopes) VALUES ('rollback-token','rollback',$1,'{}') RETURNING id", [projection.id])).rows[0].id;
+    await pool.query("INSERT INTO email_logs(recipient,subject,status,api_token_id) VALUES ('rollback@example.invalid','rollback','failed',$1)", [tokenId]);
+    await pool.query("INSERT INTO page_contents(slug,title,content,created_by,updated_by) VALUES ('rollback-page','Rollback','must survive',$1,$1)", [projection.id]);
     await base.prepareDeletion({
       userDocumentId: "c7-user-rollback", accountDocumentId: "c7-account-rollback", operationId: "delete-rollback",
     });
@@ -150,12 +171,14 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
     const claimed = (await base.claimDueDeletions({ now: new Date(Date.now() + 600_000), batchSize: 10, maxAttempts: 5 }))
       .find(({ operationId }) => operationId === "delete-rollback")!;
     const failing = new MusicIdentityRepository(pool, {
-      beforeFinalize: async () => { throw new Error("injected-retention-failure"); },
+      afterRetentionCleanup: async () => { throw new Error("injected-retention-failure"); },
     });
 
     await expect(failing.finalizeDeletion(claimed)).rejects.toThrow("injected-retention-failure");
     expect(Number((await pool.query("SELECT count(*) FROM users WHERE id=$1", [projection.id])).rows[0].count)).toBe(1);
     expect(Number((await pool.query("SELECT count(*) FROM playlists WHERE user_id=$1", [projection.id])).rows[0].count)).toBe(1);
+    expect(Number((await pool.query("SELECT count(*) FROM email_logs WHERE recipient='rollback@example.invalid'")).rows[0].count)).toBe(1);
+    expect(Number((await pool.query("SELECT count(*) FROM page_contents WHERE slug='rollback-page'")).rows[0].count)).toBe(1);
     expect(Number((await pool.query("SELECT count(*) FROM music_identity_tombstones WHERE music_user_id=$1", [projection.id])).rows[0].count)).toBe(0);
   });
 
@@ -163,17 +186,30 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
     // Break caught: suspension remaps/deletes content or reactivation silently republishes it.
     const repository = new MusicIdentityRepository(pool);
     const projection = await repository.ensureIdentity(identityInput("suspend"));
+    const tokens = new MusicTokenService({
+      current: { kid: "c7-suspend", secret: Buffer.alloc(32, 17).toString("base64url") },
+      tokenLifetimeSeconds: 600,
+      clockSkewSeconds: 0,
+    });
+    const principals = new MusicPrincipalService(tokens, repository);
+    const oldCredential = tokens.mint(projection).token;
     await pool.query("INSERT INTO playlists(user_id,name,is_visible_to_guests) VALUES ($1,'preserved',true)", [projection.id]);
     await pool.query("UPDATE users SET guest_discoverable=true WHERE id=$1", [projection.id]);
     const suspended = await repository.transitionIdentity({
       strapiUserDocumentId: "c7-user-suspend", operationId: "suspend-c7", kind: "suspend", targetStatus: "suspended",
     });
     expect(suspended).toMatchObject({ id: projection.id, identityStatus: "suspended", sessionVersion: projection.sessionVersion + 1 });
+    await expect(principals.resolve(oldCredential)).rejects.toMatchObject({ code: "IDENTITY_SUSPENDED" });
     expect(await new MusicDomainRepository(pool).resolveGuestResource("c7-public-suspend")).toBeUndefined();
     const reactivated = await repository.transitionIdentity({
       strapiUserDocumentId: "c7-user-suspend", operationId: "reactivate-c7", kind: "reactivate", targetStatus: "active",
     });
-    expect(reactivated).toMatchObject({ id: projection.id, identityStatus: "active", sessionVersion: suspended.sessionVersion });
+    expect(reactivated).toMatchObject({ id: projection.id, identityStatus: "active", sessionVersion: suspended.sessionVersion + 1 });
+    const replay = await repository.transitionIdentity({
+      strapiUserDocumentId: "c7-user-suspend", operationId: "reactivate-c7", kind: "reactivate", targetStatus: "active",
+    });
+    expect(replay).toEqual(reactivated);
+    await expect(principals.resolve(oldCredential)).rejects.toMatchObject({ code: "TOKEN_REVOKED" });
     expect(Number((await pool.query("SELECT count(*) FROM playlists WHERE user_id=$1", [projection.id])).rows[0].count)).toBe(1);
     expect(await new MusicDomainRepository(pool).resolveGuestResource("c7-public-suspend")).toBeUndefined();
   });
@@ -217,11 +253,42 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
     await expect(repository.lifecycleStatus({ userDocumentId: "c7-user-retry", accountDocumentId: "c7-account-retry" }))
       .resolves.toMatchObject({ state: "failed", deadLetter: true, retryable: false });
     await expect(manuallyRepairMusicDeletion({
-      operation: second,
-      proveAbsence: async () => "absent",
-      finalizeDeletion: (operation) => repository.finalizeDeletion(operation),
+      operationId: second.operationId,
+      rearmDeletion: (operationId) => repository.rearmDeletion(operationId),
     })).resolves.toBe(true);
+    const repaired = (await repository.claimDueDeletions({ now: new Date(Date.now() + 600_000), batchSize: 20, maxAttempts: 3 }))
+      .find(({ operationId }) => operationId === "delete-retry")!;
+    expect(repaired.attemptCount).toBeGreaterThan(second.attemptCount);
+    await expect(repository.finalizeDeletion(repaired)).resolves.toBe(true);
+    await expect(repository.finalizeDeletion(repaired)).resolves.toBe(false);
     expect(Number((await pool.query("SELECT count(*) FROM users WHERE id=$1", [projection.id])).rows[0].count)).toBe(0);
+  });
+
+  it("consumes one manual-repair authorization so an expired repair lease dead-letters again", async () => {
+    // Break caught: a preserved repair marker permits unbounded claims after the repair worker crashes.
+    const repository = new MusicIdentityRepository(pool);
+    await repository.ensureIdentity(identityInput("repair-crash"));
+    await repository.prepareDeletion({
+      userDocumentId: "c7-user-repair-crash", accountDocumentId: "c7-account-repair-crash", operationId: "delete-repair-crash",
+    });
+    await repository.markDeletionBoundary({ userDocumentId: "c7-user-repair-crash", accountDocumentId: "c7-account-repair-crash" });
+    const first = (await repository.claimDueDeletions({
+      now: new Date(Date.now() + 10_000), batchSize: 20, maxAttempts: 2,
+    })).find(({ operationId }) => operationId === "delete-repair-crash")!;
+    await repository.recordDeletionObservation(first, "outage", true);
+    await expect(repository.rearmDeletion("delete-repair-crash")).resolves.toBe(true);
+    const repairedAt = new Date(Date.now() + 600_000);
+    const repaired = (await repository.claimDueDeletions({ now: repairedAt, batchSize: 20, maxAttempts: 2 }))
+      .find(({ operationId }) => operationId === "delete-repair-crash")!;
+    expect(repaired.attemptCount).toBeGreaterThan(2);
+
+    const afterExpiredLease = await repository.claimDueDeletions({
+      now: new Date(repairedAt.getTime() + 46_000), batchSize: 20, maxAttempts: 2,
+    });
+    expect(afterExpiredLease.some(({ operationId }) => operationId === "delete-repair-crash")).toBe(false);
+    await expect(repository.lifecycleStatus({
+      userDocumentId: "c7-user-repair-crash", accountDocumentId: "c7-account-repair-crash",
+    })).resolves.toMatchObject({ state: "failed", deadLetter: true, retryable: false });
   });
 
   it("reclaims a stale running operation after a worker crash", async () => {
@@ -245,5 +312,31 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
       now: new Date(Date.now() + 600_000), batchSize: 20, maxAttempts: 5,
     })).find(({ operationId }) => operationId === "delete-crash-recovery");
     expect(reclaimed).toMatchObject({ operationId: "delete-crash-recovery", attemptCount: 3 });
+  });
+
+  it("fences two worker replicas by the exact attempt lease epoch", async () => {
+    // Break caught: stale replica A finalizes after newer replica B proves presence/uncertainty.
+    const firstReplica = new MusicIdentityRepository(pool);
+    const secondReplica = new MusicIdentityRepository(pool);
+    const projection = await firstReplica.ensureIdentity(identityInput("worker-fence"));
+    await pool.query("INSERT INTO playlists(user_id,name) VALUES ($1,'must survive stale proof')", [projection.id]);
+    await firstReplica.prepareDeletion({
+      userDocumentId: "c7-user-worker-fence", accountDocumentId: "c7-account-worker-fence", operationId: "delete-worker-fence",
+    });
+    await firstReplica.markDeletionBoundary({ userDocumentId: "c7-user-worker-fence", accountDocumentId: "c7-account-worker-fence" });
+    const claimAt = new Date(Date.now() + 2_000);
+    const claimA = (await firstReplica.claimDueDeletions({ now: claimAt, batchSize: 10, maxAttempts: 5 }))
+      .find(({ operationId }) => operationId === "delete-worker-fence")!;
+    expect(claimA.leaseUpdatedAt).toEqual(expect.any(String));
+    const premature = await secondReplica.claimDueDeletions({ now: new Date(claimAt.getTime() + 30_000), batchSize: 10, maxAttempts: 5 });
+    expect(premature.some(({ operationId }) => operationId === "delete-worker-fence")).toBe(false);
+    const claimB = (await secondReplica.claimDueDeletions({ now: new Date(claimAt.getTime() + 46_000), batchSize: 10, maxAttempts: 5 }))
+      .find(({ operationId }) => operationId === "delete-worker-fence")!;
+    expect(claimB.attemptCount).toBe(claimA.attemptCount + 1);
+    expect(claimB.leaseUpdatedAt).not.toBe(claimA.leaseUpdatedAt);
+    await secondReplica.recordDeletionObservation(claimB, "present", false);
+    await expect(firstReplica.finalizeDeletion(claimA)).resolves.toBe(false);
+    expect(Number((await pool.query("SELECT count(*) FROM users WHERE id=$1", [projection.id])).rows[0].count)).toBe(1);
+    expect(Number((await pool.query("SELECT count(*) FROM playlists WHERE user_id=$1", [projection.id])).rows[0].count)).toBe(1);
   });
 });

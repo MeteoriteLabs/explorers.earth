@@ -34,7 +34,7 @@ import {
 export function registerRoutes(
   app: Express,
   _storage: IStorage,
-  musicConfig: MusicIdentityRuntimeConfig,
+  musicConfig: Omit<MusicIdentityRuntimeConfig, "lifecycleProofToken">,
   lifecycleAbsenceProof: {
     proveAbsence(identity: { userDocumentId: string; accountDocumentId: string }): Promise<AuthoritativeAbsence>;
   },

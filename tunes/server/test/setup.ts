@@ -13,6 +13,7 @@ process.env.MUSIC_FIXTURE_STRAPI_ORIGIN = 'http://strapi:1337';
 process.env.TRUST_PROXY_HOPS = '0';
 delete process.env.MUSIC_TRUSTED_PROXY_IP;
 process.env.MUSIC_FIXTURE_VERSION = '1';
+process.env.STRAPI_LIFECYCLE_PROOF_TOKEN = 'fixture-read-only-token';
 process.env.STRAPI_FIXTURE_URL = 'http://127.0.0.1:51337';
 process.env.DATABASE_URL_TEST ||= 'postgresql://music_migrator:music@127.0.0.1:55432/music_fixture';
 process.env.MUSIC_DATABASE_HOST = 'postgres';

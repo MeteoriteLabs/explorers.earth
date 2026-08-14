@@ -10,6 +10,9 @@ describe("canonical C5 owner and guest capability socket", () => {
   let revoked = false;
   let expired = false;
   let internalFailure = false;
+  let pauseAdmission = false;
+  let admissionStarted: (() => void) | undefined;
+  let resumeAdmission: (() => void) | undefined;
   let server: ReturnType<typeof createMusicSocketServer>;
   const ownerRegistry = new MusicOwnerSocketRegistry();
   let url: string;
@@ -24,6 +27,11 @@ describe("canonical C5 owner and guest capability socket", () => {
           return { token, principal: { musicUserId: 41, subject: "owner-41", accountDocumentId: "account", sessionVersion: 2 } };
         },
         recheck: async (context) => {
+          if (pauseAdmission) {
+            pauseAdmission = false;
+            admissionStarted?.();
+            await new Promise<void>((resolve) => { resumeAdmission = resolve; });
+          }
           if (expired) throw new MusicPrincipalError("TOKEN_EXPIRED", 401, "expired");
           return context.principal;
         },
@@ -52,6 +60,9 @@ describe("canonical C5 owner and guest capability socket", () => {
     revoked = false;
     expired = false;
     internalFailure = false;
+    pauseAdmission = false;
+    admissionStarted = undefined;
+    resumeAdmission = undefined;
   });
 
   function connect(auth: Record<string, string>, origin = "https://explorers.example") {
@@ -115,6 +126,26 @@ describe("canonical C5 owner and guest capability socket", () => {
     await disconnected;
     expect(first.connected).toBe(false);
     expect(second.connected).toBe(false);
+  });
+
+  it("fences a paused owner admission when lifecycle revocation crosses the join boundary", async () => {
+    // Break caught: prepare/suspend misses a socket admitted between room enumeration and join.
+    pauseAdmission = true;
+    const started = new Promise<void>((resolve) => { admissionStarted = resolve; });
+    const connecting = connect({ token: "aaa.bbb.ccc" });
+    await expect(Promise.race([
+      started.then(() => "started"),
+      new Promise<string>((resolve) => setTimeout(() => resolve("timed-out"), 250)),
+    ])).resolves.toBe("started");
+    const socket = await connecting;
+    let liveStatus = false;
+    socket.on("connection_status", ({ status }) => { if (status === "connected") liveStatus = true; });
+    const disconnected = new Promise<void>((resolve) => socket.once("disconnect", () => resolve()));
+    await ownerRegistry.disconnectOwner(41);
+    resumeAdmission?.();
+    await expect(disconnected).resolves.toBeUndefined();
+    expect(liveStatus).toBe(false);
+    expect(socket.connected).toBe(false);
   });
 
   it("evicts a revoked guest before a valid owner broadcasts to guest recipients", async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { AccountLifecycleError, createAccountLifecycleService } from "../accountLifecycleService";
-import { deleteAccountMutation } from "../../features/Settings/api/mutation";
+import { deleteExplorerAccountMutation, deleteExplorerUserMutation } from "../../features/Settings/api/mutation";
 
 const pending = {
   version: "music-lifecycle/v1",
@@ -12,17 +12,19 @@ const pending = {
     boundaryCrossed: false,
     retryable: false,
     deadLetter: false,
+    upstreamUserDocumentId: "user-document-a",
+    upstreamAccountDocumentId: "account-document-a",
   },
 };
 
 describe("account lifecycle service", () => {
-  it("deletes the upstream user last so a partial failure retains retry authority", () => {
-    const operation = deleteAccountMutation.definitions.find((definition) => definition.kind === "OperationDefinition");
-    const fields = operation && "selectionSet" in operation
-      ? operation.selectionSet.selections.flatMap((selection) => selection.kind === "Field" ? [selection.name.value] : [])
-      : [];
-    expect(fields.at(-1)).toBe("deleteUsersPermissionsUser");
-    expect(fields.indexOf("deleteAccount")).toBeLessThan(fields.indexOf("deleteUsersPermissionsUser"));
+  it("uses distinct Account and user GraphQL operations", () => {
+    // Break caught: GraphQL executes both destructive fields in one request after an Account failure.
+    const operationNames = [deleteExplorerAccountMutation, deleteExplorerUserMutation].map((document) => {
+      const operation = document.definitions.find((definition) => definition.kind === "OperationDefinition");
+      return operation && "name" in operation ? operation.name?.value : undefined;
+    });
+    expect(operationNames).toEqual(["DeleteExplorerAccount", "DeleteExplorerUser"]);
   });
 
   it("prepares and durably marks the boundary before attempting upstream deletion", async () => {
@@ -35,7 +37,9 @@ describe("account lifecycle service", () => {
         headers: { "content-type": "application/json", "x-request-id": "request-a" },
       });
     });
-    const upstreamDelete = vi.fn(async () => { order.push("upstream"); });
+    const readAccountPresence = vi.fn(async () => ({ status: "present" as const, accountDocumentId: "account-document-a" }));
+    const deleteExplorerAccount = vi.fn(async () => { order.push("account"); return "account-document-a"; });
+    const deleteExplorerUser = vi.fn(async () => { order.push("user"); return "user-document-a"; });
     const clearAuth = vi.fn(() => order.push("logout"));
     const service = createAccountLifecycleService({
       baseUrl: "https://music.example/",
@@ -43,9 +47,175 @@ describe("account lifecycle service", () => {
       fetchImpl: fetchImpl as typeof fetch,
     });
 
-    await service.deleteAccount({ upstreamDelete, clearAuth });
+    await service.deleteAccount({
+      readAccountPresence,
+      deleteExplorerAccount,
+      deleteExplorerUser,
+      clearAuth,
+    });
 
-    expect(order).toEqual(["prepare", "boundary", "upstream", "logout"]);
+    expect(order).toEqual(["prepare", "boundary", "account", "user", "logout"]);
+  });
+
+  it.each(["error", "null", "wrong-document", "unknown"] as const)(
+    "never deletes the user when Account deletion ends as %s",
+    async (outcome) => {
+      // Break caught: an ambiguous or failed Account mutation destroys the bearer needed for reload retry.
+      const service = createAccountLifecycleService({
+        baseUrl: "https://music.example",
+        getBearer: () => "authoritative-bearer-proof",
+        fetchImpl: async () => new Response(JSON.stringify(pending), { status: 200 }),
+      });
+      const deleteExplorerUser = vi.fn(async () => "user-document-a");
+      const clearAuth = vi.fn();
+      const deleteExplorerAccount = vi.fn(async () => {
+        if (outcome === "error") throw new Error("lost Account response");
+        if (outcome === "null") return null;
+        return outcome === "wrong-document" ? "different-account" : "account-document-a";
+      });
+      const readAccountPresence = vi.fn(async () => outcome === "unknown"
+        ? { status: "unknown" as const }
+        : { status: "present" as const, accountDocumentId: "account-document-a" });
+
+      await expect(service.deleteAccount({
+        readAccountPresence,
+        deleteExplorerAccount,
+        deleteExplorerUser,
+        clearAuth,
+      })).rejects.toBeInstanceOf(Error);
+      expect(deleteExplorerUser).not.toHaveBeenCalled();
+      expect(clearAuth).not.toHaveBeenCalled();
+    },
+  );
+
+  it("deletes the user without repeating Account deletion when an authoritative read proves Account absence", async () => {
+    // Break caught: reload cannot resume after Account deletion succeeded but its response was lost.
+    const service = createAccountLifecycleService({
+      baseUrl: "https://music.example",
+      getBearer: () => "authoritative-bearer-proof",
+      fetchImpl: async () => new Response(JSON.stringify(pending), { status: 200 }),
+    });
+    const deleteExplorerAccount = vi.fn(async () => "account-document-a");
+    const deleteExplorerUser = vi.fn(async () => "user-document-a");
+    const clearAuth = vi.fn();
+    await service.deleteAccount({
+      readAccountPresence: async () => ({ status: "absent" }),
+      deleteExplorerAccount,
+      deleteExplorerUser,
+      clearAuth,
+    });
+    expect(deleteExplorerAccount).not.toHaveBeenCalled();
+    expect(deleteExplorerUser).toHaveBeenCalledOnce();
+    expect(clearAuth).toHaveBeenCalledOnce();
+  });
+
+  it("uses the durable Account binding and refuses a replacement Account after reload", async () => {
+    // Break caught: current Account B is deleted even though the durable operation was prepared for Account A.
+    const service = createAccountLifecycleService({
+      baseUrl: "https://music.example",
+      getBearer: () => "authoritative-bearer-proof",
+      fetchImpl: async () => new Response(JSON.stringify({
+        ...pending,
+        operation: { ...pending.operation, boundaryCrossed: true, state: "requested" },
+      }), { status: 200 }),
+    });
+    const readAccountPresence = vi.fn(async (expectedAccountDocumentId: string) => {
+      expect(expectedAccountDocumentId).toBe("account-document-a");
+      return { status: "unknown" as const };
+    });
+    const deleteExplorerAccount = vi.fn(async () => "account-document-b");
+    const deleteExplorerUser = vi.fn(async () => "user-document-a");
+
+    await expect(service.deleteAccount({
+      readAccountPresence,
+      deleteExplorerAccount,
+      deleteExplorerUser,
+      clearAuth: vi.fn(),
+    })).rejects.toMatchObject({ code: "UPSTREAM_ACCOUNT_UNKNOWN" });
+    expect(deleteExplorerAccount).not.toHaveBeenCalled();
+    expect(deleteExplorerUser).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when prepare and boundary return different durable bindings", async () => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(pending), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        ...pending,
+        operation: { ...pending.operation, upstreamAccountDocumentId: "account-document-b" },
+      }), { status: 200 }));
+    const service = createAccountLifecycleService({
+      baseUrl: "https://music.example",
+      getBearer: () => "authoritative-bearer-proof",
+      fetchImpl: fetchImpl as typeof fetch,
+    });
+    const readAccountPresence = vi.fn(async () => ({ status: "absent" as const }));
+
+    await expect(service.deleteAccount({
+      readAccountPresence,
+      deleteExplorerAccount: async () => "account-document-a",
+      deleteExplorerUser: async () => "user-document-a",
+      clearAuth: vi.fn(),
+    })).rejects.toMatchObject({ code: "LIFECYCLE_IDENTITY_CONFLICT" });
+    expect(readAccountPresence).not.toHaveBeenCalled();
+  });
+
+  it.each([null, "different-user"])("preserves retry authority when user deletion returns %s", async (deletedUser) => {
+    const service = createAccountLifecycleService({
+      baseUrl: "https://music.example",
+      getBearer: () => "authoritative-bearer-proof",
+      fetchImpl: async () => new Response(JSON.stringify(pending), { status: 200 }),
+    });
+    const clearAuth = vi.fn();
+
+    await expect(service.deleteAccount({
+      readAccountPresence: async () => ({ status: "absent" }),
+      deleteExplorerAccount: async () => "account-document-a",
+      deleteExplorerUser: async () => deletedUser,
+      clearAuth,
+    })).rejects.toMatchObject({ code: "UPSTREAM_USER_DELETE_UNCONFIRMED" });
+    expect(clearAuth).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { ...pending, operation: { ...pending.operation, deadLetter: true, state: "failed" as const, boundaryCrossed: true } },
+    { ...pending, operation: { ...pending.operation, status: "tombstoned" as const, phase: "finalized" as const, boundaryCrossed: true } },
+  ])("stops before boundary and GraphQL when prepare returns a terminal operation", async (terminal) => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify(terminal), { status: 200 }));
+    const service = createAccountLifecycleService({
+      baseUrl: "https://music.example", getBearer: () => "authoritative-bearer-proof", fetchImpl: fetchImpl as typeof fetch,
+    });
+    const deleteExplorerAccount = vi.fn(async () => "account-document-a");
+    const deleteExplorerUser = vi.fn(async () => "user-document-a");
+
+    await expect(service.deleteAccount({
+      readAccountPresence: async () => ({ status: "present", accountDocumentId: "account-document-a" }),
+      deleteExplorerAccount,
+      deleteExplorerUser,
+      clearAuth: vi.fn(),
+    })).rejects.toMatchObject({ code: "LIFECYCLE_TERMINAL" });
+    expect(fetchImpl).toHaveBeenCalledOnce();
+    expect(deleteExplorerAccount).not.toHaveBeenCalled();
+    expect(deleteExplorerUser).not.toHaveBeenCalled();
+  });
+
+  it("stops before GraphQL when boundary returns a terminal operation", async () => {
+    const terminal = { ...pending, operation: { ...pending.operation, deadLetter: true, state: "failed" as const, boundaryCrossed: true } };
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(pending), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(terminal), { status: 200 }));
+    const service = createAccountLifecycleService({
+      baseUrl: "https://music.example", getBearer: () => "authoritative-bearer-proof", fetchImpl: fetchImpl as typeof fetch,
+    });
+    const deleteExplorerUser = vi.fn(async () => "user-document-a");
+
+    await expect(service.deleteAccount({
+      readAccountPresence: async () => ({ status: "absent" }),
+      deleteExplorerAccount: async () => "account-document-a",
+      deleteExplorerUser,
+      clearAuth: vi.fn(),
+    })).rejects.toMatchObject({ code: "LIFECYCLE_TERMINAL" });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(deleteExplorerUser).not.toHaveBeenCalled();
   });
 
   it("never writes operation or proof material to browser persistence", async () => {
@@ -105,7 +275,12 @@ describe("account lifecycle service", () => {
       baseUrl: "https://music.example", getBearer: () => "authoritative-bearer-proof",
       fetchImpl: async () => new Response(JSON.stringify(pending), { status: 200 }),
     });
-    await expect(upstreamFailure.deleteAccount({ upstreamDelete: async () => { throw new Error("upstream"); }, clearAuth }))
+    await expect(upstreamFailure.deleteAccount({
+      readAccountPresence: async () => ({ status: "present", accountDocumentId: "account-document-a" }),
+      deleteExplorerAccount: async () => { throw new Error("upstream"); },
+      deleteExplorerUser: async () => "user-document-a",
+      clearAuth,
+    }))
       .rejects.toThrow("upstream");
     expect(clearAuth).not.toHaveBeenCalled();
   });

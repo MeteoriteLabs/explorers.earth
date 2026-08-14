@@ -12,10 +12,13 @@ const repositoryRoot = resolve(import.meta.dirname, "../../..");
 const signingRoot = mkdtempSync(resolve(tmpdir(), "music-startup-key-"));
 const signingPath = resolve(signingRoot, "current");
 const runtimeDatabasePasswordPath = resolve(signingRoot, "database-runtime");
+const lifecycleProofPath = resolve(signingRoot, "lifecycle-proof");
 writeFileSync(signingPath, Buffer.alloc(32, 0x61).toString("base64url"), { mode: 0o600 });
 writeFileSync(runtimeDatabasePasswordPath, Buffer.alloc(32, 0x62).toString("base64url"), { mode: 0o600 });
+writeFileSync(lifecycleProofPath, "dedicated-read-only-lifecycle-proof-token", { mode: 0o600 });
 chmodSync(signingPath, 0o600);
 chmodSync(runtimeDatabasePasswordPath, 0o600);
+chmodSync(lifecycleProofPath, 0o600);
 afterAll(() => rmSync(signingRoot, { recursive: true, force: true }));
 
 function withSigningFile(environment: Record<string, string>): Record<string, string> {
@@ -31,6 +34,8 @@ function withSigningFile(environment: Record<string, string>): Record<string, st
     MUSIC_DATABASE_USER: "music_runtime_login",
     MUSIC_DATABASE_MIGRATOR_USER: "music_migrator",
     MUSIC_DATABASE_PASSWORD_FILE: runtimeDatabasePasswordPath,
+    STRAPI_LIFECYCLE_PROOF_TOKEN: fixture ? "fixture-read-only-token" : "",
+    STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: fixture ? "" : lifecycleProofPath,
   };
 }
 

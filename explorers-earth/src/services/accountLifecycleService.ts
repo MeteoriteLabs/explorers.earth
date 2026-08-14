@@ -8,6 +8,8 @@ export interface AccountLifecycleStatus {
     boundaryCrossed: boolean;
     retryable: boolean;
     deadLetter: boolean;
+    upstreamUserDocumentId: string;
+    upstreamAccountDocumentId: string;
   };
 }
 
@@ -63,10 +65,68 @@ export function createAccountLifecycleService(input: {
   const status = () => request("GET", "status");
   const markBoundary = () => request("POST", "boundary");
   const cancel = () => request("POST", "cancel");
-  const deleteAccount = async (dependencies: { upstreamDelete: () => Promise<void>; clearAuth: () => void }) => {
-    await prepare();
-    await markBoundary();
-    await dependencies.upstreamDelete();
+  const requireDeletableOperation = (result: AccountLifecycleStatus) => {
+    if (result.operation.status !== "pending_deletion"
+        || result.operation.phase !== "prepared"
+        || result.operation.deadLetter
+        || typeof result.operation.upstreamUserDocumentId !== "string"
+        || typeof result.operation.upstreamAccountDocumentId !== "string") {
+      throw new AccountLifecycleError(
+        "LIFECYCLE_TERMINAL", 409,
+        "Account deletion is complete or requires manual review.", false,
+      );
+    }
+  };
+  const deleteAccount = async (dependencies: {
+    readAccountPresence: (expectedAccountDocumentId: string) => Promise<
+      { status: "present"; accountDocumentId: string }
+      | { status: "absent" | "unknown" }
+    >;
+    deleteExplorerAccount: (accountDocumentId: string) => Promise<string | null>;
+    deleteExplorerUser: () => Promise<string | null>;
+    clearAuth: () => void;
+  }) => {
+    const prepared = await prepare();
+    requireDeletableOperation(prepared);
+    const boundary = await markBoundary();
+    requireDeletableOperation(boundary);
+    if (prepared.operation.operationId !== boundary.operation.operationId
+        || prepared.operation.upstreamUserDocumentId !== boundary.operation.upstreamUserDocumentId
+        || prepared.operation.upstreamAccountDocumentId !== boundary.operation.upstreamAccountDocumentId) {
+      throw new AccountLifecycleError(
+        "LIFECYCLE_IDENTITY_CONFLICT", 409,
+        "Account deletion identity changed unexpectedly. Contact support.", false,
+      );
+    }
+    const presence = await dependencies.readAccountPresence(boundary.operation.upstreamAccountDocumentId);
+    if (presence.status === "unknown") {
+      throw new AccountLifecycleError(
+        "UPSTREAM_ACCOUNT_UNKNOWN",
+        503,
+        "The Explorer Account state could not be verified. Try again without signing out.",
+        true,
+      );
+    }
+    if (presence.status === "present") {
+      const deletedDocumentId = await dependencies.deleteExplorerAccount(presence.accountDocumentId);
+      if (deletedDocumentId !== presence.accountDocumentId) {
+        throw new AccountLifecycleError(
+          "UPSTREAM_ACCOUNT_DELETE_UNCONFIRMED",
+          503,
+          "Explorer Account deletion was not confirmed. Try again without signing out.",
+          true,
+        );
+      }
+    }
+    const deletedUserDocumentId = await dependencies.deleteExplorerUser();
+    if (deletedUserDocumentId !== boundary.operation.upstreamUserDocumentId) {
+      throw new AccountLifecycleError(
+        "UPSTREAM_USER_DELETE_UNCONFIRMED",
+        503,
+        "Explorer user deletion was not confirmed. Try again without signing out.",
+        true,
+      );
+    }
     dependencies.clearAuth();
   };
   return { prepare, status, markBoundary, cancel, deleteAccount };

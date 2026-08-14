@@ -38,6 +38,7 @@ const renderAt = (path = "/home") =>
       <Routes>
         <Route element={<ProtectedRoute />}>
           <Route path="/home" element={<div>PROTECTED HOME</div>} />
+          <Route path="/settings" element={<div>PROTECTED SETTINGS</div>} />
         </Route>
         <Route path="/onboarding" element={<div>ONBOARDING PAGE</div>} />
         <Route path="/login" element={<div>LOGIN PAGE</div>} />
@@ -90,6 +91,23 @@ describe("ProtectedRoute onboarding gate", () => {
     });
     renderAt();
     expect(screen.getByText("ONBOARDING PAGE")).toBeInTheDocument();
+  });
+
+  it("keeps account-less pending deletion on Settings so reload can resume", async () => {
+    // Break caught: successful Account deletion redirects to onboarding before the user mutation can retry.
+    mockStore({ ...AUTHED, token: "authoritative-bearer-proof" });
+    (useAuthStore as any).getState = () => ({ token: "authoritative-bearer-proof" });
+    mockQuery({ data: { usersPermissionsUser: { accounts: [] } }, loading: false, error: null, refetch: vi.fn() });
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      version: "music-lifecycle/v1",
+      operation: {
+        operationId: "durable-operation", status: "pending_deletion", phase: "prepared", state: "requested",
+        boundaryCrossed: true, retryable: true, deadLetter: false,
+      },
+    }), { status: 200 })));
+    renderAt("/settings");
+    expect(await screen.findByText("PROTECTED SETTINGS")).toBeInTheDocument();
+    vi.unstubAllGlobals();
   });
 
   it("does NOT bounce to /onboarding on an error with no data — shows a recoverable state (the regression)", () => {

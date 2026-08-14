@@ -141,13 +141,14 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig)
   });
 
   console.log('Starting server initialization...');
+  const { lifecycleProofToken, ...routeMusicConfig } = musicIdentityConfig;
   const identityAbsenceProof = new StrapiIdentityAbsenceProof({
     baseUrl: musicIdentityConfig.strapiOrigin,
-    accessToken: process.env.STRAPI_ACCESS_TOKEN ?? "",
+    accessToken: lifecycleProofToken,
     fetchImpl: musicIdentityConfig.fetchImpl,
-    timeoutMs: musicIdentityConfig.overallTimeoutMs,
+    timeoutMs: Math.min(musicIdentityConfig.overallTimeoutMs, 30_000),
   });
-  const server = await registerRoutes(app, storage, musicIdentityConfig, {
+  const server = await registerRoutes(app, storage, routeMusicConfig, {
     proveAbsence: (identity) => identityAbsenceProof.prove(identity),
   });
 

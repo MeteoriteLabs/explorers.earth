@@ -11,8 +11,11 @@ import {
 const secretRoot = mkdtempSync(join(tmpdir(), "music-key-config-"));
 const externalSecretRoot = mkdtempSync(join(tmpdir(), "music-key-external-"));
 const validCurrentPath = join(secretRoot, "current");
+const validProofPath = join(secretRoot, "lifecycle-proof");
 writeFileSync(validCurrentPath, Buffer.alloc(32, 0x51).toString("base64url"), { mode: 0o600 });
+writeFileSync(validProofPath, "dedicated-read-only-proof-token", { mode: 0o600 });
 chmodSync(validCurrentPath, 0o600);
+chmodSync(validProofPath, 0o600);
 
 afterAll(() => {
   rmSync(secretRoot, { recursive: true, force: true });
@@ -23,6 +26,8 @@ const liveBase = {
   NODE_ENV: "production",
   MUSIC_MODE: "live",
   STRAPI_URL: "https://cms.example.com",
+  STRAPI_ACCESS_TOKEN: "generic-write-capable-token",
+  STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: validProofPath,
   MUSIC_STRAPI_ALLOWED_ORIGINS: "https://cms.example.com",
   TRUST_PROXY_HOPS: "1",
   MUSIC_TRUSTED_PROXY_IP: "172.31.250.2",
@@ -48,6 +53,25 @@ const liveBase = {
 const publicResolver: MusicIdentityAddressResolver = vi.fn(async () => ["8.8.8.8", "2606:4700:4700::1111"]);
 
 describe("central Music identity startup configuration", () => {
+  it("requires a dedicated file-backed live lifecycle proof credential and rejects generic authority aliasing", async () => {
+    // Break caught: the destructive worker starts with a generic write-capable Strapi token.
+    const resolved = await resolveMusicIdentityRuntimeConfig(liveBase, { resolveAddresses: publicResolver });
+    expect(resolved.lifecycleProofToken).toBe("dedicated-read-only-proof-token");
+    await expect(resolveMusicIdentityRuntimeConfig({
+      ...liveBase,
+      STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: undefined,
+    }, { resolveAddresses: publicResolver })).rejects.toThrow(/lifecycle proof|STRAPI_LIFECYCLE_PROOF_TOKEN/i);
+    await expect(resolveMusicIdentityRuntimeConfig({
+      ...liveBase,
+      STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: undefined,
+      STRAPI_LIFECYCLE_PROOF_TOKEN: "inline-live-proof",
+    }, { resolveAddresses: publicResolver })).rejects.toThrow(/secure file|live mode/i);
+    await expect(resolveMusicIdentityRuntimeConfig({
+      ...liveBase,
+      STRAPI_ACCESS_TOKEN: "dedicated-read-only-proof-token",
+    }, { resolveAddresses: publicResolver })).rejects.toThrow(/dedicated|alias|separate/i);
+  });
+
   it.each([
     ["missing URL", { STRAPI_URL: undefined }],
     ["HTTP", { STRAPI_URL: "http://cms.example.com", MUSIC_STRAPI_ALLOWED_ORIGINS: "http://cms.example.com" }],
@@ -128,8 +152,12 @@ describe("central Music identity startup configuration", () => {
       MUSIC_FIXTURE_STRAPI_ORIGIN: "http://strapi:1337",
       TRUST_PROXY_HOPS: "0",
       MUSIC_TRUSTED_PROXY_IP: undefined,
+      STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: undefined,
+      STRAPI_ACCESS_TOKEN: "fixture-read-only-token",
+      STRAPI_LIFECYCLE_PROOF_TOKEN: undefined,
     }, { resolveAddresses: vi.fn(async () => { throw new Error("fixture DNS must not run"); }) });
     expect(fixture.strapiOrigin).toBe("http://strapi:1337");
+    expect(fixture.lifecycleProofToken).toBe("fixture-read-only-token");
     await expect(resolveMusicIdentityRuntimeConfig({
       ...liveBase,
       NODE_ENV: "test",
@@ -138,6 +166,9 @@ describe("central Music identity startup configuration", () => {
       MUSIC_FIXTURE_STRAPI_ORIGIN: "http://strapi:1337",
       TRUST_PROXY_HOPS: "0",
       MUSIC_TRUSTED_PROXY_IP: undefined,
+      STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: undefined,
+      STRAPI_ACCESS_TOKEN: "fixture-read-only-token",
+      STRAPI_LIFECYCLE_PROOF_TOKEN: undefined,
     })).rejects.toThrow(/fixture origin/i);
   });
 

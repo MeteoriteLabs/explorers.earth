@@ -6,12 +6,14 @@ export interface ClaimedLifecycleDeletion {
   userDocumentId: string;
   accountDocumentId: string;
   attemptCount: number;
+  leaseUpdatedAt: string;
 }
 
 interface LifecycleWorkerRepository {
   claimDueDeletions(input: { now: Date; batchSize: number; maxAttempts: number }): Promise<ClaimedLifecycleDeletion[]>;
   finalizeDeletion(operation: ClaimedLifecycleDeletion): Promise<boolean>;
-  recordDeletionObservation(operation: ClaimedLifecycleDeletion, observation: Exclude<AuthoritativeAbsence, "absent">, deadLetter: boolean): Promise<void>;
+  recordDeletionObservation(operation: ClaimedLifecycleDeletion, observation: Exclude<AuthoritativeAbsence, "absent">, deadLetter: boolean): Promise<boolean | void>;
+  recordDeletionFailure(operation: ClaimedLifecycleDeletion, stage: "observation" | "finalize", deadLetter: boolean): Promise<boolean | void>;
 }
 
 export function lifecycleBackoffMs(attempt: number): number {
@@ -45,27 +47,42 @@ export async function runMusicLifecycleWorkerOnce(input: {
       observation = "outage";
     }
     if (observation === "absent") {
-      await input.repository.finalizeDeletion(operation);
-      finalized += 1;
+      try {
+        if (await input.repository.finalizeDeletion(operation)) finalized += 1;
+      } catch {
+        const deadLetter = operation.attemptCount >= input.maxAttempts;
+        try {
+          if (await input.repository.recordDeletionFailure(operation, "finalize", deadLetter) !== false) {
+            if (deadLetter) deadLettered += 1;
+            else deferred += 1;
+          }
+        } catch { /* the next bounded scan repairs or dead-letters the stale running lease */ }
+      }
       continue;
     }
     const deadLetter = operation.attemptCount >= input.maxAttempts;
-    await input.repository.recordDeletionObservation(operation, observation, deadLetter);
-    if (deadLetter) deadLettered += 1;
-    else deferred += 1;
+    try {
+      if (await input.repository.recordDeletionObservation(operation, observation, deadLetter) !== false) {
+        if (deadLetter) deadLettered += 1;
+        else deferred += 1;
+      }
+    } catch {
+      try {
+        if (await input.repository.recordDeletionFailure(operation, "observation", deadLetter) !== false) {
+          if (deadLetter) deadLettered += 1;
+          else deferred += 1;
+        }
+      } catch { /* contain this item; do not abort later identities */ }
+    }
   }
   return { claimed: operations.length, finalized, deferred, deadLettered };
 }
 
 export async function manuallyRepairMusicDeletion(input: {
-  operation: ClaimedLifecycleDeletion;
-  proveAbsence: (identity: { userDocumentId: string; accountDocumentId: string }) => Promise<AuthoritativeAbsence>;
-  finalizeDeletion: (operation: ClaimedLifecycleDeletion) => Promise<boolean>;
+  operationId: string;
+  rearmDeletion: (operationId: string) => Promise<boolean>;
 }): Promise<boolean> {
-  const proof = await input.proveAbsence(input.operation);
-  if (proof !== "absent") return false;
-  await input.finalizeDeletion(input.operation);
-  return true;
+  return input.rearmDeletion(input.operationId);
 }
 
 export function startMusicLifecycleWorker(input: {

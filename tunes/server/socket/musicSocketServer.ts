@@ -12,6 +12,7 @@ interface OwnerCredentialVerifier {
 
 export class MusicOwnerSocketRegistry {
   private disconnect: ((musicUserId: number) => Promise<void>) | undefined;
+  private readonly epochs = new Map<number, number>();
 
   bind(disconnect: (musicUserId: number) => Promise<void>): void {
     if (this.disconnect) throw new Error("Music owner socket registry is already bound");
@@ -22,7 +23,16 @@ export class MusicOwnerSocketRegistry {
     if (!Number.isSafeInteger(musicUserId) || musicUserId < 1 || !this.disconnect) {
       throw new Error("Music owner socket registry is unavailable");
     }
+    this.epochs.set(musicUserId, this.captureEpoch(musicUserId) + 1);
     await this.disconnect(musicUserId);
+  }
+
+  captureEpoch(musicUserId: number): number {
+    return this.epochs.get(musicUserId) ?? 0;
+  }
+
+  isCurrent(musicUserId: number, epoch: number): boolean {
+    return this.captureEpoch(musicUserId) === epoch;
   }
 }
 
@@ -143,8 +153,24 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
 
   io.on("connection", async (socket: Socket) => {
     const authority = socket.data.musicAuthority as SocketAuthority;
-    if (authority.role === "owner") await socket.join(`music-owner:${authority.musicUserId}`);
-    else await socket.join(`music-guest:${authority.musicUserId}`);
+    const room = authority.role === "owner"
+      ? `music-owner:${authority.musicUserId}`
+      : `music-guest:${authority.musicUserId}`;
+    const ownerEpoch = authority.role === "owner"
+      ? dependencies.ownerRegistry?.captureEpoch(authority.musicUserId)
+      : undefined;
+    if (!await authorityIsCurrent(authority, authority.role)
+        || ownerEpoch !== undefined && !dependencies.ownerRegistry?.isCurrent(authority.musicUserId, ownerEpoch)) {
+      socket.disconnect(true);
+      return;
+    }
+    await socket.join(room);
+    if (!await authorityIsCurrent(authority, authority.role)
+        || ownerEpoch !== undefined && !dependencies.ownerRegistry?.isCurrent(authority.musicUserId, ownerEpoch)) {
+      await socket.leave(room);
+      socket.disconnect(true);
+      return;
+    }
     socket.emit("connection_status", { status: "connected", role: authority.role, requestId: randomUUID() });
 
     const fail = (cause: unknown) => {

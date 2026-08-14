@@ -31,16 +31,22 @@ export const updateBlockedStatusMutation = gql`
   }
 `;
 
-export const deleteAccountMutation = gql`
-  mutation DeleteAccount($deleteUsersPermissionsUserId: ID!, $filters: AccountFiltersInput, $deleteAccountDocumentId2: ID!, $documentId: ID!) {
-    deleteRecommendationList(documentId: $documentId) {
+export const deleteExplorerAccountMutation = gql`
+  mutation DeleteExplorerAccount($accountDocumentId: ID!) {
+    deleteAccount(documentId: $accountDocumentId) {
       documentId
     }
-    deleteAccount(documentId: $deleteAccountDocumentId2) {
+  }
+`;
+
+export const deleteExplorerUserMutation = gql`
+  mutation DeleteExplorerUser($userId: ID!, $filters: AccountFiltersInput, $recommendationDocumentId: ID!) {
+    deleteRecommendationList(documentId: $recommendationDocumentId) {
       documentId
     }
-    deleteUsersPermissionsUser(id: $deleteUsersPermissionsUserId) {
+    deleteUsersPermissionsUser(id: $userId) {
       data {
+        documentId
         accounts(filters: $filters) {
           Account_Name
           Account_Type

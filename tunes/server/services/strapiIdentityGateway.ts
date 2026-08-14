@@ -34,6 +34,10 @@ export interface ResolvedStrapiIdentity {
   accountMobile: string;
 }
 
+export interface ResolvedStrapiUser {
+  userDocumentId: string;
+}
+
 export interface StrapiIdentityGatewayOptions {
   baseUrl: string;
   fetchImpl?: typeof fetch;
@@ -209,6 +213,21 @@ export class StrapiIdentityGateway {
     }
   }
 
+  async resolveUser(proof: string, requestId: string): Promise<ResolvedStrapiUser> {
+    const admission = this.admitCircuit();
+    try {
+      const deadline = this.now() + this.options.overallTimeoutMs;
+      const user = await this.resolveEligibleUser(proof, requestId, deadline, admission);
+      this.recordSuccess(admission);
+      return { userDocumentId: user.documentId };
+    } catch (error) {
+      if (isCircuitFailure(error)) this.recordFailure(admission);
+      else if (error instanceof GatewayUnavailableError) this.recordNeutral(admission);
+      else this.recordSuccess(admission);
+      throw error;
+    }
+  }
+
   clear(fingerprint?: string): void {
     if (fingerprint) this.cache.delete(fingerprint);
     else this.cache.clear();
@@ -242,15 +261,7 @@ export class StrapiIdentityGateway {
 
   private async resolveFresh(proof: string, requestId: string, admission: CircuitAdmission): Promise<ResolvedStrapiIdentity> {
     const deadline = this.now() + this.options.overallTimeoutMs;
-    const userBody = await this.requestJson("/api/users/me", proof, requestId, deadline, admission);
-    const parsedUser = strapiUserSchema.safeParse(userBody);
-    if (!parsedUser.success) throw malformed();
-    const user = parsedUser.data;
-    const provider = user.provider.toLowerCase();
-    const eligible = !user.blocked && ((provider === "local" && user.confirmed) || provider === "google");
-    if (!eligible) {
-      throw new MusicIdentityError("IDENTITY_INELIGIBLE", 403, "This Explorer identity is not eligible for Music.", "complete_onboarding", false);
-    }
+    const user = await this.resolveEligibleUser(proof, requestId, deadline, admission);
 
     const params = new URLSearchParams({
       "filters[users_permissions_user][documentId][$eq]": user.documentId,
@@ -273,11 +284,29 @@ export class StrapiIdentityGateway {
       accountDocumentId: account.documentId,
       username: user.username,
       email: user.email,
-      provider: provider as "local" | "google",
+      provider: user.provider.toLowerCase() as "local" | "google",
       accountName: account.Account_Name!,
       accountType: account.Account_Type!,
       accountMobile: account.mobile_number!,
     };
+  }
+
+  private async resolveEligibleUser(
+    proof: string,
+    requestId: string,
+    deadline: number,
+    admission: CircuitAdmission,
+  ): Promise<z.infer<typeof strapiUserSchema>> {
+    const userBody = await this.requestJson("/api/users/me", proof, requestId, deadline, admission);
+    const parsedUser = strapiUserSchema.safeParse(userBody);
+    if (!parsedUser.success) throw malformed();
+    const user = parsedUser.data;
+    const provider = user.provider.toLowerCase();
+    const eligible = !user.blocked && ((provider === "local" && user.confirmed) || provider === "google");
+    if (!eligible) {
+      throw new MusicIdentityError("IDENTITY_INELIGIBLE", 403, "This Explorer identity is not eligible for Music.", "complete_onboarding", false);
+    }
+    return user;
   }
 
   private async requestJson(

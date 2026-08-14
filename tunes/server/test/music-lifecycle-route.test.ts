@@ -14,6 +14,8 @@ const status = {
   boundaryCrossed: false,
   retryable: false,
   deadLetter: false,
+  upstreamUserDocumentId: "user-document-a",
+  upstreamAccountDocumentId: "account-document-a",
 };
 
 function appFor(overrides: Record<string, unknown> = {}, routeOverrides: Record<string, unknown> = {}) {
@@ -62,6 +64,8 @@ describe("mounted Music lifecycle identity boundary", () => {
         boundaryCrossed: false,
         retryable: false,
         deadLetter: false,
+        upstreamUserDocumentId: "user-document-a",
+        upstreamAccountDocumentId: "account-document-a",
       },
     });
     expect(JSON.stringify(response.body)).not.toContain("musicUserId");

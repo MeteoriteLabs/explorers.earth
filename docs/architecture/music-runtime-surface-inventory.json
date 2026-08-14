@@ -832,7 +832,7 @@
       "ownerSource": "socket.musicPrincipal",
       "lifecycle": "event",
       "source": "tunes/server/socket/musicSocketServer.ts",
-      "line": 61
+      "line": 71
     },
     {
       "direction": "emit",
@@ -842,7 +842,7 @@
       "ownerSource": "socket.musicPrincipal",
       "lifecycle": "event",
       "source": "tunes/server/socket/musicSocketServer.ts",
-      "line": 97
+      "line": 107
     },
     {
       "direction": "receive",
@@ -852,7 +852,7 @@
       "ownerSource": "socket.musicPrincipal",
       "lifecycle": "event",
       "source": "tunes/server/socket/musicSocketServer.ts",
-      "line": 144
+      "line": 154
     },
     {
       "direction": "emit",
@@ -862,7 +862,7 @@
       "ownerSource": "socket.musicPrincipal",
       "lifecycle": "event",
       "source": "tunes/server/socket/musicSocketServer.ts",
-      "line": 148
+      "line": 174
     },
     {
       "direction": "emit",
@@ -872,7 +872,7 @@
       "ownerSource": "socket.musicPrincipal",
       "lifecycle": "event",
       "source": "tunes/server/socket/musicSocketServer.ts",
-      "line": 152
+      "line": 178
     },
     {
       "direction": "receive",
@@ -882,7 +882,7 @@
       "ownerSource": "socket.musicPrincipal",
       "lifecycle": "event",
       "source": "tunes/server/socket/musicSocketServer.ts",
-      "line": 180
+      "line": 206
     },
     {
       "direction": "emit",
@@ -892,7 +892,7 @@
       "ownerSource": "recipient.hashed-guest-capability",
       "lifecycle": "event",
       "source": "tunes/server/socket/musicSocketServer.ts",
-      "line": 188
+      "line": 214
     },
     {
       "direction": "receive",
@@ -902,7 +902,7 @@
       "ownerSource": "hashed-guest-capability",
       "lifecycle": "event",
       "source": "tunes/server/socket/musicSocketServer.ts",
-      "line": 191
+      "line": 217
     },
     {
       "direction": "emit",
@@ -912,7 +912,7 @@
       "ownerSource": "recipient.socket.musicPrincipal",
       "lifecycle": "event",
       "source": "tunes/server/socket/musicSocketServer.ts",
-      "line": 201
+      "line": 227
     },
     {
       "direction": "emit",
@@ -922,7 +922,7 @@
       "ownerSource": "socket.musicPrincipal",
       "lifecycle": "event",
       "source": "tunes/server/socket/musicSocketServer.ts",
-      "line": 202
+      "line": 228
     }
   ],
   "jobs": [
@@ -954,19 +954,19 @@
       "kind": "setTimeout",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/services/strapiIdentityGateway.ts",
-      "line": 112
+      "line": 116
     },
     {
       "kind": "setTimeout",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/services/strapiIdentityGateway.ts",
-      "line": 182
+      "line": 186
     },
     {
       "kind": "setTimeout",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/services/strapiIdentityGateway.ts",
-      "line": 443
+      "line": 472
     },
     {
       "kind": "setTimeout",
@@ -984,7 +984,7 @@
       "kind": "setInterval",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/workers/musicLifecycleWorker.ts",
-      "line": 80
+      "line": 97
     }
   ]
 }

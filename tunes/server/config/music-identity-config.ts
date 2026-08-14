@@ -46,6 +46,7 @@ export interface MusicIdentityRuntimeConfig {
   globalRateLimitPerMinute: number;
   rateMaxEntries: number;
   musicToken: MusicTokenConfiguration;
+  lifecycleProofToken: string;
 }
 
 const integerBounds = {
@@ -97,6 +98,7 @@ export async function resolveMusicIdentityRuntimeConfig(
   ])) as Record<keyof typeof integerBounds, number>;
   assertCrossFieldBounds(controls);
   const musicToken = await resolveMusicTokenConfiguration(environment, mode, dependencies);
+  const lifecycleProofToken = await resolveLifecycleProofToken(environment, mode, dependencies);
 
   let pinnedAddresses: string[] = [];
   let fetchImpl: typeof fetch = fetch;
@@ -140,7 +142,39 @@ export async function resolveMusicIdentityRuntimeConfig(
     globalRateLimitPerMinute: controls.MUSIC_IDENTITY_GLOBAL_RATE_PER_MINUTE,
     rateMaxEntries: controls.MUSIC_IDENTITY_RATE_MAX_ENTRIES,
     musicToken,
+    lifecycleProofToken,
   };
+}
+
+async function resolveLifecycleProofToken(
+  environment: Environment,
+  mode: "live" | "fixture",
+  dependencies: MusicIdentityConfigDependencies,
+): Promise<string> {
+  if (mode === "fixture") {
+    if (environment.STRAPI_LIFECYCLE_PROOF_TOKEN_FILE) {
+      throw new Error("STRAPI_LIFECYCLE_PROOF_TOKEN must use the deterministic fixture credential");
+    }
+    const fixtureToken = environment.STRAPI_LIFECYCLE_PROOF_TOKEN ?? environment.STRAPI_ACCESS_TOKEN;
+    if (fixtureToken !== "fixture-read-only-token") {
+      throw new Error("STRAPI_LIFECYCLE_PROOF_TOKEN must equal the verified read-only fixture credential");
+    }
+    return fixtureToken;
+  }
+  const token = await resolveSecret(
+    environment.STRAPI_LIFECYCLE_PROOF_TOKEN,
+    environment.STRAPI_LIFECYCLE_PROOF_TOKEN_FILE,
+    "STRAPI_LIFECYCLE_PROOF_TOKEN",
+    mode,
+    dependencies,
+  );
+  if (token.length < 16 || token.length > 4096 || token.trim() !== token || /[\u0000-\u001f\u007f]/.test(token)) {
+    throw new Error("STRAPI_LIFECYCLE_PROOF_TOKEN is invalid");
+  }
+  if (token === environment.STRAPI_ACCESS_TOKEN) {
+    throw new Error("STRAPI_LIFECYCLE_PROOF_TOKEN must be dedicated and separate from STRAPI_ACCESS_TOKEN");
+  }
+  return token;
 }
 
 async function resolveMusicTokenConfiguration(

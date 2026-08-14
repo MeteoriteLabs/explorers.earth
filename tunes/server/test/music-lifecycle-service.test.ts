@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { MusicIdentityError } from "../../shared/musicError";
 import { MusicLifecycleService } from "../services/musicLifecycleService";
+import { StrapiIdentityGateway } from "../services/strapiIdentityGateway";
 
 const identity = {
   userDocumentId: "user-document-a",
@@ -29,9 +30,17 @@ function harness() {
     lifecycleStatus: vi.fn(async () => status),
     markDeletionBoundary: vi.fn(async () => ({ ...status, boundaryCrossed: true, state: "requested" as const })),
     cancelDeletion: vi.fn(async () => ({ ...status, identityStatus: "suspended" as const, state: "cancelled" as const })),
+    lifecycleBinding: vi.fn(async () => ({
+      userDocumentId: identity.userDocumentId,
+      accountDocumentId: identity.accountDocumentId,
+      identityStatus: "active" as const,
+    })),
     transitionIdentity: vi.fn(),
   };
-  const gateway = { resolve: vi.fn(async () => identity) };
+  const gateway = {
+    resolveUser: vi.fn(async () => ({ userDocumentId: identity.userDocumentId })),
+    resolve: vi.fn(async () => identity),
+  };
   const disconnectOwner = vi.fn(async () => undefined);
   return { status, repository, gateway, disconnectOwner };
 }
@@ -45,13 +54,29 @@ describe("MusicLifecycleService", () => {
       disconnectOwner: h.disconnectOwner,
     });
 
-    await expect(service.prepareDeletion("authoritative-proof", "request-a")).resolves.toEqual(h.status);
+    await expect(service.prepareDeletion("authoritative-proof", "request-a")).resolves.toMatchObject(h.status);
     expect(h.repository.prepareDeletion).toHaveBeenCalledWith({
       userDocumentId: identity.userDocumentId,
       accountDocumentId: identity.accountDocumentId,
       operationId: h.status.operationId,
     });
     expect(h.disconnectOwner).toHaveBeenCalledWith(41);
+  });
+
+  it("fails closed when the active authoritative Account differs from the stored owner binding", async () => {
+    const h = harness();
+    h.gateway.resolve.mockResolvedValue({ ...identity, accountDocumentId: "account-document-other" });
+    const service = new MusicLifecycleService(h.gateway, h.repository, {
+      operationIdFactory: () => h.status.operationId,
+      disconnectOwner: h.disconnectOwner,
+    });
+
+    await expect(service.prepareDeletion("authoritative-proof", "request-conflict")).rejects.toMatchObject({
+      code: "IDENTITY_CONFLICT",
+      status: 409,
+    });
+    expect(h.repository.prepareDeletion).not.toHaveBeenCalled();
+    expect(h.disconnectOwner).not.toHaveBeenCalled();
   });
 
   it("refuses cancellation after the repository reports the irreversible boundary", async () => {
@@ -68,6 +93,91 @@ describe("MusicLifecycleService", () => {
     await expect(service.cancelDeletion("authoritative-proof", "request-b")).rejects.toMatchObject({
       code: "LIFECYCLE_CANCEL_FORBIDDEN",
       status: 409,
+    });
+  });
+
+  it("recovers a pending tuple by authoritative user when the selected Account is already absent", async () => {
+    // Break caught: a lost Account-delete response makes every lifecycle retry fail onboarding before repository lookup.
+    const h = harness();
+    const crossed = { ...h.status, boundaryCrossed: true, state: "requested" as const };
+    h.repository.lifecycleBinding.mockResolvedValue({
+      userDocumentId: identity.userDocumentId,
+      accountDocumentId: identity.accountDocumentId,
+      identityStatus: "pending_deletion",
+    });
+    h.repository.lifecycleStatus.mockResolvedValue(crossed);
+    h.repository.prepareDeletion.mockResolvedValue(crossed);
+    h.repository.markDeletionBoundary.mockResolvedValue(crossed);
+    h.gateway.resolve.mockRejectedValue(new MusicIdentityError(
+      "ONBOARDING_INCOMPLETE", 409, "Complete onboarding.", "complete_onboarding", false,
+    ));
+    const service = new MusicLifecycleService(h.gateway, h.repository, {
+      operationIdFactory: () => h.status.operationId,
+      disconnectOwner: h.disconnectOwner,
+    });
+
+    await expect(service.status("authoritative-proof", "request-reload")).resolves.toMatchObject(crossed);
+    await expect(service.prepareDeletion("authoritative-proof", "request-retry")).resolves.toMatchObject(crossed);
+    await expect(service.markDeletionBoundary("authoritative-proof", "request-boundary")).resolves.toMatchObject({ boundaryCrossed: true });
+    expect(h.gateway.resolveUser).toHaveBeenCalledTimes(3);
+    expect(h.gateway.resolve).not.toHaveBeenCalled();
+    expect(h.repository.lifecycleBinding).toHaveBeenCalledWith(identity.userDocumentId);
+  });
+
+  it("rejects a replacement Account before the irreversible boundary", async () => {
+    // Break caught: pending Account A can be replaced by B, then boundary/delete destroys B outside the durable operation.
+    const h = harness();
+    h.repository.lifecycleBinding.mockResolvedValue({
+      userDocumentId: identity.userDocumentId,
+      accountDocumentId: identity.accountDocumentId,
+      identityStatus: "pending_deletion",
+    });
+    h.gateway.resolve.mockResolvedValue({ ...identity, accountDocumentId: "account-document-b" });
+    const service = new MusicLifecycleService(h.gateway, h.repository, {
+      operationIdFactory: () => h.status.operationId,
+      disconnectOwner: h.disconnectOwner,
+    });
+
+    await expect(service.prepareDeletion("authoritative-proof", "request-replacement-prepare"))
+      .rejects.toMatchObject({ code: "IDENTITY_CONFLICT" });
+    await expect(service.markDeletionBoundary("authoritative-proof", "request-replacement-boundary"))
+      .rejects.toMatchObject({ code: "IDENTITY_CONFLICT" });
+    expect(h.repository.markDeletionBoundary).not.toHaveBeenCalled();
+  });
+
+  it("uses the real user-only gateway path for an Account-absent pending reload", async () => {
+    const h = harness();
+    h.repository.lifecycleBinding.mockResolvedValue({
+      userDocumentId: identity.userDocumentId,
+      accountDocumentId: identity.accountDocumentId,
+      identityStatus: "pending_deletion",
+    });
+    const fetchImpl = vi.fn<typeof fetch>(async (input) => {
+      expect(new URL(String(input)).pathname).toBe("/api/users/me");
+      return new Response(JSON.stringify({
+        documentId: identity.userDocumentId,
+        username: identity.username,
+        email: identity.email,
+        provider: identity.provider,
+        confirmed: true,
+        blocked: false,
+      }), { status: 200 });
+    });
+    const gateway = new StrapiIdentityGateway({
+      baseUrl: "https://strapi.example", fetchImpl, maxConcurrency: 1, maxPending: 2, retries: 0,
+      connectTimeoutMs: 100, readTimeoutMs: 100, overallTimeoutMs: 500, cacheTtlMs: 0,
+      circuitFailureThreshold: 2, circuitOpenMs: 100,
+    });
+    const service = new MusicLifecycleService(gateway, h.repository, {
+      operationIdFactory: () => h.status.operationId,
+      disconnectOwner: h.disconnectOwner,
+    });
+
+    await expect(service.status("authoritative-proof", "request-real-reload")).resolves.toMatchObject(h.status);
+    expect(fetchImpl).toHaveBeenCalledOnce();
+    expect(h.repository.lifecycleStatus).toHaveBeenCalledWith({
+      userDocumentId: identity.userDocumentId,
+      accountDocumentId: identity.accountDocumentId,
     });
   });
 

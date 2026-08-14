@@ -3,17 +3,19 @@ import BillingTab from "./components/BillingTab";
 import EyeOffIcon from "../../assets/icons/EyeOffIcon";
 import EyeOnIcon from "../../assets/icons/EyeOnIcon";
 import Button from "../../components/ui/Button";
-import { gql, useMutation, useQuery } from "@apollo/client";
+import { gql, useApolloClient, useMutation, useQuery } from "@apollo/client";
 import { useQuery as useReactQuery } from "@tanstack/react-query";
 import { localTunesRequest } from "../../lib/apiClient";
 import {
   updatePasswordMutation,
-  deleteAccountMutation,
+  deleteExplorerAccountMutation,
+  deleteExplorerUserMutation,
   accountQuery,
   addReasonForLeavingMutation,
   updateBlockedStatusMutation,
   updateTabVisibilityMutation,
   CHECK_PUBLISHED_LISTS,
+  getUserAccountQuery,
 } from "./api/mutation";
 import useAuthStore from "../../store/store";
 import { toast } from "sonner";
@@ -86,6 +88,7 @@ const Settings = memo(() => {
   const [deleteAccountLoading, setDeleteAccountLoading] =
     useState<boolean>(false);
   const [deletionLifecycle, setDeletionLifecycle] = useState<AccountLifecycleStatus["operation"] | null>(null);
+  const [deletionAuthorityResolved, setDeletionAuthorityResolved] = useState(false);
   // Password visibility states for delete account modal
   const [deletePasswordVisible, setDeletePasswordVisible] = useState<boolean>(false);
   const [deletePasswordConfirmVisible, setDeletePasswordConfirmVisible] = useState<boolean>(false);
@@ -167,7 +170,9 @@ const Settings = memo(() => {
     }
   }, [settingsLoading]);
 
-  const [deleteAccount] = useMutation(deleteAccountMutation);
+  const apolloClient = useApolloClient();
+  const [deleteExplorerAccount] = useMutation(deleteExplorerAccountMutation);
+  const [deleteExplorerUser] = useMutation(deleteExplorerUserMutation);
   const { t, i18n } = useTranslation();
   const accountLifecycle = useMemo(() => createAccountLifecycleService({
     baseUrl: import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth",
@@ -175,20 +180,28 @@ const Settings = memo(() => {
   }), []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setDeletionAuthorityResolved(false);
+      return;
+    }
     let active = true;
     const refresh = async () => {
+      setDeletionAuthorityResolved(false);
       try {
         const result = await accountLifecycle.status();
         if (!active) return;
         setDeletionLifecycle(result.operation);
-        if (result.operation.status === "pending_deletion") {
+        setDeletionAuthorityResolved(true);
+        if (result.operation.status === "pending_deletion" || result.operation.status === "tombstoned") {
           setShowDeleteAccountModal(true);
           setDeleteStep(4);
         }
       } catch (error) {
-        if (error instanceof AccountLifecycleError
-            && ["LIFECYCLE_NOT_FOUND", "AUTH_REQUIRED", "AUTH_INVALID"].includes(error.code)) return;
+        if (!active) return;
+        if (error instanceof AccountLifecycleError && error.code === "LIFECYCLE_NOT_FOUND") {
+          setDeletionLifecycle(null);
+          setDeletionAuthorityResolved(true);
+        }
       }
     };
     void refresh();
@@ -201,6 +214,11 @@ const Settings = memo(() => {
       window.removeEventListener("focus", refresh);
     };
   }, [accountLifecycle, user]);
+
+  const deletionIsTerminal = deletionLifecycle?.deadLetter === true
+    || deletionLifecycle?.phase === "finalized"
+    || deletionLifecycle?.status === "tombstoned";
+  const deletionActionsBlocked = !deletionAuthorityResolved || deletionIsTerminal;
 
   // Helper to get the current language and handle settings search matching
   const currentLanguage = LANGUAGES.find((lang) => lang.code === i18n.language) || LANGUAGES[0];
@@ -681,6 +699,7 @@ const Settings = memo(() => {
   };
 
   const handleDeleteAccountFinal = async () => {
+    if (deletionActionsBlocked) return;
     if (deleteConfirmation.trim() !== t("settings.account.deleteAccount.step4.confirmTextValue")) {
       toast.error(
         t("settings.account.deleteAccount.step4.confirmationRequired")
@@ -756,20 +775,46 @@ const Settings = memo(() => {
   };
 
   const performDurableAccountDeletion = async () => {
-    const accountDocumentId = currentAccount?.documentId ?? accountData?.accounts?.[0]?.documentId;
-    if (!accountDocumentId) {
-      throw new AccountLifecycleError("REQUEST_INVALID", 400, t("settings.account.changePassword.accountDocumentIdNotFound"), false);
+    if (deletionActionsBlocked) {
+      throw new AccountLifecycleError("LIFECYCLE_TERMINAL", 409, "Account deletion cannot be restarted.", false);
     }
     await accountLifecycle.deleteAccount({
-      upstreamDelete: async () => {
-        await deleteAccount({
+      readAccountPresence: async (durableAccountDocumentId) => {
+        try {
+          const result = await apolloClient.query({
+            query: getUserAccountQuery,
+            variables: { documentId: user?.documentId },
+            fetchPolicy: "network-only",
+          });
+          const accounts = result.data?.usersPermissionsUser?.accounts;
+          if (!Array.isArray(accounts)) return { status: "unknown" } as const;
+          if (accounts.length === 0) return { status: "absent" } as const;
+          if (accounts.length !== 1) return { status: "unknown" } as const;
+          const selected = accounts.find((account: { documentId?: string }) => account.documentId === durableAccountDocumentId);
+          return typeof selected?.documentId === "string"
+            ? { status: "present", accountDocumentId: selected.documentId } as const
+            : { status: "unknown" } as const;
+        } catch {
+          return { status: "unknown" } as const;
+        }
+      },
+      deleteExplorerAccount: async (authoritativeAccountDocumentId) => {
+        const result = await deleteExplorerAccount({ variables: { accountDocumentId: authoritativeAccountDocumentId } });
+        return typeof result.data?.deleteAccount?.documentId === "string"
+          ? result.data.deleteAccount.documentId
+          : null;
+      },
+      deleteExplorerUser: async () => {
+        const result = await deleteExplorerUser({
           variables: {
-            deleteUsersPermissionsUserId: user?.id,
+            userId: user?.id,
             filters: { documentId: { eq: user?.documentId } },
-            deleteAccountDocumentId2: accountDocumentId,
-            documentId: user?.documentId,
+            recommendationDocumentId: user?.documentId,
           },
         });
+        return typeof result.data?.deleteUsersPermissionsUser?.data?.documentId === "string"
+          ? result.data.deleteUsersPermissionsUser.data.documentId
+          : null;
       },
       clearAuth: clearDeletedAccountAuth,
     });
@@ -792,6 +837,7 @@ const Settings = memo(() => {
   };
 
   const retryDurableDeletion = async () => {
+    if (deletionActionsBlocked) return;
     setDeleteAccountLoading(true);
     try {
       await performDurableAccountDeletion();
@@ -1302,7 +1348,7 @@ const Settings = memo(() => {
                   )}
 
                   {/* Delete Account row */}
-                  {matchesSearch("delete account permanently remove danger") && (
+                  {!deletionActionsBlocked && matchesSearch("delete account permanently remove danger") && (
                     <button
                       type="button"
                       onClick={() => { setDeleteUsername(user?.username || ''); setShowDeleteAccountModal(true); setDeleteStep(1); }}
@@ -1718,34 +1764,32 @@ const Settings = memo(() => {
             onClose={() => setShowDeleteAccountModal(false)}
           >
             <div className="dashboard-theme w-full mx-auto min-w-[300px] sm:min-w-[500px] md:min-w-[600px] max-w-2xl py-4 sm:py-6 md:py-8 px-6 sm:px-8 md:px-12">
-              <h1 className="dt-heading"> {t("settings.account.deleteAccount.step4.modalTitle")}</h1>
-              <div className="flex flex-col mt-8 gap-4 md:justify-center mx-auto">
-                <h1 className="dt-subtext">{t("settings.account.deleteAccount.step4.confirmText")}</h1>
-                <div className="relative w-full">
-                  <input
-                    value={deleteConfirmation}
-                    onChange={(e) => setDeleteConfirmation(e.target.value)}
-                    type="text"
-                    placeholder={t(
-                      "settings.account.deleteAccount.step4.confirmPlaceholder"
-                    )}
-                    className="dt-input w-full"
+              {!deletionActionsBlocked && (<>
+                <h1 className="dt-heading"> {t("settings.account.deleteAccount.step4.modalTitle")}</h1>
+                <div className="flex flex-col mt-8 gap-4 md:justify-center mx-auto">
+                  <h1 className="dt-subtext">{t("settings.account.deleteAccount.step4.confirmText")}</h1>
+                  <div className="relative w-full">
+                    <input
+                      value={deleteConfirmation}
+                      onChange={(e) => setDeleteConfirmation(e.target.value)}
+                      type="text"
+                      placeholder={t("settings.account.deleteAccount.step4.confirmPlaceholder")}
+                      className="dt-input w-full"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end mt-8">
+                  <Button
+                    btnText={t("settings.account.deleteAccount.step4.deleteButton")}
+                    type="button"
+                    size="xsmall"
+                    variant="danger"
+                    onClickHandler={handleDeleteAccountFinal}
+                    isLoading={deleteAccountLoading}
+                    disabled={deleteAccountLoading}
                   />
                 </div>
-              </div>
-              <div className="flex justify-end mt-8">
-                <Button
-                  btnText={t(
-                    "settings.account.deleteAccount.step4.deleteButton"
-                  )}
-                  type="button"
-                  size="xsmall"
-                  variant="danger"
-                  onClickHandler={handleDeleteAccountFinal}
-                  isLoading={deleteAccountLoading}
-                  disabled={deleteAccountLoading}
-                />
-              </div>
+              </>)}
               {deletionLifecycle && (
                 <AccountDeletionLifecyclePanel
                   status={deletionLifecycle}

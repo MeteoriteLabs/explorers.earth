@@ -11,6 +11,13 @@ export default function AccountDeletionLifecyclePanel({
   onCancel: () => void;
   onRetry: () => void;
 }) {
+  if (status.phase === "finalized" || status.status === "tombstoned") {
+    return (
+      <div role="status" aria-live="polite" className="dt-subtext text-white-muted mt-4">
+        Account deletion is complete. Continue to sign in if you want to use a different account.
+      </div>
+    );
+  }
   if (status.deadLetter) {
     return (
       <div role="alert" className="dt-subtext text-dashboard-danger mt-4">

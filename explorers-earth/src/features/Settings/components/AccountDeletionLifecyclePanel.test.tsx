@@ -30,4 +30,14 @@ describe("AccountDeletionLifecyclePanel", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(/contact support/i);
     expect(screen.queryByRole("button", { name: /retry account deletion/i })).not.toBeInTheDocument();
   });
+
+  it("shows completion without any ordinary destructive action", () => {
+    // Break caught: a finalized deletion can start a new prepare/boundary/upstream saga.
+    render(<AccountDeletionLifecyclePanel status={{
+      status: "tombstoned", phase: "finalized", state: "completed",
+      boundaryCrossed: true, retryable: false, deadLetter: false,
+    }} onCancel={vi.fn()} onRetry={vi.fn()} />);
+    expect(screen.getByRole("status")).toHaveTextContent(/complete/i);
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
 });
