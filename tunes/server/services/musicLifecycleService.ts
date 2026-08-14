@@ -5,8 +5,8 @@ import { MusicIdentityError } from "../../shared/musicError";
 
 export interface MusicLifecycleStatus {
   operationId: string;
-  musicUserId: number;
-  identityStatus: "pending_deletion" | "suspended" | "tombstoned";
+  musicUserId: number | null;
+  identityStatus: "pending_deletion" | "suspended" | "tombstoned" | "not_present";
   phase: "prepared" | "finalized";
   state: "completed" | "requested" | "running" | "failed" | "cancelled";
   boundaryCrossed: boolean;
@@ -16,17 +16,26 @@ export interface MusicLifecycleStatus {
   upstreamAccountDocumentId?: string;
 }
 
+export interface MusicIdentityNotPresentProjection {
+  identityStatus: "not_present";
+  strapiUserDocumentId: string;
+  strapiAccountDocumentId: string;
+}
+
+type LifecycleBinding = {
+  disposition: "present";
+  userDocumentId: string;
+  accountDocumentId: string;
+  identityStatus: "active" | "suspended" | "pending_deletion";
+} | { disposition: "not_present" };
+
 interface LifecycleGateway {
   resolve(proof: string, requestId: string): Promise<ResolvedStrapiIdentity>;
   resolveUser(proof: string, requestId: string): Promise<{ userDocumentId: string }>;
 }
 
 interface LifecycleRepository {
-  lifecycleBinding(userDocumentId: string): Promise<{
-    userDocumentId: string;
-    accountDocumentId: string;
-    identityStatus: "active" | "suspended" | "pending_deletion";
-  }>;
+  lifecycleBinding(userDocumentId: string, accountDocumentId?: string): Promise<LifecycleBinding>;
   prepareDeletion(input: { userDocumentId: string; accountDocumentId: string; operationId: string }): Promise<MusicLifecycleStatus>;
   lifecycleStatus(input: { userDocumentId: string; accountDocumentId: string }): Promise<MusicLifecycleStatus>;
   markDeletionBoundary(input: { userDocumentId: string; accountDocumentId: string }): Promise<MusicLifecycleStatus>;
@@ -62,7 +71,7 @@ export class MusicLifecycleService {
       accountDocumentId: identity.accountDocumentId,
       operationId: this.operationIdFactory(),
     });
-    await this.disconnectOwner(status.musicUserId);
+    if (status.musicUserId !== null) await this.disconnectOwner(status.musicUserId);
     return this.withUpstreamBinding(status, identity);
   }
 
@@ -111,9 +120,10 @@ export class MusicLifecycleService {
     return result;
   }
 
-  async suspendFromProof(proof: string, requestId: string): Promise<MusicIdentityProjection> {
+  async suspendFromProof(proof: string, requestId: string): Promise<MusicIdentityProjection | MusicIdentityNotPresentProjection> {
     const authoritative = await this.gateway.resolve(proof, requestId);
-    const binding = await this.repository.lifecycleBinding(authoritative.userDocumentId);
+    const binding = await this.repository.lifecycleBinding(authoritative.userDocumentId, authoritative.accountDocumentId);
+    if (binding.disposition === "not_present") return this.notPresent(authoritative);
     if (authoritative.userDocumentId !== binding.userDocumentId
         || authoritative.accountDocumentId !== binding.accountDocumentId) {
       throw new MusicIdentityError(
@@ -137,8 +147,9 @@ export class MusicLifecycleService {
     userDocumentId: string;
     accountDocumentId: string;
     operationId: string;
-  }): Promise<MusicIdentityProjection> {
-    const binding = await this.repository.lifecycleBinding(input.userDocumentId);
+  }): Promise<MusicIdentityProjection | MusicIdentityNotPresentProjection> {
+    const binding = await this.repository.lifecycleBinding(input.userDocumentId, input.accountDocumentId);
+    if (binding.disposition === "not_present") return this.notPresent(input);
     if (binding.userDocumentId !== input.userDocumentId || binding.accountDocumentId !== input.accountDocumentId) {
       throw new MusicIdentityError(
         "IDENTITY_CONFLICT", 409,
@@ -155,11 +166,26 @@ export class MusicLifecycleService {
 
   private async resolveStoredBinding(proof: string, requestId: string) {
     const user = await this.gateway.resolveUser(proof, requestId);
-    return this.repository.lifecycleBinding(user.userDocumentId);
+    const binding = await this.repository.lifecycleBinding(user.userDocumentId);
+    if (binding.disposition === "not_present") {
+      throw new MusicIdentityError("LIFECYCLE_NOT_FOUND", 409, "No Music lifecycle identity is available.", "none", false);
+    }
+    return binding;
   }
 
   private async resolvePrepareBinding(proof: string, requestId: string) {
-    const binding = await this.resolveStoredBinding(proof, requestId);
+    const user = await this.gateway.resolveUser(proof, requestId);
+    const binding = await this.repository.lifecycleBinding(user.userDocumentId);
+    if (binding.disposition === "not_present") {
+      const authoritative = await this.gateway.resolve(proof, requestId);
+      if (authoritative.userDocumentId !== user.userDocumentId) {
+        throw new MusicIdentityError(
+          "IDENTITY_CONFLICT", 409,
+          "The Explorer identity does not match the durable Music owner.", "contact_support", false, undefined, "lifecycle",
+        );
+      }
+      return authoritative;
+    }
     if (binding.identityStatus === "pending_deletion") {
       const status = await this.repository.lifecycleStatus({
         userDocumentId: binding.userDocumentId,
@@ -194,6 +220,14 @@ export class MusicLifecycleService {
       ...status,
       upstreamUserDocumentId: binding.userDocumentId,
       upstreamAccountDocumentId: binding.accountDocumentId,
+    };
+  }
+
+  private notPresent(identity: { userDocumentId: string; accountDocumentId: string }): MusicIdentityNotPresentProjection {
+    return {
+      identityStatus: "not_present",
+      strapiUserDocumentId: identity.userDocumentId,
+      strapiAccountDocumentId: identity.accountDocumentId,
     };
   }
 }

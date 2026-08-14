@@ -359,7 +359,7 @@ export const MUSIC_OPENAPI_DOCUMENT = {
             ],
             properties: {
               operationId: { type: "string", minLength: 1, maxLength: 128 },
-              status: { type: "string", enum: ["pending_deletion", "suspended", "tombstoned"] },
+              status: { type: "string", enum: ["pending_deletion", "suspended", "tombstoned", "not_present"] },
               phase: { type: "string", enum: ["prepared", "finalized"] },
               state: { type: "string", enum: ["completed", "requested", "running", "failed", "cancelled"] },
               boundaryCrossed: { type: "boolean" }, retryable: { type: "boolean" }, deadLetter: { type: "boolean" },
@@ -374,7 +374,7 @@ export const MUSIC_OPENAPI_DOCUMENT = {
           version: { type: "string", const: "music-lifecycle/v1" },
           identity: {
             type: "object", additionalProperties: false, required: ["status"], properties: {
-              status: { type: "string", const: "suspended" },
+              status: { type: "string", enum: ["suspended", "not_present"] },
             },
           },
         },

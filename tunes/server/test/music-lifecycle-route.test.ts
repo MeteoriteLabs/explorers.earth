@@ -84,6 +84,17 @@ describe("mounted Music lifecycle identity boundary", () => {
     expect(lifecycle.suspendFromProof).toHaveBeenCalledWith("b".repeat(32), "request-suspend");
   });
 
+  it("returns the exact no-local acknowledgement for a never-provisioned Explorer identity", async () => {
+    const { app, lifecycle } = appFor({
+      suspendFromProof: vi.fn(async () => ({ identityStatus: "not_present" as const })),
+    });
+    const response = await request(app).post("/api/music/identity/lifecycle/suspend")
+      .set("Authorization", `Bearer ${"b".repeat(32)}`)
+      .expect(200);
+    expect(response.body).toEqual({ version: "music-lifecycle/v1", identity: { status: "not_present" } });
+    expect(lifecycle.suspendFromProof).toHaveBeenCalledOnce();
+  });
+
   it("rejects bodies, query owner hints, and Music credentials on every mutation", async () => {
     // Break caught: lifecycle authority falls back to browser-supplied identity or a C5 token.
     const { app } = appFor();

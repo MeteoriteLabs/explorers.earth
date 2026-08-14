@@ -187,6 +187,28 @@ async function findBlockedUserByEmail(email: string): Promise<StrapiUser | null>
   return users[0];
 }
 
+async function resolveCurrentReactivationIdentity(userId: number): Promise<StrapiUser | null> {
+  const strapiUrl = process.env.STRAPI_URL;
+  const strapiToken = process.env.STRAPI_ACCESS_TOKEN;
+  if (!strapiUrl || !strapiToken || !Number.isSafeInteger(userId) || userId < 1) return null;
+  try {
+    const response = await fetch(`${strapiUrl}/api/users/${userId}?populate=accounts`, {
+      headers: { Authorization: `Bearer ${strapiToken}`, 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) return null;
+    const value: unknown = await response.json();
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+    const candidate = value as Partial<StrapiUser>;
+    if (candidate.id !== userId || typeof candidate.documentId !== 'string' || candidate.documentId.length === 0
+        || typeof candidate.blocked !== 'boolean' || !Array.isArray(candidate.accounts)
+        || candidate.accounts.length !== 1 || typeof candidate.accounts[0]?.documentId !== 'string'
+        || candidate.accounts[0].documentId.length === 0) return null;
+    return candidate as StrapiUser;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Set blocked = false on a Strapi user by their numeric ID.
  */
@@ -327,6 +349,11 @@ export async function confirmReactivation(
   }
 
   const userId = parseInt(entry.strapiUserId, 10);
+  const current = await resolveCurrentReactivationIdentity(userId);
+  if (!current || current.documentId !== entry.userDocumentId
+      || current.accounts?.[0]?.documentId !== entry.accountDocumentId) {
+    return { success: false, error: 'Failed to verify the current account identity. Please request a new link.' };
+  }
   try {
     await dependencies.reactivateMusic({
       userDocumentId: entry.userDocumentId,
@@ -336,7 +363,7 @@ export async function confirmReactivation(
   } catch {
     return { success: false, error: 'Failed to reactivate account. Please try again.' };
   }
-  const unblocked = await unblockStrapiUser(userId);
+  const unblocked = current.blocked === false || await unblockStrapiUser(userId);
 
   if (!unblocked) {
     return { success: false, error: 'Failed to reactivate account. Please try again.' };

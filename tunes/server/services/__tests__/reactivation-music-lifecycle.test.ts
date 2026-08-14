@@ -45,11 +45,12 @@ describe("Explorer reactivation Music lifecycle composition", () => {
   it("reactivates the immutable Music binding before unblocking Strapi and consumes the token only after both converge", async () => {
     const events: string[] = [];
     let putSucceeds = false;
-    vi.stubGlobal("fetch", vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       if (init?.method === "PUT") {
         events.push("strapi-unblock");
         return new Response("{}", { status: putSucceeds ? 200 : 503 });
       }
+      if (new URL(String(input)).pathname === `/api/users/${user.id}`) return Response.json(user);
       return Response.json([user]);
     }));
     await requestReactivation(user.email);
@@ -75,8 +76,9 @@ describe("Explorer reactivation Music lifecycle composition", () => {
   });
 
   it("keeps Strapi blocked and the token retryable while Music is unavailable", async () => {
-    const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+    const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       if (init?.method === "PUT") return new Response("{}", { status: 200 });
+      if (new URL(String(input)).pathname === `/api/users/${user.id}`) return Response.json(user);
       return Response.json([user]);
     });
     vi.stubGlobal("fetch", fetchImpl);
@@ -90,5 +92,74 @@ describe("Explorer reactivation Music lifecycle composition", () => {
     const recoveredMusic = vi.fn(async () => undefined);
     await expect(confirmReactivation(token, { reactivateMusic: recoveredMusic })).resolves.toEqual({ success: true });
     expect(recoveredMusic).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    { label: "replacement Account", current: { ...user, accounts: [{ documentId: "replacement-account-document" }] } },
+    { label: "replacement user", current: { ...user, documentId: "replacement-user-document" } },
+    { label: "missing Account", current: { ...user, accounts: [] } },
+    { label: "multiple Accounts", current: { ...user, accounts: [user.accounts[0], { documentId: "extra-account-document" }] } },
+  ])("fails closed before Music when current Strapi authority has a $label", async ({ current }) => {
+    // Break caught: confirmation trusts the 24-hour token snapshot after Strapi identity replacement.
+    const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const pathname = new URL(String(input)).pathname;
+      if (init?.method === "PUT") return new Response("{}", { status: 200 });
+      if (pathname === `/api/users/${user.id}`) return Response.json(current);
+      return Response.json([user]);
+    });
+    vi.stubGlobal("fetch", fetchImpl);
+    await requestReactivation(user.email);
+    const token = fetchToken();
+    const reactivateMusic = vi.fn(async () => undefined);
+
+    await expect(confirmReactivation(token, { reactivateMusic })).resolves.toMatchObject({ success: false });
+    expect(reactivateMusic).not.toHaveBeenCalled();
+    expect(fetchImpl.mock.calls.filter(([, init]) => init?.method === "PUT")).toHaveLength(0);
+  });
+
+  it.each([
+    { label: "an authority outage", current: () => new Response("", { status: 503 }) },
+    { label: "a malformed user", current: () => Response.json({ ...user, blocked: "false" }) },
+    { label: "an unexpected collection", current: () => Response.json([user]) },
+  ])("fails closed before Music when fresh Strapi proof has $label", async ({ current }) => {
+    const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const pathname = new URL(String(input)).pathname;
+      if (init?.method === "PUT") return new Response("{}", { status: 200 });
+      if (pathname === `/api/users/${user.id}`) return current();
+      return Response.json([user]);
+    });
+    vi.stubGlobal("fetch", fetchImpl);
+    await requestReactivation(user.email);
+    const token = fetchToken();
+    const reactivateMusic = vi.fn(async () => undefined);
+
+    await expect(confirmReactivation(token, { reactivateMusic })).resolves.toMatchObject({ success: false });
+    expect(reactivateMusic).not.toHaveBeenCalled();
+    expect(fetchImpl.mock.calls.filter(([, init]) => init?.method === "PUT")).toHaveLength(0);
+  });
+
+  it("converges a lost unblock response after fresh authority proves the exact tuple is already unblocked", async () => {
+    let blocked = true;
+    let unblockCalls = 0;
+    const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const pathname = new URL(String(input)).pathname;
+      if (init?.method === "PUT") {
+        unblockCalls += 1;
+        blocked = false;
+        return new Response("", { status: 503 });
+      }
+      if (pathname === `/api/users/${user.id}`) return Response.json({ ...user, blocked });
+      return Response.json([user]);
+    });
+    vi.stubGlobal("fetch", fetchImpl);
+    await requestReactivation(user.email);
+    const token = fetchToken();
+    const reactivateMusic = vi.fn(async () => undefined);
+
+    await expect(confirmReactivation(token, { reactivateMusic })).resolves.toMatchObject({ success: false });
+    await expect(confirmReactivation(token, { reactivateMusic })).resolves.toEqual({ success: true });
+    expect(unblockCalls).toBe(1);
+    expect(reactivateMusic).toHaveBeenCalledTimes(2);
+    expect(reactivateMusic.mock.calls[1]).toEqual(reactivateMusic.mock.calls[0]);
   });
 });

@@ -96,11 +96,86 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
     expect(row.guest_discoverable).toBe(false);
     expect(row.guest_capability_revoked_at).not.toBeNull();
     await expect(repository.lifecycleBinding("c7-user-prepare")).resolves.toEqual({
+      disposition: "present",
       userDocumentId: "c7-user-prepare",
       accountDocumentId: "c7-account-prepare",
       identityStatus: "pending_deletion",
     });
     await expect(new MusicDomainRepository(pool).resolveGuestResource("c7-public-prepare")).resolves.toBeUndefined();
+  });
+
+  it("durably tombstones a never-provisioned tuple after authoritative upstream absence without creating a Music user", async () => {
+    // Break caught: an Explorer-only identity is stranded or can be provisioned after Explorer deletion.
+    const repository = new MusicIdentityRepository(pool);
+    const tuple = { userDocumentId: "c7-user-never-provisioned", accountDocumentId: "c7-account-never-provisioned" };
+    await expect(repository.lifecycleBinding(tuple.userDocumentId, tuple.accountDocumentId))
+      .resolves.toEqual({ disposition: "not_present" });
+    expect(Number((await pool.query("SELECT count(*) FROM music_identity_lifecycle_operations WHERE strapi_user_document_id=$1", [tuple.userDocumentId])).rows[0].count)).toBe(0);
+    const prepared = await repository.prepareDeletion({ ...tuple, operationId: "delete-never-provisioned" });
+    expect(prepared).toMatchObject({ musicUserId: null, identityStatus: "pending_deletion", boundaryCrossed: false });
+    expect(Number((await pool.query("SELECT count(*) FROM users WHERE strapi_user_document_id=$1", [tuple.userDocumentId])).rows[0].count)).toBe(0);
+
+    await expect(repository.markDeletionBoundary(tuple)).resolves.toMatchObject({ boundaryCrossed: true, state: "requested" });
+    await ageOperations(["delete-never-provisioned"], 2);
+    const claim = (await repository.claimDueDeletions({ batchSize: 1, maxAttempts: 5 }))
+      .find(({ operationId }) => operationId === "delete-never-provisioned")!;
+    expect(claim).toMatchObject({ musicUserId: null, ...tuple });
+    await expect(repository.finalizeDeletion(claim)).resolves.toBe(true);
+    await expect(repository.finalizeDeletion(claim)).resolves.toBe(false);
+    await expect(repository.lifecycleStatus(tuple)).resolves.toMatchObject({
+      musicUserId: null, identityStatus: "tombstoned", phase: "finalized", boundaryCrossed: true,
+    });
+    expect(Number((await pool.query("SELECT count(*) FROM users WHERE strapi_user_document_id=$1", [tuple.userDocumentId])).rows[0].count)).toBe(0);
+    await expect(repository.ensureIdentity(identityInput("never-provisioned"))).rejects.toMatchObject({ code: "IDENTITY_TOMBSTONED" });
+    await expect(repository.lifecycleBinding(tuple.userDocumentId, "replacement-account"))
+      .rejects.toMatchObject({ code: "IDENTITY_CONFLICT" });
+  });
+
+  it("cancels and retries an absent-identity deletion without swallowing outage or tuple conflict", async () => {
+    const repository = new MusicIdentityRepository(pool);
+    const tuple = { userDocumentId: "c7-user-absent-retry", accountDocumentId: "c7-account-absent-retry" };
+    await repository.prepareDeletion({ ...tuple, operationId: "delete-absent-cancelled" });
+    const cancelled = await repository.cancelDeletion({ ...tuple, operationId: "cancel-absent" });
+    expect(cancelled).toMatchObject({ musicUserId: null, identityStatus: "not_present", state: "cancelled" });
+    await expect(repository.lifecycleStatus(tuple)).resolves.toMatchObject({ identityStatus: "not_present", state: "cancelled" });
+    await expect(repository.markDeletionBoundary({ ...tuple, accountDocumentId: "replacement-account" }))
+      .rejects.toMatchObject({ code: "IDENTITY_CONFLICT" });
+
+    const prepared = await repository.prepareDeletion({ ...tuple, operationId: "delete-absent-retry" });
+    expect(prepared.operationId).toBe("delete-absent-retry");
+    await repository.markDeletionBoundary(tuple);
+    await ageOperations([prepared.operationId], 2);
+    const first = (await repository.claimDueDeletions({ batchSize: 1, maxAttempts: 5 }))[0];
+    expect(first).toMatchObject({ musicUserId: null, ...tuple });
+    await expect(repository.recordDeletionObservation(first, "outage", false)).resolves.toBe(true);
+    await expect(repository.lifecycleStatus(tuple)).resolves.toMatchObject({
+      identityStatus: "pending_deletion", state: "requested", boundaryCrossed: true, retryable: true,
+    });
+    await ageOperations([prepared.operationId], 3);
+    const retry = (await repository.claimDueDeletions({ batchSize: 1, maxAttempts: 5 }))[0];
+    expect(retry.attemptCount).toBe(first.attemptCount + 1);
+    await expect(repository.finalizeDeletion(retry)).resolves.toBe(true);
+    await expect(repository.lifecycleStatus(tuple)).resolves.toMatchObject({ identityStatus: "tombstoned" });
+  });
+
+  it("dead-letters an expired absent-identity claim and requires explicit repair before one final success", async () => {
+    const repository = new MusicIdentityRepository(pool);
+    const tuple = { userDocumentId: "c7-user-absent-repair", accountDocumentId: "c7-account-absent-repair" };
+    const prepared = await repository.prepareDeletion({ ...tuple, operationId: "delete-absent-repair" });
+    await repository.markDeletionBoundary(tuple);
+    await ageOperations([prepared.operationId], 2);
+    const crashed = (await repository.claimDueDeletions({ batchSize: 1, maxAttempts: 2 }))[0];
+    expect(crashed).toMatchObject({ musicUserId: null, attemptCount: 2 });
+    await ageOperations([prepared.operationId], 46);
+    await expect(repository.claimDueDeletions({ batchSize: 1, maxAttempts: 2 })).resolves.toEqual([]);
+    await expect(repository.lifecycleStatus(tuple)).resolves.toMatchObject({ state: "failed", deadLetter: true, retryable: false });
+
+    await expect(repository.rearmDeletion(prepared.operationId)).resolves.toBe(true);
+    await ageOperations([prepared.operationId], 3);
+    const repaired = (await repository.claimDueDeletions({ batchSize: 1, maxAttempts: 2 }))[0];
+    expect(repaired).toMatchObject({ musicUserId: null, attemptCount: 3 });
+    await expect(repository.finalizeDeletion(repaired)).resolves.toBe(true);
+    await expect(repository.finalizeDeletion(repaired)).resolves.toBe(false);
   });
 
   it("cancels only before the durable upstream-attempt boundary", async () => {

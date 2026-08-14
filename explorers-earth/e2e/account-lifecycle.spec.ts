@@ -3,7 +3,7 @@ import { setupMockAuthentication } from "./setup/auth";
 
 type LifecycleOperation = {
   operationId: string;
-  status: "pending_deletion" | "suspended" | "tombstoned";
+  status: "pending_deletion" | "suspended" | "tombstoned" | "not_present";
   phase: "prepared" | "finalized";
   state: "completed" | "requested" | "running" | "failed" | "cancelled";
   boundaryCrossed: boolean;
@@ -29,6 +29,7 @@ async function mockSettings(
     statusMode?: "normal" | "delayed" | "error";
     additionalAccount?: boolean;
     provider?: "google" | "local";
+    musicNotPresent?: boolean;
     suspensionUnavailable?: boolean;
     strapiBlockUnconfirmed?: boolean;
   } = {},
@@ -59,7 +60,10 @@ async function mockSettings(
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ version: "music-lifecycle/v1", identity: { status: "suspended" } }),
+        body: JSON.stringify({
+          version: "music-lifecycle/v1",
+          identity: { status: options.musicNotPresent ? "not_present" : "suspended" },
+        }),
       });
       return;
     }
@@ -123,6 +127,19 @@ async function mockSettings(
     });
   });
 }
+
+test("a never-provisioned Explorer identity treats exact Music absence as a safe deactivation no-op", async ({ context, page }) => {
+  const events: string[] = [];
+  await mockSettings(context, {
+    operationId: "delete-operation-durable", status: "not_present", phase: "prepared", state: "cancelled",
+    boundaryCrossed: false, retryable: false, deadLetter: false,
+  }, events, { musicNotPresent: true });
+  await page.goto("/settings");
+  await page.getByRole("button", { name: "Deactivate your account?" }).click();
+  await page.getByRole("button", { name: "Deactivate My Account" }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  expect(events.filter((event) => ["suspend", "strapi-block"].includes(event))).toEqual(["suspend", "strapi-block"]);
+});
 
 for (const provider of ["google", "local"] as const) {
   test(`${provider} account deactivation suspends Music before blocking Strapi`, async ({ context, page }) => {

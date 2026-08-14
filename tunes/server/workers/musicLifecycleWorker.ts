@@ -2,7 +2,7 @@ export type AuthoritativeAbsence = "absent" | "present" | "unknown" | "outage";
 
 export interface ClaimedLifecycleDeletion {
   operationId: string;
-  musicUserId: number;
+  musicUserId: number | null;
   userDocumentId: string;
   accountDocumentId: string;
   attemptCount: number;

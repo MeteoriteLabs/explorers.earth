@@ -323,6 +323,17 @@ describe("account lifecycle service", () => {
     await expect(service.status()).resolves.toEqual(suspended);
   });
 
+  it("accepts the exact durable no-local cancellation state", async () => {
+    const notPresent = { ...pending, operation: {
+      ...pending.operation, status: "not_present" as const, state: "cancelled" as const,
+    } };
+    const service = createAccountLifecycleService({
+      baseUrl: "https://music.example", getBearer: () => "authoritative-bearer-proof",
+      fetchImpl: async () => new Response(JSON.stringify(notPresent), { status: 200 }),
+    });
+    await expect(service.status()).resolves.toEqual(notPresent);
+  });
+
   it("accepts only the exact bodyless suspension acknowledgement", async () => {
     const valid = { version: "music-lifecycle/v1", identity: { status: "suspended" } };
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify(valid), { status: 200 }));
@@ -345,6 +356,17 @@ describe("account lifecycle service", () => {
       });
       await expect(invalidService.suspend()).rejects.toMatchObject({ code: "LIFECYCLE_RESPONSE_INVALID" });
     }
+  });
+
+  it("accepts only an exact typed not-present suspension acknowledgement", async () => {
+    // Break caught: never-provisioned Explorer accounts cannot proceed to Strapi deactivation.
+    const valid = { version: "music-lifecycle/v1", identity: { status: "not_present" } };
+    const service = createAccountLifecycleService({
+      baseUrl: "https://music.example", getBearer: () => "authoritative-bearer-proof",
+      fetchImpl: async () => new Response(JSON.stringify(valid), { status: 200 }),
+    });
+
+    await expect(service.suspend()).resolves.toEqual(valid);
   });
 
   it("returns typed authentication, transport, and server errors without clearing auth", async () => {

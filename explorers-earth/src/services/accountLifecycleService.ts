@@ -2,7 +2,7 @@ export interface AccountLifecycleStatus {
   version: "music-lifecycle/v1";
   operation: {
     operationId: string;
-    status: "pending_deletion" | "suspended" | "tombstoned";
+    status: "pending_deletion" | "suspended" | "tombstoned" | "not_present";
     phase: "prepared" | "finalized";
     state: "completed" | "requested" | "running" | "failed" | "cancelled";
     boundaryCrossed: boolean;
@@ -15,7 +15,7 @@ export interface AccountLifecycleStatus {
 
 export interface AccountSuspensionStatus {
   version: "music-lifecycle/v1";
-  identity: { status: "suspended" };
+  identity: { status: "suspended" | "not_present" };
 }
 
 export class AccountLifecycleError extends Error {
@@ -192,7 +192,10 @@ function parseLifecycleStatus(value: unknown): AccountLifecycleStatus {
       : status === "tombstoned"
         ? phase === "finalized" && state === "completed" && operation?.boundaryCrossed === true
           && operation.retryable === false && operation.deadLetter === false
-        : false;
+        : status === "not_present"
+          ? phase === "prepared" && state === "cancelled" && operation?.boundaryCrossed === false
+            && operation.retryable === false && operation.deadLetter === false
+          : false;
   if (!commonValid || !combinationValid) {
     throw new AccountLifecycleError(
       "LIFECYCLE_RESPONSE_INVALID", 502,
@@ -205,7 +208,8 @@ function parseLifecycleStatus(value: unknown): AccountLifecycleStatus {
 function parseSuspensionStatus(value: unknown): AccountSuspensionStatus {
   if (!isRecord(value) || !hasExactKeys(value, ["version", "identity"])
       || value.version !== "music-lifecycle/v1" || !isRecord(value.identity)
-      || !hasExactKeys(value.identity, ["status"]) || value.identity.status !== "suspended") {
+      || !hasExactKeys(value.identity, ["status"])
+      || !["suspended", "not_present"].includes(String(value.identity.status))) {
     throw new AccountLifecycleError(
       "LIFECYCLE_RESPONSE_INVALID", 502,
       "Music returned an invalid account suspension response. Try again.", true,

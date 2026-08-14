@@ -31,6 +31,7 @@ function harness() {
     markDeletionBoundary: vi.fn(async () => ({ ...status, boundaryCrossed: true, state: "requested" as const })),
     cancelDeletion: vi.fn(async () => ({ ...status, identityStatus: "suspended" as const, state: "cancelled" as const })),
     lifecycleBinding: vi.fn(async () => ({
+      disposition: "present" as const,
       userDocumentId: identity.userDocumentId,
       accountDocumentId: identity.accountDocumentId,
       identityStatus: "active" as const,
@@ -101,6 +102,7 @@ describe("MusicLifecycleService", () => {
     const h = harness();
     const crossed = { ...h.status, boundaryCrossed: true, state: "requested" as const };
     h.repository.lifecycleBinding.mockResolvedValue({
+      disposition: "present",
       userDocumentId: identity.userDocumentId,
       accountDocumentId: identity.accountDocumentId,
       identityStatus: "pending_deletion",
@@ -128,6 +130,7 @@ describe("MusicLifecycleService", () => {
     // Break caught: pending Account A can be replaced by B, then boundary/delete destroys B outside the durable operation.
     const h = harness();
     h.repository.lifecycleBinding.mockResolvedValue({
+      disposition: "present",
       userDocumentId: identity.userDocumentId,
       accountDocumentId: identity.accountDocumentId,
       identityStatus: "pending_deletion",
@@ -148,6 +151,7 @@ describe("MusicLifecycleService", () => {
   it("uses the real user-only gateway path for an Account-absent pending reload", async () => {
     const h = harness();
     h.repository.lifecycleBinding.mockResolvedValue({
+      disposition: "present",
       userDocumentId: identity.userDocumentId,
       accountDocumentId: identity.accountDocumentId,
       identityStatus: "pending_deletion",
@@ -216,11 +220,87 @@ describe("MusicLifecycleService", () => {
       id: 41, identityStatus: "suspended",
     });
     expect(h.gateway.resolve).toHaveBeenCalledWith("authoritative-proof", "request-suspend");
-    expect(h.repository.lifecycleBinding).toHaveBeenCalledWith(identity.userDocumentId);
+    expect(h.repository.lifecycleBinding).toHaveBeenCalledWith(identity.userDocumentId, identity.accountDocumentId);
 
     h.gateway.resolve.mockResolvedValueOnce({ ...identity, accountDocumentId: "account-document-other" });
     await expect(service.suspendFromProof("authoritative-proof", "request-conflict"))
       .rejects.toMatchObject({ code: "IDENTITY_CONFLICT" });
+  });
+
+  it("acknowledges exact local absence for suspend and reactivate without inventing a Music owner", async () => {
+    // Break caught: a never-provisioned Explorer is stranded by LIFECYCLE_NOT_FOUND.
+    const h = harness();
+    h.repository.lifecycleBinding.mockResolvedValue({ disposition: "not_present" } as never);
+    const service = new MusicLifecycleService(h.gateway, h.repository, {
+      operationIdFactory: () => "absence-noop-operation",
+      disconnectOwner: h.disconnectOwner,
+    });
+    const expected = {
+      identityStatus: "not_present",
+      strapiUserDocumentId: identity.userDocumentId,
+      strapiAccountDocumentId: identity.accountDocumentId,
+    };
+
+    await expect(service.suspendFromProof("authoritative-proof", "request-absent-suspend")).resolves.toEqual(expected);
+    await expect(service.reactivateBoundIdentity({
+      userDocumentId: identity.userDocumentId,
+      accountDocumentId: identity.accountDocumentId,
+      operationId: "absence-noop-operation",
+    })).resolves.toEqual(expected);
+    expect(h.repository.transitionIdentity).not.toHaveBeenCalled();
+    expect(h.disconnectOwner).not.toHaveBeenCalled();
+  });
+
+  it("prepares durable deletion authority for a never-provisioned tuple without inventing an owner", async () => {
+    // Break caught: deletion prepare assumes every authoritative Explorer tuple already has a Music users row.
+    const h = harness();
+    h.repository.lifecycleBinding.mockResolvedValue({ disposition: "not_present" } as never);
+    h.repository.prepareDeletion.mockResolvedValue({ ...h.status, musicUserId: null } as never);
+    const service = new MusicLifecycleService(h.gateway, h.repository, {
+      operationIdFactory: () => h.status.operationId,
+      disconnectOwner: h.disconnectOwner,
+    });
+
+    await expect(service.prepareDeletion("authoritative-proof", "request-absent-delete")).resolves.toMatchObject({
+      operationId: h.status.operationId,
+      musicUserId: null,
+      boundaryCrossed: false,
+      upstreamUserDocumentId: identity.userDocumentId,
+      upstreamAccountDocumentId: identity.accountDocumentId,
+    });
+    expect(h.repository.prepareDeletion).toHaveBeenCalledWith({
+      userDocumentId: identity.userDocumentId,
+      accountDocumentId: identity.accountDocumentId,
+      operationId: h.status.operationId,
+    });
+    expect(h.disconnectOwner).not.toHaveBeenCalled();
+  });
+
+  it("keeps non-prepare lifecycle actions fail-closed when no durable local tuple exists", async () => {
+    const h = harness();
+    h.repository.lifecycleBinding.mockResolvedValue({ disposition: "not_present" } as never);
+    const service = new MusicLifecycleService(h.gateway, h.repository, {
+      operationIdFactory: () => h.status.operationId,
+      disconnectOwner: h.disconnectOwner,
+    });
+
+    await expect(service.status("authoritative-proof", "request-absent-status"))
+      .rejects.toMatchObject({ code: "LIFECYCLE_NOT_FOUND", status: 409 });
+    expect(h.repository.lifecycleStatus).not.toHaveBeenCalled();
+  });
+
+  it("rejects a changed authoritative user across the two-step absent prepare proof", async () => {
+    const h = harness();
+    h.repository.lifecycleBinding.mockResolvedValue({ disposition: "not_present" } as never);
+    h.gateway.resolve.mockResolvedValue({ ...identity, userDocumentId: "replacement-user-document" });
+    const service = new MusicLifecycleService(h.gateway, h.repository, {
+      operationIdFactory: () => h.status.operationId,
+      disconnectOwner: h.disconnectOwner,
+    });
+
+    await expect(service.prepareDeletion("authoritative-proof", "request-changed-user"))
+      .rejects.toMatchObject({ code: "IDENTITY_CONFLICT", status: 409 });
+    expect(h.repository.prepareDeletion).not.toHaveBeenCalled();
   });
 
   it("resolves every browser lifecycle action from the authoritative tuple", async () => {
@@ -280,6 +360,7 @@ describe("MusicLifecycleService", () => {
     });
 
     h.repository.lifecycleBinding.mockResolvedValueOnce({
+      disposition: "present",
       userDocumentId: identity.userDocumentId,
       accountDocumentId: "account-document-other",
       identityStatus: "suspended",
