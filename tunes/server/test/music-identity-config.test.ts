@@ -1,8 +1,19 @@
-import { describe, expect, it, vi } from "vitest";
+import { chmodSync, lstatSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { lstat, open } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import {
   resolveMusicIdentityRuntimeConfig,
   type MusicIdentityAddressResolver,
 } from "../config/music-identity-config";
+
+const secretRoot = mkdtempSync(join(tmpdir(), "music-key-config-"));
+const validCurrentPath = join(secretRoot, "current");
+writeFileSync(validCurrentPath, Buffer.alloc(32, 0x51).toString("base64url"), { mode: 0o600 });
+chmodSync(validCurrentPath, 0o600);
+
+afterAll(() => rmSync(secretRoot, { recursive: true, force: true }));
 
 const liveBase = {
   NODE_ENV: "production",
@@ -25,7 +36,7 @@ const liveBase = {
   MUSIC_IDENTITY_GLOBAL_RATE_PER_MINUTE: "300",
   MUSIC_IDENTITY_RATE_MAX_ENTRIES: "10000",
   MUSIC_TOKEN_CURRENT_KID: "music-current-2026-08",
-  MUSIC_TOKEN_CURRENT_SECRET: Buffer.alloc(32, 0x51).toString("base64url"),
+  MUSIC_TOKEN_CURRENT_SECRET_FILE: validCurrentPath,
   MUSIC_TOKEN_LIFETIME_SECONDS: "600",
   MUSIC_TOKEN_CLOCK_SKEW_SECONDS: "15",
 } as const;
@@ -134,25 +145,28 @@ describe("central Music identity startup configuration", () => {
 
   it.each([
     ["missing current kid", { MUSIC_TOKEN_CURRENT_KID: undefined }],
-    ["missing current secret", { MUSIC_TOKEN_CURRENT_SECRET: undefined }],
-    ["weak current secret", { MUSIC_TOKEN_CURRENT_SECRET: Buffer.alloc(31).toString("base64url") }],
-    ["noncanonical current secret", { MUSIC_TOKEN_CURRENT_SECRET: "default-secret-with-at-least-thirty-two-characters" }],
+    ["missing current secret", { MUSIC_TOKEN_CURRENT_SECRET_FILE: undefined }],
     ["wrong token lifetime", { MUSIC_TOKEN_LIFETIME_SECONDS: "601" }],
     ["excess clock skew", { MUSIC_TOKEN_CLOCK_SKEW_SECONDS: "31" }],
     ["partial previous key", { MUSIC_TOKEN_PREVIOUS_KID: "previous" }],
+    ["inline live previous secret", {
+      MUSIC_TOKEN_PREVIOUS_KID: "previous",
+      MUSIC_TOKEN_PREVIOUS_SECRET: Buffer.alloc(32, 0x70).toString("base64url"),
+      MUSIC_TOKEN_PREVIOUS_ACCEPT_UNTIL: new Date(Date.now() + 60_000).toISOString(),
+    }],
     ["same key IDs", {
       MUSIC_TOKEN_PREVIOUS_KID: "music-current-2026-08",
-      MUSIC_TOKEN_PREVIOUS_SECRET: Buffer.alloc(32, 0x52).toString("base64url"),
+      MUSIC_TOKEN_PREVIOUS_SECRET_FILE: validCurrentPath,
       MUSIC_TOKEN_PREVIOUS_ACCEPT_UNTIL: new Date(Date.now() + 60_000).toISOString(),
     }],
     ["non-UTC cutoff", {
       MUSIC_TOKEN_PREVIOUS_KID: "previous",
-      MUSIC_TOKEN_PREVIOUS_SECRET: Buffer.alloc(32, 0x52).toString("base64url"),
+      MUSIC_TOKEN_PREVIOUS_SECRET_FILE: validCurrentPath,
       MUSIC_TOKEN_PREVIOUS_ACCEPT_UNTIL: "2026-08-14T12:00:00+05:30",
     }],
     ["unbounded overlap", {
       MUSIC_TOKEN_PREVIOUS_KID: "previous",
-      MUSIC_TOKEN_PREVIOUS_SECRET: Buffer.alloc(32, 0x52).toString("base64url"),
+      MUSIC_TOKEN_PREVIOUS_SECRET_FILE: validCurrentPath,
       MUSIC_TOKEN_PREVIOUS_ACCEPT_UNTIL: new Date(Date.now() + 3_600_000).toISOString(),
     }],
   ])("rejects %s before route registration", async (_label, overrides) => {
@@ -160,22 +174,23 @@ describe("central Music identity startup configuration", () => {
       .rejects.toThrow(/token|key|kid|secret|lifetime|skew|overlap|UTC/i);
   });
 
-  it("loads a live current/previous key only through explicit injected secret paths", async () => {
+  it("loads live current/previous keys only from secure regular files", async () => {
     const now = Date.now();
     const current = Buffer.alloc(32, 0x61).toString("base64url");
     const previous = Buffer.alloc(32, 0x62).toString("base64url");
-    const readSecretFile = vi.fn(async (path: string) => ({
-      "/run/secrets/music-current": `${current}\n`,
-      "/run/secrets/music-previous": `${previous}\n`,
-    })[path] ?? "");
+    const currentPath = join(secretRoot, "valid-current");
+    const previousPath = join(secretRoot, "valid-previous");
+    writeFileSync(currentPath, `${current}\n`, { mode: 0o600 });
+    writeFileSync(previousPath, previous, { mode: 0o600 });
+    chmodSync(currentPath, 0o600);
+    chmodSync(previousPath, 0o600);
     const config = await resolveMusicIdentityRuntimeConfig({
       ...liveBase,
-      MUSIC_TOKEN_CURRENT_SECRET: undefined,
-      MUSIC_TOKEN_CURRENT_SECRET_FILE: "/run/secrets/music-current",
+      MUSIC_TOKEN_CURRENT_SECRET_FILE: currentPath,
       MUSIC_TOKEN_PREVIOUS_KID: "music-previous-2026-08",
-      MUSIC_TOKEN_PREVIOUS_SECRET_FILE: "/run/secrets/music-previous",
+      MUSIC_TOKEN_PREVIOUS_SECRET_FILE: previousPath,
       MUSIC_TOKEN_PREVIOUS_ACCEPT_UNTIL: new Date(now + 300_000).toISOString(),
-    }, { resolveAddresses: publicResolver, readSecretFile, now: () => now });
+    }, { resolveAddresses: publicResolver, now: () => now });
     expect(config.musicToken).toEqual({
       current: { kid: "music-current-2026-08", secret: current },
       previous: {
@@ -186,6 +201,66 @@ describe("central Music identity startup configuration", () => {
       tokenLifetimeSeconds: 600,
       clockSkewSeconds: 15,
     });
-    expect(readSecretFile).toHaveBeenCalledTimes(2);
+    expect(lstatSync(currentPath).isFile()).toBe(true);
+  });
+
+  it("requires live keys to use the file authority and rejects insecure file metadata before startup", async () => {
+    const secret = Buffer.alloc(32, 0x63).toString("base64url");
+    const permissivePath = join(secretRoot, "world-readable-key-sentinel");
+    const oversizedPath = join(secretRoot, "oversized-key-sentinel");
+    const directoryPath = join(secretRoot, "directory-key-sentinel");
+    const symlinkPath = join(secretRoot, "junction-key-sentinel");
+    const junctionTarget = join(secretRoot, "junction-target");
+    writeFileSync(permissivePath, secret, { mode: 0o644 });
+    chmodSync(permissivePath, 0o644);
+    writeFileSync(oversizedPath, "A".repeat(300), { mode: 0o600 });
+    chmodSync(oversizedPath, 0o600);
+    mkdirSync(directoryPath);
+    mkdirSync(junctionTarget);
+    symlinkSync(junctionTarget, symlinkPath, "junction");
+
+    await expect(resolveMusicIdentityRuntimeConfig({
+      ...liveBase,
+      MUSIC_TOKEN_CURRENT_SECRET_FILE: undefined,
+      MUSIC_TOKEN_CURRENT_SECRET: secret,
+    }, { resolveAddresses: publicResolver })).rejects.toThrow(/file|secret/i);
+
+    for (const [path, dependencies] of [
+      [permissivePath, { resolveAddresses: publicResolver, platform: "linux" as const, effectiveUserId: 0 }],
+      [oversizedPath, { resolveAddresses: publicResolver }],
+      [directoryPath, { resolveAddresses: publicResolver }],
+      [symlinkPath, { resolveAddresses: publicResolver }],
+    ] as const) {
+      const failure = resolveMusicIdentityRuntimeConfig({
+        ...liveBase,
+        MUSIC_TOKEN_CURRENT_SECRET_FILE: path,
+      }, dependencies);
+      await expect(failure).rejects.toThrow(/secret|secure|regular|permission|size|link/i);
+      await expect(failure).rejects.not.toThrow(new RegExp(path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    }
+  });
+
+  it("rejects a key file whose identity or metadata changes between checks", async () => {
+    const path = join(secretRoot, "changed-key-sentinel");
+    writeFileSync(path, Buffer.alloc(32, 0x64).toString("base64url"), { mode: 0o600 });
+    chmodSync(path, 0o600);
+    let changed = false;
+    const failure = resolveMusicIdentityRuntimeConfig({
+      ...liveBase,
+      MUSIC_TOKEN_CURRENT_SECRET_FILE: path,
+    }, {
+      resolveAddresses: publicResolver,
+      secretFileSystem: {
+        lstat: (target: string) => lstat(target, { bigint: true }),
+        open: async (target: string, flags: number) => {
+          const handle = await open(target, flags);
+          changed = true;
+          writeFileSync(path, Buffer.alloc(33, 0x65).toString("base64url"), { mode: 0o600 });
+          return handle;
+        },
+      },
+    });
+    await expect(failure).rejects.toThrow(/changed|secret|secure/i);
+    expect(changed).toBe(true);
   });
 });

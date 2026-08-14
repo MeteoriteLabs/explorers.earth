@@ -30,6 +30,7 @@ describe("Music migration authority contracts", () => {
       "0005_resource_bound_deletion_history",
       "0006_numeric_identity_lock",
       "0007_identity_provider_snapshot",
+      "0008_credential_revocation_operations",
     ]);
     expect(EXPECTED_MUSIC_MIGRATION_ID).toBe(migrations.at(-1)?.id);
     expect(migrations.every(({ checksum }) => /^[a-f0-9]{64}$/.test(checksum))).toBe(true);
@@ -45,14 +46,17 @@ describe("Music migration authority contracts", () => {
       "0005_resource_bound_deletion_history",
       "0006_numeric_identity_lock",
       "0007_identity_provider_snapshot",
+      "0008_credential_revocation_operations",
     ]);
-    expect(DEPLOYABLE_MUSIC_MIGRATION_MARKERS.map(musicMigrationMarkerRank)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(DEPLOYABLE_MUSIC_MIGRATION_MARKERS.map(musicMigrationMarkerRank)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
     expect(musicMigrationMarkerRank("9999_unknown")).toBeUndefined();
   });
 
   it("declares every manifested runtime table and the durable identity tombstone", () => {
     const manifest = JSON.parse(read("fixtures/db/music-runtime-table-manifest.json")) as { tables: Array<{ name: string }> };
     expect(manifest.tables).toHaveLength(27);
+    expect((JSON.parse(read("fixtures/db/music-runtime-table-manifest.json")) as { migrationChain: { controlTables: string[] } })
+      .migrationChain.controlTables).toContain("music_credential_revocation_operations");
     const sql = loadMusicMigrations(resolve(repositoryRoot, "tunes/migrations")).map((migration) => migration.sql).join("\n");
     for (const { name } of manifest.tables) expect(sql).toMatch(new RegExp(`CREATE TABLE(?: IF NOT EXISTS)? \\"?${name}\\"?`, "i"));
     expect(sql).toMatch(/CREATE TABLE music_identity_tombstones/i);
@@ -63,6 +67,9 @@ describe("Music migration authority contracts", () => {
     expect(sql).toMatch(/tombstone\.music_user_id\s*=\s*p_user_id/i);
     expect(sql).toContain("guest_capability_hash");
     expect(sql).not.toMatch(/guest_capability(?:_plaintext|_token|_secret)\s+TEXT/i);
+    expect(sql).toMatch(/CREATE TABLE music_credential_revocation_operations/i);
+    expect(sql).toMatch(/operation_id[\s\S]*music_user_id[\s\S]*strapi_user_document_id[\s\S]*strapi_account_document_id/i);
+    expect(sql).toMatch(/reason[\s\S]*expected_session_version[\s\S]*result_session_version[\s\S]*operation_state/i);
   });
 
   it("keeps startup schema-free and makes the same-image gate run the real chain", () => {
@@ -146,7 +153,7 @@ describe("Music migration authority contracts", () => {
 
   it("rejects any non-production chain before opening a database connection", async () => {
     const production = loadMusicMigrations(resolve(repositoryRoot, "tunes/migrations"));
-    const appended = createMigrationDefinition("0008_unapproved", "SELECT 1;\n");
+    const appended = createMigrationDefinition("0009_unapproved", "SELECT 1;\n");
     const connect = vi.fn();
     await expect(migrateMusicDatabase({ connect } as never, { migrations: [...production, appended] }))
       .rejects.toThrow(/exact production migration chain/i);

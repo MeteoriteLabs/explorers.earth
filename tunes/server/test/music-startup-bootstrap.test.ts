@@ -1,13 +1,27 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { resolve } from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import {
   startMusicServer,
   type MusicServerRuntime,
 } from "../config/music-startup";
 
 const repositoryRoot = resolve(import.meta.dirname, "../../..");
+const signingRoot = mkdtempSync(resolve(tmpdir(), "music-startup-key-"));
+const signingPath = resolve(signingRoot, "current");
+writeFileSync(signingPath, Buffer.alloc(32, 0x61).toString("base64url"), { mode: 0o600 });
+chmodSync(signingPath, 0o600);
+afterAll(() => rmSync(signingRoot, { recursive: true, force: true }));
+
+function withSigningFile(environment: Record<string, string>): Record<string, string> {
+  return {
+    ...environment,
+    MUSIC_TOKEN_CURRENT_SECRET: "",
+    MUSIC_TOKEN_CURRENT_SECRET_FILE: signingPath,
+  };
+}
 
 function parseEnvironmentFile(path: string): Record<string, string> {
   return Object.fromEntries(readFileSync(path, "utf8").split(/\r?\n/)
@@ -75,7 +89,7 @@ function controlledRuntime(events: string[]): MusicServerRuntime {
 
 describe("discriminated Music startup bootstrap", () => {
   it("validates the rendered live Compose environment exactly once before application import and listen", async () => {
-    const environment = renderedProductionEnvironment();
+    const environment = withSigningFile(renderedProductionEnvironment());
     for (const fixtureOnly of [
       "MUSIC_FIXTURE_VERSION", "STRAPI_FIXTURE_URL", "DATABASE_URL_TEST",
       "MUSIC_SIGNING_KEY_CURRENT_ID", "MUSIC_SIGNING_KEY_CURRENT_SECRET",
@@ -95,7 +109,6 @@ describe("discriminated Music startup bootstrap", () => {
     });
     await startMusicServer(environment, {
       resolveAddresses: resolver,
-      readSecretFile: async () => Buffer.alloc(32, 0x61).toString("base64url"),
       loadRuntime,
     });
     expect(resolver).toHaveBeenCalledTimes(1);
@@ -110,20 +123,18 @@ describe("discriminated Music startup bootstrap", () => {
     ["private DNS", {}, ["127.0.0.1"]],
   ])("rejects invalid live %s before importing or binding", async (_label, override, answers) => {
     const loadRuntime = vi.fn(async () => controlledRuntime([]));
-    await expect(startMusicServer({ ...renderedProductionEnvironment(), ...override }, {
+    await expect(startMusicServer({ ...withSigningFile(renderedProductionEnvironment()), ...override }, {
       resolveAddresses: async () => answers,
-      readSecretFile: async () => Buffer.alloc(32, 0x61).toString("base64url"),
       loadRuntime,
     })).rejects.toThrow();
     expect(loadRuntime).not.toHaveBeenCalled();
   });
 
   it("retains the exact C0 fixture contract before importing the application", async () => {
-    const fixture = parseEnvironmentFile(resolve(repositoryRoot, ".env.music.test.example"));
+    const fixture = withSigningFile(parseEnvironmentFile(resolve(repositoryRoot, ".env.music.test.example")));
     const events: string[] = [];
     await startMusicServer(fixture, {
       resolveAddresses: async () => { throw new Error("fixture startup must not resolve DNS"); },
-      readSecretFile: async () => Buffer.alloc(32, 0x62).toString("base64url"),
       loadRuntime: async () => {
         events.push("load-routes");
         return controlledRuntime(events);
@@ -134,9 +145,22 @@ describe("discriminated Music startup bootstrap", () => {
     const loadInvalid = vi.fn(async () => controlledRuntime([]));
     const { MUSIC_FIXTURE_VERSION: _removed, ...invalid } = fixture;
     await expect(startMusicServer(invalid, {
-      readSecretFile: async () => Buffer.alloc(32, 0x62).toString("base64url"),
       loadRuntime: loadInvalid,
     })).rejects.toThrow(/MUSIC_FIXTURE_VERSION/);
     expect(loadInvalid).not.toHaveBeenCalled();
+  });
+
+  it("rejects an insecure live key file before route import or listener bind", async () => {
+    const insecurePath = resolve(signingRoot, "startup-world-readable-sentinel");
+    writeFileSync(insecurePath, Buffer.alloc(32, 0x66).toString("base64url"), { mode: 0o644 });
+    chmodSync(insecurePath, 0o644);
+    const loadRuntime = vi.fn(async () => controlledRuntime([]));
+    const failure = startMusicServer({
+      ...withSigningFile(renderedProductionEnvironment()),
+      MUSIC_TOKEN_CURRENT_SECRET_FILE: insecurePath,
+    }, { resolveAddresses: async () => ["8.8.8.8"], platform: "linux", effectiveUserId: 0, loadRuntime });
+    await expect(failure).rejects.toThrow(/secret|secure|permission/i);
+    await expect(failure).rejects.not.toThrow(/world-readable-sentinel/);
+    expect(loadRuntime).not.toHaveBeenCalled();
   });
 });

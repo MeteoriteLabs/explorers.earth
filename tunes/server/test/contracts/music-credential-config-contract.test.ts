@@ -34,8 +34,10 @@ describe("C5 credential configuration contracts", () => {
     const rendered = productionRender();
     expect(rendered).toContain("MUSIC_TOKEN_CURRENT_KID: production-current-2026-08");
     expect(rendered).toContain("MUSIC_TOKEN_CURRENT_SECRET_FILE: /run/secrets/music-token/current");
+    expect(rendered).toContain("MUSIC_TOKEN_PREVIOUS_SECRET_FILE: \"\"");
     expect(rendered).toContain("MUSIC_TOKEN_LIFETIME_SECONDS: \"600\"");
     expect(rendered).toContain("/opt/explorers/music-token-secrets:/run/secrets/music-token:ro");
+    expect(rendered.match(/\/opt\/explorers\/music-token-secrets:\/run\/secrets\/music-token:ro/g)).toHaveLength(1);
     expect(rendered).not.toContain(fixtureSecret);
     expect(rendered).not.toContain("MUSIC_TOKEN_CURRENT_SECRET:");
   });
@@ -48,6 +50,7 @@ describe("C5 credential configuration contracts", () => {
     expect(compose).toContain("./.artifacts/music-token-secrets:/run/secrets/music-token:ro");
     expect(compose).not.toMatch(/MUSIC_TOKEN_CURRENT_SECRET:\s*[^$]/);
     expect(examples).toContain("MUSIC_TOKEN_CURRENT_SECRET_FILE=/run/secrets/music-token/current");
+    expect(examples).toContain("MUSIC_TOKEN_PREVIOUS_SECRET_FILE=/run/secrets/music-token/previous");
     expect(examples).not.toContain(fixtureSecret);
   });
 

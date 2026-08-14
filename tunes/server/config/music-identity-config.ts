@@ -2,17 +2,22 @@ import { lookup as dnsLookup } from "node:dns/promises";
 import { Agent as HttpsAgent, request as httpsRequest } from "node:https";
 import { isIP } from "node:net";
 import { Readable } from "node:stream";
-import { readFile } from "node:fs/promises";
 import {
   validateMusicTokenConfiguration,
   type MusicTokenConfiguration,
 } from "../services/musicTokenService";
+import {
+  readSecureMusicSecretFile,
+  type SecureMusicSecretFileSystem,
+} from "./secure-music-secret-file";
 
 export type MusicIdentityAddressResolver = (hostname: string) => Promise<string[]>;
 
 export interface MusicIdentityConfigDependencies {
   resolveAddresses?: MusicIdentityAddressResolver;
-  readSecretFile?: (path: string) => Promise<string>;
+  secretFileSystem?: SecureMusicSecretFileSystem;
+  platform?: NodeJS.Platform;
+  effectiveUserId?: number;
   now?: () => number;
 }
 
@@ -91,7 +96,7 @@ export async function resolveMusicIdentityRuntimeConfig(
     parseBoundedInteger(name, environment[name] ?? defaults[name as keyof typeof defaults], minimum, maximum),
   ])) as Record<keyof typeof integerBounds, number>;
   assertCrossFieldBounds(controls);
-  const musicToken = await resolveMusicTokenConfiguration(environment, dependencies);
+  const musicToken = await resolveMusicTokenConfiguration(environment, mode, dependencies);
 
   let pinnedAddresses: string[] = [];
   let fetchImpl: typeof fetch = fetch;
@@ -140,6 +145,7 @@ export async function resolveMusicIdentityRuntimeConfig(
 
 async function resolveMusicTokenConfiguration(
   environment: Environment,
+  mode: "live" | "fixture",
   dependencies: MusicIdentityConfigDependencies,
 ): Promise<MusicTokenConfiguration> {
   const tokenLifetimeSeconds = parseBoundedInteger(
@@ -160,6 +166,7 @@ async function resolveMusicTokenConfiguration(
       environment.MUSIC_TOKEN_CURRENT_SECRET,
       environment.MUSIC_TOKEN_CURRENT_SECRET_FILE,
       "MUSIC_TOKEN_CURRENT_SECRET",
+      mode,
       dependencies,
     ),
   };
@@ -189,6 +196,7 @@ async function resolveMusicTokenConfiguration(
         environment.MUSIC_TOKEN_PREVIOUS_SECRET,
         environment.MUSIC_TOKEN_PREVIOUS_SECRET_FILE,
         "MUSIC_TOKEN_PREVIOUS_SECRET",
+        mode,
         dependencies,
       ),
       acceptUntil,
@@ -203,13 +211,19 @@ async function resolveSecret(
   inline: string | undefined,
   path: string | undefined,
   name: string,
+  mode: "live" | "fixture",
   dependencies: MusicIdentityConfigDependencies,
 ): Promise<string> {
+  if (mode === "live" && (inline || !path)) throw new Error(`${name} must use a secure file in live mode`);
   if ((inline && path) || (!inline && !path)) throw new Error(`${name} or ${name}_FILE must be configured exactly once`);
   if (inline) return inline;
-  if (!path || path.length > 512 || path.includes("\0")) throw new Error(`${name}_FILE is invalid`);
-  const contents = await (dependencies.readSecretFile ?? ((secretPath) => readFile(secretPath, "utf8")))(path);
-  return contents.replace(/\r?\n$/, "");
+  if (!path) throw new Error(`${name}_FILE is invalid`);
+  return readSecureMusicSecretFile(path, {
+    mode,
+    fileSystem: dependencies.secretFileSystem,
+    platform: dependencies.platform,
+    effectiveUserId: dependencies.effectiveUserId,
+  });
 }
 
 function requiredValue(value: string | undefined, name: string): string {

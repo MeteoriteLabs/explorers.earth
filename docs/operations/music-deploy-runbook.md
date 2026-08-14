@@ -1,4 +1,4 @@
-# Music immutable deployment and migration runbook (C2-C4)
+# Music immutable deployment and migration runbook (C2-C5)
 
 ## Authority and closed production gate
 
@@ -38,11 +38,15 @@ the external environment policy cannot be bypassed by that branch copy.
 `GATE_PROD must remain closed` if the API check is unavailable, the policy is
 absent or different, or `main` is not protected.
 
-## C3/C4 same-image migration gate
+## C3-C5 same-image migration gate
 
-`0007_identity_provider_snapshot` is the exact expected migration ID. The C4
-migration appends the mutable authoritative-provider snapshot without changing
-the immutable user/selected-Account ownership tuple. The candidate
+`0008_credential_revocation_operations` is the exact expected migration ID. The
+C5 migration appends durable, exact-operation credential-revocation authority
+without changing the immutable user/selected-Account ownership tuple. Each
+operation binds a lowercase UUIDv4, numeric Music resource, immutable Explorer
+user/Account tuple, closed internal reason, and expected/result session version.
+Only an exact replay is idempotent; another operation, reason, resource, or
+version fails closed. The candidate
 image contains the ordered SQL files and `run-migration-gate.js`; the one-shot
 gate takes the PostgreSQL advisory lock, verifies the checksum journal and
 catalog fingerprint, applies pending migrations transactionally, and writes an
@@ -57,7 +61,7 @@ Liveness remains process-only. The secure image ledger can retain historical
 `containment-no-schema-change` entries for audit and the permanent security
 floor, but they cease to be rollback targets as soon as the real C3 gate has
 migrated the database. All new images use
-`0007_identity_provider_snapshot` and the
+`0008_credential_revocation_operations` and the
 real migration gate. Because production catalog/row-count and restore evidence
 are still absent, an existing unversioned database is a conflict: there is no
 automatic baseline adoption, username/email matching, or authorized production

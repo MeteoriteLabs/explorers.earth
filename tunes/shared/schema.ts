@@ -87,6 +87,21 @@ export const musicIdentityLifecycleOperations = pgTable("music_identity_lifecycl
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// Durable C5 credential-revocation idempotency history. It deliberately has
+// no users foreign key so the immutable operation/resource tuple survives a
+// later identity deletion.
+export const musicCredentialRevocationOperations = pgTable("music_credential_revocation_operations", {
+  operationId: text("operation_id").primaryKey(),
+  musicUserId: integer("music_user_id").notNull(),
+  strapiUserDocumentId: text("strapi_user_document_id").notNull(),
+  strapiAccountDocumentId: text("strapi_account_document_id").notNull(),
+  reason: text("reason").notNull().$type<"logout_all" | "entitlement_security_revocation" | "credential_compromise">(),
+  expectedSessionVersion: integer("expected_session_version").notNull(),
+  resultSessionVersion: integer("result_session_version").notNull(),
+  operationState: text("operation_state").notNull().default("completed").$type<"completed">(),
+  completedAt: timestamp("completed_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const musicIdentityTombstones = pgTable("music_identity_tombstones", {
   strapiUserDocumentId: text("strapi_user_document_id").primaryKey(),
   strapiAccountDocumentId: text("strapi_account_document_id").notNull().unique(),

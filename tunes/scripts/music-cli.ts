@@ -6,6 +6,7 @@ import { parseMusicEnvironment } from "../server/config/music-environment.ts";
 import { MUSIC_COMPOSE_PROJECT, validateComposeModel, validateOwnedResources, type ComposeModel } from "./music-compose-safety.ts";
 import { OwnedProcessRunner } from "./music-process-runner.ts";
 import { EXPECTED_MUSIC_MIGRATION_ID } from "../shared/music-migration-contract.ts";
+import { cleanupFixtureMusicTokenSecret, prepareFixtureMusicTokenSecret } from "./music-fixture-secret.ts";
 
 export const MUSIC_CLI_SCHEMA_VERSION = "music-cli/v1";
 export const FIXTURE_SCHEMA_VERSION = "strapi-identity-fixture/v1";
@@ -250,10 +251,7 @@ async function runChild(id: string, command: "npm" | "docker" | "node", args: st
 
 function createTestEnv(): void {
   const path = join(root, ".env.music.test");
-  const tokenDirectory = join(root, ".artifacts", "music-token-secrets");
-  mkdirSync(tokenDirectory, { recursive: true });
-  const tokenPath = join(tokenDirectory, "current");
-  if (!existsSync(tokenPath)) writeFileSync(tokenPath, randomBytes(32).toString("base64url"), { mode: 0o600 });
+  prepareFixtureMusicTokenSecret(root);
   if (existsSync(path)) { try { parseMusicEnvironment(readEnvFile(path)); return; } catch { /* replace invalid disposable configuration */ } }
   writeFileSync(path, `MUSIC_MODE=fixture\nMUSIC_FIXTURE_VERSION=1\nSTRAPI_URL=http://strapi:1337\nMUSIC_FIXTURE_STRAPI_ORIGIN=http://strapi:1337\nTRUST_PROXY_HOPS=0\nSTRAPI_FIXTURE_URL=http://127.0.0.1:51337\nDATABASE_URL_TEST=postgresql://music:music@127.0.0.1:55432/music_fixture\nSESSION_SECRET=${randomBytes(32).toString("base64url")}\nCOOKIE_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_SIGNING_KEY_CURRENT_ID=fixture-current\nMUSIC_SIGNING_KEY_CURRENT_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_SIGNING_KEY_PREVIOUS_ID=fixture-previous\nMUSIC_SIGNING_KEY_PREVIOUS_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_TOKEN_CURRENT_KID=fixture-current\nMUSIC_TOKEN_CURRENT_SECRET_FILE=/run/secrets/music-token/current\nMUSIC_TOKEN_LIFETIME_SECONDS=600\nMUSIC_TOKEN_CLOCK_SKEW_SECONDS=15\nMUSIC_CONNECT_TIMEOUT_MS=5000\nMUSIC_READ_TIMEOUT_MS=10000\nMUSIC_CIRCUIT_FAILURE_THRESHOLD=3\nMUSIC_RATE_LIMIT_PER_MINUTE=60\nMUSIC_PROVISIONING_KILL_SWITCH=true\nMUSIC_PROVISIONING_COHORT=disabled\nMUSIC_EXPECTED_MIGRATION_ID=${EXPECTED_MUSIC_MIGRATION_ID}\nMUSIC_RECONCILIATION_ENABLED=false\nMUSIC_RECONCILIATION_MAX_ROWS=0\n`);
 }
@@ -309,7 +307,7 @@ function captureFixture(mode: Mode): RunResult {
 
 async function executeCommand(id: string, parsed: ParsedArgs): Promise<RunResult> {
   if (parsed.command === "bootstrap") {
-    createTestEnv(); parseMusicEnvironment(readEnvFile(join(root, ".env.music.test")));
+    parseMusicEnvironment(readEnvFile(join(root, ".env.music.test")));
     const fixture = JSON.parse(readFileSync(join(root, "fixtures/strapi/music-identity/identity.fixture.json"), "utf8")); validateStrapiFixture(fixture, { mode: "fixture" });
     const artifacts: string[] = [];
     for (const args of [["ci", "--prefix", "tunes"], ["ci", "--prefix", "explorers-earth"]]) { const result = await runChild(id, "npm", args, "bootstrap-install", EXIT.prerequisite); artifacts.push(result.artifact); }
@@ -377,6 +375,7 @@ async function executeCommand(id: string, parsed: ParsedArgs): Promise<RunResult
     const compose = await renderComposeModel(id);
     const artifacts = [...compose.artifacts, ...(await inspectOwnedComposeResources(id, compose.model))];
     const result = await runChild(id, "docker", ["compose", "-p", MUSIC_COMPOSE_PROJECT, "-f", composeFile, "down", ...(destructive ? ["--volumes"] : [])], parsed.command === "db:reset" ? "db-reset" : "down", EXIT.dependency);
+    if (parsed.command === "down") cleanupFixtureMusicTokenSecret(root);
     return { status: "success", phase: parsed.command === "db:reset" ? "db-reset" : "down", exitCode: EXIT.success, artifacts: [...artifacts, result.artifact] };
   }
   throw new MusicCommandError(`unhandled command ${parsed.command}`, "arguments", EXIT.usage);

@@ -14,6 +14,10 @@ let admin: pg.Pool;
 let pool: pg.Pool;
 let repository: MusicIdentityRepository;
 
+function revocationOperation(suffix: number): string {
+  return `10000000-0000-4000-8000-${suffix.toString(16).padStart(12, "0")}`;
+}
+
 function input(suffix: string): EnsureMusicIdentityInput {
   return {
     userDocumentId: `user-${suffix}`,
@@ -64,7 +68,9 @@ describePg("C5 Music credentials on real PostgreSQL 15", () => {
     const token = tokens.mint(identity).token;
     await expect(principals.resolve(token)).resolves.toMatchObject({ musicUserId: identity.id, subject: "user-truth" });
 
-    await repository.revokeAllCredentials({ musicUserId: identity.id, expectedSessionVersion: 1, reason: "logout_all" });
+    await repository.revokeAllCredentials({
+      operationId: revocationOperation(1), musicUserId: identity.id, expectedSessionVersion: 1, reason: "logout_all",
+    });
     await expect(principals.resolve(token)).rejects.toMatchObject({ code: "TOKEN_REVOKED" });
 
     const suspended = await repository.ensureIdentity(input("suspended"));
@@ -101,23 +107,103 @@ describePg("C5 Music credentials on real PostgreSQL 15", () => {
     await expect(principals.resolve(token)).rejects.toMatchObject({ code: "TOKEN_REVOKED" });
   });
 
-  it.each(["logout_all", "entitlement_security_revocation", "credential_compromise"] as const)(
+  it.each([
+    ["logout_all", 10],
+    ["entitlement_security_revocation", 11],
+    ["credential_compromise", 12],
+  ] as const)(
     "atomically and idempotently revokes concurrent %s calls",
-    async (reason) => {
+    async (reason, operationSuffix) => {
       const identity = await repository.ensureIdentity(input(`revoke-${reason}`));
+      const operationId = revocationOperation(operationSuffix);
       const results = await Promise.all(Array.from({ length: 20 }, () => repository.revokeAllCredentials({
-        musicUserId: identity.id, expectedSessionVersion: identity.sessionVersion, reason,
+        operationId, musicUserId: identity.id, expectedSessionVersion: identity.sessionVersion, reason,
       })));
-      expect(new Set(results.map(({ sessionVersion }) => sessionVersion))).toEqual(new Set([2]));
+      expect(new Set(results.map(({ resultSessionVersion }) => resultSessionVersion))).toEqual(new Set([2]));
       expect((await pool.query("SELECT session_version FROM users WHERE id=$1", [identity.id])).rows[0].session_version).toBe(2);
+      expect((await pool.query(`SELECT operation_id,music_user_id,strapi_user_document_id,strapi_account_document_id,
+        reason,expected_session_version,result_session_version,operation_state
+        FROM music_credential_revocation_operations WHERE music_user_id=$1`, [identity.id])).rows).toEqual([{
+        operation_id: operationId,
+        music_user_id: identity.id,
+        strapi_user_document_id: `user-revoke-${reason}`,
+        strapi_account_document_id: `account-revoke-${reason}`,
+        reason,
+        expected_session_version: 1,
+        result_session_version: 2,
+        operation_state: "completed",
+      }]);
     },
   );
 
-  it("rolls back a stale version with no session mutation", async () => {
+  it("rejects stale, ahead, mismatched operation, and changed-reason replay without mutation", async () => {
     const identity = await repository.ensureIdentity(input("stale"));
     await expect(repository.revokeAllCredentials({
-      musicUserId: identity.id, expectedSessionVersion: 3, reason: "credential_compromise",
+      operationId: revocationOperation(20), musicUserId: identity.id, expectedSessionVersion: 3, reason: "credential_compromise",
     })).rejects.toMatchObject({ code: "IDENTITY_CONFLICT" });
+    const first = await repository.revokeAllCredentials({
+      operationId: revocationOperation(21), musicUserId: identity.id, expectedSessionVersion: 1, reason: "logout_all",
+    });
+    expect(first.resultSessionVersion).toBe(2);
+    await expect(repository.revokeAllCredentials({
+      operationId: revocationOperation(21), musicUserId: identity.id, expectedSessionVersion: 1, reason: "credential_compromise",
+    })).rejects.toMatchObject({ code: "IDENTITY_CONFLICT" });
+    await expect(repository.revokeAllCredentials({
+      operationId: revocationOperation(22), musicUserId: identity.id, expectedSessionVersion: 1, reason: "logout_all",
+    })).rejects.toMatchObject({ code: "IDENTITY_CONFLICT" });
+    await expect(repository.revokeAllCredentials({
+      operationId: revocationOperation(23), musicUserId: identity.id, expectedSessionVersion: 4, reason: "logout_all",
+    })).rejects.toMatchObject({ code: "IDENTITY_CONFLICT" });
+    expect((await pool.query("SELECT session_version FROM users WHERE id=$1", [identity.id])).rows[0].session_version).toBe(2);
+    expect((await pool.query("SELECT count(*)::integer AS count FROM music_credential_revocation_operations WHERE music_user_id=$1", [identity.id])).rows[0].count).toBe(1);
+  });
+
+  it("allows only one distinct concurrent operation for the same resource version", async () => {
+    const identity = await repository.ensureIdentity(input("distinct"));
+    const settled = await Promise.allSettled([
+      repository.revokeAllCredentials({
+        operationId: revocationOperation(30), musicUserId: identity.id, expectedSessionVersion: 1, reason: "logout_all",
+      }),
+      repository.revokeAllCredentials({
+        operationId: revocationOperation(31), musicUserId: identity.id, expectedSessionVersion: 1, reason: "credential_compromise",
+      }),
+    ]);
+    expect(settled.filter(({ status }) => status === "fulfilled")).toHaveLength(1);
+    expect(settled.filter(({ status }) => status === "rejected")).toHaveLength(1);
+    expect((settled.find(({ status }) => status === "rejected") as PromiseRejectedResult).reason)
+      .toMatchObject({ code: "IDENTITY_CONFLICT" });
+    expect((await pool.query("SELECT session_version FROM users WHERE id=$1", [identity.id])).rows[0].session_version).toBe(2);
+    expect((await pool.query("SELECT count(*)::integer AS count FROM music_credential_revocation_operations WHERE music_user_id=$1", [identity.id])).rows[0].count).toBe(1);
+  });
+
+  it("does not reinterpret an unrelated lifecycle increment as a revocation replay", async () => {
+    const identity = await repository.ensureIdentity(input("lifecycle-version"));
+    await repository.transitionIdentity({
+      strapiUserDocumentId: "user-lifecycle-version",
+      operationId: "suspend-before-revocation",
+      kind: "suspend",
+      targetStatus: "suspended",
+    });
+    await expect(repository.revokeAllCredentials({
+      operationId: revocationOperation(35), musicUserId: identity.id, expectedSessionVersion: 1, reason: "logout_all",
+    })).rejects.toMatchObject({ code: "IDENTITY_CONFLICT" });
+    expect((await pool.query("SELECT session_version FROM users WHERE id=$1", [identity.id])).rows[0].session_version).toBe(2);
+    expect((await pool.query("SELECT count(*)::integer AS count FROM music_credential_revocation_operations WHERE music_user_id=$1", [identity.id])).rows[0].count).toBe(0);
+  });
+
+  it("rolls back the durable operation and session change together on a history write failure", async () => {
+    const identity = await repository.ensureIdentity(input("rollback"));
+    await pool.query(`CREATE FUNCTION music_test_reject_revocation() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN RAISE EXCEPTION 'revocation history rejected'; END $$`);
+    await pool.query(`CREATE TRIGGER music_test_reject_revocation
+      BEFORE INSERT ON music_credential_revocation_operations
+      FOR EACH ROW EXECUTE FUNCTION music_test_reject_revocation()`);
+    await expect(repository.revokeAllCredentials({
+      operationId: revocationOperation(40), musicUserId: identity.id, expectedSessionVersion: 1, reason: "logout_all",
+    })).rejects.toThrow("revocation history rejected");
+    await pool.query("DROP TRIGGER music_test_reject_revocation ON music_credential_revocation_operations");
+    await pool.query("DROP FUNCTION music_test_reject_revocation()");
     expect((await pool.query("SELECT session_version FROM users WHERE id=$1", [identity.id])).rows[0].session_version).toBe(1);
+    expect((await pool.query("SELECT count(*)::integer AS count FROM music_credential_revocation_operations WHERE music_user_id=$1", [identity.id])).rows[0].count).toBe(0);
   });
 });

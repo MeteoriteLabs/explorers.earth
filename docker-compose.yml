@@ -135,13 +135,13 @@ services:
       <<: *tunes-environment
       MUSIC_IMAGE_DIGEST: ${TUNES_BLUE_DIGEST:?TUNES_BLUE_DIGEST is required}
       MUSIC_IMAGE_COMMIT: ${TUNES_BLUE_COMMIT:?TUNES_BLUE_COMMIT is required}
-      MUSIC_MIGRATION_MARKER: ${TUNES_BLUE_MIGRATION:-0007_identity_provider_snapshot}
+      MUSIC_MIGRATION_MARKER: ${TUNES_BLUE_MIGRATION:-0008_credential_revocation_operations}
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/${TUNES_BLUE_DIGEST:?TUNES_BLUE_DIGEST is required}.json
     labels:
       com.explorers.music.slot: blue
       com.explorers.music.commit: ${TUNES_BLUE_COMMIT:?TUNES_BLUE_COMMIT is required}
       com.explorers.music.digest: ${TUNES_BLUE_DIGEST:?TUNES_BLUE_DIGEST is required}
-      com.explorers.music.migration: ${TUNES_BLUE_MIGRATION:-0007_identity_provider_snapshot}
+      com.explorers.music.migration: ${TUNES_BLUE_MIGRATION:-0008_credential_revocation_operations}
 
   tunes-green:
     <<: *tunes-service
@@ -150,13 +150,13 @@ services:
       <<: *tunes-environment
       MUSIC_IMAGE_DIGEST: ${TUNES_GREEN_DIGEST:?TUNES_GREEN_DIGEST is required}
       MUSIC_IMAGE_COMMIT: ${TUNES_GREEN_COMMIT:?TUNES_GREEN_COMMIT is required}
-      MUSIC_MIGRATION_MARKER: ${TUNES_GREEN_MIGRATION:-0007_identity_provider_snapshot}
+      MUSIC_MIGRATION_MARKER: ${TUNES_GREEN_MIGRATION:-0008_credential_revocation_operations}
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/${TUNES_GREEN_DIGEST:?TUNES_GREEN_DIGEST is required}.json
     labels:
       com.explorers.music.slot: green
       com.explorers.music.commit: ${TUNES_GREEN_COMMIT:?TUNES_GREEN_COMMIT is required}
       com.explorers.music.digest: ${TUNES_GREEN_DIGEST:?TUNES_GREEN_DIGEST is required}
-      com.explorers.music.migration: ${TUNES_GREEN_MIGRATION:-0007_identity_provider_snapshot}
+      com.explorers.music.migration: ${TUNES_GREEN_MIGRATION:-0008_credential_revocation_operations}
 
   tunes-gate:
     profiles: [deployment]
@@ -167,7 +167,7 @@ services:
       DATABASE_URL: postgresql://${DB_USER:?DB_USER is required}:${DB_PASS:?DB_PASS is required}@db:5432/${DB_NAME:?DB_NAME is required}
       MUSIC_IMAGE_DIGEST: ${TUNES_CANDIDATE_DIGEST:?TUNES_CANDIDATE_DIGEST is required}
       MUSIC_IMAGE_COMMIT: ${TUNES_CANDIDATE_COMMIT:?TUNES_CANDIDATE_COMMIT is required}
-      MUSIC_MIGRATION_MARKER: ${TUNES_CANDIDATE_MIGRATION:-0007_identity_provider_snapshot}
+      MUSIC_MIGRATION_MARKER: ${TUNES_CANDIDATE_MIGRATION:-0008_credential_revocation_operations}
       MUSIC_GATE_ATTESTATION_KEY: ${MUSIC_GATE_ATTESTATION_KEY:?MUSIC_GATE_ATTESTATION_KEY is required}
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/${TUNES_CANDIDATE_DIGEST:?TUNES_CANDIDATE_DIGEST is required}.json
     depends_on:

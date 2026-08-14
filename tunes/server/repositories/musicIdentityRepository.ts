@@ -52,9 +52,17 @@ export interface TransitionMusicIdentityInput {
 }
 
 export interface RevokeMusicCredentialsInput {
+  operationId: string;
   musicUserId: number;
   expectedSessionVersion: number;
   reason: "logout_all" | "entitlement_security_revocation" | "credential_compromise";
+}
+
+export interface MusicCredentialRevocationResult extends RevokeMusicCredentialsInput {
+  strapiUserDocumentId: string;
+  strapiAccountDocumentId: string;
+  resultSessionVersion: number;
+  operationState: "completed";
 }
 
 export class StaleLifecycleOperationError extends Error {
@@ -235,8 +243,9 @@ export class MusicIdentityRepository {
     };
   }
 
-  async revokeAllCredentials(input: RevokeMusicCredentialsInput): Promise<MusicIdentityProjection> {
-    if (!Number.isSafeInteger(input.musicUserId) || input.musicUserId < 1
+  async revokeAllCredentials(input: RevokeMusicCredentialsInput): Promise<MusicCredentialRevocationResult> {
+    if (!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(input.operationId)
+        || !Number.isSafeInteger(input.musicUserId) || input.musicUserId < 1
         || !Number.isSafeInteger(input.expectedSessionVersion) || input.expectedSessionVersion < 1
         || !["logout_all", "entitlement_security_revocation", "credential_compromise"].includes(input.reason)) {
       throw new MusicIdentityError("REQUEST_INVALID", 400, "Music credential revocation input is invalid.", "none", false);
@@ -244,28 +253,70 @@ export class MusicIdentityRepository {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
+      const readOperation = async () => (await client.query<any>(`SELECT operation_id,music_user_id,
+        strapi_user_document_id,strapi_account_document_id,reason,expected_session_version,
+        result_session_version,operation_state
+        FROM music_credential_revocation_operations WHERE operation_id=$1`, [input.operationId])).rows[0];
+      const exactReplay = (operation: any): MusicCredentialRevocationResult => {
+        if (operation.music_user_id !== input.musicUserId
+            || operation.reason !== input.reason
+            || operation.expected_session_version !== input.expectedSessionVersion
+            || operation.result_session_version !== input.expectedSessionVersion + 1
+            || operation.operation_state !== "completed") {
+          throw new MusicIdentityError("IDENTITY_CONFLICT", 409, "The Music credential revocation state conflicts.", "retry", false, undefined, "operation_mismatch");
+        }
+        return {
+          operationId: operation.operation_id,
+          musicUserId: operation.music_user_id,
+          strapiUserDocumentId: operation.strapi_user_document_id,
+          strapiAccountDocumentId: operation.strapi_account_document_id,
+          reason: operation.reason,
+          expectedSessionVersion: operation.expected_session_version,
+          resultSessionVersion: operation.result_session_version,
+          operationState: operation.operation_state,
+        };
+      };
+
+      const prior = await readOperation();
+      if (prior) {
+        const replay = exactReplay(prior);
+        await client.query("COMMIT");
+        return replay;
+      }
+
       const result = await client.query<any>(`SELECT id,strapi_user_document_id,
         strapi_account_document_id,identity_status,session_version
         FROM users WHERE id=$1 FOR UPDATE`, [input.musicUserId]);
       const row = result.rows[0];
-      if (!row || row.session_version < input.expectedSessionVersion
-          || row.session_version > input.expectedSessionVersion + 1) {
+      const concurrentReplay = await readOperation();
+      if (concurrentReplay) {
+        const replay = exactReplay(concurrentReplay);
+        await client.query("COMMIT");
+        return replay;
+      }
+      if (!row || row.session_version !== input.expectedSessionVersion) {
         throw new MusicIdentityError("IDENTITY_CONFLICT", 409, "The Music credential revocation state conflicts.", "retry", false, undefined, "session_version");
       }
-      if (row.session_version === input.expectedSessionVersion + 1) {
-        await client.query("COMMIT");
-        return projection(row);
-      }
+
+      const operation = await client.query<any>(`INSERT INTO music_credential_revocation_operations(
+        operation_id,music_user_id,strapi_user_document_id,strapi_account_document_id,reason,
+        expected_session_version,result_session_version,operation_state
+      ) VALUES ($1,$2,$3,$4,$5,$6,$6+1,'completed')
+      RETURNING operation_id,music_user_id,strapi_user_document_id,strapi_account_document_id,reason,
+        expected_session_version,result_session_version,operation_state`, [
+        input.operationId,input.musicUserId,row.strapi_user_document_id,row.strapi_account_document_id,
+        input.reason,input.expectedSessionVersion,
+      ]);
       const updated = await client.query<any>(`UPDATE users SET session_version=session_version+1,updated_at=now()
         WHERE id=$1 AND session_version=$2
-        RETURNING id,strapi_user_document_id,strapi_account_document_id,identity_status,session_version`, [
+        RETURNING session_version`, [
         input.musicUserId,input.expectedSessionVersion,
       ]);
-      if (!updated.rows[0]) {
+      if (updated.rows[0]?.session_version !== input.expectedSessionVersion + 1) {
         throw new MusicIdentityError("IDENTITY_CONFLICT", 409, "The Music credential revocation state conflicts.", "retry", false, undefined, "session_version");
       }
       await client.query("COMMIT");
-      return projection(updated.rows[0]);
+      return exactReplay(operation.rows[0]);
     } catch (error) {
       await client.query("ROLLBACK").catch(() => undefined);
       throw error;

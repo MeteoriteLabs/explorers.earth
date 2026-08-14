@@ -30,6 +30,45 @@ function expiredResponse(): Response {
 beforeEach(() => clearMusicCredential());
 
 describe("local Tunes API client", () => {
+  it.each([
+    "http://music.example",
+    "http://10.2.3.4:5000",
+    "http://192.168.10.12:5000",
+    "http://172.20.0.5:5000",
+    "http://127.0.0.1:55000",
+  ])("rejects cleartext Music origin %s before fetch without leaking a stored token", (baseUrl) => {
+    const fetchImpl = vi.fn();
+    setMusicCredential(freshCredential);
+    let error: unknown;
+    try {
+      createLocalTunesApiClient({ baseUrl, fetchImpl, getStrapiBearer: async () => "unused-proof" });
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toMatchObject({ code: "REQUEST_INVALID" });
+    expect(JSON.stringify(error)).not.toContain(freshCredential.token);
+    expect(String((error as Error).message)).not.toContain(baseUrl);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it.each(["http://127.0.0.1:55000", "http://localhost:55000"])(
+    "allows only the exact disposable loopback origin %s behind the explicit test fixture flag",
+    async (baseUrl) => {
+      setMusicCredential(freshCredential);
+      const fetchImpl = vi.fn(async () => json({ ok: true }));
+      const client = createLocalTunesApiClient({
+        baseUrl,
+        fixtureMode: true,
+        fetchImpl,
+        getStrapiBearer: async () => "unused-proof",
+        now: () => NOW,
+      } as never);
+      await expect(client.request({ method: "GET", path: "/api/music/identity/current" }))
+        .resolves.toMatchObject({ status: 200 });
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it("coalesces 50 initial refreshes and keeps proof B on ensure and credential C on local calls", async () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {

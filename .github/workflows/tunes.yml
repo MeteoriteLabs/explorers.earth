@@ -95,7 +95,7 @@ jobs:
         run: >-
           docker run --rm --entrypoint node
           "${{ steps.image.outputs.name }}:${{ github.sha }}" -e
-          "const{existsSync}=require('node:fs');for(const p of ['/app/dist/server/deployment/run-migration-gate.js','/app/dist/server/deployment/run-registration-compat.js','/app/migrations/0001_runtime_baseline.sql','/app/migrations/0002_identity_lifecycle.sql','/app/migrations/0003_identity_lifecycle_hardening.sql','/app/migrations/0004_identity_delete_saga.sql','/app/migrations/0005_resource_bound_deletion_history.sql','/app/migrations/0006_numeric_identity_lock.sql','/app/migrations/0007_identity_provider_snapshot.sql'])if(!existsSync(p))process.exit(1)"
+          "const{existsSync}=require('node:fs');for(const p of ['/app/dist/server/deployment/run-migration-gate.js','/app/dist/server/deployment/run-registration-compat.js','/app/migrations/0001_runtime_baseline.sql','/app/migrations/0002_identity_lifecycle.sql','/app/migrations/0003_identity_lifecycle_hardening.sql','/app/migrations/0004_identity_delete_saga.sql','/app/migrations/0005_resource_bound_deletion_history.sql','/app/migrations/0006_numeric_identity_lock.sql','/app/migrations/0007_identity_provider_snapshot.sql','/app/migrations/0008_credential_revocation_operations.sql'])if(!existsSync(p))process.exit(1)"
       - name: Scan the exact built image
         uses: anchore/scan-action@v7
         with:
