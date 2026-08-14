@@ -142,6 +142,7 @@ describe("Strapi identity gateway", () => {
   });
 
   it("bounds upstream concurrency and opens/half-opens its circuit", async () => {
+    let now = 1_800_000_000_000;
     let active = 0;
     let peak = 0;
     const fetchImpl = vi.fn<typeof fetch>(async () => {
@@ -151,7 +152,9 @@ describe("Strapi identity gateway", () => {
       active -= 1;
       return response({}, 503);
     });
-    const bounded = gateway(fetchImpl, { retries: 0, maxConcurrency: 2, circuitFailureThreshold: 2, circuitOpenMs: 20 });
+    const bounded = gateway(fetchImpl, {
+      retries: 0, maxConcurrency: 2, circuitFailureThreshold: 2, circuitOpenMs: 20, now: () => now,
+    });
     const results = await Promise.allSettled(Array.from({ length: 8 }, (_, index) =>
       bounded.resolve(`proof-${index}-with-enough-entropy`, `request-${index}`)));
     expect(results.every((item) => item.status === "rejected")).toBe(true);
@@ -161,7 +164,7 @@ describe("Strapi identity gateway", () => {
     await expect(bounded.resolve("new-proof-with-enough-entropy", "request-open"))
       .rejects.toMatchObject({ code: "UPSTREAM_UNAVAILABLE" });
     expect(fetchImpl).toHaveBeenCalledTimes(calls);
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    now += 21;
     await expect(bounded.resolve("probe-proof-with-enough-entropy", "request-probe"))
       .rejects.toBeInstanceOf(MusicIdentityError);
     expect(fetchImpl.mock.calls.length).toBe(calls + 1);

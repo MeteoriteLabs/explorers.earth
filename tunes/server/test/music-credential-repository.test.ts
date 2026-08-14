@@ -86,4 +86,38 @@ describe("Music credential repository primitives", () => {
     expect(query.mock.calls[0][0]).toContain("strapi_account_document_id");
   });
 
+  it("normalizes a concurrent cross-resource operation UUID collision to the typed conflict", async () => {
+    const operationId = "10000000-0000-4000-8000-000000000009";
+    const client = {
+      query: vi.fn(async (sql: string) => {
+        if (/FROM music_credential_revocation_operations/.test(sql)) return { rows: [], rowCount: 0 };
+        if (/FROM users WHERE id=\$1 FOR UPDATE/.test(sql)) return { rows: [{
+          id: 42,
+          strapi_user_document_id: "subject-42",
+          strapi_account_document_id: "account-42",
+          identity_status: "active",
+          session_version: 3,
+          tombstoned: false,
+        }], rowCount: 1 };
+        if (/INSERT INTO music_credential_revocation_operations/.test(sql)) {
+          throw Object.assign(new Error("duplicate key value exposes raw database detail"), {
+            code: "23505",
+            constraint: "music_credential_revocation_operations_pkey",
+          });
+        }
+        return { rows: [], rowCount: 0 };
+      }),
+      release: vi.fn(),
+    };
+    const repository = new MusicIdentityRepository({ query: vi.fn(), connect: async () => client } as never);
+    const failure = repository.revokeAllCredentials({
+      operationId,
+      musicUserId: 42,
+      expectedSessionVersion: 3,
+      reason: "logout_all",
+    });
+    await expect(failure).rejects.toMatchObject({ code: "IDENTITY_CONFLICT" });
+    await expect(failure.catch((error) => error)).resolves.not.toMatchObject({ code: "23505" });
+  });
+
 });

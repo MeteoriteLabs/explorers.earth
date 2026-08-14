@@ -30,7 +30,6 @@ export class MusicClientError extends Error {
 
 export interface LocalTunesApiClientDependencies {
   baseUrl: string;
-  fixtureMode?: boolean;
   fetchImpl?: typeof fetch;
   getStrapiBearer: () => Promise<string | undefined>;
   now?: () => number;
@@ -47,7 +46,7 @@ const STRAPI_PROOF_PATTERN = /^[A-Za-z0-9._~-]{16,4096}$/;
 export function createLocalTunesApiClient(dependencies: LocalTunesApiClientDependencies): LocalTunesApiClient {
   const fetchImpl = dependencies.fetchImpl ?? fetch;
   const now = dependencies.now ?? Date.now;
-  const baseUrl = normalizedBaseUrl(dependencies.baseUrl, dependencies.fixtureMode === true);
+  const baseUrl = normalizedBaseUrl(dependencies.baseUrl);
   let refreshFlight: Promise<MusicCredential> | undefined;
 
   async function refresh(): Promise<MusicCredential> {
@@ -144,17 +143,14 @@ async function responseErrorCode(response: Response): Promise<string | undefined
   }
 }
 
-function normalizedBaseUrl(raw: string, fixtureMode: boolean): string {
+function normalizedBaseUrl(raw: string): string {
   let parsed: URL;
   try {
     parsed = new URL(raw);
   } catch {
     throw new MusicClientError("REQUEST_INVALID", 400, "The Music service origin is invalid.");
   }
-  const exactFixtureOrigin = parsed.origin === "http://127.0.0.1:55000"
-    || parsed.origin === "http://localhost:55000";
-  const fixtureHttpAllowed = fixtureMode && exactFixtureOrigin;
-  if ((parsed.protocol !== "https:" && !fixtureHttpAllowed) || parsed.username || parsed.password
+  if (parsed.protocol !== "https:" || parsed.username || parsed.password
       || parsed.search || parsed.hash || parsed.pathname !== "/") {
     throw new MusicClientError("REQUEST_INVALID", 400, "The Music service origin is invalid.");
   }

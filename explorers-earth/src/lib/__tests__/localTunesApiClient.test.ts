@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { clearMusicCredential, getMusicCredential, setMusicCredential } from "../musicCredentialStore";
 import { createLocalTunesApiClient, MusicClientError } from "../localTunesApiClient";
 
@@ -30,6 +32,11 @@ function expiredResponse(): Response {
 beforeEach(() => clearMusicCredential());
 
 describe("local Tunes API client", () => {
+  it("has no caller-flippable fixture HTTP capability in the production client source", () => {
+    const source = readFileSync(resolve(import.meta.dirname, "../localTunesApiClient.ts"), "utf8");
+    expect(source).not.toMatch(/fixtureMode|fixtureHttpAllowed|http:\/\/127\.0\.0\.1|http:\/\/localhost/);
+  });
+
   it.each([
     "http://music.example",
     "http://10.2.3.4:5000",
@@ -52,20 +59,14 @@ describe("local Tunes API client", () => {
   });
 
   it.each(["http://127.0.0.1:55000", "http://localhost:55000"])(
-    "allows only the exact disposable loopback origin %s behind the explicit test fixture flag",
-    async (baseUrl) => {
+    "rejects loopback cleartext even when a caller tries the former fixture switch at %s",
+    (baseUrl) => {
       setMusicCredential(freshCredential);
-      const fetchImpl = vi.fn(async () => json({ ok: true }));
-      const client = createLocalTunesApiClient({
-        baseUrl,
-        fixtureMode: true,
-        fetchImpl,
-        getStrapiBearer: async () => "unused-proof",
-        now: () => NOW,
-      } as never);
-      await expect(client.request({ method: "GET", path: "/api/music/identity/current" }))
-        .resolves.toMatchObject({ status: 200 });
-      expect(fetchImpl).toHaveBeenCalledTimes(1);
+      const fetchImpl = vi.fn();
+      expect(() => createLocalTunesApiClient({
+        baseUrl, fixtureMode: true, fetchImpl, getStrapiBearer: async () => "unused-proof", now: () => NOW,
+      } as never)).toThrow(expect.objectContaining({ code: "REQUEST_INVALID" }));
+      expect(fetchImpl).not.toHaveBeenCalled();
     },
   );
 

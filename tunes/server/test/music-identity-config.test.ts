@@ -1,4 +1,4 @@
-import { chmodSync, lstatSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { lstat, open } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -9,11 +9,15 @@ import {
 } from "../config/music-identity-config";
 
 const secretRoot = mkdtempSync(join(tmpdir(), "music-key-config-"));
+const externalSecretRoot = mkdtempSync(join(tmpdir(), "music-key-external-"));
 const validCurrentPath = join(secretRoot, "current");
 writeFileSync(validCurrentPath, Buffer.alloc(32, 0x51).toString("base64url"), { mode: 0o600 });
 chmodSync(validCurrentPath, 0o600);
 
-afterAll(() => rmSync(secretRoot, { recursive: true, force: true }));
+afterAll(() => {
+  rmSync(secretRoot, { recursive: true, force: true });
+  rmSync(externalSecretRoot, { recursive: true, force: true });
+});
 
 const liveBase = {
   NODE_ENV: "production",
@@ -262,5 +266,19 @@ describe("central Music identity startup configuration", () => {
     });
     await expect(failure).rejects.toThrow(/changed|secret|secure/i);
     expect(changed).toBe(true);
+  });
+
+  it("rejects a regular key reached through a symlink or junction ancestor", async () => {
+    const externalKey = join(externalSecretRoot, "current");
+    const linkedParent = join(secretRoot, "linked-parent");
+    writeFileSync(externalKey, Buffer.alloc(32, 0x66).toString("base64url"), { mode: 0o600 });
+    chmodSync(externalKey, 0o600);
+    symlinkSync(externalSecretRoot, linkedParent, "junction");
+
+    await expect(resolveMusicIdentityRuntimeConfig({
+      ...liveBase,
+      MUSIC_TOKEN_CURRENT_SECRET_FILE: join(linkedParent, "current"),
+    }, { resolveAddresses: publicResolver })).rejects.toThrow(/ancestor|directory|link|secure/i);
+    expect(readFileSync(externalKey, "utf8")).toBe(Buffer.alloc(32, 0x66).toString("base64url"));
   });
 });

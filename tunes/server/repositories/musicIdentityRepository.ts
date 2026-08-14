@@ -97,6 +97,13 @@ async function lockIdentity(client: Pick<PoolClient, "query">, userDocumentId: s
   await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`music:account:${accountDocumentId}`]);
 }
 
+function isCredentialRevocationOperationIdCollision(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const databaseError = error as { code?: unknown; constraint?: unknown };
+  return databaseError.code === "23505"
+    && databaseError.constraint === "music_credential_revocation_operations_pkey";
+}
+
 function validateEnsureInput(input: EnsureMusicIdentityInput): void {
   const required = [
     input.userDocumentId,input.accountDocumentId,input.username,input.email,input.accountName,input.accountType,
@@ -319,6 +326,17 @@ export class MusicIdentityRepository {
       return exactReplay(operation.rows[0]);
     } catch (error) {
       await client.query("ROLLBACK").catch(() => undefined);
+      if (isCredentialRevocationOperationIdCollision(error)) {
+        throw new MusicIdentityError(
+          "IDENTITY_CONFLICT",
+          409,
+          "The Music credential revocation state conflicts.",
+          "retry",
+          false,
+          undefined,
+          "operation_mismatch",
+        );
+      }
       throw error;
     } finally {
       client.release();

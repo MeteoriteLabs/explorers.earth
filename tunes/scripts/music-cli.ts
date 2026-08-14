@@ -6,7 +6,7 @@ import { parseMusicEnvironment } from "../server/config/music-environment.ts";
 import { MUSIC_COMPOSE_PROJECT, validateComposeModel, validateOwnedResources, type ComposeModel } from "./music-compose-safety.ts";
 import { OwnedProcessRunner } from "./music-process-runner.ts";
 import { EXPECTED_MUSIC_MIGRATION_ID } from "../shared/music-migration-contract.ts";
-import { cleanupFixtureMusicTokenSecret, prepareFixtureMusicTokenSecret } from "./music-fixture-secret.ts";
+import { prepareFixtureMusicTokenSecret, withFixtureMusicTokenSecretCleanup } from "./music-fixture-secret.ts";
 
 export const MUSIC_CLI_SCHEMA_VERSION = "music-cli/v1";
 export const FIXTURE_SCHEMA_VERSION = "strapi-identity-fixture/v1";
@@ -363,20 +363,21 @@ async function executeCommand(id: string, parsed: ParsedArgs): Promise<RunResult
   if (parsed.command === "test:smoke") { const result = await runChild(id, "npm", ["exec", "--silent", "--prefix", "tunes", "--", "tsx", "tunes/scripts/music-smoke.ts"], "smoke", EXIT.verification); return { status: "success", phase: "smoke", exitCode: EXIT.success, artifacts: [result.artifact] }; }
   if (parsed.command === "test:all") { const result = await runChild(id, "npm", ["test", "--prefix", "tunes"], "all-tests", EXIT.verification); return { status: "success", phase: "all-tests", exitCode: EXIT.success, artifacts: [result.artifact] }; }
   if (parsed.command === "down" || parsed.command === "db:reset") {
-    const destructive = parsed.command === "db:reset" || parsed.volumes;
-    if (destructive && (parsed.mode !== "fixture" || parsed.confirmProject !== MUSIC_COMPOSE_PROJECT)) throw new SafetyError(`destructive cleanup requires --mode fixture --confirm-project ${MUSIC_COMPOSE_PROJECT}`);
-    if (parsed.command === "db:reset") {
-      const { validateDisposableDatabaseTarget } = await import("../server/db/migrate.ts");
-      if (parsed.target !== "test") throw new SafetyError("db:reset requires explicit --target test", "database-target");
-      const environment = readEnvFile(existsSync(join(root, ".env.music.test")) ? join(root, ".env.music.test") : join(root, ".env.music.test.example"));
-      validateDisposableDatabaseTarget({ databaseUrlTest: environment.DATABASE_URL_TEST, databaseUrl: process.env.DATABASE_URL,
-        composeProject: parsed.confirmProject, confirmation: parsed.confirmReset });
-    }
-    const compose = await renderComposeModel(id);
-    const artifacts = [...compose.artifacts, ...(await inspectOwnedComposeResources(id, compose.model))];
-    const result = await runChild(id, "docker", ["compose", "-p", MUSIC_COMPOSE_PROJECT, "-f", composeFile, "down", ...(destructive ? ["--volumes"] : [])], parsed.command === "db:reset" ? "db-reset" : "down", EXIT.dependency);
-    if (parsed.command === "down") cleanupFixtureMusicTokenSecret(root);
-    return { status: "success", phase: parsed.command === "db:reset" ? "db-reset" : "down", exitCode: EXIT.success, artifacts: [...artifacts, result.artifact] };
+    return await withFixtureMusicTokenSecretCleanup(root, async () => {
+      const destructive = parsed.command === "db:reset" || parsed.volumes;
+      if (destructive && (parsed.mode !== "fixture" || parsed.confirmProject !== MUSIC_COMPOSE_PROJECT)) throw new SafetyError(`destructive cleanup requires --mode fixture --confirm-project ${MUSIC_COMPOSE_PROJECT}`);
+      if (parsed.command === "db:reset") {
+        const { validateDisposableDatabaseTarget } = await import("../server/db/migrate.ts");
+        if (parsed.target !== "test") throw new SafetyError("db:reset requires explicit --target test", "database-target");
+        const environment = readEnvFile(existsSync(join(root, ".env.music.test")) ? join(root, ".env.music.test") : join(root, ".env.music.test.example"));
+        validateDisposableDatabaseTarget({ databaseUrlTest: environment.DATABASE_URL_TEST, databaseUrl: process.env.DATABASE_URL,
+          composeProject: parsed.confirmProject, confirmation: parsed.confirmReset });
+      }
+      const compose = await renderComposeModel(id);
+      const artifacts = [...compose.artifacts, ...(await inspectOwnedComposeResources(id, compose.model))];
+      const result = await runChild(id, "docker", ["compose", "-p", MUSIC_COMPOSE_PROJECT, "-f", composeFile, "down", ...(destructive ? ["--volumes"] : [])], parsed.command === "db:reset" ? "db-reset" : "down", EXIT.dependency);
+      return { status: "success", phase: parsed.command === "db:reset" ? "db-reset" : "down", exitCode: EXIT.success, artifacts: [...artifacts, result.artifact] };
+    });
   }
   throw new MusicCommandError(`unhandled command ${parsed.command}`, "arguments", EXIT.usage);
 }

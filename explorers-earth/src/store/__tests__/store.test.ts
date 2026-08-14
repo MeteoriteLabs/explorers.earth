@@ -70,8 +70,13 @@ describe('useAuthStore', () => {
   it('cannot carry account A Music authority into a same-tab account B login', () => {
     useAuthStore.getState().login(initialData);
     setMusicCredential({ token: 'account-a.music.credential', expiresAt: Date.now() + 60_000 });
-    useAuthStore.getState().logout();
     useAuthStore.getState().login({ ...initialData, id: 'user456', documentId: 'doc456', token: 'account-b-jwt' });
+    expect(getMusicCredential()).toBeUndefined();
+  });
+
+  it('clears an orphaned Music credential before the first replacement login', () => {
+    setMusicCredential({ token: 'orphaned.music.credential', expiresAt: Date.now() + 60_000 });
+    useAuthStore.getState().login(initialData);
     expect(getMusicCredential()).toBeUndefined();
   });
 

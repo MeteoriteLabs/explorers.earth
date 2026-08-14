@@ -33,7 +33,8 @@ const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       user: null,
 
-      login: (data) =>
+      login: (data) => {
+        clearMusicCredential();
         set({
           isAuthenticated: true,
           user: {
@@ -44,7 +45,8 @@ const useAuthStore = create<AuthState>()(
             documentId: data.documentId,
           },
           token: data.token,
-        }),
+        });
+      },
 
       logout: () => {
         clearMusicCredential();

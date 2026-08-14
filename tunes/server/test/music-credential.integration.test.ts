@@ -176,6 +176,56 @@ describePg("C5 Music credentials on real PostgreSQL 15", () => {
     expect((await pool.query("SELECT count(*)::integer AS count FROM music_credential_revocation_operations WHERE music_user_id=$1", [identity.id])).rows[0].count).toBe(1);
   });
 
+  it("makes revocation history update/delete immutable while exact replay stays valid", async () => {
+    const identity = await repository.ensureIdentity(input("immutable-history"));
+    const operationId = revocationOperation(32);
+    await repository.revokeAllCredentials({
+      operationId, musicUserId: identity.id, expectedSessionVersion: 1, reason: "logout_all",
+    });
+    for (const statement of [
+      "UPDATE music_credential_revocation_operations SET operation_id='10000000-0000-4000-8000-000000000099' WHERE operation_id=$1",
+      "UPDATE music_credential_revocation_operations SET music_user_id=99999 WHERE operation_id=$1",
+      "UPDATE music_credential_revocation_operations SET strapi_user_document_id='forged-subject' WHERE operation_id=$1",
+      "UPDATE music_credential_revocation_operations SET strapi_account_document_id='forged-account' WHERE operation_id=$1",
+      "UPDATE music_credential_revocation_operations SET reason='credential_compromise' WHERE operation_id=$1",
+      "UPDATE music_credential_revocation_operations SET expected_session_version=2 WHERE operation_id=$1",
+      "UPDATE music_credential_revocation_operations SET result_session_version=3 WHERE operation_id=$1",
+      "UPDATE music_credential_revocation_operations SET operation_state='completed' WHERE operation_id=$1",
+      "UPDATE music_credential_revocation_operations SET completed_at=completed_at + interval '1 second' WHERE operation_id=$1",
+      "DELETE FROM music_credential_revocation_operations WHERE operation_id=$1",
+    ]) {
+      await pool.query("BEGIN");
+      await expect(pool.query(statement, [operationId])).rejects.toThrow(/immutable|revocation history/i);
+      await pool.query("ROLLBACK");
+    }
+    await expect(repository.revokeAllCredentials({
+      operationId, musicUserId: identity.id, expectedSessionVersion: 1, reason: "logout_all",
+    })).resolves.toMatchObject({ resultSessionVersion: 2 });
+    expect((await pool.query(`SELECT reason,result_session_version FROM music_credential_revocation_operations
+      WHERE operation_id=$1`, [operationId])).rows).toEqual([{ reason: "logout_all", result_session_version: 2 }]);
+  });
+
+  it("converts a concurrent cross-resource UUID collision to one typed conflict", async () => {
+    const left = await repository.ensureIdentity(input("uuid-left"));
+    const right = await repository.ensureIdentity(input("uuid-right"));
+    const operationId = revocationOperation(33);
+    const settled = await Promise.allSettled([
+      repository.revokeAllCredentials({
+        operationId, musicUserId: left.id, expectedSessionVersion: 1, reason: "logout_all",
+      }),
+      repository.revokeAllCredentials({
+        operationId, musicUserId: right.id, expectedSessionVersion: 1, reason: "credential_compromise",
+      }),
+    ]);
+    expect(settled.filter(({ status }) => status === "fulfilled")).toHaveLength(1);
+    expect(settled.filter(({ status }) => status === "rejected")).toHaveLength(1);
+    expect((settled.find(({ status }) => status === "rejected") as PromiseRejectedResult).reason)
+      .toMatchObject({ code: "IDENTITY_CONFLICT" });
+    expect((await pool.query("SELECT count(*)::integer AS count FROM music_credential_revocation_operations WHERE operation_id=$1", [operationId])).rows[0].count).toBe(1);
+    const versions = (await pool.query("SELECT id,session_version FROM users WHERE id=ANY($1::integer[]) ORDER BY id", [[left.id, right.id]])).rows;
+    expect(versions.map(({ session_version }) => session_version).sort()).toEqual([1, 2]);
+  });
+
   it("does not reinterpret an unrelated lifecycle increment as a revocation replay", async () => {
     const identity = await repository.ensureIdentity(input("lifecycle-version"));
     await repository.transitionIdentity({

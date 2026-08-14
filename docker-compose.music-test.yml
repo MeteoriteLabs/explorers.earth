@@ -46,7 +46,7 @@ services:
       DATABASE_URL: postgresql://music:music@postgres:5432/music_fixture
       MUSIC_IMAGE_DIGEST: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
       MUSIC_IMAGE_COMMIT: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-      MUSIC_MIGRATION_MARKER: 0008_credential_revocation_operations
+      MUSIC_MIGRATION_MARKER: 0009_credential_revocation_history_immutability
       MUSIC_GATE_ATTESTATION_KEY: fixture-migration-gate-key-at-least-32-characters
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/fixture.json
     depends_on:
@@ -105,7 +105,7 @@ services:
       MUSIC_PROVISIONING_COHORT: disabled
       MUSIC_NEW_ENTRY_KILL_SWITCH: "false"
       MUSIC_COHORT_ENABLED: "false"
-      MUSIC_EXPECTED_MIGRATION_ID: 0008_credential_revocation_operations
+      MUSIC_EXPECTED_MIGRATION_ID: 0009_credential_revocation_history_immutability
       MUSIC_RECONCILIATION_ENABLED: "false"
       MUSIC_RECONCILIATION_MAX_ROWS: "0"
     ports: ["127.0.0.1:55000:5000"]

@@ -31,6 +31,7 @@ describe("Music migration authority contracts", () => {
       "0006_numeric_identity_lock",
       "0007_identity_provider_snapshot",
       "0008_credential_revocation_operations",
+      "0009_credential_revocation_history_immutability",
     ]);
     expect(EXPECTED_MUSIC_MIGRATION_ID).toBe(migrations.at(-1)?.id);
     expect(migrations.every(({ checksum }) => /^[a-f0-9]{64}$/.test(checksum))).toBe(true);
@@ -47,8 +48,9 @@ describe("Music migration authority contracts", () => {
       "0006_numeric_identity_lock",
       "0007_identity_provider_snapshot",
       "0008_credential_revocation_operations",
+      "0009_credential_revocation_history_immutability",
     ]);
-    expect(DEPLOYABLE_MUSIC_MIGRATION_MARKERS.map(musicMigrationMarkerRank)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+    expect(DEPLOYABLE_MUSIC_MIGRATION_MARKERS.map(musicMigrationMarkerRank)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
     expect(musicMigrationMarkerRank("9999_unknown")).toBeUndefined();
   });
 
@@ -70,6 +72,8 @@ describe("Music migration authority contracts", () => {
     expect(sql).toMatch(/CREATE TABLE music_credential_revocation_operations/i);
     expect(sql).toMatch(/operation_id[\s\S]*music_user_id[\s\S]*strapi_user_document_id[\s\S]*strapi_account_document_id/i);
     expect(sql).toMatch(/reason[\s\S]*expected_session_version[\s\S]*result_session_version[\s\S]*operation_state/i);
+    expect(sql).toMatch(/BEFORE UPDATE OR DELETE ON music_credential_revocation_operations/i);
+    expect(sql).toMatch(/credential revocation history is immutable/i);
   });
 
   it("keeps startup schema-free and makes the same-image gate run the real chain", () => {
@@ -153,7 +157,7 @@ describe("Music migration authority contracts", () => {
 
   it("rejects any non-production chain before opening a database connection", async () => {
     const production = loadMusicMigrations(resolve(repositoryRoot, "tunes/migrations"));
-    const appended = createMigrationDefinition("0009_unapproved", "SELECT 1;\n");
+    const appended = createMigrationDefinition("0010_unapproved", "SELECT 1;\n");
     const connect = vi.fn();
     await expect(migrateMusicDatabase({ connect } as never, { migrations: [...production, appended] }))
       .rejects.toThrow(/exact production migration chain/i);

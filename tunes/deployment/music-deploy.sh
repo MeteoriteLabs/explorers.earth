@@ -12,7 +12,7 @@ readonly compatibility_floor_schema="music-schema-floor-v2"
 readonly schema_epoch_schema="music-schema-epoch-v1"
 readonly journal_schema="music-transaction-v1"
 readonly legacy_marker="containment-no-schema-change"
-readonly production_current_marker="0008_credential_revocation_operations"
+readonly production_current_marker="0009_credential_revocation_history_immutability"
 readonly -a known_markers=(
   "$legacy_marker"
   "0002_identity_lifecycle"
@@ -21,6 +21,7 @@ readonly -a known_markers=(
   "0005_resource_bound_deletion_history"
   "0006_numeric_identity_lock"
   "0007_identity_provider_snapshot"
+  "0008_credential_revocation_operations"
   "$production_current_marker"
 )
 current_marker="$production_current_marker"

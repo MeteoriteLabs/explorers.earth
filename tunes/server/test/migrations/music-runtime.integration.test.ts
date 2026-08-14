@@ -70,7 +70,12 @@ describePostgres("C3 real migrated runtime graph", () => {
     const authorization = "Bearer runtime-proof-with-enough-entropy";
     const first = await request(app).post("/api/music/identity/ensure").set("authorization", authorization).expect(200);
     const second = await request(app).post("/api/music/identity/ensure").set("authorization", authorization).expect(200);
-    expect(second.body).toEqual(first.body);
+    expect(second.body).toMatchObject({
+      version: first.body.version,
+      identity: first.body.identity,
+      credential: { expiresAt: first.body.credential.expiresAt },
+    });
+    expect(second.body.credential.token).not.toBe(first.body.credential.token);
     expect(first.body).toMatchObject({ version: "music-identity/v1", identity: { status: "active" } });
     expect(Number((await pool.query("SELECT count(*) AS count FROM users WHERE strapi_user_document_id=$1", [ensurePerson])).rows[0].count)).toBe(1);
     await request(app).post("/api/music/identity/ensure").set("authorization", authorization).send({ username: "forged" }).expect(400);
