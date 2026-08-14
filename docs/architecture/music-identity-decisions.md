@@ -70,7 +70,15 @@ zero/empty. Otherwise it requires the supported pointer, generation, and exact
 three-credential graph. Exact identities and bytes remain bound and are
 revalidated through credential, auxiliary, current-generation, and pointer-last
 retirement. The resulting all-zero inventory is the sole idempotent retired
-state; partial teardown remains fail closed and requires external discard.
+state. **Pre-retirement failure.** Only when the failure occurred before any
+retirement or mutation and the supported authority still authenticates exactly,
+the same confirmed command may be retried. **Partial or uncertain retirement.**
+After any possible mutation—including a truncate/fsync/close failure after
+mutation, a digest or generation mismatch, or any mixed authority state—no
+in-application retry or cleanup is authorized. Preserve source work according
+to operator policy, then externally discard and recreate the disposable
+worktree from a clean checkout; never copy ignored fixture authority into the
+replacement checkout.
 
 ## Revisit when
 

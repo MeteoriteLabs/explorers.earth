@@ -59,6 +59,16 @@ its guarded action and clean up again. If the action replaces authority with
 raw or malformed bytes, teardown fails with the typed refusal and leaves every
 credential, generation, journal, temporary, and unrelated file byte-exact.
 
+**Pre-retirement failure.** Only when the failure occurred before any retirement
+or mutation and the supported authority still authenticates exactly, the same
+confirmed command may be retried. **Partial or uncertain retirement.** After
+any possible mutation—including a truncate/fsync/close failure after mutation,
+a digest or generation mismatch, or any mixed authority state—no in-application
+retry or cleanup is authorized. Preserve source work according to operator
+policy, then externally discard and recreate the disposable worktree from a
+clean checkout; never copy ignored fixture authority into the replacement
+checkout. Do not manually delete or reinterpret an authority leaf.
+
 `music:down` retains volumes. Volume deletion requires `--volumes --confirm-project
 explorers-music-fixture`; reset additionally requires `--mode fixture` and the
 same confirmation. Before cleanup, the CLI renders the Compose model, resolves

@@ -401,10 +401,19 @@ without touching replacement bytes. A truncate, sync, close,
 or digest failure makes the command nonzero with
 `MUSIC_FIXTURE_SECRET_CLEANUP_FAILED` and only the exact random leaf identifier.
 This paragraph applies only to normal supported pointer/generation authority;
-it never grants raw legacy cleanup. Retry normal supported-authority cleanup
-after correcting the filesystem error; success leaves a zero-byte non-secret
-tombstone. Never delete a reported path by hand or broaden cleanup outside the
-fixture project.
+it never grants raw legacy cleanup.
+
+**Pre-retirement failure.** Only when the failure occurred before any retirement
+or mutation and the supported authority still authenticates exactly, the same
+confirmed command may be retried.
+
+**Partial or uncertain retirement.** After any possible mutation—including a
+truncate/fsync/close failure after mutation, a digest or generation mismatch,
+or any mixed authority state—no in-application retry or cleanup is authorized.
+Preserve source work according to operator policy, then externally discard and
+recreate the disposable worktree from a clean checkout; never copy ignored
+fixture authority into the replacement checkout. Never delete a reported path
+by hand or broaden cleanup outside the fixture project.
 
 ## C5 local Music credential keys and emergency revocation
 
