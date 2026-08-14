@@ -91,7 +91,7 @@ export function registerRoutes(app: Express, _storage: IStorage, musicConfig: Mu
     resolveGuestCapability: (capability) => musicDomain.resolveGuestSocketAuthority(capability),
   });
   setupReactivationRoutes(app);
-  setupSeoRoutes(app);
+  setupSeoRoutes(app, { listPublishedMusicPlaylists: () => musicDomain.listPublishedMusicPlaylists() });
 
   // iTunes Search Proxy
   app.get("/itunes-api/search", async (req, res) => {

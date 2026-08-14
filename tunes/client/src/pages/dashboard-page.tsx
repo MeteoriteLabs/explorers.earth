@@ -11,7 +11,7 @@ import { useAnalytics, AnalyticsEventCategory, AnalyticsEventAction } from "@/ho
 import { BottomNavigation } from "@/components/bottom-navigation";
 import { MiniPlayerControl } from "@/components/mini-player-control";
 import { useUserSubscriptionPlanInfo } from "@/lib/strapi-queries";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"; import { guestCapabilityHandoff } from "@/lib/musicCredential";
 // UI Components
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -638,13 +638,13 @@ export default function DashboardPage() {
   const ensureShareCapability = async () => { if (shareCapability) return shareCapability; const response = await apiRequest("POST", "/api/music/guest-capability/rotate"); const capability = (await response.json()).capability as string; setShareCapability(capability); return capability; };
   const handleCopyLink = async () => {
     if (!user?.guestUrl) return;
-    const guestUrl = `${window.location.origin}/playlist/${user.guestUrl}`;
+
     try {
       const capability = await ensureShareCapability();
-      await navigator.clipboard.writeText(`${guestUrl}\nGuest capability: ${capability}`);
+      await navigator.clipboard.writeText(guestCapabilityHandoff(capability, user.guestUrl));
       toast({
-        title: "Link Copied",
-        description: "Playlist link has been copied to clipboard",
+        title: "Guest access copied",
+        description: "The header-only playlist handoff has been copied to the clipboard.",
       });
       trackEvent({
         category: AnalyticsEventCategory.PLAYLIST,
@@ -674,15 +674,15 @@ export default function DashboardPage() {
 
   const handleShare = async () => {
     if (!user?.guestUrl) return;
-    const guestUrl = `${window.location.origin}/playlist/${user.guestUrl}`;
+
 
     if (navigator.share) {
       try {
         const capability = await ensureShareCapability();
         await navigator.share({
           title: `${user.venueName}'s Playlist`,
-          text: `Join our playlist and request songs! Guest capability: ${capability}`,
-          url: guestUrl,
+          text: guestCapabilityHandoff(capability, user.guestUrl),
+          url: `${window.location.origin}/playlist/${user.guestUrl}`,
         });
 
         // Track share event for analytics
@@ -1626,7 +1626,7 @@ export default function DashboardPage() {
                     <div className="flex flex-col items-center gap-4">
                       <div className="bg-white p-4 rounded-lg qr-code-container">
                         <QRCode
-                          value={shareCapability ? `explorers-music-guest/v1\nURL: ${window.location.origin}/playlist/${user.guestUrl}\nGuest capability: ${shareCapability}` : "explorers-music-guest/v1\nCapability loading"}
+                          value={shareCapability ? guestCapabilityHandoff(shareCapability, user.guestUrl) : "explorers-music-guest/v1\nCapability loading"}
                           style={{ width: "200px", height: "200px" }}
                         />
                       </div>
@@ -1854,12 +1854,12 @@ export default function DashboardPage() {
                               Song Requests
                             </h3>
                             <p className="text-sm text-muted-foreground">
-                              Allow guests to search and request songs
+                              Managed in Explorer settings; this control is read-only here
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
                             <Switch
-                              checked={allowSongRequests}
+                              checked={allowSongRequests} disabled
                               onCheckedChange={async (checked) => {
                                 try {
                                   // Update local state immediately for responsive UI
@@ -1915,12 +1915,12 @@ export default function DashboardPage() {
                               Play on Guest Device
                             </h3>
                             <p className="text-sm text-muted-foreground">
-                              Allow guests to play music on their own device
+                              Managed in Explorer settings; this control is read-only here
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
                             <Switch
-                              checked={allowGuestPlayOnDevice}
+                              checked={allowGuestPlayOnDevice} disabled
                               onCheckedChange={async (checked) => {
                                 try {
                                   // Update local state immediately for responsive UI
@@ -1976,12 +1976,12 @@ export default function DashboardPage() {
                               Playlist Sharing
                             </h3>
                             <p className="text-sm text-muted-foreground">
-                              Allow guests to see and play your saved playlists
+                              Use saved-playlist visibility controls; this legacy switch is read-only
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
                             <Switch
-                              checked={allowPlaylistSharing}
+                              checked={allowPlaylistSharing} disabled
                               onCheckedChange={async (checked) => {
                                 try {
                                   // Update local state immediately for responsive UI
@@ -2037,12 +2037,12 @@ export default function DashboardPage() {
                               Recently Played Visibility
                             </h3>
                             <p className="text-sm text-muted-foreground">
-                              Allow guests to see your recently played songs
+                              Managed in Explorer settings; this control is read-only here
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
                             <Switch
-                              checked={allowRecentlyPlayedVisibility}
+                              checked={allowRecentlyPlayedVisibility} disabled
                               onCheckedChange={async (checked) => {
                                 try {
                                   // Update local state immediately for responsive UI

@@ -1,8 +1,5 @@
 import { Express } from "express";
 import { storage } from "./storage";
-import { playlists, users } from "@shared/schema";
-import { db } from "./db";
-import { and, eq, isNotNull } from "drizzle-orm";
 
 const TUNES_BASE_URL = "https://localtunes.earth";
 const EXPLORERS_BASE_URL = "https://explorers.earth";
@@ -61,7 +58,11 @@ ${entries}
 /**
  * Generate dynamic tunes sitemap with real venue guest URLs
  */
-async function generateTunesSitemap(): Promise<string> {
+export interface SeoRouteDependencies {
+  listPublishedMusicPlaylists(): Promise<Array<{ guestUrl: string | null; updatedAt: Date | string | null }>>;
+}
+
+async function generateTunesSitemap(dependencies: SeoRouteDependencies): Promise<string> {
   const urls: Array<{ loc: string; lastmod?: string; changefreq?: string; priority?: number }> = [
     // Static pages
     { loc: `${TUNES_BASE_URL}/`, changefreq: "weekly", priority: 1.0 },
@@ -78,11 +79,7 @@ async function generateTunesSitemap(): Promise<string> {
   try {
     // Discoverability is an explicit policy bit. Guest capability hashes are
     // never selected or rendered into a public listing.
-    const venueUsers = await db
-      .selectDistinct({ guestUrl: users.guestUrl, updatedAt: users.updatedAt })
-      .from(users)
-      .innerJoin(playlists, and(eq(playlists.userId, users.id), eq(playlists.isVisibleToGuests, true)))
-      .where(and(isNotNull(users.guestUrl), eq(users.guestDiscoverable, true)));
+    const venueUsers = await dependencies.listPublishedMusicPlaylists();
 
     for (const venue of venueUsers) {
       if (venue.guestUrl) {
@@ -176,7 +173,7 @@ async function generateExplorersSitemap(): Promise<string> {
  * Registers SEO-related routes
  * @param app Express application instance
  */
-export function setupSeoRoutes(app: Express) {
+export function setupSeoRoutes(app: Express, dependencies: SeoRouteDependencies = { listPublishedMusicPlaylists: async () => [] }) {
   // Get robots.txt content
   app.get("/robots.txt", async (req, res) => {
     try {
@@ -197,7 +194,7 @@ export function setupSeoRoutes(app: Express) {
   // Dynamic tunes sitemap — queries DB for all venue guest URLs
   app.get("/sitemap.xml", async (req, res) => {
     try {
-      const xml = await generateTunesSitemap();
+      const xml = await generateTunesSitemap(dependencies);
       return res.type("application/xml").set("Cache-Control", "no-store").send(xml);
     } catch (error) {
       console.error("Error generating tunes sitemap:", error);

@@ -30,6 +30,8 @@ function appFor(overrides: Record<string, unknown> = {}, routeOverrides: Record<
     resolveGuestResource: vi.fn(async () => undefined),
     resolveGuestSocketAuthority: vi.fn(async (capability: string) => capability === "G".repeat(43)
       ? { musicUserId: 77, active: true, allowSongRequests: true } : undefined),
+    resolveGuestRequestAuthority: vi.fn(async (slug: string, capability: string) => slug === "owner-a" && capability === "G".repeat(43)
+      ? { musicUserId: 77, active: true, allowSongRequests: true } : undefined),
     ...overrides,
   };
   const app = express();
@@ -234,21 +236,54 @@ describe("canonical Music REST surfaces", () => {
     expect(lookup).toHaveBeenLastCalledWith(capability, undefined);
   });
 
-  it("accepts a guest request only through a hashed capability role and server-derived owner", async () => {
-    // Break caught: a public slug or browser owner ID mutates an owner queue.
+  it("binds a guest request capability to its slug before deriving the queue owner", async () => {
+    // Break caught: owner A's capability submitted from owner B's page silently mutates A's queue.
     const { app, calls } = appFor();
-    const response = await request(app).post("/api/music/guest/request")
+    const crossOwner = await request(app).post("/api/playlist/owner-b/requests")
+      .set("Origin", "https://explorers.example")
+      .set("X-Music-Guest-Capability", "G".repeat(43))
+      .send({ youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" });
+    expect(crossOwner.status).toBe(403);
+    expect(crossOwner.body.error.code).toBe("GUEST_CAPABILITY_INVALID");
+    expect(calls).not.toContainEqual(expect.arrayContaining(["add-song"]));
+
+    const response = await request(app).post("/api/playlist/owner-a/requests")
       .set("Origin", "https://explorers.example")
       .set("X-Music-Guest-Capability", "G".repeat(43))
       .send({ youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" });
     expect(response.status).toBe(201);
     expect(calls).toContainEqual(["add-song", 77, { youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" }]);
 
-    const invalid = await request(app).post("/api/music/guest/request")
+    const invalid = await request(app).post("/api/playlist/owner-a/requests")
       .set("Origin", "https://explorers.example")
       .set("X-Music-Guest-Capability", "public-slug")
       .send({ youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" });
     expect(invalid.status).toBe(403);
     expect(invalid.body.error.code).toBe("GUEST_CAPABILITY_INVALID");
+  });
+
+  it("returns a safe internal error instead of misclassifying a repository failure as an invalid token", async () => {
+    // Break caught: an unexpected repository error was converted into TOKEN_INVALID and its detail could escape.
+    const sentinel = "postgres-secret-detail-must-not-leak";
+    const { app } = appFor({ addSong: vi.fn(async () => { throw new Error(sentinel); }) });
+    const response = await request(app).post("/api/playlist/songs")
+      .set("Authorization", "Bearer aaa.bbb.ccc")
+      .set("Origin", "https://explorers.example")
+      .set("X-Request-Id", "safe-route-request")
+      .send({ youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" });
+
+    expect(response.status).toBe(500);
+    expect(response.headers["x-request-id"]).toBe("safe-route-request");
+    expect(response.body).toEqual({
+      version: "music-error/v1",
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Music is temporarily unavailable.",
+        action: "retry",
+        retryable: true,
+        requestId: "safe-route-request",
+      },
+    });
+    expect(JSON.stringify(response.body)).not.toContain(sentinel);
   });
 });

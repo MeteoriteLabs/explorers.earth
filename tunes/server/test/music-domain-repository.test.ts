@@ -4,12 +4,22 @@ import { MusicDomainRepository } from "../repositories/musicDomainRepository";
 
 function recordingPool(rows: unknown[] = []) {
   const calls: Array<{ text: string; values: unknown[] }> = [];
+  const query = async (text: string, values: unknown[] = []) => {
+    calls.push({ text: text.replace(/\s+/g, " ").trim(), values });
+    return { rows, rowCount: rows.length };
+  };
   return {
     calls,
     pool: {
-      async query(text: string, values: unknown[] = []) {
-        calls.push({ text: text.replace(/\s+/g, " ").trim(), values });
-        return { rows, rowCount: rows.length };
+      query,
+      async connect() {
+        return {
+          async query(text: string, values: unknown[] = []) {
+            if (/^(?:BEGIN|COMMIT|ROLLBACK|SELECT pg_advisory_xact_lock)/.test(text)) return { rows: [], rowCount: 0 };
+            return query(text, values);
+          },
+          release() {},
+        };
       },
     },
   };

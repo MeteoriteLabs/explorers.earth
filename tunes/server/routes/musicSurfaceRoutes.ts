@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type { Express, NextFunction, Request, RequestHandler, Response } from "express";
 import { MusicIdentityError, musicErrorEnvelope } from "../../shared/musicError";
-import { createMusicPrincipalMiddleware, MusicPrincipalError, resolveMusicPrincipalRequest, type MusicPrincipal } from "../middleware/musicPrincipal";
-import { consumeContainmentLimit } from "../security-containment";
+import { createMusicPrincipalMiddleware, MusicPrincipalError, type MusicPrincipal } from "../middleware/musicPrincipal";
+import { consumeContainmentLimit, safeMusicRequestError } from "../security-containment";
 import {
   createGuestCapability,
   entitlementDecision,
@@ -10,6 +10,7 @@ import {
   MUSIC_ENTITLEMENT_MAX_AGE_SECONDS,
   type MusicEntitlementState,
 } from "../policies/musicSurfacePolicy";
+import { matchRetiredMusicSurface } from "../policies/musicRetirementPolicy";
 
 interface CanonicalMusicRepository {
   listPlaylists(ownerId: number): Promise<unknown[]>;
@@ -35,6 +36,7 @@ interface CanonicalMusicRepository {
   resolveEntitlement(ownerId: number): Promise<{ state: MusicEntitlementState; sourceUpdatedAt?: Date } | undefined>;
   resolveGuestResource(publicSlug: string, capability?: string): Promise<{ state: string; noindex?: boolean; playlist?: unknown } | undefined>;
   resolveGuestSocketAuthority(capability: string): Promise<{ musicUserId: number; active: true; allowSongRequests: boolean } | undefined>;
+  resolveGuestRequestAuthority(publicSlug: string, capability: string): Promise<{ musicUserId: number; active: true; allowSongRequests: boolean } | undefined>;
 }
 
 export interface CanonicalMusicRouteDependencies {
@@ -313,7 +315,7 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
     } catch (error) { next(error); }
   });
 
-  app.post("/api/music/guest/request", identify, originGuard, async (req, res, next) => {
+  app.post("/api/playlist/:guestUrl/requests", identify, originGuard, async (req, res, next) => {
     try {
       const capability = req.get("x-music-guest-capability") ?? "";
       if (!/^[A-Za-z0-9_-]{43}$/.test(capability)) throw invalidGuestCapability();
@@ -321,7 +323,7 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
       if (consumeContainmentLimit(`c6-guest-request:${capabilityHash}`, 20, 60_000)) {
         throw new MusicIdentityError("RATE_LIMITED", 429, "Too many Music requests.", "retry", true, 60);
       }
-      const authority = await dependencies.repository.resolveGuestSocketAuthority(capability);
+      const authority = await dependencies.repository.resolveGuestRequestAuthority(req.params.guestUrl, capability);
       if (!authority?.active || !authority.allowSongRequests) throw invalidGuestCapability();
       res.status(201).json(await dependencies.repository.addSong(authority.musicUserId, songInput(req.body)));
     } catch (error) { next(error); }
@@ -331,7 +333,12 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
     if (res.headersSent) return;
     const error = safeRouteError(cause);
     if (error.status === 429 || error.status === 503) res.setHeader("Retry-After", String(error.retryAfterSeconds ?? 1));
-    res.status(error.status).json(musicErrorEnvelope(error, res.locals.musicRequestId ?? requestIdFactory()));
+    const currentHeader = res.getHeader("X-Request-Id");
+    const requestId = res.locals.musicRequestId
+      ?? (typeof currentHeader === "string" ? currentHeader : undefined)
+      ?? requestIdFactory();
+    res.setHeader("X-Request-Id", requestId);
+    res.status(error.status).json(musicErrorEnvelope(error, requestId));
   });
 }
 
@@ -342,75 +349,21 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
  */
 export function setupMusicSurfaceBoundary(app: Express, dependencies: CanonicalMusicRouteDependencies): void {
   const requestIdFactory = dependencies.requestIdFactory ?? randomUUID;
-  app.use(async (req, res, next) => {
+  app.all("/{*musicRetiredPath}", async (req, res, next) => {
     const requestId = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/.test(req.get("x-request-id") ?? "")
       ? req.get("x-request-id")!
       : requestIdFactory();
     res.setHeader("X-Request-Id", requestId);
-    const path = req.path;
-    const admin = path.startsWith("/api/admin/");
-    const tombstone = path === "/graphql" || path === "/api/strapi/graphql"
-      || path === "/api"
-      || path === "/api/strapi/config" || path === "/api/debug/strapi"
-      || path.startsWith("/api-docs/")
-      || path.startsWith("/api/page-contents/") || path.startsWith("/api/verify-email")
-      || path === "/api/resend-verification"
-      || path.startsWith("/api/auth/") || path === "/api/register" || path === "/api/connect/google";
-    if (path.startsWith("/api/auth/") && consumeContainmentLimit(`c6-legacy-identity:${req.socket.remoteAddress ?? "unknown"}`, 30, 60_000)) {
+    const retirement = matchRetiredMusicSurface(req.originalUrl);
+    if (!retirement) return next();
+    if (retirement.family === "legacy-browser-identity" && consumeContainmentLimit(`c6-legacy-identity:${req.socket.remoteAddress ?? "unknown"}`, 30, 60_000)) {
       const error = new MusicIdentityError("RATE_LIMITED", 429, "Too many Music requests.", "retry", true, 60);
       res.setHeader("Retry-After", "60");
       return res.status(429).json(musicErrorEnvelope(error, requestId));
     }
-    if (admin || tombstone) {
-      const error = new MusicIdentityError("SURFACE_REMOVED", 410, "This Music operation is unavailable.", "none", false);
-      return res.status(410).json(musicErrorEnvelope(error, requestId));
-    }
-    const publicPath = path.startsWith("/health/") || [
-      "/api/music-entry/status", "/robots.txt", "/sitemap.xml", "/api/explorers-sitemap.xml",
-      "/itunes-api/search", "/api/user/request-reactivation", "/api/user/reactivate", "/api/music-fixture/readiness",
-    ].includes(path);
-    const nativePath = ["/api/login", "/api/logout", "/api/check", "/api/csrf-token"].includes(path);
-    if (publicPath || nativePath || !isLegacyMusicSurface(path)) return next();
-    try {
-      req.musicPrincipal = await resolveMusicPrincipalRequest(req, dependencies.resolvePrincipal);
-      if (hasForbiddenOwnerInput(req)) {
-        throw new MusicIdentityError("REQUEST_INVALID", 400, "Owner targets are not accepted on Music requests.", "none", false);
-      }
-      if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
-        const origin = req.get("origin");
-        if (!origin || !dependencies.allowedOrigins.includes(origin)) {
-          throw new MusicIdentityError("ORIGIN_FORBIDDEN", 403, "The request origin is not allowed.", "none", false);
-        }
-      }
-      if (isPaidSurface(path)) {
-        const entitlement = await dependencies.repository.resolveEntitlement(req.musicPrincipal.musicUserId);
-        if (!entitlement || !entitlementDecision(entitlement, dependencies.now?.() ?? new Date()).paidMutation) {
-          throw new MusicIdentityError("ENTITLEMENT_REQUIRED", 403, "A current Music entitlement is required.", "none", false);
-        }
-      }
-      throw new MusicIdentityError("SURFACE_REMOVED", 410, "This Music operation is unavailable.", "none", false);
-    } catch (cause) {
-      const error = safeRouteError(cause);
-      return res.status(error.status).json(musicErrorEnvelope(error, requestId));
-    }
+    const error = new MusicIdentityError("SURFACE_REMOVED", 410, "This Music operation is unavailable.", "none", false);
+    return res.status(410).json(musicErrorEnvelope(error, requestId));
   });
-}
-
-function isPaidSurface(path: string): boolean {
-  return path.startsWith("/api/payments/") || path.startsWith("/api/subscriptions/")
-    || path.startsWith("/api/gemini/") || path.startsWith("/api/playlist/import-");
-}
-
-function isLegacyMusicSurface(path: string): boolean {
-  return path.startsWith("/api/playlists") || path.startsWith("/api/playlist/")
-    || path.startsWith("/api/user") || path.startsWith("/api/system-settings/")
-    || path.startsWith("/api/youtube/") || path.startsWith("/api/instagram/")
-    || path.startsWith("/api/payments/") || path.startsWith("/api/subscriptions/")
-    || path.startsWith("/api/gemini/") || path.startsWith("/api/email/")
-    || path === "/api/seo" || path.startsWith("/apps/") || path.startsWith("/products/")
-    || path.startsWith("/people/") || path === "/proxy-image"
-    || path.startsWith("/api/apps/") || path.startsWith("/api/products/")
-    || path.startsWith("/api/people/") || path === "/api/proxy-image";
 }
 
 function hasForbiddenOwnerInput(req: Request): boolean {
@@ -463,5 +416,5 @@ function safeRouteError(cause: unknown): MusicIdentityError {
   if (cause instanceof MusicPrincipalError) {
     return new MusicIdentityError(cause.code, cause.status, cause.message, cause.status === 403 ? "contact_support" : "authenticate", false);
   }
-  return new MusicIdentityError("TOKEN_INVALID", 401, "The Music credential is invalid.", "authenticate", false);
+  return safeMusicRequestError(cause);
 }

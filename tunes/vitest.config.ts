@@ -1,12 +1,15 @@
 import { defineConfig, configDefaults } from 'vitest/config';
 import path from 'node:path';
+import react from '@vitejs/plugin-react';
 
 // Default config = UNIT tests only (DB-free, the reliable `npm test` gate).
 // Integration tests (*.integration.test.ts) need Postgres and run via
 // `npm run test:integration` against vitest.integration.config.ts.
 export default defineConfig({
+  plugins: [react()],
   resolve: {
     alias: {
+      '@': path.resolve(__dirname, 'client', 'src'),
       // Mirror tsconfig paths: "@shared/*" -> "./shared/*"
       '@shared': path.resolve(__dirname, 'shared'),
     },

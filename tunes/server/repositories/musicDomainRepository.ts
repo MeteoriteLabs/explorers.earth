@@ -1,10 +1,29 @@
-import type { Pool } from "pg";
+import type { Pool, PoolClient } from "pg";
 import { hashGuestCapability, verifyGuestCapability } from "../policies/musicSurfacePolicy";
 
-type QueryPool = Pick<Pool, "query">;
+type QueryPool = Pick<Pool, "query" | "connect">;
+
+const QUEUE_MUTATION_LOCK = 0x4d51;
+const SAVED_PLAYLIST_LOCK = 0x4d53;
 
 export class MusicDomainRepository {
   constructor(private readonly pool: QueryPool) {}
+
+  private async withAdvisoryLock<T>(namespace: number, resourceId: number, operation: (client: PoolClient) => Promise<T>): Promise<T> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT pg_advisory_xact_lock($1,$2)", [namespace, resourceId]);
+      const result = await operation(client);
+      await client.query("COMMIT");
+      return result;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
 
   async listPlaylists(musicUserId: number) {
     return (await this.pool.query(
@@ -65,13 +84,13 @@ export class MusicDomainRepository {
   }
 
   async addPlaylistSong(musicUserId: number, playlistId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }) {
-    return (await this.pool.query(
-      `INSERT INTO playlist_songs(playlist_id,youtube_id,title,artist,thumbnail_url,position)
-       SELECT p.id,$3,$4,$5,$6,COALESCE((SELECT MAX(ps.position)+1 FROM playlist_songs ps WHERE ps.playlist_id=$2),0)
-       FROM playlists p WHERE p.user_id=$1 AND p.id=$2
-       RETURNING id,playlist_id,youtube_id,title,artist,thumbnail_url,position,added_at`,
-      [musicUserId, playlistId, input.youtubeId, input.title, input.artist, input.thumbnailUrl],
-    )).rows[0];
+    return this.withAdvisoryLock(SAVED_PLAYLIST_LOCK, playlistId, async (client) => (await client.query(
+        `INSERT INTO playlist_songs(playlist_id,youtube_id,title,artist,thumbnail_url,position)
+         SELECT p.id,$3,$4,$5,$6,COALESCE((SELECT MAX(ps.position)+1 FROM playlist_songs ps WHERE ps.playlist_id=$2),0)
+         FROM playlists p WHERE p.user_id=$1 AND p.id=$2
+         RETURNING id,playlist_id,youtube_id,title,artist,thumbnail_url,position,added_at`,
+        [musicUserId, playlistId, input.youtubeId, input.title, input.artist, input.thumbnailUrl],
+      )).rows[0]);
   }
 
   async removePlaylistSong(musicUserId: number, playlistId: number, songId: number): Promise<boolean> {
@@ -119,32 +138,34 @@ export class MusicDomainRepository {
   }
 
   async addSong(musicUserId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }) {
-    return (await this.pool.query(
-      `INSERT INTO songs(user_id,youtube_id,title,artist,thumbnail_url,position,status)
-       VALUES ($1,$2,$3,$4,$5,(SELECT COALESCE(MAX(position),-1)+1 FROM songs WHERE user_id=$1 AND status='queued'),'queued')
-       RETURNING id,user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at`,
-      [musicUserId, input.youtubeId, input.title, input.artist, input.thumbnailUrl],
-    )).rows[0];
+    return this.withAdvisoryLock(QUEUE_MUTATION_LOCK, musicUserId, async (client) => (await client.query(
+        `INSERT INTO songs(user_id,youtube_id,title,artist,thumbnail_url,position,status)
+         VALUES ($1,$2,$3,$4,$5,(SELECT COALESCE(MAX(position),-1)+1 FROM songs WHERE user_id=$1 AND status='queued'),'queued')
+         RETURNING id,user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at`,
+        [musicUserId, input.youtubeId, input.title, input.artist, input.thumbnailUrl],
+      )).rows[0]);
   }
 
   async setPlaying(musicUserId: number, songId: number | null) {
-    if (songId === null) {
-      await this.pool.query(
-        "UPDATE songs SET status='played',played_at=now() WHERE user_id=$1 AND status='playing'",
-        [musicUserId],
-      );
-      return null;
-    }
-    return (await this.pool.query(
-      `WITH previous AS (
-         UPDATE songs SET status='played',played_at=now()
-          WHERE user_id=$1 AND status='playing' AND id<>$2
-       )
-       UPDATE songs SET status='playing',played_at=NULL
-        WHERE user_id=$1 AND id=$2
-       RETURNING id,user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at`,
-      [musicUserId, songId],
-    )).rows[0];
+    return this.withAdvisoryLock(QUEUE_MUTATION_LOCK, musicUserId, async (client) => {
+      if (songId === null) {
+        await client.query(
+          "UPDATE songs SET status='played',played_at=now() WHERE user_id=$1 AND status='playing'",
+          [musicUserId],
+        );
+        return null;
+      }
+      return (await client.query(
+        `WITH previous AS (
+           UPDATE songs SET status='played',played_at=now()
+            WHERE user_id=$1 AND status='playing' AND id<>$2
+         )
+         UPDATE songs SET status='playing',played_at=NULL
+          WHERE user_id=$1 AND id=$2
+         RETURNING id,user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at`,
+        [musicUserId, songId],
+      )).rows[0];
+    });
   }
 
   async updateSongPosition(musicUserId: number, songId: number, position: number) {
@@ -271,5 +292,34 @@ export class MusicDomainRepository {
     return row && verifyGuestCapability(capability, row.guest_capability_hash)
       ? { musicUserId: row.id, active: true as const, allowSongRequests: row.allow_song_requests === true }
       : undefined;
+  }
+
+  async resolveGuestRequestAuthority(publicSlug: string, capability: string) {
+    if (!/^[A-Za-z0-9_-]{43}$/.test(capability)) return undefined;
+    const row = (await this.pool.query(
+      `SELECT id,allow_song_requests,guest_capability_hash FROM users
+       WHERE guest_url=$1 AND guest_capability_hash=$2
+         AND guest_capability_revoked_at IS NULL AND identity_status='active'`,
+      [publicSlug, hashGuestCapability(capability)],
+    )).rows[0];
+    return row && verifyGuestCapability(capability, row.guest_capability_hash)
+      ? { musicUserId: row.id, active: true as const, allowSongRequests: row.allow_song_requests === true }
+      : undefined;
+  }
+
+  async listPublishedMusicPlaylists() {
+    return (await this.pool.query(
+      `SELECT DISTINCT u.guest_url AS "guestUrl",u.updated_at AS "updatedAt"
+         FROM users u
+        WHERE u.identity_status='active'
+          AND u.guest_url IS NOT NULL
+          AND u.guest_discoverable=true
+          AND u.guest_capability_revoked_at IS NULL
+          AND EXISTS (
+            SELECT 1 FROM playlists p
+             WHERE p.user_id=u.id AND p.is_visible_to_guests=true
+          )
+        ORDER BY u.guest_url`,
+    )).rows;
   }
 }

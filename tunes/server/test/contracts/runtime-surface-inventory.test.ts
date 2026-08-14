@@ -27,19 +27,18 @@ describe("runtime route/event/job inventory", () => {
       "youtube", "playback", "venue", "public", "admin", "payment", "scrape", "instagram", "gemini",
     ]));
     expect(inventory.routes).toEqual(expect.arrayContaining([
-      expect.objectContaining({ method: "ALL", path: "/api/auth/*", classification: "tombstone" }),
-      expect.objectContaining({ method: "ALL", path: "/graphql", classification: "tombstone" }),
-      expect.objectContaining({ method: "ALL", path: "/api/admin/*", classification: "admin-tombstone" }),
-      expect.objectContaining({ method: "ALL", path: "/apps/*", classification: "tombstone" }),
-      expect.objectContaining({ method: "ALL", path: "/products/*", classification: "tombstone" }),
-      expect.objectContaining({ method: "ALL", path: "/people/*", classification: "tombstone" }),
-      expect.objectContaining({ method: "ALL", path: "/proxy-image", classification: "tombstone" }),
-      expect.objectContaining({ method: "ALL", path: "/api/playlist/import-*", classification: "tombstone" }),
+      expect.objectContaining({ method: "ALL", path: "/{*musicRetiredPath}", classification: "tombstone", policy: "normalized-executable-retirement-matcher" }),
       expect.objectContaining({ method: "GET", path: "/api/music/entitlement", classification: "local-music-owner" }),
       expect.objectContaining({ method: "GET", path: "/api/music/dashboard", classification: "local-music-owner" }),
     ]));
+    expect(inventory.routes.filter((route) => route.method === "ALL")).toHaveLength(1);
+    expect(inventory.routes.every((route) => route.line > 0)).toBe(true);
     expect(inventory.routes.filter((route) => route.policy === "none").every((route) => route.classification !== "public")).toBe(true);
-    expect(inventory.events).toEqual(expect.arrayContaining([expect.objectContaining({ direction: "receive", event: "player_state" })]));
+    expect(inventory.events).toEqual(expect.arrayContaining([
+      expect.objectContaining({ direction: "receive", event: "player_state", policy: "sender-event-time-recheck+role-allowlist" }),
+      expect.objectContaining({ direction: "emit", event: "player_state", policy: "recipient-lifecycle+capability-recheck-before-delivery" }),
+      expect.objectContaining({ direction: "emit", event: "guest_request", policy: "recipient-lifecycle+capability-recheck-before-delivery" }),
+    ]));
     expect(inventory.routes.some((route) => [
       "handler-authorization-unknown", "owner-handler-review-required", "admin-handler-review-required", "service-token-proxy",
     ].includes(route.classification))).toBe(false);

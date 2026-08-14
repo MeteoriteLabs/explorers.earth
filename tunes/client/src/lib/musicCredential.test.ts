@@ -134,59 +134,152 @@ describe("C5 browser credential adapter", () => {
     expect(isMusicOwnerRequest("/api/unknown")).toBe(false);
   });
 
-  it("sends a guest capability only in the dedicated header, never the URL or body", async () => {
+  it("sends a slug-bound guest request with capability only in the dedicated header", async () => {
     const fetchMock = vi.fn(async () => new Response("{}", { status: 201 }));
     vi.stubGlobal("fetch", fetchMock);
     const capability = "G".repeat(43);
-    await guestMusicRequest(capability, { youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" });
-    expect(fetchMock).toHaveBeenCalledWith("/api/music/guest/request", expect.objectContaining({
+    await guestMusicRequest(capability, { youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" }, "owner-a");
+    expect(fetchMock).toHaveBeenCalledWith("/api/playlist/owner-a/requests", expect.objectContaining({
       method: "POST",
       headers: expect.objectContaining({ "X-Music-Guest-Capability": capability }),
     }));
     expect(JSON.stringify(fetchMock.mock.calls[0][1]?.body)).not.toContain(capability);
   });
 
-  it("accepts, reads, and clears only an explicit out-of-band guest capability", () => {
-    const capability = "C".repeat(43);
-    setGuestMusicCapability(capability);
-    expect(getGuestMusicCapability()).toBe(capability);
-    clearGuestMusicCapability();
-    expect(getGuestMusicCapability()).toBeUndefined();
-    expect(() => setGuestMusicCapability("public-slug")).toThrow("valid guest capability");
+  it("stores guest capabilities per public slug and never reuses A authority on B", () => {
+    // Break caught: one global session capability silently targets owner A while the browser displays owner B.
+    const capability = "A".repeat(43);
+    setGuestMusicCapability(capability, "owner-a");
+    expect(getGuestMusicCapability("owner-a")).toBe(capability);
+    expect(getGuestMusicCapability("owner-b")).toBeUndefined();
   });
 
-  it("acquires a capability only from an explicit out-of-band browser prompt", () => {
-    const capability = "P".repeat(43);
-    vi.stubGlobal("prompt", vi.fn(() => capability));
-    expect(acquireGuestMusicCapability()).toBe(capability);
-    expect(sessionStorage.setItem).toHaveBeenCalledWith("musicGuestCapability", capability);
+  it("accepts, reads, and clears only an explicit out-of-band guest capability", () => {
+    const capability = "C".repeat(43);
+    setGuestMusicCapability(capability, "owner-a");
+    expect(getGuestMusicCapability("owner-a")).toBe(capability);
+    clearGuestMusicCapability("owner-a");
+    expect(getGuestMusicCapability("owner-a")).toBeUndefined();
+    expect(() => setGuestMusicCapability("public-slug", "owner-a")).toThrow("valid guest capability");
+    expect(() => getGuestMusicCapability("bad/slug")).toThrow("valid guest playlist slug");
+  });
+
+  it("does not use a hidden prompt when no visible handoff has been imported", () => {
+    vi.stubGlobal("prompt", vi.fn(() => "P".repeat(43)));
+    expect(acquireGuestMusicCapability("owner-a")).toBeUndefined();
+    expect(globalThis.prompt).not.toHaveBeenCalled();
+    expect(sessionStorage.setItem).not.toHaveBeenCalled();
+  });
+
+  it("imports a browser-consumable header-only handoff per slug and supports rotate and revoke", async () => {
+    // Break caught: the only acquisition path is a hidden prompt and the owner QR text has no browser parser.
+    const adapter = await import("./musicCredential") as typeof import("./musicCredential") & {
+      guestCapabilityHandoff?: (capability: string, guestUrl: string, origin: string) => string;
+      importGuestMusicCapability?: (handoff: string, expectedGuestUrl: string) => string;
+    };
+    expect(adapter.guestCapabilityHandoff).toBeTypeOf("function");
+    expect(adapter.importGuestMusicCapability).toBeTypeOf("function");
+    if (!adapter.guestCapabilityHandoff || !adapter.importGuestMusicCapability) return;
+
+    const first = "H".repeat(43);
+    const rotated = "N".repeat(43);
+    const firstHandoff = adapter.guestCapabilityHandoff(first, "owner-a", "https://music.example");
+    expect(firstHandoff.split("\n")[1]).toBe("URL: https://music.example/playlist/owner-a");
+    expect(firstHandoff.split("\n")[1]).not.toContain(first);
+    expect(adapter.importGuestMusicCapability(firstHandoff, "owner-a")).toBe(first);
+    expect(acquireGuestMusicCapability("owner-a")).toBe(first);
+
+    const rotatedHandoff = adapter.guestCapabilityHandoff(rotated, "owner-a", "https://music.example");
+    expect(adapter.importGuestMusicCapability(rotatedHandoff, "owner-a")).toBe(rotated);
+    expect(acquireGuestMusicCapability("owner-a")).toBe(rotated);
+
+    clearGuestMusicCapability("owner-a");
+    expect(acquireGuestMusicCapability("owner-a")).toBeUndefined();
+    vi.stubGlobal("prompt", vi.fn(() => "Q".repeat(43)));
+    expect(acquireGuestMusicCapability("owner-a")).toBeUndefined();
+    expect(globalThis.prompt).not.toHaveBeenCalled();
+  });
+
+  it("rejects a cross-slug or URL-leaking guest handoff without storing authority", async () => {
+    const adapter = await import("./musicCredential") as typeof import("./musicCredential") & {
+      importGuestMusicCapability?: (handoff: string, expectedGuestUrl: string) => string;
+    };
+    expect(adapter.importGuestMusicCapability).toBeTypeOf("function");
+    if (!adapter.importGuestMusicCapability) return;
+    const capability = "X".repeat(43);
+    expect(() => adapter.importGuestMusicCapability(
+      `explorers-music-guest/v1\nURL: https://music.example/playlist/owner-b?capability=${capability}\nGuest capability: ${capability}`,
+      "owner-a",
+    )).toThrow("valid guest access handoff");
+    expect(sessionStorage.setItem).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "ftp://music.example/",
+    "https://user:pass@music.example/",
+    "https://music.example/?secret=1",
+    "https://music.example/#secret",
+    "https://music.example/not-root",
+  ])("rejects unsafe handoff origin %s", async (origin) => {
+    const adapter = await import("./musicCredential") as typeof import("./musicCredential") & {
+      guestCapabilityHandoff?: (capability: string, guestUrl: string, origin: string) => string;
+    };
+    expect(() => adapter.guestCapabilityHandoff!("H".repeat(43), "owner-a", origin)).toThrow("valid Music origin");
+  });
+
+  it("rejects an invalid capability before creating a handoff", async () => {
+    const adapter = await import("./musicCredential") as typeof import("./musicCredential") & {
+      guestCapabilityHandoff?: (capability: string, guestUrl: string, origin: string) => string;
+    };
+    expect(() => adapter.guestCapabilityHandoff!("short", "owner-a", "https://music.example")).toThrow("valid guest capability");
+  });
+
+  it.each([
+    "",
+    "wrong-version\nURL: https://music.example/playlist/owner-a\nGuest capability: HHH",
+    `explorers-music-guest/v1\nWrong: https://music.example/playlist/owner-a\nGuest capability: ${"H".repeat(43)}`,
+    `explorers-music-guest/v1\nURL: https://music.example/playlist/owner-a\nWrong: ${"H".repeat(43)}`,
+    "explorers-music-guest/v1\nURL: not a url\nGuest capability: HHH",
+    `explorers-music-guest/v1\nURL: ftp://music.example/playlist/owner-a\nGuest capability: ${"H".repeat(43)}`,
+    `explorers-music-guest/v1\nURL: https://user:pass@music.example/playlist/owner-a\nGuest capability: ${"H".repeat(43)}`,
+    `explorers-music-guest/v1\nURL: https://music.example/playlist/owner-a#secret\nGuest capability: ${"H".repeat(43)}`,
+    `explorers-music-guest/v1\nURL: https://music.example/playlist/owner-a?secret=1\nGuest capability: ${"H".repeat(43)}`,
+    `explorers-music-guest/v1\nURL: https://music.example/playlist/owner-b\nGuest capability: ${"H".repeat(43)}`,
+    `explorers-music-guest/v1\nURL: https://music.example/playlist/%E0%A4%A\nGuest capability: ${"H".repeat(43)}`,
+  ])("rejects malformed handoff %#", async (handoff) => {
+    const adapter = await import("./musicCredential") as typeof import("./musicCredential") & {
+      importGuestMusicCapability?: (value: string, expectedGuestUrl: string) => string;
+    };
+    expect(() => adapter.importGuestMusicCapability!(handoff, "owner-a")).toThrow("valid guest access handoff");
   });
 
   it("reuses an already stored capability without prompting", () => {
     const capability = "R".repeat(43);
-    setGuestMusicCapability(capability);
+    setGuestMusicCapability(capability, "owner-a");
     vi.stubGlobal("prompt", vi.fn());
-    expect(acquireGuestMusicCapability()).toBe(capability);
+    expect(acquireGuestMusicCapability("owner-a")).toBe(capability);
     expect(globalThis.prompt).not.toHaveBeenCalled();
   });
 
   it("does not store an empty or cancelled capability prompt", () => {
     vi.stubGlobal("prompt", vi.fn(() => null));
-    expect(acquireGuestMusicCapability()).toBeUndefined();
+    expect(acquireGuestMusicCapability("owner-a")).toBeUndefined();
     expect(sessionStorage.setItem).not.toHaveBeenCalled();
   });
 
   it("removes malformed stored guest authority", () => {
     vi.mocked(sessionStorage.getItem).mockReturnValueOnce("malformed");
-    expect(getGuestMusicCapability()).toBeUndefined();
-    expect(sessionStorage.removeItem).toHaveBeenCalledWith("musicGuestCapability");
+    expect(getGuestMusicCapability("owner-a")).toBeUndefined();
+    expect(sessionStorage.removeItem).toHaveBeenCalledWith("musicGuestCapability:owner-a");
   });
 
   it("rejects malformed guest capability before fetch", async () => {
     vi.stubGlobal("fetch", vi.fn());
-    await expect(guestMusicRequest("short", { youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" }))
+    await expect(guestMusicRequest("short", { youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" }, "owner-a"))
       .rejects.toThrow("valid guest capability");
     expect(fetch).not.toHaveBeenCalled();
+    await expect(guestMusicRequest("G".repeat(43), { youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" }, "bad/slug"))
+      .rejects.toThrow("valid guest playlist slug");
   });
 
   it.each([
@@ -195,7 +288,7 @@ describe("C5 browser credential adapter", () => {
     [new Response("not-json", { status: 403 }), "Guest Music request failed"],
   ])("fails closed on guest request denial %#", async (denial, message) => {
     vi.stubGlobal("fetch", vi.fn(async () => denial));
-    await expect(guestMusicRequest("G".repeat(43), { youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" }))
+    await expect(guestMusicRequest("G".repeat(43), { youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" }, "owner-a"))
       .rejects.toThrow(message);
   });
 });

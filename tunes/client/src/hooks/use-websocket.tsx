@@ -49,7 +49,7 @@ export function useWebSocket(
     let cancelled = false;
 
     const connect = async () => {
-      const guestCapability = getGuestMusicCapability();
+      const guestCapability = getGuestMusicCapability(connectionKey);
       let token: string | undefined;
       if (!guestCapability) {
         try { token = await musicCredentialForRequest(); } catch { token = undefined; }

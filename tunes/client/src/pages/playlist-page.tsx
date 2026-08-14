@@ -30,7 +30,7 @@ import { useTheme } from "@/components/theme-provider";
 import { GuestBottomNavigation } from "@/components/guest-bottom-navigation";
 import { useUserSubscriptionPlanInfo } from "@/lib/strapi-queries";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"; import GuestCapabilityImport from "@/components/guest-capability-import";
 
 const POLLING_INTERVAL = 1000;
 
@@ -199,12 +199,12 @@ export default function PlaylistPage() {
   // Add new mutation for adding songs to queue
   const addSongToQueueMutation = useMutation({
     mutationFn: async (song: Song) => {
-      return guestMusicRequest(acquireGuestMusicCapability() ?? "", {
+      return guestMusicRequest(acquireGuestMusicCapability(guestUrl ?? "") ?? "", {
         youtubeId: song.youtubeId,
         title: song.title,
         artist: song.artist,
         thumbnailUrl: song.thumbnailUrl,
-      });
+      }, guestUrl ?? "");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/playlist/${guestUrl}`] });
@@ -277,14 +277,14 @@ export default function PlaylistPage() {
   const addMultipleSongsMutation = useMutation({
     mutationFn: async (songs: Song[]) => {
       console.log('Adding multiple songs:', songs);
-      const capability = acquireGuestMusicCapability() ?? "";
+      const capability = acquireGuestMusicCapability(guestUrl ?? "") ?? "";
       const addPromises = songs.map(song =>
         guestMusicRequest(capability, {
           youtubeId: song.youtubeId,
           title: song.title,
           artist: song.artist,
           thumbnailUrl: song.thumbnailUrl,
-        })
+        }, guestUrl ?? "")
       );
 
       try {
@@ -498,7 +498,7 @@ export default function PlaylistPage() {
             </h1>
             <p className="text-muted-foreground">
               The playlist you're looking for doesn't exist or has been removed.
-            </p>
+            </p>{guestUrl && <div className="mt-6"><GuestCapabilityImport guestUrl={guestUrl} onImported={() => { void queryClient.invalidateQueries({ queryKey: [`/api/playlist/${guestUrl}`] }); }} /></div>}
           </CardContent>
         </Card>
       </div>
@@ -851,7 +851,7 @@ export default function PlaylistPage() {
                           fetchCurrentSong={async () => {
                             if (!guestUrl) return undefined;
                             try {
-                              const response = await fetch(`/api/playlist/${guestUrl}`, { headers: getGuestMusicCapability() ? { "X-Music-Guest-Capability": getGuestMusicCapability()! } : undefined });
+                              const response = await fetch(`/api/playlist/${guestUrl}`, { headers: ((guestCapability) => guestCapability ? { "X-Music-Guest-Capability": guestCapability } : undefined)(getGuestMusicCapability(guestUrl)) });
                               const data = await response.json();
                               return data.currentlyPlaying;
                             } catch (error) {

@@ -154,7 +154,7 @@ export default function PlaylistTable({
         artist: song.artist,
         thumbnailUrl: song.thumbnailUrl,
       };
-      if (guestUrl) await guestMusicRequest(acquireGuestMusicCapability() ?? "", input);
+      if (guestUrl) await guestMusicRequest(acquireGuestMusicCapability(guestUrl) ?? "", input, guestUrl);
       else await apiRequest("POST", "/api/playlist/songs", input);
     },
     onSuccess: () => {

@@ -25,7 +25,7 @@ import {
   ListMusic,
 } from "lucide-react";
 
-type SearchMode = "search" | "url" | "import";
+type SearchMode = "search" | "url";
 
 type SearchResult = {
   id: { videoId: string };
@@ -69,13 +69,6 @@ const MODES: { key: SearchMode; label: string; icon: React.ReactNode; placeholde
     icon: <LinkIcon className="h-3.5 w-3.5" />,
     placeholder: "Paste a YouTube URL or video ID...",
     hint: "Add any YouTube video directly — free & unlimited, no quota used",
-  },
-  {
-    key: "import",
-    label: "Import Playlist",
-    icon: <ListMusic className="h-3.5 w-3.5" />,
-    placeholder: "Paste YouTube Music or Spotify playlist URL...",
-    hint: "Import a full YouTube Music or Spotify playlist at once",
   },
 ];
 
@@ -163,7 +156,7 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
         return apiRequest("POST", `/api/playlists/${playlistId}/songs`, songData);
       }
       return guestUrl
-        ? guestMusicRequest(acquireGuestMusicCapability() ?? "", songData)
+        ? guestMusicRequest(acquireGuestMusicCapability(guestUrl) ?? "", songData, guestUrl)
         : apiRequest("POST", "/api/playlist/songs", songData);
     },
     onSuccess: () => {
@@ -255,7 +248,7 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
       return;
     }
 
-    if (mode === "import") {
+    if ((mode as string) === "import") {
       if (!val) { toast({ title: "Enter URL", description: "Please enter a playlist URL", variant: "destructive" }); return; }
 
       // Detect platform — matching import-playlist-modal.tsx detection logic

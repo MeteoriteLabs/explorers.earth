@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import ts from "typescript";
 import { decisionForRoute, type MusicSurfaceDecision } from "../server/policies/musicSurfacePolicy";
+import { RETIRED_MUSIC_ROUTE_RULES, type RetiredMusicRouteRule } from "../server/policies/musicRetirementPolicy";
 
 export interface RouteSurface { method: string; path: string; classification: string; ownerSource: string; policy: string; lifecycle: string; source: string; line: number; }
 interface EventSurface { direction: "receive" | "emit"; event: string; classification: string; policy: string; ownerSource: string; lifecycle: string; source: string; line: number; }
@@ -11,7 +12,7 @@ interface RetiredSurface {
   disposition: "canonical-replacement" | "typed-410-boundary" | "canonical-replacement-or-typed-410";
   reason: string;
 }
-export interface RuntimeSurfaceInventory { schemaVersion: "music-runtime-surface-inventory/v1"; retiredSurfaces: RetiredSurface[]; routes: RouteSurface[]; events: EventSurface[]; jobs: JobSurface[]; }
+export interface RuntimeSurfaceInventory { schemaVersion: "music-runtime-surface-inventory/v1"; retiredSurfaces: RetiredSurface[]; retirementMatchers: RetiredMusicRouteRule[]; routes: RouteSurface[]; events: EventSurface[]; jobs: JobSurface[]; }
 
 const RETIRED_SURFACES: RetiredSurface[] = [
   { family: "legacy-browser-identity", disposition: "typed-410-boundary", reason: "Browser-selected identity bridges cannot establish Music ownership." },
@@ -36,15 +37,6 @@ const RETIRED_SURFACES: RetiredSurface[] = [
   { family: "instagram", disposition: "typed-410-boundary", reason: "The legacy mixed-auth upstream proxy is not an approved Music surface." },
   { family: "gemini", disposition: "typed-410-boundary", reason: "The legacy paid upstream proxy has no approved server-derived operation." },
 ];
-
-const BOUNDARY_PATHS = [
-  "/graphql", "/api", "/api/strapi/graphql", "/api/strapi/config", "/api/debug/strapi",
-  "/api/auth/*", "/api/register", "/api/connect/google", "/api/admin/*", "/api/page-contents/*",
-  "/api/verify-email*", "/api/resend-verification", "/api/user/*", "/api/system-settings/*",
-  "/api/youtube/*", "/api/instagram/*", "/api/payments/*", "/api/subscriptions/*", "/api/gemini/*",
-  "/api/email/*", "/api/seo", "/api/apps/*", "/api/products/*", "/api/people/*", "/api/proxy-image",
-  "/apps/*", "/products/*", "/people/*", "/proxy-image", "/api/playlist/import-*",
-] as const;
 
 function files(directory: string): string[] {
   return readdirSync(directory).flatMap((name) => {
@@ -84,7 +76,7 @@ function classificationFor(method: string, path: string, priorClassification: st
 function ownerFor(path: string, classification: string): string {
   if (path === "/api/music/identity/ensure") return "authoritative-strapi-user+selected-account";
   if (classification === "local-music-owner" || classification === "paid-local-music-owner") return "req.musicPrincipal.musicUserId";
-  if (classification === "guest-capability") return path === "/api/music/guest/request"
+  if (classification === "guest-capability") return path === "/api/playlist/:guestUrl/requests"
     ? "hashed-guest-capability"
     : "hashed-guest-capability-or-explicit-publication";
   if (classification === "admin-tombstone" || classification === "tombstone") return "none-fail-closed";
@@ -123,13 +115,14 @@ export function inventoryRuntimeSurfaces(repositoryRoot: string): RuntimeSurface
           const method = node.expression.name.text.toLowerCase();
           const target = node.expression.expression.getText(sourceFile);
           const path = literal(node.arguments[0]);
-          if (["get", "post", "put", "patch", "delete", "use"].includes(method) && path?.startsWith("/")) {
+          if (["get", "post", "put", "patch", "delete", "use", "all"].includes(method) && path?.startsWith("/")) {
             const middleware = node.arguments.slice(1, -1).map((argument) => argument.getText(sourceFile)).join(" ");
             const routePolicy = policyFor(middleware);
             const legacyClassification = routePolicy !== "none" ? "authenticated" : "handler-authorization-unknown";
             const classification = classificationFor(method.toUpperCase(), path, legacyClassification);
             let policy = routePolicy;
             if (classification === "public") policy = "explicit-public-contract";
+            else if (path === "/{*musicRetiredPath}") policy = "normalized-executable-retirement-matcher";
             else if (classification === "local-music-owner") policy = "c5-principal+local-lifecycle+owner-sql";
             else if (classification === "paid-local-music-owner") policy = "c5-principal+local-lifecycle+fresh-entitlement+owner-sql";
             else if (classification === "guest-capability") policy = "hashed-capability+guest-allowlist";
@@ -139,17 +132,32 @@ export function inventoryRuntimeSurfaces(repositoryRoot: string): RuntimeSurface
             routes.push({ method: method.toUpperCase(), path, classification, ownerSource: ownerFor(path, classification), policy, lifecycle: lifecycleFor(path, method.toUpperCase()), source, line });
           }
           const event = literal(node.arguments[0]);
-          if ((method === "on" || method === "emit") && event && /^(?:io|socket|this\.io)/.test(target)) {
+          if ((method === "on" || method === "emit") && event && /^(?:io|socket|recipient|this\.io)/.test(target)) {
             const direction = method === "on" ? "receive" : "emit";
             const classification = direction === "emit" ? "socket-response"
               : event === "connection" ? "c5-or-guest-handshake"
                 : event === "player_state" ? "local-music-owner-event"
                   : event === "guest_request" ? "guest-capability-event"
                     : event === "disconnect" ? "socket-lifecycle" : "tombstone-event";
-            events.push({ direction, event, classification, policy: "event-time-recheck+role-allowlist", ownerSource: event === "guest_request" ? "hashed-guest-capability" : "socket.musicPrincipal", lifecycle: event === "disconnect" ? "disconnect" : "event", source, line });
+            const policy = direction === "receive" ? "sender-event-time-recheck+role-allowlist" : "socket-response";
+            events.push({ direction, event, classification, policy, ownerSource: event === "guest_request" ? "hashed-guest-capability" : "socket.musicPrincipal", lifecycle: event === "disconnect" ? "disconnect" : "event", source, line });
           }
-        } else if (ts.isIdentifier(node.expression) && (node.expression.text === "setInterval" || node.expression.text === "setTimeout")) {
-          jobs.push({ kind: node.expression.text, lifecycle: source.includes("reactivation-service") ? "reactivation-token-cleanup" : "scheduled-callback", source, line });
+        } else if (ts.isIdentifier(node.expression)) {
+          if (node.expression.text === "setInterval" || node.expression.text === "setTimeout") {
+            jobs.push({ kind: node.expression.text, lifecycle: source.includes("reactivation-service") ? "reactivation-token-cleanup" : "scheduled-callback", source, line });
+          } else if (node.expression.text === "emitToAuthorizedRecipients") {
+            const event = literal(node.arguments[2]);
+            if (event) events.push({
+              direction: "emit",
+              event,
+              classification: "socket-recipient-revalidated",
+              policy: "recipient-lifecycle+capability-recheck-before-delivery",
+              ownerSource: event === "guest_request" ? "recipient.socket.musicPrincipal" : "recipient.hashed-guest-capability",
+              lifecycle: "event",
+              source,
+              line,
+            });
+          }
         }
       }
       ts.forEachChild(node, visit);
@@ -157,23 +165,11 @@ export function inventoryRuntimeSurfaces(repositoryRoot: string): RuntimeSurface
     visit(sourceFile);
   }
   const compare = (left: { source: string; line: number }, right: { source: string; line: number }) => left.source.localeCompare(right.source) || left.line - right.line;
-  for (const path of BOUNDARY_PATHS) {
-    const classification = path.startsWith("/api/admin/") ? "admin-tombstone" : "tombstone";
-    routes.push({
-      method: "ALL",
-      path,
-      classification,
-      ownerSource: "none-fail-closed",
-      policy: "fail-closed-tombstone",
-      lifecycle: "request",
-      source: "tunes/server/routes/musicSurfaceRoutes.ts",
-      line: 0,
-    });
-  }
   assertNoUnclassifiedSensitiveSurfaces(routes);
   return {
     schemaVersion: "music-runtime-surface-inventory/v1",
     retiredSurfaces: RETIRED_SURFACES,
+    retirementMatchers: [...RETIRED_MUSIC_ROUTE_RULES],
     routes: routes.sort(compare),
     events: events.sort(compare),
     jobs: jobs.sort(compare),

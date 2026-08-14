@@ -19,8 +19,8 @@ describe("generated full Music authorization matrix", () => {
     expect(matrix.routes).toHaveLength(inventory.routes.length);
     expect(matrix.events).toHaveLength(inventory.events.length);
     expect(matrix.routes).toEqual(expect.arrayContaining([
-      expect.objectContaining({ method: "POST", path: "/api/music/guest/request", decision: "guest" }),
-      expect.objectContaining({ method: "ALL", path: "/graphql", decision: "tombstone" }),
+      expect.objectContaining({ method: "POST", path: "/api/playlist/:guestUrl/requests", decision: "guest" }),
+      expect.objectContaining({ method: "ALL", path: "/{*musicRetiredPath}", decision: "tombstone" }),
     ]));
     expect(matrix.events).toEqual(expect.arrayContaining([
       expect.objectContaining({ direction: "receive", event: "connection", decision: "owner-or-guest" }),

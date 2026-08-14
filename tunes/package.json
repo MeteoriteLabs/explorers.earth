@@ -115,6 +115,7 @@
     "zustand": "^5.0.10"
   },
   "devDependencies": {
+    "@apidevtools/swagger-parser": "^12.1.0",
     "@replit/vite-plugin-cartographer": "^0.0.2",
     "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
     "@tailwindcss/typography": "^0.5.15",

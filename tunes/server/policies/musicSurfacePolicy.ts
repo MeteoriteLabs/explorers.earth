@@ -68,9 +68,6 @@ const PUBLIC_PATHS = new Set([
   "/sitemap.xml",
   "/api/explorers-sitemap.xml",
   "/itunes-api/search",
-  "/api/page-contents/:slug",
-  "/api/verify-email",
-  "/api/verify-email/:token",
   "/api/user/request-reactivation",
   "/api/user/reactivate",
   "/api/music-fixture/readiness",
@@ -109,7 +106,7 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
   if (route.path === "/api/music/identity/current") return "owner";
   if (route.path === "/api/music/entitlement" || route.path === "/api/music/dashboard") return "owner";
   if (route.path === "/api/playlist/:guestUrl") return "guest";
-  if (route.path === "/api/music/guest/request") return "guest";
+  if (route.path === "/api/playlist/:guestUrl/requests") return "guest";
   if (PUBLIC_PATHS.has(route.path) || route.classification === "public") return "public";
   if (route.path.startsWith("/api/admin/")) return "admin-tombstone";
   if (route.path === "/graphql" || route.path === "/api/strapi/graphql"
@@ -147,11 +144,13 @@ export function authorizationMatrixFromInventory(inventory: {
     routes: inventory.routes.map((route) => {
       const decision = decisionForRoute(route);
       const allowed = allowedFor(decision);
-      if (route.path === "/api/music/guest/request") allowed.unauthenticated = false;
+      if (route.path === "/api/playlist/:guestUrl/requests") allowed.unauthenticated = false;
       return { method: route.method, path: route.path, source: route.source, decision, allowed };
     }),
     events: inventory.events.map((event) => {
-      const decision: MusicSurfaceDecision = event.event === "guest_request" ? "guest"
+      const decision: MusicSurfaceDecision = event.direction === "emit" && event.event === "guest_request" ? "owner"
+        : event.direction === "emit" && event.event === "player_state" ? "guest"
+        : event.event === "guest_request" ? "guest"
         : event.event === "connection" ? "owner-or-guest"
           : event.event === "disconnect" || event.direction === "emit" ? "public"
           : event.event === "player_state" ? "owner" : "tombstone";

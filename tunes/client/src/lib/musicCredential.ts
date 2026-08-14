@@ -2,8 +2,14 @@ interface CachedMusicCredential { token: string; expiresAt: number; }
 
 let current: CachedMusicCredential | undefined;
 let inflight: Promise<CachedMusicCredential> | undefined;
-const GUEST_CAPABILITY_KEY = "musicGuestCapability";
+const GUEST_CAPABILITY_KEY_PREFIX = "musicGuestCapability:";
 const GUEST_CAPABILITY_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+const GUEST_SLUG_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
+
+function guestCapabilityKey(guestUrl: string): string {
+  if (!GUEST_SLUG_PATTERN.test(guestUrl)) throw new Error("A valid guest playlist slug is required.");
+  return `${GUEST_CAPABILITY_KEY_PREFIX}${guestUrl}`;
+}
 
 export function clearMusicCredential(): void {
   current = undefined;
@@ -11,31 +17,57 @@ export function clearMusicCredential(): void {
 }
 
 /** Accepts an out-of-band capability after the guest explicitly supplies it. */
-export function setGuestMusicCapability(capability: string): void {
+export function setGuestMusicCapability(capability: string, guestUrl: string): void {
   if (!GUEST_CAPABILITY_PATTERN.test(capability)) throw new Error("A valid guest capability is required.");
-  sessionStorage.setItem(GUEST_CAPABILITY_KEY, capability);
+  sessionStorage.setItem(guestCapabilityKey(guestUrl), capability);
 }
 
-export function getGuestMusicCapability(): string | undefined {
-  const capability = sessionStorage.getItem(GUEST_CAPABILITY_KEY) ?? "";
+export function getGuestMusicCapability(guestUrl: string): string | undefined {
+  const key = guestCapabilityKey(guestUrl);
+  const capability = sessionStorage.getItem(key) ?? "";
   if (!GUEST_CAPABILITY_PATTERN.test(capability)) {
-    sessionStorage.removeItem(GUEST_CAPABILITY_KEY);
+    sessionStorage.removeItem(key);
     return undefined;
   }
   return capability;
 }
 
-export function clearGuestMusicCapability(): void {
-  sessionStorage.removeItem(GUEST_CAPABILITY_KEY);
+export function clearGuestMusicCapability(guestUrl: string): void {
+  sessionStorage.removeItem(guestCapabilityKey(guestUrl));
 }
 
-export function acquireGuestMusicCapability(): string | undefined {
-  const existing = getGuestMusicCapability();
-  if (existing) return existing;
-  const supplied = globalThis.prompt("Enter the guest capability shared by the playlist owner:")?.trim() ?? "";
-  if (!supplied) return undefined;
-  setGuestMusicCapability(supplied);
-  return supplied;
+export function acquireGuestMusicCapability(guestUrl: string): string | undefined {
+  return getGuestMusicCapability(guestUrl);
+}
+
+/** Creates the owner-to-guest handoff text. The capability is a body line, never URL material. */
+export function guestCapabilityHandoff(capability: string, guestUrl: string, origin = window.location.origin): string {
+  if (!GUEST_CAPABILITY_PATTERN.test(capability)) throw new Error("A valid guest capability is required.");
+  guestCapabilityKey(guestUrl);
+  const base = new URL(origin);
+  if (!/^https?:$/.test(base.protocol) || base.username || base.password || base.search || base.hash || base.pathname !== "/") {
+    throw new Error("A valid Music origin is required.");
+  }
+  return `explorers-music-guest/v1\nURL: ${base.origin}/playlist/${encodeURIComponent(guestUrl)}\nGuest capability: ${capability}`;
+}
+
+/** Imports an out-of-band handoff into this tab's per-slug header authority. */
+export function importGuestMusicCapability(handoff: string, expectedGuestUrl: string): string {
+  guestCapabilityKey(expectedGuestUrl);
+  const lines = handoff.trim().split(/\r?\n/);
+  const capability = lines[2]?.replace(/^Guest capability: /, "") ?? "";
+  try {
+    if (lines.length !== 3 || lines[0] !== "explorers-music-guest/v1"
+        || !lines[1]?.startsWith("URL: ") || !lines[2]?.startsWith("Guest capability: ")
+        || !GUEST_CAPABILITY_PATTERN.test(capability)) throw new Error("invalid handoff");
+    const url = new URL(lines[1].slice("URL: ".length));
+    if (!/^https?:$/.test(url.protocol) || url.username || url.password || url.search || url.hash
+        || decodeURIComponent(url.pathname) !== `/playlist/${expectedGuestUrl}`) throw new Error("invalid handoff");
+  } catch {
+    throw new Error("A valid guest access handoff for this playlist is required.");
+  }
+  setGuestMusicCapability(capability, expectedGuestUrl);
+  return capability;
 }
 
 export async function musicCredentialForRequest(now = Date.now()): Promise<string> {
@@ -107,9 +139,11 @@ export function isMusicOwnerRequest(url: string): boolean {
 export async function guestMusicRequest(
   capability: string,
   song: { youtubeId: string; title: string; artist: string; thumbnailUrl: string },
+  guestUrl: string,
 ): Promise<Response> {
   if (!GUEST_CAPABILITY_PATTERN.test(capability)) throw new Error("A valid guest capability is required.");
-  const response = await fetch("/api/music/guest/request", {
+  if (!GUEST_SLUG_PATTERN.test(guestUrl)) throw new Error("A valid guest playlist slug is required.");
+  const response = await fetch(`/api/playlist/${encodeURIComponent(guestUrl)}/requests`, {
     method: "POST",
     headers: {
       Accept: "application/json",

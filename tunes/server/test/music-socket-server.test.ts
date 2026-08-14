@@ -1,6 +1,6 @@
 import express from "express";
 import { io as connectSocket, type Socket } from "socket.io-client";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { MusicPrincipalError } from "../middleware/musicPrincipal";
 import { createMusicSocketServer } from "../socket/musicSocketServer";
 
@@ -9,6 +9,7 @@ describe("canonical C5 owner and guest capability socket", () => {
   const capability = "A".repeat(43);
   let revoked = false;
   let expired = false;
+  let internalFailure = false;
   let server: ReturnType<typeof createMusicSocketServer>;
   let url: string;
 
@@ -18,6 +19,7 @@ describe("canonical C5 owner and guest capability socket", () => {
       ownerCredentials: {
         handshake: async ({ token }) => {
           if (token !== "aaa.bbb.ccc") throw new MusicPrincipalError("TOKEN_INVALID", 401, "invalid");
+          if (expired) throw new MusicPrincipalError("TOKEN_EXPIRED", 401, "expired");
           return { token, principal: { musicUserId: 41, subject: "owner-41", accountDocumentId: "account", sessionVersion: 2 } };
         },
         recheck: async (context) => {
@@ -25,9 +27,12 @@ describe("canonical C5 owner and guest capability socket", () => {
           return context.principal;
         },
       },
-      resolveGuestCapability: async (candidate) => candidate === capability && !revoked
-        ? { musicUserId: 41, active: true, allowSongRequests: true }
-        : undefined,
+      resolveGuestCapability: async (candidate) => {
+        if (internalFailure) throw new Error("repository detail");
+        return candidate === capability && !revoked
+          ? { musicUserId: 41, active: true, allowSongRequests: true }
+          : undefined;
+      },
       eventLimit: 3,
     });
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -39,6 +44,12 @@ describe("canonical C5 owner and guest capability socket", () => {
   afterAll(async () => {
     sockets.forEach((socket) => socket.close());
     await new Promise<void>((resolve) => server.close(() => resolve()));
+  });
+
+  afterEach(() => {
+    revoked = false;
+    expired = false;
+    internalFailure = false;
   });
 
   function connect(auth: Record<string, string>, origin = "https://explorers.example") {
@@ -54,6 +65,8 @@ describe("canonical C5 owner and guest capability socket", () => {
     // Break caught: session cookies or permissive origins substitute for C5/capability authority.
     await expect(connect({}, "https://evil.example")).rejects.toThrow();
     await expect(connect({ nativeSession: "cosmic.sid" })).rejects.toMatchObject({ data: { error: { code: "TOKEN_INVALID" } } });
+    internalFailure = true;
+    await expect(connect({ guestCapability: capability })).rejects.toMatchObject({ data: { error: { code: "TOKEN_INVALID" } } });
   });
 
   it("keeps guest and owner rooms separate while delivering only allowlisted events", async () => {
@@ -84,6 +97,44 @@ describe("canonical C5 owner and guest capability socket", () => {
     const ownerFailure = new Promise<Record<string, any>>((resolve) => owner.once("music_error", resolve));
     owner.emit("player_state", { playing: true, position: 1 });
     await expect(ownerFailure).resolves.toEqual({ version: "music-error/v1", error: expect.objectContaining({ code: "TOKEN_EXPIRED" }) });
+    expired = false;
+  });
+
+  it("evicts a revoked guest before a valid owner broadcasts to guest recipients", async () => {
+    // Break caught: a guest that never emits remains in the room after its capability is rotated or revoked.
+    const owner = await connect({ token: "aaa.bbb.ccc" });
+    const guest = await connect({ guestCapability: capability });
+    let received = false;
+    guest.once("player_state", () => { received = true; });
+
+    revoked = true;
+    owner.emit("player_state", { playing: true, position: 9 });
+    await new Promise((resolve) => setTimeout(resolve, 75));
+
+    expect(received).toBe(false);
+    expect(guest.connected).toBe(false);
+    await expect(connect({ guestCapability: capability })).rejects.toMatchObject({
+      data: { error: { code: "GUEST_CAPABILITY_INVALID" } },
+    });
+    revoked = false;
+  });
+
+  it("evicts an expired owner before a valid guest broadcasts to owner recipients", async () => {
+    // Break caught: an owner that never emits retains inbound guest-request authority after expiry/revocation.
+    const owner = await connect({ token: "aaa.bbb.ccc" });
+    const guest = await connect({ guestCapability: capability });
+    let received = false;
+    owner.once("guest_request", () => { received = true; });
+
+    expired = true;
+    guest.emit("guest_request", { type: "song", externalId: "yt:recipient-expiry" });
+    await new Promise((resolve) => setTimeout(resolve, 75));
+
+    expect(received).toBe(false);
+    expect(owner.connected).toBe(false);
+    await expect(connect({ token: "aaa.bbb.ccc" })).rejects.toMatchObject({
+      data: { error: { code: "TOKEN_EXPIRED" } },
+    });
     expired = false;
   });
 

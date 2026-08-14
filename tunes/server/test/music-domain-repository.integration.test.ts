@@ -132,4 +132,95 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     expect(await domain.resolveGuestResource("c6-public-cap-b", bCapability)).toMatchObject({ state: "revoked" });
     expect(await domain.resolveGuestResource("c6-public-cap-b")).toBeUndefined();
   });
+
+  it("binds guest request capability and public slug in one owner-predicated query", async () => {
+    // Break caught: capability A plus slug B selected either owner before the queue mutation.
+    const a = await identities.ensureIdentity(identityInput("request-a"));
+    const b = await identities.ensureIdentity(identityInput("request-b"));
+    const capabilityA = createGuestCapability();
+    const capabilityB = createGuestCapability();
+    await domain.rotateGuestCapability(a.id, hashGuestCapability(capabilityA));
+    await domain.rotateGuestCapability(b.id, hashGuestCapability(capabilityB));
+    await pool.query("UPDATE users SET allow_song_requests=true WHERE id=ANY($1::integer[])", [[a.id, b.id]]);
+
+    const crossOwner = await domain.resolveGuestRequestAuthority("c6-public-request-b", capabilityA);
+    expect(crossOwner).toBeUndefined();
+    expect((await pool.query("SELECT count(*)::int AS count FROM songs WHERE user_id=ANY($1::integer[])", [[a.id, b.id]])).rows[0].count).toBe(0);
+
+    const sameOwner = await domain.resolveGuestRequestAuthority("c6-public-request-a", capabilityA);
+    expect(sameOwner).toEqual({ musicUserId: a.id, active: true, allowSongRequests: true });
+    await domain.addSong(sameOwner!.musicUserId, {
+      youtubeId: "request-a-song", title: "A request", artist: "A", thumbnailUrl: "https://img/request-a",
+    });
+    expect((await pool.query("SELECT user_id,youtube_id FROM songs WHERE user_id=ANY($1::integer[]) ORDER BY user_id", [[a.id, b.id]])).rows)
+      .toEqual([{ user_id: a.id, youtube_id: "request-a-song" }]);
+  });
+
+  it("serializes concurrent queue, saved-song, and playback mutations per owner", async () => {
+    // Break caught: MAX(position)+1 races produce duplicates and competing setPlaying calls leave two playing rows.
+    const a = await identities.ensureIdentity(identityInput("concurrent-a"));
+    const b = await identities.ensureIdentity(identityInput("concurrent-b"));
+    const playlistA = await domain.createPlaylist(a.id, { name: "A concurrent", description: null }) as { id: number };
+
+    await Promise.all(Array.from({ length: 16 }, (_, index) => domain.addSong(a.id, {
+      youtubeId: `queue-${index}`, title: `Queue ${index}`, artist: "A", thumbnailUrl: `https://img/queue-${index}`,
+    })));
+    const queue = (await pool.query(
+      "SELECT id,position FROM songs WHERE user_id=$1 ORDER BY position,id",
+      [a.id],
+    )).rows as Array<{ id: number; position: number }>;
+    expect(queue.map(({ position }) => position)).toEqual(Array.from({ length: 16 }, (_, index) => index));
+    expect(new Set(queue.map(({ position }) => position)).size).toBe(16);
+
+    await Promise.all(Array.from({ length: 16 }, (_, index) => domain.addPlaylistSong(a.id, playlistA.id, {
+      youtubeId: `saved-${index}`, title: `Saved ${index}`, artist: "A", thumbnailUrl: `https://img/saved-${index}`,
+    })));
+    const savedPositions = (await pool.query(
+      "SELECT position FROM playlist_songs WHERE playlist_id=$1 ORDER BY position,id",
+      [playlistA.id],
+    )).rows.map(({ position }) => position);
+    expect(savedPositions).toEqual(Array.from({ length: 16 }, (_, index) => index));
+    expect(new Set(savedPositions).size).toBe(16);
+
+    const bSong = await domain.addSong(b.id, {
+      youtubeId: "queue-b", title: "Queue B", artist: "B", thumbnailUrl: "https://img/queue-b",
+    }) as { id: number };
+    await Promise.all([
+      ...queue.map(({ id }) => domain.setPlaying(a.id, id)),
+      domain.setPlaying(b.id, bSong.id),
+    ]);
+    expect((await pool.query("SELECT count(*)::int AS count FROM songs WHERE user_id=$1 AND status='playing'", [a.id])).rows[0].count).toBe(1);
+    expect((await pool.query("SELECT count(*)::int AS count FROM songs WHERE user_id=$1 AND status='playing'", [b.id])).rows[0].count).toBe(1);
+  });
+
+  it("lists only active explicitly discoverable users with a visible playlist for the sitemap", async () => {
+    // Break caught: lifecycle, unlisted, revoked, and zero-visible Music pages entered discovery.
+    const suffixes = ["sitemap-live", "sitemap-suspended", "sitemap-pending", "sitemap-private", "sitemap-unlisted", "sitemap-revoked", "sitemap-zero"];
+    const rows = new Map<string, Awaited<ReturnType<MusicIdentityRepository["ensureIdentity"]>>>();
+    for (const suffix of suffixes) rows.set(suffix, await identities.ensureIdentity(identityInput(suffix)));
+    for (const suffix of suffixes.filter((value) => value !== "sitemap-zero")) {
+      const identity = rows.get(suffix)!;
+      const playlist = await domain.createPlaylist(identity.id, { name: suffix, description: null }) as { id: number };
+      await domain.setPlaylistVisibility(identity.id, playlist.id, true);
+    }
+    await pool.query("UPDATE users SET guest_discoverable=true WHERE id=ANY($1::integer[])", [[...rows.values()].map(({ id }) => id)]);
+    await identities.transitionIdentity({
+      strapiUserDocumentId: "c6-user-sitemap-suspended",
+      operationId: "c6-sitemap-suspend",
+      kind: "suspend",
+      targetStatus: "suspended",
+    });
+    await identities.transitionIdentity({
+      strapiUserDocumentId: "c6-user-sitemap-pending",
+      operationId: "c6-sitemap-delete",
+      kind: "request_deletion",
+      targetStatus: "pending_deletion",
+    });
+    await pool.query("UPDATE users SET guest_discoverable=false WHERE id=ANY($1::integer[])", [[rows.get("sitemap-private")!.id, rows.get("sitemap-unlisted")!.id]]);
+    await pool.query("UPDATE users SET guest_capability_revoked_at=now() WHERE id=$1", [rows.get("sitemap-revoked")!.id]);
+
+    expect(await domain.listPublishedMusicPlaylists()).toEqual([
+      expect.objectContaining({ guestUrl: "c6-public-sitemap-live", updatedAt: expect.any(Date) }),
+    ]);
+  });
 });

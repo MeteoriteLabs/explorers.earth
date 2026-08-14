@@ -1,7 +1,5 @@
 import express from "express";
 import request from "supertest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildSitemapXml, EXPLORERS_STATIC_SITEMAP_URLS, setupSeoRoutes } from "../../seo-routes";
 
@@ -31,13 +29,18 @@ describe("explorers sitemap static pages", () => {
     expect(response.text).toContain("<loc>https://explorers.earth/use-cases</loc>");
   });
 
-  it("requires a visible playlist and never serves a cached publication decision", () => {
-    // Break caught: zero-public owners are indexed and revoke/unpublish remains in the sitemap for an hour.
-    const source = readFileSync(resolve(import.meta.dirname, "../../seo-routes.ts"), "utf8");
-    expect(source).toMatch(/selectDistinct/);
-    expect(source).toMatch(/innerJoin\(playlists/);
-    expect(source).toMatch(/eq\(playlists\.isVisibleToGuests, true\)/);
-    const tunesGenerator = source.slice(source.indexOf("async function generateTunesSitemap"), source.indexOf("async function generateExplorersSitemap"));
-    expect(tunesGenerator).not.toMatch(/getCachedSitemap|setCachedSitemap/);
+  it("serves only the repository-filtered active public playlist set without caching capability authority", async () => {
+    // Break caught: sitemap generation bypasses lifecycle/publication filtering or caches stale publication authority.
+    const app = express();
+    setupSeoRoutes(app, {
+      listPublishedMusicPlaylists: async () => [{ guestUrl: "active-public", updatedAt: new Date("2026-08-14T00:00:00Z") }],
+    });
+
+    const response = await request(app).get("/sitemap.xml");
+
+    expect(response.status).toBe(200);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.text).toContain("<loc>https://localtunes.earth/playlist/active-public</loc>");
+    expect(response.text).not.toContain("capability");
   });
 });

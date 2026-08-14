@@ -36,7 +36,7 @@ describe("forbidden Music authority search contract", () => {
 
   it("routes every active owner caller through the C5 credential adapter", () => {
     // Break caught: a direct fetch lands on an owner retirement boundary with only cookies/native auth.
-    const nonAdminClient = client.filter((file) => !/[\\/](?:AdminDashboard|pages[\\/](?:admin|tabs))[\\/.]/.test(file));
+    const nonAdminClient = client.filter((file) => !/[\\/]pages[\\/](?:admin|tabs)[\\/]/.test(file));
     expect(matches(nonAdminClient, /\bfetch\(\s*[`'"]\/api\/(?:subscriptions|youtube|instagram|payments|gemini|email|system-settings)(?:\/|[`'"])/i)).toEqual([]);
   });
 
@@ -63,14 +63,16 @@ describe("forbidden Music authority search contract", () => {
     expect(hook).toMatch(/guest_request/);
   });
 
-  it("has an explicit browser setter for an out-of-band guest capability", () => {
+  it("has an explicit visible browser import for a per-slug out-of-band guest capability", () => {
     // Break caught: all guest mutations read sessionStorage, but no supported flow can put authority there.
     const credential = readFileSync(resolve(root, "tunes/client/src/lib/musicCredential.ts"), "utf8");
     expect(credential).toMatch(/export function setGuestMusicCapability/);
-    expect(credential).toMatch(/sessionStorage\.setItem\(GUEST_CAPABILITY_KEY/);
+    expect(credential).toMatch(/sessionStorage\.setItem\(guestCapabilityKey\(guestUrl\), capability\)/);
     expect(credential).toMatch(/export function acquireGuestMusicCapability/);
+    expect(credential).toMatch(/export function importGuestMusicCapability/);
+    expect(credential).not.toMatch(/\bprompt\s*\(/);
     const production = client.map((file) => readFileSync(file, "utf8")).join("\n");
-    expect(production).toMatch(/acquireGuestMusicCapability\(\)/);
+    expect(production).toMatch(/<GuestCapabilityImport/);
     expect(production).toMatch(/\/api\/music\/guest-capability\/rotate/);
   });
 
@@ -80,14 +82,13 @@ describe("forbidden Music authority search contract", () => {
     expect(dashboard).not.toMatch(/[`'"]\/api\/playlist\/\$\{user(?:\?\.)?\.guestUrl\}/);
     expect(dashboard).toMatch(/\/api\/music\/dashboard/);
     expect(dashboard).toMatch(/ensureShareCapability/);
-    expect(dashboard).toMatch(/Guest capability:\s*\$\{capability\}/);
-    expect(dashboard).toMatch(/explorers-music-guest\/v1/);
+    expect(dashboard).toMatch(/guestCapabilityHandoff\(capability, user\.guestUrl\)/);
     expect(profile).not.toMatch(/\/api\/user\/profile/);
   });
 
   it("does not leave active product code calling retired C6 families", () => {
     // Break caught: typed 410 is correctly registered but the UI silently keeps invoking it as a live feature.
-    const active = client.filter((file) => !file.endsWith(".backup") && !/[\\/](?:AdminDashboard|pages[\\/](?:admin|tabs))[\\/.]/.test(file));
+    const active = client.filter((file) => !file.endsWith(".backup") && !/[\\/]pages[\\/](?:admin|tabs)[\\/]/.test(file));
     expect(matches(active, /apiRequest\([\s\S]{0,80}[`'"]\/api\/(?:subscriptions\/|user\/devices|user\/change-password|user\/profile|playlist\/import-|playlists\/[^`'"]+\/import-)/i)).toEqual([]);
   });
 

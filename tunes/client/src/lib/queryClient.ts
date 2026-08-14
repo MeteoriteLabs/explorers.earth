@@ -1,6 +1,6 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getCsrfToken } from "./csrf";
-import { acquireGuestMusicCapability, clearGuestMusicCapability, getGuestMusicCapability, isMusicOwnerRequest, musicCredentialForRequest } from "./musicCredential";
+import { clearGuestMusicCapability, getGuestMusicCapability, isMusicOwnerRequest, musicCredentialForRequest } from "./musicCredential";
 
 
 
@@ -178,8 +178,10 @@ export const getQueryFn: <T>(options: GetQueryFnOptions) => QueryFunction<T> =
         if (token) {
           headers["Authorization"] = `Bearer ${token}`;
         }
-        if (/^\/api\/playlist\/[^/]+$/.test(url)) {
-          const guestCapability = getGuestMusicCapability();
+        const guestMatch = /^\/api\/playlist\/([^/]+)$/.exec(url);
+        const guestUrl = guestMatch ? decodeURIComponent(guestMatch[1]) : undefined;
+        if (guestUrl) {
+          const guestCapability = getGuestMusicCapability(guestUrl);
           if (guestCapability) headers["X-Music-Guest-Capability"] = guestCapability;
         }
 
@@ -195,13 +197,8 @@ export const getQueryFn: <T>(options: GetQueryFnOptions) => QueryFunction<T> =
           mode: "cors",
           headers
         });
-        if (res.status === 404 && /^\/api\/playlist\/[^/]+$/.test(url)) {
-          clearGuestMusicCapability();
-          const capability = acquireGuestMusicCapability();
-          if (capability) {
-            const retryHeaders = { ...headers, "X-Music-Guest-Capability": capability };
-            res = await fetch(url, { credentials: "include", mode: "cors", headers: retryHeaders });
-          }
+        if (res.status === 404 && guestUrl) {
+          clearGuestMusicCapability(guestUrl);
         }
 
         // Handle 503 Service Unavailable with exponential backoff

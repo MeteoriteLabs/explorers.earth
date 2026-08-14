@@ -3,6 +3,7 @@ import type { Express, NextFunction, Request, Response } from "express";
 import jwt, { type JwtPayload } from "jsonwebtoken";
 import { errorEnvelope, type ContainmentCode } from "./containment-error-contract";
 import { isNativeRegistrationPath } from "./registration-route-contract";
+import { MusicIdentityError, musicErrorEnvelope } from "../shared/musicError";
 
 export { errorEnvelope, type ContainmentCode } from "./containment-error-contract";
 
@@ -13,7 +14,10 @@ type RequestWithPrincipal = Request & {
 
 export function requestIdFor(req: Request): string {
   const request = req as RequestWithPrincipal;
-  request.containmentRequestId ??= randomUUID();
+  const supplied = req.get("x-request-id");
+  request.containmentRequestId ??= supplied && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/.test(supplied)
+    ? supplied
+    : randomUUID();
   return request.containmentRequestId;
 }
 
@@ -292,9 +296,23 @@ export function installSafeConsole(): void {
 
 export function containmentErrorHandler(error: any, req: Request, res: Response): void {
   const requestId = requestIdFor(req);
+  res.setHeader("X-Request-Id", requestId);
+  const safe = safeMusicRequestError(error);
+  res.status(safe.status).json(musicErrorEnvelope(safe, requestId));
+}
+
+export function safeMusicRequestError(error: any): MusicIdentityError {
   if (error?.type === "entity.too.large" || error?.status === 413) {
-    sendContainmentError(res, 413, "PAYLOAD_TOO_LARGE", requestId);
-    return;
+    return new MusicIdentityError(
+      "PAYLOAD_TOO_LARGE", 413, "The Music request payload is too large.", "none", false,
+    );
   }
-  sendContainmentError(res, 500, "INTERNAL_ERROR", requestId);
+  if (error?.type === "entity.parse.failed" || error?.status === 400 && error instanceof SyntaxError) {
+    return new MusicIdentityError(
+      "REQUEST_INVALID", 400, "The Music request body is invalid.", "none", false,
+    );
+  }
+  return new MusicIdentityError(
+    "INTERNAL_ERROR", 500, "Music is temporarily unavailable.", "retry", true,
+  );
 }

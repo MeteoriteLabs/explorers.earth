@@ -42,9 +42,9 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig)
     const declared = req.get("content-length");
     if (declared && /^\d+$/.test(declared) && Number(declared) > 64 * 1024) {
       const requestId = requestIdFor(req);
-      return res.status(413).json(musicErrorEnvelope(new MusicIdentityError(
+      req.resume(); return req.once("end", () => res.status(413).json(musicErrorEnvelope(new MusicIdentityError(
         "PAYLOAD_TOO_LARGE", 413, "The Music request payload is too large.", "none", false,
-      ), requestId));
+      ), requestId)));
     }
     next();
   });
@@ -101,7 +101,7 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig)
     }
 
     // Handle preflight OPTIONS requests
-    if (req.method === "OPTIONS") {
+    if (req.method === "OPTIONS" && req.get("access-control-request-method")) {
       return res.sendStatus(200);
     }
 

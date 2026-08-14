@@ -42,6 +42,40 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
   const eventLimit = dependencies.eventLimit ?? 10;
   const eventWindowMs = dependencies.eventWindowMs ?? 60_000;
 
+  const authorityIsCurrent = async (authority: SocketAuthority, expectedRole: SocketAuthority["role"]): Promise<boolean> => {
+    if (authority.role !== expectedRole) return false;
+    if (authority.role === "owner") {
+      try {
+        const principal = await dependencies.ownerCredentials.recheck(authority.owner);
+        return principal.musicUserId === authority.musicUserId;
+      } catch {
+        return false;
+      }
+    }
+    const guest = await dependencies.resolveGuestCapability(authority.capability);
+    return guest?.active === true && guest.musicUserId === authority.musicUserId;
+  };
+
+  const emitToAuthorizedRecipients = async (
+    room: string,
+    expectedRole: SocketAuthority["role"],
+    event: string,
+    payload: unknown,
+  ) => {
+    const recipients = await io.in(room).fetchSockets();
+    await Promise.all(recipients.map(async (recipient) => {
+      const recipientAuthority = recipient.data.musicAuthority as SocketAuthority | undefined;
+      if (!recipientAuthority || !await authorityIsCurrent(recipientAuthority, expectedRole)) {
+        const error = recipientAuthority?.role === "guest" ? guestInvalid() : new MusicPrincipalError("TOKEN_REVOKED", 401, "The Music credential has been revoked.");
+        recipient.emit("music_error", musicErrorEnvelope(safeSocketError(error), randomUUID()));
+        await recipient.leave(room);
+        recipient.disconnect(true);
+        return;
+      }
+      recipient.emit(event, payload);
+    }));
+  };
+
   io.use(async (socket, next) => {
     try {
       const origin = socket.handshake.headers.origin;
@@ -90,6 +124,10 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
       const error = safeSocketError(cause);
       socket.emit("music_error", musicErrorEnvelope(error, randomUUID()));
     };
+    const evict = (cause: unknown) => {
+      fail(cause);
+      socket.disconnect(true);
+    };
     const accept = (payload: unknown): boolean => {
       let bytes: number;
       try { bytes = Buffer.byteLength(JSON.stringify(payload), "utf8"); } catch { fail(routeError("REQUEST_INVALID", 400, "The socket payload is invalid.")); return false; }
@@ -118,9 +156,9 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
       try {
         const principal = await dependencies.ownerCredentials.recheck(authority.owner);
         if (principal.musicUserId !== authority.musicUserId) throw new MusicPrincipalError("TOKEN_REVOKED", 401, "The Music credential has been revoked.");
-        if (!validPlayerState(payload)) throw routeError("REQUEST_INVALID", 400, "The socket payload is invalid.");
-        io.to(`music-guest:${authority.musicUserId}`).emit("player_state", payload);
-      } catch (cause) { fail(cause); }
+      } catch (cause) { return evict(cause); }
+      if (!validPlayerState(payload)) return fail(routeError("REQUEST_INVALID", 400, "The socket payload is invalid."));
+      await emitToAuthorizedRecipients(`music-guest:${authority.musicUserId}`, "guest", "player_state", payload);
     });
 
     socket.on("guest_request", async (payload: unknown) => {
@@ -129,12 +167,12 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
       try {
         const guest = await dependencies.resolveGuestCapability(authority.capability);
         if (!guest?.active || guest.musicUserId !== authority.musicUserId || !guest.allowSongRequests) throw guestInvalid();
-        if (!validGuestRequest(payload)) throw routeError("REQUEST_INVALID", 400, "The socket payload is invalid.");
-        const requestId = randomUUID();
-        const event = payload as { type: "song"; externalId: string };
-        io.to(`music-owner:${authority.musicUserId}`).emit("guest_request", { ...event, requestId });
-        socket.emit("guest_request_status", { status: "accepted", requestId });
-      } catch (cause) { fail(cause); }
+      } catch (cause) { return evict(cause); }
+      if (!validGuestRequest(payload)) return fail(routeError("REQUEST_INVALID", 400, "The socket payload is invalid."));
+      const requestId = randomUUID();
+      const event = payload as { type: "song"; externalId: string };
+      await emitToAuthorizedRecipients(`music-owner:${authority.musicUserId}`, "owner", "guest_request", { ...event, requestId });
+      socket.emit("guest_request_status", { status: "accepted", requestId });
     });
   });
 
