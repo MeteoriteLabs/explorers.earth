@@ -1,4 +1,5 @@
-import { chmodSync, closeSync, fsyncSync, ftruncateSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, readdirSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync, writeSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { chmodSync, closeSync, constants, fsyncSync, ftruncateSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, readdirSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -236,6 +237,7 @@ describe("fixture environment secret persistence", () => {
     rename?: typeof renameSync;
     beforePublish?: () => void;
     syncDirectory?: (path: string) => void;
+    afterReferenceCommit?: () => void;
   };
   type Persist = (root: string, contents: string, dependencies?: PersistenceDependencies) => string;
 
@@ -255,12 +257,13 @@ describe("fixture environment secret persistence", () => {
     writeFileSync(destination, "PREVIOUS=byte-exact\n", { mode: 0o600 });
     const attackerMode = statSync(attacker).mode;
 
-    expect(() => requiredPersist()(root, "SESSION_SECRET=new-secret-sentinel\n", {
+    expect(requiredPersist()(root, "SESSION_SECRET=new-secret-sentinel\n", {
       randomNameBytes: () => Buffer.alloc(16, 0x61),
-    })).toThrow(/fixture environment|publish|secure/i);
+    })).toBe(destination);
     expect(readFileSync(attacker, "utf8")).toBe("attacker-temp-must-not-change");
     expect(statSync(attacker).mode).toBe(attackerMode);
-    expect(readFileSync(destination, "utf8")).toBe("PREVIOUS=byte-exact\n");
+    expect(readFileSync(destination, "utf8")).not.toContain("new-secret-sentinel");
+    expect((fixtureSecrets as unknown as { readFixtureMusicEnvironment: (root: string) => string }).readFixtureMusicEnvironment(root)).toBe("SESSION_SECRET=new-secret-sentinel\n");
   });
 
   it.each(["short-write", "sync", "rename"] as const)("preserves the prior environment and leaves no secret residue after %s failure", (failure) => {
@@ -288,9 +291,10 @@ describe("fixture environment secret persistence", () => {
     expect(() => requiredPersist()(root, secret, dependencies as PersistenceDependencies))
       .toThrow(/fixture environment|publish|secure/i);
     expect(readFileSync(destination, "utf8")).toBe(previous);
-    const temporaryLeaves = readdirSync(root).filter((name) => name.startsWith(".env.music.test.") && name.endsWith(".tmp"));
-    expect(temporaryLeaves).toHaveLength(1);
-    expect(temporaryLeaves.map((name) => readFileSync(join(root, name), "utf8"))).toEqual([""]);
+    const byte = failure === "short-write" ? 0x62 : failure === "sync" ? 0x63 : 0x64;
+    const generation = join(root, ".artifacts", "music-environment-generations", `generation-${Buffer.alloc(16, byte).toString("hex")}`);
+    expect(readFileSync(generation, "utf8")).toBe("");
+    expect(readdirSync(root).filter((name) => name.endsWith(".tmp")).every((name) => !readFileSync(join(root, name), "utf8").includes("raw-secret-residue-sentinel"))).toBe(true);
   });
 
   it.each(["close", "directory-sync"] as const)("finishes %s before commit and preserves the prior environment on failure", (failure) => {
@@ -321,9 +325,9 @@ describe("fixture environment secret persistence", () => {
     const after = lstatSync(destination);
     expect(readFileSync(destination, "utf8")).toBe(previous);
     expect({ dev: after.dev, ino: after.ino, mode: after.mode }).toEqual({ dev: before.dev, ino: before.ino, mode: before.mode });
-    const temporaryLeaves = readdirSync(root).filter((name) => name.startsWith(".env.music.test.") && name.endsWith(".tmp"));
-    expect(temporaryLeaves).toHaveLength(1);
-    expect(readFileSync(join(root, temporaryLeaves[0]!), "utf8")).toBe("");
+    const byte = failure === "close" ? 0x68 : 0x69;
+    const generation = join(root, ".artifacts", "music-environment-generations", `generation-${Buffer.alloc(16, byte).toString("hex")}`);
+    expect(readFileSync(generation, "utf8")).toBe("");
   });
 
   it("validates the opened temporary inode before commit and never publishes or mutates an attacker replacement", () => {
@@ -332,7 +336,7 @@ describe("fixture environment secret persistence", () => {
     const root = fixtureRoot();
     const destination = join(root, ".env.music.test");
     const previous = "PREVIOUS=byte-exact\n";
-    const temporaryName = `.env.music.test.${Buffer.alloc(16, 0x6a).toString("hex")}.tmp`;
+    const temporaryName = `.env.music.test.reference-${Buffer.alloc(16, 0x6a).toString("hex")}.tmp`;
     const temporary = join(root, temporaryName);
     const displaced = join(root, "opened-temp-displaced-by-attacker");
     writeFileSync(destination, previous, { mode: 0o600 });
@@ -346,11 +350,53 @@ describe("fixture environment secret persistence", () => {
       },
     })).toThrow(/fixture environment|publish|cleanup/i);
 
-    const after = lstatSync(destination);
+    expect(readFileSync(destination, "utf8")).toBe("attacker-replacement-must-not-change");
+    expect(readFileSync(displaced, "utf8")).toMatch(/^music-fixture-env\/v1\n/);
+    const generation = join(root, ".artifacts", "music-environment-generations", `generation-${Buffer.alloc(16, 0x6a).toString("hex")}`);
+    expect(readFileSync(generation, "utf8")).toBe("");
+  });
+
+  it("never publishes a secret-bearing source path swapped after final descriptor validation", () => {
+    // Production break caught: syncDirectory is the last injected operation
+    // before pathname rename, so a Windows source swap publishes attacker
+    // content and strands the genuine secret-bearing inode.
+    const root = fixtureRoot();
+    const destination = join(root, ".env.music.test");
+    const previous = "PREVIOUS=byte-exact\n";
+    const generation = join(root, ".artifacts", "music-environment-generations", `generation-${Buffer.alloc(16, 0x6d).toString("hex")}`);
+    const displaced = join(root, "reviewer-displaced-secret");
+    writeFileSync(destination, previous, { mode: 0o600 });
+
+    expect(() => requiredPersist()(root, "SESSION_SECRET=reviewer-secret-sentinel\n", {
+      randomNameBytes: () => Buffer.alloc(16, 0x6d),
+      syncDirectory: (directory) => {
+        if (directory !== join(root, ".artifacts", "music-environment-generations")) return;
+        renameSync(generation, displaced);
+        writeFileSync(generation, "ATTACKER=published", { mode: 0o666 });
+      },
+    })).toThrow(/fixture environment|publish|cleanup/i);
     expect(readFileSync(destination, "utf8")).toBe(previous);
-    expect({ dev: after.dev, ino: after.ino, mode: after.mode }).toEqual({ dev: before.dev, ino: before.ino, mode: before.mode });
-    expect(readFileSync(temporary, "utf8")).toBe("attacker-replacement-must-not-change");
+    expect(readFileSync(generation, "utf8")).toBe("ATTACKER=published");
     expect(readFileSync(displaced, "utf8")).toBe("");
+  });
+
+  it("publishes only a nonsecret generation reference and reads the generation through guarded authority", () => {
+    // Production break caught: `.env.music.test` is itself the renamed secret
+    // payload and Docker later reopens it through --env-file.
+    const root = fixtureRoot();
+    const contents = "SESSION_SECRET=reference-secret-sentinel\nMUSIC_MODE=fixture\n";
+    const readGeneration = (fixtureSecrets as unknown as {
+      readFixtureMusicEnvironment?: (repositoryRoot: string) => string;
+    }).readFixtureMusicEnvironment;
+    expect(readGeneration, "guarded generation reader is required").toBeTypeOf("function");
+    const reference = requiredPersist()(root, contents, {
+      randomNameBytes: () => Buffer.alloc(16, 0x6e),
+    });
+
+    expect(reference).toBe(join(root, ".env.music.test"));
+    expect(readFileSync(reference, "utf8")).toMatch(/^music-fixture-env\/v1\n/);
+    expect(readFileSync(reference, "utf8")).not.toContain("reference-secret-sentinel");
+    expect(readGeneration!(root)).toBe(contents);
   });
 
   it("treats an observed completed atomic rename as committed and restarts deterministically", () => {
@@ -370,13 +416,13 @@ describe("fixture environment secret persistence", () => {
       },
     });
     expect(result).toBe(destination);
-    expect(readFileSync(destination, "utf8")).toBe(first);
+    expect((fixtureSecrets as unknown as { readFixtureMusicEnvironment: (root: string) => string }).readFixtureMusicEnvironment(root)).toBe(first);
     expect(readdirSync(root).filter((name) => name.endsWith(".tmp"))).toHaveLength(0);
 
     expect(requiredPersist()(root, second, {
       randomNameBytes: () => Buffer.alloc(16, 0x6c),
     })).toBe(destination);
-    expect(readFileSync(destination, "utf8")).toBe(second);
+    expect((fixtureSecrets as unknown as { readFixtureMusicEnvironment: (root: string) => string }).readFixtureMusicEnvironment(root)).toBe(second);
     expect(readdirSync(root).filter((name) => name.endsWith(".tmp"))).toHaveLength(0);
   });
 
@@ -412,9 +458,8 @@ describe("fixture environment secret persistence", () => {
       expect(readFileSync(join(outside, ".env.music.test"), "utf8")).toBe("outside-must-not-change");
       const ownedRoot = swapBlocked ? root : moved;
       expect(readFileSync(join(ownedRoot, ".env.music.test"), "utf8")).toBe("PREVIOUS=byte-exact\n");
-      const temporary = readdirSync(ownedRoot).find((name) => name.endsWith(".tmp"));
-      expect(temporary).toBeDefined();
-      expect(readFileSync(join(ownedRoot, temporary!), "utf8")).toBe("");
+      const generation = join(ownedRoot, ".artifacts", "music-environment-generations", `generation-${Buffer.alloc(16, 0x65).toString("hex")}`);
+      expect(readFileSync(generation, "utf8")).toBe("");
     } finally {
       if (swapped) unlinkSync(root);
     }
@@ -429,8 +474,11 @@ describe("fixture environment secret persistence", () => {
       randomNameBytes: () => Buffer.alloc(16, 0x66),
     });
     expect(destination).toBe(join(root, ".env.music.test"));
-    expect(readFileSync(destination, "utf8")).toBe(contents);
-    if (process.platform !== "win32") expect(statSync(destination).mode & 0o777).toBe(0o600);
+    expect(readFileSync(destination, "utf8")).toMatch(/^music-fixture-env\/v1\n/);
+    expect(readFileSync(destination, "utf8")).not.toContain("complete-secret");
+    expect((fixtureSecrets as unknown as { readFixtureMusicEnvironment: (root: string) => string }).readFixtureMusicEnvironment(root)).toBe(contents);
+    const generation = join(root, ".artifacts", "music-environment-generations", `generation-${Buffer.alloc(16, 0x66).toString("hex")}`);
+    if (process.platform !== "win32") expect(statSync(generation).mode & 0o777).toBe(0o600);
     expect(readdirSync(root).filter((name) => name.endsWith(".tmp"))).toHaveLength(0);
   });
 
@@ -438,7 +486,7 @@ describe("fixture environment secret persistence", () => {
     // Production break caught: a failed temp-file erase has no safe retry
     // path, so reset/down can report success while secret bytes remain.
     const root = fixtureRoot();
-    const targetId = `.env.music.test.${Buffer.alloc(16, 0x67).toString("hex")}.tmp`;
+    const targetId = `generation-${Buffer.alloc(16, 0x67).toString("hex")}`;
     expect(() => requiredPersist()(root, "SESSION_SECRET=raw-secret-residue-sentinel\n", {
       randomNameBytes: () => Buffer.alloc(16, 0x67),
       write: ((descriptor: number, buffer: Uint8Array) => writeSync(descriptor, buffer, 0, 3, 0)) as typeof writeSync,
@@ -448,9 +496,98 @@ describe("fixture environment secret persistence", () => {
       code: "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED",
       targetId,
     }));
-    expect(lstatSync(join(root, targetId)).size).toBe(3);
+    const target = join(root, ".artifacts", "music-environment-generations", targetId);
+    expect(lstatSync(target).size).toBe(3);
 
     cleanupAllFixtureMusicTokenSecrets(root);
-    expect(lstatSync(join(root, targetId)).size).toBe(0);
+    expect(lstatSync(target).size).toBe(0);
+    expect(() => cleanupAllFixtureMusicTokenSecrets(root)).not.toThrow();
+  });
+
+  it("rotates generations, erases the previous authority, and fails closed on reader races", () => {
+    const root = fixtureRoot();
+    const reader = (fixtureSecrets as unknown as {
+      readFixtureMusicEnvironment: (root: string, dependencies?: { afterReferenceRead?: () => void; afterGenerationOpen?: () => void }) => string;
+    }).readFixtureMusicEnvironment;
+    requiredPersist()(root, "SESSION_SECRET=first\n", { randomNameBytes: () => Buffer.alloc(16, 0x71) });
+    requiredPersist()(root, "SESSION_SECRET=second\n", { randomNameBytes: () => Buffer.alloc(16, 0x72) });
+    const first = join(root, ".artifacts", "music-environment-generations", `generation-${Buffer.alloc(16, 0x71).toString("hex")}`);
+    const second = join(root, ".artifacts", "music-environment-generations", `generation-${Buffer.alloc(16, 0x72).toString("hex")}`);
+    expect(readFileSync(first, "utf8")).toBe("");
+    expect(reader(root)).toBe("SESSION_SECRET=second\n");
+
+    const displaced = join(root, "displaced-current-generation");
+    expect(() => reader(root, { afterGenerationOpen: () => {
+      renameSync(second, displaced);
+      writeFileSync(second, "x".repeat("SESSION_SECRET=second\n".length), { mode: 0o600 });
+    } })).toThrow(/fixture environment|publish/i);
+    expect(readFileSync(second, "utf8")).toBe("x".repeat("SESSION_SECRET=second\n".length));
+    expect(readFileSync(displaced, "utf8")).toBe("SESSION_SECRET=second\n");
+  });
+
+  it("fails cleanup closed when the referenced generation was attacker-replaced", () => {
+    const root = fixtureRoot();
+    requiredPersist()(root, "SESSION_SECRET=owned-current\n", {
+      randomNameBytes: () => Buffer.alloc(16, 0x73),
+    });
+    const generation = join(root, ".artifacts", "music-environment-generations", `generation-${Buffer.alloc(16, 0x73).toString("hex")}`);
+    const displaced = join(root, "displaced-owned-generation");
+    const attacker = "ATTACKER_ENV=unchanged_value\n";
+    expect(Buffer.byteLength(attacker)).toBe(Buffer.byteLength("SESSION_SECRET=owned-current\n"));
+    renameSync(generation, displaced);
+    writeFileSync(generation, attacker, { mode: 0o600 });
+
+    expect(() => cleanupAllFixtureMusicTokenSecrets(root)).toThrow(expect.objectContaining({
+      code: "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED",
+      targetId: basename(generation),
+    }));
+    expect(readFileSync(generation, "utf8")).toBe(attacker);
+    expect(readFileSync(displaced, "utf8")).toBe("SESSION_SECRET=owned-current\n");
+  });
+
+  it("fails a pointer swap closed without reading or mutating the attacker generation", () => {
+    const root = fixtureRoot();
+    const reader = (fixtureSecrets as unknown as {
+      readFixtureMusicEnvironment: (root: string, dependencies?: { afterReferenceRead?: () => void }) => string;
+    }).readFixtureMusicEnvironment;
+    requiredPersist()(root, "SESSION_SECRET=owned-current\n", {
+      randomNameBytes: () => Buffer.alloc(16, 0x74),
+    });
+    const reference = join(root, ".env.music.test");
+    const displacedReference = join(root, "displaced-owned-reference");
+    const attackerName = `generation-${Buffer.alloc(16, 0x75).toString("hex")}`;
+    const attackerGeneration = join(root, ".artifacts", "music-environment-generations", attackerName);
+    const attacker = "ATTACKER_ENV=must_not_be_read\n";
+    const attackerDigest = createHash("sha256").update(attacker).digest("hex");
+    writeFileSync(attackerGeneration, attacker, { mode: 0o600 });
+
+    expect(() => reader(root, { afterReferenceRead: () => {
+      renameSync(reference, displacedReference);
+      writeFileSync(reference, `music-fixture-env/v1\ngeneration=${attackerName}\nsha256=${attackerDigest}\nsize=${Buffer.byteLength(attacker)}\n`, { mode: 0o600 });
+    } })).toThrow(/fixture environment|publish/i);
+    expect(readFileSync(attackerGeneration, "utf8")).toBe(attacker);
+    expect(readFileSync(reference, "utf8")).toContain(attackerName);
+  });
+
+  it("detects a same-inode pointer rewrite during guarded resolution", () => {
+    const root = fixtureRoot();
+    const reader = (fixtureSecrets as unknown as {
+      readFixtureMusicEnvironment: (root: string, dependencies?: { afterReferenceRead?: () => void }) => string;
+    }).readFixtureMusicEnvironment;
+    requiredPersist()(root, "SESSION_SECRET=owned-current\n", {
+      randomNameBytes: () => Buffer.alloc(16, 0x76),
+    });
+    const reference = join(root, ".env.music.test");
+    const attackerName = `generation-${Buffer.alloc(16, 0x77).toString("hex")}`;
+    const attacker = "ATTACKER_ENV=must_not_be_read\n";
+    const attackerDigest = createHash("sha256").update(attacker).digest("hex");
+    const attackerReference = `music-fixture-env/v1\ngeneration=${attackerName}\nsha256=${attackerDigest}\nsize=${Buffer.byteLength(attacker)}\n`;
+    expect(Buffer.byteLength(attackerReference)).toBe(lstatSync(reference).size);
+
+    expect(() => reader(root, { afterReferenceRead: () => {
+      const descriptor = openSync(reference, constants.O_WRONLY);
+      try { expect(writeSync(descriptor, Buffer.from(attackerReference), 0, Buffer.byteLength(attackerReference), 0)).toBe(Buffer.byteLength(attackerReference)); }
+      finally { closeSync(descriptor); }
+    } })).toThrow(/fixture environment|publish/i);
   });
 });

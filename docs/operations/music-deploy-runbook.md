@@ -314,13 +314,23 @@ has exactly the safe attributes above. Missing files, legacy inline
 runtime authentication, or any hostile-attestation success is a hard preflight
 failure before promotion.
 
-Disposable bootstrap writes `.env.music.test` only through a cryptographically
-named exclusive/no-follow mode-0600 descriptor, fsyncs the complete contents,
-and atomically publishes it after rechecking the directory and prior file. A
-failed write leaves the prior environment byte-exact and erases only the pinned
-temporary descriptor. Credential and environment cleanup never pathname-unlinks
-an artifact. It truncates and durably syncs the verified descriptor; a truncate,
-sync, or close failure makes bootstrap/down/reset nonzero with
+Disposable bootstrap writes each secret-bearing environment as a fresh,
+cryptographically named, exclusive/no-follow mode-0600 generation under
+`.artifacts/music-environment-generations/`. It validates and fsyncs that exact
+descriptor before atomically publishing `.env.music.test`, which is only a
+non-secret versioned reference containing the generation name, byte count, and
+SHA-256 digest. The generation leaf is never renamed into a fixed pathname.
+
+Every fixture command holds and validates the reference and generation
+descriptors, parses the environment in memory, and passes the variables only in
+the child process environment. Docker Compose is never given `--env-file`, so
+it cannot reopen a secret pathname after validation. A reference or generation
+race fails closed. Bootstrap may replace a verified owned legacy
+`.env.music.test`; ordinary resume/doctor operations reject legacy or invalid
+references. After reference commit, the previous verified generation is
+zeroed. Bootstrap/down/reset cleanup never pathname-unlinks an artifact: it
+truncates and durably syncs only a verified descriptor. A truncate, sync, close,
+or digest failure makes the command nonzero with
 `MUSIC_FIXTURE_SECRET_CLEANUP_FAILED` and only the exact random leaf identifier.
 Retry the same guarded fixture cleanup after correcting the filesystem error;
 success leaves a zero-byte non-secret tombstone. Never delete the reported path

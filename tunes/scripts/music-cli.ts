@@ -6,7 +6,7 @@ import { parseMusicEnvironment } from "../server/config/music-environment.ts";
 import { MUSIC_COMPOSE_PROJECT, validateComposeModel, validateOwnedResources, type ComposeModel } from "./music-compose-safety.ts";
 import { OwnedProcessRunner } from "./music-process-runner.ts";
 import { EXPECTED_MUSIC_MIGRATION_ID } from "../shared/music-migration-contract.ts";
-import { cleanupAllFixtureMusicTokenSecrets, persistFixtureMusicEnvironment, prepareFixtureMusicTokenSecret, withAllFixtureMusicSecretsCleanup } from "./music-fixture-secret.ts";
+import { cleanupAllFixtureMusicTokenSecrets, persistFixtureMusicEnvironment, prepareFixtureMusicTokenSecret, readFixtureMusicEnvironment, withAllFixtureMusicSecretsCleanup } from "./music-fixture-secret.ts";
 import { readSecureMusicSecretFile } from "../server/config/secure-music-secret-file.ts";
 
 export const MUSIC_CLI_SCHEMA_VERSION = "music-cli/v1";
@@ -48,11 +48,12 @@ interface RunContext { commit: string; fixtureVersion: string; fixtureSchemaVers
 const root = resolve(import.meta.dirname, "../..");
 const artifactRoot = join(root, ".artifacts", "music-runs");
 const composeFile = "docker-compose.music-test.yml";
-const composeArguments = ["compose", "--env-file", ".env.music.test", "-p", MUSIC_COMPOSE_PROJECT, "-f", composeFile];
+const composeArguments = ["compose", "-p", MUSIC_COMPOSE_PROJECT, "-f", composeFile];
 const requiredFiles = [composeFile, ".env.music.example", ".env.music.test.example", "fixtures/strapi/music-identity/identity.fixture.json", "fixtures/db/music-runtime-table-manifest.json"];
 const runner = new OwnedProcessRunner();
 let activeRun: { id: string; command: string; format: OutputFormat; started: number; context: RunContext } | undefined;
 let childSequence = 0;
+let activeFixtureEnvironment: Record<string, string> = {};
 
 class MusicCommandError extends Error {
   readonly phase: string;
@@ -113,7 +114,13 @@ function runDirectory(id: string): string { const directory = join(artifactRoot,
 function writeArtifact(id: string, name: string, content: string): string { const target = join(runDirectory(id), name); writeFileSync(target, sanitize(content)); return target; }
 
 function readEnvFile(file: string): Record<string, string> {
-  return Object.fromEntries(readFileSync(file, "utf8").split(/\r?\n/).filter((line) => line.trim() && !line.trimStart().startsWith("#")).map((line) => { const separator = line.indexOf("="); if (separator < 1) throw new Error(`invalid environment line in ${file}`); return [line.slice(0, separator), line.slice(separator + 1)]; }));
+  return parseEnvironmentContents(readFileSync(file, "utf8"), file);
+}
+function parseEnvironmentContents(contents: string, source: string): Record<string, string> {
+  return Object.fromEntries(contents.split(/\r?\n/).filter((line) => line.trim() && !line.trimStart().startsWith("#")).map((line) => { const separator = line.indexOf("="); if (separator < 1) throw new Error(`invalid environment line in ${source}`); return [line.slice(0, separator), line.slice(separator + 1)]; }));
+}
+function readActiveFixtureEnvironment(): Record<string, string> {
+  return parseEnvironmentContents(readFixtureMusicEnvironment(root), "guarded fixture environment generation");
 }
 
 function gitDirectory(repositoryRoot: string): string {
@@ -149,10 +156,16 @@ function fileHash(path: string): string {
 
 function buildRunContext(options: { allowInvalidEnvironment?: boolean } = {}): RunContext {
   const fixture = JSON.parse(readFileSync(join(root, "fixtures/strapi/music-identity/identity.fixture.json"), "utf8")) as StrapiIdentityFixture;
-  const environmentFile = existsSync(join(root, ".env.music.test")) ? join(root, ".env.music.test") : join(root, ".env.music.test.example");
   let rawEnvironment: Record<string, string> = {};
-  try { rawEnvironment = readEnvFile(environmentFile); }
+  let environmentContents = "";
+  try {
+    environmentContents = existsSync(join(root, ".env.music.test"))
+      ? readFixtureMusicEnvironment(root)
+      : readFileSync(join(root, ".env.music.test.example"), "utf8");
+    rawEnvironment = parseEnvironmentContents(environmentContents, "guarded fixture environment generation");
+  }
   catch (error) { if (!options.allowInvalidEnvironment) throw error; }
+  activeFixtureEnvironment = rawEnvironment;
   let environment: ReturnType<typeof parseMusicEnvironment> | undefined;
   try { environment = parseMusicEnvironment(rawEnvironment); }
   catch (error) { if (!options.allowInvalidEnvironment) throw error; }
@@ -173,7 +186,7 @@ function buildRunContext(options: { allowInvalidEnvironment?: boolean } = {}): R
     "package.json",
     "tunes/package.json",
   ].map((file) => [file, fileHash(join(root, file))]));
-  configurationHashes["active-environment"] = fileHash(environmentFile);
+  configurationHashes["active-environment"] = createHash("sha256").update(environmentContents).digest("hex");
   const environmentFingerprint = createEnvironmentFingerprint({
     platform: process.platform,
     arch: process.arch,
@@ -245,7 +258,7 @@ function executable(command: "npm" | "docker" | "node"): { file: string; args: s
 
 async function runChild(id: string, command: "npm" | "docker" | "node", args: string[], phase: string, failureExitCode: number): Promise<{ stdout: string; stderr: string; artifact: string }> {
   const resolved = executable(command);
-  const result = await runner.run(resolved.file, [...resolved.args, ...args], { cwd: root, env: process.env });
+  const result = await runner.run(resolved.file, [...resolved.args, ...args], { cwd: root, env: { ...process.env, ...activeFixtureEnvironment } });
   const artifact = writeArtifact(id, `child-${String(++childSequence).padStart(3, "0")}-${phase}.log`, `$ ${command} ${args.join(" ")}\nexit=${result.exitCode}\nstdout:\n${sanitizeStructuredOutput(result.stdout)}\nstderr:\n${sanitizeStructuredOutput(result.stderr)}`);
   if (result.exitCode !== 0) throw new MusicCommandError(`${command} ${args.join(" ")} failed with exit ${result.exitCode}; see ${artifact}`, phase, failureExitCode);
   return { ...result, artifact };
@@ -306,7 +319,7 @@ async function doctor(id: string): Promise<RunResult> {
   const [major, minor] = process.versions.node.split(".").map(Number);
   if (major < 22 || (major === 22 && minor < 12)) failures.push("Node >=22.12 is required; fix: nvm use");
   for (const file of requiredFiles) if (!existsSync(join(root, file))) failures.push(`missing ${file}; fix: restore the repository file`);
-  try { parseMusicEnvironment(readEnvFile(join(root, ".env.music.test"))); } catch (error) { failures.push(`invalid .env.music.test: ${redactedError(error)}; fix: npm run music:bootstrap`); }
+  try { parseMusicEnvironment(readActiveFixtureEnvironment()); } catch (error) { failures.push(`invalid fixture environment reference: ${redactedError(error)}; fix: npm run music:bootstrap`); }
   for (const example of [".env.music.example", ".env.music.test.example"]) try { parseMusicEnvironment(readEnvFile(join(root, example))); } catch (error) { failures.push(`invalid ${example}: ${redactedError(error)}; fix: restore the typed example`); }
   try { const npm = await runChild(id, "npm", ["--version"], "npm-version", EXIT.prerequisite); artifacts.push(npm.artifact); } catch (error) { failures.push(redactedError(error)); }
   try { const compose = await renderComposeModel(id); artifacts.push(...compose.artifacts); } catch (error) { failures.push(redactedError(error)); }
@@ -324,7 +337,7 @@ function captureFixture(mode: Mode): RunResult {
 
 async function executeCommand(id: string, parsed: ParsedArgs): Promise<RunResult> {
   if (parsed.command === "bootstrap") {
-    parseMusicEnvironment(readEnvFile(join(root, ".env.music.test")));
+    parseMusicEnvironment(readActiveFixtureEnvironment());
     const fixture = JSON.parse(readFileSync(join(root, "fixtures/strapi/music-identity/identity.fixture.json"), "utf8")); validateStrapiFixture(fixture, { mode: "fixture" });
     const artifacts: string[] = [];
     for (const args of [["ci", "--prefix", "tunes"], ["ci", "--prefix", "explorers-earth"]]) { const result = await runChild(id, "npm", args, "bootstrap-install", EXIT.prerequisite); artifacts.push(result.artifact); }
@@ -338,7 +351,7 @@ async function executeCommand(id: string, parsed: ParsedArgs): Promise<RunResult
       import("../server/db/migrate.ts"),
     ]);
     if (parsed.target !== "test") throw new SafetyError("database command requires explicit --target test", "database-target");
-    const environment = readEnvFile(existsSync(join(root, ".env.music.test")) ? join(root, ".env.music.test") : join(root, ".env.music.test.example"));
+    const environment = readActiveFixtureEnvironment();
     const target = validateDisposableDatabaseTarget({
       databaseUrlTest: environment.DATABASE_URL_TEST,
       databaseUrl: process.env.DATABASE_URL,
@@ -386,7 +399,7 @@ async function executeCommand(id: string, parsed: ParsedArgs): Promise<RunResult
       if (parsed.command === "db:reset") {
         const { validateDisposableDatabaseTarget } = await import("../server/db/migrate.ts");
         if (parsed.target !== "test") throw new SafetyError("db:reset requires explicit --target test", "database-target");
-        const environment = readEnvFile(existsSync(join(root, ".env.music.test")) ? join(root, ".env.music.test") : join(root, ".env.music.test.example"));
+        const environment = readActiveFixtureEnvironment();
         validateDisposableDatabaseTarget({ databaseUrlTest: environment.DATABASE_URL_TEST, databaseUrl: process.env.DATABASE_URL,
           composeProject: parsed.confirmProject, confirmation: parsed.confirmReset });
       }

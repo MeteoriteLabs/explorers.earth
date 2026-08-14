@@ -2,12 +2,18 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { createEnvironmentFingerprint, readGitSha, redactStructuredData, resolveNpmCommand, terminateBeforeCheckpoint } from "../../../scripts/music-cli.ts";
+import { persistFixtureMusicEnvironment, readFixtureMusicEnvironment } from "../../../scripts/music-fixture-secret.ts";
 
 const tunesRoot = resolve(import.meta.dirname, "../../..");
 const repositoryRoot = resolve(tunesRoot, "..");
 const tsxCli = join(tunesRoot, "node_modules", "tsx", "dist", "cli.mjs");
+
+beforeAll(() => {
+  try { readFixtureMusicEnvironment(repositoryRoot); }
+  catch { persistFixtureMusicEnvironment(repositoryRoot, readFileSync(join(repositoryRoot, ".env.music.test.example"), "utf8")); }
+});
 
 function npmCliArgs(args: string[]): string[] {
   if (!process.env.npm_execpath) throw new Error("npm_execpath is required for the public command contract test");
@@ -97,6 +103,7 @@ describe("music CLI output contract", () => {
     expect(evidence).toContain("[REDACTED]");
     expect(evidence).not.toContain('"POSTGRES_PASSWORD":"music"');
     expect(evidence).not.toContain("fixture-read-only-token");
+    expect(evidence).not.toContain("--env-file");
   });
 
   it("returns a typed JSON doctor diagnosis for an invalid environment", () => {
@@ -140,9 +147,9 @@ describe("music CLI output contract", () => {
     const checkpoint = join(checkpointDirectory, "checkpoint.json");
     const environmentPath = join(repositoryRoot, ".env.music.test");
     const environmentBefore = readFileSync(environmentPath, "utf8");
-    const environmentValues = Object.fromEntries(environmentBefore.trim().split(/\r?\n/).map((line) => line.split("=", 2)));
+    const environmentValues = Object.fromEntries(readFixtureMusicEnvironment(repositoryRoot).trim().split(/\r?\n/).map((line) => line.split("=", 2)));
     const credentialPaths = ["MUSIC_TOKEN_SECRET_FILE_HOST", "MUSIC_DB_MIGRATOR_SECRET_FILE_HOST", "MUSIC_DB_RUNTIME_SECRET_FILE_HOST"]
-      .map((name) => resolve(repositoryRoot, environmentValues[name]));
+      .map((name) => resolve(repositoryRoot, environmentValues[name])).filter(existsSync);
     const credentialBytesBefore = credentialPaths.map((path) => readFileSync(path));
     const captured = JSON.parse(runCli(["fixtures:capture", "--format", "json"]).stdout) as { checkpoint: string };
     const currentCheckpoint = JSON.parse(readFileSync(captured.checkpoint, "utf8")) as Record<string, unknown>;
