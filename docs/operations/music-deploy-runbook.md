@@ -382,13 +382,22 @@ recover overwritten bytes. Normal versioned pointer/generation rotation is
 unchanged. Descriptor truncation plus file fsync remains the durability barrier
 for retirement because it does not change directory metadata.
 
-Bootstrap/down/reset reconcile any pending journal before other cleanup, so a
-restart deterministically retires the old set after commit or the candidate set
-before commit. Successful retirement leaves zero-byte tombstones and zeroes the
-non-secret journal.
+Bootstrap reconciles a pending rotation journal before creating new authority,
+so a restart deterministically retires the old set after commit or the
+candidate set before commit. Down/reset do not run rotation recovery: they
+require the currently supported pointer/generation/credential graph, bind any
+recognized journal as auxiliary authority, and retire it only as part of the
+same authenticated teardown. Successful retirement leaves zero-byte tombstones
+and zeroes the non-secret journal.
 
 Bootstrap/down/reset cleanup never pathname-unlinks an artifact: it
-truncates and durably syncs only a verified descriptor. A truncate, sync, close,
+truncates and durably syncs only a verified descriptor. Aggregate teardown
+first binds the supported pointer, referenced generation, three credentials,
+and the complete recognized auxiliary inventory; it revalidates that graph
+before every destructive phase and retires the pointer last. Pointer absence
+or a zero pointer is an idempotent no-op only when every recognized target is
+already zero/empty. Populated orphan state and any mid-cleanup swap fail closed
+without touching replacement bytes. A truncate, sync, close,
 or digest failure makes the command nonzero with
 `MUSIC_FIXTURE_SECRET_CLEANUP_FAILED` and only the exact random leaf identifier.
 This paragraph applies only to normal supported pointer/generation authority;

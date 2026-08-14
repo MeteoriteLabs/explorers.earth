@@ -43,11 +43,21 @@ format, option, and resume validation; an invalid invocation therefore cannot
 bypass the refusal and uses the safe default human output format when its
 requested format cannot be trusted.
 
-Aggregate fixture teardown authenticates supported pointer/generation
-authority before its action and again before its first erase. If the action
-replaces that authority with raw or malformed bytes, teardown fails with the
-same typed refusal and leaves every credential, generation, journal, temporary,
-and unrelated file byte-exact.
+Aggregate fixture teardown authenticates a supported pointer, its generation,
+and the three referenced credentials before its action. Missing or tombstoned
+pointers are accepted only when the complete recognized credential,
+generation, journal, temporary, and pointer inventory is already zero/empty;
+that retired state is an idempotent no-op. A populated inventory without the
+supported pointer and generation fails before the action or first erase.
+During supported teardown the exact inventory, file identities, and bytes are
+revalidated before every phase and every descriptor erase. Credentials and
+unreferenced artifacts retire first, the current generation next, and the
+pointer last. A swap, missing member, or additional target aborts before any
+further erase and never touches replacement bytes. Successful teardown leaves
+all recognized leaves as zero-byte tombstones, so a repeated teardown can run
+its guarded action and clean up again. If the action replaces authority with
+raw or malformed bytes, teardown fails with the typed refusal and leaves every
+credential, generation, journal, temporary, and unrelated file byte-exact.
 
 `music:down` retains volumes. Volume deletion requires `--volumes --confirm-project
 explorers-music-fixture`; reset additionally requires `--mode fixture` and the

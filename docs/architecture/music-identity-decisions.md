@@ -64,6 +64,13 @@ rotation and normal supported-authority teardown remain unchanged. The
 unsupported-authority check precedes full CLI argument parsing and is repeated
 at both aggregate-teardown entry and the post-action cleanup boundary, so
 argument errors or an action-time pointer replacement cannot reopen cleanup.
+Aggregate teardown treats pointer absence or its zero tombstone as an empty
+authority only after proving the complete recognized target inventory is also
+zero/empty. Otherwise it requires the supported pointer, generation, and exact
+three-credential graph. Exact identities and bytes remain bound and are
+revalidated through credential, auxiliary, current-generation, and pointer-last
+retirement. The resulting all-zero inventory is the sole idempotent retired
+state; partial teardown remains fail closed and requires external discard.
 
 ## Revisit when
 

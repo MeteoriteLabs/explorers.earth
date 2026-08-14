@@ -161,14 +161,16 @@ function fileHash(path: string): string {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
-function buildRunContext(options: { allowInvalidEnvironment?: boolean } = {}): RunContext {
+function buildRunContext(options: { allowInvalidEnvironment?: boolean; useExampleForRetiredEnvironment?: boolean } = {}): RunContext {
   const fixture = JSON.parse(readFileSync(join(root, "fixtures/strapi/music-identity/identity.fixture.json"), "utf8")) as StrapiIdentityFixture;
   let rawEnvironment: Record<string, string> = {};
   let environmentContents = "";
   try {
-    environmentContents = existsSync(join(root, ".env.music.test"))
-      ? readFixtureMusicEnvironment(root)
-      : readFileSync(join(root, ".env.music.test.example"), "utf8");
+    const authorityState = inspectFixtureEnvironmentAuthority(root);
+    environmentContents = authorityState === "missing"
+      || (authorityState === "tombstone" && options.useExampleForRetiredEnvironment)
+      ? readFileSync(join(root, ".env.music.test.example"), "utf8")
+      : readFixtureMusicEnvironment(root);
     rawEnvironment = parseEnvironmentContents(environmentContents, "guarded fixture environment generation");
   }
   catch (error) { if (!options.allowInvalidEnvironment) throw error; }
@@ -462,7 +464,14 @@ async function main(): Promise<number> {
       });
     }
   }
-  const context = buildRunContext({ allowInvalidEnvironment: parsed.command === "doctor" });
+  const context = buildRunContext({
+    allowInvalidEnvironment: parsed.command === "doctor",
+    // The aggregate cleanup wrapper is the destructive authority. A retired
+    // pointer needs only a non-secret render context so a repeated teardown
+    // can reach that wrapper; populated or malformed inventories still fail
+    // authentication before the action is allowed to run.
+    useExampleForRetiredEnvironment: parsed.command === "down" || parsed.command === "db:reset",
+  });
   activeRun = { id, command: parsed.command, format: parsed.format, started, context };
   if (parsed.resume) { try { assertResume(parsed.resume, context); } catch (error) { const failure = error as MusicCommandError; return emit(id, parsed.command, parsed.format, started, context, { status: "failure", phase: failure.phase, exitCode: failure.exitCode, error: redactedError(failure) }); } }
   try { return emit(id, parsed.command, parsed.format, started, context, await executeCommand(id, parsed)); }

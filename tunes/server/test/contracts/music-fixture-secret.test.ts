@@ -543,9 +543,9 @@ describe("fixture environment secret persistence", () => {
     expect(readdirSync(root).filter((name) => name.endsWith(".tmp"))).toHaveLength(0);
   });
 
-  it("surfaces failed environment erasure and lets the normal fixture cleanup retry the exact tombstone", () => {
-    // Production break caught: a failed temp-file erase has no safe retry
-    // path, so reset/down can report success while secret bytes remain.
+  it("surfaces failed environment erasure and refuses unauthenticated aggregate retry", () => {
+    // Production break caught: a failed pre-pointer generation is treated as
+    // cleanup authority even though no supported pointer authenticates it.
     const root = fixtureRoot();
     const targetId = `generation-${Buffer.alloc(16, 0x67).toString("hex")}`;
     expect(() => requiredPersist()(root, "SESSION_SECRET=raw-secret-residue-sentinel\n", {
@@ -560,9 +560,17 @@ describe("fixture environment secret persistence", () => {
     const target = join(root, ".artifacts", "music-environment-generations", targetId);
     expect(lstatSync(target).size).toBe(3);
 
-    cleanupAllFixtureMusicTokenSecrets(root);
-    expect(lstatSync(target).size).toBe(0);
-    expect(() => cleanupAllFixtureMusicTokenSecrets(root)).not.toThrow();
+    const beforeRetry = readFileSync(target);
+    expect(() => cleanupAllFixtureMusicTokenSecrets(root)).toThrow(expect.objectContaining({
+      code: "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED",
+      targetId: "aggregate-authority",
+    }));
+    expect(readFileSync(target)).toEqual(beforeRetry);
+    expect(() => cleanupAllFixtureMusicTokenSecrets(root)).toThrow(expect.objectContaining({
+      code: "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED",
+      targetId: "aggregate-authority",
+    }));
+    expect(readFileSync(target)).toEqual(beforeRetry);
   });
 
   it("rotates generations, erases the previous authority, and fails closed on reader races", () => {
@@ -825,6 +833,205 @@ describe("fixture bundle rotation transaction", () => {
     expect(actionCalled).toBe(false);
     expect(snapshotFixtureTree(root)).toEqual(before);
   });
+
+  type AggregateCleanupPhase = "credentials" | "other-generations" | "journals" | "temporaries" | "current-generation" | "pointer";
+  type AggregateCleanupDependencies = {
+    afterAuthenticated?: () => void;
+    beforePhase?: (phase: AggregateCleanupPhase) => void;
+    targetDependencies?: (phase: AggregateCleanupPhase, path: string) => {
+      truncate?: (descriptor: number) => void;
+      sync?: (descriptor: number) => void;
+      close?: (descriptor: number) => void;
+    };
+  };
+  const aggregateCleanup = cleanupAllFixtureMusicTokenSecrets as unknown as (
+    root: string,
+    dependencies?: AggregateCleanupDependencies,
+  ) => void;
+  const aggregateWrapper = withAllFixtureMusicSecretsCleanup as unknown as <T>(
+    root: string,
+    action: () => Promise<T>,
+    dependencies?: AggregateCleanupDependencies,
+  ) => Promise<T>;
+
+  function populatedUnsupportedAggregateRoot(kind: "missing" | "tombstone"): string {
+    const root = fixtureRoot();
+    rotate(root, (paths) => environment(root, paths, "populated"), authorityWithSeed(kind === "missing" ? 0x19 : 0x1a));
+    writeFileSync(join(root, `.env.music.test.${"b".repeat(32)}.tmp`), "recognized-temporary-secret", { mode: 0o600 });
+    if (kind === "missing") unlinkSync(join(root, ".env.music.test"));
+    else writeFileSync(join(root, ".env.music.test"), Buffer.alloc(0), { mode: 0o600 });
+    return root;
+  }
+
+  it.each(["missing", "tombstone"] as const)(
+    "refuses direct aggregate cleanup for a %s pointer with populated targets",
+    (kind) => {
+      // Production break caught: missing/zero pointer state is treated as
+      // cleanup authority even though generated targets remain populated.
+      const root = populatedUnsupportedAggregateRoot(kind);
+      const before = snapshotFixtureTree(root);
+      expect(() => aggregateCleanup(root)).toThrow(expect.objectContaining({
+        code: "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED",
+        targetId: "aggregate-authority",
+      }));
+      expect(snapshotFixtureTree(root)).toEqual(before);
+    },
+  );
+
+  it.each(["missing", "tombstone"] as const)(
+    "refuses aggregate wrapper action for a %s pointer with populated targets",
+    async (kind) => {
+      const root = populatedUnsupportedAggregateRoot(kind);
+      const before = snapshotFixtureTree(root);
+      let actionCalled = false;
+      await expect(aggregateWrapper(root, async () => {
+        actionCalled = true;
+      })).rejects.toMatchObject({ code: "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED", targetId: "aggregate-authority" });
+      expect(actionCalled).toBe(false);
+      expect(snapshotFixtureTree(root)).toEqual(before);
+    },
+  );
+
+  it.each([
+    "after-authenticated",
+    "credentials",
+    "other-generations",
+    "journals",
+    "temporaries",
+    "current-generation",
+    "pointer",
+  ] as const)("fails closed when the pointer is swapped at aggregate phase %s", (swapPhase) => {
+    // Production break caught: closed authentication descriptors allow a
+    // pathname replacement before or between destructive phases.
+    const root = fixtureRoot();
+    rotate(root, (paths) => environment(root, paths, "phase-swap"), authorityWithSeed(0x1b));
+    writeFileSync(join(root, `.env.music.test.${"c".repeat(32)}.tmp`), "phase-temporary-secret", { mode: 0o600 });
+    const pointer = join(root, ".env.music.test");
+    const displaced = join(root, "displaced-phase-pointer");
+    const attacker = Buffer.from("RAW_PHASE_SWAP_SENTINEL=must-not-be-erased\n");
+    let swapped = false;
+    const swap = () => {
+      if (swapped) return;
+      swapped = true;
+      renameSync(pointer, displaced);
+      writeFileSync(pointer, attacker, { mode: 0o600 });
+    };
+
+    expect(() => aggregateCleanup(root, {
+      afterAuthenticated: swapPhase === "after-authenticated" ? swap : undefined,
+      beforePhase: (phase) => { if (phase === swapPhase) swap(); },
+    })).toThrow(expect.objectContaining({ code: "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED" }));
+    expect(swapped).toBe(true);
+    expect(readFileSync(pointer)).toEqual(attacker);
+    expect(lstatSync(displaced).size).toBeGreaterThan(0);
+  });
+
+  it("rejects an added recognized target after authentication before erasing the original bundle", () => {
+    const root = fixtureRoot();
+    rotate(root, (paths) => environment(root, paths, "added-target"), authorityWithSeed(0x24));
+    const before = snapshotFixtureTree(root);
+    const added = join(root, ".artifacts", "music-token-secrets", `current-${"d".repeat(32)}`);
+    const attacker = Buffer.from("ADDED_TARGET_SENTINEL");
+
+    expect(() => aggregateCleanup(root, {
+      afterAuthenticated: () => writeFileSync(added, attacker, { mode: 0o600 }),
+    })).toThrow(expect.objectContaining({ code: "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED" }));
+    expect(readFileSync(added)).toEqual(attacker);
+    const after = snapshotFixtureTree(root);
+    for (const [path, bytes] of Object.entries(before)) expect(after[path]).toBe(bytes);
+  });
+
+  it("rejects a missing recognized target after authentication without touching its displaced bytes", () => {
+    const root = fixtureRoot();
+    rotate(root, (paths) => environment(root, paths, "missing-target"), authorityWithSeed(0x25));
+    const before = snapshotFixtureTree(root);
+    const generationDirectory = join(root, ".artifacts", "music-environment-generations");
+    const generationName = readdirSync(generationDirectory).find((name) => name.startsWith("generation-"))!;
+    const generation = join(generationDirectory, generationName);
+    const displaced = join(root, "displaced-generation-target");
+
+    expect(() => aggregateCleanup(root, {
+      afterAuthenticated: () => renameSync(generation, displaced),
+    })).toThrow(expect.objectContaining({ code: "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED" }));
+    expect(readFileSync(displaced).toString("base64")).toBe(before[`.artifacts/music-environment-generations/${generationName}`]);
+    const after = snapshotFixtureTree(root);
+    for (const [path, bytes] of Object.entries(before)) {
+      if (path !== `.artifacts/music-environment-generations/${generationName}`) expect(after[path]).toBe(bytes);
+    }
+  });
+
+  it("makes two consecutive direct cleanups of supported authority idempotent", () => {
+    const root = fixtureRoot();
+    rotate(root, (paths) => environment(root, paths, "idempotent-direct"), authorityWithSeed(0x1c));
+    aggregateCleanup(root);
+    expect(() => aggregateCleanup(root)).not.toThrow();
+    expect(lstatSync(join(root, ".env.music.test")).size).toBe(0);
+    expect(Object.entries(snapshotFixtureTree(root)).filter(([path, bytes]) =>
+      (path === ".env.music.test" || path.includes("music-token-secrets/") || path.includes("music-environment-generations/") || path.includes("music-rotation-journals/"))
+      && Buffer.from(bytes, "base64").length > 0)).toEqual([]);
+  });
+
+  it("runs two consecutive wrapper actions after one supported teardown", async () => {
+    const root = fixtureRoot();
+    rotate(root, (paths) => environment(root, paths, "idempotent-wrapper"), authorityWithSeed(0x1d));
+    let actions = 0;
+    await aggregateWrapper(root, async () => { actions += 1; });
+    await aggregateWrapper(root, async () => { actions += 1; });
+    expect(actions).toBe(2);
+  });
+
+  it("propagates a first action failure after cleanup and reaches the retry action", async () => {
+    const root = fixtureRoot();
+    rotate(root, (paths) => environment(root, paths, "action-retry"), authorityWithSeed(0x1e));
+    let actions = 0;
+    await expect(aggregateWrapper(root, async () => {
+      actions += 1;
+      throw new Error("first-action-sentinel");
+    })).rejects.toThrow("first-action-sentinel");
+    await expect(aggregateWrapper(root, async () => { actions += 1; return "retried"; })).resolves.toBe("retried");
+    expect(actions).toBe(2);
+  });
+
+  it("returns the typed cleanup failure when both action and cleanup fail without exposing the action", async () => {
+    const root = fixtureRoot();
+    rotate(root, (paths) => environment(root, paths, "combined-failure"), authorityWithSeed(0x26));
+    const promise = aggregateWrapper(root, async () => {
+      throw new Error("RAW_ACTION_FAILURE_SENTINEL");
+    }, {
+      targetDependencies: (phase) => phase === "credentials"
+        ? { truncate: () => { throw new Error("RAW_CLEANUP_FAILURE_SENTINEL"); } }
+        : {},
+    });
+
+    const error = await promise.catch((caught: unknown) => caught) as Error & { code?: string; cause?: unknown };
+    expect(error).toMatchObject({ code: "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED" });
+    expect(error.message).not.toContain("RAW_ACTION_FAILURE_SENTINEL");
+    expect(error.message).not.toContain("RAW_CLEANUP_FAILURE_SENTINEL");
+    expect(error.cause).toEqual({ name: "fixture-action-failed" });
+    expect(Object.keys(error)).not.toContain("cause");
+  });
+
+  it.each(["truncate", "sync", "close"] as const)(
+    "fails closed on current-generation %s retirement failure",
+    (failure) => {
+      const root = fixtureRoot();
+      rotate(root, (paths) => environment(root, paths, "generation-failure"), authorityWithSeed(failure === "truncate" ? 0x21 : failure === "sync" ? 0x22 : 0x23));
+      const pointer = readFileSync(join(root, ".env.music.test"));
+      const dependencies = failure === "truncate"
+        ? { truncate: () => { throw new Error("generation-truncate-sentinel"); } }
+        : failure === "sync"
+          ? { sync: () => { throw new Error("generation-sync-sentinel"); } }
+          : { close: (descriptor: number) => { closeSync(descriptor); throw new Error("generation-close-sentinel"); } };
+
+      expect(() => aggregateCleanup(root, {
+        targetDependencies: (phase) => phase === "current-generation" ? dependencies : {},
+      })).toThrow(expect.objectContaining({ code: "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED" }));
+      expect(readFileSync(join(root, ".env.music.test"))).toEqual(pointer);
+      const afterFailure = snapshotFixtureTree(root);
+      expect(() => aggregateCleanup(root)).toThrow(expect.objectContaining({ code: "MUSIC_FIXTURE_SECRET_CLEANUP_FAILED" }));
+      expect(snapshotFixtureTree(root)).toEqual(afterFailure);
+    },
+  );
 
   function authoritySnapshot(root: string, path: string, kind: "credential" | "environment"): Record<string, unknown> {
     const directory = lstatSync(resolve(path, ".."), { bigint: true });

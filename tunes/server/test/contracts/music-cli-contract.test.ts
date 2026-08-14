@@ -1,19 +1,43 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createEnvironmentFingerprint, readGitSha, redactStructuredData, resolveNpmCommand, terminateBeforeCheckpoint } from "../../../scripts/music-cli.ts";
-import { persistFixtureMusicEnvironment, readFixtureMusicEnvironment } from "../../../scripts/music-fixture-secret.ts";
+import { cleanupAllFixtureMusicTokenSecrets, persistFixtureMusicEnvironment, readFixtureMusicEnvironment, rotateFixtureMusicAuthority } from "../../../scripts/music-fixture-secret.ts";
 
 const tunesRoot = resolve(import.meta.dirname, "../../..");
 const repositoryRoot = resolve(tunesRoot, "..");
 const tsxCli = join(tunesRoot, "node_modules", "tsx", "dist", "cli.mjs");
 
-beforeAll(() => {
-  try { readFixtureMusicEnvironment(repositoryRoot); }
-  catch { persistFixtureMusicEnvironment(repositoryRoot, readFileSync(join(repositoryRoot, ".env.music.test.example"), "utf8")); }
-});
+function ensureSupportedCliFixtureAuthority(): void {
+  try {
+    let contents = readFixtureMusicEnvironment(repositoryRoot);
+    const normalized = `${contents.split(/\r?\n/).filter((line) => line.trim() && !line.trimStart().startsWith("#")).join("\n")}\n`;
+    if (normalized !== contents) {
+      persistFixtureMusicEnvironment(repositoryRoot, normalized);
+      contents = normalized;
+    }
+    const values = Object.fromEntries(contents.trim().split(/\r?\n/).map((line) => line.split("=", 2)));
+    const tokenDirectory = resolve(repositoryRoot, ".artifacts", "music-token-secrets");
+    for (const key of ["MUSIC_TOKEN_SECRET_FILE_HOST", "MUSIC_DB_MIGRATOR_SECRET_FILE_HOST", "MUSIC_DB_RUNTIME_SECRET_FILE_HOST"]) {
+      const path = resolve(repositoryRoot, values[key]);
+      if (dirname(path) !== tokenDirectory || !/^current-[a-f0-9]{32}$/.test(basename(path))) throw new Error("fixture credential authority is invalid");
+      if (!existsSync(path) || readFileSync(path).length === 0) writeFileSync(path, Buffer.alloc(32, 0x71), { mode: 0o600 });
+    }
+  }
+  catch {
+    rotateFixtureMusicAuthority(repositoryRoot, (paths) => {
+      const fixturePath = (path: string) => `./${path.slice(repositoryRoot.length + 1).replace(/\\/g, "/")}`;
+      return `${readFileSync(join(repositoryRoot, ".env.music.test.example"), "utf8").split(/\r?\n/).filter((line) => line.trim() && !line.trimStart().startsWith("#")).join("\n")}\n`
+        .replace(/^MUSIC_TOKEN_SECRET_FILE_HOST=.*\r?$/m, `MUSIC_TOKEN_SECRET_FILE_HOST=${fixturePath(paths.tokenPath)}`)
+        .replace(/^MUSIC_DB_MIGRATOR_SECRET_FILE_HOST=.*\r?$/m, `MUSIC_DB_MIGRATOR_SECRET_FILE_HOST=${fixturePath(paths.migratorPasswordPath)}`)
+        .replace(/^MUSIC_DB_RUNTIME_SECRET_FILE_HOST=.*\r?$/m, `MUSIC_DB_RUNTIME_SECRET_FILE_HOST=${fixturePath(paths.runtimePasswordPath)}`);
+    });
+  }
+}
+
+beforeAll(ensureSupportedCliFixtureAuthority, 60_000);
 
 function npmCliArgs(args: string[]): string[] {
   if (!process.env.npm_execpath) throw new Error("npm_execpath is required for the public command contract test");
@@ -443,4 +467,25 @@ describe("music CLI output contract", () => {
       rmSync(target, { recursive: true, force: true });
     }
   });
+
+  it("reaches the guarded cleanup action on a second down after authority is already retired", () => {
+    cleanupAllFixtureMusicTokenSecrets(repositoryRoot);
+    try {
+      const result = runCli(["down", "--format", "json"]);
+      const lines = result.stdout.trim().split(/\r?\n/);
+
+      expect(result.exitCode).toBe(5);
+      expect(result.stderr).toBe("");
+      expect(lines).toHaveLength(1);
+      expect(JSON.parse(lines[0])).toMatchObject({
+        command: "down",
+        phase: "cleanup-safety",
+        status: "blocked",
+        error: "no owned fixture containers were found; cleanup refused",
+      });
+      expect(readFileSync(join(repositoryRoot, ".env.music.test"))).toHaveLength(0);
+    } finally {
+      ensureSupportedCliFixtureAuthority();
+    }
+  }, 60_000);
 });

@@ -440,78 +440,205 @@ export function cleanupFixtureMusicTokenSecret(
   if (failed) throw new FixtureSecretCleanupError(basename(exactTokenPath));
 }
 
-function authenticateAggregateCleanupAuthority(root: string): FixtureEnvironmentReference | undefined {
-  const authorityState = inspectFixtureEnvironmentAuthority(root);
-  if (authorityState === "unsupported") throw new FixtureUnsupportedLegacyEnvironmentError();
-  if (authorityState !== "reference") return undefined;
-  const referenceBytes = readCurrentPointerBytes(root);
-  let currentEnvironment: FixtureEnvironmentReference | undefined;
-  try {
-    currentEnvironment = parseFixtureEnvironmentReference(referenceBytes.toString("ascii"));
-    readFixtureMusicEnvironment(root);
-    if (!readCurrentPointerBytes(root).equals(referenceBytes)) throw fixtureEnvironmentError("aggregate-cleanup-authority");
-    return currentEnvironment;
-  } catch {
-    if (inspectFixtureEnvironmentAuthority(root) === "unsupported") throw new FixtureUnsupportedLegacyEnvironmentError();
-    throw new FixtureSecretCleanupError(currentEnvironment?.generationName ?? "generation-unknown");
-  }
+export type FixtureAggregateCleanupPhase = "credentials" | "other-generations" | "journals" | "temporaries" | "current-generation" | "pointer";
+
+export interface FixtureAggregateCleanupDependencies {
+  afterAuthenticated?: () => void;
+  beforePhase?: (phase: FixtureAggregateCleanupPhase) => void;
+  targetDependencies?: (phase: FixtureAggregateCleanupPhase, path: string) => FixtureMusicTokenSecretDependencies;
 }
 
-export function cleanupAllFixtureMusicTokenSecrets(repositoryRoot: string): void {
-  const { root, tokenDirectory } = fixtureDirectories(repositoryRoot);
-  authenticateAggregateCleanupAuthority(root);
-  // A pending bundle transaction owns retirement ordering. Resolve it before
-  // any aggregate cleanup so an attacker swap cannot fall through to the
-  // older name-only fixture tombstone path.
-  recoverFixtureAuthorityRotations(root);
-  const currentEnvironment = authenticateAggregateCleanupAuthority(root);
-  let failure: FixtureSecretCleanupError | undefined;
-  if (existsSync(tokenDirectory)) {
-    assertNoLinkedAncestors(tokenDirectory);
-    assertOwnedDirectory(tokenDirectory);
-    for (const name of readdirSync(tokenDirectory)) {
-      if (!fixtureTokenName.test(name)) continue;
-      try {
-        cleanupFixtureMusicTokenSecret(repositoryRoot, join(tokenDirectory, name));
-      } catch (error) {
-        failure ??= error instanceof FixtureSecretCleanupError
-          ? error
-          : new FixtureSecretCleanupError(name);
-      }
+interface FixtureAggregateCleanupTarget {
+  path: string;
+  targetId: string;
+  phase: FixtureAggregateCleanupPhase;
+  stat: BigIntStats;
+  bytes: Buffer;
+}
+
+interface FixtureAggregateCleanupAuthority {
+  state: "empty" | "supported";
+  targets: FixtureAggregateCleanupTarget[];
+  currentGenerationName?: string;
+}
+
+function fixtureAggregateCleanupError(targetId = "aggregate-authority"): FixtureSecretCleanupError {
+  return new FixtureSecretCleanupError(targetId);
+}
+
+function listAggregateCleanupTargets(root: string, currentGenerationName?: string): Array<{
+  path: string;
+  targetId: string;
+  phase: FixtureAggregateCleanupPhase;
+}> {
+  const targets: Array<{ path: string; targetId: string; phase: FixtureAggregateCleanupPhase }> = [];
+  const addDirectory = (directory: string, matcher: RegExp, phase: FixtureAggregateCleanupPhase): void => {
+    if (!existsSync(directory)) return;
+    assertNoLinkedAncestors(directory);
+    assertOwnedDirectory(directory);
+    for (const name of readdirSync(directory).sort()) {
+      if (!matcher.test(name)) continue;
+      targets.push({ path: join(directory, name), targetId: name, phase });
     }
-  }
+  };
+  addDirectory(join(root, FIXTURE_MUSIC_TOKEN_SECRET_DIRECTORY_RELATIVE_PATH), fixtureTokenName, "credentials");
   const generationDirectory = join(root, FIXTURE_MUSIC_ENVIRONMENT_DIRECTORY_RELATIVE_PATH);
   if (existsSync(generationDirectory)) {
     assertNoLinkedAncestors(generationDirectory);
     assertOwnedDirectory(generationDirectory);
-    for (const name of readdirSync(generationDirectory)) {
+    for (const name of readdirSync(generationDirectory).sort()) {
       if (!fixtureEnvironmentGenerationName.test(name)) continue;
-      try {
-        cleanupFixtureEnvironmentGeneration(
-          root,
-          name,
-          undefined,
-          currentEnvironment?.generationName === name ? currentEnvironment : undefined,
-        );
-      }
-      catch (error) {
-        failure ??= error instanceof FixtureSecretCleanupError ? error : new FixtureSecretCleanupError(name);
-      }
+      targets.push({
+        path: join(generationDirectory, name),
+        targetId: name,
+        phase: name === currentGenerationName ? "current-generation" : "other-generations",
+      });
     }
   }
+  const journalMatcher = /^(?:rotation-[a-f0-9]{32}\.json|\.rotation-(?:update|intent)-[a-f0-9]{32}\.tmp)$/;
+  addDirectory(join(root, ".artifacts", "music-rotation-journals"), journalMatcher, "journals");
   assertNoLinkedAncestors(root);
   assertOwnedDirectory(root);
-  for (const name of readdirSync(root)) {
+  for (const name of readdirSync(root).sort()) {
     if (!fixtureEnvironmentTemporaryName.test(name) && !fixtureEnvironmentReferenceTemporaryName.test(name)) continue;
-    try {
-      cleanupFixtureEnvironmentTemporary(repositoryRoot, join(root, name));
-    } catch (error) {
-      failure ??= error instanceof FixtureSecretCleanupError
-        ? error
-        : new FixtureSecretCleanupError(name);
+    targets.push({ path: join(root, name), targetId: name, phase: "temporaries" });
+  }
+  const pointerPath = join(root, ".env.music.test");
+  if (existsSync(pointerPath)) targets.push({ path: pointerPath, targetId: ".env.music.test", phase: "pointer" });
+  return targets.sort((left, right) => left.path.localeCompare(right.path));
+}
+
+function captureAggregateCleanupTarget(target: { path: string; targetId: string; phase: FixtureAggregateCleanupPhase }): FixtureAggregateCleanupTarget {
+  try {
+    const opened = openAndReadOwnedFileAllowEmpty(target.path, target.phase === "pointer" ? 512 : 65_536, target.phase !== "journals");
+    try { return { ...target, stat: opened.stat, bytes: Buffer.from(opened.bytes) }; }
+    finally { closeDescriptor(opened.descriptor, {}, target.targetId); }
+  } catch (error) {
+    if (error instanceof FixtureSecretCleanupError) throw error;
+    throw fixtureAggregateCleanupError(target.targetId);
+  }
+}
+
+function captureAggregateCleanupTargets(root: string, currentGenerationName?: string): FixtureAggregateCleanupTarget[] {
+  return listAggregateCleanupTargets(root, currentGenerationName).map(captureAggregateCleanupTarget);
+}
+
+function revalidateAggregateCleanupAuthority(root: string, authority: FixtureAggregateCleanupAuthority): void {
+  const listed = listAggregateCleanupTargets(root, authority.currentGenerationName);
+  if (listed.length !== authority.targets.length
+      || listed.some((target, index) => target.path !== authority.targets[index]!.path || target.phase !== authority.targets[index]!.phase)) {
+    throw fixtureAggregateCleanupError();
+  }
+  for (const expected of authority.targets) {
+    const observed = captureAggregateCleanupTarget(expected);
+    if (!sameIdentity(expected.stat, observed.stat) || !expected.bytes.equals(observed.bytes)) {
+      throw fixtureAggregateCleanupError(expected.targetId);
     }
   }
-  if (failure) throw failure;
+}
+
+function authenticateAggregateCleanupAuthority(root: string): FixtureAggregateCleanupAuthority {
+  const authorityState = inspectFixtureEnvironmentAuthority(root);
+  if (authorityState === "unsupported") throw new FixtureUnsupportedLegacyEnvironmentError();
+  if (authorityState === "missing" || authorityState === "tombstone") {
+    const targets = captureAggregateCleanupTargets(root);
+    if (targets.some((target) => target.bytes.length > 0)) throw fixtureAggregateCleanupError();
+    return { state: "empty", targets };
+  }
+
+  let currentEnvironment: FixtureEnvironmentReference | undefined;
+  try {
+    const referenceBytes = readCurrentPointerBytes(root);
+    currentEnvironment = parseFixtureEnvironmentReference(referenceBytes.toString("ascii"));
+    const contents = readFixtureMusicEnvironment(root);
+    const referencedCredentials = fixtureCredentialPaths({ contents }).map((path) => resolve(root, path));
+    const targets = captureAggregateCleanupTargets(root, currentEnvironment.generationName);
+    const pointer = targets.find((target) => target.phase === "pointer");
+    const currentGeneration = targets.find((target) => target.phase === "current-generation");
+    const referencedSet = new Set(referencedCredentials);
+    if (!pointer || !pointer.bytes.equals(referenceBytes)) throw fixtureAggregateCleanupError(".env.music.test");
+    if (!currentGeneration) throw fixtureAggregateCleanupError(currentEnvironment.generationName);
+    if (currentGeneration.bytes.length !== currentEnvironment.size) throw fixtureAggregateCleanupError(currentEnvironment.generationName);
+    if (createHash("sha256").update(currentGeneration.bytes).digest("hex") !== currentEnvironment.digest) {
+      throw fixtureAggregateCleanupError(currentEnvironment.generationName);
+    }
+    if (referencedCredentials.length !== 3) throw fixtureAggregateCleanupError("credential-authority");
+    for (const path of referencedCredentials) {
+      const target = targets.find((candidate) => candidate.path === path && candidate.phase === "credentials");
+      if (!target || target.bytes.length === 0) throw fixtureAggregateCleanupError(basename(path));
+    }
+    const additionalCredential = targets.find((target) => target.phase === "credentials" && target.bytes.length > 0 && !referencedSet.has(target.path));
+    if (additionalCredential) throw fixtureAggregateCleanupError(additionalCredential.targetId);
+    const additionalGeneration = targets.find((target) => target.phase === "other-generations" && target.bytes.length > 0);
+    if (additionalGeneration) throw fixtureAggregateCleanupError(additionalGeneration.targetId);
+    const authority: FixtureAggregateCleanupAuthority = { state: "supported", targets, currentGenerationName: currentEnvironment.generationName };
+    revalidateAggregateCleanupAuthority(root, authority);
+    return authority;
+  } catch (error) {
+    if (error instanceof FixtureUnsupportedLegacyEnvironmentError || error instanceof FixtureSecretCleanupError) throw error;
+    if (error instanceof FixtureEnvironmentPersistenceError) throw fixtureAggregateCleanupError(error.targetId);
+    if (inspectFixtureEnvironmentAuthority(root) === "unsupported") throw new FixtureUnsupportedLegacyEnvironmentError();
+    throw fixtureAggregateCleanupError(currentEnvironment?.generationName);
+  }
+}
+
+function retireAggregateCleanupTarget(
+  root: string,
+  authority: FixtureAggregateCleanupAuthority,
+  target: FixtureAggregateCleanupTarget,
+  dependencies: FixtureMusicTokenSecretDependencies,
+): void {
+  if (target.bytes.length === 0) return;
+  revalidateAggregateCleanupAuthority(root, authority);
+  assertNoLinkedAncestors(target.path);
+  const before = lstatSync(target.path, { bigint: true });
+  if (!sameIdentity(before, target.stat)) throw fixtureAggregateCleanupError(target.targetId);
+  const noFollow = process.platform === "win32" ? 0 : constants.O_NOFOLLOW;
+  let descriptor: number;
+  try { descriptor = (dependencies.open ?? openSync)(target.path, constants.O_RDWR | noFollow, 0o600); }
+  catch { throw fixtureAggregateCleanupError(target.targetId); }
+  let failed = false;
+  try {
+    const opened = fstatSync(descriptor, { bigint: true });
+    const bytes = readFileSync(descriptor);
+    if (!sameIdentity(target.stat, opened) || !target.bytes.equals(bytes)
+        || !sameIdentity(opened, lstatSync(target.path, { bigint: true }))) throw fixtureSecretError();
+    dependencies.beforeErase?.();
+    eraseDescriptor(descriptor, dependencies);
+  } catch { failed = true; }
+  try { (dependencies.close ?? closeSync)(descriptor); } catch { failed = true; }
+  if (failed) throw fixtureAggregateCleanupError(target.targetId);
+  target.bytes = Buffer.alloc(0);
+  const retired = captureAggregateCleanupTarget(target);
+  if (!sameIdentity(target.stat, retired.stat) || retired.bytes.length !== 0) throw fixtureAggregateCleanupError(target.targetId);
+}
+
+export function cleanupAllFixtureMusicTokenSecrets(
+  repositoryRoot: string,
+  dependencies: FixtureAggregateCleanupDependencies = {},
+): void {
+  const root = resolve(repositoryRoot);
+  const authority = authenticateAggregateCleanupAuthority(root);
+  if (authority.state === "empty") return;
+  revalidateAggregateCleanupAuthority(root, authority);
+  dependencies.afterAuthenticated?.();
+  const phases: FixtureAggregateCleanupPhase[] = [
+    "credentials",
+    "other-generations",
+    "journals",
+    "temporaries",
+    "current-generation",
+    "pointer",
+  ];
+  for (const phase of phases) {
+    dependencies.beforePhase?.(phase);
+    revalidateAggregateCleanupAuthority(root, authority);
+    for (const target of authority.targets.filter((candidate) => candidate.phase === phase)) {
+      retireAggregateCleanupTarget(root, authority, target, dependencies.targetDependencies?.(phase, target.path) ?? {});
+    }
+  }
+  const retired = authenticateAggregateCleanupAuthority(root);
+  if (retired.state !== "empty") throw fixtureAggregateCleanupError();
 }
 
 export function cleanupFixtureEnvironmentTemporary(
@@ -1962,13 +2089,27 @@ function cleanupFixtureEnvironmentGeneration(
 export async function withAllFixtureMusicSecretsCleanup<T>(
   repositoryRoot: string,
   action: () => Promise<T>,
+  dependencies: FixtureAggregateCleanupDependencies = {},
 ): Promise<T> {
   authenticateAggregateCleanupAuthority(resolve(repositoryRoot));
+  let result: T | undefined;
+  let actionError: unknown;
   try {
-    return await action();
-  } finally {
-    cleanupAllFixtureMusicTokenSecrets(repositoryRoot);
+    result = await action();
+  } catch (error) {
+    actionError = error;
   }
+  try {
+    cleanupAllFixtureMusicTokenSecrets(repositoryRoot, dependencies);
+  } catch (error) {
+    const cleanupError = error instanceof FixtureSecretCleanupError || error instanceof FixtureUnsupportedLegacyEnvironmentError
+      ? error
+      : fixtureAggregateCleanupError();
+    if (actionError !== undefined) Object.defineProperty(cleanupError, "cause", { value: { name: "fixture-action-failed" }, enumerable: false });
+    throw cleanupError;
+  }
+  if (actionError !== undefined) throw actionError;
+  return result as T;
 }
 
 function fixtureDirectories(repositoryRoot: string) {
