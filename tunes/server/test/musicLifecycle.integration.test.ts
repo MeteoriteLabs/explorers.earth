@@ -153,6 +153,91 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
       .rejects.toMatchObject({ code: "IDENTITY_TOMBSTONED" });
   });
 
+  it("rejects suspension and reactivation for exact nullable and former-owner tombstones", async () => {
+    // Break caught: permanent deletion is reported as ordinary absence and public reactivation restores Strapi only.
+    const repository = new MusicIdentityRepository(pool);
+    const finalize = async (suffix: string, provisioned: boolean) => {
+      const tuple = { userDocumentId: `c7-user-${suffix}`, accountDocumentId: `c7-account-${suffix}` };
+      if (provisioned) await repository.ensureIdentity(identityInput(suffix));
+      const prepared = await repository.prepareDeletion({ ...tuple, operationId: `delete-${suffix}` });
+      await repository.markDeletionBoundary(tuple);
+      await ageOperations([prepared.operationId], 2);
+      const claim = (await repository.claimDueDeletions({ batchSize: 1, maxAttempts: 5 }))
+        .find(({ operationId }) => operationId === prepared.operationId)!;
+      await expect(repository.finalizeDeletion(claim)).resolves.toBe(true);
+      return tuple;
+    };
+    const tuples = [
+      await finalize("nullable-tombstone-transition", false),
+      await finalize("numeric-tombstone-transition", true),
+    ];
+
+    for (const [index, tuple] of tuples.entries()) {
+      const before = Number((await pool.query(`SELECT count(*) FROM music_identity_lifecycle_operations
+        WHERE strapi_user_document_id=$1 AND operation_kind IN ('suspend','reactivate')`, [tuple.userDocumentId])).rows[0].count);
+      await expect(repository.suspendIdentity({ ...tuple, operationId: `suspend-tombstone-${index}` }))
+        .rejects.toMatchObject({ code: "IDENTITY_TOMBSTONED", status: 409 });
+      await expect(repository.reactivateIdentity({ ...tuple, operationId: `reactivate-tombstone-${index}` }))
+        .rejects.toMatchObject({ code: "IDENTITY_TOMBSTONED", status: 409 });
+      const after = Number((await pool.query(`SELECT count(*) FROM music_identity_lifecycle_operations
+        WHERE strapi_user_document_id=$1 AND operation_kind IN ('suspend','reactivate')`, [tuple.userDocumentId])).rows[0].count);
+      expect(after).toBe(before);
+      await expect(repository.ensureIdentity(identityInput(index === 0 ? "nullable-tombstone-transition" : "numeric-tombstone-transition")))
+        .rejects.toMatchObject({ code: "IDENTITY_TOMBSTONED" });
+    }
+  });
+
+  it("rejects suspension throughout prepared crossed running and dead-letter nullable deletion states", async () => {
+    // Break caught: stale Settings deactivation swallows durable deletion authority as a successful no-owner suspension.
+    const repository = new MusicIdentityRepository(pool);
+    const assertDenied = async (tuple: { userDocumentId: string; accountDocumentId: string }, label: string) => {
+      const before = Number((await pool.query(`SELECT count(*) FROM music_identity_lifecycle_operations
+        WHERE strapi_user_document_id=$1 AND operation_kind IN ('suspend','reactivate')`, [tuple.userDocumentId])).rows[0].count);
+      await expect(repository.suspendIdentity({ ...tuple, operationId: `suspend-during-${label}` }))
+        .rejects.toMatchObject({ code: "IDENTITY_PENDING_DELETION", status: 409 });
+      const after = Number((await pool.query(`SELECT count(*) FROM music_identity_lifecycle_operations
+        WHERE strapi_user_document_id=$1 AND operation_kind IN ('suspend','reactivate')`, [tuple.userDocumentId])).rows[0].count);
+      expect(after).toBe(before);
+    };
+
+    const preparedTuple = { userDocumentId: "c7-user-delete-prepared-suspend", accountDocumentId: "c7-account-delete-prepared-suspend" };
+    const prepared = await repository.prepareDeletion({ ...preparedTuple, operationId: "delete-prepared-suspend" });
+    await assertDenied(preparedTuple, "prepared");
+    await expect(repository.cancelDeletion({ ...preparedTuple, operationId: "cancel-prepared-suspend" }))
+      .resolves.toMatchObject({ state: "cancelled" });
+
+    const crossedTuple = { userDocumentId: "c7-user-delete-crossed-suspend", accountDocumentId: "c7-account-delete-crossed-suspend" };
+    const crossed = await repository.prepareDeletion({ ...crossedTuple, operationId: "delete-crossed-suspend" });
+    await repository.markDeletionBoundary(crossedTuple);
+    await assertDenied(crossedTuple, "crossed");
+    await ageOperations([crossed.operationId], 2);
+    const crossedClaim = (await repository.claimDueDeletions({ batchSize: 1, maxAttempts: 5 }))[0];
+    await expect(repository.finalizeDeletion(crossedClaim)).resolves.toBe(true);
+
+    const runningTuple = { userDocumentId: "c7-user-delete-running-suspend", accountDocumentId: "c7-account-delete-running-suspend" };
+    const running = await repository.prepareDeletion({ ...runningTuple, operationId: "delete-running-suspend" });
+    await repository.markDeletionBoundary(runningTuple);
+    await ageOperations([running.operationId], 2);
+    const runningClaim = (await repository.claimDueDeletions({ batchSize: 1, maxAttempts: 5 }))[0];
+    await assertDenied(runningTuple, "running");
+    await expect(repository.finalizeDeletion(runningClaim)).resolves.toBe(true);
+
+    const deadTuple = { userDocumentId: "c7-user-delete-dead-suspend", accountDocumentId: "c7-account-delete-dead-suspend" };
+    const dead = await repository.prepareDeletion({ ...deadTuple, operationId: "delete-dead-suspend" });
+    await repository.markDeletionBoundary(deadTuple);
+    await ageOperations([dead.operationId], 2);
+    await expect(repository.claimDueDeletions({ batchSize: 1, maxAttempts: 2 })).resolves.toHaveLength(1);
+    await ageOperations([dead.operationId], 46);
+    await expect(repository.claimDueDeletions({ batchSize: 1, maxAttempts: 2 })).resolves.toEqual([]);
+    await expect(repository.lifecycleStatus(deadTuple)).resolves.toMatchObject({ state: "failed", deadLetter: true });
+    await assertDenied(deadTuple, "dead-letter");
+    await expect(repository.rearmDeletion(dead.operationId)).resolves.toBe(true);
+    await ageOperations([dead.operationId], 3);
+    const repaired = (await repository.claimDueDeletions({ batchSize: 1, maxAttempts: 2 }))[0];
+    await expect(repository.finalizeDeletion(repaired)).resolves.toBe(true);
+    expect(prepared.operationId).toBe("delete-prepared-suspend");
+  });
+
   it("serializes prepare-first against a second repository ensure without creating an active owner", async () => {
     // Break caught: a nullable prepare commits while an already-waiting ensure ignores its durable authority.
     let releaseWrite!: () => void;

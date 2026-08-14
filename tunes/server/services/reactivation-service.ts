@@ -194,6 +194,7 @@ async function resolveCurrentReactivationIdentity(userId: number): Promise<Strap
   try {
     const response = await fetch(`${strapiUrl}/api/users/${userId}?populate=accounts`, {
       headers: { Authorization: `Bearer ${strapiToken}`, 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(5_000),
     });
     if (!response.ok) return null;
     const value: unknown = await response.json();
@@ -243,10 +244,15 @@ async function unblockStrapiUser(expected: {
     const value: unknown = await response.json();
     if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
     const candidate = value as Partial<StrapiUser>;
-    if (candidate.id !== expected.id || candidate.documentId !== expected.documentId
-        || candidate.blocked !== false || !Array.isArray(candidate.accounts)
-        || candidate.accounts.length !== 1
-        || candidate.accounts[0]?.documentId !== expected.accountDocumentId) return false;
+    if (candidate.id !== expected.id || candidate.documentId !== expected.documentId || candidate.blocked !== false) return false;
+    if (candidate.accounts !== undefined) {
+      if (!Array.isArray(candidate.accounts) || candidate.accounts.length !== 1
+          || candidate.accounts[0]?.documentId !== expected.accountDocumentId) return false;
+    } else {
+      const readback = await resolveCurrentReactivationIdentity(expected.id);
+      if (!readback || readback.documentId !== expected.documentId || readback.blocked !== false
+          || readback.accounts?.[0]?.documentId !== expected.accountDocumentId) return false;
+    }
   } catch {
     return false;
   }

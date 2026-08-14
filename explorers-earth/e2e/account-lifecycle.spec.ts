@@ -31,6 +31,7 @@ async function mockSettings(
     provider?: "google" | "local";
     musicNotPresent?: boolean;
     suspensionUnavailable?: boolean;
+    suspensionPendingDeletion?: boolean;
     strapiBlockUnconfirmed?: boolean;
     cancelAsNotPresent?: boolean;
     loseCancelResponseOnce?: boolean;
@@ -46,6 +47,12 @@ async function mockSettings(
     if (action === "suspend" && options.suspensionUnavailable) {
       await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: {
         code: "LIFECYCLE_UNAVAILABLE", message: "Music lifecycle is unavailable.", retryable: true,
+      } }) });
+      return;
+    }
+    if (action === "suspend" && options.suspensionPendingDeletion) {
+      await route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ error: {
+        code: "IDENTITY_PENDING_DELETION", message: "This Music identity is pending deletion.", retryable: false,
       } }) });
       return;
     }
@@ -179,6 +186,21 @@ test("Music suspension outage leaves Strapi and browser authority active for ret
     operationId: "delete-operation-durable", status: "suspended", phase: "prepared", state: "cancelled",
     boundaryCrossed: false, retryable: false, deadLetter: false,
   }, events, { suspensionUnavailable: true });
+  await page.goto("/settings");
+  await page.getByRole("button", { name: "Deactivate your account?" }).click();
+  await page.getByRole("button", { name: "Deactivate My Account" }).click();
+  await expect(page).toHaveURL(/\/settings$/);
+  expect(events.filter((event) => event === "strapi-block")).toEqual([]);
+  expect(await page.evaluate(() => localStorage.getItem("auth-storage"))).toContain("mock-jwt-token-xyz");
+});
+
+test("pending Music deletion prevents Strapi deactivation and browser auth cleanup", async ({ context, page }) => {
+  // Break caught: pending/dead-letter Music deletion is swallowed as not-present and Settings logs the user out.
+  const events: string[] = [];
+  await mockSettings(context, {
+    operationId: "delete-operation-durable", status: "suspended", phase: "prepared", state: "cancelled",
+    boundaryCrossed: false, retryable: false, deadLetter: false,
+  }, events, { suspensionPendingDeletion: true });
   await page.goto("/settings");
   await page.getByRole("button", { name: "Deactivate your account?" }).click();
   await page.getByRole("button", { name: "Deactivate My Account" }).click();

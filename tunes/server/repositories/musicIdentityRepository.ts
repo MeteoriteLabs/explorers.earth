@@ -587,8 +587,10 @@ export class MusicIdentityRepository {
       if (tombstones.some((row) => row.strapi_user_document_id !== input.userDocumentId
           || row.strapi_account_document_id !== input.accountDocumentId) || tombstones.length > 1) throw lifecycleConflict();
       if (tombstones[0]) {
-        await client.query("COMMIT");
-        return notPresentProjection(input);
+        throw new MusicIdentityError(
+          "IDENTITY_TOMBSTONED", 409, "This Music identity was permanently removed.",
+          "contact_support", false, undefined, "tombstone",
+        );
       }
       const liveRows = (await client.query<any>(`SELECT id,strapi_user_document_id,strapi_account_document_id,
         identity_status,session_version,lifecycle_operation_id FROM users
@@ -620,9 +622,10 @@ export class MusicIdentityRepository {
           return projection(live);
         }
         if (live.identity_status === "pending_deletion") {
-          if (kind === "reactivate") throw lifecycleConflict();
-          await client.query("COMMIT");
-          return projection(live);
+          throw new MusicIdentityError(
+            "IDENTITY_PENDING_DELETION", 409, "This Music identity is pending deletion.",
+            "contact_support", false, undefined, "pending_deletion",
+          );
         }
         if (live.identity_status === targetStatus) {
           await client.query("COMMIT");
@@ -657,9 +660,10 @@ export class MusicIdentityRepository {
       }
 
       if (pendingDeletion) {
-        if (kind === "reactivate") throw lifecycleConflict();
-        await client.query("COMMIT");
-        return notPresentProjection(input);
+        throw new MusicIdentityError(
+          "IDENTITY_PENDING_DELETION", 409, "This Music identity is pending deletion.",
+          "contact_support", false, undefined, "pending_deletion",
+        );
       }
       const availabilityAuthority = nullableAuthority.find((operation) => ["suspend", "reactivate"].includes(operation.operation_kind));
       if (collision) {

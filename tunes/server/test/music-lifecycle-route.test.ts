@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { BoundedIdentityRateLimiter } from "../middleware/identityRateLimit";
 import { setupMusicIdentityBodylessPreflight, setupMusicIdentityRoutes } from "../routes/musicIdentityRoutes";
 import { decisionForRoute } from "../policies/musicSurfacePolicy";
+import { MusicIdentityError } from "../../shared/musicError";
 
 const status = {
   operationId: "e36d710f-a5d3-4476-9d2f-34226a2af4aa",
@@ -93,6 +94,24 @@ describe("mounted Music lifecycle identity boundary", () => {
       .expect(200);
     expect(response.body).toEqual({ version: "music-lifecycle/v1", identity: { status: "not_present" } });
     expect(lifecycle.suspendFromProof).toHaveBeenCalledOnce();
+  });
+
+  it("returns typed pending-deletion conflict instead of a suspension acknowledgement", async () => {
+    // Break caught: a stale Settings suspension proceeds to Strapi block while durable Music deletion is pending.
+    const { app } = appFor({
+      suspendFromProof: vi.fn(async () => {
+        throw new MusicIdentityError(
+          "IDENTITY_PENDING_DELETION", 409, "This Music identity is pending deletion.",
+          "contact_support", false, undefined, "pending_deletion",
+        );
+      }),
+    });
+    const response = await request(app).post("/api/music/identity/lifecycle/suspend")
+      .set("Authorization", `Bearer ${"b".repeat(32)}`).expect(409);
+    expect(response.body).toMatchObject({ error: {
+      code: "IDENTITY_PENDING_DELETION", retryable: false,
+    } });
+    expect(response.body).not.toHaveProperty("identity");
   });
 
   it("rejects bodies, query owner hints, and Music credentials on every mutation", async () => {

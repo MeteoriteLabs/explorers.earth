@@ -369,6 +369,29 @@ describe("account lifecycle service", () => {
     await expect(service.suspend()).resolves.toEqual(valid);
   });
 
+  it("preserves the typed pending-deletion suspension conflict", async () => {
+    // Break caught: the client mistakes durable deletion authority for a safe no-owner deactivation acknowledgement.
+    const service = createAccountLifecycleService({
+      baseUrl: "https://music.example",
+      getBearer: () => "authoritative-bearer-proof",
+      fetchImpl: async () => new Response(JSON.stringify({ error: {
+        code: "IDENTITY_PENDING_DELETION",
+        message: "This Music identity is pending deletion.",
+        retryable: false,
+        state: "pending_deletion",
+        requestId: "request-pending-delete",
+      } }), { status: 409 }),
+    });
+
+    await expect(service.suspend()).rejects.toMatchObject({
+      name: "AccountLifecycleError",
+      code: "IDENTITY_PENDING_DELETION",
+      status: 409,
+      retryable: false,
+      requestId: "request-pending-delete",
+    });
+  });
+
   it("returns typed authentication, transport, and server errors without clearing auth", async () => {
     const missing = createAccountLifecycleService({ baseUrl: "https://music.example", getBearer: () => undefined });
     await expect(missing.prepare()).rejects.toMatchObject({ name: "AccountLifecycleError", code: "AUTH_REQUIRED", status: 401, retryable: false });
