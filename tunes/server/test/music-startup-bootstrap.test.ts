@@ -31,6 +31,8 @@ function renderedProductionEnvironment(): Record<string, string> {
     STRAPI_ACCESS_TOKEN: "read-only-token",
     STRAPI_JWT_SECRET: "production-jwt-secret-at-least-32-characters",
     MUSIC_GATE_ATTESTATION_KEY: "production-gate-key-at-least-32-characters",
+    MUSIC_TOKEN_CURRENT_KID: "production-current",
+    MUSIC_TOKEN_SECRET_DIRECTORY_HOST: "C:/fixture/music-token-secrets",
     EXPLORERS_IMAGE: `ghcr.io/example/explorers@${digestA}`,
     TUNES_BLUE_IMAGE: `ghcr.io/example/tunes@${digestA}`,
     TUNES_BLUE_DIGEST: digestA,
@@ -91,7 +93,11 @@ describe("discriminated Music startup bootstrap", () => {
       events.push("load-routes");
       return controlledRuntime(events);
     });
-    await startMusicServer(environment, { resolveAddresses: resolver, loadRuntime });
+    await startMusicServer(environment, {
+      resolveAddresses: resolver,
+      readSecretFile: async () => Buffer.alloc(32, 0x61).toString("base64url"),
+      loadRuntime,
+    });
     expect(resolver).toHaveBeenCalledTimes(1);
     expect(loadRuntime).toHaveBeenCalledTimes(1);
     expect(events).toEqual(["resolve-dns", "load-routes", "create-app", "static", "listen"]);
@@ -106,6 +112,7 @@ describe("discriminated Music startup bootstrap", () => {
     const loadRuntime = vi.fn(async () => controlledRuntime([]));
     await expect(startMusicServer({ ...renderedProductionEnvironment(), ...override }, {
       resolveAddresses: async () => answers,
+      readSecretFile: async () => Buffer.alloc(32, 0x61).toString("base64url"),
       loadRuntime,
     })).rejects.toThrow();
     expect(loadRuntime).not.toHaveBeenCalled();
@@ -116,6 +123,7 @@ describe("discriminated Music startup bootstrap", () => {
     const events: string[] = [];
     await startMusicServer(fixture, {
       resolveAddresses: async () => { throw new Error("fixture startup must not resolve DNS"); },
+      readSecretFile: async () => Buffer.alloc(32, 0x62).toString("base64url"),
       loadRuntime: async () => {
         events.push("load-routes");
         return controlledRuntime(events);
@@ -125,7 +133,10 @@ describe("discriminated Music startup bootstrap", () => {
 
     const loadInvalid = vi.fn(async () => controlledRuntime([]));
     const { MUSIC_FIXTURE_VERSION: _removed, ...invalid } = fixture;
-    await expect(startMusicServer(invalid, { loadRuntime: loadInvalid })).rejects.toThrow(/MUSIC_FIXTURE_VERSION/);
+    await expect(startMusicServer(invalid, {
+      readSecretFile: async () => Buffer.alloc(32, 0x62).toString("base64url"),
+      loadRuntime: loadInvalid,
+    })).rejects.toThrow(/MUSIC_FIXTURE_VERSION/);
     expect(loadInvalid).not.toHaveBeenCalled();
   });
 });

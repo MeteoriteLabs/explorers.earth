@@ -13,6 +13,7 @@ describe("runtime route/event/job inventory", () => {
     expect(inventory.routes).toEqual(expect.arrayContaining([
       expect.objectContaining({ method: "POST", path: "/api/auth/sync", ownerSource: "request.body.strapiUser", classification: "owner-handler-review-required" }),
       expect.objectContaining({ method: "POST", path: "/api/music/identity/ensure", ownerSource: "authoritative-strapi-user+selected-account", classification: "strapi-identity-boundary" }),
+      expect.objectContaining({ method: "GET", path: "/api/music/identity/current", ownerSource: "verified-subject-derived-numeric-owner", classification: "local-music-principal" }),
       expect.objectContaining({ method: "GET", path: "/api/playlist/:guestUrl", classification: "public", ownerSource: "path.guestUrl" }),
       expect.objectContaining({ method: "POST", path: "/graphql", classification: "service-token-proxy" }),
       expect.objectContaining({ method: "GET", path: "/api/admin/team", classification: "admin-handler-review-required", ownerSource: "authenticated-admin-principal" }),

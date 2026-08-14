@@ -2,11 +2,18 @@ import { lookup as dnsLookup } from "node:dns/promises";
 import { Agent as HttpsAgent, request as httpsRequest } from "node:https";
 import { isIP } from "node:net";
 import { Readable } from "node:stream";
+import { readFile } from "node:fs/promises";
+import {
+  validateMusicTokenConfiguration,
+  type MusicTokenConfiguration,
+} from "../services/musicTokenService";
 
 export type MusicIdentityAddressResolver = (hostname: string) => Promise<string[]>;
 
 export interface MusicIdentityConfigDependencies {
   resolveAddresses?: MusicIdentityAddressResolver;
+  readSecretFile?: (path: string) => Promise<string>;
+  now?: () => number;
 }
 
 export interface MusicIdentityRuntimeConfig {
@@ -33,6 +40,7 @@ export interface MusicIdentityRuntimeConfig {
   rateLimitPerMinute: number;
   globalRateLimitPerMinute: number;
   rateMaxEntries: number;
+  musicToken: MusicTokenConfiguration;
 }
 
 const integerBounds = {
@@ -83,6 +91,7 @@ export async function resolveMusicIdentityRuntimeConfig(
     parseBoundedInteger(name, environment[name] ?? defaults[name as keyof typeof defaults], minimum, maximum),
   ])) as Record<keyof typeof integerBounds, number>;
   assertCrossFieldBounds(controls);
+  const musicToken = await resolveMusicTokenConfiguration(environment, dependencies);
 
   let pinnedAddresses: string[] = [];
   let fetchImpl: typeof fetch = fetch;
@@ -125,7 +134,87 @@ export async function resolveMusicIdentityRuntimeConfig(
     rateLimitPerMinute: controls.MUSIC_RATE_LIMIT_PER_MINUTE,
     globalRateLimitPerMinute: controls.MUSIC_IDENTITY_GLOBAL_RATE_PER_MINUTE,
     rateMaxEntries: controls.MUSIC_IDENTITY_RATE_MAX_ENTRIES,
+    musicToken,
   };
+}
+
+async function resolveMusicTokenConfiguration(
+  environment: Environment,
+  dependencies: MusicIdentityConfigDependencies,
+): Promise<MusicTokenConfiguration> {
+  const tokenLifetimeSeconds = parseBoundedInteger(
+    "MUSIC_TOKEN_LIFETIME_SECONDS",
+    environment.MUSIC_TOKEN_LIFETIME_SECONDS ?? "",
+    600,
+    600,
+  );
+  const clockSkewSeconds = parseBoundedInteger(
+    "MUSIC_TOKEN_CLOCK_SKEW_SECONDS",
+    environment.MUSIC_TOKEN_CLOCK_SKEW_SECONDS ?? "",
+    0,
+    30,
+  );
+  const current = {
+    kid: requiredValue(environment.MUSIC_TOKEN_CURRENT_KID, "MUSIC_TOKEN_CURRENT_KID"),
+    secret: await resolveSecret(
+      environment.MUSIC_TOKEN_CURRENT_SECRET,
+      environment.MUSIC_TOKEN_CURRENT_SECRET_FILE,
+      "MUSIC_TOKEN_CURRENT_SECRET",
+      dependencies,
+    ),
+  };
+  const previousValues = [
+    environment.MUSIC_TOKEN_PREVIOUS_KID,
+    environment.MUSIC_TOKEN_PREVIOUS_SECRET,
+    environment.MUSIC_TOKEN_PREVIOUS_SECRET_FILE,
+    environment.MUSIC_TOKEN_PREVIOUS_ACCEPT_UNTIL,
+  ];
+  let previous: MusicTokenConfiguration["previous"];
+  if (previousValues.some((value) => value !== undefined && value !== "")) {
+    if (!environment.MUSIC_TOKEN_PREVIOUS_KID || !environment.MUSIC_TOKEN_PREVIOUS_ACCEPT_UNTIL
+        || (!environment.MUSIC_TOKEN_PREVIOUS_SECRET && !environment.MUSIC_TOKEN_PREVIOUS_SECRET_FILE)) {
+      throw new Error("Music token previous kid, secret, and UTC accept-until must be configured together");
+    }
+    const cutoff = environment.MUSIC_TOKEN_PREVIOUS_ACCEPT_UNTIL;
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(cutoff)) {
+      throw new Error("MUSIC_TOKEN_PREVIOUS_ACCEPT_UNTIL must be an exact UTC instant");
+    }
+    const acceptUntil = Date.parse(cutoff);
+    if (!Number.isSafeInteger(acceptUntil) || new Date(acceptUntil).toISOString() !== cutoff) {
+      throw new Error("MUSIC_TOKEN_PREVIOUS_ACCEPT_UNTIL must be a valid UTC instant");
+    }
+    previous = {
+      kid: environment.MUSIC_TOKEN_PREVIOUS_KID,
+      secret: await resolveSecret(
+        environment.MUSIC_TOKEN_PREVIOUS_SECRET,
+        environment.MUSIC_TOKEN_PREVIOUS_SECRET_FILE,
+        "MUSIC_TOKEN_PREVIOUS_SECRET",
+        dependencies,
+      ),
+      acceptUntil,
+    };
+  }
+  const configuration: MusicTokenConfiguration = { current, previous, tokenLifetimeSeconds, clockSkewSeconds };
+  validateMusicTokenConfiguration(configuration, (dependencies.now ?? Date.now)());
+  return configuration;
+}
+
+async function resolveSecret(
+  inline: string | undefined,
+  path: string | undefined,
+  name: string,
+  dependencies: MusicIdentityConfigDependencies,
+): Promise<string> {
+  if ((inline && path) || (!inline && !path)) throw new Error(`${name} or ${name}_FILE must be configured exactly once`);
+  if (inline) return inline;
+  if (!path || path.length > 512 || path.includes("\0")) throw new Error(`${name}_FILE is invalid`);
+  const contents = await (dependencies.readSecretFile ?? ((secretPath) => readFile(secretPath, "utf8")))(path);
+  return contents.replace(/\r?\n$/, "");
+}
+
+function requiredValue(value: string | undefined, name: string): string {
+  if (!value) throw new Error(`${name} is required`);
+  return value;
 }
 
 function parseOrigin(value: string | undefined, name: string): URL {

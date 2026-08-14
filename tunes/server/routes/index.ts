@@ -31,6 +31,8 @@ import { MusicProjectionService } from "../services/musicProjectionService";
 import { MusicIdentityRepository } from "../repositories/musicIdentityRepository";
 import { resolveMusicEntryPolicy } from "../deployment/music-deployment";
 import type { MusicIdentityRuntimeConfig } from "../config/music-identity-config";
+import { MusicTokenService } from "../services/musicTokenService";
+import { MusicPrincipalService } from "../middleware/musicPrincipal";
 
 export function registerRoutes(app: Express, _storage: IStorage, musicConfig: MusicIdentityRuntimeConfig): Server {
   if (process.env.MUSIC_DEPLOYMENT_HEALTH_ENABLED === "true") {
@@ -59,9 +61,14 @@ export function registerRoutes(app: Express, _storage: IStorage, musicConfig: Mu
     circuitFailureThreshold: musicConfig.circuitFailureThreshold,
     circuitOpenMs: musicConfig.circuitOpenMs,
   });
-  const identityProjection = new MusicProjectionService(identityGateway, new MusicIdentityRepository(pool), musicConfig.maxInflight);
+  const identityRepository = new MusicIdentityRepository(pool);
+  const identityProjection = new MusicProjectionService(identityGateway, identityRepository, musicConfig.maxInflight);
+  const musicTokens = new MusicTokenService(musicConfig.musicToken);
+  const musicPrincipals = new MusicPrincipalService(musicTokens, identityRepository);
   setupMusicIdentityRoutes(app, {
     ensure: (proof, requestId) => identityProjection.ensure(proof, requestId),
+    mintCredential: (identity) => musicTokens.mint(identity),
+    resolvePrincipal: (token) => musicPrincipals.resolve(token),
     entryEnabled: () => resolveMusicEntryPolicy({
       killSwitch: process.env.MUSIC_NEW_ENTRY_KILL_SWITCH !== "false",
       cohortEnabled: process.env.MUSIC_COHORT_ENABLED === "true",

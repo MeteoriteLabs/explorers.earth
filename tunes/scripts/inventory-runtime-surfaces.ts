@@ -27,6 +27,7 @@ function policyFor(text: string): string {
 
 function classificationFor(path: string, policy: string): string {
   if (path === "/api/music/identity/ensure") return "strapi-identity-boundary";
+  if (path === "/api/music/identity/current") return "local-music-principal";
   if (path === "/graphql" || path.includes("strapi/graphql")) return "service-token-proxy";
   if (["/api/login", "/api/logout", "/api/check", "/api/csrf-token"].includes(path)) return "native-session";
   if (path.startsWith("/api/admin/")) return "admin-handler-review-required";
@@ -38,6 +39,7 @@ function classificationFor(path: string, policy: string): string {
 
 function ownerFor(path: string, policy: string): string {
   if (path === "/api/music/identity/ensure") return "authoritative-strapi-user+selected-account";
+  if (path === "/api/music/identity/current") return "verified-subject-derived-numeric-owner";
   if (path.startsWith("/api/admin/")) return /:userId\b/.test(path) ? "authenticated-admin-principal+path.userId" : "authenticated-admin-principal";
   if (path === "/api/auth/sync") return "request.body.strapiUser";
   if (path.includes(":guestUrl")) return "path.guestUrl";

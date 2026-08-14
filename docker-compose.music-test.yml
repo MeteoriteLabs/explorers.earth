@@ -97,6 +97,10 @@ services:
       MUSIC_RATE_LIMIT_PER_MINUTE: "60"
       MUSIC_IDENTITY_GLOBAL_RATE_PER_MINUTE: "600"
       MUSIC_IDENTITY_RATE_MAX_ENTRIES: "10000"
+      MUSIC_TOKEN_CURRENT_KID: fixture-current
+      MUSIC_TOKEN_CURRENT_SECRET_FILE: /run/secrets/music-token/current
+      MUSIC_TOKEN_LIFETIME_SECONDS: "600"
+      MUSIC_TOKEN_CLOCK_SKEW_SECONDS: "15"
       MUSIC_PROVISIONING_KILL_SWITCH: "true"
       MUSIC_PROVISIONING_COHORT: disabled
       MUSIC_NEW_ENTRY_KILL_SWITCH: "false"
@@ -116,6 +120,7 @@ services:
       retries: 20
     labels: *music-labels
     networks: [music-fixture]
+    volumes: [./.artifacts/music-token-secrets:/run/secrets/music-token:ro]
 
   explorers:
     build:

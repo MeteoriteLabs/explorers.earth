@@ -57,6 +57,13 @@ x-tunes-environment: &tunes-environment
   MUSIC_RATE_LIMIT_PER_MINUTE: ${MUSIC_RATE_LIMIT_PER_MINUTE:-30}
   MUSIC_IDENTITY_GLOBAL_RATE_PER_MINUTE: ${MUSIC_IDENTITY_GLOBAL_RATE_PER_MINUTE:-300}
   MUSIC_IDENTITY_RATE_MAX_ENTRIES: ${MUSIC_IDENTITY_RATE_MAX_ENTRIES:-10000}
+  MUSIC_TOKEN_CURRENT_KID: ${MUSIC_TOKEN_CURRENT_KID:?MUSIC_TOKEN_CURRENT_KID is required}
+  MUSIC_TOKEN_CURRENT_SECRET_FILE: /run/secrets/music-token/current
+  MUSIC_TOKEN_LIFETIME_SECONDS: "600"
+  MUSIC_TOKEN_CLOCK_SKEW_SECONDS: ${MUSIC_TOKEN_CLOCK_SKEW_SECONDS:-15}
+  MUSIC_TOKEN_PREVIOUS_KID: ${MUSIC_TOKEN_PREVIOUS_KID:-}
+  MUSIC_TOKEN_PREVIOUS_SECRET_FILE: ${MUSIC_TOKEN_PREVIOUS_SECRET_FILE:-}
+  MUSIC_TOKEN_PREVIOUS_ACCEPT_UNTIL: ${MUSIC_TOKEN_PREVIOUS_ACCEPT_UNTIL:-}
   ALLOWED_ORIGINS: https://localtunes.earth,https://explorers.earth
 
 x-tunes-service: &tunes-service
@@ -66,6 +73,7 @@ x-tunes-service: &tunes-service
       condition: service_healthy
   volumes:
     - music-gate-attestations:/deployment-gates:ro
+    - ${MUSIC_TOKEN_SECRET_DIRECTORY_HOST:?MUSIC_TOKEN_SECRET_DIRECTORY_HOST is required}:/run/secrets/music-token:ro
   networks:
     - proxy
     - internal

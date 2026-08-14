@@ -2,6 +2,8 @@
 // Sets env BEFORE any module that reads it at import time (db.ts creates its
 // pool on import). Pure-unit tests (sanitize-user) don't import the app. The
 // C0 fixture contract deliberately fixes its test database to loopback:55432.
+import { randomBytes } from "node:crypto";
+
 process.env.NODE_ENV = 'test';
 process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'test-session-secret-at-least-32-characters';
 process.env.COOKIE_SECRET = process.env.COOKIE_SECRET || 'test-cookie-secret-at-least-32-characters';
@@ -17,6 +19,10 @@ process.env.MUSIC_SIGNING_KEY_CURRENT_ID = 'fixture-current';
 process.env.MUSIC_SIGNING_KEY_CURRENT_SECRET = 'fixture-current-secret-at-least-32-characters';
 process.env.MUSIC_SIGNING_KEY_PREVIOUS_ID = 'fixture-previous';
 process.env.MUSIC_SIGNING_KEY_PREVIOUS_SECRET = 'fixture-previous-secret-at-least-32-characters';
+process.env.MUSIC_TOKEN_CURRENT_KID = 'fixture-current';
+process.env.MUSIC_TOKEN_CURRENT_SECRET = randomBytes(32).toString('base64url');
+process.env.MUSIC_TOKEN_LIFETIME_SECONDS = '600';
+process.env.MUSIC_TOKEN_CLOCK_SKEW_SECONDS = '15';
 process.env.MUSIC_CONNECT_TIMEOUT_MS = '5000';
 process.env.MUSIC_READ_TIMEOUT_MS = '10000';
 process.env.MUSIC_CIRCUIT_FAILURE_THRESHOLD = '3';

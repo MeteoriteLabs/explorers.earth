@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Express, Request, Response } from "express";
+import type { Express, NextFunction, Request, Response } from "express";
 import {
   MusicIdentityError,
   MUSIC_IDENTITY_RESPONSE_STATUSES,
@@ -9,6 +9,12 @@ import {
 import type { MusicIdentityProjection } from "../repositories/musicIdentityRepository";
 import type { BoundedIdentityRateLimiter } from "../middleware/identityRateLimit";
 import { fingerprintStrapiProof } from "../services/strapiIdentityGateway";
+import {
+  createMusicPrincipalMiddleware,
+  MusicPrincipalError,
+  type MusicPrincipal,
+} from "../middleware/musicPrincipal";
+import type { MintedMusicToken } from "../services/musicTokenService";
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
 const BEARER_PATTERN = /^Bearer ([A-Za-z0-9._~-]{16,4096})$/;
@@ -25,6 +31,8 @@ const OWNER_HEADERS = [
 
 export interface MusicIdentityRouteDependencies {
   ensure: (proof: string, requestId: string) => Promise<MusicIdentityProjection>;
+  mintCredential: (identity: MusicIdentityProjection) => MintedMusicToken;
+  resolvePrincipal: (token: string) => Promise<MusicPrincipal>;
   limiter: BoundedIdentityRateLimiter;
   logger?: (entry: Record<string, unknown>) => void;
   fingerprint?: (proof: string) => string;
@@ -98,9 +106,11 @@ export function setupMusicIdentityRoutes(app: Express, dependencies: MusicIdenti
       if (projection.identityStatus === "pending_deletion") {
         throw new MusicIdentityError("IDENTITY_PENDING_DELETION", 409, "This Music identity is pending deletion.", "contact_support", false, undefined, "pending_deletion");
       }
+      const credential = dependencies.mintCredential(projection);
       const payload: MusicEnsureResponse = {
         version: "music-identity/v1",
         identity: { musicUserId: projection.id, status: "active" },
+        credential,
       };
       outcome = "success";
       status = 200;
@@ -139,6 +149,27 @@ export function setupMusicIdentityRoutes(app: Express, dependencies: MusicIdenti
       }
     }
   });
+
+  const principalMiddleware = createMusicPrincipalMiddleware(dependencies.resolvePrincipal);
+  app.get(
+    "/api/music/identity/current",
+    (req: Request, res: Response, next: NextFunction) => {
+      const requestId = validRequestId(req.get("x-request-id")) ?? requestIdFactory();
+      res.locals.musicRequestId = requestId;
+      res.setHeader("X-Request-Id", requestId);
+      next();
+    },
+    principalMiddleware,
+    (req: Request, res: Response) => res.status(200).json({
+      version: "music-principal/v1",
+      identity: { musicUserId: req.musicPrincipal!.musicUserId, status: "active" },
+    }),
+    (cause: unknown, _req: Request, res: Response, _next: (error?: unknown) => void) => {
+      const error = safePrincipalError(cause);
+      if (error.status === 503) res.setHeader("Retry-After", String(error.retryAfterSeconds ?? 1));
+      return res.status(error.status).json(musicErrorEnvelope(error, res.locals.musicRequestId));
+    },
+  );
 }
 
 function validRequestId(value: string | undefined): string | undefined {
@@ -182,6 +213,16 @@ function safeError(cause: unknown): MusicIdentityError {
     return new MusicIdentityError("DATABASE_UNAVAILABLE", 503, "Music identity is temporarily unavailable.", "retry", true, 2);
   }
   return new MusicIdentityError("INTERNAL_ERROR", 500, "Music identity could not be ensured.", "retry", true);
+}
+
+function safePrincipalError(cause: unknown): MusicIdentityError {
+  if (cause instanceof MusicPrincipalError) {
+    const action = cause.code === "IDENTITY_SUSPENDED" ? "contact_support"
+      : cause.code === "IDENTITY_PENDING_DELETION" ? "contact_support"
+        : "authenticate";
+    return new MusicIdentityError(cause.code, cause.status, cause.message, action, false);
+  }
+  return safeError(cause);
 }
 
 function safeOutcome(error: MusicIdentityError): string {

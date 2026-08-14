@@ -51,6 +51,12 @@ export interface TransitionMusicIdentityInput {
   targetStatus: MusicIdentityProjection["identityStatus"];
 }
 
+export interface RevokeMusicCredentialsInput {
+  musicUserId: number;
+  expectedSessionVersion: number;
+  reason: "logout_all" | "entitlement_security_revocation" | "credential_compromise";
+}
+
 export class StaleLifecycleOperationError extends Error {
   readonly code = "STALE_LIFECYCLE_OPERATION" as const;
 
@@ -192,6 +198,80 @@ export class MusicIdentityRepository {
       [strapiUserDocumentId],
     );
     return result.rows[0]?.present === true;
+  }
+
+  async resolveCredentialSubject(strapiUserDocumentId: string): Promise<{
+    identity?: MusicIdentityProjection;
+    tombstoned: boolean;
+  }> {
+    const result = await this.pool.query<{
+      id: number | null;
+      strapi_user_document_id: string | null;
+      strapi_account_document_id: string | null;
+      identity_status: MusicIdentityProjection["identityStatus"] | null;
+      session_version: number | null;
+      tombstoned: boolean;
+    }>(`SELECT u.id,u.strapi_user_document_id,u.strapi_account_document_id,u.identity_status,u.session_version,
+        EXISTS(SELECT 1 FROM music_identity_tombstones t
+          WHERE t.strapi_user_document_id=requested.subject
+             OR (u.strapi_account_document_id IS NOT NULL
+                 AND t.strapi_account_document_id=u.strapi_account_document_id)) AS tombstoned
+      FROM (VALUES ($1::text)) AS requested(subject)
+      LEFT JOIN users u ON u.strapi_user_document_id=requested.subject`, [strapiUserDocumentId]);
+    const row = result.rows[0];
+    if (!row?.id || !row.strapi_user_document_id || !row.strapi_account_document_id
+        || !row.identity_status || !row.session_version) {
+      return { identity: undefined, tombstoned: row?.tombstoned === true };
+    }
+    return {
+      identity: projection({
+        id: row.id,
+        strapi_user_document_id: row.strapi_user_document_id,
+        strapi_account_document_id: row.strapi_account_document_id,
+        identity_status: row.identity_status,
+        session_version: row.session_version,
+      }),
+      tombstoned: row.tombstoned === true,
+    };
+  }
+
+  async revokeAllCredentials(input: RevokeMusicCredentialsInput): Promise<MusicIdentityProjection> {
+    if (!Number.isSafeInteger(input.musicUserId) || input.musicUserId < 1
+        || !Number.isSafeInteger(input.expectedSessionVersion) || input.expectedSessionVersion < 1
+        || !["logout_all", "entitlement_security_revocation", "credential_compromise"].includes(input.reason)) {
+      throw new MusicIdentityError("REQUEST_INVALID", 400, "Music credential revocation input is invalid.", "none", false);
+    }
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const result = await client.query<any>(`SELECT id,strapi_user_document_id,
+        strapi_account_document_id,identity_status,session_version
+        FROM users WHERE id=$1 FOR UPDATE`, [input.musicUserId]);
+      const row = result.rows[0];
+      if (!row || row.session_version < input.expectedSessionVersion
+          || row.session_version > input.expectedSessionVersion + 1) {
+        throw new MusicIdentityError("IDENTITY_CONFLICT", 409, "The Music credential revocation state conflicts.", "retry", false, undefined, "session_version");
+      }
+      if (row.session_version === input.expectedSessionVersion + 1) {
+        await client.query("COMMIT");
+        return projection(row);
+      }
+      const updated = await client.query<any>(`UPDATE users SET session_version=session_version+1,updated_at=now()
+        WHERE id=$1 AND session_version=$2
+        RETURNING id,strapi_user_document_id,strapi_account_document_id,identity_status,session_version`, [
+        input.musicUserId,input.expectedSessionVersion,
+      ]);
+      if (!updated.rows[0]) {
+        throw new MusicIdentityError("IDENTITY_CONFLICT", 409, "The Music credential revocation state conflicts.", "retry", false, undefined, "session_version");
+      }
+      await client.query("COMMIT");
+      return projection(updated.rows[0]);
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async createIdentity(input: CreateMusicIdentityInput): Promise<MusicIdentityProjection> {

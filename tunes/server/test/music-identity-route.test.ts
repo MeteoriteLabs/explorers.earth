@@ -10,6 +10,13 @@ import {
 } from "../../shared/musicError";
 import { BoundedIdentityRateLimiter } from "../middleware/identityRateLimit";
 
+const routeCredentialDependencies = {
+  mintCredential: () => ({ token: `fixture.${"x".repeat(64)}`, expiresAt: 1_800_000_600_000 }),
+  resolvePrincipal: async () => ({
+    musicUserId: 41, subject: "user-doc", accountDocumentId: "account-doc", sessionVersion: 1,
+  }),
+};
+
 function appFor(ensure = vi.fn(async () => ({
   id: 41,
   strapiUserDocumentId: "user-doc",
@@ -22,6 +29,7 @@ function appFor(ensure = vi.fn(async () => ({
   app.use(express.json({ limit: "1kb" }));
   const logs: unknown[] = [];
   setupMusicIdentityRoutes(app, {
+    ...routeCredentialDependencies,
     ensure,
     limiter: new BoundedIdentityRateLimiter({ limit: 20, windowMs: 1_000, maxEntries: 100 }),
     logger: (entry) => logs.push(entry),
@@ -38,6 +46,7 @@ function proxyAppFor(ensure: ReturnType<typeof vi.fn>) {
   app.set("trust proxy", isTrustedProxy);
   setupMusicIdentityBodylessPreflight(app);
   setupMusicIdentityRoutes(app, {
+    ...routeCredentialDependencies,
     ensure,
     trustedProxyHops: 1,
     isTrustedProxy,
@@ -71,7 +80,11 @@ describe("POST /api/music/identity/ensure", () => {
       .set("x-request-id", "bounded-request-1");
     expect(ok.status).toBe(200);
     expect(ok.headers["x-request-id"]).toBe("bounded-request-1");
-    expect(ok.body).toEqual({ version: "music-identity/v1", identity: { musicUserId: 41, status: "active" } });
+    expect(ok.body).toEqual({
+      version: "music-identity/v1",
+      identity: { musicUserId: 41, status: "active" },
+      credential: routeCredentialDependencies.mintCredential(),
+    });
     expect(ensure).toHaveBeenCalledWith("proof-with-enough-entropy", "bounded-request-1");
 
     const invalidRequests = [
@@ -248,6 +261,7 @@ describe("POST /api/music/identity/ensure", () => {
     const app = express();
     setupMusicIdentityBodylessPreflight(app);
     setupMusicIdentityRoutes(app, {
+      ...routeCredentialDependencies,
       ensure,
       limiter: new BoundedIdentityRateLimiter({ limit: 3, windowMs: 60_000, maxEntries: 8 }),
       fingerprint: (proof) => proof,
@@ -293,6 +307,7 @@ describe("POST /api/music/identity/ensure", () => {
     const app = express();
     app.set("trust proxy", 1);
     setupMusicIdentityRoutes(app, {
+      ...routeCredentialDependencies,
       ensure,
       trustedProxyHops: 1,
       isTrustedProxy: () => false,
@@ -337,6 +352,7 @@ describe("POST /api/music/identity/ensure", () => {
     app.set("trust proxy", isTrustedProxy);
     setupMusicIdentityBodylessPreflight(app);
     setupMusicIdentityRoutes(app, {
+      ...routeCredentialDependencies,
       ensure: (proof, requestId) => service.ensure(proof, requestId),
       trustedProxyHops: 1,
       isTrustedProxy,

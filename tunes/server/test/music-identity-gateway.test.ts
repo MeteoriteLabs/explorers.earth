@@ -370,6 +370,7 @@ describe("Strapi identity gateway", () => {
     expect(musicEnsureResponseSchema.parse({
       version: "music-identity/v1",
       identity: { musicUserId: 7, status: "active" },
+      credential: { token: `fixture.${"x".repeat(64)}`, expiresAt: 1_800_000_600_000 },
     }).identity.musicUserId).toBe(7);
     expect(musicErrorEnvelopeSchema.parse({
       version: "music-error/v1",

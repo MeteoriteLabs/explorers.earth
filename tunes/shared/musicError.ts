@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const MUSIC_ERROR_VERSION = "music-error/v1" as const;
 export const MUSIC_IDENTITY_VERSION = "music-identity/v1" as const;
+export const MUSIC_PRINCIPAL_VERSION = "music-principal/v1" as const;
 export const MUSIC_IDENTITY_RESPONSE_STATUSES = [200, 400, 401, 403, 409, 429, 500, 502, 503] as const;
 export type MusicIdentityResponseStatus = typeof MUSIC_IDENTITY_RESPONSE_STATUSES[number];
 
@@ -15,11 +16,27 @@ export const musicEnsureResponseSchema = z.object({
     musicUserId: z.number().int().positive(),
     status: musicIdentityStatusSchema,
   }).strict(),
+  credential: z.object({
+    token: z.string().min(64).max(4_096),
+    expiresAt: z.number().int().positive(),
+  }).strict(),
+}).strict();
+
+export const musicPrincipalResponseSchema = z.object({
+  version: z.literal(MUSIC_PRINCIPAL_VERSION),
+  identity: z.object({
+    musicUserId: z.number().int().positive(),
+    status: musicIdentityStatusSchema,
+  }).strict(),
 }).strict();
 
 export const musicErrorCodeSchema = z.enum([
   "AUTH_REQUIRED",
   "AUTH_INVALID",
+  "TOKEN_INVALID",
+  "TOKEN_EXPIRED",
+  "TOKEN_REVOKED",
+  "RESOURCE_FORBIDDEN",
   "REQUEST_INVALID",
   "IDENTITY_INELIGIBLE",
   "ONBOARDING_INCOMPLETE",
@@ -118,9 +135,36 @@ function responseHeader(headers: Headers | Record<string, string | string[] | un
 export const musicEnsureResponseOpenApiSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["version", "identity"],
+  required: ["version", "identity", "credential"],
   properties: {
     version: { type: "string", enum: [MUSIC_IDENTITY_VERSION] },
+    identity: {
+      type: "object",
+      additionalProperties: false,
+      required: ["musicUserId", "status"],
+      properties: {
+        musicUserId: { type: "integer", minimum: 1 },
+        status: { type: "string", enum: ["active"] },
+      },
+    },
+    credential: {
+      type: "object",
+      additionalProperties: false,
+      required: ["token", "expiresAt"],
+      properties: {
+        token: { type: "string", minLength: 64, maxLength: 4_096 },
+        expiresAt: { type: "integer", minimum: 1 },
+      },
+    },
+  },
+} as const;
+
+export const musicPrincipalResponseOpenApiSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["version", "identity"],
+  properties: {
+    version: { type: "string", enum: [MUSIC_PRINCIPAL_VERSION] },
     identity: {
       type: "object",
       additionalProperties: false,
@@ -198,6 +242,29 @@ export const musicIdentityOpenApi = {
         "500": errorResponse("Safe internal failure"),
         "502": errorResponse("Malformed authoritative response"),
         "503": errorResponse("Temporary upstream or database failure", true),
+      },
+    },
+  },
+} as const;
+
+export const musicPrincipalOpenApi = {
+  path: "/api/music/identity/current",
+  operation: {
+    get: {
+      tags: ["Music Identity"],
+      summary: "Resolve the current local Music principal",
+      security: [{ musicBearer: [] }],
+      responses: {
+        "200": {
+          description: "Current locally authorized Music identity",
+          headers: responseHeaders(),
+          content: { "application/json": { schema: { $ref: "#/components/schemas/MusicPrincipalResponse" } } },
+        },
+        "401": errorResponse("Missing, invalid, expired, or revoked Music credential"),
+        "403": errorResponse("Suspended identity"),
+        "409": errorResponse("Identity pending deletion"),
+        "500": errorResponse("Safe internal failure"),
+        "503": errorResponse("Temporary database failure", true),
       },
     },
   },

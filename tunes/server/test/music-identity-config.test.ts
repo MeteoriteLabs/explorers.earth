@@ -24,6 +24,10 @@ const liveBase = {
   MUSIC_RATE_LIMIT_PER_MINUTE: "30",
   MUSIC_IDENTITY_GLOBAL_RATE_PER_MINUTE: "300",
   MUSIC_IDENTITY_RATE_MAX_ENTRIES: "10000",
+  MUSIC_TOKEN_CURRENT_KID: "music-current-2026-08",
+  MUSIC_TOKEN_CURRENT_SECRET: Buffer.alloc(32, 0x51).toString("base64url"),
+  MUSIC_TOKEN_LIFETIME_SECONDS: "600",
+  MUSIC_TOKEN_CLOCK_SKEW_SECONDS: "15",
 } as const;
 
 const publicResolver: MusicIdentityAddressResolver = vi.fn(async () => ["8.8.8.8", "2606:4700:4700::1111"]);
@@ -126,5 +130,62 @@ describe("central Music identity startup configuration", () => {
     await expect(resolveMusicIdentityRuntimeConfig(liveBase, {
       resolveAddresses: async () => ["8.8.8.8", "127.0.0.1"],
     })).rejects.toThrow(/public addresses/i);
+  });
+
+  it.each([
+    ["missing current kid", { MUSIC_TOKEN_CURRENT_KID: undefined }],
+    ["missing current secret", { MUSIC_TOKEN_CURRENT_SECRET: undefined }],
+    ["weak current secret", { MUSIC_TOKEN_CURRENT_SECRET: Buffer.alloc(31).toString("base64url") }],
+    ["noncanonical current secret", { MUSIC_TOKEN_CURRENT_SECRET: "default-secret-with-at-least-thirty-two-characters" }],
+    ["wrong token lifetime", { MUSIC_TOKEN_LIFETIME_SECONDS: "601" }],
+    ["excess clock skew", { MUSIC_TOKEN_CLOCK_SKEW_SECONDS: "31" }],
+    ["partial previous key", { MUSIC_TOKEN_PREVIOUS_KID: "previous" }],
+    ["same key IDs", {
+      MUSIC_TOKEN_PREVIOUS_KID: "music-current-2026-08",
+      MUSIC_TOKEN_PREVIOUS_SECRET: Buffer.alloc(32, 0x52).toString("base64url"),
+      MUSIC_TOKEN_PREVIOUS_ACCEPT_UNTIL: new Date(Date.now() + 60_000).toISOString(),
+    }],
+    ["non-UTC cutoff", {
+      MUSIC_TOKEN_PREVIOUS_KID: "previous",
+      MUSIC_TOKEN_PREVIOUS_SECRET: Buffer.alloc(32, 0x52).toString("base64url"),
+      MUSIC_TOKEN_PREVIOUS_ACCEPT_UNTIL: "2026-08-14T12:00:00+05:30",
+    }],
+    ["unbounded overlap", {
+      MUSIC_TOKEN_PREVIOUS_KID: "previous",
+      MUSIC_TOKEN_PREVIOUS_SECRET: Buffer.alloc(32, 0x52).toString("base64url"),
+      MUSIC_TOKEN_PREVIOUS_ACCEPT_UNTIL: new Date(Date.now() + 3_600_000).toISOString(),
+    }],
+  ])("rejects %s before route registration", async (_label, overrides) => {
+    await expect(resolveMusicIdentityRuntimeConfig({ ...liveBase, ...overrides }, { resolveAddresses: publicResolver }))
+      .rejects.toThrow(/token|key|kid|secret|lifetime|skew|overlap|UTC/i);
+  });
+
+  it("loads a live current/previous key only through explicit injected secret paths", async () => {
+    const now = Date.now();
+    const current = Buffer.alloc(32, 0x61).toString("base64url");
+    const previous = Buffer.alloc(32, 0x62).toString("base64url");
+    const readSecretFile = vi.fn(async (path: string) => ({
+      "/run/secrets/music-current": `${current}\n`,
+      "/run/secrets/music-previous": `${previous}\n`,
+    })[path] ?? "");
+    const config = await resolveMusicIdentityRuntimeConfig({
+      ...liveBase,
+      MUSIC_TOKEN_CURRENT_SECRET: undefined,
+      MUSIC_TOKEN_CURRENT_SECRET_FILE: "/run/secrets/music-current",
+      MUSIC_TOKEN_PREVIOUS_KID: "music-previous-2026-08",
+      MUSIC_TOKEN_PREVIOUS_SECRET_FILE: "/run/secrets/music-previous",
+      MUSIC_TOKEN_PREVIOUS_ACCEPT_UNTIL: new Date(now + 300_000).toISOString(),
+    }, { resolveAddresses: publicResolver, readSecretFile, now: () => now });
+    expect(config.musicToken).toEqual({
+      current: { kid: "music-current-2026-08", secret: current },
+      previous: {
+        kid: "music-previous-2026-08",
+        secret: previous,
+        acceptUntil: new Date(now + 300_000).getTime(),
+      },
+      tokenLifetimeSeconds: 600,
+      clockSkewSeconds: 15,
+    });
+    expect(readSecretFile).toHaveBeenCalledTimes(2);
   });
 });

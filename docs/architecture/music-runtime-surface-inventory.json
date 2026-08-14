@@ -1369,7 +1369,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/routes/index.ts",
-      "line": 101
+      "line": 108
     },
     {
       "method": "GET",
@@ -1379,7 +1379,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/index.ts",
-      "line": 104
+      "line": 111
     },
     {
       "method": "POST",
@@ -1389,7 +1389,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/routes/index.ts",
-      "line": 136
+      "line": 143
     },
     {
       "method": "POST",
@@ -1449,7 +1449,17 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicIdentityRoutes.ts",
-      "line": 72
+      "line": 80
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/identity/current",
+      "classification": "local-music-principal",
+      "ownerSource": "verified-subject-derived-numeric-owner",
+      "policy": "handler-level-unverified",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "line": 154
     },
     {
       "method": "POST",
@@ -1689,7 +1699,7 @@
       "policy": "handler-level-unverified",
       "lifecycle": "request",
       "source": "tunes/server/swagger.ts",
-      "line": 1901
+      "line": 1914
     },
     {
       "method": "GET",
