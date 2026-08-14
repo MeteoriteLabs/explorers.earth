@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -35,6 +35,11 @@ function runCli(args: string[], env: NodeJS.ProcessEnv = process.env) {
   }
 }
 
+function snapshotAuthorityDirectory(path: string): Record<string, string> {
+  if (!existsSync(path)) return {};
+  return Object.fromEntries(readdirSync(path).sort().map((name) => [name, readFileSync(join(path, name)).toString("base64")]));
+}
+
 describe("music CLI output contract", () => {
   it("rotates fixture authority without erasing the prior bundle before pointer commit", () => {
     const source = readFileSync(join(tunesRoot, "scripts", "music-cli.ts"), "utf8");
@@ -43,6 +48,46 @@ describe("music CLI output contract", () => {
     const rotation = source.slice(start, end);
     expect(rotation).not.toContain("cleanupAllFixtureMusicTokenSecrets(root)");
     expect(rotation).toContain("rotateFixtureMusicAuthority");
+    expect(rotation).toContain("cleanupUnsupportedFixtureEnvironmentForRebootstrap");
+    expect(rotation).toContain("confirmedProject");
+    expect(rotation).not.toContain("legacyUpgrade");
+  });
+
+  it("returns a secret-free typed refusal for raw fixture authority without mutating its bundle", () => {
+    const environmentPath = join(repositoryRoot, ".env.music.test");
+    const pointerBefore = readFileSync(environmentPath);
+    const environmentBefore = readFixtureMusicEnvironment(repositoryRoot);
+    const environmentValues = Object.fromEntries(environmentBefore.trim().split(/\r?\n/).map((line) => line.split("=", 2)));
+    const credentials = ["MUSIC_TOKEN_SECRET_FILE_HOST", "MUSIC_DB_MIGRATOR_SECRET_FILE_HOST", "MUSIC_DB_RUNTIME_SECRET_FILE_HOST"]
+      .map((name) => resolve(repositoryRoot, environmentValues[name]))
+      .filter(existsSync);
+    const credentialBytes = credentials.map((path) => readFileSync(path));
+    const authorityDirectories = [
+      join(repositoryRoot, ".artifacts", "music-token-secrets"),
+      join(repositoryRoot, ".artifacts", "music-environment-generations"),
+      join(repositoryRoot, ".artifacts", "music-rotation-journals"),
+    ];
+    const authorityBefore = authorityDirectories.map(snapshotAuthorityDirectory);
+    const raw = "RAW_FIXTURE_SECRET_SENTINEL=must-not-be-reflected\nMUSIC_TOKEN_SECRET_FILE_HOST=../must-not-be-read\n";
+    writeFileSync(environmentPath, raw, { mode: 0o600 });
+    try {
+      const result = runCli(["bootstrap", "--format", "json"]);
+      const lines = result.stdout.trim().split(/\r?\n/);
+      expect(result.exitCode).toBe(5);
+      expect(lines).toHaveLength(1);
+      expect(JSON.parse(lines[0]!)).toMatchObject({
+        command: "bootstrap",
+        status: "blocked",
+        phase: "fixture-authority",
+      });
+      expect(result.stdout).toContain("guarded cleanup/re-bootstrap");
+      expect(result.stdout).not.toContain("RAW_FIXTURE_SECRET_SENTINEL");
+      expect(readFileSync(environmentPath, "utf8")).toBe(raw);
+      expect(credentials.map((path) => readFileSync(path))).toEqual(credentialBytes);
+      expect(authorityDirectories.map(snapshotAuthorityDirectory)).toEqual(authorityBefore);
+    } finally {
+      writeFileSync(environmentPath, pointerBefore, { mode: 0o600 });
+    }
   });
 
   it("emits only a JSON envelope through the documented public root command", () => {

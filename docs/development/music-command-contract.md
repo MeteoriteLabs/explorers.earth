@@ -29,8 +29,15 @@ Root commands: `music:bootstrap`, `music:doctor`, `music:up`,
 `music:fixtures:capture`.
 
 `music:bootstrap` creates only disposable secrets in ignored `.env.music.test`;
-it never requests payment or production API credentials. `music:down` retains
-volumes. Volume deletion requires `--volumes --confirm-project
+it never requests payment or production API credentials. A raw pre-generation
+`.env.music.test` is unsupported and the ordinary command returns the safety
+phase `fixture-authority` without mutating it or its credentials. For this
+disposable state only, the explicit guarded cleanup/re-bootstrap is
+`music:bootstrap -- --mode fixture --confirm-project
+explorers-music-fixture`; it validates the owned repository scope, never parses
+raw credential paths, and then creates a fresh versioned bundle.
+
+`music:down` retains volumes. Volume deletion requires `--volumes --confirm-project
 explorers-music-fixture`; reset additionally requires `--mode fixture` and the
 same confirmation. Before cleanup, the CLI renders the Compose model, resolves
 and inspects every actual container, network, and volume, and refuses absent,

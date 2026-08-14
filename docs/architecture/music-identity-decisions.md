@@ -37,6 +37,23 @@ Those capabilities are derived and enforced server-side from the authoritative e
 - Lifecycle, suspension, deletion tombstones, reconciliation, and retention apply to every automatically projected identity.
 - Product activation metrics must distinguish identity creation from meaningful Music use such as first open, first playlist, first share/request, and return use.
 
+### Disposable fixture authority compatibility
+
+Raw pre-generation `.env.music.test` files are not product data and are not a
+supported migration source. They are rejected without mutation or secret
+reflection. Recovery requires the exact fixture project confirmation and a
+guarded cleanup/re-bootstrap that validates workspace ownership, zeroes only
+verified fixture artifacts, never follows credential paths found in the raw
+file, and creates a fresh versioned authority bundle.
+
+This deliberately removes the legacy auto-upgrade path. On the supported
+Windows host, a destination handle strict enough to prevent a concurrent entry
+replacement also prevents the replacement commit itself; a replace-compatible
+handle permits the entry race. POSIX pathname replacement has the same
+validate-close-to-commit class unless a separately verified exchange protocol
+is introduced. Disposable fixture compatibility does not justify that
+cross-platform transaction surface.
+
 ## Revisit when
 
 - Music should be created only on first use instead of after onboarding.

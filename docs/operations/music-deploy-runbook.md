@@ -325,9 +325,27 @@ Every fixture command holds and validates the reference and generation
 descriptors, parses the environment in memory, and passes the variables only in
 the child process environment. Docker Compose is never given `--env-file`, so
 it cannot reopen a secret pathname after validation. A reference or generation
-race fails closed. Bootstrap may replace a verified owned legacy
-`.env.music.test`; ordinary resume/doctor operations reject legacy or invalid
-references.
+race fails closed. A raw or malformed legacy `.env.music.test` is never parsed
+as migration authority and is never auto-converted. Bootstrap fails before
+creating credentials, generations, journals, or a new pointer with
+`MUSIC_FIXTURE_LEGACY_ENVIRONMENT_UNSUPPORTED` and secret-free recovery
+guidance.
+
+Because this is disposable fixture state, recovery is an explicit guarded
+cleanup/re-bootstrap rather than a compatibility migration:
+
+```powershell
+npm run music:bootstrap -- --mode fixture --confirm-project explorers-music-fixture
+```
+
+That path first verifies the repository/root ownership boundary, the exact
+fixture project confirmation, and the absence of a non-empty pending rotation
+journal. It descriptor-zeroes the unsupported raw file without interpreting
+its variables, cleans only recognized fixture-owned generated leaves, and then
+creates a fresh four-resource authority bundle. A wrong project, linked or
+unowned path, pending journal, cleanup failure, or concurrent identity change
+fails closed. The ordinary unconfirmed bootstrap remains read-only on raw
+authority.
 
 Bootstrap rotates one four-resource authority bundle: the environment
 generation, Music signing-key leaf, migrator-password leaf, and runtime-password
@@ -358,13 +376,18 @@ no error path may erase the new set. Prior resources are retired only when
 their captured identities and digests still match; mismatch is a typed cleanup
 failure that leaves both attacker and displaced bytes untouched.
 On POSIX, durable metadata publication is file fsync, atomic rename, and parent
-directory fsync. Windows does not treat directory fsync as available: the
-checked-in bounded helper uses `MoveFileExW` with
-`MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH` for candidate entry,
-journal update, and pointer publication. The helper receives paths only, never
-secret values, and an unavailable/nonzero helper fails closed before the next
-transaction phase. Descriptor truncation plus file fsync remains the durability
-barrier for retirement because it does not change directory metadata.
+directory fsync. Windows does not treat directory fsync as available; the
+checked-in bounded helper validates native file and parent identities and
+renames the verified source handle before its write-through metadata barrier.
+It receives paths and identity metadata only, never secret values. Windows
+cannot simultaneously keep an existing destination handle non-delete-shared
+and replace that destination (the actual host returns sharing violation 32),
+while delete sharing permits a child-entry swap. POSIX pathname rename has the
+analogous final close-to-commit race. Raw legacy conversion was therefore
+removed instead of weakening this contract or pretending a final recheck could
+recover overwritten bytes. Normal versioned pointer/generation rotation is
+unchanged. Descriptor truncation plus file fsync remains the durability barrier
+for retirement because it does not change directory metadata.
 
 Bootstrap/down/reset reconcile any pending journal before other cleanup, so a
 restart deterministically retires the old set after commit or the candidate set

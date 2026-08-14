@@ -288,6 +288,11 @@ describe("fixture environment secret persistence", () => {
         });
   }
 
+  function seedPersistedEnvironment(root: string, contents = "PREVIOUS=byte-exact\n"): Buffer {
+    requiredPersist()(root, contents, { randomNameBytes: () => Buffer.alloc(16, 0x5f) });
+    return readFileSync(join(root, ".env.music.test"));
+  }
+
   it("never follows or overwrites a precreated attacker temporary leaf", () => {
     // Production break caught: .env.music.test.<pid>.tmp is opened with `w`
     // and follows a precreated link to an outside sentinel.
@@ -295,7 +300,7 @@ describe("fixture environment secret persistence", () => {
     const attacker = join(root, `.env.music.test.${Buffer.alloc(16, 0x61).toString("hex")}.tmp`);
     const destination = join(root, ".env.music.test");
     writeFileSync(attacker, "attacker-temp-must-not-change", { mode: 0o640 });
-    writeFileSync(destination, "PREVIOUS=byte-exact\n", { mode: 0o600 });
+    seedPersistedEnvironment(root);
     const attackerMode = statSync(attacker).mode;
 
     expect(requiredPersist()(root, "SESSION_SECRET=new-secret-sentinel\n", {
@@ -314,7 +319,7 @@ describe("fixture environment secret persistence", () => {
     const destination = join(root, ".env.music.test");
     const previous = "PREVIOUS=byte-exact\n";
     const secret = "SESSION_SECRET=raw-secret-residue-sentinel\n";
-    writeFileSync(destination, previous, { mode: 0o600 });
+    const previousReference = seedPersistedEnvironment(root, previous);
     const dependencies: Record<string, unknown> = {
       randomNameBytes: () => Buffer.alloc(16, failure === "short-write" ? 0x62 : failure === "sync" ? 0x63 : 0x64),
     };
@@ -331,7 +336,8 @@ describe("fixture environment secret persistence", () => {
 
     expect(() => requiredPersist()(root, secret, dependencies as PersistenceDependencies))
       .toThrow(/fixture environment|publish|secure|cleanup/i);
-    expect(readFileSync(destination, "utf8")).toBe(previous);
+    expect(readFileSync(destination)).toEqual(previousReference);
+    expect(fixtureSecrets.readFixtureMusicEnvironment(root)).toBe(previous);
     const byte = failure === "short-write" ? 0x62 : failure === "sync" ? 0x63 : 0x64;
     const generation = join(root, ".artifacts", "music-environment-generations", `generation-${Buffer.alloc(16, byte).toString("hex")}`);
     expect(!existsSync(generation) || readFileSync(generation, "utf8") === "").toBe(true);
@@ -346,7 +352,7 @@ describe("fixture environment secret persistence", () => {
     const destination = join(root, ".env.music.test");
     const previous = "PREVIOUS=byte-exact\n";
     const secret = "SESSION_SECRET=must-remain-unpublished\n";
-    writeFileSync(destination, previous, { mode: 0o600 });
+    const previousReference = seedPersistedEnvironment(root, previous);
     const before = lstatSync(destination);
     let closeCalls = 0;
     const dependencies: PersistenceDependencies = {
@@ -364,7 +370,8 @@ describe("fixture environment secret persistence", () => {
 
     expect(() => requiredPersist()(root, secret, dependencies)).toThrow(/fixture environment|publish|cleanup/i);
     const after = lstatSync(destination);
-    expect(readFileSync(destination, "utf8")).toBe(previous);
+    expect(readFileSync(destination)).toEqual(previousReference);
+    expect(fixtureSecrets.readFixtureMusicEnvironment(root)).toBe(previous);
     expect({ dev: after.dev, ino: after.ino, mode: after.mode }).toEqual({ dev: before.dev, ino: before.ino, mode: before.mode });
     const byte = failure === "close" ? 0x68 : 0x69;
     const generation = join(root, ".artifacts", "music-environment-generations", `generation-${Buffer.alloc(16, byte).toString("hex")}`);
@@ -380,8 +387,7 @@ describe("fixture environment secret persistence", () => {
     const temporaryName = `.env.music.test.reference-${Buffer.alloc(16, 0x6a).toString("hex")}.tmp`;
     const temporary = join(root, temporaryName);
     const displaced = join(root, "opened-temp-displaced-by-attacker");
-    writeFileSync(destination, previous, { mode: 0o600 });
-    const before = lstatSync(destination);
+    seedPersistedEnvironment(root, previous);
 
     expect(() => requiredPersist()(root, "SESSION_SECRET=opened-secret-sentinel\n", {
       randomNameBytes: () => Buffer.alloc(16, 0x6a),
@@ -406,7 +412,7 @@ describe("fixture environment secret persistence", () => {
     const previous = "PREVIOUS=byte-exact\n";
     const generation = join(root, ".artifacts", "music-environment-generations", `generation-${Buffer.alloc(16, 0x6d).toString("hex")}`);
     const displaced = join(root, "reviewer-displaced-secret");
-    writeFileSync(destination, previous, { mode: 0o600 });
+    const previousReference = seedPersistedEnvironment(root, previous);
 
     expect(() => requiredPersist()(root, "SESSION_SECRET=reviewer-secret-sentinel\n", {
       randomNameBytes: () => Buffer.alloc(16, 0x6d),
@@ -416,7 +422,7 @@ describe("fixture environment secret persistence", () => {
         writeFileSync(generation, "ATTACKER=published", { mode: 0o666 });
       },
     })).toThrow(/fixture environment|publish|cleanup/i);
-    expect(readFileSync(destination, "utf8")).toBe(previous);
+    expect(readFileSync(destination)).toEqual(previousReference);
     expect(readFileSync(generation, "utf8")).toBe("ATTACKER=published");
     expect(readFileSync(displaced, "utf8")).toBe("");
   });
@@ -447,7 +453,7 @@ describe("fixture environment secret persistence", () => {
     const destination = join(root, ".env.music.test");
     const first = "SESSION_SECRET=first-committed-value\n";
     const second = "SESSION_SECRET=restart-value\n";
-    writeFileSync(destination, "PREVIOUS=byte-exact\n", { mode: 0o600 });
+    seedPersistedEnvironment(root);
 
     const result = requiredPersist()(root, first, {
       randomNameBytes: () => Buffer.alloc(16, 0x6b),
@@ -476,7 +482,7 @@ describe("fixture environment secret persistence", () => {
     const outside = join(container, "outside");
     mkdirSync(root);
     mkdirSync(outside);
-    writeFileSync(join(root, ".env.music.test"), "PREVIOUS=byte-exact\n", { mode: 0o600 });
+    const previousReference = seedPersistedEnvironment(root);
     writeFileSync(join(outside, ".env.music.test"), "outside-must-not-change", { mode: 0o640 });
     let swapped = false;
     let swapBlocked = false;
@@ -498,7 +504,7 @@ describe("fixture environment secret persistence", () => {
       expect(swapped || swapBlocked).toBe(true);
       expect(readFileSync(join(outside, ".env.music.test"), "utf8")).toBe("outside-must-not-change");
       const ownedRoot = swapBlocked ? root : moved;
-      expect(readFileSync(join(ownedRoot, ".env.music.test"), "utf8")).toBe("PREVIOUS=byte-exact\n");
+      expect(readFileSync(join(ownedRoot, ".env.music.test"))).toEqual(previousReference);
       const generation = join(ownedRoot, ".artifacts", "music-environment-generations", `generation-${Buffer.alloc(16, 0x65).toString("hex")}`);
       expect(readFileSync(generation, "utf8")).toBe("");
     } finally {
@@ -738,321 +744,99 @@ describe("fixture bundle rotation transaction", () => {
     return join(directory, name);
   }
 
-  it("upgrades an honest raw legacy environment before creating a normal four-member rotation journal", () => {
-    const root = fixtureRoot();
-    const tokenDirectory = join(root, ".artifacts", "music-token-secrets");
-    mkdirSync(tokenDirectory, { recursive: true });
-    const legacyPaths: fixtureSecrets.FixtureAuthorityPaths = {
-      tokenPath: join(tokenDirectory, `current-${"1".repeat(32)}`),
-      migratorPasswordPath: join(tokenDirectory, `current-${"2".repeat(32)}`),
-      runtimePasswordPath: join(tokenDirectory, `current-${"3".repeat(32)}`),
-    };
-    for (const [index, path] of Object.values(legacyPaths).entries()) {
-      writeFileSync(path, Buffer.alloc(32, 0x31 + index).toString("base64url"), { mode: 0o600 });
-    }
-    const legacy = environment(root, legacyPaths, "honest-legacy");
-    writeFileSync(join(root, ".env.music.test"), legacy, { mode: 0o600 });
-
-    let committedPriorLength = -1;
-    expect(() => rotate(root, (paths) => environment(root, paths, "current"), {
-      ...authorityWithSeed(0x09),
-      afterJournalCommit: () => {
-        const journalDirectory = join(root, ".artifacts", "music-rotation-journals");
-        const journalName = readdirSync(journalDirectory).find((name) => fixtureRotationJournalForTest(name));
-        committedPriorLength = JSON.parse(readFileSync(join(journalDirectory, journalName!), "utf8")).prior.length;
-      },
-    })).not.toThrow();
-    expect(committedPriorLength).toBe(4);
-    expect(fixtureSecrets.readFixtureMusicEnvironment(root)).toContain("ROTATION_LABEL=current");
-    expect(readdirSync(join(root, ".artifacts", "music-rotation-journals"))
-      .filter((name) => fixtureRotationJournalForTest(name))
-      .every((name) => lstatSync(join(root, ".artifacts", "music-rotation-journals", name)).size === 0)).toBe(true);
-  });
-
-  it.each(["pathname-swap", "same-inode-rewrite"] as const)(
-    "refuses an early legacy %s before publishing the selected snapshot",
-    (race) => {
+  it.each(["honest", "malicious"] as const)(
+    "rejects an unsupported %s raw fixture environment before authority mutation",
+    (kind) => {
       const root = fixtureRoot();
       const tokenDirectory = join(root, ".artifacts", "music-token-secrets");
       mkdirSync(tokenDirectory, { recursive: true });
-      const pathsA: fixtureSecrets.FixtureAuthorityPaths = {
-        tokenPath: join(tokenDirectory, `current-${"a".repeat(32)}`),
-        migratorPasswordPath: join(tokenDirectory, `current-${"b".repeat(32)}`),
-        runtimePasswordPath: join(tokenDirectory, `current-${"c".repeat(32)}`),
+      const paths: fixtureSecrets.FixtureAuthorityPaths = {
+        tokenPath: join(tokenDirectory, `current-${"1".repeat(32)}`),
+        migratorPasswordPath: join(tokenDirectory, `current-${"2".repeat(32)}`),
+        runtimePasswordPath: join(tokenDirectory, `current-${"3".repeat(32)}`),
       };
-      const pathsB: fixtureSecrets.FixtureAuthorityPaths = {
-        tokenPath: join(tokenDirectory, `current-${"d".repeat(32)}`),
-        migratorPasswordPath: join(tokenDirectory, `current-${"e".repeat(32)}`),
-        runtimePasswordPath: join(tokenDirectory, `current-${"f".repeat(32)}`),
-      };
-      for (const [index, path] of Object.values(pathsA).entries()) {
-        writeFileSync(path, Buffer.alloc(32, 0x31 + index).toString("base64url"), { mode: 0o600 });
-      }
-      for (const [index, path] of Object.values(pathsB).entries()) {
-        writeFileSync(path, Buffer.alloc(32, 0x51 + index).toString("base64url"), { mode: 0o600 });
-      }
-      const pointer = join(root, ".env.music.test");
-      const parkedA = join(root, "legacy-a-parked");
-      const rawBPath = join(root, "legacy-b-candidate");
-      const rawA = environment(root, pathsA, "legacy-authority-A");
-      const rawB = environment(root, pathsB, "legacy-authority-B");
-      expect(Buffer.byteLength(rawA)).toBe(Buffer.byteLength(rawB));
-      writeFileSync(pointer, rawA, { mode: 0o600 });
-      if (race === "pathname-swap") writeFileSync(rawBPath, rawB, { mode: 0o600 });
-      const credentialSnapshots = [...Object.values(pathsA), ...Object.values(pathsB)]
-        .map((path) => [path, readFileSync(path)] as const);
-
-      const dependencies = authorityWithSeed(race === "pathname-swap" ? 0x15 : 0x16);
-      let injected = false;
-      Object.defineProperty(dependencies, "legacyUpgrade", {
-        configurable: true,
-        get: () => {
-          if (!injected) {
-            injected = true;
-            if (race === "pathname-swap") {
-              renameSync(pointer, parkedA);
-              renameSync(rawBPath, pointer);
-            } else {
-              writeFileSync(pointer, rawB, { mode: 0o600 });
-            }
-          }
-          return { durableReplace: (source: string, destination: string) => renameSync(source, destination) };
-        },
+      const credentialBytes = Object.values(paths).map((path, index) => {
+        const bytes = Buffer.from(`raw-credential-secret-${kind}-${index}`);
+        writeFileSync(path, bytes, { mode: 0o600 });
+        return bytes;
       });
+      const raw = kind === "honest"
+        ? Buffer.from(environment(root, paths, "raw-legacy-secret-sentinel"))
+        : Buffer.from("MALICIOUS_RAW_SECRET=must-not-be-reflected\n../outside=must-not-be-read\n");
+      const pointer = join(root, ".env.music.test");
+      writeFileSync(pointer, raw, { mode: 0o600 });
+      const rootBefore = readdirSync(root).sort();
+      const tokenNamesBefore = readdirSync(tokenDirectory).sort();
+      let buildEnvironmentCalled = false;
+      let thrown: unknown;
 
-      expect(() => rotate(root, (paths) => environment(root, paths, "must-not-publish-A"), dependencies))
-        .toThrow(expect.objectContaining({ code: "MUSIC_FIXTURE_ENVIRONMENT_PUBLISH_FAILED" }));
-      expect(readFileSync(pointer, "utf8")).toBe(rawB);
-      if (race === "pathname-swap") expect(readFileSync(parkedA, "utf8")).toBe(rawA);
-      for (const [path, bytes] of credentialSnapshots) expect(readFileSync(path)).toEqual(bytes);
-      expect(readdirSync(join(root, ".artifacts", "music-environment-generations"))
-        .filter((name) => lstatSync(join(root, ".artifacts", "music-environment-generations", name)).size > 0)).toHaveLength(0);
+      try {
+        rotate(root, (candidatePaths) => {
+          buildEnvironmentCalled = true;
+          return environment(root, candidatePaths, "must-not-build");
+        }, authorityWithSeed(kind === "honest" ? 0x41 : 0x42));
+      } catch (error) {
+        thrown = error;
+      }
 
-      let retryPriorLength = -1;
-      expect(() => rotate(root, (paths) => environment(root, paths, "current-after-B"), {
-        ...authorityWithSeed(race === "pathname-swap" ? 0x17 : 0x18),
-        afterJournalCommit: () => {
-          retryPriorLength = JSON.parse(readFileSync(activeJournalPath(root), "utf8")).prior.length;
-        },
-      })).not.toThrow();
-      expect(retryPriorLength).toBe(4);
-      expect(fixtureSecrets.readFixtureMusicEnvironment(root)).toContain("ROTATION_LABEL=current-after-B");
+      expect(thrown).toMatchObject({
+        name: "FixtureUnsupportedLegacyEnvironmentError",
+        code: "MUSIC_FIXTURE_LEGACY_ENVIRONMENT_UNSUPPORTED",
+      });
+      expect(String((thrown as Error).message)).toContain("guarded cleanup/re-bootstrap");
+      expect(String((thrown as Error).message)).not.toContain("raw-legacy-secret-sentinel");
+      expect(String((thrown as Error).message)).not.toContain("must-not-be-reflected");
+      expect(buildEnvironmentCalled).toBe(false);
+      const persist = (fixtureSecrets as unknown as {
+        persistFixtureMusicEnvironment: (root: string, contents: string) => string;
+      }).persistFixtureMusicEnvironment;
+      expect(() => persist(root, "SESSION_SECRET=must-not-persist\n")).toThrow(expect.objectContaining({
+        code: "MUSIC_FIXTURE_LEGACY_ENVIRONMENT_UNSUPPORTED",
+      }));
+      expect(readFileSync(pointer)).toEqual(raw);
+      expect(Object.values(paths).map((path) => readFileSync(path))).toEqual(credentialBytes);
+      expect(readdirSync(root).sort()).toEqual(rootBefore);
+      expect(readdirSync(tokenDirectory).sort()).toEqual(tokenNamesBefore);
     },
   );
 
-  it.each([
-    ["after-final-validation", "pathname-swap"],
-    ["after-final-validation", "same-inode-rewrite"],
-    ["after-handle-close", "pathname-swap"],
-    ["after-handle-close", "same-inode-rewrite"],
-  ] as const)("binds the selected legacy destination through %s %s", (stage, race) => {
-    if (process.platform !== "win32") return;
+  it("allows only explicit project-scoped cleanup/re-bootstrap without interpreting raw paths", () => {
     const root = fixtureRoot();
     const tokenDirectory = join(root, ".artifacts", "music-token-secrets");
     mkdirSync(tokenDirectory, { recursive: true });
-    const pathsA: fixtureSecrets.FixtureAuthorityPaths = {
-      tokenPath: join(tokenDirectory, `current-${"1".repeat(32)}`),
-      migratorPasswordPath: join(tokenDirectory, `current-${"2".repeat(32)}`),
-      runtimePasswordPath: join(tokenDirectory, `current-${"3".repeat(32)}`),
-    };
-    const pathsB: fixtureSecrets.FixtureAuthorityPaths = {
-      tokenPath: join(tokenDirectory, `current-${"4".repeat(32)}`),
-      migratorPasswordPath: join(tokenDirectory, `current-${"5".repeat(32)}`),
-      runtimePasswordPath: join(tokenDirectory, `current-${"6".repeat(32)}`),
-    };
-    for (const [index, path] of Object.values(pathsA).entries()) {
-      writeFileSync(path, Buffer.alloc(32, 0x61 + index).toString("base64url"), { mode: 0o600 });
-    }
-    for (const [index, path] of Object.values(pathsB).entries()) {
-      writeFileSync(path, Buffer.alloc(32, 0x71 + index).toString("base64url"), { mode: 0o600 });
-    }
-    const pointer = join(root, ".env.music.test");
-    const parkedA = join(root, `late-a-${stage}-${race}`);
-    const rawBPath = join(root, `late-b-${stage}-${race}`);
-    const rawA = environment(root, pathsA, "late-authority-A");
-    const rawB = environment(root, pathsB, "late-authority-B");
-    expect(Buffer.byteLength(rawA)).toBe(Buffer.byteLength(rawB));
-    writeFileSync(pointer, rawA, { mode: 0o600 });
-    if (race === "pathname-swap") writeFileSync(rawBPath, rawB, { mode: 0o600 });
-    const credentialSnapshots = [...Object.values(pathsA), ...Object.values(pathsB)]
-      .map((path) => [path, readFileSync(path)] as const);
-    let injected = false;
-    const mutateDestination = () => {
-      if (injected) return;
-      injected = true;
-      if (race === "pathname-swap") {
-        renameSync(pointer, parkedA);
-        renameSync(rawBPath, pointer);
-      } else {
-        writeFileSync(pointer, rawB, { mode: 0o600 });
-      }
-    };
-    type BoundReplace = (source: string, destination: string, expected?: unknown) => void;
-    const legacyUpgrade = {
-      afterLegacyFinalValidation: stage === "after-final-validation" ? mutateDestination : undefined,
-      durableReplace: ((source: string, destination: string, expected?: unknown) => {
-        if (destination === pointer && !injected) mutateDestination();
-        (fixtureSecrets.replaceFixtureMetadataDurably as unknown as (
-          source: string,
-          destination: string,
-          dependencies: fixtureSecrets.FixtureDurableReplaceDependencies,
-          expected?: unknown,
-        ) => void)(source, destination, {}, expected);
-      }) as BoundReplace,
-    };
-    const dependencies = {
-      ...authorityWithSeed(stage === "after-final-validation" ? 0x25 : 0x26),
-      legacyUpgrade,
-    } as unknown as RotationDependencies;
-
-    expect(() => rotate(root, (paths) => environment(root, paths, "must-not-overwrite-B"), dependencies))
-      .toThrow(expect.objectContaining({ code: "MUSIC_FIXTURE_ENVIRONMENT_PUBLISH_FAILED" }));
-    expect(injected).toBe(true);
-    expect(readFileSync(pointer, "utf8")).toBe(rawB);
-    if (race === "pathname-swap") expect(readFileSync(parkedA, "utf8")).toBe(rawA);
-    for (const [path, bytes] of credentialSnapshots) expect(readFileSync(path)).toEqual(bytes);
-    expect(readdirSync(join(root, ".artifacts", "music-environment-generations"))
-      .filter((name) => lstatSync(join(root, ".artifacts", "music-environment-generations", name)).size > 0)).toHaveLength(0);
-
-    let retryPriorLength = -1;
-    expect(() => rotate(root, (paths) => environment(root, paths, "current-after-late-B"), {
-      ...authorityWithSeed(stage === "after-final-validation" ? 0x27 : 0x28),
-      afterJournalCommit: () => {
-        retryPriorLength = JSON.parse(readFileSync(activeJournalPath(root), "utf8")).prior.length;
-      },
-    })).not.toThrow();
-    expect(retryPriorLength).toBe(4);
-    expect(fixtureSecrets.readFixtureMusicEnvironment(root)).toContain("ROTATION_LABEL=current-after-late-B");
-  }, 45_000);
-
-  it("preserves byte-exact raw legacy authority when its precommit upgrade is interrupted and retries", () => {
-    const root = fixtureRoot();
-    const tokenDirectory = join(root, ".artifacts", "music-token-secrets");
-    mkdirSync(tokenDirectory, { recursive: true });
-    const legacyPaths: fixtureSecrets.FixtureAuthorityPaths = {
-      tokenPath: join(tokenDirectory, `current-${"4".repeat(32)}`),
-      migratorPasswordPath: join(tokenDirectory, `current-${"5".repeat(32)}`),
-      runtimePasswordPath: join(tokenDirectory, `current-${"6".repeat(32)}`),
-    };
-    for (const [index, path] of Object.values(legacyPaths).entries()) {
-      writeFileSync(path, Buffer.alloc(32, 0x41 + index).toString("base64url"), { mode: 0o600 });
-    }
-    const pointer = join(root, ".env.music.test");
-    const legacy = environment(root, legacyPaths, "interruptible-legacy");
-    const credentialBytes = Object.values(legacyPaths).map((path) => readFileSync(path));
-    writeFileSync(pointer, legacy, { mode: 0o600 });
-
-    expect(() => rotate(root, (paths) => environment(root, paths, "must-not-commit"), {
-      ...authorityWithSeed(0x0a),
-      legacyUpgrade: {
-        beforeReferenceCommit: () => { throw new Error("legacy-upgrade-precommit-sentinel"); },
-      },
-    } as RotationDependencies & { legacyUpgrade: { beforeReferenceCommit: () => void } })).toThrow();
-    expect(readFileSync(pointer, "utf8")).toBe(legacy);
-    expect(Object.values(legacyPaths).map((path) => readFileSync(path))).toEqual(credentialBytes);
-
-    expect(() => rotate(root, (paths) => environment(root, paths, "retry-current"), authorityWithSeed(0x0b))).not.toThrow();
-    expect(fixtureSecrets.readFixtureMusicEnvironment(root)).toContain("ROTATION_LABEL=retry-current");
-  });
-
-  it("refuses a legacy pointer swap at upgrade commit without overwriting either identity", () => {
-    const root = fixtureRoot();
-    const tokenDirectory = join(root, ".artifacts", "music-token-secrets");
-    mkdirSync(tokenDirectory, { recursive: true });
-    const legacyPaths: fixtureSecrets.FixtureAuthorityPaths = {
-      tokenPath: join(tokenDirectory, `current-${"a".repeat(32)}`),
-      migratorPasswordPath: join(tokenDirectory, `current-${"b".repeat(32)}`),
-      runtimePasswordPath: join(tokenDirectory, `current-${"c".repeat(32)}`),
-    };
-    for (const [index, path] of Object.values(legacyPaths).entries()) {
-      writeFileSync(path, Buffer.alloc(32, 0x71 + index).toString("base64url"), { mode: 0o600 });
-    }
-    const pointer = join(root, ".env.music.test");
-    const parked = join(root, "legacy-pointer-parked");
-    const legacy = environment(root, legacyPaths, "swap-legacy-secret-sentinel");
-    const attacker = "attacker-pointer-must-remain";
-    writeFileSync(pointer, legacy, { mode: 0o600 });
-
-    expect(() => rotate(root, (paths) => environment(root, paths, "must-not-commit"), {
-      ...authorityWithSeed(0x0e),
-      legacyUpgrade: {
-        durableReplace: renameSync,
-        beforeReferenceCommit: () => {
-          renameSync(pointer, parked);
-          writeFileSync(pointer, attacker, { mode: 0o600 });
-        },
-      },
-    })).toThrow();
-    expect(readFileSync(pointer, "utf8")).toBe(attacker);
-    expect(readFileSync(parked, "utf8")).toBe(legacy);
-  });
-
-  it.each([
-    ["mid-generation-write", 91],
-    ["before-reference", 92],
-    ["after-reference-rename", 93],
-    ["after-reference-commit", 94],
-  ] as const)("recovers a hard exit at legacy upgrade phase %s", (phase, exitCode) => {
-    const root = fixtureRoot();
-    const tokenDirectory = join(root, ".artifacts", "music-token-secrets");
-    mkdirSync(tokenDirectory, { recursive: true });
-    const legacyPaths: fixtureSecrets.FixtureAuthorityPaths = {
-      tokenPath: join(tokenDirectory, `current-${"7".repeat(32)}`),
-      migratorPasswordPath: join(tokenDirectory, `current-${"8".repeat(32)}`),
-      runtimePasswordPath: join(tokenDirectory, `current-${"9".repeat(32)}`),
-    };
-    for (const [index, path] of Object.values(legacyPaths).entries()) {
-      writeFileSync(path, Buffer.alloc(32, 0x51 + index).toString("base64url"), { mode: 0o600 });
-    }
-    const pointer = join(root, ".env.music.test");
-    const legacy = environment(root, legacyPaths, "hard-exit-legacy-secret-sentinel");
-    const priorCredentials = Object.values(legacyPaths).map((path) => readFileSync(path));
-    writeFileSync(pointer, legacy, { mode: 0o600 });
-    const moduleUrl = pathToFileURL(resolve("scripts/music-fixture-secret.ts")).href;
-    const script = `
-      import { renameSync, writeSync } from 'node:fs';
-      import { rotateFixtureMusicAuthority } from ${JSON.stringify(moduleUrl)};
-      const root = process.env.MUSIC_LEGACY_ROOT;
-      const phase = process.env.MUSIC_LEGACY_PHASE;
-      const rel = (value) => './' + value.slice(root.length + 1).replaceAll('\\\\', '/');
-      rotateFixtureMusicAuthority(root, (paths) =>
-        'MUSIC_TOKEN_SECRET_FILE_HOST=' + rel(paths.tokenPath) + '\\n'
-        + 'MUSIC_DB_MIGRATOR_SECRET_FILE_HOST=' + rel(paths.migratorPasswordPath) + '\\n'
-        + 'MUSIC_DB_RUNTIME_SECRET_FILE_HOST=' + rel(paths.runtimePasswordPath) + '\\nROTATION_LABEL=must-not-finish\\n', {
-          operationIdBytes: () => Buffer.alloc(16, 0x0c),
-          credentialSecretBytes: (index) => Buffer.alloc(32, 0x61 + index),
-          durableReplace: renameSync,
-          legacyUpgrade: {
-            durableReplace: renameSync,
-            write: (descriptor, buffer, offset, length, position) => {
-              if (phase === 'mid-generation-write') {
-                writeSync(descriptor, buffer, offset, 3, position);
-                process.exit(91);
-              }
-              return writeSync(descriptor, buffer, offset, length, position);
-            },
-            beforeReferenceCommit: () => { if (phase === 'before-reference') process.exit(92); },
-            afterReferenceRename: () => { if (phase === 'after-reference-rename') process.exit(93); },
-            afterReferenceCommit: () => { if (phase === 'after-reference-commit') process.exit(94); },
-          },
-        });
-    `;
-    const child = spawnSync(process.execPath, ["--import", "tsx", "--input-type=module", "--eval", script], {
-      cwd: process.cwd(),
-      env: { ...process.env, MUSIC_LEGACY_ROOT: root, MUSIC_LEGACY_PHASE: phase },
-      encoding: "utf8",
-      timeout: 15_000,
+    const generated = ["4", "5", "6"].map((digit) => join(tokenDirectory, `current-${digit.repeat(32)}`));
+    const generatedBytes = generated.map((path, index) => {
+      const bytes = Buffer.from(`owned-raw-credential-${index}`);
+      writeFileSync(path, bytes, { mode: 0o600 });
+      return bytes;
     });
-    expect(child.status, child.stderr).toBe(exitCode);
-    expect(child.stderr).not.toContain("hard-exit-legacy-secret-sentinel");
-    expect(Object.values(legacyPaths).map((path) => readFileSync(path))).toEqual(priorCredentials);
-    if (phase === "mid-generation-write" || phase === "before-reference") expect(readFileSync(pointer, "utf8")).toBe(legacy);
-    else expect(fixtureSecrets.readFixtureMusicEnvironment(root)).toBe(legacy);
+    const outside = join(root, "outside-must-remain");
+    const outsideBytes = Buffer.from("outside-secret-must-remain-byte-exact");
+    writeFileSync(outside, outsideBytes, { mode: 0o600 });
+    const raw = Buffer.from(`MUSIC_TOKEN_SECRET_FILE_HOST=${outside}\nRAW_SECRET=never-parse-this\n`);
+    const pointer = join(root, ".env.music.test");
+    writeFileSync(pointer, raw, { mode: 0o600 });
+    const cleanup = (fixtureSecrets as unknown as {
+      cleanupUnsupportedFixtureEnvironmentForRebootstrap: (root: string, project: string) => void;
+    }).cleanupUnsupportedFixtureEnvironmentForRebootstrap;
 
-    expect(() => rotate(root, (paths) => environment(root, paths, "legacy-recovered"), authorityWithSeed(0x0d))).not.toThrow();
-    expect(fixtureSecrets.readFixtureMusicEnvironment(root)).toContain("ROTATION_LABEL=legacy-recovered");
-    expect(readdirSync(join(root, ".artifacts", "music-environment-generations"))
-      .filter((name) => lstatSync(join(root, ".artifacts", "music-environment-generations", name)).size > 0)).toHaveLength(1);
+    expect(() => cleanup(root, "wrong-project")).toThrow(/project|scope|fixture/i);
+    expect(readFileSync(pointer)).toEqual(raw);
+    expect(generated.map((path) => readFileSync(path))).toEqual(generatedBytes);
+    expect(readFileSync(outside)).toEqual(outsideBytes);
+
+    expect(() => cleanup(root, "explorers-music-fixture")).not.toThrow();
+    expect(readFileSync(pointer)).toHaveLength(0);
+    expect(generated.map((path) => readFileSync(path))).toEqual(generatedBytes.map(() => Buffer.alloc(0)));
+    expect(readFileSync(outside)).toEqual(outsideBytes);
+    expect(() => rotate(root, (paths) => environment(root, paths, "clean-rebootstrap"), authorityWithSeed(0x43))).not.toThrow();
+    expect(fixtureSecrets.readFixtureMusicEnvironment(root)).toContain("ROTATION_LABEL=clean-rebootstrap");
+  });
+
+  it("contains no raw legacy selection, conversion, or upgrade hook", () => {
+    const source = readFileSync(resolve("scripts/music-fixture-secret.ts"), "utf8");
+    expect(source).not.toMatch(/legacyUpgrade|expectedLegacyAuthority|afterLegacyFinalValidation|cleanupMatchingLegacyUpgradeResidue/);
+    expect(source).not.toContain("music-fixture-legacy-upgrade");
   });
 
   it("preserves the complete prior bundle when replacement credential creation fails", () => {
