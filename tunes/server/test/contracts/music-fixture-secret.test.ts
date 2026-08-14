@@ -24,6 +24,38 @@ function fixtureRoot(): string {
   return root;
 }
 
+type WindowsNativeIdentity = fixtureSecrets.FixtureWindowsNativeIdentity;
+
+function inspectWindowsNativeAuthority(helper: string, path: string): WindowsNativeIdentity {
+  const result = spawnSync("powershell.exe", [
+    "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+    "-File", helper, "inspect", path,
+  ], { encoding: "utf8", windowsHide: true, timeout: 15_000 });
+  expect(result.status, result.stderr).toBe(0);
+  return JSON.parse(result.stdout) as WindowsNativeIdentity;
+}
+
+function runWindowsNativeReplace(
+  helper: string,
+  source: string,
+  destination: string,
+  timeout = 15_000,
+): ReturnType<typeof spawnSync> {
+  const sourceIdentity = inspectWindowsNativeAuthority(helper, source);
+  const parentIdentity = inspectWindowsNativeAuthority(helper, resolve(source, ".."));
+  const destinationIdentity = inspectWindowsNativeAuthority(helper, destination);
+  const encode = (identity: WindowsNativeIdentity, content: boolean) => [
+    identity.volumeSerial, identity.fileId, String(identity.attributes), String(identity.linkCount),
+    ...(content ? [String(identity.size), identity.sha256] : []),
+  ];
+  return spawnSync("powershell.exe", [
+    "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+    "-File", helper, "replace", source, destination,
+    ...encode(sourceIdentity, true), ...encode(parentIdentity, false), "1",
+    ...encode(destinationIdentity, true),
+  ], { encoding: "utf8", windowsHide: true, timeout });
+}
+
 describe("disposable fixture Music token secret", () => {
   it("creates a fresh unpredictable exclusive leaf without overwriting the prior valid key", () => {
     const root = fixtureRoot();
@@ -705,6 +737,167 @@ describe("fixture bundle rotation transaction", () => {
     if (!name) throw new Error("active fixture rotation journal is required");
     return join(directory, name);
   }
+
+  it("upgrades an honest raw legacy environment before creating a normal four-member rotation journal", () => {
+    const root = fixtureRoot();
+    const tokenDirectory = join(root, ".artifacts", "music-token-secrets");
+    mkdirSync(tokenDirectory, { recursive: true });
+    const legacyPaths: fixtureSecrets.FixtureAuthorityPaths = {
+      tokenPath: join(tokenDirectory, `current-${"1".repeat(32)}`),
+      migratorPasswordPath: join(tokenDirectory, `current-${"2".repeat(32)}`),
+      runtimePasswordPath: join(tokenDirectory, `current-${"3".repeat(32)}`),
+    };
+    for (const [index, path] of Object.values(legacyPaths).entries()) {
+      writeFileSync(path, Buffer.alloc(32, 0x31 + index).toString("base64url"), { mode: 0o600 });
+    }
+    const legacy = environment(root, legacyPaths, "honest-legacy");
+    writeFileSync(join(root, ".env.music.test"), legacy, { mode: 0o600 });
+
+    let committedPriorLength = -1;
+    expect(() => rotate(root, (paths) => environment(root, paths, "current"), {
+      ...authorityWithSeed(0x09),
+      afterJournalCommit: () => {
+        const journalDirectory = join(root, ".artifacts", "music-rotation-journals");
+        const journalName = readdirSync(journalDirectory).find((name) => fixtureRotationJournalForTest(name));
+        committedPriorLength = JSON.parse(readFileSync(join(journalDirectory, journalName!), "utf8")).prior.length;
+      },
+    })).not.toThrow();
+    expect(committedPriorLength).toBe(4);
+    expect(fixtureSecrets.readFixtureMusicEnvironment(root)).toContain("ROTATION_LABEL=current");
+    expect(readdirSync(join(root, ".artifacts", "music-rotation-journals"))
+      .filter((name) => fixtureRotationJournalForTest(name))
+      .every((name) => lstatSync(join(root, ".artifacts", "music-rotation-journals", name)).size === 0)).toBe(true);
+  });
+
+  it("preserves byte-exact raw legacy authority when its precommit upgrade is interrupted and retries", () => {
+    const root = fixtureRoot();
+    const tokenDirectory = join(root, ".artifacts", "music-token-secrets");
+    mkdirSync(tokenDirectory, { recursive: true });
+    const legacyPaths: fixtureSecrets.FixtureAuthorityPaths = {
+      tokenPath: join(tokenDirectory, `current-${"4".repeat(32)}`),
+      migratorPasswordPath: join(tokenDirectory, `current-${"5".repeat(32)}`),
+      runtimePasswordPath: join(tokenDirectory, `current-${"6".repeat(32)}`),
+    };
+    for (const [index, path] of Object.values(legacyPaths).entries()) {
+      writeFileSync(path, Buffer.alloc(32, 0x41 + index).toString("base64url"), { mode: 0o600 });
+    }
+    const pointer = join(root, ".env.music.test");
+    const legacy = environment(root, legacyPaths, "interruptible-legacy");
+    const credentialBytes = Object.values(legacyPaths).map((path) => readFileSync(path));
+    writeFileSync(pointer, legacy, { mode: 0o600 });
+
+    expect(() => rotate(root, (paths) => environment(root, paths, "must-not-commit"), {
+      ...authorityWithSeed(0x0a),
+      legacyUpgrade: {
+        beforeReferenceCommit: () => { throw new Error("legacy-upgrade-precommit-sentinel"); },
+      },
+    } as RotationDependencies & { legacyUpgrade: { beforeReferenceCommit: () => void } })).toThrow();
+    expect(readFileSync(pointer, "utf8")).toBe(legacy);
+    expect(Object.values(legacyPaths).map((path) => readFileSync(path))).toEqual(credentialBytes);
+
+    expect(() => rotate(root, (paths) => environment(root, paths, "retry-current"), authorityWithSeed(0x0b))).not.toThrow();
+    expect(fixtureSecrets.readFixtureMusicEnvironment(root)).toContain("ROTATION_LABEL=retry-current");
+  });
+
+  it("refuses a legacy pointer swap at upgrade commit without overwriting either identity", () => {
+    const root = fixtureRoot();
+    const tokenDirectory = join(root, ".artifacts", "music-token-secrets");
+    mkdirSync(tokenDirectory, { recursive: true });
+    const legacyPaths: fixtureSecrets.FixtureAuthorityPaths = {
+      tokenPath: join(tokenDirectory, `current-${"a".repeat(32)}`),
+      migratorPasswordPath: join(tokenDirectory, `current-${"b".repeat(32)}`),
+      runtimePasswordPath: join(tokenDirectory, `current-${"c".repeat(32)}`),
+    };
+    for (const [index, path] of Object.values(legacyPaths).entries()) {
+      writeFileSync(path, Buffer.alloc(32, 0x71 + index).toString("base64url"), { mode: 0o600 });
+    }
+    const pointer = join(root, ".env.music.test");
+    const parked = join(root, "legacy-pointer-parked");
+    const legacy = environment(root, legacyPaths, "swap-legacy-secret-sentinel");
+    const attacker = "attacker-pointer-must-remain";
+    writeFileSync(pointer, legacy, { mode: 0o600 });
+
+    expect(() => rotate(root, (paths) => environment(root, paths, "must-not-commit"), {
+      ...authorityWithSeed(0x0e),
+      legacyUpgrade: {
+        durableReplace: renameSync,
+        beforeReferenceCommit: () => {
+          renameSync(pointer, parked);
+          writeFileSync(pointer, attacker, { mode: 0o600 });
+        },
+      },
+    })).toThrow();
+    expect(readFileSync(pointer, "utf8")).toBe(attacker);
+    expect(readFileSync(parked, "utf8")).toBe(legacy);
+  });
+
+  it.each([
+    ["mid-generation-write", 91],
+    ["before-reference", 92],
+    ["after-reference-rename", 93],
+    ["after-reference-commit", 94],
+  ] as const)("recovers a hard exit at legacy upgrade phase %s", (phase, exitCode) => {
+    const root = fixtureRoot();
+    const tokenDirectory = join(root, ".artifacts", "music-token-secrets");
+    mkdirSync(tokenDirectory, { recursive: true });
+    const legacyPaths: fixtureSecrets.FixtureAuthorityPaths = {
+      tokenPath: join(tokenDirectory, `current-${"7".repeat(32)}`),
+      migratorPasswordPath: join(tokenDirectory, `current-${"8".repeat(32)}`),
+      runtimePasswordPath: join(tokenDirectory, `current-${"9".repeat(32)}`),
+    };
+    for (const [index, path] of Object.values(legacyPaths).entries()) {
+      writeFileSync(path, Buffer.alloc(32, 0x51 + index).toString("base64url"), { mode: 0o600 });
+    }
+    const pointer = join(root, ".env.music.test");
+    const legacy = environment(root, legacyPaths, "hard-exit-legacy-secret-sentinel");
+    const priorCredentials = Object.values(legacyPaths).map((path) => readFileSync(path));
+    writeFileSync(pointer, legacy, { mode: 0o600 });
+    const moduleUrl = pathToFileURL(resolve("scripts/music-fixture-secret.ts")).href;
+    const script = `
+      import { renameSync, writeSync } from 'node:fs';
+      import { rotateFixtureMusicAuthority } from ${JSON.stringify(moduleUrl)};
+      const root = process.env.MUSIC_LEGACY_ROOT;
+      const phase = process.env.MUSIC_LEGACY_PHASE;
+      const rel = (value) => './' + value.slice(root.length + 1).replaceAll('\\\\', '/');
+      rotateFixtureMusicAuthority(root, (paths) =>
+        'MUSIC_TOKEN_SECRET_FILE_HOST=' + rel(paths.tokenPath) + '\\n'
+        + 'MUSIC_DB_MIGRATOR_SECRET_FILE_HOST=' + rel(paths.migratorPasswordPath) + '\\n'
+        + 'MUSIC_DB_RUNTIME_SECRET_FILE_HOST=' + rel(paths.runtimePasswordPath) + '\\nROTATION_LABEL=must-not-finish\\n', {
+          operationIdBytes: () => Buffer.alloc(16, 0x0c),
+          credentialSecretBytes: (index) => Buffer.alloc(32, 0x61 + index),
+          durableReplace: renameSync,
+          legacyUpgrade: {
+            durableReplace: renameSync,
+            write: (descriptor, buffer, offset, length, position) => {
+              if (phase === 'mid-generation-write') {
+                writeSync(descriptor, buffer, offset, 3, position);
+                process.exit(91);
+              }
+              return writeSync(descriptor, buffer, offset, length, position);
+            },
+            beforeReferenceCommit: () => { if (phase === 'before-reference') process.exit(92); },
+            afterReferenceRename: () => { if (phase === 'after-reference-rename') process.exit(93); },
+            afterReferenceCommit: () => { if (phase === 'after-reference-commit') process.exit(94); },
+          },
+        });
+    `;
+    const child = spawnSync(process.execPath, ["--import", "tsx", "--input-type=module", "--eval", script], {
+      cwd: process.cwd(),
+      env: { ...process.env, MUSIC_LEGACY_ROOT: root, MUSIC_LEGACY_PHASE: phase },
+      encoding: "utf8",
+      timeout: 15_000,
+    });
+    expect(child.status, child.stderr).toBe(exitCode);
+    expect(child.stderr).not.toContain("hard-exit-legacy-secret-sentinel");
+    expect(Object.values(legacyPaths).map((path) => readFileSync(path))).toEqual(priorCredentials);
+    if (phase === "mid-generation-write" || phase === "before-reference") expect(readFileSync(pointer, "utf8")).toBe(legacy);
+    else expect(fixtureSecrets.readFixtureMusicEnvironment(root)).toBe(legacy);
+
+    expect(() => rotate(root, (paths) => environment(root, paths, "legacy-recovered"), authorityWithSeed(0x0d))).not.toThrow();
+    expect(fixtureSecrets.readFixtureMusicEnvironment(root)).toContain("ROTATION_LABEL=legacy-recovered");
+    expect(readdirSync(join(root, ".artifacts", "music-environment-generations"))
+      .filter((name) => lstatSync(join(root, ".artifacts", "music-environment-generations", name)).size > 0)).toHaveLength(1);
+  });
 
   it("preserves the complete prior bundle when replacement credential creation fails", () => {
     const root = fixtureRoot();
@@ -1468,6 +1661,45 @@ describe("fixture bundle rotation transaction", () => {
     expect(source).not.toMatch(/if \(process\.platform === "win32"\) return;/);
     expect(existsSync(resolve("scripts/windows-write-through.ps1"))).toBe(true);
   });
+
+  it("uses one direct source-handle replace and never creates a private native backup", () => {
+    const helper = readFileSync(resolve("scripts/windows-write-through.ps1"), "utf8");
+    expect(helper).not.toContain(".music-fixture-backup-");
+    expect(helper).not.toMatch(/RenameHandle\(destinationHandle/);
+    expect(helper).toMatch(/RenameHandle\(sourceHandle, targetParent, destinationName, true, "commit"\)/);
+  });
+
+  it.each([
+    ["before-call", "Environment.FailFast(\"native-before-call\");\n            RenameHandle(sourceHandle, targetParent, destinationName, true, \"commit\");", false, 15_000],
+    ["after-commit", "RenameHandle(sourceHandle, targetParent, destinationName, true, \"commit\");\n            Environment.FailFast(\"native-after-commit\");", true, 15_000],
+    ["before-flush", "Environment.FailFast(\"native-before-flush\");\n            if (!FlushFileBuffers(sourceHandle)) throw NativeFailure(\"renamed authority flush\");", true, 15_000],
+    ["before-barrier", "Environment.FailFast(\"native-before-barrier\");\n            MetadataBarrier(lockedTargetDirectory);", true, 15_000],
+    ["timeout-after-commit", "RenameHandle(sourceHandle, targetParent, destinationName, true, \"commit\");\n            System.Threading.Thread.Sleep(30000);", true, 1_000],
+  ] as const)("leaves exact prior-or-source authority after native phase %s termination", (phase, replacement, committed, timeout) => {
+    if (process.platform !== "win32") return;
+    const root = fixtureRoot();
+    const source = join(root, `native-${phase}.tmp`);
+    const destination = join(root, `native-${phase}.ref`);
+    const helper = join(root, `native-${phase}.ps1`);
+    const expected = Buffer.from(`candidate-${phase}`);
+    const prior = Buffer.from(`prior-${phase}`);
+    writeFileSync(source, expected, { mode: 0o600 });
+    writeFileSync(destination, prior, { mode: 0o600 });
+    const original = readFileSync(resolve("scripts/windows-write-through.ps1"), "utf8");
+    const needle = phase === "before-call" || phase === "after-commit" || phase === "timeout-after-commit"
+      ? "RenameHandle(sourceHandle, targetParent, destinationName, true, \"commit\");"
+      : phase === "before-flush"
+        ? "if (!FlushFileBuffers(sourceHandle)) throw NativeFailure(\"renamed authority flush\");"
+        : "MetadataBarrier(lockedTargetDirectory);";
+    expect(original.split(needle)).toHaveLength(2);
+    writeFileSync(helper, original.replace(needle, replacement), { mode: 0o600 });
+
+    const result = runWindowsNativeReplace(helper, source, destination, timeout);
+    expect(result.status === 0).toBe(false);
+    expect(readFileSync(destination)).toEqual(committed ? expected : prior);
+    expect(existsSync(source)).toBe(!committed);
+    expect(readdirSync(root).filter((name) => name.startsWith(".music-fixture-backup-"))).toHaveLength(0);
+  }, 30_000);
 
   it("executes the Windows write-through replacement and fails closed when the helper fails", () => {
     if (process.platform !== "win32") return;

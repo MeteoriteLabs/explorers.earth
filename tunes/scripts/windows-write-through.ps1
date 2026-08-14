@@ -347,46 +347,32 @@ public static class MusicFixtureNativeAuthority {
             Identity sourceIdentity = InspectHandle(sourceHandle, true, true);
             RequireIdentity(sourceIdentity, args, 2, true);
 
-            SafeFileHandle destinationHandle = null;
-            string backupName = ".music-fixture-backup-" + Guid.NewGuid().ToString("N");
-            bool backupMoved = false;
-            bool sourceMoved = false;
-            try {
-                if (destinationExpected) {
-                    destinationHandle = Open(lockedDestination, GENERIC_READ | DELETE | FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE, false);
+            if (destinationExpected) {
+                using (SafeFileHandle destinationHandle = Open(
+                    lockedDestination,
+                    GENERIC_READ | FILE_READ_ATTRIBUTES,
+                    FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                    false)) {
                     RequireIdentity(InspectHandle(destinationHandle, true, true), args, 13, true);
-                    RenameHandle(destinationHandle, targetParent, backupName, false, "backup");
-                    backupMoved = true;
-                } else if (File.Exists(lockedDestination)) {
-                    throw new InvalidOperationException("Unexpected destination authority exists.");
                 }
-
-                RenameHandle(sourceHandle, targetParent, destinationName, false, "commit");
-                sourceMoved = true;
-                RequireIdentity(InspectHandle(sourceHandle, true, true), args, 2, true);
-                if (!String.Equals(FinalPath(sourceHandle), lockedDestination, StringComparison.OrdinalIgnoreCase)) {
-                    throw new InvalidOperationException("Renamed authority handle resolved to an unexpected target.");
-                }
-                using (SafeFileHandle committedHandle = Open(lockedDestination, GENERIC_READ | FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, false)) {
-                    RequireIdentity(InspectHandle(committedHandle, true, true), args, 2, true);
-                }
-                if (!FlushFileBuffers(sourceHandle)) throw NativeFailure("renamed authority flush");
-                MetadataBarrier(lockedTargetDirectory);
-                if (destinationHandle != null) DeleteHandle(destinationHandle);
-            } catch {
-                try {
-                    if (sourceMoved) RenameHandle(sourceHandle, sourceParent, sourceName, false, "rollback-source");
-                    if (backupMoved && destinationHandle != null) RenameHandle(destinationHandle, targetParent, destinationName, true, "rollback-destination");
-                    if (destinationHandle != null) FlushFileBuffers(destinationHandle);
-                    MetadataBarrier(lockedTargetDirectory);
-                } catch {
-                    // The caller reconciles exact native identity after any
-                    // uncertain native result; never emit authority bytes.
-                }
-                throw;
-            } finally {
-                if (destinationHandle != null) destinationHandle.Dispose();
+            } else if (File.Exists(lockedDestination)) {
+                throw new InvalidOperationException("Unexpected destination authority exists.");
             }
+
+            // The source-handle replace is the sole authority commit point.
+            // Never move the prior destination to a helper-private name. If a
+            // later flush/barrier result is uncertain, the caller reconciles
+            // the exact source native identity at the canonical destination.
+            RenameHandle(sourceHandle, targetParent, destinationName, true, "commit");
+            RequireIdentity(InspectHandle(sourceHandle, true, true), args, 2, true);
+            if (!String.Equals(FinalPath(sourceHandle), lockedDestination, StringComparison.OrdinalIgnoreCase)) {
+                throw new InvalidOperationException("Renamed authority handle resolved to an unexpected target.");
+            }
+            using (SafeFileHandle committedHandle = Open(lockedDestination, GENERIC_READ | FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, false)) {
+                RequireIdentity(InspectHandle(committedHandle, true, true), args, 2, true);
+            }
+            if (!FlushFileBuffers(sourceHandle)) throw NativeFailure("renamed authority flush");
+            MetadataBarrier(lockedTargetDirectory);
             }
         }
     }

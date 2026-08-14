@@ -272,6 +272,7 @@ export interface FixtureAuthorityRotationDependencies {
   afterCandidateCreatedBeforeJournalUpdate?: (kind: "credential" | "environment", index: number) => void;
   afterJournalCommit?: () => void;
   syncCandidateDirectory?: (path: string) => void;
+  legacyUpgrade?: FixtureEnvironmentPersistenceDependencies;
   persistence?: FixtureEnvironmentPersistenceDependencies;
   syncJournalDirectory?: (path: string) => void;
   journal?: {
@@ -531,13 +532,6 @@ export function rotateFixtureMusicAuthority(
 ): string {
   const root = resolve(repositoryRoot);
   recoverFixtureAuthorityRotations(root);
-  const priorEnvironment = readFixtureEnvironmentForRotation(root);
-  const priorCredentials = priorEnvironment?.contents
-    ? fixtureCredentialPaths({ contents: priorEnvironment.contents }).map((path) => captureFixtureAuthority(root, path, "credential"))
-    : [];
-  const priorPointer = readCurrentPointerBytes(root);
-  const priorReference = parseOptionalFixtureReference(priorPointer);
-  const priorGeneration = captureReferencedEnvironmentAuthority(root, priorReference);
   const { artifactDirectory, tokenDirectory } = fixtureDirectories(root);
   const generationDirectory = join(root, FIXTURE_MUSIC_ENVIRONMENT_DIRECTORY_RELATIVE_PATH);
   ensureOwnedDirectory(artifactDirectory);
@@ -548,6 +542,28 @@ export function rotateFixtureMusicAuthority(
     ?? secureRandomBytes(16);
   if (!Buffer.isBuffer(operationBytes) || operationBytes.length !== 16) throw fixtureSecretError();
   const operationId = Buffer.from(operationBytes).toString("hex");
+  let priorEnvironment = readFixtureEnvironmentForRotation(root);
+  const initialPointer = readCurrentPointerBytes(root);
+  if (priorEnvironment?.contents && parseOptionalFixtureReference(initialPointer) === null) {
+    cleanupMatchingLegacyUpgradeResidue(root, Buffer.from(priorEnvironment.contents, "utf8"));
+    const legacyGenerationId = createHash("sha256")
+      .update(`music-fixture-legacy-upgrade/v1\0${operationId}`, "utf8")
+      .digest("hex")
+      .slice(0, 32);
+    persistFixtureMusicEnvironment(root, priorEnvironment.contents, {
+      ...dependencies.legacyUpgrade,
+      randomNameBytes: () => Buffer.from(legacyGenerationId, "hex"),
+      durableReplace: dependencies.legacyUpgrade?.durableReplace
+        ?? (dependencies.legacyUpgrade?.rename ? undefined : dependencies.durableReplace),
+    });
+    priorEnvironment = readFixtureEnvironmentForRotation(root);
+  }
+  const priorCredentials = priorEnvironment?.contents
+    ? fixtureCredentialPaths({ contents: priorEnvironment.contents }).map((path) => captureFixtureAuthority(root, path, "credential"))
+    : [];
+  const priorPointer = readCurrentPointerBytes(root);
+  const priorReference = parseOptionalFixtureReference(priorPointer);
+  const priorGeneration = captureReferencedEnvironmentAuthority(root, priorReference);
   const credentialSecrets = Array.from({ length: 3 }, (_, index) => {
     const bytes = dependencies.credentialSecretBytes?.(index) ?? secureRandomBytes(32);
     if (!Buffer.isBuffer(bytes) || bytes.length < 32) throw fixtureSecretError();
@@ -674,6 +690,25 @@ export function rotateFixtureMusicAuthority(
       catch (cleanupError) { throw cleanupError; }
     }
     throw error;
+  }
+}
+
+function cleanupMatchingLegacyUpgradeResidue(root: string, expected: Buffer): void {
+  const directory = join(root, FIXTURE_MUSIC_ENVIRONMENT_DIRECTORY_RELATIVE_PATH);
+  if (!existsSync(directory)) return;
+  assertNoLinkedAncestors(directory);
+  assertOwnedDirectory(directory);
+  for (const name of readdirSync(directory)) {
+    if (!fixtureEnvironmentGenerationName.test(name)) continue;
+    const path = join(directory, name);
+    const opened = openAndReadOwnedFileAllowEmpty(path, 65_536, true);
+    try {
+      if (opened.bytes.length === 0) continue;
+      if (opened.bytes.length > expected.length || !expected.subarray(0, opened.bytes.length).equals(opened.bytes)) continue;
+    } finally {
+      closeDescriptor(opened.descriptor, {}, name);
+    }
+    cleanupFixtureEnvironmentGeneration(root, name, opened.stat);
   }
 }
 
@@ -878,6 +913,11 @@ export function persistFixtureMusicEnvironment(
     // legacy descriptor is closed only at this final boundary; a failed
     // pointer rename therefore still leaves its pathname and bytes intact.
     if (previous.legacyDescriptor !== undefined) {
+      if (!previous.legacyStat || !previous.legacyBytes
+          || !sameIdentity(previous.legacyStat, lstatSync(referencePath, { bigint: true }))
+          || !descriptorStillContains(previous.legacyDescriptor, previous.legacyStat, previous.legacyBytes)) {
+        throw fixtureEnvironmentError(basename(referencePath));
+      }
       closeDescriptor(previous.legacyDescriptor, {}, basename(referencePath));
       previous.legacyDescriptor = undefined;
     }
@@ -1777,11 +1817,15 @@ function zeroOpenedRotationJournal(path: string, readDescriptor: number, expecte
 function readPreviousFixtureEnvironmentAuthority(root: string, referencePath: string): {
   generation?: FixtureEnvironmentGenerationAuthority;
   legacyDescriptor?: number;
+  legacyStat?: BigIntStats;
+  legacyBytes?: Buffer;
 } {
   if (!existsSync(referencePath)) return {};
   const opened = openAndReadOwnedFile(referencePath, 65_536, false);
   const contents = opened.bytes.toString("utf8");
-  if (!contents.startsWith(`${fixtureEnvironmentReferenceHeader}\n`)) return { legacyDescriptor: opened.descriptor };
+  if (!contents.startsWith(`${fixtureEnvironmentReferenceHeader}\n`)) {
+    return { legacyDescriptor: opened.descriptor, legacyStat: opened.stat, legacyBytes: opened.bytes };
+  }
   try {
     const parsed = parseFixtureEnvironmentReference(contents);
     closeDescriptor(opened.descriptor, {}, basename(referencePath));
