@@ -30,8 +30,12 @@ function cipher(current = currentKey, previous?: { kid: string; key: Buffer; acc
   return new MusicPublicationResponseCipher({ current, previous, retentionSeconds: 86_400 }, { now: () => clock });
 }
 
-function repository(responseCipher = cipher(), hooks: ConstructorParameters<typeof MusicPublicationOperationRepository>[2] = {}) {
-  return new MusicPublicationOperationRepository(pool, responseCipher, { now: () => clock, ...hooks });
+function repository(
+  responseCipher = cipher(),
+  hooks: ConstructorParameters<typeof MusicPublicationOperationRepository>[2] = {},
+  repositoryPool: ConstructorParameters<typeof MusicPublicationOperationRepository>[0] = pool,
+) {
+  return new MusicPublicationOperationRepository(repositoryPool, responseCipher, hooks);
 }
 
 async function insertExpiredOperation(ownerId: number, key: string, response: MusicPublicationCommandResponse): Promise<void> {
@@ -40,13 +44,25 @@ async function insertExpiredOperation(ownerId: number, key: string, response: Mu
   const encrypted = cipher().encrypt({ musicUserId: ownerId, idempotencyKeyHash, requestFingerprint }, response);
   const expiresAt = new Date(databaseNow - 1_000);
   const completedAt = new Date(expiresAt.getTime() - 86_400_000);
-  await pool.query(`INSERT INTO music_publication_operations(
-    music_user_id,idempotency_key_hash,request_fingerprint,request_mode,operation_state,
-    created_at,completed_at,expires_at,updated_at,response_key_id,response_nonce,response_ciphertext,response_tag
-  ) VALUES($1,$2,$3,$4,'completed',$5,$5,$6,$5,$7,$8,$9,$10)`, [
-    ownerId, idempotencyKeyHash, requestFingerprint, response.publication.mode, completedAt, expiresAt,
-    encrypted.responseKeyId, encrypted.responseNonce, encrypted.responseCiphertext, encrypted.responseTag,
-  ]);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("ALTER TABLE music_publication_operations DISABLE TRIGGER music_publication_operation_immutability");
+    await client.query(`INSERT INTO music_publication_operations(
+      music_user_id,idempotency_key_hash,request_fingerprint,request_mode,operation_state,
+      created_at,completed_at,expires_at,updated_at,response_key_id,response_nonce,response_ciphertext,response_tag
+    ) VALUES($1,$2,$3,$4,'completed',$5,$5,$6,$5,$7,$8,$9,$10)`, [
+      ownerId, idempotencyKeyHash, requestFingerprint, response.publication.mode, completedAt, expiresAt,
+      encrypted.responseKeyId, encrypted.responseNonce, encrypted.responseCiphertext, encrypted.responseTag,
+    ]);
+    await client.query("ALTER TABLE music_publication_operations ENABLE ALWAYS TRIGGER music_publication_operation_immutability");
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 function identityInput(suffix: string): EnsureMusicIdentityInput {
@@ -91,11 +107,31 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
   it("replays one exact capability across concurrent instances, restart, eviction, and a lost response", async () => {
     clock = baseTime;
     const owner = await identities.ensureIdentity(identityInput("same"));
-    const instanceA = repository();
-    const instanceB = repository();
+    const transactionRoles: string[] = [];
+    const roleAuditedPool = {
+      query: pool.query.bind(pool),
+      async connect() {
+        const client = await pool.connect();
+        return {
+          async query(text: string, values: unknown[] = []) {
+            const result = await client.query(text, values);
+            if (text === "BEGIN") {
+              await client.query("SET LOCAL ROLE music_runtime");
+              transactionRoles.push((await client.query<{ role: string }>("SELECT current_user AS role")).rows[0].role);
+            }
+            return result;
+          },
+          release: () => client.release(),
+        };
+      },
+    };
+    const instanceA = repository(cipher(), {}, roleAuditedPool as never);
+    const instanceB = repository(cipher(), {}, roleAuditedPool as never);
     const results = await Promise.all(Array.from({ length: 20 }, (_, index) =>
       (index % 2 ? instanceA : instanceB).execute(owner.id, "same-operation-key", "unlisted")));
     expect(results.every((result) => result.status === "completed")).toBe(true);
+    expect(transactionRoles).toHaveLength(20);
+    expect(new Set(transactionRoles)).toEqual(new Set(["music_runtime"]));
     const responses = results.map((result) => result.status === "completed" ? result.response : undefined);
     expect(new Set(responses.map((response) => JSON.stringify(response))).size).toBe(1);
     const response = responses[0]!;
@@ -113,6 +149,33 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
     const recovered = await afterRestart.execute(owner.id, "lost-response-key", "unlisted");
     expect(recovered).toMatchObject({ status: "completed", replayed: true });
     expect((await pool.query("SELECT count(*)::int AS count FROM music_publication_operations WHERE music_user_id=$1", [owner.id])).rows[0].count).toBe(2);
+  });
+
+  it.each([
+    ["backward", -172_800_000],
+    ["forward", 172_800_000],
+  ] as const)("ignores a %s-skewed application clock and persists one exact database-owned 24-hour window", async (suffix, skew) => {
+    clock = databaseNow + skew;
+    const owner = await identities.ensureIdentity(identityInput(`database-clock-${suffix}`));
+    const before = new Date((await pool.query("SELECT clock_timestamp() AS value")).rows[0].value).getTime();
+    await expect(repository().execute(owner.id, `database-clock-${suffix}-key`, "unlisted"))
+      .resolves.toMatchObject({ status: "completed", replayed: false });
+    const after = new Date((await pool.query("SELECT clock_timestamp() AS value")).rows[0].value).getTime();
+    const row = (await pool.query(`SELECT operation.created_at,operation.completed_at,operation.expires_at,
+        operation.updated_at,operation.operation_state,
+        owner.guest_capability_rotated_at=operation.completed_at AS owner_timestamp_matches
+      FROM music_publication_operations operation JOIN users owner ON owner.id=operation.music_user_id
+      WHERE operation.music_user_id=$1`, [owner.id])).rows[0];
+    const completedAt = new Date(row.completed_at).getTime();
+    expect(completedAt).toBeGreaterThanOrEqual(before);
+    expect(completedAt).toBeLessThanOrEqual(after);
+    expect(new Date(row.created_at).getTime()).toBe(completedAt);
+    expect(new Date(row.updated_at).getTime()).toBe(completedAt);
+    expect(new Date(row.expires_at).getTime() - completedAt).toBe(86_400_000);
+    expect(row.owner_timestamp_matches).toBe(true);
+    expect(await repository().shredExpiredResponses(100)).toBe(0);
+    expect((await pool.query("SELECT operation_state FROM music_publication_operations WHERE music_user_id=$1", [owner.id])).rows[0])
+      .toEqual({ operation_state: "completed" });
   });
 
   it("serializes simultaneous different requests for the same key with one winner and no partial exposure", async () => {
@@ -280,10 +343,46 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
     )).rejects.toThrow(/publication operation (?:identity|history) is immutable/i);
   });
 
+  it("replaces hostile runtime insert timestamps with one transaction clock and rolls the insert back atomically", async () => {
+    const client = await pool.connect();
+    const insert = (owner: number, hashByte: string) => client.query(`INSERT INTO music_publication_operations(
+      music_user_id,idempotency_key_hash,request_fingerprint,request_mode,operation_state,
+      created_at,completed_at,expires_at,updated_at,response_key_id,response_nonce,response_ciphertext,response_tag
+    ) VALUES($1,$2,$3,'public','completed',timestamp with time zone '2000-01-01T00:00:00Z',
+      timestamp with time zone '2000-01-02T00:00:00Z',timestamp with time zone '2000-01-03T00:00:00Z',
+      timestamp with time zone '2000-01-04T00:00:00Z','publication-current-v1',decode(repeat('00',12),'hex'),
+      decode('01','hex'),decode(repeat('00',16),'hex'))`, [owner, hashByte.repeat(64), "e".repeat(64)]);
+    try {
+      await client.query("BEGIN");
+      await client.query("SET LOCAL ROLE music_runtime");
+      const transactionTime = new Date((await client.query("SELECT transaction_timestamp() AS value")).rows[0].value).getTime();
+      await insert(900_000, "9");
+      await client.query("COMMIT");
+      const stored = (await pool.query(`SELECT created_at,completed_at,expires_at,updated_at
+        FROM music_publication_operations WHERE music_user_id=900000`)).rows[0];
+      expect(new Date(stored.created_at).getTime()).toBe(transactionTime);
+      expect(new Date(stored.completed_at).getTime()).toBe(transactionTime);
+      expect(new Date(stored.updated_at).getTime()).toBe(transactionTime);
+      expect(new Date(stored.expires_at).getTime() - transactionTime).toBe(86_400_000);
+
+      await client.query("BEGIN");
+      await client.query("SET LOCAL ROLE music_runtime");
+      await insert(900_005, "8");
+      await client.query("ROLLBACK");
+      expect((await pool.query("SELECT count(*)::int AS count FROM music_publication_operations WHERE music_user_id=900005")).rows[0].count)
+        .toBe(0);
+    } finally {
+      await client.query("ROLLBACK").catch(() => undefined);
+      client.release();
+    }
+  });
+
   it("lets runtime shred only at database-clock expiry and preserves transaction rollback", async () => {
     const client = await pool.connect();
-    const insert = async (owner: number, hashByte: string, expiry: "before" | "at" | "after") => {
+    const seedHistorical = async (owner: number, hashByte: string, expiry: "before" | "at" | "after") => {
       const delta = expiry === "before" ? "interval '1 hour'" : expiry === "after" ? "-interval '1 hour'" : "interval '0 seconds'";
+      await client.query("BEGIN");
+      await client.query("ALTER TABLE music_publication_operations DISABLE TRIGGER music_publication_operation_immutability");
       await client.query(`WITH authority_clock AS (SELECT clock_timestamp() + ${delta} AS expires_at)
         INSERT INTO music_publication_operations(
           music_user_id,idempotency_key_hash,request_fingerprint,request_mode,operation_state,
@@ -291,16 +390,15 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
         ) SELECT $1,$2,$3,'public','completed',expires_at-interval '24 hours',expires_at-interval '24 hours',
                  expires_at,expires_at-interval '24 hours','publication-current-v1',decode(repeat('00',12),'hex'),decode('01','hex'),decode(repeat('00',16),'hex')
             FROM authority_clock`, [owner, hashByte.repeat(64), "f".repeat(64)]);
+      await client.query("ALTER TABLE music_publication_operations ENABLE ALWAYS TRIGGER music_publication_operation_immutability");
+      await client.query("COMMIT");
     };
     const shred = (owner: number) => client.query(`UPDATE music_publication_operations
       SET operation_state='replay_expired',updated_at=clock_timestamp(),shredded_at=clock_timestamp(),
           response_key_id=NULL,response_nonce=NULL,response_ciphertext=NULL,response_tag=NULL
       WHERE music_user_id=$1`, [owner]);
     try {
-      await client.query("BEGIN");
-      await client.query("SET LOCAL ROLE music_runtime");
-      await insert(900_001, "a", "before");
-      await client.query("COMMIT");
+      await seedHistorical(900_001, "a", "before");
       await client.query("BEGIN");
       await client.query("SET LOCAL ROLE music_runtime");
       await expect(shred(900_001)).rejects.toThrow(/before response expiry/i);
@@ -309,17 +407,14 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
         .toEqual({ operation_state: "completed" });
 
       for (const [owner, hashByte, expiry] of [[900_002, "b", "at"], [900_003, "c", "after"]] as const) {
+        await seedHistorical(owner, hashByte, expiry);
         await client.query("BEGIN");
         await client.query("SET LOCAL ROLE music_runtime");
-        await insert(owner, hashByte, expiry);
         await expect(shred(owner)).resolves.toMatchObject({ rowCount: 1 });
         await client.query("COMMIT");
       }
 
-      await client.query("BEGIN");
-      await client.query("SET LOCAL ROLE music_runtime");
-      await insert(900_004, "d", "after");
-      await client.query("COMMIT");
+      await seedHistorical(900_004, "d", "after");
       await client.query("BEGIN");
       await client.query("SET LOCAL ROLE music_runtime");
       await shred(900_004);

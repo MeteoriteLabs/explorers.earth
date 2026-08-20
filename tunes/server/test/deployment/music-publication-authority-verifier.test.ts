@@ -7,6 +7,7 @@ import { verifyPublicationAuthority } from "../../../deployment/verify-publicati
 
 const script = resolve(import.meta.dirname, "../../../deployment/verify-publication-authority.mjs");
 const encoded = (byte: number) => Buffer.alloc(32, byte).toString("base64url");
+const validDeadline = new Date(Date.now() + 3_600_000).toISOString();
 
 describe("privileged publication authority separation verifier", () => {
   let root: string;
@@ -23,13 +24,15 @@ describe("privileged publication authority separation verifier", () => {
   const writeEnvironment = (overrides: Record<string, string> = {}) => {
     const values = {
       MUSIC_PUBLICATION_RESPONSE_KEY_DIRECTORY_HOST: paths.publication,
+      MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "publication-current-v1",
       MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KID: "publication-previous-v1",
       MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY_FILE: "/run/secrets/music-publication-response/previous",
-      MUSIC_PUBLICATION_RESPONSE_PREVIOUS_ACCEPT_UNTIL: "2026-08-22T00:00:00.000Z",
+      MUSIC_PUBLICATION_RESPONSE_PREVIOUS_ACCEPT_UNTIL: validDeadline,
       MUSIC_TOKEN_SECRET_DIRECTORY_HOST: paths.token,
+      MUSIC_TOKEN_CURRENT_KID: "token-current-v1",
       MUSIC_TOKEN_PREVIOUS_KID: "token-previous-v1",
       MUSIC_TOKEN_PREVIOUS_SECRET_FILE: "/run/secrets/music-token/previous",
-      MUSIC_TOKEN_PREVIOUS_ACCEPT_UNTIL: "2026-08-22T00:00:00.000Z",
+      MUSIC_TOKEN_PREVIOUS_ACCEPT_UNTIL: validDeadline,
       DB_RUNTIME_PASSWORD_FILE_HOST: paths.runtimeDatabase,
       DB_MIGRATOR_PASSWORD_FILE_HOST: paths.migratorDatabase,
       STRAPI_LIFECYCLE_PROOF_TOKEN_FILE_HOST: paths.lifecycleProof,
@@ -74,6 +77,88 @@ describe("privileged publication authority separation verifier", () => {
 
   it("accepts distinct current/previous publication material without exposing any authority", async () => {
     await expect(verifyPublicationAuthority(environmentPath, hmacPath)).resolves.toBeUndefined();
+  });
+
+  it("reads the exact configured nested previous publication path instead of a safe decoy", async () => {
+    mkdirSync(join(paths.publication, "rotations"));
+    secret("publication/rotations/previous-v2", encoded(0x74));
+    writeEnvironment({
+      MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KID: "publication-previous-v2",
+      MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY_FILE: "/run/secrets/music-publication-response/rotations/previous-v2",
+      MUSIC_PUBLICATION_RESPONSE_PREVIOUS_ACCEPT_UNTIL: validDeadline,
+    });
+    await expect(verifyPublicationAuthority(environmentPath, hmacPath)).resolves.toBeUndefined();
+  });
+
+  it.each([
+    ["runtime database", "runtimeDatabase"],
+    ["migrator database", "migratorDatabase"],
+    ["deployment HMAC", "deploymentHmac"],
+    ["lifecycle proof", "lifecycleProof"],
+    ["reconciliation proof", "reconciliation"],
+  ] as const)("rejects a configured custom previous key that aliases %s while the decoy previous is safe", async (_label, authority) => {
+    mkdirSync(join(paths.publication, "rotations"));
+    const custom = secret("publication/rotations/previous-v2", encoded(0x75));
+    const privilegedPath = authority === "deploymentHmac" ? hmacPath : paths[authority];
+    writeFileSync(privilegedPath, encoded(0x75));
+    writeEnvironment({
+      MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KID: "publication-previous-v2",
+      MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY_FILE: "/run/secrets/music-publication-response/rotations/previous-v2",
+      MUSIC_PUBLICATION_RESPONSE_PREVIOUS_ACCEPT_UNTIL: validDeadline,
+    });
+    expect(custom).not.toBe(join(paths.publication, "previous"));
+    await expect(verifyPublicationAuthority(environmentPath, hmacPath))
+      .rejects.toThrow("Publication authority verification failed.");
+  });
+
+  it.each([
+    ["missing custom file", "/run/secrets/music-publication-response/rotations/missing", "publication-previous-v2", validDeadline],
+    ["directory traversal", "/run/secrets/music-publication-response/../music-token/current", "publication-previous-v2", validDeadline],
+    ["malformed KID", "/run/secrets/music-publication-response/previous", "../previous", validDeadline],
+    ["malformed deadline", "/run/secrets/music-publication-response/previous", "publication-previous-v2", "tomorrow"],
+    ["impossible exact-looking deadline", "/run/secrets/music-publication-response/previous", "publication-previous-v2", "2026-02-31T00:00:00.000Z"],
+  ])("fails closed for %s in the configured previous authority triple", async (_label, path, kid, deadline) => {
+    writeEnvironment({
+      MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KID: kid,
+      MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY_FILE: path,
+      MUSIC_PUBLICATION_RESPONSE_PREVIOUS_ACCEPT_UNTIL: deadline,
+    });
+    await expect(verifyPublicationAuthority(environmentPath, hmacPath))
+      .rejects.toThrow("Publication authority verification failed.");
+  });
+
+  it("rejects a POSIX container path containing Windows separators before native host joining", async () => {
+    secret("escaped-publication", encoded(0x76));
+    writeEnvironment({
+      MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KID: "publication-previous-v2",
+      MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY_FILE:
+        "/run/secrets/music-publication-response/rotations\\..\\..\\escaped-publication",
+      MUSIC_PUBLICATION_RESPONSE_PREVIOUS_ACCEPT_UNTIL: validDeadline,
+    });
+    await expect(verifyPublicationAuthority(environmentPath, hmacPath))
+      .rejects.toThrow("Publication authority verification failed.");
+  });
+
+  it.each([
+    ["publication current KID", { MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KID: "publication-current-v1" }],
+    ["token current KID", { MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KID: "token-current-v1" }],
+    ["token previous KID", { MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KID: "token-previous-v1" }],
+    ["malformed publication current KID", { MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "../current" }],
+    ["publication current KID shared with token current", { MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "token-current-v1" }],
+  ])("rejects %s reuse or malformation before reading candidate authority", async (_label, overrides) => {
+    writeEnvironment(overrides);
+    await expect(verifyPublicationAuthority(environmentPath, hmacPath))
+      .rejects.toThrow("Publication authority verification failed.");
+  });
+
+  it.each([
+    ["expired", "2026-08-20T23:59:59.999Z"],
+    ["longer than 24 hours", "2026-08-22T00:00:00.001Z"],
+  ])("rejects a %s previous-key deadline before Docker", async (_label, deadline) => {
+    writeEnvironment({ MUSIC_PUBLICATION_RESPONSE_PREVIOUS_ACCEPT_UNTIL: deadline });
+    await expect(verifyPublicationAuthority(environmentPath, hmacPath, {
+      now: () => Date.parse("2026-08-21T00:00:00.000Z"),
+    })).rejects.toThrow("Publication authority verification failed.");
   });
 
   it.each([

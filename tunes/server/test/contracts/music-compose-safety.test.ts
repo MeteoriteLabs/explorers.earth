@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { validateComposeModel, validateOwnedResources } from "../../../scripts/music-compose-safety.ts";
 
 const repositoryRoot = resolve(import.meta.dirname, "../../../..");
@@ -56,15 +58,76 @@ describe("Music Compose ownership safety", () => {
     })).toThrow("explorers must build the actual application");
   });
 
-  it("allowlists only Explorer source and the shared publication parser in the root Docker context", () => {
+  it("uses a default-deny enumerated Explorer fixture context", () => {
     const ignore = readFileSync(resolve(repositoryRoot, ".dockerignore"), "utf8");
     expect(ignore).toMatch(/^\*\*$/m);
-    expect(ignore).toContain("!explorers-earth/**");
-    expect(ignore).toContain("explorers-earth/node_modules/**");
-    expect(ignore).toContain("explorers-earth/dist/**");
+    expect(ignore).not.toContain("!explorers-earth/**");
+    expect(ignore).toContain("!explorers-earth/src/**/*.tsx");
+    expect(ignore).toContain("!explorers-earth/public/**/*.png");
     expect(ignore).toContain("!tunes/shared/musicPublicationContract.ts");
-    expect(ignore).not.toMatch(/^!\.env/m);
-    expect(ignore).not.toMatch(/^!\.artifacts/m);
+    for (const denied of [
+      "explorers-earth/**/.env*",
+      "explorers-earth/**/.chrome-profile/**",
+      "explorers-earth/**/test-results/**",
+      "explorers-earth/**/debug_*.html",
+      "explorers-earth/**/*.log",
+      "explorers-earth/**/.artifacts/**",
+    ]) expect(ignore).toContain(denied);
+  });
+
+  it("passes only the exact source manifest through Docker ignore semantics", () => {
+    const sandbox = mkdtempSync(join(tmpdir(), "music-fixture-context-"));
+    const context = join(sandbox, "context");
+    const output = join(sandbox, "output");
+    const write = (relative: string, value = "fixture") => {
+      const path = join(context, ...relative.split("/"));
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(path, value);
+    };
+    try {
+      mkdirSync(context);
+      write(".dockerignore", readFileSync(resolve(repositoryRoot, ".dockerignore"), "utf8"));
+      write("explorers-earth/Dockerfile.music-fixture");
+      write("explorers-earth/package.json", "{}");
+      write("explorers-earth/src/main.tsx");
+      write("explorers-earth/public/robots.txt");
+      write("explorers-earth/scripts/generate-static-files.js");
+      write("tunes/shared/musicPublicationContract.ts");
+      for (const hostile of [
+        "explorers-earth/server/.chrome-profile/Default/Cookies",
+        "explorers-earth/test-results/music/trace.zip",
+        "explorers-earth/test-results/screenshots/capability.png",
+        "explorers-earth/src/nested/.env.authority",
+        "explorers-earth/src/nested/debug_capability.html",
+        "explorers-earth/src/nested/runtime.log",
+        "explorers-earth/src/.artifacts/authority/key",
+        "explorers-earth/public/nested/.env.public",
+        "explorers-earth/public/debug_response.html",
+      ]) write(hostile, "hostile-context-sentinel");
+      const dockerfile = join(sandbox, "Dockerfile.context-manifest");
+      writeFileSync(dockerfile, [
+        "FROM node:22.12-alpine AS manifest",
+        "COPY . /capture/context",
+        "RUN find /capture/context -type f | sed 's#^/capture/context/##' | sort > /context-manifest.txt",
+        "FROM scratch",
+        "COPY --from=manifest /context-manifest.txt /context-manifest.txt",
+        "",
+      ].join("\n"));
+      const result = spawnSync("docker", ["build", "--progress=plain", "--file", dockerfile,
+        "--output", `type=local,dest=${output}`, context], { encoding: "utf8" });
+      expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+      const manifest = readFileSync(join(output, "context-manifest.txt"), "utf8").trim().split(/\r?\n/);
+      expect(manifest).toEqual([
+        "explorers-earth/Dockerfile.music-fixture",
+        "explorers-earth/package.json",
+        "explorers-earth/public/robots.txt",
+        "explorers-earth/scripts/generate-static-files.js",
+        "explorers-earth/src/main.tsx",
+        "tunes/shared/musicPublicationContract.ts",
+      ]);
+    } finally {
+      rmSync(sandbox, { recursive: true, force: true });
+    }
   });
 
   it("refuses absent or production-like resolved resources before cleanup", () => {

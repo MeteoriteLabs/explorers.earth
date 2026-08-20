@@ -58,10 +58,29 @@ describe("Music deployment authority files", () => {
     expect(ci).toContain("/app/migrations/0010_least_privilege_runtime_role.sql");
     expect(ci).toContain("/app/migrations/0011_durable_publication_idempotency.sql");
     expect(ci).toContain("/app/migrations/0012_publication_replay_expiry_guard.sql");
-    expect(read("tunes/deployment/music-deploy.sh")).toContain('production_current_marker="0012_publication_replay_expiry_guard"');
+    expect(ci).toContain("/app/migrations/0013_publication_operation_database_clock.sql");
+    expect(read("tunes/deployment/music-deploy.sh")).toContain('production_current_marker="0013_publication_operation_database_clock"');
     expect(read("tunes/deployment/music-deploy.sh")).toContain("verify-publication-authority.mjs");
     expect(read(".github/workflows/tunes-deploy.yml")).toContain("verify-publication-authority.mjs");
     expect(ci).toContain("/app/dist/server/deployment/run-registration-compat.js");
+  });
+
+  it("documents the exact ordered publication migration recovery authority", () => {
+    const runbook = read("docs/operations/music-deploy-runbook.md");
+    expect(runbook).toContain("then migrations `0002` through `0013`");
+    expect(runbook).toContain("upgraded directly to pending `0013`");
+    expect(runbook).toContain("`0011` → `0012` → `0013`");
+    expect(runbook).toContain("Migration `0013`");
+    expect(runbook).not.toContain("response_expires_at");
+    expect(runbook).not.toContain("then migrations `0002` through\n`0011`");
+    expect(runbook).not.toContain("upgraded directly to pending `0011`");
+  });
+
+  it("documents the exact configured previous publication path as privileged authority", () => {
+    const runbook = read("docs/operations/music-deploy-runbook.md");
+    expect(runbook).toContain("The configured previous container path is authoritative");
+    expect(runbook).toContain("same relative path beneath the host publication directory");
+    expect(runbook).toContain("never substitutes the default `previous` alias");
   });
 
   it("uses a read-packages-only remote GHCR credential and always logs it out", () => {

@@ -1,11 +1,15 @@
 import { readFile, lstat } from "node:fs/promises";
 import { constants } from "node:fs";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, posix, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const FAILURE = "Publication authority verification failed.";
 const MAX_ENVIRONMENT_BYTES = 64 * 1024;
 const MAX_AUTHORITY_BYTES = 4 * 1024;
+const PUBLICATION_RESPONSE_RETENTION_MS = 86_400_000;
+const PUBLICATION_CONTAINER_DIRECTORY = "/run/secrets/music-publication-response";
+const KEY_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
+const UTC_MILLISECOND_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
 function fail() {
   throw new Error(FAILURE);
@@ -40,6 +44,18 @@ function hostPath(environmentPath, value) {
   return isAbsolute(value) ? value : resolve(dirname(environmentPath), value);
 }
 
+function configuredPreviousPublicationPath(publicationDirectory, configuredPath, kid, deadline, now) {
+  const parsedDeadline = Date.parse(deadline);
+  if (!KEY_ID_PATTERN.test(kid) || !UTC_MILLISECOND_PATTERN.test(deadline)
+      || !Number.isFinite(parsedDeadline) || new Date(parsedDeadline).toISOString() !== deadline
+      || parsedDeadline <= now || parsedDeadline > now + PUBLICATION_RESPONSE_RETENTION_MS
+      || configuredPath.includes("\\") || !posix.isAbsolute(configuredPath)
+      || posix.normalize(configuredPath) !== configuredPath) fail();
+  const relative = posix.relative(PUBLICATION_CONTAINER_DIRECTORY, configuredPath);
+  if (!relative || relative === ".." || relative.startsWith("../") || posix.isAbsolute(relative)) fail();
+  return join(publicationDirectory, ...relative.split("/"));
+}
+
 async function authorityFile(path) {
   const metadata = await lstat(path, { bigint: true });
   if (!metadata.isFile() || metadata.isSymbolicLink() || metadata.size < 1n || metadata.size > BigInt(MAX_AUTHORITY_BYTES)) fail();
@@ -70,11 +86,19 @@ function aliases(publication, candidate) {
     || publication.decoded.equals(candidate.value);
 }
 
-export async function verifyPublicationAuthority(environmentFile, deploymentHmacFile) {
+export async function verifyPublicationAuthority(environmentFile, deploymentHmacFile, dependencies = {}) {
   try {
     if (!environmentFile || !deploymentHmacFile) fail();
     const environmentPath = resolve(environmentFile);
     const environment = parseEnvironment(await readFile(environmentPath, "utf8"));
+    const now = (dependencies.now ?? Date.now)();
+    if (!Number.isSafeInteger(now)) fail();
+    const publicationCurrentKid = required(environment, "MUSIC_PUBLICATION_RESPONSE_CURRENT_KID");
+    const tokenCurrentKid = required(environment, "MUSIC_TOKEN_CURRENT_KID");
+    const tokenPreviousKid = environment.get("MUSIC_TOKEN_PREVIOUS_KID");
+    if (!KEY_ID_PATTERN.test(publicationCurrentKid) || !KEY_ID_PATTERN.test(tokenCurrentKid)
+        || (tokenPreviousKid && !KEY_ID_PATTERN.test(tokenPreviousKid))
+        || publicationCurrentKid === tokenCurrentKid || publicationCurrentKid === tokenPreviousKid) fail();
     const publicationDirectory = hostPath(environmentPath, required(environment, "MUSIC_PUBLICATION_RESPONSE_KEY_DIRECTORY_HOST"));
     const publications = [publicationMaterial(await authorityFile(join(publicationDirectory, "current")))];
     const previousPublicationFields = [
@@ -84,7 +108,16 @@ export async function verifyPublicationAuthority(environmentFile, deploymentHmac
     ];
     if (previousPublicationFields.some(Boolean)) {
       if (!previousPublicationFields.every(Boolean)) fail();
-      publications.push(publicationMaterial(await authorityFile(join(publicationDirectory, "previous"))));
+      if (previousPublicationFields[0] === publicationCurrentKid
+          || previousPublicationFields[0] === tokenCurrentKid
+          || previousPublicationFields[0] === tokenPreviousKid) fail();
+      publications.push(publicationMaterial(await authorityFile(configuredPreviousPublicationPath(
+        publicationDirectory,
+        previousPublicationFields[1],
+        previousPublicationFields[0],
+        previousPublicationFields[2],
+        now,
+      ))));
     }
 
     const tokenDirectory = hostPath(environmentPath, required(environment, "MUSIC_TOKEN_SECRET_DIRECTORY_HOST"));

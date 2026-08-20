@@ -1,7 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { createGuestCapability, hashGuestCapability } from "../policies/musicSurfacePolicy";
 import {
-  MUSIC_PUBLICATION_RESPONSE_RETENTION_SECONDS,
   MUSIC_PUBLICATION_RESPONSE_VERSION,
   MusicPublicationResponseCipher,
   hashPublicationIdempotencyKey,
@@ -18,7 +17,6 @@ export type MusicPublicationCommandResult =
   | { status: "conflict" | "expired" | "not_found" };
 
 export interface MusicPublicationOperationDependencies {
-  now?: () => number;
   createCapability?: () => string;
   afterWrite?: (phase: "publication" | "operation") => void | Promise<void>;
 }
@@ -36,7 +34,6 @@ interface StoredPublicationOperation {
 }
 
 export class MusicPublicationOperationRepository {
-  private readonly now: () => number;
   private readonly createCapability: () => string;
 
   constructor(
@@ -44,7 +41,6 @@ export class MusicPublicationOperationRepository {
     private readonly cipher: MusicPublicationResponseCipher,
     private readonly dependencies: MusicPublicationOperationDependencies = {},
   ) {
-    this.now = dependencies.now ?? Date.now;
     this.createCapability = dependencies.createCapability ?? createGuestCapability;
   }
 
@@ -99,6 +95,17 @@ export class MusicPublicationOperationRepository {
         return { status: "completed", replayed: true, response };
       }
 
+      const operationTime = (await client.query<{ operation_time: string }>(
+        "SELECT transaction_timestamp()::text AS operation_time",
+      )).rows[0]?.operation_time;
+      if (typeof operationTime !== "string"
+        || operationTime.length < 1
+        || operationTime.length > 128
+        || operationTime.includes("\0")
+        || operationTime.trim() !== operationTime) {
+        throw new Error("Publication database clock authority is unavailable.");
+      }
+
       const capability = mode === "unlisted" ? this.createCapability() : undefined;
       if (capability && !/^[A-Za-z0-9_-]{43}$/.test(capability)) {
         throw new Error("Publication capability generation failed.");
@@ -107,11 +114,11 @@ export class MusicPublicationOperationRepository {
         `UPDATE users
             SET guest_discoverable=($2='public'),
                 guest_capability_hash=CASE WHEN $2='unlisted' THEN $3 ELSE guest_capability_hash END,
-                guest_capability_rotated_at=CASE WHEN $2='unlisted' THEN $4 ELSE guest_capability_rotated_at END,
-                guest_capability_revoked_at=CASE WHEN $2='unlisted' THEN NULL ELSE $4 END
+                guest_capability_rotated_at=CASE WHEN $2='unlisted' THEN transaction_timestamp() ELSE guest_capability_rotated_at END,
+                guest_capability_revoked_at=CASE WHEN $2='unlisted' THEN NULL ELSE transaction_timestamp() END
           WHERE id=$1 AND identity_status='active'
           RETURNING guest_url`,
-        [musicUserId, mode, capability ? hashGuestCapability(capability) : null, new Date(this.now())],
+        [musicUserId, mode, capability ? hashGuestCapability(capability) : null],
       )).rows[0];
       if (!publication) {
         await client.query("COMMIT");
@@ -125,17 +132,15 @@ export class MusicPublicationOperationRepository {
         ...(capability ? { capability } : {}),
       };
       const encrypted = this.cipher.encrypt({ musicUserId, idempotencyKeyHash, requestFingerprint }, response);
-      const completedAt = this.now();
-      const completedDate = new Date(completedAt);
-      const expiresAt = new Date(completedAt + MUSIC_PUBLICATION_RESPONSE_RETENTION_SECONDS * 1_000);
       await client.query(
         `INSERT INTO music_publication_operations(
            music_user_id,idempotency_key_hash,request_fingerprint,request_mode,operation_state,
            created_at,completed_at,expires_at,updated_at,
            response_key_id,response_nonce,response_ciphertext,response_tag
-         ) VALUES ($1,$2,$3,$4,'completed',$5,$5,$6,$5,$7,$8,$9,$10)`,
+         ) VALUES ($1,$2,$3,$4,'completed',$5::timestamptz,$5::timestamptz,
+                   $5::timestamptz+interval '24 hours',$5::timestamptz,$6,$7,$8,$9)`,
         [
-          musicUserId, idempotencyKeyHash, requestFingerprint, mode, completedDate, expiresAt,
+          musicUserId, idempotencyKeyHash, requestFingerprint, mode, operationTime,
           encrypted.responseKeyId, encrypted.responseNonce, encrypted.responseCiphertext, encrypted.responseTag,
         ],
       );

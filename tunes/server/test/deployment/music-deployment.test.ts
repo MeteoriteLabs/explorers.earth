@@ -21,7 +21,7 @@ const candidate: ImageCandidate = {
 const schemaCandidate: ImageCandidate = {
   digest: `sha256:${"4".repeat(64)}`,
   commit: "4444444444444444444444444444444444444444",
-  migrationMarker: "0012_publication_replay_expiry_guard",
+  migrationMarker: "0013_publication_operation_database_clock",
 };
 
 function initialState(): DeploymentState {

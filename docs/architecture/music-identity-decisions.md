@@ -64,7 +64,12 @@ immutable operation tombstone permanently prevents key reuse or another rotation
 Owner deletion does not delete this tombstone. Append-only corrective migration
 `0012_publication_replay_expiry_guard` makes PostgreSQL's `clock_timestamp()` the
 sole expiry authority for the completed-to-expired transition; application time
-cannot authorize early shredding.
+cannot authorize early shredding. Append-only `0013_publication_operation_database_clock`
+also makes PostgreSQL's transaction clock the immutable completion authority:
+`created_at`, `completed_at`, and `updated_at` are the transaction timestamp and
+`expires_at` is exactly 24 hours later. The repository obtains that same database
+timestamp before encrypting the response, so application clock skew cannot create
+an early or late replay window and the stored AAD inputs remain exact.
 
 Live response-encryption keys come only from dedicated secure files. The current
 key is used for new writes; one previous key may be accepted only through an exact
@@ -73,7 +78,11 @@ identity, and key content must be pairwise distinct from token, lifecycle, acces
 and reconciliation authorities. The app checks every authority it can access; a
 privileged pre-candidate verifier additionally compares response keys with runtime
 and migrator database credentials and the deployment HMAC without mounting those
-privileged secrets into the app. Startup readiness selects at most one unexpired
+privileged secrets into the app. For an optional previous response key, the
+authenticated environment must provide the complete KID, UTC deadline, and exact
+container path beneath `/run/secrets/music-publication-response/`; the verifier
+maps that relative path to the configured host publication directory and rejects
+missing files, traversal, or a safe decoy at another alias. Startup readiness selects at most one unexpired
 representative row per active KID and proves the configured key material by
 decrypting its authenticated response with the exact stored AAD context. Missing,
 wrong, or corrupt material fails closed. Fixture mode alone uses the checked-in,

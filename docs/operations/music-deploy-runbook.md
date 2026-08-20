@@ -40,7 +40,7 @@ absent or different, or `main` is not protected.
 
 ## C3-C9 same-image migration gate
 
-`0012_publication_replay_expiry_guard` is the exact expected migration ID. The
+`0013_publication_operation_database_clock` is the exact expected migration ID. The
 C5-C9 chain appends durable, exact-operation credential-revocation authority,
 immutable revocation history, the least-privilege runtime boundary, and durable
 publication-command replay authority without changing the immutable
@@ -64,7 +64,7 @@ Liveness remains process-only. The secure image ledger can retain historical
 `containment-no-schema-change` entries for audit and the permanent security
 floor, but they cease to be rollback targets as soon as the real C3 gate has
 migrated the database. All new images use
-`0012_publication_replay_expiry_guard` and the
+`0013_publication_operation_database_clock` and the
 real migration gate. Because production catalog/row-count and restore evidence
 are still absent, an existing unversioned database is a conflict: there is no
 automatic baseline adoption, username/email matching, or authorized production
@@ -111,15 +111,16 @@ authority records the conservative schema epoch and gate provenance, while
 secure history remains the rollback allowlist. Missing, mismatched, malformed,
 or tampered schema-epoch authority fails closed before Docker. Marker parsing
 is versioned rather than coupled only to the newest image. The known ordered
-authority is `containment-no-schema-change`, then migrations `0002` through
-`0011`; authenticated historical rows remain byte-exact and valid, while an
+authority is `containment-no-schema-change`, then migrations `0002` through `0013`;
+authenticated historical rows remain byte-exact and valid, while an
 unknown marker or decreasing ledger/epoch rank fails closed. The executable
 conservatively adopts only two pre-epoch formats: a signed
 state/ledger ending at `0002` with no compatibility file, or the exact historical
 `music-schema-floor-v1` five-field HMAC record for `0003`. A missing `0003`
 floor, an unsigned partial file, or any reinterpreted v1 field fails before
 Docker. The candidate compatibility listener and exact-path denial route are
-installed before either format is upgraded directly to pending `0011`.
+installed before either format is upgraded directly to pending `0013`. The
+ordered publication hardening sequence is `0011` → `0012` → `0013`.
 For an upgrade, the higher signed epoch is written first and recovered only in that monotonic
 direction, then the signed floor advances to `pending` before the gate. From
 that point, older-marker rollback is rejected before Docker. Gate failure
@@ -313,9 +314,16 @@ transaction.
 
 Migration `0012` replaces only that trigger function and is append-only; do not
 rewrite applied `0011`. It permits completed-to-replay-expired ciphertext shredding
-only after the database's `clock_timestamp()` reaches `response_expires_at` and
+only after the database's `clock_timestamp()` reaches `expires_at` and
 requires the shred timestamp to be at or after that expiry. Application clocks,
 including injected future times, cannot authorize the transition.
+
+Migration `0013` replaces that trigger function append-only again. On every new
+publication operation PostgreSQL overwrites creation, completion, and update time
+with one `transaction_timestamp()` and derives expiry as exactly 24 hours later.
+The application obtains that same transaction timestamp before publication mutation
+and response encryption; backward or forward application clock skew cannot shorten
+or lengthen the replay window. Applied `0011` and `0012` bytes remain immutable.
 
 The Tunes application mounts only the runtime credential and independently
 authenticates and checks the restricted role before importing routes or binding
@@ -514,6 +522,12 @@ window:
    settings are required together; the deadline must be positive, no later than
    24 hours after activation, and cover every unexpired row written with the old
    key.
+   The configured previous container path is authoritative and may name a nested
+   file beneath `/run/secrets/music-publication-response/`. The privileged verifier
+   maps its exact suffix to the same relative path beneath the host publication directory;
+   it never substitutes the default `previous` alias. A missing mapped file,
+   traversal, malformed KID/deadline, or privileged identity/content alias fails
+   before candidate Docker activity even when a safe decoy exists at `previous`.
 3. Deploy with both keys. Startup queries at most one representative unexpired
    encrypted operation per active KID (and at most three rows total), verifies the
    recorded KID and overlap, then performs an authenticated AES-256-GCM decrypt

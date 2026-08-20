@@ -82,7 +82,9 @@ describe("checked-in production Music deploy executable", () => {
     }
     writeFileSync(join(root, "production.env"), [
       `MUSIC_PUBLICATION_RESPONSE_KEY_DIRECTORY_HOST=${join(root, "publication-authority")}`,
+      "MUSIC_PUBLICATION_RESPONSE_CURRENT_KID=publication-current-v1",
       `MUSIC_TOKEN_SECRET_DIRECTORY_HOST=${join(root, "token-authority")}`,
+      "MUSIC_TOKEN_CURRENT_KID=token-current-v1",
       `DB_RUNTIME_PASSWORD_FILE_HOST=${authorityFiles.runtimeDatabase}`,
       `DB_MIGRATOR_PASSWORD_FILE_HOST=${authorityFiles.migratorDatabase}`,
       `STRAPI_LIFECYCLE_PROOF_TOKEN_FILE_HOST=${authorityFiles.lifecycle}`,
@@ -203,7 +205,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
         MUSIC_DEPLOY_TEST_READINESS_FAILURE: options.candidateReadinessFailure ? "1" : "0",
         MUSIC_DEPLOY_TEST_GATE_COMMITTED_CRASH: options.gateCommittedCrash ? "1" : "0",
         MUSIC_DEPLOY_TEST_GATE_FAILURE: options.gateFailure ? "1" : "0",
-        MUSIC_DEPLOY_TEST_CURRENT_MARKER: options.expectedMarkerOverride ?? "0012_publication_replay_expiry_guard",
+        MUSIC_DEPLOY_TEST_CURRENT_MARKER: options.expectedMarkerOverride ?? "0013_publication_operation_database_clock",
         MUSIC_DEPLOY_TEST_CURRENT_MARKER_OVERRIDE: options.expectedMarkerOverride ?? "",
         MUSIC_DEPLOY_TEST_READINESS_ATTEMPTS: options.candidateReadinessFailure ? "1" : "30",
         MUSIC_DEPLOY_TEST_REAL_NODE: shellPath(process.execPath),
@@ -375,7 +377,8 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     "0009_credential_revocation_history_immutability",
     "0010_least_privilege_runtime_role",
     "0011_durable_publication_idempotency",
-  ])("upgrades authenticated historical marker %s directly to production 0012", (historicalMarker) => {
+    "0012_publication_replay_expiry_guard",
+  ])("upgrades authenticated historical marker %s directly to production 0013", (historicalMarker) => {
     if (historicalMarker === "containment-no-schema-change") seedLegacyAuthority();
     else seedHistoricalAuthority(historicalMarker);
     const historicalLedger = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8");
@@ -383,7 +386,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const interrupted = run("deploy", digest("b"), commit("b"), { failpoint: "after_epoch_before_gate" });
     expect(interrupted.status, interrupted.stderr).toBe(99);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0012_publication_replay_expiry_guard\tpending\t");
+      .toContain("\t0013_publication_operation_database_clock\tpending\t");
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8")).toBe(historicalLedger);
 
     writeFileSync(eventLog, "");
@@ -396,7 +399,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(recovered.status, recovered.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").startsWith(historicalLedger)).toBe(true);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0012_publication_replay_expiry_guard\tcurrent\t");
+      .toContain("\t0013_publication_operation_database_clock\tcurrent\t");
   }, 40_000);
 
   it.each([
@@ -456,8 +459,8 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
       ["deployment-state/music-schema-floor.tsv", "music-schema-floor-v2"],
       ["deployment-transactions/schema-epoch.tsv", "music-schema-epoch-v1"],
     ] as const) {
-      const payload = [schema, repository, digest("b"), commit("b"), "0012_publication_replay_expiry_guard", "pending"].join("\t");
-      writeFileSync(join(root, relativePath), [schema, digest("b"), commit("b"), "0012_publication_replay_expiry_guard", "pending",
+      const payload = [schema, repository, digest("b"), commit("b"), "0013_publication_operation_database_clock", "pending"].join("\t");
+      writeFileSync(join(root, relativePath), [schema, digest("b"), commit("b"), "0013_publication_operation_database_clock", "pending",
         createHmac("sha256", hmacSentinel).update(payload).digest("hex")].join("\t") + "\n");
     }
     writeFileSync(eventLog, "");
@@ -465,9 +468,9 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const result = run("deploy", digest("b"), commit("b"));
     expect(result.status, result.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0012_publication_replay_expiry_guard\tcurrent\t");
+      .toContain("\t0013_publication_operation_database_clock\tcurrent\t");
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8"))
-      .toContain(`\t${digest("b")}\t${commit("b")}\t0012_publication_replay_expiry_guard\t`);
+      .toContain(`\t${digest("b")}\t${commit("b")}\t0013_publication_operation_database_clock\t`);
   }, 20_000);
 
   it.each([
@@ -769,7 +772,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     // child process command line where another same-host process can read it.
     bootstrap();
     const row = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").trim().split("\t");
-    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0012_publication_replay_expiry_guard", "GENESIS"].join("\t");
+    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0013_publication_operation_database_clock", "GENESIS"].join("\t");
     expect(row[6]).toBe(createHmac("sha256", hmacSentinel).update(expectedPayload).digest("hex"));
 
     const deployed = run("deploy", digest("b"), commit("b"));
@@ -794,6 +797,53 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(result.status).not.toBe(0);
     expect(result.stderr).toMatch(/publication authority separation failed/i);
     expect(result.stderr).not.toContain(publicationAuthority);
+    expect(readFileSync(eventLog, "utf8")).toBe("");
+  }, 20_000);
+
+  it("rejects a privileged alias at the exact configured custom previous path before candidate Docker actions", () => {
+    bootstrap();
+    const publicationDirectory = join(root, "publication-authority");
+    const rotations = join(publicationDirectory, "rotations");
+    mkdirSync(rotations, { recursive: true });
+    const alias = Buffer.alloc(32, 0x76).toString("base64url");
+    writeFileSync(join(publicationDirectory, "previous"), Buffer.alloc(32, 0x77).toString("base64url"), { mode: 0o600 });
+    writeFileSync(join(rotations, "previous-v2"), alias, { mode: 0o600 });
+    writeFileSync(join(root, "database-runtime"), alias, { mode: 0o600 });
+    const environmentPath = join(root, "production.env");
+    writeFileSync(environmentPath, readFileSync(environmentPath, "utf8") + [
+      "MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KID=publication-previous-v2",
+      "MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY_FILE=/run/secrets/music-publication-response/rotations/previous-v2",
+      `MUSIC_PUBLICATION_RESPONSE_PREVIOUS_ACCEPT_UNTIL=${new Date(Date.now() + 3_600_000).toISOString()}`,
+      "",
+    ].join("\n"));
+    writeFileSync(eventLog, "");
+
+    const result = run("deploy", digest("b"), commit("b"));
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toMatch(/publication authority separation failed/i);
+    expect(result.stderr).not.toContain(alias);
+    expect(readFileSync(eventLog, "utf8")).toBe("");
+  }, 20_000);
+
+  it.each([
+    ["a duplicate previous publication KID", "publication-current-v1", () => new Date(Date.now() + 3_600_000).toISOString()],
+    ["an expired previous publication deadline", "publication-previous-v2", () => new Date(Date.now() - 60_000).toISOString()],
+    ["a previous publication deadline beyond 24 hours", "publication-previous-v2", () => new Date(Date.now() + 90_000_000).toISOString()],
+  ] as const)("rejects %s before candidate Docker actions", (_label, previousKid, deadline) => {
+    bootstrap();
+    writeFileSync(join(root, "publication-authority/previous"), Buffer.alloc(32, 0x77).toString("base64url"), { mode: 0o600 });
+    const environmentPath = join(root, "production.env");
+    writeFileSync(environmentPath, readFileSync(environmentPath, "utf8") + [
+      `MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KID=${previousKid}`,
+      "MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY_FILE=/run/secrets/music-publication-response/previous",
+      `MUSIC_PUBLICATION_RESPONSE_PREVIOUS_ACCEPT_UNTIL=${deadline()}`,
+      "",
+    ].join("\n"));
+    writeFileSync(eventLog, "");
+
+    const result = run("deploy", digest("b"), commit("b"));
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toMatch(/publication authority separation failed/i);
     expect(readFileSync(eventLog, "utf8")).toBe("");
   }, 20_000);
 
