@@ -17,6 +17,7 @@ describe("Music surface authorization policy", () => {
     ["entitled", "2026-08-14T09:50:00.000Z", "2026-08-14T10:00:00.000Z", true],
     ["entitled", "2026-08-14T09:49:59.999Z", "2026-08-14T10:00:00.000Z", false],
     ["included", "2026-08-14T09:59:00.000Z", "2026-08-14T10:00:00.000Z", false],
+    ["eligible", "2026-08-14T09:59:00.000Z", "2026-08-14T10:00:00.000Z", false],
     ["revoked", "2026-08-14T09:59:00.000Z", "2026-08-14T10:00:00.000Z", false],
     ["unknown", undefined, "2026-08-14T10:00:00.000Z", false],
     ["entitled", "2026-08-14T10:00:00.001Z", "2026-08-14T10:00:00.000Z", false],
@@ -27,6 +28,12 @@ describe("Music surface authorization policy", () => {
       coreMutation: true,
       paidMutation: allowed,
     });
+  });
+
+  it("rejects entitlement states outside the canonical database contract", () => {
+    // Break caught: a new/typoed repository value silently inherits universal core authority and reaches clients undocumented.
+    expect(() => entitlementDecision({ state: "paused" as never }, new Date("2026-08-14T10:00:00.000Z")))
+      .toThrow("Unsupported Music entitlement state.");
   });
 
   it("creates a 256-bit capability and verifies only its SHA-256 hash", () => {

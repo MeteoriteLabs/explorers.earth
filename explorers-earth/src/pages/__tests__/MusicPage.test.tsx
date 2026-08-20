@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { createMusicWorkspaceClient } from "../../features/music/musicWorkspaceClient";
 import { MusicPageContent } from "../Music";
 import * as MusicPageModule from "../Music";
 
@@ -61,7 +62,7 @@ describe("Music page state hierarchy", () => {
     expect(screen.queryByTestId("music-content")).not.toBeInTheDocument();
   });
 
-  it("renders healthy content silently and preserves read-only capability", () => {
+  it("renders healthy core content silently", () => {
     const ready = {
       ...data,
       identityStatus: "ready",
@@ -72,5 +73,32 @@ describe("Music page state hierarchy", () => {
     const { container } = render(<MusicPageContent authenticated onboarding="complete" data={ready} onAction={vi.fn()} />);
     expect(screen.getByTestId("music-content")).toBeInTheDocument();
     expect(container.querySelector("[role='status'], [role='alert']")).toBeNull();
+  });
+
+  it.each([
+    ["unknown", true],
+    ["included", false],
+    ["eligible", false],
+    ["entitled", false],
+    ["revoked", false],
+  ] as const)("renders server-derived %s without inventing a core denial", async (entitlementState, checking) => {
+    // Break caught: eligible/revoked is presented as upgrade/paused/read-only instead of preserving universal core Music.
+    const loaded = await createMusicWorkspaceClient(async (input) => input.path === "/api/playlists"
+      ? new Response("[]", { status: 200 })
+      : input.path === "/api/music/dashboard"
+        ? new Response(JSON.stringify({ songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private", publicSlug: "public-slug" } }), { status: 200 })
+        : new Response(JSON.stringify({ state: entitlementState, coreRead: true, coreMutation: true, paidMutation: entitlementState === "entitled", maxAgeSeconds: 600, ...(entitlementState === "entitled" ? { sourceUpdatedAt: "2026-08-20T17:00:00.000Z" } : {}) }), { status: 200 })).load();
+    const ready = {
+      ...data,
+      ...loaded,
+      identityStatus: "ready",
+      isLoading: false,
+    };
+    const { unmount } = render(<MusicPageContent authenticated onboarding="complete" data={ready} onAction={vi.fn()} />);
+    expect(screen.getByTestId("music-content")).toBeInTheDocument();
+    if (checking) expect(screen.getByRole("status")).toHaveTextContent("Checking what’s included…");
+    else expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.queryByText(/temporarily paused|isn’t included|Music limit|can’t make changes/i)).not.toBeInTheDocument();
+    unmount();
   });
 });

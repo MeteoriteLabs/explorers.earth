@@ -34,8 +34,6 @@ const actionLabels = {
   sign_in: "Sign in",
   finish_profile: "Finish profile",
   get_help: "Get help",
-  view_plans: "View plans",
-  view_usage: "View usage",
   try_again: "Try again",
 } as const;
 
@@ -58,10 +56,7 @@ function entitlementFrom(data: TunesDashboardData): MusicEntitlement {
   // that absence as neutral so a retryable identity failure remains actionable;
   // once identity is ready, a missing entitlement is a real checking state.
   if (!data.entitlement) return data.identityStatus === "ready" ? "unknown" : "included";
-  if (data.entitlement.state === "unknown") return "unknown";
-  if (!data.entitlement.coreRead) return "upgrade";
-  if (!data.entitlement.coreMutation) return "read_only";
-  return "included";
+  return data.entitlement.state;
 }
 
 export function onboardingFromEligibility(eligibility: {
@@ -143,7 +138,7 @@ export function MusicPageContent({
                 {actionLabels[state.secondaryAction]}
               </button>
             )}
-            <MusicDashboard data={data} readOnly={["read_only", "content_stale"].includes(state.kind)} />
+            <MusicDashboard data={data} readOnly={state.kind === "content_stale"} />
           </div>
         )}
       </div>
@@ -177,9 +172,7 @@ const MusicPage = () => {
     }
     if (value === "sign_in") navigate("/login");
     else if (value === "finish_profile") navigate("/onboarding");
-    else if (value === "view_plans") navigate("/subscription-plans");
     else if (value === "check_status") navigate("/settings");
-    else if (value === "view_usage") navigate("/settings?section=billing");
     else navigate("/contact");
   };
 

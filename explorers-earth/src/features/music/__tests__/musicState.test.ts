@@ -24,10 +24,6 @@ describe("Music surface state policy", () => {
     [{ onboarding: "unknown" }, "content_loading", "Loading Music…"],
     [{ identity: "conflict" }, "identity_conflict", "We couldn’t finish setting up Music for this account."],
     [{ entitlement: "unknown" }, "entitlement_unknown", "Checking what’s included…"],
-    [{ entitlement: "paused" }, "paused", "Music is temporarily paused."],
-    [{ entitlement: "upgrade" }, "upgrade_required", "This feature isn’t included in your current plan."],
-    [{ entitlement: "quota" }, "quota_reached", "You’ve reached your Music limit for this plan."],
-    [{ entitlement: "read_only" }, "read_only", "You can view this Music workspace, but you can’t make changes."],
     [{ identity: "setting_up" }, "setting_up", "Setting up Music…"],
     [{ identity: "retryable" }, "setup_retryable", "Music is taking longer than expected. Your Explorers account is ready."],
     [{ identity: "unavailable" }, "setup_unavailable", "Music is temporarily unavailable."],
@@ -49,19 +45,19 @@ describe("Music surface state policy", () => {
       authenticated: false,
       onboarding: "incomplete",
       identity: "conflict",
-      entitlement: "paused",
+      entitlement: "unknown",
       content: "failure",
     });
     expect(state.kind).toBe("pending_deletion");
 
-    expect(selectMusicSurfaceState({ ...ready, authenticated: false, identity: "conflict", entitlement: "paused" }).kind)
+    expect(selectMusicSurfaceState({ ...ready, authenticated: false, identity: "conflict", entitlement: "unknown" }).kind)
       .toBe("auth_required");
-    expect(selectMusicSurfaceState({ ...ready, onboarding: "incomplete", identity: "conflict", entitlement: "paused" }).kind)
+    expect(selectMusicSurfaceState({ ...ready, onboarding: "incomplete", identity: "conflict", entitlement: "unknown" }).kind)
       .toBe("onboarding_incomplete");
-    expect(selectMusicSurfaceState({ ...ready, identity: "conflict", entitlement: "paused" }).kind)
+    expect(selectMusicSurfaceState({ ...ready, identity: "conflict", entitlement: "unknown" }).kind)
       .toBe("identity_conflict");
-    expect(selectMusicSurfaceState({ ...ready, identity: "retryable", entitlement: "paused" }).kind)
-      .toBe("paused");
+    expect(selectMusicSurfaceState({ ...ready, identity: "retryable", entitlement: "unknown" }).kind)
+      .toBe("entitlement_unknown");
     expect(selectMusicSurfaceState({ ...ready, identity: "retryable", content: "failure" }).kind)
       .toBe("setup_retryable");
     expect(selectMusicSurfaceState({ ...ready, identity: "unavailable", content: "failure" })).toMatchObject({
@@ -73,8 +69,19 @@ describe("Music surface state policy", () => {
     expect(selectMusicSurfaceState(ready)).toMatchObject({ kind: "ready_content", message: undefined, live: "off" });
   });
 
-  it.each(["entitlement_unknown", "upgrade_required", "quota_reached", "read_only"] as const)("keeps unrelated Music content visible for %s", (kind) => {
-    const signal = kind === "entitlement_unknown" ? "unknown" : kind === "upgrade_required" ? "upgrade" : kind === "quota_reached" ? "quota" : "read_only";
-    expect(selectMusicSurfaceState({ ...ready, entitlement: signal })).toMatchObject({ kind, blocksContent: false });
+  it("keeps core Music visible while authoritative entitlement is unknown", () => {
+    expect(selectMusicSurfaceState({ ...ready, entitlement: "unknown" })).toMatchObject({
+      kind: "entitlement_unknown",
+      blocksContent: false,
+    });
+  });
+
+  it.each(["included", "eligible", "entitled", "revoked"] as const)("keeps core Music ready for canonical %s state", (entitlement) => {
+    // Break caught: a premium-policy state is mistaken for lifecycle suspension, quota, or read-only core access.
+    expect(selectMusicSurfaceState({ ...ready, entitlement })).toMatchObject({
+      kind: "ready_content",
+      blocksContent: false,
+      live: "off",
+    });
   });
 });

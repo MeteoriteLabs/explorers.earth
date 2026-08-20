@@ -164,13 +164,39 @@ describe("canonical Music REST surfaces", () => {
     expect(response.body.error.code).toBe("ENTITLEMENT_REQUIRED");
   });
 
-  it("exposes server-derived entitlement state without accepting a browser target", async () => {
-    // Break caught: the client reads caller-target subscription endpoints instead of local Music authority.
-    const { app } = appFor();
+  it.each([
+    ["unknown", false],
+    ["included", false],
+    ["eligible", false],
+    ["entitled", true],
+    ["revoked", false],
+  ] as const)("exposes canonical %s entitlement without accepting a browser target", async (state, paidMutation) => {
+    // Break caught: a retained database state is rewritten, gains premium authority, or changes universal core access in transit.
+    const { app } = appFor({
+      resolveEntitlement: vi.fn(async () => ({ state, sourceUpdatedAt: new Date("2026-08-14T09:55:00.000Z") })),
+    });
     const response = await request(app).get("/api/music/entitlement").set("Authorization", "Bearer aaa.bbb.ccc");
     expect(response.status).toBe(200);
-    expect(response.body).toMatchObject({ state: "entitled", paidMutation: true, maxAgeSeconds: 600 });
+    expect(response.body).toEqual({
+      state,
+      sourceUpdatedAt: "2026-08-14T09:55:00.000Z",
+      paidMutation,
+      coreRead: true,
+      coreMutation: true,
+      maxAgeSeconds: 600,
+    });
     expect((await request(app).get("/api/music/entitlement?username=other").set("Authorization", "Bearer aaa.bbb.ccc")).status).toBe(400);
+  });
+
+  it("fails closed when the repository returns an unsupported entitlement value", async () => {
+    // Break caught: a corrupt/future state escapes a response that the exact client contract cannot interpret.
+    const { app } = appFor({
+      resolveEntitlement: vi.fn(async () => ({ state: "paused", sourceUpdatedAt: new Date("2026-08-14T09:55:00.000Z") })),
+    });
+    const response = await request(app).get("/api/music/entitlement").set("Authorization", "Bearer aaa.bbb.ccc");
+    expect(response.status).toBe(500);
+    expect(response.body.error).toMatchObject({ code: "INTERNAL_ERROR", retryable: true });
+    expect(JSON.stringify(response.body)).not.toContain("paused");
   });
 
   it("makes unknown, private, suspended, pending, and revoked guest resources indistinguishable", async () => {

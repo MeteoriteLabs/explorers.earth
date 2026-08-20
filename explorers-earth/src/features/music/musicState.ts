@@ -1,6 +1,8 @@
+import type { MusicEntitlementState } from "./musicEntitlementContract";
+
 export type MusicLifecycle = "active" | "pending_deletion" | "tombstoned" | "suspended";
 export type MusicOnboarding = "complete" | "incomplete" | "unknown";
-export type MusicEntitlement = "included" | "unknown" | "paused" | "upgrade" | "quota" | "read_only";
+export type MusicEntitlement = MusicEntitlementState;
 export type MusicIdentity = "ready" | "setting_up" | "retryable" | "unavailable" | "conflict";
 export type MusicContent = "loading" | "failure" | "stale" | "ready";
 
@@ -16,14 +18,13 @@ export interface MusicSurfaceSignals {
 
 export type MusicSurfaceKind =
   | "pending_deletion" | "deleted" | "suspended" | "auth_required" | "onboarding_incomplete"
-  | "identity_conflict" | "entitlement_unknown" | "paused" | "upgrade_required" | "quota_reached"
-  | "read_only" | "setting_up" | "setup_retryable" | "setup_unavailable" | "content_loading" | "content_failure"
+  | "identity_conflict" | "entitlement_unknown" | "setting_up" | "setup_retryable" | "setup_unavailable" | "content_loading" | "content_failure"
   | "content_stale" | "ready_empty" | "ready_content";
 
 export interface MusicSurfaceState {
   kind: MusicSurfaceKind;
   message?: string;
-  action?: "check_status" | "sign_in" | "finish_profile" | "get_help" | "view_plans" | "view_usage" | "try_again";
+  action?: "check_status" | "sign_in" | "finish_profile" | "get_help" | "try_again";
   secondaryAction?: MusicSurfaceState["action"];
   live: "off" | "polite" | "assertive";
   blocksContent: boolean;
@@ -50,10 +51,6 @@ export function selectMusicSurfaceState(signals: MusicSurfaceSignals): MusicSurf
   if (signals.identity === "setting_up") return state("setting_up", "Setting up Music…", undefined, "polite");
 
   if (signals.entitlement === "unknown") return state("entitlement_unknown", "Checking what’s included…", undefined, "polite", false);
-  if (signals.entitlement === "paused") return state("paused", "Music is temporarily paused.", undefined, "polite");
-  if (signals.entitlement === "upgrade") return state("upgrade_required", "This feature isn’t included in your current plan.", "view_plans", "polite", false);
-  if (signals.entitlement === "quota") return state("quota_reached", "You’ve reached your Music limit for this plan.", "view_usage", "polite", false);
-  if (signals.entitlement === "read_only") return state("read_only", "You can view this Music workspace, but you can’t make changes.", undefined, "polite", false);
 
   if (signals.identity === "retryable") return state("setup_retryable", "Music is taking longer than expected. Your Explorers account is ready.", "try_again", "polite");
   if (signals.identity === "unavailable") return state("setup_unavailable", "Music is temporarily unavailable.", "try_again", "polite", true, "get_help");

@@ -1,4 +1,9 @@
 import { MusicClientError, type LocalMusicRequest, type MusicClientErrorCode } from "../../lib/localTunesApiClient";
+import {
+  parseMusicEntitlementResponse,
+} from "./musicEntitlementContract";
+
+export type { MusicEntitlementResponse, MusicEntitlementState } from "./musicEntitlementContract";
 
 export interface MusicSong {
   id: number;
@@ -23,14 +28,6 @@ export interface MusicDashboardResponse {
   currentlyPlaying: MusicSong | null;
   playedSongs: MusicSong[];
   publication: { mode: MusicPublicationMode; publicSlug: string };
-}
-
-export interface MusicEntitlementResponse {
-  state: "unknown" | "included" | "eligible" | "entitled" | "revoked";
-  coreRead: boolean;
-  coreMutation: boolean;
-  paidMutation: boolean;
-  maxAgeSeconds: number;
 }
 
 type Request = (input: LocalMusicRequest) => Promise<Response>;
@@ -76,7 +73,7 @@ export function createMusicWorkspaceClient(request: Request) {
       const [playlists, dashboard, entitlement] = await Promise.all([
         json<MusicPlaylist[]>(request, { method: "GET", path: "/api/playlists" }),
         json<MusicDashboardResponse>(request, { method: "GET", path: "/api/music/dashboard" }),
-        json<MusicEntitlementResponse>(request, { method: "GET", path: "/api/music/entitlement" }),
+        json<unknown>(request, { method: "GET", path: "/api/music/entitlement" }).then(parseMusicEntitlementResponse),
       ]);
       return { playlists, dashboard, entitlement };
     },

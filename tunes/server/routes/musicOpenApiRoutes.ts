@@ -246,7 +246,7 @@ const paths = {
     }),
   },
   "/api/music/entitlement": {
-    get: ownerOperation({ summary: "Read server-derived entitlement freshness", status: "200", response: ref("EntitlementResponse"), description: "Local reads never refresh sourceUpdatedAt; paidMutation is true only within the 600-second maximum freshness window." }),
+    get: ownerOperation({ summary: "Read server-derived entitlement freshness", status: "200", response: ref("EntitlementResponse"), description: "Core personal Music remains readable and mutable for every retained state. Local reads never refresh sourceUpdatedAt; paidMutation is true only for a fresh entitled state within the 600-second maximum freshness window. Eligible is not upgrade authority, and revoked is not lifecycle suspension or core read-only state." }),
   },
   "/api/playlist/{guestUrl}": {
     get: {
@@ -397,7 +397,33 @@ export const MUSIC_OPENAPI_DOCUMENT = {
       PositionInput: { type: "object", additionalProperties: false, required: ["position"], properties: { position: { type: "integer", minimum: 0 } } },
       PublicationCommandInput: { type: "object", additionalProperties: false, required: ["mode"], properties: { mode: { type: "string", enum: ["private", "unlisted", "public"] } } },
       PublicationCommandResponse: { type: "object", additionalProperties: false, required: ["version", "publication"], properties: { version: { const: "music-publication/v1" }, publication: { type: "object", additionalProperties: false, required: ["mode", "publicSlug"], properties: { mode: { type: "string", enum: ["private", "unlisted", "public"] }, publicSlug: { type: "string", minLength: 8, maxLength: 128, pattern: "^[A-Za-z0-9_-]+$" } } }, capability: { type: "string", pattern: "^[A-Za-z0-9_-]{43}$" } } },
-      EntitlementResponse: { type: "object", additionalProperties: false, required: ["state", "paidMutation", "coreRead", "coreMutation", "maxAgeSeconds"], properties: { state: { type: "string", enum: ["unknown", "included", "eligible", "entitled", "revoked"] }, sourceUpdatedAt: { type: "string", format: "date-time" }, paidMutation: { type: "boolean" }, coreRead: { type: "boolean", const: true }, coreMutation: { type: "boolean", const: true }, maxAgeSeconds: { type: "integer", const: 600 } } },
+      EntitlementResponse: {
+        type: "object",
+        additionalProperties: false,
+        required: ["state", "paidMutation", "coreRead", "coreMutation", "maxAgeSeconds"],
+        properties: {
+          state: {
+            type: "string",
+            enum: ["unknown", "included", "eligible", "entitled", "revoked"],
+            description: "Authoritative premium-policy state. Every value retains universal core Music; only a fresh entitled state may grant paid mutation.",
+          },
+          sourceUpdatedAt: { type: "string", format: "date-time", description: "Authoritative policy-source timestamp; a local read never refreshes it." },
+          paidMutation: { type: "boolean", description: "True only for a fresh entitled state; false for unknown, included, eligible, and revoked." },
+          coreRead: { type: "boolean", const: true },
+          coreMutation: { type: "boolean", const: true },
+          maxAgeSeconds: { type: "integer", const: 600 },
+        },
+        allOf: [
+          {
+            if: { required: ["state"], properties: { state: { enum: ["unknown", "included", "eligible", "revoked"] } } },
+            then: { properties: { paidMutation: { const: false } } },
+          },
+          {
+            if: { required: ["paidMutation"], properties: { paidMutation: { const: true } } },
+            then: { required: ["sourceUpdatedAt"] },
+          },
+        ],
+      },
       YouTubeSearchInput: { type: "object", additionalProperties: false, required: ["query"], properties: { query: { type: "string", minLength: 1, maxLength: 200 }, pageToken: { type: "string", maxLength: 256 } } },
       YouTubeUrlInput: { type: "object", additionalProperties: false, required: ["url"], properties: { url: { type: "string", maxLength: 2_048 } } },
       YouTubeVideoId: { type: "object", additionalProperties: false, required: ["videoId"], properties: { videoId: { type: "string", pattern: "^[A-Za-z0-9_-]{11}$" } } },

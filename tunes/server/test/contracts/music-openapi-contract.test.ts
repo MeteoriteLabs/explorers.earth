@@ -238,4 +238,24 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     expect(publicUserSchema({ ...publicPlaylist.user, theme: {} }), JSON.stringify(publicUserSchema.errors)).toBe(false);
     expect(publicUserSchema({ ...publicPlaylist.user, theme: { primary: "#123456", unexpected: true } }), JSON.stringify(publicUserSchema.errors)).toBe(false);
   });
+
+  it("expresses the exact entitlement truth table and rejects unsupported or impossible responses", async () => {
+    // Break caught: the published contract permits a core denial or grants premium mutation to a non-entitled state.
+    const dereferenced = await SwaggerParser.dereference(JSON.parse(JSON.stringify(MUSIC_OPENAPI_DOCUMENT)) as never) as any;
+    const validator = new Ajv2020({ allErrors: true, strict: false });
+    addFormats(validator);
+    const validate = validator.compile(dereferenced.components.schemas.EntitlementResponse);
+    const base = { coreRead: true, coreMutation: true, paidMutation: false, maxAgeSeconds: 600 };
+
+    for (const state of ["unknown", "included", "eligible", "revoked"] as const) {
+      expect(validate({ ...base, state }), `${state}: ${JSON.stringify(validate.errors)}`).toBe(true);
+    }
+    expect(validate({ ...base, state: "entitled", paidMutation: true, sourceUpdatedAt: "2026-08-14T09:55:00.000Z" }), JSON.stringify(validate.errors)).toBe(true);
+    expect(validate({ ...base, state: "entitled", paidMutation: false }), JSON.stringify(validate.errors)).toBe(true);
+
+    expect(validate({ ...base, state: "paused" })).toBe(false);
+    expect(validate({ ...base, state: "included", paidMutation: true })).toBe(false);
+    expect(validate({ ...base, state: "entitled", paidMutation: true })).toBe(false);
+    expect(validate({ ...base, state: "revoked", coreMutation: false })).toBe(false);
+  });
 });

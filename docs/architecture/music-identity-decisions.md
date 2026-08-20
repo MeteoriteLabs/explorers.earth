@@ -2,6 +2,7 @@
 
 Status: Accepted
 Date: 2026-08-13
+Amended: 2026-08-20 (Task 9 entitlement UX narrowed to the existing authoritative contract)
 Scope: Explorers embedded Music identity, ownership, and entitlement
 
 ## Decision
@@ -26,7 +27,17 @@ If shared workspace or multi-venue ownership becomes a product requirement, it r
 
 Every eligible Explorer receives core personal Music capability. Identity projection does not automatically grant venue, administrative, commercial, expanded-quota, or other premium capabilities.
 
-Those capabilities are derived and enforced server-side from the authoritative entitlement policy. The UI represents entitled, trial-eligible, upgrade-required, read-only, stale/unknown, and denied states without exposing backend terminology.
+Those capabilities are derived and enforced server-side from the authoritative entitlement policy. The existing persisted state contract is exactly `unknown | included | eligible | entitled | revoked`:
+
+| State | Current authoritative meaning |
+|---|---|
+| `unknown` | No current authoritative premium-policy decision is available. Core Music remains included; premium mutation is denied. |
+| `included` | Core personal Music is included. No premium mutation authority is granted. |
+| `eligible` | The user is eligible for a separate trial or premium decision, but is not authorized for premium mutation by this value alone. It is not an upgrade-required UI instruction. |
+| `entitled` | Premium mutation is authorized only while `entitlement_source_updated_at` is present, not future-dated, and no more than 600 seconds old. Core Music remains included when that timestamp is stale or absent. |
+| `revoked` | Premium mutation authority has been removed. Core Music remains included. This is not identity suspension, a whole-Music pause, a quota state, or read-only core access. |
+
+The Task 9 page may show a nonblocking checking status for `unknown`; the other four values do not create a whole-page entitlement message. Quota/reset/limit and core read-only UX require new authoritative fields in a future versioned API contract and, if persistence changes, a separately reviewed migration. They are not inferred from the five existing values.
 
 ## Consequences
 

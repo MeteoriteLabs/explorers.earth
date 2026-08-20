@@ -72,4 +72,39 @@ describe("canonical Music workspace client", () => {
     expect(error).toMatchObject({ status: 403, upstreamCode: "IDENTITY_SUSPENDED", retryable: false, retryAfterSeconds: 19 });
     expect(error.message).not.toContain("sensitive");
   });
+
+  it.each([
+    ["unknown", false],
+    ["included", false],
+    ["eligible", false],
+    ["entitled", true],
+    ["revoked", false],
+  ] as const)("accepts the exact %s entitlement DTO", async (state, paidMutation) => {
+    // Break caught: a supported server state is renamed or discarded before the page can apply the approved policy.
+    const request = vi.fn(async (input: { path: string }) => input.path === "/api/playlists"
+      ? new Response("[]", { status: 200 })
+      : input.path === "/api/music/dashboard"
+        ? new Response(JSON.stringify({ songs: [], playedSongs: [], currentlyPlaying: null, publication: { mode: "private", publicSlug: "public-slug" } }), { status: 200 })
+        : new Response(JSON.stringify({ state, coreRead: true, coreMutation: true, paidMutation, maxAgeSeconds: 600, ...(paidMutation ? { sourceUpdatedAt: "2026-08-20T17:00:00.000Z" } : {}) }), { status: 200 }));
+    await expect(createMusicWorkspaceClient(request).load()).resolves.toMatchObject({
+      entitlement: { state, coreRead: true, coreMutation: true, paidMutation, maxAgeSeconds: 600 },
+    });
+  });
+
+  it.each([
+    [{ state: "paused", coreRead: true, coreMutation: true, paidMutation: false, maxAgeSeconds: 600 }, "unsupported state"],
+    [{ state: "included", coreRead: true, coreMutation: true, paidMutation: true, maxAgeSeconds: 600 }, "impossible premium grant"],
+    [{ state: "revoked", coreRead: true, coreMutation: false, paidMutation: false, maxAgeSeconds: 600 }, "core denial"],
+  ])("rejects an %s entitlement DTO (%s)", async (entitlement) => {
+    // Break caught: unvalidated successful JSON drives unreachable or contradictory whole-page UX.
+    const request = vi.fn(async (input: { path: string }) => input.path === "/api/playlists"
+      ? new Response("[]", { status: 200 })
+      : input.path === "/api/music/dashboard"
+        ? new Response(JSON.stringify({ songs: [], playedSongs: [], currentlyPlaying: null, publication: { mode: "private", publicSlug: "public-slug" } }), { status: 200 })
+        : new Response(JSON.stringify(entitlement), { status: 200 }));
+    await expect(createMusicWorkspaceClient(request).load()).rejects.toMatchObject({
+      code: "SERVICE_UNAVAILABLE",
+      status: 502,
+    });
+  });
 });

@@ -4,10 +4,19 @@ export const MUSIC_ENTITLEMENT_MAX_AGE_SECONDS = 600;
 
 export type MusicEntitlementState = "unknown" | "included" | "eligible" | "entitled" | "revoked";
 
+const MUSIC_ENTITLEMENT_STATES = new Set<MusicEntitlementState>([
+  "unknown", "included", "eligible", "entitled", "revoked",
+]);
+
+export function isMusicEntitlementState(value: unknown): value is MusicEntitlementState {
+  return typeof value === "string" && MUSIC_ENTITLEMENT_STATES.has(value as MusicEntitlementState);
+}
+
 export function entitlementDecision(
   entitlement: { state: MusicEntitlementState; sourceUpdatedAt?: Date },
   now = new Date(),
 ): { coreRead: true; coreMutation: true; paidMutation: boolean } {
+  if (!isMusicEntitlementState(entitlement.state)) throw new Error("Unsupported Music entitlement state.");
   const timestamp = entitlement.sourceUpdatedAt?.getTime();
   const ageMilliseconds = timestamp === undefined ? Number.POSITIVE_INFINITY : now.getTime() - timestamp;
   return {

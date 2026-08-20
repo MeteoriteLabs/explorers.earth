@@ -235,7 +235,7 @@ The detailed engineering test artifact is stored under the gstack project direct
 
 - [x] Record GATE-U1 in docs/architecture/music-identity-decisions.md.
 - [x] Record GATE-U2 in the same ADR. Person ownership was selected; Tasks C3-C9 retain the immutable Account migration seam.
-- [x] Record GATE-U3 core/paid/read-only/stale behavior and its UI copy.
+- [x] Record GATE-U3 universal core behavior plus the exact `unknown | included | eligible | entitled | revoked` premium-policy/freshness contract. Quota and core read-only UX remain deferred to a future versioned contract.
 - [ ] Confirm privacy/retention classification from C0.
 
 ### Task 3 (C3): Create the complete deterministic schema and migration chain
@@ -394,7 +394,7 @@ The detailed engineering test artifact is stored under the gstack project direct
 - [ ] Replace duplicate legacy handlers with one canonical route implementation per operation.
 - [ ] Keep the public arbitrary GraphQL proxy removed. Add only typed endpoints needed by the product.
 - [ ] Use the shared REST/socket error object and X-Request-Id across every converted surface; no controller invents its own error body.
-- [ ] Derive subscription/limit target and entitlement from the resolved principal. Treat identity existence and capability entitlement separately. Deny paid mutations when authoritative entitlement is denied or stale beyond the approved window; define read-only behavior.
+- [ ] Derive subscription/limit target and entitlement from the resolved principal. Treat identity existence and capability entitlement separately. Preserve universal core read/write and deny paid mutations when authoritative entitlement is unknown, non-entitled, or stale beyond the approved window. Any future quota or core read-only behavior requires a versioned contract.
 - [ ] Apply the owner credential to Socket.IO. Guests use a separate capability role and explicit event allowlist; they never inherit an owner room's mutation authority.
 - [ ] Define private, unlisted capability, and public/discoverable modes. Rotate/revoke guest capabilities, use at least 128 bits of randomness, exclude them from logs/sitemaps/indexing, and return one safe public 404 for unknown/private/suspended.
 - [ ] Enforce request, queue, playlist, settings, device, analytics, subscription, YouTube, playback, venue, and public policies consistently.
@@ -505,7 +505,7 @@ The detailed engineering test artifact is stored under the gstack project direct
 - [ ] Implement the selected GATE-U1 trigger once. Google and confirmed-email flows converge on the same bodyless ensure resource after the same eligibility condition. Remove duplicate triggers and sessionStorage flags.
 - [ ] Consume the Music credential in memory and refresh through one single-flight ensure resource. Remove X-Username, owner IDs, embedded native login, registration, password, cookie/session, and Local Tunes connection code.
 - [ ] Remove Tunes from Connected Accounts. Put privacy/link controls under Music.
-- [ ] Implement one state-precedence selector across lifecycle, suspension/auth, onboarding, identity conflict, entitlement, retryable setup, loading, ready-empty, and content.
+- [ ] Implement one state-precedence selector across lifecycle, suspension/auth, onboarding, identity conflict, the exact existing entitlement enum, retryable setup, loading, ready-empty, and content. Under GATE-U3 all five retained entitlement values preserve core read/write; only `unknown` has a nonblocking checking treatment on the core page.
 - [ ] Use the exact design state/copy table from Phase 2. Place one inline status below the Music title. Healthy projection and background profile convergence are silent.
 - [ ] Preserve the Explorer shell and normal navigation during Music outages. Never undo completed onboarding because Music is unavailable.
 - [ ] Implement private, unlisted, and public/discoverable controls and the unified public 404 behavior.
@@ -520,6 +520,7 @@ The detailed engineering test artifact is stored under the gstack project direct
 - [ ] Rename/profile tests preserve Music ID, content, guest capability, and publication settings.
 - [ ] Accessibility tests cover aria-live, alert behavior, focus, dialogs, semantic tabs, keyboard reorder, 44px targets, contrast, and reduced motion.
 - [ ] Responsive browser tests run at 320/375/640/768/1024 widths.
+- [ ] Server, OpenAPI, client, and page tests cover every retained `unknown | included | eligible | entitled | revoked` value, reject unsupported values and impossible authority combinations, and prove lifecycle/auth/onboarding/conflict precedence still wins. Quota/reset/limit and core read-only UX are deferred to a future versioned contract and any separately reviewed migration it requires.
 
 **Commit:** feat(music): converge Explorers identity and Music UX
 
@@ -981,7 +982,8 @@ IDENTITY:     unknown -> setting_up -> ready -> retrying -> conflict
                     \-> onboarding_required / auth_expired / suspended
                     \-> pending_deletion -> deleted
 
-ENTITLEMENT:  unknown -> allowed | upgrade_required | quota_reached | read_only
+ENTITLEMENT:  unknown | included | eligible | entitled | revoked
+              (core read/write is included for all; only fresh entitled authorizes premium mutation)
 
 PUBLICATION:  private | unlisted_capability | public_discoverable
 
@@ -996,7 +998,7 @@ pending deletion/deleted
   > authentication expired
   > onboarding incomplete
   > terminal identity conflict
-  > entitlement unknown/denied/quota/read-only
+  > entitlement unknown (nonblocking for core Music)
   > retryable identity setup failure
   > content loading/failure/empty/ready
 ```
@@ -1011,13 +1013,10 @@ pending deletion/deleted
 | Identity conflict | “We couldn’t finish setting up Music for this account.” | “Get help”; do not loop retry | No conflicting account detail |
 | Suspended | “Music is unavailable while your Explorer account is deactivated.” | Existing account reactivation path | No owner/private/public content |
 | Pending deletion | Persistent full-page account state: “Account deletion is in progress.” | “Check status”/safe retry after SLA; support | Music mutations and publication disabled immediately |
-| Feature server-disabled | Inline neutral state: “Music is temporarily paused.” | None or “Try again” when allowed | Explorer navigation intact |
 | Entitlement unknown | Short skeleton only within gated capability, not whole Music | Automatic refresh | Free/allowed content remains |
-| Upgrade required | Capability-local explanation: “This feature isn’t included in your current plan.” | “View plans” | Unrelated Music content remains |
-| Quota reached | Capability-local usage explanation with reset/limit wording from server contract | “View usage” or “Upgrade” | Existing content remains |
-| Read-only | Non-error banner: “You can view this Music workspace, but you can’t make changes.” | Contextual access action if one exists | Read-only content visible |
+| Included / eligible / entitled / revoked | No whole-page entitlement status. Core Music remains available. `eligible` is not inferred as upgrade-required and `revoked` is not inferred as paused/read-only. A separately gated premium control follows only the server `paidMutation` decision. | Existing core actions | Full core content remains |
 | Content loading | Existing Music skeleton beneath stable title/actions | None | No duplicate identity spinner |
-| Ready empty | Title “Create your first playlist”; one sentence; primary “Create playlist”; secondary “Import playlist” if entitled | Create | N/A |
+| Ready empty | Title “Create your first playlist”; one sentence; primary “Create playlist”; no premium secondary action without a future capability contract | Create | N/A |
 | Ready content | Existing Music dashboard | Existing actions | Full |
 | Stale content | Existing content plus compact “May be out of date” status | Retry | Read-only until ownership/token refresh succeeds |
 | Public unknown/private/suspended | Identical “Music page unavailable” 404 screen | Return to Explorers | No identity leak |
@@ -1088,7 +1087,7 @@ Accessibility acceptance:
 | Status placement | Directly below Music title, above primary action/content; never global toast spam |
 | Onboarding failure behavior | Account/onboarding success remains; Music retry is contextual later |
 | Settings placement | Remove Tunes from Connected Accounts; put visibility/link under Music sharing/settings |
-| Ready-empty primary action | “Create playlist”; import secondary and entitlement-aware |
+| Ready-empty primary action | “Create playlist”; do not infer a premium secondary action from the five-value entitlement enum |
 | Public privacy | Private and suspended look identical to unknown; unlisted link is always noindex; public discovery uses a separate explicit route/action |
 | Lifecycle language | One Explorer account; never name the two backend systems |
 | Ownership/provision trigger | **Unresolved user challenges**; frontend work cannot begin until final gate records the choices |
@@ -1097,7 +1096,7 @@ No mockups were generated. The existing UI direction is retained and the ASCII/s
 
 ### Design implementation tasks
 
-- [ ] **DES-T1 (P1, human: ~1d / CC: ~2h)** — state model — Implement one state-precedence selector across identity, entitlement, publication, lifecycle, and content.
+- [ ] **DES-T1 (P1, human: ~1d / CC: ~2h)** — state model — Implement one state-precedence selector across identity, the existing five-value entitlement contract, publication, lifecycle, and content. Do not invent paused/quota/read-only/upgrade mappings without a future versioned authoritative contract.
   - Surfaced by: Pass 2 — independent axes currently risk contradictory UI.
   - Files: `MusicIdentityStatus`, Music page/dashboard hooks, lifecycle/settings state.
   - Verify: exhaustive unit table plus integration cases for overlapping states.
