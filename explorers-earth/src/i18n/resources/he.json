@@ -340,8 +340,7 @@
     "signupSubtitle": "הירשמו כדי ליהנות מהתכונות של explorers",
     "signUpWithGoogle": "הרשמה עם Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "שם משתמש",
@@ -1408,49 +1407,6 @@
       "earnedThisMonth": "הורווח החודש",
       "passiveTitle": "הפכו המלצות לתגמולים פסיביים",
       "networkTitle": "בנו את הרשת שלכם והרוויחו אוטומטית"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "האזינו תוך כדי גילוי",
-      "body": "גילוי אינו רק ויזואלי. צליל נושא זיכרון, הקשר ורגש.\n\nTunes מאפשר לכם לאסוף ולשתף פסקולים למקומות, מסעות ומצבי רוח — בין אם זה מוזיקה שהתגלתה בדרך או צלילים שמגדירים מקום עבורכם.\n\nמחובר בצורה חלקה לפרופיל Explorer שלכם.",
-      "exploreButton": "גלו Tunes",
-      "featuresHeading": "תכונות חזקות",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "שיתוף פעולה בזמן אמת",
-          "description": "אפשרו לאורחים להוסיף שירים לרשימת ההשמעה שלכם מיד תוך שמירה על שליטה מלאה על מה שמתנגן."
-        },
-        "qrCodeSharing": {
-          "title": "שיתוף קוד QR",
-          "description": "שתפו את חוויית המוזיקה שלכם עם סריקת קוד QR פשוטה — אין צורך באפליקציות או הורדות."
-        },
-        "youtubeIntegration": {
-          "title": "אינטגרציה עם YouTube",
-          "description": "התחברו בצורה חלקה עם YouTube כדי לגשת למיליוני שירים וליצור את האווירה המושלמת."
-        },
-        "voteLikeSystem": {
-          "title": "מערכת הצבעה ואוהבים",
-          "description": "אורחים יכולים להצביע לשירים האהובים עליהם כדי להשפיע על תור רשימת ההשמעה בזמן אמת."
-        },
-        "silentParties": {
-          "title": "מסיבות שקטות",
-          "description": "ארגנו מסיבות שקטות ייחודיות שבהן כולם מאזינים דרך האוזניות שלהם."
-        },
-        "karaokeReady": {
-          "title": "מוכן לקריוקי",
-          "description": "מושלם לערבי קריוקי עם רשימות השמעה שיתופיות ובקשות שירים בזמן אמת."
-        }
-      },
-      "venueHeading": "מושלם לכל מקום",
-      "venues": {
-        "barsPubs": "ברים ופאבים",
-        "restaurants": "מסעדות",
-        "coffeeShops": "בתי קפה",
-        "eventsWeddings": "אירועים וחתונות",
-        "retailStores": "חנויות",
-        "gymsFitness": "מכוני כושר ופיטנס"
-      },
-      "closingStatement": "Tunes <strong>חינם</strong> לגילוי, ולפיצ'רים בתשלום תוכלו לשדרג מאוחר יותר."
     },
     "whoIsFor": {
       "headline": "נבנה עבור אנשים שהטעם שלהם עוזר לאחרים.",

@@ -45,10 +45,12 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
   retryCount: number = 0,
-  maxRetries: number = 3
+  maxRetries: number = 3,
+  requestHeaders: Record<string, string> = {},
 ): Promise<Response> {
   const headers: HeadersInit = {
     "Accept": "application/json",
+    ...requestHeaders,
   };
 
   if (data) {
@@ -103,7 +105,7 @@ export async function apiRequest(
 
         console.log(`Waiting ${Math.round(delay)}ms before retry attempt ${retryCount + 1}`);
         await new Promise(resolve => setTimeout(resolve, delay));
-        return apiRequest(method, url, data, retryCount + 1, maxRetries);
+        return apiRequest(method, url, data, retryCount + 1, maxRetries, requestHeaders);
       } else {
         console.error(`Server unavailable (503) after ${maxRetries} retries:`, url);
         // Create a more descriptive error for the UI
@@ -127,7 +129,7 @@ export async function apiRequest(
 
         console.log(`Waiting ${Math.round(delay)}ms before retry attempt ${retryCount + 1} for network error`);
         await new Promise(resolve => setTimeout(resolve, delay));
-        return apiRequest(method, url, data, retryCount + 1, maxRetries);
+        return apiRequest(method, url, data, retryCount + 1, maxRetries, requestHeaders);
       } else {
         // Create a user-friendly error message for network failures
         const friendlyError = new Error("Unable to connect to the server. Please check your internet connection and try again.");

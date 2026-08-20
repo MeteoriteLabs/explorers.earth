@@ -29,6 +29,23 @@ function expiredResponse(): Response {
   }, 401);
 }
 
+function tokenResponse(code: "TOKEN_EXPIRED" | "TOKEN_INVALID" | "TOKEN_REVOKED"): Response {
+  return json({
+    version: "music-error/v1",
+    error: { code, message: "Contained.", action: "authenticate", retryable: false, requestId: `request-${code}` },
+  }, 401);
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
 beforeEach(() => clearMusicCredential());
 
 describe("local Tunes API client", () => {
@@ -111,10 +128,11 @@ describe("local Tunes API client", () => {
     });
     await Promise.all(Array.from({ length: 25 }, () => client.ensureIdentity()));
     expect(fetchImpl).toHaveBeenCalledTimes(1);
-    expect(fetchImpl).toHaveBeenCalledWith("https://music.example/api/music/identity/ensure", {
+    expect(fetchImpl).toHaveBeenCalledWith("https://music.example/api/music/identity/ensure", expect.objectContaining({
       method: "POST",
       headers: { Authorization: "Bearer authoritative-strapi-proof" },
-    });
+      signal: expect.any(AbortSignal),
+    }));
   });
 
   it("forces one bodyless single-flight snapshot refresh even while credential C is still fresh", async () => {
@@ -128,10 +146,11 @@ describe("local Tunes API client", () => {
     });
     await Promise.all(Array.from({ length: 12 }, () => client.refreshIdentity()));
     expect(fetchImpl).toHaveBeenCalledTimes(1);
-    expect(fetchImpl).toHaveBeenCalledWith("https://music.example/api/music/identity/ensure", {
+    expect(fetchImpl).toHaveBeenCalledWith("https://music.example/api/music/identity/ensure", expect.objectContaining({
       method: "POST",
       headers: { Authorization: "Bearer authoritative-strapi-proof" },
-    });
+      signal: expect.any(AbortSignal),
+    }));
     expect(getMusicCredential(NOW)).toEqual(rotatedCredential);
   });
 
@@ -190,6 +209,89 @@ describe("local Tunes API client", () => {
     await expect(client.request({ method: "GET", path: "/api/music/identity/current" }))
       .rejects.toMatchObject({ code: "AUTH_REQUIRED" });
     expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it.each(["TOKEN_EXPIRED", "TOKEN_INVALID", "TOKEN_REVOKED"] as const)(
+    "refreshes once for refreshable %s and preserves the terminal upstream status and code",
+    async (code) => {
+      setMusicCredential(freshCredential);
+      let localAttempt = 0;
+      const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).endsWith("/ensure")) return ensureResponse(rotatedCredential);
+        localAttempt += 1;
+        return tokenResponse(code);
+      });
+      const client = createLocalTunesApiClient({
+        baseUrl: "https://music.example", fetchImpl, getStrapiBearer: async () => "strapi-proof-with-enough-entropy", now: () => NOW,
+      });
+
+      await expect(client.request({ method: "GET", path: "/api/music/dashboard" })).rejects.toMatchObject({
+        code: "AUTH_REQUIRED",
+        status: 401,
+        upstreamCode: code,
+      });
+      expect(fetchImpl).toHaveBeenCalledTimes(3);
+      expect(getMusicCredential(NOW)).toBeUndefined();
+    },
+  );
+
+  it("aborts and detaches authority A so authority B cannot join or receive A's late success", async () => {
+    const a = deferred<Response>();
+    const b = deferred<Response>();
+    const signals: AbortSignal[] = [];
+    const fetchImpl = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (!String(input).endsWith("/ensure")) return Promise.resolve(json({ ok: true }));
+      signals.push(init?.signal as AbortSignal);
+      return signals.length === 1 ? a.promise : b.promise;
+    });
+    const client = createLocalTunesApiClient({
+      baseUrl: "https://music.example", fetchImpl, getStrapiBearer: async () => "strapi-proof-with-enough-entropy", now: () => NOW,
+    });
+
+    client.setAuthority("user-a:account-a");
+    const aFlight = client.ensureIdentity();
+    const aResult = aFlight.catch((error) => error);
+    await Promise.resolve();
+    await Promise.resolve();
+    client.setAuthority("user-b:account-b");
+    const bFlight = client.ensureIdentity();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(signals[0]?.aborted).toBe(true);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    a.resolve(ensureResponse(freshCredential));
+    await expect(aResult).resolves.toMatchObject({ code: "AUTH_REQUIRED" });
+    expect(getMusicCredential(NOW)).toBeUndefined();
+    b.resolve(ensureResponse(rotatedCredential));
+    await expect(bFlight).resolves.toBeUndefined();
+    expect(getMusicCredential(NOW)).toEqual(rotatedCredential);
+  });
+
+  it("prevents authority A's late failure from clearing authority B's committed credential", async () => {
+    const a = deferred<Response>();
+    const b = deferred<Response>();
+    let ensureCall = 0;
+    const client = createLocalTunesApiClient({
+      baseUrl: "https://music.example",
+      fetchImpl: (input) => String(input).endsWith("/ensure") ? (++ensureCall === 1 ? a.promise : b.promise) : Promise.resolve(json({ ok: true })),
+      getStrapiBearer: async () => "strapi-proof-with-enough-entropy",
+      now: () => NOW,
+    });
+    client.setAuthority("user-a:account-a");
+    const aFlight = client.ensureIdentity();
+    const aResult = aFlight.catch((error) => error);
+    await Promise.resolve();
+    await Promise.resolve();
+    client.setAuthority("user-b:account-b");
+    const bFlight = client.ensureIdentity();
+    await Promise.resolve();
+    await Promise.resolve();
+    b.resolve(ensureResponse(rotatedCredential));
+    await bFlight;
+    a.reject(new Error("late authority A failure"));
+    await expect(aResult).resolves.toMatchObject({ code: "AUTH_REQUIRED" });
+    expect(getMusicCredential(NOW)).toEqual(rotatedCredential);
   });
 
   it("continues local reads through a Strapi outage until expiry, then performs zero mutation", async () => {

@@ -3,7 +3,7 @@ import { useRef, type RefObject } from "react";
 import { useNavigate } from "react-router-dom";
 import MusicDashboard from "../components/MusicDashboard";
 import SEO from "../components/SEO";
-import { selectCompletedAccount } from "../features/music/musicIdentityCoordinator";
+import { selectExplorerAccountState, type ExplorerAccountCandidate } from "../features/music/musicIdentityCoordinator";
 import {
   selectMusicSurfaceState,
   type MusicEntitlement,
@@ -62,6 +62,19 @@ function entitlementFrom(data: TunesDashboardData): MusicEntitlement {
   if (!data.entitlement.coreRead) return "upgrade";
   if (!data.entitlement.coreMutation) return "read_only";
   return "included";
+}
+
+export function onboardingFromEligibility(eligibility: {
+  loading: boolean;
+  error?: unknown;
+  data?: { usersPermissionsUser?: { accounts?: ExplorerAccountCandidate[] | null } | null } | null;
+}): MusicOnboarding {
+  if (eligibility.loading || eligibility.error || !eligibility.data?.usersPermissionsUser
+      || !Array.isArray(eligibility.data.usersPermissionsUser.accounts)) return "unknown";
+  const selection = selectExplorerAccountState(eligibility.data.usersPermissionsUser.accounts, { authoritative: true });
+  if (selection.kind === "selected") return "complete";
+  if (selection.kind === "incomplete") return "incomplete";
+  return "unknown";
 }
 
 export function MusicPageContent({
@@ -142,15 +155,20 @@ const MusicPage = () => {
   const { user, isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
   const statusRef = useRef<HTMLDivElement>(null);
-  const data = useTunesDashboard();
   const eligibility = useQuery(musicPageEligibilityQuery, {
     variables: { documentId: user?.documentId },
     skip: !user?.documentId,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
   });
-  const selectedAccount = selectCompletedAccount(eligibility.data?.usersPermissionsUser?.accounts);
-  const onboarding: MusicOnboarding = eligibility.loading ? "unknown" : selectedAccount ? "complete" : "incomplete";
+  const selection = selectExplorerAccountState(eligibility.data?.usersPermissionsUser?.accounts, {
+    authoritative: !eligibility.loading && !eligibility.error && Array.isArray(eligibility.data?.usersPermissionsUser?.accounts),
+  });
+  const data = useTunesDashboard(selection.kind === "selected" && user?.documentId ? {
+    userDocumentId: user.documentId,
+    accountDocumentId: selection.account.documentId,
+  } : undefined);
+  const onboarding = onboardingFromEligibility(eligibility);
 
   const action = (value: keyof typeof actionLabels) => {
     if (value === "try_again") {

@@ -38,6 +38,7 @@ export interface LocalTunesApiClientDependencies {
 }
 
 export interface LocalTunesApiClient {
+  setAuthority(subject: string | undefined): void;
   ensureIdentity(): Promise<void>;
   refreshIdentity(): Promise<void>;
   request(input: LocalMusicRequest): Promise<Response>;
@@ -51,18 +52,43 @@ export function createLocalTunesApiClient(dependencies: LocalTunesApiClientDepen
   const fetchImpl = dependencies.fetchImpl ?? fetch;
   const now = dependencies.now ?? Date.now;
   const baseUrl = normalizedBaseUrl(dependencies.baseUrl);
-  let refreshFlight: Promise<MusicCredential> | undefined;
+  let authoritySubject: string | undefined;
+  let authorityGeneration = 0;
+  let refreshFlight: { generation: number; subject: string | undefined; controller: AbortController; promise: Promise<MusicCredential> } | undefined;
+  const requestControllers = new Map<AbortController, number>();
+
+  const authorityStillCurrent = (generation: number, subject: string | undefined) =>
+    generation === authorityGeneration && subject === authoritySubject;
+
+  const staleAuthority = () => new MusicClientError("AUTH_REQUIRED", 401, "Music authorization is required.");
+
+  function advanceAuthority(subject: string | undefined, force = false): void {
+    if (!force && subject === authoritySubject) return;
+    authoritySubject = subject;
+    authorityGeneration += 1;
+    refreshFlight?.controller.abort();
+    refreshFlight = undefined;
+    for (const controller of requestControllers.keys()) controller.abort();
+    requestControllers.clear();
+    clearMusicCredential();
+  }
 
   async function refresh(): Promise<MusicCredential> {
-    if (refreshFlight) return refreshFlight;
+    const generation = authorityGeneration;
+    const subject = authoritySubject;
+    if (refreshFlight && refreshFlight.generation === generation && refreshFlight.subject === subject) return refreshFlight.promise;
+    const controller = new AbortController();
     const flight = (async () => {
       try {
         const proof = await dependencies.getStrapiBearer();
+        if (!authorityStillCurrent(generation, subject)) throw staleAuthority();
         if (!proof || !STRAPI_PROOF_PATTERN.test(proof)) throw new Error("proof unavailable");
         const response = await fetchImpl(`${baseUrl}/api/music/identity/ensure`, {
           method: "POST",
           headers: { Authorization: `Bearer ${proof}` },
+          signal: controller.signal,
         });
+        if (!authorityStillCurrent(generation, subject)) throw staleAuthority();
         if (response.status !== 200) throw await containedEnsureError(response);
         const body = await response.json() as {
           credential?: { token?: unknown; expiresAt?: unknown };
@@ -73,19 +99,21 @@ export function createLocalTunesApiClient(dependencies: LocalTunesApiClientDepen
             || !Number.isSafeInteger(credential.expiresAt)
             || credential.expiresAt <= now()) throw new Error("credential malformed");
         const result = { token: credential.token, expiresAt: credential.expiresAt };
+        if (!authorityStillCurrent(generation, subject)) throw staleAuthority();
         setMusicCredential(result);
         return result;
       } catch (cause) {
-        clearMusicCredential();
+        if (authorityStillCurrent(generation, subject)) clearMusicCredential();
+        if (!authorityStillCurrent(generation, subject) || controller.signal.aborted) throw staleAuthority();
         if (cause instanceof MusicClientError) throw cause;
         throw new MusicClientError("AUTH_UNAVAILABLE", 503, "Music authorization is temporarily unavailable.", 1);
       }
     })();
-    refreshFlight = flight;
+    refreshFlight = { generation, subject, controller, promise: flight };
     try {
       return await flight;
     } finally {
-      if (refreshFlight === flight) refreshFlight = undefined;
+      if (refreshFlight?.promise === flight) refreshFlight = undefined;
     }
   }
 
@@ -101,10 +129,19 @@ export function createLocalTunesApiClient(dependencies: LocalTunesApiClientDepen
       headers["Content-Type"] = "application/json";
       body = JSON.stringify(input.body);
     }
+    const generation = authorityGeneration;
+    const subject = authoritySubject;
+    const controller = new AbortController();
+    requestControllers.set(controller, generation);
     try {
-      return await fetchImpl(`${baseUrl}${input.path}`, { method: input.method, headers, body });
+      const response = await fetchImpl(`${baseUrl}${input.path}`, { method: input.method, headers, body, signal: controller.signal });
+      if (!authorityStillCurrent(generation, subject)) throw staleAuthority();
+      return response;
     } catch {
+      if (!authorityStillCurrent(generation, subject) || controller.signal.aborted) throw staleAuthority();
       throw new MusicClientError("SERVICE_UNAVAILABLE", 503, "Music is temporarily unavailable.", 1);
+    } finally {
+      requestControllers.delete(controller);
     }
   }
 
@@ -112,30 +149,33 @@ export function createLocalTunesApiClient(dependencies: LocalTunesApiClientDepen
     validateRequest(input);
     const initial = await credential();
     const first = await send(input, initial);
-    if (first.status !== 401 || await responseErrorCode(first) !== "TOKEN_EXPIRED") return first;
+    const firstUpstreamCode = first.status === 401 ? await responseErrorCode(first) : undefined;
+    if (first.status !== 401 || !["TOKEN_EXPIRED", "TOKEN_INVALID", "TOKEN_REVOKED"].includes(firstUpstreamCode ?? "")) return first;
     clearMusicCredential();
     const safeReplay = input.method === "GET" || input.method === "HEAD"
       || (input.idempotencyKey !== undefined && IDEMPOTENCY_PATTERN.test(input.idempotencyKey));
     if (!safeReplay) {
-      throw new MusicClientError("AUTH_REQUIRED", 401, "Music authorization expired; retry the action explicitly.");
+      throw new MusicClientError("AUTH_REQUIRED", 401, "Music authorization expired; retry the action explicitly.", undefined, firstUpstreamCode);
     }
     const renewed = await refresh();
     const second = await send(input, renewed);
     if (second.status === 401) {
+      const upstreamCode = await responseErrorCode(second);
       clearMusicCredential();
-      throw new MusicClientError("AUTH_REQUIRED", 401, "Music authorization is required.");
+      throw new MusicClientError("AUTH_REQUIRED", 401, "Music authorization is required.", undefined, upstreamCode);
     }
     return second;
   }
 
   return {
+    setAuthority: (subject) => advanceAuthority(subject),
     ensureIdentity: async () => { await credential(); },
     refreshIdentity: async () => {
       clearMusicCredential();
       await refresh();
     },
     request,
-    logout: clearMusicCredential,
+    logout: () => advanceAuthority(undefined, true),
   };
 }
 

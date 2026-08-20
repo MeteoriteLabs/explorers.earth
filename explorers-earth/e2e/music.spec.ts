@@ -33,6 +33,7 @@ type MockOptions = {
 
 async function installMusicMocks(page: Page, options: MockOptions = {}) {
   let ensureCalls = 0;
+  const publicationCommands: Array<{ body: unknown; idempotencyKey: string | null }> = [];
   const warnings: string[] = [];
   const pageErrors: string[] = [];
   const playlists = options.playlists ?? [];
@@ -115,19 +116,25 @@ async function installMusicMocks(page: Page, options: MockOptions = {}) {
     contentType: "application/json",
     body: JSON.stringify({ state: "included", coreRead: true, coreMutation: true, paidMutation: false, maxAgeSeconds: 600 }),
   }));
-  await page.route("**/api/music/publication/publish", (route) => route.fulfill({ status: 204 }));
-  await page.route("**/api/music/publication/unpublish", (route) => route.fulfill({ status: 204 }));
-  await page.route("**/api/music/guest-capability/revoke", (route) => route.fulfill({ status: 204 }));
-  await page.route("**/api/music/guest-capability/rotate", (route) => route.fulfill({
+  await page.route("**/api/music/publication", (route) => {
+    const body = route.request().postDataJSON();
+    publicationCommands.push({ body, idempotencyKey: route.request().headers()["idempotency-key"] ?? null });
+    return route.fulfill({
     status: 200,
     contentType: "application/json",
-    body: JSON.stringify({ version: "music-guest-capability/v1", capability: "a".repeat(43) }),
-  }));
+      body: JSON.stringify({
+        version: "music-publication/v1",
+        publication: { mode: body.mode, publicSlug: "public-slug-123" },
+        ...(body.mode === "unlisted" ? { capability: "a".repeat(43) } : {}),
+      }),
+    });
+  });
   await page.route("**/api/playlists/*/visibility", (route) => route.fulfill({ status: 204 }));
   await page.route("**/api/playlists/*/reorder", (route) => route.fulfill({ status: 204 }));
 
   return {
     ensureCalls: () => ensureCalls,
+    publicationCommands,
     warnings,
     pageErrors,
   };
@@ -236,6 +243,58 @@ test("sharing dialog traps focus, closes with Escape, and exposes only approved 
   await expect(opener).toBeFocused();
 });
 
+test("sharing save uses one canonical publication command and restores focus", async ({ page }) => {
+  const audit = await installMusicMocks(page);
+  await page.goto("/recommendations/music");
+  const opener = page.getByRole("button", { name: "Sharing settings" });
+  await opener.click();
+  const dialog = page.getByRole("dialog", { name: "Music sharing" });
+  await dialog.getByRole("radio", { name: "Public" }).check();
+  await dialog.getByRole("button", { name: "Save sharing" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(opener).toBeFocused();
+  expect(audit.publicationCommands).toHaveLength(1);
+  expect(audit.publicationCommands[0]).toEqual({
+    body: { mode: "public" },
+    idempotencyKey: expect.stringMatching(/^publication-/),
+  });
+});
+
+test("account-generation resets Music authority across tabs without logging Explorer out", async ({ page, context }) => {
+  const second = await context.newPage();
+  await installMusicMocks(page);
+  await installMusicMocks(second);
+  await page.goto("/recommendations/music");
+  await second.goto("/recommendations/music");
+  await expect(second.getByRole("heading", { name: "Create your first playlist" })).toBeVisible();
+
+  await page.evaluate(() => {
+    const event = { version: "music-session/v1", kind: "account-generation", eventId: crypto.randomUUID() };
+    localStorage.setItem("explorers-music-session", JSON.stringify(event));
+    localStorage.removeItem("explorers-music-session");
+  });
+
+  await expect(second).toHaveURL(/\/recommendations\/music$/);
+  await expect(second.getByRole("heading", { name: "Music", level: 1 })).toBeVisible();
+  expect(await second.evaluate(() => JSON.parse(localStorage.getItem("auth-storage") ?? "null")?.state?.isAuthenticated)).toBe(true);
+  await second.close();
+});
+
+test("logout boundary clears Explorer authentication in another tab", async ({ page, context }) => {
+  const second = await context.newPage();
+  await installMusicMocks(page);
+  await installMusicMocks(second);
+  await page.goto("/recommendations/music");
+  await second.goto("/recommendations/music");
+  await page.evaluate(() => {
+    const event = { version: "music-session/v1", kind: "logout", eventId: crypto.randomUUID() };
+    localStorage.setItem("explorers-music-session", JSON.stringify(event));
+    localStorage.removeItem("explorers-music-session");
+  });
+  await expect.poll(() => second.evaluate(() => JSON.parse(localStorage.getItem("auth-storage") ?? "null")?.state?.isAuthenticated)).toBe(false);
+  await second.close();
+});
+
 test("playlist tabs, keyboard reorder, and polite announcement work without mutable owner data", async ({ page }) => {
   const playlists = [
     {
@@ -286,4 +345,35 @@ test("public private, missing, and invalid links converge on the exact 404", asy
   await page.goto("/music/share/public-slug-123");
   await expect(page.getByRole("heading", { name: "Music page unavailable" })).toBeVisible();
   await expect(page.getByText("No public playlists yet.")).toHaveCount(0);
+});
+
+test("a valid public owner with no visible playlists has the exact reachable empty state", async ({ page }) => {
+  await page.route("**/api/playlist/**", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ songs: [], playlists: [] }),
+  }));
+  await page.goto("/music/share/public-slug-123");
+  await expect(page.getByRole("heading", { name: "Music", level: 1 })).toBeVisible();
+  await expect(page.getByText("No public playlists yet.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Music page unavailable" })).toHaveCount(0);
+});
+
+test("public rate-limit retry waits for Retry-After and then reaches the empty state", async ({ page }) => {
+  let requests = 0;
+  let rateLimited = true;
+  await page.route("**/api/playlist/**", (route) => {
+    requests += 1;
+    if (rateLimited) return route.fulfill({ status: 429, headers: { "retry-after": "3", "access-control-expose-headers": "Retry-After" }, body: "{}" });
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ songs: [], playlists: [] }) });
+  });
+  await page.goto("/music/share/public-slug-123");
+  await expect(page.getByRole("heading", { name: "Too many requests. Try again in 3 seconds." })).toBeVisible();
+  const retry = page.getByRole("button", { name: "Retry" });
+  await expect(retry).toBeDisabled();
+  await expect(retry).toBeEnabled({ timeout: 4_000 });
+  rateLimited = false;
+  await retry.click();
+  await expect(page.getByText("No public playlists yet.")).toBeVisible();
+  expect(requests).toBeGreaterThanOrEqual(2);
 });

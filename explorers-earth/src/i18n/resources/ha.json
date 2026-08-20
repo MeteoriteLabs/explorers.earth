@@ -340,8 +340,7 @@
     "signupSubtitle": "Yi rajista don jin daɗin fasalin explorers",
     "signUpWithGoogle": "Yi Rajista da Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Sunan Mai Amfani",
@@ -1408,49 +1407,6 @@
       "earnedThisMonth": "An samu wannan watan",
       "passiveTitle": "Canza shawarwari zuwa lada na pasif",
       "networkTitle": "Gina hanyar sadarwar ku kuma samu kuɗi ta atomatik"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Saurara yayin da kuke bincike",
-      "body": "Bincike ba na gani kawai ba ne. Sauti yana ɗaukar ƙwaƙwalwa, mahallin, da motsin rai.\n\nLocalTunes yana ba ku damar tattara kuma raba waƙoƙin sauti don wurare, tafiye-tafiye, da yanayi — ko dai waƙar da aka gano a hanya ko sautunan da ke bayyana wuri a gare ku.\n\nAn haɗa shi da bayanin martabar Explorer ɗinku ba tare da katsewa ba.",
-      "exploreButton": "Bincika Tunes",
-      "featuresHeading": "Fasaloli masu ƙarfi",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Haɗin kai na ainihin lokaci",
-          "description": "Bari baƙi su ƙara waƙoƙi zuwa jerin waƙoƙin ku nan take yayin da kuke kula da cikakken iko akan abin da ke kunna."
-        },
-        "qrCodeSharing": {
-          "title": "Raba lambar QR",
-          "description": "Raba ƙwarewar kiɗa ɗinku tare da sauƙin dubawa lambar QR - ba ana buƙatar apps ko zazzagewa ba."
-        },
-        "youtubeIntegration": {
-          "title": "Haɗin YouTube",
-          "description": "Haɗa kai da YouTube ba tare da katsewa ba don samun damar miliyoyin waƙoƙi da ƙirƙirar yanayi mai kyau."
-        },
-        "voteLikeSystem": {
-          "title": "Tsarin Zaɓe & So",
-          "description": "Baƙi na iya zaɓar waƙoƙinsu na fi so don tasiri jerin jerin waƙoƙi a ainihin lokaci."
-        },
-        "silentParties": {
-          "title": "Biki na Shiru",
-          "description": "Shirya bukukuwa na musamman na shiru inda kowa ke sauraro ta hanyar belun kunnuwa nasu."
-        },
-        "karaokeReady": {
-          "title": "Shirye don Karaoke",
-          "description": "Cikakke don dare na karaoke tare da jerin waƙoƙi na haɗin kai da buƙatun waƙa na ainihin lokaci."
-        }
-      },
-      "venueHeading": "Cikakke ga Kowane Wuri",
-      "venues": {
-        "barsPubs": "Mashaya & Mashaya",
-        "restaurants": "Gidajen Abinci",
-        "coffeeShops": "Shagunan Kofi",
-        "eventsWeddings": "Abubuwan da suka faru & Aure",
-        "retailStores": "Shagunan Sayarwa",
-        "gymsFitness": "Gyms & Fitness"
-      },
-      "closingStatement": "Tunes <strong>kyauta</strong> ne don bincika, kuma don fasalolin da aka biya za ku iya haɓaka daga baya."
     },
     "whoIsFor": {
       "headline": "An gina shi don mutanen da ɗanɗanonsu yana taimaka wa wasu.",

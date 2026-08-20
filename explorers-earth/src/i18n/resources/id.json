@@ -340,8 +340,7 @@
     "signupSubtitle": "Daftar untuk menikmati fitur-fitur explorers",
     "signUpWithGoogle": "Daftar dengan Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Nama Pengguna",
@@ -1408,49 +1407,6 @@
       "earnedThisMonth": "Diperoleh bulan ini",
       "passiveTitle": "Ubah rekomendasi menjadi hadiah pasif",
       "networkTitle": "Bangun jaringan Anda dan dapatkan secara otomatis"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Dengarkan sambil menjelajah",
-      "body": "Eksplorasi tidak hanya visual. Suara membawa memori, konteks, dan emosi.\n\nTunes memungkinkan Anda mengumpulkan dan berbagi soundtrack untuk tempat, perjalanan, dan suasana hati — baik itu musik yang ditemukan di jalan atau suara yang mendefinisikan tempat untuk Anda.\n\nTerhubung mulus dengan profil Explorer Anda.",
-      "exploreButton": "Jelajahi Tunes",
-      "featuresHeading": "Fitur Kuat",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Kolaborasi Waktu Nyata",
-          "description": "Biarkan tamu menambahkan lagu ke playlist Anda secara instan sambil Anda mempertahankan kontrol penuh atas apa yang diputar."
-        },
-        "qrCodeSharing": {
-          "title": "Berbagi Kode QR",
-          "description": "Bagikan pengalaman musik Anda dengan pemindaian kode QR sederhana — tidak perlu aplikasi atau unduhan."
-        },
-        "youtubeIntegration": {
-          "title": "Integrasi YouTube",
-          "description": "Terintegrasi mulus dengan YouTube untuk mengakses jutaan lagu dan menciptakan suasana yang sempurna."
-        },
-        "voteLikeSystem": {
-          "title": "Sistem Voting & Suka",
-          "description": "Tamu dapat memilih lagu favorit mereka untuk mempengaruhi antrian playlist secara real-time."
-        },
-        "silentParties": {
-          "title": "Pesta Sunyi",
-          "description": "Selenggarakan pesta sunyi unik di mana semua orang mendengarkan melalui headphone mereka sendiri."
-        },
-        "karaokeReady": {
-          "title": "Siap Karaoke",
-          "description": "Sempurna untuk malam karaoke dengan playlist kolaboratif dan permintaan lagu real-time."
-        }
-      },
-      "venueHeading": "Sempurna untuk Setiap Tempat",
-      "venues": {
-        "barsPubs": "Bar & Pub",
-        "restaurants": "Restoran",
-        "coffeeShops": "Kedai Kopi",
-        "eventsWeddings": "Acara & Pernikahan",
-        "retailStores": "Toko Ritel",
-        "gymsFitness": "Gym & Kebugaran"
-      },
-      "closingStatement": "Tunes <strong>gratis</strong> untuk dijelajahi, dan untuk fitur berbayar Anda dapat meningkatkan nanti."
     },
     "whoIsFor": {
       "headline": "Dibangun untuk orang-orang yang seleranya membantu orang lain.",

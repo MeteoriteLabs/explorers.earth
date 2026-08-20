@@ -11,7 +11,7 @@ import { useAnalytics, AnalyticsEventCategory, AnalyticsEventAction } from "@/ho
 import { BottomNavigation } from "@/components/bottom-navigation";
 import { MiniPlayerControl } from "@/components/mini-player-control";
 import { useUserSubscriptionPlanInfo } from "@/lib/strapi-queries";
-import { cn } from "@/lib/utils"; import { guestCapabilityHandoff } from "@/lib/musicCredential";
+import { cn } from "@/lib/utils"; import { guestCapabilityHandoff } from "@/lib/musicCredential"; import { requestUnlistedShareCapability } from "@/lib/musicPublicationClient";
 // UI Components
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -635,7 +635,7 @@ export default function DashboardPage() {
     }
   }, [playlist?.songs, user?.guestUrl]);
 
-  const ensureShareCapability = async () => { if (shareCapability) return shareCapability; const response = await apiRequest("POST", "/api/music/guest-capability/rotate"); const capability = (await response.json()).capability as string; setShareCapability(capability); return capability; };
+  const ensureShareCapability = async () => { if (shareCapability) return shareCapability; const capability = await requestUnlistedShareCapability(); setShareCapability(capability); return capability; };
   const handleCopyLink = async () => {
     if (!user?.guestUrl) return;
 

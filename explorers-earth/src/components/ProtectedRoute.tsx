@@ -7,11 +7,13 @@ import { useLogout } from "../hooks/useLogout";
 import { EarthLoader } from "./EarthLoader";
 import OnboardingCheckError from "./OnboardingCheckError";
 import { AccountLifecycleError, createAccountLifecycleService } from "../services/accountLifecycleService";
+import { selectExplorerAccountState } from "../features/music/musicIdentityCoordinator";
 
 const checkOnboardingStatusQuery = gql`
   query CheckOnboardingStatus($documentId: ID!) {
     usersPermissionsUser(documentId: $documentId) {
       accounts {
+        documentId
         Account_Name
         Account_Type
         mobile_number
@@ -32,13 +34,10 @@ const ProtectedRoute = () => {
     errorPolicy: "all", // keep any partial data alongside errors
   });
   const logout = useLogout();
-  const account = data?.usersPermissionsUser?.accounts?.[0];
-  const isAccountComplete = !!(
-    account &&
-    account.Account_Name &&
-    account.Account_Type &&
-    account.mobile_number
-  );
+  const accountSelection = selectExplorerAccountState(data?.usersPermissionsUser?.accounts, {
+    authoritative: !loading && !error && Array.isArray(data?.usersPermissionsUser?.accounts),
+  });
+  const isAccountComplete = accountSelection.kind === "selected";
   const [deletionGate, setDeletionGate] = useState<"idle" | "checking" | "pending" | "none" | "error">("idle");
   const accountLifecycle = useMemo(() => createAccountLifecycleService({
     baseUrl: import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth",
@@ -88,7 +87,7 @@ const ProtectedRoute = () => {
   // onboarded" and bounce an already-onboarded user to /onboarding. Show the
   // recoverable state (retry / log out) instead; there's no perpetual loader, so a
   // persistent error can't lock the user out.
-  if (error && !isAccountComplete) {
+  if (error || accountSelection.kind === "unknown" || accountSelection.kind === "ambiguous") {
     return <OnboardingCheckError onRetry={() => { refetch(); }} onLogout={() => { logout(); }} />;
   }
 

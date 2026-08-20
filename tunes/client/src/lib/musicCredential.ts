@@ -127,8 +127,7 @@ export function isMusicOwnerRequest(url: string): boolean {
     || path.startsWith("/api/playlist/currently-playing")
     || path.startsWith("/api/playlist/history")
     || path.startsWith("/api/playlist/import-")
-    || path.startsWith("/api/music/guest-capability/")
-    || path.startsWith("/api/music/publication/")
+    || path === "/api/music/publication"
     || path.startsWith("/api/music/paid/")
     || path === "/api/music/dashboard"
     || path === "/api/music/entitlement"

@@ -340,8 +340,7 @@
     "signupSubtitle": "Rekisteröidy nauttimaan explorers:n ominaisuuksista",
     "signUpWithGoogle": "Rekisteröidy Googlella",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Käyttäjänimi",
@@ -1408,49 +1407,6 @@
       "earnedThisMonth": "Ansittu tässä kuussa",
       "passiveTitle": "Muunna suositukset passiivisiksi palkkioiksi",
       "networkTitle": "Rakenna verkostosi ja ansaitse automaattisesti"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Kuuntele tutkiessasi",
-      "body": "Tutkiminen ei ole vain visuaalista. Ääni kantaa muistia, kontekstia ja tunnetta.\n\nTunes antaa sinun kerätä ja jakaa ääniraitoja paikoille, matkoille ja mielialoille — olipa se sitten matkalla löydettyä musiikkia tai ääniä, jotka määrittelevät paikan sinulle.\n\nSaumattomasti yhdistetty Explorer-profiiliisi.",
-      "exploreButton": "Tutki Tunes",
-      "featuresHeading": "Tehokkaat Ominaisuudet",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Reaaliaikainen Yhteistyö",
-          "description": "Anna vieraiden lisätä kappaleita soittolistaasi heti, samalla kun pidät täyden kontrollin siitä, mitä soitetaan."
-        },
-        "qrCodeSharing": {
-          "title": "QR-koodin Jakaminen",
-          "description": "Jaa musiikkikokemuksesi yksinkertaisella QR-koodin skannauksella — sovelluksia tai latauksia ei tarvita."
-        },
-        "youtubeIntegration": {
-          "title": "YouTube-integraatio",
-          "description": "Integroi saumattomasti YouTubeen päästäksesi miljooniin kappaleisiin ja luodaksesi täydellisen tunnelman."
-        },
-        "voteLikeSystem": {
-          "title": "Äänestys- ja Tykkäysjärjestelmä",
-          "description": "Vieraat voivat äänestää suosikkikappaleitaan vaikuttamaan soittolistajonoon reaaliaikaisesti."
-        },
-        "silentParties": {
-          "title": "Hiljaiset Juhlat",
-          "description": "Järjestä ainutlaatuisia hiljaisia juhlia, joissa kaikki kuuntelevat omien kuulokkeidensa kautta."
-        },
-        "karaokeReady": {
-          "title": "Karaoke Valmis",
-          "description": "Täydellinen karaoke-illille yhteistyösoittolistojen ja reaaliaikaisten kappalepyyntöjen kanssa."
-        }
-      },
-      "venueHeading": "Täydellinen Jokaiseen Paikkaan",
-      "venues": {
-        "barsPubs": "Baarit ja Pubit",
-        "restaurants": "Ravintolat",
-        "coffeeShops": "Kahvilat",
-        "eventsWeddings": "Tapahtumat ja Häät",
-        "retailStores": "Vähittäiskaupat",
-        "gymsFitness": "Kuntosalit ja Kuntoilu"
-      },
-      "closingStatement": "Tunes on <strong>ilmainen</strong> tutkittavaksi, ja maksullisista ominaisuuksista voit päivittää myöhemmin."
     },
     "whoIsFor": {
       "headline": "Rakennettu ihmisille, joiden maku auttaa muita.",

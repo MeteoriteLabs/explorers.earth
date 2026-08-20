@@ -26,6 +26,7 @@ function appFor(overrides: Record<string, unknown> = {}, routeOverrides: Record<
     rotateGuestCapability: vi.fn(async () => ({})),
     revokeGuestCapability: vi.fn(async () => undefined),
     setDiscoverable: vi.fn(async () => undefined),
+    setPublicationMode: vi.fn(async (_owner: number, mode: "private" | "unlisted" | "public") => ({ mode, publicSlug: "private-slug" })),
     resolveEntitlement: vi.fn(async () => ({ state: "entitled", sourceUpdatedAt: new Date("2026-08-14T09:55:00.000Z") })),
     resolveGuestResource: vi.fn(async () => undefined),
     resolveGuestSocketAuthority: vi.fn(async (capability: string) => capability === "G".repeat(43)
@@ -183,21 +184,67 @@ describe("canonical Music REST surfaces", () => {
     }
   });
 
-  it("rotates a hash-only guest capability and requires explicit publish or unpublish", async () => {
-    // Break caught: plaintext capability is persisted, or discovery is enabled as a side effect of rotation.
+  it("returns 200 and an exact empty playlist array for a valid public owner with no visible playlists", async () => {
+    const { app } = appFor({
+      resolveGuestResource: vi.fn(async () => ({
+        state: "public",
+        playlist: {
+          songs: [], currentlyPlaying: null, playedSongs: [],
+          user: {
+            id: 11, username: "display", guestUrl: "public-empty", venueName: null, theme: null,
+            allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: false,
+          },
+          allowGuestPlayOnDevice: false, allowRecentlyPlayedVisibility: false, playlists: [],
+        },
+      })),
+    });
+    const response = await request(app).get("/api/playlist/public-empty");
+    expect(response.status).toBe(200);
+    expect(response.body.playlists).toEqual([]);
+  });
+
+  it("changes publication with one owner-derived idempotent command and never persists capability material", async () => {
+    // Break caught: separate rotate/publish writes can leave a partially public mode or rotate twice on a replay.
     const { app, repository } = appFor();
     const headers = { Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example" };
-    const rotated = await request(app).post("/api/music/guest-capability/rotate").set(headers);
-    expect(rotated.status).toBe(200);
-    expect(rotated.body.capability).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    const persisted = repository.rotateGuestCapability.mock.calls[0][1];
+    const first = await request(app).post("/api/music/publication").set(headers)
+      .set("Idempotency-Key", "publication-command-1").send({ mode: "unlisted" });
+    const replay = await request(app).post("/api/music/publication").set(headers)
+      .set("Idempotency-Key", "publication-command-1").send({ mode: "unlisted" });
+    expect(first.status).toBe(200);
+    expect(first.body).toMatchObject({ version: "music-publication/v1", publication: { mode: "unlisted", publicSlug: "private-slug" } });
+    expect(first.body.capability).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(replay.body).toEqual(first.body);
+    expect(repository.setPublicationMode).toHaveBeenCalledTimes(1);
+    expect(repository.setPublicationMode.mock.calls[0][0]).toBe(11);
+    expect(repository.setPublicationMode.mock.calls[0][1]).toBe("unlisted");
+    const persisted = repository.setPublicationMode.mock.calls[0][2];
     expect(persisted).toMatch(/^[a-f0-9]{64}$/);
-    expect(persisted).not.toBe(rotated.body.capability);
+    expect(persisted).not.toBe(first.body.capability);
+    expect(repository.rotateGuestCapability).not.toHaveBeenCalled();
+    expect(repository.revokeGuestCapability).not.toHaveBeenCalled();
     expect(repository.setDiscoverable).not.toHaveBeenCalled();
 
-    expect((await request(app).post("/api/music/publication/publish").set(headers)).status).toBe(204);
-    expect((await request(app).post("/api/music/publication/unpublish").set(headers)).status).toBe(204);
-    expect(repository.setDiscoverable.mock.calls).toEqual([[11, true], [11, false]]);
+    const conflict = await request(app).post("/api/music/publication").set(headers)
+      .set("Idempotency-Key", "publication-command-1").send({ mode: "public" });
+    expect(conflict.status).toBe(409);
+    expect(conflict.body.error.code).toBe("IDEMPOTENCY_CONFLICT");
+  });
+
+  it("keeps publication idempotency isolated by owner principal", async () => {
+    const resolvePrincipal = vi.fn(async (token: string) => ({
+      musicUserId: token === "ddd.eee.fff" ? 22 : 11,
+      subject: token,
+      accountDocumentId: token === "ddd.eee.fff" ? "account-b" : "account-a",
+      sessionVersion: 3,
+    }));
+    const { app, repository } = appFor({}, { resolvePrincipal });
+    const write = (token: string) => request(app).post("/api/music/publication")
+      .set({ Authorization: `Bearer ${token}`, Origin: "https://explorers.example", "Idempotency-Key": "same-command-key" })
+      .send({ mode: "private" });
+    expect((await write("aaa.bbb.ccc")).status).toBe(200);
+    expect((await write("ddd.eee.fff")).status).toBe(200);
+    expect(repository.setPublicationMode.mock.calls.map((call: unknown[]) => call[0])).toEqual([11, 22]);
   });
 
   it("marks unlisted capability reads noindex and returns a distinct public-only 429", async () => {

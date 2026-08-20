@@ -46,6 +46,7 @@ import { validateUsername } from "../utils/usernameValidation";
 import useSetupStore from "../store/useSetupStore";
 import { calculateIsProfileComplete } from "../utils/setupStatusCalculations";
 import ProfileSetupAccordion from "../components/ProfileSetupAccordion";
+import { selectCompletedAccount } from "../features/music/musicIdentityCoordinator";
 
 // ✅ VISIBILITY FIX: Removed unused Account type - now using GraphQL data directly
 // type Account = { ... }
@@ -402,7 +403,9 @@ const Profile = memo(() => {
   }, [loading]);
 
   // ✅ VISIBILITY FIX: Get account data from GraphQL response, not separate axios call
-  const account = data?.usersPermissionsUser?.accounts?.[0];
+  const accountCandidates = data?.usersPermissionsUser?.accounts;
+  const selectedProfileAccount = selectCompletedAccount(accountCandidates);
+  const account = accountCandidates?.find((candidate: { documentId?: string }) => candidate.documentId === selectedProfileAccount?.documentId);
 
   // Prepare profile data for walkthrough — memoized to prevent new object on every render
   const profileData = useMemo(() => ({
@@ -443,11 +446,9 @@ const Profile = memo(() => {
 
   // Initialize uploaded states with server data when available
   useEffect(() => {
-    if (data?.usersPermissionsUser?.accounts?.[0]) {
-      const serverBackgroundUrl =
-        data.usersPermissionsUser.accounts[0].bg_picture?.url;
-      const serverProfileUrl =
-        data.usersPermissionsUser.accounts[0].profile_picture?.url;
+    if (account) {
+      const serverBackgroundUrl = account.bg_picture?.url;
+      const serverProfileUrl = account.profile_picture?.url;
 
       // Only set if we don't already have a local uploaded version
       if (serverBackgroundUrl && !uploadedBackground) {
@@ -457,7 +458,7 @@ const Profile = memo(() => {
         setUploadedImage(serverProfileUrl);
       }
     }
-  }, [data, uploadedBackground, uploadedImage]);
+  }, [account, uploadedBackground, uploadedImage]);
 
   const { isProfileComplete, isRecommendationsComplete, setSetupStatus } = useSetupStore();
 
@@ -1740,8 +1741,8 @@ const Profile = memo(() => {
                 style={{
                   backgroundImage: uploadedBackground
                     ? `url('${uploadedBackground}')`
-                    : data?.usersPermissionsUser?.accounts[0]?.bg_picture?.url
-                      ? `url('${data?.usersPermissionsUser?.accounts[0]?.bg_picture?.url}')`
+                    : account?.bg_picture?.url
+                      ? `url('${account.bg_picture.url}')`
                       : `url('${IMAGE_CONFIG.defaultImages.background}')`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
@@ -1770,7 +1771,7 @@ const Profile = memo(() => {
                     <img
                       src={
                         uploadedImage ||
-                        data?.usersPermissionsUser?.accounts?.[0]?.profile_picture?.url ||
+                        account?.profile_picture?.url ||
                         IMAGE_CONFIG.defaultImages.profile
                       }
                       alt={t('dashboard.profile.common.profile')}
@@ -1919,9 +1920,9 @@ const Profile = memo(() => {
               uploadedBackground={uploadedBackground}
               uploadedImage={uploadedImage}
               userData={{
-                bgPicture: data.usersPermissionsUser.accounts[0]?.bg_picture?.url,
+                bgPicture: account?.bg_picture?.url,
                 profilePicture:
-                  data.usersPermissionsUser.accounts[0]?.profile_picture?.url,
+                  account?.profile_picture?.url,
                 username: initialValues.username,
                 accountType: initialValues.accountType,
                 bio: initialValues.bio,

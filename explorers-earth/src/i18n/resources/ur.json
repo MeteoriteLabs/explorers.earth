@@ -340,8 +340,7 @@
     "signupSubtitle": "explorers کی خصوصیات سے لطف اندوز ہونے کے لیے سائن اپ کریں",
     "signUpWithGoogle": "Google کے ساتھ سائن اپ کریں",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "صارف نام",
@@ -1408,49 +1407,6 @@
       "earnedThisMonth": "اس مہینے کمایا",
       "passiveTitle": "سفارشات کو پاسیو ریوارڈز میں تبدیل کریں",
       "networkTitle": "اپنا نیٹ ورک بنائیں اور خودکار کمائیں"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "جیسے آپ دریافت کرتے ہیں ویسے سنیں",
-      "body": "دریافت صرف بصری نہیں ہے۔ آواز یاد، سیاق اور جذبات لے کر آتی ہے۔\n\nLocalTunes آپ کو جگہوں، سفر اور موڈ کے لیے ساؤنڈ ٹریکس جمع کرنے اور شیئر کرنے دیتا ہے — چاہے یہ سڑک پر دریافت شدہ موسیقی ہو یا وہ آوازیں جو آپ کے لیے کسی جگہ کی وضاحت کرتی ہیں۔\n\nآپ کے Explorer پروفائل سے بلا روک ٹوک منسلک۔",
-      "exploreButton": "Tunes دریافت کریں",
-      "featuresHeading": "طاقتور خصوصیات",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "ریئل ٹائم تعاون",
-          "description": "مہمانوں کو فوری طور پر اپنے پلے لسٹ میں گانے شامل کرنے دیں جبکہ آپ جو چلتا ہے اس پر مکمل کنٹرول برقرار رکھیں۔"
-        },
-        "qrCodeSharing": {
-          "title": "QR کوڈ شیئرنگ",
-          "description": "ایک سادہ QR کوڈ سکین کے ساتھ اپنا میوزک تجربہ شیئر کریں - کوئی ایپس یا ڈاؤن لوڈز درکار نہیں۔"
-        },
-        "youtubeIntegration": {
-          "title": "YouTube انضمام",
-          "description": "لاکھوں گانوں تک رسائی حاصل کرنے اور کامل ماحول بنانے کے لیے YouTube کے ساتھ بلا روک ٹوک انضمام کریں۔"
-        },
-        "voteLikeSystem": {
-          "title": "ووٹ اور لائک سسٹم",
-          "description": "مہمان اپنے پسندیدہ گانوں کے لیے ووٹ دے سکتے ہیں تاکہ ریئل ٹائم میں پلے لسٹ قطار کو متاثر کریں۔"
-        },
-        "silentParties": {
-          "title": "خاموش پارٹیاں",
-          "description": "منفرد خاموش پارٹیاں منعقد کریں جہاں ہر کوئی اپنے ہیڈ فون کے ذریعے سنتا ہے۔"
-        },
-        "karaokeReady": {
-          "title": "کریوکی تیار",
-          "description": "تعاون پر مبنی پلے لسٹ اور ریئل ٹائم گانا درخواستوں کے ساتھ کریوکی راتوں کے لیے بہترین۔"
-        }
-      },
-      "venueHeading": "ہر وینو کے لیے کامل",
-      "venues": {
-        "barsPubs": "بارز اور پبز",
-        "restaurants": "ریسٹورنٹس",
-        "coffeeShops": "کافی شاپس",
-        "eventsWeddings": "ایونٹس اور شادیاں",
-        "retailStores": "ریٹیل اسٹورز",
-        "gymsFitness": "جمز اور فٹنس"
-      },
-      "closingStatement": "Tunes دریافت کرنا <strong>مفت</strong> ہے، اور ادائیگی والی خصوصیات کے لیے آپ بعد میں اپ گریڈ کر سکتے ہیں۔"
     },
     "whoIsFor": {
       "headline": "ان لوگوں کے لیے بنایا گیا ہے جن کا ذائقہ دوسروں کی مدد کرتا ہے۔",

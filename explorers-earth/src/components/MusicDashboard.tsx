@@ -34,14 +34,14 @@ function WorkspaceDialog({
   const descriptionId = useId();
   const close = () => {
     onClose();
-    opener.current?.focus();
   };
 
   useEffect(() => {
     const root = dialog.current;
     const first = root?.querySelector<HTMLElement>("[data-autofocus]");
     first?.focus();
-  }, []);
+    return () => { opener.current?.focus(); };
+  }, [opener]);
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Escape") {
@@ -144,6 +144,7 @@ function SharingDialog({ data, onClose, opener }: { data: TunesDashboardData; on
       setCapability(result.capability);
       await data.refetch();
       toast.success(mode === "public" ? "Music is public." : mode === "unlisted" ? "Private link created." : "Music is private.");
+      if (mode !== "unlisted") onClose();
     } catch {
       toast.error("Music is temporarily unavailable.");
     } finally {
@@ -163,11 +164,11 @@ function SharingDialog({ data, onClose, opener }: { data: TunesDashboardData; on
       </fieldset>
       <div className="mt-4 rounded-xl bg-dashboard-muted p-4">
         <p className="text-base text-dashboard-light">{publicationCopy[mode]}</p>
-        {mode === "unlisted" && !shareLink && <p className="mt-2 text-xs text-dashboard-muted">Save to create a new private link. Creating another link replaces the previous one.</p>}
+        {mode === "unlisted" && !shareLink && <p className="mt-2 text-base text-dashboard-muted">Save to create a new private link. Creating another link replaces the previous one.</p>}
         {shareLink && (
           <div className="mt-3 space-y-2">
             <div className="flex items-center gap-2">
-              <input readOnly aria-label="Music share link" value={shareLink} className="min-h-11 min-w-0 flex-1 rounded-xl border border-dashboard bg-dashboard-bg px-3 text-xs text-dashboard" />
+              <input readOnly aria-label="Music share link" value={shareLink} className="min-h-11 min-w-0 flex-1 rounded-xl border border-dashboard bg-dashboard-bg px-3 text-base text-dashboard" />
               <button type="button" aria-label="Copy Music link" onClick={() => void navigator.clipboard.writeText(shareLink)} className={`${buttonClass} bg-dashboard-bg text-dashboard`}><Copy className="h-4 w-4" /></button>
             </div>
             <a href={shareLink} target="_blank" rel="noopener noreferrer" aria-label="Preview public Music page" className={`${buttonClass} inline-flex items-center border border-dashboard bg-dashboard-bg text-dashboard`}>Preview</a>

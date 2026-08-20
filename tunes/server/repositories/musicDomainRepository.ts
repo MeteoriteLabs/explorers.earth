@@ -5,6 +5,7 @@ type QueryPool = Pick<Pool, "query" | "connect">;
 
 const QUEUE_MUTATION_LOCK = 0x4d51;
 const SAVED_PLAYLIST_LOCK = 0x4d53;
+const PUBLICATION_LOCK = 0x4d50;
 
 export class MusicDomainRepository {
   constructor(private readonly pool: QueryPool) {}
@@ -271,6 +272,29 @@ export class MusicDomainRepository {
     )).rows[0];
   }
 
+  async setPublicationMode(
+    musicUserId: number,
+    mode: "private" | "unlisted" | "public",
+    capabilityHash?: string,
+  ): Promise<{ mode: "private" | "unlisted" | "public"; publicSlug: string } | undefined> {
+    if (mode === "unlisted" && !/^[a-f0-9]{64}$/.test(capabilityHash ?? "")) {
+      throw new Error("A valid capability hash is required for unlisted publication.");
+    }
+    return this.withAdvisoryLock(PUBLICATION_LOCK, musicUserId, async (client) => {
+      const row = (await client.query(
+        `UPDATE users
+            SET guest_discoverable=($2='public'),
+                guest_capability_hash=CASE WHEN $2='unlisted' THEN $3 ELSE guest_capability_hash END,
+                guest_capability_rotated_at=CASE WHEN $2='unlisted' THEN now() ELSE guest_capability_rotated_at END,
+                guest_capability_revoked_at=CASE WHEN $2='unlisted' THEN NULL ELSE now() END
+          WHERE id=$1
+          RETURNING guest_url`,
+        [musicUserId, mode, capabilityHash ?? null],
+      )).rows[0];
+      return row ? { mode, publicSlug: String(row.guest_url ?? "") } : undefined;
+    });
+  }
+
   async revokeGuestCapability(musicUserId: number): Promise<void> {
     await this.pool.query("UPDATE users SET guest_capability_revoked_at=now(),guest_discoverable=false WHERE id=$1", [musicUserId]);
   }
@@ -331,9 +355,8 @@ export class MusicDomainRepository {
     const state = row.identity_status === "suspended" ? "suspended"
       : row.identity_status === "pending_deletion" ? "pending_deletion"
         : row.guest_capability_revoked_at && capabilityMatch ? "revoked"
-          : !(row.has_visible_playlist ?? row.playlist_id) ? "private"
-            : capabilityMatch ? "unlisted"
-              : row.guest_discoverable ? "public" : "private";
+          : capabilityMatch ? "unlisted"
+            : row.guest_discoverable ? "public" : "private";
     const publicPlaylist = {
       songs: row.songs ?? [],
       user: {
@@ -356,7 +379,7 @@ export class MusicDomainRepository {
     return {
       state,
       noindex: state === "unlisted",
-      playlist: (row.has_visible_playlist ?? row.playlist_id) ? publicPlaylist : undefined,
+      playlist: state === "public" || (state === "unlisted" && (row.has_visible_playlist ?? row.playlist_id)) ? publicPlaylist : undefined,
     };
   }
 

@@ -340,8 +340,7 @@
     "signupSubtitle": "explorers ની સુવિધાઓનો આનંદ લેવા માટે સાઇન અપ કરો",
     "signUpWithGoogle": "Google સાથે સાઇન અપ કરો",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "વપરાશકર્તા નામ",
@@ -1408,49 +1407,6 @@
       "earnedThisMonth": "આ મહિને કમાયું",
       "passiveTitle": "ભલામણોને પેસિવ રિવોર્ડ્સમાં રૂપાંતરિત કરો",
       "networkTitle": "તમારું નેટવર્ક બનાવો અને ઓટોમેટિક કમાઓ"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "તમે એક્સપ્લોર કરો છો ત્યારે સાંભળો",
-      "body": "એક્સપ્લોરેશન ફક્ત વિઝ્યુઅલ નથી. અવાજ મેમરી, સંદર્ભ અને ભાવના લઈ જાય છે.\n\nTunes તમને સ્થાનો, પ્રવાસો અને મૂડ માટે સાઉન્ડટ્રેક એકત્રિત કરવા અને શેર કરવાની મંજૂરી આપે છે — તે રસ્તામાં મળેલું સંગીત હોય અથવા તમારા માટે સ્થાન વ્યાખ્યાયિત કરતા અવાજો હોય.\n\nતમારા Explorer પ્રોફાઇલ સાથે સરળતાથી જોડાયેલું.",
-      "exploreButton": "Tunes એક્સપ્લોર કરો",
-      "featuresHeading": "શક્તિશાળી સુવિધાઓ",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "રિયલ-ટાઇમ સહયોગ",
-          "description": "મહેમાનોને તમારી પ્લેલિસ્ટમાં તરત જ ગીતો ઉમેરવા દો જ્યારે તમે જે વગાડવામાં આવે છે તેના પર સંપૂર્ણ નિયંત્રણ જાળવો છો."
-        },
-        "qrCodeSharing": {
-          "title": "QR કોડ શેરિંગ",
-          "description": "સરળ QR કોડ સ્કેન સાથે તમારો સંગીત અનુભવ શેર કરો — કોઈ એપ્સ અથવા ડાઉનલોડની જરૂર નથી."
-        },
-        "youtubeIntegration": {
-          "title": "YouTube એકીકરણ",
-          "description": "લાખો ગીતોની પ્રવેશ મેળવવા અને સંપૂર્ણ વાતાવરણ બનાવવા માટે YouTube સાથે સરળતાથી એકીકૃત કરો."
-        },
-        "voteLikeSystem": {
-          "title": "વોટ અને લાઇક સિસ્ટમ",
-          "description": "મહેમાનો તેમના પ્રિય ગીતો માટે વોટ આપી શકે છે રિયલ-ટાઇમમાં પ્લેલિસ્ટ કતારને અસર કરવા માટે."
-        },
-        "silentParties": {
-          "title": "સાયલન્ટ પાર્ટીઓ",
-          "description": "અનન્ય સાયલન્ટ પાર્ટીઓ આયોજિત કરો જ્યાં દરેક વ્યક્તિ તેમના પોતાના હેડફોન દ્વારા સાંભળે છે."
-        },
-        "karaokeReady": {
-          "title": "કારાઓકે તૈયાર",
-          "description": "સહયોગી પ્લેલિસ્ટ અને રિયલ-ટાઇમ ગીત વિનંતીઓ સાથે કારાઓકે રાત્રિ માટે સંપૂર્ણ."
-        }
-      },
-      "venueHeading": "દરેક સ્થાન માટે સંપૂર્ણ",
-      "venues": {
-        "barsPubs": "બાર અને પબ",
-        "restaurants": "રેસ્ટોરન્ટ",
-        "coffeeShops": "કોફી શોપ",
-        "eventsWeddings": "ઇવેન્ટ અને લગ્ન",
-        "retailStores": "રિટેલ સ્ટોર",
-        "gymsFitness": "જિમ અને ફિટનેસ"
-      },
-      "closingStatement": "Tunes એક્સપ્લોર કરવા માટે <strong>મફત</strong> છે, અને પેઇડ સુવિધાઓ માટે તમે પછી અપગ્રેડ કરી શકો છો."
     },
     "whoIsFor": {
       "headline": "એવા લોકો માટે બનાવેલ છે જેમનો સ્વાદ અન્ય લોકોને મદદ કરે છે.",

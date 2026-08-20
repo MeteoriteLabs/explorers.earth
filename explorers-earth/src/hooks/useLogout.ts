@@ -3,6 +3,9 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useApolloClient } from "@apollo/client";
 import useAuthStore from "../store/store";
+import { closeLocalMusicSession } from "../features/music/musicSessionBoundary";
+import { queryClient } from "../lib/queryClient";
+import { clearAllMusicWorkspaceQueries } from "./useTunesDashboard";
 
 /**
  * Shared logout flow used by the header and the sidebar account menu.
@@ -18,6 +21,7 @@ export const useLogout = () => {
 
   return async () => {
     logout();
+    closeLocalMusicSession();
 
     // Clear all explorers storage
     localStorage.removeItem("auth-storage");
@@ -30,7 +34,10 @@ export const useLogout = () => {
     // Reset the Apollo cache so the next login/account starts from server truth
     // (prevents a stale `accounts` read from surviving a same-tab account switch).
     try {
-      await client.clearStore();
+      await Promise.all([
+        client.clearStore(),
+        clearAllMusicWorkspaceQueries(queryClient),
+      ]);
     } catch (err) {
       console.warn("Failed to clear Apollo cache on logout:", err);
     }

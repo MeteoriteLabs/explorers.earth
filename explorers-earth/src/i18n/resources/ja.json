@@ -340,8 +340,7 @@
     "signupSubtitle": "explorersの機能をお楽しみください",
     "signUpWithGoogle": "Googleでサインアップ",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "ユーザー名",
@@ -1408,49 +1407,6 @@
       "earnedThisMonth": "今月の収益",
       "passiveTitle": "推奨事項をパッシブな報酬に変換",
       "networkTitle": "ネットワークを構築し、自動的に収益化"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "探索しながら聞く",
-      "body": "探索は視覚的なものだけではありません。音は記憶、文脈、感情を運びます。\n\nTunesは、場所、旅、気分のためのサウンドトラックを収集して共有することを可能にします — 道で発見した音楽であろうと、場所を定義する音であろうと。\n\nあなたのExplorerプロフィールにシームレスに接続されています。",
-      "exploreButton": "Tunesを探索",
-      "featuresHeading": "強力な機能",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "リアルタイムコラボレーション",
-          "description": "ゲストがプレイリストに即座に曲を追加できるようにしながら、再生内容を完全にコントロールできます。"
-        },
-        "qrCodeSharing": {
-          "title": "QRコード共有",
-          "description": "シンプルなQRコードスキャンで音楽体験を共有 — アプリやダウンロードは不要です。"
-        },
-        "youtubeIntegration": {
-          "title": "YouTube統合",
-          "description": "YouTubeとシームレスに統合して、数百万曲にアクセスし、完璧な雰囲気を作り出します。"
-        },
-        "voteLikeSystem": {
-          "title": "投票・いいねシステム",
-          "description": "ゲストはお気に入りの曲に投票して、プレイリストのキューをリアルタイムで影響させることができます。"
-        },
-        "silentParties": {
-          "title": "サイレントパーティー",
-          "description": "全員が自分のヘッドフォンで聞くユニークなサイレントパーティーを開催します。"
-        },
-        "karaokeReady": {
-          "title": "カラオケ対応",
-          "description": "コラボレーティブなプレイリストとリアルタイムの曲リクエストでカラオケの夜に最適です。"
-        }
-      },
-      "venueHeading": "あらゆる場所に最適",
-      "venues": {
-        "barsPubs": "バー＆パブ",
-        "restaurants": "レストラン",
-        "coffeeShops": "コーヒーショップ",
-        "eventsWeddings": "イベント＆結婚式",
-        "retailStores": "小売店",
-        "gymsFitness": "ジム＆フィットネス"
-      },
-      "closingStatement": "Tunesは<strong>無料</strong>で探索でき、有料機能については後でアップグレードできます。"
     },
     "whoIsFor": {
       "headline": "センスが他の人を助ける人々のために作られました。",

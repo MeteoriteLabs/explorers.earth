@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MusicPageContent } from "../Music";
+import * as MusicPageModule from "../Music";
 
 vi.mock("../../components/SEO", () => ({ default: () => null }));
 vi.mock("../../components/MusicDashboard", () => ({ default: () => <div data-testid="music-content" /> }));
@@ -11,6 +12,17 @@ const data: any = {
 };
 
 describe("Music page state hierarchy", () => {
+  it("treats eligibility errors and partial/cache-and-network results as unknown until authoritative recovery", () => {
+    const select = (MusicPageModule as any).onboardingFromEligibility;
+    expect(typeof select).toBe("function");
+    const complete = { documentId: "account-ready", Account_Name: "Ready", Account_Type: "Personal", mobile_number: "+10000000001" };
+    expect(select({ loading: false, error: new Error("network"), data: undefined })).toBe("unknown");
+    expect(select({ loading: false, error: new Error("partial"), data: { usersPermissionsUser: { accounts: [{ ...complete, mobile_number: "" }] } } })).toBe("unknown");
+    expect(select({ loading: false, error: null, data: { usersPermissionsUser: null } })).toBe("unknown");
+    expect(select({ loading: false, error: null, data: { usersPermissionsUser: { accounts: [] } } })).toBe("incomplete");
+    expect(select({ loading: false, error: null, data: { usersPermissionsUser: { accounts: [complete] } } })).toBe("complete");
+  });
+
   it("keeps the stable Music title and exactly one polite inline setup status immediately below it", () => {
     const { container } = render(<MusicPageContent authenticated onboarding="complete" data={data} onAction={vi.fn()} />);
     const title = screen.getByRole("heading", { name: "Music", level: 1 });
@@ -30,6 +42,23 @@ describe("Music page state hierarchy", () => {
     render(<MusicPageContent authenticated onboarding="complete" data={{ ...data, identityStatus: "retryable", isLoading: false }} onAction={vi.fn()} />);
     expect(screen.getByRole("status")).toHaveTextContent("Music is taking longer than expected. Your Explorers account is ready.");
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+  });
+
+  it.each(["suspended", "pending_deletion"] as const)("hides cached workspace content after terminal %s authority", (identityStatus) => {
+    render(<MusicPageContent
+      authenticated
+      onboarding="complete"
+      data={{
+        ...data,
+        identityStatus,
+        isLoading: false,
+        playlists: [{ id: 7, name: "Cached private playlist", description: null, isVisibleToGuests: false, songs: [] }],
+        dashboard: { songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private", publicSlug: "public-slug" } },
+      }}
+      onAction={vi.fn()}
+    />);
+    expect(screen.queryByText("Cached private playlist")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("music-content")).not.toBeInTheDocument();
   });
 
   it("renders healthy content silently and preserves read-only capability", () => {

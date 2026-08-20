@@ -73,7 +73,8 @@ describe("forbidden Music authority search contract", () => {
     expect(credential).not.toMatch(/\bprompt\s*\(/);
     const production = client.map((file) => readFileSync(file, "utf8")).join("\n");
     expect(production).toMatch(/<GuestCapabilityImport/);
-    expect(production).toMatch(/\/api\/music\/guest-capability\/rotate/);
+    expect(production).not.toMatch(/\/api\/music\/guest-capability\/rotate/);
+    expect(production).toMatch(/apiRequest\(\s*[`'"]POST[`'"],\s*[`'"]\/api\/music\/publication[`'"]/);
   });
 
   it("keeps owner dashboard reads off the public publication URL and retires profile fetch UX explicitly", () => {
@@ -82,6 +83,8 @@ describe("forbidden Music authority search contract", () => {
     expect(dashboard).not.toMatch(/[`'"]\/api\/playlist\/\$\{user(?:\?\.)?\.guestUrl\}/);
     expect(dashboard).toMatch(/\/api\/music\/dashboard/);
     expect(dashboard).toMatch(/ensureShareCapability/);
+    const publication = readFileSync(resolve(root, "tunes/client/src/lib/musicPublicationClient.ts"), "utf8");
+    expect(publication).toMatch(/Idempotency-Key/);
     expect(dashboard).toMatch(/guestCapabilityHandoff\(capability, user\.guestUrl\)/);
     expect(profile).not.toMatch(/\/api\/user\/profile/);
   });

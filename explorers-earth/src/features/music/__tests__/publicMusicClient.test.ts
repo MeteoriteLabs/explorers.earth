@@ -62,10 +62,12 @@ describe("public Music client", () => {
   it("contains rate limits with parsed or default retry durations", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(new Response(null, { status: 429, headers: { "retry-after": "17" } }))
-      .mockResolvedValueOnce(new Response(null, { status: 429, headers: { "retry-after": "later" } }));
+      .mockResolvedValueOnce(new Response(null, { status: 429, headers: { "retry-after": "later" } }))
+      .mockResolvedValueOnce(new Response(null, { status: 429 }));
     vi.stubGlobal("fetch", fetcher);
     const client = createPublicMusicClient("https://music.example");
     await expect(client.load("public_slug-123")).rejects.toMatchObject({ code: "RATE_LIMITED", retryAfterSeconds: 17 });
+    await expect(client.load("public_slug-123")).rejects.toMatchObject({ code: "RATE_LIMITED", retryAfterSeconds: 60 });
     await expect(client.load("public_slug-123")).rejects.toMatchObject({ code: "RATE_LIMITED", retryAfterSeconds: 60 });
   });
 
@@ -74,5 +76,16 @@ describe("public Music client", () => {
     await expect(createPublicMusicClient("http://localhost:5174/").load("public_slug-123"))
       .rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE" });
     expect(() => createPublicMusicClient("http://music.example")).toThrow("must use HTTPS");
+  });
+
+  it("keys an acquisition to its caller lifecycle and forwards the AbortSignal to fetch", async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ songs: [], playlists: [] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetcher);
+    const controller = new AbortController();
+    await createPublicMusicClient("https://music.example").load("public_slug-123", "a".repeat(43), controller.signal);
+    expect(fetcher).toHaveBeenCalledWith("https://music.example/api/playlist/public_slug-123", {
+      headers: { Accept: "application/json", "X-Music-Guest-Capability": "a".repeat(43) },
+      signal: controller.signal,
+    });
   });
 });

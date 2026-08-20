@@ -122,8 +122,8 @@ describe("C5 browser credential adapter", () => {
   it.each([
     "/api/music/identity/current?ignored=1",
     "/api/playlists", "/api/playlist/songs/2", "/api/playlist/currently-playing",
-    "/api/playlist/history", "/api/playlist/import-youtube", "/api/music/guest-capability/rotate",
-    "/api/music/publication/publish", "/api/music/paid/quota", "/api/music/entitlement", "/api/user/profile",
+    "/api/playlist/history", "/api/playlist/import-youtube", "/api/music/publication",
+    "/api/music/paid/quota", "/api/music/entitlement", "/api/user/profile",
     "/api/system-settings/app", "/api/youtube/search", "/api/instagram/profile",
     "/api/payments/order", "/api/subscriptions/change", "/api/gemini/generate",
     "/api/email/send", "/api/seo#fragment",
@@ -133,6 +133,8 @@ describe("C5 browser credential adapter", () => {
 
   it("does not attach owner authority to public or retired unknown routes", () => {
     expect(isMusicOwnerRequest("/api/playlist/public-slug")).toBe(false);
+    expect(isMusicOwnerRequest("/api/music/guest-capability/rotate")).toBe(false);
+    expect(isMusicOwnerRequest("/api/music/publication/publish")).toBe(false);
     expect(isMusicOwnerRequest("/api/unknown")).toBe(false);
   });
 

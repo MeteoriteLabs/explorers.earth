@@ -3,6 +3,7 @@ import {
   createMusicIdentityCoordinator,
   selectCompletedAccount,
 } from "../musicIdentityCoordinator";
+import * as identityModule from "../musicIdentityCoordinator";
 
 const account = {
   documentId: "account-document-7",
@@ -30,6 +31,18 @@ describe("automatic Music identity coordinator", () => {
     expect(selectCompletedAccount([{ ...account, Account_Type: 7 }])).toBeUndefined();
     expect(selectCompletedAccount([{ ...account, mobile_number: " " }])).toBeUndefined();
     expect(selectCompletedAccount([{ ...account, mobile_number: 7 }])).toBeUndefined();
+  });
+
+  it("returns one authoritative shared Account-selection state for reordered, incomplete, ambiguous, and partial results", () => {
+    const select = (identityModule as any).selectExplorerAccountState;
+    expect(typeof select).toBe("function");
+    const incomplete = { ...account, documentId: "account-incomplete", mobile_number: "" };
+    expect(select([incomplete, account], { authoritative: true })).toEqual({ kind: "selected", account: { documentId: account.documentId } });
+    expect(select([account, incomplete], { authoritative: true })).toEqual({ kind: "selected", account: { documentId: account.documentId } });
+    expect(select([account, { ...account, documentId: "account-document-8" }], { authoritative: true })).toEqual({ kind: "ambiguous" });
+    expect(select([], { authoritative: true })).toEqual({ kind: "incomplete" });
+    expect(select(undefined, { authoritative: false })).toEqual({ kind: "unknown" });
+    expect(select([incomplete], { authoritative: false })).toEqual({ kind: "unknown" });
   });
 
   it.each(["google", "email"] as const)("uses the same bodyless automatic path after verified %s auth and onboarding", async (provider) => {
@@ -126,6 +139,17 @@ describe("automatic Music identity coordinator", () => {
     const ensureIdentity = vi.fn().mockRejectedValue(Object.assign(new Error("safe"), { upstreamCode }));
     const coordinator = createMusicIdentityCoordinator({ ensureIdentity });
     await coordinator.reconcile({ provider: "email", authenticated: true, verified: true, userDocumentId: "user-1", account: { documentId: "account-1" } }).catch(() => undefined);
+    expect(coordinator.getSnapshot()).toBe(expected);
+  });
+
+  it.each([
+    ["IDENTITY_PENDING_DELETION", "pending_deletion"],
+    ["IDENTITY_TOMBSTONED", "pending_deletion"],
+    ["IDENTITY_SUSPENDED", "suspended"],
+    ["AUTH_REQUIRED", "auth_required"],
+  ] as const)("accepts terminal workspace failure %s after readiness and hides readiness as %s", (upstreamCode, expected) => {
+    const coordinator = createMusicIdentityCoordinator({ ensureIdentity: vi.fn().mockResolvedValue(undefined) });
+    coordinator.reportFailure(Object.assign(new Error("safe"), { status: 403, upstreamCode }));
     expect(coordinator.getSnapshot()).toBe(expected);
   });
 

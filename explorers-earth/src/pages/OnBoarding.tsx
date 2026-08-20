@@ -48,6 +48,8 @@ import {
   endFinalize,
 } from "./onboardingFinalizeLock";
 import { useQuery as useReactQuery } from "@tanstack/react-query";
+import { selectExplorerAccountState } from "../features/music/musicIdentityCoordinator";
+import { closeLocalMusicSession } from "../features/music/musicSessionBoundary";
 
 const onboardingQuery = gql`
   mutation createAccount($data: AccountInput!) {
@@ -86,6 +88,7 @@ const checkAccountQuery = gql`
   query CheckAccount($documentId: ID!) {
     usersPermissionsUser(documentId: $documentId) {
       accounts {
+        documentId
         Account_Name
         Account_Type
         mobile_number
@@ -409,6 +412,7 @@ const OnBoarding = () => {
   const handleLogout = async () => {
     setShowLogoutModal(false);
     logout();
+    closeLocalMusicSession();
  
     // Clear all explorers storage
     localStorage.removeItem("auth-storage");
@@ -632,13 +636,10 @@ const OnBoarding = () => {
   });
 
   // Check if user already has a complete account
-  const existingAccount =
-    existingAccountData?.usersPermissionsUser?.accounts?.[0];
-  const hasCompleteAccount =
-    existingAccount &&
-    existingAccount.Account_Name &&
-    existingAccount.Account_Type &&
-    existingAccount.mobile_number;
+  const existingAccountSelection = selectExplorerAccountState(existingAccountData?.usersPermissionsUser?.accounts, {
+    authoritative: !accountCheckLoading && Array.isArray(existingAccountData?.usersPermissionsUser?.accounts),
+  });
+  const hasCompleteAccount = existingAccountSelection.kind === "selected" || existingAccountSelection.kind === "ambiguous";
 
   // Redirect if account already exists and is complete
   useEffect(() => {
@@ -1043,7 +1044,7 @@ const OnBoarding = () => {
       }
 
       // Don't blind-create when we couldn't verify the account doesn't already
-      // exist — that would produce a duplicate account (accounts[0] is unordered,
+      // exist — that would produce a duplicate account (the Account relation is unordered,
       // so the incomplete one can win and bounce the user back to onboarding).
       if (decideAccountAction(accountDocId, existenceCheckSucceeded) === "abort") {
         toast.error(

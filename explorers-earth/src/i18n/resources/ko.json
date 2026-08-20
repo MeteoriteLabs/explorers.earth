@@ -340,8 +340,7 @@
     "signupSubtitle": "explorers의 기능을 즐기려면 가입하세요",
     "signUpWithGoogle": "Google로 가입",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "사용자명",
@@ -1408,49 +1407,6 @@
       "earnedThisMonth": "이번 달 수익",
       "passiveTitle": "추천을 수동적 보상으로 전환",
       "networkTitle": "네트워크를 구축하고 자동으로 수익 창출"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "탐험하는 동안 듣기",
-      "body": "탐험은 시각적이기만 한 것이 아닙니다. 소리는 기억, 맥락, 감정을 담고 있습니다.\n\nTunes는 장소, 여행, 분위기를 위한 사운드트랙을 수집하고 공유할 수 있게 해줍니다 — 도로에서 발견한 음악이든, 당신에게 장소를 정의하는 소리든.\n\n당신의 Explorer 프로필과 완벽하게 연결됩니다.",
-      "exploreButton": "Tunes 탐험하기",
-      "featuresHeading": "강력한 기능",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "실시간 협업",
-          "description": "게스트가 재생 목록에 즉시 노래를 추가할 수 있도록 하면서 재생되는 내용을 완전히 제어할 수 있습니다."
-        },
-        "qrCodeSharing": {
-          "title": "QR 코드 공유",
-          "description": "간단한 QR 코드 스캔으로 음악 경험을 공유하세요 — 앱이나 다운로드가 필요 없습니다."
-        },
-        "youtubeIntegration": {
-          "title": "YouTube 통합",
-          "description": "YouTube와 완벽하게 통합하여 수백만 곡에 액세스하고 완벽한 분위기를 만드세요."
-        },
-        "voteLikeSystem": {
-          "title": "투표 및 좋아요 시스템",
-          "description": "게스트가 좋아하는 노래에 투표하여 재생 목록 대기열을 실시간으로 영향을 줄 수 있습니다."
-        },
-        "silentParties": {
-          "title": "사일런트 파티",
-          "description": "모두가 자신의 헤드폰을 통해 듣는 독특한 사일런트 파티를 주최하세요."
-        },
-        "karaokeReady": {
-          "title": "노래방 준비 완료",
-          "description": "협업 재생 목록과 실시간 노래 요청으로 노래방 밤에 완벽합니다."
-        }
-      },
-      "venueHeading": "모든 장소에 완벽",
-      "venues": {
-        "barsPubs": "바 및 펍",
-        "restaurants": "레스토랑",
-        "coffeeShops": "커피숍",
-        "eventsWeddings": "이벤트 및 결혼식",
-        "retailStores": "소매점",
-        "gymsFitness": "체육관 및 피트니스"
-      },
-      "closingStatement": "Tunes는 <strong>무료</strong>로 탐험할 수 있으며, 유료 기능은 나중에 업그레이드할 수 있습니다."
     },
     "whoIsFor": {
       "headline": "다른 사람에게 도움이 되는 취향을 가진 사람들을 위해 만들어졌습니다.",

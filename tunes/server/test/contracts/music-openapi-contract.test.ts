@@ -88,6 +88,13 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.Dashboard.required).toContain("publication");
     expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.components.schemas.Dashboard.properties.publication)).toContain("publicSlug");
     expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.components.schemas.Dashboard.properties.publication)).not.toMatch(/capability|secret|hash/i);
+    expect(MUSIC_OPENAPI_DOCUMENT.paths).toHaveProperty("/api/music/publication");
+    expect(MUSIC_OPENAPI_DOCUMENT.paths).not.toHaveProperty("/api/music/publication/{action}");
+    expect(MUSIC_OPENAPI_DOCUMENT.paths).not.toHaveProperty("/api/music/guest-capability/rotate");
+    expect(MUSIC_OPENAPI_DOCUMENT.paths).not.toHaveProperty("/api/music/guest-capability/revoke");
+    expect(MUSIC_OPENAPI_DOCUMENT.paths["/api/music/publication"].post.parameters)
+      .toContainEqual(expect.objectContaining({ name: "Idempotency-Key", in: "header", required: true }));
+    expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.paths["/api/playlist/{guestUrl}"].get).toLowerCase()).not.toContain("zero-visible resources share the same safe 404");
   });
 
   it("validates mounted success DTOs for every product family against resolved 3.1 schemas", async () => {
@@ -133,6 +140,7 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       addSong: async () => queueRow, setPlaying: async (_owner: number, songId: number | null) => songId === null ? null : queueRow,
       updateSongPosition: async () => queueRow, removeSong: async () => true, removeSongs: async () => 1, clearHistory: async () => 1,
       rotateGuestCapability: async () => ({}), revokeGuestCapability: async () => undefined, setDiscoverable: async () => undefined,
+      setPublicationMode: async (_owner: number, mode: "private" | "unlisted" | "public") => ({ mode, publicSlug: "public-owner" }),
       resolveEntitlement: async () => ({ state: "included" as const, sourceUpdatedAt: addedAt }),
       resolveGuestResource: async () => ({ state: "public", noindex: false, playlist: publicPlaylist }),
       resolveGuestSocketAuthority: async () => ({ musicUserId: 11, active: true as const, allowSongRequests: true }),
@@ -171,7 +179,7 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       ["post", "/api/youtube/video-from-url", "/api/youtube/video-from-url", 200, { url: "https://youtu.be/abcdefghijk" }, ownerWrite],
       ["post", "/api/playlist/{guestUrl}/youtube/search", "/api/playlist/public-owner/youtube/search", 200, { query: "video" }, guestWrite],
       ["post", "/api/playlist/{guestUrl}/youtube/video-from-url", "/api/playlist/public-owner/youtube/video-from-url", 200, { url: "https://youtu.be/abcdefghijk" }, guestWrite],
-      ["post", "/api/music/guest-capability/rotate", "/api/music/guest-capability/rotate", 200, undefined, ownerWrite],
+      ["post", "/api/music/publication", "/api/music/publication", 200, { mode: "public" }, { ...ownerWrite, "Idempotency-Key": "openapi-publication-1" }],
       ["get", "/api/music/entitlement", "/api/music/entitlement", 200, undefined, ownerRead],
       ["get", "/api/playlist/{guestUrl}", "/api/playlist/public-owner", 200, undefined, {}],
       ["post", "/api/playlist/{guestUrl}/requests", "/api/playlist/public-owner/requests", 201, songInput, guestWrite],
@@ -199,8 +207,6 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       ["delete", "/api/playlist/songs/bulk", "/api/playlist/songs/bulk", { songIds: [21] }],
       ["delete", "/api/playlist/songs/{songId}", "/api/playlist/songs/21", undefined],
       ["delete", "/api/playlist/history", "/api/playlist/history", undefined],
-      ["post", "/api/music/guest-capability/revoke", "/api/music/guest-capability/revoke", undefined],
-      ["post", "/api/music/publication/{action}", "/api/music/publication/publish", undefined],
     ] as const;
     for (const [method, documentedPath, actualPath, requestBody] of noContentCases) {
       let pending = request(app)[method](actualPath).set(ownerWrite);

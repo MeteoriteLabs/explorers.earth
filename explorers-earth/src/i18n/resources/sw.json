@@ -340,8 +340,7 @@
     "signupSubtitle": "Jisajili ili kufurahia vipengele vya explorers",
     "signUpWithGoogle": "Jisajili na Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Jina la Mtumiaji",
@@ -1408,49 +1407,6 @@
       "earnedThisMonth": "Imepatikana mwezi huu",
       "passiveTitle": "Badilisha mapendekezo kuwa malipo ya kujitegemea",
       "networkTitle": "Jenga mtandao wako na pata kiotomatiki"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Sikiliza wakati unachunguza",
-      "body": "Uchunguzi sio wa kuona tu. Sauti hubeba kumbukumbu, muktadha na hisia.\n\nTunes inakuruhusu kukusanya na kushiriki sauti za maeneo, safari na hali — iwe ni muziki uliogunduliwa njiani au sauti zinazofafanua eneo kwako.\n\nImeunganishwa kwa urahisi na wasifu wako wa Explorer.",
-      "exploreButton": "Chunguza Tunes",
-      "featuresHeading": "Vipengele Vikuu",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Ushirikiano wa Wakati Halisi",
-          "description": "Wacha wageni waongeze nyimbo kwenye orodha yako ya kucheza mara moja huku ukidumisha udhibiti kamili wa kinachochezwa."
-        },
-        "qrCodeSharing": {
-          "title": "Kushiriki Msimbo wa QR",
-          "description": "Shiriki uzoefu wako wa muziki kwa kuchanganua msimbo wa QR kwa urahisi — hakuna programu au upakuaji unahitajika."
-        },
-        "youtubeIntegration": {
-          "title": "Ujumuishaji wa YouTube",
-          "description": "Jumuisha kwa urahisi na YouTube ili kufikia mamilioni ya nyimbo na kuunda hali kamili."
-        },
-        "voteLikeSystem": {
-          "title": "Mfumo wa Kupiga Kura na Kupenda",
-          "description": "Wageni wanaweza kupiga kura kwa nyimbo zao za kupenda ili kuathiri foleni ya orodha ya kucheza kwa wakati halisi."
-        },
-        "silentParties": {
-          "title": "Sherehe za Kimya",
-          "description": "Andaa sherehe za kimya za kipekee ambapo kila mtu anasikiliza kupitia vichwa vya kusikilizia vyake."
-        },
-        "karaokeReady": {
-          "title": "Tayari kwa Karaoke",
-          "description": "Bora kwa usiku wa karaoke na orodha za kucheza za ushirikiano na maombi ya nyimbo kwa wakati halisi."
-        }
-      },
-      "venueHeading": "Bora kwa Kila Eneo",
-      "venues": {
-        "barsPubs": "Baa na Pubs",
-        "restaurants": "Mikahawa",
-        "coffeeShops": "Vikahawa",
-        "eventsWeddings": "Matukio na Arusi",
-        "retailStores": "Maduka",
-        "gymsFitness": "Vyumba vya Mazoezi na Fitness"
-      },
-      "closingStatement": "Tunes ni <strong>bure</strong> kuchunguza, na kwa vipengele vilivyolipwa unaweza kuboresha baadaye."
     },
     "whoIsFor": {
       "headline": "Imeundwa kwa watu ambao ladha yao husaidia wengine.",

@@ -340,8 +340,7 @@
     "signupSubtitle": "สมัครสมาชิกเพื่อเพลิดเพลินกับฟีเจอร์ของ explorers",
     "signUpWithGoogle": "สมัครสมาชิกด้วย Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "ชื่อผู้ใช้",
@@ -1408,49 +1407,6 @@
       "earnedThisMonth": "ได้รับในเดือนนี้",
       "passiveTitle": "เปลี่ยนคำแนะนำเป็นรางวัลแบบพาสซีฟ",
       "networkTitle": "สร้างเครือข่ายของคุณและรับรายได้อัตโนมัติ"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "ฟังขณะที่คุณสำรวจ",
-      "body": "การสำรวจไม่ใช่แค่ภาพ เสียงนำพาความทรงจำ บริบท และอารมณ์\n\nTunes ช่วยให้คุณรวบรวมและแชร์เพลงประกอบสำหรับสถานที่ การเดินทาง และอารมณ์ — ไม่ว่าจะเป็นเพลงที่ค้นพบระหว่างทางหรือเสียงที่กำหนดสถานที่สำหรับคุณ\n\nเชื่อมต่ออย่างราบรื่นกับโปรไฟล์ Explorer ของคุณ",
-      "exploreButton": "สำรวจ Tunes",
-      "featuresHeading": "คุณสมบัติที่ทรงพลัง",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "การทำงานร่วมกันแบบเรียลไทม์",
-          "description": "ให้แขกเพิ่มเพลงลงในเพลย์ลิสต์ของคุณทันทีในขณะที่คุณควบคุมสิ่งที่เล่นได้อย่างสมบูรณ์"
-        },
-        "qrCodeSharing": {
-          "title": "แชร์ QR Code",
-          "description": "แชร์ประสบการณ์ดนตรีของคุณด้วยการสแกน QR Code แบบง่าย — ไม่ต้องใช้แอปหรือดาวน์โหลด"
-        },
-        "youtubeIntegration": {
-          "title": "การรวม YouTube",
-          "description": "รวมเข้ากับ YouTube อย่างราบรื่นเพื่อเข้าถึงเพลงนับล้านและสร้างบรรยากาศที่สมบูรณ์แบบ"
-        },
-        "voteLikeSystem": {
-          "title": "ระบบโหวตและไลค์",
-          "description": "แขกสามารถโหวตเพลงโปรดของพวกเขาเพื่อส่งผลต่อคิวเพลย์ลิสต์แบบเรียลไทม์"
-        },
-        "silentParties": {
-          "title": "ปาร์ตี้เงียบ",
-          "description": "จัดปาร์ตี้เงียบที่ไม่เหมือนใครที่ทุกคนฟังผ่านหูฟังของตัวเอง"
-        },
-        "karaokeReady": {
-          "title": "พร้อมคาราโอเกะ",
-          "description": "เหมาะสำหรับค่ำคืนคาราโอเกะด้วยเพลย์ลิสต์แบบร่วมมือและคำขอเพลงแบบเรียลไทม์"
-        }
-      },
-      "venueHeading": "เหมาะสำหรับทุกสถานที่",
-      "venues": {
-        "barsPubs": "บาร์และผับ",
-        "restaurants": "ร้านอาหาร",
-        "coffeeShops": "ร้านกาแฟ",
-        "eventsWeddings": "งานอีเวนต์และงานแต่งงาน",
-        "retailStores": "ร้านค้าปลีก",
-        "gymsFitness": "ยิมและฟิตเนส"
-      },
-      "closingStatement": "Tunes <strong>ฟรี</strong>สำหรับการสำรวจ และสำหรับคุณสมบัติแบบชำระเงินคุณสามารถอัปเกรดได้ในภายหลัง"
     },
     "whoIsFor": {
       "headline": "สร้างขึ้นสำหรับผู้ที่มีรสนิยมช่วยเหลือผู้อื่น",

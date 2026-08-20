@@ -32,6 +32,7 @@ import {
   type AccountLifecycleStatus,
 } from "../../services/accountLifecycleService";
 import AccountDeletionLifecyclePanel from "./components/AccountDeletionLifecyclePanel";
+import { closeLocalMusicSession } from "../music/musicSessionBoundary";
 
 
 const providerQuery = gql`
@@ -560,6 +561,7 @@ const Settings = memo(() => {
         localStorage.removeItem("qrtoken");
         // Log out from global state
         logout();
+        closeLocalMusicSession();
         // Redirect to login page
         navigate("/login");
         // Reset loading state (though component will unmount)
@@ -633,6 +635,7 @@ const Settings = memo(() => {
           setShowModal(false);
           navigate("/");
           logout();
+          closeLocalMusicSession();
         }
       } catch (error) {
         console.error(error);
@@ -757,6 +760,7 @@ const Settings = memo(() => {
 
   const clearDeletedAccountAuth = () => {
     logout();
+    closeLocalMusicSession();
     localStorage.removeItem("auth-storage");
     localStorage.removeItem("qrtoken");
     localStorage.clear();

@@ -46,6 +46,9 @@ export const RETIRED_MUSIC_ROUTE_RULES: readonly RetiredMusicRouteRule[] = [
   { family: "playlist", path: "/api/playlists", match: "prefix", classification: "tombstone" },
   { family: "playlist", path: "/api/playlist", match: "prefix", classification: "tombstone" },
   { family: "request", path: "/api/music/guest/request", match: "exact", classification: "tombstone" },
+  { family: "publication", path: "/api/music/guest-capability", match: "prefix", classification: "tombstone" },
+  { family: "publication", path: "/api/music/publication/publish", match: "exact", classification: "tombstone" },
+  { family: "publication", path: "/api/music/publication/unpublish", match: "exact", classification: "tombstone" },
 ] as const;
 
 export function normalizeMusicRoutePath(rawPath: string): string | undefined {

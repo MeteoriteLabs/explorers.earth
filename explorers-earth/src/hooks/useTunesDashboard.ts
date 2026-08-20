@@ -1,5 +1,5 @@
-import { useSyncExternalStore } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useSyncExternalStore } from "react";
+import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { musicApi, musicIdentityCoordinator } from "../features/music/musicApi";
 import {
   createMusicWorkspaceClient,
@@ -24,19 +24,49 @@ export interface TunesDashboardData {
 
 export const musicWorkspaceClient = createMusicWorkspaceClient((input) => musicApi.request(input));
 
-export function useTunesDashboard(): TunesDashboardData {
+export interface MusicWorkspaceScope {
+  userDocumentId: string;
+  accountDocumentId: string;
+}
+
+export function musicWorkspaceQueryKey(scope: MusicWorkspaceScope) {
+  return ["music-workspace", scope.userDocumentId, scope.accountDocumentId] as const;
+}
+
+export async function clearMusicWorkspaceScope(queryClient: QueryClient, scope: MusicWorkspaceScope): Promise<void> {
+  const queryKey = musicWorkspaceQueryKey(scope);
+  await queryClient.cancelQueries({ queryKey, exact: true });
+  queryClient.removeQueries({ queryKey, exact: true });
+}
+
+export async function clearAllMusicWorkspaceQueries(queryClient: QueryClient): Promise<void> {
+  await queryClient.cancelQueries({ queryKey: ["music-workspace"] });
+  queryClient.removeQueries({ queryKey: ["music-workspace"] });
+}
+
+function retryWorkspaceFailure(failureCount: number, error: unknown): boolean {
+  const upstreamCode = (error as { upstreamCode?: unknown })?.upstreamCode;
+  if (["IDENTITY_PENDING_DELETION", "IDENTITY_TOMBSTONED", "IDENTITY_SUSPENDED", "AUTH_REQUIRED", "AUTH_INVALID"]
+    .includes(typeof upstreamCode === "string" ? upstreamCode : "")) return false;
+  return failureCount < 1;
+}
+
+export function useTunesDashboard(scope?: MusicWorkspaceScope): TunesDashboardData {
   const identityStatus = useSyncExternalStore(
     musicIdentityCoordinator.subscribe,
     musicIdentityCoordinator.getSnapshot,
     musicIdentityCoordinator.getSnapshot,
   );
   const query = useQuery({
-    queryKey: ["music-workspace"],
+    queryKey: scope ? musicWorkspaceQueryKey(scope) : ["music-workspace", "no-user", "no-account"],
     queryFn: () => musicWorkspaceClient.load(),
-    enabled: identityStatus === "ready",
+    enabled: identityStatus === "ready" && scope !== undefined,
     staleTime: 30_000,
-    retry: 1,
+    retry: retryWorkspaceFailure,
   });
+  useEffect(() => {
+    if (query.error) musicIdentityCoordinator.reportFailure(query.error);
+  }, [query.error]);
   const dashboard = query.data?.dashboard ?? null;
   return {
     playlists: query.data?.playlists ?? [],
@@ -46,7 +76,7 @@ export function useTunesDashboard(): TunesDashboardData {
     guestUrl: dashboard?.publication.publicSlug ?? null,
     localUser: null,
     identityStatus,
-    isLoading: identityStatus === "setting_up" || query.isLoading,
+    isLoading: identityStatus === "setting_up" || (scope !== undefined && query.isLoading),
     error: query.error ? "Music is temporarily unavailable." : null,
     refetch: query.refetch,
     retryIdentity: () => musicIdentityCoordinator.retry(),

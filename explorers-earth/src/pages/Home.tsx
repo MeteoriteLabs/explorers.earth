@@ -330,7 +330,10 @@ const Home = memo(() => {
   const personLists = personListsData?.personLists || [];
 
   // Fetch music playlists
-  const tunesDashboard = useTunesDashboard();
+  const tunesDashboard = useTunesDashboard(user?.documentId && accountDocumentId ? {
+    userDocumentId: user.documentId,
+    accountDocumentId,
+  } : undefined);
   const musicPlaylists = tunesDashboard.playlists || [];
 
   // Fetch guides with network-only policy to match Recommendations behavior

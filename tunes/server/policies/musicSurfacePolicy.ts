@@ -95,8 +95,6 @@ const OWNER_PREFIXES = [
   "/proxy-image",
   "/api/email/",
   "/api/seo",
-  "/api/music/guest-capability/",
-  "/api/music/publication/",
 ];
 
 export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "path" | "classification">): MusicSurfaceDecision {
@@ -105,6 +103,7 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
   if (route.path === "/api/music/identity/ensure" || route.path.startsWith("/api/music/identity/lifecycle/")) return "strapi-identity";
   if (route.path === "/api/music/identity/current") return "owner";
   if (route.path === "/api/music/entitlement" || route.path === "/api/music/dashboard") return "owner";
+  if (route.path === "/api/music/publication") return "owner";
   if (route.path === "/api/playlist/:guestUrl") return "guest";
   if (route.path === "/api/playlist/:guestUrl/requests") return "guest";
   if (route.path === "/api/playlist/:guestUrl/youtube/search" || route.path === "/api/playlist/:guestUrl/youtube/video-from-url") return "guest";

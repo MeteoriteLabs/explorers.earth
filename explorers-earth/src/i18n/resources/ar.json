@@ -340,8 +340,7 @@
     "signupSubtitle": "سجل للاستمتاع بميزات explorers",
     "signUpWithGoogle": "التسجيل عبر Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "اسم المستخدم",
@@ -1408,49 +1407,6 @@
       "earnedThisMonth": "كسب هذا الشهر",
       "passiveTitle": "حول التوصيات إلى مكافآت سلبية",
       "networkTitle": "ابن شبكتك واكسب تلقائياً"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "استمع أثناء الاستكشاف",
-      "body": "الاستكشاف ليس مرئياً فقط. الصوت يحمل الذاكرة والسياق والعاطفة.\n\nTunes يتيح لك جمع ومشاركة الموسيقى التصويرية للأماكن والرحلات والمزاجات — سواء كانت موسيقى اكتُشفت على الطريق أو أصوات تحدد مكاناً بالنسبة لك.\n\nمتصل بسلاسة بملف Explorer الخاص بك.",
-      "exploreButton": "استكشف Tunes",
-      "featuresHeading": "ميزات قوية",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "التعاون في الوقت الفعلي",
-          "description": "اسمح للضيوف بإضافة الأغاني إلى قائمة التشغيل الخاصة بك على الفور مع الحفاظ على السيطرة الكاملة على ما يتم تشغيله."
-        },
-        "qrCodeSharing": {
-          "title": "مشاركة رمز QR",
-          "description": "شارك تجربتك الموسيقية مع مسح بسيط لرمز QR - لا حاجة لتطبيقات أو تنزيلات."
-        },
-        "youtubeIntegration": {
-          "title": "تكامل YouTube",
-          "description": "تكامل بسلاسة مع YouTube للوصول إلى ملايين الأغاني وإنشاء الجو المثالي."
-        },
-        "voteLikeSystem": {
-          "title": "نظام التصويت والإعجاب",
-          "description": "يمكن للضيوف التصويت لأغنياتهم المفضلة للتأثير على قائمة الانتظار في الوقت الفعلي."
-        },
-        "silentParties": {
-          "title": "حفلات صامتة",
-          "description": "استضف حفلات صامتة فريدة حيث يستمع الجميع من خلال سماعاتهم الخاصة."
-        },
-        "karaokeReady": {
-          "title": "جاهز للكاريوكي",
-          "description": "مثالي لأمسيات الكاريوكي مع قوائم تشغيل تعاونية وطلبات أغاني في الوقت الفعلي."
-        }
-      },
-      "venueHeading": "مثالي لكل مكان",
-      "venues": {
-        "barsPubs": "الحانات والحانات",
-        "restaurants": "المطاعم",
-        "coffeeShops": "مقاهي",
-        "eventsWeddings": "الأحداث والأعراس",
-        "retailStores": "متاجر التجزئة",
-        "gymsFitness": "الصالات الرياضية واللياقة"
-      },
-      "closingStatement": "Tunes <strong>مجاني</strong> للاستكشاف، وبالنسبة للميزات المدفوعة يمكنك الترقية لاحقاً."
     },
     "whoIsFor": {
       "headline": "مصمم للأشخاص الذين يساعد ذوقهم الآخرين.",

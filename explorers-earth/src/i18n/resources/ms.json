@@ -340,8 +340,7 @@
     "signupSubtitle": "Daftar untuk menikmati ciri-ciri explorers",
     "signUpWithGoogle": "Daftar dengan Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Nama Pengguna",
@@ -1408,49 +1407,6 @@
       "earnedThisMonth": "Diperoleh bulan ini",
       "passiveTitle": "Tukar cadangan kepada ganjaran pasif",
       "networkTitle": "Bina rangkaian anda dan dapatkan secara automatik"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Dengar semasa anda meneroka",
-      "body": "Penerokaan bukan hanya visual. Bunyi membawa ingatan, konteks, dan emosi.\n\nLocalTunes membolehkan anda mengumpul dan berkongsi runut bunyi untuk tempat, perjalanan, dan mood — sama ada muzik yang ditemui di jalan raya atau bunyi yang mentakrifkan tempat untuk anda.\n\nDisambungkan dengan lancar ke profil Explorer anda.",
-      "exploreButton": "Terokai Tunes",
-      "featuresHeading": "Ciri Berkuasa",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Kolaborasi Masa Nyata",
-          "description": "Biarkan tetamu menambah lagu ke senarai main anda dengan segera sambil anda mengekalkan kawalan penuh ke atas apa yang dimainkan."
-        },
-        "qrCodeSharing": {
-          "title": "Perkongsian Kod QR",
-          "description": "Kongsi pengalaman muzik anda dengan imbasan kod QR yang mudah - tiada aplikasi atau muat turun diperlukan."
-        },
-        "youtubeIntegration": {
-          "title": "Integrasi YouTube",
-          "description": "Integrasikan dengan lancar dengan YouTube untuk mengakses berjuta-juta lagu dan mencipta suasana yang sempurna."
-        },
-        "voteLikeSystem": {
-          "title": "Sistem Undi & Suka",
-          "description": "Tetamu boleh mengundi lagu kegemaran mereka untuk mempengaruhi barisan senarai main dalam masa nyata."
-        },
-        "silentParties": {
-          "title": "Pesta Senyap",
-          "description": "Anjurkan pesta senyap yang unik di mana semua orang mendengar melalui fon kepala mereka sendiri."
-        },
-        "karaokeReady": {
-          "title": "Sedia untuk Karaoke",
-          "description": "Sempurna untuk malam karaoke dengan senarai main kolaboratif dan permintaan lagu masa nyata."
-        }
-      },
-      "venueHeading": "Sempurna untuk Setiap Venue",
-      "venues": {
-        "barsPubs": "Bar & Pub",
-        "restaurants": "Restoran",
-        "coffeeShops": "Kedai Kopi",
-        "eventsWeddings": "Acara & Perkahwinan",
-        "retailStores": "Kedai Runcit",
-        "gymsFitness": "Gim & Kecergasan"
-      },
-      "closingStatement": "Tunes adalah <strong>percuma</strong> untuk diterokai, dan untuk ciri berbayar anda boleh naik taraf kemudian."
     },
     "whoIsFor": {
       "headline": "Dibina untuk orang yang citarasanya membantu orang lain.",

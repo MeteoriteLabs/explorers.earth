@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./csrf", () => ({ getCsrfToken: () => "native-csrf" }));
 vi.mock("./musicCredential", () => ({
-  isMusicOwnerRequest: (url: string) => url.startsWith("/api/playlists") || url.startsWith("/api/playlist/songs"),
+  isMusicOwnerRequest: (url: string) => url.startsWith("/api/playlists") || url.startsWith("/api/playlist/songs") || url === "/api/music/publication",
   musicCredentialForRequest: async () => "c5-token",
   getGuestMusicCapability: vi.fn(() => "S".repeat(43)),
   clearGuestMusicCapability: vi.fn(),
@@ -22,6 +22,16 @@ describe("apiRequest Music authority serialization", () => {
     const [, init] = vi.mocked(fetch).mock.calls[0];
     expect(JSON.parse(String(init?.body))).toEqual({ name: "owner playlist" });
     expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer c5-token");
+  });
+
+  it("sends the one-command publication idempotency header without leaking it into the body", async () => {
+    await apiRequest("POST", "/api/music/publication", { mode: "unlisted" }, 0, 3, {
+      "Idempotency-Key": "publication-command-1",
+    });
+    const [, init] = vi.mocked(fetch).mock.calls[0];
+    expect(JSON.parse(String(init?.body))).toEqual({ mode: "unlisted" });
+    expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer c5-token");
+    expect(new Headers(init?.headers).get("Idempotency-Key")).toBe("publication-command-1");
   });
 
   it("retains the native CSRF body contract outside Music owner routes", async () => {

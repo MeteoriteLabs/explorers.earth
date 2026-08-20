@@ -135,6 +135,44 @@ describe("MusicDomainRepository owner predicates", () => {
     expect(harness.calls[1].values).toEqual([31]);
   });
 
+  it.each([
+    ["private", undefined],
+    ["public", undefined],
+    ["unlisted", "f".repeat(64)],
+  ] as const)("changes publication to %s with one owner-predicated write in one transaction", async (mode, capabilityHash) => {
+    const harness = recordingPool([{ guest_url: "public-slug" }]);
+    const repository = new MusicDomainRepository(harness.pool);
+    await repository.setPublicationMode(31, mode, capabilityHash);
+    const writes = harness.calls.filter((call) => /update users/i.test(call.text));
+    expect(writes).toHaveLength(1);
+    expect(writes[0].text.toLowerCase()).toContain("where id=$1");
+    expect(writes[0].values[0]).toBe(31);
+    expect(writes[0].values[1]).toBe(mode);
+    expect(JSON.stringify(harness.calls)).not.toContain("capability\":");
+  });
+
+  it("rolls back an injected publication write failure without a second partial write or commit", async () => {
+    const statements: string[] = [];
+    const pool = {
+      query: async () => { throw new Error("pool query must not be used"); },
+      async connect() {
+        return {
+          async query(text: string) {
+            statements.push(text.replace(/\s+/g, " ").trim());
+            if (/UPDATE users/i.test(text)) throw new Error("injected publication failure");
+            return { rows: [], rowCount: 0 };
+          },
+          release() {},
+        };
+      },
+    };
+    const repository = new MusicDomainRepository(pool as never);
+    await expect(repository.setPublicationMode(31, "unlisted", "f".repeat(64))).rejects.toThrow("injected publication failure");
+    expect(statements.filter((text) => /UPDATE users/i.test(text))).toHaveLength(1);
+    expect(statements).toContain("ROLLBACK");
+    expect(statements).not.toContain("COMMIT");
+  });
+
   it("resolves socket guest authority by hash with lifecycle and revocation in SQL", async () => {
     // Break caught: socket handshake reads a plaintext URL or skips local revocation/lifecycle truth.
     const capability = "A".repeat(43);
@@ -221,5 +259,32 @@ describe("MusicDomainRepository owner predicates", () => {
       },
     });
     expect(harness.calls[0].text.toLowerCase()).toContain("visible_playlists");
+  });
+
+  it("keeps an active discoverable owner reachable with the exact empty public playlist shape", async () => {
+    const harness = recordingPool([{
+      id: 31,
+      identity_status: "active",
+      guest_capability_hash: null,
+      guest_capability_revoked_at: null,
+      guest_discoverable: true,
+      guest_url: "public-empty",
+      username: "display",
+      venue_name: null,
+      theme: null,
+      allow_song_requests: false,
+      allow_guest_play_on_device: false,
+      allow_playlist_sharing: true,
+      allow_recently_played_visibility: false,
+      has_visible_playlist: false,
+      songs: [],
+      currently_playing: null,
+      played_songs: [],
+      visible_playlists: [],
+    }]);
+    await expect(new MusicDomainRepository(harness.pool).resolveGuestResource("public-empty")).resolves.toMatchObject({
+      state: "public",
+      playlist: { songs: [], playlists: [] },
+    });
   });
 });

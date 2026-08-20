@@ -372,5 +372,6 @@ describe("C1 containment floor under the C6 principal boundary", () => {
       .set("Access-Control-Request-Method", "GET");
     expect(response.headers["access-control-allow-headers"]?.toLowerCase()).not.toContain("x-username");
     expect(response.headers["access-control-allow-headers"]?.toLowerCase()).toContain("x-music-guest-capability");
+    expect(response.headers["access-control-expose-headers"]?.toLowerCase()).toContain("retry-after");
   });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createMusicWorkspaceClient } from "../musicWorkspaceClient";
+import { MusicClientError } from "../../../lib/localTunesApiClient";
 
 describe("canonical Music workspace client", () => {
   it("uses only owner-derived canonical routes and exact DTO bodies", async () => {
@@ -29,20 +30,22 @@ describe("canonical Music workspace client", () => {
       [{ method: "PATCH", path: "/api/playlists/7", body: { name: "Renamed", description: null }, idempotencyKey: "rename-playlist-1" }],
       [{ method: "PATCH", path: "/api/playlists/7/visibility", body: { isVisibleToGuests: true }, idempotencyKey: "visibility-playlist-1" }],
       [{ method: "PATCH", path: "/api/playlists/7/reorder", body: { songId: 9, position: 2 }, idempotencyKey: "reorder-playlist-1" }],
-      [{ method: "POST", path: "/api/music/publication/publish", idempotencyKey: "publication-mode-1" }],
-      [{ method: "POST", path: "/api/music/guest-capability/revoke", idempotencyKey: "publication-mode-2" }],
+      [{ method: "POST", path: "/api/music/publication", body: { mode: "public" }, idempotencyKey: "publication-mode-1" }],
+      [{ method: "POST", path: "/api/music/publication", body: { mode: "private" }, idempotencyKey: "publication-mode-2" }],
     ]);
     expect(JSON.stringify(request.mock.calls)).not.toMatch(/username|email|ownerId|accountId|documentId|X-Username/i);
   });
 
-  it("creates a new in-memory unlisted capability and unpublishes discovery", async () => {
-    const request = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({ version: "music-guest-capability/v1", capability: "A".repeat(43) }), { status: 200 }))
-      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+  it("changes to unlisted with one atomic owner-derived command and returns only the new in-memory capability", async () => {
+    const request = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
+      version: "music-publication/v1", publication: { mode: "unlisted", publicSlug: "public-slug" }, capability: "A".repeat(43),
+    }), { status: 200 }));
     const client = createMusicWorkspaceClient(request);
     await expect(client.setPublication("unlisted", "unlisted-mode-1")).resolves.toEqual({ capability: "A".repeat(43) });
-    expect(request).toHaveBeenNthCalledWith(1, { method: "POST", path: "/api/music/guest-capability/rotate", idempotencyKey: "unlisted-mode-1:rotate" });
-    expect(request).toHaveBeenNthCalledWith(2, { method: "POST", path: "/api/music/publication/unpublish", idempotencyKey: "unlisted-mode-1:unpublish" });
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledWith({
+      method: "POST", path: "/api/music/publication", body: { mode: "unlisted" }, idempotencyKey: "unlisted-mode-1",
+    });
   });
 
   it("deletes an owner playlist through the canonical route", async () => {
@@ -54,7 +57,19 @@ describe("canonical Music workspace client", () => {
   it("contains unsuccessful JSON and empty responses", async () => {
     const failed = vi.fn().mockResolvedValue(new Response(null, { status: 503 }));
     const client = createMusicWorkspaceClient(failed);
-    await expect(client.createPlaylist("Road songs", null, "create-1")).rejects.toThrow("Music request failed.");
-    await expect(client.deletePlaylist(11, "delete-1")).rejects.toThrow("Music request failed.");
+    await expect(client.createPlaylist("Road songs", null, "create-1")).rejects.toMatchObject({ status: 503, code: "SERVICE_UNAVAILABLE" });
+    await expect(client.deletePlaylist(11, "delete-1")).rejects.toMatchObject({ status: 503, code: "SERVICE_UNAVAILABLE" });
+  });
+
+  it("preserves the canonical status, upstream code, retryability, and retry delay from failed workspace responses", async () => {
+    const failed = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      version: "music-error/v1",
+      error: { code: "IDENTITY_SUSPENDED", message: "sensitive", retryable: false, requestId: "request-1" },
+    }), { status: 403, headers: { "content-type": "application/json", "retry-after": "19" } }));
+
+    const error = await createMusicWorkspaceClient(failed).load().catch((cause) => cause);
+    expect(error).toBeInstanceOf(MusicClientError);
+    expect(error).toMatchObject({ status: 403, upstreamCode: "IDENTITY_SUSPENDED", retryable: false, retryAfterSeconds: 19 });
+    expect(error.message).not.toContain("sensitive");
   });
 });

@@ -340,8 +340,7 @@
     "signupSubtitle": "Înregistrează-te pentru a te bucura de funcționalitățile explorers",
     "signUpWithGoogle": "Înregistrează-te cu Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Nume de utilizator",
@@ -1408,49 +1407,6 @@
       "earnedThisMonth": "Câștigat luna aceasta",
       "passiveTitle": "Transformă recomandările în recompense pasive",
       "networkTitle": "Construiește rețeaua ta și câștigă automat"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Ascultă în timp ce explorezi",
-      "body": "Explorarea nu este doar vizuală. Sunetul poartă memorie, context și emoție.\n\nTunes îți permite să colectezi și să împărtășești coloane sonore pentru locuri, călătorii și stări de spirit — fie că este vorba despre muzică descoperită pe drum sau sunete care definesc un loc pentru tine.\n\nConectat perfect la profilul tău Explorer.",
-      "exploreButton": "Explorează Tunes",
-      "featuresHeading": "Funcții Puternice",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Colaborare în Timp Real",
-          "description": "Permite oaspeților să adauge melodii în lista ta de redare instantaneu, menținând controlul complet asupra a ceea ce se redă."
-        },
-        "qrCodeSharing": {
-          "title": "Partajare Cod QR",
-          "description": "Împărtășește experiența ta muzicală cu un simplu scanare cod QR — fără aplicații sau descărcări necesare."
-        },
-        "youtubeIntegration": {
-          "title": "Integrare YouTube",
-          "description": "Integrează-te perfect cu YouTube pentru a accesa milioane de melodii și a crea atmosfera perfectă."
-        },
-        "voteLikeSystem": {
-          "title": "Sistem de Votare și Apreciere",
-          "description": "Oaspeții pot vota pentru melodiile lor preferate pentru a influența coada listei de redare în timp real."
-        },
-        "silentParties": {
-          "title": "Petreceri Silențioase",
-          "description": "Organizează petreceri silențioase unice unde toată lumea ascultă prin propriile căști."
-        },
-        "karaokeReady": {
-          "title": "Gata pentru Karaoke",
-          "description": "Perfect pentru serile de karaoke cu liste de redare colaborative și cereri de melodii în timp real."
-        }
-      },
-      "venueHeading": "Perfect pentru Orice Loc",
-      "venues": {
-        "barsPubs": "Baruri și Puburi",
-        "restaurants": "Restaurante",
-        "coffeeShops": "Cafenele",
-        "eventsWeddings": "Evenimente și Nunti",
-        "retailStores": "Magazine",
-        "gymsFitness": "Săli de Sport și Fitness"
-      },
-      "closingStatement": "Tunes este <strong>gratuit</strong> de explorat, iar pentru funcții plătite poți face upgrade mai târziu."
     },
     "whoIsFor": {
       "headline": "Creat pentru oameni al căror gust îi ajută pe alții.",

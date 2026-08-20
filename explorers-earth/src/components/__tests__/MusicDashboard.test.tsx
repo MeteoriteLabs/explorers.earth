@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import MusicDashboard from "../MusicDashboard";
+import { musicWorkspaceClient } from "../../hooks/useTunesDashboard";
 
 const base = {
   playlists: [] as Array<any>,
@@ -57,6 +58,59 @@ describe("Music workspace UI", () => {
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(opener).toHaveFocus();
+  });
+
+  it("returns focus through Cancel and successful create while keeping failed/retry focus inside", async () => {
+    const create = vi.spyOn(musicWorkspaceClient, "createPlaylist")
+      .mockRejectedValueOnce(new Error("contained"))
+      .mockResolvedValueOnce({ id: 9, name: "Roads", description: null, isVisibleToGuests: false, songs: [] });
+    const data = { ...base, refetch: vi.fn(async () => undefined) };
+    render(<MusicDashboard data={data} />);
+    const opener = screen.getByRole("button", { name: "Create playlist" });
+    await userEvent.click(opener);
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(opener).toHaveFocus();
+
+    await userEvent.click(opener);
+    await userEvent.type(screen.getByLabelText("Playlist name"), "Roads");
+    const submit = screen.getByRole("dialog", { name: "Create playlist" }).querySelector<HTMLButtonElement>("button[type='submit']")!;
+    await userEvent.click(submit);
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("dialog", { name: "Create playlist" })).toBeInTheDocument();
+    expect(submit).toHaveFocus();
+    await userEvent.click(submit);
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Create playlist" })).not.toBeInTheDocument());
+    expect(opener).toHaveFocus();
+  });
+
+  it("centralizes sharing Cancel, failure, retry-success, and focus restoration", async () => {
+    const publish = vi.spyOn(musicWorkspaceClient, "setPublication")
+      .mockRejectedValueOnce(new Error("contained"))
+      .mockResolvedValueOnce({});
+    const data = { ...base, refetch: vi.fn(async () => undefined) };
+    render(<MusicDashboard data={data} />);
+    const opener = screen.getByRole("button", { name: "Sharing settings" });
+    await userEvent.click(opener);
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(opener).toHaveFocus();
+
+    await userEvent.click(opener);
+    await userEvent.click(screen.getByRole("radio", { name: "Public" }));
+    const save = screen.getByRole("button", { name: "Save sharing" });
+    await userEvent.click(save);
+    await waitFor(() => expect(publish).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("dialog", { name: "Music sharing" })).toBeInTheDocument();
+    expect(save).toHaveFocus();
+    await userEvent.click(save);
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Music sharing" })).not.toBeInTheDocument());
+    expect(opener).toHaveFocus();
+  });
+
+  it("keeps recovery and sharing guidance at the approved body-size token", async () => {
+    render(<MusicDashboard data={base} />);
+    await userEvent.click(screen.getByRole("button", { name: "Sharing settings" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Unlisted" }));
+    expect(screen.getByText("Save to create a new private link. Creating another link replaces the previous one.")).toHaveClass("text-base");
   });
 
   it("shows the canonical link and preview affordance for a public workspace", async () => {

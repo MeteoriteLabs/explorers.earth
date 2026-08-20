@@ -705,45 +705,7 @@
     },
     {
       "method": "POST",
-      "path": "/api/music/guest-capability/rotate",
-      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "decision": "owner",
-      "allowed": {
-        "unauthenticated": false,
-        "owner": true,
-        "otherUser": false,
-        "suspended": false,
-        "pendingDeletion": false,
-        "staleEntitlement": true,
-        "guestValid": false,
-        "guestInvalid": false,
-        "guestRevoked": false,
-        "internalAdmin": false,
-        "nativeSession": false
-      }
-    },
-    {
-      "method": "POST",
-      "path": "/api/music/guest-capability/revoke",
-      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "decision": "owner",
-      "allowed": {
-        "unauthenticated": false,
-        "owner": true,
-        "otherUser": false,
-        "suspended": false,
-        "pendingDeletion": false,
-        "staleEntitlement": true,
-        "guestValid": false,
-        "guestInvalid": false,
-        "guestRevoked": false,
-        "internalAdmin": false,
-        "nativeSession": false
-      }
-    },
-    {
-      "method": "POST",
-      "path": "/api/music/publication/:action",
+      "path": "/api/music/publication",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
       "decision": "owner",
       "allowed": {
@@ -1941,6 +1903,66 @@
     {
       "family": "request",
       "path": "/api/music/guest/request",
+      "match": "exact",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "publication",
+      "path": "/api/music/guest-capability",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "publication",
+      "path": "/api/music/publication/publish",
+      "match": "exact",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "publication",
+      "path": "/api/music/publication/unpublish",
       "match": "exact",
       "classification": "tombstone",
       "decision": "tombstone",

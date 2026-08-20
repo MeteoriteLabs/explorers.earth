@@ -87,6 +87,7 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig)
 
       // Allow credentials (cookies, authorization headers, etc)
       res.header("Access-Control-Allow-Credentials", "true");
+      res.header("Access-Control-Expose-Headers", "Retry-After");
       // Allow necessary headers
       res.header(
         "Access-Control-Allow-Headers",

@@ -9,14 +9,31 @@ export interface SelectedMusicAccount {
   documentId: string;
 }
 
-export function selectCompletedAccount(accounts: readonly ExplorerAccountCandidate[] | null | undefined): SelectedMusicAccount | undefined {
-  const complete = (accounts ?? []).filter((account) =>
+export type ExplorerAccountSelection =
+  | { kind: "unknown" }
+  | { kind: "incomplete" }
+  | { kind: "ambiguous" }
+  | { kind: "selected"; account: SelectedMusicAccount };
+
+export function selectExplorerAccountState(
+  accounts: readonly ExplorerAccountCandidate[] | null | undefined,
+  options: { authoritative: boolean },
+): ExplorerAccountSelection {
+  if (!options.authoritative || !Array.isArray(accounts)) return { kind: "unknown" };
+  const complete = accounts.filter((account) =>
     typeof account.documentId === "string" && account.documentId.length > 0
     && typeof account.Account_Name === "string" && account.Account_Name.trim().length > 0
     && typeof account.Account_Type === "string" && account.Account_Type.trim().length > 0
     && typeof account.mobile_number === "string" && account.mobile_number.trim().length > 0,
   );
-  return complete.length === 1 ? { documentId: complete[0].documentId as string } : undefined;
+  if (complete.length === 1) return { kind: "selected", account: { documentId: complete[0].documentId as string } };
+  if (complete.length > 1) return { kind: "ambiguous" };
+  return { kind: "incomplete" };
+}
+
+export function selectCompletedAccount(accounts: readonly ExplorerAccountCandidate[] | null | undefined): SelectedMusicAccount | undefined {
+  const selection = selectExplorerAccountState(accounts, { authoritative: Array.isArray(accounts) });
+  return selection.kind === "selected" ? selection.account : undefined;
 }
 
 export interface MusicIdentityEligibility {
@@ -30,6 +47,7 @@ export interface MusicIdentityEligibility {
 export interface MusicIdentityCoordinator {
   reconcile(input: MusicIdentityEligibility): Promise<void>;
   retry(): Promise<void>;
+  reportFailure(error: unknown): void;
   reset(): void;
   getSnapshot(): MusicIdentityCoordinatorStatus;
   subscribe(listener: () => void): () => void;
@@ -62,6 +80,19 @@ export function createMusicIdentityCoordinator(dependencies: {
     return `${input.userDocumentId}:${input.account.documentId}`;
   };
 
+  const publishFailure = (cause: unknown) => {
+    const error = cause as { code?: unknown; upstreamCode?: unknown; retryable?: unknown };
+    const upstreamCode = typeof error?.upstreamCode === "string" ? error.upstreamCode : "";
+    if (upstreamCode === "IDENTITY_PENDING_DELETION" || upstreamCode === "IDENTITY_TOMBSTONED") publish("pending_deletion");
+    else if (upstreamCode === "IDENTITY_SUSPENDED") publish("suspended");
+    else if (error?.code === "AUTH_REQUIRED" || upstreamCode === "AUTH_REQUIRED" || upstreamCode === "AUTH_INVALID") publish("auth_required");
+    else if (["IDENTITY_CONFLICT", "ACCOUNT_AMBIGUOUS", "ACCOUNT_SWITCH_CONFLICT"].includes(upstreamCode)) publish("conflict");
+    else {
+      retryableFailures += 1;
+      publish(retryableFailures >= 3 ? "unavailable" : "retryable");
+    }
+  };
+
   const start = (key: string, force = false): Promise<void> => {
     if (!force && completedKey === key) return Promise.resolve();
     if (flight && activeKey === key) return flight;
@@ -76,16 +107,7 @@ export function createMusicIdentityCoordinator(dependencies: {
       publish("ready");
     }).catch((cause: unknown) => {
       if (generation !== startedGeneration) throw cause;
-      const error = cause as { code?: unknown; upstreamCode?: unknown; retryable?: unknown };
-      const upstreamCode = typeof error?.upstreamCode === "string" ? error.upstreamCode : "";
-      if (upstreamCode === "IDENTITY_PENDING_DELETION" || upstreamCode === "IDENTITY_TOMBSTONED") publish("pending_deletion");
-      else if (upstreamCode === "IDENTITY_SUSPENDED") publish("suspended");
-      else if (error?.code === "AUTH_REQUIRED" || upstreamCode === "AUTH_REQUIRED" || upstreamCode === "AUTH_INVALID") publish("auth_required");
-      else if (["IDENTITY_CONFLICT", "ACCOUNT_AMBIGUOUS", "ACCOUNT_SWITCH_CONFLICT"].includes(upstreamCode)) publish("conflict");
-      else {
-        retryableFailures += 1;
-        publish(retryableFailures >= 3 ? "unavailable" : "retryable");
-      }
+      publishFailure(cause);
       throw cause;
     }).finally(() => {
       if (generation === startedGeneration && flight === current) flight = undefined;
@@ -104,6 +126,9 @@ export function createMusicIdentityCoordinator(dependencies: {
     retry() {
       const key = lastEligible && eligibleKey(lastEligible);
       return key ? start(key, true) : Promise.resolve();
+    },
+    reportFailure(error) {
+      publishFailure(error);
     },
     reset() {
       generation += 1;

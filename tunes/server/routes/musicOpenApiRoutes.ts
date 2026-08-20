@@ -95,10 +95,10 @@ const ownerOperation = (options: {
 const playlistId = pathParameter("playlistId", "Owner-predicated saved playlist identifier");
 const songId = pathParameter("songId", "Owner-predicated song identifier");
 const guestUrl = pathParameter("guestUrl", "Public playlist slug; never a capability", "^[A-Za-z0-9_-]{8,128}$");
-const publicationAction = {
-  name: "action", in: "path" as const, required: true,
-  description: "Explicit public discovery transition",
-  schema: { type: "string", enum: ["publish", "unpublish"] },
+const idempotencyKeyParameter = {
+  name: "Idempotency-Key", in: "header" as const, required: true,
+  description: "Owner-scoped replay key for one atomic publication command",
+  schema: { type: "string", minLength: 8, maxLength: 128, pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" },
 };
 
 const lifecycleOperation = (summary: string, responseSchema = "MusicLifecycleResponse") => ({
@@ -221,14 +221,16 @@ const paths = {
   "/api/youtube/video-from-url": {
     post: ownerOperation({ summary: "Resolve one YouTube video URL", status: "200", response: ref("YouTubeVideo"), request: body(ref("YouTubeUrlInput"), "YouTube URL"), errors: { "404": failure("The video was not found.", ["PUBLIC_NOT_FOUND"]) } }),
   },
-  "/api/music/guest-capability/rotate": {
-    post: ownerOperation({ summary: "Rotate and return a new guest capability", status: "200", response: ref("GuestCapabilityResponse"), origin: true, description: "Only the SHA-256 capability hash is stored. Rotation invalidates existing guest sessions." }),
-  },
-  "/api/music/guest-capability/revoke": {
-    post: ownerOperation({ summary: "Revoke the current guest capability", status: "204", description: "Revocation also removes public discovery authority." }),
-  },
-  "/api/music/publication/{action}": {
-    post: ownerOperation({ summary: "Explicitly publish or unpublish Music discovery", status: "204", parameters: [publicationAction], description: "publish enables public/discoverable mode; unpublish returns to private or capability-only unlisted access." }),
+  "/api/music/publication": {
+    post: ownerOperation({
+      summary: "Atomically change owner Music publication mode",
+      status: "200",
+      response: ref("PublicationCommandResponse"),
+      request: body(ref("PublicationCommandInput"), "Private, unlisted, or public mode"),
+      parameters: [idempotencyKeyParameter],
+      errors: { "409": failure("The identity is pending deletion or the idempotency key conflicts.", ["IDENTITY_PENDING_DELETION", "IDEMPOTENCY_CONFLICT"]) },
+      description: "One owner-predicated transaction changes discovery and rotates or revokes capability authority. Only an unlisted success returns one in-memory capability; no capability material appears in the owner dashboard.",
+    }),
   },
   "/api/music/paid/import": {
     post: ownerOperation({
@@ -249,7 +251,7 @@ const paths = {
   "/api/playlist/{guestUrl}": {
     get: {
       summary: "Read an explicit public or unlisted capability playlist",
-      description: "Public discovery requires explicit publish. Unlisted responses set X-Robots-Tag: noindex, nofollow and never enter the sitemap. Unknown, private, suspended, pending, revoked, and zero-visible resources share the same safe 404.",
+      description: "Public discovery requires explicit publish. A valid public owner remains reachable with an empty playlists array when no playlist is visible. Unlisted responses set X-Robots-Tag: noindex, nofollow and never enter the sitemap. Unknown, private, suspended, pending, and revoked resources share the same safe 404.",
       security: [{}, ...guestSecurity],
       parameters: [requestIdParameter, guestUrl, guestCapabilityOptional],
       responses: {
@@ -393,7 +395,8 @@ export const MUSIC_OPENAPI_DOCUMENT = {
       PlayingInput: { type: "object", additionalProperties: false, required: ["songId"], properties: { songId: { type: ["integer", "null"], minimum: 1 } } },
       BulkSongInput: { type: "object", additionalProperties: false, required: ["songIds"], properties: { songIds: { type: "array", minItems: 1, maxItems: 100, uniqueItems: true, items: { type: "integer", minimum: 1 } } } },
       PositionInput: { type: "object", additionalProperties: false, required: ["position"], properties: { position: { type: "integer", minimum: 0 } } },
-      GuestCapabilityResponse: { type: "object", additionalProperties: false, required: ["version", "capability"], properties: { version: { const: "music-guest-capability/v1" }, capability: { type: "string", pattern: "^[A-Za-z0-9_-]{43}$" } } },
+      PublicationCommandInput: { type: "object", additionalProperties: false, required: ["mode"], properties: { mode: { type: "string", enum: ["private", "unlisted", "public"] } } },
+      PublicationCommandResponse: { type: "object", additionalProperties: false, required: ["version", "publication"], properties: { version: { const: "music-publication/v1" }, publication: { type: "object", additionalProperties: false, required: ["mode", "publicSlug"], properties: { mode: { type: "string", enum: ["private", "unlisted", "public"] }, publicSlug: { type: "string", minLength: 8, maxLength: 128, pattern: "^[A-Za-z0-9_-]+$" } } }, capability: { type: "string", pattern: "^[A-Za-z0-9_-]{43}$" } } },
       EntitlementResponse: { type: "object", additionalProperties: false, required: ["state", "paidMutation", "coreRead", "coreMutation", "maxAgeSeconds"], properties: { state: { type: "string", enum: ["unknown", "included", "eligible", "entitled", "revoked"] }, sourceUpdatedAt: { type: "string", format: "date-time" }, paidMutation: { type: "boolean" }, coreRead: { type: "boolean", const: true }, coreMutation: { type: "boolean", const: true }, maxAgeSeconds: { type: "integer", const: 600 } } },
       YouTubeSearchInput: { type: "object", additionalProperties: false, required: ["query"], properties: { query: { type: "string", minLength: 1, maxLength: 200 }, pageToken: { type: "string", maxLength: 256 } } },
       YouTubeUrlInput: { type: "object", additionalProperties: false, required: ["url"], properties: { url: { type: "string", maxLength: 2_048 } } },
