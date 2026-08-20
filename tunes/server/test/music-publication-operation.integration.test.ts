@@ -4,7 +4,12 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { migrateMusicDatabase } from "../db/migrate";
 import { MusicIdentityRepository, type EnsureMusicIdentityInput } from "../repositories/musicIdentityRepository";
 import { MusicPublicationOperationRepository } from "../repositories/musicPublicationOperationRepository";
-import { MusicPublicationResponseCipher } from "../services/musicPublicationResponseCrypto";
+import {
+  MusicPublicationResponseCipher,
+  hashPublicationIdempotencyKey,
+  publicationRequestFingerprint,
+  type MusicPublicationCommandResponse,
+} from "../services/musicPublicationResponseCrypto";
 import { hashGuestCapability } from "../policies/musicSurfacePolicy";
 
 const exactTarget = process.env.DATABASE_URL_TEST ?? "postgresql://music_migrator:music@127.0.0.1:55432/music_fixture";
@@ -13,6 +18,7 @@ const describePg = enabled ? describe.sequential : describe.skip;
 const databaseName = `music_c9_publication_${process.pid}`;
 const baseTime = Date.parse("2026-08-21T00:00:00.000Z");
 let clock = baseTime;
+let databaseNow = baseTime;
 let admin: pg.Pool;
 let pool: pg.Pool;
 let identities: MusicIdentityRepository;
@@ -26,6 +32,21 @@ function cipher(current = currentKey, previous?: { kid: string; key: Buffer; acc
 
 function repository(responseCipher = cipher(), hooks: ConstructorParameters<typeof MusicPublicationOperationRepository>[2] = {}) {
   return new MusicPublicationOperationRepository(pool, responseCipher, { now: () => clock, ...hooks });
+}
+
+async function insertExpiredOperation(ownerId: number, key: string, response: MusicPublicationCommandResponse): Promise<void> {
+  const idempotencyKeyHash = hashPublicationIdempotencyKey(key);
+  const requestFingerprint = publicationRequestFingerprint(response.publication.mode);
+  const encrypted = cipher().encrypt({ musicUserId: ownerId, idempotencyKeyHash, requestFingerprint }, response);
+  const expiresAt = new Date(databaseNow - 1_000);
+  const completedAt = new Date(expiresAt.getTime() - 86_400_000);
+  await pool.query(`INSERT INTO music_publication_operations(
+    music_user_id,idempotency_key_hash,request_fingerprint,request_mode,operation_state,
+    created_at,completed_at,expires_at,updated_at,response_key_id,response_nonce,response_ciphertext,response_tag
+  ) VALUES($1,$2,$3,$4,'completed',$5,$5,$6,$5,$7,$8,$9,$10)`, [
+    ownerId, idempotencyKeyHash, requestFingerprint, response.publication.mode, completedAt, expiresAt,
+    encrypted.responseKeyId, encrypted.responseNonce, encrypted.responseCiphertext, encrypted.responseTag,
+  ]);
 }
 
 function identityInput(suffix: string): EnsureMusicIdentityInput {
@@ -56,6 +77,7 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
     target.pathname = `/${databaseName}`;
     pool = new pg.Pool({ connectionString: target.toString(), max: 24 });
     await migrateMusicDatabase(pool);
+    databaseNow = new Date((await pool.query("SELECT clock_timestamp() AS value")).rows[0].value).getTime();
     identities = new MusicIdentityRepository(pool);
   });
 
@@ -136,13 +158,16 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
     clock = baseTime + 4_000;
     const owner = await identities.ensureIdentity(identityInput("expired"));
     const durable = repository();
-    const first = await durable.execute(owner.id, "expired-operation-key", "unlisted");
-    expect(first.status).toBe("completed");
+    const capability = "E".repeat(43);
+    await pool.query(`UPDATE users SET guest_discoverable=false,guest_capability_hash=$2,
+      guest_capability_rotated_at=clock_timestamp(),guest_capability_revoked_at=NULL WHERE id=$1`, [owner.id, hashGuestCapability(capability)]);
+    const response = { version: "music-publication/v1" as const,
+      publication: { mode: "unlisted" as const, publicSlug: `c9-publication-public-expired` }, capability };
+    await insertExpiredOperation(owner.id, "expired-operation-key", response);
     const publicationBefore = (await pool.query(
       "SELECT guest_discoverable,guest_capability_hash,guest_capability_rotated_at,guest_capability_revoked_at FROM users WHERE id=$1",
       [owner.id],
     )).rows[0];
-    clock += 86_400_001;
     expect(await repository().execute(owner.id, "expired-operation-key", "unlisted")).toEqual({ status: "expired" });
     expect(await repository().execute(owner.id, "expired-operation-key", "public")).toEqual({ status: "conflict" });
     expect((await pool.query(
@@ -186,9 +211,10 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
     clock = baseTime + 6_000;
     const owner = await identities.ensureIdentity(identityInput("tombstone"));
     const durable = repository();
-    const completed = await durable.execute(owner.id, "tombstone-operation-key", "unlisted");
-    if (completed.status !== "completed") throw new Error("publication setup failed");
-    const capability = completed.response.capability!;
+    const capability = "T".repeat(43);
+    await insertExpiredOperation(owner.id, "tombstone-operation-key", {
+      version: "music-publication/v1", publication: { mode: "unlisted", publicSlug: "c9-publication-public-tombstone" }, capability,
+    });
     const operationBefore = (await pool.query(
       "SELECT encode(response_ciphertext,'hex') AS ciphertext,idempotency_key_hash FROM music_publication_operations WHERE music_user_id=$1",
       [owner.id],
@@ -228,7 +254,6 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
     expect((await pool.query("SELECT count(*)::int AS count FROM users WHERE id=$1", [owner.id])).rows[0].count).toBe(0);
     expect((await pool.query("SELECT count(*)::int AS count FROM music_publication_operations WHERE music_user_id=$1", [owner.id])).rows[0].count).toBe(1);
 
-    clock += 86_400_001;
     expect(await durable.shredExpiredResponses(100)).toBeGreaterThanOrEqual(1);
     expect((await pool.query(
       "SELECT operation_state,response_ciphertext FROM music_publication_operations WHERE music_user_id=$1",
@@ -253,5 +278,57 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
       "DELETE FROM music_publication_operations WHERE music_user_id=$1 AND idempotency_key_hash=$2",
       [row.music_user_id, row.idempotency_key_hash],
     )).rejects.toThrow(/publication operation (?:identity|history) is immutable/i);
+  });
+
+  it("lets runtime shred only at database-clock expiry and preserves transaction rollback", async () => {
+    const client = await pool.connect();
+    const insert = async (owner: number, hashByte: string, expiry: "before" | "at" | "after") => {
+      const delta = expiry === "before" ? "interval '1 hour'" : expiry === "after" ? "-interval '1 hour'" : "interval '0 seconds'";
+      await client.query(`WITH authority_clock AS (SELECT clock_timestamp() + ${delta} AS expires_at)
+        INSERT INTO music_publication_operations(
+          music_user_id,idempotency_key_hash,request_fingerprint,request_mode,operation_state,
+          created_at,completed_at,expires_at,updated_at,response_key_id,response_nonce,response_ciphertext,response_tag
+        ) SELECT $1,$2,$3,'public','completed',expires_at-interval '24 hours',expires_at-interval '24 hours',
+                 expires_at,expires_at-interval '24 hours','publication-current-v1',decode(repeat('00',12),'hex'),decode('01','hex'),decode(repeat('00',16),'hex')
+            FROM authority_clock`, [owner, hashByte.repeat(64), "f".repeat(64)]);
+    };
+    const shred = (owner: number) => client.query(`UPDATE music_publication_operations
+      SET operation_state='replay_expired',updated_at=clock_timestamp(),shredded_at=clock_timestamp(),
+          response_key_id=NULL,response_nonce=NULL,response_ciphertext=NULL,response_tag=NULL
+      WHERE music_user_id=$1`, [owner]);
+    try {
+      await client.query("BEGIN");
+      await client.query("SET LOCAL ROLE music_runtime");
+      await insert(900_001, "a", "before");
+      await client.query("COMMIT");
+      await client.query("BEGIN");
+      await client.query("SET LOCAL ROLE music_runtime");
+      await expect(shred(900_001)).rejects.toThrow(/before response expiry/i);
+      await client.query("ROLLBACK");
+      expect((await pool.query("SELECT operation_state FROM music_publication_operations WHERE music_user_id=900001")).rows[0])
+        .toEqual({ operation_state: "completed" });
+
+      for (const [owner, hashByte, expiry] of [[900_002, "b", "at"], [900_003, "c", "after"]] as const) {
+        await client.query("BEGIN");
+        await client.query("SET LOCAL ROLE music_runtime");
+        await insert(owner, hashByte, expiry);
+        await expect(shred(owner)).resolves.toMatchObject({ rowCount: 1 });
+        await client.query("COMMIT");
+      }
+
+      await client.query("BEGIN");
+      await client.query("SET LOCAL ROLE music_runtime");
+      await insert(900_004, "d", "after");
+      await client.query("COMMIT");
+      await client.query("BEGIN");
+      await client.query("SET LOCAL ROLE music_runtime");
+      await shred(900_004);
+      await client.query("ROLLBACK");
+      expect((await pool.query("SELECT operation_state FROM music_publication_operations WHERE music_user_id=900004")).rows[0])
+        .toEqual({ operation_state: "completed" });
+    } finally {
+      await client.query("ROLLBACK").catch(() => undefined);
+      client.release();
+    }
   });
 });

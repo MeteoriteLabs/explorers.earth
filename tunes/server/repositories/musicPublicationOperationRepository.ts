@@ -28,6 +28,7 @@ interface StoredPublicationOperation {
   request_mode: MusicPublicationMode;
   operation_state: "completed" | "replay_expired";
   expires_at: Date;
+  response_expired: boolean;
   response_key_id: string | null;
   response_nonce: Buffer | null;
   response_ciphertext: Buffer | null;
@@ -60,6 +61,7 @@ export class MusicPublicationOperationRepository {
       await client.query("SELECT pg_advisory_xact_lock($1,$2)", [PUBLICATION_LOCK, musicUserId]);
       const prior = (await client.query<StoredPublicationOperation>(
         `SELECT request_fingerprint,request_mode,operation_state,expires_at,
+                expires_at<=clock_timestamp() AS response_expired,
                 response_key_id,response_nonce,response_ciphertext,response_tag
            FROM music_publication_operations
           WHERE music_user_id=$1 AND idempotency_key_hash=$2
@@ -71,15 +73,14 @@ export class MusicPublicationOperationRepository {
           await client.query("COMMIT");
           return { status: "conflict" };
         }
-        const timestamp = this.now();
-        if (prior.operation_state === "replay_expired" || prior.expires_at.getTime() <= timestamp) {
+        if (prior.operation_state === "replay_expired" || prior.response_expired) {
           if (prior.operation_state === "completed") {
             await client.query(
               `UPDATE music_publication_operations
-                  SET operation_state='replay_expired',updated_at=$3,shredded_at=$3,
+                  SET operation_state='replay_expired',updated_at=clock_timestamp(),shredded_at=clock_timestamp(),
                       response_key_id=NULL,response_nonce=NULL,response_ciphertext=NULL,response_tag=NULL
                 WHERE music_user_id=$1 AND idempotency_key_hash=$2 AND operation_state='completed'`,
-              [musicUserId, idempotencyKeyHash, new Date(timestamp)],
+              [musicUserId, idempotencyKeyHash],
             );
           }
           await client.query("COMMIT");
@@ -150,15 +151,42 @@ export class MusicPublicationOperationRepository {
   }
 
   async verifyReplayReadiness(): Promise<void> {
-    const now = new Date(this.now());
-    const rows = (await this.pool.query<{ response_key_id: string; max_expires_at: Date }>(
-      `SELECT response_key_id,max(expires_at) AS max_expires_at
+    const rows = (await this.pool.query<{
+      music_user_id: number;
+      idempotency_key_hash: string;
+      request_fingerprint: string;
+      response_key_id: string;
+      response_nonce: Buffer;
+      response_ciphertext: Buffer;
+      response_tag: Buffer;
+      expires_at: Date;
+    }>(
+      `SELECT DISTINCT ON (response_key_id)
+              music_user_id,idempotency_key_hash,request_fingerprint,response_key_id,
+              response_nonce,response_ciphertext,response_tag,expires_at
          FROM music_publication_operations
-        WHERE operation_state='completed' AND expires_at>$1
-        GROUP BY response_key_id`,
-      [now],
+        WHERE operation_state='completed' AND expires_at>clock_timestamp()
+        ORDER BY response_key_id,expires_at DESC
+        LIMIT 3`,
     )).rows;
-    if (rows.some((row) => !this.cipher.acceptsReplayKey(row.response_key_id, row.max_expires_at.getTime()))) {
+    try {
+      if (rows.length > 2) throw new Error("too many active response keys");
+      for (const row of rows) {
+        if (!this.cipher.acceptsReplayKey(row.response_key_id, row.expires_at.getTime())) {
+          throw new Error("response key is unavailable");
+        }
+        this.cipher.decrypt({
+          musicUserId: row.music_user_id,
+          idempotencyKeyHash: row.idempotency_key_hash,
+          requestFingerprint: row.request_fingerprint,
+        }, {
+          responseKeyId: row.response_key_id,
+          responseNonce: row.response_nonce,
+          responseCiphertext: row.response_ciphertext,
+          responseTag: row.response_tag,
+        });
+      }
+    } catch {
       throw new Error("Music publication replay key readiness failed.");
     }
   }
@@ -171,18 +199,18 @@ export class MusicPublicationOperationRepository {
       `WITH expired AS (
          SELECT music_user_id,idempotency_key_hash
            FROM music_publication_operations
-          WHERE operation_state='completed' AND expires_at<=$1
+          WHERE operation_state='completed' AND expires_at<=clock_timestamp()
           ORDER BY expires_at,music_user_id,idempotency_key_hash
-          LIMIT $2
+          LIMIT $1
           FOR UPDATE SKIP LOCKED
        )
        UPDATE music_publication_operations operation
-          SET operation_state='replay_expired',updated_at=$1,shredded_at=$1,
+          SET operation_state='replay_expired',updated_at=clock_timestamp(),shredded_at=clock_timestamp(),
               response_key_id=NULL,response_nonce=NULL,response_ciphertext=NULL,response_tag=NULL
          FROM expired
         WHERE operation.music_user_id=expired.music_user_id
           AND operation.idempotency_key_hash=expired.idempotency_key_hash`,
-      [new Date(this.now()), limit],
+      [limit],
     );
     return result.rowCount ?? 0;
   }

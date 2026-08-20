@@ -4,9 +4,15 @@ import { toast } from "sonner";
 import type { TunesDashboardData } from "../hooks/useTunesDashboard";
 import { musicWorkspaceClient } from "../hooks/useTunesDashboard";
 import type { MusicPlaylist, MusicPublicationMode } from "../features/music/musicWorkspaceClient";
+import {
+  completeMusicPublicationCommand,
+  getOrCreateMusicPublicationCommand,
+  type MusicPublicationOwnerScope,
+} from "../features/music/musicPublicationCommandRegistry";
 
 interface MusicDashboardProps {
   data: TunesDashboardData;
+  scope: MusicPublicationOwnerScope;
   readOnly?: boolean;
 }
 
@@ -22,17 +28,20 @@ function WorkspaceDialog({
   children,
   onClose,
   opener,
+  closeDisabled = false,
 }: {
   title: string;
   description: string;
   children: React.ReactNode;
   onClose: () => void;
   opener: RefObject<HTMLButtonElement>;
+  closeDisabled?: boolean;
 }) {
   const dialog = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const descriptionId = useId();
   const close = () => {
+    if (closeDisabled) return;
     onClose();
   };
 
@@ -129,46 +138,37 @@ const publicationCopy: Record<MusicPublicationMode, string> = {
   public: "Anyone can view shared playlists, and the page can appear in search.",
 };
 
-function SharingDialog({ data, onClose, opener }: { data: TunesDashboardData; onClose: () => void; opener: RefObject<HTMLButtonElement> }) {
+function SharingDialog({ data, scope, onClose, opener }: { data: TunesDashboardData; scope: MusicPublicationOwnerScope; onClose: () => void; opener: RefObject<HTMLButtonElement> }) {
   const current = data.dashboard?.publication;
   const [mode, setMode] = useState<MusicPublicationMode>(current?.mode ?? "private");
   const [capability, setCapability] = useState<string>();
   const [saving, setSaving] = useState(false);
-  const pendingCommand = useRef<{ mode: MusicPublicationMode; key: string }>();
   const publicSlug = current?.publicSlug ?? "";
   const base = `${window.location.origin}/music/share/${encodeURIComponent(publicSlug)}`;
   const shareLink = mode === "public" ? base : mode === "unlisted" && capability ? `${base}#access=${capability}` : undefined;
   const save = async () => {
     setSaving(true);
-    const command = pendingCommand.current?.mode === mode
-      ? pendingCommand.current
-      : { mode, key: operationKey("publication") };
-    pendingCommand.current = command;
+    const command = getOrCreateMusicPublicationCommand(scope, mode);
     try {
       const result = await musicWorkspaceClient.setPublication(mode, command.key);
-      pendingCommand.current = undefined;
-      setCapability(result.capability);
+      completeMusicPublicationCommand(scope, mode, command.key);
+      setCapability("capability" in result ? result.capability : undefined);
       await data.refetch();
       toast.success(mode === "public" ? "Music is public." : mode === "unlisted" ? "Private link created." : "Music is private.");
       if (mode !== "unlisted") onClose();
-    } catch (error) {
-      const status = typeof error === "object" && error !== null && "status" in error
-        ? Number((error as { status?: unknown }).status) : undefined;
-      if (status !== undefined && status >= 400 && status < 500 && status !== 401 && status !== 429) {
-        pendingCommand.current = undefined;
-      }
+    } catch {
       toast.error("Music is temporarily unavailable.");
     } finally {
       setSaving(false);
     }
   };
   return (
-    <WorkspaceDialog title="Music sharing" description="Choose who can view the playlists you share." onClose={onClose} opener={opener}>
+    <WorkspaceDialog title="Music sharing" description="Choose who can view the playlists you share." onClose={onClose} opener={opener} closeDisabled={saving}>
       <fieldset className="mt-5 space-y-2">
         <legend className="sr-only">Visibility mode</legend>
         {(["private", "unlisted", "public"] as const).map((value, index) => (
           <label key={value} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-dashboard bg-dashboard-bg/40 px-3 text-dashboard focus-within:ring-2 focus-within:ring-dashboard-accent">
-            <input data-autofocus={index === 0 || undefined} type="radio" name="music-publication" value={value} checked={mode === value} onChange={() => { setMode(value); setCapability(undefined); if (pendingCommand.current?.mode !== value) pendingCommand.current = undefined; }} className="h-5 w-5 accent-[var(--dash-accent)]" />
+            <input data-autofocus={index === 0 || undefined} type="radio" name="music-publication" value={value} checked={mode === value} disabled={saving} onChange={() => { setMode(value); setCapability(undefined); }} className="h-5 w-5 accent-[var(--dash-accent)]" />
             <span>{value[0].toUpperCase() + value.slice(1)}</span>
           </label>
         ))}
@@ -187,7 +187,7 @@ function SharingDialog({ data, onClose, opener }: { data: TunesDashboardData; on
         )}
       </div>
       <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <button type="button" onClick={onClose} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>Cancel</button>
+        <button type="button" onClick={onClose} disabled={saving} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>Cancel</button>
         <button type="button" onClick={() => void save()} disabled={saving} className={`${buttonClass} bg-dashboard-accent text-[var(--dash-accent-text)]`}>{saving ? "Saving…" : "Save sharing"}</button>
       </div>
     </WorkspaceDialog>
@@ -235,7 +235,7 @@ function PlaylistPanel({ playlist, readOnly, onChanged, announce }: { playlist: 
   );
 }
 
-export default function MusicDashboard({ data, readOnly = false }: MusicDashboardProps) {
+export default function MusicDashboard({ data, scope, readOnly = false }: MusicDashboardProps) {
   const [createOpen, setCreateOpen] = useState(false);
   const [sharingOpen, setSharingOpen] = useState(false);
   const [activeId, setActiveId] = useState<number | undefined>(data.playlists[0]?.id);
@@ -285,7 +285,7 @@ export default function MusicDashboard({ data, readOnly = false }: MusicDashboar
 
       <p className="sr-only" aria-live="polite" aria-atomic="true">{announcement}</p>
       {createOpen && <CreatePlaylistDialog onClose={() => setCreateOpen(false)} opener={createOpener} onCreated={data.refetch} />}
-      {sharingOpen && <SharingDialog data={data} onClose={() => setSharingOpen(false)} opener={sharingOpener} />}
+      {sharingOpen && <SharingDialog data={data} scope={scope} onClose={() => setSharingOpen(false)} opener={sharingOpener} />}
     </div>
   );
 }

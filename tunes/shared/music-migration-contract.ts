@@ -1,4 +1,4 @@
-export const EXPECTED_MUSIC_MIGRATION_ID = "0011_durable_publication_idempotency" as const;
+export const EXPECTED_MUSIC_MIGRATION_ID = "0012_publication_replay_expiry_guard" as const;
 export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0001_runtime_baseline",
   "0002_identity_lifecycle",
@@ -10,6 +10,7 @@ export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0008_credential_revocation_operations",
   "0009_credential_revocation_history_immutability",
   "0010_least_privilege_runtime_role",
+  "0011_durable_publication_idempotency",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 export const LEGACY_CONTAINMENT_MIGRATION_MARKER = "containment-no-schema-change" as const;
@@ -25,6 +26,7 @@ export const DEPLOYABLE_MUSIC_MIGRATION_MARKERS = [
   "0008_credential_revocation_operations",
   "0009_credential_revocation_history_immutability",
   "0010_least_privilege_runtime_role",
+  "0011_durable_publication_idempotency",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 

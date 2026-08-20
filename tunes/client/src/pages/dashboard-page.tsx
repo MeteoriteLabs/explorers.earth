@@ -635,7 +635,7 @@ export default function DashboardPage() {
     }
   }, [playlist?.songs, user?.guestUrl]);
 
-  const ensureShareCapability = async () => { if (shareCapability) return shareCapability; const capability = await requestUnlistedShareCapability(); setShareCapability(capability); return capability; };
+  const ensureShareCapability = async () => { if (shareCapability) return shareCapability; const ownerId = user?.id; if (!ownerId) throw new Error("Music sharing requires an authenticated owner."); const capability = await requestUnlistedShareCapability(ownerId); setShareCapability(capability); return capability; };
   const handleCopyLink = async () => {
     if (!user?.guestUrl) return;
 

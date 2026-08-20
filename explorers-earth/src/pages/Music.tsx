@@ -14,6 +14,7 @@ import {
 import { useTunesDashboard, type TunesDashboardData } from "../hooks/useTunesDashboard";
 import useAuthStore from "../store/store";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
+import type { MusicPublicationOwnerScope } from "../features/music/musicPublicationCommandRegistry";
 
 const musicPageEligibilityQuery = gql`
   query MusicPageEligibility($documentId: ID!) {
@@ -76,12 +77,14 @@ export function MusicPageContent({
   authenticated,
   onboarding,
   data,
+  scope,
   onAction,
   statusRef,
 }: {
   authenticated: boolean;
   onboarding: MusicOnboarding;
   data: TunesDashboardData;
+  scope?: MusicPublicationOwnerScope;
   onAction: (action: keyof typeof actionLabels) => void;
   statusRef?: RefObject<HTMLDivElement>;
 }) {
@@ -138,7 +141,7 @@ export function MusicPageContent({
                 {actionLabels[state.secondaryAction]}
               </button>
             )}
-            <MusicDashboard data={data} readOnly={state.kind === "content_stale"} />
+            <MusicDashboard data={data} scope={scope!} readOnly={state.kind === "content_stale"} />
           </div>
         )}
       </div>
@@ -159,10 +162,11 @@ const MusicPage = () => {
   const selection = selectExplorerAccountState(eligibility.data?.usersPermissionsUser?.accounts, {
     authoritative: !eligibility.loading && !eligibility.error && Array.isArray(eligibility.data?.usersPermissionsUser?.accounts),
   });
-  const data = useTunesDashboard(selection.kind === "selected" && user?.documentId ? {
+  const scope = selection.kind === "selected" && user?.documentId ? {
     userDocumentId: user.documentId,
     accountDocumentId: selection.account.documentId,
-  } : undefined);
+  } : undefined;
+  const data = useTunesDashboard(scope);
   const onboarding = onboardingFromEligibility(eligibility);
 
   const action = (value: keyof typeof actionLabels) => {
@@ -186,7 +190,7 @@ const MusicPage = () => {
         noIndex
         siteName="explorers"
       />
-      <MusicPageContent authenticated={isAuthenticated} onboarding={onboarding} data={data} onAction={action} statusRef={statusRef} />
+      <MusicPageContent authenticated={isAuthenticated} onboarding={onboarding} data={data} scope={scope} onAction={action} statusRef={statusRef} />
     </>
   );
 };

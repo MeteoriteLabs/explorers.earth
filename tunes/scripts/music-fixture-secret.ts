@@ -743,6 +743,7 @@ export function rotateFixtureMusicAuthority(
       || referencedCredentials.some((value, index) => !sameResolvedPath(value, candidatePaths[index]!))) {
     throw fixtureEnvironmentError("rotation-environment");
   }
+  assertFixturePublicationAuthoritySeparation(contents, credentialSecrets);
   const environmentBytes = Buffer.from(contents, "utf8");
   if (!environmentBytes.length || environmentBytes.length > 65_536) throw fixtureEnvironmentError("rotation-environment");
   const generationId = operationBoundLeafId(operationId, "environment");
@@ -1311,6 +1312,36 @@ function fixtureCredentialPaths(environment: { contents: string }): string[] {
     .map((key) => values.get(key));
   if (paths.some((value) => !value) || new Set(paths).size !== 3) throw fixtureEnvironmentError("rotation-environment");
   return paths as string[];
+}
+
+function assertFixturePublicationAuthoritySeparation(contents: string, credentialSecrets: readonly Buffer[]): void {
+  const values = new Map<string, string>();
+  for (const line of contents.split(/\r?\n/).filter(Boolean)) {
+    const separator = line.indexOf("=");
+    const key = line.slice(0, separator);
+    if (separator < 1 || values.has(key)) throw fixtureEnvironmentError("publication-authority");
+    values.set(key, line.slice(separator + 1));
+  }
+  const encoded = values.get("MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY");
+  if (!encoded) return;
+  if (!/^[A-Za-z0-9_-]{43}$/.test(encoded)) throw fixtureEnvironmentError("publication-authority");
+  const publication = Buffer.from(encoded, "base64url");
+  if (publication.length !== 32 || publication.toString("base64url") !== encoded) {
+    throw fixtureEnvironmentError("publication-authority");
+  }
+  if (credentialSecrets.some((secret) => publication.equals(secret) || encoded === secret.toString("base64url"))) {
+    throw fixtureEnvironmentError("publication-authority");
+  }
+  for (const name of [
+    "SESSION_SECRET", "COOKIE_SECRET", "MUSIC_SIGNING_KEY_CURRENT_SECRET", "MUSIC_SIGNING_KEY_PREVIOUS_SECRET",
+    "STRAPI_ACCESS_TOKEN", "STRAPI_JWT_SECRET", "STRAPI_LIFECYCLE_PROOF_TOKEN", "STRAPI_RECONCILIATION_TOKEN",
+    "MUSIC_GATE_ATTESTATION_KEY",
+  ]) {
+    const authority = values.get(name);
+    if (authority && (authority === encoded || publication.equals(Buffer.from(authority, "utf8")))) {
+      throw fixtureEnvironmentError("publication-authority");
+    }
+  }
 }
 
 function parseOptionalFixtureReference(bytes: Buffer): string | null {

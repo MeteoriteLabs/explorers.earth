@@ -40,7 +40,7 @@ absent or different, or `main` is not protected.
 
 ## C3-C9 same-image migration gate
 
-`0011_durable_publication_idempotency` is the exact expected migration ID. The
+`0012_publication_replay_expiry_guard` is the exact expected migration ID. The
 C5-C9 chain appends durable, exact-operation credential-revocation authority,
 immutable revocation history, the least-privilege runtime boundary, and durable
 publication-command replay authority without changing the immutable
@@ -64,7 +64,7 @@ Liveness remains process-only. The secure image ledger can retain historical
 `containment-no-schema-change` entries for audit and the permanent security
 floor, but they cease to be rollback targets as soon as the real C3 gate has
 migrated the database. All new images use
-`0011_durable_publication_idempotency` and the
+`0012_publication_replay_expiry_guard` and the
 real migration gate. Because production catalog/row-count and restore evidence
 are still absent, an existing unversioned database is a conflict: there is no
 automatic baseline adoption, username/email matching, or authorized production
@@ -311,6 +311,12 @@ Publication mutation, capability-hash rotation/revocation, encrypted response
 recording, and operation claim/replay occur within one owner-locked PostgreSQL
 transaction.
 
+Migration `0012` replaces only that trigger function and is append-only; do not
+rewrite applied `0011`. It permits completed-to-replay-expired ciphertext shredding
+only after the database's `clock_timestamp()` reaches `response_expires_at` and
+requires the shred timestamp to be at or after that expiry. Application clocks,
+including injected future times, cannot authorize the transition.
+
 The Tunes application mounts only the runtime credential and independently
 authenticates and checks the restricted role before importing routes or binding
 a listener. It never mounts or reads the migrator credential. The database
@@ -484,6 +490,18 @@ directory read-only and exposes the current file as
 `/run/secrets/music-publication-response/current`; inline live key values are
 forbidden.
 
+Before candidate Docker activity, the privileged deployment verifier reads the
+host-only publication current/optional previous files and compares their identity
+and content against the runtime and migrator database passwords, deployment HMAC,
+current/optional previous Music token, lifecycle proof, reconciliation, session,
+cookie, Strapi access/JWT, and gate authorities. Production configuration must
+provide `STRAPI_LIFECYCLE_PROOF_TOKEN_FILE_HOST` and
+`STRAPI_RECONCILIATION_TOKEN_FILE_HOST`; an absent path, inaccessible file, alias,
+or unsafe file metadata fails the deployment while `GATE_PROD` remains closed.
+These privileged database and deployment authorities are never mounted into the
+application. The application independently compares every authority available in
+its own least-privilege runtime view.
+
 Response-key rotation is verifier-first and lasts at most the fixed 24-hour replay
 window:
 
@@ -496,10 +514,13 @@ window:
    settings are required together; the deadline must be positive, no later than
    24 hours after activation, and cover every unexpired row written with the old
    key.
-3. Deploy with both keys. Startup queries unexpired operation rows before route
-   registration and fails closed if any recorded KID is unavailable or its latest
-   expiry exceeds the configured overlap. New responses use only the new current
-   key; exact replays continue to use the recorded KID.
+3. Deploy with both keys. Startup queries at most one representative unexpired
+   encrypted operation per active KID (and at most three rows total), verifies the
+   recorded KID and overlap, then performs an authenticated AES-256-GCM decrypt
+   using the exact persisted owner, operation hash, request fingerprint, and key-ID
+   AAD. Missing or wrong same-KID material and corrupt envelopes fail closed before
+   route registration. No matching rows is valid. New responses use only the new
+   current key; exact replays continue to use the recorded KID.
 4. After the cutoff, allow the bounded shred worker to clear expired ciphertext,
    remove all previous-key settings, and securely retire the old file. Hashed
    operation tombstones remain permanently and an expired key returns the typed

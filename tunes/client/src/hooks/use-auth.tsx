@@ -21,6 +21,7 @@ import {
 } from "../lib/authStorage";
 import { useAuthStore } from "@/stores/authStore";
 import { musicPrincipalForRequest } from "@/lib/musicCredential";
+import { clearPendingMusicPublicationCommands } from "@/lib/musicPublicationCommandRegistry";
 
 type AuthContextType = {
   user: SelectUser | null;
@@ -347,6 +348,7 @@ export function AuthProvider({ children, skipAuthCheck = false }: AuthProviderPr
         queryClient.setQueryData(["/api/user"], null);
         queryClient.setQueryData(["/api/user/profile"], null);
         clearAuthStorage();
+        clearPendingMusicPublicationCommands();
         setLocalUser(null);
         
         // Get CSRF token using our helper function
@@ -356,7 +358,7 @@ export function AuthProvider({ children, skipAuthCheck = false }: AuthProviderPr
         console.log('Attempting logout with CSRF token:', (csrfToken || '').substring(0, 6) + '...');
         
         // Return the promise so it can be awaited
-        return apiRequest("POST", "/api/logout", { _csrf: csrfToken || '' });
+        await apiRequest("POST", "/api/logout", { _csrf: csrfToken || '' });
       } finally {
         // Reset the flag after a delay to allow for cleanup
         setTimeout(() => {

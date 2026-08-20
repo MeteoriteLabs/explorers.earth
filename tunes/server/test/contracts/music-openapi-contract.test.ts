@@ -267,4 +267,25 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     expect(validate({ ...base, state: "entitled", paidMutation: true })).toBe(false);
     expect(validate({ ...base, state: "revoked", coreMutation: false })).toBe(false);
   });
+
+  it("expresses the exact conditional publication response for every requested mode", async () => {
+    const dereferenced = await SwaggerParser.dereference(JSON.parse(JSON.stringify(MUSIC_OPENAPI_DOCUMENT)) as never) as any;
+    const validator = new Ajv2020({ allErrors: true, strict: false });
+    const validate = validator.compile(dereferenced.components.schemas.PublicationCommandResponse);
+    const slug = "public-owner-slug";
+    const capability = "C".repeat(43);
+
+    expect(validate({ version: "music-publication/v1", publication: { mode: "private", publicSlug: slug } })).toBe(true);
+    expect(validate({ version: "music-publication/v1", publication: { mode: "public", publicSlug: slug } })).toBe(true);
+    expect(validate({ version: "music-publication/v1", publication: { mode: "unlisted", publicSlug: slug }, capability })).toBe(true);
+
+    for (const invalid of [
+      { version: "music-publication/v1", publication: { mode: "unlisted", publicSlug: slug } },
+      { version: "music-publication/v1", publication: { mode: "public", publicSlug: slug }, capability },
+      { version: "music-publication/v1", publication: { mode: "private", publicSlug: null } },
+      { version: "music-publication/v1", publication: { mode: "public", publicSlug: slug }, extra: true },
+      { version: "music-publication/v1", publication: { mode: "public", publicSlug: slug, extra: true } },
+      { version: "music-publication/v1", publication: { mode: "unlisted", publicSlug: slug }, capability: "short" },
+    ]) expect(validate(invalid), JSON.stringify(validate.errors)).toBe(false);
+  });
 });

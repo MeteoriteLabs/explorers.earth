@@ -185,6 +185,7 @@ async function resolvePublicationResponseConfiguration(
     environment.STRAPI_LIFECYCLE_PROOF_TOKEN_FILE,
     environment.STRAPI_ACCESS_TOKEN_FILE,
     environment.STRAPI_RECONCILIATION_TOKEN_FILE,
+    environment.MUSIC_DATABASE_PASSWORD_FILE,
   ].filter((value): value is string => present(value));
   const currentEncoded = await readPublicationAuthorityFile(
     environment.MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE, authorityPaths, mode, dependencies,
@@ -291,6 +292,12 @@ function authorityValues(
     lifecycleProofToken,
     environment.STRAPI_ACCESS_TOKEN,
     environment.STRAPI_RECONCILIATION_TOKEN,
+    environment.SESSION_SECRET,
+    environment.COOKIE_SECRET,
+    environment.MUSIC_SIGNING_KEY_CURRENT_SECRET,
+    environment.MUSIC_SIGNING_KEY_PREVIOUS_SECRET,
+    environment.STRAPI_JWT_SECRET,
+    environment.MUSIC_GATE_ATTESTATION_KEY,
   ].filter((value): value is string => present(value));
 }
 

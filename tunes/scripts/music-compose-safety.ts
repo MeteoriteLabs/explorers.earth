@@ -40,7 +40,11 @@ export function validateComposeModel(model: ComposeModel): void {
   const normalizedTunesContext = tunes?.build?.context?.replaceAll("\\", "/");
   const normalizedExplorersContext = explorers?.build?.context?.replaceAll("\\", "/");
   if (!normalizedTunesContext?.endsWith("/tunes") || tunes?.build?.dockerfile !== "Dockerfile") throw new Error("tunes must build the actual application");
-  if (!normalizedExplorersContext?.endsWith("/explorers-earth") || explorers?.build?.dockerfile !== "Dockerfile") throw new Error("explorers must build the actual application");
+  if (!normalizedExplorersContext
+      || normalizedExplorersContext.endsWith("/explorers-earth")
+      || explorers?.build?.dockerfile !== "explorers-earth/Dockerfile.music-fixture") {
+    throw new Error("explorers must build the actual application");
+  }
   if (!Object.keys(model.networks ?? {}).length) throw new Error("Compose model has no labeled network");
   if (!Object.keys(model.volumes ?? {}).length) throw new Error("Compose model has no labeled volume");
 }

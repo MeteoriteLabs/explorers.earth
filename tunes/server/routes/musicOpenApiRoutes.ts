@@ -396,7 +396,23 @@ export const MUSIC_OPENAPI_DOCUMENT = {
       BulkSongInput: { type: "object", additionalProperties: false, required: ["songIds"], properties: { songIds: { type: "array", minItems: 1, maxItems: 100, uniqueItems: true, items: { type: "integer", minimum: 1 } } } },
       PositionInput: { type: "object", additionalProperties: false, required: ["position"], properties: { position: { type: "integer", minimum: 0 } } },
       PublicationCommandInput: { type: "object", additionalProperties: false, required: ["mode"], properties: { mode: { type: "string", enum: ["private", "unlisted", "public"] } } },
-      PublicationCommandResponse: { type: "object", additionalProperties: false, required: ["version", "publication"], properties: { version: { const: "music-publication/v1" }, publication: { type: "object", additionalProperties: false, required: ["mode", "publicSlug"], properties: { mode: { type: "string", enum: ["private", "unlisted", "public"] }, publicSlug: { type: "string", minLength: 8, maxLength: 128, pattern: "^[A-Za-z0-9_-]+$" } } }, capability: { type: "string", pattern: "^[A-Za-z0-9_-]{43}$" } } },
+      PublicationCommandResponse: {
+        oneOf: (["private", "unlisted", "public"] as const).map((mode) => ({
+          type: "object",
+          additionalProperties: false,
+          required: mode === "unlisted" ? ["version", "publication", "capability"] : ["version", "publication"],
+          properties: {
+            version: { const: "music-publication/v1" },
+            publication: {
+              type: "object", additionalProperties: false, required: ["mode", "publicSlug"], properties: {
+                mode: { const: mode },
+                publicSlug: { type: "string", minLength: 8, maxLength: 128, pattern: "^[A-Za-z0-9_-]+$" },
+              },
+            },
+            ...(mode === "unlisted" ? { capability: { type: "string", pattern: "^[A-Za-z0-9_-]{43}$" } } : {}),
+          },
+        })),
+      },
       EntitlementResponse: {
         type: "object",
         additionalProperties: false,

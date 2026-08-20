@@ -1,0 +1,14 @@
+**
+!.dockerignore
+
+!explorers-earth/
+!explorers-earth/**
+explorers-earth/node_modules/**
+explorers-earth/dist/**
+explorers-earth/coverage/**
+explorers-earth/.env*
+
+!tunes/
+tunes/**
+!tunes/shared/
+!tunes/shared/musicPublicationContract.ts

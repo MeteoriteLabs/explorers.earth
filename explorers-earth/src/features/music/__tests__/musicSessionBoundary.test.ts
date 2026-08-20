@@ -30,12 +30,14 @@ describe("cross-tab Music authority boundary", () => {
       resetCoordinator: vi.fn(),
       clearCredential: vi.fn(),
       clearIdentityQueries: vi.fn(async () => undefined),
+      clearPublicationCommands: vi.fn(),
     };
     await module!.resetMusicSessionAuthority(dependencies);
     expect(dependencies.clearAuth).toHaveBeenCalledOnce();
     expect(dependencies.resetCoordinator).toHaveBeenCalledOnce();
     expect(dependencies.clearCredential).toHaveBeenCalledOnce();
     expect(dependencies.clearIdentityQueries).toHaveBeenCalledOnce();
+    expect(dependencies.clearPublicationCommands).toHaveBeenCalledOnce();
   });
 
   it("keeps Explorer authentication on account generation but clears it on a true cross-tab logout", async () => {
@@ -47,6 +49,7 @@ describe("cross-tab Music authority boundary", () => {
       resetCoordinator: vi.fn(),
       clearCredential: vi.fn(),
       clearIdentityQueries: vi.fn(async () => undefined),
+      clearPublicationCommands: vi.fn(),
     };
 
     await module!.resetMusicSessionRealm("account-generation", dependencies);
@@ -58,6 +61,7 @@ describe("cross-tab Music authority boundary", () => {
     expect(dependencies.logoutExplorer).toHaveBeenCalledOnce();
     expect(dependencies.clearMusicAuth).toHaveBeenCalledTimes(2);
     expect(dependencies.clearIdentityQueries).toHaveBeenCalledTimes(2);
+    expect(dependencies.clearPublicationCommands).toHaveBeenCalledTimes(2);
   });
 
   it("resets every other realm for logout and account-generation events without broadcasting credentials or identity", async () => {

@@ -2,6 +2,11 @@ import { MusicClientError, type LocalMusicRequest, type MusicClientErrorCode } f
 import {
   parseMusicEntitlementResponse,
 } from "./musicEntitlementContract";
+import {
+  parseMusicPublicationResponse,
+  type MusicPublicationCommandResponse,
+  type MusicPublicationMode,
+} from "../../../../tunes/shared/musicPublicationContract";
 
 export type { MusicEntitlementResponse, MusicEntitlementState } from "./musicEntitlementContract";
 
@@ -21,7 +26,7 @@ export interface MusicPlaylist {
   songs: MusicSong[];
 }
 
-export type MusicPublicationMode = "private" | "unlisted" | "public";
+export type { MusicPublicationMode } from "../../../../tunes/shared/musicPublicationContract";
 
 export interface MusicDashboardResponse {
   songs: MusicSong[];
@@ -92,14 +97,12 @@ export function createMusicWorkspaceClient(request: Request) {
     reorderPlaylistSong(playlistId: number, songId: number, position: number, idempotencyKey: string) {
       return empty(request, { method: "PATCH", path: `/api/playlists/${playlistId}/reorder`, body: { songId, position }, idempotencyKey });
     },
-    async setPublication(mode: MusicPublicationMode, idempotencyKey: string): Promise<{ capability?: string }> {
+    async setPublication(mode: MusicPublicationMode, idempotencyKey: string): Promise<MusicPublicationCommandResponse> {
       const response = await request({
         method: "POST", path: "/api/music/publication", body: { mode }, idempotencyKey,
       });
       if (!response.ok) throw await containedWorkspaceError(response);
-      if (response.status === 204) return {};
-      const result = await response.json() as { capability?: string };
-      return result.capability ? { capability: result.capability } : {};
+      return parseMusicPublicationResponse(await response.json(), mode);
     },
   };
 }

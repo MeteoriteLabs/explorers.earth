@@ -132,13 +132,14 @@ jobs:
           bundle="$(mktemp -d)"
           archive="$(mktemp)"
           cleanup() {
-            rm -f -- "$bundle/music-deploy.sh" "$bundle/music-hmac.mjs" "$bundle/request.txt" "$bundle/authority.txt" \
+            rm -f -- "$bundle/music-deploy.sh" "$bundle/music-hmac.mjs" "$bundle/verify-publication-authority.mjs" "$bundle/request.txt" "$bundle/authority.txt" \
               "$bundle/hmac.key" "$bundle/ghcr.token" "$archive"
             rmdir -- "$bundle" 2>/dev/null || true
           }
           trap cleanup EXIT
           install -m 700 tunes/deployment/music-deploy.sh "$bundle/music-deploy.sh"
           install -m 600 tunes/deployment/music-hmac.mjs "$bundle/music-hmac.mjs"
+          install -m 600 tunes/deployment/verify-publication-authority.mjs "$bundle/verify-publication-authority.mjs"
           printf '%s\n' music-deploy-request-v2 "operation=$OPERATION" "digest=$DIGEST" "commit=$COMMIT" compose_project=- legacy_service=- > "$bundle/request.txt"
           printf '%s\n' music-deploy-authority-v1 "repository=$IMAGE_REPOSITORY" "source=$IMAGE_SOURCE" "ghcr_user=$GHCR_DEPLOY_USER" > "$bundle/authority.txt"
           printf '%s' "$hmac_key_value" > "$bundle/hmac.key"
@@ -152,18 +153,19 @@ jobs:
             set -euo pipefail
             incoming="$(mktemp -d /opt/explorers/deployment-transactions/incoming.XXXXXX)"
             cleanup() {
-              rm -f -- "$incoming/music-deploy.sh" "$incoming/music-hmac.mjs" "$incoming/request.txt" "$incoming/authority.txt" \
+              rm -f -- "$incoming/music-deploy.sh" "$incoming/music-hmac.mjs" "$incoming/verify-publication-authority.mjs" "$incoming/request.txt" "$incoming/authority.txt" \
                 "$incoming/hmac.key" "$incoming/ghcr.token"
               rmdir -- "$incoming" 2>/dev/null || true
             }
             trap cleanup EXIT
             base64 -d | tar -xzf - -C "$incoming"
             chmod 700 "$incoming/music-deploy.sh"
-            chmod 600 "$incoming/music-hmac.mjs" "$incoming/request.txt" "$incoming/authority.txt" "$incoming/hmac.key" "$incoming/ghcr.token"
+            chmod 600 "$incoming/music-hmac.mjs" "$incoming/verify-publication-authority.mjs" "$incoming/request.txt" "$incoming/authority.txt" "$incoming/hmac.key" "$incoming/ghcr.token"
             MUSIC_DEPLOY_REQUEST_FILE="$incoming/request.txt" \
             MUSIC_DEPLOY_AUTHORITY_FILE="$incoming/authority.txt" \
             MUSIC_DEPLOY_HMAC_KEY_FILE="$incoming/hmac.key" \
             MUSIC_DEPLOY_HMAC_HELPER_FILE="$incoming/music-hmac.mjs" \
+            MUSIC_PUBLICATION_AUTHORITY_HELPER_FILE="$incoming/verify-publication-authority.mjs" \
             MUSIC_DEPLOY_GHCR_TOKEN_FILE="$incoming/ghcr.token" \
             MUSIC_DEPLOY_EPHEMERAL_CREDENTIAL_FILES=1 \
             bash "$incoming/music-deploy.sh"

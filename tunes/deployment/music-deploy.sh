@@ -12,7 +12,7 @@ readonly compatibility_floor_schema="music-schema-floor-v2"
 readonly schema_epoch_schema="music-schema-epoch-v1"
 readonly journal_schema="music-transaction-v1"
 readonly legacy_marker="containment-no-schema-change"
-readonly production_current_marker="0011_durable_publication_idempotency"
+readonly production_current_marker="0012_publication_replay_expiry_guard"
 readonly -a known_markers=(
   "$legacy_marker"
   "0002_identity_lifecycle"
@@ -24,6 +24,7 @@ readonly -a known_markers=(
   "0008_credential_revocation_operations"
   "0009_credential_revocation_history_immutability"
   "0010_least_privilege_runtime_role"
+  "0011_durable_publication_idempotency"
   "$production_current_marker"
 )
 current_marker="$production_current_marker"
@@ -119,6 +120,7 @@ repository="${MUSIC_DEPLOY_EXPECTED_REPOSITORY:-}"
 expected_source="${MUSIC_DEPLOY_EXPECTED_SOURCE:-}"
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 hmac_helper_file="${MUSIC_DEPLOY_HMAC_HELPER_FILE:-$script_dir/music-hmac.mjs}"
+publication_authority_helper_file="${MUSIC_PUBLICATION_AUTHORITY_HELPER_FILE:-$script_dir/verify-publication-authority.mjs}"
 
 if [[ -n "$authority_file" ]]; then
   require_regular_file "$authority_file"
@@ -141,6 +143,7 @@ require_regular_file "$request_file"
 require_regular_file "$hmac_key_file"
 require_regular_file "$ghcr_token_file"
 require_code_file "$hmac_helper_file"
+require_code_file "$publication_authority_helper_file"
 require_command docker
 require_command node
 require_command sha256sum
@@ -204,6 +207,8 @@ transaction_current="$transaction_dir/current"
 ensure_private_directory "$state_dir" "$route_dir" "$transaction_dir"
 [[ -f "$root/docker-compose.yml" && ! -L "$root/docker-compose.yml" ]] || fail "production Compose authority missing"
 [[ -f "$root/production.env" && ! -L "$root/production.env" ]] || fail "production environment missing"
+node "$publication_authority_helper_file" "$root/production.env" "$hmac_key_file" >/dev/null 2>&1 \
+  || fail "publication authority separation failed"
 
 declare -a ledger_digests=()
 declare -a ledger_commits=()

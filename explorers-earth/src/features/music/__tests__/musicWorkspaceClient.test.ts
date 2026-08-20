@@ -10,6 +10,11 @@ describe("canonical Music workspace client", () => {
         ? new Response(JSON.stringify({ songs: [], playedSongs: [], currentlyPlaying: null, publication: { mode: "private", publicSlug: "public-slug" } }), { status: 200 })
         : input.path === "/api/music/entitlement"
           ? new Response(JSON.stringify({ state: "included", coreRead: true, coreMutation: true, paidMutation: false, maxAgeSeconds: 600 }), { status: 200 })
+          : input.path === "/api/music/publication"
+            ? new Response(JSON.stringify({
+              version: "music-publication/v1",
+              publication: { mode: (input as { body?: { mode?: string } }).body?.mode, publicSlug: "public-slug" },
+            }), { status: 200 })
           : (input.path === "/api/playlists" || input.path === "/api/playlists/7")
             ? new Response(JSON.stringify({ id: 7, name: "Road songs", description: null, isVisibleToGuests: false, songs: [] }), { status: 200 })
             : new Response(null, { status: 204 }));
@@ -41,11 +46,28 @@ describe("canonical Music workspace client", () => {
       version: "music-publication/v1", publication: { mode: "unlisted", publicSlug: "public-slug" }, capability: "A".repeat(43),
     }), { status: 200 }));
     const client = createMusicWorkspaceClient(request);
-    await expect(client.setPublication("unlisted", "unlisted-mode-1")).resolves.toEqual({ capability: "A".repeat(43) });
+    await expect(client.setPublication("unlisted", "unlisted-mode-1")).resolves.toEqual({
+      version: "music-publication/v1",
+      publication: { mode: "unlisted", publicSlug: "public-slug" },
+      capability: "A".repeat(43),
+    });
     expect(request).toHaveBeenCalledTimes(1);
     expect(request).toHaveBeenCalledWith({
       method: "POST", path: "/api/music/publication", body: { mode: "unlisted" }, idempotencyKey: "unlisted-mode-1",
     });
+  });
+
+  it.each([
+    ["unlisted", { version: "music-publication/v1", publication: { mode: "unlisted", publicSlug: "public-slug" } }],
+    ["unlisted", { version: "music-publication/v1", publication: { mode: "public", publicSlug: "public-slug" }, capability: "A".repeat(43) }],
+    ["unlisted", { version: "music-publication/v1", publication: { mode: "unlisted", publicSlug: "public-slug" }, capability: "A".repeat(43), extra: true }],
+    ["public", { version: "music-publication/v1", publication: { mode: "public", publicSlug: "public-slug" }, capability: "A".repeat(43) }],
+    ["private", { version: "music-publication/v1", publication: { mode: "private", publicSlug: null } }],
+    ["private", { version: "music-publication/v1", publication: { mode: "private", publicSlug: "short" } }],
+  ] as const)("rejects a successful but non-canonical %s publication response %#", async (mode, body) => {
+    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status: 200 }));
+    await expect(createMusicWorkspaceClient(request).setPublication(mode, "publication-contract-1"))
+      .rejects.toThrow("Music sharing returned an invalid response.");
   });
 
   it("deletes an owner playlist through the canonical route", async () => {

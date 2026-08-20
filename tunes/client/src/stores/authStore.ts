@@ -5,6 +5,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { clearPendingMusicPublicationCommands } from '@/lib/musicPublicationCommandRegistry';
 
 export interface AuthUser {
   id: string;
@@ -40,6 +41,7 @@ export const useAuthStore = create<AuthState>()(
         });
       },
       logout: () => {
+        clearPendingMusicPublicationCommands();
         // Clear all auth data
         localStorage.removeItem('qrtoken');
         localStorage.removeItem('auth-storage');

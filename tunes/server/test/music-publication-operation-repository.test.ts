@@ -47,6 +47,7 @@ function storedResponse() {
     request_mode: "unlisted",
     operation_state: "completed",
     expires_at: new Date(now + 86_400_000),
+    response_expired: false,
     response_key_id: encrypted.responseKeyId,
     response_nonce: encrypted.responseNonce,
     response_ciphertext: encrypted.responseCiphertext,
@@ -103,7 +104,7 @@ describe("durable publication operation repository", () => {
   });
 
   it("shreds an expired response, retains the tombstone, and never rotates publication", async () => {
-    const stored = { ...storedResponse(), expires_at: new Date(now - 1) };
+    const stored = { ...storedResponse(), expires_at: new Date(now - 1), response_expired: true };
     const db = harness((text) => text.includes("FROM music_publication_operations")
       ? { rows: [stored] }
       : { rows: [], rowCount: text.startsWith("UPDATE music_publication_operations") ? 1 : 0 });
@@ -131,18 +132,88 @@ describe("durable publication operation repository", () => {
     expect(db.calls.map(({ text }) => text)).not.toContain("COMMIT");
   });
 
-  it("fails readiness when an unexpired row needs an unavailable or prematurely expiring previous key", async () => {
-    const db = harness(() => ({ rows: [{ response_key_id: "missing-key", max_expires_at: new Date(now + 60_000) }] }));
+  it("fails readiness when an unexpired row needs an unavailable replay key", async () => {
+    const db = harness(() => ({ rows: [{ ...storedResponse(), response_key_id: "missing-key" }] }));
     const repository = new MusicPublicationOperationRepository(db.pool as never, cipher, { now: () => now });
     await expect(repository.verifyReplayReadiness()).rejects.toThrow(/publication replay key readiness/i);
+  });
+
+  it("proves actual current key material and exact AAD by decrypting a bounded representative row", async () => {
+    const stored = storedResponse();
+    const db = harness(() => ({ rows: [stored] }));
+    const wrongMaterial = new MusicPublicationResponseCipher({
+      current: { kid: stored.response_key_id, key: Buffer.alloc(32, 0x77) },
+      retentionSeconds: 86_400,
+    }, { now: () => now });
+    const repository = new MusicPublicationOperationRepository(db.pool as never, wrongMaterial, { now: () => now });
+    await expect(repository.verifyReplayReadiness()).rejects.toThrow(/publication replay key readiness/i);
+    expect(db.calls[0]?.text).toMatch(/DISTINCT ON.*LIMIT 3/i);
+  });
+
+  it("fails readiness for representative ciphertext corruption and succeeds when no rows need replay", async () => {
+    const stored = storedResponse();
+    const corrupt = { ...stored, response_ciphertext: Buffer.from(stored.response_ciphertext) };
+    corrupt.response_ciphertext[0] ^= 0xff;
+    const corruptDb = harness(() => ({ rows: [corrupt] }));
+    await expect(new MusicPublicationOperationRepository(corruptDb.pool as never, cipher, { now: () => now })
+      .verifyReplayReadiness()).rejects.toThrow(/publication replay key readiness/i);
+
+    const emptyDb = harness(() => ({ rows: [] }));
+    await expect(new MusicPublicationOperationRepository(emptyDb.pool as never, cipher, { now: () => now })
+      .verifyReplayReadiness()).resolves.toBeUndefined();
+  });
+
+  it("fails readiness when the bounded query finds more active KIDs than the current/previous contract can represent", async () => {
+    const stored = storedResponse();
+    const db = harness(() => ({ rows: [
+      stored,
+      { ...stored, response_key_id: "unexpected-key-two" },
+      { ...stored, response_key_id: "unexpected-key-three" },
+    ] }));
+    await expect(new MusicPublicationOperationRepository(db.pool as never, cipher, { now: () => now })
+      .verifyReplayReadiness()).rejects.toThrow(/publication replay key readiness/i);
+  });
+
+  it("proves previous key material for an unexpired representative row", async () => {
+    const previousKey = Buffer.alloc(32, 0x24);
+    const oldCipher = new MusicPublicationResponseCipher({
+      current: { kid: "publication-previous-v1", key: previousKey }, retentionSeconds: 86_400,
+    }, { now: () => now, randomBytes: (size) => Buffer.alloc(size, 0x23) });
+    const idempotencyKeyHash = hashPublicationIdempotencyKey("publication-command-previous");
+    const requestFingerprint = publicationRequestFingerprint("public");
+    const encrypted = oldCipher.encrypt({ musicUserId: 52, idempotencyKeyHash, requestFingerprint }, {
+      version: "music-publication/v1", publication: { mode: "public", publicSlug: "previous-owner" },
+    });
+    const row = {
+      music_user_id: 52, idempotency_key_hash: idempotencyKeyHash, request_fingerprint: requestFingerprint,
+      request_mode: "public", expires_at: new Date(now + 60_000),
+      response_key_id: encrypted.responseKeyId, response_nonce: encrypted.responseNonce,
+      response_ciphertext: encrypted.responseCiphertext, response_tag: encrypted.responseTag,
+    };
+    const readyCipher = new MusicPublicationResponseCipher({
+      current: { kid: "publication-current-v2", key: Buffer.alloc(32, 0x25) },
+      previous: { kid: "publication-previous-v1", key: previousKey, acceptUntil: now + 60_000 },
+      retentionSeconds: 86_400,
+    }, { now: () => now });
+    const db = harness(() => ({ rows: [row] }));
+    await expect(new MusicPublicationOperationRepository(db.pool as never, readyCipher, { now: () => now })
+      .verifyReplayReadiness()).resolves.toBeUndefined();
+
+    const wrongPrevious = new MusicPublicationResponseCipher({
+      current: readyCipher.keyring.current,
+      previous: { kid: "publication-previous-v1", key: Buffer.alloc(32, 0x26), acceptUntil: now + 60_000 },
+      retentionSeconds: 86_400,
+    }, { now: () => now });
+    await expect(new MusicPublicationOperationRepository(db.pool as never, wrongPrevious, { now: () => now })
+      .verifyReplayReadiness()).rejects.toThrow(/publication replay key readiness/i);
   });
 
   it("shreds a bounded batch of expired response ciphertext without deleting tombstones", async () => {
     const db = harness((text) => ({ rows: [], rowCount: text.startsWith("WITH expired") ? 3 : 0 }));
     const repository = new MusicPublicationOperationRepository(db.pool as never, cipher, { now: () => now });
     await expect(repository.shredExpiredResponses(3)).resolves.toBe(3);
-    expect(db.calls.at(-1)?.text).toMatch(/LIMIT \$2[\s\S]*operation_state='replay_expired'/i);
-    expect(db.calls.at(-1)?.values).toEqual([new Date(now), 3]);
+    expect(db.calls.at(-1)?.text).toMatch(/LIMIT \$1[\s\S]*operation_state='replay_expired'/i);
+    expect(db.calls.at(-1)?.values).toEqual([3]);
     expect(db.calls.at(-1)?.text).not.toMatch(/DELETE/i);
   });
 
@@ -199,12 +270,7 @@ describe("durable publication operation repository", () => {
     }
   });
 
-  it("accepts empty/current-key readiness and validates shred limits and empty row counts", async () => {
-    for (const rows of [[], [{ response_key_id: "publication-current-v1", max_expires_at: new Date(now + 60_000) }]]) {
-      const db = harness(() => ({ rows }));
-      const repository = new MusicPublicationOperationRepository(db.pool as never, cipher, { now: () => now });
-      await expect(repository.verifyReplayReadiness()).resolves.toBeUndefined();
-    }
+  it("validates shred limits and empty row counts", async () => {
     const db = harness(() => ({ rows: [] }));
     const repository = new MusicPublicationOperationRepository(db.pool as never, cipher, { now: () => now });
     for (const limit of [1.5, 0, 1_001]) {

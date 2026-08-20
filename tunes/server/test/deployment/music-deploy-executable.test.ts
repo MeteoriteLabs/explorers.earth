@@ -15,6 +15,7 @@ const commit = (character: string) => character.repeat(40);
 const repository = "ghcr.io/explorers-earth/explorers-tunes";
 const source = "https://github.com/explorers-earth/explorers.earth";
 const hmacSentinel = "state-hmac-key-with-at-least-thirty-two-bytes";
+const publicationAuthority = Buffer.alloc(32, 0x70).toString("base64url");
 const publicResponseSentinel = "UNTRUSTED_PUBLIC_RESPONSE_SENTINEL";
 
 function shellPath(path: string): string {
@@ -56,9 +57,43 @@ describe("checked-in production Music deploy executable", () => {
     mkdirSync(join(root, "deployment-routing"), { recursive: true });
     mkdirSync(join(root, "deployment-state"), { recursive: true });
     mkdirSync(join(root, "deployment-transactions"), { recursive: true });
+    mkdirSync(join(root, "publication-authority"), { recursive: true });
+    mkdirSync(join(root, "token-authority"), { recursive: true });
     mkdirSync(fakeBin, { recursive: true });
     writeFileSync(join(root, "docker-compose.yml"), "services: {}\n");
-    writeFileSync(join(root, "production.env"), "MUSIC_GATE_ATTESTATION_KEY=test-only\n");
+    const authorityFiles = {
+      publication: join(root, "publication-authority/current"),
+      token: join(root, "token-authority/current"),
+      runtimeDatabase: join(root, "database-runtime"),
+      migratorDatabase: join(root, "database-migrator"),
+      lifecycle: join(root, "strapi-lifecycle"),
+      reconciliation: join(root, "strapi-reconciliation"),
+    };
+    for (const [path, value] of [
+      [authorityFiles.publication, publicationAuthority],
+      [authorityFiles.token, Buffer.alloc(32, 0x71).toString("base64url")],
+      [authorityFiles.runtimeDatabase, "dedicated-runtime-password"],
+      [authorityFiles.migratorDatabase, "dedicated-migrator-password"],
+      [authorityFiles.lifecycle, "dedicated-lifecycle-proof"],
+      [authorityFiles.reconciliation, "dedicated-reconciliation-proof"],
+    ]) {
+      writeFileSync(path, value, { mode: 0o600 });
+      chmodSync(path, 0o600);
+    }
+    writeFileSync(join(root, "production.env"), [
+      `MUSIC_PUBLICATION_RESPONSE_KEY_DIRECTORY_HOST=${join(root, "publication-authority")}`,
+      `MUSIC_TOKEN_SECRET_DIRECTORY_HOST=${join(root, "token-authority")}`,
+      `DB_RUNTIME_PASSWORD_FILE_HOST=${authorityFiles.runtimeDatabase}`,
+      `DB_MIGRATOR_PASSWORD_FILE_HOST=${authorityFiles.migratorDatabase}`,
+      `STRAPI_LIFECYCLE_PROOF_TOKEN_FILE_HOST=${authorityFiles.lifecycle}`,
+      `STRAPI_RECONCILIATION_TOKEN_FILE_HOST=${authorityFiles.reconciliation}`,
+      "SESSION_SECRET=dedicated-session-authority",
+      "COOKIE_SECRET=dedicated-cookie-authority",
+      "STRAPI_ACCESS_TOKEN=dedicated-strapi-access-authority",
+      "STRAPI_JWT_SECRET=dedicated-strapi-jwt-authority",
+      "MUSIC_GATE_ATTESTATION_KEY=dedicated-gate-attestation-authority",
+      "",
+    ].join("\n"));
     writeFileSync(keyFile, hmacSentinel);
     writeFileSync(tokenFile, "read-only-ghcr-test-token");
     chmodSync(keyFile, 0o600);
@@ -168,7 +203,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
         MUSIC_DEPLOY_TEST_READINESS_FAILURE: options.candidateReadinessFailure ? "1" : "0",
         MUSIC_DEPLOY_TEST_GATE_COMMITTED_CRASH: options.gateCommittedCrash ? "1" : "0",
         MUSIC_DEPLOY_TEST_GATE_FAILURE: options.gateFailure ? "1" : "0",
-        MUSIC_DEPLOY_TEST_CURRENT_MARKER: options.expectedMarkerOverride ?? "0011_durable_publication_idempotency",
+        MUSIC_DEPLOY_TEST_CURRENT_MARKER: options.expectedMarkerOverride ?? "0012_publication_replay_expiry_guard",
         MUSIC_DEPLOY_TEST_CURRENT_MARKER_OVERRIDE: options.expectedMarkerOverride ?? "",
         MUSIC_DEPLOY_TEST_READINESS_ATTEMPTS: options.candidateReadinessFailure ? "1" : "30",
         MUSIC_DEPLOY_TEST_REAL_NODE: shellPath(process.execPath),
@@ -339,7 +374,8 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     "0008_credential_revocation_operations",
     "0009_credential_revocation_history_immutability",
     "0010_least_privilege_runtime_role",
-  ])("upgrades authenticated historical marker %s directly to production 0011", (historicalMarker) => {
+    "0011_durable_publication_idempotency",
+  ])("upgrades authenticated historical marker %s directly to production 0012", (historicalMarker) => {
     if (historicalMarker === "containment-no-schema-change") seedLegacyAuthority();
     else seedHistoricalAuthority(historicalMarker);
     const historicalLedger = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8");
@@ -347,7 +383,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const interrupted = run("deploy", digest("b"), commit("b"), { failpoint: "after_epoch_before_gate" });
     expect(interrupted.status, interrupted.stderr).toBe(99);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0011_durable_publication_idempotency\tpending\t");
+      .toContain("\t0012_publication_replay_expiry_guard\tpending\t");
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8")).toBe(historicalLedger);
 
     writeFileSync(eventLog, "");
@@ -360,7 +396,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(recovered.status, recovered.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").startsWith(historicalLedger)).toBe(true);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0011_durable_publication_idempotency\tcurrent\t");
+      .toContain("\t0012_publication_replay_expiry_guard\tcurrent\t");
   }, 40_000);
 
   it.each([
@@ -420,8 +456,8 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
       ["deployment-state/music-schema-floor.tsv", "music-schema-floor-v2"],
       ["deployment-transactions/schema-epoch.tsv", "music-schema-epoch-v1"],
     ] as const) {
-      const payload = [schema, repository, digest("b"), commit("b"), "0011_durable_publication_idempotency", "pending"].join("\t");
-      writeFileSync(join(root, relativePath), [schema, digest("b"), commit("b"), "0011_durable_publication_idempotency", "pending",
+      const payload = [schema, repository, digest("b"), commit("b"), "0012_publication_replay_expiry_guard", "pending"].join("\t");
+      writeFileSync(join(root, relativePath), [schema, digest("b"), commit("b"), "0012_publication_replay_expiry_guard", "pending",
         createHmac("sha256", hmacSentinel).update(payload).digest("hex")].join("\t") + "\n");
     }
     writeFileSync(eventLog, "");
@@ -429,9 +465,9 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const result = run("deploy", digest("b"), commit("b"));
     expect(result.status, result.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0011_durable_publication_idempotency\tcurrent\t");
+      .toContain("\t0012_publication_replay_expiry_guard\tcurrent\t");
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8"))
-      .toContain(`\t${digest("b")}\t${commit("b")}\t0011_durable_publication_idempotency\t`);
+      .toContain(`\t${digest("b")}\t${commit("b")}\t0012_publication_replay_expiry_guard\t`);
   }, 20_000);
 
   it.each([
@@ -733,7 +769,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     // child process command line where another same-host process can read it.
     bootstrap();
     const row = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").trim().split("\t");
-    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0011_durable_publication_idempotency", "GENESIS"].join("\t");
+    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0012_publication_replay_expiry_guard", "GENESIS"].join("\t");
     expect(row[6]).toBe(createHmac("sha256", hmacSentinel).update(expectedPayload).digest("hex"));
 
     const deployed = run("deploy", digest("b"), commit("b"));
@@ -741,9 +777,24 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const argv = readFileSync(join(sandbox, "node-argv.log"), "utf8");
     const environment = readFileSync(join(sandbox, "node-env.log"), "utf8");
     expect(argv).toContain("music-hmac.mjs");
+    expect(argv).toContain("verify-publication-authority.mjs");
     expect(argv).not.toContain(hmacSentinel);
     expect(environment).not.toContain(hmacSentinel);
     expect(deployed.stderr).not.toContain(hmacSentinel);
+  }, 20_000);
+
+  it("rejects publication authority reuse before candidate Docker actions without exposing material", () => {
+    bootstrap();
+    const environmentPath = join(root, "production.env");
+    writeFileSync(environmentPath, readFileSync(environmentPath, "utf8")
+      .replace("SESSION_SECRET=dedicated-session-authority", `SESSION_SECRET=${publicationAuthority}`));
+    writeFileSync(eventLog, "");
+
+    const result = run("deploy", digest("b"), commit("b"));
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toMatch(/publication authority separation failed/i);
+    expect(result.stderr).not.toContain(publicationAuthority);
+    expect(readFileSync(eventLog, "utf8")).toBe("");
   }, 20_000);
 
   it("fails closed on a tampered incomplete journal before Docker or slot selection", () => {

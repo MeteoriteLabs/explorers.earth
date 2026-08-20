@@ -57,7 +57,10 @@ describe("Music deployment authority files", () => {
     expect(ci).toContain("/app/migrations/0009_credential_revocation_history_immutability.sql");
     expect(ci).toContain("/app/migrations/0010_least_privilege_runtime_role.sql");
     expect(ci).toContain("/app/migrations/0011_durable_publication_idempotency.sql");
-    expect(read("tunes/deployment/music-deploy.sh")).toContain('production_current_marker="0011_durable_publication_idempotency"');
+    expect(ci).toContain("/app/migrations/0012_publication_replay_expiry_guard.sql");
+    expect(read("tunes/deployment/music-deploy.sh")).toContain('production_current_marker="0012_publication_replay_expiry_guard"');
+    expect(read("tunes/deployment/music-deploy.sh")).toContain("verify-publication-authority.mjs");
+    expect(read(".github/workflows/tunes-deploy.yml")).toContain("verify-publication-authority.mjs");
     expect(ci).toContain("/app/dist/server/deployment/run-registration-compat.js");
   });
 

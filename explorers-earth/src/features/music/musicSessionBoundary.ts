@@ -3,6 +3,7 @@ import { queryClient } from "../../lib/queryClient";
 import useAuthStore from "../../store/store";
 import { clearAllMusicWorkspaceQueries } from "../../hooks/useTunesDashboard";
 import { musicApi, musicIdentityCoordinator } from "./musicApi";
+import { clearMusicPublicationCommands } from "./musicPublicationCommandRegistry";
 
 export type MusicSessionEventKind = "logout" | "account-generation";
 
@@ -24,10 +25,12 @@ export async function resetMusicSessionAuthority(dependencies: {
   resetCoordinator: () => void;
   clearCredential: () => void;
   clearIdentityQueries: () => Promise<void>;
+  clearPublicationCommands: () => void;
 }): Promise<void> {
   dependencies.clearAuth();
   dependencies.resetCoordinator();
   dependencies.clearCredential();
+  dependencies.clearPublicationCommands();
   await dependencies.clearIdentityQueries();
 }
 
@@ -37,6 +40,7 @@ export async function resetMusicSessionRealm(kind: MusicSessionEventKind, depend
   resetCoordinator: () => void;
   clearCredential: () => void;
   clearIdentityQueries: () => Promise<void>;
+  clearPublicationCommands: () => void;
 }): Promise<void> {
   if (kind === "logout") dependencies.logoutExplorer();
   await resetMusicSessionAuthority({
@@ -44,6 +48,7 @@ export async function resetMusicSessionRealm(kind: MusicSessionEventKind, depend
     resetCoordinator: dependencies.resetCoordinator,
     clearCredential: dependencies.clearCredential,
     clearIdentityQueries: dependencies.clearIdentityQueries,
+    clearPublicationCommands: dependencies.clearPublicationCommands,
   });
 }
 
@@ -136,6 +141,7 @@ const browserBoundary = typeof window === "undefined" ? undefined : createMusicS
       resetCoordinator: () => musicIdentityCoordinator.reset(),
       clearCredential: clearMusicCredential,
       clearIdentityQueries: () => clearAllMusicWorkspaceQueries(queryClient),
+      clearPublicationCommands: clearMusicPublicationCommands,
     });
   },
 });
@@ -150,6 +156,7 @@ export const musicSessionBoundary = browserBoundary ?? {
 export function closeLocalMusicSession(): void {
   musicApi.logout();
   musicIdentityCoordinator.reset();
+  clearMusicPublicationCommands();
   void clearAllMusicWorkspaceQueries(queryClient);
   musicSessionBoundary.publish("logout");
 }

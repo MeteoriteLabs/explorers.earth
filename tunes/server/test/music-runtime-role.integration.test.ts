@@ -599,7 +599,7 @@ describePg("C5 least-privilege Music runtime database authority", () => {
           MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: runtimePasswordPath,
           MUSIC_IMAGE_DIGEST: `sha256:${"a".repeat(64)}`,
           MUSIC_IMAGE_COMMIT: "a".repeat(40),
-          MUSIC_MIGRATION_MARKER: "0011_durable_publication_idempotency",
+          MUSIC_MIGRATION_MARKER: "0012_publication_replay_expiry_guard",
           MUSIC_GATE_ATTESTATION_KEY: "hostile-gate-key-at-least-32-characters",
           MUSIC_GATE_ATTESTATION_PATH: attestation,
         },

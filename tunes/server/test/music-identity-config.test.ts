@@ -30,12 +30,15 @@ const externalSecretRoot = mkdtempSync(join(tmpdir(), "music-key-external-"));
 const validCurrentPath = join(secretRoot, "current");
 const validProofPath = join(secretRoot, "lifecycle-proof");
 const validPublicationPath = join(secretRoot, "publication-current");
+const validDatabasePath = join(secretRoot, "database-runtime");
 writeFileSync(validCurrentPath, Buffer.alloc(32, 0x51).toString("base64url"), { mode: 0o600 });
 writeFileSync(validProofPath, "dedicated-read-only-proof-token", { mode: 0o600 });
 writeFileSync(validPublicationPath, Buffer.alloc(32, 0x52).toString("base64url"), { mode: 0o600 });
+writeFileSync(validDatabasePath, "dedicated-runtime-database-password", { mode: 0o600 });
 chmodSync(validCurrentPath, 0o600);
 chmodSync(validProofPath, 0o600);
 chmodSync(validPublicationPath, 0o600);
+chmodSync(validDatabasePath, 0o600);
 
 afterAll(() => {
   rmSync(secretRoot, { recursive: true, force: true });
@@ -68,6 +71,11 @@ const liveBase = {
   MUSIC_TOKEN_CURRENT_SECRET_FILE: validCurrentPath,
   MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "publication-current-2026-08",
   MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: validPublicationPath,
+  MUSIC_DATABASE_PASSWORD_FILE: validDatabasePath,
+  SESSION_SECRET: "dedicated-session-secret-at-least-thirty-two-bytes",
+  COOKIE_SECRET: "dedicated-cookie-secret-at-least-thirty-two-bytes",
+  STRAPI_JWT_SECRET: "dedicated-strapi-jwt-secret-at-least-thirty-two-bytes",
+  MUSIC_GATE_ATTESTATION_KEY: "dedicated-gate-attestation-key-at-least-thirty-two-bytes",
   MUSIC_TOKEN_LIFETIME_SECONDS: "600",
   MUSIC_TOKEN_CLOCK_SKEW_SECONDS: "15",
 } as const;
@@ -124,6 +132,17 @@ describe("central Music identity startup configuration", () => {
       ...liveBase,
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: duplicatePath,
     }, { resolveAddresses: publicResolver })).rejects.toThrow(/publication|distinct|dedicated|key material/i);
+  });
+
+  it.each([
+    ["runtime database file identity", { MUSIC_DATABASE_PASSWORD_FILE: validPublicationPath }],
+    ["session authority content", { SESSION_SECRET: Buffer.alloc(32, 0x52).toString("base64url") }],
+    ["cookie authority content", { COOKIE_SECRET: Buffer.alloc(32, 0x52).toString("base64url") }],
+    ["Strapi JWT content", { STRAPI_JWT_SECRET: Buffer.alloc(32, 0x52).toString("base64url") }],
+    ["gate attestation content", { MUSIC_GATE_ATTESTATION_KEY: Buffer.alloc(32, 0x52).toString("base64url") }],
+  ])("rejects publication authority shared with the app-accessible %s", async (_label, overrides) => {
+    await expect(resolveMusicIdentityRuntimeConfig({ ...liveBase, ...overrides }, { resolveAddresses: publicResolver }))
+      .rejects.toThrow(/publication|distinct|dedicated|authority|alias/i);
   });
 
   it("permits only the exact separate deterministic publication key in fixture mode", async () => {

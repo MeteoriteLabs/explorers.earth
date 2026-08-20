@@ -6,6 +6,7 @@ import { selectExplorerAccountState } from "../features/music/musicIdentityCoord
 import { musicSessionBoundary } from "../features/music/musicSessionBoundary";
 import { clearAllMusicWorkspaceQueries, clearMusicWorkspaceScope } from "../hooks/useTunesDashboard";
 import { queryClient } from "../lib/queryClient";
+import { clearMusicPublicationCommands } from "../features/music/musicPublicationCommandRegistry";
 
 const musicEligibilityQuery = gql`
   query MusicIdentityEligibility($documentId: ID!) {
@@ -51,6 +52,7 @@ const AuthSyncManager = () => {
     const selection = selectExplorerAccountState(authoritative.accounts, { authoritative: true });
     if (selection.kind !== "selected") {
       if (activeScope.current) {
+        clearMusicPublicationCommands(activeScope.current);
         void clearMusicWorkspaceScope(queryClient, activeScope.current);
         musicApi.setAuthority(undefined);
         musicIdentityCoordinator.reset();
@@ -65,7 +67,10 @@ const AuthSyncManager = () => {
     const previous = activeScope.current;
     const changed = !previous || previous.userDocumentId !== nextScope.userDocumentId || previous.accountDocumentId !== nextScope.accountDocumentId;
     if (changed || options.force) {
-      if (previous && changed) void clearMusicWorkspaceScope(queryClient, previous);
+      if (previous && changed) {
+        clearMusicPublicationCommands(previous);
+        void clearMusicWorkspaceScope(queryClient, previous);
+      }
       musicApi.setAuthority(nextAuthority);
       musicIdentityCoordinator.reset();
       if (previous && changed && options.broadcastChange) musicSessionBoundary.publish("account-generation");
@@ -101,6 +106,7 @@ const AuthSyncManager = () => {
       musicApi.logout();
       musicIdentityCoordinator.reset();
       void clearAllMusicWorkspaceQueries(queryClient);
+      clearMusicPublicationCommands();
       activeScope.current = undefined;
       return;
     }

@@ -48,6 +48,11 @@ separate request fingerprint. The owner advisory lock and the database primary k
 serialize multiple application instances. A matching retry within exactly 24 hours
 returns the byte-equivalent logical response without rotating publication authority;
 the same key with a different request fails with a conflict and makes no change.
+The browser keeps that pending command only in process memory, scoped to the
+immutable Explorer user and selected Account plus requested mode/fingerprint. It
+survives dialog closure, remount, mode toggles, and ambiguous or malformed
+responses, and is cleared only after a strictly validated terminal success or an
+exact identity-scope reset.
 
 For unlisted mode the server generates a random 256-bit capability. The canonical
 guest authority remains only its hash on the owner row. The response needed for a
@@ -56,14 +61,22 @@ binds the response schema version, owner, operation hash, request fingerprint, a
 key ID. Plaintext capabilities and raw idempotency keys are never persisted. After
 24 hours the response is unavailable, the encrypted fields are shredded, and the
 immutable operation tombstone permanently prevents key reuse or another rotation.
-Owner deletion does not delete this tombstone.
+Owner deletion does not delete this tombstone. Append-only corrective migration
+`0012_publication_replay_expiry_guard` makes PostgreSQL's `clock_timestamp()` the
+sole expiry authority for the completed-to-expired transition; application time
+cannot authorize early shredding.
 
 Live response-encryption keys come only from dedicated secure files. The current
 key is used for new writes; one previous key may be accepted only through an exact
 UTC deadline covering every still-live response it must decrypt. Key IDs, file
 identity, and key content must be pairwise distinct from token, lifecycle, access,
-and reconciliation authorities. Startup readiness fails closed when an unexpired
-row requires an unavailable key. Fixture mode alone uses the checked-in,
+and reconciliation authorities. The app checks every authority it can access; a
+privileged pre-candidate verifier additionally compares response keys with runtime
+and migrator database credentials and the deployment HMAC without mounting those
+privileged secrets into the app. Startup readiness selects at most one unexpired
+representative row per active KID and proves the configured key material by
+decrypting its authenticated response with the exact stored AAD context. Missing,
+wrong, or corrupt material fails closed. Fixture mode alone uses the checked-in,
 deterministic, fixture-only publication key.
 
 ## Consequences

@@ -742,6 +742,23 @@ describe("fixture bundle rotation transaction", () => {
       .map((key) => resolve(root, values[key]!));
   }
 
+  it("rejects fixture publication-key reuse before writing credentials, journal, or environment", () => {
+    const root = fixtureRoot();
+    const publication = "fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI";
+    expect(() => rotate(root, (paths) => `${environment(root, paths, "publication-alias")}
+MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY=${publication}
+SESSION_SECRET=dedicated-fixture-session
+COOKIE_SECRET=dedicated-fixture-cookie
+STRAPI_ACCESS_TOKEN=dedicated-fixture-access
+`, {
+      ...authorityWithSeed(0x18),
+      credentialSecretBytes: (index) => index === 0 ? Buffer.from(publication, "base64url") : Buffer.alloc(32, 0x40 + index),
+    })).toThrow(/fixture environment|publication|authority/i);
+    expect(existsSync(join(root, ".env.music.test"))).toBe(false);
+    expect(readdirSync(join(root, ".artifacts", "music-token-secrets"))).toEqual([]);
+    expect(existsSync(join(root, ".artifacts", "music-rotation-journals"))).toBe(false);
+  });
+
   function replacePointerWithUnsupportedAuthority(root: string, kind: "raw" | "malformed"): Buffer {
     const current = fixtureSecrets.readFixtureMusicEnvironment(root);
     const pointer = kind === "raw"

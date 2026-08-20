@@ -1,11 +1,14 @@
 import { apiRequest } from "./queryClient";
+import { parseMusicPublicationResponse } from "../../../shared/musicPublicationContract";
+import {
+  completePendingMusicPublicationCommand,
+  getOrCreatePendingMusicPublicationCommand,
+} from "./musicPublicationCommandRegistry";
+export { clearPendingMusicPublicationCommands } from "./musicPublicationCommandRegistry";
 
-const GUEST_CAPABILITY_PATTERN = /^[A-Za-z0-9_-]{43}$/;
-let pendingUnlistedOperationKey: string | undefined;
-
-export async function requestUnlistedShareCapability(): Promise<string> {
-  const operationKey = pendingUnlistedOperationKey ?? `tunes-share-${crypto.randomUUID()}`;
-  pendingUnlistedOperationKey = operationKey;
+export async function requestUnlistedShareCapability(ownerId: number): Promise<string> {
+  if (!Number.isSafeInteger(ownerId) || ownerId <= 0) throw new Error("Music sharing requires an immutable owner.");
+  const operation = getOrCreatePendingMusicPublicationCommand(ownerId, "unlisted");
   try {
     const response = await apiRequest(
       "POST",
@@ -13,21 +16,12 @@ export async function requestUnlistedShareCapability(): Promise<string> {
       { mode: "unlisted" },
       0,
       3,
-      { "Idempotency-Key": operationKey },
+      { "Idempotency-Key": operation.key },
     );
-    const result = await response.json() as { version?: unknown; capability?: unknown };
-    pendingUnlistedOperationKey = undefined;
-    if (result.version !== "music-publication/v1" || typeof result.capability !== "string"
-        || !GUEST_CAPABILITY_PATTERN.test(result.capability)) {
-      throw new Error("Music sharing returned an invalid response.");
-    }
+    const result = parseMusicPublicationResponse(await response.json(), "unlisted");
+    completePendingMusicPublicationCommand(ownerId, "unlisted", operation.key);
     return result.capability;
   } catch (error) {
-    const status = typeof error === "object" && error !== null && "status" in error
-      ? Number((error as { status?: unknown }).status) : undefined;
-    if (status !== undefined && status >= 400 && status < 500 && status !== 401 && status !== 429) {
-      pendingUnlistedOperationKey = undefined;
-    }
     throw error;
   }
 }
