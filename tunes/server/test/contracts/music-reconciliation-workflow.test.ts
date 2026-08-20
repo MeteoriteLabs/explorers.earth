@@ -9,6 +9,25 @@ const require = createRequire(import.meta.url);
 const { load: parseYaml } = require("js-yaml") as { load(source: string): any };
 
 describe("Music reconciliation automation contract", () => {
+  it("pins every external action used by credential-bearing jobs to an immutable commit", () => {
+    const workflow = parseYaml(read(".github/workflows/music-reconcile.yml"));
+    const externalActions: Array<{ jobName: string; uses: string }> = [];
+    for (const [jobName, job] of Object.entries(workflow.jobs) as Array<[string, any]>) {
+      for (const step of job.steps ?? []) {
+        if (typeof step.uses === "string" && !step.uses.startsWith("./")) {
+          externalActions.push({ jobName, uses: step.uses });
+        }
+      }
+    }
+    expect(externalActions.length).toBeGreaterThan(0);
+    for (const action of externalActions) {
+      const separator = action.uses.lastIndexOf("@");
+      expect(separator, `${action.jobName}: ${action.uses}`).toBeGreaterThan(0);
+      expect(action.uses.slice(separator + 1), `${action.jobName}: ${action.uses}`)
+        .toMatch(/^[a-f0-9]{40}$/);
+    }
+  });
+
   it("hardcodes scheduled production work to report-only", () => {
     const workflow = parseYaml(read(".github/workflows/music-reconcile.yml"));
     expect(workflow.permissions).toEqual({ actions: "read", contents: "read" });
@@ -37,7 +56,7 @@ describe("Music reconciliation automation contract", () => {
       MUSIC_RECONCILIATION_ENVIRONMENT: "staging",
       MUSIC_RECONCILIATION_APPLY_ENABLED: "true",
     });
-    const reviewUpload = review.steps.find((step: any) => step.uses === "actions/upload-artifact@v4");
+    const reviewUpload = review.steps.find((step: any) => step.uses?.startsWith("actions/upload-artifact@"));
     expect(reviewUpload.with.name).toContain("music-reconciliation-staging-review-");
 
     const apply = workflow.jobs["staging-apply"];
@@ -50,7 +69,7 @@ describe("Music reconciliation automation contract", () => {
       MUSIC_RECONCILIATION_ENVIRONMENT: "staging",
       MUSIC_RECONCILIATION_APPLY_ENABLED: "true",
     });
-    const download = apply.steps.find((step: any) => step.uses === "actions/download-artifact@v4");
+    const download = apply.steps.find((step: any) => step.uses?.startsWith("actions/download-artifact@"));
     expect(download.with).toMatchObject({
       "github-token": "${{ github.token }}",
       "run-id": "${{ inputs.review_run_id }}",
@@ -63,7 +82,7 @@ describe("Music reconciliation automation contract", () => {
     expect(command).toContain("--approval-token \"$MUSIC_APPROVAL_TOKEN\"");
     expect(workflow.on.workflow_dispatch.inputs).not.toHaveProperty("resume_checkpoint");
     const provenance = apply.steps.find((step: any) => step.name === "Verify reviewed workflow provenance");
-    expect(provenance.uses).toBe("actions/github-script@v7");
+    expect(provenance.uses).toMatch(/^actions\/github-script@[a-f0-9]{40}$/);
     expect(provenance.with.script).toContain("reviewed.path !== '.github/workflows/music-reconcile.yml'");
     expect(provenance.with.script).toContain("reviewed.head_sha !== context.sha");
     expect(provenance.with.script).toContain("reviewed.conclusion !== 'success'");
@@ -80,7 +99,7 @@ describe("Music reconciliation automation contract", () => {
     expect(source).not.toContain("GATE_PROD");
     expect(source).not.toContain("packages: write");
     expect(source).not.toContain("--apply --mode live --environment production");
-    expect(source).toContain("actions/upload-artifact@v4");
+    expect(source).toContain("actions/upload-artifact@");
     expect(source).toContain(".artifacts/music-runs/");
     for (const job of Object.values(workflow.jobs) as any[]) {
       for (const step of job.steps ?? []) {

@@ -115,7 +115,8 @@ function sameResolvedPath(left: string, right: string, platform: NodeJS.Platform
 }
 
 function validateMetadata(stat: BigIntStats, options: SecureMusicSecretFileOptions): void {
-  if (!stat.isFile() || stat.isSymbolicLink() || stat.size < BigInt(1) || stat.size > BigInt(MAX_SECRET_FILE_BYTES)) {
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== BigInt(1)
+      || stat.size < BigInt(1) || stat.size > BigInt(MAX_SECRET_FILE_BYTES)) {
     invalidSecretFile();
   }
   if (options.mode !== "live") return;

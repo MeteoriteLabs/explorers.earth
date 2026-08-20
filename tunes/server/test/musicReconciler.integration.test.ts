@@ -2,10 +2,16 @@ import { createHash, randomBytes } from "node:crypto";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { migrateMusicDatabase } from "../db/migrate";
-import { verifyMusicRuntimeDatabaseConnection } from "../db/music-runtime-role";
+import { provisionMusicRuntimeLogin, verifyMusicRuntimeDatabaseConnection } from "../db/music-runtime-role";
 import { MusicIdentityRepository, type EnsureMusicIdentityInput } from "../repositories/musicIdentityRepository";
 import { ReconciliationRepository } from "../repositories/reconciliationRepository";
-import type { MusicReconciliationIdentity, ReconciliationSourceMetadata } from "../services/musicReconciler";
+import {
+  MusicReconciler,
+  type MusicReconciliationIdentity,
+  type MusicReconciliationReport,
+  type ReconciliationReview,
+  type ReconciliationSourceMetadata,
+} from "../services/musicReconciler";
 
 const exactTarget = process.env.DATABASE_URL_TEST ?? "postgresql://music_migrator:music@127.0.0.1:55432/music_fixture";
 const enabled = process.env.MUSIC_C8_POSTGRES_TEST === "1";
@@ -125,6 +131,59 @@ async function scannedLocalExcept(excludedId?: number): Promise<MusicReconciliat
   }));
 }
 
+async function reconcileIndependentScan(input: {
+  runId: string;
+  scanNonce: string;
+  identities: MusicReconciliationIdentity[];
+  mode: "dry-run" | "apply";
+  review?: ReconciliationReview;
+  approvalToken?: string;
+}): Promise<MusicReconciliationReport> {
+  const orderedIdentities = [...input.identities].sort((left, right) => left.userDocumentId.localeCompare(right.userDocumentId));
+  const metadata = source("stable-content-snapshot", orderedIdentities);
+  const sourceClient = {
+    fetchPage: async () => ({
+      data: orderedIdentities.map((identity) => ({
+        documentId: identity.userDocumentId,
+        username: identity.username,
+        email: identity.email,
+        provider: identity.provider,
+        confirmed: true,
+        blocked: false,
+        accounts: [{
+          documentId: identity.accountDocumentId,
+          Account_Name: identity.accountName,
+          Account_Type: identity.accountType,
+          mobile_number: identity.accountMobile,
+        }],
+      })),
+      meta: {
+        pagination: { page: 1, pageSize: 100, pageCount: 1, total: orderedIdentities.length },
+        reconciliation: {
+          schemaVersion: metadata.schemaVersion,
+          sourceSnapshot: metadata.sourceSnapshot,
+          sourceChecksum: metadata.sourceChecksum,
+          healthy: true,
+        },
+      },
+    }),
+  };
+  return new MusicReconciler(sourceClient, new ReconciliationRepository(pool)).run({
+    runId: input.runId,
+    scanNonce: input.scanNonce,
+    environment: "fixture",
+    applyEnabled: true,
+    requestedMode: input.mode,
+    review: input.review,
+    approvalToken: input.approvalToken,
+    pageSize: 100,
+    maxRows: 100_000,
+    batchSize: 25,
+    maxChangeAbsolute: 100_000,
+    maxChangePercent: 100,
+  });
+}
+
 describePg("C8 guarded Music reconciliation on PostgreSQL 15", () => {
   beforeAll(async () => {
     admin = new pg.Pool({ connectionString: exactTarget });
@@ -135,8 +194,7 @@ describePg("C8 guarded Music reconciliation on PostgreSQL 15", () => {
     databaseAdminUrl = target.toString();
     databaseAdmin = new pg.Pool({ connectionString: target.toString(), max: 2 });
     await migrateMusicDatabase(databaseAdmin);
-    await databaseAdmin.query("SELECT provision_music_runtime_login($1,$2)", [runtimeRole, runtimePassword]);
-    await databaseAdmin.query(`REVOKE TEMPORARY ON DATABASE ${databaseName} FROM PUBLIC`);
+    await provisionMusicRuntimeLogin(databaseAdmin, { loginRole: runtimeRole, password: runtimePassword });
     target.username = runtimeRole;
     target.password = runtimePassword;
     runtimeDatabaseUrl = target.toString();
@@ -267,41 +325,73 @@ describePg("C8 guarded Music reconciliation on PostgreSQL 15", () => {
     const missing = await identities.ensureIdentity(identityInput("missing"));
 
     const stableProjection = scannedIdentity("projection-drift", "changed-upstream-name");
-    const first = await reconcile({ runId: "c8_first", observationVersion: "101", identities: [stableProjection, scannedIdentity("present", "renamed-present")] });
-    expect(first).toMatchObject({ status: "safe", missing: 1, firstMisses: 1, secondMisses: 0, suspended: 0, applied: true });
+    const scanned = [stableProjection, scannedIdentity("present", "renamed-present")];
+    const firstNonce = "a".repeat(64);
+    const firstReviewReport = await reconcileIndependentScan({ runId: "c8-first-review", scanNonce: firstNonce, identities: scanned, mode: "dry-run" });
+    const firstReview: ReconciliationReview = {
+      scanNonce: firstNonce,
+      source: firstReviewReport.source!,
+      planFingerprint: firstReviewReport.planFingerprint!,
+      approvalToken: firstReviewReport.approvalToken!,
+    };
+    const first = await reconcileIndependentScan({
+      runId: "c8-first-apply", scanNonce: firstNonce, identities: scanned, mode: "apply",
+      review: firstReview, approvalToken: firstReview.approvalToken,
+    });
+    expect(first.anomalies).toEqual([]);
+    expect(first).toMatchObject({
+      status: "success",
+      source: { sourceSnapshot: "stable-content-snapshot" },
+      changes: { missing: 1, firstMisses: 1, secondMisses: 0, suspended: 0, applied: true },
+    });
     let missingRow = (await pool.query("SELECT identity_status,session_version,reconciliation_mismatch_count,reconciliation_observation_version FROM users WHERE id=$1", [missing.id])).rows[0];
     expect(missingRow).toMatchObject({ identity_status: "active", session_version: missing.sessionVersion, reconciliation_mismatch_count: 1 });
-    expect(String(missingRow.reconciliation_observation_version)).toBe("101");
+    const firstObservationVersion = String(missingRow.reconciliation_observation_version);
     const presentRow = (await pool.query("SELECT strapi_username_snapshot,strapi_email_snapshot,identity_status FROM users WHERE id=$1", [present.id])).rows[0];
     expect(presentRow).toEqual({ strapi_username_snapshot: "renamed-present", strapi_email_snapshot: "upstream-present@example.invalid", identity_status: "active" });
 
-    const replay = await reconcile({ runId: "c8-first-replay", observationVersion: "101", identities: [stableProjection, scannedIdentity("present", "renamed-present")] });
-    expect(replay).toMatchObject({ firstMisses: 0, secondMisses: 0, suspended: 0, applied: true });
+    const replay = await reconcileIndependentScan({
+      runId: "c8-first-replay", scanNonce: firstNonce, identities: scanned, mode: "apply",
+      review: firstReview, approvalToken: firstReview.approvalToken,
+    });
+    expect(replay).toMatchObject({ status: "blocked", changes: { applied: false }, anomalies: [{ code: "PLAN_DRIFT" }] });
     expect(Number((await pool.query("SELECT reconciliation_mismatch_count FROM users WHERE id=$1", [missing.id])).rows[0].reconciliation_mismatch_count)).toBe(1);
 
+    const secondNonce = "b".repeat(64);
+    const secondReviewReport = await reconcileIndependentScan({ runId: "c8-second-review", scanNonce: secondNonce, identities: scanned, mode: "dry-run" });
+    expect(secondReviewReport).toMatchObject({ status: "success", source: { sourceSnapshot: "stable-content-snapshot" } });
+    const secondReview: ReconciliationReview = {
+      scanNonce: secondNonce,
+      source: secondReviewReport.source!,
+      planFingerprint: secondReviewReport.planFingerprint!,
+      approvalToken: secondReviewReport.approvalToken!,
+    };
     const notificationClient = await pool.connect();
     await notificationClient.query("LISTEN music_identity_suspended");
     const notification = new Promise<string | undefined>((resolveNotification) => {
       notificationClient.once("notification", (message) => resolveNotification(message.payload));
     });
-    const second = await reconcile({ runId: "c8-second", observationVersion: "102", identities: [stableProjection, scannedIdentity("present", "renamed-present")] });
-    expect(second).toMatchObject({ firstMisses: 0, secondMisses: 1, suspended: 1, applied: true });
-    await expect(notification).resolves.toBe(String(missing.id));
+    const second = await reconcileIndependentScan({
+      runId: "c8-second-apply", scanNonce: secondNonce, identities: scanned, mode: "apply",
+      review: secondReview, approvalToken: secondReview.approvalToken,
+    });
+    expect(second).toMatchObject({ status: "success", changes: { firstMisses: 0, secondMisses: 1, suspended: 1, applied: true } });
+    await expect(notification).resolves.toBe(`${missing.id}:${missing.sessionVersion + 1}`);
     await notificationClient.query("UNLISTEN music_identity_suspended");
     notificationClient.release();
     missingRow = (await pool.query("SELECT identity_status,session_version,reconciliation_mismatch_count,guest_capability_revoked_at,guest_discoverable FROM users WHERE id=$1", [missing.id])).rows[0];
     expect(missingRow).toMatchObject({ identity_status: "suspended", session_version: missing.sessionVersion + 1, reconciliation_mismatch_count: 2, guest_discoverable: false });
+    expect(String((await pool.query("SELECT reconciliation_observation_version FROM users WHERE id=$1", [missing.id])).rows[0].reconciliation_observation_version)).not.toBe(firstObservationVersion);
     expect(missingRow.guest_capability_revoked_at).toBeInstanceOf(Date);
     expect((await pool.query("SELECT operation_kind,requested_identity_status,operation_state FROM music_identity_lifecycle_operations WHERE music_user_id=$1 AND operation_kind='suspend'", [missing.id])).rows).toEqual([
       { operation_kind: "suspend", requested_identity_status: "suspended", operation_state: "completed" },
     ]);
 
-    const committedReplay = await reconcile({
-      runId: "c8-second",
-      observationVersion: "102",
-      identities: [stableProjection, scannedIdentity("present", "renamed-present")],
+    const committedReplay = await reconcileIndependentScan({
+      runId: "c8-second-apply", scanNonce: secondNonce, identities: scanned, mode: "apply",
+      review: secondReview, approvalToken: secondReview.approvalToken,
     });
-    expect(committedReplay).toMatchObject({ status: "safe", suspended: 0, applied: true });
+    expect(committedReplay).toMatchObject({ status: "blocked", anomalies: [{ code: "PLAN_DRIFT" }] });
     expect(Number((await pool.query("SELECT count(*) FROM music_identity_lifecycle_operations WHERE music_user_id=$1 AND operation_kind='suspend'", [missing.id])).rows[0].count)).toBe(1);
 
     const returnsUpstream = await reconcile({ runId: "c8-third", observationVersion: "103", identities: [scannedIdentity("missing"), stableProjection, scannedIdentity("present", "renamed-present")] });
@@ -580,4 +670,5 @@ describePg("C8 guarded Music reconciliation on PostgreSQL 15", () => {
     const repository = new ReconciliationRepository(pool);
     await expect(repository.withAdvisoryLock(async () => "entered")).resolves.toEqual({ acquired: true, value: "entered" });
   });
+
 });

@@ -72,11 +72,11 @@ jobs:
       MUSIC_RECONCILIATION_DB_IDLE_TRANSACTION_TIMEOUT_MS: ${{ vars.MUSIC_RECONCILIATION_DB_IDLE_TRANSACTION_TIMEOUT_MS }}
       MUSIC_CHECKPOINT_PATH: .artifacts/music-runs/workflow-${{ github.run_id }}-${{ github.run_attempt }}/reconciliation-checkpoint.json
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "22.12.0"
           cache: npm
@@ -100,7 +100,7 @@ jobs:
           exit "$status"
       - name: Upload bounded redacted report evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: music-reconciliation-report-${{ github.run_id }}-${{ github.run_attempt }}
           path: .artifacts/music-runs/workflow-${{ github.run_id }}-${{ github.run_attempt }}/
@@ -145,11 +145,11 @@ jobs:
       MUSIC_RECONCILIATION_DB_IDLE_TRANSACTION_TIMEOUT_MS: ${{ vars.MUSIC_RECONCILIATION_DB_IDLE_TRANSACTION_TIMEOUT_MS }}
       MUSIC_CHECKPOINT_PATH: .artifacts/music-runs/staging-review/reconciliation-checkpoint.json
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "22.12.0"
           cache: npm
@@ -168,7 +168,7 @@ jobs:
           npm run --silent music:reconcile -- --mode live --dry-run --format json --checkpoint "$MUSIC_CHECKPOINT_PATH" > "$(dirname "$MUSIC_CHECKPOINT_PATH")/report.json"
       - name: Upload the immutable staging review evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: music-reconciliation-staging-review-${{ github.run_id }}-${{ github.run_attempt }}
           path: .artifacts/music-runs/staging-review/
@@ -217,11 +217,11 @@ jobs:
       MUSIC_REVIEW_RUN_ATTEMPT: ${{ inputs.review_run_attempt }}
       MUSIC_CHECKPOINT_PATH: .artifacts/music-runs/workflow-${{ github.run_id }}-${{ github.run_attempt }}/reconciliation-checkpoint.json
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "22.12.0"
           cache: npm
@@ -229,7 +229,7 @@ jobs:
             package-lock.json
             tunes/package-lock.json
       - name: Verify reviewed workflow provenance
-        uses: actions/github-script@v7
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         env:
           REVIEW_RUN_ID: ${{ inputs.review_run_id }}
           REVIEW_RUN_ATTEMPT: ${{ inputs.review_run_attempt }}
@@ -254,7 +254,7 @@ jobs:
               core.setFailed('reviewed workflow provenance does not match this exact apply commit');
             }
       - name: Download the exact protected staging review
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.review_run_id }}
@@ -281,7 +281,7 @@ jobs:
           exit "$status"
       - name: Upload bounded redacted apply evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: music-reconciliation-staging-apply-${{ github.run_id }}-${{ github.run_attempt }}
           path: .artifacts/music-runs/workflow-${{ github.run_id }}-${{ github.run_attempt }}/

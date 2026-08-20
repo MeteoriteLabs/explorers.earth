@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { link, mkdir, mkdtemp, readdir, stat, symlink, writeFile } from "node:fs/promises";
+import { chmod, link, lstat, mkdir, mkdtemp, open, realpath, readdir, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -56,13 +56,15 @@ function checkpoint(overrides: Partial<MusicReconciliationCheckpoint> = {}): Mus
     schemaVersion: "music-reconciliation-checkpoint/v1",
     state: "reviewed",
     runId: "run-1",
+    scanNonce: "1".repeat(64),
     ...context,
     source,
     nextPage: 2,
-    review: { source, planFingerprint: "c".repeat(64), approvalToken: "d".repeat(64) },
+    review: { scanNonce: "1".repeat(64), source, planFingerprint: "c".repeat(64), approvalToken: "d".repeat(64) },
     report: {
       schemaVersion: "music-reconciliation/v1",
       runId: "run-1",
+      scanNonce: "1".repeat(64),
       status: "success",
       mode: "dry-run",
       source,
@@ -190,6 +192,200 @@ describe("music reconciliation checkpoints", () => {
     if (process.platform !== "win32") expect((await stat(path)).mode & 0o777).toBe(0o600);
   });
 
+  it("creates a missing owner-only checkpoint directory without following links", async () => {
+    const root = await mkdtemp(join(tmpdir(), "music-reconciliation-checkpoint-create-"));
+    const path = join(root, "new", "nested", "checkpoint.json");
+    try {
+      await writeMusicReconciliationCheckpoint(path, checkpoint());
+      await expect(readMusicReconciliationCheckpoint(path)).resolves.toEqual(checkpoint());
+      if (process.platform !== "win32") {
+        expect((await stat(join(root, "new"))).mode & 0o777).toBe(0o700);
+        expect((await stat(join(root, "new", "nested"))).mode & 0o777).toBe(0o700);
+      }
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects a checkpoint reached through a symlink or junction ancestor", async () => {
+    const root = await mkdtemp(join(tmpdir(), "music-reconciliation-checkpoint-root-"));
+    const external = await mkdtemp(join(tmpdir(), "music-reconciliation-checkpoint-external-"));
+    const linkedParent = join(root, "linked-parent");
+    try {
+      await symlink(external, linkedParent, process.platform === "win32" ? "junction" : "dir");
+      await expect(writeMusicReconciliationCheckpoint(join(linkedParent, "checkpoint.json"), checkpoint()))
+        .rejects.toThrow(/ancestor|directory|link|secure|checkpoint/i);
+      expect(await readdir(external)).toEqual([]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+      await rm(external, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects a multi-link checkpoint as resume evidence", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "music-reconciliation-checkpoint-hardlink-"));
+    const path = join(directory, "checkpoint.json");
+    const alias = join(directory, "checkpoint-alias.json");
+    try {
+      await writeMusicReconciliationCheckpoint(path, checkpoint());
+      await link(path, alias);
+      await expect(readMusicReconciliationCheckpoint(alias)).rejects.toThrow(/link|invalid|secure/i);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("descriptor-binds a checkpoint read against pathname replacement", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "music-reconciliation-checkpoint-race-"));
+    const path = join(directory, "checkpoint.json");
+    const replacement = join(directory, "replacement.json");
+    const original = join(directory, "original.json");
+    await writeMusicReconciliationCheckpoint(path, checkpoint());
+    await writeMusicReconciliationCheckpoint(replacement, checkpoint({ runId: "replacement-run", report: undefined, review: undefined, state: "blocked" }));
+    let swapped = false;
+    try {
+      const attempt = Reflect.apply(readMusicReconciliationCheckpoint, undefined, [path, {
+        platform: process.platform,
+        effectiveUserId: process.geteuid?.(),
+        fileSystem: {
+          lstat: (target: string) => lstat(target, { bigint: true }),
+          realpath,
+          open: async (target: string, flags: number) => {
+            if (target === path) {
+              await rename(path, original);
+              await rename(replacement, path);
+              swapped = true;
+            }
+            return open(target, flags);
+          },
+        },
+      }]);
+      await expect(attempt).rejects.toThrow(/changed|identity|invalid|secure/i);
+      expect(swapped).toBe(true);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("revalidates pathname identity after descriptor read and atomic write replacement", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "music-reconciliation-checkpoint-post-race-"));
+    const readPath = join(directory, "read.json");
+    const readReplacement = join(directory, "read-replacement.json");
+    const displacedRead = join(directory, "read-original.json");
+    const writePath = join(directory, "write.json");
+    const writeReplacement = join(directory, "write-replacement.json");
+    const displacedWrite = join(directory, "write-original.json");
+    try {
+      await writeMusicReconciliationCheckpoint(readPath, checkpoint());
+      await writeMusicReconciliationCheckpoint(readReplacement, checkpoint({ runId: "read-replacement", state: "blocked", review: undefined, report: undefined }));
+      await expect(Reflect.apply(readMusicReconciliationCheckpoint, undefined, [readPath, {
+        fileSystem: {
+          open: async (target: string, flags: number) => {
+            const handle = await open(target, flags);
+            if (target !== readPath) return handle;
+            const originalRead = handle.read.bind(handle);
+            handle.read = async (...args: Parameters<typeof handle.read>) => {
+              const result = await originalRead(...args);
+              await rename(readPath, displacedRead);
+              await rename(readReplacement, readPath);
+              return result;
+            };
+            return handle;
+          },
+        },
+      }])).rejects.toThrow(/invalid|secure/i);
+
+      await writeMusicReconciliationCheckpoint(writeReplacement, checkpoint({ runId: "write-replacement", state: "blocked", review: undefined, report: undefined }));
+      await expect(Reflect.apply(writeMusicReconciliationCheckpoint, undefined, [writePath, checkpoint(), {
+        fileSystem: {
+          rename: async (oldPath: string, newPath: string) => {
+            await rename(oldPath, newPath);
+            if (newPath === writePath) {
+              await rename(writePath, displacedWrite);
+              await rename(writeReplacement, writePath);
+            }
+          },
+        },
+      }])).rejects.toThrow(/invalid|secure/i);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("uses an atomic no-overwrite commit for a new output artifact", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "music-reconciliation-checkpoint-exclusive-"));
+    const path = join(directory, "checkpoint.json");
+    const competing = checkpoint({ runId: "competing-run", state: "blocked", review: undefined, report: undefined });
+    try {
+      await expect(Reflect.apply(writeMusicReconciliationCheckpoint, undefined, [path, checkpoint(), {
+        requireAbsent: true,
+        fileSystem: {
+          link: async (oldPath: string, newPath: string) => {
+            await writeFile(newPath, `${JSON.stringify(competing, null, 2)}\n`, { mode: 0o600, flag: "wx" });
+            return link(oldPath, newPath);
+          },
+        },
+      }])).rejects.toThrow(/checkpoint|exist|invalid|secure/i);
+      await expect(readMusicReconciliationCheckpoint(path)).resolves.toEqual(competing);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects non-canonical checkpoint paths before descriptor use", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "music-reconciliation-checkpoint-canonical-"));
+    const path = join(directory, "checkpoint.json");
+    await writeMusicReconciliationCheckpoint(path, checkpoint());
+    try {
+      await expect(Reflect.apply(readMusicReconciliationCheckpoint, undefined, [path, {
+        fileSystem: { realpath: async (target: string) => target === path ? join(directory, "different.json") : realpath(target) },
+      }])).rejects.toThrow(/invalid|secure/i);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects checkpoint ancestor identity and canonical-parent changes after descriptor read", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "music-reconciliation-checkpoint-parent-race-"));
+    const path = join(directory, "checkpoint.json");
+    await writeMusicReconciliationCheckpoint(path, checkpoint());
+    try {
+      let directoryReads = 0;
+      await expect(Reflect.apply(readMusicReconciliationCheckpoint, undefined, [path, {
+        fileSystem: {
+          lstat: async (target: string) => {
+            const metadata = await lstat(target, { bigint: true });
+            if (target !== directory || ++directoryReads === 1) return metadata;
+            return new Proxy(metadata, { get: (value, property) => {
+              if (property === "ino") return value.ino + BigInt(1);
+              const member = Reflect.get(value, property, value);
+              return typeof member === "function" ? member.bind(value) : member;
+            } });
+          },
+        },
+      }])).rejects.toThrow(/invalid|secure/i);
+
+      await expect(Reflect.apply(readMusicReconciliationCheckpoint, undefined, [path, {
+        fileSystem: {
+          realpath: async (target: string) => target === directory ? join(directory, "different-parent") : realpath(target),
+        },
+      }])).rejects.toThrow(/invalid|secure/i);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it.skipIf(process.platform === "win32")("rejects group-writable checkpoint directories", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "music-reconciliation-checkpoint-mode-"));
+    const path = join(directory, "checkpoint.json");
+    try {
+      await chmod(directory, 0o770);
+      await expect(writeMusicReconciliationCheckpoint(path, checkpoint())).rejects.toThrow(/owner|permission|secure|directory/i);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   it.each([
     ["commit", { commit: "different" }],
     ["fixture version", { fixtureVersion: "2" }],
@@ -224,6 +420,9 @@ describe("music reconciliation checkpoints", () => {
       checkpoint({ state: "reviewed", report: { ...checkpoint().report!, mode: "apply" } }),
       checkpoint({ state: "reviewed", report: { ...checkpoint().report!, status: "blocked" } }),
       checkpoint({ state: "reviewed", report: { ...checkpoint().report!, runId: "another-run" } }),
+      checkpoint({ state: "reviewed", report: { ...checkpoint().report!, scanNonce: "e".repeat(64) } }),
+      checkpoint({ state: "reviewed", review: { ...checkpoint().review!, scanNonce: "e".repeat(64) } }),
+      checkpoint({ state: "reviewed", scanNonce: "e".repeat(64) }),
       checkpoint({ state: "reviewed", review: { ...checkpoint().review!, planFingerprint: "e".repeat(64) } }),
       checkpoint({ state: "reviewed", review: { ...checkpoint().review!, approvalToken: "e".repeat(64) } }),
       checkpoint({ state: "reviewed", review: { ...checkpoint().review!, source: { ...source, sourceSnapshot: "snapshot-2" } } }),
@@ -251,6 +450,10 @@ describe("music reconciliation checkpoints", () => {
     await expect(readMusicReconciliationCheckpoint(path)).rejects.toThrow(/invalid/i);
     await writeFile(path, "x".repeat(1024 * 1024 + 1));
     await expect(readMusicReconciliationCheckpoint(path)).rejects.toThrow(/invalid/i);
+    for (const invalidPath of ["", "relative-checkpoint.json", `${directory}${"x".repeat(1_025)}`]) {
+      await expect(readMusicReconciliationCheckpoint(invalidPath)).rejects.toThrow(/invalid/i);
+      await expect(writeMusicReconciliationCheckpoint(invalidPath, checkpoint())).rejects.toThrow(/invalid/i);
+    }
     const link = join(directory, "checkpoint-link.json");
     try {
       await symlink(path, link, "file");
@@ -262,13 +465,44 @@ describe("music reconciliation checkpoints", () => {
 });
 
 describe("reconcileMusicIdentities", () => {
+  it("generates one scan nonce and persists it across the report, review, and atomic checkpoint", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "music-reconcile-scan-nonce-"));
+    const path = join(directory, "checkpoint.json");
+    let observedNonce: string | undefined;
+    const run = vi.fn(async (input: Parameters<Parameters<typeof reconcileMusicIdentities>[0]["reconciler"]["run"]>[0]) => {
+      observedNonce = (input as typeof input & { scanNonce?: string }).scanNonce;
+      return { ...checkpoint().report!, scanNonce: observedNonce } as MusicReconciliationReport;
+    });
+
+    await reconcileMusicIdentities({
+      reconciler: { run },
+      checkpointPath: path,
+      context,
+      run: {
+        runId: "run-1", environment: "fixture", applyEnabled: false,
+        pageSize: 100, maxRows: 1_000, batchSize: 100,
+        maxChangeAbsolute: 2, maxChangePercent: 1,
+      },
+    });
+
+    const saved = await readMusicReconciliationCheckpoint(path) as MusicReconciliationCheckpoint & {
+      scanNonce?: string;
+      review?: MusicReconciliationCheckpoint["review"] & { scanNonce?: string };
+      report?: MusicReconciliationReport & { scanNonce?: string };
+    };
+    expect(observedNonce).toMatch(/^[a-f0-9]{64}$/);
+    expect(saved.scanNonce).toBe(observedNonce);
+    expect(saved.review?.scanNonce).toBe(observedNonce);
+    expect(saved.report?.scanNonce).toBe(observedNonce);
+  });
+
   it("persists scanning and reviewed checkpoints around a default dry-run", async () => {
     const directory = await mkdtemp(join(tmpdir(), "music-reconcile-command-"));
     const path = join(directory, "checkpoint.json");
     const report = checkpoint().report!;
     const run = vi.fn(async (input: Parameters<Parameters<typeof reconcileMusicIdentities>[0]["reconciler"]["run"]>[0]) => {
       await input.onSourceCheckpoint?.({ ...source, nextPage: 2 });
-      return report;
+      return { ...report, scanNonce: input.scanNonce! };
     });
 
     const result = await reconcileMusicIdentities({
@@ -282,7 +516,7 @@ describe("reconcileMusicIdentities", () => {
       },
     });
 
-    expect(result).toEqual(report);
+    expect(result).toEqual({ ...report, scanNonce: expect.stringMatching(/^[a-f0-9]{64}$/) });
     expect(run).toHaveBeenCalledWith(expect.objectContaining({ requestedMode: "dry-run" }));
     expect(await readMusicReconciliationCheckpoint(path)).toMatchObject({ state: "reviewed", source, review: { source } });
   });
@@ -292,7 +526,6 @@ describe("reconcileMusicIdentities", () => {
     const resumePath = join(directory, "review.json");
     const checkpointPath = join(directory, "apply.json");
     await writeMusicReconciliationCheckpoint(resumePath, checkpoint());
-    await writeMusicReconciliationCheckpoint(checkpointPath, checkpoint({ state: "blocked", review: undefined, report: undefined }));
     const applied: MusicReconciliationReport = { ...checkpoint().report!, runId: "run-2", mode: "apply", changes: { ...checkpoint().report!.changes!, applied: true } };
     const run = vi.fn(async () => applied);
 
@@ -313,6 +546,30 @@ describe("reconcileMusicIdentities", () => {
     }));
     expect(await readMusicReconciliationCheckpoint(checkpointPath)).toMatchObject({ state: "applied", runId: "run-2" });
     expect(await readMusicReconciliationCheckpoint(resumePath)).toMatchObject({ state: "reviewed", runId: "run-1" });
+  });
+
+  it("refuses to overwrite an existing output artifact before reconciliation starts", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "music-reconcile-existing-output-"));
+    const resumePath = join(directory, "review.json");
+    const checkpointPath = join(directory, "existing.json");
+    const existing = checkpoint({ state: "blocked", review: undefined, report: undefined });
+    await writeMusicReconciliationCheckpoint(resumePath, checkpoint());
+    await writeMusicReconciliationCheckpoint(checkpointPath, existing);
+    const run = vi.fn(async () => checkpoint().report!);
+
+    await expect(reconcileMusicIdentities({
+      reconciler: { run }, checkpointPath, resumePath, context,
+      run: {
+        runId: "run-new", environment: "fixture", applyEnabled: true,
+        requestedMode: "apply", approvalToken: "d".repeat(64),
+        pageSize: 100, maxRows: 1_000, batchSize: 100,
+        maxChangeAbsolute: 2, maxChangePercent: 1,
+      },
+    })).rejects.toThrow(/checkpoint|exist|new|overwrite|secure/i);
+
+    expect(run).not.toHaveBeenCalled();
+    await expect(readMusicReconciliationCheckpoint(checkpointPath)).resolves.toEqual(existing);
+    await expect(readMusicReconciliationCheckpoint(resumePath)).resolves.toEqual(checkpoint());
   });
 
   it("refuses to overwrite the reviewed resume evidence", async () => {
@@ -347,7 +604,7 @@ describe("reconcileMusicIdentities", () => {
         maxChangeAbsolute: 2, maxChangePercent: 1,
       },
     })).rejects.toThrow(/distinct.*reviewed/i);
-    expect(await readMusicReconciliationCheckpoint(resumePath)).toMatchObject({ state: "reviewed", runId: "run-1" });
+    expect(readFileSync(resumePath, "utf8")).toBe(readFileSync(checkpointPath, "utf8"));
   });
 
   it("propagates non-missing filesystem failures while comparing review evidence", async () => {
@@ -389,12 +646,12 @@ describe("reconcileMusicIdentities", () => {
     const directory = await mkdtemp(join(tmpdir(), "music-reconcile-terminal-"));
     const baseRun = { runId: "run-terminal", environment: "fixture" as const, applyEnabled: false, pageSize: 100, maxRows: 1_000, batchSize: 100, maxChangeAbsolute: 2, maxChangePercent: 1 };
     const blocked: MusicReconciliationReport = {
-      schemaVersion: "music-reconciliation/v1", runId: "run-terminal", status: "blocked", mode: "dry-run",
+      schemaVersion: "music-reconciliation/v1", runId: "run-terminal", scanNonce: "1".repeat(64), status: "blocked", mode: "dry-run",
       metrics: { pages: 0, databaseBatches: 0, durationMs: 1 }, anomalies: [{ code: "SOURCE_UNAVAILABLE", message: "unavailable" }],
     };
     const blockedPath = join(directory, "blocked.json");
     await reconcileMusicIdentities({
-      reconciler: { run: async (input) => { await input.onSourceCheckpoint?.({ nextPage: 2 }); return blocked; } },
+      reconciler: { run: async (input) => { await input.onSourceCheckpoint?.({ nextPage: 2 }); return { ...blocked, scanNonce: input.scanNonce! }; } },
       checkpointPath: blockedPath, context, run: baseRun,
     });
     const blockedCheckpoint = await readMusicReconciliationCheckpoint(blockedPath);
@@ -403,7 +660,7 @@ describe("reconcileMusicIdentities", () => {
 
     const incomplete: MusicReconciliationReport = { ...checkpoint().report!, runId: "run-terminal", approvalToken: undefined };
     const incompletePath = join(directory, "incomplete.json");
-    await reconcileMusicIdentities({ reconciler: { run: async () => incomplete }, checkpointPath: incompletePath, context, run: baseRun });
+    await reconcileMusicIdentities({ reconciler: { run: async (input) => ({ ...incomplete, scanNonce: input.scanNonce! }) }, checkpointPath: incompletePath, context, run: baseRun });
     await expect(readMusicReconciliationCheckpoint(incompletePath)).resolves.toMatchObject({ state: "blocked" });
 
     const resumePath = join(directory, "review.json");

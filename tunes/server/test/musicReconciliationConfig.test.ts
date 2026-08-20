@@ -1,9 +1,13 @@
+import { chmodSync, linkSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   parseMusicReconciliationCommandConfig,
   validateMusicReconciliationServiceToken,
 } from "../config/music-reconciliation-config";
 import { resolveMusicIdentityTransportConfig } from "../config/music-identity-config";
+import { readSecureMusicSecretFile } from "../config/secure-music-secret-file";
 
 const fixture = {
   MUSIC_MODE: "fixture",
@@ -90,6 +94,46 @@ describe("music reconciliation command configuration", () => {
     expect(() => validateMusicReconciliationServiceToken(` ${"a".repeat(16)}`)).toThrow();
     expect(() => validateMusicReconciliationServiceToken(`${"a".repeat(16)}\n`)).toThrow();
     expect(validateMusicReconciliationServiceToken("a".repeat(16))).toBe("a".repeat(16));
+  });
+
+  it.skipIf(process.platform !== "win32")("rejects a case-only alias to another live token authority", () => {
+    const live = {
+      MUSIC_MODE: "live",
+      MUSIC_RECONCILIATION_ENVIRONMENT: "staging",
+      MUSIC_RECONCILIATION_LIVE_CONTRACT_VERIFIED: "true",
+      STRAPI_URL: "https://strapi.example.test",
+      STRAPI_RECONCILIATION_TOKEN_FILE: "C:\\RUN\\SECRETS\\STRAPI-TOKEN",
+      STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: "c:\\run\\secrets\\strapi-token",
+    };
+    expect(() => parseMusicReconciliationCommandConfig(live)).toThrow(/dedicated/i);
+  });
+
+  it.each(["lifecycle-proof", "access-token"])("rejects a reconciliation token hardlinked to the %s authority", async (authority) => {
+    const directory = mkdtempSync(join(tmpdir(), "music-reconciliation-token-"));
+    const reconciliationPath = join(directory, "reconciliation-token");
+    const authorityPath = join(directory, authority);
+    try {
+      writeFileSync(reconciliationPath, "r".repeat(32), { mode: 0o600 });
+      chmodSync(reconciliationPath, 0o600);
+      linkSync(reconciliationPath, authorityPath);
+      await expect(readSecureMusicSecretFile(reconciliationPath, { mode: "live" }))
+        .rejects.toThrow(/secure|link|secret/i);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("accepts a distinct owner-only reconciliation token file", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "music-reconciliation-token-distinct-"));
+    const reconciliationPath = join(directory, "reconciliation-token");
+    try {
+      writeFileSync(reconciliationPath, "r".repeat(32), { mode: 0o600 });
+      chmodSync(reconciliationPath, 0o600);
+      await expect(readSecureMusicSecretFile(reconciliationPath, { mode: "live" }))
+        .resolves.toBe("r".repeat(32));
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 
   it("resolves the pinned live transport without loading Music signing or lifecycle authorities", async () => {

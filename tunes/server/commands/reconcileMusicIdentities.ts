@@ -1,6 +1,7 @@
-import { randomUUID } from "node:crypto";
-import { chmod, lstat, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { randomBytes, randomUUID } from "node:crypto";
+import { constants, type BigIntStats } from "node:fs";
+import { link, lstat, mkdir, open, realpath, rename, rm, stat, type FileHandle } from "node:fs/promises";
+import { dirname, isAbsolute, join, parse, resolve } from "node:path";
 import { z } from "zod";
 import {
   MUSIC_RECONCILIATION_SCHEMA_VERSION,
@@ -41,6 +42,7 @@ const anomalySchema = z.object({ code: z.string().min(1).max(64), message: z.str
 const reportSchema = z.object({
   schemaVersion: z.literal(MUSIC_RECONCILIATION_SCHEMA_VERSION),
   runId: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/),
+  scanNonce: hashSchema,
   status: z.enum(["success", "blocked"]),
   mode: z.enum(["dry-run", "apply"]),
   source: sourceSchema.optional(),
@@ -70,6 +72,7 @@ const reportSchema = z.object({
   approvalToken: hashSchema.optional(),
 }).strict();
 const reviewSchema = z.object({
+  scanNonce: hashSchema,
   source: sourceSchema,
   planFingerprint: hashSchema,
   approvalToken: hashSchema,
@@ -78,6 +81,7 @@ const checkpointSchema = z.object({
   schemaVersion: z.literal(MUSIC_RECONCILIATION_CHECKPOINT_SCHEMA_VERSION),
   state: z.enum(["scanning", "reviewed", "blocked", "applied", "interrupted"]),
   runId: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/),
+  scanNonce: hashSchema,
   commit: z.string().min(1).max(128),
   fixtureVersion: z.string().min(1).max(128),
   fixtureSchemaVersion: z.string().min(1).max(128),
@@ -99,6 +103,9 @@ const checkpointSchema = z.object({
   if (value.report && value.report.runId !== value.runId) {
     context.addIssue({ code: z.ZodIssueCode.custom, message: "checkpoint and report run identifiers must match" });
   }
+  if (value.report && value.report.scanNonce !== value.scanNonce) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "checkpoint and report scan identifiers must match" });
+  }
   if (value.source && value.report?.source && JSON.stringify(value.source) !== JSON.stringify(value.report.source)) {
     context.addIssue({ code: z.ZodIssueCode.custom, message: "checkpoint and report sources must match" });
   }
@@ -106,6 +113,8 @@ const checkpointSchema = z.object({
     if (!value.source
         || JSON.stringify(value.review.source) !== JSON.stringify(value.source)
         || JSON.stringify(value.review.source) !== JSON.stringify(value.report.source)
+        || value.review.scanNonce !== value.scanNonce
+        || value.review.scanNonce !== value.report.scanNonce
         || value.review.planFingerprint !== value.report.planFingerprint
         || value.review.approvalToken !== value.report.approvalToken) {
       context.addIssue({ code: z.ZodIssueCode.custom, message: "review evidence must match the visible report" });
@@ -143,6 +152,7 @@ export interface MusicReconciliationCheckpoint extends MusicReconciliationResume
   schemaVersion: typeof MUSIC_RECONCILIATION_CHECKPOINT_SCHEMA_VERSION;
   state: "scanning" | "reviewed" | "blocked" | "applied" | "interrupted";
   runId: string;
+  scanNonce: string;
   source?: ReconciliationSourceMetadata;
   nextPage: number;
   review?: ReconciliationReview;
@@ -219,27 +229,262 @@ export class HttpMusicReconciliationSource implements MusicReconciliationSource 
   }
 }
 
-export async function writeMusicReconciliationCheckpoint(path: string, checkpoint: MusicReconciliationCheckpoint): Promise<void> {
-  const validated = checkpointSchema.parse(checkpoint);
-  await mkdir(dirname(path), { recursive: true });
-  const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
-  await writeFile(temporary, `${JSON.stringify(validated, null, 2)}\n`, { encoding: "utf8", mode: 0o600, flag: "wx" });
+const MAX_CHECKPOINT_BYTES = 1024 * 1024;
+
+interface MusicReconciliationCheckpointFileSystem {
+  lstat(path: string): Promise<BigIntStats>;
+  open(path: string, flags: number, mode?: number): Promise<FileHandle>;
+  realpath(path: string): Promise<string>;
+  mkdir(path: string, options: { mode: number }): Promise<unknown>;
+  link(existingPath: string, newPath: string): Promise<void>;
+  rename(oldPath: string, newPath: string): Promise<void>;
+  rm(path: string, options: { force: boolean }): Promise<void>;
+}
+
+interface MusicReconciliationCheckpointFileOptions {
+  fileSystem?: Partial<MusicReconciliationCheckpointFileSystem>;
+  platform?: NodeJS.Platform;
+  effectiveUserId?: number;
+  requireAbsent?: boolean;
+}
+
+const checkpointFileSystem: MusicReconciliationCheckpointFileSystem = {
+  lstat: (path) => lstat(path, { bigint: true }),
+  open,
+  realpath,
+  mkdir: (path, options) => mkdir(path, options),
+  link,
+  rename,
+  rm,
+};
+
+export async function writeMusicReconciliationCheckpoint(
+  path: string,
+  checkpoint: MusicReconciliationCheckpoint,
+  options: MusicReconciliationCheckpointFileOptions = {},
+): Promise<void> {
   try {
-    await rename(temporary, path);
-    await chmod(path, 0o600);
+    validateCheckpointPath(path);
+    const validated = checkpointSchema.parse(checkpoint);
+    const fileSystem = { ...checkpointFileSystem, ...options.fileSystem };
+    await ensureCheckpointDirectory(dirname(path), fileSystem, options);
+    const ancestorBefore = await checkpointAncestors(path, fileSystem, options);
+    const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
+    let handle: FileHandle | undefined;
+    try {
+      /* c8 ignore next -- the POSIX O_NOFOLLOW arm is exercised by the POSIX-only hostile-path test. */
+      const noFollow = (options.platform ?? process.platform) === "win32" ? 0 : constants.O_NOFOLLOW;
+      handle = await fileSystem.open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | noFollow, 0o600);
+      const encoded = Buffer.from(`${JSON.stringify(validated, null, 2)}\n`, "utf8");
+      /* c8 ignore next -- the strict checkpoint schema cannot serialize beyond this defense-in-depth bound. */
+      if (encoded.byteLength > MAX_CHECKPOINT_BYTES) return invalidCheckpointFile();
+      await handle.writeFile(encoded);
+      await handle.sync();
+      const temporaryMetadata = await handle.stat({ bigint: true });
+      validateCheckpointMetadata(temporaryMetadata, options);
+      /* c8 ignore next -- a successful descriptor write cannot report a different size without a broken filesystem. */
+      if (temporaryMetadata.size !== BigInt(encoded.byteLength)) return invalidCheckpointFile();
+      await handle.close();
+      handle = undefined;
+
+      await validateExistingCheckpointTarget(path, fileSystem, options);
+      await revalidateCheckpointAncestors(path, ancestorBefore, fileSystem, options);
+      if (options.requireAbsent) {
+        await fileSystem.link(temporary, path);
+        await fileSystem.rm(temporary, { force: true });
+      } else {
+        await fileSystem.rename(temporary, path);
+      }
+      const finalMetadata = await fileSystem.lstat(path);
+      validateCheckpointMetadata(finalMetadata, options);
+      if (!sameCheckpointIdentity(temporaryMetadata, finalMetadata)) return invalidCheckpointFile();
+      await revalidateCheckpointAncestors(path, ancestorBefore, fileSystem, options);
+    } catch (error) {
+      /* c8 ignore next 2 -- cleanup failures are intentionally contained after the primary secure-write failure. */
+      await handle?.close().catch(() => undefined);
+      /* c8 ignore next 2 -- cleanup failures are intentionally contained after the primary secure-write failure. */
+      await fileSystem.rm(temporary, { force: true }).catch(() => undefined);
+      throw error;
+    }
   } catch (error) {
-    await rm(temporary, { force: true });
-    throw error;
+    if (error instanceof MusicReconciliationResumeError) throw error;
+    throw new MusicReconciliationResumeError("checkpoint file is insecure or invalid");
   }
 }
 
-export async function readMusicReconciliationCheckpoint(path: string): Promise<MusicReconciliationCheckpoint> {
-  const metadata = await lstat(path);
-  if (!metadata.isFile() || metadata.isSymbolicLink() || metadata.size < 2 || metadata.size > 1024 * 1024) {
-    throw new MusicReconciliationResumeError("checkpoint file is invalid");
+export async function readMusicReconciliationCheckpoint(
+  path: string,
+  options: MusicReconciliationCheckpointFileOptions = {},
+): Promise<MusicReconciliationCheckpoint> {
+  try {
+    validateCheckpointPath(path);
+    const fileSystem = { ...checkpointFileSystem, ...options.fileSystem };
+    const ancestorBefore = await checkpointAncestors(path, fileSystem, options);
+    const canonicalBefore = await fileSystem.realpath(path);
+    if (!sameCheckpointPath(canonicalBefore, path, options.platform ?? process.platform)) return invalidCheckpointFile();
+    const before = await fileSystem.lstat(path);
+    validateCheckpointMetadata(before, options);
+    /* c8 ignore next -- the POSIX O_NOFOLLOW arm is exercised by the POSIX-only hostile-path test. */
+    const noFollow = (options.platform ?? process.platform) === "win32" ? 0 : constants.O_NOFOLLOW;
+    const handle = await fileSystem.open(path, constants.O_RDONLY | noFollow);
+    try {
+      const opened = await handle.stat({ bigint: true });
+      validateCheckpointMetadata(opened, options);
+      if (!sameCheckpointIdentity(before, opened)) return invalidCheckpointFile();
+      const buffer = Buffer.alloc(MAX_CHECKPOINT_BYTES + 1);
+      const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+      const afterDescriptor = await handle.stat({ bigint: true });
+      const afterPath = await fileSystem.lstat(path);
+      const canonicalAfter = await fileSystem.realpath(path);
+      validateCheckpointMetadata(afterDescriptor, options);
+      validateCheckpointMetadata(afterPath, options);
+      if (bytesRead !== Number(opened.size) || bytesRead > MAX_CHECKPOINT_BYTES
+          || !sameCheckpointMetadata(opened, afterDescriptor)
+          || !sameCheckpointMetadata(opened, afterPath)
+          || !sameCheckpointPath(canonicalAfter, path, options.platform ?? process.platform)) {
+        return invalidCheckpointFile();
+      }
+      await revalidateCheckpointAncestors(path, ancestorBefore, fileSystem, options);
+      return checkpointSchema.parse(JSON.parse(buffer.subarray(0, bytesRead).toString("utf8"))) as MusicReconciliationCheckpoint;
+    } finally {
+      await handle.close();
+    }
+  } catch (error) {
+    if (error instanceof MusicReconciliationResumeError) throw error;
+    throw new MusicReconciliationResumeError("checkpoint file is insecure or invalid");
   }
-  const raw = JSON.parse(await readFile(path, "utf8"));
-  return checkpointSchema.parse(raw) as MusicReconciliationCheckpoint;
+}
+
+function validateCheckpointPath(path: string): void {
+  if (!path || path.length > 1_024 || path.includes("\0") || !isAbsolute(path)) invalidCheckpointFile();
+}
+
+async function ensureCheckpointDirectory(
+  directory: string,
+  fileSystem: MusicReconciliationCheckpointFileSystem,
+  options: MusicReconciliationCheckpointFileOptions,
+): Promise<void> {
+  for (const ancestor of ancestorPaths(join(directory, ".checkpoint-placeholder"))) {
+    try {
+      const metadata = await fileSystem.lstat(ancestor);
+      validateCheckpointDirectory(metadata, ancestor, options);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      await fileSystem.mkdir(ancestor, { mode: 0o700 });
+      const metadata = await fileSystem.lstat(ancestor);
+      validateCheckpointDirectory(metadata, ancestor, options, true);
+    }
+  }
+}
+
+async function checkpointAncestors(
+  path: string,
+  fileSystem: MusicReconciliationCheckpointFileSystem,
+  options: MusicReconciliationCheckpointFileOptions,
+): Promise<BigIntStats[]> {
+  return Promise.all(ancestorPaths(path).map(async (ancestor) => {
+    const metadata = await fileSystem.lstat(ancestor);
+    validateCheckpointDirectory(metadata, ancestor, options);
+    return metadata;
+  }));
+}
+
+async function revalidateCheckpointAncestors(
+  path: string,
+  before: BigIntStats[],
+  fileSystem: MusicReconciliationCheckpointFileSystem,
+  options: MusicReconciliationCheckpointFileOptions,
+): Promise<void> {
+  const after = await checkpointAncestors(path, fileSystem, options);
+  if (before.some((metadata, index) => !sameCheckpointDirectory(metadata, after[index]))) invalidCheckpointFile();
+  const parent = dirname(path);
+  const canonicalParent = await fileSystem.realpath(parent);
+  if (!sameCheckpointPath(canonicalParent, parent, options.platform ?? process.platform)) invalidCheckpointFile();
+}
+
+function ancestorPaths(path: string): string[] {
+  const root = parse(path).root;
+  const result: string[] = [];
+  let current = dirname(path);
+  while (true) {
+    result.push(current);
+    if (current === root) break;
+    const parent = dirname(current);
+    /* c8 ignore next -- absolute paths terminate at the parsed root before dirname can become stationary. */
+    if (parent === current) invalidCheckpointFile();
+    current = parent;
+  }
+  return result.reverse();
+}
+
+function validateCheckpointDirectory(
+  metadata: BigIntStats,
+  path: string,
+  options: MusicReconciliationCheckpointFileOptions,
+  created = false,
+): void {
+  if (!metadata.isDirectory() || metadata.isSymbolicLink()) invalidCheckpointFile();
+  const platform = options.platform ?? process.platform;
+  if (platform === "win32") return;
+  /* c8 ignore start -- exercised by the POSIX-only owner/mode hostile tests. */
+  const effectiveUserId = BigInt(options.effectiveUserId ?? process.geteuid?.() ?? -1);
+  if (metadata.uid !== BigInt(0) && metadata.uid !== effectiveUserId) invalidCheckpointFile();
+  const writableByOthers = (metadata.mode & BigInt(0o022)) !== BigInt(0);
+  const trustedStickyRoot = metadata.uid === BigInt(0) && (metadata.mode & BigInt(0o1000)) !== BigInt(0);
+  if (writableByOthers && !trustedStickyRoot) invalidCheckpointFile();
+  if (created && (metadata.mode & BigInt(0o077)) !== BigInt(0)) invalidCheckpointFile();
+  void path;
+  /* c8 ignore stop */
+}
+
+function validateCheckpointMetadata(metadata: BigIntStats, options: MusicReconciliationCheckpointFileOptions): void {
+  if (!metadata.isFile() || metadata.isSymbolicLink() || metadata.nlink !== BigInt(1)
+      || metadata.size < BigInt(2) || metadata.size > BigInt(MAX_CHECKPOINT_BYTES)) invalidCheckpointFile();
+  /* c8 ignore next -- the non-Windows branch is exercised by the POSIX-only owner/mode hostile tests. */
+  if ((options.platform ?? process.platform) === "win32") return;
+  /* c8 ignore start -- exercised by the POSIX-only owner/mode hostile tests. */
+  if ((metadata.mode & BigInt(0o077)) !== BigInt(0)) invalidCheckpointFile();
+  const effectiveUserId = BigInt(options.effectiveUserId ?? process.geteuid?.() ?? -1);
+  if (metadata.uid !== BigInt(0) && metadata.uid !== effectiveUserId) invalidCheckpointFile();
+  /* c8 ignore stop */
+}
+
+async function validateExistingCheckpointTarget(
+  path: string,
+  fileSystem: MusicReconciliationCheckpointFileSystem,
+  options: MusicReconciliationCheckpointFileOptions,
+): Promise<void> {
+  try {
+    validateCheckpointMetadata(await fileSystem.lstat(path), options);
+    if (options.requireAbsent) invalidCheckpointFile();
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+}
+
+function sameCheckpointPath(left: string, right: string, platform: NodeJS.Platform): boolean {
+  const normalize = (value: string) => resolve(value).replace(/^\\\\\?\\/, "");
+  const [leftPath, rightPath] = [normalize(left), normalize(right)];
+  /* c8 ignore next -- both platform semantics are covered on their native CI workers. */
+  return platform === "win32" ? leftPath.toLowerCase() === rightPath.toLowerCase() : leftPath === rightPath;
+}
+
+function sameCheckpointIdentity(left: BigIntStats, right: BigIntStats): boolean {
+  return left.dev === right.dev && left.ino === right.ino;
+}
+
+function sameCheckpointMetadata(left: BigIntStats, right: BigIntStats): boolean {
+  return sameCheckpointIdentity(left, right) && left.mode === right.mode && left.uid === right.uid
+    && left.gid === right.gid && left.nlink === right.nlink && left.size === right.size
+    && left.mtimeNs === right.mtimeNs && left.ctimeNs === right.ctimeNs;
+}
+
+function sameCheckpointDirectory(left: BigIntStats, right: BigIntStats): boolean {
+  return sameCheckpointIdentity(left, right) && left.mode === right.mode && left.uid === right.uid && left.gid === right.gid;
+}
+
+function invalidCheckpointFile(): never {
+  throw new MusicReconciliationResumeError("checkpoint file is insecure or invalid");
 }
 
 export async function interruptMusicReconciliationCheckpoint(path: string): Promise<boolean> {
@@ -308,16 +553,23 @@ export async function reconcileMusicIdentities(options: {
     throw new MusicReconciliationResumeError("apply requires a reviewed dry-run checkpoint");
   }
   let lastSource = resume?.source;
+  const scanNonce = mode === "apply" ? resume!.scanNonce : randomBytes(32).toString("hex");
   const baseCheckpoint = (): Omit<MusicReconciliationCheckpoint, "state" | "nextPage"> => ({
     schemaVersion: MUSIC_RECONCILIATION_CHECKPOINT_SCHEMA_VERSION,
     runId: options.run.runId,
+    scanNonce,
     ...options.context,
     ...(lastSource ? { source: lastSource } : {}),
   });
-  await writeMusicReconciliationCheckpoint(options.checkpointPath, { ...baseCheckpoint(), state: "scanning", nextPage: 1 });
+  await writeMusicReconciliationCheckpoint(
+    options.checkpointPath,
+    { ...baseCheckpoint(), state: "scanning", nextPage: 1 },
+    { requireAbsent: true },
+  );
 
   const report = await options.reconciler.run({
     ...options.run,
+    scanNonce,
     requestedMode: mode,
     expectedSource: resume?.source,
     review: mode === "apply" ? resume?.review : undefined,
@@ -336,7 +588,7 @@ export async function reconcileMusicIdentities(options: {
   });
 
   const review = mode === "dry-run" && report.status === "success" && report.source && report.planFingerprint && report.approvalToken
-    ? { source: report.source, planFingerprint: report.planFingerprint, approvalToken: report.approvalToken }
+    ? { scanNonce, source: report.source, planFingerprint: report.planFingerprint, approvalToken: report.approvalToken }
     : resume?.review;
   const state: MusicReconciliationCheckpoint["state"] = report.status !== "success"
     ? "blocked"

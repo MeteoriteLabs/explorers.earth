@@ -301,7 +301,7 @@ class PostgresReconciliationSession implements MusicReconciliationSession {
           AND NOT EXISTS (SELECT 1 FROM music_reconciliation_scan s
             WHERE s.user_document_id=u.strapi_user_document_id
               AND s.account_document_id=u.strapi_account_document_id)`, [sourceJson, input.observationVersion]);
-      const suspended = await this.client.query(`UPDATE users u SET
+      const suspended = await this.client.query<{ id: number; session_version: number }>(`UPDATE users u SET
         identity_status='suspended',session_version=u.session_version+1,
         lifecycle_operation_id=o.operation_id,lifecycle_state='completed',
         lifecycle_attempt_count=u.lifecycle_attempt_count+1,lifecycle_last_attempt_at=clock_timestamp(),
@@ -313,10 +313,12 @@ class PostgresReconciliationSession implements MusicReconciliationSession {
           AND o.strapi_user_document_id=u.strapi_user_document_id
           AND o.strapi_account_document_id=u.strapi_account_document_id
           AND u.identity_status='active'
-        RETURNING u.id`, [operationPrefix]);
+        RETURNING u.id,u.session_version`, [operationPrefix]);
       if (suspended.rowCount !== inserted.rowCount) throw new Error("reconciliation suspension count changed");
       if (suspended.rows.length > 0) {
-        await this.client.query("SELECT pg_notify('music_identity_suspended', id::text) FROM unnest($1::int[]) AS id", [suspended.rows.map((row) => row.id)]);
+        await this.client.query("SELECT pg_notify('music_identity_suspended', payload) FROM unnest($1::text[]) AS payload", [
+          suspended.rows.map((row) => `${row.id}:${row.session_version}`),
+        ]);
       }
       await this.client.query("COMMIT");
       return result({

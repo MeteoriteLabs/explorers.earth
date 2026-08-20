@@ -5,7 +5,9 @@ import { describe, expect, it, vi } from "vitest";
 import { startMusicReconciliationSuspensionListener } from "../services/musicReconciliationSuspensionListener";
 
 class FakeClient extends EventEmitter {
-  readonly query = vi.fn(async () => ({ rows: [] }));
+  readonly query = vi.fn(async (sql: string, _parameters?: unknown[]) => ({
+    rows: sql.includes("music_identity_lifecycle_operations") ? [{ should_disconnect: true }] : [],
+  }));
   readonly release = vi.fn();
 }
 
@@ -48,13 +50,65 @@ describe("music reconciliation suspension listener", () => {
     expect(client.query).toHaveBeenCalledWith("LISTEN music_identity_suspended");
     expect(client.query).toHaveBeenCalledWith("SET application_name = 'music-reconciliation-suspension-listener'");
     expect(client.query).toHaveBeenCalledWith("SELECT pg_advisory_lock_shared(hashtextextended('music:identity-suspension-listener-ready',0))");
-    client.emit("notification", { channel: "music_identity_suspended", payload: "41" });
+    client.emit("notification", { channel: "music_identity_suspended", payload: "41:2" });
     await vi.waitFor(() => expect(disconnectOwner).toHaveBeenCalledWith(41));
 
     await listener.stop();
     expect(client.query).toHaveBeenCalledWith("SELECT pg_advisory_unlock_shared(hashtextextended('music:identity-suspension-listener-ready',0))");
     expect(client.query).toHaveBeenLastCalledWith("UNLISTEN music_identity_suspended");
     expect(client.release).toHaveBeenCalledOnce();
+  });
+
+  it("treats a versioned notification only as a wakeup and disconnects only the current durable suspension", async () => {
+    const client = new FakeClient();
+    let durableSuspension = false;
+    client.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("music_identity_lifecycle_operations")) {
+        return { rows: [{ should_disconnect: durableSuspension }] };
+      }
+      return { rows: [] };
+    });
+    const disconnectOwner = vi.fn(async () => undefined);
+    const listener = await startMusicReconciliationSuspensionListener({
+      pool: { connect: vi.fn(async () => client) },
+      disconnectOwner,
+      onDisconnectError: vi.fn(),
+      onFatal: vi.fn(),
+    });
+
+    client.emit("notification", { channel: "music_identity_suspended", payload: "41:2" });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(disconnectOwner).not.toHaveBeenCalled();
+
+    durableSuspension = true;
+    client.emit("notification", { channel: "music_identity_suspended", payload: "42:3" });
+    await vi.waitFor(() => expect(disconnectOwner).toHaveBeenCalledWith(42));
+    expect(disconnectOwner).not.toHaveBeenCalledWith(41);
+    await listener.stop();
+  });
+
+  it("rejects a stale suspension fence even when the owner is suspended again", async () => {
+    const client = new FakeClient();
+    client.query.mockImplementation(async (sql: string, parameters?: unknown[]) => ({
+      rows: sql.includes("music_identity_lifecycle_operations")
+        ? [{ should_disconnect: parameters?.[0] === 42 && parameters?.[1] === 7 }]
+        : [],
+    }));
+    const disconnectOwner = vi.fn(async () => undefined);
+    const listener = await startMusicReconciliationSuspensionListener({
+      pool: { connect: vi.fn(async () => client) },
+      disconnectOwner,
+      onDisconnectError: vi.fn(),
+      onFatal: vi.fn(),
+    });
+
+    client.emit("notification", { channel: "music_identity_suspended", payload: "42:6" });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(disconnectOwner).not.toHaveBeenCalled();
+
+    client.emit("notification", { channel: "music_identity_suspended", payload: "42:7" });
+    await vi.waitFor(() => expect(disconnectOwner).toHaveBeenCalledWith(42));
+    await listener.stop();
   });
 
   it("uses separate fatal and owner-disconnect failure channels", async () => {
@@ -70,7 +124,7 @@ describe("music reconciliation suspension listener", () => {
       onFatal,
     });
 
-    client.emit("notification", { channel: "music_identity_suspended", payload: "7" });
+    client.emit("notification", { channel: "music_identity_suspended", payload: "7:2" });
     await vi.waitFor(() => expect(onDisconnectError).toHaveBeenCalledWith(ownerFailure));
     client.emit("error", connectionFailure);
     expect(onFatal).toHaveBeenCalledWith(connectionFailure);
@@ -99,7 +153,7 @@ describe("music reconciliation suspension listener", () => {
     });
 
     for (const musicUserId of [1, 2, 3, 4]) {
-      client.emit("notification", { channel: "music_identity_suspended", payload: String(musicUserId) });
+      client.emit("notification", { channel: "music_identity_suspended", payload: `${musicUserId}:${musicUserId + 1}` });
     }
     await vi.waitFor(() => expect(started).toEqual([1, 2]));
     expect(maximumActive).toBe(2);
@@ -131,11 +185,12 @@ describe("music reconciliation suspension listener", () => {
       maxConcurrency: 1,
       maxPending: 1,
     });
-    client.emit("notification", { channel: "music_identity_suspended", payload: "1" });
-    client.emit("notification", { channel: "music_identity_suspended", payload: "2" });
+    client.emit("notification", { channel: "music_identity_suspended", payload: "1:2" });
+    client.emit("notification", { channel: "music_identity_suspended", payload: "2:3" });
     expect(onFatal).toHaveBeenCalledOnce();
     client.emit("error", new Error("already failed"));
     expect(onFatal).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(release).toBeTypeOf("function"));
     release?.();
     await listener.stop();
   });
@@ -153,13 +208,16 @@ describe("music reconciliation suspension listener", () => {
       onFatal,
     });
 
-    for (const payload of [undefined, "", "0", "-1", "1.5", "1e2", "9007199254740992"]) {
+    for (const payload of [
+      undefined, "", "5", "0:1", "-1:1", "1.5:2", "1e2:2", "9007199254740992:2",
+      "1:0", "1:-1", "1:1.5", "1:1e2", "1:9007199254740992",
+    ]) {
       client.emit("notification", { channel: "music_identity_suspended", payload });
     }
-    client.emit("notification", { channel: "another_channel", payload: "5" });
+    client.emit("notification", { channel: "another_channel", payload: "5:2" });
     expect(disconnectOwner).not.toHaveBeenCalled();
 
-    client.emit("notification", { channel: "music_identity_suspended", payload: "5" });
+    client.emit("notification", { channel: "music_identity_suspended", payload: "5:2" });
     await vi.waitFor(() => expect(onDisconnectError).toHaveBeenCalledWith(error));
     client.emit("error", error);
     expect(onFatal).toHaveBeenCalledWith(error);

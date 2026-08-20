@@ -13,8 +13,8 @@ Every environment defaults to dry-run and apply disabled. Production apply is st
 - A PostgreSQL advisory lock permits one host, workflow, or manual run at a time.
 - The source is read in explicit `documentId:asc` pages. Every page must agree on schema version, snapshot, checksum, total, and page count.
 - Duplicate, reordered, truncated, malformed, unhealthy, timed-out, count-shifted, checksum-shifted, immutable-ID-collision, tombstone, threshold, or plan-drift results cause zero suspension writes. Dry-run also writes no snapshots or absence counters.
-- An absence advances only after a fully validated apply scan; two independent complete scans with distinct source observation versions are required before lifecycle suspension. Replaying or resuming the same snapshot does not count twice.
-- A suspension records a completed lifecycle operation, increments `session_version`, revokes guest capability and discovery, and notifies running Tunes servers to disconnect owner sockets.
+- An absence advances only after a fully validated apply scan. Each fresh dry-run creates a cryptographically random scan nonce and stores it in the owner-only reviewed checkpoint; its apply must reuse that exact nonce, while a replay/resume cannot create a second observation. There is no wall-clock minimum because application clocks are not trusted: independence comes from two independent complete scans, distinct durable scan evidence, the serialized database lock, and a fresh database-plan check. A crash before the reviewed checkpoint is complete cannot authorize apply. An unchanged content snapshot can therefore count on two genuinely separate scans, while replaying either scan cannot count twice.
+- A suspension records a completed lifecycle operation, increments `session_version`, revokes guest capability and discovery, and notifies running Tunes servers with the exact `music_user_id:session_version` fence. Every listener rechecks that committed lifecycle/session version before disconnecting owner sockets, so stale or fabricated events are no-ops.
 - Present suspended or pending-deletion identities remain in that state. A tombstone is quarantined as an anomaly; it is never recreated.
 
 ## Report-only operation
@@ -46,7 +46,7 @@ The public command is:
 npm run --silent music:reconcile -- --mode live --dry-run --format json --checkpoint .artifacts/music-runs/<run>/reconciliation-checkpoint.json
 ```
 
-The checkpoint is atomic, owner-only where the platform supports modes, and contains only source metadata, thresholds, aggregate counts, the local plan fingerprint, and the review token. It contains no usernames, emails, identity rows, database credential, or service token. Human and JSON output use the same aggregate report.
+The checkpoint is atomically committed through a canonical non-link ancestor chain and contains only source metadata, thresholds, aggregate counts, the scan nonce, local plan fingerprint, and review token. Its first write uses no-overwrite semantics; later state transitions replace only that run's already-created artifact. Resume evidence is descriptor-read, single-link, owner-only where the platform exposes ownership/modes, and cannot alias the separate apply output. It contains no usernames, emails, identity rows, database credential, or service token. Human and JSON output use the same aggregate report.
 
 Review:
 

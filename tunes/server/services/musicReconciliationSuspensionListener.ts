@@ -9,7 +9,7 @@ interface Notification {
 }
 
 interface ListenClient extends EventEmitter {
-  query(sql: string): Promise<unknown>;
+  query(sql: string, parameters?: unknown[]): Promise<unknown>;
   release(): void;
 }
 
@@ -17,14 +17,23 @@ interface ListenPool {
   connect(): Promise<ListenClient>;
 }
 
+interface SuspensionFence {
+  musicUserId: number;
+  sessionVersion: number;
+}
+
 export interface MusicReconciliationSuspensionListener {
   stop(): Promise<void>;
 }
 
-function parseMusicUserId(payload: string | undefined): number | undefined {
-  if (!payload || !/^[1-9]\d*$/.test(payload)) return undefined;
-  const musicUserId = Number(payload);
-  return Number.isSafeInteger(musicUserId) ? musicUserId : undefined;
+function parseSuspensionFence(payload: string | undefined): SuspensionFence | undefined {
+  const match = /^([1-9]\d*):([1-9]\d*)$/.exec(payload ?? "");
+  if (!match) return undefined;
+  const musicUserId = Number(match[1]);
+  const sessionVersion = Number(match[2]);
+  return Number.isSafeInteger(musicUserId) && Number.isSafeInteger(sessionVersion)
+    ? { musicUserId, sessionVersion }
+    : undefined;
 }
 
 export async function startMusicReconciliationSuspensionListener(options: {
@@ -45,7 +54,7 @@ export async function startMusicReconciliationSuspensionListener(options: {
   let accepting = true;
   let active = 0;
   let fatal = false;
-  const queue: number[] = [];
+  const queue: SuspensionFence[] = [];
   const drained: Array<() => void> = [];
   let stopPromise: Promise<void> | undefined;
   const resolveDrained = (): void => {
@@ -53,9 +62,11 @@ export async function startMusicReconciliationSuspensionListener(options: {
   };
   const pump = (): void => {
     while (active < maxConcurrency && queue.length > 0) {
-      const musicUserId = queue.shift()!;
+      const fence = queue.shift()!;
       active += 1;
-      void options.disconnectOwner(musicUserId).catch(options.onDisconnectError).finally(() => {
+      void shouldDisconnectCurrentSuspension(client, fence)
+        .then((shouldDisconnect) => shouldDisconnect ? options.disconnectOwner(fence.musicUserId) : undefined)
+        .catch(options.onDisconnectError).finally(() => {
         active -= 1;
         pump();
         resolveDrained();
@@ -65,15 +76,15 @@ export async function startMusicReconciliationSuspensionListener(options: {
   };
   const onNotification = (notification: Notification): void => {
     if (!accepting || notification.channel !== CHANNEL) return;
-    const musicUserId = parseMusicUserId(notification.payload);
-    if (musicUserId === undefined) return;
+    const fence = parseSuspensionFence(notification.payload);
+    if (!fence) return;
     if (active + queue.length >= maxPending) {
       accepting = false;
       fatal = true;
       options.onFatal(new Error("Music reconciliation listener queue capacity exceeded"));
       return;
     }
-    queue.push(musicUserId);
+    queue.push(fence);
     pump();
   };
   const onClientError = (error: unknown): void => {
@@ -115,4 +126,26 @@ export async function startMusicReconciliationSuspensionListener(options: {
       return stopPromise;
     },
   };
+}
+
+async function shouldDisconnectCurrentSuspension(client: ListenClient, fence: SuspensionFence): Promise<boolean> {
+  const result = await client.query(`SELECT EXISTS (
+      SELECT 1 FROM users identity
+      JOIN music_identity_lifecycle_operations operation
+        ON operation.operation_id=identity.lifecycle_operation_id
+       AND operation.music_user_id=identity.id
+       AND operation.strapi_user_document_id=identity.strapi_user_document_id
+       AND operation.strapi_account_document_id=identity.strapi_account_document_id
+      WHERE identity.id=$1
+        AND identity.session_version=$2
+        AND identity.identity_status='suspended'
+        AND identity.lifecycle_state='completed'
+        AND operation.operation_kind='suspend'
+        AND operation.requested_identity_status='suspended'
+        AND operation.operation_state='completed'
+        AND operation.operation_phase='single'
+        AND operation.result_session_version=$2
+        AND operation.result_session_version=identity.session_version
+    ) AS should_disconnect`, [fence.musicUserId, fence.sessionVersion]) as { rows?: Array<{ should_disconnect?: unknown }> };
+  return result.rows?.[0]?.should_disconnect === true;
 }

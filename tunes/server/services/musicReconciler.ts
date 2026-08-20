@@ -59,6 +59,7 @@ export interface ReconciliationSourceMetadata {
 }
 
 export interface ReconciliationReview {
+  scanNonce: string;
   source: ReconciliationSourceMetadata;
   planFingerprint: string;
   approvalToken: string;
@@ -147,6 +148,7 @@ export interface MusicReconciliationSource {
 
 export interface MusicReconciliationRunInput {
   runId: string;
+  scanNonce?: string;
   environment: "fixture" | "staging" | "production";
   applyEnabled: boolean;
   requestedMode?: "dry-run" | "apply";
@@ -172,6 +174,7 @@ export interface MusicReconciliationRunInput {
 export interface MusicReconciliationReport {
   schemaVersion: typeof MUSIC_RECONCILIATION_SCHEMA_VERSION;
   runId: string;
+  scanNonce: string;
   status: "success" | "blocked";
   mode: "dry-run" | "apply";
   source?: ReconciliationSourceMetadata;
@@ -217,7 +220,7 @@ export class MusicReconciler {
     const started = this.now();
     const mode = input.requestedMode ?? "dry-run";
     const configurationAnomaly = validateRunInput(input, mode);
-    if (configurationAnomaly) return blocked(input.runId, mode, started, this.now(), configurationAnomaly);
+    if (configurationAnomaly) return blocked(input.runId, input.scanNonce ?? "", mode, started, this.now(), configurationAnomaly);
 
     let locked: { acquired: false } | { acquired: true; value: MusicReconciliationReport };
     try {
@@ -229,11 +232,11 @@ export class MusicReconciler {
         const scanAnomaly = error instanceof ScanFailure
           ? error.anomaly
           : anomaly("SOURCE_UNAVAILABLE", "The authoritative identity source is unavailable.");
-        return blocked(input.runId, mode, started, this.now(), scanAnomaly);
+        return blocked(input.runId, input.scanNonce!, mode, started, this.now(), scanAnomaly);
       }
       if ((input.review && !sameSource(input.review.source, scan.source))
           || (input.expectedSource && !sameSource(input.expectedSource, scan.source))) {
-        return blocked(input.runId, mode, started, this.now(), anomaly(
+        return blocked(input.runId, input.scanNonce!, mode, started, this.now(), anomaly(
           "SOURCE_DRIFT",
           "The authoritative source no longer matches the reviewed scan.",
         ), scan.source, scan.pages);
@@ -245,7 +248,7 @@ export class MusicReconciler {
           runId: input.runId,
           identities: scan.identities,
           source: scan.source,
-          observationVersion: observationVersion(scan.source.sourceSnapshot),
+          observationVersion: observationVersion(input.scanNonce!),
           batchSize: input.batchSize,
           maxRows: input.maxRows,
           maxChangeAbsolute: input.maxChangeAbsolute,
@@ -258,7 +261,7 @@ export class MusicReconciler {
           expectedPlanFingerprint: mode === "apply" ? input.review?.planFingerprint : undefined,
         });
       } catch {
-        return blocked(input.runId, mode, started, this.now(), anomaly(
+        return blocked(input.runId, input.scanNonce!, mode, started, this.now(), anomaly(
           "DATABASE_UNAVAILABLE",
           "The Music identity database is unavailable.",
         ), scan.source, scan.pages);
@@ -269,14 +272,14 @@ export class MusicReconciler {
       return databaseReport(input, mode, started, this.now(), scan, database, approvalToken);
       });
     } catch {
-      return blocked(input.runId, mode, started, this.now(), anomaly(
+      return blocked(input.runId, input.scanNonce!, mode, started, this.now(), anomaly(
         "DATABASE_UNAVAILABLE",
         "The Music identity database is unavailable.",
       ));
     }
 
     if (!locked.acquired) {
-      return blocked(input.runId, mode, started, this.now(), anomaly(
+      return blocked(input.runId, input.scanNonce!, mode, started, this.now(), anomaly(
         "LOCK_HELD",
         "Another Music identity reconciliation is already running.",
       ));
@@ -413,6 +416,9 @@ function validateRunInput(
   if (!/^[A-Za-z0-9._:-]{1,128}$/.test(input.runId)) {
     return anomaly("SOURCE_SCHEMA", "The reconciliation run identifier is invalid.");
   }
+  if (!/^[a-f0-9]{64}$/.test(input.scanNonce ?? "")) {
+    return anomaly("SOURCE_SCHEMA", "The reconciliation scan identifier is invalid.");
+  }
   try {
     validateBound("pageSize", input.pageSize, 1, 1_000);
     validateBound("maxRows", input.maxRows, 1, 100_000);
@@ -438,6 +444,9 @@ function validateRunInput(
   if (!input.review || !input.approvalToken) {
     return anomaly("APPROVAL_REQUIRED", "Apply requires a reviewed dry-run checkpoint and approval token.");
   }
+  if (!secureEqual(input.scanNonce!, input.review.scanNonce)) {
+    return anomaly("APPROVAL_INVALID", "The approval token does not match the reviewed dry-run.");
+  }
   if (!secureEqual(input.approvalToken, input.review.approvalToken)) {
     return anomaly("APPROVAL_INVALID", "The approval token does not match the reviewed dry-run.");
   }
@@ -456,6 +465,7 @@ function databaseReport(
   return {
     schemaVersion: MUSIC_RECONCILIATION_SCHEMA_VERSION,
     runId: input.runId,
+    scanNonce: input.scanNonce!,
     status: database.status === "safe" ? "success" : "blocked",
     mode,
     source: scan.source,
@@ -484,6 +494,7 @@ function databaseReport(
 
 function blocked(
   runId: string,
+  scanNonce: string,
   mode: "dry-run" | "apply",
   started: number,
   finished: number,
@@ -494,6 +505,7 @@ function blocked(
   return {
     schemaVersion: MUSIC_RECONCILIATION_SCHEMA_VERSION,
     runId,
+    scanNonce,
     status: "blocked",
     mode,
     source,
@@ -510,6 +522,7 @@ function createApprovalToken(
   return createHash("sha256").update(JSON.stringify({
     schemaVersion: MUSIC_RECONCILIATION_SCHEMA_VERSION,
     runId: input.runId,
+    scanNonce: input.scanNonce,
     environment: input.environment,
     source,
     planFingerprint,
@@ -533,8 +546,8 @@ function checksum(identities: MusicReconciliationIdentity[]): string {
   return createHash("sha256").update(identities.map((identity) => JSON.stringify(identity)).join("\n")).digest("hex");
 }
 
-function observationVersion(sourceSnapshot: string): string {
-  const digest = createHash("sha256").update(sourceSnapshot).digest("hex").slice(0, 13);
+function observationVersion(scanNonce: string): string {
+  const digest = createHash("sha256").update(scanNonce).digest("hex").slice(0, 13);
   return BigInt(`0x${digest}`).toString(10);
 }
 

@@ -23,12 +23,15 @@ const runtimePassword = Buffer.alloc(32, 0x6d).toString("base64url");
 const runtimeSecretRoot = mkdtempSync(join(tmpdir(), "music-runtime-role-secret-"));
 const runtimePasswordPath = join(runtimeSecretRoot, "database-runtime");
 const signingPath = join(runtimeSecretRoot, "music-token");
+const lifecycleProofPath = join(runtimeSecretRoot, "strapi-lifecycle-proof-token");
 const gateOwnerPasswordPath = join(runtimeSecretRoot, "database-migrator");
 writeFileSync(runtimePasswordPath, runtimePassword, { mode: 0o600 });
 writeFileSync(signingPath, Buffer.alloc(32, 0x6e).toString("base64url"), { mode: 0o600 });
+writeFileSync(lifecycleProofPath, Buffer.alloc(32, 0x70).toString("base64url"), { mode: 0o600 });
 writeFileSync(gateOwnerPasswordPath, gateOwnerPassword, { mode: 0o600 });
 chmodSync(runtimePasswordPath, 0o600);
 chmodSync(signingPath, 0o600);
+chmodSync(lifecycleProofPath, 0o600);
 chmodSync(gateOwnerPasswordPath, 0o600);
 let clusterAdmin: pg.Pool;
 let owner: pg.Pool;
@@ -61,6 +64,7 @@ function startupEnvironment(): Record<string, string> {
     MUSIC_DATABASE_MIGRATOR_USER: "music_migrator",
     MUSIC_DATABASE_PASSWORD_FILE: runtimePasswordPath,
     MUSIC_TOKEN_CURRENT_SECRET_FILE: signingPath,
+    STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: lifecycleProofPath,
   };
 }
 
@@ -110,6 +114,12 @@ describePg("C5 least-privilege Music runtime database authority", () => {
     target.password = runtimePassword;
     runtime = new pg.Pool({ connectionString: target.toString(), max: 8 });
     await authority.verifyMusicRuntimeLogin(owner, runtime, { loginRole: runtimeUser });
+
+    expect((await runtime.query(
+      "SELECT has_database_privilege(current_user,current_database(),'TEMP') AS can_create_temporary_objects",
+    )).rows[0].can_create_temporary_objects).toBe(false);
+    await expect(runtime.query("CREATE TEMP TABLE music_runtime_temp_probe(id integer)"))
+      .rejects.toThrow();
 
     const attributes = (await runtime.query(`SELECT current_user, rolsuper, rolcreaterole, rolcreatedb,
       rolreplication, rolbypassrls FROM pg_roles WHERE rolname=current_user`)).rows[0];
@@ -178,6 +188,70 @@ describePg("C5 least-privilege Music runtime database authority", () => {
     await expect(authority.verifyMusicRuntimeLogin(owner, runtime, { loginRole: runtimeUser }))
       .rejects.toThrow(/privilege|unsafe/i);
     await owner.query(`ALTER DATABASE ${databaseName} OWNER TO music_migrator`);
+  });
+
+  it.each([
+    {
+      name: "direct TRUNCATE",
+      grant: `GRANT TRUNCATE ON TABLE users TO ${runtimeUser}`,
+      revoke: `REVOKE TRUNCATE ON TABLE users FROM ${runtimeUser}`,
+    },
+    {
+      name: "direct DELETE even when the capability role already permits it",
+      grant: `GRANT DELETE ON TABLE users TO ${runtimeUser}`,
+      revoke: `REVOKE DELETE ON TABLE users FROM ${runtimeUser}`,
+    },
+    {
+      name: "direct REFERENCES",
+      grant: `GRANT REFERENCES ON TABLE users TO ${runtimeUser}`,
+      revoke: `REVOKE REFERENCES ON TABLE users FROM ${runtimeUser}`,
+    },
+    {
+      name: "direct TRIGGER",
+      grant: `GRANT TRIGGER ON TABLE users TO ${runtimeUser}`,
+      revoke: `REVOKE TRIGGER ON TABLE users FROM ${runtimeUser}`,
+    },
+    {
+      name: "direct function EXECUTE",
+      grant: `GRANT EXECUTE ON FUNCTION provision_music_runtime_login(name,text) TO ${runtimeUser}`,
+      revoke: `REVOKE EXECUTE ON FUNCTION provision_music_runtime_login(name,text) FROM ${runtimeUser}`,
+    },
+    {
+      name: "direct database TEMP",
+      grant: `GRANT TEMPORARY ON DATABASE ${databaseName} TO ${runtimeUser}`,
+      revoke: `REVOKE TEMPORARY ON DATABASE ${databaseName} FROM ${runtimeUser}`,
+    },
+  ])("rejects $name privilege drift across the complete runtime inventory", async ({ grant, revoke }) => {
+    const authority = await loadAuthority() as {
+      verifyMusicRuntimeLogin?: (ownerPool: pg.Pool, runtimePool: pg.Pool, input: { loginRole: string }) => Promise<void>;
+    };
+    expect(authority.verifyMusicRuntimeLogin).toBeTypeOf("function");
+    if (!authority.verifyMusicRuntimeLogin) return;
+    await owner.query(grant);
+    try {
+      await expect(authority.verifyMusicRuntimeLogin(owner, runtime, { loginRole: runtimeUser }))
+        .rejects.toThrow(/privilege|authority|attestation|unsafe/i);
+    } finally {
+      await owner.query(revoke);
+    }
+  });
+
+  it("rejects a capability grant on an object outside the checked-in runtime inventory", async () => {
+    const authority = await loadAuthority() as {
+      provisionMusicRuntimeLogin?: (ownerPool: pg.Pool, input: { loginRole: string; password: string }) => Promise<void>;
+      verifyMusicRuntimeLogin?: (ownerPool: pg.Pool, runtimePool: pg.Pool, input: { loginRole: string }) => Promise<void>;
+    };
+    expect(authority.provisionMusicRuntimeLogin).toBeTypeOf("function");
+    expect(authority.verifyMusicRuntimeLogin).toBeTypeOf("function");
+    if (!authority.provisionMusicRuntimeLogin || !authority.verifyMusicRuntimeLogin) return;
+    await owner.query("CREATE TABLE music_runtime_unexpected_authority(id integer)");
+    await authority.provisionMusicRuntimeLogin(owner, { loginRole: runtimeUser, password: runtimePassword });
+    try {
+      await expect(authority.verifyMusicRuntimeLogin(owner, runtime, { loginRole: runtimeUser }))
+        .rejects.toThrow(/inventory|privilege|authority|attestation|unsafe/i);
+    } finally {
+      await owner.query("DROP TABLE music_runtime_unexpected_authority");
+    }
   });
 
   it("rejects every direct and transitive authority inherited through the fixed capability role", async () => {

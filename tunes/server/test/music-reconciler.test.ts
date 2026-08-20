@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   MusicReconciler,
+  type MusicReconciliationReport,
   type MusicReconciliationRepository,
   type MusicReconciliationSession,
   type MusicReconciliationSource,
@@ -124,6 +125,7 @@ class FakeRepository implements MusicReconciliationRepository {
 
 const runInput = {
   runId: "run-001",
+  scanNonce: "1".repeat(64),
   environment: "fixture" as const,
   applyEnabled: true,
   pageSize: 2,
@@ -184,6 +186,37 @@ describe("MusicReconciler", () => {
       page({ data: all.slice(2), all, page: 2, pageSize: 2, pageCount: 2, total: 3 }),
     ]), new FakeRepository()).run(defaultOptions);
     expect(defaults.status).toBe("success");
+  });
+
+  it("uses a scan nonce as independent anti-replay evidence while keeping the source snapshot content-stable", async () => {
+    const all = [identity("stable")];
+    const stablePage = () => page({ data: all, all, page: 1, pageSize: 2, pageCount: 1, total: 1, snapshot: "content-v1" });
+    const repository = new FakeRepository();
+    const firstNonce = "a".repeat(64);
+    const secondNonce = "b".repeat(64);
+
+    const first = await new MusicReconciler(new FakeSource([stablePage()]), repository).run({
+      ...runInput,
+      runId: "scan-first",
+      scanNonce: firstNonce,
+    });
+    const second = await new MusicReconciler(new FakeSource([stablePage()]), repository).run({
+      ...runInput,
+      runId: "scan-second",
+      scanNonce: secondNonce,
+    });
+    const replay = await new MusicReconciler(new FakeSource([stablePage()]), repository).run({
+      ...runInput,
+      runId: "scan-first-replay",
+      scanNonce: firstNonce,
+    });
+
+    expect(repository.calls.map((call) => call.source.sourceSnapshot)).toEqual(["content-v1", "content-v1", "content-v1"]);
+    expect(repository.calls[0].observationVersion).not.toBe(repository.calls[1].observationVersion);
+    expect(repository.calls[0].observationVersion).toBe(repository.calls[2].observationVersion);
+    expect((first as MusicReconciliationReport & { scanNonce?: string }).scanNonce).toBe(firstNonce);
+    expect((second as MusicReconciliationReport & { scanNonce?: string }).scanNonce).toBe(secondNonce);
+    expect((replay as MusicReconciliationReport & { scanNonce?: string }).scanNonce).toBe(firstNonce);
   });
 
   it("bounds page count and the total scan deadline while the advisory-lock callback is active", async () => {
@@ -417,6 +450,9 @@ describe("MusicReconciler", () => {
     await expect(new MusicReconciler(new FakeSource([response]), repository).run({ ...runInput, maxChangePercent: Number.NaN })).resolves.toMatchObject({
       status: "blocked", anomalies: [{ code: "SOURCE_COUNT" }],
     });
+    await expect(new MusicReconciler(new FakeSource([response]), repository).run({ ...runInput, scanNonce: undefined })).resolves.toMatchObject({
+      status: "blocked", anomalies: [{ code: "SOURCE_SCHEMA" }],
+    });
     expect(repository.calls).toEqual([]);
     await expect(new MusicReconciler(new FakeSource([response]), new FakeRepository()).run({
       ...runInput,
@@ -431,6 +467,7 @@ describe("MusicReconciler", () => {
     const dryRepository = new FakeRepository();
     const dry = await new MusicReconciler(new FakeSource([response]), dryRepository).run(runInput);
     const review: ReconciliationReview = {
+      scanNonce: runInput.scanNonce,
       source: dry.source!,
       planFingerprint: dry.planFingerprint!,
       approvalToken: dry.approvalToken!,
@@ -440,6 +477,7 @@ describe("MusicReconciler", () => {
       { ...runInput, requestedMode: "apply" as const, environment: "production" as const, review, approvalToken: review.approvalToken },
       { ...runInput, requestedMode: "apply" as const, applyEnabled: false, review, approvalToken: review.approvalToken },
       { ...runInput, requestedMode: "apply" as const, approvalToken: review.approvalToken },
+      { ...runInput, requestedMode: "apply" as const, review: { ...review, scanNonce: "f".repeat(64) }, approvalToken: review.approvalToken },
       { ...runInput, requestedMode: "apply" as const, review, approvalToken: "0".repeat(64) },
       { ...runInput, requestedMode: "apply" as const, review, approvalToken: "short" },
     ]) {
@@ -470,6 +508,7 @@ describe("MusicReconciler", () => {
     const response = page({ data: all, all, page: 1, pageSize: 2, pageCount: 1, total: 1, snapshot: "snapshot-new" });
     const repository = new FakeRepository();
     const review: ReconciliationReview = {
+      scanNonce: runInput.scanNonce,
       source: {
         schemaVersion: "strapi-music-reconciliation/v1",
         sourceSnapshot: "snapshot-reviewed",

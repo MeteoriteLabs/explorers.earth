@@ -119,10 +119,19 @@ export function parseMusicReconciliationCommandConfig(input: Record<string, unkn
   if (input.STRAPI_RECONCILIATION_TOKEN !== undefined && input.STRAPI_RECONCILIATION_TOKEN !== "") {
     throw new Error("Live reconciliation service tokens must be file-backed");
   }
+  const tokenFileIdentity = normalizedTokenPath(serviceTokenFile);
   for (const other of [input.STRAPI_LIFECYCLE_PROOF_TOKEN_FILE, input.STRAPI_ACCESS_TOKEN_FILE]) {
-    if (typeof other === "string" && resolve(other) === resolve(serviceTokenFile)) throw new Error("Reconciliation requires a dedicated service-token file");
+    if (typeof other === "string" && normalizedTokenPath(other) === tokenFileIdentity) {
+      throw new Error("Reconciliation requires a dedicated service-token file");
+    }
   }
   return { ...common, sourceUrl, serviceTokenFile, serviceToken: undefined };
+}
+
+function normalizedTokenPath(path: string): string {
+  const normalized = resolve(path).replace(/^\\\\\?\\/, "");
+  /* c8 ignore next -- both path-case semantics are covered on their native CI workers. */
+  return process.platform === "win32" ? normalized.toLowerCase() : normalized;
 }
 
 export function validateMusicReconciliationServiceToken(value: string): string {
