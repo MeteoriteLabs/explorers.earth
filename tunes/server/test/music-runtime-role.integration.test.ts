@@ -18,10 +18,13 @@ const escalationRole = `music_runtime_escalation_${process.pid}`;
 const bridgeRole = `music_runtime_bridge_${process.pid}`;
 const reverseBridgeRole = `music_runtime_reverse_bridge_${process.pid}`;
 const rogueLoginRole = `music_runtime_rogue_${process.pid}`;
+const incomingBridgeRole = `music_runtime_incoming_bridge_${process.pid}`;
+const incomingRogueRole = `music_runtime_incoming_rogue_${process.pid}`;
 const gateOwnerRole = `music_gate_owner_${process.pid}`;
 const runtimeCapabilityRole = ["music", "runtime"].join("_");
 const gateOwnerPassword = Buffer.alloc(32, 0x6f).toString("base64url");
 const runtimePassword = Buffer.alloc(32, 0x6d).toString("base64url");
+const incomingRoguePassword = Buffer.alloc(32, 0x72).toString("base64url");
 const windowsEffectiveUserSid = process.platform === "win32"
   ? execFileSync("whoami.exe", ["/user", "/fo", "csv", "/nh"], { encoding: "utf8", windowsHide: true })
     .match(/,"([^"]+)"\s*$/)?.[1]
@@ -103,6 +106,9 @@ describePg("C5 least-privilege Music runtime database authority", () => {
     await clusterAdmin?.query(`REVOKE ${bridgeRole} FROM ${runtimeCapabilityRole}`).catch(() => undefined);
     await clusterAdmin?.query(`REVOKE ${runtimeCapabilityRole} FROM ${reverseBridgeRole}`).catch(() => undefined);
     await clusterAdmin?.query(`REVOKE ${reverseBridgeRole} FROM ${rogueLoginRole}`).catch(() => undefined);
+    await clusterAdmin?.query(`REVOKE ${runtimeUser} FROM ${incomingBridgeRole}`).catch(() => undefined);
+    await clusterAdmin?.query(`REVOKE ${incomingBridgeRole} FROM ${incomingRogueRole}`).catch(() => undefined);
+    await clusterAdmin?.query(`REVOKE ${runtimeUser} FROM ${incomingRogueRole}`).catch(() => undefined);
     await clusterAdmin?.query(`REVOKE ${escalationRole} FROM ${bridgeRole}`).catch(() => undefined);
     await clusterAdmin?.query(`REVOKE ${escalationRole} FROM ${runtimeUser}`).catch(() => undefined);
     await clusterAdmin?.query(`REVOKE ${runtimeCapabilityRole} FROM ${rogueLoginRole}`).catch(() => undefined);
@@ -114,6 +120,8 @@ describePg("C5 least-privilege Music runtime database authority", () => {
     await clusterAdmin?.query(`DROP ROLE IF EXISTS ${runtimeUser}`);
     await clusterAdmin?.query(`DROP ROLE IF EXISTS ${bridgeRole}`);
     await clusterAdmin?.query(`DROP ROLE IF EXISTS ${reverseBridgeRole}`);
+    await clusterAdmin?.query(`DROP ROLE IF EXISTS ${incomingBridgeRole}`);
+    await clusterAdmin?.query(`DROP ROLE IF EXISTS ${incomingRogueRole}`);
     await clusterAdmin?.query(`DROP ROLE IF EXISTS ${escalationRole}`);
     await clusterAdmin?.query(`DROP ROLE IF EXISTS ${rogueLoginRole}`);
     await clusterAdmin?.query(`DROP ROLE IF EXISTS ${gateOwnerRole}`);
@@ -404,7 +412,7 @@ describePg("C5 least-privilege Music runtime database authority", () => {
       cleanup: async () => {
         await owner.query(`REVOKE ${reverseBridgeRole} FROM ${rogueLoginRole}`);
         await owner.query(`REVOKE ${runtimeCapabilityRole} FROM ${reverseBridgeRole}`);
-        await owner.query(`DROP ROLE ${bridgeRole}`);
+        await owner.query(`DROP ROLE ${reverseBridgeRole}`);
         await owner.query(`DROP ROLE ${rogueLoginRole}`);
       },
     },
@@ -433,6 +441,78 @@ describePg("C5 least-privilege Music runtime database authority", () => {
     } finally {
       await cleanup();
     }
+    await expect(authority.verifyMusicRuntimeLogin(owner, runtime, { loginRole: runtimeUser })).resolves.toBeUndefined();
+  });
+
+  it.each([
+    { name: "a direct incoming login", nested: false, adminOption: false },
+    { name: "a direct incoming login with ADMIN OPTION", nested: false, adminOption: true },
+    { name: "a nested incoming login relay", nested: true, adminOption: false },
+    { name: "a nested incoming login relay with ADMIN OPTION", nested: true, adminOption: true },
+  ])("rejects $name granted the configured runtime login and reaccepts only after cleanup and reprovision", async ({ nested, adminOption }) => {
+    const authority = await loadAuthority() as {
+      assertMusicRuntimeCapabilityPreflight?: (ownerPool: pg.Pool, input: { runtimeLoginRole: string }) => Promise<void>;
+      provisionMusicRuntimeLogin?: (ownerPool: pg.Pool, input: { loginRole: string; password: string }) => Promise<void>;
+      verifyMusicRuntimeLogin?: (ownerPool: pg.Pool, runtimePool: pg.Pool, input: { loginRole: string }) => Promise<void>;
+    };
+    expect(authority.assertMusicRuntimeCapabilityPreflight).toBeTypeOf("function");
+    expect(authority.provisionMusicRuntimeLogin).toBeTypeOf("function");
+    expect(authority.verifyMusicRuntimeLogin).toBeTypeOf("function");
+    if (!authority.assertMusicRuntimeCapabilityPreflight || !authority.provisionMusicRuntimeLogin || !authority.verifyMusicRuntimeLogin) return;
+    if (!runtime) {
+      await authority.provisionMusicRuntimeLogin(owner, { loginRole: runtimeUser, password: runtimePassword });
+      const target = new URL(ownerTarget);
+      target.pathname = `/${databaseName}`;
+      target.username = runtimeUser;
+      target.password = runtimePassword;
+      runtime = new pg.Pool({ connectionString: target.toString(), max: 8 });
+    }
+
+    await owner.query(`CREATE ROLE ${incomingRogueRole} LOGIN PASSWORD '${incomingRoguePassword}'`);
+    if (nested) {
+      await owner.query(`CREATE ROLE ${incomingBridgeRole} NOLOGIN`);
+      await owner.query(`GRANT ${runtimeUser} TO ${incomingBridgeRole}${adminOption ? " WITH ADMIN OPTION" : ""}`);
+      await owner.query(`GRANT ${incomingBridgeRole} TO ${incomingRogueRole}`);
+    } else {
+      await owner.query(`GRANT ${runtimeUser} TO ${incomingRogueRole}${adminOption ? " WITH ADMIN OPTION" : ""}`);
+    }
+    const rogueTarget = new URL(ownerTarget);
+    rogueTarget.pathname = `/${databaseName}`;
+    rogueTarget.username = incomingRogueRole;
+    rogueTarget.password = incomingRoguePassword;
+    const rogue = new pg.Pool({ connectionString: rogueTarget.toString(), max: 1 });
+    try {
+      expect((await rogue.query("SELECT pg_has_role(current_user,$1,'USAGE') AS inherited", [runtimeUser])).rows[0]?.inherited).toBe(true);
+      await rogue.query(`SET ROLE ${runtimeUser}`);
+      expect((await rogue.query("SELECT current_user")).rows[0]?.current_user).toBe(runtimeUser);
+      await rogue.query("RESET ROLE");
+      const outcome = async (operation: () => Promise<void>) => {
+        try {
+          await operation();
+          return "resolved";
+        } catch (error) {
+          expect(String((error as Error).message)).toMatch(/capability|login|membership|authority|unsafe/i);
+          return "rejected";
+        }
+      };
+      expect([
+        await outcome(() => authority.assertMusicRuntimeCapabilityPreflight!(owner, { runtimeLoginRole: runtimeUser })),
+        await outcome(() => authority.verifyMusicRuntimeLogin!(owner, runtime, { loginRole: runtimeUser })),
+        await outcome(() => authority.provisionMusicRuntimeLogin!(owner, { loginRole: runtimeUser, password: runtimePassword })),
+      ]).toEqual(["rejected", "rejected", "rejected"]);
+    } finally {
+      await rogue.end();
+      if (nested) {
+        await owner.query(`REVOKE ${incomingBridgeRole} FROM ${incomingRogueRole}`);
+        await owner.query(`REVOKE ${runtimeUser} FROM ${incomingBridgeRole}`);
+        await owner.query(`DROP ROLE ${incomingBridgeRole}`);
+      } else {
+        await owner.query(`REVOKE ${runtimeUser} FROM ${incomingRogueRole}`);
+      }
+      await owner.query(`DROP ROLE ${incomingRogueRole}`);
+    }
+    await expect(authority.provisionMusicRuntimeLogin(owner, { loginRole: runtimeUser, password: runtimePassword }))
+      .resolves.toBeUndefined();
     await expect(authority.verifyMusicRuntimeLogin(owner, runtime, { loginRole: runtimeUser })).resolves.toBeUndefined();
   });
 

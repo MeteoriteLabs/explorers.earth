@@ -106,7 +106,20 @@ export interface MusicRuntimeRoleGraph {
     inheritOption: boolean;
     setOption: boolean;
   }>;
+  incomingMemberships: MusicRuntimeIncomingMembership[];
   cycleDetected: boolean;
+}
+
+export interface MusicRuntimeIncomingMembership {
+  rootRole: string;
+  grantedRole: string;
+  memberRole: string;
+  grantorRole: string;
+  adminOption: boolean;
+  inheritOption: boolean;
+  setOption: boolean;
+  depth: number;
+  cycle: boolean;
 }
 
 export interface MusicRuntimeDatabaseConnection {
@@ -194,15 +207,15 @@ export async function assertMusicRuntimeCapabilityPreflight(
       role.rolcreatedb,role.rolreplication,role.rolbypassrls,
       (SELECT count(*)::int FROM pg_auth_members membership WHERE membership.member=role.oid) AS membership_count
     FROM pg_roles role WHERE role.rolname=$1`, [capabilityRole])).rows[0];
+  const members = await readMusicRuntimeIncomingMemberships(ownerPool, input.runtimeLoginRole);
+  if (!safeMusicRuntimeIncomingMemberships(members, input.runtimeLoginRole, true)) {
+    throw new Error("runtime capability role has unsafe reverse membership");
+  }
   if (!existing) return;
   if (existing.rolcanlogin || !existing.rolinherit || existing.rolsuper || existing.rolcreaterole
       || existing.rolcreatedb || existing.rolreplication || existing.rolbypassrls
       || existing.membership_count !== 0) {
     throw new Error("runtime capability role has unsafe attributes or membership");
-  }
-  const members = await readMusicRuntimeCapabilityMembers(ownerPool);
-  if (members.length > 1 || (members.length === 1 && !safeConfiguredCapabilityMembership(members[0], input.runtimeLoginRole))) {
-    throw new Error("runtime capability role has unsafe reverse membership");
   }
 }
 
@@ -213,22 +226,62 @@ interface MusicRuntimeCapabilityMember {
   setOption: boolean;
 }
 
-async function readMusicRuntimeCapabilityMembers(pool: Pick<Pool, "query">): Promise<MusicRuntimeCapabilityMember[]> {
+async function readMusicRuntimeIncomingMemberships(
+  pool: Pick<Pool, "query">,
+  loginRole: string,
+): Promise<MusicRuntimeIncomingMembership[]> {
   return (await pool.query<{
-    member_role: string; admin_option: boolean; inherit_option: boolean; set_option: boolean;
-  }>(`SELECT member.rolname AS member_role,membership.admin_option,
-      COALESCE((to_jsonb(membership)->>'inherit_option')::boolean,true) AS inherit_option,
-      COALESCE((to_jsonb(membership)->>'set_option')::boolean,true) AS set_option
-    FROM pg_auth_members membership
-    JOIN pg_roles capability ON capability.oid=membership.roleid
-    JOIN pg_roles member ON member.oid=membership.member
-    WHERE capability.rolname=$1
-    ORDER BY member.rolname`, [capabilityRole])).rows.map((row) => ({
+    root_role: string; granted_role: string; member_role: string; grantor_role: string;
+    admin_option: boolean; inherit_option: boolean; set_option: boolean; depth: number; cycle: boolean;
+  }>(`WITH RECURSIVE incoming(root_role,granted_oid,member_oid,grantor_oid,admin_option,inherit_option,set_option,path,cycle,depth) AS (
+      SELECT root.rolname,membership.roleid,membership.member,membership.grantor,membership.admin_option,
+        COALESCE((to_jsonb(membership)->>'inherit_option')::boolean,true),
+        COALESCE((to_jsonb(membership)->>'set_option')::boolean,true),
+        ARRAY[root.oid,membership.member],membership.member=root.oid,1
+      FROM pg_roles root
+      JOIN pg_auth_members membership ON membership.roleid=root.oid
+      WHERE root.rolname IN ($1,$2)
+      UNION ALL
+      SELECT incoming.root_role,membership.roleid,membership.member,membership.grantor,membership.admin_option,
+        COALESCE((to_jsonb(membership)->>'inherit_option')::boolean,true),
+        COALESCE((to_jsonb(membership)->>'set_option')::boolean,true),
+        incoming.path||membership.member,membership.member=ANY(incoming.path),incoming.depth+1
+      FROM incoming
+      JOIN pg_auth_members membership ON membership.roleid=incoming.member_oid
+      WHERE NOT incoming.cycle
+    )
+    SELECT incoming.root_role,granted.rolname AS granted_role,member.rolname AS member_role,
+      grantor.rolname AS grantor_role,incoming.admin_option,incoming.inherit_option,
+      incoming.set_option,incoming.depth,incoming.cycle
+    FROM incoming
+    JOIN pg_roles granted ON granted.oid=incoming.granted_oid
+    JOIN pg_roles member ON member.oid=incoming.member_oid
+    JOIN pg_roles grantor ON grantor.oid=incoming.grantor_oid
+    ORDER BY incoming.root_role,incoming.depth,granted.rolname,member.rolname,grantor.rolname,
+      incoming.admin_option,incoming.inherit_option,incoming.set_option`, [loginRole, capabilityRole])).rows.map((row) => ({
+    rootRole: row.root_role,
+    grantedRole: row.granted_role,
     memberRole: row.member_role,
+    grantorRole: row.grantor_role,
     adminOption: row.admin_option,
     inheritOption: row.inherit_option,
     setOption: row.set_option,
+    depth: row.depth,
+    cycle: row.cycle,
   }));
+}
+
+function safeMusicRuntimeIncomingMemberships(
+  memberships: readonly MusicRuntimeIncomingMembership[],
+  loginRole: string,
+  allowUnprovisioned: boolean,
+): boolean {
+  if (allowUnprovisioned && memberships.length === 0) return true;
+  const membership = memberships[0];
+  return memberships.length === 1 && Boolean(membership
+    && membership.rootRole === capabilityRole && membership.grantedRole === capabilityRole
+    && membership.memberRole === loginRole && membership.depth === 1 && !membership.cycle
+    && !membership.adminOption && membership.inheritOption && membership.setOption);
 }
 
 function safeConfiguredCapabilityMembership(
@@ -247,11 +300,14 @@ export async function readMusicRuntimeRoleGraph(
     throw new Error("runtime database login is invalid");
   }
   const rows = (await pool.query<{
-    source_role: string; rolcanlogin: boolean; rolinherit: boolean; rolsuper: boolean;
-    rolcreaterole: boolean; rolcreatedb: boolean; rolreplication: boolean; rolbypassrls: boolean;
+    record_kind: "role" | "incoming"; source_role: string | null; rolcanlogin: boolean | null;
+    rolinherit: boolean | null; rolsuper: boolean | null; rolcreaterole: boolean | null;
+    rolcreatedb: boolean | null; rolreplication: boolean | null; rolbypassrls: boolean | null;
     granted_role: string | null; cycle: boolean;
-    capability_member: string | null; capability_admin_option: boolean | null;
-    capability_inherit_option: boolean | null; capability_set_option: boolean | null;
+    incoming_root_role: string | null; incoming_granted_role: string | null;
+    incoming_member_role: string | null; incoming_grantor_role: string | null;
+    incoming_admin_option: boolean | null; incoming_inherit_option: boolean | null;
+    incoming_set_option: boolean | null; incoming_depth: number | null;
   }>(`WITH RECURSIVE music_role_closure(source_oid,granted_oid,path,cycle) AS (
       SELECT source.oid,membership.roleid,ARRAY[source.oid,membership.roleid],membership.roleid=source.oid
       FROM pg_roles source
@@ -263,51 +319,82 @@ export async function readMusicRuntimeRoleGraph(
       FROM music_role_closure closure
       JOIN pg_auth_members membership ON membership.member=closure.granted_oid
       WHERE NOT closure.cycle
-    ), music_capability_members AS (
-      SELECT member.rolname AS member_role,membership.admin_option,
+    ), music_incoming_membership(root_role,granted_oid,member_oid,grantor_oid,admin_option,inherit_option,set_option,path,cycle,depth) AS (
+      SELECT root.rolname,membership.roleid,membership.member,membership.grantor,membership.admin_option,
         COALESCE((to_jsonb(membership)->>'inherit_option')::boolean,true) AS inherit_option,
-        COALESCE((to_jsonb(membership)->>'set_option')::boolean,true) AS set_option
-      FROM pg_auth_members membership
-      JOIN pg_roles capability ON capability.oid=membership.roleid
-      JOIN pg_roles member ON member.oid=membership.member
-      WHERE capability.rolname=$2
+        COALESCE((to_jsonb(membership)->>'set_option')::boolean,true) AS set_option,
+        ARRAY[root.oid,membership.member],membership.member=root.oid,1
+      FROM pg_roles root
+      JOIN pg_auth_members membership ON membership.roleid=root.oid
+      WHERE root.rolname IN ($1,$2)
+      UNION ALL
+      SELECT incoming.root_role,membership.roleid,membership.member,membership.grantor,membership.admin_option,
+        COALESCE((to_jsonb(membership)->>'inherit_option')::boolean,true),
+        COALESCE((to_jsonb(membership)->>'set_option')::boolean,true),
+        incoming.path||membership.member,membership.member=ANY(incoming.path),incoming.depth+1
+      FROM music_incoming_membership incoming
+      JOIN pg_auth_members membership ON membership.roleid=incoming.member_oid
+      WHERE NOT incoming.cycle
     )
-    SELECT source.rolname AS source_role,source.rolcanlogin,source.rolinherit,source.rolsuper,
-      source.rolcreaterole,source.rolcreatedb,source.rolreplication,source.rolbypassrls,
+    SELECT 'role'::text AS record_kind,source.rolname AS source_role,source.rolcanlogin,source.rolinherit,
+      source.rolsuper,source.rolcreaterole,source.rolcreatedb,source.rolreplication,source.rolbypassrls,
       granted.rolname AS granted_role,COALESCE(closure.cycle,false) AS cycle,
-      capability_member.member_role AS capability_member,
-      capability_member.admin_option AS capability_admin_option,
-      capability_member.inherit_option AS capability_inherit_option,
-      capability_member.set_option AS capability_set_option
+      NULL::name AS incoming_root_role,NULL::name AS incoming_granted_role,
+      NULL::name AS incoming_member_role,NULL::name AS incoming_grantor_role,
+      NULL::boolean AS incoming_admin_option,NULL::boolean AS incoming_inherit_option,
+      NULL::boolean AS incoming_set_option,NULL::integer AS incoming_depth
     FROM pg_roles source
     LEFT JOIN music_role_closure closure ON closure.source_oid=source.oid
     LEFT JOIN pg_roles granted ON granted.oid=closure.granted_oid
-    LEFT JOIN music_capability_members capability_member ON true
     WHERE source.rolname IN ($1,$2)
-    ORDER BY source.rolname,granted.rolname`, [loginRole, capabilityRole])).rows;
+    UNION ALL
+    SELECT 'incoming'::text,NULL::name,NULL::boolean,NULL::boolean,NULL::boolean,NULL::boolean,
+      NULL::boolean,NULL::boolean,NULL::boolean,NULL::name,incoming.cycle,
+      incoming.root_role,granted.rolname,member.rolname,grantor.rolname,
+      incoming.admin_option,incoming.inherit_option,incoming.set_option,incoming.depth
+    FROM music_incoming_membership incoming
+    JOIN pg_roles granted ON granted.oid=incoming.granted_oid
+    JOIN pg_roles member ON member.oid=incoming.member_oid
+    JOIN pg_roles grantor ON grantor.oid=incoming.grantor_oid
+    ORDER BY record_kind,source_role,granted_role,incoming_root_role,incoming_depth,
+      incoming_granted_role,incoming_member_role,incoming_grantor_role`, [loginRole, capabilityRole])).rows;
   const attributes = (role: string): MusicRoleAttributes | undefined => {
-    const row = rows.find((candidate) => candidate.source_role === role);
+    const row = rows.find((candidate) => candidate.record_kind === "role" && candidate.source_role === role);
     return row ? {
-      canLogin: row.rolcanlogin,
-      inherit: row.rolinherit,
-      superuser: row.rolsuper,
-      createRole: row.rolcreaterole,
-      createDb: row.rolcreatedb,
-      replication: row.rolreplication,
-      bypassRls: row.rolbypassrls,
+      canLogin: row.rolcanlogin === true,
+      inherit: row.rolinherit === true,
+      superuser: row.rolsuper === true,
+      createRole: row.rolcreaterole === true,
+      createDb: row.rolcreatedb === true,
+      replication: row.rolreplication === true,
+      bypassRls: row.rolbypassrls === true,
     } : undefined;
   };
   const closure = (role: string) => Array.from(new Set(rows
-    .filter((row) => row.source_role === role && row.granted_role)
+    .filter((row) => row.record_kind === "role" && row.source_role === role && row.granted_role)
     .map((row) => row.granted_role!))).sort();
-  const capabilityMembers = Array.from(new Map(rows
-    .filter((row) => row.capability_member)
-    .map((row) => [row.capability_member!, {
-      memberRole: row.capability_member!,
-      adminOption: row.capability_admin_option === true,
-      inheritOption: row.capability_inherit_option === true,
-      setOption: row.capability_set_option === true,
-    }])).values()).sort((left, right) => left.memberRole.localeCompare(right.memberRole));
+  const incomingMemberships = rows.filter((row) => row.record_kind === "incoming"
+      && row.incoming_root_role && row.incoming_granted_role && row.incoming_member_role
+      && row.incoming_grantor_role && row.incoming_depth !== null)
+    .map((row) => ({
+      rootRole: row.incoming_root_role!,
+      grantedRole: row.incoming_granted_role!,
+      memberRole: row.incoming_member_role!,
+      grantorRole: row.incoming_grantor_role!,
+      adminOption: row.incoming_admin_option === true,
+      inheritOption: row.incoming_inherit_option === true,
+      setOption: row.incoming_set_option === true,
+      depth: row.incoming_depth!,
+      cycle: row.cycle,
+    }));
+  const capabilityMembers = incomingMemberships.filter((membership) => membership.rootRole === capabilityRole
+      && membership.grantedRole === capabilityRole && membership.depth === 1)
+    .map((membership) => ({
+      memberRole: membership.memberRole,
+      adminOption: membership.adminOption,
+      inheritOption: membership.inheritOption,
+      setOption: membership.setOption,
+    }));
   return {
     loginRole,
     loginAttributes: attributes(loginRole),
@@ -315,6 +402,7 @@ export async function readMusicRuntimeRoleGraph(
     loginClosure: closure(loginRole),
     capabilityClosure: closure(capabilityRole),
     capabilityMembers,
+    incomingMemberships,
     cycleDetected: rows.some((row) => row.cycle),
   };
 }
@@ -330,7 +418,8 @@ export function validateMusicRuntimeRoleGraph(graph: MusicRuntimeRoleGraph): voi
       || graph.loginClosure.length !== 1 || graph.loginClosure[0] !== capabilityRole
       || graph.capabilityClosure.length !== 0
       || graph.capabilityMembers.length !== 1
-      || !safeConfiguredCapabilityMembership(graph.capabilityMembers[0], graph.loginRole)) {
+      || !safeConfiguredCapabilityMembership(graph.capabilityMembers[0], graph.loginRole)
+      || !safeMusicRuntimeIncomingMemberships(graph.incomingMemberships, graph.loginRole, false)) {
     throw new Error("runtime database role graph has unsafe attributes, cycle, or membership");
   }
 }
@@ -372,9 +461,8 @@ export async function provisionMusicRuntimeLogin(
   const client = await ownerPool.connect();
   try {
     await client.query("BEGIN");
-    const existingMembers = await readMusicRuntimeCapabilityMembers(client);
-    if (existingMembers.length > 1
-        || (existingMembers.length === 1 && !safeConfiguredCapabilityMembership(existingMembers[0], input.loginRole))) {
+    const existingMembers = await readMusicRuntimeIncomingMemberships(client, input.loginRole);
+    if (!safeMusicRuntimeIncomingMemberships(existingMembers, input.loginRole, true)) {
       throw new Error("runtime capability role has unsafe reverse membership");
     }
     await client.query("SELECT provision_music_runtime_login($1::name,$2::text)", [input.loginRole, input.password]);
