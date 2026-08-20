@@ -100,6 +100,12 @@ export interface MusicRuntimeRoleGraph {
   capabilityAttributes?: MusicRoleAttributes;
   loginClosure: string[];
   capabilityClosure: string[];
+  capabilityMembers: Array<{
+    memberRole: string;
+    adminOption: boolean;
+    inheritOption: boolean;
+    setOption: boolean;
+  }>;
   cycleDetected: boolean;
 }
 
@@ -176,7 +182,11 @@ export async function assertMusicMigratorAuthority(
 
 export async function assertMusicRuntimeCapabilityPreflight(
   ownerPool: Pick<Pool, "query">,
+  input: { runtimeLoginRole: string },
 ): Promise<void> {
+  if (!safeRoleName.test(input.runtimeLoginRole) || input.runtimeLoginRole === capabilityRole) {
+    throw new Error("runtime database login is invalid");
+  }
   const existing = (await ownerPool.query<{
     rolcanlogin: boolean; rolinherit: boolean; rolsuper: boolean; rolcreaterole: boolean;
     rolcreatedb: boolean; rolreplication: boolean; rolbypassrls: boolean; membership_count: number;
@@ -190,6 +200,43 @@ export async function assertMusicRuntimeCapabilityPreflight(
       || existing.membership_count !== 0) {
     throw new Error("runtime capability role has unsafe attributes or membership");
   }
+  const members = await readMusicRuntimeCapabilityMembers(ownerPool);
+  if (members.length > 1 || (members.length === 1 && !safeConfiguredCapabilityMembership(members[0], input.runtimeLoginRole))) {
+    throw new Error("runtime capability role has unsafe reverse membership");
+  }
+}
+
+interface MusicRuntimeCapabilityMember {
+  memberRole: string;
+  adminOption: boolean;
+  inheritOption: boolean;
+  setOption: boolean;
+}
+
+async function readMusicRuntimeCapabilityMembers(pool: Pick<Pool, "query">): Promise<MusicRuntimeCapabilityMember[]> {
+  return (await pool.query<{
+    member_role: string; admin_option: boolean; inherit_option: boolean; set_option: boolean;
+  }>(`SELECT member.rolname AS member_role,membership.admin_option,
+      COALESCE((to_jsonb(membership)->>'inherit_option')::boolean,true) AS inherit_option,
+      COALESCE((to_jsonb(membership)->>'set_option')::boolean,true) AS set_option
+    FROM pg_auth_members membership
+    JOIN pg_roles capability ON capability.oid=membership.roleid
+    JOIN pg_roles member ON member.oid=membership.member
+    WHERE capability.rolname=$1
+    ORDER BY member.rolname`, [capabilityRole])).rows.map((row) => ({
+    memberRole: row.member_role,
+    adminOption: row.admin_option,
+    inheritOption: row.inherit_option,
+    setOption: row.set_option,
+  }));
+}
+
+function safeConfiguredCapabilityMembership(
+  membership: MusicRuntimeCapabilityMember | undefined,
+  loginRole: string,
+): boolean {
+  return Boolean(membership && membership.memberRole === loginRole
+    && !membership.adminOption && membership.inheritOption && membership.setOption);
 }
 
 export async function readMusicRuntimeRoleGraph(
@@ -203,6 +250,8 @@ export async function readMusicRuntimeRoleGraph(
     source_role: string; rolcanlogin: boolean; rolinherit: boolean; rolsuper: boolean;
     rolcreaterole: boolean; rolcreatedb: boolean; rolreplication: boolean; rolbypassrls: boolean;
     granted_role: string | null; cycle: boolean;
+    capability_member: string | null; capability_admin_option: boolean | null;
+    capability_inherit_option: boolean | null; capability_set_option: boolean | null;
   }>(`WITH RECURSIVE music_role_closure(source_oid,granted_oid,path,cycle) AS (
       SELECT source.oid,membership.roleid,ARRAY[source.oid,membership.roleid],membership.roleid=source.oid
       FROM pg_roles source
@@ -214,13 +263,26 @@ export async function readMusicRuntimeRoleGraph(
       FROM music_role_closure closure
       JOIN pg_auth_members membership ON membership.member=closure.granted_oid
       WHERE NOT closure.cycle
+    ), music_capability_members AS (
+      SELECT member.rolname AS member_role,membership.admin_option,
+        COALESCE((to_jsonb(membership)->>'inherit_option')::boolean,true) AS inherit_option,
+        COALESCE((to_jsonb(membership)->>'set_option')::boolean,true) AS set_option
+      FROM pg_auth_members membership
+      JOIN pg_roles capability ON capability.oid=membership.roleid
+      JOIN pg_roles member ON member.oid=membership.member
+      WHERE capability.rolname=$2
     )
     SELECT source.rolname AS source_role,source.rolcanlogin,source.rolinherit,source.rolsuper,
       source.rolcreaterole,source.rolcreatedb,source.rolreplication,source.rolbypassrls,
-      granted.rolname AS granted_role,COALESCE(closure.cycle,false) AS cycle
+      granted.rolname AS granted_role,COALESCE(closure.cycle,false) AS cycle,
+      capability_member.member_role AS capability_member,
+      capability_member.admin_option AS capability_admin_option,
+      capability_member.inherit_option AS capability_inherit_option,
+      capability_member.set_option AS capability_set_option
     FROM pg_roles source
     LEFT JOIN music_role_closure closure ON closure.source_oid=source.oid
     LEFT JOIN pg_roles granted ON granted.oid=closure.granted_oid
+    LEFT JOIN music_capability_members capability_member ON true
     WHERE source.rolname IN ($1,$2)
     ORDER BY source.rolname,granted.rolname`, [loginRole, capabilityRole])).rows;
   const attributes = (role: string): MusicRoleAttributes | undefined => {
@@ -238,12 +300,21 @@ export async function readMusicRuntimeRoleGraph(
   const closure = (role: string) => Array.from(new Set(rows
     .filter((row) => row.source_role === role && row.granted_role)
     .map((row) => row.granted_role!))).sort();
+  const capabilityMembers = Array.from(new Map(rows
+    .filter((row) => row.capability_member)
+    .map((row) => [row.capability_member!, {
+      memberRole: row.capability_member!,
+      adminOption: row.capability_admin_option === true,
+      inheritOption: row.capability_inherit_option === true,
+      setOption: row.capability_set_option === true,
+    }])).values()).sort((left, right) => left.memberRole.localeCompare(right.memberRole));
   return {
     loginRole,
     loginAttributes: attributes(loginRole),
     capabilityAttributes: attributes(capabilityRole),
     loginClosure: closure(loginRole),
     capabilityClosure: closure(capabilityRole),
+    capabilityMembers,
     cycleDetected: rows.some((row) => row.cycle),
   };
 }
@@ -257,7 +328,9 @@ export function validateMusicRuntimeRoleGraph(graph: MusicRuntimeRoleGraph): voi
       || graph.cycleDetected || !safeAttributes(graph.loginAttributes, true)
       || !safeAttributes(graph.capabilityAttributes, false)
       || graph.loginClosure.length !== 1 || graph.loginClosure[0] !== capabilityRole
-      || graph.capabilityClosure.length !== 0) {
+      || graph.capabilityClosure.length !== 0
+      || graph.capabilityMembers.length !== 1
+      || !safeConfiguredCapabilityMembership(graph.capabilityMembers[0], graph.loginRole)) {
     throw new Error("runtime database role graph has unsafe attributes, cycle, or membership");
   }
 }
@@ -299,7 +372,13 @@ export async function provisionMusicRuntimeLogin(
   const client = await ownerPool.connect();
   try {
     await client.query("BEGIN");
+    const existingMembers = await readMusicRuntimeCapabilityMembers(client);
+    if (existingMembers.length > 1
+        || (existingMembers.length === 1 && !safeConfiguredCapabilityMembership(existingMembers[0], input.loginRole))) {
+      throw new Error("runtime capability role has unsafe reverse membership");
+    }
     await client.query("SELECT provision_music_runtime_login($1::name,$2::text)", [input.loginRole, input.password]);
+    validateMusicRuntimeRoleGraph(await readMusicRuntimeRoleGraph(client, input.loginRole));
     const authority = (await client.query<{
       current_user: string;
       current_database: string;

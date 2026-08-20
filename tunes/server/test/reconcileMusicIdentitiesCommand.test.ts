@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { chmod, link, lstat, mkdir, mkdtemp, open, realpath, readdir, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { chmod, link, lstat, mkdir, mkdtemp as nodeMkdtemp, open, realpath, readdir, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -21,6 +21,32 @@ import {
   type MusicReconciliationReport,
   type ReconciliationSourceMetadata,
 } from "../services/musicReconciler";
+
+const windowsUntrustedWriterSid = process.platform === "win32"
+  ? execFileSync("whoami.exe", ["/groups", "/fo", "csv", "/nh"], { encoding: "utf8", windowsHide: true })
+    .split(/\r?\n/)
+    .map((line) => line.match(/^[^,]*,[^,]*,"([^"]+)","([^"]*)"$/))
+    .find((match) => match?.[1]
+      && !["S-1-5-18", "S-1-5-32-544", "S-1-1-0", "S-1-5-4", "S-1-5-7", "S-1-5-11", "S-1-5-32-545", "S-1-5-32-546", "S-1-15-2-1"].includes(match[1])
+      && !match[2]?.includes("deny only")
+      && !match[1].startsWith("S-1-16-"))?.[1]
+  : undefined;
+
+const windowsEffectiveUserSid = process.platform === "win32"
+  ? execFileSync("whoami.exe", ["/user", "/fo", "csv", "/nh"], { encoding: "utf8", windowsHide: true })
+    .match(/,"([^"]+)"\s*$/)?.[1]
+  : undefined;
+
+async function mkdtemp(prefix: string): Promise<string> {
+  const directory = await nodeMkdtemp(prefix);
+  if (process.platform === "win32") {
+    if (!windowsEffectiveUserSid) throw new Error("Windows test runner SID is unavailable");
+    execFileSync("icacls.exe", [directory, "/inheritance:r", "/grant:r",
+      `*${windowsEffectiveUserSid}:(OI)(CI)(F)`, "*S-1-5-18:(OI)(CI)(F)", "*S-1-5-32-544:(OI)(CI)(F)"],
+    { windowsHide: true });
+  }
+  return directory;
+}
 
 const source: ReconciliationSourceMetadata = {
   schemaVersion: STRAPI_RECONCILIATION_SCHEMA_VERSION,
@@ -448,6 +474,37 @@ describe("music reconciliation checkpoints", () => {
       await expect(readMusicReconciliationCheckpoint(path)).rejects.toThrow(/permission|secure|checkpoint/i);
     } finally {
       execFileSync("icacls.exe", [directory, "/remove:g", "*S-1-1-0", "/T", "/C"], { windowsHide: true });
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it.skipIf(process.platform !== "win32")("rejects an inherit-only Windows ACE that can write checkpoint children", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "music-reconciliation-checkpoint-win-inherit-only-"));
+    const path = join(directory, "checkpoint.json");
+    try {
+      await writeMusicReconciliationCheckpoint(path, checkpoint());
+      execFileSync("icacls.exe", [directory, "/grant", "*S-1-1-0:(OI)(CI)(IO)(W)"], { windowsHide: true });
+      const output = execFileSync("powershell.exe", [
+        "-NoProfile", "-NonInteractive", "-File",
+        join(import.meta.dirname, "../../scripts/windows-write-through.ps1"),
+        "inspect-security", directory,
+      ], { encoding: "utf8", windowsHide: true });
+      expect(parseWindowsCheckpointSecurityOutput(output, 1)[0]?.unsafeWritePrincipalCount).toBeGreaterThan(0);
+    } finally {
+      execFileSync("icacls.exe", [directory, "/remove:g", "*S-1-1-0", "/T", "/C"], { windowsHide: true });
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it.skipIf(process.platform !== "win32" || !windowsUntrustedWriterSid)("rejects an arbitrary non-owner Windows group writer", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "music-reconciliation-checkpoint-win-group-"));
+    const path = join(directory, "checkpoint.json");
+    try {
+      await writeMusicReconciliationCheckpoint(path, checkpoint());
+      execFileSync("icacls.exe", [directory, "/grant", `*${windowsUntrustedWriterSid}:(W)`], { windowsHide: true });
+      await expect(readMusicReconciliationCheckpoint(path)).rejects.toThrow(/permission|secure|checkpoint/i);
+    } finally {
+      execFileSync("icacls.exe", [directory, "/remove:g", `*${windowsUntrustedWriterSid}`, "/C"], { windowsHide: true });
       await rm(directory, { recursive: true, force: true });
     }
   });

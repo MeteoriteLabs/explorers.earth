@@ -23,7 +23,8 @@ import {
 } from "./music-fixture-secret.ts";
 import {
   readSecureMusicSecretFile,
-  readSecureMusicSecretFileWithDistinctAuthorities,
+  readSecureMusicReconciliationAuthorities,
+  type SecureMusicSecretAuthorityEvidence,
 } from "../server/config/secure-music-secret-file.ts";
 
 export const MUSIC_CLI_SCHEMA_VERSION = "music-cli/v1";
@@ -257,6 +258,11 @@ export function createLiveMusicReconciliationRunContext(input: {
   sourceUrl: string;
   databaseUrl: string;
   serviceToken: string;
+  credentialAuthorities: {
+    reconciliation: SecureMusicSecretAuthorityEvidence;
+    lifecycleProof: SecureMusicSecretAuthorityEvidence;
+    access: SecureMusicSecretAuthorityEvidence;
+  };
 }): RunContext {
   const database = new URL(input.databaseUrl);
   const gateNames = [
@@ -272,6 +278,7 @@ export function createLiveMusicReconciliationRunContext(input: {
     lifecycleProofFile: input.environment.STRAPI_LIFECYCLE_PROOF_TOKEN_FILE ?? "unset",
     accessTokenFile: input.environment.STRAPI_ACCESS_TOKEN_FILE ?? "unset",
     content: createHash("sha256").update(input.serviceToken).digest("hex"),
+    credentialAuthorities: input.credentialAuthorities,
   });
   const databaseAuthority = createEnvironmentFingerprint({
     file: input.environment.MUSIC_DATABASE_PASSWORD_FILE ?? "unset",
@@ -562,13 +569,12 @@ async function executeCommand(id: string, parsed: ParsedArgs, context: RunContex
       target.password = runtimePassword;
       databaseUrl = target.toString();
     } else {
-      serviceToken = validateMusicReconciliationServiceToken(
-        await readSecureMusicSecretFileWithDistinctAuthorities(
-          config.serviceTokenFile!,
-          [config.lifecycleProofTokenFile!, config.accessTokenFile!],
-          { mode: "live" },
-        ),
-      );
+      const credentialAuthorities = await readSecureMusicReconciliationAuthorities({
+        reconciliationTokenFile: config.serviceTokenFile!,
+        lifecycleProofTokenFile: config.lifecycleProofTokenFile!,
+        accessTokenFile: config.accessTokenFile!,
+      }, environment.STRAPI_ACCESS_TOKEN ?? "", { mode: "live" });
+      serviceToken = validateMusicReconciliationServiceToken(credentialAuthorities.reconciliationToken);
       const [{ resolveMusicDatabaseConnection }, { resolveMusicIdentityTransportConfig }, { verifyMusicRuntimeDatabaseConnection }] = await Promise.all([
         import("../server/config/music-database-config.ts"),
         import("../server/config/music-identity-config.ts"),
@@ -585,6 +591,7 @@ async function executeCommand(id: string, parsed: ParsedArgs, context: RunContex
         sourceUrl: config.sourceUrl,
         databaseUrl,
         serviceToken,
+        credentialAuthorities: credentialAuthorities.evidence,
       });
       if (activeRun) activeRun.context = reconciliationContext;
     }

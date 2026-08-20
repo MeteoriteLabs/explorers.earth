@@ -1,4 +1,5 @@
-import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { chmodSync, lstatSync, mkdirSync, mkdtempSync as nodeMkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { lstat, open } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,6 +8,22 @@ import {
   resolveMusicIdentityRuntimeConfig,
   type MusicIdentityAddressResolver,
 } from "../config/music-identity-config";
+
+const windowsEffectiveUserSid = process.platform === "win32"
+  ? execFileSync("whoami.exe", ["/user", "/fo", "csv", "/nh"], { encoding: "utf8", windowsHide: true })
+    .match(/,"([^"]+)"\s*$/)?.[1]
+  : undefined;
+
+function mkdtempSync(prefix: string): string {
+  const directory = nodeMkdtempSync(prefix);
+  if (process.platform === "win32") {
+    if (!windowsEffectiveUserSid) throw new Error("Windows test runner SID is unavailable");
+    execFileSync("icacls.exe", [directory, "/inheritance:r", "/grant:r",
+      `*${windowsEffectiveUserSid}:(OI)(CI)(F)`, "*S-1-5-18:(OI)(CI)(F)", "*S-1-5-32-544:(OI)(CI)(F)"],
+    { windowsHide: true });
+  }
+  return directory;
+}
 
 const secretRoot = mkdtempSync(join(tmpdir(), "music-key-config-"));
 const externalSecretRoot = mkdtempSync(join(tmpdir(), "music-key-external-"));

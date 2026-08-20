@@ -34,16 +34,17 @@ describe("Music reconciliation automation contract", () => {
       STRAPI_RECONCILIATION_TOKEN_FILE: "${{ secrets.STRAPI_RECONCILIATION_TOKEN_FILE }}",
       STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: "${{ secrets.STRAPI_LIFECYCLE_PROOF_TOKEN_FILE }}",
       STRAPI_ACCESS_TOKEN_FILE: "${{ secrets.STRAPI_ACCESS_TOKEN_FILE }}",
+      STRAPI_ACCESS_TOKEN: "${{ secrets.STRAPI_ACCESS_TOKEN }}",
     };
     for (const name of ["report-only", "staging-report", "staging-apply"]) {
       expect(workflow.jobs[name].env, name).toMatchObject(expected);
       for (const step of workflow.jobs[name].steps ?? []) {
         expect(`${step.run ?? ""}\n${step.with?.script ?? ""}`, name)
-          .not.toMatch(/secrets\.STRAPI_(?:RECONCILIATION|LIFECYCLE_PROOF|ACCESS)_TOKEN_FILE/);
+          .not.toMatch(/secrets\.STRAPI_(?:RECONCILIATION|LIFECYCLE_PROOF|ACCESS)_TOKEN(?:_FILE)?/);
       }
     }
     expect(read(".github/workflows/music-reconcile.yml"))
-      .not.toMatch(/vars\.STRAPI_(?:RECONCILIATION|LIFECYCLE_PROOF|ACCESS)_TOKEN_FILE/);
+      .not.toMatch(/vars\.STRAPI_(?:RECONCILIATION|LIFECYCLE_PROOF|ACCESS)_TOKEN(?:_FILE)?/);
   });
 
   it("hardcodes scheduled production work to report-only", () => {

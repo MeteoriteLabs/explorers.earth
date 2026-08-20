@@ -95,6 +95,11 @@ describe("music:reconcile CLI contract", () => {
       sourceUrl: "https://strapi-a.example.test",
       databaseUrl: "postgresql://runtime:database-secret-a@db-a.example.test:5432/music_a",
       serviceToken: "service-secret-a",
+      credentialAuthorities: {
+        reconciliation: { nativeDev: "1", nativeIno: "11", digest: "1".repeat(64) },
+        lifecycleProof: { nativeDev: "1", nativeIno: "12", digest: "2".repeat(64) },
+        access: { nativeDev: "1", nativeIno: "13", digest: "3".repeat(64) },
+      },
     };
     const context = createLiveMusicReconciliationRunContext(input);
     const serialized = JSON.stringify(context);
@@ -115,6 +120,8 @@ describe("music:reconcile CLI contract", () => {
       { environment: { ...input.environment, STRAPI_RECONCILIATION_TOKEN_FILE: "/run/secrets/reconcile-b" } },
       { environment: { ...input.environment, STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: "/run/secrets/lifecycle-b" } },
       { environment: { ...input.environment, STRAPI_ACCESS_TOKEN_FILE: "/run/secrets/access-b" } },
+      { credentialAuthorities: { ...input.credentialAuthorities, lifecycleProof: { nativeDev: "1", nativeIno: "12", digest: "4".repeat(64) } } },
+      { credentialAuthorities: { ...input.credentialAuthorities, access: { nativeDev: "1", nativeIno: "14", digest: "3".repeat(64) } } },
       { environment: { ...input.environment, MUSIC_RECONCILIATION_APPLY_ENABLED: "true" } },
     ]) {
       expect(createLiveMusicReconciliationRunContext({ ...input, ...changed }).environmentFingerprint)
@@ -153,7 +160,7 @@ describe("music:reconcile CLI contract", () => {
   it("requires and native-identity-checks every live token authority before database or source access", () => {
     const cli = readFileSync(resolve(repositoryRoot, "tunes/scripts/music-cli.ts"), "utf8");
     const parse = cli.indexOf("parseMusicReconciliationCommandConfig(environment)");
-    const identityCheck = cli.indexOf("readSecureMusicSecretFileWithDistinctAuthorities(");
+    const identityCheck = cli.indexOf("readSecureMusicReconciliationAuthorities(");
     const database = cli.indexOf("resolveMusicDatabaseConnection(environment, \"runtime\")");
     const source = cli.indexOf("new command.HttpMusicReconciliationSource");
     expect(parse).toBeGreaterThan(-1);
@@ -162,6 +169,7 @@ describe("music:reconcile CLI contract", () => {
     expect(identityCheck).toBeLessThan(source);
     expect(cli).toContain("config.lifecycleProofTokenFile!");
     expect(cli).toContain("config.accessTokenFile!");
+    expect(cli).toContain("environment.STRAPI_ACCESS_TOKEN");
   });
 
   it("maps typed resume drift to the common prerequisite/state-mismatch exit", () => {

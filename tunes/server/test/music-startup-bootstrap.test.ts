@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync as nodeMkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
@@ -7,6 +7,22 @@ import {
   startMusicServer,
   type MusicServerRuntime,
 } from "../config/music-startup";
+
+const windowsEffectiveUserSid = process.platform === "win32"
+  ? execFileSync("whoami.exe", ["/user", "/fo", "csv", "/nh"], { encoding: "utf8", windowsHide: true })
+    .match(/,"([^"]+)"\s*$/)?.[1]
+  : undefined;
+
+function mkdtempSync(prefix: string): string {
+  const directory = nodeMkdtempSync(prefix);
+  if (process.platform === "win32") {
+    if (!windowsEffectiveUserSid) throw new Error("Windows test runner SID is unavailable");
+    execFileSync("icacls.exe", [directory, "/inheritance:r", "/grant:r",
+      `*${windowsEffectiveUserSid}:(OI)(CI)(F)`, "*S-1-5-18:(OI)(CI)(F)", "*S-1-5-32-544:(OI)(CI)(F)"],
+    { windowsHide: true });
+  }
+  return directory;
+}
 
 const repositoryRoot = resolve(import.meta.dirname, "../../..");
 const signingRoot = mkdtempSync(resolve(tmpdir(), "music-startup-key-"));

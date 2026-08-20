@@ -27,7 +27,7 @@ async function run(): Promise<void> {
   let runtimePool: InstanceType<typeof pg.Pool> | undefined;
   try {
     await assertMusicMigratorAuthority(ownerPool, { runtimeLoginRole: runtime.user });
-    await assertMusicRuntimeCapabilityPreflight(ownerPool);
+    await assertMusicRuntimeCapabilityPreflight(ownerPool, { runtimeLoginRole: runtime.user });
     const migration = await migrateMusicDatabase(ownerPool);
     if (!migration.ready || migration.currentId !== CURRENT_MIGRATION_MARKER || !migration.currentChecksum) {
       throw new Error("exact migration journal state was not reached");

@@ -120,6 +120,7 @@ export function parseMusicReconciliationCommandConfig(input: Record<string, unkn
   const serviceTokenFile = requiredString(input, "STRAPI_RECONCILIATION_TOKEN_FILE");
   const lifecycleProofTokenFile = requiredString(input, "STRAPI_LIFECYCLE_PROOF_TOKEN_FILE");
   const accessTokenFile = requiredString(input, "STRAPI_ACCESS_TOKEN_FILE");
+  requiredString(input, "STRAPI_ACCESS_TOKEN");
   if (input.STRAPI_RECONCILIATION_TOKEN !== undefined && input.STRAPI_RECONCILIATION_TOKEN !== "") {
     throw new Error("Live reconciliation service tokens must be file-backed");
   }

@@ -1,7 +1,7 @@
 import pg from "pg";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync as nodeMkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -16,10 +16,28 @@ const databaseName = `music_runtime_role_${process.pid}`;
 const runtimeUser = `music_runtime_test_${process.pid}`;
 const escalationRole = `music_runtime_escalation_${process.pid}`;
 const bridgeRole = `music_runtime_bridge_${process.pid}`;
+const reverseBridgeRole = `music_runtime_reverse_bridge_${process.pid}`;
+const rogueLoginRole = `music_runtime_rogue_${process.pid}`;
 const gateOwnerRole = `music_gate_owner_${process.pid}`;
 const runtimeCapabilityRole = ["music", "runtime"].join("_");
 const gateOwnerPassword = Buffer.alloc(32, 0x6f).toString("base64url");
 const runtimePassword = Buffer.alloc(32, 0x6d).toString("base64url");
+const windowsEffectiveUserSid = process.platform === "win32"
+  ? execFileSync("whoami.exe", ["/user", "/fo", "csv", "/nh"], { encoding: "utf8", windowsHide: true })
+    .match(/,"([^"]+)"\s*$/)?.[1]
+  : undefined;
+
+function mkdtempSync(prefix: string): string {
+  const directory = nodeMkdtempSync(prefix);
+  if (process.platform === "win32") {
+    if (!windowsEffectiveUserSid) throw new Error("Windows test runner SID is unavailable");
+    execFileSync("icacls.exe", [directory, "/inheritance:r", "/grant:r",
+      `*${windowsEffectiveUserSid}:(OI)(CI)(F)`, "*S-1-5-18:(OI)(CI)(F)", "*S-1-5-32-544:(OI)(CI)(F)"],
+    { windowsHide: true });
+  }
+  return directory;
+}
+
 const runtimeSecretRoot = mkdtempSync(join(tmpdir(), "music-runtime-role-secret-"));
 const runtimePasswordPath = join(runtimeSecretRoot, "database-runtime");
 const signingPath = join(runtimeSecretRoot, "music-token");
@@ -83,13 +101,21 @@ describePg("C5 least-privilege Music runtime database authority", () => {
     await owner?.end();
     await clusterAdmin?.query(`REVOKE ${escalationRole} FROM ${runtimeCapabilityRole}`).catch(() => undefined);
     await clusterAdmin?.query(`REVOKE ${bridgeRole} FROM ${runtimeCapabilityRole}`).catch(() => undefined);
+    await clusterAdmin?.query(`REVOKE ${runtimeCapabilityRole} FROM ${reverseBridgeRole}`).catch(() => undefined);
+    await clusterAdmin?.query(`REVOKE ${reverseBridgeRole} FROM ${rogueLoginRole}`).catch(() => undefined);
     await clusterAdmin?.query(`REVOKE ${escalationRole} FROM ${bridgeRole}`).catch(() => undefined);
     await clusterAdmin?.query(`REVOKE ${escalationRole} FROM ${runtimeUser}`).catch(() => undefined);
+    await clusterAdmin?.query(`REVOKE ${runtimeCapabilityRole} FROM ${rogueLoginRole}`).catch(() => undefined);
+    await clusterAdmin?.query(`REVOKE ${bridgeRole} FROM ${rogueLoginRole}`).catch(() => undefined);
+    await clusterAdmin?.query(`REVOKE ${runtimeCapabilityRole} FROM ${bridgeRole}`).catch(() => undefined);
+    await clusterAdmin?.query(`REVOKE ADMIN OPTION FOR ${runtimeCapabilityRole} FROM ${runtimeUser}`).catch(() => undefined);
     await clusterAdmin?.query("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1 AND pid<>pg_backend_pid()", [databaseName]);
     await clusterAdmin?.query(`DROP DATABASE IF EXISTS ${databaseName}`);
     await clusterAdmin?.query(`DROP ROLE IF EXISTS ${runtimeUser}`);
     await clusterAdmin?.query(`DROP ROLE IF EXISTS ${bridgeRole}`);
+    await clusterAdmin?.query(`DROP ROLE IF EXISTS ${reverseBridgeRole}`);
     await clusterAdmin?.query(`DROP ROLE IF EXISTS ${escalationRole}`);
+    await clusterAdmin?.query(`DROP ROLE IF EXISTS ${rogueLoginRole}`);
     await clusterAdmin?.query(`DROP ROLE IF EXISTS ${gateOwnerRole}`);
     await clusterAdmin?.end();
     rmSync(runtimeSecretRoot, { recursive: true, force: true });
@@ -322,7 +348,7 @@ describePg("C5 least-privilege Music runtime database authority", () => {
     // music_runtime itself inherits a CREATEDB/admin-equivalent role.
     const authority = await loadAuthority() as {
       verifyMusicRuntimeLogin?: (ownerPool: pg.Pool, runtimePool: pg.Pool, input: { loginRole: string }) => Promise<void>;
-      assertMusicRuntimeCapabilityPreflight?: (ownerPool: pg.Pool) => Promise<void>;
+      assertMusicRuntimeCapabilityPreflight?: (ownerPool: pg.Pool, input: { runtimeLoginRole: string }) => Promise<void>;
     };
     expect(authority.assertMusicRuntimeCapabilityPreflight).toBeTypeOf("function");
     expect(authority.verifyMusicRuntimeLogin).toBeTypeOf("function");
@@ -331,7 +357,7 @@ describePg("C5 least-privilege Music runtime database authority", () => {
     await owner.query(`CREATE ROLE ${bridgeRole} NOLOGIN`);
 
     await owner.query(`GRANT ${escalationRole} TO ${runtimeCapabilityRole}`);
-    await expect(authority.assertMusicRuntimeCapabilityPreflight(owner)).rejects.toThrow(/capability|membership|authority/i);
+    await expect(authority.assertMusicRuntimeCapabilityPreflight(owner, { runtimeLoginRole: runtimeUser })).rejects.toThrow(/capability|membership|authority/i);
     await expect(authority.verifyMusicRuntimeLogin(owner, runtime, { loginRole: runtimeUser }))
       .rejects.toThrow(/capability|membership|authority/i);
     await owner.query(`REVOKE ${escalationRole} FROM ${runtimeCapabilityRole}`);
@@ -347,6 +373,66 @@ describePg("C5 least-privilege Music runtime database authority", () => {
     await expect(authority.verifyMusicRuntimeLogin(owner, runtime, { loginRole: runtimeUser }))
       .rejects.toThrow(/capability|membership|authority/i);
     await owner.query(`REVOKE ${escalationRole} FROM ${runtimeUser}`);
+    await expect(authority.verifyMusicRuntimeLogin(owner, runtime, { loginRole: runtimeUser })).resolves.toBeUndefined();
+  });
+
+  it.each([
+    {
+      name: "an unexpected login granted the runtime capability",
+      setup: async () => {
+        await owner.query(`CREATE ROLE ${rogueLoginRole} LOGIN`);
+        await owner.query(`GRANT ${runtimeCapabilityRole} TO ${rogueLoginRole}`);
+      },
+      cleanup: async () => {
+        await owner.query(`REVOKE ${runtimeCapabilityRole} FROM ${rogueLoginRole}`);
+        await owner.query(`DROP ROLE ${rogueLoginRole}`);
+      },
+    },
+    {
+      name: "the configured login holding ADMIN OPTION",
+      setup: async () => owner.query(`GRANT ${runtimeCapabilityRole} TO ${runtimeUser} WITH ADMIN OPTION`),
+      cleanup: async () => owner.query(`REVOKE ADMIN OPTION FOR ${runtimeCapabilityRole} FROM ${runtimeUser}`),
+    },
+    {
+      name: "an indirect rogue login behind an unauthorized reverse member",
+      setup: async () => {
+        await owner.query(`CREATE ROLE ${rogueLoginRole} LOGIN`);
+        await owner.query(`CREATE ROLE ${reverseBridgeRole} NOLOGIN`);
+        await owner.query(`GRANT ${runtimeCapabilityRole} TO ${reverseBridgeRole}`);
+        await owner.query(`GRANT ${reverseBridgeRole} TO ${rogueLoginRole}`);
+      },
+      cleanup: async () => {
+        await owner.query(`REVOKE ${reverseBridgeRole} FROM ${rogueLoginRole}`);
+        await owner.query(`REVOKE ${runtimeCapabilityRole} FROM ${reverseBridgeRole}`);
+        await owner.query(`DROP ROLE ${bridgeRole}`);
+        await owner.query(`DROP ROLE ${rogueLoginRole}`);
+      },
+    },
+  ])("rejects $name and reaccepts the exact membership graph after cleanup", async ({ setup, cleanup }) => {
+    const authority = await loadAuthority() as {
+      provisionMusicRuntimeLogin?: (ownerPool: pg.Pool, input: { loginRole: string; password: string }) => Promise<void>;
+      verifyMusicRuntimeLogin?: (ownerPool: pg.Pool, runtimePool: pg.Pool, input: { loginRole: string }) => Promise<void>;
+    };
+    expect(authority.provisionMusicRuntimeLogin).toBeTypeOf("function");
+    expect(authority.verifyMusicRuntimeLogin).toBeTypeOf("function");
+    if (!authority.provisionMusicRuntimeLogin || !authority.verifyMusicRuntimeLogin) return;
+    if (!runtime) {
+      await authority.provisionMusicRuntimeLogin(owner, { loginRole: runtimeUser, password: runtimePassword });
+      const target = new URL(ownerTarget);
+      target.pathname = `/${databaseName}`;
+      target.username = runtimeUser;
+      target.password = runtimePassword;
+      runtime = new pg.Pool({ connectionString: target.toString(), max: 8 });
+    }
+    await setup();
+    try {
+      await expect(authority.verifyMusicRuntimeLogin(owner, runtime, { loginRole: runtimeUser }))
+        .rejects.toThrow(/capability|membership|authority|unsafe/i);
+      await expect(authority.provisionMusicRuntimeLogin(owner, { loginRole: runtimeUser, password: runtimePassword }))
+        .rejects.toThrow(/capability|membership|authority|unsafe/i);
+    } finally {
+      await cleanup();
+    }
     await expect(authority.verifyMusicRuntimeLogin(owner, runtime, { loginRole: runtimeUser })).resolves.toBeUndefined();
   });
 

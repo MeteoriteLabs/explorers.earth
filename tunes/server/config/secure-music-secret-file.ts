@@ -1,3 +1,5 @@
+import { createHash, timingSafeEqual } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { constants, type BigIntStats } from "node:fs";
 import { lstat, open, realpath, type FileHandle } from "node:fs/promises";
 import { dirname, isAbsolute, parse, resolve } from "node:path";
@@ -15,6 +17,23 @@ export interface SecureMusicSecretFileOptions {
   fileSystem?: SecureMusicSecretFileSystem;
   platform?: NodeJS.Platform;
   effectiveUserId?: number;
+  requireDistinctValues?: boolean;
+  expectedAuthorityValues?: readonly (string | undefined)[];
+}
+
+export interface SecureMusicSecretAuthorityEvidence {
+  nativeDev: string;
+  nativeIno: string;
+  digest: string;
+}
+
+export interface SecureMusicReconciliationAuthorities {
+  reconciliationToken: string;
+  evidence: {
+    reconciliation: SecureMusicSecretAuthorityEvidence;
+    lifecycleProof: SecureMusicSecretAuthorityEvidence;
+    access: SecureMusicSecretAuthorityEvidence;
+  };
 }
 
 const defaultFileSystem: SecureMusicSecretFileSystem = {
@@ -43,7 +62,45 @@ export async function readSecureMusicSecretFileWithDistinctAuthorities(
   authorityPaths: readonly string[],
   options: SecureMusicSecretFileOptions,
 ): Promise<string> {
+  return (await readSecureMusicSecretAuthorityBundle(path, authorityPaths, options)).values[0] ?? invalidSecretFile();
+}
+
+export async function readSecureMusicReconciliationAuthorities(
+  paths: {
+    reconciliationTokenFile: string;
+    lifecycleProofTokenFile: string;
+    accessTokenFile: string;
+  },
+  actualAccessToken: string,
+  options: SecureMusicSecretFileOptions,
+): Promise<SecureMusicReconciliationAuthorities> {
+  const bundle = await readSecureMusicSecretAuthorityBundle(
+    paths.reconciliationTokenFile,
+    [paths.lifecycleProofTokenFile, paths.accessTokenFile],
+    {
+      ...options,
+      requireDistinctValues: true,
+      expectedAuthorityValues: [undefined, undefined, actualAccessToken],
+    },
+  );
+  const [reconciliation, lifecycleProof, access] = bundle.evidence;
+  if (!reconciliation || !lifecycleProof || !access || !bundle.values[0]
+      || bundle.values.some((value) => value.length < 16 || value.length > MAX_SECRET_FILE_BYTES)) {
+    return invalidSecretFile();
+  }
+  return {
+    reconciliationToken: bundle.values[0],
+    evidence: { reconciliation, lifecycleProof, access },
+  };
+}
+
+async function readSecureMusicSecretAuthorityBundle(
+  path: string,
+  authorityPaths: readonly string[],
+  options: SecureMusicSecretFileOptions,
+): Promise<{ values: string[]; evidence: SecureMusicSecretAuthorityEvidence[] }> {
   const openedFiles: OpenedSecureMusicSecretFile[] = [];
+  const buffers: Buffer[] = [];
   try {
     const fileSystem = options.fileSystem ?? defaultFileSystem;
     for (const candidate of [path, ...authorityPaths]) {
@@ -51,24 +108,93 @@ export async function readSecureMusicSecretFileWithDistinctAuthorities(
     }
     const nativeIdentities = openedFiles.map(({ opened }) => `${opened.dev}:${opened.ino}`);
     if (new Set(nativeIdentities).size !== nativeIdentities.length) return invalidSecretFile();
+    const windowsSecurityBefore = inspectWindowsSecretSecurities(openedFiles, options);
 
-    const primary = openedFiles[0];
-    if (!primary) return invalidSecretFile();
-    const buffer = Buffer.alloc(MAX_SECRET_FILE_BYTES + 1);
-    const { bytesRead } = await primary.handle.read(buffer, 0, buffer.length, 0);
-    if (bytesRead > MAX_SECRET_FILE_BYTES || bytesRead !== Number(primary.opened.size)) return invalidSecretFile();
+    const values: string[] = [];
+    const evidence: SecureMusicSecretAuthorityEvidence[] = [];
+    for (const opened of openedFiles) {
+      const buffer = Buffer.alloc(MAX_SECRET_FILE_BYTES + 1);
+      buffers.push(buffer);
+      const { bytesRead } = await opened.handle.read(buffer, 0, buffer.length, 0);
+      if (bytesRead > MAX_SECRET_FILE_BYTES || bytesRead !== Number(opened.opened.size)) return invalidSecretFile();
+      const raw = buffer.subarray(0, bytesRead).toString("ascii");
+      if (!/^[A-Za-z0-9_-]+\n?$/.test(raw)) return invalidSecretFile();
+      const value = raw.endsWith("\n") ? raw.slice(0, -1) : raw;
+      if (!value || Buffer.byteLength(value, "ascii") !== value.length) return invalidSecretFile();
+      values.push(value);
+      evidence.push({
+        nativeDev: String(opened.opened.dev),
+        nativeIno: String(opened.opened.ino),
+        digest: createHash("sha256").update(value).digest("hex"),
+      });
+    }
     for (const opened of openedFiles) await revalidateSecureMusicSecretFile(opened, options, fileSystem);
-
-    const raw = buffer.subarray(0, bytesRead).toString("ascii");
-    if (!/^[A-Za-z0-9_-]+\n?$/.test(raw)) return invalidSecretFile();
-    const value = raw.endsWith("\n") ? raw.slice(0, -1) : raw;
-    if (!value || Buffer.byteLength(value, "ascii") !== value.length) return invalidSecretFile();
-    return value;
+    const windowsSecurityAfter = inspectWindowsSecretSecurities(openedFiles, options);
+    if (windowsSecurityBefore !== windowsSecurityAfter) return invalidSecretFile();
+    if (options.requireDistinctValues) {
+      for (let left = 0; left < values.length; left += 1) {
+        for (let right = left + 1; right < values.length; right += 1) {
+          if (sameSecretValue(values[left]!, values[right]!)) return invalidSecretFile();
+        }
+      }
+    }
+    if (options.expectedAuthorityValues) {
+      if (options.expectedAuthorityValues.length !== values.length) return invalidSecretFile();
+      for (let index = 0; index < values.length; index += 1) {
+        const expected = options.expectedAuthorityValues[index];
+        if (expected !== undefined && !sameSecretValue(values[index]!, expected)) return invalidSecretFile();
+      }
+    }
+    return { values, evidence };
   } catch {
     return invalidSecretFile();
   } finally {
+    for (const buffer of buffers) buffer.fill(0);
     await Promise.all(openedFiles.map(({ handle }) => handle.close().catch(() => undefined)));
   }
+}
+
+function inspectWindowsSecretSecurities(
+  openedFiles: readonly OpenedSecureMusicSecretFile[],
+  options: SecureMusicSecretFileOptions,
+): string {
+  if (options.mode !== "live" || (options.platform ?? process.platform) !== "win32") return "not-required";
+  const expected = new Map<string, BigIntStats>();
+  for (const opened of openedFiles) {
+    const immediateParentIndex = opened.ancestorPaths.length - 1;
+    const immediateParentPath = opened.ancestorPaths[immediateParentIndex];
+    const immediateParentMetadata = opened.ancestorBefore[immediateParentIndex];
+    if (!immediateParentPath || !immediateParentMetadata) return invalidSecretFile();
+    expected.set(immediateParentPath, immediateParentMetadata);
+    expected.set(opened.path, opened.opened);
+  }
+  const paths = Array.from(expected.keys());
+  const helper = resolve(import.meta.dirname, "../../scripts/windows-write-through.ps1");
+  const output = execFileSync("powershell.exe", [
+    "-NoProfile", "-NonInteractive", "-File", helper, "inspect-security", ...paths,
+  ], { encoding: "utf8", windowsHide: true });
+  const lines = output.trim().split(/\r?\n/).filter(Boolean);
+  if (lines.length !== paths.length) return invalidSecretFile();
+  const normalized: string[] = [];
+  for (let index = 0; index < paths.length; index += 1) {
+    const security = JSON.parse(lines[index]!) as Record<string, unknown>;
+    const metadata = expected.get(paths[index]!);
+    if (!metadata || typeof security.nativeDev !== "string" || typeof security.nativeIno !== "string"
+        || !/^\d+$/.test(security.nativeDev) || !/^\d+$/.test(security.nativeIno)
+        || BigInt(security.nativeDev) !== metadata.dev || BigInt(security.nativeIno) !== metadata.ino
+        || security.ownerMatchesEffectiveUser !== true
+        || security.unsafeWritePrincipalCount !== 0) {
+      return invalidSecretFile();
+    }
+    normalized.push(JSON.stringify(security));
+  }
+  return normalized.join("\n");
+}
+
+function sameSecretValue(left: string, right: string): boolean {
+  const leftDigest = createHash("sha256").update(left).digest();
+  const rightDigest = createHash("sha256").update(right).digest();
+  return timingSafeEqual(leftDigest, rightDigest);
 }
 
 async function openSecureMusicSecretFile(

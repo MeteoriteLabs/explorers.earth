@@ -54,11 +54,15 @@ public static class MusicFixtureNativeAuthority {
     private const uint DACL_SECURITY_INFORMATION = 0x00000004;
     private const int AclSizeInformation = 2;
     private const byte ACCESS_ALLOWED_ACE_TYPE = 0x00;
+    private const byte ACCESS_ALLOWED_COMPOUND_ACE_TYPE = 0x04;
     private const byte ACCESS_ALLOWED_OBJECT_ACE_TYPE = 0x05;
     private const byte ACCESS_ALLOWED_CALLBACK_ACE_TYPE = 0x09;
+    private const byte ACCESS_ALLOWED_CALLBACK_OBJECT_ACE_TYPE = 0x0B;
     private const uint ACE_OBJECT_TYPE_PRESENT = 0x00000001;
     private const uint ACE_INHERITED_OBJECT_TYPE_PRESENT = 0x00000002;
     private const byte INHERIT_ONLY_ACE = 0x08;
+    private const byte OBJECT_INHERIT_ACE = 0x01;
+    private const byte CONTAINER_INHERIT_ACE = 0x02;
     private const uint UNSAFE_WRITE_MASK = GENERIC_WRITE | GENERIC_ALL | DELETE | WRITE_DAC | WRITE_OWNER
         | FILE_WRITE_DATA | FILE_APPEND_DATA | FILE_WRITE_EA | FILE_DELETE_CHILD | FILE_WRITE_ATTRIBUTES;
     private const uint UNSAFE_DIRECTORY_MASK = UNSAFE_WRITE_MASK;
@@ -390,15 +394,10 @@ public static class MusicFixtureNativeAuthority {
         }
     }
 
-    private static bool UntrustedBroadWriter(string sid, string effectiveSid) {
-        if (String.Equals(sid, effectiveSid, StringComparison.OrdinalIgnoreCase)) return false;
-        return String.Equals(sid, "S-1-1-0", StringComparison.OrdinalIgnoreCase)
-            || String.Equals(sid, "S-1-5-4", StringComparison.OrdinalIgnoreCase)
-            || String.Equals(sid, "S-1-5-7", StringComparison.OrdinalIgnoreCase)
-            || String.Equals(sid, "S-1-5-11", StringComparison.OrdinalIgnoreCase)
-            || String.Equals(sid, "S-1-5-32-545", StringComparison.OrdinalIgnoreCase)
-            || String.Equals(sid, "S-1-5-32-546", StringComparison.OrdinalIgnoreCase)
-            || String.Equals(sid, "S-1-15-2-1", StringComparison.OrdinalIgnoreCase);
+    private static bool TrustedWriter(string sid, string effectiveSid) {
+        return String.Equals(sid, effectiveSid, StringComparison.OrdinalIgnoreCase)
+            || String.Equals(sid, "S-1-5-18", StringComparison.OrdinalIgnoreCase)
+            || String.Equals(sid, "S-1-5-32-544", StringComparison.OrdinalIgnoreCase);
     }
 
     private static int UnsafeWritePrincipalCount(IntPtr dacl, string effectiveSid, bool directory) {
@@ -412,21 +411,29 @@ public static class MusicFixtureNativeAuthority {
             IntPtr ace;
             if (!GetAce(dacl, index, out ace)) throw NativeFailure("authority ACE inspection");
             ACE_HEADER header = (ACE_HEADER)Marshal.PtrToStructure(ace, typeof(ACE_HEADER));
-            if ((header.AceFlags & INHERIT_ONLY_ACE) != 0) continue;
             if (header.AceType != ACCESS_ALLOWED_ACE_TYPE
+                && header.AceType != ACCESS_ALLOWED_COMPOUND_ACE_TYPE
                 && header.AceType != ACCESS_ALLOWED_OBJECT_ACE_TYPE
-                && header.AceType != ACCESS_ALLOWED_CALLBACK_ACE_TYPE) continue;
+                && header.AceType != ACCESS_ALLOWED_CALLBACK_ACE_TYPE
+                && header.AceType != ACCESS_ALLOWED_CALLBACK_OBJECT_ACE_TYPE) continue;
+            bool inheritOnly = (header.AceFlags & INHERIT_ONLY_ACE) != 0;
+            bool appliesToDirectoryChildren = directory
+                && (header.AceFlags & (OBJECT_INHERIT_ACE | CONTAINER_INHERIT_ACE)) != 0;
+            if (inheritOnly && !appliesToDirectoryChildren) continue;
             uint mask = unchecked((uint)Marshal.ReadInt32(ace, 4));
             if ((mask & (directory ? UNSAFE_DIRECTORY_MASK : UNSAFE_WRITE_MASK)) == 0) continue;
             int sidOffset = 8;
-            if (header.AceType == ACCESS_ALLOWED_OBJECT_ACE_TYPE) {
+            if (header.AceType == ACCESS_ALLOWED_COMPOUND_ACE_TYPE) {
+                sidOffset = 12;
+            } else if (header.AceType == ACCESS_ALLOWED_OBJECT_ACE_TYPE
+                || header.AceType == ACCESS_ALLOWED_CALLBACK_OBJECT_ACE_TYPE) {
                 uint flags = unchecked((uint)Marshal.ReadInt32(ace, 8));
                 sidOffset = 12;
                 if ((flags & ACE_OBJECT_TYPE_PRESENT) != 0) sidOffset += 16;
                 if ((flags & ACE_INHERITED_OBJECT_TYPE_PRESENT) != 0) sidOffset += 16;
             }
             string sid = SidString(IntPtr.Add(ace, sidOffset));
-            if (UntrustedBroadWriter(sid, effectiveSid)) unsafeCount++;
+            if (!TrustedWriter(sid, effectiveSid)) unsafeCount++;
         }
         return unsafeCount;
     }
