@@ -101,6 +101,62 @@ describe("local Tunes API client", () => {
     expect(getStrapiBearer).toHaveBeenCalledTimes(1);
   });
 
+  it("exposes one bodyless single-flight automatic ensure without a downstream owner request", async () => {
+    const fetchImpl = vi.fn(async () => ensureResponse());
+    const client = createLocalTunesApiClient({
+      baseUrl: "https://music.example",
+      fetchImpl,
+      getStrapiBearer: async () => "authoritative-strapi-proof",
+      now: () => NOW,
+    });
+    await Promise.all(Array.from({ length: 25 }, () => client.ensureIdentity()));
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledWith("https://music.example/api/music/identity/ensure", {
+      method: "POST",
+      headers: { Authorization: "Bearer authoritative-strapi-proof" },
+    });
+  });
+
+  it("forces one bodyless single-flight snapshot refresh even while credential C is still fresh", async () => {
+    setMusicCredential(freshCredential);
+    const fetchImpl = vi.fn(async () => ensureResponse(rotatedCredential));
+    const client = createLocalTunesApiClient({
+      baseUrl: "https://music.example",
+      fetchImpl,
+      getStrapiBearer: async () => "authoritative-strapi-proof",
+      now: () => NOW,
+    });
+    await Promise.all(Array.from({ length: 12 }, () => client.refreshIdentity()));
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledWith("https://music.example/api/music/identity/ensure", {
+      method: "POST",
+      headers: { Authorization: "Bearer authoritative-strapi-proof" },
+    });
+    expect(getMusicCredential(NOW)).toEqual(rotatedCredential);
+  });
+
+  it("contains typed identity errors for the state selector without leaking upstream messages", async () => {
+    const fetchImpl = vi.fn(async () => json({
+      version: "music-error/v1",
+      error: {
+        code: "IDENTITY_CONFLICT",
+        message: "sensitive upstream detail",
+        action: "contact_support",
+        retryable: false,
+        requestId: "request-conflict",
+      },
+    }, 409));
+    const client = createLocalTunesApiClient({
+      baseUrl: "https://music.example",
+      fetchImpl,
+      getStrapiBearer: async () => "authoritative-strapi-proof",
+      now: () => NOW,
+    });
+    const error = await client.ensureIdentity().catch((cause) => cause);
+    expect(error).toMatchObject({ code: "AUTH_UNAVAILABLE", upstreamCode: "IDENTITY_CONFLICT", retryable: false });
+    expect(error.message).not.toContain("sensitive upstream detail");
+  });
+
   it.each([
     ["GET", undefined, 2, 1, true],
     ["HEAD", undefined, 2, 1, true],

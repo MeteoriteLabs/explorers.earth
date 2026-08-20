@@ -1,396 +1,181 @@
-import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
-import { CategoryVisibilityModal } from "../components/CategoryVisibilityModal";
-import { useTunesDashboard } from "../hooks/useTunesDashboard";
-import { gql, useQuery, useMutation } from "@apollo/client";
-import { toast } from "sonner";
-import { motion } from "framer-motion";
-import { EarthLoader } from "../components/EarthLoader";
-import Button from "../components/ui/Button";
-import SEO from "../components/SEO";
-import { createCanonicalUrl } from "../utils/getCurrentDomain";
-import useAuthStore from "../store/store";
-import { isLocalTunesEnabled } from "../services/localTunesService";
+import { gql, useQuery } from "@apollo/client";
+import { useRef, type RefObject } from "react";
+import { useNavigate } from "react-router-dom";
 import MusicDashboard from "../components/MusicDashboard";
+import SEO from "../components/SEO";
+import { selectCompletedAccount } from "../features/music/musicIdentityCoordinator";
+import {
+  selectMusicSurfaceState,
+  type MusicEntitlement,
+  type MusicIdentity,
+  type MusicLifecycle,
+  type MusicOnboarding,
+} from "../features/music/musicState";
+import { useTunesDashboard, type TunesDashboardData } from "../hooks/useTunesDashboard";
+import useAuthStore from "../store/store";
+import { createCanonicalUrl } from "../utils/getCurrentDomain";
 
-const getUserAccountQuery = gql`
-  query UsersPermissionsUser($documentId: ID!) {
+const musicPageEligibilityQuery = gql`
+  query MusicPageEligibility($documentId: ID!) {
     usersPermissionsUser(documentId: $documentId) {
-      username
-      email
-      razorpay_customer_id
+      documentId
       accounts {
-        username
         documentId
-        localtunes_integrated
-        localtunes_public
-        public_music
-        public_recommendations
-        public_movie
-        public_books
-        public_games
+        Account_Name
+        Account_Type
+        mobile_number
       }
     }
   }
 `;
 
-const updateAccountMutation = gql`
-  mutation UpdateAccount($documentId: ID!, $data: AccountInput!) {
-    updateAccount(documentId: $documentId, data: $data) {
-      documentId
-      localtunes_integrated
-      localtunes_public
-      public_music
-    }
-  }
-`;
+const actionLabels = {
+  check_status: "Check status",
+  sign_in: "Sign in",
+  finish_profile: "Finish profile",
+  get_help: "Get help",
+  view_plans: "View plans",
+  view_usage: "View usage",
+  try_again: "Try again",
+} as const;
 
-const MusicSkeleton = () => {
+function lifecycleFrom(data: TunesDashboardData): MusicLifecycle {
+  if (data.identityStatus === "pending_deletion") return "pending_deletion";
+  if (data.identityStatus === "suspended") return "suspended";
+  return "active";
+}
+
+function identityFrom(data: TunesDashboardData): MusicIdentity {
+  if (data.identityStatus === "conflict") return "conflict";
+  if (data.identityStatus === "retryable") return "retryable";
+  if (data.identityStatus === "unavailable") return "unavailable";
+  if (data.identityStatus === "ready") return "ready";
+  return "setting_up";
+}
+
+function entitlementFrom(data: TunesDashboardData): MusicEntitlement {
+  // The workspace query cannot fetch entitlement before identity is ready. Treat
+  // that absence as neutral so a retryable identity failure remains actionable;
+  // once identity is ready, a missing entitlement is a real checking state.
+  if (!data.entitlement) return data.identityStatus === "ready" ? "unknown" : "included";
+  if (data.entitlement.state === "unknown") return "unknown";
+  if (!data.entitlement.coreRead) return "upgrade";
+  if (!data.entitlement.coreMutation) return "read_only";
+  return "included";
+}
+
+export function MusicPageContent({
+  authenticated,
+  onboarding,
+  data,
+  onAction,
+  statusRef,
+}: {
+  authenticated: boolean;
+  onboarding: MusicOnboarding;
+  data: TunesDashboardData;
+  onAction: (action: keyof typeof actionLabels) => void;
+  statusRef?: RefObject<HTMLDivElement>;
+}) {
+  const state = selectMusicSurfaceState({
+    lifecycle: lifecycleFrom(data),
+    authenticated: authenticated && data.identityStatus !== "auth_required",
+    onboarding,
+    entitlement: entitlementFrom(data),
+    identity: identityFrom(data),
+    content: data.error ? "failure" : data.isLoading ? "loading" : "ready",
+    playlistCount: data.playlists.length,
+  });
+  const showInlineStatus = !["ready_empty", "ready_content"].includes(state.kind);
+  const role = state.live === "assertive" ? "alert" : "status";
+
   return (
-    <div className="dashboard-theme min-h-screen bg-dashboard-bg text-white pt-6 px-4 md:px-6 pb-20">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Action bar skeleton */}
-        <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4 skeleton-card">
-          <div className="h-8 w-32 bg-white/5 rounded-xl skeleton-shimmer" />
-          <div className="h-10 w-40 bg-white/10 rounded-xl skeleton-shimmer" />
-        </div>
-
-        {/* 1. Search Bar Skeleton */}
-        <div className="rounded-[14px] p-4 space-y-2.5 skeleton-card">
-          <div className="h-4 w-36 bg-white/10 rounded skeleton-shimmer" />
-          <div className="h-10 w-full bg-dashboard-bg border border-white/5 rounded-lg skeleton-shimmer" />
-        </div>
-        
-        {/* 2. Music Player area skeleton */}
-        <div className="rounded-[14px] p-4 h-24 flex items-center gap-4 skeleton-card">
-          <div className="w-14 h-14 rounded bg-white/10 skeleton-shimmer flex-shrink-0" />
-          <div className="flex-1 space-y-2">
-            <div className="h-4 w-1/3 bg-white/10 rounded skeleton-shimmer" />
-            <div className="h-3 w-1/4 bg-white/5 rounded skeleton-shimmer" />
+    <main className="dashboard-theme min-h-full bg-dashboard-bg px-4 py-5 text-dashboard sm:px-6 md:py-7">
+      <div className="mx-auto max-w-4xl">
+        <h1 className="text-2xl font-semibold tracking-tight text-dashboard sm:text-3xl">Music</h1>
+        {showInlineStatus && (
+          <div ref={statusRef} tabIndex={-1} role={role} aria-live={state.live === "off" ? undefined : state.live} aria-atomic="true" className="mt-2 min-h-6 text-base text-dashboard-light outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent">
+            {state.message}
           </div>
-          <div className="w-10 h-10 rounded-full bg-white/10 skeleton-shimmer" />
-        </div>
+        )}
 
-        {/* 3. Tab selectors */}
-        <div className="flex items-center justify-center mx-auto bg-white/5 border border-white/5 rounded-3xl w-fit p-1 gap-2">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-8 w-16 md:w-20 bg-white/10 rounded-2xl skeleton-shimmer" />
-          ))}
-        </div>
-
-        {/* 4. Queue / List Skeletons */}
-        <div className="space-y-3 pt-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-[14px] h-[54px] px-4 flex items-center justify-between skeleton-card">
-              <div className="flex items-center gap-3 w-1/2">
-                <div className="w-10 h-10 rounded bg-white/5 skeleton-shimmer" />
-                <div className="flex-1 space-y-1.5">
-                  <div className="h-3 w-3/4 bg-white/10 rounded skeleton-shimmer" />
-                  <div className="h-2 w-1/2 bg-white/5 rounded skeleton-shimmer" />
-                </div>
+        {state.blocksContent ? (
+          <section className="mt-6 rounded-2xl border border-dashboard bg-dashboard-sidebar p-5 sm:p-7">
+            {["setting_up", "entitlement_unknown", "content_loading"].includes(state.kind) && (
+              <div aria-hidden="true" className="space-y-3">
+                <div className="h-11 w-full animate-pulse rounded-xl bg-dashboard-muted motion-reduce:animate-none" />
+                <div className="h-32 w-full animate-pulse rounded-xl bg-dashboard-muted motion-reduce:animate-none" />
               </div>
-              <div className="w-8 h-8 rounded-full bg-white/5 skeleton-shimmer" />
-            </div>
-          ))}
-        </div>
+            )}
+            {state.action && (
+              <button type="button" onClick={() => onAction(state.action!)} className="min-h-11 min-w-11 rounded-xl bg-dashboard-accent px-4 text-sm font-semibold text-[var(--dash-accent-text)] outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent focus-visible:ring-offset-2 focus-visible:ring-offset-dashboard-bg">
+                {actionLabels[state.action]}
+              </button>
+            )}
+            {state.secondaryAction && (
+              <button type="button" onClick={() => onAction(state.secondaryAction!)} className="ml-2 min-h-11 min-w-11 rounded-xl border border-dashboard bg-dashboard-muted px-4 text-sm font-semibold text-dashboard outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent focus-visible:ring-offset-2 focus-visible:ring-offset-dashboard-bg">
+                {actionLabels[state.secondaryAction]}
+              </button>
+            )}
+          </section>
+        ) : (
+          <div className="mt-5 space-y-5">
+            {state.action && (
+              <button type="button" onClick={() => onAction(state.action!)} className="min-h-11 min-w-11 rounded-xl border border-dashboard bg-dashboard-muted px-4 text-sm font-semibold text-dashboard outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent focus-visible:ring-offset-2 focus-visible:ring-offset-dashboard-bg">
+                {actionLabels[state.action]}
+              </button>
+            )}
+            {state.secondaryAction && (
+              <button type="button" onClick={() => onAction(state.secondaryAction!)} className="min-h-11 min-w-11 rounded-xl border border-dashboard bg-dashboard-muted px-4 text-sm font-semibold text-dashboard outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent focus-visible:ring-offset-2 focus-visible:ring-offset-dashboard-bg">
+                {actionLabels[state.secondaryAction]}
+              </button>
+            )}
+            <MusicDashboard data={data} readOnly={["read_only", "content_stale"].includes(state.kind)} />
+          </div>
+        )}
       </div>
-    </div>
+    </main>
   );
-};
+}
 
 const MusicPage = () => {
-  const { user: authUser } = useAuthStore();
-  const [isConnecting] = useState(false);
-
-  // Query to get current user's account with localtunes_integrated status
-  const { data: userData, loading: accountLoading, refetch } = useQuery(getUserAccountQuery, {
-    variables: {
-      documentId: authUser?.documentId
-    },
-    skip: !authUser?.documentId,
-    fetchPolicy: 'cache-and-network'
+  const { user, isAuthenticated } = useAuthStore();
+  const navigate = useNavigate();
+  const statusRef = useRef<HTMLDivElement>(null);
+  const data = useTunesDashboard();
+  const eligibility = useQuery(musicPageEligibilityQuery, {
+    variables: { documentId: user?.documentId },
+    skip: !user?.documentId,
+    fetchPolicy: "cache-and-network",
+    errorPolicy: "all",
   });
+  const selectedAccount = selectCompletedAccount(eligibility.data?.usersPermissionsUser?.accounts);
+  const onboarding: MusicOnboarding = eligibility.loading ? "unknown" : selectedAccount ? "complete" : "incomplete";
 
-  const [visibilityPrompt, setVisibilityPrompt] = useState<{
-    isOpen: boolean;
-    categoryName: string;
-    visibilityField: string;
-    defaultValue: boolean;
-  } | null>(null);
-
-  const location = useLocation();
-
-  useEffect(() => {
-    if (location.state?.justCreatedList && userData) {
-      const acc = userData?.usersPermissionsUser?.accounts?.[0];
-      const isPublic = acc?.public_music === "Yes";
-      if (!isPublic) {
-        setVisibilityPrompt({
-          isOpen: true,
-          categoryName: "Music",
-          visibilityField: "public_music",
-          defaultValue: false,
-        });
-      }
-      window.history.replaceState({}, document.title);
+  const action = (value: keyof typeof actionLabels) => {
+    if (value === "try_again") {
+      void data.retryIdentity().then(() => data.refetch()).finally(() => statusRef.current?.focus());
+      return;
     }
-  }, [location.state, userData]);
-
-  useEffect(() => {
-    if (!accountLoading) {
-      (window as any).__dashboardLoaded = true;
-    }
-  }, [accountLoading]);
-
-  // Mutation to update localtunes_integrated field
-  const [updateAccount] = useMutation(updateAccountMutation);
-
-  // Get the localtunes_integrated status from the user's account data
-  const localTunesIntegratedValue = userData?.usersPermissionsUser?.accounts?.[0]?.localtunes_integrated;
-  const localTunesConnected = localTunesIntegratedValue === "Yes";
-  const accountDocumentId = userData?.usersPermissionsUser?.accounts?.[0]?.documentId;
-  // Phase 1: sync with tunes Neon DB and fetch dashboard data when connected
-  const tunesDashboard = useTunesDashboard();
-
-  const handleVisibilityToggle = async () => {
-    if (!accountDocumentId) return;
-
-    const accountData = userData?.usersPermissionsUser?.accounts?.[0];
-    const currentValue = accountData?.public_music;
-    const newValue = currentValue === "Yes" ? "No" : "Yes";
-
-    if (newValue === "Yes") {
-      const isIntegrated = accountData?.localtunes_integrated === "Yes";
-      const hasPublishedPlaylist = isIntegrated &&
-        (tunesDashboard.playlists?.some(pl => pl.isVisibleToGuests === true) ?? false);
-      if (!hasPublishedPlaylist) {
-        toast.error("You must have at least one published playlist to make Music public.");
-        return;
-      }
-    }
-
-    try {
-      await updateAccount({
-        variables: {
-          documentId: accountDocumentId,
-          data: { public_music: newValue }
-        },
-        optimisticResponse: {
-          updateAccount: {
-            __typename: 'Account',
-            documentId: accountDocumentId,
-            public_music: newValue,
-            localtunes_integrated: accountData.localtunes_integrated,
-            localtunes_public: accountData.localtunes_public
-          }
-        }
-      });
-      toast.success(`Music visibility updated to ${newValue === "Yes" ? "Public" : "Private"}`);
-    } catch (error) {
-       console.error("Error updating visibility:", error);
-       toast.error("Failed to update visibility");
-    }
+    if (value === "sign_in") navigate("/login");
+    else if (value === "finish_profile") navigate("/onboarding");
+    else if (value === "view_plans") navigate("/subscription-plans");
+    else if (value === "check_status") navigate("/settings");
+    else if (value === "view_usage") navigate("/settings?section=billing");
+    else navigate("/contact");
   };
-
-  const handleConnectLocalTunes = async () => {
-    if (!authUser) {
-      toast.error('User information not available');
-      return;
-    }
-
-    if (!accountDocumentId) {
-      toast.error('Account information not available');
-      return;
-    }
-
-    if (localTunesConnected) {
-      toast.info('Already connected to Local Tunes');
-      return;
-    }
-
-    toast.info('Music account setup is temporarily unavailable.');
-  };
-
-  if (!isLocalTunesEnabled()) {
-    return (
-      <div className="dashboard-theme flex items-center justify-center h-full">
-        <div className="bg-dashboard-sidebar rounded-xl p-6 max-w-md w-full mx-4">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <h3 className="text-white font-semibold font-poppins mb-2">
-                Local Tunes Integration
-              </h3>
-              <p className="text-gray-300 text-sm">
-                Local Tunes integration is currently disabled.
-              </p>
-            </div>
-            <div className="text-gray-400 text-sm">
-              Disabled
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (accountLoading) {
-    if ((window as any).__dashboardLoaded) {
-      return <MusicSkeleton />;
-    }
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-dashboard-bg">
-        <EarthLoader context="general" size="default" />
-      </div>
-    );
-  }
-
-  const isIntegrated = userData?.usersPermissionsUser?.accounts?.[0]?.localtunes_integrated || false;
 
   return (
     <>
       <SEO
-        title={`Local Tunes - Music Discovery & Playlists | explorers`}
-        description={`Discover and share local sounds, tunes, and city-based music playlists with explorers. Create personalized music experiences, explore culture-based music discovery, and connect with local sounds from around the world. ${isIntegrated ? `Manage your music playlists and discover new tracks.` : 'Get started with Local Tunes integration.'}`}
-        keywords={[
-          "local tunes",
-          "local music discovery",
-          "city-based music",
-          "culture-based music",
-          "local sounds",
-          "music playlists",
-          "local music exploration",
-          "regional music",
-          "city music playlists",
-          "cultural music discovery",
-          "local music sharing",
-          "music recommendations",
-          "explorers music",
-          "local music platform",
-          "music discovery app",
-          "city soundtracks",
-          "cultural soundtracks",
-          "local music curation",
-          "music exploration",
-          "regional soundtracks"
-        ]}
-        canonical={createCanonicalUrl("/music")}
+        title="Music | explorers"
+        description="Create playlists and share music from your Explorer profile."
+        canonical={createCanonicalUrl("/recommendations/music")}
         type="website"
-        noIndex={true}
+        noIndex
         siteName="explorers"
       />
-      <div className="dashboard-theme h-full bg-dashboard-bg">
-        <div className="container mx-auto px-2 sm:px-4 py-4 h-full overflow-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="max-w-4xl mx-auto"
-          >
-            {/* Main Content */}
-            {localTunesConnected ? (
-              /* Full-width embedded dashboard */
-              <MusicDashboard 
-                data={tunesDashboard} 
-                isPublic={userData?.usersPermissionsUser?.accounts?.[0]?.public_music === "Yes"}
-                onVisibilityToggle={handleVisibilityToggle}
-                onPlaylistCreated={() => {
-                  const acc = userData?.usersPermissionsUser?.accounts?.[0];
-                  const isPublic = acc?.public_music === "Yes";
-                  if (!isPublic) {
-                    setVisibilityPrompt({
-                      isOpen: true,
-                      categoryName: "Music",
-                      visibilityField: "public_music",
-                      defaultValue: false,
-                    });
-                  }
-                }}
-              />
-            ) : (
-              /* Two-column connect view */
-              <div className="bg-dashboard-sidebar rounded-xl p-4">
-                <div className="flex flex-col lg:flex-row gap-8">
-                  {/* Left Side - Info */}
-                  <div className="flex-1">
-                    <h2 className="text-xl font-semibold text-white mb-3">What is Local Tunes?</h2>
-                    <p className="text-gray-300 mb-4">
-                      Create collaborative music experiences where guests can contribute to your space's atmosphere in real-time.
-                    </p>
-
-                    {/* Features */}
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <svg className="w-5 h-5 text-dashboard-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span className="text-gray-300 text-sm">Real-time guest contributions</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <svg className="w-5 h-5 text-dashboard-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span className="text-gray-300 text-sm">Uses your existing explorers account</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <svg className="w-5 h-5 text-dashboard-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span className="text-gray-300 text-sm">Enhanced engagement through shared discovery</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right Side - Connection Status (not connected state only) */}
-                  <div className="lg:w-80">
-                    <div className="bg-dashboard-bg rounded-lg p-6">
-                      <h3 className="text-white font-semibold mb-4">Connection Status</h3>
-
-                      <div className="flex items-center gap-2 mb-6">
-                        <div className="flex items-center gap-2 text-gray-400">
-                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                          </svg>
-                          <span className="font-medium">Not Connected</span>
-                        </div>
-                      </div>
-
-                      <div className="space-y-3">
-                        <Button
-                          btnText={isConnecting ? "Connecting..." : "Connect to Local Tunes"}
-                          size="medium"
-                          variant="primary"
-                          onClickHandler={handleConnectLocalTunes}
-                          isLoading={isConnecting}
-                          disabled={isConnecting || accountLoading}
-                          className="w-full"
-                        />
-                      </div>
-
-                      <p className="text-gray-400 text-xs mt-4 text-center">
-                        Music account setup is temporarily unavailable.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </motion.div>
-        </div>
-      </div>
-      {visibilityPrompt && accountDocumentId && (
-        <CategoryVisibilityModal
-          isOpen={visibilityPrompt.isOpen}
-          onClose={() => setVisibilityPrompt(null)}
-          categoryName={visibilityPrompt.categoryName}
-          visibilityField={visibilityPrompt.visibilityField}
-          accountDocumentId={accountDocumentId}
-          onSuccess={() => {
-            refetch();
-          }}
-        />
-      )}
+      <MusicPageContent authenticated={isAuthenticated} onboarding={onboarding} data={data} onAction={action} statusRef={statusRef} />
     </>
   );
 };

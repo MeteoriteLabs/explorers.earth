@@ -1,0 +1,190 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  createMusicIdentityCoordinator,
+  selectCompletedAccount,
+} from "../musicIdentityCoordinator";
+
+const account = {
+  documentId: "account-document-7",
+  Account_Name: "Seven",
+  Account_Type: "Personal",
+  mobile_number: "+15555550123",
+};
+
+describe("automatic Music identity coordinator", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  it("selects a sole completed immutable Account and rejects ambiguity without positional fallback", () => {
+    expect(selectCompletedAccount([account])).toEqual({ documentId: account.documentId });
+    expect(selectCompletedAccount([{ ...account, mobile_number: "" }])).toBeUndefined();
+    expect(selectCompletedAccount([account, { ...account, documentId: "account-document-8" }])).toBeUndefined();
+    expect(selectCompletedAccount(undefined)).toBeUndefined();
+    expect(selectCompletedAccount([{ ...account, documentId: "" }])).toBeUndefined();
+    expect(selectCompletedAccount([{ ...account, documentId: 7 }])).toBeUndefined();
+    expect(selectCompletedAccount([{ ...account, Account_Name: " " }])).toBeUndefined();
+    expect(selectCompletedAccount([{ ...account, Account_Name: 7 }])).toBeUndefined();
+    expect(selectCompletedAccount([{ ...account, Account_Type: " " }])).toBeUndefined();
+    expect(selectCompletedAccount([{ ...account, Account_Type: 7 }])).toBeUndefined();
+    expect(selectCompletedAccount([{ ...account, mobile_number: " " }])).toBeUndefined();
+    expect(selectCompletedAccount([{ ...account, mobile_number: 7 }])).toBeUndefined();
+  });
+
+  it.each(["google", "email"] as const)("uses the same bodyless automatic path after verified %s auth and onboarding", async (provider) => {
+    const ensureIdentity = vi.fn(async () => undefined);
+    const coordinator = createMusicIdentityCoordinator({ ensureIdentity });
+    await coordinator.reconcile({
+      provider,
+      authenticated: true,
+      verified: true,
+      userDocumentId: "user-document-4",
+      account: { documentId: account.documentId },
+    });
+    expect(ensureIdentity).toHaveBeenCalledWith();
+  });
+
+  it("does not project before verified authentication and completed onboarding", async () => {
+    const ensureIdentity = vi.fn(async () => undefined);
+    const coordinator = createMusicIdentityCoordinator({ ensureIdentity });
+    await coordinator.reconcile({ provider: "email", authenticated: true, verified: false, userDocumentId: "user-1", account: { documentId: "account-1" } });
+    await coordinator.reconcile({ provider: "google", authenticated: true, verified: true, userDocumentId: "user-1" });
+    expect(ensureIdentity).not.toHaveBeenCalled();
+  });
+
+  it("coalesces rerenders and route changes without browser storage", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const ensureIdentity = vi.fn(() => gate);
+    const coordinator = createMusicIdentityCoordinator({ ensureIdentity });
+    const input = {
+      provider: "email" as const,
+      authenticated: true,
+      verified: true,
+      userDocumentId: "user-document-4",
+      account: { documentId: account.documentId },
+    };
+    const calls = Array.from({ length: 20 }, () => coordinator.reconcile(input));
+    release();
+    await Promise.all(calls);
+    expect(ensureIdentity).toHaveBeenCalledTimes(1);
+    expect(localStorage.length).toBe(0);
+    expect(sessionStorage.length).toBe(0);
+  });
+
+  it("retries after a retryable failure and starts a new identity after account switch", async () => {
+    const ensureIdentity = vi.fn()
+      .mockRejectedValueOnce(Object.assign(new Error("contained"), { retryable: true }))
+      .mockResolvedValue(undefined);
+    const coordinator = createMusicIdentityCoordinator({ ensureIdentity });
+    const first = { provider: "email" as const, authenticated: true, verified: true, userDocumentId: "user-1", account: { documentId: "account-1" } };
+    await expect(coordinator.reconcile(first)).rejects.toThrow("contained");
+    await coordinator.retry();
+    await coordinator.reconcile({ ...first, account: { documentId: "account-2" } });
+    expect(ensureIdentity).toHaveBeenCalledTimes(3);
+  });
+
+  it("publishes one contained status stream for loading, retryable, conflict, and ready", async () => {
+    const ensureIdentity = vi.fn()
+      .mockRejectedValueOnce(Object.assign(new Error("safe"), { code: "AUTH_UNAVAILABLE", retryable: true }))
+      .mockRejectedValueOnce(Object.assign(new Error("safe"), { upstreamCode: "IDENTITY_CONFLICT" }))
+      .mockResolvedValue(undefined);
+    const coordinator = createMusicIdentityCoordinator({ ensureIdentity });
+    const changes: string[] = [];
+    const unsubscribe = coordinator.subscribe(() => changes.push(coordinator.getSnapshot()));
+    const input = { provider: "email" as const, authenticated: true, verified: true, userDocumentId: "user-1", account: { documentId: "account-1" } };
+    await coordinator.reconcile(input).catch(() => undefined);
+    expect(coordinator.getSnapshot()).toBe("retryable");
+    await coordinator.retry().catch(() => undefined);
+    expect(coordinator.getSnapshot()).toBe("conflict");
+    await coordinator.retry();
+    expect(coordinator.getSnapshot()).toBe("ready");
+    expect(changes).toEqual(["setting_up", "retryable", "setting_up", "conflict", "setting_up", "ready"]);
+    unsubscribe();
+  });
+
+  it("moves repeated retryable setup failures to the exhausted state", async () => {
+    const ensureIdentity = vi.fn().mockRejectedValue(Object.assign(new Error("safe"), { retryable: true }));
+    const coordinator = createMusicIdentityCoordinator({ ensureIdentity });
+    const input = { provider: "email" as const, authenticated: true, verified: true, userDocumentId: "user-1", account: { documentId: "account-1" } };
+    await coordinator.reconcile(input).catch(() => undefined);
+    await coordinator.retry().catch(() => undefined);
+    await coordinator.retry().catch(() => undefined);
+    expect(coordinator.getSnapshot()).toBe("unavailable");
+  });
+
+  it.each([
+    ["IDENTITY_PENDING_DELETION", "pending_deletion"],
+    ["IDENTITY_TOMBSTONED", "pending_deletion"],
+    ["IDENTITY_SUSPENDED", "suspended"],
+    ["AUTH_REQUIRED", "auth_required"],
+    ["AUTH_INVALID", "auth_required"],
+    ["ACCOUNT_AMBIGUOUS", "conflict"],
+    ["ACCOUNT_SWITCH_CONFLICT", "conflict"],
+  ] as const)("maps upstream %s to %s", async (upstreamCode, expected) => {
+    const ensureIdentity = vi.fn().mockRejectedValue(Object.assign(new Error("safe"), { upstreamCode }));
+    const coordinator = createMusicIdentityCoordinator({ ensureIdentity });
+    await coordinator.reconcile({ provider: "email", authenticated: true, verified: true, userDocumentId: "user-1", account: { documentId: "account-1" } }).catch(() => undefined);
+    expect(coordinator.getSnapshot()).toBe(expected);
+  });
+
+  it("maps a direct authentication error, resets state, and makes an ineligible retry a no-op", async () => {
+    const ensureIdentity = vi.fn().mockRejectedValue(Object.assign(new Error("safe"), { code: "AUTH_REQUIRED" }));
+    const coordinator = createMusicIdentityCoordinator({ ensureIdentity });
+    const listener = vi.fn();
+    const unsubscribe = coordinator.subscribe(listener);
+    await coordinator.reconcile({ provider: "email", authenticated: true, verified: true, userDocumentId: "user-1", account: { documentId: "account-1" } }).catch(() => undefined);
+    expect(coordinator.getSnapshot()).toBe("auth_required");
+    coordinator.reset();
+    expect(coordinator.getSnapshot()).toBe("idle");
+    await coordinator.retry();
+    unsubscribe();
+    coordinator.reset();
+    expect(ensureIdentity).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips a completed identity and starts a fresh flight after reset", async () => {
+    const ensureIdentity = vi.fn().mockResolvedValue(undefined);
+    const coordinator = createMusicIdentityCoordinator({ ensureIdentity });
+    const input = { provider: "email" as const, authenticated: true, verified: true, userDocumentId: "user-1", account: { documentId: "account-1" } };
+    await coordinator.reconcile(input);
+    await coordinator.reconcile(input);
+    coordinator.reset();
+    await coordinator.reconcile(input);
+    expect(ensureIdentity).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not let an in-flight ensure publish authority after logout reset", async () => {
+    let release!: () => void;
+    const ensureIdentity = vi.fn(() => new Promise<void>((resolve) => { release = resolve; }));
+    const coordinator = createMusicIdentityCoordinator({ ensureIdentity });
+    const pending = coordinator.reconcile({ provider: "email", authenticated: true, verified: true, userDocumentId: "user-1", account: { documentId: "account-1" } });
+    coordinator.reset();
+    release();
+    await pending;
+    expect(coordinator.getSnapshot()).toBe("idle");
+  });
+
+  it("does not let an in-flight failure publish status after logout reset", async () => {
+    let reject!: (error: Error) => void;
+    const ensureIdentity = vi.fn(() => new Promise<void>((_resolve, rejectPromise) => { reject = rejectPromise; }));
+    const coordinator = createMusicIdentityCoordinator({ ensureIdentity });
+    const pending = coordinator.reconcile({ provider: "email", authenticated: true, verified: true, userDocumentId: "user-1", account: { documentId: "account-1" } });
+    coordinator.reset();
+    reject(new Error("safe"));
+    await pending.catch(() => undefined);
+    expect(coordinator.getSnapshot()).toBe("idle");
+  });
+
+  it.each([
+    { provider: "email" as const, authenticated: false, verified: true, userDocumentId: "user-1", account: { documentId: "account-1" } },
+    { provider: "email" as const, authenticated: true, verified: false, userDocumentId: "user-1", account: { documentId: "account-1" } },
+    { provider: "email" as const, authenticated: true, verified: true, account: { documentId: "account-1" } },
+    { provider: "email" as const, authenticated: true, verified: true, userDocumentId: "user-1" },
+  ])("does not start for each incomplete eligibility shape", async (input) => {
+    const ensureIdentity = vi.fn().mockResolvedValue(undefined);
+    await createMusicIdentityCoordinator({ ensureIdentity }).reconcile(input);
+    expect(ensureIdentity).not.toHaveBeenCalled();
+  });
+});

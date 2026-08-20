@@ -165,10 +165,22 @@ export class MusicDomainRepository {
          FROM songs WHERE user_id=$1 ORDER BY position`,
       [musicUserId],
     )).rows;
+    const publication = (await this.pool.query(
+      `SELECT guest_url,
+              guest_discoverable,
+              (guest_capability_hash IS NOT NULL AND guest_capability_revoked_at IS NULL) AS has_guest_capability
+         FROM users WHERE id=$1`,
+      [musicUserId],
+    )).rows[0];
     return {
       songs: rows.filter((row) => row.status === "queued" || row.status === "playing"),
       currentlyPlaying: rows.find((row) => row.status === "playing"),
       playedSongs: rows.filter((row) => row.status === "played"),
+      publication: {
+        mode: publication?.guest_discoverable === true ? "public"
+          : publication?.has_guest_capability === true ? "unlisted" : "private",
+        publicSlug: String(publication?.guest_url ?? ""),
+      },
     };
   }
 

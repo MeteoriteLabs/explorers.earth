@@ -63,7 +63,6 @@ export const accountQuery = gql`
   query Account($filters: AccountFiltersInput) {
     accounts(filters: $filters) {
       documentId
-      localtunes_integrated
       public_profile
       public_recommendations
       public_music
@@ -84,8 +83,6 @@ export const updateAccountMutation = gql`
   mutation UpdateAccount($documentId: ID!, $data: AccountInput!) {
     updateAccount(documentId: $documentId, data: $data) {
       documentId
-      localtunes_integrated
-      localtunes_public
       public_profile
       public_recommendations
       public_music
@@ -129,8 +126,6 @@ export const getUserAccountQuery = gql`
       accounts {
         username
         documentId
-        localtunes_integrated
-        localtunes_public
       }
     }
   }

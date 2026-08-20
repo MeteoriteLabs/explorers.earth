@@ -16,7 +16,7 @@ function appFor(overrides: Record<string, unknown> = {}, routeOverrides: Record<
     reorderPlaylistSong: vi.fn(async (owner: number, playlist: number, song: number, position: number) => { calls.push(["playlist-song-reorder", owner, playlist, song, position]); return playlist === 9; }),
     setPlaylistVisibility: vi.fn(async (owner: number, playlist: number, visible: boolean) => { calls.push(["playlist-visibility", owner, playlist, visible]); return playlist === 9; }),
     listQueue: vi.fn(async (owner: number) => { calls.push(["queue", owner]); return []; }),
-    ownerDashboard: vi.fn(async (owner: number) => { calls.push(["dashboard", owner]); return { songs: [], playedSongs: [] }; }),
+    ownerDashboard: vi.fn(async (owner: number) => { calls.push(["dashboard", owner]); return { songs: [], playedSongs: [], publication: { mode: "private", publicSlug: "private-slug" } }; }),
     addSong: vi.fn(async (owner: number, input: unknown) => { calls.push(["add-song", owner, input]); return { id: 1 }; }),
     setPlaying: vi.fn(async (owner: number, id: number | null) => { calls.push(["playing", owner, id]); return id === null ? null : { id }; }),
     updateSongPosition: vi.fn(async (owner: number, id: number, position: number) => { calls.push(["position", owner, id, position]); return { id, position }; }),
@@ -60,7 +60,7 @@ describe("canonical Music REST surfaces", () => {
     expect((await request(app).get("/api/music/dashboard")).status).toBe(401);
     const response = await request(app).get("/api/music/dashboard").set("Authorization", "Bearer aaa.bbb.ccc");
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ songs: [], currentlyPlaying: null, playedSongs: [] });
+    expect(response.body).toEqual({ songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private", publicSlug: "private-slug" } });
     expect(calls).toContainEqual(["dashboard", 11]);
   });
 

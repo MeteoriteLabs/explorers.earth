@@ -105,7 +105,6 @@ export const accountsDetailQuery = gql`
         alternativeText
       }
       documentId
-      localtunes_integrated
       Account_Type
       social_media
       Feed_Data
@@ -396,7 +395,6 @@ export const getPublicAccountBasicQuery = gql`
       profile_picture {
         url
       }
-      localtunes_public
       public_profile
       public_recommendations
       public_music
@@ -432,7 +430,6 @@ export const getPublicProfileDataQuery = gql`
         url
       }
       social_media
-      localtunes_public
       Public_Profile_Address
       Feed_Data
       mobile_number_visibility
@@ -470,7 +467,6 @@ export const getAccountsDataQuery = gql`
         url
       }
       social_media
-      localtunes_public
       Public_Profile_Address
       Feed_Data
       mobile_number_visibility

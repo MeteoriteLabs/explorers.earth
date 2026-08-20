@@ -90,8 +90,8 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     await domain.setPlaying(a.id, null);
     expect(await domain.listQueue(a.id)).toEqual([expect.objectContaining({ id: aSong.id, status: "played" })]);
     expect(await domain.listQueue(b.id)).toEqual([expect.objectContaining({ id: bSong.id, status: "played" })]);
-    expect(await domain.ownerDashboard(a.id)).toEqual({ songs: [], currentlyPlaying: undefined, playedSongs: [expect.objectContaining({ id: aSong.id, userId: a.id })] });
-    expect(await domain.ownerDashboard(b.id)).toEqual({ songs: [], currentlyPlaying: undefined, playedSongs: [expect.objectContaining({ id: bSong.id, userId: b.id })] });
+    expect(await domain.ownerDashboard(a.id)).toEqual({ songs: [], currentlyPlaying: undefined, playedSongs: [expect.objectContaining({ id: aSong.id, userId: a.id })], publication: expect.objectContaining({ mode: "private", publicSlug: a.guestUrl }) });
+    expect(await domain.ownerDashboard(b.id)).toEqual({ songs: [], currentlyPlaying: undefined, playedSongs: [expect.objectContaining({ id: bSong.id, userId: b.id })], publication: expect.objectContaining({ mode: "private", publicSlug: b.guestUrl }) });
   });
 
   it("isolates entitlement, publication, capability rotation, and guest resolution", async () => {

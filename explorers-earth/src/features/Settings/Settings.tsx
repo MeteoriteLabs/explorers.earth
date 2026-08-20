@@ -4,13 +4,10 @@ import EyeOffIcon from "../../assets/icons/EyeOffIcon";
 import EyeOnIcon from "../../assets/icons/EyeOnIcon";
 import Button from "../../components/ui/Button";
 import { gql, useApolloClient, useMutation, useQuery } from "@apollo/client";
-import { useQuery as useReactQuery } from "@tanstack/react-query";
-import { localTunesRequest } from "../../lib/apiClient";
 import {
   updatePasswordMutation,
   deleteExplorerAccountMutation,
   deleteExplorerUserMutation,
-  accountQuery,
   addReasonForLeavingMutation,
   updateBlockedStatusMutation,
   updateTabVisibilityMutation,
@@ -27,7 +24,7 @@ import PasswordInput from "../../components/ui/PasswordInput";
 import { validatePassword } from "../../utils/passwordValidator";
 import { useTranslation } from "react-i18next";
 import LanguageSelector, { LANGUAGES } from "./components/LanguageSelector";
-import ConnectedAccounts from "./components/ConnectedAccounts";
+import { selectCompletedAccount } from "../music/musicIdentityCoordinator";
 import { getPublicCategoryListCountsQuery } from "../PublicHome/api/query";
 import {
   AccountLifecycleError,
@@ -41,6 +38,32 @@ const providerQuery = gql`
   query UsersPermissionsUser($documentId: ID!) {
     usersPermissionsUser(documentId: $documentId) {
       provider
+    }
+  }
+`;
+
+const settingsAccountQuery = gql`
+  query SettingsAccount($documentId: ID!) {
+    usersPermissionsUser(documentId: $documentId) {
+      documentId
+      accounts {
+        documentId
+        Account_Name
+        Account_Type
+        mobile_number
+        Addresss
+        public_profile
+        public_recommendations
+        public_movie
+        public_guides
+        public_books
+        public_games
+        public_apps
+        public_products
+        public_people
+        pinned_nav_tabs
+        auto_pinning
+      }
     }
   }
 `;
@@ -105,7 +128,6 @@ const Settings = memo(() => {
   const [publicVisibilitySectionOpen, setPublicVisibilitySectionOpen] = useState<boolean>(false);
   const [pinnedNavTabsSectionOpen, setPinnedNavTabsSectionOpen] = useState<boolean>(false);
   const [languageSectionOpen, setLanguageSectionOpen] = useState<boolean>(false);
-  const [connectedAccountsSectionOpen, setConnectedAccountsSectionOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   const { data } = useQuery(providerQuery, {
@@ -115,30 +137,15 @@ const Settings = memo(() => {
     skip: !user?.documentId,
   });
 
-  const { data: accountData } = useQuery(accountQuery, {
-    variables: {
-      filters: {
-        username: {
-          eq: deleteUsername,
-        },
-      },
-    },
-    skip: !deleteUsername,
-  });
-
   // Query for current user's account data for tab visibility settings
-  const { data: currentUserAccountData, refetch: refetchAccountData, loading: settingsLoading } = useQuery(accountQuery, {
-    variables: {
-      filters: {
-        username: {
-          eq: user?.username,
-        },
-      },
-    },
-    skip: !user?.username,
+  const { data: currentUserAccountData, refetch: refetchAccountData, loading: settingsLoading } = useQuery(settingsAccountQuery, {
+    variables: { documentId: user?.documentId },
+    skip: !user?.documentId,
   });
 
-  const currentAccount = currentUserAccountData?.accounts?.[0];
+  const currentAccountCandidates = currentUserAccountData?.usersPermissionsUser?.accounts;
+  const selectedSettingsAccount = selectCompletedAccount(currentAccountCandidates);
+  const currentAccount = currentAccountCandidates?.find((candidate: { documentId?: string }) => candidate.documentId === selectedSettingsAccount?.documentId);
   const accountDocumentId = currentAccount?.documentId;
 
   const {
@@ -156,12 +163,6 @@ const Settings = memo(() => {
       accountDocumentId,
     },
     skip: !accountDocumentId,
-  });
-
-  const { data: musicPlaylists } = useReactQuery<any[]>({
-    queryKey: ['tunes-playlists', user?.username],
-    queryFn: () => localTunesRequest('GET', `/api/playlists?username=${user?.username}`),
-    enabled: !!user?.username && currentAccount?.localtunes_integrated === "Yes",
   });
 
   useEffect(() => {
@@ -234,14 +235,14 @@ const Settings = memo(() => {
     if (tabType in tabVisibilityOverrides) {
       return tabVisibilityOverrides[tabType] as boolean;
     }
-    return currentUserAccountData?.accounts[0]?.[tabType] === "Yes";
+    return currentAccount?.[tabType] === "Yes";
   };
 
   const getAutoPinningEnabled = (): boolean => {
     if ('auto_pinning' in tabVisibilityOverrides) {
       return tabVisibilityOverrides['auto_pinning'] as boolean;
     }
-    const val = currentUserAccountData?.accounts[0]?.auto_pinning;
+    const val = currentAccount?.auto_pinning;
     return val === null || val === undefined ? true : val;
   };
 
@@ -257,7 +258,6 @@ const Settings = memo(() => {
     public_products:        listCountsData?.productLists?.length ?? 0,
     public_people:          listCountsData?.personLists?.length ?? 0,
     public_guides:          listCountsData?.guides?.length ?? 0,
-    public_music:           0,
     public_profile:         0,
   }), [listCountsData]);
 
@@ -266,7 +266,6 @@ const Settings = memo(() => {
     const keys = [
       'public_profile',
       'public_recommendations',
-      'public_music',
       'public_guides',
       'public_movie',
       'public_books',
@@ -292,7 +291,7 @@ const Settings = memo(() => {
     if ('pinned_nav_tabs' in tabVisibilityOverrides) {
       pinned = tabVisibilityOverrides['pinned_nav_tabs'] || [];
     } else {
-      pinned = currentUserAccountData?.accounts[0]?.pinned_nav_tabs || [];
+      pinned = currentAccount?.pinned_nav_tabs || [];
     }
     if (!pinned.includes('public_profile')) {
       return ['public_profile', ...pinned];
@@ -309,7 +308,6 @@ const Settings = memo(() => {
   };
 
   const handleAutoPinningToggle = async (enabled: boolean) => {
-    const currentAccount = currentUserAccountData?.accounts[0];
     if (!currentAccount?.documentId) {
       toast.error("Account not found");
       return;
@@ -343,7 +341,6 @@ const Settings = memo(() => {
   };
 
   const handleNavPinUpdate = async (tabType: string, isPinned: boolean) => {
-    const currentAccount = currentUserAccountData?.accounts[0];
     if (!currentAccount?.documentId) {
       toast.error("Account not found");
       return;
@@ -390,7 +387,6 @@ const Settings = memo(() => {
 
   // Function to update tab visibility with optimistic UI
   const handleTabVisibilityUpdate = async (tabType: string, isVisible: boolean) => {
-    const currentAccount = currentUserAccountData?.accounts[0];
     if (!currentAccount?.documentId) {
       toast.error("Account not found");
       return;
@@ -444,11 +440,6 @@ const Settings = memo(() => {
         case "public_recommendations":
           hasPublished = (publishedListsData?.recommendationLists?.length ?? 0) > 0;
           errorMsg = "You must have at least one published place list to make Recommendations public.";
-          break;
-        case "public_music":
-          hasPublished = currentAccount?.localtunes_integrated === "Yes" &&
-            (musicPlaylists?.some((pl: any) => pl.isVisibleToGuests === true) ?? false);
-          errorMsg = "You must have at least one published playlist to make Music public.";
           break;
         default:
           hasPublished = true;
@@ -692,7 +683,7 @@ const Settings = memo(() => {
             username: deleteUsername,
             userID: user?.id,
             email: user?.email,
-            address: accountData?.accounts?.[0]?.Addresss,
+            address: currentAccount?.Addresss,
           },
         },
       });
@@ -742,7 +733,7 @@ const Settings = memo(() => {
       }
 
       // Proceed with account deletion
-      if (!currentAccount?.documentId && !accountData?.accounts?.[0]?.documentId) {
+      if (!currentAccount?.documentId) {
         toast.error(
           t("settings.account.changePassword.accountDocumentIdNotFound")
         );
@@ -768,13 +759,8 @@ const Settings = memo(() => {
     logout();
     localStorage.removeItem("auth-storage");
     localStorage.removeItem("qrtoken");
-    localStorage.removeItem("localTunes_session");
-    sessionStorage.removeItem("explorers_user_credentials");
     localStorage.clear();
     sessionStorage.clear();
-    document.cookie.split(";").forEach((cookie) => {
-      document.cookie = cookie.replace(/^ +/, "").replace(/=.*/, `=;expires=${new Date().toUTCString()};path=/`);
-    });
     navigate("/login");
   };
 
@@ -1048,9 +1034,6 @@ const Settings = memo(() => {
                             { key: 'public_recommendations', label: 'Places Tab', icon: (
                               <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
                             )},
-                            { key: 'public_music', label: 'Music Tab', icon: (
-                              <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                            )},
                             { key: 'public_guides', label: 'Guides Tab', icon: (
                               <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" /></svg>
                             )},
@@ -1194,9 +1177,6 @@ const Settings = memo(() => {
                               { key: 'public_recommendations', label: 'Places Tab', icon: (
                                 <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
                               )},
-                              { key: 'public_music', label: 'Music Tab', icon: (
-                                <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                              )},
                               { key: 'public_guides', label: 'Guides Tab', icon: (
                                 <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385a7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10a7.968 7.968 0 00-14.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" /></svg>
                               )},
@@ -1268,58 +1248,6 @@ const Settings = memo(() => {
                         </div>
                       )}
                     </>
-                  )}
-                </div>
-              </>
-            )}
-
-            {/* ── CONNECTED ACCOUNTS section ── */}
-            {matchesSearch("connected accounts local tunes external platform integration google") && (
-              <>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-dashboard-muted mb-1 font-poppins">Connected Accounts</p>
-                <div
-                  className="rounded-xl overflow-hidden mb-3"
-                  style={{ background: 'var(--dash-sidebar-bg, hsl(var(--dashboard-sidebar)))', border: '1px solid var(--dash-border)' }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setConnectedAccountsSectionOpen(prev => !prev)}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-dashboard-muted/50 transition-colors duration-150 group text-left"
-                  >
-                    <span className="text-base leading-none">🔗</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-semibold text-dashboard font-poppins">Connected Accounts</div>
-                      <div className="text-[10px] text-dashboard-muted font-poppins mt-0.5">Integrations · Manage external music platforms and accounts</div>
-                    </div>
-                    <svg
-                      width="14" height="14" fill="none" stroke="var(--dash-border)" viewBox="0 0 24 24"
-                      className={`flex-shrink-0 transition-transform duration-200 ${connectedAccountsSectionOpen ? 'rotate-90' : ''}`}
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-
-                  {connectedAccountsSectionOpen && (
-                    <div
-                      ref={(el) => {
-                        if (el && !el.dataset.scrolled) {
-                          el.dataset.scrolled = 'true';
-                          setTimeout(() => {
-                            const rect = el.getBoundingClientRect();
-                            const isMobile = window.innerWidth < 768;
-                            const bottomOffset = isMobile ? 80 : 20;
-                            const cutoff = window.innerHeight - bottomOffset;
-                            if (rect.bottom > cutoff) {
-                              const scrollOffset = rect.bottom - cutoff + 20;
-                              window.scrollBy({ top: scrollOffset, behavior: 'smooth' });
-                            }
-                          }, 100);
-                        }
-                      }}
-                      className="border-t border-dashboard px-2 py-2 bg-dashboard-bg/20"
-                    >
-                      <ConnectedAccounts />
-                    </div>
                   )}
                 </div>
               </>

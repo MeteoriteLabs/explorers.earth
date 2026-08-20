@@ -19,10 +19,6 @@ import {
 import PaymentModeToggle from '../components/PaymentModeToggle';
 import axios from 'axios';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
-import { isLocalTunesEnabled } from '../services/localTunesService';
-import {
-  removeUserCredentials,
-} from '../utils/sessionCredentials';
 import { createUserSubscriptionPlan, getSongLimits, updateSongLimit as updateSongLimitAPI, createSongLimit } from '../services/subscriptionService';
 import { MUSIC_SUBSCRIPTION_FLOWS_ENABLED, MusicSubscriptionUnavailable } from '../components/MusicSubscriptionContainment';
 
@@ -81,7 +77,6 @@ interface FormData {
   country?: string;
   postalCode?: string;
   primaryAddress: string;
-  localTunesConsent?: boolean;
 }
 
 interface LocationState {
@@ -179,7 +174,7 @@ const ActiveCheckout = () => {
     return numCost.toLocaleString();
   };
 
-  // Handle onboarding completion (create account, register Local Tunes, etc.)
+  // Handle onboarding completion and subscription activation.
   const handleOnboardingCompletion = async (formData: FormData, razorpayCustomerId?: string) => {
     if (!authUser?.id || !authUser?.documentId) {
       throw new Error('User information not available');
@@ -249,7 +244,6 @@ const ActiveCheckout = () => {
             mobile_number: formattedPhoneNumber,
             username: formData.username || authUser.username || "user",
             users_permissions_users: authUser.documentId,
-            localtunes_integrated: formData.localTunesConsent ? "Yes" : "No",
           },
         },
       });
@@ -259,12 +253,7 @@ const ActiveCheckout = () => {
       }
 
       accountDocId = accountResponse.data.createAccount.documentId;
-      console.log('Account created successfully with localtunes_integrated:', formData.localTunesConsent ? "Yes" : "No");
-    }
-
-    // Legacy password-based Music registration is intentionally disabled.
-    if (formData.localTunesConsent && isLocalTunesEnabled() && accountDocId) {
-      toast.info('Subscription activated. Music account setup is temporarily unavailable.');
+      console.log('Account created successfully');
     }
 
     // Update is_subscribed to true and razorpay_customer_id if available
@@ -283,8 +272,6 @@ const ActiveCheckout = () => {
       },
     });
 
-    // Clean up credentials
-    removeUserCredentials();
   };
 
   // Create subscription after successful payment

@@ -23,20 +23,9 @@ export const useLogout = () => {
     localStorage.removeItem("auth-storage");
     localStorage.removeItem("qrtoken");
 
-    // Clear Local Tunes session
-    localStorage.removeItem("localTunes_session");
-
-    // Clear session storage (user credentials)
-    sessionStorage.removeItem("explorers_user_credentials");
-
     // Clear all other possible storage
     localStorage.clear();
     sessionStorage.clear();
-
-    // Clear all cookies
-    document.cookie.split(";").forEach(function (c) {
-      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-    });
 
     // Reset the Apollo cache so the next login/account starts from server truth
     // (prevents a stale `accounts` read from surviving a same-tab account switch).

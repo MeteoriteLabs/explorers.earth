@@ -1393,7 +1393,6 @@ const Profile = memo(() => {
     tiktokvisiblity: account?.social_media?.tiktok?.visibility || false,
     snapchatvisiblity: account?.social_media?.snapchat?.visibility || false,
     facebookvisiblity: account?.social_media?.facebook?.visibility || false,
-    localTunesvisiblity: account?.social_media?.localTunes?.visibility || false,
 
     // Business Location fields
     title: (() => {

@@ -464,10 +464,15 @@ function dashboardDto(value: unknown) {
   const songs = property(source, "songs");
   const playedSongs = property(source, "playedSongs", "played_songs");
   const currentlyPlaying = property(source, "currentlyPlaying", "currently_playing");
+  const publication = record(property(source, "publication"));
   return {
     songs: Array.isArray(songs) ? songs.map(songDto) : [],
     currentlyPlaying: currentlyPlaying ? songDto(currentlyPlaying) : null,
     playedSongs: Array.isArray(playedSongs) ? playedSongs.map(songDto) : [],
+    ...(property(source, "publication") ? { publication: {
+      mode: property(publication, "mode"),
+      publicSlug: property(publication, "publicSlug", "public_slug"),
+    } } : {}),
   };
 }
 

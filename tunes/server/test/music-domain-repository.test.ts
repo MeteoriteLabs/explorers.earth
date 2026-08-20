@@ -81,7 +81,31 @@ describe("MusicDomainRepository owner predicates", () => {
       songs: [expect.objectContaining({ id: 1 }), expect.objectContaining({ id: 2 })],
       currentlyPlaying: expect.objectContaining({ id: 2 }),
       playedSongs: [expect.objectContaining({ id: 3 })],
+      publication: { mode: "private", publicSlug: "" },
     });
+  });
+
+  it.each([
+    [{ guest_url: "random-public-slug", guest_discoverable: false, has_guest_capability: false }, "private"],
+    [{ guest_url: "random-public-slug", guest_discoverable: false, has_guest_capability: true }, "unlisted"],
+    [{ guest_url: "random-public-slug", guest_discoverable: true, has_guest_capability: true }, "public"],
+  ] as const)("returns owner-readable publication link state without capability material", async (publicationRow, mode) => {
+    const calls: Array<{ text: string; values: unknown[] }> = [];
+    let index = 0;
+    const pool = {
+      query: async (text: string, values: unknown[] = []) => {
+        calls.push({ text, values });
+        index += 1;
+        return { rows: index === 1 ? [] : [publicationRow], rowCount: index === 1 ? 0 : 1 };
+      },
+      connect: async () => { throw new Error("not used"); },
+    };
+    const result = await new MusicDomainRepository(pool).ownerDashboard(41);
+    expect(result.publication).toEqual({ mode, publicSlug: "random-public-slug" });
+    expect(JSON.stringify(result)).not.toMatch(/capability|hash/i);
+    expect(calls).toHaveLength(2);
+    expect(calls.every((call) => call.values[0] === 41)).toBe(true);
+    expect(calls[1].text.toLowerCase()).not.toMatch(/guest_capability_hash\s+as/);
   });
 
   it("owner-predicates every saved-playlist song and visibility mutation", async () => {

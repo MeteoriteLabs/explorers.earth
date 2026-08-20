@@ -3,8 +3,8 @@ import { KeyValuePair } from "../components/ProfileForm";
 import { toast } from "sonner";
 import useAuthStore from "../../../store/store";
 import { useTranslation } from "react-i18next";
-import { updateLocalTunesUsername } from "../../../services/localTunesService";
 import { mobileNumberField } from "./mobileNumberField";
+import { musicApi } from "../../music/musicApi";
 
 
 // Utility function to convert English account type keys to translated values
@@ -186,6 +186,7 @@ export const useUpdateProfile = (
         });
 
         if (response.data) {
+          void musicApi.refreshIdentity().catch(() => undefined);
           toast.success(t('dashboard.profile.common.savedAndPublishedSuccessfully'));
           refetch();
         }
@@ -302,48 +303,11 @@ export const useUpdateProfile = (
           // Update auth store with new username only if it changed
           if (user && usernameChanged && incomingUsername) {
             const authStore = useAuthStore.getState();
-            authStore.login({
-              ...user,
-              username: incomingUsername,
-              token: authStore.token || "", // Preserve existing token
-            });
+            authStore.updateUsername(incomingUsername);
 
-            // Sync username change with LocalTunes
-            console.log('🔄 Starting LocalTunes username sync...', {
-              currentUsername: currentUsername,
-              newUsername: incomingUsername
-            });
-            try {
-              // Pass user details for sync
-              const localTunesResult = await updateLocalTunesUsername(
-                incomingUsername,
-                currentUsername
-              );
-              console.log('LocalTunes username sync result:', localTunesResult);
-              if (localTunesResult.success) {
-                console.log('✅ Username synced with LocalTunes');
-                toast.success('Username changed successfully in both explorers and LocalTunes!');
-              } else {
-                console.warn('⚠️ LocalTunes username sync warning:', localTunesResult.message);
-                // Show a warning but don't fail the username change
-                if (localTunesResult.message &&
-                  !localTunesResult.message.includes('disabled') &&
-                  !localTunesResult.message.includes('not found')) {
-                  // Check if it's the development mode restriction
-                  if (localTunesResult.message.includes('development mode')) {
-                    toast.warning('Username changed in explorers. Please also change your username in LocalTunes manually.');
-                  } else {
-                    toast.warning(`explorers username changed, but ${localTunesResult.message}`);
-                  }
-                }
-              }
-            } catch (localTunesError) {
-              console.error('❌ LocalTunes username sync error:', localTunesError);
-              // Don't fail the entire username change process
-              toast.warning('Username changed in explorers, but could not sync with LocalTunes');
-            }
           }
 
+          void musicApi.refreshIdentity().catch(() => undefined);
           toast.success(t('dashboard.profile.common.savedAndPublishedSuccessfully'));
           // Only refetch after confirmed backend success
           refetch();

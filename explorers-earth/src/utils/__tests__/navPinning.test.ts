@@ -28,6 +28,10 @@ describe("getVisibleNavTabIds", () => {
     expect(visible.has("public_music")).toBe(false);
     expect(visible.has("public_profile")).toBe(true);
   });
+
+  it("does not derive canonical Music sharing from the retired Account flag", () => {
+    expect(getVisibleNavTabIds({ public_music: "Yes" }).has("public_music")).toBe(false);
+  });
 });
 
 describe("resolveAutoPinning", () => {

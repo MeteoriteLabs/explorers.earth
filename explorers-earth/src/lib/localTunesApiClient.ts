@@ -22,6 +22,8 @@ export class MusicClientError extends Error {
     readonly status: number,
     message: string,
     readonly retryAfterSeconds?: number,
+    readonly upstreamCode?: string,
+    readonly retryable = false,
   ) {
     super(message);
     this.name = "MusicClientError";
@@ -36,6 +38,8 @@ export interface LocalTunesApiClientDependencies {
 }
 
 export interface LocalTunesApiClient {
+  ensureIdentity(): Promise<void>;
+  refreshIdentity(): Promise<void>;
   request(input: LocalMusicRequest): Promise<Response>;
   logout(): void;
 }
@@ -59,7 +63,7 @@ export function createLocalTunesApiClient(dependencies: LocalTunesApiClientDepen
           method: "POST",
           headers: { Authorization: `Bearer ${proof}` },
         });
-        if (response.status !== 200) throw new Error("ensure unavailable");
+        if (response.status !== 200) throw await containedEnsureError(response);
         const body = await response.json() as {
           credential?: { token?: unknown; expiresAt?: unknown };
         };
@@ -71,8 +75,9 @@ export function createLocalTunesApiClient(dependencies: LocalTunesApiClientDepen
         const result = { token: credential.token, expiresAt: credential.expiresAt };
         setMusicCredential(result);
         return result;
-      } catch {
+      } catch (cause) {
         clearMusicCredential();
+        if (cause instanceof MusicClientError) throw cause;
         throw new MusicClientError("AUTH_UNAVAILABLE", 503, "Music authorization is temporarily unavailable.", 1);
       }
     })();
@@ -123,7 +128,34 @@ export function createLocalTunesApiClient(dependencies: LocalTunesApiClientDepen
     return second;
   }
 
-  return { request, logout: clearMusicCredential };
+  return {
+    ensureIdentity: async () => { await credential(); },
+    refreshIdentity: async () => {
+      clearMusicCredential();
+      await refresh();
+    },
+    request,
+    logout: clearMusicCredential,
+  };
+}
+
+async function containedEnsureError(response: Response): Promise<MusicClientError> {
+  try {
+    const body = await response.json() as { error?: { code?: unknown; retryable?: unknown } };
+    const upstreamCode = typeof body.error?.code === "string" ? body.error.code : undefined;
+    const retryAfter = Number(response.headers.get("retry-after"));
+    return new MusicClientError(
+      response.status === 401 ? "AUTH_REQUIRED" : "AUTH_UNAVAILABLE",
+      response.status,
+      response.status === 401 ? "Music authorization is required." : "Music authorization is temporarily unavailable.",
+      Number.isSafeInteger(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
+      upstreamCode,
+      body.error?.retryable === true,
+    );
+  } catch (cause) {
+    if (cause instanceof MusicClientError) return cause;
+    return new MusicClientError("AUTH_UNAVAILABLE", response.status, "Music authorization is temporarily unavailable.");
+  }
 }
 
 function validateRequest(input: LocalMusicRequest): void {

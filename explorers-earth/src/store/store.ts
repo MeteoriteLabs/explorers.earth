@@ -22,6 +22,7 @@ interface AuthState {
     token: string;
   }) => void;
   logout: () => void;
+  updateUsername: (username: string) => void;
   updateUserBlocked: (blocked: boolean) => void;
 }
 
@@ -56,6 +57,11 @@ const useAuthStore = create<AuthState>()(
           token: null,
         });
       },
+
+      updateUsername: (username) =>
+        set((state) => ({
+          user: state.user ? { ...state.user, username } : null,
+        })),
 
       // state for updating user status
       updateUserBlocked: (blocked) =>

@@ -85,6 +85,9 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       .toContainEqual(expect.objectContaining({ name: "X-Music-Guest-Capability", in: "header", required: true }));
     expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.paths["/api/playlist/{guestUrl}"].get)).toMatch(/unlisted.*noindex/i);
     expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.paths["/api/music/paid/import"].post.responses)).toContain("ENTITLEMENT_REQUIRED");
+    expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.Dashboard.required).toContain("publication");
+    expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.components.schemas.Dashboard.properties.publication)).toContain("publicSlug");
+    expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.components.schemas.Dashboard.properties.publication)).not.toMatch(/capability|secret|hash/i);
   });
 
   it("validates mounted success DTOs for every product family against resolved 3.1 schemas", async () => {
@@ -126,7 +129,7 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       listPlaylists: async () => [playlistRow], getPlaylist: async () => playlistRow,
       createPlaylist: async () => playlistRow, updatePlaylist: async () => playlistRow, deletePlaylist: async () => true,
       addPlaylistSong: async () => savedRow, removePlaylistSong: async () => true, reorderPlaylistSong: async () => true,
-      setPlaylistVisibility: async () => true, listQueue: async () => [queueRow], ownerDashboard: async () => ({ songs: [queueRow], currentlyPlaying: queueRow, playedSongs: [] }),
+      setPlaylistVisibility: async () => true, listQueue: async () => [queueRow], ownerDashboard: async () => ({ songs: [queueRow], currentlyPlaying: queueRow, playedSongs: [], publication: { mode: "public", publicSlug: "public-owner" } }),
       addSong: async () => queueRow, setPlaying: async (_owner: number, songId: number | null) => songId === null ? null : queueRow,
       updateSongPosition: async () => queueRow, removeSong: async () => true, removeSongs: async () => 1, clearHistory: async () => 1,
       rotateGuestCapability: async () => ({}), revokeGuestCapability: async () => undefined, setDiscoverable: async () => undefined,

@@ -80,6 +80,16 @@ describe('useAuthStore', () => {
     expect(getMusicCredential()).toBeUndefined();
   });
 
+  it('updates a mutable profile username without replacing immutable Music authority', () => {
+    useAuthStore.getState().login(initialData);
+    setMusicCredential({ token: 'stable.music.credential', expiresAt: Date.now() + 60_000 });
+
+    useAuthStore.getState().updateUsername('renamed-explorer');
+
+    expect(useAuthStore.getState().user).toMatchObject({ documentId: 'doc123', username: 'renamed-explorer' });
+    expect(getMusicCredential()?.token).toBe('stable.music.credential');
+  });
+
   it('should update user blocked status', () => {
     // Login
     useAuthStore.getState().login(initialData);

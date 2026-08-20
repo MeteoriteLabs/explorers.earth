@@ -21,7 +21,6 @@ import { createWebPageGEOData } from "../utils/geoHelpers";
 import { useTranslation } from "react-i18next";
 import useToast from "../hooks/useToast";
 import { isManualAuthEnabled } from "../config/featureFlags";
-import { storeUserCredentials } from "../utils/sessionCredentials";
 
 const Auth = () => {
   const { t, i18n } = useTranslation();
@@ -79,13 +78,6 @@ const Auth = () => {
       });
 
       if (response.data) {
-        // Store user credentials in session storage for Local Tunes integration
-        storeUserCredentials({
-          username: values.username as string,
-          email: values.email as string,
-          password: values.password as string
-        });
-
         setEmail({ email: values.email as string });
         toastSuccess(t("toast.success.registrationSuccessful"));
         // navigate to the email verification page

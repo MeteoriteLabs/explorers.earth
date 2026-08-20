@@ -43,8 +43,6 @@ vi.mock("../../hooks/useToast", () => ({ default: () => ({ toast: vi.fn(), toast
 vi.mock("../../config/featureFlags", () => ({ isManualAuthEnabled: () => true }));
 vi.mock("../../utils/getCurrentDomain", () => ({ createCanonicalUrl: () => "https://explorers.example/login" }));
 vi.mock("../../utils/geoHelpers", () => ({ createWebPageGEOData: () => ({}) }));
-vi.mock("../../utils/sessionCredentials", () => ({ storeUserCredentials: vi.fn() }));
-vi.mock("../../utils/tunesSso", () => ({ consumeSsoReturn: () => undefined }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { language: "en" } }) }));
 
 const priorUser = {
