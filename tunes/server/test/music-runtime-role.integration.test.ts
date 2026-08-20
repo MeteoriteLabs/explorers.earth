@@ -45,14 +45,17 @@ const runtimeSecretRoot = mkdtempSync(join(tmpdir(), "music-runtime-role-secret-
 const runtimePasswordPath = join(runtimeSecretRoot, "database-runtime");
 const signingPath = join(runtimeSecretRoot, "music-token");
 const lifecycleProofPath = join(runtimeSecretRoot, "strapi-lifecycle-proof-token");
+const publicationResponsePath = join(runtimeSecretRoot, "publication-response");
 const gateOwnerPasswordPath = join(runtimeSecretRoot, "database-migrator");
 writeFileSync(runtimePasswordPath, runtimePassword, { mode: 0o600 });
 writeFileSync(signingPath, Buffer.alloc(32, 0x6e).toString("base64url"), { mode: 0o600 });
 writeFileSync(lifecycleProofPath, Buffer.alloc(32, 0x70).toString("base64url"), { mode: 0o600 });
+writeFileSync(publicationResponsePath, Buffer.alloc(32, 0x71).toString("base64url"), { mode: 0o600 });
 writeFileSync(gateOwnerPasswordPath, gateOwnerPassword, { mode: 0o600 });
 chmodSync(runtimePasswordPath, 0o600);
 chmodSync(signingPath, 0o600);
 chmodSync(lifecycleProofPath, 0o600);
+chmodSync(publicationResponsePath, 0o600);
 chmodSync(gateOwnerPasswordPath, 0o600);
 let clusterAdmin: pg.Pool;
 let owner: pg.Pool;
@@ -86,6 +89,9 @@ function startupEnvironment(): Record<string, string> {
     MUSIC_DATABASE_PASSWORD_FILE: runtimePasswordPath,
     MUSIC_TOKEN_CURRENT_SECRET_FILE: signingPath,
     STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: lifecycleProofPath,
+    MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "runtime-test-publication",
+    MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY: "",
+    MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: publicationResponsePath,
   };
 }
 
@@ -170,6 +176,8 @@ describePg("C5 least-privilege Music runtime database authority", () => {
       FROM pg_tables WHERE schemaname='public' AND tablename='users'`)).rows[0].owner_is_migrator).toBe(true);
     expect((await owner.query(`SELECT tgenabled FROM pg_trigger
       WHERE tgname='music_credential_revocation_history_immutability'`)).rows[0].tgenabled).toBe("A");
+    expect((await owner.query(`SELECT tgenabled FROM pg_trigger
+      WHERE tgname='music_publication_operation_immutability'`)).rows[0].tgenabled).toBe("A");
 
     const repository = new MusicIdentityRepository(runtime);
     const identity = await repository.ensureIdentity({
@@ -194,12 +202,13 @@ describePg("C5 least-privilege Music runtime database authority", () => {
       expectedSessionVersion: 1,
       reason: "logout_all",
     })).resolves.toMatchObject({ resultSessionVersion: 2 });
-    expect((await runtime.query("SELECT count(*)::int AS count FROM music_schema_migrations")).rows[0].count).toBe(10);
+    expect((await runtime.query("SELECT count(*)::int AS count FROM music_schema_migrations")).rows[0].count).toBe(11);
 
     for (const statement of [
       "SET session_replication_role='replica'",
       "UPDATE music_credential_revocation_operations SET reason='credential_compromise'",
       "DELETE FROM music_credential_revocation_operations",
+      "DELETE FROM music_publication_operations",
       "UPDATE music_schema_migrations SET checksum=repeat('0',64)",
       "DELETE FROM music_schema_migrations",
       "INSERT INTO music_schema_migrations(id,checksum,schema_checksum) VALUES ('9999_forged',repeat('0',64),repeat('0',64))",
@@ -590,7 +599,7 @@ describePg("C5 least-privilege Music runtime database authority", () => {
           MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: runtimePasswordPath,
           MUSIC_IMAGE_DIGEST: `sha256:${"a".repeat(64)}`,
           MUSIC_IMAGE_COMMIT: "a".repeat(40),
-          MUSIC_MIGRATION_MARKER: "0010_least_privilege_runtime_role",
+          MUSIC_MIGRATION_MARKER: "0011_durable_publication_idempotency",
           MUSIC_GATE_ATTESTATION_KEY: "hostile-gate-key-at-least-32-characters",
           MUSIC_GATE_ATTESTATION_PATH: attestation,
         },

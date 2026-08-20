@@ -31,6 +31,8 @@ process.env.MUSIC_SIGNING_KEY_PREVIOUS_ID = 'fixture-previous';
 process.env.MUSIC_SIGNING_KEY_PREVIOUS_SECRET = 'fixture-previous-secret-at-least-32-characters';
 process.env.MUSIC_TOKEN_CURRENT_KID = 'fixture-current';
 process.env.MUSIC_TOKEN_CURRENT_SECRET = randomBytes(32).toString('base64url');
+process.env.MUSIC_PUBLICATION_RESPONSE_CURRENT_KID = 'fixture-publication-v1';
+process.env.MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY = 'fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI';
 process.env.MUSIC_TOKEN_LIFETIME_SECONDS = '600';
 process.env.MUSIC_TOKEN_CLOCK_SKEW_SECONDS = '15';
 process.env.MUSIC_CONNECT_TIMEOUT_MS = '5000';
@@ -39,7 +41,7 @@ process.env.MUSIC_CIRCUIT_FAILURE_THRESHOLD = '3';
 process.env.MUSIC_RATE_LIMIT_PER_MINUTE = '60';
 process.env.MUSIC_PROVISIONING_KILL_SWITCH = 'true';
 process.env.MUSIC_PROVISIONING_COHORT = 'disabled';
-process.env.MUSIC_EXPECTED_MIGRATION_ID = '0010_least_privilege_runtime_role';
+process.env.MUSIC_EXPECTED_MIGRATION_ID = '0011_durable_publication_idempotency';
 process.env.MUSIC_RECONCILIATION_ENABLED = 'false';
 process.env.MUSIC_RECONCILIATION_MAX_ROWS = '0';
 // The integration suite CREATES + DELETES a user. NEVER inherit an ambient

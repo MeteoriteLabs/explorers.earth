@@ -56,7 +56,8 @@ describe("Music deployment authority files", () => {
     expect(ci).toContain("/app/migrations/0008_credential_revocation_operations.sql");
     expect(ci).toContain("/app/migrations/0009_credential_revocation_history_immutability.sql");
     expect(ci).toContain("/app/migrations/0010_least_privilege_runtime_role.sql");
-    expect(read("tunes/deployment/music-deploy.sh")).toContain('production_current_marker="0010_least_privilege_runtime_role"');
+    expect(ci).toContain("/app/migrations/0011_durable_publication_idempotency.sql");
+    expect(read("tunes/deployment/music-deploy.sh")).toContain('production_current_marker="0011_durable_publication_idempotency"');
     expect(ci).toContain("/app/dist/server/deployment/run-registration-compat.js");
   });
 

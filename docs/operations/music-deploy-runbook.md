@@ -1,4 +1,4 @@
-# Music immutable deployment and migration runbook (C2-C5)
+# Music immutable deployment and migration runbook (C2-C9)
 
 ## Authority and closed production gate
 
@@ -38,16 +38,18 @@ the external environment policy cannot be bypassed by that branch copy.
 `GATE_PROD must remain closed` if the API check is unavailable, the policy is
 absent or different, or `main` is not protected.
 
-## C3-C5 same-image migration gate
+## C3-C9 same-image migration gate
 
-`0010_least_privilege_runtime_role` is the exact expected migration ID. The
-C5 chain appends durable, exact-operation credential-revocation authority,
-immutable revocation history, and the least-privilege runtime boundary
-without changing the immutable user/selected-Account ownership tuple. Each
-operation binds a lowercase UUIDv4, numeric Music resource, immutable Explorer
-user/Account tuple, closed internal reason, and expected/result session version.
-Only an exact replay is idempotent; another operation, reason, resource, or
-version fails closed. The candidate
+`0011_durable_publication_idempotency` is the exact expected migration ID. The
+C5-C9 chain appends durable, exact-operation credential-revocation authority,
+immutable revocation history, the least-privilege runtime boundary, and durable
+publication-command replay authority without changing the immutable
+user/selected-Account ownership tuple. Credential-revocation operations bind a
+lowercase UUIDv4, numeric Music resource, immutable Explorer user/Account tuple,
+closed internal reason, and expected/result session version. Publication operations
+instead bind the immutable owner, hashed idempotency key, and exact request
+fingerprint described below; both authorities fail closed on a conflicting replay.
+The candidate
 image contains the ordered SQL files and `run-migration-gate.js`; the one-shot
 gate takes the PostgreSQL advisory lock, verifies the checksum journal and
 catalog fingerprint, applies pending migrations transactionally, and writes an
@@ -62,7 +64,7 @@ Liveness remains process-only. The secure image ledger can retain historical
 `containment-no-schema-change` entries for audit and the permanent security
 floor, but they cease to be rollback targets as soon as the real C3 gate has
 migrated the database. All new images use
-`0010_least_privilege_runtime_role` and the
+`0011_durable_publication_idempotency` and the
 real migration gate. Because production catalog/row-count and restore evidence
 are still absent, an existing unversioned database is a conflict: there is no
 automatic baseline adoption, username/email matching, or authorized production
@@ -110,14 +112,14 @@ secure history remains the rollback allowlist. Missing, mismatched, malformed,
 or tampered schema-epoch authority fails closed before Docker. Marker parsing
 is versioned rather than coupled only to the newest image. The known ordered
 authority is `containment-no-schema-change`, then migrations `0002` through
-`0010`; authenticated historical rows remain byte-exact and valid, while an
+`0011`; authenticated historical rows remain byte-exact and valid, while an
 unknown marker or decreasing ledger/epoch rank fails closed. The executable
 conservatively adopts only two pre-epoch formats: a signed
 state/ledger ending at `0002` with no compatibility file, or the exact historical
 `music-schema-floor-v1` five-field HMAC record for `0003`. A missing `0003`
 floor, an unsigned partial file, or any reinterpreted v1 field fails before
 Docker. The candidate compatibility listener and exact-path denial route are
-installed before either format is upgraded directly to pending `0010`.
+installed before either format is upgraded directly to pending `0011`.
 For an upgrade, the higher signed epoch is written first and recovered only in that monotonic
 direction, then the signed floor advances to `pending` before the gate. From
 that point, older-marker rollback is rejected before Docker. Gate failure
@@ -301,6 +303,14 @@ on the real runtime session. Any role-graph change between snapshots fails
 closed. The migration attestation file is written only after those checks
 succeed.
 
+Migration `0011` adds `music_publication_operations`. Runtime may select, insert,
+and perform only the trigger-guarded one-way ciphertext shredding update; it
+cannot delete or truncate the operation tombstone. The table has no owner foreign
+key, so Explorer account deletion does not authorize idempotency-key reuse.
+Publication mutation, capability-hash rotation/revocation, encrypted response
+recording, and operation claim/replay occur within one owner-locked PostgreSQL
+transaction.
+
 The Tunes application mounts only the runtime credential and independently
 authenticates and checks the restricted role before importing routes or binding
 a listener. It never mounts or reads the migrator credential. The database
@@ -461,6 +471,45 @@ The Explorer credential store is module-memory only. A reload loses it and
 logout clears it. During a Strapi outage, an unexpired Music credential may
 continue local protected reads. Once expired, failed refresh becomes typed
 authorization-unavailable; no unsafe mutation is replayed.
+
+## C9 publication-response encryption keys
+
+Publication response encryption has a dedicated authority and must not reuse the
+Music token, lifecycle proof, Strapi access, reconciliation, database, deployment,
+or session authority by file identity or content. Generate exactly 32 random bytes,
+encode them as canonical base64url, and store only that value in the root-owned,
+mode-0600 `${MUSIC_PUBLICATION_RESPONSE_KEY_DIRECTORY_HOST}/current` file. Set a
+distinct non-secret `MUSIC_PUBLICATION_RESPONSE_CURRENT_KID`. Compose mounts the
+directory read-only and exposes the current file as
+`/run/secrets/music-publication-response/current`; inline live key values are
+forbidden.
+
+Response-key rotation is verifier-first and lasts at most the fixed 24-hour replay
+window:
+
+1. Retain the old key in a distinct mode-0600 `previous` file.
+2. Generate the new current key and KID. Set
+   `MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KID`,
+   `MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY_FILE=/run/secrets/music-publication-response/previous`,
+   and an exact UTC-millisecond
+   `MUSIC_PUBLICATION_RESPONSE_PREVIOUS_ACCEPT_UNTIL`. All three previous-key
+   settings are required together; the deadline must be positive, no later than
+   24 hours after activation, and cover every unexpired row written with the old
+   key.
+3. Deploy with both keys. Startup queries unexpired operation rows before route
+   registration and fails closed if any recorded KID is unavailable or its latest
+   expiry exceeds the configured overlap. New responses use only the new current
+   key; exact replays continue to use the recorded KID.
+4. After the cutoff, allow the bounded shred worker to clear expired ciphertext,
+   remove all previous-key settings, and securely retire the old file. Hashed
+   operation tombstones remain permanently and an expired key returns the typed
+   replay-expired conflict without changing publication state.
+
+A rollback image must contain every response key needed by its still-unexpired
+rows. Never copy key material into URLs, logs, status/readiness responses,
+deployment bundles, checkpoints, OpenAPI, or retained test evidence. Fixture mode
+alone uses the exact deterministic fixture-only publication key; it is rejected in
+live mode.
 
 At every provider transition exactly one `.yml`/`.yaml` file is visible in
 `deployment-routing`. Once the durable journal exists, an armed error handler

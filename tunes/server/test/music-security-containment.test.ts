@@ -30,6 +30,16 @@ vi.mock("../services/musicReconciliationSuspensionListener", () => ({
   startMusicReconciliationSuspensionListener: vi.fn(async () => ({ stop: vi.fn(async () => undefined) })),
 }));
 
+vi.mock("../repositories/musicPublicationOperationRepository", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../repositories/musicPublicationOperationRepository")>();
+  return {
+    ...actual,
+    MusicPublicationOperationRepository: class extends actual.MusicPublicationOperationRepository {
+      override async verifyReplayReadiness(): Promise<void> {}
+    },
+  };
+});
+
 const { createValidatedApp } = await import("../config/music-startup");
 const { storage } = await import("../storage");
 const { resetContainmentLimiters } = await import("../security-containment");

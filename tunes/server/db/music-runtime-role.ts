@@ -13,6 +13,7 @@ const expectedRuntimeTables = [
   "music_credential_revocation_operations",
   "music_identity_lifecycle_operations",
   "music_identity_tombstones",
+  "music_publication_operations",
   "music_schema_migrations",
   "page_contents",
   "playback_states",
@@ -68,6 +69,7 @@ const expectedRuntimeFunctions = [
   "enforce_music_identity_immutability()",
   "enforce_music_identity_insert()",
   "enforce_music_lifecycle_operation_state()",
+  "enforce_music_publication_operation_immutability()",
   "enforce_music_tombstone_immutability()",
   "enforce_music_tombstone_insert()",
   "finalize_music_identity_deletion(integer,text,text)",
@@ -508,6 +510,9 @@ export async function provisionMusicRuntimeLogin(
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON music_credential_revocation_operations FROM ${capabilityRole}`);
     await client.query(`GRANT SELECT,INSERT ON music_credential_revocation_operations TO ${capabilityRole}`);
+    await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON music_publication_operations FROM ${capabilityRole}`);
+    await client.query(`GRANT SELECT,INSERT,UPDATE ON music_publication_operations TO ${capabilityRole}`);
     await client.query(`REVOKE ALL PRIVILEGES ON FUNCTION provision_music_runtime_login(name,text) FROM ${capabilityRole}`);
     await client.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM ${publicPrincipal}`);
     await client.query("COMMIT");
@@ -578,6 +583,7 @@ async function assertMusicRuntimeDirectPrivilegeBoundary(
     "TRUNCATE TABLE users",
     "UPDATE music_credential_revocation_operations SET reason=reason WHERE false",
     "DELETE FROM music_credential_revocation_operations WHERE false",
+    "DELETE FROM music_publication_operations WHERE false",
     "UPDATE music_schema_migrations SET checksum=checksum WHERE false",
     "DELETE FROM music_schema_migrations WHERE false",
     "INSERT INTO music_schema_migrations(id,checksum,schema_checksum) VALUES ('runtime_attestation_probe',repeat('0',64),repeat('0',64))",
@@ -615,6 +621,8 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
       ? [true, false, false, false]
       : row.object_name === "music_credential_revocation_operations"
         ? [true, true, false, false]
+        : row.object_name === "music_publication_operations"
+          ? [true, true, true, false]
         : [true, true, true, true];
     return JSON.stringify([row.can_select,row.can_insert,row.can_update,row.can_delete]) !== JSON.stringify(expected)
       || row.can_truncate || row.can_references || row.can_trigger;

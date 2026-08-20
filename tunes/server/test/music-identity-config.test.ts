@@ -29,10 +29,13 @@ const secretRoot = mkdtempSync(join(tmpdir(), "music-key-config-"));
 const externalSecretRoot = mkdtempSync(join(tmpdir(), "music-key-external-"));
 const validCurrentPath = join(secretRoot, "current");
 const validProofPath = join(secretRoot, "lifecycle-proof");
+const validPublicationPath = join(secretRoot, "publication-current");
 writeFileSync(validCurrentPath, Buffer.alloc(32, 0x51).toString("base64url"), { mode: 0o600 });
 writeFileSync(validProofPath, "dedicated-read-only-proof-token", { mode: 0o600 });
+writeFileSync(validPublicationPath, Buffer.alloc(32, 0x52).toString("base64url"), { mode: 0o600 });
 chmodSync(validCurrentPath, 0o600);
 chmodSync(validProofPath, 0o600);
+chmodSync(validPublicationPath, 0o600);
 
 afterAll(() => {
   rmSync(secretRoot, { recursive: true, force: true });
@@ -63,6 +66,8 @@ const liveBase = {
   MUSIC_IDENTITY_RATE_MAX_ENTRIES: "10000",
   MUSIC_TOKEN_CURRENT_KID: "music-current-2026-08",
   MUSIC_TOKEN_CURRENT_SECRET_FILE: validCurrentPath,
+  MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "publication-current-2026-08",
+  MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: validPublicationPath,
   MUSIC_TOKEN_LIFETIME_SECONDS: "600",
   MUSIC_TOKEN_CLOCK_SKEW_SECONDS: "15",
 } as const;
@@ -70,6 +75,86 @@ const liveBase = {
 const publicResolver: MusicIdentityAddressResolver = vi.fn(async () => ["8.8.8.8", "2606:4700:4700::1111"]);
 
 describe("central Music identity startup configuration", () => {
+  it("loads one dedicated 256-bit publication-response key with exact 24-hour retention", async () => {
+    const resolved = await resolveMusicIdentityRuntimeConfig(liveBase, { resolveAddresses: publicResolver });
+    expect(resolved.publicationResponse).toEqual({
+      current: { kid: "publication-current-2026-08", key: Buffer.alloc(32, 0x52) },
+      retentionSeconds: 86_400,
+    });
+  });
+
+  it("allows an all-or-none previous publication key only through its bounded UTC replay deadline", async () => {
+    const now = Date.parse("2026-08-21T00:00:00.000Z");
+    const previousPath = join(secretRoot, "publication-previous");
+    writeFileSync(previousPath, Buffer.alloc(32, 0x53).toString("base64url"), { mode: 0o600 });
+    chmodSync(previousPath, 0o600);
+    const acceptUntil = new Date(now + 86_400_000).toISOString();
+    const resolved = await resolveMusicIdentityRuntimeConfig({
+      ...liveBase,
+      MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KID: "publication-previous-2026-08",
+      MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY_FILE: previousPath,
+      MUSIC_PUBLICATION_RESPONSE_PREVIOUS_ACCEPT_UNTIL: acceptUntil,
+    }, { resolveAddresses: publicResolver, now: () => now });
+    expect(resolved.publicationResponse.previous).toEqual({
+      kid: "publication-previous-2026-08", key: Buffer.alloc(32, 0x53), acceptUntil: now + 86_400_000,
+    });
+  });
+
+  it.each([
+    ["missing current kid", { MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: undefined }],
+    ["missing current key file", { MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: undefined }],
+    ["inline live key", { MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: undefined, MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY: Buffer.alloc(32, 0x52).toString("base64url") }],
+    ["partial previous key", { MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KID: "previous" }],
+    ["duplicate key IDs", {
+      MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KID: "publication-current-2026-08",
+      MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY_FILE: validPublicationPath,
+      MUSIC_PUBLICATION_RESPONSE_PREVIOUS_ACCEPT_UNTIL: new Date(Date.now() + 86_400_000).toISOString(),
+    }],
+    ["native token file alias", { MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: validCurrentPath }],
+  ])("rejects %s publication response authority before route registration", async (_label, overrides) => {
+    await expect(resolveMusicIdentityRuntimeConfig({ ...liveBase, ...overrides }, { resolveAddresses: publicResolver }))
+      .rejects.toThrow(/publication|response|key|file|dedicated|alias/i);
+  });
+
+  it("rejects publication key content shared with any configured authority even through another file", async () => {
+    const duplicatePath = join(secretRoot, "publication-duplicate-content");
+    writeFileSync(duplicatePath, Buffer.alloc(32, 0x51).toString("base64url"), { mode: 0o600 });
+    chmodSync(duplicatePath, 0o600);
+    await expect(resolveMusicIdentityRuntimeConfig({
+      ...liveBase,
+      MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: duplicatePath,
+    }, { resolveAddresses: publicResolver })).rejects.toThrow(/publication|distinct|dedicated|key material/i);
+  });
+
+  it("permits only the exact separate deterministic publication key in fixture mode", async () => {
+    const fixtureBase = {
+      ...liveBase,
+      NODE_ENV: "test",
+      MUSIC_MODE: "fixture",
+      STRAPI_URL: "http://strapi:1337",
+      MUSIC_FIXTURE_STRAPI_ORIGIN: "http://strapi:1337",
+      TRUST_PROXY_HOPS: "0",
+      MUSIC_TRUSTED_PROXY_IP: undefined,
+      STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: undefined,
+      STRAPI_ACCESS_TOKEN: "fixture-read-only-token",
+      STRAPI_LIFECYCLE_PROOF_TOKEN: undefined,
+      MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: undefined,
+      MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "fixture-publication-v1",
+      MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY: "fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI",
+    };
+    await expect(resolveMusicIdentityRuntimeConfig(fixtureBase)).resolves.toMatchObject({
+      publicationResponse: { current: { kid: "fixture-publication-v1" }, retentionSeconds: 86_400 },
+    });
+    await expect(resolveMusicIdentityRuntimeConfig({
+      ...fixtureBase,
+      MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY: Buffer.alloc(32, 0x71).toString("base64url"),
+    })).rejects.toThrow(/fixture publication|deterministic|key/i);
+    await expect(resolveMusicIdentityRuntimeConfig({
+      ...fixtureBase,
+      MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY: Buffer.alloc(32, 0x72).toString("base64url"),
+    })).rejects.toThrow(/fixture publication|deterministic|key/i);
+  });
+
   it("requires a dedicated file-backed live lifecycle proof credential and rejects generic authority aliasing", async () => {
     // Break caught: the destructive worker starts with a generic write-capable Strapi token.
     const resolved = await resolveMusicIdentityRuntimeConfig(liveBase, { resolveAddresses: publicResolver });
@@ -152,10 +237,10 @@ describe("central Music identity startup configuration", () => {
     expect(live.isTrustedProxy("::ffff:172.31.250.2")).toBe(true);
     expect(live.isTrustedProxy("172.31.250.3")).toBe(false);
     expect(live.pinnedAddresses).toEqual(["8.8.8.8", "2606:4700:4700::1111"]);
-    expect(live.lookup("cms.example.com", { all: true })).resolves.toEqual([
+    await expect(live.lookup("cms.example.com", { all: true })).resolves.toEqual([
       { address: "8.8.8.8", family: 4 }, { address: "2606:4700:4700::1111", family: 6 },
     ]);
-    expect(live.lookup("cms.example.com", { family: 6 })).resolves.toEqual({
+    await expect(live.lookup("cms.example.com", { family: 6 })).resolves.toEqual({
       address: "2606:4700:4700::1111", family: 6,
     });
     await expect(live.fetchImpl("https://other.example.com/api/users/me")).rejects.toThrow(/unpinned/i);
@@ -172,6 +257,9 @@ describe("central Music identity startup configuration", () => {
       STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: undefined,
       STRAPI_ACCESS_TOKEN: "fixture-read-only-token",
       STRAPI_LIFECYCLE_PROOF_TOKEN: undefined,
+      MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: undefined,
+      MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "fixture-publication-v1",
+      MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY: "fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI",
     }, { resolveAddresses: vi.fn(async () => { throw new Error("fixture DNS must not run"); }) });
     expect(fixture.strapiOrigin).toBe("http://strapi:1337");
     expect(fixture.lifecycleProofToken).toBe("fixture-read-only-token");
@@ -186,6 +274,9 @@ describe("central Music identity startup configuration", () => {
       STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: undefined,
       STRAPI_ACCESS_TOKEN: "fixture-read-only-token",
       STRAPI_LIFECYCLE_PROOF_TOKEN: undefined,
+      MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: undefined,
+      MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "fixture-publication-v1",
+      MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY: "fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI",
     })).rejects.toThrow(/fixture origin/i);
   });
 

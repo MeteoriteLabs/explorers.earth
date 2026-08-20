@@ -2,7 +2,7 @@
 
 Status: Accepted
 Date: 2026-08-13
-Amended: 2026-08-20 (Task 9 entitlement UX narrowed to the existing authoritative contract)
+Amended: 2026-08-21 (Task 9 durable publication-command authority)
 Scope: Explorers embedded Music identity, ownership, and entitlement
 
 ## Decision
@@ -38,6 +38,33 @@ Those capabilities are derived and enforced server-side from the authoritative e
 | `revoked` | Premium mutation authority has been removed. Core Music remains included. This is not identity suspension, a whole-Music pause, a quota state, or read-only core access. |
 
 The Task 9 page may show a nonblocking checking status for `unknown`; the other four values do not create a whole-page entitlement message. Quota/reset/limit and core read-only UX require new authoritative fields in a future versioned API contract and, if persistence changes, a separately reviewed migration. They are not inferred from the five existing values.
+
+### Publication command idempotency
+
+Changing publication mode is one owner-derived server transaction. The immutable
+numeric Music owner and a domain-separated SHA-256 hash of the client idempotency
+key identify an append-only operation; the exact requested mode is bound by a
+separate request fingerprint. The owner advisory lock and the database primary key
+serialize multiple application instances. A matching retry within exactly 24 hours
+returns the byte-equivalent logical response without rotating publication authority;
+the same key with a different request fails with a conflict and makes no change.
+
+For unlisted mode the server generates a random 256-bit capability. The canonical
+guest authority remains only its hash on the owner row. The response needed for a
+lost-response replay is encrypted in the same transaction with AES-256-GCM; its AAD
+binds the response schema version, owner, operation hash, request fingerprint, and
+key ID. Plaintext capabilities and raw idempotency keys are never persisted. After
+24 hours the response is unavailable, the encrypted fields are shredded, and the
+immutable operation tombstone permanently prevents key reuse or another rotation.
+Owner deletion does not delete this tombstone.
+
+Live response-encryption keys come only from dedicated secure files. The current
+key is used for new writes; one previous key may be accepted only through an exact
+UTC deadline covering every still-live response it must decrypt. Key IDs, file
+identity, and key content must be pairwise distinct from token, lifecycle, access,
+and reconciliation authorities. Startup readiness fails closed when an unexpired
+row requires an unavailable key. Fixture mode alone uses the checked-in,
+deterministic, fixture-only publication key.
 
 ## Consequences
 

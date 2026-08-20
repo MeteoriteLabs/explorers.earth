@@ -4,7 +4,6 @@ import { MusicIdentityError, musicErrorEnvelope } from "../../shared/musicError"
 import { createMusicPrincipalMiddleware, MusicPrincipalError, type MusicPrincipal } from "../middleware/musicPrincipal";
 import { consumeContainmentLimit, safeMusicRequestError } from "../security-containment";
 import {
-  createGuestCapability,
   entitlementDecision,
   hashGuestCapability,
   MUSIC_ENTITLEMENT_MAX_AGE_SECONDS,
@@ -31,6 +30,10 @@ interface CanonicalMusicRepository {
   removeSongs(ownerId: number, songIds: number[]): Promise<number>;
   clearHistory(ownerId: number): Promise<number>;
   setPublicationMode(ownerId: number, mode: "private" | "unlisted" | "public", capabilityHash?: string): Promise<{ mode: "private" | "unlisted" | "public"; publicSlug: string } | undefined>;
+  executePublicationCommand(ownerId: number, idempotencyKey: string, mode: "private" | "unlisted" | "public"): Promise<
+    | { status: "completed"; replayed: boolean; response: { version: "music-publication/v1"; publication: { mode: "private" | "unlisted" | "public"; publicSlug: string }; capability?: string } }
+    | { status: "conflict" | "expired" | "not_found" }
+  >;
   rotateGuestCapability(ownerId: number, capabilityHash: string): Promise<unknown>;
   revokeGuestCapability(ownerId: number): Promise<void>;
   setDiscoverable?(ownerId: number, discoverable: boolean): Promise<void>;
@@ -88,11 +91,6 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
   };
   const owner = (...handlers: RequestHandler[]) => [identify, principal, ownerInputGuard, ...handlers];
   const mutation = (...handlers: RequestHandler[]) => owner(originGuard, ...handlers);
-  const publicationCommands = new Map<string, {
-    mode: "private" | "unlisted" | "public";
-    result: Promise<{ version: "music-publication/v1"; publication: { mode: "private" | "unlisted" | "public"; publicSlug: string }; capability?: string }>;
-  }>();
-
   app.get("/api/playlists", ...owner(async (req, res, next) => {
     try { res.status(200).json((await dependencies.repository.listPlaylists(req.musicPrincipal!.musicUserId)).map(playlistDto)); } catch (error) { next(error); }
   }));
@@ -262,38 +260,21 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
           || !idempotencyKey || !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/.test(idempotencyKey)) {
         throw new MusicIdentityError("REQUEST_INVALID", 400, "The publication command is invalid.", "none", false);
       }
-      const ownerId = req.musicPrincipal!.musicUserId;
-      const cacheKey = `${ownerId}:${idempotencyKey}`;
-      const existing = publicationCommands.get(cacheKey);
-      if (existing && existing.mode !== mode) {
-        throw new MusicIdentityError("IDEMPOTENCY_CONFLICT", 409, "The idempotency key was already used for another Music command.", "none", false);
+      const result = await dependencies.repository.executePublicationCommand(
+        req.musicPrincipal!.musicUserId,
+        idempotencyKey,
+        mode,
+      );
+      if (result.status !== "completed") {
+        if (result.status === "conflict") {
+          throw new MusicIdentityError("IDEMPOTENCY_CONFLICT", 409, "The idempotency key was already used for another Music command.", "none", false);
+        }
+        if (result.status === "expired") {
+          throw new MusicIdentityError("PUBLICATION_REPLAY_EXPIRED", 409, "The publication replay window has expired.", "none", false);
+        }
+        throw notFound();
       }
-      if (existing) {
-        res.status(200).json(await existing.result);
-        return;
-      }
-      const capability = mode === "unlisted" ? createGuestCapability() : undefined;
-      const result = (async () => {
-        const publication = await dependencies.repository.setPublicationMode(
-          ownerId,
-          mode,
-          capability ? hashGuestCapability(capability) : undefined,
-        );
-        if (!publication) throw notFound();
-        return {
-          version: "music-publication/v1" as const,
-          publication,
-          ...(capability ? { capability } : {}),
-        };
-      })();
-      publicationCommands.set(cacheKey, { mode, result });
-      if (publicationCommands.size > 256) publicationCommands.delete(publicationCommands.keys().next().value!);
-      try {
-        res.status(200).json(await result);
-      } catch (error) {
-        publicationCommands.delete(cacheKey);
-        throw error;
-      }
+      res.status(200).json(result.response);
     } catch (error) { next(error); }
   }));
 

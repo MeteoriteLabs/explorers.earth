@@ -94,6 +94,10 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     expect(MUSIC_OPENAPI_DOCUMENT.paths).not.toHaveProperty("/api/music/guest-capability/revoke");
     expect(MUSIC_OPENAPI_DOCUMENT.paths["/api/music/publication"].post.parameters)
       .toContainEqual(expect.objectContaining({ name: "Idempotency-Key", in: "header", required: true }));
+    const publicationContract = JSON.stringify(MUSIC_OPENAPI_DOCUMENT.paths["/api/music/publication"].post);
+    expect(publicationContract).toContain("PUBLICATION_REPLAY_EXPIRED");
+    expect(publicationContract).toMatch(/24 hours|86400/i);
+    expect(publicationContract).not.toMatch(/cipher|nonce|tag|response.key|aes|capability.hash/i);
     expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.paths["/api/playlist/{guestUrl}"].get).toLowerCase()).not.toContain("zero-visible resources share the same safe 404");
   });
 
@@ -141,6 +145,11 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       updateSongPosition: async () => queueRow, removeSong: async () => true, removeSongs: async () => 1, clearHistory: async () => 1,
       rotateGuestCapability: async () => ({}), revokeGuestCapability: async () => undefined, setDiscoverable: async () => undefined,
       setPublicationMode: async (_owner: number, mode: "private" | "unlisted" | "public") => ({ mode, publicSlug: "public-owner" }),
+      executePublicationCommand: async (_owner: number, _key: string, mode: "private" | "unlisted" | "public") => ({
+        status: "completed" as const,
+        replayed: false,
+        response: { version: "music-publication/v1" as const, publication: { mode, publicSlug: "public-owner" }, ...(mode === "unlisted" ? { capability: "C".repeat(43) } : {}) },
+      }),
       resolveEntitlement: async () => ({ state: "included" as const, sourceUpdatedAt: addedAt }),
       resolveGuestResource: async () => ({ state: "public", noindex: false, playlist: publicPlaylist }),
       resolveGuestSocketAuthority: async () => ({ musicUserId: 11, active: true as const, allowSongRequests: true }),

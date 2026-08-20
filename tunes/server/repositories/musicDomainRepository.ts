@@ -1,5 +1,7 @@
 import type { Pool, PoolClient } from "pg";
 import { hashGuestCapability, verifyGuestCapability } from "../policies/musicSurfacePolicy";
+import { MusicPublicationOperationRepository } from "./musicPublicationOperationRepository";
+import type { MusicPublicationMode } from "../services/musicPublicationResponseCrypto";
 
 type QueryPool = Pick<Pool, "query" | "connect">;
 
@@ -8,7 +10,15 @@ const SAVED_PLAYLIST_LOCK = 0x4d53;
 const PUBLICATION_LOCK = 0x4d50;
 
 export class MusicDomainRepository {
-  constructor(private readonly pool: QueryPool) {}
+  constructor(
+    private readonly pool: QueryPool,
+    private readonly publicationOperations?: MusicPublicationOperationRepository,
+  ) {}
+
+  async executePublicationCommand(musicUserId: number, idempotencyKey: string, mode: MusicPublicationMode) {
+    if (!this.publicationOperations) throw new Error("Music publication response authority is unavailable.");
+    return this.publicationOperations.execute(musicUserId, idempotencyKey, mode);
+  }
 
   private async withAdvisoryLock<T>(namespace: number, resourceId: number, operation: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();

@@ -228,8 +228,8 @@ const paths = {
       response: ref("PublicationCommandResponse"),
       request: body(ref("PublicationCommandInput"), "Private, unlisted, or public mode"),
       parameters: [idempotencyKeyParameter],
-      errors: { "409": failure("The identity is pending deletion or the idempotency key conflicts.", ["IDENTITY_PENDING_DELETION", "IDEMPOTENCY_CONFLICT"]) },
-      description: "One owner-predicated transaction changes discovery and rotates or revokes capability authority. Only an unlisted success returns one in-memory capability; no capability material appears in the owner dashboard.",
+      errors: { "409": failure("The identity is pending deletion, the key conflicts, or its replay window expired.", ["IDENTITY_PENDING_DELETION", "IDEMPOTENCY_CONFLICT", "PUBLICATION_REPLAY_EXPIRED"]) },
+      description: "One owner-predicated transaction changes discovery and rotates or revokes capability authority. Same-key same-request replay returns the exact response for 24 hours; after that the key is permanently retired without another mutation. Only an unlisted success returns one in-memory capability; no capability material appears in the owner dashboard.",
     }),
   },
   "/api/music/paid/import": {

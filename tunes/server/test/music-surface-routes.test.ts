@@ -5,6 +5,7 @@ import { setupCanonicalMusicRoutes } from "../routes/musicSurfaceRoutes";
 
 function appFor(overrides: Record<string, unknown> = {}, routeOverrides: Record<string, unknown> = {}) {
   const calls: unknown[][] = [];
+  const publicationOperations = new Map<string, { mode: "private" | "unlisted" | "public"; response: unknown }>();
   const repository = {
     listPlaylists: vi.fn(async (owner: number) => { calls.push(["list", owner]); return []; }),
     getPlaylist: vi.fn(async (owner: number, id: number) => { calls.push(["get", owner, id]); return id === 9 ? { id: 9, user_id: owner, name: "mine" } : undefined; }),
@@ -27,6 +28,19 @@ function appFor(overrides: Record<string, unknown> = {}, routeOverrides: Record<
     revokeGuestCapability: vi.fn(async () => undefined),
     setDiscoverable: vi.fn(async () => undefined),
     setPublicationMode: vi.fn(async (_owner: number, mode: "private" | "unlisted" | "public") => ({ mode, publicSlug: "private-slug" })),
+    executePublicationCommand: vi.fn(async (owner: number, key: string, mode: "private" | "unlisted" | "public") => {
+      const cacheKey = `${owner}:${key}`;
+      const existing = publicationOperations.get(cacheKey);
+      if (existing && existing.mode !== mode) return { status: "conflict" as const };
+      if (existing) return { status: "completed" as const, replayed: true, response: existing.response };
+      const response = {
+        version: "music-publication/v1" as const,
+        publication: { mode, publicSlug: "private-slug" },
+        ...(mode === "unlisted" ? { capability: "C".repeat(43) } : {}),
+      };
+      publicationOperations.set(cacheKey, { mode, response });
+      return { status: "completed" as const, replayed: false, response };
+    }),
     resolveEntitlement: vi.fn(async () => ({ state: "entitled", sourceUpdatedAt: new Date("2026-08-14T09:55:00.000Z") })),
     resolveGuestResource: vi.fn(async () => undefined),
     resolveGuestSocketAuthority: vi.fn(async (capability: string) => capability === "G".repeat(43)
@@ -239,14 +253,12 @@ describe("canonical Music REST surfaces", () => {
       .set("Idempotency-Key", "publication-command-1").send({ mode: "unlisted" });
     expect(first.status).toBe(200);
     expect(first.body).toMatchObject({ version: "music-publication/v1", publication: { mode: "unlisted", publicSlug: "private-slug" } });
-    expect(first.body.capability).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(first.body.capability).toBe("C".repeat(43));
     expect(replay.body).toEqual(first.body);
-    expect(repository.setPublicationMode).toHaveBeenCalledTimes(1);
-    expect(repository.setPublicationMode.mock.calls[0][0]).toBe(11);
-    expect(repository.setPublicationMode.mock.calls[0][1]).toBe("unlisted");
-    const persisted = repository.setPublicationMode.mock.calls[0][2];
-    expect(persisted).toMatch(/^[a-f0-9]{64}$/);
-    expect(persisted).not.toBe(first.body.capability);
+    expect(repository.executePublicationCommand).toHaveBeenCalledTimes(2);
+    expect(repository.executePublicationCommand).toHaveBeenNthCalledWith(1, 11, "publication-command-1", "unlisted");
+    expect(repository.executePublicationCommand).toHaveBeenNthCalledWith(2, 11, "publication-command-1", "unlisted");
+    expect(repository.setPublicationMode).not.toHaveBeenCalled();
     expect(repository.rotateGuestCapability).not.toHaveBeenCalled();
     expect(repository.revokeGuestCapability).not.toHaveBeenCalled();
     expect(repository.setDiscoverable).not.toHaveBeenCalled();
@@ -270,7 +282,19 @@ describe("canonical Music REST surfaces", () => {
       .send({ mode: "private" });
     expect((await write("aaa.bbb.ccc")).status).toBe(200);
     expect((await write("ddd.eee.fff")).status).toBe(200);
-    expect(repository.setPublicationMode.mock.calls.map((call: unknown[]) => call[0])).toEqual([11, 22]);
+    expect(repository.executePublicationCommand.mock.calls.map((call: unknown[]) => call[0])).toEqual([11, 22]);
+  });
+
+  it("maps an expired durable replay to one typed no-mutation response", async () => {
+    const executePublicationCommand = vi.fn(async () => ({ status: "expired" as const }));
+    const { app, repository } = appFor({ executePublicationCommand });
+    const response = await request(app).post("/api/music/publication")
+      .set({ Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example", "Idempotency-Key": "expired-command-key" })
+      .send({ mode: "unlisted" });
+    expect(response.status).toBe(409);
+    expect(response.body.error).toMatchObject({ code: "PUBLICATION_REPLAY_EXPIRED", retryable: false });
+    expect(executePublicationCommand).toHaveBeenCalledWith(11, "expired-command-key", "unlisted");
+    expect(repository.setPublicationMode).not.toHaveBeenCalled();
   });
 
   it("marks unlisted capability reads noindex and returns a distinct public-only 429", async () => {

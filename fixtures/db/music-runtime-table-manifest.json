@@ -2,9 +2,9 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0010_least_privilege_runtime_role",
-    "files": ["0001_runtime_baseline.sql", "0002_identity_lifecycle.sql", "0003_identity_lifecycle_hardening.sql", "0004_identity_delete_saga.sql", "0005_resource_bound_deletion_history.sql", "0006_numeric_identity_lock.sql", "0007_identity_provider_snapshot.sql", "0008_credential_revocation_operations.sql", "0009_credential_revocation_history_immutability.sql", "0010_least_privilege_runtime_role.sql"],
-    "controlTables": ["music_schema_migrations", "music_identity_tombstones", "music_identity_lifecycle_operations", "music_credential_revocation_operations"]
+    "expectedId": "0011_durable_publication_idempotency",
+    "files": ["0001_runtime_baseline.sql", "0002_identity_lifecycle.sql", "0003_identity_lifecycle_hardening.sql", "0004_identity_delete_saga.sql", "0005_resource_bound_deletion_history.sql", "0006_numeric_identity_lock.sql", "0007_identity_provider_snapshot.sql", "0008_credential_revocation_operations.sql", "0009_credential_revocation_history_immutability.sql", "0010_least_privilege_runtime_role.sql", "0011_durable_publication_idempotency.sql"],
+    "controlTables": ["music_schema_migrations", "music_identity_tombstones", "music_identity_lifecycle_operations", "music_credential_revocation_operations", "music_publication_operations"]
   },
   "generatedFrom": ["tunes/shared/schema.ts", "tunes/server/**/*.ts"],
   "tables": [

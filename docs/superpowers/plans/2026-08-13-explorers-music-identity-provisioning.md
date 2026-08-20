@@ -509,6 +509,7 @@ The detailed engineering test artifact is stored under the gstack project direct
 - [ ] Use the exact design state/copy table from Phase 2. Place one inline status below the Music title. Healthy projection and background profile convergence are silent.
 - [ ] Preserve the Explorer shell and normal navigation during Music outages. Never undo completed onboarding because Music is unavailable.
 - [ ] Implement private, unlisted, and public/discoverable controls and the unified public 404 behavior.
+- [ ] Make every publication-mode change one durable owner-derived idempotent command. Migration `0011` stores only immutable owner/key hashes, the exact request fingerprint, a 24-hour response expiry, and an AES-256-GCM response envelope. Same-key/same-request retries replay exactly across processes and restarts; conflicting or expired replays make no mutation, and expired ciphertext is shredded while the tombstone permanently prevents key reuse.
 - [ ] Fix Apollo entity normalization by querying immutable IDs/documentIds or supplying an explicit safe merge policy; remove the current missing-ID warning.
 - [ ] Converge username, email, profile picture, and Account name updates through immutable IDs. Never choose accounts[0] independently in the browser.
 - [ ] Implement lifecycle pending/reload/retry behavior and remove two-backend language.
@@ -521,6 +522,7 @@ The detailed engineering test artifact is stored under the gstack project direct
 - [ ] Accessibility tests cover aria-live, alert behavior, focus, dialogs, semantic tabs, keyboard reorder, 44px targets, contrast, and reduced motion.
 - [ ] Responsive browser tests run at 320/375/640/768/1024 widths.
 - [ ] Server, OpenAPI, client, and page tests cover every retained `unknown | included | eligible | entitled | revoked` value, reject unsupported values and impossible authority combinations, and prove lifecycle/auth/onboarding/conflict precedence still wins. Quota/reset/limit and core read-only UX are deferred to a future versioned contract and any separately reviewed migration it requires.
+- [ ] Real PostgreSQL tests cover two repository instances, restart/eviction, same-key concurrency, lost response, rollback after each write, expiry and shredding, owner deletion, current/previous response-key rotation, and startup refusal when an unexpired replay key is unavailable. Database and log scans contain no raw idempotency key or plaintext guest capability.
 
 **Commit:** feat(music): converge Explorers identity and Music UX
 
@@ -1107,7 +1109,7 @@ No mockups were generated. The existing UI direction is retained and the ASCII/s
 - [ ] **DES-T3 (P1, human: ~1d / CC: ~2h)** — sharing/privacy — Implement private, unlisted, and public/discoverable as distinct modes.
   - Surfaced by: Pass 2 — capability links cannot be indexed public routes.
   - Files: public Music route, SEO/sitemap, visibility controls, server policy.
-  - Verify: noindex/sitemap/404 disclosure and publish/unpublish E2E.
+  - Verify: noindex/sitemap/404 disclosure, durable same-command replay after a lost response, conflict/expiry without mutation, and publish/unpublish E2E.
 - [ ] **DES-T4 (P1, human: ~1d / CC: ~2h)** — lifecycle — Replace backend-specific compensation UI with persistent pending-deletion UX.
   - Surfaced by: Passes 2/3 — closing/reloading must preserve one-system recovery.
   - Files: Settings lifecycle UI, lifecycle status API/query, confirmation components.

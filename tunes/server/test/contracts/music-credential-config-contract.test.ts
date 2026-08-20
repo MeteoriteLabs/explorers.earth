@@ -28,6 +28,8 @@ function productionModel(): { services: Record<string, ComposeService> } {
       MUSIC_GATE_ATTESTATION_KEY: "gate-secret-at-least-32-characters",
       MUSIC_TOKEN_CURRENT_KID: "production-current-2026-08",
       MUSIC_TOKEN_SECRET_DIRECTORY_HOST: "/opt/explorers/music-token-secrets",
+      MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "production-publication-2026-08",
+      MUSIC_PUBLICATION_RESPONSE_KEY_DIRECTORY_HOST: "/opt/explorers/music-publication-response",
       EXPLORERS_IMAGE: `ghcr.io/example/explorers@${digest}`,
       TUNES_BLUE_IMAGE: `ghcr.io/example/tunes@${digest}`, TUNES_BLUE_DIGEST: digest, TUNES_BLUE_COMMIT: "a".repeat(40),
       TUNES_GREEN_IMAGE: `ghcr.io/example/tunes@${digest}`, TUNES_GREEN_DIGEST: digest, TUNES_GREEN_COMMIT: "a".repeat(40),
@@ -46,13 +48,18 @@ describe("C5 credential configuration contracts", () => {
       MUSIC_TOKEN_CURRENT_SECRET_FILE: "/run/secrets/music-token/current",
       MUSIC_TOKEN_PREVIOUS_SECRET_FILE: "",
       MUSIC_TOKEN_LIFETIME_SECONDS: "600",
+      MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "production-publication-2026-08",
+      MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: "/run/secrets/music-publication-response/current",
+      MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY_FILE: "",
     });
     expect(runtime.volumes).toEqual(expect.arrayContaining([
       expect.objectContaining({ source: "/opt/explorers/music-token-secrets", target: "/run/secrets/music-token", read_only: true }),
+      expect.objectContaining({ source: "/opt/explorers/music-publication-response", target: "/run/secrets/music-publication-response", read_only: true }),
     ]));
     const rendered = JSON.stringify(model);
     expect(rendered).not.toContain(fixtureSecret);
     expect(runtime.environment).not.toHaveProperty("MUSIC_TOKEN_CURRENT_SECRET");
+    expect(runtime.environment).not.toHaveProperty("MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY");
   });
 
   it("renders separate file-backed migrator/runtime authority without any password value", () => {

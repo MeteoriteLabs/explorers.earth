@@ -20,6 +20,8 @@ import type { MusicIdentityRuntimeConfig } from "../config/music-identity-config
 import { MusicTokenService } from "../services/musicTokenService";
 import { createMusicSocketCredentialVerifier, MusicPrincipalService } from "../middleware/musicPrincipal";
 import { MusicDomainRepository } from "../repositories/musicDomainRepository";
+import { MusicPublicationOperationRepository } from "../repositories/musicPublicationOperationRepository";
+import { MusicPublicationResponseCipher } from "../services/musicPublicationResponseCrypto";
 import { createYouTubeReadService } from "../services/youtubeReadService";
 import { setupCanonicalMusicRoutes, setupMusicSurfaceBoundary } from "./musicSurfaceRoutes";
 import { setupMusicOpenApiRoutes } from "./musicOpenApiRoutes";
@@ -99,7 +101,12 @@ export async function registerRoutes(
       maxEntries: musicConfig.rateMaxEntries,
     }),
   });
-  const musicDomain = new MusicDomainRepository(pool);
+  const publicationOperations = new MusicPublicationOperationRepository(
+    pool,
+    new MusicPublicationResponseCipher(musicConfig.publicationResponse),
+  );
+  await publicationOperations.verifyReplayReadiness();
+  const musicDomain = new MusicDomainRepository(pool, publicationOperations);
   const canonicalDependencies = {
     repository: musicDomain,
     resolvePrincipal: (token: string) => musicPrincipals.resolve(token),
@@ -158,8 +165,15 @@ export async function registerRoutes(
       if (result.claimed > 0) console.info("music_lifecycle_worker", result);
     },
   });
+  const publicationShredTimer = setInterval(() => {
+    void publicationOperations.shredExpiredResponses(100).catch(() => {
+      console.error("music_publication_response_shred_failed");
+    });
+  }, 60 * 60 * 1_000);
+  publicationShredTimer.unref();
   server.once("close", () => {
     lifecycleWorker.stop();
+    clearInterval(publicationShredTimer);
     void suspensionListener.stop().catch(() => {
       console.error("music_reconciliation_suspension_listener_stop_failed");
     });

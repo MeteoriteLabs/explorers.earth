@@ -29,12 +29,15 @@ const signingRoot = mkdtempSync(resolve(tmpdir(), "music-startup-key-"));
 const signingPath = resolve(signingRoot, "current");
 const runtimeDatabasePasswordPath = resolve(signingRoot, "database-runtime");
 const lifecycleProofPath = resolve(signingRoot, "lifecycle-proof");
+const publicationResponsePath = resolve(signingRoot, "publication-response");
 writeFileSync(signingPath, Buffer.alloc(32, 0x61).toString("base64url"), { mode: 0o600 });
 writeFileSync(runtimeDatabasePasswordPath, Buffer.alloc(32, 0x62).toString("base64url"), { mode: 0o600 });
 writeFileSync(lifecycleProofPath, "dedicated-read-only-lifecycle-proof-token", { mode: 0o600 });
+writeFileSync(publicationResponsePath, Buffer.alloc(32, 0x63).toString("base64url"), { mode: 0o600 });
 chmodSync(signingPath, 0o600);
 chmodSync(runtimeDatabasePasswordPath, 0o600);
 chmodSync(lifecycleProofPath, 0o600);
+chmodSync(publicationResponsePath, 0o600);
 afterAll(() => rmSync(signingRoot, { recursive: true, force: true }));
 
 function withSigningFile(environment: Record<string, string>): Record<string, string> {
@@ -52,6 +55,10 @@ function withSigningFile(environment: Record<string, string>): Record<string, st
     MUSIC_DATABASE_PASSWORD_FILE: runtimeDatabasePasswordPath,
     STRAPI_LIFECYCLE_PROOF_TOKEN: fixture ? "fixture-read-only-token" : "",
     STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: fixture ? "" : lifecycleProofPath,
+    MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY: fixture
+      ? "fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI"
+      : "",
+    MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: fixture ? "" : publicationResponsePath,
   };
 }
 
@@ -83,6 +90,8 @@ function renderedProductionEnvironment(): Record<string, string> {
     MUSIC_GATE_ATTESTATION_KEY: "production-gate-key-at-least-32-characters",
     MUSIC_TOKEN_CURRENT_KID: "production-current",
     MUSIC_TOKEN_SECRET_DIRECTORY_HOST: "C:/fixture/music-token-secrets",
+    MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "production-publication-current",
+    MUSIC_PUBLICATION_RESPONSE_KEY_DIRECTORY_HOST: "C:/fixture/music-publication-response",
     EXPLORERS_IMAGE: `ghcr.io/example/explorers@${digestA}`,
     TUNES_BLUE_IMAGE: `ghcr.io/example/tunes@${digestA}`,
     TUNES_BLUE_DIGEST: digestA,

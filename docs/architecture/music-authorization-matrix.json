@@ -1168,6 +1168,17 @@
     },
     {
       "kind": "setInterval",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/routes/index.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setInterval",
       "lifecycle": "reactivation-token-cleanup",
       "source": "tunes/server/services/reactivation-service.ts",
       "decision": "internal-service",

@@ -168,7 +168,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
         MUSIC_DEPLOY_TEST_READINESS_FAILURE: options.candidateReadinessFailure ? "1" : "0",
         MUSIC_DEPLOY_TEST_GATE_COMMITTED_CRASH: options.gateCommittedCrash ? "1" : "0",
         MUSIC_DEPLOY_TEST_GATE_FAILURE: options.gateFailure ? "1" : "0",
-        MUSIC_DEPLOY_TEST_CURRENT_MARKER: options.expectedMarkerOverride ?? "0010_least_privilege_runtime_role",
+        MUSIC_DEPLOY_TEST_CURRENT_MARKER: options.expectedMarkerOverride ?? "0011_durable_publication_idempotency",
         MUSIC_DEPLOY_TEST_CURRENT_MARKER_OVERRIDE: options.expectedMarkerOverride ?? "",
         MUSIC_DEPLOY_TEST_READINESS_ATTEMPTS: options.candidateReadinessFailure ? "1" : "30",
         MUSIC_DEPLOY_TEST_REAL_NODE: shellPath(process.execPath),
@@ -338,7 +338,8 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     "0007_identity_provider_snapshot",
     "0008_credential_revocation_operations",
     "0009_credential_revocation_history_immutability",
-  ])("upgrades authenticated historical marker %s directly to production 0010", (historicalMarker) => {
+    "0010_least_privilege_runtime_role",
+  ])("upgrades authenticated historical marker %s directly to production 0011", (historicalMarker) => {
     if (historicalMarker === "containment-no-schema-change") seedLegacyAuthority();
     else seedHistoricalAuthority(historicalMarker);
     const historicalLedger = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8");
@@ -346,7 +347,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const interrupted = run("deploy", digest("b"), commit("b"), { failpoint: "after_epoch_before_gate" });
     expect(interrupted.status, interrupted.stderr).toBe(99);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0010_least_privilege_runtime_role\tpending\t");
+      .toContain("\t0011_durable_publication_idempotency\tpending\t");
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8")).toBe(historicalLedger);
 
     writeFileSync(eventLog, "");
@@ -359,7 +360,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(recovered.status, recovered.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").startsWith(historicalLedger)).toBe(true);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0010_least_privilege_runtime_role\tcurrent\t");
+      .toContain("\t0011_durable_publication_idempotency\tcurrent\t");
   }, 40_000);
 
   it.each([
@@ -419,8 +420,8 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
       ["deployment-state/music-schema-floor.tsv", "music-schema-floor-v2"],
       ["deployment-transactions/schema-epoch.tsv", "music-schema-epoch-v1"],
     ] as const) {
-      const payload = [schema, repository, digest("b"), commit("b"), "0010_least_privilege_runtime_role", "pending"].join("\t");
-      writeFileSync(join(root, relativePath), [schema, digest("b"), commit("b"), "0010_least_privilege_runtime_role", "pending",
+      const payload = [schema, repository, digest("b"), commit("b"), "0011_durable_publication_idempotency", "pending"].join("\t");
+      writeFileSync(join(root, relativePath), [schema, digest("b"), commit("b"), "0011_durable_publication_idempotency", "pending",
         createHmac("sha256", hmacSentinel).update(payload).digest("hex")].join("\t") + "\n");
     }
     writeFileSync(eventLog, "");
@@ -428,9 +429,9 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const result = run("deploy", digest("b"), commit("b"));
     expect(result.status, result.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0010_least_privilege_runtime_role\tcurrent\t");
+      .toContain("\t0011_durable_publication_idempotency\tcurrent\t");
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8"))
-      .toContain(`\t${digest("b")}\t${commit("b")}\t0010_least_privilege_runtime_role\t`);
+      .toContain(`\t${digest("b")}\t${commit("b")}\t0011_durable_publication_idempotency\t`);
   }, 20_000);
 
   it.each([
@@ -732,7 +733,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     // child process command line where another same-host process can read it.
     bootstrap();
     const row = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").trim().split("\t");
-    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0010_least_privilege_runtime_role", "GENESIS"].join("\t");
+    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0011_durable_publication_idempotency", "GENESIS"].join("\t");
     expect(row[6]).toBe(createHmac("sha256", hmacSentinel).update(expectedPayload).digest("hex"));
 
     const deployed = run("deploy", digest("b"), commit("b"));

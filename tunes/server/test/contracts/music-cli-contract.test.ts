@@ -19,6 +19,11 @@ function ensureSupportedCliFixtureAuthority(): void {
       contents = normalized;
     }
     const values = Object.fromEntries(contents.trim().split(/\r?\n/).map((line) => line.split("=", 2)));
+    if (values.MUSIC_PUBLICATION_RESPONSE_CURRENT_KID !== "fixture-publication-v1"
+        || values.MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY !== "fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI"
+        || values.MUSIC_EXPECTED_MIGRATION_ID !== "0011_durable_publication_idempotency") {
+      throw new Error("fixture environment authority is from an older schema epoch");
+    }
     const tokenDirectory = resolve(repositoryRoot, ".artifacts", "music-token-secrets");
     for (const key of ["MUSIC_TOKEN_SECRET_FILE_HOST", "MUSIC_DB_MIGRATOR_SECRET_FILE_HOST", "MUSIC_DB_RUNTIME_SECRET_FILE_HOST"]) {
       const path = resolve(repositoryRoot, values[key]);
@@ -82,6 +87,8 @@ describe("music CLI output contract", () => {
     const rotation = source.slice(start, end);
     expect(rotation).not.toContain("cleanupAllFixtureMusicTokenSecrets(root)");
     expect(rotation).toContain("rotateFixtureMusicAuthority");
+    expect(rotation).toContain("MUSIC_PUBLICATION_RESPONSE_CURRENT_KID=fixture-publication-v1");
+    expect(rotation).toContain("MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY=fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI");
     expect(rotation).not.toContain("cleanupUnsupportedFixtureEnvironmentForRebootstrap");
     expect(rotation).not.toContain("confirmedProject");
     expect(rotation).not.toContain("legacyUpgrade");

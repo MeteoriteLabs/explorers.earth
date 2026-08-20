@@ -19,6 +19,7 @@ describe("runtime table manifest", () => {
       "youtube_api_calls",
       "playback_states",
     ]));
+    expect(inventory.rawSqlTables).not.toContain("skip");
   });
 
   it("validates the committed manifest against generated repository references", () => {

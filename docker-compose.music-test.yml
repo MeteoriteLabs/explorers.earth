@@ -55,7 +55,7 @@ services:
       MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: /run/secrets/music-db-runtime
       MUSIC_IMAGE_DIGEST: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
       MUSIC_IMAGE_COMMIT: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-      MUSIC_MIGRATION_MARKER: 0010_least_privilege_runtime_role
+      MUSIC_MIGRATION_MARKER: 0011_durable_publication_idempotency
       MUSIC_GATE_ATTESTATION_KEY: fixture-migration-gate-key-at-least-32-characters
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/fixture.json
     depends_on:
@@ -115,13 +115,15 @@ services:
       MUSIC_IDENTITY_RATE_MAX_ENTRIES: "10000"
       MUSIC_TOKEN_CURRENT_KID: fixture-current
       MUSIC_TOKEN_CURRENT_SECRET_FILE: /run/secrets/music-token/current
+      MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: fixture-publication-v1
+      MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY: fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI
       MUSIC_TOKEN_LIFETIME_SECONDS: "600"
       MUSIC_TOKEN_CLOCK_SKEW_SECONDS: "15"
       MUSIC_PROVISIONING_KILL_SWITCH: "true"
       MUSIC_PROVISIONING_COHORT: disabled
       MUSIC_NEW_ENTRY_KILL_SWITCH: "false"
       MUSIC_COHORT_ENABLED: "false"
-      MUSIC_EXPECTED_MIGRATION_ID: 0010_least_privilege_runtime_role
+      MUSIC_EXPECTED_MIGRATION_ID: 0011_durable_publication_idempotency
       MUSIC_RECONCILIATION_ENABLED: "false"
       MUSIC_RECONCILIATION_MAX_ROWS: "0"
     ports: ["127.0.0.1:55000:5000"]

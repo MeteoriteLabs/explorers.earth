@@ -8,8 +8,13 @@ import {
 } from "../services/musicTokenService";
 import {
   readSecureMusicSecretFile,
+  readSecureMusicSecretFileWithDistinctAuthorities,
   type SecureMusicSecretFileSystem,
 } from "./secure-music-secret-file";
+import {
+  MUSIC_PUBLICATION_RESPONSE_RETENTION_SECONDS,
+  type MusicPublicationResponseKeyring,
+} from "../services/musicPublicationResponseCrypto";
 
 export type MusicIdentityAddressResolver = (hostname: string) => Promise<string[]>;
 
@@ -47,6 +52,7 @@ export interface MusicIdentityRuntimeConfig {
   rateMaxEntries: number;
   musicToken: MusicTokenConfiguration;
   lifecycleProofToken: string;
+  publicationResponse: MusicPublicationResponseKeyring;
 }
 
 export interface MusicIdentityTransportConfig {
@@ -106,6 +112,9 @@ export async function resolveMusicIdentityRuntimeConfig(
   assertCrossFieldBounds(controls);
   const musicToken = await resolveMusicTokenConfiguration(environment, mode, dependencies);
   const lifecycleProofToken = await resolveLifecycleProofToken(environment, mode, dependencies);
+  const publicationResponse = await resolvePublicationResponseConfiguration(
+    environment, mode, dependencies, musicToken, lifecycleProofToken,
+  );
 
   const transport = await resolveTransport(
     environment,
@@ -136,7 +145,170 @@ export async function resolveMusicIdentityRuntimeConfig(
     rateMaxEntries: controls.MUSIC_IDENTITY_RATE_MAX_ENTRIES,
     musicToken,
     lifecycleProofToken,
+    publicationResponse,
   };
+}
+
+const FIXTURE_PUBLICATION_RESPONSE_KID = "fixture-publication-v1";
+const FIXTURE_PUBLICATION_RESPONSE_KEY = "fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI";
+
+async function resolvePublicationResponseConfiguration(
+  environment: Environment,
+  mode: "live" | "fixture",
+  dependencies: MusicIdentityConfigDependencies,
+  musicToken: MusicTokenConfiguration,
+  lifecycleProofToken: string,
+): Promise<MusicPublicationResponseKeyring> {
+  if (mode === "fixture") {
+    if (environment.MUSIC_PUBLICATION_RESPONSE_CURRENT_KID !== FIXTURE_PUBLICATION_RESPONSE_KID
+        || environment.MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY !== FIXTURE_PUBLICATION_RESPONSE_KEY
+        || environment.MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE
+        || environment.MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY
+        || publicationPreviousValues(environment).some(present)) {
+      throw new Error("Fixture publication response key must use the exact deterministic fixture authority.");
+    }
+    const key = decodePublicationKey(FIXTURE_PUBLICATION_RESPONSE_KEY);
+    assertPublicationKeyMaterialDistinct(key, authorityValues(environment, musicToken, lifecycleProofToken));
+    return {
+      current: { kid: FIXTURE_PUBLICATION_RESPONSE_KID, key },
+      retentionSeconds: MUSIC_PUBLICATION_RESPONSE_RETENTION_SECONDS,
+    };
+  }
+
+  const currentKid = publicationKid(environment.MUSIC_PUBLICATION_RESPONSE_CURRENT_KID, "current");
+  if (environment.MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY || !environment.MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE) {
+    throw new Error("MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE is required and inline live publication keys are forbidden.");
+  }
+  const authorityPaths = [
+    environment.MUSIC_TOKEN_CURRENT_SECRET_FILE,
+    environment.MUSIC_TOKEN_PREVIOUS_SECRET_FILE,
+    environment.STRAPI_LIFECYCLE_PROOF_TOKEN_FILE,
+    environment.STRAPI_ACCESS_TOKEN_FILE,
+    environment.STRAPI_RECONCILIATION_TOKEN_FILE,
+  ].filter((value): value is string => present(value));
+  const currentEncoded = await readPublicationAuthorityFile(
+    environment.MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE, authorityPaths, mode, dependencies,
+  );
+  const currentKey = decodePublicationKey(currentEncoded);
+  assertPublicationKeyMaterialDistinct(currentKey, authorityValues(environment, musicToken, lifecycleProofToken));
+
+  const previousValues = publicationPreviousValues(environment);
+  let previous: MusicPublicationResponseKeyring["previous"];
+  if (environment.MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY) {
+    throw new Error("Inline live publication response keys are forbidden.");
+  }
+  if (previousValues.some(present)) {
+    if (!previousValues.every(present)) {
+      throw new Error("Publication response previous KID, key file, and UTC accept-until must be configured together.");
+    }
+    const previousKid = publicationKid(environment.MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KID, "previous");
+    if (previousKid === currentKid || previousKid === musicToken.current.kid || previousKid === musicToken.previous?.kid) {
+      throw new Error("Publication response key IDs must be dedicated and distinct.");
+    }
+    const now = (dependencies.now ?? Date.now)();
+    const acceptUntil = exactUtcInstant(
+      environment.MUSIC_PUBLICATION_RESPONSE_PREVIOUS_ACCEPT_UNTIL!,
+      "MUSIC_PUBLICATION_RESPONSE_PREVIOUS_ACCEPT_UNTIL",
+    );
+    if (acceptUntil <= now || acceptUntil > now + MUSIC_PUBLICATION_RESPONSE_RETENTION_SECONDS * 1_000) {
+      throw new Error("Publication response previous key overlap must be positive and no more than 24 hours.");
+    }
+    const previousEncoded = await readPublicationAuthorityFile(
+      environment.MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY_FILE!,
+      [environment.MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE, ...authorityPaths],
+      mode,
+      dependencies,
+    );
+    const previousKey = decodePublicationKey(previousEncoded);
+    assertPublicationKeyMaterialDistinct(previousKey, [currentEncoded, ...authorityValues(environment, musicToken, lifecycleProofToken)]);
+    previous = { kid: previousKid, key: previousKey, acceptUntil };
+  }
+  if (currentKid === musicToken.current.kid || currentKid === musicToken.previous?.kid) {
+    throw new Error("Publication response key IDs must be dedicated and distinct.");
+  }
+  return {
+    current: { kid: currentKid, key: currentKey },
+    previous,
+    retentionSeconds: MUSIC_PUBLICATION_RESPONSE_RETENTION_SECONDS,
+  };
+}
+
+async function readPublicationAuthorityFile(
+  path: string,
+  authorityPaths: readonly string[],
+  mode: "live" | "fixture",
+  dependencies: MusicIdentityConfigDependencies,
+): Promise<string> {
+  try {
+    return await readSecureMusicSecretFileWithDistinctAuthorities(path, authorityPaths, {
+      mode,
+      fileSystem: dependencies.secretFileSystem,
+      platform: dependencies.platform,
+      effectiveUserId: dependencies.effectiveUserId,
+      requireDistinctValues: true,
+    });
+  } catch {
+    throw new Error("Music publication response authority is insecure, invalid, or aliases another protected authority.");
+  }
+}
+
+function publicationPreviousValues(environment: Environment): Array<string | undefined> {
+  return [
+    environment.MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KID,
+    environment.MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY_FILE,
+    environment.MUSIC_PUBLICATION_RESPONSE_PREVIOUS_ACCEPT_UNTIL,
+  ];
+}
+
+function present(value: string | undefined): value is string {
+  return value !== undefined && value !== "";
+}
+
+function publicationKid(value: string | undefined, label: string): string {
+  if (!value || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/.test(value)) {
+    throw new Error(`Music publication response ${label} key ID is invalid.`);
+  }
+  return value;
+}
+
+function decodePublicationKey(value: string): Buffer {
+  if (!/^[A-Za-z0-9_-]{43}$/.test(value)) throw new Error("Music publication response key must be exactly 256 bits.");
+  const key = Buffer.from(value, "base64url");
+  if (key.length !== 32 || key.toString("base64url") !== value) {
+    throw new Error("Music publication response key must be canonical base64url-encoded 256-bit material.");
+  }
+  return key;
+}
+
+function authorityValues(
+  environment: Environment,
+  musicToken: MusicTokenConfiguration,
+  lifecycleProofToken: string,
+): string[] {
+  return [
+    musicToken.current.secret,
+    musicToken.previous?.secret,
+    lifecycleProofToken,
+    environment.STRAPI_ACCESS_TOKEN,
+    environment.STRAPI_RECONCILIATION_TOKEN,
+  ].filter((value): value is string => present(value));
+}
+
+function assertPublicationKeyMaterialDistinct(key: Buffer, authorities: readonly string[]): void {
+  if (authorities.some((value) => key.equals(Buffer.from(value, "base64url")) || key.equals(Buffer.from(value, "utf8")))) {
+    throw new Error("Music publication response key material must be dedicated and distinct from every other authority.");
+  }
+}
+
+function exactUtcInstant(value: string, name: string): number {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) {
+    throw new Error(`${name} must be an exact UTC instant.`);
+  }
+  const parsed = Date.parse(value);
+  if (!Number.isSafeInteger(parsed) || new Date(parsed).toISOString() !== value) {
+    throw new Error(`${name} must be a valid UTC instant.`);
+  }
+  return parsed;
 }
 
 /** Resolves only the SSRF-resistant Strapi transport used by read-only commands. */

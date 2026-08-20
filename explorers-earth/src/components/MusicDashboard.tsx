@@ -134,18 +134,29 @@ function SharingDialog({ data, onClose, opener }: { data: TunesDashboardData; on
   const [mode, setMode] = useState<MusicPublicationMode>(current?.mode ?? "private");
   const [capability, setCapability] = useState<string>();
   const [saving, setSaving] = useState(false);
+  const pendingCommand = useRef<{ mode: MusicPublicationMode; key: string }>();
   const publicSlug = current?.publicSlug ?? "";
   const base = `${window.location.origin}/music/share/${encodeURIComponent(publicSlug)}`;
   const shareLink = mode === "public" ? base : mode === "unlisted" && capability ? `${base}#access=${capability}` : undefined;
   const save = async () => {
     setSaving(true);
+    const command = pendingCommand.current?.mode === mode
+      ? pendingCommand.current
+      : { mode, key: operationKey("publication") };
+    pendingCommand.current = command;
     try {
-      const result = await musicWorkspaceClient.setPublication(mode, operationKey("publication"));
+      const result = await musicWorkspaceClient.setPublication(mode, command.key);
+      pendingCommand.current = undefined;
       setCapability(result.capability);
       await data.refetch();
       toast.success(mode === "public" ? "Music is public." : mode === "unlisted" ? "Private link created." : "Music is private.");
       if (mode !== "unlisted") onClose();
-    } catch {
+    } catch (error) {
+      const status = typeof error === "object" && error !== null && "status" in error
+        ? Number((error as { status?: unknown }).status) : undefined;
+      if (status !== undefined && status >= 400 && status < 500 && status !== 401 && status !== 429) {
+        pendingCommand.current = undefined;
+      }
       toast.error("Music is temporarily unavailable.");
     } finally {
       setSaving(false);
@@ -157,7 +168,7 @@ function SharingDialog({ data, onClose, opener }: { data: TunesDashboardData; on
         <legend className="sr-only">Visibility mode</legend>
         {(["private", "unlisted", "public"] as const).map((value, index) => (
           <label key={value} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-dashboard bg-dashboard-bg/40 px-3 text-dashboard focus-within:ring-2 focus-within:ring-dashboard-accent">
-            <input data-autofocus={index === 0 || undefined} type="radio" name="music-publication" value={value} checked={mode === value} onChange={() => { setMode(value); setCapability(undefined); }} className="h-5 w-5 accent-[var(--dash-accent)]" />
+            <input data-autofocus={index === 0 || undefined} type="radio" name="music-publication" value={value} checked={mode === value} onChange={() => { setMode(value); setCapability(undefined); if (pendingCommand.current?.mode !== value) pendingCommand.current = undefined; }} className="h-5 w-5 accent-[var(--dash-accent)]" />
             <span>{value[0].toUpperCase() + value.slice(1)}</span>
           </label>
         ))}
