@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createMusicIdentityCoordinator,
+  selectExplorerAccountDocument,
+  selectExplorerAccountUploadTarget,
   selectCompletedAccount,
 } from "../musicIdentityCoordinator";
 import * as identityModule from "../musicIdentityCoordinator";
@@ -43,6 +45,34 @@ describe("automatic Music identity coordinator", () => {
     expect(select([], { authoritative: true })).toEqual({ kind: "incomplete" });
     expect(select(undefined, { authoritative: false })).toEqual({ kind: "unknown" });
     expect(select([incomplete], { authoritative: false })).toEqual({ kind: "unknown" });
+  });
+
+  it("selects onboarding and upload Account authority by immutable document ID, never order", () => {
+    const partial = { id: 7, documentId: "account-partial" };
+    expect(selectExplorerAccountDocument([partial], { authoritative: true })).toEqual({
+      kind: "selected", account: { documentId: "account-partial" },
+    });
+    expect(selectExplorerAccountDocument(undefined, { authoritative: false })).toEqual({ kind: "unknown" });
+    expect(selectExplorerAccountDocument([], { authoritative: true })).toEqual({ kind: "missing" });
+    expect(selectExplorerAccountDocument([{ id: 7 }], { authoritative: true })).toEqual({ kind: "incomplete" });
+    expect(selectExplorerAccountDocument([partial, { id: 8, documentId: "account-b" }], { authoritative: true })).toEqual({ kind: "ambiguous" });
+
+    const accountA = [{ id: 42, documentId: "account-a" }];
+    const accountB = [{ id: "91", documentId: "account-b" }];
+    expect(selectExplorerAccountUploadTarget(accountA, "account-a", { authoritative: true })).toEqual({
+      kind: "selected", account: { documentId: "account-a", id: "42" },
+    });
+    expect(selectExplorerAccountUploadTarget(accountB, "account-b", { authoritative: true })).toEqual({
+      kind: "selected", account: { documentId: "account-b", id: "91" },
+    });
+    expect(selectExplorerAccountUploadTarget([...accountB, ...accountA], "account-a", { authoritative: true })).toEqual({ kind: "ambiguous" });
+    expect(selectExplorerAccountUploadTarget([{ id: 1, documentId: "account-a" }, { id: 2, documentId: "account-a" }], "account-a", { authoritative: true })).toEqual({ kind: "ambiguous" });
+    expect(selectExplorerAccountUploadTarget([{ documentId: "account-a" }], "account-a", { authoritative: true })).toEqual({ kind: "incomplete" });
+    expect(selectExplorerAccountUploadTarget([{ id: "not-numeric", documentId: "account-a" }], "account-a", { authoritative: true })).toEqual({ kind: "incomplete" });
+    expect(selectExplorerAccountUploadTarget([], "account-a", { authoritative: true })).toEqual({ kind: "missing" });
+    expect(selectExplorerAccountUploadTarget(undefined, "account-a", { authoritative: true })).toEqual({ kind: "unknown" });
+    expect(selectExplorerAccountUploadTarget(accountA, "account-c", { authoritative: true })).toEqual({ kind: "missing" });
+    expect(selectExplorerAccountUploadTarget(accountA, "account-a", { authoritative: false })).toEqual({ kind: "unknown" });
   });
 
   it.each(["google", "email"] as const)("uses the same bodyless automatic path after verified %s auth and onboarding", async (provider) => {
@@ -139,6 +169,16 @@ describe("automatic Music identity coordinator", () => {
     const ensureIdentity = vi.fn().mockRejectedValue(Object.assign(new Error("safe"), { upstreamCode }));
     const coordinator = createMusicIdentityCoordinator({ ensureIdentity });
     await coordinator.reconcile({ provider: "email", authenticated: true, verified: true, userDocumentId: "user-1", account: { documentId: "account-1" } }).catch(() => undefined);
+    expect(coordinator.getSnapshot()).toBe(expected);
+  });
+
+  it.each([
+    ["IDENTITY_PENDING_DELETION", "pending_deletion"],
+    ["IDENTITY_TOMBSTONED", "pending_deletion"],
+    ["IDENTITY_SUSPENDED", "suspended"],
+  ] as const)("maps direct canonical failure %s to %s", (code, expected) => {
+    const coordinator = createMusicIdentityCoordinator({ ensureIdentity: vi.fn() });
+    coordinator.reportFailure(Object.assign(new Error("safe"), { code }));
     expect(coordinator.getSnapshot()).toBe(expected);
   });
 

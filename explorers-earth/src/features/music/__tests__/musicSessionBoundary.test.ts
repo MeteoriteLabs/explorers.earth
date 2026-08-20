@@ -110,6 +110,65 @@ describe("cross-tab Music authority boundary", () => {
     boundary.close();
   });
 
+  it("notifies a mounted realm once only after an account-generation reset has finished", async () => {
+    const module = await import("../musicSessionBoundary");
+    const channel = new MemoryChannel();
+    MemoryChannel.realms.add(channel);
+    let releaseReset!: () => void;
+    const resetGate = new Promise<void>((resolve) => { releaseReset = resolve; });
+    const onReset = vi.fn(() => resetGate);
+    const listener = vi.fn();
+    let storageListener: ((event: StorageEvent) => void) | undefined;
+    const boundary = module.createMusicSessionBoundary({
+      channelFactory: () => channel,
+      onReset,
+      addStorageListener: (next) => { storageListener = next; },
+    });
+    const unsubscribe = boundary.subscribeAccountGeneration(listener);
+    const event = { version: "music-session/v1", kind: "account-generation", eventId: "remote-generation" };
+
+    for (const receive of channel.listeners) receive({ data: event });
+    storageListener?.({ key: "explorers-music-session", newValue: JSON.stringify(event) } as StorageEvent);
+    expect(onReset).toHaveBeenCalledTimes(1);
+    expect(boundary.getAccountGenerationSnapshot()).toBe(0);
+    expect(listener).not.toHaveBeenCalled();
+
+    releaseReset();
+    await vi.waitFor(() => expect(listener).toHaveBeenCalledTimes(1));
+    expect(boundary.getAccountGenerationSnapshot()).toBe(1);
+    unsubscribe();
+    boundary.close();
+  });
+
+  it("does not advance account generation when realm reset throws or rejects", async () => {
+    const module = await import("../musicSessionBoundary");
+    const channel = new MemoryChannel();
+    MemoryChannel.realms.add(channel);
+    const thrown = module.createMusicSessionBoundary({
+      channelFactory: () => channel,
+      onReset: () => { throw new Error("contained"); },
+    });
+    for (const receive of channel.listeners) receive({
+      data: { version: "music-session/v1", kind: "account-generation", eventId: "thrown-reset" },
+    });
+    expect(thrown.getAccountGenerationSnapshot()).toBe(0);
+    thrown.close();
+
+    const rejectedChannel = new MemoryChannel();
+    MemoryChannel.realms.add(rejectedChannel);
+    const rejected = module.createMusicSessionBoundary({
+      channelFactory: () => rejectedChannel,
+      onReset: () => Promise.reject(new Error("contained")),
+    });
+    for (const receive of rejectedChannel.listeners) receive({
+      data: { version: "music-session/v1", kind: "account-generation", eventId: "rejected-reset" },
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(rejected.getAccountGenerationSnapshot()).toBe(0);
+    rejected.close();
+  });
+
   it("ignores malformed, unrelated, empty, and already-seen transport events", async () => {
     const module = await import("../musicSessionBoundary");
     const channel = new MemoryChannel();

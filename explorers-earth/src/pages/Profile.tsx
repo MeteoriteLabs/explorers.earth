@@ -46,7 +46,10 @@ import { validateUsername } from "../utils/usernameValidation";
 import useSetupStore from "../store/useSetupStore";
 import { calculateIsProfileComplete } from "../utils/setupStatusCalculations";
 import ProfileSetupAccordion from "../components/ProfileSetupAccordion";
-import { selectCompletedAccount } from "../features/music/musicIdentityCoordinator";
+import {
+  selectCompletedAccount,
+  selectExplorerAccountUploadTarget,
+} from "../features/music/musicIdentityCoordinator";
 
 // ✅ VISIBILITY FIX: Removed unused Account type - now using GraphQL data directly
 // type Account = { ... }
@@ -485,30 +488,6 @@ const Profile = memo(() => {
 
   // ✅ VISIBILITY FIX: Simplified primary address handling
   // const [primaryAddressCombined, setPrimaryAddressCombined] = useState<string>("");
-
-  // ✅ VISIBILITY FIX: Remove redundant axios call that causes data sync issues
-  // The GraphQL query already provides all needed account data including social_media visibility
-  // useEffect(() => {
-  //   const fetchAccountData = async () => {
-  //     try {
-  //       const response = await axios.get(
-  //         `${
-  //           import.meta.env.VITE_REST_API_URL
-  //         }/accounts?filters%5Busername%5D=${user?.username}`,
-  //         {
-  //           headers: {
-  //             Authorization: `Bearer ${token}`,
-  //           },
-  //         }
-  //       );
-  //       setAccount(response.data.data[0]);
-  //     } catch (err) {
-  //       console.error("Error fetching account data:", err);
-  //     }
-  //   };
-
-  //   fetchAccountData();
-  // }, [token, user?.username]);
 
   // This modal prevents accidental username changes by showing warnings about link/QR code impacts
   const [showUsernameModal, setShowUsernameModal] = useState(false);
@@ -1516,6 +1495,18 @@ const Profile = memo(() => {
   // STRAPI UPLOAD INSIGHT: When using refId + field + ref parameters,
   // Strapi automatically associates the uploaded file with the specified model field.
   // No additional GraphQL mutation needed - just upload and refresh UI.
+  const resolveSelectedAccountUploadId = async (): Promise<string> => {
+    const accountDocumentId = selectedProfileAccount?.documentId;
+    if (!documentId || !accountDocumentId) throw new Error(t('dashboard.profile.common.errors.failedToGetAccountId'));
+    const lookup = await axios.get(
+      `${import.meta.env.VITE_REST_API_URL}/accounts?filters%5BdocumentId%5D%5B%24eq%5D=${encodeURIComponent(accountDocumentId)}&filters%5Busers_permissions_users%5D%5BdocumentId%5D%5B%24eq%5D=${encodeURIComponent(documentId)}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    const selection = selectExplorerAccountUploadTarget(lookup.data?.data, accountDocumentId, { authoritative: true });
+    if (selection.kind !== "selected") throw new Error(t('dashboard.profile.common.errors.failedToGetAccountId'));
+    return selection.account.id;
+  };
+
   const handleImageUpload = async (file: File | null) => {
     try {
       if (!file) {
@@ -1525,21 +1516,7 @@ const Profile = memo(() => {
       // Pause walkthrough during upload
       setIsUploading(true);
 
-      // First, get the account ID from REST API (needed for Strapi upload refId)
-      const accountResponse = await axios.get(
-        `${import.meta.env.VITE_REST_API_URL}/accounts?filters%5Busername%5D=${user?.username
-        }`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const accountId = accountResponse.data.data[0]?.id?.toString();
-      if (!accountId) {
-        throw new Error(t('dashboard.profile.common.errors.failedToGetAccountId'));
-      }
+      const accountId = await resolveSelectedAccountUploadId();
 
       const formData = new FormData();
 
@@ -1619,21 +1596,7 @@ const Profile = memo(() => {
       // Pause walkthrough during upload
       setIsUploading(true);
 
-      // First, get the account ID from REST API (needed for Strapi upload refId)
-      const accountResponse = await axios.get(
-        `${import.meta.env.VITE_REST_API_URL}/accounts?filters%5Busername%5D=${user?.username
-        }`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const accountId = accountResponse.data.data[0]?.id?.toString();
-      if (!accountId) {
-        throw new Error(t('dashboard.profile.common.errors.failedToGetAccountId'));
-      }
+      const accountId = await resolveSelectedAccountUploadId();
 
       const formData = new FormData();
 

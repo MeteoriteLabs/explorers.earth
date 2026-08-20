@@ -48,7 +48,11 @@ import {
   endFinalize,
 } from "./onboardingFinalizeLock";
 import { useQuery as useReactQuery } from "@tanstack/react-query";
-import { selectExplorerAccountState } from "../features/music/musicIdentityCoordinator";
+import {
+  selectExplorerAccountDocument,
+  selectExplorerAccountState,
+  selectExplorerAccountUploadTarget,
+} from "../features/music/musicIdentityCoordinator";
 import { closeLocalMusicSession } from "../features/music/musicSessionBoundary";
 
 const onboardingQuery = gql`
@@ -821,6 +825,17 @@ const OnBoarding = () => {
     }
   };
 
+  const resolveUploadAccountId = async (accountDocId: string): Promise<string> => {
+    if (!documentId) throw new Error("Explorer user authority is unavailable");
+    const lookup = await axios.get(
+      `${import.meta.env.VITE_REST_API_URL}/accounts?filters%5BdocumentId%5D%5B%24eq%5D=${encodeURIComponent(accountDocId)}&filters%5Busers_permissions_users%5D%5BdocumentId%5D%5B%24eq%5D=${encodeURIComponent(documentId)}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    const selection = selectExplorerAccountUploadTarget(lookup.data?.data, accountDocId, { authoritative: true });
+    if (selection.kind !== "selected") throw new Error("Explorer Account upload authority is unavailable");
+    return selection.account.id;
+  };
+
 
   const handleSubmit = async (values: FormValues) => {
     console.log("handleSubmit called with values:", values);
@@ -1013,30 +1028,22 @@ const OnBoarding = () => {
 
       // Check if account already exists
       let accountDocId = accountDocumentId;
-      let accountId: string | null = null;
       // Whether the existence lookup actually completed. If it throws we must
       // NOT assume "no account" — creating one blindly risks a duplicate.
       let existenceCheckSucceeded = false;
 
       if (!accountDocId) {
         try {
-          const existingAccountCheck = await axios.get(
-            `${import.meta.env.VITE_REST_API_URL}/accounts?filters%5Busers_permissions_users%5D%5BdocumentId%5D%5B%24eq%5D=${documentId}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
+          const existingAccountCheck = await refetch();
+          const selection = selectExplorerAccountDocument(
+            existingAccountCheck.data?.usersPermissionsUser?.accounts,
+            { authoritative: true },
           );
-          existenceCheckSucceeded = true;
-
-          if (existingAccountCheck.data?.data?.length > 0) {
+          existenceCheckSucceeded = selection.kind === "missing" || selection.kind === "selected";
+          if (selection.kind === "selected") {
             console.log('Account already exists, using existing account');
-            accountDocId = existingAccountCheck.data.data[0]?.documentId;
-            accountId = existingAccountCheck.data.data[0]?.id?.toString();
-            if (accountDocId) {
-              setAccountDocumentId(accountDocId);
-            }
+            accountDocId = selection.account.documentId;
+            setAccountDocumentId(accountDocId);
           }
         } catch (checkError) {
           console.warn("Could not verify existing accounts:", checkError);
@@ -1142,32 +1149,15 @@ const OnBoarding = () => {
 
         console.log('explorers account created successfully');
 
-        // Get account ID and document ID
-        const accountFetchResponse = await axios.get(
-          `${import.meta.env.VITE_REST_API_URL}/accounts?filters%5Busername%5D=${usernameToUse}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        accountId = accountFetchResponse.data.data[0]?.id?.toString();
-        accountDocId = accountFetchResponse.data.data[0]?.documentId;
-
-        if (accountDocId) {
-          setAccountDocumentId(accountDocId);
-        } else {
-          const createdAccountDocId = accountResponse.data?.createAccount?.documentId;
-          if (createdAccountDocId) {
-            setAccountDocumentId(createdAccountDocId);
-            accountDocId = createdAccountDocId;
-          }
-        }
+        const createdAccountDocId = accountResponse.data.createAccount.documentId;
+        if (!createdAccountDocId) throw new Error("Created Account authority is unavailable");
+        accountDocId = createdAccountDocId;
+        setAccountDocumentId(createdAccountDocId);
 
         // Upload images if available
-        if (accountId) {
+        if (tempProfileImage || tempBackgroundImage) {
           try {
+            const accountId = await resolveUploadAccountId(createdAccountDocId);
             if (tempProfileImage) {
               await uploadImage(
                 tempProfileImage,

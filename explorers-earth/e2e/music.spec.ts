@@ -29,6 +29,7 @@ type MockOptions = {
   playlists?: Array<Record<string, unknown>>;
   ensureFailures?: number;
   ensureDelayMs?: number;
+  ensureGate?: { call: number; wait: Promise<void> };
 };
 
 async function installMusicMocks(page: Page, options: MockOptions = {}) {
@@ -73,6 +74,7 @@ async function installMusicMocks(page: Page, options: MockOptions = {}) {
 
   await page.route("**/api/music/identity/ensure", async (route) => {
     ensureCalls += 1;
+    if (options.ensureGate?.call === ensureCalls) await options.ensureGate.wait;
     if (options.ensureDelayMs) await new Promise((resolveDelay) => setTimeout(resolveDelay, options.ensureDelayMs));
     if (ensureCalls <= (options.ensureFailures ?? 0)) {
       await route.fulfill({
@@ -263,10 +265,15 @@ test("sharing save uses one canonical publication command and restores focus", a
 test("account-generation resets Music authority across tabs without logging Explorer out", async ({ page, context }) => {
   const second = await context.newPage();
   await installMusicMocks(page);
-  await installMusicMocks(second);
+  let releaseSecondEnsure!: () => void;
+  const secondEnsureGate = new Promise<void>((resolveGate) => { releaseSecondEnsure = resolveGate; });
+  const secondAudit = await installMusicMocks(second, {
+    playlists: [{ id: 10, name: "Old account playlist", description: null, isVisibleToGuests: false, songs: [] }],
+    ensureGate: { call: 2, wait: secondEnsureGate },
+  });
   await page.goto("/recommendations/music");
   await second.goto("/recommendations/music");
-  await expect(second.getByRole("heading", { name: "Create your first playlist" })).toBeVisible();
+  await expect(second.getByRole("tab", { name: "Old account playlist" })).toBeVisible();
 
   await page.evaluate(() => {
     const event = { version: "music-session/v1", kind: "account-generation", eventId: crypto.randomUUID() };
@@ -276,7 +283,12 @@ test("account-generation resets Music authority across tabs without logging Expl
 
   await expect(second).toHaveURL(/\/recommendations\/music$/);
   await expect(second.getByRole("heading", { name: "Music", level: 1 })).toBeVisible();
+  await expect.poll(secondAudit.ensureCalls).toBe(2);
+  await expect(second.getByRole("tab", { name: "Old account playlist" })).toHaveCount(0);
   expect(await second.evaluate(() => JSON.parse(localStorage.getItem("auth-storage") ?? "null")?.state?.isAuthenticated)).toBe(true);
+  releaseSecondEnsure();
+  await expect(second.getByRole("tab", { name: "Old account playlist" })).toBeVisible();
+  expect(secondAudit.ensureCalls()).toBe(2);
   await second.close();
 });
 
@@ -332,11 +344,14 @@ test("a Music outage keeps the Explorer shell usable and explicit retry recovers
 
 test("Music loading animation respects reduced-motion preference", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await installMusicMocks(page, { ensureDelayMs: 750 });
+  let releaseEnsure!: () => void;
+  const ensureGate = new Promise<void>((resolveGate) => { releaseEnsure = resolveGate; });
+  await installMusicMocks(page, { ensureGate: { call: 1, wait: ensureGate } });
   await page.goto("/recommendations/music");
   const skeleton = page.locator("main .animate-pulse").first();
   await expect(skeleton).toBeVisible();
   expect(await skeleton.evaluate((element) => getComputedStyle(element).animationName)).toBe("none");
+  releaseEnsure();
   await expect(page.getByRole("heading", { name: "Create your first playlist" })).toBeVisible();
 });
 

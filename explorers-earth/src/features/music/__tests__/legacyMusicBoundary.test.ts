@@ -71,4 +71,13 @@ describe("retired browser Music authority boundary", () => {
     ].map((file) => readFileSync(resolve(process.cwd(), file), "utf8")).join("\n");
     expect(accountConsumers).not.toMatch(/accounts\s*\?*\.\s*\[\s*0\s*\]|accounts\s*\[\s*0\s*\]/);
   });
+
+  it("keeps onboarding and profile Account authority off mutable username and first REST result", () => {
+    const accountMutations = [
+      "src/pages/OnBoarding.tsx",
+      "src/pages/Profile.tsx",
+    ].map((file) => readFileSync(resolve(process.cwd(), file), "utf8")).join("\n");
+    expect(accountMutations).not.toMatch(/\/accounts\?filters[^\n`]*username/i);
+    expect(accountMutations).not.toMatch(/account(?:FetchResponse|Response|Check)\.data\.data\s*\[\s*0\s*\]/);
+  });
 });

@@ -44,10 +44,22 @@ export async function clearAllMusicWorkspaceQueries(queryClient: QueryClient): P
   queryClient.removeQueries({ queryKey: ["music-workspace"] });
 }
 
-function retryWorkspaceFailure(failureCount: number, error: unknown): boolean {
-  const upstreamCode = (error as { upstreamCode?: unknown })?.upstreamCode;
-  if (["IDENTITY_PENDING_DELETION", "IDENTITY_TOMBSTONED", "IDENTITY_SUSPENDED", "AUTH_REQUIRED", "AUTH_INVALID"]
-    .includes(typeof upstreamCode === "string" ? upstreamCode : "")) return false;
+const terminalWorkspaceCodes = new Set([
+  "AUTH_REQUIRED",
+  "AUTH_INVALID",
+  "TOKEN_EXPIRED",
+  "TOKEN_INVALID",
+  "TOKEN_REVOKED",
+  "IDENTITY_PENDING_DELETION",
+  "IDENTITY_TOMBSTONED",
+  "IDENTITY_SUSPENDED",
+]);
+
+export function retryWorkspaceFailure(failureCount: number, error: unknown): boolean {
+  const failure = error as { code?: unknown; upstreamCode?: unknown };
+  const code = typeof failure?.code === "string" ? failure.code : "";
+  const upstreamCode = typeof failure?.upstreamCode === "string" ? failure.upstreamCode : "";
+  if (terminalWorkspaceCodes.has(code) || terminalWorkspaceCodes.has(upstreamCode)) return false;
   return failureCount < 1;
 }
 
@@ -67,11 +79,12 @@ export function useTunesDashboard(scope?: MusicWorkspaceScope): TunesDashboardDa
   useEffect(() => {
     if (query.error) musicIdentityCoordinator.reportFailure(query.error);
   }, [query.error]);
-  const dashboard = query.data?.dashboard ?? null;
+  const visibleData = query.error ? undefined : query.data;
+  const dashboard = visibleData?.dashboard ?? null;
   return {
-    playlists: query.data?.playlists ?? [],
+    playlists: visibleData?.playlists ?? [],
     dashboard,
-    entitlement: query.data?.entitlement ?? null,
+    entitlement: visibleData?.entitlement ?? null,
     playlist: dashboard,
     guestUrl: dashboard?.publication.publicSlug ?? null,
     localUser: null,

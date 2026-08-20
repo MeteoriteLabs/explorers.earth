@@ -57,7 +57,7 @@ function isSessionEvent(value: unknown): value is MusicSessionEvent {
 
 export function createMusicSessionBoundary(dependencies: {
   channelFactory?: () => ChannelLike | undefined;
-  onReset: (kind: MusicSessionEventKind) => void;
+  onReset: (kind: MusicSessionEventKind) => void | Promise<void>;
   eventId?: () => string;
   storage?: Pick<Storage, "setItem" | "removeItem">;
   addStorageListener?: (listener: (event: StorageEvent) => void) => void;
@@ -66,6 +66,8 @@ export function createMusicSessionBoundary(dependencies: {
   const key = "explorers-music-session";
   const channel = dependencies.channelFactory?.();
   const seen = new Set<string>();
+  const accountGenerationListeners = new Set<() => void>();
+  let accountGeneration = 0;
   const remember = (eventId: string) => {
     seen.add(eventId);
     if (seen.size > 128) seen.delete(seen.values().next().value!);
@@ -73,7 +75,19 @@ export function createMusicSessionBoundary(dependencies: {
   const receive = (value: unknown) => {
     if (!isSessionEvent(value) || seen.has(value.eventId)) return;
     remember(value.eventId);
-    dependencies.onReset(value.kind);
+    let reset: void | Promise<void>;
+    try {
+      reset = dependencies.onReset(value.kind);
+    } catch {
+      return;
+    }
+    Promise.resolve(reset)
+      .then(() => {
+        if (value.kind !== "account-generation") return;
+        accountGeneration += 1;
+        for (const listener of accountGenerationListeners) listener();
+      })
+      .catch(() => undefined);
   };
   const onMessage = (event: { data: unknown }) => receive(event.data);
   const onStorage = (event: StorageEvent) => {
@@ -97,6 +111,11 @@ export function createMusicSessionBoundary(dependencies: {
         dependencies.storage.removeItem(key);
       }
     },
+    getAccountGenerationSnapshot: () => accountGeneration,
+    subscribeAccountGeneration(listener: () => void) {
+      accountGenerationListeners.add(listener);
+      return () => accountGenerationListeners.delete(listener);
+    },
     close() {
       channel?.removeEventListener("message", onMessage);
       channel?.close();
@@ -111,7 +130,7 @@ const browserBoundary = typeof window === "undefined" ? undefined : createMusicS
   addStorageListener: (listener) => window.addEventListener("storage", listener),
   removeStorageListener: (listener) => window.removeEventListener("storage", listener),
   onReset: (kind) => {
-    void resetMusicSessionRealm(kind, {
+    return resetMusicSessionRealm(kind, {
       clearMusicAuth: () => musicApi.logout(),
       logoutExplorer: () => useAuthStore.getState().logout(),
       resetCoordinator: () => musicIdentityCoordinator.reset(),
@@ -121,7 +140,12 @@ const browserBoundary = typeof window === "undefined" ? undefined : createMusicS
   },
 });
 
-export const musicSessionBoundary = browserBoundary ?? { publish: (_kind: MusicSessionEventKind) => undefined, close: () => undefined };
+export const musicSessionBoundary = browserBoundary ?? {
+  publish: (_kind: MusicSessionEventKind) => undefined,
+  getAccountGenerationSnapshot: () => 0,
+  subscribeAccountGeneration: (_listener: () => void) => () => undefined,
+  close: () => undefined,
+};
 
 export function closeLocalMusicSession(): void {
   musicApi.logout();

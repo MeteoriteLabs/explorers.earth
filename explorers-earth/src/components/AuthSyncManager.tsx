@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { gql, useQuery } from "@apollo/client";
 import useAuthStore from "../store/store";
 import { musicApi, musicIdentityCoordinator } from "../features/music/musicApi";
@@ -27,7 +27,7 @@ const musicEligibilityQuery = gql`
 /** Starts the sole automatic Music identity flow after authoritative eligibility is positive. */
 const AuthSyncManager = () => {
   const { user, isAuthenticated } = useAuthStore();
-  const { data, loading, error } = useQuery(musicEligibilityQuery, {
+  const { data, loading, error, refetch } = useQuery(musicEligibilityQuery, {
     variables: { documentId: user?.documentId },
     skip: !isAuthenticated || !user?.documentId,
     fetchPolicy: "cache-and-network",
@@ -35,6 +35,65 @@ const AuthSyncManager = () => {
     errorPolicy: "all",
   });
   const activeScope = useRef<{ userDocumentId: string; accountDocumentId: string }>();
+  const accountGeneration = useSyncExternalStore(
+    musicSessionBoundary.subscribeAccountGeneration,
+    musicSessionBoundary.getAccountGenerationSnapshot,
+    musicSessionBoundary.getAccountGenerationSnapshot,
+  );
+  const observedAccountGeneration = useRef(accountGeneration);
+  const remoteRefreshActive = useRef(false);
+
+  const reconcileAuthoritative = useCallback((authoritative: typeof data.usersPermissionsUser | undefined, options: {
+    broadcastChange: boolean;
+    force: boolean;
+  }) => {
+    if (!isAuthenticated || !user || !authoritative || authoritative.documentId !== user.documentId || authoritative.blocked === true) return;
+    const selection = selectExplorerAccountState(authoritative.accounts, { authoritative: true });
+    if (selection.kind !== "selected") {
+      if (activeScope.current) {
+        void clearMusicWorkspaceScope(queryClient, activeScope.current);
+        musicApi.setAuthority(undefined);
+        musicIdentityCoordinator.reset();
+        if (options.broadcastChange) musicSessionBoundary.publish("account-generation");
+        activeScope.current = undefined;
+      }
+      return;
+    }
+    const account = selection.account;
+    const nextScope = { userDocumentId: authoritative.documentId, accountDocumentId: account.documentId };
+    const nextAuthority = `${nextScope.userDocumentId}:${nextScope.accountDocumentId}`;
+    const previous = activeScope.current;
+    const changed = !previous || previous.userDocumentId !== nextScope.userDocumentId || previous.accountDocumentId !== nextScope.accountDocumentId;
+    if (changed || options.force) {
+      if (previous && changed) void clearMusicWorkspaceScope(queryClient, previous);
+      musicApi.setAuthority(nextAuthority);
+      musicIdentityCoordinator.reset();
+      if (previous && changed && options.broadcastChange) musicSessionBoundary.publish("account-generation");
+      activeScope.current = nextScope;
+    }
+    void musicIdentityCoordinator.reconcile({
+      provider: authoritative.provider === "google" ? "google" : "email",
+      authenticated: true,
+      verified: authoritative.confirmed === true || authoritative.provider === "google",
+      userDocumentId: authoritative.documentId,
+      account,
+    }).catch(() => undefined);
+  }, [isAuthenticated, user]);
+
+  useEffect(() => {
+    if (observedAccountGeneration.current === accountGeneration) return;
+    observedAccountGeneration.current = accountGeneration;
+    if (!isAuthenticated || !user?.documentId || typeof refetch !== "function") return;
+    let cancelled = false;
+    remoteRefreshActive.current = true;
+    activeScope.current = undefined;
+    void refetch().then((result) => {
+      if (!cancelled) reconcileAuthoritative(result.data?.usersPermissionsUser, { broadcastChange: false, force: true });
+    }).catch(() => undefined).finally(() => {
+      if (!cancelled) remoteRefreshActive.current = false;
+    });
+    return () => { cancelled = true; };
+  }, [accountGeneration, isAuthenticated, reconcileAuthoritative, refetch, user?.documentId]);
 
   useEffect(() => {
     const authoritative = data?.usersPermissionsUser;
@@ -45,39 +104,10 @@ const AuthSyncManager = () => {
       activeScope.current = undefined;
       return;
     }
+    if (remoteRefreshActive.current) return;
     if (loading || error) return;
-    if (!authoritative || authoritative.documentId !== user.documentId) return;
-    if (authoritative.blocked === true) return;
-    const selection = selectExplorerAccountState(authoritative.accounts, { authoritative: true });
-    if (selection.kind !== "selected") {
-      if (activeScope.current) {
-        void clearMusicWorkspaceScope(queryClient, activeScope.current);
-        musicApi.setAuthority(undefined);
-        musicIdentityCoordinator.reset();
-        musicSessionBoundary.publish("account-generation");
-        activeScope.current = undefined;
-      }
-      return;
-    }
-    const account = selection.account;
-    const nextScope = { userDocumentId: authoritative.documentId, accountDocumentId: account.documentId };
-    const nextAuthority = `${nextScope.userDocumentId}:${nextScope.accountDocumentId}`;
-    const previous = activeScope.current;
-    if (!previous || previous.userDocumentId !== nextScope.userDocumentId || previous.accountDocumentId !== nextScope.accountDocumentId) {
-      if (previous) void clearMusicWorkspaceScope(queryClient, previous);
-      musicApi.setAuthority(nextAuthority);
-      musicIdentityCoordinator.reset();
-      if (previous) musicSessionBoundary.publish("account-generation");
-      activeScope.current = nextScope;
-    }
-    void musicIdentityCoordinator.reconcile({
-      provider: authoritative.provider === "google" ? "google" : "email",
-      authenticated: true,
-      verified: authoritative.confirmed === true || authoritative.provider === "google",
-      userDocumentId: authoritative.documentId,
-      account,
-    }).catch(() => undefined);
-  }, [data, error, isAuthenticated, loading, user]);
+    reconcileAuthoritative(authoritative, { broadcastChange: true, force: false });
+  }, [data, error, isAuthenticated, loading, reconcileAuthoritative, user]);
 
   return null;
 };

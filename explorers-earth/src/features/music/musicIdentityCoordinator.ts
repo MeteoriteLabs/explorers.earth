@@ -1,4 +1,5 @@
 export interface ExplorerAccountCandidate {
+  id?: unknown;
   documentId?: unknown;
   Account_Name?: unknown;
   Account_Type?: unknown;
@@ -7,6 +8,55 @@ export interface ExplorerAccountCandidate {
 
 export interface SelectedMusicAccount {
   documentId: string;
+}
+
+export interface SelectedExplorerAccountUploadTarget extends SelectedMusicAccount {
+  id: string;
+}
+
+export type ExplorerAccountDocumentSelection =
+  | { kind: "unknown" }
+  | { kind: "missing" }
+  | { kind: "incomplete" }
+  | { kind: "ambiguous" }
+  | { kind: "selected"; account: SelectedMusicAccount };
+
+export type ExplorerAccountUploadTargetSelection =
+  | { kind: "unknown" }
+  | { kind: "missing" }
+  | { kind: "incomplete" }
+  | { kind: "ambiguous" }
+  | { kind: "selected"; account: SelectedExplorerAccountUploadTarget };
+
+export function selectExplorerAccountDocument(
+  accounts: readonly ExplorerAccountCandidate[] | null | undefined,
+  options: { authoritative: boolean },
+): ExplorerAccountDocumentSelection {
+  if (!options.authoritative || !Array.isArray(accounts)) return { kind: "unknown" };
+  if (accounts.length === 0) return { kind: "missing" };
+  const candidates = accounts.filter((account) =>
+    typeof account.documentId === "string" && account.documentId.length > 0,
+  );
+  if (candidates.length !== accounts.length) return { kind: "incomplete" };
+  if (candidates.length > 1) return { kind: "ambiguous" };
+  return { kind: "selected", account: { documentId: candidates[0].documentId as string } };
+}
+
+export function selectExplorerAccountUploadTarget(
+  accounts: readonly ExplorerAccountCandidate[] | null | undefined,
+  accountDocumentId: string,
+  options: { authoritative: boolean },
+): ExplorerAccountUploadTargetSelection {
+  if (!options.authoritative || !Array.isArray(accounts)) return { kind: "unknown" };
+  if (accounts.length === 0) return { kind: "missing" };
+  if (accounts.length > 1) return { kind: "ambiguous" };
+  const candidate = accounts[0];
+  if (candidate.documentId !== accountDocumentId) return { kind: "missing" };
+  const rawId = candidate.id;
+  const serializedId = typeof rawId === "number" ? String(rawId) : rawId;
+  const numericId = typeof serializedId === "string" && /^[1-9]\d*$/.test(serializedId) ? Number(serializedId) : Number.NaN;
+  if (!Number.isSafeInteger(numericId)) return { kind: "incomplete" };
+  return { kind: "selected", account: { documentId: accountDocumentId, id: serializedId as string } };
 }
 
 export type ExplorerAccountSelection =
@@ -82,10 +132,12 @@ export function createMusicIdentityCoordinator(dependencies: {
 
   const publishFailure = (cause: unknown) => {
     const error = cause as { code?: unknown; upstreamCode?: unknown; retryable?: unknown };
+    const code = typeof error?.code === "string" ? error.code : "";
     const upstreamCode = typeof error?.upstreamCode === "string" ? error.upstreamCode : "";
-    if (upstreamCode === "IDENTITY_PENDING_DELETION" || upstreamCode === "IDENTITY_TOMBSTONED") publish("pending_deletion");
-    else if (upstreamCode === "IDENTITY_SUSPENDED") publish("suspended");
-    else if (error?.code === "AUTH_REQUIRED" || upstreamCode === "AUTH_REQUIRED" || upstreamCode === "AUTH_INVALID") publish("auth_required");
+    const canonicalCodes = new Set([code, upstreamCode]);
+    if (canonicalCodes.has("IDENTITY_PENDING_DELETION") || canonicalCodes.has("IDENTITY_TOMBSTONED")) publish("pending_deletion");
+    else if (canonicalCodes.has("IDENTITY_SUSPENDED")) publish("suspended");
+    else if (code === "AUTH_REQUIRED" || upstreamCode === "AUTH_REQUIRED" || upstreamCode === "AUTH_INVALID") publish("auth_required");
     else if (["IDENTITY_CONFLICT", "ACCOUNT_AMBIGUOUS", "ACCOUNT_SWITCH_CONFLICT"].includes(upstreamCode)) publish("conflict");
     else {
       retryableFailures += 1;
