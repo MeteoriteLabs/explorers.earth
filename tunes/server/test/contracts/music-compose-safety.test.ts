@@ -58,21 +58,12 @@ describe("Music Compose ownership safety", () => {
     })).toThrow("explorers must build the actual application");
   });
 
-  it("uses a default-deny enumerated Explorer fixture context", () => {
-    const ignore = readFileSync(resolve(repositoryRoot, ".dockerignore"), "utf8");
-    expect(ignore).toMatch(/^\*\*$/m);
-    expect(ignore).not.toContain("!explorers-earth/**");
-    expect(ignore).toContain("!explorers-earth/src/**/*.tsx");
-    expect(ignore).toContain("!explorers-earth/public/**/*.png");
-    expect(ignore).toContain("!tunes/shared/musicPublicationContract.ts");
-    for (const denied of [
-      "explorers-earth/**/.env*",
-      "explorers-earth/**/.chrome-profile/**",
-      "explorers-earth/**/test-results/**",
-      "explorers-earth/**/debug_*.html",
-      "explorers-earth/**/*.log",
-      "explorers-earth/**/.artifacts/**",
-    ]) expect(ignore).toContain(denied);
+  it("keeps the generated exact tracked-file fixture context synchronized", () => {
+    const result = spawnSync(process.execPath, [
+      resolve(repositoryRoot, "scripts/generate-music-fixture-dockerignore.mjs"),
+      "--check",
+    ], { cwd: repositoryRoot, encoding: "utf8" });
+    expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
   });
 
   it("passes only the exact source manifest through Docker ignore semantics", () => {
@@ -101,8 +92,18 @@ describe("Music Compose ownership safety", () => {
         "explorers-earth/src/nested/debug_capability.html",
         "explorers-earth/src/nested/runtime.log",
         "explorers-earth/src/.artifacts/authority/key",
+        "explorers-earth/src/nested/tests/authority.ts",
+        "explorers-earth/src/nested/test/authority.ts",
+        "explorers-earth/src/nested/arbitrary-authority.ts",
         "explorers-earth/public/nested/.env.public",
         "explorers-earth/public/debug_response.html",
+        "tunes/.env.music.test",
+        "tunes/node_modules/fixture-dependency/index.js",
+        "tunes/dist/server/index.js",
+        "tunes/coverage/coverage-final.json",
+        "tunes/test-results/music/trace.zip",
+        "tunes/server/runtime.log",
+        "tunes/server/tests/authority.ts",
       ]) write(hostile, "hostile-context-sentinel");
       const dockerfile = join(sandbox, "Dockerfile.context-manifest");
       writeFileSync(dockerfile, [
@@ -125,6 +126,41 @@ describe("Music Compose ownership safety", () => {
         "explorers-earth/src/main.tsx",
         "tunes/shared/musicPublicationContract.ts",
       ]);
+    } finally {
+      rmSync(sandbox, { recursive: true, force: true });
+    }
+  });
+
+  it("matches the actual root BuildKit context to the generated tracked fixture manifest", () => {
+    const sandbox = mkdtempSync(join(tmpdir(), "music-fixture-actual-context-"));
+    const output = join(sandbox, "output");
+    const dockerfile = join(sandbox, "Dockerfile.context-manifest");
+    try {
+      const expectedResult = spawnSync(process.execPath, [
+        resolve(repositoryRoot, "scripts/generate-music-fixture-dockerignore.mjs"),
+        "--manifest",
+      ], { cwd: repositoryRoot, encoding: "utf8" });
+      expect(expectedResult.status, `${expectedResult.stdout}\n${expectedResult.stderr}`).toBe(0);
+      const expected = expectedResult.stdout.trim().split(/\r?\n/);
+      writeFileSync(dockerfile, [
+        "FROM node:22.12-alpine AS manifest",
+        "COPY . /capture/context",
+        "RUN find /capture/context -type f | sed 's#^/capture/context/##' | sort > /context-manifest.txt",
+        "FROM scratch",
+        "COPY --from=manifest /context-manifest.txt /context-manifest.txt",
+        "",
+      ].join("\n"));
+      const result = spawnSync("docker", ["build", "--progress=plain", "--file", dockerfile,
+        "--output", `type=local,dest=${output}`, repositoryRoot], { encoding: "utf8" });
+      expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+      const manifest = readFileSync(join(output, "context-manifest.txt"), "utf8").trim().split(/\r?\n/);
+      expect(manifest).toEqual(expected);
+      for (const denied of [
+        "tunes/.env.music.test",
+        "tunes/node_modules/.bin/autoprefixer",
+        "tunes/dist/server/index.js",
+        "explorers-earth/src/nested/tests/authority.ts",
+      ]) expect(manifest).not.toContain(denied);
     } finally {
       rmSync(sandbox, { recursive: true, force: true });
     }

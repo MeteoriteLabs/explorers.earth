@@ -170,13 +170,12 @@ describe("durable publication response cryptography", () => {
     const now = Date.parse("2026-08-21T00:00:00.000Z");
     const previous = { kid: "publication-previous-v1", key: Buffer.alloc(32, 0x30), acceptUntil: now + 1_000 };
     const cipher = new MusicPublicationResponseCipher({ current, previous: { ...previous, acceptUntil: now + 1_000 }, retentionSeconds: 86_400 }, { now: () => now });
-    expect(cipher.acceptsReplayKey(current.kid, now + 99_999)).toBe(true);
-    expect(cipher.acceptsReplayKey(previous.kid, now + 1_000)).toBe(true);
-    expect(cipher.acceptsReplayKey(previous.kid, now + 1_001)).toBe(false);
-    expect(cipher.acceptsReplayKey("missing", now + 1)).toBe(false);
+    expect(cipher.acceptsReplayKey(current.kid)).toBe(true);
+    expect(cipher.acceptsReplayKey(previous.kid)).toBe(true);
+    expect(cipher.acceptsReplayKey("missing")).toBe(false);
     const withoutPrevious = new MusicPublicationResponseCipher({ current, retentionSeconds: 86_400 }, { now: () => now });
-    expect(withoutPrevious.acceptsReplayKey(previous.kid, now + 1)).toBe(false);
+    expect(withoutPrevious.acceptsReplayKey(previous.kid)).toBe(false);
     const afterCutoff = new MusicPublicationResponseCipher({ current, previous: { ...previous, acceptUntil: now - 1 }, retentionSeconds: 86_400 }, { now: () => now });
-    expect(afterCutoff.acceptsReplayKey(previous.kid, now - 1)).toBe(false);
+    expect(afterCutoff.acceptsReplayKey(previous.kid)).toBe(false);
   });
 });

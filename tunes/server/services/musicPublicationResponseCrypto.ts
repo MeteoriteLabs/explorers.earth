@@ -124,11 +124,11 @@ export class MusicPublicationResponseCipher {
     }
   }
 
-  acceptsReplayKey(kid: string, rowExpiresAt: number): boolean {
+  acceptsReplayKey(kid: string): boolean {
     if (kid === this.keyring.current.kid) return true;
     const previous = this.keyring.previous;
     return previous !== undefined && kid === previous.kid
-      && this.now() <= previous.acceptUntil && rowExpiresAt <= previous.acceptUntil;
+      && this.now() <= previous.acceptUntil;
   }
 
   private resolveReplayKey(kid: string): Buffer {

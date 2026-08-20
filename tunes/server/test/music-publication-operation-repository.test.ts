@@ -55,6 +55,7 @@ function storedResponse() {
     operation_state: "completed",
     expires_at: new Date(now + 86_400_000),
     response_expired: false,
+    replay_deadline_covered: true,
     response_key_id: encrypted.responseKeyId,
     response_nonce: encrypted.responseNonce,
     response_ciphertext: encrypted.responseCiphertext,
@@ -209,6 +210,7 @@ describe("durable publication operation repository", () => {
     const row = {
       music_user_id: 52, idempotency_key_hash: idempotencyKeyHash, request_fingerprint: requestFingerprint,
       request_mode: "public", expires_at: new Date(now + 60_000),
+      replay_deadline_covered: true,
       response_key_id: encrypted.responseKeyId, response_nonce: encrypted.responseNonce,
       response_ciphertext: encrypted.responseCiphertext, response_tag: encrypted.responseTag,
     };
@@ -228,6 +230,44 @@ describe("durable publication operation repository", () => {
     }, { now: () => now });
     await expect(new MusicPublicationOperationRepository(db.pool as never, wrongPrevious)
       .verifyReplayReadiness()).rejects.toThrow(/publication replay key readiness/i);
+  });
+
+  it("fails readiness when PostgreSQL says a previous-key row exceeds the deadline below one millisecond", async () => {
+    const previousKey = Buffer.alloc(32, 0x24);
+    const oldCipher = new MusicPublicationResponseCipher({
+      current: { kid: "publication-previous-v1", key: previousKey }, retentionSeconds: 86_400,
+    }, { now: () => now, randomBytes: (size) => Buffer.alloc(size, 0x23) });
+    const idempotencyKeyHash = hashPublicationIdempotencyKey("publication-command-submillisecond");
+    const requestFingerprint = publicationRequestFingerprint("public");
+    const encrypted = oldCipher.encrypt({ musicUserId: 53, idempotencyKeyHash, requestFingerprint }, {
+      version: "music-publication/v1", publication: { mode: "public", publicSlug: "submillisecond-owner" },
+    });
+    const deadline = now + 60_000;
+    const db = harness(() => ({ rows: [{
+      music_user_id: 53,
+      idempotency_key_hash: idempotencyKeyHash,
+      request_fingerprint: requestFingerprint,
+      response_key_id: encrypted.responseKeyId,
+      response_nonce: encrypted.responseNonce,
+      response_ciphertext: encrypted.responseCiphertext,
+      response_tag: encrypted.responseTag,
+      expires_at: new Date(deadline),
+      replay_deadline_covered: false,
+    }] }));
+    const readyCipher = new MusicPublicationResponseCipher({
+      current: { kid: "publication-current-v2", key: Buffer.alloc(32, 0x25) },
+      previous: { kid: "publication-previous-v1", key: previousKey, acceptUntil: deadline },
+      retentionSeconds: 86_400,
+    }, { now: () => now });
+
+    await expect(new MusicPublicationOperationRepository(db.pool as never, readyCipher)
+      .verifyReplayReadiness()).rejects.toThrow(/publication replay key readiness/i);
+    expect(db.calls[0]?.text).toMatch(/extract\(epoch FROM expires_at\)\*1000000\)::numeric<=\$3::bigint\*1000/i);
+    expect(db.calls[0]?.values).toEqual([
+      "publication-current-v2",
+      "publication-previous-v1",
+      deadline,
+    ]);
   });
 
   it("shreds a bounded batch of expired response ciphertext without deleting tombstones", async () => {

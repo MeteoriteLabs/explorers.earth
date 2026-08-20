@@ -65,6 +65,22 @@ async function insertExpiredOperation(ownerId: number, key: string, response: Mu
   }
 }
 
+async function removePublicationOperationFixture(ownerId: number): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("ALTER TABLE music_publication_operations DISABLE TRIGGER music_publication_operation_immutability");
+    await client.query("DELETE FROM music_publication_operations WHERE music_user_id=$1", [ownerId]);
+    await client.query("ALTER TABLE music_publication_operations ENABLE ALWAYS TRIGGER music_publication_operation_immutability");
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 function identityInput(suffix: string): EnsureMusicIdentityInput {
   return {
     userDocumentId: `c9-publication-user-${suffix}`,
@@ -245,6 +261,52 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
       operation_state: "replay_expired", response_key_id: null, response_nonce: null,
       response_ciphertext: null, response_tag: null, shredded: true,
     });
+  });
+
+  it("compares a previous-key deadline to the exact PostgreSQL microsecond expiry", async () => {
+    const submillisecondKey = { kid: "publication-submillisecond-v1", key: Buffer.alloc(32, 0x63) };
+    const owner = await identities.ensureIdentity(identityInput("readiness-microseconds"));
+    await expect(repository(cipher(submillisecondKey)).execute(owner.id, "microsecond-operation-key", "public"))
+      .resolves.toMatchObject({ status: "completed", replayed: false });
+    const client = await pool.connect();
+    let expiry: { expiry_text: string; deadline_ms: string };
+    try {
+      await client.query("BEGIN");
+      await client.query("ALTER TABLE music_publication_operations DISABLE TRIGGER music_publication_operation_immutability");
+      expiry = (await client.query<{ expiry_text: string; deadline_ms: string }>(
+        `WITH exact_expiry AS (
+           SELECT date_trunc('second',clock_timestamp())+interval '1 hour'+interval '0.123999 seconds' AS value
+         )
+         UPDATE music_publication_operations operation
+            SET expires_at=exact_expiry.value,
+                created_at=exact_expiry.value-interval '24 hours',
+                completed_at=exact_expiry.value-interval '24 hours',
+                updated_at=exact_expiry.value-interval '24 hours'
+           FROM exact_expiry
+          WHERE music_user_id=$1
+          RETURNING expires_at::text AS expiry_text,
+                    floor(extract(epoch FROM expires_at)*1000)::bigint AS deadline_ms`,
+        [owner.id],
+      )).rows[0];
+      await client.query("ALTER TABLE music_publication_operations ENABLE ALWAYS TRIGGER music_publication_operation_immutability");
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+    try {
+      expect(expiry.expiry_text).toMatch(/\.123999\+00$/);
+      const truncatedDeadline = Number(expiry.deadline_ms);
+      clock = truncatedDeadline - 1;
+      await expect(repository(cipher(currentKey, { ...submillisecondKey, acceptUntil: truncatedDeadline }))
+        .verifyReplayReadiness()).rejects.toThrow(/publication replay key readiness/i);
+      await expect(repository(cipher(currentKey, { ...submillisecondKey, acceptUntil: truncatedDeadline + 1 }))
+        .verifyReplayReadiness()).resolves.toBeUndefined();
+    } finally {
+      await removePublicationOperationFixture(owner.id);
+    }
   });
 
   it("rotates response keys safely and fails readiness without the needed prior authority or deadline", async () => {

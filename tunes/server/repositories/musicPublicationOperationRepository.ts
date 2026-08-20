@@ -156,6 +156,7 @@ export class MusicPublicationOperationRepository {
   }
 
   async verifyReplayReadiness(): Promise<void> {
+    const previous = this.cipher.keyring.previous;
     const rows = (await this.pool.query<{
       music_user_id: number;
       idempotency_key_hash: string;
@@ -164,20 +165,31 @@ export class MusicPublicationOperationRepository {
       response_nonce: Buffer;
       response_ciphertext: Buffer;
       response_tag: Buffer;
-      expires_at: Date;
+      replay_deadline_covered: boolean;
     }>(
       `SELECT DISTINCT ON (response_key_id)
               music_user_id,idempotency_key_hash,request_fingerprint,response_key_id,
-              response_nonce,response_ciphertext,response_tag,expires_at
+              response_nonce,response_ciphertext,response_tag,
+              CASE
+                WHEN response_key_id=$1 THEN TRUE
+                WHEN response_key_id=$2
+                  AND (extract(epoch FROM expires_at)*1000000)::numeric<=$3::bigint*1000 THEN TRUE
+                ELSE FALSE
+              END AS replay_deadline_covered
          FROM music_publication_operations
         WHERE operation_state='completed' AND expires_at>clock_timestamp()
         ORDER BY response_key_id,expires_at DESC
         LIMIT 3`,
+      [
+        this.cipher.keyring.current.kid,
+        previous?.kid ?? null,
+        previous?.acceptUntil ?? null,
+      ],
     )).rows;
     try {
       if (rows.length > 2) throw new Error("too many active response keys");
       for (const row of rows) {
-        if (!this.cipher.acceptsReplayKey(row.response_key_id, row.expires_at.getTime())) {
+        if (row.replay_deadline_covered !== true || !this.cipher.acceptsReplayKey(row.response_key_id)) {
           throw new Error("response key is unavailable");
         }
         this.cipher.decrypt({
