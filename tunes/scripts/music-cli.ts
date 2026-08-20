@@ -21,7 +21,10 @@ import {
   rotateFixtureMusicAuthority,
   withAllFixtureMusicSecretsCleanup,
 } from "./music-fixture-secret.ts";
-import { readSecureMusicSecretFile } from "../server/config/secure-music-secret-file.ts";
+import {
+  readSecureMusicSecretFile,
+  readSecureMusicSecretFileWithDistinctAuthorities,
+} from "../server/config/secure-music-secret-file.ts";
 
 export const MUSIC_CLI_SCHEMA_VERSION = "music-cli/v1";
 export const FIXTURE_SCHEMA_VERSION = "strapi-identity-fixture/v1";
@@ -266,6 +269,8 @@ export function createLiveMusicReconciliationRunContext(input: {
   const gateValues = Object.fromEntries(gateNames.map((name) => [name, input.environment[name] ?? "unset"]));
   const serviceTokenAuthority = createEnvironmentFingerprint({
     file: input.environment.STRAPI_RECONCILIATION_TOKEN_FILE ?? "unset",
+    lifecycleProofFile: input.environment.STRAPI_LIFECYCLE_PROOF_TOKEN_FILE ?? "unset",
+    accessTokenFile: input.environment.STRAPI_ACCESS_TOKEN_FILE ?? "unset",
     content: createHash("sha256").update(input.serviceToken).digest("hex"),
   });
   const databaseAuthority = createEnvironmentFingerprint({
@@ -558,7 +563,11 @@ async function executeCommand(id: string, parsed: ParsedArgs, context: RunContex
       databaseUrl = target.toString();
     } else {
       serviceToken = validateMusicReconciliationServiceToken(
-        await readSecureMusicSecretFile(config.serviceTokenFile!, { mode: "live" }),
+        await readSecureMusicSecretFileWithDistinctAuthorities(
+          config.serviceTokenFile!,
+          [config.lifecycleProofTokenFile!, config.accessTokenFile!],
+          { mode: "live" },
+        ),
       );
       const [{ resolveMusicDatabaseConnection }, { resolveMusicIdentityTransportConfig }, { verifyMusicRuntimeDatabaseConnection }] = await Promise.all([
         import("../server/config/music-database-config.ts"),

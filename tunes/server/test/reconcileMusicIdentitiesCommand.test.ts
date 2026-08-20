@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { chmod, link, lstat, mkdir, mkdtemp, open, realpath, readdir, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -8,6 +9,7 @@ import {
   assertMusicReconciliationResume,
   formatMusicReconciliationReport,
   interruptMusicReconciliationCheckpoint,
+  parseWindowsCheckpointSecurityOutput,
   readMusicReconciliationCheckpoint,
   reconcileMusicIdentities,
   writeMusicReconciliationCheckpoint,
@@ -387,6 +389,70 @@ describe("music reconciliation checkpoints", () => {
   });
 
   it.each([
+    ["a non-runner owner", { ownerMatchesEffectiveUser: false }],
+    ["an untrusted writable DACL", { unsafeWritePrincipalCount: 1 }],
+    ["a malformed native device identity", { nativeDev: "not-a-device" }],
+    ["a malformed native file identity", { nativeIno: "not-a-file" }],
+    ["a mismatched native device identity", { nativeDev: "0" }],
+    ["a mismatched native file identity", { nativeIno: "0" }],
+    ["a non-integral unsafe-principal count", { unsafeWritePrincipalCount: 0.5 }],
+  ])("fails closed on Windows checkpoint security with %s", async (_name, result) => {
+    const directory = await mkdtemp(join(tmpdir(), "music-reconciliation-checkpoint-win-security-"));
+    const path = join(directory, "checkpoint.json");
+    await writeMusicReconciliationCheckpoint(path, checkpoint());
+    const inspectWindowsCheckpointSecurity = vi.fn(async (target: string) => {
+      const metadata = await lstat(target, { bigint: true });
+      return {
+        nativeDev: String(metadata.dev),
+        nativeIno: String(metadata.ino),
+        ownerMatchesEffectiveUser: true,
+        unsafeWritePrincipalCount: 0,
+        ...result,
+      };
+    });
+    try {
+      await expect(Reflect.apply(readMusicReconciliationCheckpoint, undefined, [path, {
+        platform: "win32",
+        inspectWindowsCheckpointSecurity,
+      }])).rejects.toThrow(/owner|permission|secure|checkpoint/i);
+      expect(inspectWindowsCheckpointSecurity).toHaveBeenCalled();
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("fails closed on malformed or incomplete native Windows security output", () => {
+    const valid = JSON.stringify({
+      nativeDev: "1",
+      nativeIno: "2",
+      ownerMatchesEffectiveUser: true,
+      unsafeWritePrincipalCount: 0,
+    });
+    expect(parseWindowsCheckpointSecurityOutput(valid, 1)).toHaveLength(1);
+    for (const output of [
+      "",
+      `${valid}\n${valid}`,
+      JSON.stringify({ nativeIno: "2", ownerMatchesEffectiveUser: true, unsafeWritePrincipalCount: 0 }),
+      JSON.stringify({ nativeDev: "1", ownerMatchesEffectiveUser: true, unsafeWritePrincipalCount: 0 }),
+      JSON.stringify({ nativeDev: "1", nativeIno: "2", unsafeWritePrincipalCount: 0 }),
+      JSON.stringify({ nativeDev: "1", nativeIno: "2", ownerMatchesEffectiveUser: true }),
+    ]) expect(() => parseWindowsCheckpointSecurityOutput(output, 1)).toThrow(/checkpoint|secure|invalid/i);
+  });
+
+  it.skipIf(process.platform !== "win32")("rejects an actual broad Windows write-only directory ACL", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "music-reconciliation-checkpoint-win-acl-"));
+    const path = join(directory, "checkpoint.json");
+    try {
+      await writeMusicReconciliationCheckpoint(path, checkpoint());
+      execFileSync("icacls.exe", [directory, "/grant", "*S-1-1-0:(CI)(W)"], { windowsHide: true });
+      await expect(readMusicReconciliationCheckpoint(path)).rejects.toThrow(/permission|secure|checkpoint/i);
+    } finally {
+      execFileSync("icacls.exe", [directory, "/remove:g", "*S-1-1-0", "/T", "/C"], { windowsHide: true });
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
     ["commit", { commit: "different" }],
     ["fixture version", { fixtureVersion: "2" }],
     ["fixture schema", { fixtureSchemaVersion: "changed" }],
@@ -672,7 +738,7 @@ describe("reconcileMusicIdentities", () => {
       run: { ...baseRun, applyEnabled: true, requestedMode: "apply", approvalToken: "d".repeat(64) },
     });
     await expect(readMusicReconciliationCheckpoint(applyPath)).resolves.toMatchObject({ state: "blocked", review: checkpoint().review });
-  });
+  }, 15_000);
 });
 
 describe("formatMusicReconciliationReport", () => {

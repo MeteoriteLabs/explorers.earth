@@ -83,6 +83,8 @@ describe("music:reconcile CLI contract", () => {
       base,
       environment: {
         STRAPI_RECONCILIATION_TOKEN_FILE: "/run/secrets/reconcile-a",
+        STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: "/run/secrets/lifecycle-a",
+        STRAPI_ACCESS_TOKEN_FILE: "/run/secrets/access-a",
         MUSIC_DATABASE_PASSWORD_FILE: "/run/secrets/database-a",
         MUSIC_RECONCILIATION_ENVIRONMENT: "staging",
         MUSIC_RECONCILIATION_APPLY_ENABLED: "false",
@@ -111,6 +113,8 @@ describe("music:reconcile CLI contract", () => {
       { serviceToken: "service-secret-b" },
       { base: { ...base, environmentFingerprint: "changed-code-authority" } },
       { environment: { ...input.environment, STRAPI_RECONCILIATION_TOKEN_FILE: "/run/secrets/reconcile-b" } },
+      { environment: { ...input.environment, STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: "/run/secrets/lifecycle-b" } },
+      { environment: { ...input.environment, STRAPI_ACCESS_TOKEN_FILE: "/run/secrets/access-b" } },
       { environment: { ...input.environment, MUSIC_RECONCILIATION_APPLY_ENABLED: "true" } },
     ]) {
       expect(createLiveMusicReconciliationRunContext({ ...input, ...changed }).environmentFingerprint)
@@ -144,6 +148,20 @@ describe("music:reconcile CLI contract", () => {
     expect(cli).toContain("await checkMusicDatabaseReadiness(pool)");
     expect(cli.indexOf("await checkMusicDatabaseReadiness(pool)"))
       .toBeLessThan(cli.indexOf("new command.HttpMusicReconciliationSource"));
+  });
+
+  it("requires and native-identity-checks every live token authority before database or source access", () => {
+    const cli = readFileSync(resolve(repositoryRoot, "tunes/scripts/music-cli.ts"), "utf8");
+    const parse = cli.indexOf("parseMusicReconciliationCommandConfig(environment)");
+    const identityCheck = cli.indexOf("readSecureMusicSecretFileWithDistinctAuthorities(");
+    const database = cli.indexOf("resolveMusicDatabaseConnection(environment, \"runtime\")");
+    const source = cli.indexOf("new command.HttpMusicReconciliationSource");
+    expect(parse).toBeGreaterThan(-1);
+    expect(identityCheck).toBeGreaterThan(parse);
+    expect(identityCheck).toBeLessThan(database);
+    expect(identityCheck).toBeLessThan(source);
+    expect(cli).toContain("config.lifecycleProofTokenFile!");
+    expect(cli).toContain("config.accessTokenFile!");
   });
 
   it("maps typed resume drift to the common prerequisite/state-mismatch exit", () => {

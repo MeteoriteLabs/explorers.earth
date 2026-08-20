@@ -7,7 +7,9 @@ import {
   validateMusicReconciliationServiceToken,
 } from "../config/music-reconciliation-config";
 import { resolveMusicIdentityTransportConfig } from "../config/music-identity-config";
-import { readSecureMusicSecretFile } from "../config/secure-music-secret-file";
+import {
+  readSecureMusicSecretFileWithDistinctAuthorities,
+} from "../config/secure-music-secret-file";
 
 const fixture = {
   MUSIC_MODE: "fixture",
@@ -73,18 +75,24 @@ describe("music reconciliation command configuration", () => {
       MUSIC_RECONCILIATION_LIVE_CONTRACT_VERIFIED: "true",
       STRAPI_URL: "https://strapi.example.test",
       STRAPI_RECONCILIATION_TOKEN_FILE: "/run/secrets/strapi-reconciliation",
+      STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: "/run/secrets/strapi-lifecycle-proof",
+      STRAPI_ACCESS_TOKEN_FILE: "/run/secrets/strapi-access-token",
     };
     expect(parseMusicReconciliationCommandConfig(live)).toMatchObject({
       environment: "staging",
       liveContractVerified: true,
       sourceUrl: "https://strapi.example.test",
       serviceTokenFile: "/run/secrets/strapi-reconciliation",
+      lifecycleProofTokenFile: "/run/secrets/strapi-lifecycle-proof",
+      accessTokenFile: "/run/secrets/strapi-access-token",
       serviceToken: undefined,
     });
     for (const invalid of [
       { ...live, MUSIC_RECONCILIATION_LIVE_CONTRACT_VERIFIED: "false" },
       { ...live, STRAPI_URL: "http://strapi.example.test" },
       { ...live, STRAPI_RECONCILIATION_TOKEN_FILE: undefined },
+      { ...live, STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: undefined },
+      { ...live, STRAPI_ACCESS_TOKEN_FILE: undefined },
       { ...live, STRAPI_RECONCILIATION_TOKEN: "inline-is-forbidden" },
       { ...live, STRAPI_RECONCILIATION_TOKEN_FILE: "/run/secrets/strapi-lifecycle", STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: "/run/secrets/strapi-lifecycle" },
       { ...live, STRAPI_RECONCILIATION_TOKEN_FILE: "/run/secrets/../secrets/strapi-lifecycle", STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: "/run/secrets/strapi-lifecycle" },
@@ -104,6 +112,7 @@ describe("music reconciliation command configuration", () => {
       STRAPI_URL: "https://strapi.example.test",
       STRAPI_RECONCILIATION_TOKEN_FILE: "C:\\RUN\\SECRETS\\STRAPI-TOKEN",
       STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: "c:\\run\\secrets\\strapi-token",
+      STRAPI_ACCESS_TOKEN_FILE: "C:\\RUN\\SECRETS\\STRAPI-ACCESS-TOKEN",
     };
     expect(() => parseMusicReconciliationCommandConfig(live)).toThrow(/dedicated/i);
   });
@@ -112,11 +121,18 @@ describe("music reconciliation command configuration", () => {
     const directory = mkdtempSync(join(tmpdir(), "music-reconciliation-token-"));
     const reconciliationPath = join(directory, "reconciliation-token");
     const authorityPath = join(directory, authority);
+    const otherAuthorityPath = join(directory, authority === "lifecycle-proof" ? "access-token" : "lifecycle-proof");
     try {
       writeFileSync(reconciliationPath, "r".repeat(32), { mode: 0o600 });
+      writeFileSync(otherAuthorityPath, "o".repeat(32), { mode: 0o600 });
       chmodSync(reconciliationPath, 0o600);
+      chmodSync(otherAuthorityPath, 0o600);
       linkSync(reconciliationPath, authorityPath);
-      await expect(readSecureMusicSecretFile(reconciliationPath, { mode: "live" }))
+      await expect(readSecureMusicSecretFileWithDistinctAuthorities(
+        reconciliationPath,
+        [authorityPath, otherAuthorityPath],
+        { mode: "live" },
+      ))
         .rejects.toThrow(/secure|link|secret/i);
     } finally {
       rmSync(directory, { recursive: true, force: true });
@@ -126,10 +142,20 @@ describe("music reconciliation command configuration", () => {
   it("accepts a distinct owner-only reconciliation token file", async () => {
     const directory = mkdtempSync(join(tmpdir(), "music-reconciliation-token-distinct-"));
     const reconciliationPath = join(directory, "reconciliation-token");
+    const lifecyclePath = join(directory, "lifecycle-proof");
+    const accessPath = join(directory, "access-token");
     try {
       writeFileSync(reconciliationPath, "r".repeat(32), { mode: 0o600 });
+      writeFileSync(lifecyclePath, "l".repeat(32), { mode: 0o600 });
+      writeFileSync(accessPath, "a".repeat(32), { mode: 0o600 });
       chmodSync(reconciliationPath, 0o600);
-      await expect(readSecureMusicSecretFile(reconciliationPath, { mode: "live" }))
+      chmodSync(lifecyclePath, 0o600);
+      chmodSync(accessPath, 0o600);
+      await expect(readSecureMusicSecretFileWithDistinctAuthorities(
+        reconciliationPath,
+        [lifecyclePath, accessPath],
+        { mode: "live" },
+      ))
         .resolves.toBe("r".repeat(32));
     } finally {
       rmSync(directory, { recursive: true, force: true });
@@ -156,6 +182,8 @@ describe("music reconciliation command configuration", () => {
       MUSIC_RECONCILIATION_LIVE_CONTRACT_VERIFIED: "true",
       STRAPI_URL: "https://strapi.example.test",
       STRAPI_RECONCILIATION_TOKEN_FILE: "/run/secrets/strapi-reconciliation",
+      STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: "/run/secrets/strapi-lifecycle-proof",
+      STRAPI_ACCESS_TOKEN_FILE: "/run/secrets/strapi-access-token",
     })).toThrow(/production/i);
     for (const invalid of ["0", "100001", "1.2", "not-a-number"]) {
       expect(() => parseMusicReconciliationCommandConfig({ ...fixture, MUSIC_RECONCILIATION_SCAN_MAX_ROWS: invalid })).toThrow();
@@ -190,6 +218,8 @@ describe("music reconciliation command configuration", () => {
       MUSIC_RECONCILIATION_LIVE_CONTRACT_VERIFIED: "true",
       STRAPI_URL: "https://strapi.example.test",
       STRAPI_RECONCILIATION_TOKEN_FILE: "/run/secrets/strapi-reconciliation",
+      STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: "/run/secrets/strapi-lifecycle-proof",
+      STRAPI_ACCESS_TOKEN_FILE: "/run/secrets/strapi-access-token",
     };
     for (const invalid of [
       { ...live, MUSIC_RECONCILIATION_ENVIRONMENT: "" },
@@ -198,7 +228,6 @@ describe("music reconciliation command configuration", () => {
       { ...live, STRAPI_RECONCILIATION_TOKEN_FILE: " ".repeat(2) },
       { ...live, STRAPI_RECONCILIATION_TOKEN_FILE: "x".repeat(4_097) },
     ]) expect(() => parseMusicReconciliationCommandConfig(invalid)).toThrow();
-    expect(parseMusicReconciliationCommandConfig({ ...live, STRAPI_ACCESS_TOKEN_FILE: "/run/secrets/another-token" }))
-      .toMatchObject({ environment: "staging" });
+    expect(parseMusicReconciliationCommandConfig(live)).toMatchObject({ environment: "staging" });
   });
 });

@@ -183,7 +183,7 @@ describePg("C5 least-privilege Music runtime database authority", () => {
     await owner.query(`ALTER SCHEMA public OWNER TO ${runtimeUser}`);
     await expect(authority.verifyMusicRuntimeLogin(owner, runtime, { loginRole: runtimeUser }))
       .rejects.toThrow(/privilege|unsafe/i);
-    await owner.query("ALTER SCHEMA public OWNER TO music_migrator");
+    await owner.query("ALTER SCHEMA public OWNER TO pg_database_owner");
     await owner.query(`ALTER DATABASE ${databaseName} OWNER TO ${runtimeUser}`);
     await expect(authority.verifyMusicRuntimeLogin(owner, runtime, { loginRole: runtimeUser }))
       .rejects.toThrow(/privilege|unsafe/i);
@@ -191,6 +191,21 @@ describePg("C5 least-privilege Music runtime database authority", () => {
   });
 
   it.each([
+    {
+      name: "direct login SELECT on one column even when table SELECT is already permitted",
+      grant: `GRANT SELECT (username) ON TABLE users TO ${runtimeUser}`,
+      revoke: `REVOKE SELECT (username) ON TABLE users FROM ${runtimeUser}`,
+    },
+    {
+      name: "capability UPDATE grant option on one column",
+      grant: `GRANT UPDATE (username) ON TABLE users TO ${runtimeCapabilityRole} WITH GRANT OPTION`,
+      revoke: `REVOKE UPDATE (username) ON TABLE users FROM ${runtimeCapabilityRole}`,
+    },
+    {
+      name: "PUBLIC SELECT on one column",
+      grant: "GRANT SELECT (username) ON TABLE users TO PUBLIC",
+      revoke: "REVOKE SELECT (username) ON TABLE users FROM PUBLIC",
+    },
     {
       name: "direct TRUNCATE",
       grant: `GRANT TRUNCATE ON TABLE users TO ${runtimeUser}`,
@@ -233,6 +248,54 @@ describePg("C5 least-privilege Music runtime database authority", () => {
         .rejects.toThrow(/privilege|authority|attestation|unsafe/i);
     } finally {
       await owner.query(revoke);
+    }
+  });
+
+  it.each([
+    {
+      name: "application table",
+      takeOwnership: `ALTER TABLE users OWNER TO ${runtimeCapabilityRole}`,
+      restoreOwnership: "ALTER TABLE users OWNER TO music_migrator",
+    },
+    {
+      name: "enforcement function",
+      takeOwnership: `ALTER FUNCTION enforce_music_identity_immutability() OWNER TO ${runtimeCapabilityRole}`,
+      restoreOwnership: "ALTER FUNCTION enforce_music_identity_immutability() OWNER TO music_migrator",
+    },
+  ])("rejects capability ownership of an expected $name", async ({ takeOwnership, restoreOwnership }) => {
+    // Production break caught: the login can SET ROLE music_runtime, so any
+    // application object owned by that capability is runtime-mutable authority.
+    const authority = await loadAuthority() as {
+      verifyMusicRuntimeLogin?: (ownerPool: pg.Pool, runtimePool: pg.Pool, input: { loginRole: string }) => Promise<void>;
+    };
+    expect(authority.verifyMusicRuntimeLogin).toBeTypeOf("function");
+    if (!authority.verifyMusicRuntimeLogin) return;
+    await owner.query(takeOwnership);
+    try {
+      await expect(authority.verifyMusicRuntimeLogin(owner, runtime, { loginRole: runtimeUser }))
+        .rejects.toThrow(/owner|privilege|authority|attestation|unsafe/i);
+    } finally {
+      await owner.query(restoreOwnership);
+    }
+  });
+
+  it("rejects an unexpected owner even when runtime effective privileges are unchanged", async () => {
+    const authority = await loadAuthority() as {
+      provisionMusicRuntimeLogin?: (ownerPool: pg.Pool, input: { loginRole: string; password: string }) => Promise<void>;
+      verifyMusicRuntimeLogin?: (ownerPool: pg.Pool, runtimePool: pg.Pool, input: { loginRole: string }) => Promise<void>;
+    };
+    expect(authority.provisionMusicRuntimeLogin).toBeTypeOf("function");
+    expect(authority.verifyMusicRuntimeLogin).toBeTypeOf("function");
+    if (!authority.provisionMusicRuntimeLogin || !authority.verifyMusicRuntimeLogin) return;
+    await owner.query("CREATE ROLE music_unexpected_owner NOLOGIN");
+    await owner.query("ALTER TABLE users OWNER TO music_unexpected_owner");
+    await authority.provisionMusicRuntimeLogin(owner, { loginRole: runtimeUser, password: runtimePassword });
+    try {
+      await expect(authority.verifyMusicRuntimeLogin(owner, runtime, { loginRole: runtimeUser }))
+        .rejects.toThrow(/owner|privilege|authority|attestation|unsafe/i);
+    } finally {
+      await owner.query("ALTER TABLE users OWNER TO music_migrator");
+      await owner.query("DROP ROLE music_unexpected_owner");
     }
   });
 

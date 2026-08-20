@@ -137,7 +137,7 @@ export async function verifyMusicRuntimeDatabaseConnection(
       throw new Error("runtime database authentication or role attestation failed");
     }
     await assertMusicRuntimeSetRoleBoundary(pool, migratorRole);
-    await assertMusicRuntimeDirectPrivilegeBoundary(pool, connection.user);
+    await assertMusicRuntimeDirectPrivilegeBoundary(pool, connection.user, migratorRole);
     const finalGraph = await readMusicRuntimeRoleGraph(pool, connection.user);
     validateMusicRuntimeRoleGraph(finalGraph);
     if (JSON.stringify(finalGraph) !== JSON.stringify(initialGraph)) {
@@ -367,7 +367,7 @@ export async function verifyMusicRuntimeLogin(
     throw new Error("runtime database owner role is invalid");
   }
   await assertMusicRuntimeSetRoleBoundary(runtimePool, ownerRole);
-  await assertMusicRuntimeDirectPrivilegeBoundary(runtimePool, input.loginRole);
+  await assertMusicRuntimeDirectPrivilegeBoundary(runtimePool, input.loginRole, ownerRole);
   const finalGraph = await readMusicRuntimeRoleGraph(ownerPool, input.loginRole);
   validateMusicRuntimeRoleGraph(finalGraph);
   if (JSON.stringify(finalGraph) !== JSON.stringify(initialGraph)) {
@@ -378,27 +378,32 @@ export async function verifyMusicRuntimeLogin(
 async function assertMusicRuntimeDirectPrivilegeBoundary(
   runtimePool: Pick<Pool, "query" | "connect">,
   loginRole: string,
+  approvedOwnerRole: string,
 ): Promise<void> {
+  if (!safeRoleName.test(approvedOwnerRole) || approvedOwnerRole === capabilityRole || approvedOwnerRole === loginRole) {
+    throw new Error("runtime database owner role is invalid");
+  }
   const runtime = (await runtimePool.query<{
     current_user: string; can_connect_database: boolean; can_create_database_objects: boolean;
     can_create_temporary_objects: boolean; can_use_schema: boolean; can_create_schema_objects: boolean;
-    owns_authority_object: boolean;
+    database_owner: string; schema_owner: string;
   }>(`SELECT current_user,
       has_database_privilege(current_user,current_database(),'CONNECT') AS can_connect_database,
       has_database_privilege(current_user,current_database(),'CREATE') AS can_create_database_objects,
       has_database_privilege(current_user,current_database(),'TEMP') AS can_create_temporary_objects,
       has_schema_privilege(current_user,'public','USAGE') AS can_use_schema,
       has_schema_privilege(current_user,'public','CREATE') AS can_create_schema_objects,
-      EXISTS (SELECT 1 FROM pg_database WHERE datname=current_database() AND datdba=(SELECT oid FROM pg_roles WHERE rolname=current_user))
-        OR EXISTS (SELECT 1 FROM pg_namespace WHERE nspname='public' AND nspowner=(SELECT oid FROM pg_roles WHERE rolname=current_user))
-        OR EXISTS (SELECT 1 FROM pg_class WHERE relnamespace='public'::regnamespace AND relowner=(SELECT oid FROM pg_roles WHERE rolname=current_user))
-        OR EXISTS (SELECT 1 FROM pg_proc WHERE pronamespace='public'::regnamespace AND proowner=(SELECT oid FROM pg_roles WHERE rolname=current_user)) AS owns_authority_object`)).rows[0];
+      (SELECT owner.rolname FROM pg_database database JOIN pg_roles owner ON owner.oid=database.datdba
+        WHERE database.datname=current_database()) AS database_owner,
+      (SELECT owner.rolname FROM pg_namespace namespace JOIN pg_roles owner ON owner.oid=namespace.nspowner
+        WHERE namespace.nspname='public') AS schema_owner`)).rows[0];
   if (!runtime || runtime.current_user !== loginRole || !runtime.can_connect_database
       || runtime.can_create_database_objects || runtime.can_create_temporary_objects
-      || !runtime.can_use_schema || runtime.can_create_schema_objects || runtime.owns_authority_object) {
+      || !runtime.can_use_schema || runtime.can_create_schema_objects
+      || runtime.database_owner !== approvedOwnerRole || runtime.schema_owner !== "pg_database_owner") {
     throw new Error("runtime database privilege matrix is unsafe");
   }
-  await assertMusicRuntimeObjectPrivilegeMatrix(runtimePool, loginRole);
+  await assertMusicRuntimeObjectPrivilegeMatrix(runtimePool, loginRole, approvedOwnerRole);
   for (const statement of [
     "SET session_replication_role='replica'",
     "CREATE TEMP TABLE music_runtime_temp_attestation(id integer)",
@@ -418,12 +423,13 @@ async function assertMusicRuntimeDirectPrivilegeBoundary(
 async function assertMusicRuntimeObjectPrivilegeMatrix(
   runtimePool: Pick<Pool, "query">,
   loginRole: string,
+  approvedOwnerRole: string,
 ): Promise<void> {
   const tableRows = (await runtimePool.query<{
-    object_name: string;
+    object_name: string; object_owner: string;
     can_select: boolean; can_insert: boolean; can_update: boolean; can_delete: boolean;
     can_truncate: boolean; can_references: boolean; can_trigger: boolean;
-  }>(`SELECT class.relname AS object_name,
+  }>(`SELECT class.relname AS object_name,owner.rolname AS object_owner,
       has_table_privilege(current_user,class.oid,'SELECT') AS can_select,
       has_table_privilege(current_user,class.oid,'INSERT') AS can_insert,
       has_table_privilege(current_user,class.oid,'UPDATE') AS can_update,
@@ -432,9 +438,11 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
       has_table_privilege(current_user,class.oid,'REFERENCES') AS can_references,
       has_table_privilege(current_user,class.oid,'TRIGGER') AS can_trigger
     FROM pg_class class JOIN pg_namespace namespace ON namespace.oid=class.relnamespace
+      JOIN pg_roles owner ON owner.oid=class.relowner
     WHERE namespace.nspname='public' AND class.relkind IN ('r','p','v','m','f')
     ORDER BY class.relname`)).rows;
   if (!sameRuntimeInventory(tableRows.map((row) => row.object_name), expectedRuntimeTables)
+      || tableRows.some((row) => row.object_owner !== approvedOwnerRole)
       || tableRows.some((row) => {
     const expected = row.object_name === "music_schema_migrations"
       ? [true, false, false, false]
@@ -446,27 +454,30 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
   })) throw new Error("runtime database privilege matrix is unsafe");
 
   const sequenceRows = (await runtimePool.query<{
-    object_name: string; can_usage: boolean; can_select: boolean; can_update: boolean;
-  }>(`SELECT class.relname AS object_name,
+    object_name: string; object_owner: string; can_usage: boolean; can_select: boolean; can_update: boolean;
+  }>(`SELECT class.relname AS object_name,owner.rolname AS object_owner,
       has_sequence_privilege(current_user,class.oid,'USAGE') AS can_usage,
       has_sequence_privilege(current_user,class.oid,'SELECT') AS can_select,
       has_sequence_privilege(current_user,class.oid,'UPDATE') AS can_update
     FROM pg_class class JOIN pg_namespace namespace ON namespace.oid=class.relnamespace
+      JOIN pg_roles owner ON owner.oid=class.relowner
     WHERE namespace.nspname='public' AND class.relkind='S'
     ORDER BY class.relname`)).rows;
   if (!sameRuntimeInventory(sequenceRows.map((row) => row.object_name), expectedRuntimeSequences)
-      || sequenceRows.some((row) => !row.can_usage || !row.can_select || !row.can_update)) {
+      || sequenceRows.some((row) => row.object_owner !== approvedOwnerRole
+        || !row.can_usage || !row.can_select || !row.can_update)) {
     throw new Error("runtime database privilege matrix is unsafe");
   }
 
   const functionRows = (await runtimePool.query<{
-    function_signature: string; can_execute: boolean;
-  }>(`SELECT procedure.oid::regprocedure::text AS function_signature,
+    function_signature: string; object_owner: string; can_execute: boolean;
+  }>(`SELECT procedure.oid::regprocedure::text AS function_signature,owner.rolname AS object_owner,
       has_function_privilege(current_user,procedure.oid,'EXECUTE') AS can_execute
     FROM pg_proc procedure JOIN pg_namespace namespace ON namespace.oid=procedure.pronamespace
+      JOIN pg_roles owner ON owner.oid=procedure.proowner
     WHERE namespace.nspname='public' ORDER BY procedure.oid::regprocedure::text`)).rows;
   if (!sameRuntimeInventory(functionRows.map((row) => row.function_signature), expectedRuntimeFunctions)
-      || functionRows.some((row) => row.can_execute
+      || functionRows.some((row) => row.object_owner !== approvedOwnerRole || row.can_execute
         !== (row.function_signature !== "provision_music_runtime_login(name,text)"))) {
     throw new Error("runtime database privilege matrix is unsafe");
   }
@@ -498,6 +509,15 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
       WHERE grants.grantee=0 OR grants.grantee=principals.login_oid
         OR (grants.grantee=principals.capability_oid AND grants.is_grantable)`, [loginRole, capabilityRole])).rows[0]?.count ?? "1");
   if (unexpectedSources !== 0) throw new Error("runtime database privilege grant source is unsafe");
+
+  const columnAclCount = Number((await runtimePool.query<{ count: string }>(`SELECT count(*)::text AS count
+    FROM pg_attribute attribute
+    JOIN pg_class class ON class.oid=attribute.attrelid
+    JOIN pg_namespace namespace ON namespace.oid=class.relnamespace
+    WHERE namespace.nspname='public' AND class.relkind IN ('r','p','v','m','f')
+      AND attribute.attnum>0 AND NOT attribute.attisdropped
+      AND attribute.attacl IS NOT NULL AND cardinality(attribute.attacl)>0`)).rows[0]?.count ?? "1");
+  if (columnAclCount !== 0) throw new Error("runtime database column privilege source is unsafe");
 }
 
 function sameRuntimeInventory(actual: string[], expected: readonly string[]): boolean {

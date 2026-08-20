@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { constants, type BigIntStats } from "node:fs";
 import { link, lstat, mkdir, open, realpath, rename, rm, stat, type FileHandle } from "node:fs/promises";
 import { dirname, isAbsolute, join, parse, resolve } from "node:path";
@@ -246,7 +247,17 @@ interface MusicReconciliationCheckpointFileOptions {
   platform?: NodeJS.Platform;
   effectiveUserId?: number;
   requireAbsent?: boolean;
+  inspectWindowsCheckpointSecurity?: (path: string) => Promise<WindowsCheckpointSecurity>;
 }
+
+interface WindowsCheckpointSecurity {
+  nativeDev: string;
+  nativeIno: string;
+  ownerMatchesEffectiveUser: boolean;
+  unsafeWritePrincipalCount: number;
+}
+
+const windowsCheckpointSecurityHelper = resolve(import.meta.dirname, "../../scripts/windows-write-through.ps1");
 
 const checkpointFileSystem: MusicReconciliationCheckpointFileSystem = {
   lstat: (path) => lstat(path, { bigint: true }),
@@ -282,6 +293,7 @@ export async function writeMusicReconciliationCheckpoint(
       await handle.sync();
       const temporaryMetadata = await handle.stat({ bigint: true });
       validateCheckpointMetadata(temporaryMetadata, options);
+      await validateWindowsCheckpointSecurity(temporary, temporaryMetadata, options, true);
       /* c8 ignore next -- a successful descriptor write cannot report a different size without a broken filesystem. */
       if (temporaryMetadata.size !== BigInt(encoded.byteLength)) return invalidCheckpointFile();
       await handle.close();
@@ -331,6 +343,7 @@ export async function readMusicReconciliationCheckpoint(
       const opened = await handle.stat({ bigint: true });
       validateCheckpointMetadata(opened, options);
       if (!sameCheckpointIdentity(before, opened)) return invalidCheckpointFile();
+      await validateWindowsCheckpointSecurity(path, opened, options, true);
       const buffer = Buffer.alloc(MAX_CHECKPOINT_BYTES + 1);
       const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
       const afterDescriptor = await handle.stat({ bigint: true });
@@ -381,12 +394,23 @@ async function checkpointAncestors(
   path: string,
   fileSystem: MusicReconciliationCheckpointFileSystem,
   options: MusicReconciliationCheckpointFileOptions,
+  inspectSecurity = true,
 ): Promise<BigIntStats[]> {
-  return Promise.all(ancestorPaths(path).map(async (ancestor) => {
+  const paths = ancestorPaths(path);
+  const metadata = await Promise.all(paths.map(async (ancestor) => {
     const metadata = await fileSystem.lstat(ancestor);
     validateCheckpointDirectory(metadata, ancestor, options);
     return metadata;
   }));
+  if (inspectSecurity) {
+    const immediateIndex = paths.length - 1;
+    await validateWindowsCheckpointSecurities([{
+      path: paths[immediateIndex],
+      metadata: metadata[immediateIndex],
+      requireEffectiveOwner: true,
+    }], options);
+  }
+  return metadata;
 }
 
 async function revalidateCheckpointAncestors(
@@ -395,7 +419,7 @@ async function revalidateCheckpointAncestors(
   fileSystem: MusicReconciliationCheckpointFileSystem,
   options: MusicReconciliationCheckpointFileOptions,
 ): Promise<void> {
-  const after = await checkpointAncestors(path, fileSystem, options);
+  const after = await checkpointAncestors(path, fileSystem, options, false);
   if (before.some((metadata, index) => !sameCheckpointDirectory(metadata, after[index]))) invalidCheckpointFile();
   const parent = dirname(path);
   const canonicalParent = await fileSystem.realpath(parent);
@@ -455,11 +479,71 @@ async function validateExistingCheckpointTarget(
   options: MusicReconciliationCheckpointFileOptions,
 ): Promise<void> {
   try {
-    validateCheckpointMetadata(await fileSystem.lstat(path), options);
+    const metadata = await fileSystem.lstat(path);
+    validateCheckpointMetadata(metadata, options);
+    await validateWindowsCheckpointSecurity(path, metadata, options, true);
     if (options.requireAbsent) invalidCheckpointFile();
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
+}
+
+async function validateWindowsCheckpointSecurity(
+  path: string,
+  metadata: BigIntStats,
+  options: MusicReconciliationCheckpointFileOptions,
+  requireEffectiveOwner: boolean,
+): Promise<void> {
+  await validateWindowsCheckpointSecurities([{ path, metadata, requireEffectiveOwner }], options);
+}
+
+async function validateWindowsCheckpointSecurities(
+  files: Array<{ path: string; metadata: BigIntStats; requireEffectiveOwner: boolean }>,
+  options: MusicReconciliationCheckpointFileOptions,
+): Promise<void> {
+  /* c8 ignore next -- the POSIX bypass is exercised on the native POSIX worker. */
+  if ((options.platform ?? process.platform) !== "win32") return;
+  const securities = options.inspectWindowsCheckpointSecurity
+    ? await Promise.all(files.map(({ path }) => options.inspectWindowsCheckpointSecurity!(path)))
+    : inspectWindowsCheckpointSecurities(files.map(({ path }) => path));
+  for (let index = 0; index < files.length; index += 1) {
+    const file = files[index];
+    const security = securities[index];
+    if (!security
+        || !/^\d+$/.test(security.nativeDev) || !/^\d+$/.test(security.nativeIno)
+        || BigInt(security.nativeDev) !== file.metadata.dev || BigInt(security.nativeIno) !== file.metadata.ino
+        || (file.requireEffectiveOwner && security.ownerMatchesEffectiveUser !== true)
+        || !Number.isSafeInteger(security.unsafeWritePrincipalCount)
+        || security.unsafeWritePrincipalCount !== 0) {
+      invalidCheckpointFile();
+    }
+  }
+}
+
+function inspectWindowsCheckpointSecurities(paths: string[]): WindowsCheckpointSecurity[] {
+  const output = execFileSync(
+    "powershell.exe",
+    ["-NoProfile", "-NonInteractive", "-File", windowsCheckpointSecurityHelper, "inspect-security", ...paths],
+    { encoding: "utf8", windowsHide: true, maxBuffer: 16 * 1024 },
+  );
+  return parseWindowsCheckpointSecurityOutput(output, paths.length);
+}
+
+export function parseWindowsCheckpointSecurityOutput(
+  output: string,
+  expectedCount: number,
+): WindowsCheckpointSecurity[] {
+  const securities = output.trim().split(/\r?\n/).filter(Boolean).map((line) => {
+    const parsed = JSON.parse(line) as Partial<WindowsCheckpointSecurity>;
+    if (typeof parsed.nativeDev !== "string" || typeof parsed.nativeIno !== "string"
+        || typeof parsed.ownerMatchesEffectiveUser !== "boolean"
+        || typeof parsed.unsafeWritePrincipalCount !== "number") {
+      invalidCheckpointFile();
+    }
+    return parsed as WindowsCheckpointSecurity;
+  });
+  if (securities.length !== expectedCount) invalidCheckpointFile();
+  return securities;
 }
 
 function sameCheckpointPath(left: string, right: string, platform: NodeJS.Platform): boolean {

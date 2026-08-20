@@ -1,6 +1,6 @@
 param(
   [Parameter(Mandatory = $true, Position = 0)]
-  [ValidateSet('inspect', 'replace')]
+  [ValidateSet('inspect', 'inspect-security', 'replace')]
   [string]$Operation,
 
   [Parameter(ValueFromRemainingArguments = $true)]
@@ -15,6 +15,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Security.Principal;
 using System.Text;
 using Microsoft.Win32.SafeHandles;
 
@@ -22,6 +23,10 @@ public static class MusicFixtureNativeAuthority {
     private const uint GENERIC_READ = 0x80000000;
     private const uint GENERIC_WRITE = 0x40000000;
     private const uint DELETE = 0x00010000;
+    private const uint READ_CONTROL = 0x00020000;
+    private const uint WRITE_DAC = 0x00040000;
+    private const uint WRITE_OWNER = 0x00080000;
+    private const uint GENERIC_ALL = 0x10000000;
     private const uint FILE_READ_ATTRIBUTES = 0x00000080;
     private const uint FILE_TRAVERSE = 0x00000020;
     private const uint SYNCHRONIZE = 0x00100000;
@@ -35,10 +40,28 @@ public static class MusicFixtureNativeAuthority {
     private const uint FILE_FLAG_WRITE_THROUGH = 0x80000000;
     private const uint FILE_ATTRIBUTE_DIRECTORY = 0x00000010;
     private const uint FILE_ATTRIBUTE_REPARSE_POINT = 0x00000400;
+    private const uint FILE_WRITE_DATA = 0x00000002;
+    private const uint FILE_APPEND_DATA = 0x00000004;
+    private const uint FILE_WRITE_EA = 0x00000010;
+    private const uint FILE_DELETE_CHILD = 0x00000040;
+    private const uint FILE_WRITE_ATTRIBUTES = 0x00000100;
     private const uint MOVEFILE_WRITE_THROUGH = 0x00000008;
     private const int FileRenameInfo = 3;
     private const int FileDispositionInfo = 4;
     private const long MAX_AUTHORITY_BYTES = 131072;
+    private const int SE_FILE_OBJECT = 1;
+    private const uint OWNER_SECURITY_INFORMATION = 0x00000001;
+    private const uint DACL_SECURITY_INFORMATION = 0x00000004;
+    private const int AclSizeInformation = 2;
+    private const byte ACCESS_ALLOWED_ACE_TYPE = 0x00;
+    private const byte ACCESS_ALLOWED_OBJECT_ACE_TYPE = 0x05;
+    private const byte ACCESS_ALLOWED_CALLBACK_ACE_TYPE = 0x09;
+    private const uint ACE_OBJECT_TYPE_PRESENT = 0x00000001;
+    private const uint ACE_INHERITED_OBJECT_TYPE_PRESENT = 0x00000002;
+    private const byte INHERIT_ONLY_ACE = 0x08;
+    private const uint UNSAFE_WRITE_MASK = GENERIC_WRITE | GENERIC_ALL | DELETE | WRITE_DAC | WRITE_OWNER
+        | FILE_WRITE_DATA | FILE_APPEND_DATA | FILE_WRITE_EA | FILE_DELETE_CHILD | FILE_WRITE_ATTRIBUTES;
+    private const uint UNSAFE_DIRECTORY_MASK = UNSAFE_WRITE_MASK;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct FILETIME {
@@ -58,6 +81,20 @@ public static class MusicFixtureNativeAuthority {
         public uint NumberOfLinks;
         public uint FileIndexHigh;
         public uint FileIndexLow;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ACL_SIZE_INFORMATION {
+        public uint AceCount;
+        public uint AclBytesInUse;
+        public uint AclBytesFree;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ACE_HEADER {
+        public byte AceType;
+        public byte AceFlags;
+        public ushort AceSize;
     }
 
     private sealed class Identity {
@@ -133,6 +170,36 @@ public static class MusicFixtureNativeAuthority {
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool MoveFileExW(string source, string destination, uint flags);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    private static extern uint GetSecurityInfo(
+        IntPtr handle,
+        int objectType,
+        uint securityInfo,
+        out IntPtr owner,
+        out IntPtr group,
+        out IntPtr dacl,
+        out IntPtr sacl,
+        out IntPtr securityDescriptor);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetAclInformation(
+        IntPtr acl,
+        out ACL_SIZE_INFORMATION information,
+        uint informationLength,
+        int informationClass);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetAce(IntPtr acl, uint index, out IntPtr ace);
+
+    [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ConvertSidToStringSidW(IntPtr sid, out IntPtr stringSid);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr LocalFree(IntPtr memory);
 
     private static Exception NativeFailure(string operation) {
         int code = Marshal.GetLastWin32Error();
@@ -312,6 +379,98 @@ public static class MusicFixtureNativeAuthority {
         }
     }
 
+    private static string SidString(IntPtr sid) {
+        if (sid == IntPtr.Zero) throw new InvalidOperationException("Authority SID is missing.");
+        IntPtr value;
+        if (!ConvertSidToStringSidW(sid, out value)) throw NativeFailure("authority SID inspection");
+        try {
+            return Marshal.PtrToStringUni(value);
+        } finally {
+            LocalFree(value);
+        }
+    }
+
+    private static bool UntrustedBroadWriter(string sid, string effectiveSid) {
+        if (String.Equals(sid, effectiveSid, StringComparison.OrdinalIgnoreCase)) return false;
+        return String.Equals(sid, "S-1-1-0", StringComparison.OrdinalIgnoreCase)
+            || String.Equals(sid, "S-1-5-4", StringComparison.OrdinalIgnoreCase)
+            || String.Equals(sid, "S-1-5-7", StringComparison.OrdinalIgnoreCase)
+            || String.Equals(sid, "S-1-5-11", StringComparison.OrdinalIgnoreCase)
+            || String.Equals(sid, "S-1-5-32-545", StringComparison.OrdinalIgnoreCase)
+            || String.Equals(sid, "S-1-5-32-546", StringComparison.OrdinalIgnoreCase)
+            || String.Equals(sid, "S-1-15-2-1", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static int UnsafeWritePrincipalCount(IntPtr dacl, string effectiveSid, bool directory) {
+        if (dacl == IntPtr.Zero) return 1;
+        ACL_SIZE_INFORMATION information;
+        if (!GetAclInformation(dacl, out information, (uint)Marshal.SizeOf(typeof(ACL_SIZE_INFORMATION)), AclSizeInformation)) {
+            throw NativeFailure("authority DACL inspection");
+        }
+        int unsafeCount = 0;
+        for (uint index = 0; index < information.AceCount; index++) {
+            IntPtr ace;
+            if (!GetAce(dacl, index, out ace)) throw NativeFailure("authority ACE inspection");
+            ACE_HEADER header = (ACE_HEADER)Marshal.PtrToStructure(ace, typeof(ACE_HEADER));
+            if ((header.AceFlags & INHERIT_ONLY_ACE) != 0) continue;
+            if (header.AceType != ACCESS_ALLOWED_ACE_TYPE
+                && header.AceType != ACCESS_ALLOWED_OBJECT_ACE_TYPE
+                && header.AceType != ACCESS_ALLOWED_CALLBACK_ACE_TYPE) continue;
+            uint mask = unchecked((uint)Marshal.ReadInt32(ace, 4));
+            if ((mask & (directory ? UNSAFE_DIRECTORY_MASK : UNSAFE_WRITE_MASK)) == 0) continue;
+            int sidOffset = 8;
+            if (header.AceType == ACCESS_ALLOWED_OBJECT_ACE_TYPE) {
+                uint flags = unchecked((uint)Marshal.ReadInt32(ace, 8));
+                sidOffset = 12;
+                if ((flags & ACE_OBJECT_TYPE_PRESENT) != 0) sidOffset += 16;
+                if ((flags & ACE_INHERITED_OBJECT_TYPE_PRESENT) != 0) sidOffset += 16;
+            }
+            string sid = SidString(IntPtr.Add(ace, sidOffset));
+            if (UntrustedBroadWriter(sid, effectiveSid)) unsafeCount++;
+        }
+        return unsafeCount;
+    }
+
+    public static string InspectSecurityJson(string path) {
+        string full = Path.GetFullPath(path);
+        uint attributes = (uint)File.GetAttributes(full);
+        bool directory = (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+        using (SafeFileHandle handle = Open(
+            full,
+            READ_CONTROL | FILE_READ_ATTRIBUTES,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            directory)) {
+            Identity identity = InspectHandle(handle, !directory, false);
+            if (directory) RequireDirectory(identity);
+            IntPtr owner;
+            IntPtr group;
+            IntPtr dacl;
+            IntPtr sacl;
+            IntPtr securityDescriptor;
+            uint result = GetSecurityInfo(
+                handle.DangerousGetHandle(),
+                SE_FILE_OBJECT,
+                OWNER_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
+                out owner,
+                out group,
+                out dacl,
+                out sacl,
+                out securityDescriptor);
+            if (result != 0) throw new Win32Exception((int)result, "authority security inspection failed.");
+            try {
+                string effectiveSid = WindowsIdentity.GetCurrent().User.Value;
+                bool ownerMatches = String.Equals(SidString(owner), effectiveSid, StringComparison.OrdinalIgnoreCase);
+                int unsafeCount = UnsafeWritePrincipalCount(dacl, effectiveSid, directory);
+                return "{\"nativeDev\":\"" + identity.VolumeSerial.ToString()
+                    + "\",\"nativeIno\":\"" + identity.FileId.ToString()
+                    + "\",\"ownerMatchesEffectiveUser\":" + (ownerMatches ? "true" : "false")
+                    + ",\"unsafeWritePrincipalCount\":" + unsafeCount.ToString() + "}";
+            } finally {
+                if (securityDescriptor != IntPtr.Zero) LocalFree(securityDescriptor);
+            }
+        }
+    }
+
     public static void Replace(string[] args) {
         if (args == null || args.Length != 19) throw new InvalidOperationException("Native replace arguments are invalid.");
         string source = Path.GetFullPath(args[0]);
@@ -383,6 +542,14 @@ public static class MusicFixtureNativeAuthority {
 if ($Operation -eq 'inspect') {
   if ($NativeArguments.Count -ne 1) { throw 'Inspect arguments are invalid.' }
   [MusicFixtureNativeAuthority]::InspectJson($NativeArguments[0])
+  exit 0
+}
+
+if ($Operation -eq 'inspect-security') {
+  if ($NativeArguments.Count -lt 1) { throw 'Security inspection arguments are invalid.' }
+  foreach ($NativePath in $NativeArguments) {
+    [MusicFixtureNativeAuthority]::InspectSecurityJson($NativePath)
+  }
   exit 0
 }
 

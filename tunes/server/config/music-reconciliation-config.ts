@@ -8,6 +8,8 @@ export interface MusicReconciliationCommandConfig {
   sourceUrl: string;
   serviceToken?: string;
   serviceTokenFile?: string;
+  lifecycleProofTokenFile?: string;
+  accessTokenFile?: string;
   pageSize: number;
   maxRows: number;
   batchSize: number;
@@ -116,16 +118,23 @@ export function parseMusicReconciliationCommandConfig(input: Record<string, unkn
   const parsed = new URL(sourceUrl);
   if (parsed.protocol !== "https:" || parsed.username || parsed.password) throw new Error("Live reconciliation requires a credential-free HTTPS Strapi URL");
   const serviceTokenFile = requiredString(input, "STRAPI_RECONCILIATION_TOKEN_FILE");
+  const lifecycleProofTokenFile = requiredString(input, "STRAPI_LIFECYCLE_PROOF_TOKEN_FILE");
+  const accessTokenFile = requiredString(input, "STRAPI_ACCESS_TOKEN_FILE");
   if (input.STRAPI_RECONCILIATION_TOKEN !== undefined && input.STRAPI_RECONCILIATION_TOKEN !== "") {
     throw new Error("Live reconciliation service tokens must be file-backed");
   }
-  const tokenFileIdentity = normalizedTokenPath(serviceTokenFile);
-  for (const other of [input.STRAPI_LIFECYCLE_PROOF_TOKEN_FILE, input.STRAPI_ACCESS_TOKEN_FILE]) {
-    if (typeof other === "string" && normalizedTokenPath(other) === tokenFileIdentity) {
-      throw new Error("Reconciliation requires a dedicated service-token file");
-    }
+  const tokenFileIdentities = [serviceTokenFile, lifecycleProofTokenFile, accessTokenFile].map(normalizedTokenPath);
+  if (new Set(tokenFileIdentities).size !== tokenFileIdentities.length) {
+    throw new Error("Reconciliation requires dedicated service-token files");
   }
-  return { ...common, sourceUrl, serviceTokenFile, serviceToken: undefined };
+  return {
+    ...common,
+    sourceUrl,
+    serviceTokenFile,
+    lifecycleProofTokenFile,
+    accessTokenFile,
+    serviceToken: undefined,
+  };
 }
 
 function normalizedTokenPath(path: string): string {

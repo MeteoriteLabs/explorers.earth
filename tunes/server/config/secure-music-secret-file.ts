@@ -27,56 +27,98 @@ export async function readSecureMusicSecretFile(
   path: string,
   options: SecureMusicSecretFileOptions,
 ): Promise<string> {
+  return readSecureMusicSecretFileWithDistinctAuthorities(path, [], options);
+}
+
+interface OpenedSecureMusicSecretFile {
+  path: string;
+  handle: FileHandle;
+  opened: BigIntStats;
+  ancestorPaths: string[];
+  ancestorBefore: BigIntStats[];
+}
+
+export async function readSecureMusicSecretFileWithDistinctAuthorities(
+  path: string,
+  authorityPaths: readonly string[],
+  options: SecureMusicSecretFileOptions,
+): Promise<string> {
+  const openedFiles: OpenedSecureMusicSecretFile[] = [];
   try {
-    if (!path || path.length > 512 || path.includes("\0") || !isAbsolute(path)) return invalidSecretFile();
     const fileSystem = options.fileSystem ?? defaultFileSystem;
-    const ancestorPaths = ancestors(path);
-    const ancestorBefore = await Promise.all(ancestorPaths.map(async (ancestor) => {
-      const stat = await fileSystem.lstat(ancestor);
-      validateDirectoryMetadata(stat);
-      return stat;
-    }));
-    const canonicalBefore = await (fileSystem.realpath ?? defaultFileSystem.realpath!)(path);
-    if (!sameResolvedPath(canonicalBefore, path, options.platform ?? process.platform)) return invalidSecretFile();
-    const before = await fileSystem.lstat(path);
-    validateMetadata(before, options);
-    const noFollow = options.platform === "win32" || process.platform === "win32" ? 0 : constants.O_NOFOLLOW;
-    const handle = await fileSystem.open(path, constants.O_RDONLY | noFollow);
-    try {
-      const opened = await handle.stat({ bigint: true });
-      validateMetadata(opened, options);
-      if (!sameMetadata(before, opened)) return invalidSecretFile();
-
-      const buffer = Buffer.alloc(MAX_SECRET_FILE_BYTES + 1);
-      const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
-      const afterRead = await handle.stat({ bigint: true });
-      const afterPath = await fileSystem.lstat(path);
-      const ancestorAfter = await Promise.all(ancestorPaths.map(async (ancestor) => {
-        const stat = await fileSystem.lstat(ancestor);
-        validateDirectoryMetadata(stat);
-        return stat;
-      }));
-      const canonicalAfter = await (fileSystem.realpath ?? defaultFileSystem.realpath!)(path);
-      validateMetadata(afterRead, options);
-      validateMetadata(afterPath, options);
-      if (bytesRead > MAX_SECRET_FILE_BYTES
-          || bytesRead !== Number(opened.size)
-          || !sameMetadata(opened, afterRead)
-          || !sameMetadata(opened, afterPath)
-          || !sameResolvedPath(canonicalAfter, path, options.platform ?? process.platform)
-          || ancestorBefore.some((stat, index) => !sameDirectoryIdentity(stat, ancestorAfter[index]))) {
-        return invalidSecretFile();
-      }
-
-      const raw = buffer.subarray(0, bytesRead).toString("ascii");
-      if (!/^[A-Za-z0-9_-]+\n?$/.test(raw)) return invalidSecretFile();
-      const value = raw.endsWith("\n") ? raw.slice(0, -1) : raw;
-      if (!value || Buffer.byteLength(value, "ascii") !== value.length) return invalidSecretFile();
-      return value;
-    } finally {
-      await handle.close();
+    for (const candidate of [path, ...authorityPaths]) {
+      openedFiles.push(await openSecureMusicSecretFile(candidate, options, fileSystem));
     }
+    const nativeIdentities = openedFiles.map(({ opened }) => `${opened.dev}:${opened.ino}`);
+    if (new Set(nativeIdentities).size !== nativeIdentities.length) return invalidSecretFile();
+
+    const primary = openedFiles[0];
+    if (!primary) return invalidSecretFile();
+    const buffer = Buffer.alloc(MAX_SECRET_FILE_BYTES + 1);
+    const { bytesRead } = await primary.handle.read(buffer, 0, buffer.length, 0);
+    if (bytesRead > MAX_SECRET_FILE_BYTES || bytesRead !== Number(primary.opened.size)) return invalidSecretFile();
+    for (const opened of openedFiles) await revalidateSecureMusicSecretFile(opened, options, fileSystem);
+
+    const raw = buffer.subarray(0, bytesRead).toString("ascii");
+    if (!/^[A-Za-z0-9_-]+\n?$/.test(raw)) return invalidSecretFile();
+    const value = raw.endsWith("\n") ? raw.slice(0, -1) : raw;
+    if (!value || Buffer.byteLength(value, "ascii") !== value.length) return invalidSecretFile();
+    return value;
   } catch {
+    return invalidSecretFile();
+  } finally {
+    await Promise.all(openedFiles.map(({ handle }) => handle.close().catch(() => undefined)));
+  }
+}
+
+async function openSecureMusicSecretFile(
+  path: string,
+  options: SecureMusicSecretFileOptions,
+  fileSystem: SecureMusicSecretFileSystem,
+): Promise<OpenedSecureMusicSecretFile> {
+  if (!path || path.length > 512 || path.includes("\0") || !isAbsolute(path)) return invalidSecretFile();
+  const ancestorPaths = ancestors(path);
+  const ancestorBefore = await Promise.all(ancestorPaths.map(async (ancestor) => {
+    const stat = await fileSystem.lstat(ancestor);
+    validateDirectoryMetadata(stat);
+    return stat;
+  }));
+  const canonicalBefore = await (fileSystem.realpath ?? defaultFileSystem.realpath!)(path);
+  if (!sameResolvedPath(canonicalBefore, path, options.platform ?? process.platform)) return invalidSecretFile();
+  const before = await fileSystem.lstat(path);
+  validateMetadata(before, options);
+  const noFollow = options.platform === "win32" || process.platform === "win32" ? 0 : constants.O_NOFOLLOW;
+  const handle = await fileSystem.open(path, constants.O_RDONLY | noFollow);
+  try {
+    const opened = await handle.stat({ bigint: true });
+    validateMetadata(opened, options);
+    if (!sameMetadata(before, opened)) return invalidSecretFile();
+    return { path, handle, opened, ancestorPaths, ancestorBefore };
+  } catch (error) {
+    await handle.close().catch(() => undefined);
+    throw error;
+  }
+}
+
+async function revalidateSecureMusicSecretFile(
+  openedFile: OpenedSecureMusicSecretFile,
+  options: SecureMusicSecretFileOptions,
+  fileSystem: SecureMusicSecretFileSystem,
+): Promise<void> {
+  const afterRead = await openedFile.handle.stat({ bigint: true });
+  const afterPath = await fileSystem.lstat(openedFile.path);
+  const ancestorAfter = await Promise.all(openedFile.ancestorPaths.map(async (ancestor) => {
+    const stat = await fileSystem.lstat(ancestor);
+    validateDirectoryMetadata(stat);
+    return stat;
+  }));
+  const canonicalAfter = await (fileSystem.realpath ?? defaultFileSystem.realpath!)(openedFile.path);
+  validateMetadata(afterRead, options);
+  validateMetadata(afterPath, options);
+  if (!sameMetadata(openedFile.opened, afterRead)
+      || !sameMetadata(openedFile.opened, afterPath)
+      || !sameResolvedPath(canonicalAfter, openedFile.path, options.platform ?? process.platform)
+      || openedFile.ancestorBefore.some((stat, index) => !sameDirectoryIdentity(stat, ancestorAfter[index]))) {
     return invalidSecretFile();
   }
 }
