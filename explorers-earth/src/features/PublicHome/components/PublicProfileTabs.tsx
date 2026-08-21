@@ -102,7 +102,6 @@ export default function PublicProfileTabs({
               id={`public-profile-${tab.id}-tab`}
               role="tab"
               type="button"
-              aria-label={tab.label}
               aria-controls={`public-profile-${tab.id}-panel`}
               aria-selected={isActive}
               tabIndex={isFocused ? 0 : -1}

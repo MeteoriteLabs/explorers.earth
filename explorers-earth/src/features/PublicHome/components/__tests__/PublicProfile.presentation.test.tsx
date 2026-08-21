@@ -451,7 +451,7 @@ describe("PublicProfile recommendation presentation", () => {
     renderProfile();
 
     expect(
-      screen.getAllByRole("tab").map((tab) => tab.getAttribute("aria-label")),
+      screen.getAllByRole("tab").map((tab) => tab.textContent?.trim()),
     ).toEqual(["Recommendations", "Gallery", "Business Details"]);
   });
 

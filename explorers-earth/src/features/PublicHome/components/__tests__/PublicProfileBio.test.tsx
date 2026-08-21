@@ -24,9 +24,11 @@ describe("PublicProfileBio", () => {
     const user = userEvent.setup();
     const longBio = "<p>Line 1</p><p>Line 2</p><p>Line 3</p><p>Line 4 of a long biography</p>";
 
-    // Mock measurement so it detects overflow
+    // Mock scrollHeight and dynamic clientHeight (expands to 120px when maxHeight is none)
     vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(120);
-    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(72);
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(function (this: HTMLElement) {
+      return this.style.maxHeight === "none" ? 120 : 72;
+    });
 
     render(<PublicProfileBio html={longBio} />);
 
@@ -34,9 +36,12 @@ describe("PublicProfileBio", () => {
     expect(showMoreButton).toBeVisible();
 
     await user.click(showMoreButton);
-    expect(screen.getByRole("button", { name: "Show less" })).toBeVisible();
+    // Button should change to "Show less" and REMAIN visible even after clientHeight expands to 120px
+    const showLessButton = screen.getByRole("button", { name: "Show less" });
+    expect(showLessButton).toBeVisible();
 
-    await user.click(screen.getByRole("button", { name: "Show less" }));
+    // Clicking "Show less" collapses the bio back and restores "Show more"
+    await user.click(showLessButton);
     expect(screen.getByRole("button", { name: "Show more" })).toBeVisible();
   });
 
@@ -52,7 +57,7 @@ describe("PublicProfileBio", () => {
 
   it("does not show expansion control when content fits within collapsed lines", () => {
     vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(50);
-    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(72);
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(50);
 
     const shortBio = "<p>Short bio text</p>";
     render(<PublicProfileBio html={shortBio} />);
@@ -69,7 +74,9 @@ describe("PublicProfileBio", () => {
     const bioWithLink = '<p>Line 1</p><p>Line 2</p><p>Line 3</p><p><a href="https://example.com">Hidden link</a></p>';
 
     vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(120);
-    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(72);
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(function (this: HTMLElement) {
+      return this.style.maxHeight === "none" ? 120 : 72;
+    });
 
     render(<PublicProfileBio html={bioWithLink} />);
 

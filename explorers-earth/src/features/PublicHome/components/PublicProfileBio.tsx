@@ -4,7 +4,7 @@ import { sanitizePublicRichText } from "../utils/publicProfileContent";
 
 export interface PublicProfileBioProps {
   html: unknown;
-  collapsedLines?: 3;
+  collapsedLines?: number;
 }
 
 export default function PublicProfileBio({
@@ -34,10 +34,10 @@ export default function PublicProfileBio({
       if (!contentRef.current || !isMounted) return;
       const element = contentRef.current;
       const collapsedMaxHeight = collapsedLines * 24;
-      const clientH = element.clientHeight;
       const scrollH = element.scrollHeight;
 
-      const overflowing = clientH > 0 ? scrollH > clientH : scrollH > collapsedMaxHeight;
+      // Overflowing means the total content scroll height exceeds 3-line max collapsed height
+      const overflowing = scrollH > collapsedMaxHeight;
       setIsOverflowing(overflowing);
     };
 
@@ -99,7 +99,7 @@ export default function PublicProfileBio({
           maxHeight: expanded ? "none" : `${collapsedLines * 1.5}rem`,
           color: "var(--text-primary)",
         }}
-        className="font-poppins text-base leading-relaxed break-words overflow-hidden transition-[max-height] duration-200"
+        className="font-poppins text-base leading-6 break-words overflow-hidden transition-[max-height] duration-200"
         dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
       />
       {isOverflowing && (
