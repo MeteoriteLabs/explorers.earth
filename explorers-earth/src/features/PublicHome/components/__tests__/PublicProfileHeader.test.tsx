@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BrowserRouter } from "react-router-dom";
 import { PublicProfileHeader } from "../PublicProfileHeader";
@@ -55,10 +55,16 @@ const renderHeader = (props: Partial<PublicProfileHeaderProps> = {}) => {
   );
 };
 
+let intersectionObserverCallback: ((entries: Partial<IntersectionObserverEntry>[]) => void) | null = null;
+
 describe("PublicProfileHeader", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    intersectionObserverCallback = null;
     class MockIntersectionObserver {
+      constructor(callback: (entries: Partial<IntersectionObserverEntry>[]) => void) {
+        intersectionObserverCallback = callback;
+      }
       observe = vi.fn();
       unobserve = vi.fn();
       disconnect = vi.fn();
@@ -122,6 +128,70 @@ describe("PublicProfileHeader", () => {
 
     const avatarImg = screen.getByAltText("Jane Explorer");
     expect(avatarImg).toHaveAttribute("referrerpolicy", "no-referrer");
+  });
+
+  describe("Scroll sentinel state transitions", () => {
+    it("transitions top navbar from transparent when at top to scrolled style when scrolled past sentinel", async () => {
+      renderHeader({
+        surface: {
+          mode: "banner-top",
+          wallpaperUrl: "https://example.com/bg.jpg",
+          fallbackToPresetSurface: false,
+        },
+      });
+
+      const headerElement = screen.getByRole("banner");
+
+      // Initially at top of page (intersecting sentinel) -> transparent header
+      act(() => {
+        intersectionObserverCallback?.([{ isIntersecting: true }]);
+      });
+      expect(headerElement.className).toContain("bg-transparent");
+      expect(headerElement.className).toContain("text-white");
+
+      // Scroll down past sentinel (isIntersecting: false) -> scrolled navbar style
+      act(() => {
+        intersectionObserverCallback?.([{ isIntersecting: false }]);
+      });
+      expect(headerElement.className).toContain("bg-[var(--nav-bg)]");
+      expect(headerElement.className).toContain("border-[var(--border-card)]");
+    });
+  });
+
+  describe("Reduced motion styling", () => {
+    it("applies motion-reduce:transition-none to header and hero elements", () => {
+      renderHeader({
+        surface: {
+          mode: "banner-top",
+          wallpaperUrl: "https://example.com/banner.jpg",
+          fallbackToPresetSurface: false,
+        },
+      });
+
+      const header = screen.getByRole("banner");
+      const hero = screen.getByTestId("public-profile-hero");
+
+      expect(header.className).toContain("motion-reduce:transition-none");
+      expect(hero.className).toContain("motion-reduce:transition-none");
+    });
+  });
+
+  describe("Full-wallpaper-image surface mode", () => {
+    it("renders full-wallpaper-image mode with cardless identity block and top nav", () => {
+      renderHeader({
+        surface: {
+          mode: "full-wallpaper-image",
+          wallpaperUrl: "https://example.com/wallpaper.jpg",
+          fallbackToPresetSurface: false,
+        },
+      });
+
+      const hero = screen.getByTestId("public-profile-hero");
+      expect(hero).toHaveAttribute("data-wallpaper-mode", "full-wallpaper-image");
+      expect(screen.queryByTestId("profile-metadata-card")).not.toBeInTheDocument();
+      expect(screen.getByRole("banner")).toBeInTheDocument();
+      expect(screen.getByText("Jane Explorer")).toBeInTheDocument();
+    });
   });
 
   describe("Media state machine & fallbacks", () => {

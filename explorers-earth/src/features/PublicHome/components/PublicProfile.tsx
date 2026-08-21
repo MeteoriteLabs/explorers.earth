@@ -54,12 +54,60 @@ import {
 } from "../utils/publicProfileContent";
 import { PublicProfileHeader } from "./PublicProfileHeader";
 import {
+  isSafeMediaUrl,
   resolvePublicProfileSurface,
   type PublicProfileSocialLinkViewModel,
 } from "../utils/resolvePublicProfileSurface";
 
 // Memoized FeedLayout to prevent unnecessary re-renders
 const MemoizedFeedLayout = memo(FeedLayout);
+
+function FullWallpaperBackground({ wallpaperUrl }: { wallpaperUrl: string | null }) {
+  const defaultBg = IMAGE_CONFIG?.defaultImages?.background || null;
+  const initialUrl = isSafeMediaUrl(wallpaperUrl)
+    ? wallpaperUrl
+    : isSafeMediaUrl(defaultBg)
+      ? defaultBg
+      : null;
+
+  const [activeUrl, setActiveUrl] = useState<string | null>(initialUrl);
+  const [failedPrimary, setFailedPrimary] = useState(false);
+
+  useEffect(() => {
+    const freshUrl = isSafeMediaUrl(wallpaperUrl)
+      ? wallpaperUrl
+      : isSafeMediaUrl(defaultBg)
+        ? defaultBg
+        : null;
+    setActiveUrl(freshUrl);
+    setFailedPrimary(false);
+  }, [wallpaperUrl, defaultBg]);
+
+  const handleError = () => {
+    if (!failedPrimary && defaultBg && activeUrl !== defaultBg && isSafeMediaUrl(defaultBg)) {
+      setFailedPrimary(true);
+      setActiveUrl(defaultBg);
+    } else {
+      setActiveUrl(null);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none" data-testid="full-wallpaper-background">
+      {activeUrl && (
+        <img
+          src={activeUrl}
+          alt=""
+          referrerPolicy="no-referrer"
+          onError={handleError}
+          data-testid="full-wallpaper-image"
+          className="w-full h-full object-cover opacity-25 blur-[3px] scale-105 transition-opacity duration-300 motion-reduce:transition-none"
+        />
+      )}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+    </div>
+  );
+}
 
 const parseBusinessLocationData = (value: unknown): Record<string, any> | null => {
   if (!value) return null;
@@ -828,17 +876,7 @@ const PublicProfile = memo(() => {
       <div className="h-full min-h-screen overflow-auto preview-scroll pb-20" style={{ ...themeStyles, backgroundColor: "var(--bg-page)", color: "var(--text-primary)" }}>
         {/* Full-Screen Wallpaper Background Mode */}
         {surface.mode === "full-wallpaper-image" && (
-          <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-            {surface.wallpaperUrl && (
-              <img
-                src={surface.wallpaperUrl}
-                alt=""
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover opacity-25 blur-[3px] scale-105"
-              />
-            )}
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-          </div>
+          <FullWallpaperBackground wallpaperUrl={surface.wallpaperUrl} />
         )}
 
         {/* Ambient Gradient Background Mode */}

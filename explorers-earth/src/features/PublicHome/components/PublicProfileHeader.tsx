@@ -211,7 +211,7 @@ export function PublicProfileHeader({
       <div
         data-testid="public-profile-hero"
         data-wallpaper-mode={surface.mode}
-        className="public-profile-hero relative overflow-hidden text-center px-4 pt-20 pb-6 md:pt-24 md:pb-8"
+        className="public-profile-hero relative overflow-hidden text-center px-4 pt-20 pb-6 md:pt-24 md:pb-8 motion-reduce:transition-none"
       >
         {/* Sentinel for top-of-page scroll check */}
         <div

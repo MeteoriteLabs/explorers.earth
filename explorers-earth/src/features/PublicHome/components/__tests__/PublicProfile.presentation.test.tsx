@@ -277,6 +277,40 @@ describe("PublicProfile recommendation presentation", () => {
     },
   );
 
+  it("falls back broken full-wallpaper-image custom URL to default background image, then hides broken media", async () => {
+    state.account = makeAccount({
+      bg_picture: { url: "https://example.com/broken-full-wallpaper.jpg" },
+      social_media: {
+        theme_settings: themeSettings({
+          preset: "minimal-light",
+          wallpaperMode: "full-wallpaper-image",
+        }),
+      },
+    });
+
+    renderProfile();
+
+    let fullImg = screen.getByTestId("full-wallpaper-image");
+    expect(fullImg).toHaveAttribute("src", "https://example.com/broken-full-wallpaper.jpg");
+
+    // First image error -> falls back to default background image
+    fireEvent.error(fullImg);
+
+    await waitFor(() => {
+      const fallbackImg = screen.getByTestId("full-wallpaper-image");
+      expect(fallbackImg).not.toHaveAttribute("src", "https://example.com/broken-full-wallpaper.jpg");
+    });
+
+    // Second image error -> removes broken image from DOM completely, leaving neutral surface container
+    const fallbackImg = screen.getByTestId("full-wallpaper-image");
+    fireEvent.error(fallbackImg);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("full-wallpaper-image")).toBeNull();
+      expect(screen.getByTestId("full-wallpaper-background")).toBeInTheDocument();
+    });
+  });
+
   it("opens a saved recommendation category and passes normalized layout settings", () => {
     state.account = makeAccount({
       public_music: "Yes",
