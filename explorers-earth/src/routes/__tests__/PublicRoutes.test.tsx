@@ -224,7 +224,7 @@ describe("PublicRoutes orchestration and readiness", () => {
     render(<PublicRouteRunner initialEntries={["/nonexistent"]} />);
 
     await waitFor(() => {
-      expect(screen.getByText("404 - Page Not Found")).toBeInTheDocument();
+      expect(screen.getByText("Page Not Found")).toBeInTheDocument();
     });
   });
 
