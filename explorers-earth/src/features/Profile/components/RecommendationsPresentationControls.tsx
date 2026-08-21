@@ -207,9 +207,7 @@ const SortableCategoryRow = ({
       hasActiveTransaction ||
       event.button !== 0 ||
       event.isPrimary === false ||
-      target.closest(".appearance-category-action") ||
-      (event.pointerType === "touch" &&
-        !target.closest(".appearance-drag-handle"))
+      !target.closest(".appearance-drag-handle")
     ) {
       return;
     }
