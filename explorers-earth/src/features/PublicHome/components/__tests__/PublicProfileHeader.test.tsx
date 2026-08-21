@@ -85,6 +85,16 @@ describe("PublicProfileHeader", () => {
     },
   );
 
+  it("renders header brand link containing the accessible icon logo with 44px min target", () => {
+    renderHeader();
+    const brandLink = screen.getByRole("link", { name: "explorers.earth" });
+    expect(brandLink).toBeVisible();
+    expect(brandLink.className).toContain("min-w-[44px]");
+    expect(brandLink.className).toContain("min-h-[44px]");
+    const logoImg = screen.getByRole("img", { name: "explorers.earth" });
+    expect(brandLink).toContainElement(logoImg);
+  });
+
   it("renders account name, location, and social links with 44px min targets", () => {
     renderHeader();
     expect(screen.getByText("Jane Explorer")).toBeVisible();
