@@ -11,7 +11,7 @@ import {
   Smartphone,
   Users,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "../../../lib/queryClient";
 import type { PlaylistResponse } from "../../../types/music";
@@ -32,6 +32,7 @@ import ProfileRecommendationsLayouts, {
   type RecommendationCategorySlotViewModel,
   type RecommendationListCardViewModel,
 } from "./ProfileRecommendationsLayouts";
+import PublicProfileFeedback from "./PublicProfileFeedback";
 
 export interface PublicRecommendationAccountData {
   documentId?: string;
@@ -769,6 +770,25 @@ const ProfileRecommendationsTab = ({
   const isLoading = states.some((state) => state.dataStatus === "loading");
   const hasRenderableContent = orderedSlots.length > 0;
 
+  const failedCategoryIds = useMemo(
+    () =>
+      states
+        .filter((state) => state.error != null)
+        .map((state) => state.id),
+    [states],
+  );
+
+  const failedCategoryKey = failedCategoryIds.join(",");
+
+  useEffect(() => {
+    if (failedCategoryKey && process.env.NODE_ENV !== "production") {
+      console.error(
+        "[PublicProfile] Failed recommendation categories:",
+        failedCategoryIds,
+      );
+    }
+  }, [failedCategoryKey, failedCategoryIds]);
+
   const retryFailed = async () => {
     if (retryLock.current) return;
     const retrySnapshot = states
@@ -805,9 +825,20 @@ const ProfileRecommendationsTab = ({
       aria-busy={isLoading}
       className="space-y-4 pb-12 pt-2 text-[var(--text-primary)]"
     >
+      {hasRenderableContent && (
+        <ProfileRecommendationsLayouts
+          layout={normalizedPresentation.layout}
+          slots={orderedSlots}
+        />
+      )}
+
       {hasError && hasRenderableContent && (
         <aside
           role="status"
+          aria-label={t(
+            "publicProfile.recommendations.partialError",
+            "Some categories are unavailable",
+          )}
           className="rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] p-4"
         >
           <p className="font-poppins text-sm font-semibold text-[var(--text-primary)]">
@@ -818,13 +849,6 @@ const ProfileRecommendationsTab = ({
           </p>
           {retryButton}
         </aside>
-      )}
-
-      {hasRenderableContent && (
-        <ProfileRecommendationsLayouts
-          layout={normalizedPresentation.layout}
-          slots={orderedSlots}
-        />
       )}
 
       {!isLoading && !hasRenderableContent && hasError && (

@@ -193,6 +193,67 @@ describe("ProfileRecommendationsTab", () => {
     expect(screen.queryByText("No public recommendations yet")).toBeNull();
   });
 
+  it("renders successful categories before the compact partial-error notice", () => {
+    apolloResults.set("GetPlacesLists", {
+      data: placesData,
+      loading: false,
+      error: null,
+      refetch: retryPlaces,
+    });
+    apolloResults.set("GetBooksLists", {
+      data: undefined,
+      loading: false,
+      error: new Error("books failed"),
+      refetch: retryBooks,
+    });
+    renderTab({ presentation: { layout: "shelves" } });
+
+    const places = screen.getByRole("heading", { name: "Places" });
+    const notice = screen.getByRole("status", { name: "Some categories are unavailable" });
+    expect(
+      Boolean(places.compareDocumentPosition(notice) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ).toBe(true);
+  });
+
+  it("invokes refetch only on failed categories when retrying partial failures", async () => {
+    apolloResults.set("GetPlacesLists", {
+      data: placesData,
+      loading: false,
+      error: null,
+      refetch: retryPlaces,
+    });
+    apolloResults.set("GetBooksLists", {
+      data: undefined,
+      loading: false,
+      error: new Error("books failed"),
+      refetch: retryBooks,
+    });
+    renderTab();
+
+    const retry = screen.getByRole("button", { name: "Try again" });
+    fireEvent.click(retry);
+
+    await vi.waitFor(() => expect(retryBooks).toHaveBeenCalledTimes(1));
+    expect(retryPlaces).not.toHaveBeenCalled();
+  });
+
+  it("logs failed categories in development mode without account data", () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    apolloResults.set("GetBooksLists", {
+      data: undefined,
+      loading: false,
+      error: new Error("books failed"),
+      refetch: retryBooks,
+    });
+    renderTab();
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "[PublicProfile] Failed recommendation categories:",
+      ["books"],
+    );
+    consoleSpy.mockRestore();
+  });
+
   it("shows recovery when all content fails and retries only failed queries once", async () => {
     apolloResults.set("GetPlacesLists", {
       data: undefined,

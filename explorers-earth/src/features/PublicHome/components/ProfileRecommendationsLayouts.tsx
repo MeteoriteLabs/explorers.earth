@@ -159,7 +159,7 @@ const ClassicShelves = ({
             <CategoryHeading category={slot} />
           </Link>
           <div
-            className="flex gap-4 overflow-x-auto px-1 pb-4 pt-2 scrollbar-hide"
+            className="flex gap-4 overflow-x-auto pb-4 pt-2 scrollbar-hide"
             style={{ scrollbarWidth: "none" }}
           >
             {slot.lists.slice(0, 12).map((list) => (

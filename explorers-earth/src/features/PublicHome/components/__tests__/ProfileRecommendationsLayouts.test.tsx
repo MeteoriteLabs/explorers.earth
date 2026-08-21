@@ -128,6 +128,24 @@ describe("ProfileRecommendationsLayouts", () => {
     expect(screen.getByRole("link", { name: /Open الأماكن/ })).toBeVisible();
   });
 
+  it("renders skeleton surfaces with neutral background and no category-colour styling", () => {
+    renderLayouts("grid", [
+      { status: "loading", id: "music", label: "Music" },
+    ]);
+    const loadingSection = screen.getByLabelText("Loading Music");
+    expect(loadingSection).not.toHaveStyle({ backgroundColor: "#10B981" });
+    expect(loadingSection.querySelector("h2")).not.toHaveStyle({ color: "#10B981" });
+  });
+
+  it("aligns shelf category heading and first card to container edge while allowing overflow", () => {
+    renderLayouts("shelves");
+    const shelvesContainer = screen.getByTestId("recommendations-shelves");
+    const shelfScroll = shelvesContainer.querySelector(".overflow-x-auto");
+    expect(shelfScroll).toHaveClass("overflow-x-auto");
+    expect(shelfScroll).not.toHaveClass("px-4");
+    expect(shelfScroll).not.toHaveClass("-mx-4");
+  });
+
   it("returns no layout wrapper for an empty slot list", () => {
     const { container } = renderLayouts("featured", []);
     expect(container).toBeEmptyDOMElement();
