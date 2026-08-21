@@ -9,8 +9,9 @@ import {
 import { RECOMMENDATION_CATEGORY_IDS } from "../../Profile/types/themeTypes";
 import PublicProfileFooter from "./PublicProfileFooter";
 import { useQuery } from "@apollo/client";
-import { memo, useEffect, useState, useMemo, type KeyboardEvent } from "react";
+import { memo, useEffect, useState, useMemo, useContext, type KeyboardEvent } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
+import { PublicRouteReadinessContext } from "../../../layouts/PublicRouteReadinessContext";
 import { getPublicProfileDataQuery, getUserMobileNumberQuery } from "../api/query";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../services/analyticsService";
 import WhatsappIcon from "../../../assets/icons/WhatsappIcon";
@@ -211,7 +212,14 @@ const PublicProfile = memo(() => {
     return `${window.location.origin}/${username}`;
   };
 
-  const { data, loading } = useQuery(getPublicProfileDataQuery, {
+  const readinessCtx = useContext(PublicRouteReadinessContext);
+  const generation = readinessCtx?.generation || "";
+  const markLoading = readinessCtx?.markLoading;
+  const markError = readinessCtx?.markError;
+  const markNotFound = readinessCtx?.markNotFound;
+  const markReady = readinessCtx?.markReady;
+
+  const { data, loading, error, refetch } = useQuery(getPublicProfileDataQuery, {
     variables: {
       filters: {
         username: {
@@ -230,11 +238,20 @@ const PublicProfile = memo(() => {
 
   // Set public profile loaded when query completes successfully
   useEffect(() => {
-    if (!loading) {
-      (window as any).__publicProfileLoaded = true;
-      outletContext?.setIsPageLoaded?.(true);
+    if (loading) {
+      markLoading?.(generation);
+    } else if (error) {
+      markError?.(generation, "profile", refetch);
+    } else if (data) {
+      if (!data.accounts?.[0]) {
+        markNotFound?.(generation);
+      } else {
+        (window as any).__publicProfileLoaded = true;
+        markReady?.(generation);
+        outletContext?.setIsPageLoaded?.(true);
+      }
     }
-  }, [loading, outletContext]);
+  }, [loading, error, data, refetch, generation, markLoading, markError, markNotFound, markReady, outletContext]);
 
   // Fetch mobile number ONLY when visibility is explicitly enabled
   // This prevents the mobile number from ever being in the response unless visibility is set

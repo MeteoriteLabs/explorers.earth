@@ -1,4 +1,6 @@
-import { Route } from "react-router-dom";
+import { useContext, useEffect } from "react";
+import { Route, useOutletContext } from "react-router-dom";
+import { PublicRouteReadinessContext } from "../layouts/PublicRouteReadinessContext";
 
 // Import components
 import PublicProfile from "../features/PublicHome/components/PublicProfile";
@@ -9,7 +11,7 @@ import PlaceMapView from "../features/PublicHome/components/PlaceMapView";
 import PublicMusic from "../pages/public/PublicMusic";
 import PublicGuides from "../features/PublicHome/components/PublicGuides";
 import PublicGuideDetailPage from "../features/PublicHome/components/PublicGuideDetailPage";
-import { UsernameValidator } from "./validators";
+import { UsernameValidator } from "./validators/UsernameValidator";
 import TabVisibilityGuard from "./validators/TabVisibilityGuard";
 import { PublicMovies, PublicMovieList, PublicMovieGenre } from "../features/Movies";
 import { PublicBooks, PublicBookList, PublicBookSubject } from "../features/Books";
@@ -21,160 +23,170 @@ import { PublicPeople, PublicPersonList, PublicPersonSector } from "../features/
 // Import layout
 import PublicLayout from "../layouts/PublicLayout";
 
+const ReadyOnMount = ({ children }: { children: React.ReactNode }) => {
+  const readinessCtx = useContext(PublicRouteReadinessContext);
+  const outletCtx = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
+  const generation = readinessCtx?.generation || "";
+
+  useEffect(() => {
+    readinessCtx?.markReady(generation);
+    outletCtx?.setIsPageLoaded?.(true);
+  }, [generation, readinessCtx, outletCtx]);
+
+  return <>{children}</>;
+};
+
 const PublicRoutes = [
   <Route
     key="public-routes"
     path=":username/*"
-    element={
-      <UsernameValidator>
-        <PublicLayout />
-      </UsernameValidator>
-    }
+    element={<PublicLayout />}
   >
-    <Route index element={
-      <TabVisibilityGuard tabField="public_profile" defaultVisible={true}>
-        <PublicProfile />
-      </TabVisibilityGuard>
-    } />
-    <Route path="music" element={
-      <TabVisibilityGuard tabField="public_music" defaultVisible={false}>
-        <PublicMusic />
-      </TabVisibilityGuard>
-    } />
-    <Route path="places">
+    <Route element={<UsernameValidator />}>
       <Route index element={
-        <TabVisibilityGuard tabField="public_recommendations" defaultVisible={false}>
-          <PublicHomePage />
+        <TabVisibilityGuard tabField="public_profile" defaultVisible={true}>
+          <PublicProfile />
         </TabVisibilityGuard>
       } />
-      <Route path=":placeSlug" element={
-        <TabVisibilityGuard tabField="public_recommendations" defaultVisible={false}>
-          <PublicHomePage />
+      <Route path="music" element={
+        <TabVisibilityGuard tabField="public_music" defaultVisible={false}>
+          <PublicMusic />
         </TabVisibilityGuard>
       } />
-      <Route path="map" element={<MapView />} />
-      <Route path=":placeSlug/map" element={<MapView />} />
-      <Route path=":place/placesmap" element={<PlaceMapView />} />
-    </Route>
-    <Route path="guides">
-      <Route index element={
-        <TabVisibilityGuard tabField="public_guides" defaultVisible={false}>
-          <PublicGuides />
-        </TabVisibilityGuard>
-      } />
-      <Route path=":guideSlug" element={
-        <TabVisibilityGuard tabField="public_guides" defaultVisible={false}>
-          <PublicGuideDetailPage />
-        </TabVisibilityGuard>
-      } />
-    </Route>
-    <Route path="community" element={<Community />} />
+      <Route path="places">
+        <Route index element={
+          <TabVisibilityGuard tabField="public_recommendations" defaultVisible={false}>
+            <PublicHomePage />
+          </TabVisibilityGuard>
+        } />
+        <Route path=":placeSlug" element={
+          <TabVisibilityGuard tabField="public_recommendations" defaultVisible={false}>
+            <PublicHomePage />
+          </TabVisibilityGuard>
+        } />
+        <Route path="map" element={<ReadyOnMount><MapView /></ReadyOnMount>} />
+        <Route path=":placeSlug/map" element={<ReadyOnMount><MapView /></ReadyOnMount>} />
+        <Route path=":place/placesmap" element={<ReadyOnMount><PlaceMapView /></ReadyOnMount>} />
+      </Route>
+      <Route path="guides">
+        <Route index element={
+          <TabVisibilityGuard tabField="public_guides" defaultVisible={false}>
+            <PublicGuides />
+          </TabVisibilityGuard>
+        } />
+        <Route path=":guideSlug" element={
+          <TabVisibilityGuard tabField="public_guides" defaultVisible={false}>
+            <ReadyOnMount><PublicGuideDetailPage /></ReadyOnMount>
+          </TabVisibilityGuard>
+        } />
+      </Route>
+      <Route path="community" element={<ReadyOnMount><Community /></ReadyOnMount>} />
 
-    {/* Movies & Shows public routes */}
-    <Route path="movies">
-      <Route index element={
-        <TabVisibilityGuard tabField="public_movie" defaultVisible={false}>
-          <PublicMovies />
-        </TabVisibilityGuard>
-      } />
-      <Route path="genre/:genreSlug" element={
-        <TabVisibilityGuard tabField="public_movie" defaultVisible={false}>
-          <PublicMovieGenre />
-        </TabVisibilityGuard>
-      } />
-      <Route path=":listSlug" element={
-        <TabVisibilityGuard tabField="public_movie" defaultVisible={false}>
-          <PublicMovieList />
-        </TabVisibilityGuard>
-      } />
-    </Route>
+      {/* Movies & Shows public routes */}
+      <Route path="movies">
+        <Route index element={
+          <TabVisibilityGuard tabField="public_movie" defaultVisible={false}>
+            <PublicMovies />
+          </TabVisibilityGuard>
+        } />
+        <Route path="genre/:genreSlug" element={
+          <TabVisibilityGuard tabField="public_movie" defaultVisible={false}>
+            <PublicMovieGenre />
+          </TabVisibilityGuard>
+        } />
+        <Route path=":listSlug" element={
+          <TabVisibilityGuard tabField="public_movie" defaultVisible={false}>
+            <PublicMovieList />
+          </TabVisibilityGuard>
+        } />
+      </Route>
 
-    {/* Books public routes */}
-    <Route path="books">
-      <Route index element={
-        <TabVisibilityGuard tabField="public_books" defaultVisible={false}>
-          <PublicBooks />
-        </TabVisibilityGuard>
-      } />
-      <Route path="subject/:subjectSlug" element={
-        <TabVisibilityGuard tabField="public_books" defaultVisible={false}>
-          <PublicBookSubject />
-        </TabVisibilityGuard>
-      } />
-      <Route path=":listSlug" element={
-        <TabVisibilityGuard tabField="public_books" defaultVisible={false}>
-          <PublicBookList />
-        </TabVisibilityGuard>
-      } />
-    </Route>
+      {/* Books public routes */}
+      <Route path="books">
+        <Route index element={
+          <TabVisibilityGuard tabField="public_books" defaultVisible={false}>
+            <PublicBooks />
+          </TabVisibilityGuard>
+        } />
+        <Route path="subject/:subjectSlug" element={
+          <TabVisibilityGuard tabField="public_books" defaultVisible={false}>
+            <PublicBookSubject />
+          </TabVisibilityGuard>
+        } />
+        <Route path=":listSlug" element={
+          <TabVisibilityGuard tabField="public_books" defaultVisible={false}>
+            <PublicBookList />
+          </TabVisibilityGuard>
+        } />
+      </Route>
 
-    {/* Games public routes */}
-    <Route path="games">
-      <Route index element={
-        <TabVisibilityGuard tabField="public_games" defaultVisible={false}>
-          <PublicGames />
-        </TabVisibilityGuard>
-      } />
-      <Route path="genre/:genreSlug" element={
-        <TabVisibilityGuard tabField="public_games" defaultVisible={false}>
-          <PublicGamesGenre />
-        </TabVisibilityGuard>
-      } />
-      <Route path=":listSlug" element={
-        <TabVisibilityGuard tabField="public_games" defaultVisible={false}>
-          <PublicGamesList />
-        </TabVisibilityGuard>
-      } />
-    </Route>
+      {/* Games public routes */}
+      <Route path="games">
+        <Route index element={
+          <TabVisibilityGuard tabField="public_games" defaultVisible={false}>
+            <PublicGames />
+          </TabVisibilityGuard>
+        } />
+        <Route path="genre/:genreSlug" element={
+          <TabVisibilityGuard tabField="public_games" defaultVisible={false}>
+            <PublicGamesGenre />
+          </TabVisibilityGuard>
+        } />
+        <Route path=":listSlug" element={
+          <TabVisibilityGuard tabField="public_games" defaultVisible={false}>
+            <PublicGamesList />
+          </TabVisibilityGuard>
+        } />
+      </Route>
 
-    {/* Apps & Tools public routes */}
-    <Route path="apps">
-      <Route index element={
-        <TabVisibilityGuard tabField="public_apps" defaultVisible={false}>
-          <PublicApps />
-        </TabVisibilityGuard>
-      } />
-      <Route path=":listSlug" element={
-        <TabVisibilityGuard tabField="public_apps" defaultVisible={false}>
-          <PublicAppList />
-        </TabVisibilityGuard>
-      } />
-    </Route>
+      {/* Apps & Tools public routes */}
+      <Route path="apps">
+        <Route index element={
+          <TabVisibilityGuard tabField="public_apps" defaultVisible={false}>
+            <PublicApps />
+          </TabVisibilityGuard>
+        } />
+        <Route path=":listSlug" element={
+          <TabVisibilityGuard tabField="public_apps" defaultVisible={false}>
+            <PublicAppList />
+          </TabVisibilityGuard>
+        } />
+      </Route>
 
-    {/* Products public routes */}
-    <Route path="products">
-      <Route index element={
-        <TabVisibilityGuard tabField="public_products" defaultVisible={false}>
-          <PublicProducts />
-        </TabVisibilityGuard>
-      } />
-      <Route path=":listSlug" element={
-        <TabVisibilityGuard tabField="public_products" defaultVisible={false}>
-          <PublicProductList />
-        </TabVisibilityGuard>
-      } />
-    </Route>
+      {/* Products public routes */}
+      <Route path="products">
+        <Route index element={
+          <TabVisibilityGuard tabField="public_products" defaultVisible={false}>
+            <PublicProducts />
+          </TabVisibilityGuard>
+        } />
+        <Route path=":listSlug" element={
+          <TabVisibilityGuard tabField="public_products" defaultVisible={false}>
+            <PublicProductList />
+          </TabVisibilityGuard>
+        } />
+      </Route>
 
-    {/* People public routes */}
-    <Route path="people">
-      <Route index element={
-        <TabVisibilityGuard tabField="public_people" defaultVisible={false}>
-          <PublicPeople />
-        </TabVisibilityGuard>
-      } />
-      <Route path="sector/:sectorSlug" element={
-        <TabVisibilityGuard tabField="public_people" defaultVisible={false}>
-          <PublicPersonSector />
-        </TabVisibilityGuard>
-      } />
-      <Route path=":listSlug" element={
-        <TabVisibilityGuard tabField="public_people" defaultVisible={false}>
-          <PublicPersonList />
-        </TabVisibilityGuard>
-      } />
+      {/* People public routes */}
+      <Route path="people">
+        <Route index element={
+          <TabVisibilityGuard tabField="public_people" defaultVisible={false}>
+            <PublicPeople />
+          </TabVisibilityGuard>
+        } />
+        <Route path="sector/:sectorSlug" element={
+          <TabVisibilityGuard tabField="public_people" defaultVisible={false}>
+            <PublicPersonSector />
+          </TabVisibilityGuard>
+        } />
+        <Route path=":listSlug" element={
+          <TabVisibilityGuard tabField="public_people" defaultVisible={false}>
+            <PublicPersonList />
+          </TabVisibilityGuard>
+        } />
+      </Route>
     </Route>
   </Route>,
 ];
 
 export default PublicRoutes;
-

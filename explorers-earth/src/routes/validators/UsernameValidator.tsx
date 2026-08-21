@@ -1,12 +1,11 @@
-import { useEffect } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useEffect, useContext } from "react";
+import { useNavigate, useParams, useLocation, Outlet } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { gql } from "@apollo/client";
-import { EarthLoader } from "../../components/EarthLoader";
-import NotFound from "../../pages/NotFound";
+import { PublicRouteReadinessContext } from "../../layouts/PublicRouteReadinessContext";
 
 // Query to check if username exists — intentionally minimal
-const checkUsernameQuery = gql`
+export const checkUsernameQuery = gql`
   query CheckUsername($username: String!) {
     accounts(filters: { username: { eq: $username } }) {
       documentId
@@ -15,90 +14,91 @@ const checkUsernameQuery = gql`
   }
 `;
 
-interface UsernameValidatorProps {
-  children: React.ReactNode;
-}
-
-const UsernameValidator = ({ children }: UsernameValidatorProps) => {
+export const UsernameValidator = () => {
   const { username } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const readinessCtx = useContext(PublicRouteReadinessContext);
+  const generation = readinessCtx?.generation || "";
+  const markLoading = readinessCtx?.markLoading;
+  const markError = readinessCtx?.markError;
+  const markNotFound = readinessCtx?.markNotFound;
 
-  const { data, loading, error } = useQuery(checkUsernameQuery, {
+  const { data, loading, error, refetch } = useQuery(checkUsernameQuery, {
     variables: { username },
     skip: !username,
   });
 
   useEffect(() => {
-    if (!loading && !error && data) {
-      const account = data.accounts[0];
+    if (loading) {
+      markLoading?.(generation);
+      return;
+    }
 
-      // If username doesn't exist, show 404
+    if (error) {
+      markError?.(generation, "username", refetch);
+      return;
+    }
+
+    if (data) {
+      const account = data.accounts?.[0];
+
+      // If username doesn't exist, mark not found
       if (!account) {
-        return; // This will render NotFound component
+        markNotFound?.(generation);
+        return;
       }
 
       // Normalize the path to handle trailing slashes
-      // Remove trailing slash and split
-      const normalizedPath = location.pathname.replace(/\/$/, '');
-      const pathSegments = normalizedPath.split('/');
-
-      // If we have exactly 2 segments (e.g., /correctUsername), don't redirect
-      if (pathSegments.length === 2) {
-        return; // Allow the route to render normally
-      }
+      const normalizedPath = location.pathname.replace(/\/$/, "");
+      const pathSegments = normalizedPath.split("/");
 
       // If we have more than 2 segments, validate the nested route
       if (pathSegments.length > 2) {
-        const validRoutes = ['places', 'community', 'music', 'guides', 'movies', 'books', 'games', 'apps', 'products', 'people'];
+        const validRoutes = [
+          "places",
+          "community",
+          "music",
+          "guides",
+          "movies",
+          "books",
+          "games",
+          "apps",
+          "products",
+          "people",
+        ];
         const currentRoute = pathSegments[2];
 
         // Check if the current route is valid
         if (!validRoutes.includes(currentRoute)) {
-          // Redirect to the user's places page
           navigate(`/${username}/places`, { replace: true });
           return;
         }
 
         // Additional validation for places sub-routes
-        if (currentRoute === 'places' && pathSegments.length > 3) {
-          const validPlacesSubRoutes = ['map'];
+        if (currentRoute === "places" && pathSegments.length > 3) {
+          const validPlacesSubRoutes = ["map"];
           const placesSubRoute = pathSegments[3];
 
-          // If it's not a valid places sub-route and not a placeSlug (which can be anything), redirect
-          if (!validPlacesSubRoutes.includes(placesSubRoute) &&
-            !/^[a-zA-Z0-9-_]+$/.test(placesSubRoute)) {
+          if (
+            !validPlacesSubRoutes.includes(placesSubRoute) &&
+            !/^[a-zA-Z0-9-_]+$/.test(placesSubRoute)
+          ) {
             navigate(`/${username}/places`, { replace: true });
             return;
           }
         }
       }
+
+      readinessCtx?.markLoading(generation);
     }
-  }, [data, loading, error, username, navigate, location.pathname]);
+  }, [data, loading, error, username, navigate, location.pathname, generation, readinessCtx, refetch]);
 
-  useEffect(() => {
-    (window as any).__publicProfileLoaded = false;
-    return () => {
-      (window as any).__publicProfileLoaded = false;
-    };
-  }, []);
-
-  // Show loading while checking username
-  if (loading) {
-    return (
-      <div className="bg-black min-h-screen">
-        <EarthLoader context="general" size="default" />
-      </div>
-    );
+  if (loading || error || !data || !data.accounts?.[0]) {
+    return null;
   }
 
-  // Show 404 if username doesn't exist
-  if (!loading && (!data || !data.accounts[0])) {
-    return <NotFound />;
-  }
-
-  // Render children if username is valid
-  return <>{children}</>;
+  return <Outlet />;
 };
 
-export default UsernameValidator; 
+export default UsernameValidator;
