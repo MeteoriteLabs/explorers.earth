@@ -53,11 +53,31 @@ import {
   sanitizePublicRichText,
 } from "../utils/publicProfileContent";
 import { PublicProfileHeader } from "./PublicProfileHeader";
+import PublicProfileBio from "./PublicProfileBio";
+import PublicProfileTabs, { type PublicProfileTabDefinition } from "./PublicProfileTabs";
 import {
   isSafeMediaUrl,
   resolvePublicProfileSurface,
   type PublicProfileSocialLinkViewModel,
 } from "../utils/resolvePublicProfileSurface";
+
+const HeartIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    className="size-5"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+    />
+  </svg>
+);
 
 // Memoized FeedLayout to prevent unnecessary re-renders
 const MemoizedFeedLayout = memo(FeedLayout);
@@ -286,8 +306,8 @@ const PublicProfile = memo(() => {
   // Feed images AND videos now supported with proper aspect ratio detection
   const feedItems = accountData?.Feed_Data || [];
   const memoizedFeedImages = useMemo(() => {
-    return (feedItems || []).map((media: any) => ({
-      id: media.id || media.documentId || `media-${Math.random()}`,
+    return (feedItems || []).map((media: any, index: number) => ({
+      id: media.id || media.documentId || `feed-item-${media.fileName || media.url || "media"}-${index}`,
       url: media.url,
       alt: media.fileName || (media.type === "video" ? "Video" : "Feed image"),
       type: media.type || "image", // Include video support
@@ -578,11 +598,11 @@ const PublicProfile = memo(() => {
   const hasGallery = memoizedFeedImages.length > 0;
   const availableTabs = useMemo<PublicProfileTab[]>(
     () => [
-      ...(hasRecommendations ? (["recommendations"] as const) : []),
+      "recommendations",
       "gallery",
       ...(hasBusinessDetails ? (["business"] as const) : []),
     ],
-    [hasBusinessDetails, hasRecommendations],
+    [hasBusinessDetails],
   );
   const automaticActiveTab = resolveInitialPublicProfileTab({
     landingTab: themeSettings.landingTab,
@@ -601,61 +621,41 @@ const PublicProfile = memo(() => {
   const activeTab =
     manualTabForProfile && availableTabs.includes(manualTabForProfile)
       ? manualTabForProfile
-      : automaticActiveTab;
-  const [focusedTabOverride, setFocusedTabOverride] = useState<{
-    username: string;
-    tab: PublicProfileTab;
-  } | null>(null);
-  const focusedTabForProfile =
-    focusedTabOverride && focusedTabOverride.username === username
-      ? focusedTabOverride.tab
-      : undefined;
-  const focusedTab =
-    focusedTabForProfile && availableTabs.includes(focusedTabForProfile)
-      ? focusedTabForProfile
-      : activeTab;
+      : availableTabs.includes(automaticActiveTab)
+        ? automaticActiveTab
+        : "recommendations";
   const preferredRecommendationCategory = getPreferredRecommendationCategory(
     themeSettings.landingTab,
   );
 
   const selectTab = (tab: PublicProfileTab) => {
-    const profileUsername = username || "";
-    setManualTabOverride({ username: profileUsername, tab });
-    setFocusedTabOverride({ username: profileUsername, tab });
+    setManualTabOverride({ username: username || "", tab });
   };
 
-  const focusTab = (tab: PublicProfileTab) => {
-    setFocusedTabOverride({ username: username || "", tab });
-    document.getElementById(`public-profile-${tab}-tab`)?.focus();
-  };
-
-  const handleTabKeyDown = (
-    event: KeyboardEvent<HTMLButtonElement>,
-    tab: PublicProfileTab,
-  ) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      selectTab(tab);
-      return;
-    }
-
-    const currentIndex = availableTabs.indexOf(tab);
-    let targetIndex: number | undefined;
-    if (event.key === "ArrowRight") {
-      targetIndex = (currentIndex + 1) % availableTabs.length;
-    } else if (event.key === "ArrowLeft") {
-      targetIndex = (currentIndex - 1 + availableTabs.length) % availableTabs.length;
-    } else if (event.key === "Home") {
-      targetIndex = 0;
-    } else if (event.key === "End") {
-      targetIndex = availableTabs.length - 1;
-    }
-
-    if (targetIndex !== undefined) {
-      event.preventDefault();
-      focusTab(availableTabs[targetIndex]);
-    }
-  };
+  const tabDefinitions = useMemo<PublicProfileTabDefinition[]>(
+    () => [
+      {
+        id: "recommendations",
+        label: "Recommendations",
+        icon: HeartIcon,
+      },
+      {
+        id: "gallery",
+        label: "Gallery",
+        icon: FeedIcon,
+      },
+      ...(hasBusinessDetails
+        ? [
+            {
+              id: "business" as const,
+              label: "Business Details",
+              icon: Location,
+            },
+          ]
+        : []),
+    ],
+    [hasBusinessDetails],
+  );
 
   if (loading) {
     if ((window as any).__publicProfileLoaded) {
@@ -899,260 +899,193 @@ const PublicProfile = memo(() => {
           onShare={handleShare}
           onAvatarActivate={handleImageClick}
         />
-        <div className="md:max-w-5xl px-6 md:px-6 md:mx-auto relative z-10">
-          <div className="mt-0 max-w-3xl md:flex flex-col item-center justify-center mx-auto">
-            <div className="py-3">
-              <div
-                className="font-poppins text-xs leading-relaxed line-clamp-3 break-words overflow-hidden text-ellipsis opacity-90" style={{ color: "var(--text-primary)" }}
-                dangerouslySetInnerHTML={{ __html: sanitizedProfileBio }}
-              />
-              </div>
-            </div>
-          </div>
 
-          {/* Tabs: Recommendations (heart) | Gallery (feed) | Address (location) */}
-          <div className="mt-1 max-w-5xl mx-auto">
-            <div className="mt-3">
-              {/* Tab List */}
+        {/* Main Content Area: Bio, Tabs, and Active Panel as Siblings */}
+        <main className="max-w-5xl mx-auto px-4 sm:px-6 relative z-10 space-y-6 mt-4">
+          {/* Bio Section */}
+          <PublicProfileBio html={accountData?.Bio} />
+
+          {/* Tab Rail Section */}
+          <PublicProfileTabs
+            tabs={tabDefinitions}
+            activeTab={activeTab}
+            onChange={selectTab}
+          />
+
+          {/* Active Panel Section */}
+          <div className="w-full">
+            {activeTab === "recommendations" && (
               <div
-                role="tablist"
-                aria-label="Profile sections"
-                className="flex w-full justify-center gap-8 border-b px-2 md:px-0 overflow-x-auto scrollbar-hide"
-                style={{ borderColor: "var(--border-card)" }}
+                id="public-profile-recommendations-panel"
+                role="tabpanel"
+                aria-labelledby="public-profile-recommendations-tab"
               >
-                {/* Recommendations tab — conditionally rendered */}
-                {hasRecommendations && (
-                  <button
-                    id="public-profile-recommendations-tab"
-                    role="tab"
-                    type="button"
-                    aria-label="Recommendations"
-                    aria-controls="public-profile-recommendations-panel"
-                    tabIndex={focusedTab === "recommendations" ? 0 : -1}
-                    className="profile-presentation-focus min-h-12 min-w-12 py-2.5 text-xs font-poppins font-medium tracking-wide transition-all border-b-2"
-                    style={{
-                      borderColor: activeTab === "recommendations" ? "var(--accent-color)" : "transparent",
-                      color: activeTab === "recommendations" ? "var(--text-primary)" : "var(--text-secondary)"
-                    }}
-                    aria-selected={activeTab === "recommendations"}
-                    onClick={() => selectTab("recommendations")}
-                    onKeyDown={(event) => handleTabKeyDown(event, "recommendations")}
-                  >
-                    <span className="flex items-center justify-center gap-1">
-                      <svg viewBox="0 0 24 24" fill={activeTab === "recommendations" ? "currentColor" : "none"} stroke="currentColor" strokeWidth={activeTab === "recommendations" ? 0 : 1.8} className="size-5 transition-all" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-                      </svg>
-                      <span className="sr-only">Recommendations</span>
-                    </span>
-                  </button>
-                )}
-
-                {/* Gallery tab */}
-                <button
-                  id="public-profile-gallery-tab"
-                  role="tab"
-                  type="button"
-                  aria-label="Gallery"
-                  aria-controls="public-profile-gallery-panel"
-                  tabIndex={focusedTab === "gallery" ? 0 : -1}
-                  className="profile-presentation-focus min-h-12 min-w-12 py-2.5 text-xs font-poppins font-medium tracking-wide transition-all border-b-2"
-                  style={{
-                    borderColor: activeTab === "gallery" ? "var(--accent-color)" : "transparent",
-                    color: activeTab === "gallery" ? "var(--text-primary)" : "var(--text-secondary)"
-                  }}
-                  aria-selected={activeTab === "gallery"}
-                  onClick={() => selectTab("gallery")}
-                  onKeyDown={(event) => handleTabKeyDown(event, "gallery")}
-                >
-                  <span className="flex items-center justify-center gap-1">
-                    <FeedIcon className="size-5" />
-                    <span className="sr-only">Gallery</span>
-                  </span>
-                </button>
-
-                {/* Address tab — only if business details exist */}
-                {hasBusinessDetails && (
-                  <button
-                    id="public-profile-business-tab"
-                    role="tab"
-                    type="button"
-                    aria-label="Business Details"
-                    aria-controls="public-profile-business-panel"
-                    tabIndex={focusedTab === "business" ? 0 : -1}
-                    className="profile-presentation-focus min-h-12 min-w-12 py-2.5 text-xs font-poppins font-medium tracking-wide transition-all border-b-2"
-                    style={{
-                      borderColor: activeTab === "business" ? "var(--accent-color)" : "transparent",
-                      color: activeTab === "business" ? "var(--text-primary)" : "var(--text-secondary)"
-                    }}
-                    aria-selected={activeTab === "business"}
-                    onClick={() => selectTab("business")}
-                    onKeyDown={(event) => handleTabKeyDown(event, "business")}
-                  >
-                    <span className="flex items-center justify-center gap-1">
-                      <Location className="size-5" />
-                      <span className="sr-only">Business Details</span>
-                    </span>
-                  </button>
-                )}
+                <ProfileRecommendationsTab
+                  accountData={accountData}
+                  username={username || ""}
+                  presentation={themeSettings.recommendations}
+                  preferredCategory={preferredRecommendationCategory}
+                />
               </div>
+            )}
 
-              {/* Tab Panels */}
-              <div className="relative mt-2">
-
-                {/* ── Recommendations Tab ── */}
-                {activeTab === "recommendations" && hasRecommendations && (
+            {activeTab === "gallery" && (
+              <div
+                id="public-profile-gallery-panel"
+                role="tabpanel"
+                aria-labelledby="public-profile-gallery-tab"
+              >
+                <div className="w-full">
                   <div
-                    id="public-profile-recommendations-panel"
-                    role="tabpanel"
-                    aria-labelledby="public-profile-recommendations-tab"
+                    className="rounded-none md:rounded-lg p-1 md:p-4 transition-colors"
+                    style={{
+                      backgroundColor: "var(--bg-card)",
+                      borderColor: "var(--border-card)",
+                    }}
                   >
-                    <ProfileRecommendationsTab
-                      accountData={accountData}
-                      username={username || ""}
-                      presentation={themeSettings.recommendations}
-                      preferredCategory={preferredRecommendationCategory}
-                    />
+                    {hasGallery ? (
+                      <MemoizedFeedLayout
+                        images={memoizedFeedImages}
+                        className="w-full always-show-overlays"
+                        autoDetectDimensions={false}
+                        rowHeight={200}
+                        margin={1}
+                        onImageClick={handleMediaClick}
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-12 px-4">
+                        <div
+                          className="w-16 h-16 mb-4 rounded-full border flex items-center justify-center"
+                          style={{
+                            backgroundColor: "var(--bg-page)",
+                            borderColor: "var(--border-card)",
+                            color: "var(--text-secondary)",
+                          }}
+                        >
+                          <FeedIcon className="size-8" />
+                        </div>
+                        <h3
+                          className="text-lg font-poppins font-semibold mb-2"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          No public photos yet
+                        </h3>
+                        <p
+                          className="text-sm text-center max-w-sm"
+                          style={{ color: "var(--text-secondary)" }}
+                        >
+                          Check back later for updates!
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
+              </div>
+            )}
 
-                {/* ── Gallery Tab ── */}
-                {activeTab === "gallery" && (
-                  <div
-                    id="public-profile-gallery-panel"
-                    role="tabpanel"
-                    aria-labelledby="public-profile-gallery-tab"
-                  >
-                    <div className="w-full">
-                      <div className="max-w-4xl mx-auto px-1 md:px-4">
-                        <div className="rounded-none md:rounded-lg p-1 md:p-4 transition-colors" style={{ backgroundColor: "var(--bg-card)", borderColor: "var(--border-card)" }}>
-                          {hasGallery ? (
-                            <MemoizedFeedLayout
-                              images={memoizedFeedImages}
-                              className="w-full always-show-overlays"
-                              autoDetectDimensions={false}
-                              rowHeight={200}
-                              margin={1}
-                              onImageClick={handleMediaClick}
-                            />
-                          ) : (
-                            <div className="flex flex-col items-center justify-center py-12 px-4">
-                              <div
-                                className="w-16 h-16 mb-4 rounded-full border flex items-center justify-center"
-                                style={{
-                                  backgroundColor: "var(--bg-page)",
-                                  borderColor: "var(--border-card)",
-                                  color: "var(--text-secondary)",
-                                }}
+            {activeTab === "business" &&
+              hasBusinessDetails &&
+              businessLocationData && (
+                <div
+                  id="public-profile-business-panel"
+                  role="tabpanel"
+                  aria-labelledby="public-profile-business-tab"
+                >
+                  <div className="max-w-3xl flex flex-col item-center justify-center mx-auto">
+                    <div
+                      className="rounded-none md:rounded-lg p-4"
+                      style={{ backgroundColor: "var(--bg-card)" }}
+                    >
+                      {(businessLocationData.title ||
+                        businessLocationData.businessTitle ||
+                        businessLocationData.address ||
+                        businessLocationData.businessAddress) && (
+                        <div className="mb-6">
+                          {(businessLocationData.title ||
+                            businessLocationData.businessTitle) && (
+                            <h2
+                              className="text-lg font-poppins font-semibold mb-2"
+                              style={{ color: "var(--text-primary)" }}
+                            >
+                              {businessLocationData.title ||
+                                businessLocationData.businessTitle}
+                            </h2>
+                          )}
+                          {(businessLocationData.address ||
+                            businessLocationData.businessAddress) && (
+                            <p
+                              className="font-poppins text-sm"
+                              style={{ color: "var(--text-secondary)" }}
+                            >
+                              {businessLocationData.address ||
+                                businessLocationData.businessAddress}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {sanitizedBusinessDescription && (
+                        <div className="mb-6">
+                          <h3
+                            className="text-sm font-poppins font-semibold mb-2"
+                            style={{ color: "var(--text-primary)" }}
+                          >
+                            About
+                          </h3>
+                          <div
+                            className="font-poppins text-xs leading-relaxed"
+                            style={{ color: "var(--text-secondary)" }}
+                            dangerouslySetInnerHTML={{
+                              __html: sanitizedBusinessDescription,
+                            }}
+                          />
+                        </div>
+                      )}
+                      {(businessLocationData.contact ||
+                        businessLocationData.businessContact ||
+                        businessWebsiteHref) && (
+                        <div className="mb-6 space-y-2">
+                          {(businessLocationData.contact ||
+                            businessLocationData.businessContact) && (
+                            <div className="flex items-center gap-2">
+                              <MobileIcon fill="currentColor" />
+                              <a
+                                href={`tel:${
+                                  businessLocationData.contact ||
+                                  businessLocationData.businessContact
+                                }`}
+                                className="profile-presentation-focus font-poppins text-sm transition-colors"
+                                style={{ color: "var(--text-secondary)" }}
                               >
-                                <FeedIcon className="size-8" />
-                              </div>
-                              <h3 className="text-lg font-poppins font-semibold mb-2" style={{ color: "var(--text-primary)" }}>
-                                No Photos Yet
-                              </h3>
-                              <p className="text-sm text-center max-w-sm" style={{ color: "var(--text-secondary)" }}>
-                                This user hasn't shared any photos in their feed yet. Check back later for updates!
-                              </p>
+                                {businessLocationData.contact ||
+                                  businessLocationData.businessContact}
+                              </a>
+                            </div>
+                          )}
+                          {businessWebsiteHref && (
+                            <div className="flex items-center gap-2">
+                              <BoldLinkIcon color="currentColor" />
+                              <a
+                                href={businessWebsiteHref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="profile-presentation-focus font-poppins text-sm transition-colors"
+                                style={{ color: "var(--text-secondary)" }}
+                              >
+                                Visit Website
+                              </a>
                             </div>
                           )}
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
-                )}
-
-                {/* ── Business / Address Tab ── */}
-                {activeTab === "business" &&
-                  hasBusinessDetails &&
-                  businessLocationData && (
-                    <div
-                      id="public-profile-business-panel"
-                      role="tabpanel"
-                      aria-labelledby="public-profile-business-tab"
-                    >
-                      <div className="max-w-3xl flex flex-col item-center justify-center mx-auto">
-                        <div className="rounded-none md:rounded-lg p-4" style={{ backgroundColor: "var(--bg-card)" }}>
-                          {(businessLocationData.title ||
-                            businessLocationData.businessTitle ||
-                            businessLocationData.address ||
-                            businessLocationData.businessAddress) && (
-                              <div className="mb-6">
-                                {(businessLocationData.title ||
-                                  businessLocationData.businessTitle) && (
-                                    <h2 className="text-lg font-poppins font-semibold mb-2" style={{ color: "var(--text-primary)" }}>
-                                      {businessLocationData.title ||
-                                        businessLocationData.businessTitle}
-                                    </h2>
-                                  )}
-                                {(businessLocationData.address ||
-                                  businessLocationData.businessAddress) && (
-                                    <p className="font-poppins text-sm" style={{ color: "var(--text-secondary)" }}>
-                                      {businessLocationData.address ||
-                                        businessLocationData.businessAddress}
-                                    </p>
-                                  )}
-                              </div>
-                            )}
-                          {sanitizedBusinessDescription && (
-                              <div className="mb-6">
-                                <h3 className="text-sm font-poppins font-semibold mb-2" style={{ color: "var(--text-primary)" }}>
-                                  About
-                                </h3>
-                                <div
-                                  className="font-poppins text-xs leading-relaxed"
-                                  style={{ color: "var(--text-secondary)" }}
-                                  dangerouslySetInnerHTML={{
-                                    __html: sanitizedBusinessDescription,
-                                  }}
-                                />
-                              </div>
-                            )}
-                          {(businessLocationData.contact ||
-                            businessLocationData.businessContact ||
-                            businessWebsiteHref) && (
-                              <div className="mb-6 space-y-2">
-                                {(businessLocationData.contact ||
-                                  businessLocationData.businessContact) && (
-                                    <div className="flex items-center gap-2">
-                                      <MobileIcon fill="currentColor" />
-                                      <a
-                                        href={`tel:${businessLocationData.contact ||
-                                          businessLocationData.businessContact
-                                          }`}
-                                        className="profile-presentation-focus font-poppins text-sm transition-colors"
-                                        style={{ color: "var(--text-secondary)" }}
-                                      >
-                                        {businessLocationData.contact ||
-                                          businessLocationData.businessContact}
-                                      </a>
-                                    </div>
-                                  )}
-                                {businessWebsiteHref && (
-                                    <div className="flex items-center gap-2">
-                                      <BoldLinkIcon color="currentColor" />
-                                      <a
-                                        href={businessWebsiteHref}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="profile-presentation-focus font-poppins text-sm transition-colors"
-                                        style={{ color: "var(--text-secondary)" }}
-                                      >
-                                        Visit Website
-                                      </a>
-                                    </div>
-                                  )}
-                              </div>
-                            )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-              </div>
-            </div>
+                </div>
+              )}
           </div>
+        </main>
 
-
-          {/* Footer Branding Badge */}
-          <PublicProfileFooter brandingStyle={themeSettings?.footerBranding || "enabled"} username={username} />
+        {/* Footer Branding Badge */}
+        <PublicProfileFooter brandingStyle={themeSettings?.footerBranding || "enabled"} username={username} />
         {showQR && (
           <QRModal
             isOpen={showQR}

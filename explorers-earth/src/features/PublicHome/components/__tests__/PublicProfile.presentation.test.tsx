@@ -399,7 +399,7 @@ describe("PublicProfile recommendation presentation", () => {
 
     expect(selectedTab()).toHaveAccessibleName("Gallery");
     expect(screen.getByRole("tabpanel")).toHaveAccessibleName("Gallery");
-    expect(screen.getByText("No Photos Yet")).toBeVisible();
+    expect(screen.getByText("No public photos yet")).toBeVisible();
   });
 
   it("opens Business only when valid business content exists", () => {
@@ -455,12 +455,13 @@ describe("PublicProfile recommendation presentation", () => {
     ).toEqual(["Recommendations", "Gallery", "Business Details"]);
   });
 
-  it("falls back to Gallery when every recommendation category is disabled", () => {
+  it("keeps Recommendations and Gallery visible when every recommendation category is disabled", () => {
     state.account = makeAccount({ public_recommendations: "No" });
 
     renderProfile();
 
-    expect(screen.queryByRole("tab", { name: "Recommendations" })).toBeNull();
+    expect(screen.getByRole("tab", { name: "Recommendations" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Gallery" })).toBeInTheDocument();
     expect(selectedTab()).toHaveAccessibleName("Gallery");
   });
 
@@ -537,7 +538,7 @@ describe("PublicProfile recommendation presentation", () => {
     );
   });
 
-  it("implements roving keyboard focus and manual tab activation", () => {
+  it("implements roving keyboard focus and automatic tab activation", () => {
     state.account = makeAccount({
       Public_Profile_Address: { title: "Alice Studio" },
     });
@@ -551,20 +552,22 @@ describe("PublicProfile recommendation presentation", () => {
     fireEvent.keyDown(recommendations, { key: "ArrowLeft" });
     expect(business).toHaveFocus();
     expect(business).toHaveAttribute("tabindex", "0");
-    expect(recommendations).toHaveAttribute("aria-selected", "true");
-
-    fireEvent.keyDown(business, { key: "Enter" });
     expect(business).toHaveAttribute("aria-selected", "true");
 
     fireEvent.keyDown(business, { key: "Home" });
     expect(recommendations).toHaveFocus();
+    expect(recommendations).toHaveAttribute("aria-selected", "true");
+
     fireEvent.keyDown(recommendations, { key: "End" });
     expect(business).toHaveFocus();
+    expect(business).toHaveAttribute("aria-selected", "true");
+
     fireEvent.keyDown(business, { key: "ArrowRight" });
     expect(recommendations).toHaveFocus();
+    expect(recommendations).toHaveAttribute("aria-selected", "true");
+
     fireEvent.keyDown(recommendations, { key: "ArrowRight" });
     expect(gallery).toHaveFocus();
-    fireEvent.keyDown(gallery, { key: " " });
     expect(gallery).toHaveAttribute("aria-selected", "true");
   });
 

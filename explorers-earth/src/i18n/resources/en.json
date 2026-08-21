@@ -2512,5 +2512,11 @@
     "trySuggestions": "Try: {{suggestions}}",
     "unavailable": "Username is not available.",
     "validating": "Validating..."
+  },
+  "publicProfile": {
+    "bio": {
+      "showMore": "Show more",
+      "showLess": "Show less"
+    }
   }
 }
