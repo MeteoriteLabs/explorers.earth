@@ -52,6 +52,11 @@ import {
   normalizePublicWebHref,
   sanitizePublicRichText,
 } from "../utils/publicProfileContent";
+import { PublicProfileHeader } from "./PublicProfileHeader";
+import {
+  resolvePublicProfileSurface,
+  type PublicProfileSocialLinkViewModel,
+} from "../utils/resolvePublicProfileSurface";
 
 // Memoized FeedLayout to prevent unnecessary re-renders
 const MemoizedFeedLayout = memo(FeedLayout);
@@ -228,14 +233,7 @@ const PublicProfile = memo(() => {
     }),
     [accountData?.social_media],
   );
-  const usesComposedHeaderTreatment =
-    themeSettings.wallpaperMode !== "solid-color";
-  const headerPrimaryColor = usesComposedHeaderTreatment
-    ? "#FFFFFF"
-    : "var(--text-primary)";
-  const headerSecondaryColor = usesComposedHeaderTreatment
-    ? "#FFFFFF"
-    : "var(--text-secondary)";
+
 
   // Feed images AND videos now supported with proper aspect ratio detection
   const feedItems = accountData?.Feed_Data || [];
@@ -275,6 +273,200 @@ const PublicProfile = memo(() => {
 
   // Mobile number visibility: only show if visibility is enabled AND we have a number from the separate query
   const showMobileIcon = !!(accountData?.mobile_number_visibility && mobileNumber);
+
+  const surface = useMemo(
+    () =>
+      resolvePublicProfileSurface({
+        wallpaperMode: themeSettings.wallpaperMode,
+        wallpaperUrl: themeSettings.wallpaperUrl,
+        bgPictureUrl: accountData?.bg_picture?.url,
+      }),
+    [themeSettings.wallpaperMode, themeSettings.wallpaperUrl, accountData?.bg_picture?.url],
+  );
+
+  const socialLinks = useMemo<PublicProfileSocialLinkViewModel[]>(() => {
+    const links: PublicProfileSocialLinkViewModel[] = [];
+    const sm = accountData?.social_media;
+
+    if (publicSocialHrefs.instagram && sm?.instagram?.visibility) {
+      links.push({
+        id: "instagram",
+        href: publicSocialHrefs.instagram,
+        ariaLabel: "Instagram",
+        renderIcon: ({ className }) => <InstagramIcon color="currentColor" className={className} />,
+        analyticsPlatform: "instagram",
+      });
+    }
+    if (publicSocialHrefs.whatsapp && sm?.whatsapp?.visibility) {
+      links.push({
+        id: "whatsapp",
+        href: publicSocialHrefs.whatsapp,
+        ariaLabel: "WhatsApp",
+        renderIcon: ({ className }) => <WhatsappIcon fill="currentColor" className={className} />,
+        analyticsPlatform: "whatsapp",
+      });
+    }
+    if (showMobileIcon) {
+      links.push({
+        id: "mobile",
+        href: `sms:+${mobileNumber}`,
+        ariaLabel: "Send SMS",
+        renderIcon: ({ className }) => <MobileIcon fill="currentColor" className={className} />,
+        analyticsPlatform: "mobile",
+      });
+    }
+    if (publicSocialHrefs.website && sm?.website?.visibility) {
+      links.push({
+        id: "website",
+        href: publicSocialHrefs.website,
+        ariaLabel: "Website",
+        renderIcon: ({ className }) => <BoldLinkIcon color="currentColor" className={className} />,
+        analyticsPlatform: "website",
+      });
+    }
+    if (publicSocialHrefs.youtube && sm?.youtube?.visibility) {
+      links.push({
+        id: "youtube",
+        href: publicSocialHrefs.youtube,
+        ariaLabel: "YouTube",
+        renderIcon: ({ className }) => <YoutubeIcon color="currentColor" className={className} />,
+        analyticsPlatform: "youtube",
+      });
+    }
+    if (publicSocialHrefs.X && sm?.X?.visibility) {
+      links.push({
+        id: "X",
+        href: publicSocialHrefs.X,
+        ariaLabel: "Twitter",
+        renderIcon: ({ className }) => <TwitterIcon color="currentColor" className={className} />,
+        analyticsPlatform: "twitter",
+      });
+    }
+    if (publicSocialHrefs.spotify && sm?.spotify?.visibility) {
+      links.push({
+        id: "spotify",
+        href: publicSocialHrefs.spotify,
+        ariaLabel: "Spotify",
+        renderIcon: ({ className }) => <Spotify color="currentColor" className={className} />,
+        analyticsPlatform: "spotify",
+      });
+    }
+    if (emailHref && emailSocial?.visibility) {
+      links.push({
+        id: "gmail",
+        href: emailHref,
+        ariaLabel: "Gmail",
+        renderIcon: ({ className }) => <Gmail color="currentColor" className={className} />,
+        analyticsPlatform: "gmail",
+      });
+    }
+    if (publicSocialHrefs.facebook && sm?.facebook?.visibility) {
+      links.push({
+        id: "facebook",
+        href: publicSocialHrefs.facebook,
+        ariaLabel: "Facebook",
+        renderIcon: ({ className }) => <FacebookIcon color="currentColor" className={className} />,
+        analyticsPlatform: "facebook",
+      });
+    }
+    if (publicSocialHrefs.youtubeMusic && sm?.youtubeMusic?.visibility) {
+      links.push({
+        id: "youtubeMusic",
+        href: publicSocialHrefs.youtubeMusic,
+        ariaLabel: "YouTube Music",
+        renderIcon: ({ className }) => <YoutubeMusic color="currentColor" className={className} />,
+        analyticsPlatform: "youtube-music",
+      });
+    }
+    if (publicSocialHrefs.linkedin && sm?.linkedin?.visibility) {
+      links.push({
+        id: "linkedin",
+        href: publicSocialHrefs.linkedin,
+        ariaLabel: "LinkedIn",
+        renderIcon: ({ className }) => <LinkedinIcon color="currentColor" className={className} />,
+        analyticsPlatform: "linkedin",
+      });
+    }
+    if (publicSocialHrefs.appleMusic && sm?.appleMusic?.visibility) {
+      links.push({
+        id: "appleMusic",
+        href: publicSocialHrefs.appleMusic,
+        ariaLabel: "Apple Music",
+        renderIcon: ({ className }) => <AppleMusic color="currentColor" className={className} />,
+        analyticsPlatform: "apple-music",
+      });
+    }
+    if (publicSocialHrefs.tiktok && sm?.tiktok?.visibility) {
+      links.push({
+        id: "tiktok",
+        href: publicSocialHrefs.tiktok,
+        ariaLabel: "TikTok",
+        renderIcon: ({ className }) => <TiktokIcon color="currentColor" className={className} />,
+        analyticsPlatform: "tiktok",
+      });
+    }
+    if (publicSocialHrefs.snapchat && sm?.snapchat?.visibility) {
+      links.push({
+        id: "snapchat",
+        href: publicSocialHrefs.snapchat,
+        ariaLabel: "Snapchat",
+        renderIcon: ({ className }) => <SnapchatIcon color="currentColor" className={className} />,
+        analyticsPlatform: "snapchat",
+      });
+    }
+    if (publicSocialHrefs.localTunes && sm?.localTunes?.visibility) {
+      links.push({
+        id: "localTunes",
+        href: publicSocialHrefs.localTunes,
+        ariaLabel: "Local Tunes",
+        renderIcon: ({ className }) => <MusicNote fill="currentColor" className={className} />,
+        analyticsPlatform: "localtunes",
+      });
+    }
+
+    return links;
+  }, [
+    accountData?.social_media,
+    publicSocialHrefs,
+    showMobileIcon,
+    mobileNumber,
+    emailHref,
+    emailSocial,
+  ]);
+
+  const handleShare = async () => {
+    const shareUrl = getCleanShareUrl();
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: `${accountData?.Account_Name || username}'s Profile`,
+          text: "Check out this profile!",
+          url: shareUrl,
+        });
+        analytics.trackClick("share-button", { context: "profile-header" });
+        return;
+      } catch (err: any) {
+        if (err?.name === "AbortError") {
+          return;
+        }
+      }
+    }
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success("Link copied!");
+      } else {
+        throw new Error("Clipboard API unavailable");
+      }
+    } catch (error) {
+      toast.error("Failed to copy link");
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Failed to copy text:", error);
+      }
+    }
+    analytics.trackClick("share-button", { context: "profile-header" });
+  };
 
   // Redirect if public_profile tab is disabled
   useEffect(() => {
@@ -452,7 +644,7 @@ const PublicProfile = memo(() => {
   const profileUsername = username || "";
 
   // Extract all available social media links for SEO
-  const socialLinks = [];
+  const seoSocialLinks: string[] = [];
   const socialPlatforms = [
     {
       name: "Instagram",
@@ -524,20 +716,20 @@ const PublicProfile = memo(() => {
   // Filter and collect visible social links
   socialPlatforms.forEach((platform) => {
     if (platform.link && platform.visibility) {
-      socialLinks.push(platform.name);
+      seoSocialLinks.push(platform.name);
     }
   });
 
   // Add mobile number if visible
   if (accountData?.mobile_number_visibility && mobileNumber) {
-    socialLinks.push("Mobile");
+    seoSocialLinks.push("Mobile");
   }
 
   // Create enhanced meta description with bio, location, and social presence
   const socialLinksText =
-    socialLinks.length > 0
-      ? ` Connect via ${socialLinks.slice(0, 3).join(", ")}${socialLinks.length > 3
-        ? ` and ${socialLinks.length - 3} more platforms`
+    seoSocialLinks.length > 0
+      ? ` Connect via ${seoSocialLinks.slice(0, 3).join(", ")}${seoSocialLinks.length > 3
+        ? ` and ${seoSocialLinks.length - 3} more platforms`
         : ""
       }.`
       : "";
@@ -562,7 +754,7 @@ const PublicProfile = memo(() => {
       .filter((word: string) => word.length > 3)
       .slice(0, 5)
     : [];
-  const socialKeywords = socialLinks.map(
+  const socialKeywords = seoSocialLinks.map(
     (platform) => `${profileName} ${platform.toLowerCase()}`
   );
 
@@ -595,7 +787,7 @@ const PublicProfile = memo(() => {
     `${profileLocation || "local"} guide`,
     ...socialKeywords,
     ...bioKeywords,
-    ...socialLinks.map((platform) => platform.toLowerCase()),
+    ...seoSocialLinks.map((platform) => platform.toLowerCase()),
     `${profileName} social`,
     `${profileUsername} social media`,
     "public profile",
@@ -612,7 +804,7 @@ const PublicProfile = memo(() => {
     username: profileUsername,
     bio: profileBio,
     location: profileLocation,
-    socialPlatforms: socialLinks.slice(0, 5), // Limit to top 5 social links
+    socialPlatforms: seoSocialLinks.slice(0, 5), // Limit to top 5 social links
   });
 
   return (
@@ -634,315 +826,41 @@ const PublicProfile = memo(() => {
       )}
 
       <div className="h-full min-h-screen overflow-auto preview-scroll pb-20" style={{ ...themeStyles, backgroundColor: "var(--bg-page)", color: "var(--text-primary)" }}>
-        {/* Fixed Header */}
-        <div className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b h-14 transition-colors duration-300" style={{ backgroundColor: "var(--nav-bg)", borderColor: "var(--border-card)" }}>
-          <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
-            <span
-              className="font-bold text-2xl cursor-pointer transition-colors" style={{ color: "var(--text-primary)" }}
-              onClick={() => navigate("/")}
-            >
-              explorers.earth
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={async () => {
-                  const shareUrl = getCleanShareUrl();
-                  if (navigator.share) {
-                    navigator.share({
-                      title: `${accountData?.Account_Name || username}'s Profile`,
-                      text: "Check out this profile!",
-                      url: shareUrl,
-                    }).catch(() => { });
-                  } else {
-                    // Copy clean URL without QR code UTM params
-                    try {
-                      await navigator.clipboard.writeText(shareUrl);
-                      toast.success("Link copied!");
-                    } catch (error) {
-                      console.error("Failed to copy text:", error);
-                    }
-                  }
-                  analytics.trackClick('share-button', { context: 'profile-header' });
-                }}
-                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
-                aria-label="Share"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                </svg>
-              </button>
-
-            </div>
-          </div>
-        </div>
-
-        {/* Profile Content */}
-
         {/* Full-Screen Wallpaper Background Mode */}
-        {themeSettings?.wallpaperMode === 'full-wallpaper-image' && (
+        {surface.mode === "full-wallpaper-image" && (
           <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-            <img
-              src={accountData?.bg_picture?.url || IMAGE_CONFIG.defaultImages.background}
-              alt="Full Wallpaper"
-              className="w-full h-full object-cover opacity-25 blur-[3px] scale-105"
-            />
+            {surface.wallpaperUrl && (
+              <img
+                src={surface.wallpaperUrl}
+                alt=""
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover opacity-25 blur-[3px] scale-105"
+              />
+            )}
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
           </div>
         )}
 
         {/* Ambient Gradient Background Mode */}
-        {themeSettings?.wallpaperMode === 'ambient-gradient' && (
+        {surface.mode === "ambient-gradient" && (
           <div
-            className="fixed inset-0 z-0 overflow-hidden pointer-events-none opacity-40 transition-all duration-500"
+            className="fixed inset-0 z-0 overflow-hidden pointer-events-none transition-all duration-500"
             style={{
-              background: `radial-gradient(circle at 50% 20%, var(--accent-color) 0%, transparent 60%), radial-gradient(circle at 80% 80%, var(--accent-color) 0%, transparent 50%)`
+              background: `linear-gradient(155deg, color-mix(in srgb, var(--accent-color, #10b981) 62%, var(--bg-page, #000000)) 0%, var(--bg-page, #000000) 62%, color-mix(in srgb, var(--accent-color, #10b981) 18%, var(--bg-page, #000000)) 100%)`,
             }}
           />
         )}
 
-        {/* Profile Header Section */}
-        <div className="relative overflow-hidden pb-0">
-          {/* Cover Photo Banner (Shown in Classic Banner Mode) */}
-          {themeSettings?.wallpaperMode === 'banner-top' && (
-            <div className="absolute inset-x-0 top-0 h-[380px] md:h-[420px] overflow-hidden z-0 rounded-b-[2rem] md:rounded-none">
-              <img
-                src={
-                  accountData?.bg_picture?.url ||
-                  IMAGE_CONFIG.defaultImages.background
-                }
-                alt="Cover"
-                className="w-full h-full object-cover object-[center_32%] scale-105"
-                loading="eager"
-              />
-              <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/20 to-black/80 z-0" />
-              <div
-                className="absolute inset-x-0 bottom-0 h-[70%] backdrop-blur-md bg-black/10 z-0"
-                style={{
-                  WebkitMaskImage: 'linear-gradient(to top, black 30%, transparent 100%)',
-                  maskImage: 'linear-gradient(to top, black 30%, transparent 100%)'
-                }}
-              />
-              <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black via-black/40 to-transparent z-0" />
-            </div>
-          )}
-
-          {/* Profile Header Content (Profile Pic, Name, Social Icons) */}
-          <div className="relative z-10 pt-16 md:pt-32 pb-0 md:pb-4 text-center px-4">
-            {/* Profile Picture */}
-            <div className="relative mb-2 px-4">
-              <div
-                className="w-[7.5rem] h-[7.5rem] mx-auto rounded-full border-4 overflow-hidden cursor-pointer shadow-xl transition-all" style={{ borderColor: "var(--accent-color)", backgroundColor: "var(--bg-card)" }}
-                onClick={handleImageClick}
-              >
-                <img
-                  src={
-                    accountData?.profile_picture?.url ||
-                    IMAGE_CONFIG.defaultImages.profile
-                  }
-                  alt="Profile"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            </div>
-
-            <div
-              className={
-                usesComposedHeaderTreatment
-                  ? "mx-auto mt-1 w-fit max-w-full rounded-2xl bg-black/75 px-6 py-3 shadow-lg ring-1 ring-white/10 backdrop-blur-md"
-                  : ""
-              }
-              data-testid="public-profile-header-metadata"
-            >
-              {/* Name & Location */}
-              <div className={usesComposedHeaderTreatment ? "text-center" : "text-center px-6"}>
-                <h1 className="text-base font-poppins font-bold tracking-tight transition-colors drop-shadow-md" style={{ color: headerPrimaryColor }}>
-                  {accountData?.Account_Name}
-                </h1>
-                <div className="flex items-center justify-center gap-1.5 text-xs font-poppins mt-0.5 drop-shadow-sm transition-colors" style={{ color: headerSecondaryColor }}>
-                  <Location className="w-3 h-3" fill="currentColor" />
-                  <span>{accountData?.Primary_Address?.address}</span>
-                </div>
-              </div>
-
-              {/* Social Links */}
-              <div
-                className={`flex flex-wrap items-center justify-center gap-x-8 gap-y-4 empty:hidden ${
-                  usesComposedHeaderTreatment
-                    ? "mt-3"
-                    : "px-6 mt-4 mb-2"
-                }`}
-                style={{ color: headerPrimaryColor }}
-              >
-            {publicSocialHrefs.instagram &&
-              accountData?.social_media?.instagram?.visibility && (
-                <a
-                  href={publicSocialHrefs.instagram}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => analytics.trackClick('social-link', { platform: 'instagram' })}
-                >
-                  <InstagramIcon color="currentColor" />
-                </a>
-              )}
-            {publicSocialHrefs.whatsapp &&
-              accountData?.social_media?.whatsapp?.visibility && (
-                <a
-                  href={publicSocialHrefs.whatsapp}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => analytics.trackClick('social-link', { platform: 'whatsapp' })}
-                >
-                  <WhatsappIcon fill="currentColor" />
-                </a>
-              )}
-            {showMobileIcon && (
-              <a
-                href={`sms:+${mobileNumber}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Send SMS"
-                className="focus:outline-none focus:ring-2 focus:ring-[hsl(var(--blue-cta))] rounded-full transition-opacity duration-200"
-                onClick={() => analytics.trackClick('social-link', { platform: 'mobile' })}
-              >
-                <MobileIcon fill="currentColor" />
-              </a>
-            )}
-            {publicSocialHrefs.website &&
-              accountData?.social_media?.website?.visibility && (
-                <a
-                  href={publicSocialHrefs.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => analytics.trackClick('social-link', { platform: 'website' })}
-                >
-                  <BoldLinkIcon color="currentColor" />
-                </a>
-              )}
-            {publicSocialHrefs.youtube &&
-              accountData?.social_media?.youtube?.visibility && (
-                <a
-                  href={publicSocialHrefs.youtube}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => analytics.trackClick('social-link', { platform: 'youtube' })}
-                >
-                  <YoutubeIcon color="currentColor" />
-                </a>
-              )}
-            {publicSocialHrefs.X &&
-              accountData?.social_media?.X?.visibility && (
-                <a
-                  href={publicSocialHrefs.X}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => analytics.trackClick('social-link', { platform: 'twitter' })}
-                >
-                  <TwitterIcon color="currentColor" />
-                </a>
-              )}
-            {publicSocialHrefs.spotify &&
-              accountData?.social_media?.spotify?.visibility && (
-                <a
-                  href={publicSocialHrefs.spotify}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => analytics.trackClick('social-link', { platform: 'spotify' })}
-                >
-                  <Spotify color="currentColor" />
-                </a>
-              )}
-            {emailHref && emailSocial?.visibility && (
-                <a
-                  href={emailHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => analytics.trackClick('social-link', { platform: 'gmail' })}
-                >
-                  <Gmail color="currentColor" />
-                </a>
-              )}
-            {publicSocialHrefs.facebook &&
-              accountData?.social_media?.facebook?.visibility && (
-                <a
-                  href={publicSocialHrefs.facebook}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => analytics.trackClick('social-link', { platform: 'facebook' })}
-                >
-                  <FacebookIcon color="currentColor" />
-                </a>
-              )}
-            {publicSocialHrefs.youtubeMusic &&
-              accountData?.social_media?.youtubeMusic?.visibility && (
-                <a
-                  href={publicSocialHrefs.youtubeMusic}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => analytics.trackClick('social-link', { platform: 'youtube-music' })}
-                >
-                  <YoutubeMusic color="currentColor" />
-                </a>
-              )}
-            {publicSocialHrefs.linkedin &&
-              accountData?.social_media?.linkedin?.visibility && (
-                <a
-                  href={publicSocialHrefs.linkedin}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => analytics.trackClick('social-link', { platform: 'linkedin' })}
-                >
-                  <LinkedinIcon color="currentColor" />
-                </a>
-              )}
-            {publicSocialHrefs.appleMusic &&
-              accountData?.social_media?.appleMusic?.visibility && (
-                <a
-                  href={publicSocialHrefs.appleMusic}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => analytics.trackClick('social-link', { platform: 'apple-music' })}
-                >
-                  <AppleMusic color="currentColor" />
-                </a>
-              )}
-            {publicSocialHrefs.tiktok &&
-              accountData?.social_media?.tiktok?.visibility && (
-                <a
-                  href={publicSocialHrefs.tiktok}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => analytics.trackClick('social-link', { platform: 'tiktok' })}
-                >
-                  <TiktokIcon color="currentColor" />
-                </a>
-              )}
-            {publicSocialHrefs.snapchat &&
-              accountData?.social_media?.snapchat?.visibility && (
-                <a
-                  href={publicSocialHrefs.snapchat}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => analytics.trackClick('social-link', { platform: 'snapchat' })}
-                >
-                  <SnapchatIcon color="currentColor" />
-                </a>
-              )}
-            {publicSocialHrefs.localTunes &&
-              accountData?.social_media?.localTunes?.visibility && (
-                <a
-                  href={publicSocialHrefs.localTunes}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <MusicNote fill="currentColor" />
-                </a>
-              )}
-              {/* End of Social Links */}
-            </div>
-            {/* End of Profile Header Content */}
-          </div>
-          {/* End of Profile Header Section */}
-        </div>
+        {/* Adaptive Identity Header */}
+        <PublicProfileHeader
+          surface={surface}
+          accountName={accountData?.Account_Name || username || ""}
+          location={accountData?.Primary_Address?.address}
+          avatarUrl={accountData?.profile_picture?.url || IMAGE_CONFIG.defaultImages.profile}
+          socialLinks={socialLinks}
+          onShare={handleShare}
+          onAvatarActivate={handleImageClick}
+        />
         <div className="md:max-w-5xl px-6 md:px-6 md:mx-auto relative z-10">
           <div className="mt-0 max-w-3xl md:flex flex-col item-center justify-center mx-auto">
             <div className="py-3">
@@ -1197,7 +1115,6 @@ const PublicProfile = memo(() => {
 
           {/* Footer Branding Badge */}
           <PublicProfileFooter brandingStyle={themeSettings?.footerBranding || "enabled"} username={username} />
-        </div>
         {showQR && (
           <QRModal
             isOpen={showQR}

@@ -3406,3 +3406,21 @@ body.hide-dashboard-header .profile-editor-tab-rail.sticky-top-offset {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Public Profile Hero Scoped Styles */
+.public-profile-hero[data-wallpaper-mode="banner-top"] {
+  min-height: 17.5rem;
+}
+
+@media (min-width: 48rem) {
+  .public-profile-hero[data-wallpaper-mode="banner-top"] {
+    min-height: 20rem;
+  }
+}
+
+@media (min-width: 64rem) {
+  .public-profile-hero[data-wallpaper-mode="banner-top"] {
+    min-height: 22.5rem;
+  }
+}
+

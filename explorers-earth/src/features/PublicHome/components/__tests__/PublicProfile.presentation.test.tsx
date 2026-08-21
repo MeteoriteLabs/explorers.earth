@@ -252,19 +252,13 @@ describe("PublicProfile recommendation presentation", () => {
   });
 
   it.each([
-    [
-      "minimal-light",
-      "solid-color",
-      "var(--text-primary)",
-      "var(--text-secondary)",
-      false,
-    ],
-    ["minimal-light", "ambient-gradient", "#FFFFFF", "#FFFFFF", true],
-    ["cinematic-dark", "banner-top", "#FFFFFF", "#FFFFFF", true],
-    ["minimal-light", "full-wallpaper-image", "#FFFFFF", "#FFFFFF", true],
+    ["minimal-light", "solid-color"],
+    ["minimal-light", "ambient-gradient"],
+    ["cinematic-dark", "banner-top"],
+    ["minimal-light", "full-wallpaper-image"],
   ])(
-    "uses a contrasting currentColor icon foreground for %s with %s wallpaper",
-    (preset, wallpaperMode, socialColor, locationColor, usesMetadataScrim) => {
+    "renders cardless adaptive identity hero for %s with %s wallpaper",
+    (preset, wallpaperMode) => {
       state.account = makeAccount({
         social_media: {
           instagram: { link: "https://instagram.com/alice", visibility: true },
@@ -276,23 +270,10 @@ describe("PublicProfile recommendation presentation", () => {
       const socialLink = container.querySelector<HTMLAnchorElement>(
         'a[href="https://instagram.com/alice"]',
       );
-      const socialRow = socialLink?.parentElement;
-      const locationText = screen.getByText("Earth");
-      const locationRow = locationText.parentElement;
-      const locationIcon = locationText.previousElementSibling;
-      const metadata = screen.getByTestId("public-profile-header-metadata");
-
-      expect(socialRow).toHaveStyle(`color: ${socialColor}`);
-      expect(socialLink?.querySelector("path")).toHaveAttribute("fill", "currentColor");
-      expect(locationRow).toHaveStyle(`color: ${locationColor}`);
-      expect(locationIcon).toHaveAttribute("fill", "currentColor");
-      expect(locationIcon).not.toHaveClass("text-white/70");
-      expect(metadata).toContainElement(socialLink);
-      if (usesMetadataScrim) {
-        expect(metadata).toHaveClass("bg-black/75", "backdrop-blur-md");
-      } else {
-        expect(metadata).not.toHaveClass("bg-black/75", "backdrop-blur-md");
-      }
+      const hero = screen.getByTestId("public-profile-hero");
+      expect(hero).toHaveAttribute("data-wallpaper-mode", wallpaperMode);
+      expect(screen.queryByTestId("profile-metadata-card")).not.toBeInTheDocument();
+      expect(socialLink).toBeInTheDocument();
     },
   );
 
