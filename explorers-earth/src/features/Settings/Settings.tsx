@@ -26,8 +26,10 @@ import { validatePassword } from "../../utils/passwordValidator";
 import { useTranslation } from "react-i18next";
 import LanguageSelector, { LANGUAGES } from "./components/LanguageSelector";
 import ConnectedAccounts from "./components/ConnectedAccounts";
+import ProfileAccountSettings from "./components/ProfileAccountSettings";
 import { getPublicCategoryListCountsQuery } from "../PublicHome/api/query";
 
+const SETTINGS_TABS = ["account", "billing"] as const;
 
 const providerQuery = gql`
   query UsersPermissionsUser($documentId: ID!) {
@@ -169,6 +171,31 @@ const Settings = memo(() => {
   const matchesSearch = (text: string) => {
     if (!searchQuery.trim()) return true;
     return text.toLowerCase().includes(searchQuery.toLowerCase());
+  };
+
+  const handleSettingsTabKeyDown = (
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    index: number,
+  ) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+      return;
+    }
+
+    event.preventDefault();
+    let nextIndex = index;
+    if (event.key === "ArrowLeft") {
+      nextIndex = (index - 1 + SETTINGS_TABS.length) % SETTINGS_TABS.length;
+    } else if (event.key === "ArrowRight") {
+      nextIndex = (index + 1) % SETTINGS_TABS.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = SETTINGS_TABS.length - 1;
+    }
+
+    const nextTab = SETTINGS_TABS[nextIndex];
+    setActiveTab(nextTab);
+    document.getElementById(`settings-tab-${nextTab}`)?.focus();
   };
 
   // Helper to get the effective toggle value (optimistic override > server data)
@@ -754,9 +781,17 @@ const Settings = memo(() => {
         <div className="w-full mb-6 flex justify-center">
           <div
             className="flex items-center bg-dashboard-muted border border-dashboard font-poppins rounded-[24px] p-1"
+            role="tablist"
+            aria-label="Settings sections"
           >
             <button
+              id="settings-tab-account"
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'account'}
+              aria-controls="settings-panel-account"
               onClick={() => setActiveTab('account')}
+              onKeyDown={(event) => handleSettingsTabKeyDown(event, 0)}
               className={`px-4 py-1.5 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
                 activeTab === 'account'
                   ? 'bg-dashboard-accent text-[var(--dash-accent-text)] shadow-sm'
@@ -766,7 +801,13 @@ const Settings = memo(() => {
               Account
             </button>
             <button
+              id="settings-tab-billing"
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'billing'}
+              aria-controls="settings-panel-billing"
               onClick={() => setActiveTab('billing')}
+              onKeyDown={(event) => handleSettingsTabKeyDown(event, 1)}
               className={`px-4 py-1.5 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
                 activeTab === 'billing'
                   ? 'bg-dashboard-accent text-[var(--dash-accent-text)] shadow-sm'
@@ -779,7 +820,13 @@ const Settings = memo(() => {
         </div>
 
         {activeTab === 'account' && (
-          <div className="flex flex-col gap-1.5">
+          <div
+            id="settings-panel-account"
+            role="tabpanel"
+            aria-labelledby="settings-tab-account"
+            className="flex flex-col gap-1.5"
+          >
+            <ProfileAccountSettings section="account" />
 
             {/* Search bar */}
             <div
@@ -1260,6 +1307,9 @@ const Settings = memo(() => {
         {/* ── BILLING TAB ── */}
         {activeTab === 'billing' && (
           <div
+            id="settings-panel-billing"
+            role="tabpanel"
+            aria-labelledby="settings-tab-billing"
             className="rounded-2xl px-4 py-4 sm:px-6 sm:py-6 border shadow-xl"
             style={{
               background: 'rgba(255,255,255,0.03)',
@@ -1268,6 +1318,7 @@ const Settings = memo(() => {
               borderColor: 'rgba(255,255,255,0.08)',
             }}
           >
+            <ProfileAccountSettings section="billing" />
             <BillingTab />
           </div>
         )}

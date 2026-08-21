@@ -11,8 +11,13 @@ import type { TypePolicies } from '@apollo/client';
  * makes the mutation result merge into the same cache entity → the label flips
  * with no refetch.
  *
- * Scope: only the three LIST types (the publish-label fix). The item types
- * (RecommendedBook/Game/Movie) are intentionally NOT normalized here yet —
+ * `Query.usersPermissionsUser` is deliberately merged at the field boundary so
+ * same-argument partial selections (for example username, then accounts) do not
+ * replace each other. Argument-based field keys remain intact, and this does not
+ * normalize users globally.
+ *
+ * List normalization scope: only the three LIST types (the publish-label fix).
+ * The item types (RecommendedBook/Game/Movie) are intentionally NOT normalized here yet —
  * adding them is safe only once we confirm every query selects their
  * `documentId`, otherwise it would change item-level cache behavior app-wide.
  *
@@ -33,6 +38,11 @@ import type { TypePolicies } from '@apollo/client';
  * field-casing difference — each matches its own Strapi collection.
  */
 export const typePolicies: TypePolicies = {
+  Query: {
+    fields: {
+      usersPermissionsUser: { merge: true },
+    },
+  },
   BookList: { keyFields: ['documentId'] },
   GameList: { keyFields: ['documentId'] },
   MovieList: { keyFields: ['documentId'] },
