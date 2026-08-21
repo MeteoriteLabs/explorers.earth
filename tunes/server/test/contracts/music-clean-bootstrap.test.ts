@@ -46,6 +46,7 @@ describe("clean Music bootstrap", () => {
         ".env.music.test.example",
         "fixtures/strapi/music-identity/identity.fixture.json",
         "tunes/scripts/music-cli.ts",
+        "tunes/scripts/music-qualification.ts",
         "tunes/scripts/music-fixture-secret.ts",
         "tunes/scripts/windows-write-through.ps1",
         "tunes/scripts/music-compose-safety.ts",

@@ -9,6 +9,8 @@ const { load: parseYaml } = require("js-yaml") as { load(source: string): any };
 
 const repoRoot = resolve(import.meta.dirname, "../../../..");
 const deployScript = resolve(repoRoot, "tunes/deployment/music-deploy.sh");
+const fixtureDeployScript = resolve(repoRoot, "tunes/deployment/music-deploy-fixture.sh");
+const deployEngine = resolve(repoRoot, "tunes/deployment/music-deploy-engine.sh");
 const bash = process.platform === "win32" ? "C:/Program Files/Git/bin/bash.exe" : "/bin/bash";
 const digest = (character: string) => `sha256:${character.repeat(64)}`;
 const commit = (character: string) => character.repeat(40);
@@ -35,6 +37,11 @@ interface RunOptions {
   gateCommittedCrash?: boolean;
   gateFailure?: boolean;
   expectedMarkerOverride?: string;
+  policy?: "production" | "fixture";
+  repositoryOverride?: string;
+  omitFixtureAcknowledgement?: boolean;
+  registrationStaleResponses?: number;
+  publicReadinessStaleResponses?: number;
 }
 
 describe("checked-in production Music deploy executable", () => {
@@ -108,12 +115,16 @@ current_route="none"; if [[ -f "$route" ]]; then current_route="$(grep -Eo 'http
 printf 'docker %s | route=%s\\n' "$*" "$current_route" >> "$MUSIC_DEPLOY_TEST_EVENT_LOG"
 if [[ "$*" == *" login "* || "$*" == *" login" ]]; then cat >/dev/null; exit 0; fi
 if [[ "$*" == *" logout "* || "$*" == *" logout" ]]; then exit 0; fi
-if [[ "$1" == "pull" ]]; then exit 0; fi
+if [[ "$*" == *" pull "* || "$1" == "pull" ]]; then exit 0; fi
 if [[ "$*" == *"RepoDigests"* ]]; then printf '%s@%s\\n' "$MUSIC_DEPLOY_EXPECTED_REPOSITORY" "$MUSIC_DEPLOY_TEST_DIGEST"; exit 0; fi
 if [[ "$*" == *"org.opencontainers.image.revision"* ]]; then printf '%s\\n' "\${MUSIC_DEPLOY_TEST_OCI_COMMIT:-$MUSIC_DEPLOY_TEST_COMMIT}"; exit 0; fi
 if [[ "$*" == *"org.opencontainers.image.source"* ]]; then printf '%s\\n' "\${MUSIC_DEPLOY_TEST_OCI_SOURCE:-$MUSIC_DEPLOY_EXPECTED_SOURCE}"; exit 0; fi
 if [[ "$*" == *"com.explorers.music.minimum-containment-commit"* ]]; then printf '%s\\n' "\${MUSIC_DEPLOY_TEST_OCI_CONTAINMENT:-d226f7e4dc5a54195a59804ec729f72b5e8f10d7}"; exit 0; fi
 if [[ "$*" == *" compose "* || "$1" == "compose" ]]; then
+  if [[ "$*" == *" config "* ]]; then
+    printf '{"services":{"traefik":{"labels":{"com.explorers.fixture.scope":"music-c10-release","com.explorers.fixture.project":"music-c10-release-unit"}},"tunes-register-compat":{"labels":{"com.explorers.fixture.scope":"music-c10-release","com.explorers.fixture.project":"music-c10-release-unit"}},"tunes-gate":{"labels":{"com.explorers.fixture.scope":"music-c10-release","com.explorers.fixture.project":"music-c10-release-unit"}},"tunes-blue":{"labels":{"com.explorers.fixture.scope":"music-c10-release","com.explorers.fixture.project":"music-c10-release-unit"}},"tunes-green":{"labels":{"com.explorers.fixture.scope":"music-c10-release","com.explorers.fixture.project":"music-c10-release-unit"}}}}\n'
+    exit 0
+  fi
   service="\${!#}"
   if [[ "\${MUSIC_DEPLOY_TEST_GATE_COMMITTED_CRASH:-}" == 1 && "$*" == *"tunes-gate"* ]]; then
     printf 'database migration committed before gate process loss\n' >> "$MUSIC_DEPLOY_TEST_EVENT_LOG"
@@ -139,11 +150,26 @@ count="$(find "$MUSIC_DEPLOY_ROOT/deployment-routing" -maxdepth 1 -type f \\( -n
 test "$count" = 1
 printf 'curl %s | route=%s\\n' "$*" "$(grep -Eo 'http://[^ ]+:5000' "$MUSIC_DEPLOY_ROOT/deployment-routing/music-router.yml" | tail -1)" >> "$MUSIC_DEPLOY_TEST_EVENT_LOG"
 if [[ "$*" == *"/api/register"* ]]; then
+  stale_file="$MUSIC_DEPLOY_TEST_ROOT/registration-stale-count"
+  stale_count=0; if [[ -f "$stale_file" ]]; then stale_count="$(cat "$stale_file")"; fi
+  if [[ "$stale_count" -lt "\${MUSIC_DEPLOY_TEST_REGISTRATION_STALE_RESPONSES:-0}" ]]; then
+    printf '%s' "$((stale_count + 1))" > "$stale_file"
+    printf 'legacy\n200'
+    exit 0
+  fi
   grep -Fq 'PathRegexp(\`(?i)^/api/register/?$\`)' "$MUSIC_DEPLOY_ROOT/deployment-routing/music-router.yml"
   grep -Fq 'priority: 1000' "$MUSIC_DEPLOY_ROOT/deployment-routing/music-router.yml"
   grep -Fq 'http://tunes-register-compat:5100' "$MUSIC_DEPLOY_ROOT/deployment-routing/music-router.yml"
   printf '{"error":{"code":"LEGACY_IDENTITY_ROUTE_REMOVED","message":"This identity endpoint is no longer available.","action":"upgrade_client","retryable":false,"requestId":"compat-test-request"}}\\n410'
   exit 0
+fi
+if [[ "$*" == *"/health/ready"* ]]; then
+  stale_file="$MUSIC_DEPLOY_TEST_ROOT/public-readiness-stale-count"
+  stale_count=0; if [[ -f "$stale_file" ]]; then stale_count="$(cat "$stale_file")"; fi
+  if [[ "$stale_count" -lt "\${MUSIC_DEPLOY_TEST_PUBLIC_READINESS_STALE_RESPONSES:-0}" ]]; then
+    printf '%s' "$((stale_count + 1))" > "$stale_file"
+    exit 22
+  fi
 fi
 if [[ "\${!#}" == "https://localtunes.earth/" ]]; then grep -Fq 'http://legacy-tunes:5000' "$MUSIC_DEPLOY_ROOT/deployment-routing/music-router.yml"; printf 'legacy-ok'; exit 0; fi
 grep -Fq "http://tunes-$MUSIC_DEPLOY_TEST_SLOT:5000" "$MUSIC_DEPLOY_ROOT/deployment-routing/music-router.yml"
@@ -171,7 +197,10 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
   afterEach(() => rmSync(sandbox, { recursive: true, force: true }));
 
   function run(operation: "bootstrap" | "deploy" | "rollback", requestedDigest: string, requestedCommit: string, options: RunOptions = {}) {
-    const composeProject = operation === "bootstrap" ? "legacy-project" : "-";
+    const fixturePolicy = options.policy === "fixture";
+    const composeProject = operation === "bootstrap"
+      ? (fixturePolicy ? "music-c10-release-unit" : "legacy-project")
+      : "-";
     writeFileSync(requestFile, [
       "music-deploy-request-v2",
       `operation=${operation}`,
@@ -183,17 +212,18 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
       "",
     ].join("\n"));
     const environment = { ...process.env };
-    for (const name of Object.keys(environment)) if (name.toLowerCase() === "path") delete environment[name];
+    for (const name of Object.keys(environment)) {
+      if (name.toLowerCase() === "path" || name.startsWith("MUSIC_DEPLOY_")) delete environment[name];
+    }
     Object.assign(environment, {
         PATH: `${shellPath(fakeBin)}:/usr/bin:/bin`,
         MUSIC_DEPLOY_ROOT: shellPath(root),
         MUSIC_DEPLOY_REQUEST_FILE: shellPath(requestFile),
         MUSIC_DEPLOY_HMAC_KEY_FILE: shellPath(keyFile),
-        MUSIC_DEPLOY_GHCR_TOKEN_FILE: shellPath(tokenFile),
-        MUSIC_DEPLOY_GHCR_USER: "deploy-reader",
-        MUSIC_DEPLOY_EXPECTED_REPOSITORY: repository,
-        MUSIC_DEPLOY_EXPECTED_SOURCE: source,
         MUSIC_DEPLOY_TEST_EVENT_LOG: shellPath(eventLog),
+        MUSIC_DEPLOY_TEST_ROOT: shellPath(sandbox),
+        MUSIC_DEPLOY_TEST_REGISTRATION_STALE_RESPONSES: String(options.registrationStaleResponses ?? 0),
+        MUSIC_DEPLOY_TEST_PUBLIC_READINESS_STALE_RESPONSES: String(options.publicReadinessStaleResponses ?? 0),
         MUSIC_DEPLOY_TEST_CURL_COMMAND: shellPath(join(fakeBin, "curl")),
         MUSIC_DEPLOY_TEST_DIGEST: requestedDigest,
         MUSIC_DEPLOY_TEST_COMMIT: requestedCommit === "-" ? (options.ociCommit ?? commit("a")) : requestedCommit,
@@ -208,13 +238,37 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
         MUSIC_DEPLOY_TEST_CURRENT_MARKER: options.expectedMarkerOverride ?? "0013_publication_operation_database_clock",
         MUSIC_DEPLOY_TEST_CURRENT_MARKER_OVERRIDE: options.expectedMarkerOverride ?? "",
         MUSIC_DEPLOY_TEST_READINESS_ATTEMPTS: options.candidateReadinessFailure ? "1" : "30",
+        MUSIC_DEPLOY_TEST_ROUTE_DELAY_SECONDS: "0",
         MUSIC_DEPLOY_TEST_REAL_NODE: shellPath(process.execPath),
         MUSIC_DEPLOY_TEST_NODE_ARGV_LOG: shellPath(join(sandbox, "node-argv.log")),
         MUSIC_DEPLOY_TEST_NODE_ENV_LOG: shellPath(join(sandbox, "node-env.log")),
         MUSIC_DEPLOY_TEST_MODE: "1",
         MUSIC_DEPLOY_FAILPOINT: options.failpoint ?? "",
     });
-    const result = spawnSync(bash, ["--noprofile", "--norc", shellPath(deployScript)], {
+    if (fixturePolicy) {
+      writeFileSync(join(root, ".music-c10-fixture-root"), [
+        "music-c10-fixture-root-v1",
+        "compose_project=music-c10-release-unit",
+        "registry=127.0.0.1:5001",
+        "resource_label=com.explorers.fixture.scope=music-c10-release",
+        "",
+      ].join("\n"), { mode: 0o600 });
+      Object.assign(environment, {
+        MUSIC_DEPLOY_MODE: "fixture",
+        MUSIC_DEPLOY_FIXTURE_ACK: options.omitFixtureAcknowledgement ? "" : "C10_LOCAL_REGISTRY_DISPOSABLE_ONLY",
+        MUSIC_DEPLOY_FIXTURE_REGISTRY: "127.0.0.1:5001",
+        MUSIC_DEPLOY_FIXTURE_COMPOSE_PROJECT: composeProject,
+      });
+    } else {
+      Object.assign(environment, {
+        MUSIC_DEPLOY_MODE: "production",
+        MUSIC_DEPLOY_GHCR_TOKEN_FILE: shellPath(tokenFile),
+        MUSIC_DEPLOY_GHCR_USER: "deploy-reader",
+        MUSIC_DEPLOY_EXPECTED_REPOSITORY: options.repositoryOverride ?? repository,
+        MUSIC_DEPLOY_EXPECTED_SOURCE: source,
+      });
+    }
+    const result = spawnSync(bash, ["--noprofile", "--norc", shellPath(fixturePolicy ? fixtureDeployScript : deployScript)], {
       encoding: "utf8",
       env: environment,
     });
@@ -567,7 +621,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(existsSync(join(root, "deployment-transactions/current"))).toBe(false);
     const events = readFileSync(eventLog, "utf8");
     expect(events).toContain("curl --fail --silent --show-error --max-time 5 https://localtunes.earth/ | route=http://legacy-tunes:5000");
-    expect(events).toContain(`docker pull ${repository}@${digest("a")}`);
+    expect(events).toContain(` pull ${repository}@${digest("a")}`);
   }, 20_000);
 
   it("keeps legacy traffic serving but permanently rejects C2 rollback after the C3 schema gate", () => {
@@ -690,6 +744,90 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(existsSync(eventLog)).toBe(false);
     expect(existsSync(join(sandbox, "touch-pwned"))).toBe(false);
   });
+
+  it("keeps the production entrypoint GHCR-only while the explicit fixture entrypoint admits the loopback exact image", () => {
+    // Production break caught: a local/attacker registry can bypass GHCR policy,
+    // or the fixture path cannot exercise the shared immutable engine.
+    const localRepository = "127.0.0.1:5001/explorers-tunes";
+    const production = run("bootstrap", digest("a"), commit("a"), { repositoryOverride: localRepository });
+    expect(production.status).not.toBe(0);
+    expect(production.stderr).toContain("canonical image repository is invalid");
+    expect(existsSync(eventLog)).toBe(false);
+
+    const fixture = run("bootstrap", digest("a"), commit("a"), { policy: "fixture" });
+    expect(fixture.status, fixture.stderr).toBe(0);
+    expect(readFileSync(eventLog, "utf8")).toContain(`pull ${localRepository}@${digest("a")}`);
+    expect(readFileSync(eventLog, "utf8")).toContain("restart traefik");
+    expect(readFileSync(join(root, "deployment-routing/music-router.yml"), "utf8")).not.toContain("certResolver");
+  }, 20_000);
+
+  it("fails the fixture entrypoint closed without its independent acknowledgement", () => {
+    // Production break caught: setting one ambient mode variable is enough to
+    // unlock the local-registry deployment authority.
+    const result = run("bootstrap", digest("a"), commit("a"), {
+      policy: "fixture",
+      omitFixtureAcknowledgement: true,
+    });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("fixture deployment acknowledgement is invalid");
+    expect(existsSync(eventLog)).toBe(false);
+  });
+
+  it("refuses direct execution of the registry-agnostic engine", () => {
+    const result = spawnSync(bash, ["--noprofile", "--norc", shellPath(deployEngine)], {
+      encoding: "utf8",
+      env: { ...process.env },
+    });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("deployment engine must be sourced by an authorized policy wrapper");
+    expect(existsSync(eventLog)).toBe(false);
+  });
+
+  it("refuses a non-loopback registry before the fixture can inspect Docker", () => {
+    const environment = { ...process.env };
+    for (const name of Object.keys(environment)) if (name.startsWith("MUSIC_DEPLOY_")) delete environment[name];
+    Object.assign(environment, {
+      MUSIC_DEPLOY_MODE: "fixture",
+      MUSIC_DEPLOY_TEST_MODE: "1",
+      MUSIC_DEPLOY_FIXTURE_ACK: "C10_LOCAL_REGISTRY_DISPOSABLE_ONLY",
+      MUSIC_DEPLOY_FIXTURE_REGISTRY: "registry.example.invalid:5000",
+      MUSIC_DEPLOY_FIXTURE_COMPOSE_PROJECT: "music-c10-release-unit",
+    });
+    const result = spawnSync(bash, ["--noprofile", "--norc", shellPath(fixtureDeployScript)], {
+      encoding: "utf8",
+      env: environment,
+    });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("fixture registry must be an explicit loopback endpoint");
+    expect(existsSync(eventLog)).toBe(false);
+  });
+
+  it("waits for the public file-provider compatibility route to converge before the migration gate", () => {
+    // Production break caught: the route file is durable but Traefik still
+    // serves the prior general target for the first public denial probe.
+    const result = run("bootstrap", digest("a"), commit("a"), { registrationStaleResponses: 1 });
+    expect(result.status, result.stderr).toBe(0);
+    expect(readFileSync(join(sandbox, "registration-stale-count"), "utf8")).toBe("1");
+    expect(readFileSync(eventLog, "utf8").match(/\/api\/register/g)?.length).toBeGreaterThanOrEqual(3);
+  }, 20_000);
+
+  it("reports only the bounded terminal status when compatibility routing never converges", () => {
+    // Telemetry break caught: troubleshooting either has no useful status or
+    // reflects an untrusted response body into deployment evidence.
+    const result = run("bootstrap", digest("a"), commit("a"), { registrationStaleResponses: 100 });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("registration compatibility route status mismatch: status=200");
+    expect(result.stderr).not.toContain("legacy");
+  }, 20_000);
+
+  it("waits for the exact public readiness authority to converge after route commit", () => {
+    const result = run("bootstrap", digest("a"), commit("a"), { publicReadinessStaleResponses: 1 });
+    expect(result.status, result.stderr).toBe(0);
+    expect(readFileSync(join(sandbox, "public-readiness-stale-count"), "utf8")).toBe("1");
+    const publicProbes = readFileSync(eventLog, "utf8").split(/\r?\n/)
+      .filter((line) => line.startsWith("curl ") && line.includes("/health/ready"));
+    expect(publicProbes).toHaveLength(2);
+  }, 20_000);
 
   it.each([
     ["revision", { ociCommit: commit("c") }],

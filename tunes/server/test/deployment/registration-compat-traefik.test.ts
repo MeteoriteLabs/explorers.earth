@@ -91,7 +91,7 @@ describeTraefik("production registration compatibility route through Traefik", (
       });
     });
 
-    const deploySource = readFileSync(resolve(repoRoot, "tunes/deployment/music-deploy.sh"), "utf8");
+    const deploySource = readFileSync(resolve(repoRoot, "tunes/deployment/music-deploy-engine.sh"), "utf8");
     const heredocStart = deploySource.indexOf('    cat > "$temporary" <<EOF');
     const heredocEnd = deploySource.indexOf("\nEOF", heredocStart);
     if (heredocStart < 0 || heredocEnd < 0) throw new Error("production compatibility route template missing");

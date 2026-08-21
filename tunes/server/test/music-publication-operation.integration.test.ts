@@ -315,7 +315,11 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
     const oldWriter = repository(cipher(previousKey));
     const original = await oldWriter.execute(owner.id, "old-key-operation", "unlisted");
     expect(original.status).toBe("completed");
-    const acceptUntil = clock + 86_400_000;
+    const acceptUntil = Number((await pool.query(
+      `SELECT ceil(date_part('epoch',expires_at)*1000)::bigint AS deadline_ms
+         FROM music_publication_operations WHERE music_user_id=$1`,
+      [owner.id],
+    )).rows[0].deadline_ms);
     const rotated = repository(cipher(currentKey, { ...previousKey, acceptUntil }));
     await expect(rotated.verifyReplayReadiness()).resolves.toBeUndefined();
     expect(await rotated.execute(owner.id, "old-key-operation", "unlisted")).toMatchObject({ status: "completed", replayed: true });

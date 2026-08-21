@@ -228,6 +228,7 @@ export function auditDeploymentAuthority(files: {
   ciWorkflow: string;
   deployWorkflow: string;
   deployExecutable: string;
+  deployEngine: string;
   rootCompose: string;
   tunesCompose: string;
   fixtureCompose: string;
@@ -238,7 +239,9 @@ export function auditDeploymentAuthority(files: {
     .join("\n");
   const ciWorkflow = uncomment(files.ciWorkflow);
   const deployWorkflow = uncomment(files.deployWorkflow);
-  const deployExecutable = uncomment(files.deployExecutable);
+  const deployWrapper = uncomment(files.deployExecutable);
+  const deployEngine = uncomment(files.deployEngine);
+  const deployExecutable = `${deployWrapper}\n${deployEngine}`;
   const rootCompose = uncomment(files.rootCompose);
   const tunesCompose = uncomment(files.tunesCompose);
   const fixtureCompose = uncomment(files.fixtureCompose);
@@ -252,6 +255,8 @@ export function auditDeploymentAuthority(files: {
   if (/explorers-tunes:latest|tags:[^\n]*latest/.test(ciWorkflow)) issues.push("CI must not publish a mutable tag");
   requireText(deployWorkflow, "workflow_call:", "deploy authority must be reusable from CI");
   requireText(deployWorkflow, "tunes/deployment/music-deploy.sh", "workflow must invoke the checked-in deploy executable");
+  requireText(deployWrapper, "production-ghcr-v1", "production deploy wrapper must enforce GHCR policy");
+  requireText(deployWrapper, 'source "$engine_file"', "production deploy wrapper must invoke the shared engine");
   requireText(deployExecutable, "music-router.yml", "deploy must atomically manage the Music route");
   requireText(deployExecutable, EXPECTED_MUSIC_MIGRATION_ID, "deploy must run the exact schema migration gate");
   requireText(deployExecutable, "/health/ready", "deploy must gate promotion on readiness");

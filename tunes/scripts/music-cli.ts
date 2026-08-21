@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, renameSync, statfsSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statfsSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { isAbsolute, join, relative, resolve, win32 as windowsPath } from "node:path";
 import {
@@ -26,6 +26,21 @@ import {
   readSecureMusicReconciliationAuthorities,
   type SecureMusicSecretAuthorityEvidence,
 } from "../server/config/secure-music-secret-file.ts";
+import {
+  attachMusicQualificationMeasurements,
+  preferredQualificationPort,
+  qualificationTelemetryIsBounded,
+  qualificationReportMatchesAuthority,
+  qualificationTaskEnvironment,
+  runMusicQualificationLane,
+  type MusicQualificationExecutionResult,
+  type MusicQualificationLaneName,
+  type MusicQualificationLoadMeasurement,
+  type MusicQualificationMeasurements,
+  type MusicQualificationOperationalMeasurement,
+  type MusicQualificationTask,
+  type MusicQualificationTaskEvidence,
+} from "./music-qualification.ts";
 
 export const MUSIC_CLI_SCHEMA_VERSION = "music-cli/v1";
 export const FIXTURE_SCHEMA_VERSION = "strapi-identity-fixture/v1";
@@ -111,7 +126,7 @@ export function validateStrapiFixture(fixture: StrapiIdentityFixture, options: {
 type OutputFormat = "human" | "json";
 type Mode = "fixture" | "live";
 export interface ParsedArgs { command: string; mode: Mode; format: OutputFormat; detach: boolean; wait: boolean; volumes: boolean; confirmProject?: string; confirmReset?: string; target?: string; resume?: string; checkpoint?: string; reconciliationMode: "dry-run" | "apply"; approvalToken?: string; }
-interface RunResult { status: "success" | "failure" | "blocked"; phase: string; exitCode: number; artifacts?: string[]; checkpoint?: string; error?: string; details?: unknown; summary?: string; }
+interface RunResult { status: "success" | "failure" | "blocked"; phase: string; exitCode: number; artifacts?: string[]; checkpoint?: string; error?: string; details?: unknown; summary?: string; suppressEvidence?: boolean; }
 export interface RunContext { commit: string; fixtureVersion: string; fixtureSchemaVersion: string; gateValues: Record<string, string>; environmentFingerprint: string; }
 
 const root = resolve(import.meta.dirname, "../..");
@@ -120,9 +135,12 @@ const composeFile = "docker-compose.music-test.yml";
 const composeArguments = ["compose", "-p", MUSIC_COMPOSE_PROJECT, "-f", composeFile];
 const requiredFiles = [composeFile, ".env.music.example", ".env.music.test.example", "fixtures/strapi/music-identity/identity.fixture.json", "fixtures/db/music-runtime-table-manifest.json"];
 const runner = new OwnedProcessRunner();
+const qualificationRunners = new Set<OwnedProcessRunner>();
+const qualificationPorts = new Set<number>();
 let activeRun: { id: string; command: string; format: OutputFormat; started: number; context: RunContext; reconciliationCheckpoint?: string } | undefined;
 let childSequence = 0;
 let activeFixtureEnvironment: Record<string, string> = {};
+let qualificationInterruptProbeScheduled = false;
 
 class MusicCommandError extends Error {
   readonly phase: string;
@@ -164,7 +182,7 @@ export function parseMusicCliArguments(args: string[]): ParsedArgs {
     else if (argument === "--apply") { explicitApply = true; parsed.reconciliationMode = "apply"; }
     else throw new MusicCommandError(`unknown argument: ${argument}`, "arguments", EXIT.usage);
   }
-  if (!parsed.command || !["bootstrap", "doctor", "up", "test:smoke", "test:all", "down", "db:status", "db:migrate", "db:verify", "db:reset", "fixtures:capture", "reconcile"].includes(parsed.command)) throw new MusicCommandError("usage: music:<bootstrap|doctor|up|test:smoke|test:all|down|db:status|db:migrate|db:verify|db:reset|fixtures:capture|reconcile>", "arguments", EXIT.usage);
+  if (!parsed.command || !["bootstrap", "doctor", "up", "test:smoke", "test:all", "test:fast", "test:pr", "test:nightly", "test:release", "down", "db:status", "db:migrate", "db:verify", "db:reset", "fixtures:capture", "reconcile"].includes(parsed.command)) throw new MusicCommandError("usage: music:<bootstrap|doctor|up|test:smoke|test:all|test:fast|test:pr|test:nightly|test:release|down|db:status|db:migrate|db:verify|db:reset|fixtures:capture|reconcile>", "arguments", EXIT.usage);
   if (!(["fixture", "live"] as string[]).includes(parsed.mode!)) throw new MusicCommandError("--mode must be fixture or live", "arguments", EXIT.usage);
   if (!(["human", "json"] as string[]).includes(parsed.format!)) throw new MusicCommandError("--format must be human or json", "arguments", EXIT.usage);
   const reconciliationFlags = explicitDryRun || explicitApply || parsed.checkpoint !== undefined || parsed.approvalToken !== undefined;
@@ -181,12 +199,16 @@ export function parseMusicCliArguments(args: string[]): ParsedArgs {
 
 const parseArgs = parseMusicCliArguments;
 
-function sanitize(value: string): string {
-  return value
+export function sanitizeMusicCliText(value: string, exactSensitiveValues: readonly string[] = []): string {
+  const exactRedacted = Array.from(new Set(exactSensitiveValues.filter((candidate) => candidate.length >= 8)))
+    .sort((left, right) => right.length - left.length)
+    .reduce((output, candidate) => output.split(candidate).join("[REDACTED]"), value);
+  return exactRedacted
     .replace(/(postgres(?:ql)?:\/\/)[^:@/\s]+:[^@/\s]+@/gi, "$1[REDACTED]@")
     .replace(/\b(password|secret|token|api[_-]?key|authorization)\b\s*[:=]\s*[^\s,}]+/gi, "$1=[REDACTED]")
-    .replace(/Bearer\s+[A-Za-z0-9._~-]+/gi, "Bearer [REDACTED]");
+    .replace(/Bearer\s+[A-Za-z0-9._~+\/-]+=*/gi, "Bearer [REDACTED]");
 }
+const sanitize = sanitizeMusicCliText;
 const sensitiveStructuredKey = /(?:password|secret|token|authorization|api[_-]?key|credential)/i;
 export function redactStructuredData(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(redactStructuredData);
@@ -195,14 +217,20 @@ export function redactStructuredData(value: unknown): unknown {
   );
   return typeof value === "string" ? sanitize(value) : value;
 }
-function sanitizeStructuredOutput(value: string): string {
-  try { return JSON.stringify(redactStructuredData(JSON.parse(value))); }
-  catch { return sanitize(value); }
+function sanitizeStructuredOutput(value: string, exactSensitiveValues: readonly string[] = []): string {
+  try { return sanitizeMusicCliText(JSON.stringify(redactStructuredData(JSON.parse(value))), exactSensitiveValues); }
+  catch { return sanitizeMusicCliText(value, exactSensitiveValues); }
 }
 function redactedError(value: unknown): string { return sanitize(value instanceof Error ? value.message : String(value)); }
 function runId(): string { return `${new Date().toISOString().replace(/[-:.TZ]/g, "")}-${randomBytes(4).toString("hex")}`; }
 function runDirectory(id: string): string { const directory = join(artifactRoot, id); mkdirSync(directory, { recursive: true }); return directory; }
 function writeArtifact(id: string, name: string, content: string): string { const target = join(runDirectory(id), name); writeFileSync(target, sanitize(content)); return target; }
+function portableQualificationArtifact(path: string): string {
+  const target = isAbsolute(path) ? path : resolve(root, path);
+  const relationship = relative(root, target);
+  if (!relationship || relationship.startsWith("..") || isAbsolute(relationship)) return "[OUTSIDE_REPOSITORY]";
+  return relationship.replace(/\\/g, "/");
+}
 
 function readEnvFile(file: string): Record<string, string> {
   return parseEnvironmentContents(readFileSync(file, "utf8"), file);
@@ -235,6 +263,17 @@ export function readGitSha(repositoryRoot = root): string {
   const packed = readFileSync(join(commonDir, "packed-refs"), "utf8").split(/\r?\n/).find((line) => line.endsWith(` ${reference}`));
   if (!packed) throw new Error(`cannot resolve Git reference ${reference}`);
   return packed.split(" ")[0];
+}
+
+export function assertQualificationSourceClean(repositoryRoot = root): void {
+  const dirty = execFileSync("git", ["status", "--porcelain=v1", "--untracked-files=all"], {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+    windowsHide: true,
+  }).trim();
+  if (dirty) {
+    throw new SafetyError("release qualification requires an exact clean source checkout", "qualification-source-authority");
+  }
 }
 
 export function createEnvironmentFingerprint(input: unknown): string {
@@ -406,6 +445,10 @@ const commandGuidance: Record<string, { success: string; failure: string; recove
   up: { success: "npm run music:test:smoke", failure: "npm run music:doctor", recovery: "npm run music:down" },
   "test:smoke": { success: "npm run music:down", failure: "npm run music:test:smoke", recovery: "npm run music:down" },
   "test:all": { success: "npm run music:down", failure: "npm run music:test:all", recovery: "npm run music:down" },
+  "test:fast": { success: "npm run music:test:pr", failure: "npm run music:test:fast", recovery: "inspect the sanitized qualification report" },
+  "test:pr": { success: "npm run music:test:nightly", failure: "npm run music:test:pr", recovery: "inspect the sanitized qualification report" },
+  "test:nightly": { success: "review the nightly qualification evidence", failure: "npm run music:test:nightly", recovery: "inspect the sanitized qualification report" },
+  "test:release": { success: "review the release evidence; no deployment was performed", failure: "npm run music:test:release", recovery: "inspect the sanitized qualification report" },
   down: { success: "npm run music:doctor", failure: "npm run music:doctor", recovery: "inspect the checkpoint; no cleanup was attempted" },
   "db:status": { success: "review the runtime manifest", failure: "npm run music:doctor", recovery: "npm run music:down" },
   "db:migrate": { success: "npm run music:db:status", failure: "implement reviewed C3 migrations", recovery: "npm run music:db:status" },
@@ -417,19 +460,184 @@ const commandGuidance: Record<string, { success: string; failure: string; recove
 };
 
 function emit(id: string, command: string, format: OutputFormat, started: number, context: RunContext, result: RunResult): number {
-  const checkpoint = result.checkpoint ?? writeCheckpoint(id, context, result);
   const guidance = commandGuidance[command] ?? commandGuidance.music;
-  const unsupportedLegacy = result.error?.includes("MUSIC_FIXTURE_LEGACY_ENVIRONMENT_UNSUPPORTED") ?? false;
-  const nextCommand = unsupportedLegacy
+  const suppressEvidence = result.suppressEvidence === true;
+  const checkpoint = suppressEvidence ? undefined : result.checkpoint ?? writeCheckpoint(id, context, result);
+  const nextCommand = suppressEvidence
     ? "preserve source changes according to operator policy, then discard the disposable worktree"
     : result.status === "success" ? guidance.success : guidance.failure;
-  const recoveryCommand = unsupportedLegacy
+  const recoveryCommand = suppressEvidence
     ? "create a clean checkout without copying fixture authority"
     : guidance.recovery;
-  const output = { schemaVersion: MUSIC_CLI_SCHEMA_VERSION, command, runId: id, status: result.status, phase: result.phase, durationMs: Date.now() - started, artifacts: result.artifacts ?? [], checkpoint, error: result.error ? sanitize(result.error) : undefined, details: result.details === undefined ? undefined : redactStructuredData(result.details), nextCommand, recoveryCommand };
+  const output = {
+    schemaVersion: MUSIC_CLI_SCHEMA_VERSION,
+    command,
+    runId: id,
+    status: result.status,
+    phase: result.phase,
+    durationMs: Date.now() - started,
+    artifacts: (result.artifacts ?? []).map(portableQualificationArtifact),
+    checkpoint: checkpoint ? portableQualificationArtifact(checkpoint) : undefined,
+    error: result.error ? sanitize(result.error) : undefined,
+    details: result.details === undefined ? undefined : redactStructuredData(result.details),
+    nextCommand,
+    recoveryCommand,
+  };
+  if (!suppressEvidence) {
+    const commandResult = writeArtifact(id, "command-result.json", JSON.stringify({
+      ...output,
+      commit: context.commit,
+      environmentFingerprint: context.environmentFingerprint,
+      artifacts: output.artifacts,
+      checkpoint: output.checkpoint,
+    }, null, 2));
+    output.artifacts = [...output.artifacts, portableQualificationArtifact(commandResult)];
+  }
   if (format === "json") process.stdout.write(`${JSON.stringify(output)}\n`);
-  else process.stdout.write(`${command}: ${result.status} (${result.phase})${output.error ? `\nerror: ${output.error}` : ""}${result.summary ? `\n${sanitize(result.summary)}` : ""}\nnext: ${output.nextCommand}\nrecovery: ${output.recoveryCommand}\nartifacts: ${output.artifacts.join(", ") || "none"}\ncheckpoint: ${checkpoint}\n`);
+  else process.stdout.write(`${command}: ${result.status} (${result.phase})${output.error ? `\nerror: ${output.error}` : ""}${result.summary ? `\n${sanitize(result.summary)}` : ""}\nnext: ${output.nextCommand}\nrecovery: ${output.recoveryCommand}\nartifacts: ${output.artifacts.join(", ") || "none"}\ncheckpoint: ${output.checkpoint ?? "none"}\n`);
   return result.exitCode;
+}
+
+export interface StoredMusicCommandResult {
+  command: string;
+  runId: string;
+  status: "success" | "failure" | "blocked";
+  durationMs: number;
+  commit: string;
+  environmentFingerprint: string;
+}
+
+export function selectMusicTimeToFirstGreen(
+  records: StoredMusicCommandResult[],
+  authority: Pick<StoredMusicCommandResult, "commit" | "environmentFingerprint">,
+): { coldFirstGreenMs: number | undefined; warmFirstGreenMs: number | undefined } {
+  const matching = records.filter((record) => record.commit === authority.commit
+    && record.environmentFingerprint === authority.environmentFingerprint).sort((left, right) => left.runId.localeCompare(right.runId));
+  const sequence = ["bootstrap", "doctor", "up", "test:smoke"];
+  let selected: { coldFirstGreenMs: number | undefined; warmFirstGreenMs: number | undefined } = {
+    coldFirstGreenMs: undefined,
+    warmFirstGreenMs: undefined,
+  };
+  for (let index = 0; index <= matching.length - sequence.length; index += 1) {
+    const cold = matching.slice(index, index + sequence.length);
+    if (!cold.every((record, offset) => record.command === sequence[offset] && record.status === "success")) continue;
+    const warm = matching[index + sequence.length];
+    selected = {
+      coldFirstGreenMs: cold.reduce((total, record) => total + record.durationMs, 0),
+      warmFirstGreenMs: warm?.command === "test:smoke" && warm.status === "success" ? warm.durationMs : undefined,
+    };
+  }
+  return selected;
+}
+
+function storedCommandResults(): StoredMusicCommandResult[] {
+  if (!existsSync(artifactRoot)) return [];
+  const records: StoredMusicCommandResult[] = [];
+  for (const directory of readdirSync(artifactRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory())) {
+    const target = join(artifactRoot, directory.name, "command-result.json");
+    if (!existsSync(target)) continue;
+    try {
+      const candidate = JSON.parse(readFileSync(target, "utf8")) as Partial<StoredMusicCommandResult>;
+      if (typeof candidate.command === "string" && typeof candidate.runId === "string"
+          && ["success", "failure", "blocked"].includes(candidate.status ?? "")
+          && Number.isFinite(candidate.durationMs) && (candidate.durationMs ?? -1) >= 0
+          && typeof candidate.commit === "string" && /^[a-f0-9]{40}$/.test(candidate.commit)
+          && typeof candidate.environmentFingerprint === "string" && /^[a-f0-9]{64}$/.test(candidate.environmentFingerprint)) {
+        records.push(candidate as StoredMusicCommandResult);
+      }
+    } catch {
+      // Ignore malformed prior diagnostics; the current lane remains authoritative.
+    }
+  }
+  return records.sort((left, right) => left.runId.localeCompare(right.runId)).slice(-100);
+}
+
+function readQualificationLaneHistory(lane: MusicQualificationLaneName, authority: RunContext): number[] {
+  if (!existsSync(artifactRoot)) return [];
+  const samples: number[] = [];
+  for (const directory of readdirSync(artifactRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory())) {
+    const target = join(artifactRoot, directory.name, `qualification-${lane}.json`);
+    if (!existsSync(target)) continue;
+    try {
+      const candidate = JSON.parse(readFileSync(target, "utf8")) as {
+        lane?: string;
+        status?: string;
+        authority?: { commit?: string; environmentFingerprint?: string };
+        timing?: { wallClockMs?: number };
+      };
+      if (candidate.lane === lane && qualificationReportMatchesAuthority(candidate, authority)
+          && Number.isFinite(candidate.timing?.wallClockMs)
+          && (candidate.timing?.wallClockMs ?? -1) >= 0) samples.push(candidate.timing!.wallClockMs!);
+    } catch {
+      // Malformed history is excluded rather than trusted as timing evidence.
+    }
+  }
+  return samples.slice(-20);
+}
+
+function readLatestQualificationLoadMeasurements(authority: RunContext): MusicQualificationLoadMeasurement[] {
+  if (!existsSync(artifactRoot)) return [];
+  const reports = readdirSync(artifactRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => join(artifactRoot, entry.name, "qualification-nightly.json"))
+    .filter(existsSync)
+    .sort()
+    .reverse();
+  for (const target of reports) {
+    try {
+      const candidate = JSON.parse(readFileSync(target, "utf8")) as {
+        status?: string;
+        authority?: { commit?: string; environmentFingerprint?: string };
+        tasks?: MusicQualificationTaskEvidence[];
+      };
+      if (!qualificationReportMatchesAuthority(candidate, authority)) continue;
+      const measurements = candidate.tasks?.flatMap((task) => task.loadMeasurements ?? []) ?? [];
+      if (qualificationTelemetryIsBounded(measurements)) return measurements;
+    } catch {
+      // Malformed or older evidence is not promoted into the current release report.
+    }
+  }
+  return [];
+}
+
+function collectQualificationMeasurements(tasks: MusicQualificationTaskEvidence[], context: RunContext): MusicQualificationMeasurements {
+  const commands = storedCommandResults();
+  const currentCommands = commands.filter((record) => record.commit === context.commit
+    && record.environmentFingerprint === context.environmentFingerprint);
+  const latest = (command: string) => [...currentCommands].reverse().find((record) => record.command === command);
+  const successful = (command: string) => {
+    const record = latest(command);
+    return record ? { status: record.status, durationMs: record.durationMs } : undefined;
+  };
+  const bootstrap = successful("bootstrap");
+  const doctor = successful("doctor");
+  const smokes = currentCommands.filter(({ command }) => command === "test:smoke");
+  const smoke = smokes.at(-1);
+  const firstGreen = selectMusicTimeToFirstGreen(currentCommands, context);
+  const taskGreen = (id: string) => tasks.find((task) => task.id === id)?.originalStatus === "success";
+  const fixture = JSON.parse(readFileSync(join(root, "fixtures/strapi/music-identity/identity.fixture.json"), "utf8")) as { capturedAt?: string };
+  const capturedAt = Date.parse(fixture.capturedAt ?? "");
+  const currentLoad = tasks.flatMap((task) => task.loadMeasurements ?? []);
+  const load = currentLoad.length ? currentLoad : readLatestQualificationLoadMeasurements(context);
+  const loadMetrics = new Set(load.map(({ metric }) => metric));
+  const operations: MusicQualificationOperationalMeasurement[] = tasks.flatMap((task) => task.operationalMeasurements ?? []);
+  const interrupt = operations.find(({ metric }) => metric === "interrupt-resume");
+  const release = operations.find(({ metric }) => metric === "real-docker-release");
+  return {
+    bootstrap,
+    doctor,
+    smoke: smoke ? { status: smoke.status, durationMs: smoke.durationMs } : undefined,
+    coldFirstGreenMs: firstGreen.coldFirstGreenMs,
+    warmFirstGreenMs: firstGreen.warmFirstGreenMs,
+    fixtureAgeMs: Number.isFinite(capturedAt) ? Math.max(0, Date.now() - capturedAt) : 0,
+    interruptCleanup: interrupt?.interruptCleanup === "verified" ? "verified" : "not-run",
+    resume: interrupt?.resume === "verified" ? "verified" : "not-run",
+    documentationContractFailures: taskGreen("fixture-drift") ? 0 : tasks.some(({ id }) => id === "fixture-drift") ? 1 : 0,
+    compatibilityRouteUsage: typeof release?.compatibilityRouteUsage === "number" ? release.compatibilityRouteUsage : undefined,
+    telemetryCardinality: qualificationTelemetryIsBounded(load) ? "bounded" : loadMetrics.size ? "failed" : "not-run",
+    load,
+    operations,
+  };
 }
 
 export function resolveNpmCommand(input: { npmExecPath?: string; nodeExecPath: string; platform: NodeJS.Platform }): { file: string; args: string[] } {
@@ -450,8 +658,101 @@ async function runChild(id: string, command: "npm" | "docker" | "node", args: st
   const resolved = executable(command);
   const result = await runner.run(resolved.file, [...resolved.args, ...args], { cwd: root, env: { ...process.env, ...activeFixtureEnvironment } });
   const artifact = writeArtifact(id, `child-${String(++childSequence).padStart(3, "0")}-${phase}.log`, `$ ${command} ${args.join(" ")}\nexit=${result.exitCode}\nstdout:\n${sanitizeStructuredOutput(result.stdout)}\nstderr:\n${sanitizeStructuredOutput(result.stderr)}`);
-  if (result.exitCode !== 0) throw new MusicCommandError(`${command} ${args.join(" ")} failed with exit ${result.exitCode}; see ${artifact}`, phase, failureExitCode);
+  if (result.exitCode !== 0) throw new MusicCommandError(`${command} ${args.join(" ")} failed with exit ${result.exitCode}; see ${portableQualificationArtifact(artifact)}`, phase, failureExitCode);
   return { ...result, artifact };
+}
+
+async function runQualificationTask(
+  id: string,
+  task: MusicQualificationTask,
+  attempt: 1 | 2,
+  remainingBudgetMs: number,
+): Promise<MusicQualificationExecutionResult> {
+  const started = Date.now();
+  const taskRunner = new OwnedProcessRunner();
+  qualificationRunners.add(taskRunner);
+  const resolved = executable("npm");
+  const taskEnvironment = qualificationTaskEnvironment(task.id);
+  let playwrightPort: number | undefined;
+  let timedOut = remainingBudgetMs <= 0;
+  let result = { exitCode: 124, stdout: "", stderr: "qualification wall-clock budget exhausted" };
+  let sensitiveValues = Object.entries(activeFixtureEnvironment)
+    .filter(([key, value]) => /(?:password|secret|token|authorization|credential|database_url)/i.test(key) && value.length >= 8)
+    .map(([, value]) => value);
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    if (!timedOut) {
+      sensitiveValues = await qualificationSensitiveValues(activeFixtureEnvironment);
+      const databaseUrlTest = taskEnvironment.MUSIC_C3_POSTGRES_TEST === "1"
+        ? await fixtureMigratorUrl(activeFixtureEnvironment)
+        : undefined;
+      if (task.npmArgs.includes("test:e2e") && !taskEnvironment.PLAYWRIGHT_EXTERNAL_BASE_URL) {
+        const preferred = preferredQualificationPort(task.id);
+        for (let offset = 0; offset <= 4_000; offset += 1) {
+          const candidate = 56_000 + ((preferred - 56_000 + offset) % 4_001);
+          if (!qualificationPorts.has(candidate) && await portAvailable(candidate)) {
+            qualificationPorts.add(candidate);
+            playwrightPort = candidate;
+            break;
+          }
+        }
+        if (!playwrightPort) throw new MusicCommandError("no isolated Playwright port is available", `qualification-${task.id}`, EXIT.prerequisite);
+      }
+      const completion = taskRunner.run(resolved.file, [...resolved.args, ...task.npmArgs], {
+        cwd: root,
+        env: {
+          ...process.env,
+          ...activeFixtureEnvironment,
+          ...taskEnvironment,
+          ...(databaseUrlTest ? { DATABASE_URL_TEST: databaseUrlTest } : {}),
+          ...(playwrightPort ? { PLAYWRIGHT_PORT: String(playwrightPort) } : {}),
+        },
+      });
+      if (attempt === 1 && process.env.MUSIC_C10_INTERRUPT_PROBE === "1" && !qualificationInterruptProbeScheduled) {
+        qualificationInterruptProbeScheduled = true;
+        setTimeout(() => process.emit("SIGINT"), 250);
+      }
+      const timeout = new Promise<undefined>((resolveTimeout) => {
+        timer = setTimeout(() => {
+          timedOut = true;
+          void taskRunner.terminateAll().finally(() => resolveTimeout(undefined));
+        }, Math.max(1, remainingBudgetMs));
+      });
+      result = await Promise.race([completion, timeout]) ?? await completion;
+    }
+  } catch (error) {
+    result = { exitCode: 1, stdout: "", stderr: redactedError(error) };
+  } finally {
+    if (timer) clearTimeout(timer);
+    if (playwrightPort) qualificationPorts.delete(playwrightPort);
+    qualificationRunners.delete(taskRunner);
+  }
+  const durationMs = Date.now() - started;
+  const artifact = writeArtifact(id, `qualification-${task.id}-attempt-${attempt}.log`, [
+    `$ npm ${task.npmArgs.join(" ")}`,
+    `attempt=${attempt}`,
+    `durationMs=${durationMs}`,
+    `timedOut=${timedOut}`,
+    `exit=${result.exitCode}`,
+    `stdout:\n${sanitizeStructuredOutput(result.stdout, sensitiveValues)}`,
+    `stderr:\n${sanitizeStructuredOutput(result.stderr, sensitiveValues)}`,
+  ].join("\n"));
+  return { ...result, durationMs, artifact: portableQualificationArtifact(artifact), timedOut };
+}
+
+async function qualificationSensitiveValues(environment: Record<string, string>): Promise<string[]> {
+  const values = Object.entries(environment)
+    .filter(([key, value]) => /(?:password|secret|token|authorization|credential|database_url)/i.test(key) && value.length >= 8)
+    .map(([, value]) => value);
+  for (const key of [
+    "MUSIC_TOKEN_SECRET_FILE_HOST",
+    "MUSIC_DB_MIGRATOR_SECRET_FILE_HOST",
+    "MUSIC_DB_RUNTIME_SECRET_FILE_HOST",
+  ]) {
+    const path = environment[key];
+    if (path) values.push(await readSecureMusicSecretFile(resolve(root, path), { mode: "fixture" }));
+  }
+  return Array.from(new Set(values));
 }
 
 function createTestEnv(): void {
@@ -725,6 +1026,28 @@ async function executeCommand(id: string, parsed: ParsedArgs, context: RunContex
   }
   if (parsed.command === "test:smoke") { const result = await runChild(id, "npm", ["exec", "--silent", "--prefix", "tunes", "--", "tsx", "tunes/scripts/music-smoke.ts"], "smoke", EXIT.verification); return { status: "success", phase: "smoke", exitCode: EXIT.success, artifacts: [result.artifact] }; }
   if (parsed.command === "test:all") { const result = await runChild(id, "npm", ["test", "--prefix", "tunes"], "all-tests", EXIT.verification); return { status: "success", phase: "all-tests", exitCode: EXIT.success, artifacts: [result.artifact] }; }
+  if (["test:fast", "test:pr", "test:nightly", "test:release"].includes(parsed.command)) {
+    const lane = parsed.command.slice("test:".length) as MusicQualificationLaneName;
+    if (lane === "release") assertQualificationSourceClean();
+    const report = await runMusicQualificationLane(lane, {
+      artifactDirectory: runDirectory(id),
+      priorLaneWallClockMs: readQualificationLaneHistory(lane, context),
+      authority: { commit: context.commit, environmentFingerprint: context.environmentFingerprint },
+      measurements: collectQualificationMeasurements([], context),
+      execute: async (task, execution) => await runQualificationTask(id, task, execution.attempt, execution.remainingBudgetMs),
+      writeReport: async (value) => portableQualificationArtifact(writeArtifact(id, `qualification-${lane}.json`, JSON.stringify(value, null, 2))),
+    });
+    attachMusicQualificationMeasurements(report, collectQualificationMeasurements(report.tasks, context));
+    report.evidenceArtifact = portableQualificationArtifact(writeArtifact(id, `qualification-${lane}.json`, JSON.stringify(report, null, 2)));
+    return {
+      status: report.status,
+      phase: `qualification-${lane}`,
+      exitCode: report.status === "success" ? EXIT.success : EXIT.verification,
+      artifacts: [...report.tasks.flatMap(({ artifacts }) => artifacts), report.evidenceArtifact!],
+      details: { failureCodes: report.failureCodes, timing: report.timing, telemetry: report.telemetry },
+      summary: `${lane} lane ${report.status}; wall=${report.timing.wallClockMs}ms budget=${report.timing.budgetMs}ms p50=${report.timing.taskP50Ms}ms p95=${report.timing.taskP95Ms}ms`,
+    };
+  }
   if (parsed.command === "down" || parsed.command === "db:reset") {
     return await withAllFixtureMusicSecretsCleanup(root, async () => {
       const destructive = parsed.command === "db:reset" || parsed.volumes;
@@ -761,7 +1084,7 @@ async function main(): Promise<number> {
       : buildRunContext({ allowInvalidEnvironment: unsupportedFixtureAuthority });
     if (unsupportedFixtureAuthority) {
       const authorityError = new FixtureUnsupportedLegacyEnvironmentError();
-      return emit(id, "music", "human", started, context, { status: "blocked", phase: "fixture-authority", exitCode: EXIT.safety, error: redactedError(authorityError) });
+      return emit(id, "music", "human", started, context, { status: "blocked", phase: "fixture-authority", exitCode: EXIT.safety, error: redactedError(authorityError), suppressEvidence: true });
     }
     const failure = error instanceof MusicCommandError ? error : new MusicCommandError(redactedError(error), "arguments", EXIT.usage);
     return emit(id, "music", "human", started, context, { status: "failure", phase: failure.phase, exitCode: failure.exitCode, error: redactedError(failure) });
@@ -776,6 +1099,7 @@ async function main(): Promise<number> {
       phase: "fixture-authority",
       exitCode: EXIT.safety,
       error: redactedError(error),
+      suppressEvidence: true,
     });
   }
   // A resume checkpoint is validated against the existing fixture authority.
@@ -822,14 +1146,25 @@ async function interrupted(): Promise<void> {
   if (!activeRun) process.exit(EXIT.interrupted);
   const run = activeRun;
   let checkpoint = "";
+  let ownedChildrenTerminated = false;
   await terminateBeforeCheckpoint(
-    () => runner.terminateAll(),
+    async () => {
+      await runner.terminateAll();
+      await Promise.all(Array.from(qualificationRunners).map(async (active) => await active.terminateAll()));
+      ownedChildrenTerminated = runner.activeChildCount === 0
+        && Array.from(qualificationRunners).every((active) => active.activeChildCount === 0);
+    },
     async () => {
       if (run.reconciliationCheckpoint) {
         const { interruptMusicReconciliationCheckpoint } = await import("../server/commands/reconcileMusicIdentities.ts");
         if (await interruptMusicReconciliationCheckpoint(run.reconciliationCheckpoint)) checkpoint = run.reconciliationCheckpoint;
       }
-      if (!checkpoint) checkpoint = writeCheckpoint(run.id, run.context, { status: "failure", phase: "interrupted", exitCode: EXIT.interrupted });
+      if (!checkpoint) checkpoint = writeCheckpoint(run.id, run.context, {
+        status: "failure",
+        phase: "interrupted",
+        exitCode: EXIT.interrupted,
+        details: { ownedChildrenTerminated },
+      });
     },
   );
   emit(run.id, run.command, run.format, run.started, run.context, { status: "failure", phase: "interrupted", exitCode: EXIT.interrupted, checkpoint });

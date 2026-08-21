@@ -101,9 +101,8 @@ async function mockSettings(
     };
     const currentUser = {
       id: "mock-user-123", documentId: "mock-user-123", username: "testuser", email: "test@explorers.earth",
-      blocked: false, provider: options.provider ?? "google", accounts: accountPresent
-        ? options.additionalAccount ? [account, { ...account, documentId: "account-document-b" }] : [account]
-        : [],
+      blocked: false, provider: options.provider ?? "google", confirmed: true,
+      accounts: accountPresent ? [account] : [],
     };
     let data: Record<string, unknown>;
     if (query.includes("mutation login")) {
@@ -134,7 +133,10 @@ async function mockSettings(
     } else if (query.includes("query Account")) {
       data = { accounts: accountPresent ? [account] : [] };
     } else if (query.includes("usersPermissionsUser")) {
-      data = { usersPermissionsUser: currentUser };
+      const deletionPresenceRead = query.includes("username") && query.includes("accounts") && !query.includes("Account_Name");
+      data = { usersPermissionsUser: deletionPresenceRead && options.additionalAccount
+        ? { ...currentUser, accounts: [account, { ...account, documentId: "account-document-b" }] }
+        : currentUser };
     } else {
       data = {
         bookLists: [], gameLists: [], appLists: [], productLists: [], movieLists: [], personLists: [],

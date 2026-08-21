@@ -582,6 +582,35 @@ use only an allowed retained digest if rollback is necessary.
 
 ## Rehearsal evidence required before GATE_PROD
 
+The transactional state machine lives in
+`tunes/deployment/music-deploy-engine.sh`, but that file is not an entrypoint and
+refuses direct execution. Production continues to invoke only
+`tunes/deployment/music-deploy.sh`. That wrapper admits the canonical
+`ghcr.io/<owner>/explorers-tunes@sha256:<digest>` authority, authenticates with
+the read-packages-only credential, and delegates to the shared engine only after
+the existing request, source, user, and secure-file policy has passed.
+
+Task C10 release qualification invokes the separate
+`tunes/deployment/music-deploy-fixture.sh` entrypoint through
+`tunes/scripts/music-docker-release-rehearsal.ts`. The fixture entrypoint is
+unavailable in default/production mode. It additionally requires test mode, the
+exact `C10_LOCAL_REGISTRY_DISPOSABLE_ONLY` acknowledgement, a
+`127.0.0.1:<port>` registry, a `music-c10-release-*` Compose project, a private
+root marker bound to both values, and matching disposable labels on every
+deployment service. It rejects production authority variables and has no
+ambient registry fallback. The rehearsal pushes only to its loopback registry;
+it does not invoke the production workflow, a remote registry, `GATE_PROD`, or
+any production endpoint.
+
+Run the bounded local proof with:
+
+```bash
+npm exec --silent --prefix tunes -- tsx tunes/scripts/music-docker-release-rehearsal.ts
+```
+
+Only the sanitized `music-operation/v1` result is release evidence. Generated
+roots, ports, credentials, container names, and developer paths are not evidence.
+
 The exact executable process suite injects crashes after journal creation,
 route replacement, manifest write, floor write, state write, and durable commit;
 the next invocation must recover before its first Docker action and never replace

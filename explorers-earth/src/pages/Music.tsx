@@ -20,6 +20,8 @@ const musicPageEligibilityQuery = gql`
   query MusicPageEligibility($documentId: ID!) {
     usersPermissionsUser(documentId: $documentId) {
       documentId
+      provider
+      confirmed
       accounts {
         documentId
         Account_Name
@@ -63,10 +65,16 @@ function entitlementFrom(data: TunesDashboardData): MusicEntitlement {
 export function onboardingFromEligibility(eligibility: {
   loading: boolean;
   error?: unknown;
-  data?: { usersPermissionsUser?: { accounts?: ExplorerAccountCandidate[] | null } | null } | null;
+  data?: { usersPermissionsUser?: {
+    provider?: string | null;
+    confirmed?: boolean | null;
+    accounts?: ExplorerAccountCandidate[] | null;
+  } | null } | null;
 }): MusicOnboarding {
   if (eligibility.loading || eligibility.error || !eligibility.data?.usersPermissionsUser
       || !Array.isArray(eligibility.data.usersPermissionsUser.accounts)) return "unknown";
+  if (eligibility.data.usersPermissionsUser.confirmed === false
+      && eligibility.data.usersPermissionsUser.provider !== "google") return "incomplete";
   const selection = selectExplorerAccountState(eligibility.data.usersPermissionsUser.accounts, { authoritative: true });
   if (selection.kind === "selected") return "complete";
   if (selection.kind === "incomplete") return "incomplete";
@@ -101,9 +109,9 @@ export function MusicPageContent({
   const role = state.live === "assertive" ? "alert" : "status";
 
   return (
-    <main className="dashboard-theme min-h-full bg-dashboard-bg px-4 py-5 text-dashboard sm:px-6 md:py-7">
+    <section aria-labelledby="music-page-title" className="dashboard-theme min-h-full bg-dashboard-bg px-4 py-5 text-dashboard sm:px-6 md:py-7">
       <div className="mx-auto max-w-4xl">
-        <h1 className="text-2xl font-semibold tracking-tight text-dashboard sm:text-3xl">Music</h1>
+        <h1 id="music-page-title" className="text-2xl font-semibold tracking-tight text-dashboard sm:text-3xl">Music</h1>
         {showInlineStatus && (
           <div ref={statusRef} tabIndex={-1} role={role} aria-live={state.live === "off" ? undefined : state.live} aria-atomic="true" className="mt-2 min-h-6 text-base text-dashboard-light outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent">
             {state.message}
@@ -145,7 +153,7 @@ export function MusicPageContent({
           </div>
         )}
       </div>
-    </main>
+    </section>
   );
 }
 

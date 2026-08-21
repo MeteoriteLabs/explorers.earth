@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const port = Number(process.env.PLAYWRIGHT_PORT ?? 5173);
+const externalBaseUrl = process.env.PLAYWRIGHT_EXTERNAL_BASE_URL;
 
 export default defineConfig({
   testDir: './e2e',
@@ -14,7 +15,7 @@ export default defineConfig({
   workers: 1, // Single worker to avoid running out of virtual memory
   reporter: 'line',
   use: {
-    baseURL: `http://localhost:${port}`,
+    baseURL: externalBaseUrl ?? `http://localhost:${port}`,
     actionTimeout: 15000,
     navigationTimeout: 60000, // 60 seconds navigation timeout
     trace: 'off',
@@ -27,7 +28,7 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], headless: true },
     },
   ],
-  webServer: {
+  webServer: externalBaseUrl ? undefined : {
     command: `npm run dev -- --port ${port}`,
     url: `http://localhost:${port}`,
     reuseExistingServer: !process.env.CI,

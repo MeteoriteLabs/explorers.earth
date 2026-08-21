@@ -96,6 +96,65 @@ describe("canonical Music workspace client", () => {
   });
 
   it.each([
+    {
+      status: 401,
+      body: JSON.stringify({ error: { code: "AUTH_INVALID", retryable: true } }),
+      retryAfter: "7",
+      expected: { code: "AUTH_REQUIRED", upstreamCode: "AUTH_INVALID", retryable: true, retryAfterSeconds: 7 },
+      message: "Music authorization is required.",
+    },
+    {
+      status: 400,
+      body: JSON.stringify({ error: { code: 42, retryable: "yes" } }),
+      retryAfter: "0",
+      expected: { code: "REQUEST_INVALID", upstreamCode: undefined, retryable: false, retryAfterSeconds: undefined },
+      message: "Music is temporarily unavailable.",
+    },
+    {
+      status: 409,
+      body: "not-json",
+      retryAfter: "invalid",
+      expected: { code: "AUTH_UNAVAILABLE", upstreamCode: undefined, retryable: false, retryAfterSeconds: undefined },
+      message: "Music is temporarily unavailable.",
+    },
+    {
+      status: 500,
+      body: JSON.stringify({}),
+      retryAfter: undefined,
+      expected: { code: "SERVICE_UNAVAILABLE", upstreamCode: undefined, retryable: false, retryAfterSeconds: undefined },
+      message: "Music is temporarily unavailable.",
+    },
+  ])("contains a $status workspace failure without reflecting its body", async ({ status, body, retryAfter, expected, message }) => {
+    const response = new Response(body, {
+      status,
+      headers: retryAfter === undefined ? undefined : { "retry-after": retryAfter },
+    });
+    const error = await createMusicWorkspaceClient(vi.fn().mockResolvedValue(response))
+      .createPlaylist("Safe", null, "safe-command")
+      .catch((cause) => cause);
+    expect(error).toBeInstanceOf(MusicClientError);
+    expect(error).toMatchObject({ status, ...expected });
+    expect(error.message).toBe(message);
+    expect(error.message).not.toContain(body);
+  });
+
+  it("contains an unsuccessful publication response before parsing any payload", async () => {
+    const response = new Response(JSON.stringify({ error: { code: "PUBLICATION_CONFLICT", retryable: true } }), {
+      status: 409,
+      headers: { "retry-after": "3" },
+    });
+    await expect(createMusicWorkspaceClient(vi.fn().mockResolvedValue(response))
+      .setPublication("public", "publication-failure"))
+      .rejects.toMatchObject({
+        code: "AUTH_UNAVAILABLE",
+        status: 409,
+        upstreamCode: "PUBLICATION_CONFLICT",
+        retryable: true,
+        retryAfterSeconds: 3,
+      });
+  });
+
+  it.each([
     ["unknown", false],
     ["included", false],
     ["eligible", false],

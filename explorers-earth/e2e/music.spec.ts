@@ -160,7 +160,7 @@ for (const width of [320, 375, 640, 768, 1024]) {
     await expect(page.getByRole("button", { name: "Create playlist" })).toBeVisible();
     await expect(page.locator("[role='status'], [role='alert']")).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
-    const musicMain = page.locator("main.dashboard-theme");
+    const musicMain = page.locator("section.dashboard-theme");
     const contrastRatios = await musicMain.evaluate((main) => {
       const parse = (value: string) => {
         const parts = value.match(/[\d.]+/g)?.map(Number) ?? [0, 0, 0];
@@ -348,7 +348,7 @@ test("Music loading animation respects reduced-motion preference", async ({ page
   const ensureGate = new Promise<void>((resolveGate) => { releaseEnsure = resolveGate; });
   await installMusicMocks(page, { ensureGate: { call: 1, wait: ensureGate } });
   await page.goto("/recommendations/music");
-  const skeleton = page.locator("main .animate-pulse").first();
+  const skeleton = page.locator("section.dashboard-theme .animate-pulse").first();
   await expect(skeleton).toBeVisible();
   expect(await skeleton.evaluate((element) => getComputedStyle(element).animationName)).toBe("none");
   releaseEnsure();

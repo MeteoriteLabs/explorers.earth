@@ -21,6 +21,8 @@ describe("Music page state hierarchy", () => {
     expect(select({ loading: false, error: new Error("partial"), data: { usersPermissionsUser: { accounts: [{ ...complete, mobile_number: "" }] } } })).toBe("unknown");
     expect(select({ loading: false, error: null, data: { usersPermissionsUser: null } })).toBe("unknown");
     expect(select({ loading: false, error: null, data: { usersPermissionsUser: { accounts: [] } } })).toBe("incomplete");
+    expect(select({ loading: false, error: null, data: { usersPermissionsUser: { provider: "local", confirmed: false, accounts: [complete] } } })).toBe("incomplete");
+    expect(select({ loading: false, error: null, data: { usersPermissionsUser: { provider: "google", confirmed: false, accounts: [complete] } } })).toBe("complete");
     expect(select({ loading: false, error: null, data: { usersPermissionsUser: { accounts: [complete] } } })).toBe("complete");
   });
 

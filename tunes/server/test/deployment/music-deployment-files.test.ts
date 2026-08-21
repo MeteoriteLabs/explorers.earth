@@ -26,6 +26,7 @@ describe("Music deployment authority files", () => {
       ciWorkflow: read(".github/workflows/tunes.yml"),
       deployWorkflow: read(".github/workflows/tunes-deploy.yml"),
       deployExecutable: read("tunes/deployment/music-deploy.sh"),
+      deployEngine: read("tunes/deployment/music-deploy-engine.sh"),
       rootCompose: read("docker-compose.yml"),
       tunesCompose: read("tunes/docker-compose.yml"),
       fixtureCompose: read("docker-compose.music-test.yml"),
@@ -59,8 +60,8 @@ describe("Music deployment authority files", () => {
     expect(ci).toContain("/app/migrations/0011_durable_publication_idempotency.sql");
     expect(ci).toContain("/app/migrations/0012_publication_replay_expiry_guard.sql");
     expect(ci).toContain("/app/migrations/0013_publication_operation_database_clock.sql");
-    expect(read("tunes/deployment/music-deploy.sh")).toContain('production_current_marker="0013_publication_operation_database_clock"');
-    expect(read("tunes/deployment/music-deploy.sh")).toContain("verify-publication-authority.mjs");
+    expect(read("tunes/deployment/music-deploy-engine.sh")).toContain('production_current_marker="0013_publication_operation_database_clock"');
+    expect(read("tunes/deployment/music-deploy-engine.sh")).toContain("verify-publication-authority.mjs");
     expect(read(".github/workflows/tunes-deploy.yml")).toContain("verify-publication-authority.mjs");
     expect(ci).toContain("/app/dist/server/deployment/run-registration-compat.js");
   });
@@ -131,7 +132,7 @@ describe("Music deployment authority files", () => {
   });
 
   it("makes the private blue C1 hostile gate executable before first routing", () => {
-    const executable = read("tunes/deployment/music-deploy.sh");
+    const executable = read("tunes/deployment/music-deploy-engine.sh");
     const probe = executable.indexOf("compose exec -T tunes-blue node --input-type=module");
     const routeBlue = executable.indexOf('write_route "tunes-${candidate_slot}"');
     expect(probe).toBeGreaterThanOrEqual(0);
@@ -139,10 +140,14 @@ describe("Music deployment authority files", () => {
     for (const boundary of ["/api/auth/sync", "/graphql", "/api/subscriptions/user-plans/hostile", "socket.io-client"]) {
       expect(executable.slice(probe, routeBlue)).toContain(boundary);
     }
+    expect(executable.slice(probe, routeBlue))
+      .toContain('body: JSON.stringify({ strapiUser: { username: "hostile" } }) }, 410],');
+    expect(executable.slice(probe, routeBlue))
+      .toContain('["/api/subscriptions/user-plans/hostile", {}, 410],');
   });
 
   it("keeps file-provider routing unambiguous throughout bootstrap and later promotions", () => {
-    const deploy = read("tunes/deployment/music-deploy.sh");
+    const deploy = read("tunes/deployment/music-deploy-engine.sh");
     const compose = read("docker-compose.yml");
     const runbook = read("docs/operations/music-deploy-runbook.md");
     expect(runbook).toContain("priority-200");
@@ -153,7 +158,8 @@ describe("Music deployment authority files", () => {
 
   it("renders valid legacy-bootstrap and promotion route YAML with priority and exact upstream", () => {
     // Production break caught: a syntactically valid workflow carries an invalid Traefik heredoc.
-    const routeTemplate = heredoc(read("tunes/deployment/music-deploy.sh"), 'cat > "$temporary" <<EOF');
+    const routeTemplate = heredoc(read("tunes/deployment/music-deploy-engine.sh"), 'cat > "$temporary" <<EOF')
+      .replaceAll("${router_security}", "      tls:\n        certResolver: letsencrypt");
     const legacy = parseYaml(routeTemplate.replaceAll("${service}", "legacy-tunes").replaceAll("\\`", "`"));
     const deployRoute = routeTemplate.replaceAll("${service}", "tunes-green").replaceAll("\\`", "`");
     const promotion = parseYaml(deployRoute);
@@ -170,7 +176,7 @@ describe("Music deployment authority files", () => {
   });
 
   it("retains a byte-exact route backup under an armed error trap until durable commit", () => {
-    const deploy = read("tunes/deployment/music-deploy.sh");
+    const deploy = read("tunes/deployment/music-deploy-engine.sh");
     const copy = deploy.indexOf('cp -- "$route_file" "$temporary/route.backup"');
     const arm = deploy.indexOf("trap 'abort_transaction $?' ERR", copy);
     const promote = deploy.indexOf('write_route "tunes-${candidate_slot}"', copy);
@@ -189,11 +195,14 @@ describe("Music deployment authority files", () => {
 
   it("accepts a promoted public response only when digest, commit, and gate marker all match", () => {
     // Production break caught: the router reaches the new digest but reports stale deployment metadata.
-    const deploy = read("tunes/deployment/music-deploy.sh");
-    const publicVerification = deploy.slice(deploy.indexOf("https://localtunes.earth/health/ready"));
+    const deploy = read("tunes/deployment/music-deploy-engine.sh");
+    const publicVerification = deploy.slice(deploy.indexOf("expected_public_body="));
     expect(publicVerification).toContain('\\"digest\\":\\"$candidate_digest\\"');
     expect(publicVerification).toContain('\\"commit\\":\\"$candidate_commit\\"');
     expect(publicVerification).toContain('\\"migrationMarker\\":\\"$candidate_marker\\"');
+    expect(publicVerification.indexOf("expected_public_body=")).toBeLessThan(
+      publicVerification.indexOf("https://localtunes.earth/health/ready"),
+    );
   });
 
   it("requires every C1 production startup secret in Compose readiness", () => {
@@ -221,7 +230,7 @@ describe("Music deployment authority files", () => {
     expect(runbook).toContain('legacy_project="$(docker inspect --format');
     expect(runbook).toContain("compose_project=<observed legacy Compose project>");
     expect(deploy).toContain("tunes/deployment/music-deploy.sh");
-    expect(read("tunes/deployment/music-deploy.sh")).toContain('docker compose -p "$compose_project"');
+    expect(read("tunes/deployment/music-deploy-engine.sh")).toContain('docker compose -p "$compose_project"');
   });
 
   it("does not accept comment-only deployment authority markers", () => {
@@ -248,6 +257,7 @@ describe("Music deployment authority files", () => {
       ciWorkflow: comments,
       deployWorkflow: comments,
       deployExecutable: comments,
+      deployEngine: comments,
       rootCompose: comments,
       tunesCompose: comments,
       fixtureCompose: comments,

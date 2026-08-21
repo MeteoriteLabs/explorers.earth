@@ -335,7 +335,7 @@ describe("music CLI output contract", () => {
     const envelope = JSON.parse(result.stdout) as { artifacts: string[] };
     const composeArtifact = envelope.artifacts.find((artifact) => artifact.includes("compose-config"));
     expect(composeArtifact).toBeDefined();
-    const evidence = readFileSync(composeArtifact!, "utf8");
+    const evidence = readFileSync(resolve(repositoryRoot, composeArtifact!), "utf8");
     expect(evidence).toContain("[REDACTED]");
     expect(evidence).not.toContain('"POSTGRES_PASSWORD":"music"');
     expect(evidence).not.toContain("fixture-read-only-token");
@@ -394,7 +394,7 @@ describe("music CLI output contract", () => {
       .map((name) => resolve(repositoryRoot, environmentValues[name])).filter(existsSync);
     const credentialBytesBefore = credentialPaths.map((path) => readFileSync(path));
     const captured = JSON.parse(runCli(["fixtures:capture", "--format", "json"]).stdout) as { checkpoint: string };
-    const currentCheckpoint = JSON.parse(readFileSync(captured.checkpoint, "utf8")) as Record<string, unknown>;
+    const currentCheckpoint = JSON.parse(readFileSync(resolve(repositoryRoot, captured.checkpoint), "utf8")) as Record<string, unknown>;
     writeFileSync(checkpoint, JSON.stringify({ ...currentCheckpoint, commit: "previous-commit" }));
     try {
       execFileSync(process.execPath, [tsxCli, "scripts/music-cli.ts", "bootstrap", "--resume", checkpoint, "--format", "json"], {

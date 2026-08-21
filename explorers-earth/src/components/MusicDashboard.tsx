@@ -132,6 +132,60 @@ function CreatePlaylistDialog({ onClose, opener, onCreated }: { onClose: () => v
   );
 }
 
+function RenamePlaylistDialog({
+  playlist,
+  onClose,
+  opener,
+  onRenamed,
+}: {
+  playlist: MusicPlaylist;
+  onClose: () => void;
+  opener: RefObject<HTMLButtonElement>;
+  onRenamed: () => Promise<unknown>;
+}) {
+  const [name, setName] = useState(playlist.name);
+  const [description, setDescription] = useState(playlist.description ?? "");
+  const [saving, setSaving] = useState(false);
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!name.trim()) return;
+    setSaving(true);
+    try {
+      await musicWorkspaceClient.renamePlaylist(
+        playlist.id,
+        name.trim(),
+        description.trim() || null,
+        operationKey("playlist-rename"),
+      );
+      await onRenamed();
+      toast.success("Playlist renamed.");
+      onClose();
+    } catch {
+      toast.error("Music is temporarily unavailable.");
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <WorkspaceDialog title="Rename playlist" description="Update this playlist name and description." onClose={onClose} opener={opener} closeDisabled={saving}>
+      <form onSubmit={submit} className="mt-5 space-y-4">
+        <label className="block text-sm text-dashboard-light">
+          Playlist name
+          <input data-autofocus value={name} onChange={(event) => setName(event.target.value)} maxLength={120} required className="mt-2 min-h-11 w-full rounded-xl border border-dashboard bg-dashboard-muted px-3 text-dashboard outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent" />
+        </label>
+        <label className="block text-sm text-dashboard-light">
+          Description <span className="text-dashboard-muted">(optional)</span>
+          <textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={2000} rows={3} className="mt-2 w-full rounded-xl border border-dashboard bg-dashboard-muted p-3 text-dashboard outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent" />
+        </label>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button type="button" onClick={onClose} disabled={saving} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>Cancel</button>
+          <button type="submit" disabled={saving || !name.trim()} className={`${buttonClass} bg-dashboard-accent text-[var(--dash-accent-text)]`}>{saving ? "Saving…" : "Save playlist"}</button>
+        </div>
+      </form>
+    </WorkspaceDialog>
+  );
+}
+
 const publicationCopy: Record<MusicPublicationMode, string> = {
   private: "Only you can open this Music workspace.",
   unlisted: "Anyone with the private link can view shared playlists. The page won’t appear in search.",
@@ -195,6 +249,8 @@ function SharingDialog({ data, scope, onClose, opener }: { data: TunesDashboardD
 }
 
 function PlaylistPanel({ playlist, readOnly, onChanged, announce }: { playlist: MusicPlaylist; readOnly: boolean; onChanged: () => Promise<unknown>; announce: (message: string) => void }) {
+  const [renameOpen, setRenameOpen] = useState(false);
+  const renameOpener = useRef<HTMLButtonElement>(null);
   const setVisible = async () => {
     try {
       await musicWorkspaceClient.setPlaylistVisibility(playlist.id, !playlist.isVisibleToGuests, operationKey("playlist-visibility"));
@@ -213,9 +269,12 @@ function PlaylistPanel({ playlist, readOnly, onChanged, announce }: { playlist: 
     <section role="tabpanel" aria-label={playlist.name} className="rounded-2xl border border-dashboard bg-dashboard-sidebar p-4 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div><h3 className="font-semibold text-dashboard">{playlist.name}</h3>{playlist.description && <p className="mt-1 text-sm text-dashboard-muted">{playlist.description}</p>}</div>
-        <button type="button" onClick={() => void setVisible()} disabled={readOnly} aria-pressed={playlist.isVisibleToGuests} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>
-          {playlist.isVisibleToGuests ? "Shared" : "Private"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button ref={renameOpener} type="button" onClick={() => setRenameOpen(true)} disabled={readOnly} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>Rename playlist</button>
+          <button type="button" onClick={() => void setVisible()} disabled={readOnly} aria-pressed={playlist.isVisibleToGuests} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>
+            {playlist.isVisibleToGuests ? "Shared" : "Private"}
+          </button>
+        </div>
       </div>
       {playlist.songs.length === 0 ? <p className="mt-6 text-sm text-dashboard-muted">This playlist is empty.</p> : (
         <ol className="mt-5 space-y-2">
@@ -230,6 +289,14 @@ function PlaylistPanel({ playlist, readOnly, onChanged, announce }: { playlist: 
             </li>
           ))}
         </ol>
+      )}
+      {renameOpen && (
+        <RenamePlaylistDialog
+          playlist={playlist}
+          opener={renameOpener}
+          onClose={() => setRenameOpen(false)}
+          onRenamed={onChanged}
+        />
       )}
     </section>
   );

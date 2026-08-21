@@ -23,6 +23,10 @@ export class OwnedProcessRunner {
     this.injectedUnixGroupSignal = options.sendUnixGroupSignal;
   }
 
+  get activeChildCount(): number {
+    return this.children.size;
+  }
+
   async run(file: string, args: string[], options: { cwd: string; env?: NodeJS.ProcessEnv } ): Promise<ChildResult> {
     return await new Promise((resolve, reject) => {
       const child = spawn(file, args, {

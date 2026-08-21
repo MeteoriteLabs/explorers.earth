@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
@@ -25,7 +26,7 @@ describe("Tunes workflow provenance and input boundary", () => {
     const ci = read(".github/workflows/tunes.yml");
     const deploy = read(".github/workflows/tunes-deploy.yml");
     const dockerfile = read("tunes/Dockerfile");
-    const executable = read("tunes/deployment/music-deploy.sh");
+    const executable = `${read("tunes/deployment/music-deploy.sh")}\n${read("tunes/deployment/music-deploy-engine.sh")}`;
     expect(ci).toContain("actions/attest-build-provenance@v3");
     expect(deploy).toContain('IMAGE_REPOSITORY="ghcr.io/${owner}/explorers-tunes"');
     expect(deploy).toContain("gh attestation verify");
@@ -36,12 +37,58 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(dockerfile).toContain("com.explorers.music.minimum-containment-commit");
   });
 
+  it("keeps the local OCI rehearsal outside every production authority", () => {
+    const production = read("tunes/deployment/music-deploy.sh");
+    const fixture = read("tunes/deployment/music-deploy-fixture.sh");
+    const engine = read("tunes/deployment/music-deploy-engine.sh");
+    const rehearsal = read("tunes/scripts/music-docker-release-rehearsal.ts");
+    expect(production).toContain('"${MUSIC_DEPLOY_MODE:-production}" == production');
+    expect(production).toContain("^ghcr\\.io/");
+    expect(production).toContain("fixture deployment settings are forbidden in production mode");
+    expect(fixture).toContain("C10_LOCAL_REGISTRY_DISPOSABLE_ONLY");
+    expect(fixture).toContain("^127\\.0\\.0\\.1:");
+    expect(fixture).toContain("com.explorers.fixture.scope=music-c10-release");
+    expect(fixture).not.toContain("docker push");
+    expect(engine).toContain("deployment engine must be sourced by an authorized policy wrapper");
+    expect(rehearsal).toContain('const repository = `127.0.0.1:${registryPort}/explorers-tunes`');
+    expect(rehearsal).toContain("loopback transfer");
+    expect(rehearsal).toContain('["push", tag]');
+    expect(rehearsal).toContain('["registry:2", "postgres:15-alpine", "traefik:v3.1", "node:22.12-alpine"]');
+    expect(rehearsal.match(/"--pull=never"/g)).toHaveLength(2);
+    expect(rehearsal.match(/pull_policy: "never"/g)).toHaveLength(6);
+    expect(rehearsal.match(/"build", "--pull=false"/g)).toHaveLength(2);
+    expect(rehearsal).toContain('["--host", dockerEndpoint, ...args]');
+    expect(rehearsal).toContain("DOCKER_HOST: dockerEndpoint");
+    expect(rehearsal).not.toContain("ghcr.io");
+    expect(rehearsal).not.toContain("GATE_PROD");
+    expect(rehearsal).not.toContain("--api.insecure=true");
+  });
+
+  it.each([
+    ["DOCKER_HOST", "tcp://127.0.0.1:1"],
+    ["DOCKER_CONTEXT", "music-c10-forbidden-remote"],
+  ])("refuses ambient %s authority before the local rehearsal can reach Docker", (name, value) => {
+    const env = { ...process.env };
+    delete env.DOCKER_HOST;
+    delete env.DOCKER_CONTEXT;
+    env[name] = value;
+    const result = spawnSync(
+      process.execPath,
+      [resolve(repoRoot, "tunes/node_modules/tsx/dist/cli.mjs"), resolve(repoRoot, "tunes/scripts/music-docker-release-rehearsal.ts")],
+      { cwd: repoRoot, env, encoding: "utf8", timeout: 15_000, windowsHide: true },
+    );
+    expect(result.status).not.toBe(0);
+    expect(`${result.stdout}\n${result.stderr}`).toContain("ambient Docker endpoint overrides are forbidden");
+  });
+
   it("transmits only an encoded fixed-schema bundle and runs the checked-in executable", () => {
     // Production break caught: shell metacharacters from a dispatch input enter OpenSSH's remote command string.
     const deploy = read(".github/workflows/tunes-deploy.yml");
     expect(deploy).toContain("music-deploy-request-v2");
     expect(deploy).toContain("base64");
     expect(deploy).toContain("tunes/deployment/music-deploy.sh");
+    expect(deploy).toContain('install -m 700 tunes/deployment/music-deploy-engine.sh "$bundle/music-deploy-engine.sh"');
+    expect(deploy).toContain('chmod 700 "$incoming/music-deploy.sh" "$incoming/music-deploy-engine.sh"');
     expect(deploy).not.toMatch(/ssh[^\n]*\$\{\{\s*inputs\./);
     expect(deploy).not.toContain('ghcr.io/*/explorers-tunes');
     expect(deploy).not.toContain("inputs.image_ref");

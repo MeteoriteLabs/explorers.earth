@@ -150,7 +150,7 @@ services:
         VITE_API_URL: http://127.0.0.1:55173/graphql
         VITE_REST_API_URL: http://127.0.0.1:55173
         VITE_PUBLIC_ACCESS_TOKEN: fixture-public-token
-        VITE_LOCAL_TUNES_URL: http://127.0.0.1:55000
+        VITE_LOCAL_TUNES_API_URL: https://music-fixture.invalid
     ports: ["127.0.0.1:55173:80"]
     depends_on:
       tunes: { condition: service_healthy }

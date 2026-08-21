@@ -90,8 +90,8 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     await domain.setPlaying(a.id, null);
     expect(await domain.listQueue(a.id)).toEqual([expect.objectContaining({ id: aSong.id, status: "played" })]);
     expect(await domain.listQueue(b.id)).toEqual([expect.objectContaining({ id: bSong.id, status: "played" })]);
-    expect(await domain.ownerDashboard(a.id)).toEqual({ songs: [], currentlyPlaying: undefined, playedSongs: [expect.objectContaining({ id: aSong.id, userId: a.id })], publication: expect.objectContaining({ mode: "private", publicSlug: a.guestUrl }) });
-    expect(await domain.ownerDashboard(b.id)).toEqual({ songs: [], currentlyPlaying: undefined, playedSongs: [expect.objectContaining({ id: bSong.id, userId: b.id })], publication: expect.objectContaining({ mode: "private", publicSlug: b.guestUrl }) });
+    expect(await domain.ownerDashboard(a.id)).toEqual({ songs: [], currentlyPlaying: undefined, playedSongs: [expect.objectContaining({ id: aSong.id, userId: a.id })], publication: expect.objectContaining({ mode: "unlisted", publicSlug: "c6-public-a" }) });
+    expect(await domain.ownerDashboard(b.id)).toEqual({ songs: [], currentlyPlaying: undefined, playedSongs: [expect.objectContaining({ id: bSong.id, userId: b.id })], publication: expect.objectContaining({ mode: "unlisted", publicSlug: "c6-public-b" }) });
   });
 
   it("isolates entitlement, publication, capability rotation, and guest resolution", async () => {
@@ -106,7 +106,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     await domain.rotateGuestCapability(b.id, hashGuestCapability(bCapability));
     await domain.setDiscoverable(a.id, true);
     expect((await pool.query("SELECT guest_discoverable FROM users WHERE id=$1", [b.id])).rows[0].guest_discoverable).toBe(false);
-    expect(await domain.resolveGuestResource("c6-public-cap-b", bCapability)).toMatchObject({ state: "private" });
+    expect(await domain.resolveGuestResource("c6-public-cap-b", bCapability)).toMatchObject({ state: "unlisted", noindex: true });
     expect(await domain.resolveGuestResource("not-b", bCapability)).toBeUndefined();
     expect(await domain.resolveGuestResource(bCapability)).toBeUndefined();
 
