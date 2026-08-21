@@ -28,21 +28,21 @@ export const PublicProfileFooter = memo(({ brandingStyle = 'enabled' }: PublicPr
         >
           <Link
             to="/"
-            className="hover:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent-color)] transition-colors rounded"
+            className="inline-flex items-center min-h-[44px] py-2 px-1 hover:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent-color)] transition-colors rounded"
           >
             Create your profile
           </Link>
           <span aria-hidden="true">•</span>
           <a
             href="mailto:support@explorers.earth"
-            className="hover:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent-color)] transition-colors rounded"
+            className="inline-flex items-center min-h-[44px] py-2 px-1 hover:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent-color)] transition-colors rounded"
           >
             Report
           </a>
           <span aria-hidden="true">•</span>
           <Link
             to="/privacy"
-            className="hover:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent-color)] transition-colors rounded"
+            className="inline-flex items-center min-h-[44px] py-2 px-1 hover:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent-color)] transition-colors rounded"
           >
             Privacy
           </Link>

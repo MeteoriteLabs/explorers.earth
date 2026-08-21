@@ -32,8 +32,9 @@ describe('PublicProfileFooter', () => {
     // Should have brand link + 3 footer links (Create your profile, Report, Privacy)
     expect(links.length).toBe(4);
 
-    // Assert footer links contain no hard-coded text-white
+    // Assert footer links meet minimum 44px target size requirements and contain no hard-coded text-white
     links.forEach((link) => {
+      expect(link.className).toContain("min-h-[44px]");
       expect(link.className).not.toContain("text-white");
       expect(link.className).not.toContain("hover:text-white");
     });
