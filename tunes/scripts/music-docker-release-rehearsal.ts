@@ -237,7 +237,6 @@ function deploymentEnvironment(registryPort: number, traefikProxyIp: string, ext
     MUSIC_DEPLOY_TEST_READINESS_ATTEMPTS: "20",
     TRAEFIK_PROXY_IP: traefikProxyIp,
     ...extra,
-    DOCKER_HOST: dockerEndpoint,
   };
 }
 
@@ -429,6 +428,25 @@ exec curl --header "Host: localtunes.earth" "\${mapped[@]}"
   }
   assert(registryReady, "loopback registry did not become ready");
 
+  const transferLocalImage = (sourceImage: string, repositoryName: string): string => {
+    const repository = `127.0.0.1:${registryPort}/${repositoryName}`;
+    const tag = `${repository}:fixture`;
+    dockerRun(`${repositoryName} local tag`, ["image", "tag", sourceImage, tag]);
+    localTags.push(tag);
+    dockerRun(`${repositoryName} loopback transfer`, ["push", tag], { timeoutMs: 3 * 60_000 });
+    const repoDigests = dockerRun(`${repositoryName} digest inspection`, [
+      "image", "inspect", "--format", "{{range .RepoDigests}}{{println .}}{{end}}", tag,
+    ]).stdout.split(/\r?\n/).filter((value) => value.startsWith(`${repository}@sha256:`));
+    assert(repoDigests.length === 1, `${repositoryName} did not resolve one local digest`);
+    const exactImage = repoDigests[0]!;
+    dockerRun(`${repositoryName} immutable local inspection`, ["image", "inspect", exactImage]);
+    localTags.push(exactImage);
+    return exactImage;
+  };
+
+  const traefikImage = transferLocalImage("traefik:v3.1", "fixture-traefik");
+  const postgresImage = transferLocalImage("postgres:15-alpine", "fixture-postgres");
+
   dockerRun("exact Tunes source image build", [
     "build", "--pull=false", "--file", join(repoRoot, "tunes/Dockerfile"), "--tag", baseImage,
     "--build-arg", `BUILD_COMMIT=${commit}`, "--build-arg", `BUILD_SOURCE=${source}`,
@@ -511,7 +529,7 @@ exec curl --header "Host: localtunes.earth" "\${mapped[@]}"
     name: project,
     services: {
       traefik: {
-        image: "traefik:v3.1",
+        image: traefikImage,
         pull_policy: "never",
         command: [
           "--api.dashboard=false",
@@ -528,7 +546,7 @@ exec curl --header "Host: localtunes.earth" "\${mapped[@]}"
         labels: labels(),
       },
       db: {
-        image: "postgres:15-alpine",
+        image: postgresImage,
         pull_policy: "never",
         environment: {
           POSTGRES_USER: "music_migrator",

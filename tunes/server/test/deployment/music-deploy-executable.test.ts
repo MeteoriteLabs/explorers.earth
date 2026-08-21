@@ -42,6 +42,8 @@ interface RunOptions {
   omitFixtureAcknowledgement?: boolean;
   registrationStaleResponses?: number;
   publicReadinessStaleResponses?: number;
+  fixtureEnvironment?: Record<string, string>;
+  fixtureRootOverride?: string;
 }
 
 describe("checked-in production Music deploy executable", () => {
@@ -55,17 +57,18 @@ describe("checked-in production Music deploy executable", () => {
 
   beforeEach(() => {
     sandbox = mkdtempSync(join(tmpdir(), "music-deploy-process-"));
-    root = join(sandbox, "root");
+    root = mkdtempSync(join(tmpdir(), "music-c10-release-unit-"));
     fakeBin = join(sandbox, "bin");
     eventLog = join(sandbox, "events.log");
-    requestFile = join(sandbox, "request.txt");
-    keyFile = join(sandbox, "hmac.key");
+    requestFile = join(root, "request.txt");
+    keyFile = join(root, "hmac.key");
     tokenFile = join(sandbox, "ghcr.token");
     mkdirSync(join(root, "deployment-routing"), { recursive: true });
     mkdirSync(join(root, "deployment-state"), { recursive: true });
     mkdirSync(join(root, "deployment-transactions"), { recursive: true });
     mkdirSync(join(root, "publication-authority"), { recursive: true });
     mkdirSync(join(root, "token-authority"), { recursive: true });
+    chmodSync(root, 0o700);
     mkdirSync(fakeBin, { recursive: true });
     writeFileSync(join(root, "docker-compose.yml"), "services: {}\n");
     const authorityFiles = {
@@ -108,8 +111,41 @@ describe("checked-in production Music deploy executable", () => {
     chmodSync(keyFile, 0o600);
     chmodSync(tokenFile, 0o600);
 
+    const composeModelFile = join(sandbox, "compose-model.json");
+    const fixtureImage = `127.0.0.1:5001/explorers-tunes@${digest("a")}`;
+    const fixtureLabels = {
+      "com.explorers.fixture.scope": "music-c10-release",
+      "com.explorers.fixture.project": "music-c10-release-unit",
+    };
+    const fixtureService = (image = fixtureImage, networks = ["internal"]) => ({
+      image,
+      pull_policy: "never",
+      labels: fixtureLabels,
+      networks,
+    });
+    writeFileSync(composeModelFile, JSON.stringify({
+      name: "music-c10-release-unit",
+      services: {
+        traefik: { ...fixtureService(`127.0.0.1:5001/fixture-traefik@${digest("c")}`, ["proxy"]), ports: ["127.0.0.1:54443:443"] },
+        db: { ...fixtureService(`127.0.0.1:5001/fixture-postgres@${digest("d")}`), volumes: ["postgres-data:/var/lib/postgresql/data"] },
+        "legacy-tunes": fixtureService(fixtureImage, ["proxy"]),
+        "tunes-register-compat": fixtureService(fixtureImage, ["proxy"]),
+        "tunes-gate": { ...fixtureService(), volumes: ["music-gate-attestations:/deployment-gates", "fixture-secrets:/run/music-secrets:ro"] },
+        "tunes-blue": fixtureService(fixtureImage, ["internal", "proxy"]),
+        "tunes-green": fixtureService(fixtureImage, ["internal", "proxy"]),
+      },
+      networks: { proxy: {}, internal: { internal: true } },
+      volumes: {
+        "postgres-data": {},
+        "music-gate-attestations": {},
+        "fixture-secrets": { external: true, name: "music-c10-release-unit-secrets" },
+      },
+    }));
+
     const docker = `#!/usr/bin/env bash
 set -euo pipefail
+if [[ "$1" == "context" && "$2" == "show" ]]; then printf 'default\\n'; exit 0; fi
+if [[ "$1" == "context" && "$2" == "inspect" ]]; then printf '%s\\n' "\${MUSIC_DEPLOY_TEST_DOCKER_ENDPOINT:-unix:///var/run/docker.sock}"; exit 0; fi
 route="$MUSIC_DEPLOY_ROOT/deployment-routing/music-router.yml"
 current_route="none"; if [[ -f "$route" ]]; then current_route="$(grep -Eo 'http://[^ ]+:5000' "$route" | tail -1)"; fi
 printf 'docker %s | route=%s\\n' "$*" "$current_route" >> "$MUSIC_DEPLOY_TEST_EVENT_LOG"
@@ -122,7 +158,7 @@ if [[ "$*" == *"org.opencontainers.image.source"* ]]; then printf '%s\\n' "\${MU
 if [[ "$*" == *"com.explorers.music.minimum-containment-commit"* ]]; then printf '%s\\n' "\${MUSIC_DEPLOY_TEST_OCI_CONTAINMENT:-d226f7e4dc5a54195a59804ec729f72b5e8f10d7}"; exit 0; fi
 if [[ "$*" == *" compose "* || "$1" == "compose" ]]; then
   if [[ "$*" == *" config "* ]]; then
-    printf '{"services":{"traefik":{"labels":{"com.explorers.fixture.scope":"music-c10-release","com.explorers.fixture.project":"music-c10-release-unit"}},"tunes-register-compat":{"labels":{"com.explorers.fixture.scope":"music-c10-release","com.explorers.fixture.project":"music-c10-release-unit"}},"tunes-gate":{"labels":{"com.explorers.fixture.scope":"music-c10-release","com.explorers.fixture.project":"music-c10-release-unit"}},"tunes-blue":{"labels":{"com.explorers.fixture.scope":"music-c10-release","com.explorers.fixture.project":"music-c10-release-unit"}},"tunes-green":{"labels":{"com.explorers.fixture.scope":"music-c10-release","com.explorers.fixture.project":"music-c10-release-unit"}}}}\n'
+    cat "$MUSIC_DEPLOY_TEST_COMPOSE_MODEL_FILE"
     exit 0
   fi
   service="\${!#}"
@@ -194,7 +230,10 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     chmodSync(join(fakeBin, "sleep"), 0o755);
   });
 
-  afterEach(() => rmSync(sandbox, { recursive: true, force: true }));
+  afterEach(() => {
+    rmSync(sandbox, { recursive: true, force: true });
+    rmSync(root, { recursive: true, force: true });
+  });
 
   function run(operation: "bootstrap" | "deploy" | "rollback", requestedDigest: string, requestedCommit: string, options: RunOptions = {}) {
     const fixturePolicy = options.policy === "fixture";
@@ -242,6 +281,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
         MUSIC_DEPLOY_TEST_REAL_NODE: shellPath(process.execPath),
         MUSIC_DEPLOY_TEST_NODE_ARGV_LOG: shellPath(join(sandbox, "node-argv.log")),
         MUSIC_DEPLOY_TEST_NODE_ENV_LOG: shellPath(join(sandbox, "node-env.log")),
+        MUSIC_DEPLOY_TEST_COMPOSE_MODEL_FILE: shellPath(join(sandbox, "compose-model.json")),
         MUSIC_DEPLOY_TEST_MODE: "1",
         MUSIC_DEPLOY_FAILPOINT: options.failpoint ?? "",
     });
@@ -258,6 +298,8 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
         MUSIC_DEPLOY_FIXTURE_ACK: options.omitFixtureAcknowledgement ? "" : "C10_LOCAL_REGISTRY_DISPOSABLE_ONLY",
         MUSIC_DEPLOY_FIXTURE_REGISTRY: "127.0.0.1:5001",
         MUSIC_DEPLOY_FIXTURE_COMPOSE_PROJECT: composeProject,
+        MUSIC_DEPLOY_ROOT: options.fixtureRootOverride ?? shellPath(root),
+        ...(options.fixtureEnvironment ?? {}),
       });
     } else {
       Object.assign(environment, {
@@ -771,6 +813,67 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("fixture deployment acknowledgement is invalid");
     expect(existsSync(eventLog)).toBe(false);
+  });
+
+  it.each([
+    ["DOCKER_HOST", { DOCKER_HOST: "tcp://remote.example.invalid:2375" }, "ambient Docker endpoint overrides are forbidden"],
+    ["DOCKER_CONTEXT", { DOCKER_CONTEXT: "production" }, "ambient Docker endpoint overrides are forbidden"],
+    ["GATE_PROD", { GATE_PROD: "open" }, "production and GATE authority is forbidden in fixture mode"],
+    ["production alias", { MUSIC_DEPLOY_PRODUCTION: "1" }, "production and GATE authority is forbidden in fixture mode"],
+    ["credential cleanup escape", { MUSIC_DEPLOY_EPHEMERAL_CREDENTIAL_FILES: "1" }, "fixture credential cleanup overrides are forbidden"],
+  ])("rejects hostile direct fixture invocation through %s before Docker inspection", (_name, fixtureEnvironment, message) => {
+    const result = run("bootstrap", digest("a"), commit("a"), { policy: "fixture", fixtureEnvironment });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain(message);
+    expect(existsSync(eventLog)).toBe(false);
+  });
+
+  it("rejects a remote effective Docker context before the first mutating command", () => {
+    const result = run("bootstrap", digest("a"), commit("a"), {
+      policy: "fixture",
+      fixtureEnvironment: { MUSIC_DEPLOY_TEST_DOCKER_ENDPOINT: "tcp://remote.example.invalid:2375" },
+    });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("effective Docker endpoint must be a local named pipe or Unix socket");
+    expect(existsSync(eventLog)).toBe(false);
+  });
+
+  it("rejects non-canonical fixture roots before Docker inspection", () => {
+    const aliased = run("bootstrap", digest("a"), commit("a"), {
+      policy: "fixture",
+      fixtureRootOverride: `${shellPath(root)}/.`,
+    });
+    expect(aliased.status).not.toBe(0);
+    expect(aliased.stderr).toContain("fixture deployment root must be canonical");
+    expect(existsSync(eventLog)).toBe(false);
+
+  });
+
+  it.runIf(process.platform !== "win32")("rejects a non-private fixture root before Docker inspection", () => {
+    chmodSync(root, 0o755);
+    const result = run("bootstrap", digest("a"), commit("a"), { policy: "fixture" });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("fixture deployment root must be private and owned");
+    expect(existsSync(eventLog)).toBe(false);
+  });
+
+  it.each([
+    ["extra service", (model: any) => { model.services.attacker = { image: `registry.example.invalid/escape@${digest("e")}`, pull_policy: "always", labels: model.services.traefik.labels, networks: ["proxy"] }; }],
+    ["mutable image", (model: any) => { model.services.db.image = "postgres:15-alpine"; }],
+    ["ambient pull", (model: any) => { model.services.traefik.pull_policy = "missing"; }],
+    ["external network", (model: any) => { model.networks.proxy = { external: true, name: "production" }; }],
+    ["unbounded volume", (model: any) => { model.services.db.volumes.push("/opt/explorers:/production"); }],
+  ])("rejects a fixture Compose model with %s before image materialization", (_name, mutate) => {
+    const modelFile = join(sandbox, "compose-model.json");
+    const model = JSON.parse(readFileSync(modelFile, "utf8"));
+    mutate(model);
+    writeFileSync(modelFile, JSON.stringify(model));
+    const result = run("bootstrap", digest("a"), commit("a"), { policy: "fixture" });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("fixture Compose authority is invalid");
+    const events = existsSync(eventLog) ? readFileSync(eventLog, "utf8") : "";
+    expect(events).not.toContain(" pull ");
+    expect(events).not.toContain(" up ");
   });
 
   it("refuses direct execution of the registry-agnostic engine", () => {

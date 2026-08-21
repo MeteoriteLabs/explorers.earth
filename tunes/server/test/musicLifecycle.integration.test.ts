@@ -739,6 +739,14 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
     expect(whileSlow.find(({ operation_id }) => operation_id === firstOperationId)?.attempt_count).toBe(2);
     expect(whileSlow.filter(({ operation_id }) => operation_id !== firstOperationId).every(({ attempt_count }) => attempt_count === 2)).toBe(true);
 
+    // Keep replica B's just-deferred retries outside this proof window. On a loaded
+    // PG runner, processing nine rows can exceed their two-second retry backoff,
+    // which would let replica A legitimately begin a later retry before it exits.
+    await pool.query(
+      "UPDATE music_identity_lifecycle_operations SET updated_at=clock_timestamp()+interval '5 minutes' WHERE operation_id=ANY($1::text[])",
+      [waitingOperationIds],
+    );
+
     releaseFirstProof();
     await expect(firstRun).resolves.toEqual({ claimed: 1, finalized: 0, deferred: 1, deadLettered: 0 });
     const results = (await pool.query(

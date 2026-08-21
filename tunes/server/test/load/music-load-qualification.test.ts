@@ -276,7 +276,7 @@ describe("bounded Music load qualification", () => {
     expect(firstP95Ms).toBeLessThan(1_000);
     expect(cachedP95Ms).toBeLessThan(100);
     console.info(JSON.stringify({
-      schemaVersion: "music-load/v1",
+      schemaVersion: "music-unit-load/v1",
       metric: "ensure",
       firstEnsure50Ms: Math.ceil(Math.max(...first.map(({ durationMs }) => durationMs))),
       firstEnsureP50Ms: percentile(first.map(({ durationMs }) => durationMs), 0.5),
@@ -315,7 +315,7 @@ describe("bounded Music load qualification", () => {
       && (result.reason as { code?: string }).code === "TOKEN_INVALID")).toBe(true);
     expect(localReads).toBe(200);
     console.info(JSON.stringify({
-      schemaVersion: "music-load/v1",
+      schemaVersion: "music-unit-load/v1",
       metric: "owner",
       ownerCalls: 200,
       ownerP50Ms: percentile(owner.map(({ durationMs }) => durationMs), 0.5),

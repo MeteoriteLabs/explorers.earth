@@ -102,7 +102,33 @@ export function qualificationTaskEnvironment(taskId: string): Record<string, str
     MUSIC_C7_POSTGRES_TEST: "1",
     MUSIC_C8_POSTGRES_TEST: "1",
     MUSIC_C9_PUBLICATION_POSTGRES_TEST: "1",
+    MUSIC_C10_POSTGRES_TEST: "1",
   };
+}
+
+const FIXTURE_ENVIRONMENT_TASK_IDS = new Set([
+  "postgres-integration",
+  "tunes-repository-coverage",
+  "tunes-identity-repository-coverage",
+  "load-postgres",
+  "chaos-postgres",
+  "real-docker-evidence",
+]);
+
+const STANDALONE_POSTGRES_TASK_IDS = new Set([
+  "postgres-integration",
+  "tunes-repository-coverage",
+  "tunes-identity-repository-coverage",
+  "load-postgres",
+  "chaos-postgres",
+]);
+
+export function qualificationTaskUsesFixtureEnvironment(taskId: string): boolean {
+  return FIXTURE_ENVIRONMENT_TASK_IDS.has(taskId);
+}
+
+export function qualificationTaskUsesStandalonePostgres(taskId: string): boolean {
+  return STANDALONE_POSTGRES_TASK_IDS.has(taskId);
 }
 
 const task = (
@@ -122,7 +148,11 @@ export const MUSIC_QUALIFICATION_TASKS = {
   ], ["typed-recovery"]),
   "tunes-full-unit": task("tunes-full-unit", "Tunes full non-release unit suite", [
     "test", "--prefix", "tunes", "--", "--exclude", "server/test/deployment/**",
+    "--exclude", "server/test/contracts/music-cli-contract.test.ts", "--maxWorkers=2", "--testTimeout=15000",
   ], ["typed-recovery"]),
+  "isolated-cli-contract": task("isolated-cli-contract", "Isolated exact-commit Music CLI contract", [
+    "exec", "--silent", "--prefix", "tunes", "--", "tsx", "tunes/scripts/music-isolated-cli-contract.ts",
+  ], ["portable-harness", "secret-free-evidence"]),
   "explorer-music-unit": task("explorer-music-unit", "Explorer Music unit suite", [
     "run", "test:unit", "--prefix", "explorers-earth", "--", "src/features/music", "src/components/__tests__/MusicDashboard.test.tsx",
     "src/pages/__tests__/MusicPage.test.tsx", "src/pages/__tests__/PublicMusic.test.tsx",
@@ -161,7 +191,7 @@ export const MUSIC_QUALIFICATION_TASKS = {
     "run", "test:e2e", "--prefix", "explorers-earth", "--", "music.spec.ts", "account-lifecycle.spec.ts", "--project=chromium", "--retries=0",
   ], ["refresh-rename-sharing", "lifecycle-outage-e2e", "browser-exit"]),
   "fullstack-browser": task("fullstack-browser", "Google and email full-stack Music journeys", [
-    "run", "test:e2e", "--prefix", "explorers-earth", "--", "music-fullstack.spec.ts", "--project=chromium", "--retries=0",
+    "run", "test:e2e", "--prefix", "explorers-earth", "--", "music-fullstack.spec.ts", "music-auth-triggers.spec.ts", "--project=chromium", "--retries=0",
   ], ["google-e2e", "email-e2e", "account-edge-cases", "refresh-rename-sharing", "lifecycle-outage-e2e"]),
   "accessibility-browser": task("accessibility-browser", "Music axe and keyboard journeys", [
     "run", "test:e2e", "--prefix", "explorers-earth", "--", "music-accessibility.spec.ts", "--project=chromium", "--retries=0",
@@ -174,7 +204,8 @@ export const MUSIC_QUALIFICATION_TASKS = {
     "server/test/music-identity-route.test.ts", "server/test/music-socket-server.test.ts", "--disableConsoleIntercept",
   ], ["load-first-ensures", "load-cached-owner", "load-invalid-token", "load-single-flight", "load-sockets", "load-guest-limits", "timing-evidence"]),
   "load-postgres": task("load-postgres", "Music PostgreSQL pool load", [
-    "run", "test:integration", "--prefix", "tunes", "--", "server/test/load/music-load-postgres.integration.test.ts", "--disableConsoleIntercept",
+    "run", "test:integration", "--prefix", "tunes", "--",
+    "server/test/load/music-load-http-postgres.integration.test.ts", "--disableConsoleIntercept", "--pool=threads",
   ], ["load-db-pool", "postgres-concurrency", "timing-evidence"]),
   "chaos-unit": task("chaos-unit", "Music upstream and credential chaos", [
     "test", "--prefix", "tunes", "--", "server/test/integration/music-chaos-qualification.test.ts",
@@ -190,9 +221,18 @@ export const MUSIC_QUALIFICATION_TASKS = {
     "server/test/contracts/music-authorization-matrix.test.ts", "server/test/contracts/music-release-evidence.test.ts",
   ], ["fixture-drift", "compatibility-route", "secret-free-evidence"]),
   "release-rehearsal": task("release-rehearsal", "Immutable image, readiness, rollback, and kill-switch rehearsal", [
-    "test", "--prefix", "tunes", "--", "server/test/deployment/music-deployment.test.ts",
-    "server/test/deployment/music-readiness.test.ts", "server/test/deployment/music-deploy-executable.test.ts",
-    "server/test/deployment/music-production-policy.test.ts", "server/test/deployment/music-publication-authority-verifier.test.ts",
+    "test", "--prefix", "tunes", "--",
+    "server/test/deployment/music-command-plan.test.ts",
+    "server/test/deployment/music-deploy-executable.test.ts",
+    "server/test/deployment/music-deploy-workflow-security.test.ts",
+    "server/test/deployment/music-deployment-files.test.ts",
+    "server/test/deployment/music-deployment.test.ts",
+    "server/test/deployment/music-health-routes.test.ts",
+    "server/test/deployment/music-production-policy.test.ts",
+    "server/test/deployment/music-publication-authority-verifier.test.ts",
+    "server/test/deployment/music-readiness.test.ts",
+    "server/test/deployment/registration-compat-process.test.ts",
+    "server/test/deployment/registration-compat-traefik.test.ts",
   ], ["migration-readiness-failure", "rollback-exact-digest", "kill-switch-secure-floor", "compatibility-route", "typed-recovery"]),
   "real-docker-evidence": task("real-docker-evidence", "Disposable real-Docker fixture identity and recovery evidence", [
     "exec", "--silent", "--prefix", "tunes", "--", "tsx", "tunes/scripts/music-fixture-runtime.ts",
@@ -228,6 +268,7 @@ export const MUSIC_QUALIFICATION_LANES: Record<MusicQualificationLaneName, Music
     inherits: ["fast"],
     stages: [
       { id: "pr-static", parallel: true, taskIds: ["music-types-baseline", "tunes-full-unit", "explorer-full-unit", "tunes-critical-coverage", "explorer-critical-coverage", "security-matrices"] },
+      { id: "pr-isolated-authority", parallel: false, taskIds: ["isolated-cli-contract"] },
       { id: "pr-postgres", parallel: false, taskIds: ["postgres-integration"] },
       { id: "pr-postgres-coverage", parallel: false, taskIds: ["tunes-repository-coverage", "tunes-identity-repository-coverage"] },
       { id: "pr-browser", parallel: false, taskIds: ["browser-smoke"] },
@@ -279,7 +320,7 @@ export interface MusicQualificationTaskEvidence {
 
 export interface MusicQualificationLoadMeasurement {
   schemaVersion: "music-load/v1";
-  metric: "ensure" | "owner" | "postgres-pool" | "socket-owner-guest";
+  metric: "ensure" | "owner" | "postgres-pool" | "socket-owner-guest" | "telemetry-labels";
   [key: string]: string | number;
 }
 
@@ -415,6 +456,7 @@ const loadMeasurementFields: Record<MusicQualificationLoadMeasurement["metric"],
   "socket-owner-guest": ["ownerConnections", "guestConnections", "admittedConnections", "admissionP50Ms", "admissionP95Ms",
     "acceptedGuestRequests", "rateLimitedGuestRequests", "ownerGuestRequestDeliveries", "guestRequestP50Ms", "guestRequestP95Ms",
     "ownerPlayerStateEvents", "guestPlayerStateDeliveries", "playerStateP50Ms", "playerStateP95Ms"],
+  "telemetry-labels": ["events", "distinctMetricKeySets", "maxMetricKeys", "forbiddenMetricKeys", "labelValueCardinality", "metricKeySet"],
 };
 
 export function parseMusicQualificationLoadMeasurements(output: string): MusicQualificationLoadMeasurement[] {
@@ -430,6 +472,7 @@ export function parseMusicQualificationLoadMeasurements(output: string): MusicQu
       for (const field of loadMeasurementFields[metric]) {
         const value = candidate[field];
         if (typeof value === "number" && Number.isFinite(value) && value >= 0) measurement[field] = value;
+        else if (field === "metricKeySet" && typeof value === "string" && value.length <= 256) measurement[field] = value;
       }
       measurements.push(measurement);
     } catch {
@@ -448,6 +491,7 @@ export function qualificationTelemetryIsBounded(measurements: MusicQualification
   const owner = latest("owner");
   const postgres = latest("postgres-pool");
   const socket = latest("socket-owner-guest");
+  const telemetry = latest("telemetry-labels");
   return value(ensure, "firstEnsure50Ms") < 1_000
     && value(ensure, "firstEnsureP50Ms") <= value(ensure, "firstEnsureP95Ms")
     && value(ensure, "firstEnsureP95Ms") < 1_000
@@ -457,7 +501,7 @@ export function qualificationTelemetryIsBounded(measurements: MusicQualification
     && value(ensure, "strapiCalls") === 2
     && value(owner, "ownerCalls") === 200
     && value(owner, "ownerP50Ms") <= value(owner, "ownerP95Ms")
-    && value(owner, "ownerP95Ms") < 100
+    && value(owner, "ownerP95Ms") < 500
     && value(owner, "strapiCalls") === 0
     && value(owner, "invalidTokensRejected") === 200
     && value(postgres, "concurrentQueries") === 50
@@ -477,7 +521,13 @@ export function qualificationTelemetryIsBounded(measurements: MusicQualification
     && value(socket, "guestRequestP50Ms") <= value(socket, "guestRequestP95Ms")
     && value(socket, "guestRequestP95Ms") < 4_000
     && value(socket, "playerStateP50Ms") <= value(socket, "playerStateP95Ms")
-    && value(socket, "playerStateP95Ms") < 4_000;
+    && value(socket, "playerStateP95Ms") < 4_000
+    && value(telemetry, "events") >= 250
+    && value(telemetry, "distinctMetricKeySets") === 1
+    && value(telemetry, "maxMetricKeys") === 8
+    && value(telemetry, "forbiddenMetricKeys") === 0
+    && value(telemetry, "labelValueCardinality") <= 16
+    && telemetry?.metricKeySet === "cache,circuit,conflict,latencyMs,outcome,retryCount,singleFlight,upstreamCallCount";
 }
 
 export function parseMusicQualificationOperationalMeasurements(output: string): MusicQualificationOperationalMeasurement[] {

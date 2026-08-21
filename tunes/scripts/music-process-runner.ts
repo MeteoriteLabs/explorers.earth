@@ -11,6 +11,7 @@ export interface OwnedProcessRunnerOptions {
 
 export class OwnedProcessRunner {
   private readonly children = new Set<ChildProcess>();
+  private terminating = false;
   private readonly platform: NodeJS.Platform;
   private readonly terminationGraceMs: number;
   private readonly forceKillWaitMs: number;
@@ -19,7 +20,7 @@ export class OwnedProcessRunner {
   constructor(options: OwnedProcessRunnerOptions = {}) {
     this.platform = options.platform ?? process.platform;
     this.terminationGraceMs = options.terminationGraceMs ?? 1_000;
-    this.forceKillWaitMs = options.forceKillWaitMs ?? 1_000;
+    this.forceKillWaitMs = options.forceKillWaitMs ?? 5_000;
     this.injectedUnixGroupSignal = options.sendUnixGroupSignal;
   }
 
@@ -28,6 +29,7 @@ export class OwnedProcessRunner {
   }
 
   async run(file: string, args: string[], options: { cwd: string; env?: NodeJS.ProcessEnv } ): Promise<ChildResult> {
+    if (this.terminating) throw new Error("owned process runner is terminating");
     return await new Promise((resolve, reject) => {
       const child = spawn(file, args, {
         cwd: options.cwd,
@@ -78,6 +80,7 @@ export class OwnedProcessRunner {
   }
 
   async terminateAll(): Promise<void> {
+    this.terminating = true;
     const children = Array.from(this.children);
     await Promise.all(children.map(async (child) => {
       if (!child.pid) return;

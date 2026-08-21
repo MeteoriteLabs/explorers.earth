@@ -42,9 +42,12 @@ async function expectRejected(pool: pg.Pool, sql: string, values: unknown[] = []
 describePostgres("C3 PostgreSQL 15 migration chain", () => {
   beforeAll(async () => {
     const exactTarget = new URL(adminUrl);
+    const expectedPort = process.env.MUSIC_C10_STANDALONE_POSTGRES_ACK === "C10_LABELED_LOCAL_PG15"
+      ? process.env.MUSIC_C10_STANDALONE_POSTGRES_PORT
+      : "55432";
     expect({ protocol: exactTarget.protocol, hostname: exactTarget.hostname, port: exactTarget.port,
       pathname: exactTarget.pathname, username: exactTarget.username }).toEqual({
-      protocol: "postgresql:", hostname: "127.0.0.1", port: "55432",
+      protocol: "postgresql:", hostname: "127.0.0.1", port: expectedPort,
       pathname: "/music_fixture", username: "music_migrator",
     });
     expect(exactTarget.password).not.toBe("");

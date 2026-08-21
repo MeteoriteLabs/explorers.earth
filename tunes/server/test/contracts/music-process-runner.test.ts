@@ -9,6 +9,16 @@ import { OwnedProcessRunner } from "../../../scripts/music-process-runner.ts";
 import { runUnixTerminationContract } from "./helpers/music-process-runner-unix-harness.ts";
 
 describe("owned process termination", () => {
+  it("rejects a child that resumes after an empty termination snapshot", async () => {
+    const runner = new OwnedProcessRunner();
+    await runner.terminateAll();
+    await expect(runner.run(process.execPath, ["-e", "process.exit(0)"], {
+      cwd: process.cwd(),
+      env: process.env,
+    })).rejects.toThrow(/terminating/i);
+    expect(runner.activeChildCount).toBe(0);
+  });
+
   it("bounds Unix escalation for a real stubborn child before checkpoint and exit 130", async () => {
     // Production break caught: Unix SIGTERM has no deadline or SIGKILL, so an
     // ignoring child prevents checkpoint persistence and exit 130 forever.

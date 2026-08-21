@@ -58,7 +58,10 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(rehearsal.match(/pull_policy: "never"/g)).toHaveLength(6);
     expect(rehearsal.match(/"build", "--pull=false"/g)).toHaveLength(2);
     expect(rehearsal).toContain('["--host", dockerEndpoint, ...args]');
-    expect(rehearsal).toContain("DOCKER_HOST: dockerEndpoint");
+    expect(rehearsal).not.toContain("DOCKER_HOST: dockerEndpoint");
+    expect(fixture).toContain('docker_endpoint="$(command docker context inspect');
+    expect(fixture).toContain('command docker --host "$docker_endpoint" "$@"');
+    expect(fixture).toContain('[[ -z "${DOCKER_HOST:-}" && -z "${DOCKER_CONTEXT:-}" ]]');
     expect(rehearsal).not.toContain("ghcr.io");
     expect(rehearsal).not.toContain("GATE_PROD");
     expect(rehearsal).not.toContain("--api.insecure=true");

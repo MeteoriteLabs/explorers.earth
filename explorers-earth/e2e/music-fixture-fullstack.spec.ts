@@ -1,5 +1,4 @@
 import { expect, test } from "@playwright/test";
-import { setupMockAuthentication } from "./setup/auth";
 
 const fixtureUser = {
   id: "fixture-user-document-id",
@@ -10,11 +9,11 @@ const fixtureUser = {
 };
 
 test.beforeEach(async ({ context }) => {
-  await setupMockAuthentication(context, {
-    token: "fixture-read-only-token",
-    cookieDomain: "127.0.0.1",
-    user: fixtureUser,
-  });
+  await context.route("**/api/users/me", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify(fixtureUser),
+  }));
   await context.route("**/graphql", async (route) => {
     const query = route.request().postDataJSON()?.query ?? "";
     await route.fulfill({
@@ -25,7 +24,7 @@ test.beforeEach(async ({ context }) => {
           usersPermissionsUser: {
             __typename: "UsersPermissionsUser",
             ...fixtureUser,
-            provider: "local",
+            provider: "google",
             confirmed: true,
             accounts: [{
               __typename: "Account",
@@ -64,7 +63,7 @@ test.afterEach(async ({ page }, testInfo) => {
   }
 });
 
-test("browser reaches real Tunes, fixture Strapi, and PostgreSQL owner authority", async ({ page }) => {
+test("actual Google callback reaches real Tunes, fixture Strapi, and PostgreSQL owner authority", async ({ page }) => {
   const requests: Array<{ path: string; authorization?: string; xUsername?: string }> = [];
   page.on("request", (request) => {
     const path = new URL(request.url()).pathname;
@@ -77,6 +76,9 @@ test("browser reaches real Tunes, fixture Strapi, and PostgreSQL owner authority
     }
   });
 
+  await page.goto("/google-auth/callback?access_token=fixture-read-only-token");
+  await expect(page.getByText("Login successful! Redirecting...")).toBeVisible();
+  await expect.poll(() => requests.filter(({ path }) => path === "/api/music/identity/ensure").length).toBe(1);
   await page.goto("/recommendations/music");
   await expect(page.getByRole("heading", { name: "Music", level: 1 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Create your first playlist" })).toBeVisible();

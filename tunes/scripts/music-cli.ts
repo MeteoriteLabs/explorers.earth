@@ -1,8 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statfsSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, statfsSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
-import { isAbsolute, join, relative, resolve, win32 as windowsPath } from "node:path";
+import { tmpdir } from "node:os";
+import { basename, dirname, isAbsolute, join, relative, resolve, win32 as windowsPath } from "node:path";
 import {
   DEFAULT_MUSIC_FIXTURE_STRAPI_HOST_PORT,
   normalizeMusicFixtureChildEnvironment,
@@ -32,6 +33,8 @@ import {
   qualificationTelemetryIsBounded,
   qualificationReportMatchesAuthority,
   qualificationTaskEnvironment,
+  qualificationTaskUsesFixtureEnvironment,
+  qualificationTaskUsesStandalonePostgres,
   runMusicQualificationLane,
   type MusicQualificationExecutionResult,
   type MusicQualificationLaneName,
@@ -41,6 +44,10 @@ import {
   type MusicQualificationTask,
   type MusicQualificationTaskEvidence,
 } from "./music-qualification.ts";
+import {
+  attestC10StandalonePostgresAuthority,
+  parseC10StandalonePostgresAuthority,
+} from "./music-qualification-postgres.ts";
 
 export const MUSIC_CLI_SCHEMA_VERSION = "music-cli/v1";
 export const FIXTURE_SCHEMA_VERSION = "strapi-identity-fixture/v1";
@@ -140,7 +147,30 @@ const qualificationPorts = new Set<number>();
 let activeRun: { id: string; command: string; format: OutputFormat; started: number; context: RunContext; reconciliationCheckpoint?: string } | undefined;
 let childSequence = 0;
 let activeFixtureEnvironment: Record<string, string> = {};
+const C10_STANDALONE_POSTGRES_ENVIRONMENT_KEYS = [
+  "MUSIC_C10_STANDALONE_POSTGRES_ACK",
+  "MUSIC_C10_STANDALONE_POSTGRES_PORT",
+  "MUSIC_C10_STANDALONE_POSTGRES_CONTAINER_ID",
+  "MUSIC_C10_STANDALONE_POSTGRES_COMMIT",
+] as const;
+const C10_STANDALONE_POSTGRES_ENVIRONMENT_KEY_SET = new Set<string>(
+  C10_STANDALONE_POSTGRES_ENVIRONMENT_KEYS,
+);
+
+export function qualificationChildAmbientEnvironment(
+  taskId: string,
+  environment: NodeJS.ProcessEnv = process.env,
+): NodeJS.ProcessEnv {
+  const childEnvironment = { ...environment };
+  if (!qualificationTaskUsesStandalonePostgres(taskId)) {
+    for (const key of Object.keys(childEnvironment)) {
+      if (C10_STANDALONE_POSTGRES_ENVIRONMENT_KEY_SET.has(key.toUpperCase())) delete childEnvironment[key];
+    }
+  }
+  return childEnvironment;
+}
 let qualificationInterruptProbeScheduled = false;
+let qualificationInterruptionRequested = false;
 
 class MusicCommandError extends Error {
   readonly phase: string;
@@ -204,32 +234,81 @@ export function sanitizeMusicCliText(value: string, exactSensitiveValues: readon
     .sort((left, right) => right.length - left.length)
     .reduce((output, candidate) => output.split(candidate).join("[REDACTED]"), value);
   return exactRedacted
+    .split(root).join("<repository-root>")
+    .split(root.replaceAll("\\", "/")).join("<repository-root>")
+    .replace(/[A-Za-z]:[\\/](?:Users|Documents and Settings)[\\/][^\\/\s"',}]+/gi, "<developer-home>")
+    .replace(/\/(?:home|Users)\/[^/\s"',}]+/g, "<developer-home>")
     .replace(/(postgres(?:ql)?:\/\/)[^:@/\s]+:[^@/\s]+@/gi, "$1[REDACTED]@")
+    .replace(/\b([A-Z][A-Z0-9_]*(?:PASSWORD|SECRET|TOKEN|AUTHORIZATION|CREDENTIAL|API_KEY)[A-Z0-9_]*)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s,\]}]+)/gi, "$1=[REDACTED]")
     .replace(/\b(password|secret|token|api[_-]?key|authorization)\b\s*[:=]\s*[^\s,}]+/gi, "$1=[REDACTED]")
     .replace(/Bearer\s+[A-Za-z0-9._~+\/-]+=*/gi, "Bearer [REDACTED]");
 }
 const sanitize = sanitizeMusicCliText;
 const sensitiveStructuredKey = /(?:password|secret|token|authorization|api[_-]?key|credential)/i;
-export function redactStructuredData(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(redactStructuredData);
+export function redactStructuredData(value: unknown, exactSensitiveValues: readonly string[] = []): unknown {
+  if (Array.isArray(value)) return value.map((entry) => redactStructuredData(entry, exactSensitiveValues));
   if (value && typeof value === "object") return Object.fromEntries(
-    Object.entries(value).map(([key, nested]) => [key, sensitiveStructuredKey.test(key) ? "[REDACTED]" : redactStructuredData(nested)]),
+    Object.entries(value).map(([key, nested]) => {
+      const safeNumericTelemetry = key === "invalidTokensRejected"
+        && typeof nested === "number" && Number.isFinite(nested) && nested >= 0;
+      return [
+        key,
+        sensitiveStructuredKey.test(key) && !safeNumericTelemetry
+          ? "[REDACTED]"
+          : redactStructuredData(nested, exactSensitiveValues),
+      ];
+    }),
   );
-  return typeof value === "string" ? sanitize(value) : value;
+  return typeof value === "string" ? sanitizeMusicCliText(value, exactSensitiveValues) : value;
 }
 function sanitizeStructuredOutput(value: string, exactSensitiveValues: readonly string[] = []): string {
-  try { return sanitizeMusicCliText(JSON.stringify(redactStructuredData(JSON.parse(value))), exactSensitiveValues); }
+  try { return sanitizeMusicCliText(JSON.stringify(redactStructuredData(JSON.parse(value), exactSensitiveValues)), exactSensitiveValues); }
   catch { return sanitizeMusicCliText(value, exactSensitiveValues); }
+}
+export function sanitizeMusicChildArtifactOutput(
+  command: "npm" | "docker" | "node",
+  phase: string,
+  value: string,
+  exactSensitiveValues: readonly string[] = [],
+): string {
+  if (command === "docker" && [
+    "compose-config", "inspect-containers", "inspect-networks", "inspect-volumes", "docker-daemon",
+  ].includes(phase)) return `[DOCKER_STRUCTURED_OUTPUT_REDACTED bytes=${Buffer.byteLength(value, "utf8")}]`;
+  return sanitizeStructuredOutput(value, exactSensitiveValues);
 }
 function redactedError(value: unknown): string { return sanitize(value instanceof Error ? value.message : String(value)); }
 function runId(): string { return `${new Date().toISOString().replace(/[-:.TZ]/g, "")}-${randomBytes(4).toString("hex")}`; }
 function runDirectory(id: string): string { const directory = join(artifactRoot, id); mkdirSync(directory, { recursive: true }); return directory; }
-function writeArtifact(id: string, name: string, content: string): string { const target = join(runDirectory(id), name); writeFileSync(target, sanitize(content)); return target; }
+function currentSensitiveValues(): string[] {
+  return Object.entries(activeFixtureEnvironment)
+    .filter(([key, value]) => /(?:password|secret|token|authorization|credential|database_url)/i.test(key) && value.length >= 8)
+    .map(([, value]) => value);
+}
+function writeArtifact(id: string, name: string, content: string): string {
+  const target = join(runDirectory(id), name);
+  writeFileSync(target, sanitizeStructuredOutput(content, currentSensitiveValues()));
+  return target;
+}
 function portableQualificationArtifact(path: string): string {
   const target = isAbsolute(path) ? path : resolve(root, path);
   const relationship = relative(root, target);
   if (!relationship || relationship.startsWith("..") || isAbsolute(relationship)) return "[OUTSIDE_REPOSITORY]";
   return relationship.replace(/\\/g, "/");
+}
+
+export function sanitizeMusicCheckpointData(value: unknown, exactSensitiveValues: readonly string[] = []): unknown {
+  const portablePaths = (entry: unknown): unknown => {
+    if (Array.isArray(entry)) return entry.map(portablePaths);
+    if (!entry || typeof entry !== "object") return entry;
+    return Object.fromEntries(Object.entries(entry).map(([key, nested]) => {
+      if (key === "artifacts" && Array.isArray(nested)) {
+        return [key, nested.map((path) => typeof path === "string" ? portableQualificationArtifact(path) : portablePaths(path))];
+      }
+      if (key === "checkpoint" && typeof nested === "string") return [key, portableQualificationArtifact(nested)];
+      return [key, portablePaths(nested)];
+    }));
+  };
+  return redactStructuredData(portablePaths(value), exactSensitiveValues);
 }
 
 function readEnvFile(file: string): Record<string, string> {
@@ -348,6 +427,7 @@ function fileHash(path: string): string {
 }
 
 function buildRunContext(options: { allowInvalidEnvironment?: boolean; useExampleForRetiredEnvironment?: boolean } = {}): RunContext {
+  const commit = readGitSha();
   const fixture = JSON.parse(readFileSync(join(root, "fixtures/strapi/music-identity/identity.fixture.json"), "utf8")) as StrapiIdentityFixture;
   let rawEnvironment: Record<string, string> = {};
   let environmentContents = "";
@@ -372,7 +452,12 @@ function buildRunContext(options: { allowInvalidEnvironment?: boolean; useExampl
     MUSIC_EXPECTED_MIGRATION_ID: environment?.MUSIC_EXPECTED_MIGRATION_ID ?? rawEnvironment.MUSIC_EXPECTED_MIGRATION_ID ?? "invalid",
   };
   let databaseTarget = "missing";
-  try { const database = new URL(rawEnvironment.DATABASE_URL_TEST); databaseTarget = `${database.protocol}//${database.hostname}:${database.port}${database.pathname}`; } catch { databaseTarget = "invalid"; }
+  const standalonePostgres = attestC10StandalonePostgresAuthority(process.env, commit);
+  try {
+    const database = new URL(rawEnvironment.DATABASE_URL_TEST);
+    if (standalonePostgres) database.port = String(standalonePostgres.port);
+    databaseTarget = `${database.protocol}//${database.hostname}:${database.port}${database.pathname}`;
+  } catch { databaseTarget = "invalid"; }
   const configurationHashes = Object.fromEntries([
     composeFile,
     "fixtures/strapi/music-identity/identity.fixture.json",
@@ -382,6 +467,10 @@ function buildRunContext(options: { allowInvalidEnvironment?: boolean; useExampl
     "tunes/package.json",
   ].map((file) => [file, fileHash(join(root, file))]));
   configurationHashes["active-environment"] = createHash("sha256").update(environmentContents).digest("hex");
+  if (standalonePostgres) {
+    configurationHashes["standalone-postgres-image"] = standalonePostgres.imageId;
+    configurationHashes["standalone-postgres-container"] = createHash("sha256").update(standalonePostgres.containerId).digest("hex");
+  }
   const environmentFingerprint = createEnvironmentFingerprint({
     platform: process.platform,
     arch: process.arch,
@@ -397,7 +486,7 @@ function buildRunContext(options: { allowInvalidEnvironment?: boolean; useExampl
     gateValues,
     configurationHashes,
   });
-  return { commit: readGitSha(), fixtureVersion: fixture.fixtureVersion, fixtureSchemaVersion: fixture.schemaVersion, gateValues, environmentFingerprint };
+  return { commit, fixtureVersion: fixture.fixtureVersion, fixtureSchemaVersion: fixture.schemaVersion, gateValues, environmentFingerprint };
 }
 
 export function createTrackedMusicReconciliationAuthorityFingerprint(repositoryRoot = root): string {
@@ -420,7 +509,10 @@ function buildTrackedReconciliationContext(): RunContext {
 function writeCheckpoint(id: string, context: RunContext, result: RunResult): string {
   const target = join(runDirectory(id), "checkpoint.json");
   const temporary = `${target}.${process.pid}.tmp`;
-  writeFileSync(temporary, JSON.stringify({ schemaVersion: MUSIC_CLI_SCHEMA_VERSION, ...context, ...result }, null, 2));
+  writeFileSync(temporary, JSON.stringify(sanitizeMusicCheckpointData(
+    { schemaVersion: MUSIC_CLI_SCHEMA_VERSION, ...context, ...result },
+    currentSensitiveValues(),
+  ), null, 2));
   renameSync(temporary, target);
   return target;
 }
@@ -648,16 +740,70 @@ export function resolveNpmCommand(input: { npmExecPath?: string; nodeExecPath: s
   };
   return { file: "npm", args: [] };
 }
+export function resolveC10IsolatedDockerExecutable(
+  environment: NodeJS.ProcessEnv,
+  options: { platform?: NodeJS.Platform; nodeExecPath?: string; temporaryRoot?: string } = {},
+): { file: string; args: string[] } | undefined {
+  const scriptAuthority = environment.MUSIC_C10_ISOLATED_DOCKER_SCRIPT;
+  const acknowledgement = environment.MUSIC_C10_ISOLATED_DOCKER_ACK;
+  if (!scriptAuthority && !acknowledgement) return undefined;
+  if (!scriptAuthority || acknowledgement !== "C10_MUTATION_BLOCKED") {
+    throw new SafetyError("isolated Docker authority is incomplete", "qualification-docker-authority");
+  }
+  if (["DOCKER_HOST", "DOCKER_CONTEXT", "GATE_PROD", "MUSIC_DEPLOY_PRODUCTION", "MUSIC_DEPLOY_PROD"]
+    .some((key) => Boolean(environment[key]))) {
+    throw new SafetyError("ambient Docker or production authority is forbidden for the isolated CLI contract", "qualification-docker-authority");
+  }
+  const temporaryRoot = realpathSync(options.temporaryRoot ?? tmpdir());
+  const script = realpathSync(scriptAuthority);
+  const relationship = relative(temporaryRoot, script);
+  const segments = relationship.split(/[\\/]/);
+  if (relationship.startsWith("..") || segments.length !== 3
+      || !segments[0]!.startsWith("music-c10-cli-contract-")
+      || segments[1] !== "fake-docker" || segments[2] !== "fake-docker.cjs") {
+    throw new SafetyError("isolated Docker script escaped its disposable authority", "qualification-docker-authority");
+  }
+  const authority = lstatSync(script);
+  if (!authority.isFile() || authority.isSymbolicLink()) {
+    throw new SafetyError("isolated Docker script is not a regular authority", "qualification-docker-authority");
+  }
+  return { file: options.nodeExecPath ?? process.execPath, args: [script] };
+}
+export function resolveC10IsolatedNpmExecutable(
+  environment: NodeJS.ProcessEnv,
+  options: { nodeExecPath?: string; temporaryRoot?: string } = {},
+): { file: string; args: string[] } | undefined {
+  const scriptAuthority = environment.MUSIC_C10_ISOLATED_NPM_EXECPATH;
+  if (!scriptAuthority) return undefined;
+  const docker = resolveC10IsolatedDockerExecutable(environment, options);
+  const script = realpathSync(scriptAuthority);
+  if (!docker || dirname(script) !== dirname(docker.args[0]!) || basename(script) !== "fake-npm.cjs") {
+    throw new SafetyError("isolated npm script escaped its disposable Docker authority", "qualification-npm-authority");
+  }
+  const authority = lstatSync(script);
+  if (!authority.isFile() || authority.isSymbolicLink()) {
+    throw new SafetyError("isolated npm script is not a regular authority", "qualification-npm-authority");
+  }
+  return { file: options.nodeExecPath ?? process.execPath, args: [script] };
+}
+export function resolveC10StandalonePostgresPort(environment: NodeJS.ProcessEnv): number | undefined {
+  return parseC10StandalonePostgresAuthority(environment)?.port;
+}
 function executable(command: "npm" | "docker" | "node"): { file: string; args: string[] } {
-  if (command === "npm") return resolveNpmCommand({ npmExecPath: process.env.npm_execpath, nodeExecPath: process.execPath, platform: process.platform });
+  if (command === "npm") return resolveC10IsolatedNpmExecutable(process.env)
+    ?? resolveNpmCommand({ npmExecPath: process.env.npm_execpath, nodeExecPath: process.execPath, platform: process.platform });
   if (command === "node") return { file: process.execPath, args: [] };
+  const isolatedDocker = resolveC10IsolatedDockerExecutable(process.env);
+  if (isolatedDocker) return isolatedDocker;
   return { file: process.platform === "win32" ? "docker.exe" : "docker", args: [] };
 }
 
 async function runChild(id: string, command: "npm" | "docker" | "node", args: string[], phase: string, failureExitCode: number): Promise<{ stdout: string; stderr: string; artifact: string }> {
   const resolved = executable(command);
   const result = await runner.run(resolved.file, [...resolved.args, ...args], { cwd: root, env: { ...process.env, ...activeFixtureEnvironment } });
-  const artifact = writeArtifact(id, `child-${String(++childSequence).padStart(3, "0")}-${phase}.log`, `$ ${command} ${args.join(" ")}\nexit=${result.exitCode}\nstdout:\n${sanitizeStructuredOutput(result.stdout)}\nstderr:\n${sanitizeStructuredOutput(result.stderr)}`);
+  let sensitiveValues = currentSensitiveValues();
+  try { sensitiveValues = await qualificationSensitiveValues(activeFixtureEnvironment); } catch { /* bounded fallback */ }
+  const artifact = writeArtifact(id, `child-${String(++childSequence).padStart(3, "0")}-${phase}.log`, `$ ${command} ${sanitizeMusicCliText(args.join(" "), sensitiveValues)}\nexit=${result.exitCode}\nstdout:\n${sanitizeMusicChildArtifactOutput(command, phase, result.stdout, sensitiveValues)}\nstderr:\n${sanitizeStructuredOutput(result.stderr, sensitiveValues)}`);
   if (result.exitCode !== 0) throw new MusicCommandError(`${command} ${args.join(" ")} failed with exit ${result.exitCode}; see ${portableQualificationArtifact(artifact)}`, phase, failureExitCode);
   return { ...result, artifact };
 }
@@ -681,11 +827,21 @@ async function runQualificationTask(
     .map(([, value]) => value);
   let timer: NodeJS.Timeout | undefined;
   try {
-    if (!timedOut) {
+    if (!timedOut && !qualificationInterruptionRequested) {
       sensitiveValues = await qualificationSensitiveValues(activeFixtureEnvironment);
-      const databaseUrlTest = taskEnvironment.MUSIC_C3_POSTGRES_TEST === "1"
+      let databaseUrlTest = taskEnvironment.MUSIC_C3_POSTGRES_TEST === "1"
         ? await fixtureMigratorUrl(activeFixtureEnvironment)
         : undefined;
+      const childAmbientEnvironment = qualificationChildAmbientEnvironment(task.id);
+      const standalonePostgres = databaseUrlTest && qualificationTaskUsesStandalonePostgres(task.id)
+        ? attestC10StandalonePostgresAuthority(process.env, readGitSha())
+        : undefined;
+      if (databaseUrlTest && standalonePostgres) {
+        const standaloneDatabase = new URL(databaseUrlTest);
+        standaloneDatabase.hostname = "127.0.0.1";
+        standaloneDatabase.port = String(standalonePostgres.port);
+        databaseUrlTest = standaloneDatabase.toString();
+      }
       if (task.npmArgs.includes("test:e2e") && !taskEnvironment.PLAYWRIGHT_EXTERNAL_BASE_URL) {
         const preferred = preferredQualificationPort(task.id);
         for (let offset = 0; offset <= 4_000; offset += 1) {
@@ -701,8 +857,8 @@ async function runQualificationTask(
       const completion = taskRunner.run(resolved.file, [...resolved.args, ...task.npmArgs], {
         cwd: root,
         env: {
-          ...process.env,
-          ...activeFixtureEnvironment,
+          ...childAmbientEnvironment,
+          ...(qualificationTaskUsesFixtureEnvironment(task.id) ? activeFixtureEnvironment : {}),
           ...taskEnvironment,
           ...(databaseUrlTest ? { DATABASE_URL_TEST: databaseUrlTest } : {}),
           ...(playwrightPort ? { PLAYWRIGHT_PORT: String(playwrightPort) } : {}),
@@ -719,6 +875,8 @@ async function runQualificationTask(
         }, Math.max(1, remainingBudgetMs));
       });
       result = await Promise.race([completion, timeout]) ?? await completion;
+    } else if (qualificationInterruptionRequested) {
+      result = { exitCode: EXIT.interrupted, stdout: "", stderr: "qualification interrupted before child start" };
     }
   } catch (error) {
     result = { exitCode: 1, stdout: "", stderr: redactedError(error) };
@@ -1143,6 +1301,7 @@ async function main(): Promise<number> {
 }
 
 async function interrupted(): Promise<void> {
+  qualificationInterruptionRequested = true;
   if (!activeRun) process.exit(EXIT.interrupted);
   const run = activeRun;
   let checkpoint = "";

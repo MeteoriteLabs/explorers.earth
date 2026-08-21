@@ -1,7 +1,24 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseMusicCliArguments, sanitizeMusicCliText, selectMusicTimeToFirstGreen } from "../../../scripts/music-cli";
+import { validateIntegrationDatabaseTarget } from "../integration-global-setup";
+import {
+  attestC10StandalonePostgresAuthority,
+  parseC10StandalonePostgresAuthority,
+  validateC10StandalonePostgresInspect,
+} from "../../../scripts/music-qualification-postgres";
+import {
+  parseMusicCliArguments,
+  qualificationChildAmbientEnvironment,
+  resolveC10IsolatedDockerExecutable,
+  resolveC10IsolatedNpmExecutable,
+  resolveC10StandalonePostgresPort,
+  sanitizeMusicCheckpointData,
+  sanitizeMusicChildArtifactOutput,
+  sanitizeMusicCliText,
+  selectMusicTimeToFirstGreen,
+} from "../../../scripts/music-cli";
 import {
   attachMusicQualificationMeasurements,
   MUSIC_QUALIFICATION_LANES,
@@ -11,6 +28,7 @@ import {
   parseMusicQualificationOperationalMeasurements,
   percentile,
   preferredQualificationPort,
+  qualificationTaskUsesFixtureEnvironment,
   qualificationTaskEnvironment,
   runMusicQualificationLane,
   sanitizeQualificationText,
@@ -20,6 +38,209 @@ import {
 } from "../../../scripts/music-qualification";
 
 describe("portable Music qualification lanes", () => {
+  it("injects disposable fixture authority only into tasks that cross the real fixture boundary", () => {
+    expect([
+      "postgres-integration",
+      "tunes-repository-coverage",
+      "tunes-identity-repository-coverage",
+      "load-postgres",
+      "chaos-postgres",
+      "real-docker-evidence",
+    ].every(qualificationTaskUsesFixtureEnvironment)).toBe(true);
+    expect([
+      "tunes-unit",
+      "tunes-full-unit",
+      "isolated-cli-contract",
+      "explorer-full-unit",
+      "security-matrices",
+      "release-rehearsal",
+    ].some(qualificationTaskUsesFixtureEnvironment)).toBe(false);
+    const cliSource = readFileSync(resolve(import.meta.dirname, "../../../scripts/music-cli.ts"), "utf8");
+    expect(cliSource).toContain("qualificationTaskUsesFixtureEnvironment(task.id) ? activeFixtureEnvironment : {}");
+    expect(cliSource).not.toContain("...activeFixtureEnvironment,\n          ...taskEnvironment");
+  });
+
+  it("strips standalone PG authority from every child outside the exact standalone-PG task allowlist", () => {
+    const ambient = {
+      PATH: "bounded-path",
+      MUSIC_C10_STANDALONE_POSTGRES_ACK: "C10_LABELED_LOCAL_PG15",
+      MUSIC_C10_STANDALONE_POSTGRES_PORT: "55539",
+      MUSIC_C10_STANDALONE_POSTGRES_CONTAINER_ID: "a".repeat(64),
+      MUSIC_C10_STANDALONE_POSTGRES_COMMIT: "c".repeat(40),
+    };
+    expect(qualificationChildAmbientEnvironment("tunes-full-unit", ambient)).toEqual({ PATH: "bounded-path" });
+    expect(qualificationChildAmbientEnvironment("postgres-integration", ambient)).toEqual(ambient);
+    expect(qualificationChildAmbientEnvironment("real-docker-evidence", ambient)).toEqual({ PATH: "bounded-path" });
+    const hostileCasing = {
+      Path: "bounded-path",
+      music_c10_standalone_postgres_ack: "C10_LABELED_LOCAL_PG15",
+      Music_C10_Standalone_Postgres_Port: "55539",
+      MUSIC_c10_STANDALONE_POSTGRES_CONTAINER_ID: "a".repeat(64),
+      music_C10_standalone_postgres_commit: "c".repeat(40),
+    };
+    expect(qualificationChildAmbientEnvironment("tunes-full-unit", hostileCasing)).toEqual({ Path: "bounded-path" });
+    expect(qualificationChildAmbientEnvironment("postgres-integration", hostileCasing)).toEqual(hostileCasing);
+    expect(qualificationChildAmbientEnvironment("real-docker-evidence", hostileCasing)).toEqual({ Path: "bounded-path" });
+  });
+
+  it("requires an explicit bounded loopback port acknowledgement for standalone PG qualification", () => {
+    const containerId = "a".repeat(64);
+    const commit = "c".repeat(40);
+    expect(resolveC10StandalonePostgresPort({})).toBeUndefined();
+    expect(resolveC10StandalonePostgresPort({
+      MUSIC_C10_STANDALONE_POSTGRES_ACK: "C10_LABELED_LOCAL_PG15",
+      MUSIC_C10_STANDALONE_POSTGRES_PORT: "55539",
+      MUSIC_C10_STANDALONE_POSTGRES_CONTAINER_ID: containerId,
+      MUSIC_C10_STANDALONE_POSTGRES_COMMIT: commit,
+    })).toBe(55539);
+    expect(() => resolveC10StandalonePostgresPort({
+      MUSIC_C10_STANDALONE_POSTGRES_PORT: "55539",
+    })).toThrow(/acknowledgement/i);
+    expect(() => resolveC10StandalonePostgresPort({
+      MUSIC_C10_STANDALONE_POSTGRES_ACK: "C10_LABELED_LOCAL_PG15",
+      MUSIC_C10_STANDALONE_POSTGRES_PORT: "55432",
+      MUSIC_C10_STANDALONE_POSTGRES_CONTAINER_ID: containerId,
+      MUSIC_C10_STANDALONE_POSTGRES_COMMIT: commit,
+    })).toThrow(/five-service/i);
+  });
+
+  it("attests the exact owned local PG15 container before exposing its port", () => {
+    const containerId = "a".repeat(64);
+    const imageId = `sha256:${"b".repeat(64)}`;
+    const commit = "c".repeat(40);
+    const authority = parseC10StandalonePostgresAuthority({
+      MUSIC_C10_STANDALONE_POSTGRES_ACK: "C10_LABELED_LOCAL_PG15",
+      MUSIC_C10_STANDALONE_POSTGRES_PORT: "55539",
+      MUSIC_C10_STANDALONE_POSTGRES_CONTAINER_ID: containerId,
+      MUSIC_C10_STANDALONE_POSTGRES_COMMIT: commit,
+    });
+    expect(authority).toEqual({ port: 55539, containerId, commit });
+    const inspect = {
+      Id: containerId,
+      Name: `/music-c10-qualification-${commit.slice(0, 7)}-pg15`,
+      Image: imageId,
+      Config: {
+        Image: "postgres:15-alpine",
+        Labels: {
+          "com.explorers.music.c10-qualification": "true",
+          "com.explorers.music.owner": "task10",
+          "com.explorers.music.commit": commit,
+        },
+      },
+      State: { Running: true, Health: { Status: "healthy" } },
+      HostConfig: { PortBindings: { "5432/tcp": [{ HostIp: "127.0.0.1", HostPort: "55539" }] } },
+    };
+    expect(validateC10StandalonePostgresInspect(authority!, {
+      contextHost: "npipe:////./pipe/dockerDesktopLinuxEngine",
+      imageId,
+      inspect,
+    })).toEqual(expect.objectContaining({ port: 55539, imageId }));
+    expect(() => validateC10StandalonePostgresInspect(authority!, {
+      contextHost: "tcp://prod.example:2376", imageId, inspect,
+    })).toThrow(/local Docker/i);
+    expect(() => validateC10StandalonePostgresInspect(authority!, {
+      contextHost: "npipe:////./pipe/dockerDesktopLinuxEngine", imageId,
+      inspect: { ...inspect, Config: { ...inspect.Config, Labels: {} } },
+    })).toThrow(/owned PG15/i);
+  });
+
+  it("pins every Docker authority read to the validated local endpoint", () => {
+    const containerId = "a".repeat(64);
+    const imageId = `sha256:${"b".repeat(64)}`;
+    const commit = "c".repeat(40);
+    const contextHost = "npipe:////./pipe/dockerDesktopLinuxEngine";
+    const calls: string[][] = [];
+    const inspect = {
+      Id: containerId,
+      Name: `/music-c10-qualification-${commit.slice(0, 7)}-pg15`,
+      Image: imageId,
+      Config: { Image: "postgres:15-alpine", Labels: {
+        "com.explorers.music.c10-qualification": "true",
+        "com.explorers.music.owner": "task10",
+        "com.explorers.music.commit": commit,
+      } },
+      State: { Running: true, Health: { Status: "healthy" } },
+      HostConfig: { PortBindings: { "5432/tcp": [{ HostIp: "127.0.0.1", HostPort: "55539" }] } },
+    };
+    const authority = attestC10StandalonePostgresAuthority({
+      MUSIC_C10_STANDALONE_POSTGRES_ACK: "C10_LABELED_LOCAL_PG15",
+      MUSIC_C10_STANDALONE_POSTGRES_PORT: "55539",
+      MUSIC_C10_STANDALONE_POSTGRES_CONTAINER_ID: containerId,
+      MUSIC_C10_STANDALONE_POSTGRES_COMMIT: commit,
+    }, commit, {
+      dockerRead: (args) => {
+        calls.push(args);
+        if (args[0] === "context" && args[1] === "show") return "desktop-linux\n";
+        if (args[0] === "context" && args[1] === "inspect") return JSON.stringify(contextHost);
+        if (args.includes("--type")) return JSON.stringify(inspect);
+        if (args.includes("image")) return `${imageId}\n`;
+        throw new Error(`unexpected Docker read: ${args.join(" ")}`);
+      },
+    });
+    expect(authority).toEqual(expect.objectContaining({ port: 55539, imageId }));
+    expect(calls.slice(2)).toHaveLength(2);
+    expect(calls.slice(2).every((args) => args[0] === "--host" && args[1] === contextHost)).toBe(true);
+  });
+
+  it("lets integration setup use only the acknowledged standalone PG target", () => {
+    expect(validateIntegrationDatabaseTarget("postgresql://music_migrator:secret@127.0.0.1:55539/music_fixture", {
+      MUSIC_C10_STANDALONE_POSTGRES_ACK: "C10_LABELED_LOCAL_PG15",
+      MUSIC_C10_STANDALONE_POSTGRES_PORT: "55539",
+      MUSIC_C10_STANDALONE_POSTGRES_CONTAINER_ID: "a".repeat(64),
+      MUSIC_C10_STANDALONE_POSTGRES_COMMIT: "c".repeat(40),
+    }).port).toBe("55539");
+    expect(() => validateIntegrationDatabaseTarget("postgresql://music_migrator:secret@127.0.0.1:55539/music_fixture", {}))
+      .toThrow(/exact disposable/i);
+    expect(() => validateIntegrationDatabaseTarget("postgresql://music_migrator:secret@localhost:55539/music_fixture", {
+      MUSIC_C10_STANDALONE_POSTGRES_ACK: "C10_LABELED_LOCAL_PG15",
+      MUSIC_C10_STANDALONE_POSTGRES_PORT: "55539",
+      MUSIC_C10_STANDALONE_POSTGRES_CONTAINER_ID: "a".repeat(64),
+      MUSIC_C10_STANDALONE_POSTGRES_COMMIT: "c".repeat(40),
+    })).toThrow(/exact disposable/i);
+  });
+
+  it("runs the isolated CLI contract behind a Docker mutation boundary", () => {
+    const helper = readFileSync(resolve(import.meta.dirname, "../../../scripts/music-isolated-cli-contract.ts"), "utf8");
+    expect(helper).toContain("fixture Docker mutation blocked");
+    expect(helper).toContain("fakeDockerDirectory");
+    expect(helper).toContain("MUSIC_C10_ISOLATED_DOCKER_SCRIPT");
+    expect(helper).toContain("compose-config fixture model");
+  });
+
+  it("resolves the isolated Docker script explicitly on Windows and rejects ambient daemon authority", () => {
+    const parent = mkdtempSync(join(tmpdir(), "music-c10-cli-contract-"));
+    const directory = join(parent, "fake-docker");
+    const script = join(directory, "fake-docker.cjs");
+    const npmScript = join(directory, "fake-npm.cjs");
+    try {
+      mkdirSync(directory);
+      writeFileSync(script, "process.exit(70);\n");
+      writeFileSync(npmScript, "process.exit(70);\n");
+      expect(resolveC10IsolatedDockerExecutable({
+        MUSIC_C10_ISOLATED_DOCKER_ACK: "C10_MUTATION_BLOCKED",
+        MUSIC_C10_ISOLATED_DOCKER_SCRIPT: script,
+      }, { platform: "win32", nodeExecPath: "C:\\node\\node.exe", temporaryRoot: tmpdir() })).toEqual({
+        file: "C:\\node\\node.exe",
+        args: [script],
+      });
+      expect(resolveC10IsolatedNpmExecutable({
+        MUSIC_C10_ISOLATED_DOCKER_ACK: "C10_MUTATION_BLOCKED",
+        MUSIC_C10_ISOLATED_DOCKER_SCRIPT: script,
+        MUSIC_C10_ISOLATED_NPM_EXECPATH: npmScript,
+      }, { nodeExecPath: "C:\\node\\node.exe", temporaryRoot: tmpdir() })).toEqual({
+        file: "C:\\node\\node.exe",
+        args: [npmScript],
+      });
+      expect(() => resolveC10IsolatedDockerExecutable({
+        MUSIC_C10_ISOLATED_DOCKER_ACK: "C10_MUTATION_BLOCKED",
+        MUSIC_C10_ISOLATED_DOCKER_SCRIPT: script,
+        DOCKER_HOST: "tcp://127.0.0.1:2375",
+      }, { platform: "win32", nodeExecPath: "C:\\node\\node.exe", temporaryRoot: tmpdir() })).toThrow(/ambient Docker/i);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
   it("exposes every lane through the one C0 Node CLI and root package contract", () => {
     for (const lane of ["fast", "pr", "nightly", "release"] as const) {
       expect(parseMusicCliArguments([`test:${lane}`])).toMatchObject({ command: `test:${lane}`, format: "human" });
@@ -71,12 +292,36 @@ describe("portable Music qualification lanes", () => {
   it("keeps long release recovery executables out of the 15-minute PR task and in release", () => {
     expect(MUSIC_QUALIFICATION_TASKS["tunes-full-unit"].npmArgs).toEqual(expect.arrayContaining([
       "--exclude", "server/test/deployment/**",
+      "--exclude", "server/test/contracts/music-cli-contract.test.ts",
+      "--maxWorkers=2",
+      "--testTimeout=15000",
     ]));
-    expect(MUSIC_QUALIFICATION_TASKS["release-rehearsal"].npmArgs)
-      .toContain("server/test/deployment/music-deploy-executable.test.ts");
+    const deploymentContracts = [
+      "music-command-plan.test.ts",
+      "music-deploy-executable.test.ts",
+      "music-deploy-workflow-security.test.ts",
+      "music-deployment-files.test.ts",
+      "music-deployment.test.ts",
+      "music-health-routes.test.ts",
+      "music-production-policy.test.ts",
+      "music-publication-authority-verifier.test.ts",
+      "music-readiness.test.ts",
+      "registration-compat-process.test.ts",
+      "registration-compat-traefik.test.ts",
+    ].map((name) => `server/test/deployment/${name}`);
+    const releaseArgs = MUSIC_QUALIFICATION_TASKS["release-rehearsal"].npmArgs;
+    expect(deploymentContracts.every((path) => releaseArgs.includes(path))).toBe(true);
+    expect(releaseArgs.filter((value) => value.startsWith("server/test/deployment/")))
+      .toEqual(deploymentContracts);
+    expect(MUSIC_QUALIFICATION_TASKS["isolated-cli-contract"].npmArgs)
+      .toContain("tunes/scripts/music-isolated-cli-contract.ts");
+    expect(MUSIC_QUALIFICATION_LANES.pr.stages.flatMap((stage) => stage.taskIds))
+      .toContain("isolated-cli-contract");
   });
 
   it("adds real five-service browser and Docker evidence to nightly and release", () => {
+    expect(MUSIC_QUALIFICATION_TASKS["fullstack-browser"].npmArgs)
+      .toContain("music-auth-triggers.spec.ts");
     expect(MUSIC_QUALIFICATION_TASKS["fixture-fullstack-browser"].npmArgs)
       .toContain("music-fixture-fullstack.spec.ts");
     expect(MUSIC_QUALIFICATION_TASKS["real-docker-evidence"].npmArgs)
@@ -111,6 +356,12 @@ describe("portable Music qualification lanes", () => {
     expect(cli).toContain('process.emit("SIGINT")');
   });
 
+  it("collects identity load and telemetry labels through HTTP, repositories, and PostgreSQL", () => {
+    expect(MUSIC_QUALIFICATION_TASKS["load-postgres"].npmArgs)
+      .toContain("server/test/load/music-load-http-postgres.integration.test.ts");
+    expect(qualificationTaskEnvironment("load-postgres")).toMatchObject({ MUSIC_C10_POSTGRES_TEST: "1" });
+  });
+
   it("builds the five-service Explorer against the fixture Tunes authority", () => {
     const root = resolve(import.meta.dirname, "../../../..");
     const compose = readFileSync(resolve(root, "docker-compose.music-test.yml"), "utf8");
@@ -125,6 +376,8 @@ describe("portable Music qualification lanes", () => {
     const browserFixture = readFileSync(resolve(root, "explorers-earth/e2e/music-fixture-fullstack.spec.ts"), "utf8");
     expect(browserFixture).toContain('context.route("https://music-fixture.invalid/**"');
     expect(browserFixture).toContain('route.fetch({ url: `http://127.0.0.1:55000${upstream.pathname}${upstream.search}` })');
+    expect(browserFixture).toContain('/google-auth/callback?access_token=fixture-read-only-token');
+    expect(browserFixture).not.toContain("setupMockAuthentication");
   });
 
   it("runs the complete Explorer unit suite in PR while fast remains affected-only", () => {
@@ -163,6 +416,7 @@ describe("portable Music qualification lanes", () => {
       MUSIC_C7_POSTGRES_TEST: "1",
       MUSIC_C8_POSTGRES_TEST: "1",
       MUSIC_C9_PUBLICATION_POSTGRES_TEST: "1",
+      MUSIC_C10_POSTGRES_TEST: "1",
     });
     expect(qualificationTaskEnvironment("tunes-unit")).toEqual({});
   });
@@ -308,7 +562,7 @@ describe("portable Music qualification lanes", () => {
       firstEnsureP50Ms: 10, firstEnsureP95Ms: 11, cachedP95Ms: 1, strapiCalls: 2,
     }]);
 
-    expect(qualificationTelemetryIsBounded([
+    const realPathMeasurements = [
       { schemaVersion: "music-load/v1", metric: "ensure", firstEnsure50Ms: 12, firstEnsureP50Ms: 10,
         firstEnsureP95Ms: 11, cachedCalls: 200, cachedP50Ms: 1, cachedP95Ms: 1, strapiCalls: 2 },
       { schemaVersion: "music-load/v1", metric: "owner", ownerCalls: 200, ownerP50Ms: 1,
@@ -319,7 +573,12 @@ describe("portable Music qualification lanes", () => {
         rateLimitedGuestRequests: 8, ownerGuestRequestDeliveries: 192, guestRequestP50Ms: 4,
         guestRequestP95Ms: 5, ownerPlayerStateEvents: 12, guestPlayerStateDeliveries: 288,
         playerStateP50Ms: 3, playerStateP95Ms: 4 },
-    ])).toBe(true);
+      { schemaVersion: "music-load/v1", metric: "telemetry-labels", events: 274, distinctMetricKeySets: 1,
+        maxMetricKeys: 8, forbiddenMetricKeys: 0, labelValueCardinality: 8,
+        metricKeySet: "cache,circuit,conflict,latencyMs,outcome,retryCount,singleFlight,upstreamCallCount" },
+    ] as const;
+    expect(qualificationTelemetryIsBounded([...realPathMeasurements])).toBe(true);
+    expect(qualificationTelemetryIsBounded(realPathMeasurements.slice(0, -1))).toBe(false);
     expect(qualificationTelemetryIsBounded([])).toBe(false);
   });
 
@@ -398,6 +657,61 @@ describe("portable Music qualification lanes", () => {
     expect(source).toContain("qualificationSensitiveValues(activeFixtureEnvironment)");
     expect(source).toContain("sanitizeStructuredOutput(result.stdout, sensitiveValues)");
     expect(source).toContain("sanitizeStructuredOutput(result.stderr, sensitiveValues)");
+  });
+
+  it("sanitizes hostile checkpoint and Docker inspection corpora before persistence", () => {
+    const repository = resolve(import.meta.dirname, "../../../..");
+    const secretValues = ["session-value-private", "strapi-value-private"];
+    const inspect = JSON.stringify([{
+      Config: {
+        Env: [
+          "NODE_ENV=production",
+          "SESSION_SECRET=session-value-private",
+          "COOKIE_SECRET=cookie-value-private",
+          "MUSIC_SIGNING_KEY_CURRENT_SECRET=signing-value-private",
+          "STRAPI_ACCESS_TOKEN=strapi-value-private",
+        ],
+      },
+      Mounts: [{ Source: `${repository}\\.artifacts\\music-token-secrets\\current-private` }],
+      Trace: "at run (C:\\Users\\alice\\workspace\\music\\runner.ts:42:1) /home/bob/work/music",
+    }]);
+    const boundedInspect = sanitizeMusicChildArtifactOutput("docker", "inspect-containers", inspect, secretValues);
+    expect(boundedInspect).toMatch(/^\[DOCKER_STRUCTURED_OUTPUT_REDACTED bytes=\d+\]$/);
+    for (const forbidden of [
+      ...secretValues, "cookie-value-private", "signing-value-private", "C:\\Users\\alice", "/home/bob",
+      repository, "music-token-secrets", "current-private", '"Config"', '"Mounts"',
+    ]) expect(boundedInspect).not.toContain(forbidden);
+
+    const checkpoint = JSON.stringify(sanitizeMusicCheckpointData({
+      schemaVersion: "music-cli/v1",
+      artifacts: [resolve(repository, ".artifacts/music-runs/hostile/child-003-inspect-containers.log")],
+      checkpoint: resolve(repository, ".artifacts/music-runs/hostile/checkpoint.json"),
+      details: JSON.parse(inspect),
+      error: `failure at C:\\Users\\alice\\workspace SESSION_SECRET=${secretValues[0]}`,
+    }, secretValues));
+    for (const forbidden of [
+      ...secretValues, "cookie-value-private", "signing-value-private", "C:\\Users\\alice", "/home/bob", repository,
+    ]) expect(checkpoint).not.toContain(forbidden);
+    expect(checkpoint).toContain(".artifacts/music-runs/hostile/checkpoint.json");
+    expect(checkpoint).toContain("SESSION_SECRET=[REDACTED]");
+    expect(checkpoint).toContain("NODE_ENV=production");
+  });
+
+  it("preserves bounded numeric telemetry while redacting adjacent secret-shaped fields", () => {
+    const persisted = sanitizeMusicCheckpointData({
+      measurements: {
+        load: [{
+          schemaVersion: "music-load/v1",
+          metric: "owner",
+          ownerCalls: 200,
+          invalidTokensRejected: 200,
+          apiToken: "must-not-persist",
+        }],
+      },
+    }) as { measurements: { load: Array<Record<string, unknown>> } };
+
+    expect(persisted.measurements.load[0]?.invalidTokensRejected).toBe(200);
+    expect(persisted.measurements.load[0]?.apiToken).toBe("[REDACTED]");
   });
 
   it("keeps qualification artifact paths portable and developer-anonymous", () => {

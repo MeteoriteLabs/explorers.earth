@@ -49,12 +49,14 @@ function npmCliArgs(args: string[]): string[] {
   return [process.env.npm_execpath, ...args];
 }
 
-function runCli(args: string[], env: NodeJS.ProcessEnv = process.env) {
+function runCli(args: string[], env?: NodeJS.ProcessEnv) {
+  const boundedEnvironment = { ...(env ?? process.env) };
+  if (env !== undefined) delete boundedEnvironment.MUSIC_C10_ISOLATED_NPM_EXECPATH;
   try {
     const stdout = execFileSync(process.execPath, [tsxCli, "scripts/music-cli.ts", ...args], {
       cwd: tunesRoot,
       encoding: "utf8",
-      env,
+      env: boundedEnvironment,
       stdio: ["ignore", "pipe", "pipe"],
     });
     return { exitCode: 0, stdout, stderr: "" };
@@ -336,7 +338,7 @@ describe("music CLI output contract", () => {
     const composeArtifact = envelope.artifacts.find((artifact) => artifact.includes("compose-config"));
     expect(composeArtifact).toBeDefined();
     const evidence = readFileSync(resolve(repositoryRoot, composeArtifact!), "utf8");
-    expect(evidence).toContain("[REDACTED]");
+    expect(evidence).toContain("[DOCKER_STRUCTURED_OUTPUT_REDACTED bytes=");
     expect(evidence).not.toContain('"POSTGRES_PASSWORD":"music"');
     expect(evidence).not.toContain("fixture-read-only-token");
     expect(evidence).not.toContain("--env-file");
@@ -452,9 +454,19 @@ describe("music CLI output contract", () => {
     const result = runCli(["test:smoke", "--format", "json"]);
     const lines = result.stdout.trim().split(/\r?\n/);
 
-    expect(result.exitCode).toBe(1);
+    expect(result.exitCode, JSON.stringify(result)).toBe(1);
     expect(lines).toHaveLength(1);
-    expect(JSON.parse(lines[0])).toMatchObject({ command: "test:smoke", phase: "smoke", status: "failure" });
+    const envelope = JSON.parse(lines[0]) as { command: string; phase: string; status: string; error: string };
+    expect(envelope).toMatchObject({ command: "test:smoke", phase: "smoke", status: "failure" });
+    const childArtifact = envelope.error.match(/see (\.artifacts\/music-runs\/[A-Za-z0-9._/-]+child-[A-Za-z0-9._-]+-smoke\.log)/)?.[1];
+    expect(childArtifact).toMatch(/^\.artifacts\/music-runs\//);
+    expect(childArtifact).not.toContain("..");
+    const childEvidence = readFileSync(resolve(repositoryRoot, childArtifact!), "utf8");
+    expect(childEvidence).toContain("SESSION_SECRET=[REDACTED]");
+    expect(childEvidence).toContain("<developer-home>");
+    expect(childEvidence).toContain("Bearer [REDACTED]");
+    expect(childEvidence).not.toContain("hostile-child-secret");
+    expect(childEvidence).not.toContain("hostile-child-token");
   });
 
   it("returns a typed nonzero cleanup failure with only the exact recovery target identifier", () => {
