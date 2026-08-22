@@ -217,3 +217,54 @@ export const GET_PUBLIC_GUIDE_BY_ID_QUERY = gql`
     }
   }
 `;
+
+// Resolve a public guide leaf in one account-scoped, visibility-scoped lookup.
+export const GET_PUBLIC_GUIDE_BY_SLUG_QUERY = gql`
+  query GetPublicGuideBySlug($accountDocumentId: ID!, $slug: String!) {
+    guides(
+      filters: {
+        account: { documentId: { eq: $accountDocumentId } }
+        Visibility: { eq: true }
+        or: [{ slug: { eq: $slug } }, { documentId: { eq: $slug } }]
+      }
+      pagination: { limit: 1 }
+    ) {
+      documentId
+      Title
+      Description
+      Guide_Type
+      Visibility
+      Estimated_Budget
+      Number_Of_Days
+      slug
+      Guide_Media {
+        url
+        name
+      }
+      Place_Details
+      Tips_Notes
+      Guide_Section_Details
+      Guide_Tags
+      guide_sections(pagination: { limit: 100 }, sort: ["Sequence:asc"]) {
+        documentId
+        Title
+        Sequence
+        Description
+        Timeline
+        Transport
+        Stay
+        Recommendation_Activity
+        Map_Details
+        Packing_List
+        Pre_Tasks
+        Section_tags
+        Budget
+      }
+      is_pinned
+      pin_order
+      display_order
+      createdAt
+      updatedAt
+    }
+  }
+`;

@@ -83,6 +83,7 @@ export const publicPlacesListsQuery = gql`
     ) {
       documentId
       List_Name
+      slug
       Visibility
       is_pinned
       pin_order
@@ -154,6 +155,135 @@ export const publicPlacesListsQuery = gql`
             slug
           }
         }
+      }
+    }
+  }
+`;
+
+// A place child is resolved by its published account-owned list directly. This
+// avoids classifying a slug from an arbitrarily capped collection response.
+export const publicPlaceListBySlugQuery = gql`
+  query PublicPlaceListBySlug($accountDocumentId: ID!, $slug: String!) {
+    recommendationLists(
+      filters: {
+        account: { documentId: { eq: $accountDocumentId } }
+        slug: { eq: $slug }
+        Visibility: { eq: true }
+      }
+      pagination: { limit: 1 }
+    ) {
+      documentId
+      List_Name
+      slug
+      Visibility
+      is_pinned
+      pin_order
+      display_order
+      List_Name_Details
+      recommended_places(pagination: { limit: 100 }) {
+        recommendation_category {
+          Category_Name
+        }
+        documentId
+        Media {
+          url
+        }
+        Place_Details
+        Recommendation_Type
+        Contact_Name
+        media_details
+      }
+      person_lists(sort: ["display_order:asc"], pagination: { limit: 50 }) {
+        documentId
+        List_Name
+        slug
+        Visibility
+        recommended_people(sort: ["display_order:asc"], pagination: { limit: 200 }) {
+          documentId
+          name
+          username_handle
+          headline
+          location
+          avatar_path
+          media_details
+          primary_platform
+          social_urls
+          skills_tags
+          user_recommendation_note
+          user_rating
+          is_pinned
+          display_order
+          people_category {
+            documentId
+            Category_name
+          }
+        }
+      }
+      product_lists(sort: ["display_order:asc"], pagination: { limit: 50 }) {
+        documentId
+        List_Name
+        slug
+        Visibility
+        recommended_products(sort: ["display_order:asc"], pagination: { limit: 200 }) {
+          documentId
+          product_url
+          title
+          brand
+          price
+          currency
+          buy_url
+          logo_url
+          description
+          specifications
+          user_recommendation_note
+          user_rating
+          is_pinned
+          display_order
+          images
+          product_category {
+            documentId
+            name
+            slug
+          }
+        }
+      }
+    }
+  }
+`;
+
+export const publicRecommendedPlacesConnectionQuery = gql`
+  query PublicRecommendedPlacesConnection(
+    $filters: RecommendedPlaceFiltersInput
+    $pagination: PaginationArg!
+  ) {
+    recommendedPlaces_connection(
+      filters: $filters
+      pagination: $pagination
+      sort: ["createdAt:asc", "documentId:asc"]
+    ) {
+      nodes {
+        documentId
+        Place_Details
+        media_details
+        Recommendation_Type
+        Contact_Name
+        Media {
+          url
+        }
+        recommendation_category {
+          Category_Name
+        }
+        recommendation_list {
+          documentId
+        }
+        user_rating
+        google_rating
+      }
+      pageInfo {
+        page
+        pageSize
+        pageCount
+        total
       }
     }
   }

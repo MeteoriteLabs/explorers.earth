@@ -1,3 +1,9 @@
+import { resolvePublicChildState } from "./resolvePublicChildState";
+
+/**
+ * Temporary Task 2 compatibility adapter. The authoritative classification is
+ * resolvePublicChildState; callers migrate to it family by family.
+ */
 export function shouldRedirectMissingPublicResource({
   loading,
   error,
@@ -7,5 +13,12 @@ export function shouldRedirectMissingPublicResource({
   error: unknown;
   resource: unknown;
 }): boolean {
-  return !loading && !error && resource == null;
+  return resolvePublicChildState({
+    loading,
+    error,
+    bootstrapReady: true,
+    resourceKind: "child",
+    entityExists: resource != null,
+    empty: false,
+  }) === "redirect";
 }

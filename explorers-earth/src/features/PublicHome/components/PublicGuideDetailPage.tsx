@@ -3,7 +3,7 @@ import { useQuery } from "@apollo/client";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePublicRouteLifecycle } from "../../../layouts/usePublicRouteLifecycle";
-import { GET_PUBLIC_GUIDE_BY_ID_QUERY, GET_PUBLIC_GUIDES_QUERY } from "../../Guides/api/queries";
+import { GET_PUBLIC_GUIDE_BY_SLUG_QUERY } from "../../Guides/api/queries";
 import { usePublicProfileBootstrapAccount } from "../../../layouts/PublicProfileBootstrapContext";
 import JourneyIcon from "../../../assets/icons/JourneyIcon";
 import TransportationIcon from "../../../assets/icons/TransportationIcon";
@@ -22,12 +22,11 @@ import { parseTimeline, parseStay, parseBudget } from "../../Guides/utils/guideD
 import { getTransportSegments } from "../../Guides/utils/guideHelpers";
 import SEO from "../../../components/SEO";
 import { createCanonicalUrl, getBaseUrl } from "../../../utils/getCurrentDomain";
-import { toUrlSlug } from "../../../utils/formatAddress";
 import { createLocationGEOData } from "../../../utils/geoHelpers";
 import { Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { PublicProfileFallbackRedirect } from "../../../routes/PublicProfileFallbackRedirect";
-import { shouldRedirectMissingPublicResource } from "../../../routes/publicRouteResourceState";
+import { resolvePublicChildState } from "../../../routes/resolvePublicChildState";
 
 const PublicGuideDetailPage = memo(() => {
   const { username, guideSlug } = useParams<{ username: string; guideSlug: string }>();
@@ -54,84 +53,44 @@ const PublicGuideDetailPage = memo(() => {
 
   const accountDocumentId = usePublicProfileBootstrapAccount().documentId;
 
-  // Fetch all public guides to find the one matching the slug
   const {
-    data: guidesData,
-    loading: guidesLoading,
-    error: guidesError,
-    refetch: refetchGuides,
-  } = useQuery(GET_PUBLIC_GUIDES_QUERY, {
+    data,
+    loading,
+    error,
+    refetch,
+  } = useQuery(GET_PUBLIC_GUIDE_BY_SLUG_QUERY, {
     variables: {
-      filters: {
-        and: [
-          {
-            account: {
-              documentId: {
-                eq: accountDocumentId,
-              },
-            },
-          },
-          {
-            Visibility: {
-              eq: true,
-            },
-          },
-        ],
-      },
-      pagination: {
-        limit: 100,
-      },
+      accountDocumentId,
+      slug: guideSlug,
     },
-    skip: !accountDocumentId,
-    fetchPolicy: "network-only",
+    skip: !accountDocumentId || !guideSlug,
+    fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
   });
 
-  // Find guide by slug or documentId
-  const foundGuide = useMemo(() => {
-    if (!guidesData?.guides || !guideSlug) return null;
-    return guidesData.guides.find((guide: any) => {
-      const guideSlugMatch = guide.slug === guideSlug;
-      const titleSlugMatch = toUrlSlug(guide.Title) === guideSlug;
-      const documentIdMatch = guide.documentId === guideSlug;
-      return guideSlugMatch || titleSlugMatch || documentIdMatch;
-    });
-  }, [guidesData?.guides, guideSlug]);
-
-  // Now fetch the full guide details using documentId
-  const { data, loading, error, refetch: refetchGuide } = useQuery(GET_PUBLIC_GUIDE_BY_ID_QUERY, {
-    variables: { documentId: foundGuide?.documentId || "" },
-    skip: !foundGuide?.documentId,
-    fetchPolicy: "network-only",
+  const guide = data?.guides?.[0];
+  const childState = resolvePublicChildState({
+    loading,
+    error,
+    bootstrapReady: Boolean(accountDocumentId && guideSlug),
+    resourceKind: "child",
+    entityExists: Boolean(guide),
+    empty: false,
   });
-
-  const guide = data?.guide;
-  const loadingState = guidesLoading || loading;
-  const routeError = guidesError ?? error;
-
-  const retry = useCallback(async () => {
-    await refetchGuides();
-    if (foundGuide?.documentId) await refetchGuide();
-  }, [foundGuide?.documentId, refetchGuide, refetchGuides]);
 
   usePublicRouteLifecycle({
-    loading: loadingState,
-    error: routeError,
-    retry,
+    loading,
+    error,
+    retry: refetch,
     hasUsableData: Boolean(guide),
-    empty: !loadingState && !routeError && !guide,
-  });
-
-  const missingResource = shouldRedirectMissingPublicResource({
-    loading: loadingState,
-    error: routeError,
-    resource: guide,
+    empty: childState === "empty",
   });
 
   // Scroll detection for sticky tabs and header visibility
   // This effect needs to run after guide data is loaded and DOM is ready
   useEffect(() => {
     // Wait for guide data to be loaded
-    if (loadingState || !guide) return;
+    if (loading || !guide) return;
 
     let cleanup: (() => void) | null = null;
     let timeoutId: NodeJS.Timeout;
@@ -223,7 +182,7 @@ const PublicGuideDetailPage = memo(() => {
         cleanup();
       }
     };
-  }, [loadingState, guide]);
+  }, [loading, guide]);
 
   // Parse guide sections and remove duplicates
   // IMPORTANT: Only include sections that belong to THIS guide
@@ -652,7 +611,7 @@ const PublicGuideDetailPage = memo(() => {
     });
   }, [guide, locationNames, username, sections, seoDescription, guideCoords]);
 
-  if (missingResource) return <PublicProfileFallbackRedirect />;
+  if (childState === "redirect") return <PublicProfileFallbackRedirect />;
 
   if (!guide) return null;
 

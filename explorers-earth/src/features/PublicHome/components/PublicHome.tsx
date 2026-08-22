@@ -1,9 +1,12 @@
-import { memo, useState, useRef, useMemo, useEffect } from "react";
+import { memo, useState, useRef, useMemo, useEffect, useCallback } from "react";
 import InstagramIcon from "../../../assets/icons/InstagramIcon";
 import Button from "../../../components/ui/Button";
 import { useQuery } from "@apollo/client";
-import { publicPlacesListsQuery } from "../api/query";
-import { recommendedPlacesQuery } from "../../Favorites/api/query";
+import {
+  publicPlaceListBySlugQuery,
+  publicPlacesListsQuery,
+  publicRecommendedPlacesConnectionQuery,
+} from "../api/query";
 import { useTrackAnalytics } from "../../../services/analyticsService";
 import HeroSkeleton from "../../../components/ui/HeroSkeleton";
 import RecommendationCardSkeleton from "../../../components/ui/RecommendationCardSkeleton";
@@ -12,7 +15,11 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { usePublicRouteLifecycle } from "../../../layouts/usePublicRouteLifecycle";
 import { usePublicProfileBootstrapAccount } from "../../../layouts/PublicProfileBootstrapContext";
 import { PublicProfileFallbackRedirect } from "../../../routes/PublicProfileFallbackRedirect";
-import { shouldRedirectMissingPublicResource } from "../../../routes/publicRouteResourceState";
+import { resolvePublicChildState } from "../../../routes/resolvePublicChildState";
+import {
+  mergePublicConnectionPage,
+  usePublicConnectionPagination,
+} from "../../../hooks/usePublicConnectionPagination";
 
 import { getCurrentDomain } from "../../../utils/getCurrentDomain";
 import PlaceOverview from "./PlaceDetails/PlaceOverview";
@@ -129,7 +136,6 @@ const PublicHome = memo(() => {
   const desktopObserverTarget = useRef<HTMLDivElement>(null);
   const mobileScrollContainerRef = useRef<HTMLDivElement>(null);
   const desktopScrollContainerRef = useRef<HTMLDivElement>(null);
-  const [hasMoreData, setHasMoreData] = useState<boolean>(true);
   const animationTriggeredRef = useRef<boolean>(false);
   const previousPathnameRef = useRef<string>('');
 
@@ -148,13 +154,30 @@ const PublicHome = memo(() => {
   // local state for handle catgeories
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const bootstrapAccount = usePublicProfileBootstrapAccount();
-  const { data, loading, error, refetch } = useQuery(publicPlacesListsQuery, {
+  const collectionQuery = useQuery(publicPlacesListsQuery, {
     variables: {
       accountDocumentId: bootstrapAccount.documentId,
     },
+    skip: Boolean(placeSlug),
     fetchPolicy: "cache-and-network",
     notifyOnNetworkStatusChange: true,
   });
+  const childQuery = useQuery(publicPlaceListBySlugQuery, {
+    variables: {
+      accountDocumentId: bootstrapAccount.documentId,
+      slug: placeSlug,
+    },
+    skip: !placeSlug,
+    fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
+  });
+  const activePlacesQuery = placeSlug ? childQuery : collectionQuery;
+  const {
+    data,
+    loading,
+    error,
+    refetch,
+  } = activePlacesQuery;
 
   const [showQR, setShowQR] = useState(false);
 
@@ -166,12 +189,24 @@ const PublicHome = memo(() => {
     }),
     [bootstrapAccount, data?.recommendationLists],
   );
+  const resolvedPlaceList = placeSlug ? data?.recommendationLists?.[0] : undefined;
+  const childState = resolvePublicChildState({
+    loading,
+    error,
+    bootstrapReady: Boolean(bootstrapAccount.documentId),
+    resourceKind: placeSlug ? "child" : "collection",
+    entityExists: placeSlug ? Boolean(resolvedPlaceList) : true,
+    empty: placeSlug
+      ? Boolean(resolvedPlaceList) &&
+        (resolvedPlaceList.recommended_places?.length ?? 0) === 0
+      : Boolean(data) && data.recommendationLists.length === 0,
+  });
   usePublicRouteLifecycle({
     loading,
     error,
     retry: refetch,
     hasUsableData: Boolean(data),
-    empty: !loading && !error && Boolean(data) && data.recommendationLists.length === 0,
+    empty: childState === "empty",
   });
 
   const [selectedCity, setSelectedCity] = useState<City | undefined>(undefined);
@@ -278,11 +313,11 @@ const PublicHome = memo(() => {
     data: placesData,
     loading: placesQueryLoading,
     fetchMore,
-  } = useQuery(recommendedPlacesQuery, {
+  } = useQuery(publicRecommendedPlacesConnectionQuery, {
     variables: {
       pagination: {
         page: 1,
-        pageSize: 10,
+        pageSize: 200,
       },
       filters: {
         recommendation_list: {
@@ -293,6 +328,7 @@ const PublicHome = memo(() => {
       },
     },
     fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
     // Skip query if no selectedCity, no documentId, or city is not published
     skip: !selectedCity?.documentId || selectedCity?.Visibility !== true,
   });
@@ -302,7 +338,7 @@ const PublicHome = memo(() => {
   useEffect(() => {
     if (isExpanded.visible && isExpanded.documentId && accountData?.documentId && selectedCity?.documentId) {
       // Find the clicked item to get its details from current places data
-      const currentPlaces = placesData?.recommendedPlaces || [];
+      const currentPlaces = placesData?.recommendedPlaces_connection?.nodes || [];
       const clickedItem = currentPlaces.find(
         (item: any) => item.documentId === isExpanded.documentId
       );
@@ -329,17 +365,14 @@ const PublicHome = memo(() => {
         });
       }
     }
-  }, [isExpanded.visible, isExpanded.documentId, accountData?.documentId, selectedCity?.documentId, placesData?.recommendedPlaces, analytics.trackEvent]);
+  }, [isExpanded.visible, isExpanded.documentId, accountData?.documentId, selectedCity?.documentId, placesData?.recommendedPlaces_connection?.nodes, analytics.trackEvent]);
 
   // CRITICAL FIX: Auto-select first PUBLISHED city only, not drafts
   useEffect(() => {
     if (PublishedCities?.length) {
       if (placeSlug) {
-        // Find the city that matches the placeSlug from PUBLISHED cities only
-        const city = PublishedCities.find(
-          (list: City) =>
-            toUrlSlug(list.List_Name || "") === placeSlug.toLowerCase()
-        );
+        // The direct child query already scoped this result to the route slug.
+        const city = PublishedCities[0];
         setSelectedCity(city?.Visibility === true ? city : undefined);
       } else {
         // Auto-select the first PUBLISHED city when no placeSlug is provided
@@ -389,77 +422,80 @@ const PublicHome = memo(() => {
     }
   }, [selectedCity, PublishedCities, username, navigate]);
 
-  // Set up intersection observer for infinite scroll
+  const loadPlacesPage = useCallback(
+    async (page: number) => {
+      if (!selectedCity?.documentId) return;
+      await fetchMore({
+        variables: {
+          pagination: { page, pageSize: 200 },
+          filters: {
+            recommendation_list: {
+              documentId: { eq: selectedCity.documentId },
+            },
+          },
+        },
+        updateQuery: (previous, { fetchMoreResult }) => {
+          const previousConnection = previous.recommendedPlaces_connection;
+          const nextConnection = fetchMoreResult?.recommendedPlaces_connection;
+          if (!previousConnection || !nextConnection) return previous;
+          return {
+            ...previous,
+            recommendedPlaces_connection: mergePublicConnectionPage(
+              previousConnection,
+              nextConnection,
+            ),
+          };
+        },
+      });
+    },
+    [fetchMore, selectedCity?.documentId],
+  );
+  const {
+    hasNextPage,
+    isLoadingNextPage,
+    nextPageError,
+    loadNextPage,
+    retryNextPage,
+  } = usePublicConnectionPagination({
+    pageInfo: placesData?.recommendedPlaces_connection?.pageInfo,
+    loadPage: loadPlacesPage,
+    resetKey: selectedCity?.documentId ?? "no-place-list",
+  });
+
+  // Set up intersection observer for infinite scroll.
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         if (
           entries[0].isIntersecting &&
           !placesQueryLoading &&
-          hasMoreData &&
-          placesData?.recommendedPlaces?.length > 0
+          !isLoadingNextPage &&
+          hasNextPage &&
+          (placesData?.recommendedPlaces_connection?.nodes.length ?? 0) > 0
         ) {
-          fetchMore({
-            variables: {
-              pagination: {
-                page:
-                  Math.ceil((placesData?.recommendedPlaces?.length || 0) / 10) +
-                  1,
-                pageSize: 10,
-              },
-              filters: {
-                recommendation_list: {
-                  documentId: {
-                    eq: selectedCity?.documentId,
-                  },
-                },
-              },
-            },
-            updateQuery: (prev, { fetchMoreResult }) => {
-              if (!fetchMoreResult?.recommendedPlaces?.length) {
-                setHasMoreData(false);
-                return prev;
-              }
-              // If we get less than the page size, we've reached the end
-              if (fetchMoreResult.recommendedPlaces.length < 10) {
-                setHasMoreData(false);
-              }
-              return {
-                recommendedPlaces: [
-                  ...prev.recommendedPlaces,
-                  ...fetchMoreResult.recommendedPlaces,
-                ],
-              };
-            },
-          }).catch(() => {
-            setHasMoreData(false);
-          });
+          void loadNextPage();
         }
       },
       { threshold: 1.0 }
     );
 
     // Observe both mobile and desktop targets
-    if (mobileObserverTarget.current && hasMoreData) {
+    if (mobileObserverTarget.current && hasNextPage && !nextPageError) {
       observer.observe(mobileObserverTarget.current);
     }
-    if (desktopObserverTarget.current && hasMoreData) {
+    if (desktopObserverTarget.current && hasNextPage && !nextPageError) {
       observer.observe(desktopObserverTarget.current);
     }
 
     return () => observer.disconnect();
   }, [
     placesQueryLoading,
-    hasMoreData,
+    isLoadingNextPage,
+    hasNextPage,
+    nextPageError,
     placesData,
-    fetchMore,
-    selectedCity?.documentId,
+    loadNextPage,
   ]);
-
-  // Reset hasMoreData when selectedCity changes
-  useEffect(() => {
-    setHasMoreData(true);
-  }, [selectedCity?.documentId]);
 
   // Scroll animation (mobile and desktop) only when visiting base places route
   useEffect(() => {
@@ -694,7 +730,7 @@ const PublicHome = memo(() => {
   ];
 
   // Use paginated places data instead of nested data from accountsDetailQuery
-  const currentPlaces = placesData?.recommendedPlaces || [];
+  const currentPlaces = placesData?.recommendedPlaces_connection?.nodes || [];
 
   // fetching categories for the recommendation list
   const categories: string[] = useMemo(() => {
@@ -995,16 +1031,7 @@ const PublicHome = memo(() => {
 
   if (!data) return null;
 
-  const matchedPlaceResource = !placeSlug
-    ? true
-    : PublishedCities.find(
-        (city: City) => toUrlSlug(city.List_Name || "") === placeSlug.toLowerCase(),
-      );
-  if (shouldRedirectMissingPublicResource({
-    loading,
-    error,
-    resource: matchedPlaceResource,
-  })) {
+  if (childState === "redirect") {
     return <PublicProfileFallbackRedirect />;
   }
 
@@ -1671,8 +1698,22 @@ const PublicHome = memo(() => {
                                     />
                                   );
                                 })}
-                                {/* Observer target for infinite scroll */}
-                                <div ref={desktopObserverTarget} className="h-10 w-full col-span-2" />
+                                {nextPageError ? (
+                                  <button
+                                    type="button"
+                                    className="col-span-full text-sm text-blue-300 underline py-3"
+                                    onClick={() => void retryNextPage()}
+                                  >
+                                    Retry loading more places
+                                  </button>
+                                ) : (
+                                  <div
+                                    ref={desktopObserverTarget}
+                                    className="h-10 w-full col-span-full text-center text-sm text-gray-400"
+                                  >
+                                    {isLoadingNextPage ? "Loading more places…" : null}
+                                  </div>
+                                )}
                               </>
                             ) : (
                               <h1 className="flex text-white items-center justify-center font-poppins font-semibold col-span-2 py-8">

@@ -10,7 +10,6 @@ import { useTrackAnalytics } from "../../../services/analyticsService";
 import SEO from "../../../components/SEO";
 import { createCanonicalUrl } from "../../../utils/getCurrentDomain";
 import { createWebPageGEOData } from "../../../utils/geoHelpers";
-import { toUrlSlug } from "../../../utils/formatAddress";
 import { isDisplayableNumber, toDisplayNumber } from "../../../utils/rating";
 import Button from "../../../components/ui/Button";
 import SwitchButton from "../../../components/ui/SwitchButton";
@@ -420,7 +419,7 @@ const PublicGuides = memo(() => {
       category: Array.isArray(guide.Category) ? guide.Category[0] : guide.Category,
     });
     // Use slug if available, otherwise use documentId as fallback
-    const slug = guide.slug || toUrlSlug(guide.Title) || guide.documentId;
+    const slug = guide.slug || guide.documentId;
     navigate(`/${username}/guides/${slug}`);
   };
 

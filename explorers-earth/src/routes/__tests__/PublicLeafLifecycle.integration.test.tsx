@@ -231,11 +231,12 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     element: <PublicHome />,
     path: "/alice/places/paris",
     routePath: "/:username/places/:placeSlug",
-    operation: "PublicPlacesLists",
+    operation: "PublicPlaceListBySlug",
     data: {
       recommendationLists: [{
         documentId: "place-list-1",
         List_Name: "Paris",
+        slug: "paris",
         Visibility: true,
         is_pinned: false,
         recommended_places: [],
@@ -259,10 +260,9 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     element: <PublicGuideDetailPage />,
     path: "/alice/guides/fixture-guide",
     routePath: "/:username/guides/:guideSlug",
-    operation: "GetPublicGuideById",
-    data: { guide: guideDetail },
+    operation: "GetPublicGuideBySlug",
+    data: { guides: [guideDetail] },
     staleText: "Fixture Guide",
-    supportingStates: { GetPublicGuides: { guides: [guideSummary] } },
   },
   {
     label: "Apps index",
@@ -599,14 +599,10 @@ describe("production public leaf lifecycle rendering", () => {
     ["refresh", { loading: true, error: undefined }],
     ["refresh failure", { loading: false, error: new Error("refresh failed") }],
   ])("keeps cached Guide detail mounted during %s", async (_label, state) => {
-    queryStates.set("GetPublicGuides", {
-      data: { guides: [guideSummary] },
+    queryStates.set("GetPublicGuideBySlug", {
+      data: { guides: [guideDetail] },
       loading: state.loading,
       error: state.error,
-    });
-    queryStates.set("GetPublicGuideById", {
-      data: { guide: guideDetail },
-      loading: false,
     });
 
     renderLeaf(
