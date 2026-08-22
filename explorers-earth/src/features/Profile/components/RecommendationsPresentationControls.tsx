@@ -202,12 +202,17 @@ const SortableCategoryRow = ({
 
   const handlePointerDown = (event: PointerEvent<HTMLElement>) => {
     const target = event.target as HTMLElement;
+    const dragHandle = target.closest(".appearance-drag-handle");
+    const interactiveTarget = target.closest(
+      "button, a, input, select, textarea, [role='button']",
+    );
     if (
       !isActive ||
       hasActiveTransaction ||
       event.button !== 0 ||
       event.isPrimary === false ||
-      !target.closest(".appearance-drag-handle")
+      (interactiveTarget && !dragHandle) ||
+      (event.pointerType === "touch" && !dragHandle)
     ) {
       return;
     }

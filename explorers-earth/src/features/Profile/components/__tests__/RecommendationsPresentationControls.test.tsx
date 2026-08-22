@@ -179,7 +179,7 @@ describe("RecommendationsPresentationControls", () => {
     }
   });
 
-  it("starts reordering only from the drag handle for mouse and touch pointers while ignoring row body and action presses", () => {
+  it("starts mouse reordering from the full row while preserving touch scrolling and action presses", () => {
     const start = vi
       .spyOn(DragControls.prototype, "start")
       .mockImplementation(() => undefined);
@@ -211,13 +211,15 @@ describe("RecommendationsPresentationControls", () => {
       pointerId: 3,
       pointerType: "touch",
     });
+    expect(start).not.toHaveBeenCalled();
+
     fireEvent.pointerDown(label, {
       button: 0,
       isPrimary: true,
       pointerId: 4,
       pointerType: "mouse",
     });
-    expect(start).not.toHaveBeenCalled();
+    expect(start).toHaveBeenCalledTimes(1);
 
     const handle = screen.getByRole("button", { name: "Drag Places" });
     fireEvent.pointerDown(handle, {
