@@ -32,7 +32,6 @@ import ProfileRecommendationsLayouts, {
   type RecommendationCategorySlotViewModel,
   type RecommendationListCardViewModel,
 } from "./ProfileRecommendationsLayouts";
-import PublicProfileFeedback from "./PublicProfileFeedback";
 
 export interface PublicRecommendationAccountData {
   documentId?: string;

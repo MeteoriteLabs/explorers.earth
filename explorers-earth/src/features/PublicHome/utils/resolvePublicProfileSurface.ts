@@ -1,5 +1,4 @@
 import { IMAGE_CONFIG } from "../../../config";
-import type { WallpaperMode } from "../../Profile/types/themeTypes";
 
 export type PublicProfileHeroMode =
   | "solid-color"

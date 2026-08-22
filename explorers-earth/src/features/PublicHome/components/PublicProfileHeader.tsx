@@ -156,8 +156,9 @@ export function PublicProfileHeader({
   };
 
   // Fixed Navigation Header styling based on scroll & surface mode
-  const isComposedHero = surface.mode !== "solid-color";
-  const navTransparentAtTop = isComposedHero && !isScrolled;
+  const isDarkOverlayHero =
+    surface.mode === "banner-top" || surface.mode === "full-wallpaper-image";
+  const navTransparentAtTop = isDarkOverlayHero && !isScrolled;
 
   const navBgClass = navTransparentAtTop
     ? "bg-transparent border-transparent text-white"
@@ -232,7 +233,7 @@ export function PublicProfileHeader({
               className="w-full h-full object-cover object-[center_32%]"
             />
             {/* Edge-to-edge bottom gradient inside hero bounds */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/40 to-black/80 z-0 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/65 to-black/90 z-0 pointer-events-none" />
           </div>
         )}
 
@@ -285,12 +286,12 @@ export function PublicProfileHeader({
           </div>
 
           {/* Identity Info - Cardless on Page Surface */}
-          <h1 className="text-xl md:text-2xl font-poppins font-bold tracking-tight text-[var(--text-primary)] text-center drop-shadow-sm">
+          <h1 className={`text-xl md:text-2xl font-poppins font-bold tracking-tight text-center drop-shadow-sm ${isDarkOverlayHero ? "text-white" : "text-[var(--text-primary)]"}`}>
             {accountName}
           </h1>
 
           {location && (
-            <div className="flex items-center justify-center gap-1.5 text-xs md:text-sm font-poppins mt-1 text-[var(--text-secondary)] text-center drop-shadow-sm">
+            <div className={`flex items-center justify-center gap-1.5 text-xs md:text-sm font-poppins mt-1 text-center drop-shadow-sm ${isDarkOverlayHero ? "text-white" : "text-[var(--text-secondary)]"}`}>
               <Location className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" />
               <span>{location}</span>
             </div>
@@ -298,7 +299,7 @@ export function PublicProfileHeader({
 
           {/* Social Links */}
           {socialLinks.length > 0 && (
-            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 mt-4 text-[var(--text-primary)]">
+            <div className={`flex flex-wrap items-center justify-center gap-x-4 gap-y-2 mt-4 ${isDarkOverlayHero ? "text-white" : "text-[var(--text-primary)]"}`}>
               {socialLinks.map((link) => (
                 <a
                   key={link.id}
@@ -306,7 +307,7 @@ export function PublicProfileHeader({
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={link.ariaLabel}
-                  className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent-color)] rounded-md"
+                  className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-current hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent-color)] rounded-md"
                 >
                   {link.renderIcon({ className: "w-5 h-5 fill-current" })}
                 </a>

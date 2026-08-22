@@ -34,7 +34,7 @@ const { profileMock, dummyFeature, queryState, defaultEmptyQueryResult, defaultR
         }
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [profileState, generation]);
+    }, [profileState, generation, readinessCtx]);
 
     return <div data-testid="public-profile-stub">Public Profile Content</div>;
   };

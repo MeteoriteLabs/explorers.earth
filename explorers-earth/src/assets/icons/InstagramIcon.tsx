@@ -1,8 +1,8 @@
 import { memo } from "react";
 
 const InstagramIcon = memo(
-  ({ color, size }: { color?: string; size?: string }) => {
-    const iconSize = size ? `${size}` : "25"; 
+  ({ color, size, className }: { color?: string; size?: string; className?: string }) => {
+    const iconSize = size ? `${size}` : "25";
 
     return (
       <svg
@@ -10,6 +10,7 @@ const InstagramIcon = memo(
         height={iconSize} // Dynamically adjust height
         viewBox="0 0 21 20"
         fill="none"
+        className={className}
         xmlns="http://www.w3.org/2000/svg"
       >
         <path

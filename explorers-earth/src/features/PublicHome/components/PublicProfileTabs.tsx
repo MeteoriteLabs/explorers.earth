@@ -85,7 +85,7 @@ export default function PublicProfileTabs({
       <div
         role="tablist"
         aria-label="Profile sections"
-        className="flex w-full justify-center gap-8 border-b px-2 md:px-0 overflow-x-auto scrollbar-hide"
+        className="flex w-full justify-center gap-8 border-b overflow-x-auto scrollbar-hide"
         style={{ borderColor: "var(--border-card)" }}
       >
         {tabs.map((tab) => {

@@ -9,7 +9,7 @@ import {
 import { RECOMMENDATION_CATEGORY_IDS } from "../../Profile/types/themeTypes";
 import PublicProfileFooter from "./PublicProfileFooter";
 import { useQuery } from "@apollo/client";
-import { memo, useEffect, useState, useMemo, useContext, type KeyboardEvent } from "react";
+import { memo, useEffect, useState, useMemo, useContext } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { PublicRouteReadinessContext } from "../../../layouts/PublicRouteReadinessContext";
 import { getPublicProfileDataQuery, getUserMobileNumberQuery } from "../api/query";
@@ -274,10 +274,6 @@ const PublicProfile = memo(() => {
     () => parseBusinessLocationData(accountData?.Public_Profile_Address),
     [accountData?.Public_Profile_Address],
   );
-  const sanitizedProfileBio = useMemo(
-    () => sanitizePublicRichText(accountData?.Bio),
-    [accountData?.Bio],
-  );
   const rawBusinessDescription =
     businessLocationData?.about || businessLocationData?.businessDescription;
   const sanitizedBusinessDescription = useMemo(
@@ -378,7 +374,7 @@ const PublicProfile = memo(() => {
         id: "instagram",
         href: publicSocialHrefs.instagram,
         ariaLabel: "Instagram",
-        renderIcon: ({ className }) => <InstagramIcon color="currentColor" className={className} />,
+        renderIcon: ({ className }) => <span className={className}><InstagramIcon color="currentColor" /></span>,
         analyticsPlatform: "instagram",
       });
     }
@@ -387,7 +383,7 @@ const PublicProfile = memo(() => {
         id: "whatsapp",
         href: publicSocialHrefs.whatsapp,
         ariaLabel: "WhatsApp",
-        renderIcon: ({ className }) => <WhatsappIcon fill="currentColor" className={className} />,
+        renderIcon: ({ className }) => <span className={className}><WhatsappIcon fill="currentColor" /></span>,
         analyticsPlatform: "whatsapp",
       });
     }
@@ -396,7 +392,7 @@ const PublicProfile = memo(() => {
         id: "mobile",
         href: `sms:+${mobileNumber}`,
         ariaLabel: "Send SMS",
-        renderIcon: ({ className }) => <MobileIcon fill="currentColor" className={className} />,
+        renderIcon: ({ className }) => <span className={className}><MobileIcon fill="currentColor" /></span>,
         analyticsPlatform: "mobile",
       });
     }
@@ -405,7 +401,7 @@ const PublicProfile = memo(() => {
         id: "website",
         href: publicSocialHrefs.website,
         ariaLabel: "Website",
-        renderIcon: ({ className }) => <BoldLinkIcon color="currentColor" className={className} />,
+        renderIcon: ({ className }) => <span className={className}><BoldLinkIcon color="currentColor" /></span>,
         analyticsPlatform: "website",
       });
     }
@@ -414,7 +410,7 @@ const PublicProfile = memo(() => {
         id: "youtube",
         href: publicSocialHrefs.youtube,
         ariaLabel: "YouTube",
-        renderIcon: ({ className }) => <YoutubeIcon color="currentColor" className={className} />,
+        renderIcon: ({ className }) => <span className={className}><YoutubeIcon color="currentColor" /></span>,
         analyticsPlatform: "youtube",
       });
     }
@@ -423,7 +419,7 @@ const PublicProfile = memo(() => {
         id: "X",
         href: publicSocialHrefs.X,
         ariaLabel: "Twitter",
-        renderIcon: ({ className }) => <TwitterIcon color="currentColor" className={className} />,
+        renderIcon: ({ className }) => <span className={className}><TwitterIcon color="currentColor" /></span>,
         analyticsPlatform: "twitter",
       });
     }
@@ -432,7 +428,7 @@ const PublicProfile = memo(() => {
         id: "spotify",
         href: publicSocialHrefs.spotify,
         ariaLabel: "Spotify",
-        renderIcon: ({ className }) => <Spotify color="currentColor" className={className} />,
+        renderIcon: ({ className }) => <span className={className}><Spotify color="currentColor" /></span>,
         analyticsPlatform: "spotify",
       });
     }
@@ -441,7 +437,7 @@ const PublicProfile = memo(() => {
         id: "gmail",
         href: emailHref,
         ariaLabel: "Gmail",
-        renderIcon: ({ className }) => <Gmail color="currentColor" className={className} />,
+        renderIcon: ({ className }) => <span className={className}><Gmail color="currentColor" /></span>,
         analyticsPlatform: "gmail",
       });
     }
@@ -450,7 +446,7 @@ const PublicProfile = memo(() => {
         id: "facebook",
         href: publicSocialHrefs.facebook,
         ariaLabel: "Facebook",
-        renderIcon: ({ className }) => <FacebookIcon color="currentColor" className={className} />,
+        renderIcon: ({ className }) => <span className={className}><FacebookIcon color="currentColor" /></span>,
         analyticsPlatform: "facebook",
       });
     }
@@ -459,7 +455,7 @@ const PublicProfile = memo(() => {
         id: "youtubeMusic",
         href: publicSocialHrefs.youtubeMusic,
         ariaLabel: "YouTube Music",
-        renderIcon: ({ className }) => <YoutubeMusic color="currentColor" className={className} />,
+        renderIcon: ({ className }) => <span className={className}><YoutubeMusic color="currentColor" /></span>,
         analyticsPlatform: "youtube-music",
       });
     }
@@ -468,7 +464,7 @@ const PublicProfile = memo(() => {
         id: "linkedin",
         href: publicSocialHrefs.linkedin,
         ariaLabel: "LinkedIn",
-        renderIcon: ({ className }) => <LinkedinIcon color="currentColor" className={className} />,
+        renderIcon: ({ className }) => <span className={className}><LinkedinIcon color="currentColor" /></span>,
         analyticsPlatform: "linkedin",
       });
     }
@@ -477,7 +473,7 @@ const PublicProfile = memo(() => {
         id: "appleMusic",
         href: publicSocialHrefs.appleMusic,
         ariaLabel: "Apple Music",
-        renderIcon: ({ className }) => <AppleMusic color="currentColor" className={className} />,
+        renderIcon: ({ className }) => <span className={className}><AppleMusic color="currentColor" /></span>,
         analyticsPlatform: "apple-music",
       });
     }
@@ -486,7 +482,7 @@ const PublicProfile = memo(() => {
         id: "tiktok",
         href: publicSocialHrefs.tiktok,
         ariaLabel: "TikTok",
-        renderIcon: ({ className }) => <TiktokIcon color="currentColor" className={className} />,
+        renderIcon: ({ className }) => <span className={className}><TiktokIcon color="currentColor" /></span>,
         analyticsPlatform: "tiktok",
       });
     }
@@ -495,7 +491,7 @@ const PublicProfile = memo(() => {
         id: "snapchat",
         href: publicSocialHrefs.snapchat,
         ariaLabel: "Snapchat",
-        renderIcon: ({ className }) => <SnapchatIcon color="currentColor" className={className} />,
+        renderIcon: ({ className }) => <span className={className}><SnapchatIcon color="currentColor" /></span>,
         analyticsPlatform: "snapchat",
       });
     }
@@ -504,7 +500,7 @@ const PublicProfile = memo(() => {
         id: "localTunes",
         href: publicSocialHrefs.localTunes,
         ariaLabel: "Local Tunes",
-        renderIcon: ({ className }) => <MusicNote fill="currentColor" className={className} />,
+        renderIcon: ({ className }) => <span className={className}><MusicNote fill="currentColor" /></span>,
         analyticsPlatform: "localtunes",
       });
     }
@@ -911,7 +907,7 @@ const PublicProfile = memo(() => {
           <div
             className="fixed inset-0 z-0 overflow-hidden pointer-events-none transition-all duration-500"
             style={{
-              background: `linear-gradient(135deg, color-mix(in srgb, ${themeSettings.accentColor} ${themeSettings.presetId?.includes("dark") || themeSettings.presetId === "glassmorphism" ? "8%" : "4%"}, var(--bg-page)) 0%, var(--bg-page) 100%)`,
+              background: `linear-gradient(135deg, color-mix(in srgb, ${themeSettings.accentColor} ${themeSettings.preset?.includes("dark") || themeSettings.preset === "glassmorphism" ? "8%" : "4%"}, var(--bg-page)) 0%, var(--bg-page) 100%)`,
             }}
           />
         )}
@@ -1112,7 +1108,7 @@ const PublicProfile = memo(() => {
         </main>
 
         {/* Footer Branding Badge */}
-        <PublicProfileFooter brandingStyle={themeSettings?.footerBranding || "enabled"} username={username} />
+        <PublicProfileFooter brandingStyle={themeSettings?.footerBranding || "enabled"} />
         {showQR && (
           <QRModal
             isOpen={showQR}
