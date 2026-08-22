@@ -9,9 +9,9 @@ import {
 import { RECOMMENDATION_CATEGORY_IDS } from "../../Profile/types/themeTypes";
 import PublicProfileFooter from "./PublicProfileFooter";
 import { useQuery } from "@apollo/client";
-import { memo, useEffect, useState, useMemo, useContext } from "react";
+import { memo, useEffect, useState, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { PublicRouteReadinessContext } from "../../../layouts/PublicRouteReadinessContext";
+import { usePublicRouteLifecycle } from "../../../layouts/usePublicRouteLifecycle";
 import { getPublicProfileDataQuery, getUserMobileNumberQuery } from "../api/query";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../services/analyticsService";
 import WhatsappIcon from "../../../assets/icons/WhatsappIcon";
@@ -59,6 +59,7 @@ import PublicProfileTabs, { type PublicProfileTabDefinition } from "./PublicProf
 import {
   isSafeMediaUrl,
   resolvePublicProfileSurface,
+  type PublicAvatarMediaItem,
   type PublicProfileSocialLinkViewModel,
 } from "../utils/resolvePublicProfileSurface";
 
@@ -159,6 +160,8 @@ const PublicProfile = memo(() => {
 
   // MediaViewer state
   const { isOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
+  const [avatarViewerItem, setAvatarViewerItem] = useState<PublicAvatarMediaItem | null>(null);
+  const avatarTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   // Use centralized QR actions hook with profile context
   // PublicProfile page QR should redirect to: host/{username}
@@ -173,13 +176,6 @@ const PublicProfile = memo(() => {
   const getCleanShareUrl = () => {
     return `${window.location.origin}/${username}`;
   };
-
-  const readinessCtx = useContext(PublicRouteReadinessContext);
-  const generation = readinessCtx?.generation || "";
-  const markLoading = readinessCtx?.markLoading;
-  const markError = readinessCtx?.markError;
-  const markNotFound = readinessCtx?.markNotFound;
-  const markReady = readinessCtx?.markReady;
 
   const { data, loading, error, refetch } = useQuery(getPublicProfileDataQuery, {
     variables: {
@@ -198,20 +194,13 @@ const PublicProfile = memo(() => {
   );
   const themeStyles = getThemeTokenStyles(themeSettings);
 
-  // Set public profile loaded when query completes successfully
-  useEffect(() => {
-    if (loading) {
-      markLoading?.(generation);
-    } else if (error) {
-      markError?.(generation, "profile", refetch);
-    } else if (data) {
-      if (!data.accounts?.[0]) {
-        markNotFound?.(generation);
-      } else {
-        markReady?.(generation);
-      }
-    }
-  }, [loading, error, data, refetch, generation, markLoading, markError, markNotFound, markReady]);
+  usePublicRouteLifecycle({
+    loading,
+    error,
+    retry: refetch,
+    hasUsableData: Boolean(accountData),
+    empty: !loading && !error && Boolean(data) && !accountData,
+  });
 
   // Fetch mobile number ONLY when visibility is explicitly enabled
   // This prevents the mobile number from ever being in the response unless visibility is set
@@ -299,12 +288,38 @@ const PublicProfile = memo(() => {
 
   // Handle media item click to open MediaViewer
   const handleMediaClick = (index: number) => {
+    setAvatarViewerItem(null);
+    avatarTriggerRef.current = null;
     openViewer(index);
     analytics.trackClick('feed-item', {
       action: 'open-media-viewer',
       index,
       totalItems: mediaViewerItems.length
     });
+  };
+
+  const handleAvatarActivate = (
+    item: PublicAvatarMediaItem,
+    trigger: HTMLButtonElement,
+  ) => {
+    avatarTriggerRef.current = trigger;
+    setAvatarViewerItem(item);
+    openViewer(0);
+    analytics.trackClick("profile-image", {
+      action: "open-media-viewer",
+      source: item.source,
+    });
+  };
+
+  const handleViewerClose = () => {
+    const restoreAvatarFocus = Boolean(avatarViewerItem);
+    const avatarTrigger = avatarTriggerRef.current;
+    closeViewer();
+    setAvatarViewerItem(null);
+    avatarTriggerRef.current = null;
+    if (restoreAvatarFocus && avatarTrigger) {
+      window.requestAnimationFrame(() => avatarTrigger.focus({ preventScroll: true }));
+    }
   };
 
   // Generate QR URL for user profile: host/{username}
@@ -650,11 +665,6 @@ const PublicProfile = memo(() => {
     );
   }
 
-  const handleImageClick = () => {
-    setShowQR(true);
-    analytics.trackClick('profile-image', { action: 'open-qr-modal' });
-  };
-
   // Enhanced dynamic SEO data preparation with all profile data
   const profileName = accountData?.Account_Name || username || "User";
   const profileLocation = accountData?.Primary_Address?.address || "";
@@ -874,10 +884,10 @@ const PublicProfile = memo(() => {
           surface={surface}
           accountName={accountData?.Account_Name || username || ""}
           location={accountData?.Primary_Address?.address}
-          avatarUrl={accountData?.profile_picture?.url || IMAGE_CONFIG.defaultImages.profile}
+          avatarUrl={accountData?.profile_picture?.url}
           socialLinks={socialLinks}
           onShare={handleShare}
-          onAvatarActivate={handleImageClick}
+          onAvatarActivate={handleAvatarActivate}
         />
 
         {/* Main Content Area: Bio, Tabs, and Active Panel as Siblings */}
@@ -1089,10 +1099,10 @@ const PublicProfile = memo(() => {
 
         {/* MediaViewer for feed images and videos */}
         <MediaViewer
-          mediaItems={mediaViewerItems}
-          initialIndex={currentIndex}
+          mediaItems={avatarViewerItem ? [avatarViewerItem] : mediaViewerItems}
+          initialIndex={avatarViewerItem ? 0 : currentIndex}
           isOpen={isOpen}
-          onClose={closeViewer}
+          onClose={handleViewerClose}
         />
       </div>
     </>

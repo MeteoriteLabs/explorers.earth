@@ -1,4 +1,5 @@
 import { IMAGE_CONFIG } from "../../../config";
+import type { MediaItem } from "../../../components/ui/MediaViewer";
 
 export type PublicProfileHeroMode =
   | "solid-color"
@@ -27,7 +28,48 @@ export interface PublicProfileHeaderProps {
   avatarUrl?: string;
   socialLinks: PublicProfileSocialLinkViewModel[];
   onShare: () => void;
-  onAvatarActivate?: () => void;
+  onAvatarActivate: (
+    item: PublicAvatarMediaItem,
+    trigger: HTMLButtonElement,
+  ) => void;
+}
+
+export type PublicAvatarSource = "configured" | "fallback" | "generated";
+
+export interface PublicAvatarMediaItem extends MediaItem {
+  type: "image";
+  source: PublicAvatarSource;
+}
+
+export function createGeneratedPublicAvatarUrl(accountName: string): string {
+  const initial = Array.from(accountName.trim())[0]?.toLocaleUpperCase() || "?";
+  const svg = [
+    '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">',
+    '<rect width="800" height="800" fill="#111827"/>',
+    `<text x="400" y="430" fill="#F8FAFC" font-family="system-ui, sans-serif" font-size="320" font-weight="600" text-anchor="middle" dominant-baseline="middle">${initial.replace(/[&<>"']/g, "")}</text>`,
+    "</svg>",
+  ].join("");
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+export function createPublicAvatarMediaItem({
+  accountName,
+  activeUrl,
+  alt,
+  source,
+}: {
+  accountName: string;
+  activeUrl: string | null;
+  alt: string;
+  source: PublicAvatarSource;
+}): PublicAvatarMediaItem {
+  return {
+    id: `public-profile-avatar-${source}`,
+    url: activeUrl ?? createGeneratedPublicAvatarUrl(accountName),
+    alt,
+    type: "image",
+    source,
+  };
 }
 
 export interface ResolvePublicProfileSurfaceOptions {

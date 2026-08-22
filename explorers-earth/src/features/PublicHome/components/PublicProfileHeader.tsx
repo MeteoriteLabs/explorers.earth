@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { LogoIcon } from "../../../assets/icons/EoeLogo";
 import Location from "../../../assets/icons/Location";
 import { IMAGE_CONFIG } from "../../../config";
 import {
   isSafeMediaUrl,
+  createPublicAvatarMediaItem,
+  type PublicAvatarSource,
   type PublicProfileHeaderProps,
 } from "../utils/resolvePublicProfileSurface";
 
@@ -18,6 +21,15 @@ export function PublicProfileHeader({
   onAvatarActivate,
 }: PublicProfileHeaderProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const avatarAlt = t("publicProfile.avatar.imageAlt", {
+    name: accountName,
+    defaultValue: `${accountName}'s profile photo`,
+  });
+  const avatarLabel = t("publicProfile.avatar.viewPhoto", {
+    name: accountName,
+    defaultValue: `View ${accountName}'s profile photo`,
+  });
 
   // Scroll sentinel state for fixed navigation treatment
   const [isScrolled, setIsScrolled] = useState(false);
@@ -107,28 +119,41 @@ export function PublicProfileHeader({
     failedPrimary: boolean;
     failedFallback: boolean;
     activeUrl: string | null;
+    source: PublicAvatarSource;
   }>({
     gen: 0,
     failedPrimary: false,
     failedFallback: false,
     activeUrl: isSafeMediaUrl(avatarUrl)
       ? (avatarUrl as string).trim()
-      : IMAGE_CONFIG?.defaultImages?.profile || "/profile.jpg",
+      : isSafeMediaUrl(IMAGE_CONFIG?.defaultImages?.profile)
+        ? IMAGE_CONFIG.defaultImages.profile
+        : null,
+    source: isSafeMediaUrl(avatarUrl)
+      ? "configured"
+      : isSafeMediaUrl(IMAGE_CONFIG?.defaultImages?.profile)
+        ? "fallback"
+        : "generated",
   });
 
   useEffect(() => {
     const nextGen = avatarGen + 1;
     setAvatarGen(nextGen);
     const primarySafe = isSafeMediaUrl(avatarUrl);
+    const fallbackAvatar = IMAGE_CONFIG?.defaultImages?.profile || "/profile.jpg";
+    const fallbackSafe = isSafeMediaUrl(fallbackAvatar);
     const initialUrl = primarySafe
       ? (avatarUrl as string).trim()
-      : IMAGE_CONFIG?.defaultImages?.profile || "/profile.jpg";
+      : fallbackSafe
+        ? fallbackAvatar
+        : null;
 
     setAvatarState({
       gen: nextGen,
       failedPrimary: !primarySafe,
       failedFallback: false,
       activeUrl: initialUrl,
+      source: primarySafe ? "configured" : fallbackSafe ? "fallback" : "generated",
     });
   }, [avatarUrl]);
 
@@ -143,6 +168,7 @@ export function PublicProfileHeader({
           ...prev,
           failedPrimary: true,
           activeUrl: fallbackAvatar,
+          source: "fallback",
         };
       }
 
@@ -151,6 +177,7 @@ export function PublicProfileHeader({
         failedPrimary: true,
         failedFallback: true,
         activeUrl: null,
+        source: "generated",
       };
     });
   };
@@ -246,14 +273,24 @@ export function PublicProfileHeader({
               <button
                 type="button"
                 data-testid="profile-avatar"
-                onClick={onAvatarActivate}
-                aria-label="View profile photo"
+                onClick={(event) => {
+                  onAvatarActivate(
+                    createPublicAvatarMediaItem({
+                      accountName,
+                      activeUrl: avatarState.activeUrl,
+                      alt: avatarAlt,
+                      source: avatarState.source,
+                    }),
+                    event.currentTarget,
+                  );
+                }}
+                aria-label={avatarLabel}
                 className="w-[7.5rem] h-[7.5rem] rounded-full border-2 border-[var(--border-card)] shadow-sm overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent-color)] transition-transform hover:scale-105 block"
               >
                 {avatarState.activeUrl ? (
                   <img
                     src={avatarState.activeUrl}
-                    alt={accountName}
+                    alt={avatarAlt}
                     referrerPolicy="no-referrer"
                     onError={handleAvatarError}
                     className="w-full h-full object-cover"
@@ -272,7 +309,7 @@ export function PublicProfileHeader({
                 {avatarState.activeUrl ? (
                   <img
                     src={avatarState.activeUrl}
-                    alt={accountName}
+                    alt={avatarAlt}
                     referrerPolicy="no-referrer"
                     onError={handleAvatarError}
                     className="w-full h-full object-cover"

@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -41,25 +42,30 @@ vi.mock("../../../../hooks/useQRActions", () => ({
   useQRActions: vi.fn(),
 }));
 
-vi.mock("../../../../hooks/useMediaViewer", () => ({
-  convertToMediaItems: () => [],
-  useMediaViewer: () => ({
-    isOpen: false,
-    currentIndex: 0,
-    openViewer: vi.fn(),
-    closeViewer: vi.fn(),
-  }),
-}));
-
 vi.mock("../../../../components/SEO", () => ({
   default: (props: Record<string, any>) => {
     seoProps.push(props);
     return null;
   },
 }));
-vi.mock("../../../../components/ui/QRModal", () => ({ default: () => null }));
+vi.mock("../../../../components/ui/QRModal", () => ({
+  default: ({ isOpen }: { isOpen: boolean }) =>
+    isOpen ? <div role="dialog" aria-label="Profile QR Code" /> : null,
+}));
 vi.mock("../../../../components/ui/MediaViewer", () => ({
-  default: () => null,
+  default: ({ mediaItems, isOpen, onClose }: Record<string, any>) =>
+    isOpen ? (
+      <div
+        role="dialog"
+        aria-label="Profile media viewer"
+        data-media-items={JSON.stringify(mediaItems)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") onClose();
+        }}
+      >
+        <button type="button" onClick={onClose}>Close viewer</button>
+      </div>
+    ) : null,
 }));
 vi.mock("../../../../components/ui/FeedLayout", () => ({
   default: () => <div data-testid="gallery-feed" />,
@@ -159,6 +165,64 @@ describe("PublicProfile recommendation presentation", () => {
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Alice" })).toBeInTheDocument();
     });
+  });
+
+  it.each([
+    ["configured", { profile_picture: { url: "https://example.com/alice.jpg" } }, "https://example.com/alice.jpg", 0],
+    ["safe fallback", { profile_picture: null }, "/images/Profile.jpg", 0],
+    ["generated default", { profile_picture: { url: "https://example.com/broken.jpg" } }, "data:image/svg+xml", 2],
+  ] as const)(
+    "opens the %s avatar alone in the media viewer and returns focus after Escape",
+    async (_source, accountOverrides, expectedUrl, failures) => {
+      state.account = makeAccount(accountOverrides);
+      renderProfile();
+
+      const avatar = screen.getByRole("button", { name: "View Alice's profile photo" });
+      for (let index = 0; index < failures; index += 1) {
+        const image = avatar.querySelector("img");
+        expect(image).not.toBeNull();
+        fireEvent.error(image!);
+        await waitFor(() => {
+          if (index === failures - 1) expect(avatar.querySelector("img")).toBeNull();
+        });
+      }
+
+      avatar.focus();
+      fireEvent.click(avatar);
+
+      const viewer = await screen.findByRole("dialog", { name: "Profile media viewer" });
+      const mediaItems = JSON.parse(viewer.getAttribute("data-media-items") || "[]");
+      expect(mediaItems).toHaveLength(1);
+      expect(mediaItems[0]).toMatchObject({
+        alt: "Alice's profile photo",
+        type: "image",
+      });
+      expect(mediaItems[0].url).toContain(expectedUrl);
+      expect(screen.queryByRole("dialog", { name: "Profile QR Code" })).toBeNull();
+
+      fireEvent.keyDown(viewer, { key: "Escape" });
+      await waitFor(() => expect(viewer).not.toBeInTheDocument());
+      expect(avatar).toHaveFocus();
+    },
+  );
+
+  it("supports native keyboard avatar activation", async () => {
+    const user = userEvent.setup();
+    state.account = makeAccount({ profile_picture: { url: "https://example.com/alice.jpg" } });
+    renderProfile();
+
+    const avatar = screen.getByRole("button", { name: "View Alice's profile photo" });
+    avatar.focus();
+    await user.keyboard("{Enter}");
+
+    const enterViewer = await screen.findByRole("dialog", { name: "Profile media viewer" });
+    expect(enterViewer).toBeVisible();
+    expect(screen.queryByRole("dialog", { name: "Profile QR Code" })).toBeNull();
+
+    fireEvent.keyDown(enterViewer, { key: "Escape" });
+    await waitFor(() => expect(avatar).toHaveFocus());
+    await user.keyboard(" ");
+    expect(await screen.findByRole("dialog", { name: "Profile media viewer" })).toBeVisible();
   });
 
   it("sanitizes API rich text at the public render boundary and rejects an unsafe business website", () => {

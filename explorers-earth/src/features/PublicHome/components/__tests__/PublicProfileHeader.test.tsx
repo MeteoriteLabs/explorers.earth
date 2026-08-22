@@ -130,7 +130,7 @@ describe("PublicProfileHeader", () => {
     const onAvatarActivate = vi.fn();
     renderHeader({ onAvatarActivate });
 
-    const avatarBtn = screen.getByRole("button", { name: "View profile photo" });
+    const avatarBtn = screen.getByRole("button", { name: "View Jane Explorer's profile photo" });
     expect(avatarBtn).toBeVisible();
     await user.click(avatarBtn);
     expect(onAvatarActivate).toHaveBeenCalledTimes(1);
@@ -138,7 +138,7 @@ describe("PublicProfileHeader", () => {
 
   it("renders non-interactive avatar wrapper when onAvatarActivate is absent", () => {
     renderHeader({ onAvatarActivate: undefined });
-    expect(screen.queryByRole("button", { name: "View profile photo" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "View Jane Explorer's profile photo" })).not.toBeInTheDocument();
     expect(screen.getByTestId("profile-avatar")).toBeVisible();
   });
 
@@ -155,7 +155,7 @@ describe("PublicProfileHeader", () => {
     expect(wallpaperImg).toHaveAttribute("alt", "");
     expect(wallpaperImg).toHaveAttribute("referrerpolicy", "no-referrer");
 
-    const avatarImg = screen.getByAltText("Jane Explorer");
+    const avatarImg = screen.getByAltText("Jane Explorer's profile photo");
     expect(avatarImg).toHaveAttribute("referrerpolicy", "no-referrer");
   });
 
