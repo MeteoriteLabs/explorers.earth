@@ -666,7 +666,7 @@ describe("PublicProfile recommendation presentation", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("keeps the fixed tab taxonomy despite legacy visibleTabs flags", () => {
+  it("honors visibleTabs while retaining one safe profile section", () => {
     state.account = makeAccount({
       Public_Profile_Address: { title: "Alice Studio" },
       social_media: {
@@ -684,7 +684,7 @@ describe("PublicProfile recommendation presentation", () => {
 
     expect(
       screen.getAllByRole("tab").map((tab) => tab.textContent?.trim()),
-    ).toEqual(["Recommendations", "Gallery", "Business Details"]);
+    ).toEqual(["Recommendations"]);
   });
 
   it("keeps Recommendations and Gallery visible when every recommendation category is disabled", () => {

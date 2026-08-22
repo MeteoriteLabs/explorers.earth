@@ -1,15 +1,14 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { test } from "node:test";
-
-const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+import { createNpmSpawnPlan } from "../npm-spawn-plan.mjs";
 
 function list(script) {
-  const command = `${npmCommand} run ${script} -- --list`;
-  return spawnSync(command, {
+  const plan = createNpmSpawnPlan(process.platform, ["run", script, "--", "--list"]);
+  return spawnSync(plan.command, plan.args, {
     cwd: process.cwd(),
     encoding: "utf8",
-    shell: process.platform === "win32",
+    shell: plan.shell,
     env: {
       ...process.env,
       CI: "",

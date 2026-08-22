@@ -344,7 +344,7 @@ export function PublicProfileHeader({
           </h1>
 
           {location && (
-            <div className={`flex items-center justify-center gap-1.5 text-xs md:text-sm font-poppins mt-1 text-center drop-shadow-sm ${isDarkOverlayHero ? "text-white" : "text-[var(--text-primary)] opacity-75"}`}>
+            <div className={`flex items-center justify-center gap-1.5 text-xs md:text-sm font-poppins mt-1 text-center drop-shadow-sm ${isDarkOverlayHero ? "text-white" : "text-[var(--text-primary)]"}`}>
               <Location className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" />
               <span>{location}</span>
             </div>

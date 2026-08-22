@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
+import { createNpmSpawnPlan } from "./npm-spawn-plan.mjs";
 
 function option(name, fallback) {
   return (
@@ -31,6 +32,7 @@ function environmentClass(project) {
 const port = Number.parseInt(option("port", "5173"), 10);
 const project = option("project", "deterministic");
 const dryRun = process.argv.includes("--dry-run");
+const currentBranch = git("branch", "--show-current") || "detached";
 
 if (!Number.isInteger(port) || port < 1 || port > 65_535) {
   console.error("PLAYWRIGHT_SERVER_INVALID_PORT");
@@ -45,7 +47,7 @@ console.log(
     `baseURL=${baseURL}`,
     `pid=${process.pid}`,
     `command=${command}`,
-    `branch=${git("branch", "--show-current")}`,
+    `branch=${currentBranch}`,
     `commit=${git("rev-parse", "--short=12", "HEAD")}`,
     `apiHost=${apiHostname(process.env.VITE_API_URL)}`,
     `project=${project}`,
@@ -54,14 +56,16 @@ console.log(
 );
 
 if (!dryRun) {
-  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+  const plan = createNpmSpawnPlan(process.platform, [
+    "run", "dev", "--", "--host", "127.0.0.1", "--port", String(port), "--strictPort",
+  ]);
   const child = spawn(
-    npmCommand,
-    ["run", "dev", "--", "--host", "127.0.0.1", "--port", String(port), "--strictPort"],
+    plan.command,
+    plan.args,
     {
       stdio: "inherit",
       env: process.env,
-      shell: process.platform === "win32",
+      shell: plan.shell,
     },
   );
 

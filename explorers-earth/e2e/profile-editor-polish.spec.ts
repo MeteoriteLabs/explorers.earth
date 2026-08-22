@@ -7,6 +7,7 @@ import {
   type Page,
   type Route,
 } from "@playwright/test";
+import { PUBLIC_PROFILE_SETTINGS_MANIFEST } from "./support/publicProfileSettingsManifest";
 
 const CATEGORY_IDS = [
   "places",
@@ -38,6 +39,11 @@ const ONE_PIXEL_PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
   "base64",
 );
+
+const cssRgb = (hex: string) => {
+  const value = hex.replace("#", "");
+  return `rgb(${Number.parseInt(value.slice(0, 2), 16)}, ${Number.parseInt(value.slice(2, 4), 16)}, ${Number.parseInt(value.slice(4, 6), 16)})`;
+};
 
 const FEED_ITEM = {
   id: "feed-seed",
@@ -110,6 +116,8 @@ const INITIAL_SOCIAL_MEDIA = {
     wallpaperMode: "solid-color",
     accentColor: "#10B981",
     landingTab: "all-recommendations",
+    visibleTabs: { recommendations: true, gallery: true, business: true },
+    footerBranding: "enabled",
     futureTheme: { keep: "theme-future" },
     recommendations: {
       layout: "shelves",
@@ -179,7 +187,7 @@ const SAVED_ORDER: CategoryId[] = [
 ];
 
 const EXPECTED_SAVED_DATA = {
-  Bio: "<p>A&nbsp;deterministic&nbsp;synthetic&nbsp;profile.</p>",
+  Bio: "<p><strong>A&nbsp;rich&nbsp;deterministic&nbsp;profile.</strong></p>",
   Account_Name: "Synthetic Explorer Edited",
   Addresss: {
     streetName: "Fixture Lane",
@@ -207,7 +215,10 @@ const EXPECTED_SAVED_DATA = {
       visibility: true,
       futurePlatform: "localTunes-preserved",
     },
-    instagram: platformFixture("instagram"),
+    instagram: {
+      ...platformFixture("instagram"),
+      link: "https://example.test/instagram-edited",
+    },
     youtube: platformFixture("youtube"),
     whatsapp: platformFixture("whatsapp"),
     website: platformFixture("website"),
@@ -225,6 +236,8 @@ const EXPECTED_SAVED_DATA = {
       wallpaperMode: "ambient-gradient",
       accentColor: "#EC4899",
       landingTab: "music",
+      visibleTabs: { recommendations: true, gallery: true, business: false },
+      footerBranding: "minimal",
       futureTheme: { keep: "theme-future" },
       recommendations: {
         layout: "featured",
@@ -804,6 +817,26 @@ const resolvePanelLabels = async (
 };
 
 test.describe("deterministic editor-to-public profile parity", () => {
+  for (const accent of PUBLIC_PROFILE_SETTINGS_MANIFEST.accentColorCases) {
+    test(`${accent.id}: dashboard renders and selects the real accent value`, async ({ page }) => {
+      await openDashboard(page);
+      await openAppearance(page);
+      const control = page.getByRole("button", { name: accent.name, exact: true });
+      await control.click();
+      await expect(control).toHaveAttribute("aria-pressed", "true");
+      await expect(control).toHaveCSS("background-color", cssRgb(accent.hex));
+    });
+  }
+
+  for (const firstView of PUBLIC_PROFILE_SETTINGS_MANIFEST.firstViewCases) {
+    test(`${firstView.id}: dashboard renders and selects the real First View value`, async ({ page }) => {
+      await openDashboard(page);
+      await openAppearance(page);
+      await page.getByLabel("First view").selectOption(firstView.value);
+      await expect(page.getByLabel("First view")).toHaveValue(firstView.value);
+    });
+  }
+
   test("real pointer drag stays local, failed save retries the exact complete snapshot, and reloads preserve public parity", async ({
     page,
     synthetic,
@@ -815,6 +848,13 @@ test.describe("deterministic editor-to-public profile parity", () => {
 
     const accountName = page.locator('input[name="accountName"]');
     await accountName.fill("Synthetic Explorer Edited");
+    const bioEditor = page.locator(".bio-editor .ql-editor");
+    await bioEditor.fill("A rich deterministic profile.");
+    await bioEditor.press("Control+A");
+    await page.locator(".bio-editor .ql-bold").click();
+    await expect(bioEditor.locator("strong")).toContainText("A rich deterministic profile.");
+    await page.locator('[data-walkthrough="social-media-accordion"] button').first().click();
+    await page.locator('input[name="instagramLink"]').fill("https://example.test/instagram-edited");
 
     await page.getByRole("tab", { name: "Gallery", exact: true }).click();
     const galleryPanel = page.getByRole("tabpanel", { name: /Gallery/ });
@@ -833,6 +873,8 @@ test.describe("deterministic editor-to-public profile parity", () => {
     await page.getByRole("button", { name: /Sunset Glow/ }).click();
     await page.getByLabel("Wallpaper and cover style").selectOption("ambient-gradient");
     await page.getByLabel("First view").selectOption("music");
+    await page.getByLabel("Footer branding").selectOption("minimal");
+    await page.getByRole("checkbox", { name: "Business Details", exact: true }).uncheck();
     await page.getByRole("radio", { name: "Featured First" }).check();
 
     await mouseDragCategory(page, "places", 8);
@@ -851,6 +893,8 @@ test.describe("deterministic editor-to-public profile parity", () => {
     expect(synthetic.successfulMutations).toBe(0);
     expect(await readOrder(page)).toEqual(SAVED_ORDER);
     await expect(page.getByLabel("First view")).toHaveValue("music");
+    await expect(page.getByLabel("Footer branding")).toHaveValue("minimal");
+    await expect(page.getByRole("checkbox", { name: "Business Details", exact: true })).not.toBeChecked();
     await expect(page.getByRole("radio", { name: "Featured First" })).toBeChecked();
     await expect(accountName).toHaveValue("Synthetic Explorer Edited");
 
@@ -865,23 +909,29 @@ test.describe("deterministic editor-to-public profile parity", () => {
     await page.reload({ waitUntil: "domcontentloaded" });
     await openAppearance(page);
     await expect(page.getByLabel("First view")).toHaveValue("music");
+    await expect(page.getByLabel("Footer branding")).toHaveValue("minimal");
+    await expect(page.getByRole("checkbox", { name: "Business Details", exact: true })).not.toBeChecked();
     await expect(page.getByRole("radio", { name: "Featured First" })).toBeChecked();
     expect(await readOrder(page)).toEqual(SAVED_ORDER);
 
     await page.goto("/synthetic-explorer", { waitUntil: "domcontentloaded" });
     const publicTabs = page.getByRole("tablist", { name: "Profile sections" });
     await expect(publicTabs).toBeVisible();
-    await expect(publicTabs.getByRole("tab")).toHaveCount(3);
+    await expect(publicTabs.getByRole("tab")).toHaveCount(2);
     expect(
       await publicTabs.getByRole("tab").evaluateAll((tabs) =>
         tabs.map((tab) => tab.textContent?.trim()),
       ),
-    ).toEqual(["Recommendations", "Gallery", "Business Details"]);
+    ).toEqual(["Recommendations", "Gallery"]);
     await expect(page.getByRole("tab", { name: "Appearance" })).toHaveCount(0);
     await expect(
       page.getByRole("tab", { name: "Recommendations" }),
     ).toHaveAttribute("aria-selected", "true");
     await expect(page.getByTestId("recommendations-featured")).toBeVisible();
+    await expect(page.getByText("A rich deterministic profile.", { exact: true })).toBeVisible();
+    await expect(page.locator('a[href="https://example.test/instagram-edited"]')).toBeVisible();
+    await expect(page.locator("footer")).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Footer" })).toHaveCount(0);
     expect(await publicCategoryIds(page)).toEqual([
       "music",
       "movies",
@@ -897,7 +947,7 @@ test.describe("deterministic editor-to-public profile parity", () => {
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.getByTestId("recommendations-featured")).toBeVisible();
     expect((await publicCategoryIds(page))[0]).toBe("music");
-    await expect(page.getByRole("tab", { name: "Business Details" })).toHaveCount(1);
+    await expect(page.getByRole("tab", { name: "Business Details" })).toHaveCount(0);
   });
 
   test("keyboard reorder lifts, previews, drops once, and cancels without saving", async ({
@@ -950,11 +1000,20 @@ test.describe("deterministic editor-to-public profile parity", () => {
     });
     await importDisclosure.click();
     await expect(importDisclosure).toHaveAttribute("aria-expanded", "true");
+    const googleAction = page.getByRole("button", {
+      name: "Google Photos",
+      exact: true,
+    });
+    await googleAction.click();
+    await expect(googleAction).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("region", { name: "Import sources" })).toBeVisible();
+    await expect(page.getByPlaceholder("username or https://instagram.com/username")).toHaveCount(0);
     const instagramAction = page.getByRole("button", {
       name: "Instagram",
       exact: true,
     });
     await instagramAction.click();
+    await expect(googleAction).toHaveAttribute("aria-pressed", "false");
     await expect(instagramAction).toHaveAttribute("aria-pressed", "true");
     const input = page.getByPlaceholder("username or https://instagram.com/username");
     await input.fill("synthetic.account");
@@ -1425,7 +1484,8 @@ test.describe("responsive and accessibility geometry gates", () => {
     expect(wideFields[0].width).toBeGreaterThan(wideFields[1].width * 1.8);
   });
 
-  test("200% effective-viewport reflow and LTR/RTL tooltip containment remain usable", async ({
+  test("genuine 200% page zoom and LTR/RTL tooltip containment remain usable", async ({
+    context,
     page,
     synthetic,
   }) => {
@@ -1436,15 +1496,15 @@ test.describe("responsive and accessibility geometry gates", () => {
     expect(baselineViewport.layoutWidth).toBe(750);
     expect(baselineViewport.clientWidth).toBe(750);
     expect(baselineViewport.visualWidth).toBe(750);
+    expect(baselineViewport.visualScale).toBe(1);
 
-    await page.setViewportSize({ width: 375, height: 900 });
+    const zoomSession = await context.newCDPSession(page);
+    await zoomSession.send("Emulation.setPageScaleFactor", { pageScaleFactor: 2 });
     const effectiveZoomViewport = await browserViewportGeometry(page);
-    expect(effectiveZoomViewport.layoutWidth).toBe(375);
-    expect(effectiveZoomViewport.clientWidth).toBe(375);
+    expect(effectiveZoomViewport.layoutWidth).toBe(750);
+    expect(effectiveZoomViewport.clientWidth).toBe(750);
     expect(effectiveZoomViewport.visualWidth).toBe(375);
-    expect(effectiveZoomViewport.layoutWidth).toBe(
-      baselineViewport.layoutWidth / 2,
-    );
+    expect(effectiveZoomViewport.visualScale).toBe(2);
     await expectNoHorizontalOverflow(page);
     await expect(page.getByLabel("First view")).toBeVisible();
     await expect(page.locator('[data-preview-variant="mobile"]')).toBeVisible();
@@ -1498,6 +1558,7 @@ test.describe("responsive and accessibility geometry gates", () => {
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.locator("[data-testid=profile-editor-root]")).toHaveAttribute("dir", "rtl");
     await expectTooltipContained(page, "rtl");
+    await zoomSession.send("Emulation.setPageScaleFactor", { pageScaleFactor: 1 });
   });
 });
 
@@ -1591,6 +1652,7 @@ async function browserViewportGeometry(page: Page) {
       layoutWidth: window.innerWidth,
       clientWidth: document.documentElement.clientWidth,
       visualWidth: Math.round(window.visualViewport.width),
+      visualScale: window.visualViewport.scale,
     };
   });
 }

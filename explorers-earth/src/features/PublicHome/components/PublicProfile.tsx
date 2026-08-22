@@ -581,18 +581,21 @@ const PublicProfile = memo(() => {
   );
   const hasGallery = memoizedFeedImages.length > 0;
   const availableTabs = useMemo<PublicProfileTab[]>(
-    () => [
-      "recommendations",
-      "gallery",
-      ...(hasBusinessDetails ? (["business"] as const) : []),
-    ],
-    [hasBusinessDetails],
+    () => {
+      const requested: PublicProfileTab[] = [
+        ...(themeSettings.visibleTabs.recommendations ? (["recommendations"] as const) : []),
+        ...(themeSettings.visibleTabs.gallery ? (["gallery"] as const) : []),
+        ...(themeSettings.visibleTabs.business && hasBusinessDetails ? (["business"] as const) : []),
+      ];
+      return requested.length > 0 ? requested : ["recommendations"];
+    },
+    [hasBusinessDetails, themeSettings.visibleTabs],
   );
   const automaticActiveTab = resolveInitialPublicProfileTab({
     landingTab: themeSettings.landingTab,
-    hasVisibleRecommendationCategories: hasRecommendations,
-    hasGallery: true,
-    hasBusiness: hasBusinessDetails,
+    hasVisibleRecommendationCategories: hasRecommendations && availableTabs.includes("recommendations"),
+    hasGallery: availableTabs.includes("gallery"),
+    hasBusiness: availableTabs.includes("business"),
   });
   const [manualTabOverride, setManualTabOverride] = useState<{
     username: string;
@@ -607,7 +610,7 @@ const PublicProfile = memo(() => {
       ? manualTabForProfile
       : availableTabs.includes(automaticActiveTab)
         ? automaticActiveTab
-        : "recommendations";
+        : availableTabs[0];
   const preferredRecommendationCategory = getPreferredRecommendationCategory(
     themeSettings.landingTab,
   );
@@ -617,7 +620,7 @@ const PublicProfile = memo(() => {
   };
 
   const tabDefinitions = useMemo<PublicProfileTabDefinition[]>(
-    () => [
+    () => ([
       {
         id: "recommendations",
         label: "Recommendations",
@@ -637,8 +640,8 @@ const PublicProfile = memo(() => {
             },
           ]
         : []),
-    ],
-    [hasBusinessDetails],
+    ] as PublicProfileTabDefinition[]).filter((tab) => availableTabs.includes(tab.id)),
+    [availableTabs, hasBusinessDetails],
   );
 
   // Add safety check for accountData

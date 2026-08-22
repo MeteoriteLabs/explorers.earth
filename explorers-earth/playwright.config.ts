@@ -1,5 +1,6 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices, type ReporterDescription } from '@playwright/test';
 import { createServer } from 'node:net';
+import { playwrightRuntimePolicy } from './scripts/playwright-runtime-policy.mjs';
 
 async function allocatePort() {
   const configured = Number.parseInt(process.env.PW_PORT ?? '', 10);
@@ -31,6 +32,19 @@ const requestedProject = process.argv.some((argument) => argument.includes('real
   ? 'real-account'
   : 'deterministic';
 const reportClass = requestedProject === 'real-account' ? 'real-account-redacted' : 'deterministic';
+const runtimePolicy = playwrightRuntimePolicy({
+  project: requestedProject,
+  reuseRequested: process.env.PW_REUSE_SERVER === '1',
+});
+const reporter: ReporterDescription[] = requestedProject === 'real-account'
+  ? [['./scripts/protected-playwright-reporter.mjs']]
+  : [
+      ['line'],
+      ['./scripts/deterministic-artifact-reporter.mjs'],
+      ['html', { outputFolder: `playwright-report/${reportClass}`, open: 'never' }],
+      ['json', { outputFile: `test-results/playwright/${reportClass}/summary.json` }],
+      ['junit', { outputFile: `test-results/playwright/${reportClass}/junit.xml` }],
+    ];
 
 export default defineConfig({
   testDir: './e2e',
@@ -42,12 +56,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: 1, // Single worker to avoid running out of virtual memory
-  reporter: [
-    ['line'],
-    ['html', { outputFolder: `playwright-report/${reportClass}`, open: 'never' }],
-    ['json', { outputFile: `test-results/playwright/${reportClass}/summary.json` }],
-    ['junit', { outputFile: `test-results/playwright/${reportClass}/junit.xml` }],
-  ],
+  globalSetup: './scripts/playwright-global-setup.mjs',
+  reporter,
   use: {
     baseURL,
     actionTimeout: 15000,
@@ -79,9 +89,9 @@ export default defineConfig({
   webServer: {
     command: `node scripts/start-playwright-server.mjs --port=${port} --project=${requestedProject}`,
     url: baseURL,
-    reuseExistingServer: process.env.PW_REUSE_SERVER === '1',
+    reuseExistingServer: runtimePolicy.reuseExistingServer,
     timeout: 120_000,
-    stdout: 'pipe',
-    stderr: 'pipe',
+    stdout: runtimePolicy.stdout,
+    stderr: runtimePolicy.stderr,
   },
 });

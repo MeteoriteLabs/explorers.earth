@@ -101,8 +101,8 @@ describe("PublicProfileHeader", () => {
     );
     expect(screen.getByText("Reykjavik, Iceland").parentElement).toHaveClass(
       "text-[var(--text-primary)]",
-      "opacity-75",
     );
+    expect(screen.getByText("Reykjavik, Iceland").parentElement).not.toHaveClass("opacity-75");
   });
 
   it("renders header brand link containing the accessible icon logo with 44px min target", () => {

@@ -23,7 +23,9 @@
     "test:unit": "vitest run",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest run --coverage",
-    "test:public-profile:coverage": "vitest run --config vitest.public-profile-coverage.config.ts src/routes/__tests__/PublicRoutes.test.tsx src/routes/__tests__/publicRouteResourceState.test.ts src/routes/__tests__/resolvePublicChildState.test.ts src/layouts/__tests__/publicRouteReadiness.test.ts src/layouts/__tests__/PublicProfileBootstrapContext.test.tsx src/layouts/__tests__/PublicRouteReadinessContext.test.tsx src/layouts/__tests__/usePublicRouteLifecycle.test.tsx src/lib/__tests__/apolloTransport.test.ts --coverage",
+    "test:public-profile:coverage:pure": "vitest run --config vitest.public-profile-coverage.config.ts src/routes/__tests__/PublicRoutes.test.tsx src/routes/__tests__/publicRouteResourceState.test.ts src/routes/__tests__/resolvePublicChildState.test.ts src/layouts/__tests__/publicRouteReadiness.test.ts src/lib/__tests__/apolloTransport.test.ts --coverage",
+    "test:public-profile:coverage:legacy": "vitest run --config vitest.public-profile-legacy-coverage.config.ts src/routes/__tests__/PublicProfileFallbackRedirect.test.tsx src/layouts/__tests__/PublicProfileBootstrapContext.test.tsx src/layouts/__tests__/PublicRouteReadinessContext.test.tsx src/layouts/__tests__/usePublicRouteLifecycle.test.tsx src/services/__tests__/analyticsService.test.ts --coverage",
+    "test:public-profile:coverage": "npm run test:public-profile:coverage:pure && npm run test:public-profile:coverage:legacy && node scripts/verify-public-profile-coverage.mjs",
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test --project=deterministic",
     "test:e2e:ui": "playwright test --project=deterministic --ui",
@@ -32,7 +34,7 @@
     "typecheck:e2e": "tsc --noEmit -p tsconfig.e2e.json",
     "verify:public-api": "node scripts/verify-public-api-access.mjs",
     "verify:public-profile:env": "node scripts/verify-public-profile-env.mjs",
-    "test:public-profile-contract": "node --test scripts/__tests__/playwright-project-contract.test.mjs scripts/__tests__/playwright-server-identity.test.mjs scripts/__tests__/public-profile-contract.test.mjs scripts/__tests__/verify-public-api-access.test.mjs scripts/__tests__/verify-public-profile-env.test.mjs scripts/__tests__/verificationResult.test.mjs"
+    "test:public-profile-contract": "node --test scripts/__tests__/playwright-project-contract.test.mjs scripts/__tests__/playwright-server-identity.test.mjs scripts/__tests__/public-profile-contract.test.mjs scripts/__tests__/public-profile-formal-review-contract.test.mjs scripts/__tests__/verify-public-api-access.test.mjs scripts/__tests__/verify-public-profile-env.test.mjs scripts/__tests__/verificationResult.test.mjs"
   },
   "dependencies": {
     "@apollo/client": "^3.12.2",

@@ -294,7 +294,6 @@ function PublicLayoutContent() {
 
           <div
             data-public-route-content
-            data-public-route-marker={route?.marker}
             className={showContent ? undefined : "hidden"}
             aria-hidden={showContent ? undefined : true}
           >

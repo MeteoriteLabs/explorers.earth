@@ -1,5 +1,10 @@
 import { expect, type Locator, type Page, type Route } from "@playwright/test";
 import sharp from "sharp";
+import {
+  ACCOUNT_BOOTSTRAP,
+  PUBLIC_COLLECTION_OPERATIONS,
+  PUBLIC_RUNTIME_OPERATION_CAPABILITIES,
+} from "../../scripts/public-api-capabilities.mjs";
 
 export type PresetId =
   | "cinematic-dark"
@@ -62,6 +67,12 @@ export interface RouteContractFixtureController {
   observedOperations: string[];
   unknownOperations: string[];
   attempts: Record<string, number>;
+  networkAudit: {
+    consoleErrors: string[];
+    failedRequests: Array<{ method: string; url: string; failure: string }>;
+    badResponses: Array<{ method: string; url: string; status: number }>;
+    unknownRequests: Array<{ method: string; url: string; resourceType: string }>;
+  };
 }
 
 export const PRESETS: Record<
@@ -137,28 +148,18 @@ export const categoryOrder = [
   "people",
 ];
 
+const PUBLIC_RUNTIME_OPERATIONS = [
+  ...ACCOUNT_BOOTSTRAP.runtimeOperationNames,
+  ...PUBLIC_COLLECTION_OPERATIONS.flatMap((capability) => capability.runtimeOperationNames),
+];
+
 export const ALLOWLISTED_OPERATIONS = new Set([
-  "PublicProfileBootstrap",
-  "PublicProfileContent",
+  ...PUBLIC_RUNTIME_OPERATIONS,
   "CheckUsername",
-  "PublicAccountBasic",
   "PublicProfileData",
-  "BookListBySlug",
-  "GetPlacesLists",
-  "GetBooksLists",
-  "GetGuidesLists",
   "GetMusicLists",
-  "GetMoviesLists",
-  "GetGamesLists",
-  "GetAppsLists",
-  "GetProductsLists",
-  "GetPeopleLists",
   "CheckOnboardingStatus",
-  "UsersPermissionsUser",
-  "Account",
   "user",
-  "PublicCategoryListCounts",
-  "PublicBookData",
   "CreatePublicPageAnalytic",
   "Unknown",
 ]);
@@ -240,9 +241,9 @@ export const accountFixture = (state: FixtureState) => {
         accentColor: PRESETS[state.preset].accent,
         landingTab: state.landingTab || "all-recommendations",
         visibleTabs: {
-          recommendations: false,
-          gallery: false,
-          business: false,
+          recommendations: true,
+          gallery: true,
+          business: true,
         },
         footerBranding: state.footerBranding || "disabled",
         recommendations: {
@@ -770,42 +771,8 @@ export async function installPublicFixture(
 }
 
 const routeContractOperations = new Set([
-  "PublicProfileBootstrap",
-  "PublicCategoryListCounts",
-  "PublicProfileContent",
-  "PublicAccountBasic",
-  "UsersPermissionsUser",
+  ...PUBLIC_RUNTIME_OPERATION_CAPABILITIES.keys(),
   "CreatePublicPageAnalytic",
-  "GetPlacesLists",
-  "GetBooksLists",
-  "GetGuidesLists",
-  "GetMoviesLists",
-  "GetGamesLists",
-  "GetAppsLists",
-  "GetProductsLists",
-  "GetPeopleLists",
-  "PublicPlacesLists",
-  "PublicPlaceListBySlug",
-  "PublicRecommendedPlacesConnection",
-  "GetPublicGuides",
-  "GetPublicGuideBySlug",
-  "PublicMovieData",
-  "MovieListBySlug",
-  "MoviesByGenre",
-  "PublicBookData",
-  "BookListBySlug",
-  "BooksBySubject",
-  "PublicGameData",
-  "GameListBySlug",
-  "GamesByGenre",
-  "PublicAppData",
-  "AppListBySlug",
-  "PublicProductData",
-  "ProductListBySlug",
-  "PublicPeopleData",
-  "PersonListBySlug",
-  "PeopleBySector",
-  "Account",
   "Unknown",
 ]);
 
@@ -936,12 +903,62 @@ export async function installPublicRouteContractFixture(
     observedOperations: [],
     unknownOperations: [],
     attempts: {},
+    networkAudit: {
+      consoleErrors: [],
+      failedRequests: [],
+      badResponses: [],
+      unknownRequests: [],
+    },
   };
+
+  page.on("console", (message) => {
+    if (message.type() === "error") controller.networkAudit.consoleErrors.push(message.text());
+  });
+  page.on("pageerror", (error) => controller.networkAudit.consoleErrors.push(error.message));
+  page.on("requestfailed", (request) => {
+    controller.networkAudit.failedRequests.push({
+      method: request.method(),
+      url: request.url(),
+      failure: request.failure()?.errorText ?? "unknown",
+    });
+  });
+  page.on("response", (response) => {
+    if (response.status() >= 400) {
+      controller.networkAudit.badResponses.push({
+        method: response.request().method(),
+        url: response.url(),
+        status: response.status(),
+      });
+    }
+  });
+
+  await page.route("**/*", async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (!/^https?:$/.test(url.protocol)) return route.fallback();
+    const local = url.hostname === "127.0.0.1" || url.hostname === "localhost";
+    const unknownLocalDataRequest =
+      local &&
+      ["fetch", "xhr"].includes(request.resourceType()) &&
+      url.pathname !== "/graphql" &&
+      !url.pathname.startsWith("/api/subscriptions/");
+    if (!local || unknownLocalDataRequest) {
+      controller.networkAudit.unknownRequests.push({
+        method: request.method(),
+        url: request.url(),
+        resourceType: request.resourceType(),
+      });
+      await route.abort("blockedbyclient");
+      return;
+    }
+    await route.fallback();
+  });
 
   for (const url of [
     "https://www.google-analytics.com/**",
     "https://*.clarity.ms/**",
     "https://maps.googleapis.com/**",
+    "https://fonts.googleapis.com/**",
     "https://fonts.gstatic.com/**",
     "https://www.googletagmanager.com/**",
     "https://zupimages.net/**",
@@ -1108,18 +1125,33 @@ export const getContrastTargets = (page: Page) => [
 
 export async function evaluateCorePixelContrast(
   page: Page,
-  targets: Array<{ name: string; locator: Locator; minRatio: number }>
+  targets: Array<{
+    name: string;
+    locator: Locator;
+    minRatio: number;
+    sample?: "element" | "focus-ring";
+  }>
 ) {
-  const targetBoxes: Array<{ name: string; minRatio: number; box: { x: number; y: number; width: number; height: number } }> = [];
+  const targetBoxes: Array<{
+    name: string;
+    minRatio: number;
+    sample: "element" | "focus-ring";
+    box: { x: number; y: number; width: number; height: number };
+  }> = [];
   for (const t of targets) {
     if (await t.locator.isVisible()) {
       const box = await t.locator.boundingBox();
       if (box && box.width > 0 && box.height > 0) {
-        targetBoxes.push({ name: t.name, minRatio: t.minRatio, box });
+        targetBoxes.push({
+          name: t.name,
+          minRatio: t.minRatio,
+          sample: t.sample ?? "element",
+          box,
+        });
       }
     }
   }
-  if (targetBoxes.length === 0) return;
+  if (targetBoxes.length === 0) throw new Error("CONTRAST_TARGETS_EMPTY");
 
   // Pass 1: Normal Viewport Screenshot
   const normalScreenshot = await page.screenshot({ animations: "disabled" });
@@ -1143,7 +1175,18 @@ export async function evaluateCorePixelContrast(
   });
   for (const t of targets) {
     if (await t.locator.isVisible()) {
-      await t.locator.evaluate((el) => el.setAttribute("data-contrast-target", "true"));
+      await t.locator.evaluate((el, sample) => {
+        el.setAttribute("data-contrast-had-style", el.hasAttribute("style") ? "true" : "false");
+        el.setAttribute("data-contrast-original-style", el.getAttribute("style") ?? "");
+        el.setAttribute("data-contrast-target", "true");
+        el.setAttribute("data-contrast-sample", sample ?? "element");
+        if (sample === "focus-ring" && el instanceof HTMLElement) {
+          el.blur();
+          el.style.setProperty("opacity", "0", "important");
+          el.style.setProperty("outline", "none", "important");
+          el.style.setProperty("box-shadow", "none", "important");
+        }
+      }, t.sample);
     }
   }
   const bgScreenshot = await page.screenshot({ animations: "disabled" });
@@ -1159,13 +1202,10 @@ export async function evaluateCorePixelContrast(
           transition-duration: 0s !important;
           animation-duration: 0s !important;
         }
-        [data-contrast-target], [data-contrast-target] * {
+        [data-contrast-target][data-contrast-target],
+        [data-contrast-target][data-contrast-target] * {
           visibility: visible !important;
           color: rgb(0,0,0) !important;
-          fill: rgb(0,0,0) !important;
-          stroke: rgb(0,0,0) !important;
-          border-color: rgb(0,0,0) !important;
-          outline-color: rgb(0,0,0) !important;
           background: transparent !important;
           box-shadow: none !important;
           text-shadow: none !important;
@@ -1178,6 +1218,14 @@ export async function evaluateCorePixelContrast(
       `;
     }
   });
+  for (const t of targets.filter((target) => target.sample === "focus-ring")) {
+    await t.locator.evaluate((el: HTMLElement) => {
+      el.style.setProperty("opacity", "1", "important");
+      el.style.setProperty("outline", "3px solid rgb(0,0,0)", "important");
+      el.style.setProperty("outline-offset", "3px", "important");
+      el.style.setProperty("box-shadow", "none", "important");
+    });
+  }
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 50))));
   const blackScreenshot = await page.screenshot({ animations: "disabled" });
 
@@ -1192,13 +1240,10 @@ export async function evaluateCorePixelContrast(
           transition-duration: 0s !important;
           animation-duration: 0s !important;
         }
-        [data-contrast-target], [data-contrast-target] * {
+        [data-contrast-target][data-contrast-target],
+        [data-contrast-target][data-contrast-target] * {
           visibility: visible !important;
           color: rgb(255,255,255) !important;
-          fill: rgb(255,255,255) !important;
-          stroke: rgb(255,255,255) !important;
-          border-color: rgb(255,255,255) !important;
-          outline-color: rgb(255,255,255) !important;
           background: transparent !important;
           box-shadow: none !important;
           text-shadow: none !important;
@@ -1211,6 +1256,14 @@ export async function evaluateCorePixelContrast(
       `;
     }
   });
+  for (const t of targets.filter((target) => target.sample === "focus-ring")) {
+    await t.locator.evaluate((el: HTMLElement) => {
+      el.style.setProperty("opacity", "1", "important");
+      el.style.setProperty("outline", "3px solid rgb(255,255,255)", "important");
+      el.style.setProperty("outline-offset", "3px", "important");
+      el.style.setProperty("box-shadow", "none", "important");
+    });
+  }
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 50))));
   const whiteScreenshot = await page.screenshot({ animations: "disabled" });
 
@@ -1218,7 +1271,18 @@ export async function evaluateCorePixelContrast(
   await page.evaluate(() => {
     const style = document.getElementById("contrast-eval-style");
     if (style) style.remove();
-    document.querySelectorAll("[data-contrast-target]").forEach((el) => el.removeAttribute("data-contrast-target"));
+    document.querySelectorAll("[data-contrast-target]").forEach((el) => {
+      const originalStyle = el.getAttribute("data-contrast-original-style") ?? "";
+      if (el.getAttribute("data-contrast-had-style") === "true") {
+        el.setAttribute("style", originalStyle);
+      } else {
+        el.removeAttribute("style");
+      }
+      el.removeAttribute("data-contrast-target");
+      el.removeAttribute("data-contrast-sample");
+      el.removeAttribute("data-contrast-had-style");
+      el.removeAttribute("data-contrast-original-style");
+    });
   });
 
   const normalImg = await sharp(normalScreenshot).raw().toBuffer({ resolveWithObject: true });
@@ -1249,15 +1313,31 @@ export async function evaluateCorePixelContrast(
   };
 
   for (const t of targetBoxes) {
-    const startX = Math.max(0, Math.floor(t.box.x * dprX));
-    const startY = Math.max(0, Math.floor(t.box.y * dprY));
-    const endX = Math.min(width, Math.ceil((t.box.x + t.box.width) * dprX));
-    const endY = Math.min(height, Math.ceil((t.box.y + t.box.height) * dprY));
+    const ringPadding = t.sample === "focus-ring" ? 8 : 0;
+    const startX = Math.max(0, Math.floor((t.box.x - ringPadding) * dprX));
+    const startY = Math.max(0, Math.floor((t.box.y - ringPadding) * dprY));
+    const endX = Math.min(width, Math.ceil((t.box.x + t.box.width + ringPadding) * dprX));
+    const endY = Math.min(height, Math.ceil((t.box.y + t.box.height + ringPadding) * dprY));
+    const elementStartX = Math.floor(t.box.x * dprX);
+    const elementStartY = Math.floor(t.box.y * dprY);
+    const elementEndX = Math.ceil((t.box.x + t.box.width) * dprX);
+    const elementEndY = Math.ceil((t.box.y + t.box.height) * dprY);
+    const focusGapX = Math.ceil(2 * dprX);
+    const focusGapY = Math.ceil(2 * dprY);
 
-    const ratios: number[] = [];
+    const samples: Array<{ alpha: number; ratio: number; renderedDelta: number }> = [];
 
     for (let py = startY; py < endY; py++) {
       for (let px = startX; px < endX; px++) {
+        if (
+          t.sample === "focus-ring" &&
+          px >= elementStartX - focusGapX &&
+          px < elementEndX + focusGapX &&
+          py >= elementStartY - focusGapY &&
+          py < elementEndY + focusGapY
+        ) {
+          continue;
+        }
         const idx = (py * width + px) * normalImg.info.channels;
 
         const wR = whiteImg.data[idx];
@@ -1272,7 +1352,11 @@ export async function evaluateCorePixelContrast(
         const alphaG = (wG - bkG) / 255;
         const alphaB = (wB - bkB) / 255;
 
-        if (alphaR >= 0.90 && alphaG >= 0.90 && alphaB >= 0.90) {
+        // Small anti-aliased glyphs often contain no >=90% opaque pixel. The
+        // forced black/white passes still let us recover their foreground at a
+        // lower alpha, while the fail-closed assertion rejects a truly empty
+        // sampling region.
+        if (alphaR >= 0.25 && alphaG >= 0.25 && alphaB >= 0.25) {
           const alpha = (alphaR + alphaG + alphaB) / 3;
           const bgR = bgImg.data[idx];
           const bgG = bgImg.data[idx + 1];
@@ -1282,27 +1366,54 @@ export async function evaluateCorePixelContrast(
           const normG = normalImg.data[idx + 1];
           const normB = normalImg.data[idx + 2];
 
-          const fgR = Math.max(0, Math.min(255, (normR - (1 - alpha) * bgR) / alpha));
-          const fgG = Math.max(0, Math.min(255, (normG - (1 - alpha) * bgG) / alpha));
-          const fgB = Math.max(0, Math.min(255, (normB - (1 - alpha) * bgB) / alpha));
+          // A forced mask can cover transparent SVG interiors or a control's
+          // unpainted ring geometry. Only measure pixels the normal capture
+          // actually paints differently from its target-hidden background.
+          const renderedDelta = Math.max(
+            Math.abs(normR - bgR),
+            Math.abs(normG - bgG),
+            Math.abs(normB - bgB),
+          );
+          if (renderedDelta === 0) continue;
 
-          const fgLum = calculateLuminance(fgR, fgG, fgB);
+          // Compare the pixels the browser actually rendered, including
+          // inherited opacity and image-backed surfaces, against the same
+          // location with the target hidden. The black/white captures provide
+          // the foreground mask; reconstructing a theoretical unblended color
+          // would overstate the contrast users actually see.
+          const fgLum = calculateLuminance(normR, normG, normB);
           const bgLum = calculateLuminance(bgR, bgG, bgB);
 
           const ratio = getContrastRatio(fgLum, bgLum);
-          ratios.push(ratio);
+          samples.push({ alpha, ratio, renderedDelta });
         }
       }
     }
 
-    if (ratios.length > 0) {
-      ratios.sort((a, b) => a - b);
-      const p5Index = Math.floor(ratios.length * 0.05);
-      const coreRatio = ratios[p5Index];
-      expect(
-        coreRatio,
-        `Core pixel contrast for "${t.name}" (5th percentile ratio = ${coreRatio.toFixed(2)})`
-      ).toBeGreaterThanOrEqual(t.minRatio);
-    }
+    const alphaThreshold = [0.9, 0.75, 0.5, 0.25].find(
+      (threshold) => samples.filter((sample) => sample.alpha >= threshold).length >= 4,
+    ) ?? 0.25;
+    const strongestRenderedDelta = Math.max(
+      0,
+      ...samples.map((sample) => sample.renderedDelta),
+    );
+    const ratios = samples
+      .filter((sample) =>
+        sample.alpha >= alphaThreshold &&
+        (t.sample !== "focus-ring" || sample.renderedDelta >= strongestRenderedDelta * 0.75),
+      )
+      .map((sample) => sample.ratio);
+    assertContrastSamples(t.name, ratios);
+    ratios.sort((a, b) => a - b);
+    const p5Index = Math.floor(ratios.length * 0.05);
+    const coreRatio = ratios[p5Index];
+    expect(
+      coreRatio,
+      `Core pixel contrast for "${t.name}" (5th percentile ratio = ${coreRatio.toFixed(2)})`
+    ).toBeGreaterThanOrEqual(t.minRatio);
   }
+}
+
+export function assertContrastSamples(name: string, ratios: readonly number[]) {
+  if (ratios.length === 0) throw new Error(`CONTRAST_PIXELS_EMPTY:${name}`);
 }

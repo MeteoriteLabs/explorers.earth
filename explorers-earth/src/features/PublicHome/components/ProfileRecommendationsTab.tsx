@@ -811,9 +811,11 @@ const ProfileRecommendationsTab = ({
       disabled={isRetrying}
       className="profile-presentation-focus mt-3 min-h-12 rounded-lg border border-[var(--accent-color)] px-4 font-poppins text-sm font-semibold text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-60"
     >
-      {isRetrying
-        ? t("publicProfile.recommendations.retrying", "Retrying…")
-        : t("publicProfile.recommendations.retry", "Try again")}
+      <span data-testid="recommendations-retry-label">
+        {isRetrying
+          ? t("publicProfile.recommendations.retrying", "Retrying…")
+          : t("publicProfile.recommendations.retry", "Try again")}
+      </span>
     </button>
   );
 

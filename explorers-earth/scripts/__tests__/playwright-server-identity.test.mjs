@@ -27,8 +27,16 @@ test("Playwright server dry-run reports a redacted workspace identity", () => {
   assert.match(result.stdout, /baseURL=http:\/\/127\.0\.0\.1:43210/);
   assert.match(result.stdout, /pid=\d+/);
   assert.match(result.stdout, /command=npm run dev/);
-  assert.match(result.stdout, /branch=codex\/profile-dashboard-public-profile/);
-  assert.match(result.stdout, /commit=[0-9a-f]{7,40}/);
+  const expectedBranch = spawnSync("git", ["branch", "--show-current"], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+  }).stdout.trim() || "detached";
+  const expectedCommit = spawnSync("git", ["rev-parse", "--short=12", "HEAD"], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+  }).stdout.trim();
+  assert.match(result.stdout, new RegExp(`branch=${expectedBranch.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}`));
+  assert.match(result.stdout, new RegExp(`commit=${expectedCommit}`));
   assert.match(result.stdout, /apiHost=api\.fixture\.invalid/);
   assert.match(result.stdout, /project=deterministic/);
   assert.match(result.stdout, /environment=fixture-with-public-read-capability/);

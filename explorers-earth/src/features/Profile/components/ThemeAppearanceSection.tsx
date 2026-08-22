@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
   mergeThemeSettingsWire,
   normalizeThemeSettings,
+  PUBLIC_PROFILE_ACCENT_COLORS,
   RECOMMENDATION_CATEGORY_METADATA,
 } from "../constants/recommendationsPresentation";
 import { THEME_PRESETS } from "../constants/themePresets";
@@ -25,15 +26,6 @@ interface AppearanceAreaHeadingProps {
   id: string;
   title: string;
 }
-
-const ACCENT_COLORS = [
-  { name: "Emerald", hex: "#10B981" },
-  { name: "Ocean Blue", hex: "#38BDF8" },
-  { name: "Sunset Pink", hex: "#EC4899" },
-  { name: "Royal Purple", hex: "#8B5CF6" },
-  { name: "Amber Gold", hex: "#F59E0B" },
-  { name: "Crimson", hex: "#F43F5E" },
-] as const;
 
 const CATEGORY_FALLBACKS = {
   places: "Places",
@@ -189,7 +181,7 @@ export const ThemeAppearanceSection = memo(
                 )}
               </h4>
               <div className="appearance-accent-strip flex items-center gap-3">
-                {ACCENT_COLORS.map((color) => (
+                {PUBLIC_PROFILE_ACCENT_COLORS.map((color) => (
                   <button
                     key={color.hex}
                     type="button"
@@ -330,6 +322,65 @@ export const ThemeAppearanceSection = memo(
               "Category choices promote that category but keep all other public categories.",
             )}
           </p>
+
+          <div className="mt-6 grid gap-5 sm:grid-cols-2">
+            <fieldset className="min-w-0">
+              <legend className="appearance-control-title">
+                {t(
+                  "dashboard.profile.themeAppearance.visibleTabs.label",
+                  "Public sections",
+                )}
+              </legend>
+              <div className="mt-2 flex flex-col gap-2">
+                {([
+                  ["recommendations", "Recommendations"],
+                  ["gallery", "Gallery"],
+                  ["business", "Business Details"],
+                ] as const).map(([tab, label]) => {
+                  const checked = normalized.visibleTabs[tab];
+                  const selectedCount = Object.values(normalized.visibleTabs).filter(Boolean).length;
+                  return (
+                    <label key={tab} className="flex min-h-11 items-center gap-3 rounded-lg px-2 text-sm text-dashboard">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={checked && selectedCount === 1}
+                        onChange={(event) => emitPatch({
+                          visibleTabs: {
+                            ...normalized.visibleTabs,
+                            [tab]: event.target.checked,
+                          },
+                        })}
+                        className="h-5 w-5 accent-dashboard-accent"
+                      />
+                      <span>{label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+
+            <div>
+              <label htmlFor="theme-footer-branding" className="appearance-control-title block">
+                {t(
+                  "dashboard.profile.themeAppearance.footerBranding.label",
+                  "Footer branding",
+                )}
+              </label>
+              <select
+                id="theme-footer-branding"
+                value={normalized.footerBranding}
+                onChange={(event) => emitPatch({
+                  footerBranding: event.target.value as typeof normalized.footerBranding,
+                })}
+                className="mt-2 min-h-12 w-full rounded-lg border border-dashboard bg-dashboard-muted px-3 py-2 text-sm text-dashboard focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent"
+              >
+                <option value="enabled">Full footer</option>
+                <option value="minimal">Brand only</option>
+                <option value="disabled">Hidden</option>
+              </select>
+            </div>
+          </div>
         </section>
 
         <RecommendationsPresentationControls

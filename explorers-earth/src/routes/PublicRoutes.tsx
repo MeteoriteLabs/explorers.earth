@@ -53,19 +53,31 @@ const publicRouteElements: Record<PublicRouteId, ReactElement> = {
 function withVisibilityGuard(route: (typeof publicRouteContract)[number]): ReactElement {
   const element = publicRouteElements[route.id];
 
-  if (route.visibility === "always-visible") return element;
+  const guardedElement = (() => {
+    if (route.visibility === "always-visible") return element;
 
-  const visibilityField = "visibilityField" in route ? route.visibilityField : undefined;
-  const defaultVisible = "defaultVisible" in route ? route.defaultVisible : undefined;
+    const visibilityField = "visibilityField" in route ? route.visibilityField : undefined;
+    const defaultVisible = "defaultVisible" in route ? route.defaultVisible : undefined;
 
-  if (!visibilityField) {
-    throw new Error(`Guarded public route ${route.id} requires a visibility field`);
-  }
+    if (!visibilityField) {
+      throw new Error(`Guarded public route ${route.id} requires a visibility field`);
+    }
+
+    return (
+      <TabVisibilityGuard tabField={visibilityField} defaultVisible={defaultVisible}>
+        {element}
+      </TabVisibilityGuard>
+    );
+  })();
 
   return (
-    <TabVisibilityGuard tabField={visibilityField} defaultVisible={defaultVisible}>
-      {element}
-    </TabVisibilityGuard>
+    <div
+      className="contents"
+      data-public-route-id={route.id}
+      data-public-route-marker={route.marker}
+    >
+      {guardedElement}
+    </div>
   );
 }
 

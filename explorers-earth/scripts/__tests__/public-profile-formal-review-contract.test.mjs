@@ -1,0 +1,229 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { test } from "node:test";
+
+test("npm spawn plans stay shell-free on Linux, macOS, and Windows", async () => {
+  const { createNpmSpawnPlan } = await import("../npm-spawn-plan.mjs");
+
+  assert.deepEqual(createNpmSpawnPlan("linux", ["run", "dev"], {
+    execPath: "/usr/bin/node",
+    npmCliPath: "/usr/lib/node_modules/npm/bin/npm-cli.js",
+  }), {
+    command: "/usr/bin/node",
+    args: ["/usr/lib/node_modules/npm/bin/npm-cli.js", "run", "dev"],
+    shell: false,
+  });
+  assert.deepEqual(createNpmSpawnPlan("darwin", ["run", "dev"], {
+    execPath: "/opt/homebrew/bin/node",
+    npmCliPath: "/opt/homebrew/lib/node_modules/npm/bin/npm-cli.js",
+  }), {
+    command: "/opt/homebrew/bin/node",
+    args: ["/opt/homebrew/lib/node_modules/npm/bin/npm-cli.js", "run", "dev"],
+    shell: false,
+  });
+  assert.deepEqual(createNpmSpawnPlan("win32", ["run", "dev"], {
+    execPath: "C:/Program Files/nodejs/node.exe",
+    npmCliPath: "C:/Program Files/nodejs/node_modules/npm/bin/npm-cli.js",
+  }), {
+    command: "C:/Program Files/nodejs/node.exe",
+    args: ["C:/Program Files/nodejs/node_modules/npm/bin/npm-cli.js", "run", "dev"],
+    shell: false,
+  });
+});
+
+test("protected Playwright policy never reuses a server and suppresses raw server output", async () => {
+  const { playwrightRuntimePolicy } = await import("../playwright-runtime-policy.mjs");
+
+  assert.deepEqual(
+    playwrightRuntimePolicy({ project: "real-account", reuseRequested: true }),
+    { reuseExistingServer: false, stdout: "ignore", stderr: "ignore" },
+  );
+  assert.deepEqual(
+    playwrightRuntimePolicy({ project: "deterministic", reuseRequested: true }),
+    { reuseExistingServer: true, stdout: "pipe", stderr: "pipe" },
+  );
+});
+
+test("protected prerequisite validation fails closed before suite execution", async () => {
+  const { validateProtectedPrerequisites } = await import("../protected-prerequisites.mjs");
+  assert.throws(
+    () => validateProtectedPrerequisites({}),
+    /ENV_MISSING.*E2E_PROFILE_USERNAME.*E2E_PROFILE_STORAGE_STATE.*E2E_PROFILE_LIVE_WRITES/s,
+  );
+  assert.doesNotThrow(() => validateProtectedPrerequisites({
+    E2E_PROFILE_USERNAME: "fixture-owner",
+    E2E_PROFILE_STORAGE_STATE: "fixture-state.json",
+    E2E_PROFILE_LIVE_WRITES: "1",
+    E2E_PROFILE_LIVE_WRITE_CONFIRMATION: "I_APPROVE_PROFILE_MUTATION_AND_RESTORE",
+  }));
+});
+
+test("Task 0 capabilities own every runtime GraphQL operation identity", async () => {
+  const capabilities = await import("../public-api-capabilities.mjs");
+  const all = [capabilities.ACCOUNT_BOOTSTRAP, ...capabilities.PUBLIC_COLLECTION_OPERATIONS];
+
+  for (const capability of all) {
+    assert.ok(Array.isArray(capability.runtimeOperationNames), `${capability.id} aliases missing`);
+    assert.ok(capability.runtimeOperationNames.length > 0, `${capability.id} aliases empty`);
+    assert.equal(new Set(capability.runtimeOperationNames).size, capability.runtimeOperationNames.length);
+  }
+  assert.ok(capabilities.ACCOUNT_BOOTSTRAP.runtimeOperationNames.includes("PublicProfileBootstrap"));
+  assert.ok(
+    capabilities.PUBLIC_COLLECTION_OPERATIONS.find((entry) => entry.id === "books")
+      .runtimeOperationNames.includes("PublicBookLists"),
+  );
+});
+
+test("protected output and attachment summaries are content-redacted", async () => {
+  const { redactProtectedText, writeProtectedReport } = await import(
+    "../protected-playwright-report.mjs"
+  );
+  const secret = "live-secret-token";
+  const source = `Authorization: Bearer ${secret}\nemail=owner@example.com`;
+  const redacted = redactProtectedText(source, [secret]);
+
+  assert.doesNotMatch(redacted, /live-secret-token|owner@example\.com/);
+  assert.match(redacted, /\[REDACTED\]/);
+
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "protected-report-"));
+  const output = path.join(root, "summary.json");
+  await writeProtectedReport(output, {
+    title: `journey ${secret}`,
+    error: source,
+    attachments: [{ name: "trace", path: `C:/private/${secret}/trace.zip`, body: source }],
+  }, [secret]);
+  const saved = fs.readFileSync(output, "utf8");
+  assert.doesNotMatch(saved, /live-secret-token|owner@example\.com|C:\/private/);
+  assert.doesNotMatch(saved, /"body"/);
+});
+
+test("failure artifact names include project, case, viewport, attempt, and kind", async () => {
+  const { deterministicFailureArtifactName } = await import(
+    "../playwright-artifact-name.mjs"
+  );
+  const input = {
+    project: "deterministic",
+    caseId: "books/list refresh",
+    viewport: { width: 375, height: 667 },
+    attempt: 2,
+  };
+  assert.equal(
+    deterministicFailureArtifactName({ ...input, kind: "screenshot" }),
+    "deterministic--books-list-refresh--375x667--attempt-2--screenshot.png",
+  );
+  assert.equal(
+    deterministicFailureArtifactName({ ...input, kind: "trace" }),
+    "deterministic--books-list-refresh--375x667--attempt-2--trace.zip",
+  );
+});
+
+test("protected reporter redacts stdout and report content and removes raw attachments", async () => {
+  const { default: ProtectedReporter } = await import("../protected-playwright-reporter.mjs");
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "protected-reporter-"));
+  const outputFile = path.join(root, "safe", "summary.json");
+  const rawAttachment = path.join(root, "test-results", "trace.zip");
+  fs.mkdirSync(path.dirname(rawAttachment), { recursive: true });
+  fs.writeFileSync(rawAttachment, "live-secret-token owner@example.com");
+  const stdout = [];
+  const reporter = new ProtectedReporter({
+    outputFile,
+    secrets: ["live-secret-token"],
+    writeStdout: (chunk) => stdout.push(chunk),
+    artifactRoot: root,
+  });
+
+  reporter.onStdOut(Buffer.from("Bearer live-secret-token owner@example.com"));
+  await reporter.onTestEnd(
+    { titlePath: () => ["real", "owner@example.com"] },
+    {
+      status: "failed",
+      retry: 0,
+      errors: [{ message: "Bearer live-secret-token" }],
+      attachments: [{ name: "trace", contentType: "application/zip", path: rawAttachment }],
+    },
+  );
+  await reporter.onEnd({ status: "failed" });
+
+  assert.doesNotMatch(stdout.join(""), /live-secret-token|owner@example\.com/);
+  assert.equal(fs.existsSync(rawAttachment), false);
+  const report = fs.readFileSync(outputFile, "utf8");
+  assert.doesNotMatch(report, /live-secret-token|owner@example\.com|trace\.zip/);
+});
+
+test("deterministic reporter copies ordinary failure artifacts to stable names", async () => {
+  const { default: ArtifactReporter } = await import("../deterministic-artifact-reporter.mjs");
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "artifact-reporter-"));
+  const screenshot = path.join(root, "input", "test-failed-1.png");
+  const trace = path.join(root, "input", "trace.zip");
+  fs.mkdirSync(path.dirname(screenshot), { recursive: true });
+  fs.writeFileSync(screenshot, Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+Av6vWQAAAABJRU5ErkJggg==",
+    "base64",
+  ));
+  fs.writeFileSync(trace, "fixture trace");
+  const reporter = new ArtifactReporter({ outputDir: path.join(root, "stable") });
+  await reporter.onTestEnd(
+    {
+      titlePath: () => ["route matrix", "books/list refresh"],
+      parent: { project: () => ({ name: "deterministic", use: { viewport: { width: 375, height: 667 } } }) },
+    },
+    {
+      status: "failed",
+      retry: 2,
+      attachments: [
+        { name: "screenshot", contentType: "image/png", path: screenshot },
+        { name: "trace", contentType: "application/zip", path: trace },
+      ],
+    },
+  );
+
+  assert.deepEqual(fs.readdirSync(path.join(root, "stable")).sort(), [
+    "deterministic--route-matrix-books-list-refresh--1x1--attempt-2--screenshot.png",
+    "deterministic--route-matrix-books-list-refresh--1x1--attempt-2--trace.zip",
+  ]);
+});
+
+test("coverage verifier separates strict pure modules from truthful legacy modules", async () => {
+  const { verifyCoverageReports } = await import("../verify-public-profile-coverage.mjs");
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "public-profile-coverage-"));
+  const purePath = path.join(root, "pure.json");
+  const legacyPath = path.join(root, "legacy.json");
+  const metric = (pct) => ({ total: 1, covered: 1, skipped: 0, pct });
+  const moduleMetric = { lines: metric(100), statements: metric(100), functions: metric(100), branches: metric(100) };
+
+  fs.writeFileSync(purePath, JSON.stringify({
+    total: moduleMetric,
+    ...Object.fromEntries([
+      "publicRouteContract.ts",
+      "publicRouteResourceState.ts",
+      "resolvePublicChildState.ts",
+      "publicRouteReadiness.ts",
+      "apolloTransport.ts",
+    ].map((name) => [`C:/src/${name}`, moduleMetric])),
+  }));
+  fs.writeFileSync(legacyPath, JSON.stringify({
+    total: { ...moduleMetric, branches: metric(73.4) },
+    ...Object.fromEntries([
+      "PublicProfileFallbackRedirect.tsx",
+      "PublicProfileBootstrapContext.tsx",
+      "PublicRouteReadinessContext.tsx",
+      "usePublicRouteLifecycle.ts",
+      "analyticsService.ts",
+    ].map((name) => [`C:/src/${name}`, moduleMetric])),
+  }));
+
+  assert.deepEqual(verifyCoverageReports({
+    pureSummaryPath: purePath,
+    legacySummaryPath: legacyPath,
+  }), { pureBranches: 100, legacyBranches: 73.4 });
+
+  const incompleteLegacy = JSON.parse(fs.readFileSync(legacyPath, "utf8"));
+  delete incompleteLegacy["C:/src/analyticsService.ts"];
+  fs.writeFileSync(legacyPath, JSON.stringify(incompleteLegacy));
+  assert.throws(
+    () => verifyCoverageReports({ pureSummaryPath: purePath, legacySummaryPath: legacyPath }),
+    /LEGACY_COVERAGE_MODULES_MISSING:analyticsService\.ts/,
+  );
+});

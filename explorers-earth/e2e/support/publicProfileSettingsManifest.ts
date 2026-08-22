@@ -1,4 +1,8 @@
 import type { LayoutId, PresetId, WallpaperMode } from "./publicProfileFixture";
+import {
+  PUBLIC_PROFILE_ACCENT_COLORS,
+  PUBLIC_PROFILE_FIRST_VIEWS,
+} from "../../src/features/Profile/constants/recommendationsPresentation";
 
 export const PROFILE_THEMES = [
   "cinematic-dark",
@@ -141,6 +145,16 @@ export function generateSecondaryPairwiseCases() {
 export const PUBLIC_PROFILE_SETTINGS_MANIFEST = {
   themeWallpaperCases: THEME_WALLPAPER_CASES,
   secondaryFactors: SECONDARY_SETTING_FACTORS,
+  accentColors: PUBLIC_PROFILE_ACCENT_COLORS.map((color) => color.hex),
+  accentColorCases: PUBLIC_PROFILE_ACCENT_COLORS.map((color) => ({
+    id: `accent--${color.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    ...color,
+  })),
+  firstViews: PUBLIC_PROFILE_FIRST_VIEWS,
+  firstViewCases: PUBLIC_PROFILE_FIRST_VIEWS.map((value) => ({
+    id: `first-view--${value}`,
+    value,
+  })),
   viewports: [
     { id: "mobile-320", width: 320, height: 812 },
     { id: "mobile-short", width: 375, height: 667 },

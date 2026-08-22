@@ -17,21 +17,22 @@ import {
   settingsArtifactName,
 } from "./support/publicProfileSettingsManifest";
 
-const themeScreenshots: Array<{ name: string; path: string }> = [];
+const themeScreenshots = new Map<string, { name: string; path: string }>();
 const themeCaptureDir = path.join(process.cwd(), "test-results", "contact-sheet", "captures");
 
 test.describe("public profile adaptive theme surface visual matrix", () => {
   test.afterAll(async () => {
-    if (themeScreenshots.length !== 24) return;
+    if (themeScreenshots.size === 0) return;
     const cardWidth = 375;
     const cardHeight = 667;
     const columns = 4;
     const labelHeight = 30;
-    const rows = Math.ceil(themeScreenshots.length / columns);
+    const captures = [...themeScreenshots.values()].sort((left, right) => left.name.localeCompare(right.name));
+    const rows = Math.ceil(captures.length / columns);
     const overlays: OverlayOptions[] = [];
 
-    for (let index = 0; index < themeScreenshots.length; index += 1) {
-      const item = themeScreenshots[index];
+    for (let index = 0; index < captures.length; index += 1) {
+      const item = captures[index];
       const left = (index % columns) * cardWidth;
       const top = Math.floor(index / columns) * (cardHeight + labelHeight);
       const label = Buffer.from(
@@ -42,7 +43,10 @@ test.describe("public profile adaptive theme surface visual matrix", () => {
       );
       overlays.push({ input: label, left, top });
       overlays.push({
-        input: await sharp(item.path).resize(cardWidth, cardHeight, { fit: "cover" }).toBuffer(),
+        input: await sharp(item.path).resize(cardWidth, cardHeight, {
+          fit: "contain",
+          background: "#0f172a",
+        }).toBuffer(),
         left,
         top: top + labelHeight,
       });
@@ -67,6 +71,28 @@ test.describe("public profile adaptive theme surface visual matrix", () => {
         background: "#0f172a",
       },
     }).composite(overlays).png().toFile(contactSheetPath);
+  });
+
+  test.afterEach(async ({ page }, testInfo) => {
+    if (!testInfo.title.startsWith("theme-wallpaper ") || testInfo.status === testInfo.expectedStatus) return;
+    const caseId = testInfo.title.match(/^theme-wallpaper ([^:]+):/)?.[1];
+    if (!caseId) return;
+    try {
+      await page.setViewportSize({ width: 375, height: 667 });
+      fs.mkdirSync(themeCaptureDir, { recursive: true });
+      const screenshotPath = path.join(themeCaptureDir, settingsArtifactName({
+        project: testInfo.project.name,
+        caseId: `${caseId}-failed`,
+        viewport: { width: 375, height: 667 },
+        attempt: testInfo.retry,
+      }));
+      await page.screenshot({ path: screenshotPath, animations: "disabled" });
+      if (fs.existsSync(screenshotPath)) {
+        themeScreenshots.set(caseId, { name: `${caseId} (failed attempt ${testInfo.retry})`, path: screenshotPath });
+      }
+    } catch {
+      // Preserve the original test error if the page closed while capturing failure evidence.
+    }
   });
   // Step 1: Geometry & Regression Assertions
   test("enforces strict geometry boundaries, zero metadata card, clean avatar, and gutter alignment", async ({
@@ -149,11 +175,12 @@ test.describe("public profile adaptive theme surface visual matrix", () => {
         mode: "success",
         headerSocial: true,
         headerImageUrl: "/e2e-split-luminance-header.png",
+        footerBranding: "enabled",
         attempts: {},
       };
       await installPublicFixture(page, state, observed);
 
-      for (const viewport of [{ width: 375, height: 900 }, { width: 1024, height: 900 }]) {
+      for (const viewport of [{ width: 375, height: 667 }, { width: 1024, height: 900 }]) {
         await page.setViewportSize(viewport);
         await openFixture(page, `combo-${themeCase.id}-${viewport.width}`);
 
@@ -174,17 +201,37 @@ test.describe("public profile adaptive theme surface visual matrix", () => {
           }));
           await page.screenshot({ path: screenshotPath, animations: "disabled" });
           await testInfo.attach(`theme-${themeCase.id}`, { path: screenshotPath, contentType: "image/png" });
-          themeScreenshots.push({ name: themeCase.id, path: screenshotPath });
+          themeScreenshots.set(themeCase.id, { name: themeCase.id, path: screenshotPath });
         }
 
         const caseLabel = `${themeCase.id}/${viewport.width}`;
+        const recommendationsTab = page.getByRole("tab", { name: "Recommendations" });
+        await recommendationsTab.focus();
+        const recommendationCard = page.locator(
+          ".place-rec-card, [data-testid=featured-category], [data-testid=recommendations-grid] [data-category-id]",
+        ).first();
+        const recommendationCardLabel = recommendationCard.locator("h2, h3, h4").first();
         await evaluateCorePixelContrast(page, [
           { name: `${caseLabel}: account-name`, locator: page.getByRole("heading", { name: "Fixture Explorer" }), minRatio: 4.5 },
           { name: `${caseLabel}: location-text`, locator: page.getByText("Fixture City", { exact: true }), minRatio: 4.5 },
-          { name: `${caseLabel}: social-icon`, locator: page.locator('a[href="https://instagram.com/fixture"]'), minRatio: 3.0 },
+          { name: `${caseLabel}: social-icon`, locator: page.locator('a[href="https://instagram.com/fixture"] svg').first(), minRatio: 3.0 },
           { name: `${caseLabel}: bio-text`, locator: page.getByText("A deterministic public profile fixture."), minRatio: 4.5 },
-          { name: `${caseLabel}: tab-recommendations`, locator: page.getByRole("tab", { name: "Recommendations" }).locator("span").first(), minRatio: 4.5 },
+          { name: `${caseLabel}: tab-recommendations`, locator: page.getByRole("tab", { name: "Recommendations" }).locator("svg").first(), minRatio: 3.0 },
           { name: `${caseLabel}: header-logo`, locator: page.locator('header a[aria-label="explorers.earth"] svg path[fill="currentColor"]').first(), minRatio: 3.0 },
+          { name: `${caseLabel}: tab-control`, locator: recommendationsTab.locator("svg").first(), minRatio: 3.0 },
+          { name: `${caseLabel}: focused-tab-ring`, locator: recommendationsTab, minRatio: 3.0, sample: "focus-ring" },
+        ]);
+        await recommendationCard.scrollIntoViewIfNeeded();
+        await evaluateCorePixelContrast(page, [{
+          name: `${caseLabel}: recommendation-card`,
+          locator: recommendationCardLabel,
+          minRatio: 3.0,
+        }]);
+        const footerBrandControl = page.locator('footer a[aria-label="explorers.earth"]');
+        await footerBrandControl.scrollIntoViewIfNeeded();
+        await footerBrandControl.focus();
+        await evaluateCorePixelContrast(page, [
+          { name: `${caseLabel}: footer-brand-control`, locator: footerBrandControl.locator("svg").first(), minRatio: 3.0 },
         ]);
       }
     });
@@ -219,6 +266,12 @@ test.describe("public profile adaptive theme surface visual matrix", () => {
             aspectRatio: "1:1",
             width: 1,
             height: 1,
+            uploadSource: settings.gallery === "upload" ? "manual" : settings.gallery,
+            ...(settings.gallery === "instagram"
+              ? { sourceUrl: "https://instagram.com/fixture/post" }
+              : settings.gallery === "google"
+                ? { googlePlaceId: "fixture-google-place" }
+                : {}),
           }];
       const state: FixtureState = {
         preset: PROFILE_THEMES[caseIndex % PROFILE_THEMES.length],
@@ -277,6 +330,7 @@ test.describe("public profile adaptive theme surface visual matrix", () => {
 
   // Step 5: State & Resilience cases
   test("covers loading, empty, partial-error, all-error, touch targets, RTL, 200% zoom, and footer settings", async ({
+    context,
     page,
   }) => {
     const observed: string[] = [];
@@ -300,6 +354,11 @@ test.describe("public profile adaptive theme surface visual matrix", () => {
     await openFixture(page, "empty-resilience");
     await expect(page.getByText("No public recommendations yet")).toBeVisible();
     await expect(page.getByRole("button", { name: /Add recommendations/i })).toHaveCount(0);
+    await evaluateCorePixelContrast(page, [{
+      name: "empty-state",
+      locator: page.getByText("No public recommendations yet"),
+      minRatio: 4.5,
+    }]);
 
     // Partial error state
     state.mode = "partial-error";
@@ -313,6 +372,12 @@ test.describe("public profile adaptive theme surface visual matrix", () => {
     await openFixture(page, "all-error-resilience");
     await expect(page.getByText(/Couldn['’]t load recommendations/i)).toBeVisible();
     const retryBtn = page.getByRole("button", { name: "Try again" });
+    await retryBtn.scrollIntoViewIfNeeded();
+    await retryBtn.focus();
+    await evaluateCorePixelContrast(page, [
+      { name: "error-state", locator: page.getByText(/Couldn['’]t load recommendations/i), minRatio: 4.5 },
+      { name: "error-control", locator: retryBtn.getByTestId("recommendations-retry-label"), minRatio: 3.0 },
+    ]);
     await retryBtn.click();
     await expect(page.getByTestId("recommendations-grid")).toBeVisible();
 
@@ -323,15 +388,14 @@ test.describe("public profile adaptive theme surface visual matrix", () => {
     await expect(page.getByText("A deterministic public profile fixture.")).toBeVisible();
 
     // RTL & 200% zoom
-    await page.evaluate(() => {
-      document.documentElement.dir = "rtl";
-      document.documentElement.style.fontSize = "200%";
-    });
+    await page.evaluate(() => { document.documentElement.dir = "rtl"; });
+    const zoomSession = await context.newCDPSession(page);
+    await zoomSession.send("Emulation.setPageScaleFactor", { pageScaleFactor: 2 });
+    await expect.poll(() => page.evaluate(() => window.visualViewport?.scale ?? 1)).toBe(2);
+    await expect.poll(() => page.evaluate(() => Math.round(window.visualViewport?.width ?? 0))).toBe(188);
     await expectNoHorizontalOverflow(page);
-    await page.evaluate(() => {
-      document.documentElement.dir = "ltr";
-      document.documentElement.style.fontSize = "100%";
-    });
+    await zoomSession.send("Emulation.setPageScaleFactor", { pageScaleFactor: 1 });
+    await page.evaluate(() => { document.documentElement.dir = "ltr"; });
 
     // Touch targets >= 44x44
     for (const tab of await page.getByRole("tab").all()) {

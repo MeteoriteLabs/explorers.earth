@@ -22,8 +22,26 @@ export interface KnownThemeSettingsPatch {
   accentColor?: string;
   customTextColor?: string;
   landingTab?: LandingTabId;
+  visibleTabs?: ThemeSettings['visibleTabs'];
+  footerBranding?: ThemeSettings['footerBranding'];
   recommendations?: NormalizedRecommendationsPresentationSettings;
 }
+
+export const PUBLIC_PROFILE_ACCENT_COLORS = [
+  { name: 'Emerald', hex: '#10B981' },
+  { name: 'Ocean Blue', hex: '#38BDF8' },
+  { name: 'Sunset Pink', hex: '#EC4899' },
+  { name: 'Royal Purple', hex: '#8B5CF6' },
+  { name: 'Amber Gold', hex: '#F59E0B' },
+  { name: 'Crimson', hex: '#F43F5E' },
+] as const;
+
+export const PUBLIC_PROFILE_FIRST_VIEWS = [
+  'all-recommendations',
+  ...RECOMMENDATION_CATEGORY_IDS,
+  'gallery',
+  'business',
+] as const satisfies readonly LandingTabId[];
 
 const RECOMMENDATION_LAYOUTS = new Set<RecommendationsLayout>([
   'shelves',
@@ -40,12 +58,7 @@ const WALLPAPER_MODE_SET = new Set<WallpaperMode>([
   'ambient-gradient',
   'solid-color',
 ]);
-const LANDING_TAB_SET = new Set<LandingTabId>([
-  'all-recommendations',
-  ...RECOMMENDATION_CATEGORY_IDS,
-  'gallery',
-  'business',
-]);
+const LANDING_TAB_SET = new Set<LandingTabId>(PUBLIC_PROFILE_FIRST_VIEWS);
 const FOOTER_BRANDING_SET = new Set<ThemeSettings['footerBranding']>([
   'enabled',
   'minimal',
