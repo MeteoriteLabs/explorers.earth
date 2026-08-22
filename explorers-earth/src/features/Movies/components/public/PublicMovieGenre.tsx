@@ -24,6 +24,7 @@ import {
   usePublicLeafRequestGeneration,
 } from "../../../../layouts/PublicRouteReadinessContext";
 import { publicTaxonomyLegacyLookupName, publicTaxonomyPath } from "../../../../routes/publicTaxonomyRoute";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
 
 
 
@@ -67,6 +68,13 @@ const PublicMovieGenre = () => {
   const filteredMovies: RecommendedMovie[] = deduplicateMovies(
     data?.recommendedMovies_connection?.nodes ?? [],
   );
+  const analytics = useTrackAnalytics(createAnalyticsOptions.movies(
+    genre ? accountDocumentId : "",
+    username,
+    genre?.documentId,
+    undefined,
+    { variant: "filter", path: location.pathname },
+  ));
   const childState = resolvePublicChildState({
     loading,
     error,
@@ -111,6 +119,13 @@ const PublicMovieGenre = () => {
   }
 
   const handleMovieClick = (movie: RecommendedMovie) => {
+    analytics.trackClick("movie-card", {
+      id: movie.documentId,
+      title: movie.title,
+      mediaType: movie.media_type || "movie",
+      filterId: genre?.documentId,
+      filterName: genreName,
+    });
     setSelectedMovie(movie);
     setModalOpen(true);
   };
@@ -147,6 +162,7 @@ const PublicMovieGenre = () => {
           <div className="flex gap-2">
             <button
               onClick={async () => {
+                analytics.trackClick("share-button", { context: "movies-filter", filterId: genre?.documentId });
                 const shareUrl = window.location.href;
                 if (navigator.share) {
                   try { await navigator.share({ title: genreName, url: shareUrl }); } catch { /* ignore */ }

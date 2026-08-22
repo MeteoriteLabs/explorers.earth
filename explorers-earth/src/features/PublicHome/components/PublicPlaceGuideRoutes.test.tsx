@@ -1,10 +1,16 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { DocumentNode, OperationDefinitionNode } from "graphql";
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const queryStates = vi.hoisted(() => new Map<string, { data?: any }>());
+const analyticsHarness = vi.hoisted(() => {
+	const trackClick = vi.fn();
+	const useTrackAnalytics = vi.fn(() => ({ trackClick, trackEvent: vi.fn() }));
+	const guides = vi.fn((accountId, pageUsername, recommendationId, route) => ({ accountId, pageUsername, recommendationId, routeVariant: route?.variant, routePath: route?.path }));
+	return { guides, trackClick, useTrackAnalytics };
+});
 
 function operationName(query: DocumentNode): string {
 	const operation = query.definitions.find(
@@ -28,7 +34,8 @@ vi.mock("../../../layouts/PublicProfileBootstrapContext", () => ({
 }));
 vi.mock("../../../components/SEO", () => ({ default: () => null }));
 vi.mock("../../../services/analyticsService", () => ({
-	useTrackAnalytics: () => ({ trackClick: vi.fn(), trackEvent: vi.fn() }),
+	createAnalyticsOptions: { guides: analyticsHarness.guides },
+	useTrackAnalytics: analyticsHarness.useTrackAnalytics,
 }));
 vi.mock("../../../hooks/useQRActions", () => ({
 	useQRActions: () => ({ handleCopyLink: vi.fn() }),
@@ -41,6 +48,7 @@ vi.mock("@vis.gl/react-google-maps", () => ({
 }));
 
 import PublicGuideDetailPage from "./PublicGuideDetailPage";
+import PublicGuides from "./PublicGuides";
 import PublicHome from "./PublicHome";
 
 const connection = {
@@ -54,6 +62,16 @@ function renderGuide() {
 			<Routes>
 				<Route path="/:username/guides/:guideSlug" element={<PublicGuideDetailPage />} />
 				<Route path="/:username" element={<div>Profile fallback</div>} />
+			</Routes>
+		</MemoryRouter>,
+	);
+}
+
+function renderGuides() {
+	return render(
+		<MemoryRouter initialEntries={["/alice/guides"]}>
+			<Routes>
+				<Route path="/:username/guides" element={<PublicGuides />} />
 			</Routes>
 		</MemoryRouter>,
 	);
@@ -73,6 +91,11 @@ function renderPlace() {
 describe("public place and guide child routes", () => {
 	beforeEach(() => {
 		queryStates.clear();
+		analyticsHarness.guides.mockClear();
+		analyticsHarness.trackClick.mockClear();
+		analyticsHarness.useTrackAnalytics.mockClear();
+		Object.defineProperty(navigator, "share", { configurable: true, value: undefined });
+		Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } });
 		Object.defineProperty(globalThis, "IntersectionObserver", {
 			configurable: true,
 			value: class { observe() {} unobserve() {} disconnect() {} },
@@ -134,5 +157,31 @@ describe("public place and guide child routes", () => {
 		queryStates.set("GetPublicGuideBySlug", { data: { guides: [] } });
 		renderGuide();
 		expect(await screen.findByText("Profile fallback")).toBeInTheDocument();
+	});
+
+	it("tracks a guide detail view and share with the stable guide document ID", async () => {
+		queryStates.set("GetPublicGuideBySlug", {
+			data: {
+				guides: [{ documentId: "guide-1", Title: "Empty Guide", slug: "empty-guide", Visibility: true, Guide_Media: [], guide_sections: [] }],
+			},
+		});
+		renderGuide();
+
+		expect(analyticsHarness.guides).toHaveBeenCalledWith("account-1", "alice", "guide-1", {
+			variant: "detail", path: "/alice/guides/empty-guide",
+		});
+		fireEvent.click(screen.getByRole("button", { name: "Share" }));
+		await waitFor(() => expect(analyticsHarness.trackClick).toHaveBeenCalledWith("share-button", {
+			context: "guides-detail", guideId: "guide-1",
+		}));
+	});
+
+	it("uses the guide factory with explicit index route metadata", () => {
+		queryStates.set("GetPublicGuides", { data: { guides: [] } });
+		renderGuides();
+
+		expect(analyticsHarness.guides).toHaveBeenCalledWith("account-1", "alice", undefined, {
+			variant: "index", path: "/alice/guides",
+		});
 	});
 });

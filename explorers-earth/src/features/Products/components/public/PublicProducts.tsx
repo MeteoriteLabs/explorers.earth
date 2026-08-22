@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { ShoppingBag, Share2 } from "lucide-react";
 import { PUBLIC_PRODUCT_DATA } from "../../api/query";
@@ -14,10 +14,12 @@ import ProductTopPicksHero from "./ProductTopPicksHero";
 import ProductTopPicksMobileHero from "./ProductTopPicksMobileHero";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
 
 const PublicProducts = () => {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [modalState, setModalState] = useState<{ open: boolean; product: RecommendedProduct | null }>({
     open: false,
     product: null,
@@ -26,6 +28,13 @@ const PublicProducts = () => {
   const account = usePublicProfileBootstrapAccount();
   const accountDocumentId = account.documentId;
   const creatorName = account.Account_Name || username;
+  const analytics = useTrackAnalytics(createAnalyticsOptions.products(
+    accountDocumentId || "",
+    username,
+    undefined,
+    undefined,
+    { variant: "index", path: location.pathname },
+  ));
 
   const { data, loading: productsLoading, error: productsError, refetch: refetchProducts } = useQuery(PUBLIC_PRODUCT_DATA, {
     variables: { accountDocumentId },
@@ -64,10 +73,18 @@ const PublicProducts = () => {
   // }, [allProducts]);
 
   const handleProductClick = useCallback((product: RecommendedProduct) => {
+    analytics.trackClick("product-card", {
+      id: product.documentId,
+      title: product.title,
+      brand: product.brand,
+      listId: product.product_list?.documentId,
+      listName: product.product_list?.List_Name,
+    });
     setModalState({ open: true, product });
-  }, []);
+  }, [analytics]);
 
   const handleShare = async () => {
+    analytics.trackClick("share-button", { context: "products-index" });
     const url = window.location.href;
     if (navigator.share) {
       try { await navigator.share({ title: `${creatorName}'s Products`, url }); } catch { /* ignore */ }

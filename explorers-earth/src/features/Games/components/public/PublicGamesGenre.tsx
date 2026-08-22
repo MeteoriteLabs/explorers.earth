@@ -24,6 +24,7 @@ import {
   usePublicLeafRequestGeneration,
 } from "../../../../layouts/PublicRouteReadinessContext";
 import { publicTaxonomyLegacyLookupName, publicTaxonomyPath } from "../../../../routes/publicTaxonomyRoute";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
 
 const PublicGamesGenre = () => {
   const { username, genreSlug } = useParams<{ username: string; genreSlug: string }>();
@@ -65,6 +66,13 @@ const PublicGamesGenre = () => {
   const filteredGames: RecommendedGame[] = deduplicateGames(
     data?.recommendedGames_connection?.nodes,
   );
+  const analytics = useTrackAnalytics(createAnalyticsOptions.games(
+    genre ? accountDocumentId : "",
+    username,
+    genre?.documentId,
+    undefined,
+    { variant: "filter", path: location.pathname },
+  ));
   const childState = resolvePublicChildState({
     loading,
     error,
@@ -109,11 +117,19 @@ const PublicGamesGenre = () => {
   }
 
   const handleGameClick = (game: RecommendedGame) => {
+    analytics.trackClick("game-card", {
+      id: game.documentId,
+      title: game.title,
+      genres: game.genres?.join(", "),
+      filterId: genre?.documentId,
+      filterName: genreName,
+    });
     setSelectedGame(game);
     setModalOpen(true);
   };
 
   const handleShare = async () => {
+    analytics.trackClick("share-button", { context: "games-filter", filterId: genre?.documentId });
     const url = window.location.href;
     if (navigator.share) {
       try { await navigator.share({ title: `${genreName} Games`, url }); } catch { /* ignore */ }

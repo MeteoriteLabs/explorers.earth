@@ -56,7 +56,16 @@ export interface UseTrackAnalyticsOptions {
   autoTrackView?: boolean;
   waitForLocation?: boolean; // Wait for location to be set before auto-tracking view
   cityName?: string; // City name for public-home page analytics
+  routeVariant?: AnalyticsRouteVariant;
+  routePath?: string;
 }
+
+export type AnalyticsRouteVariant = "profile" | "index" | "list" | "filter" | "detail";
+
+export type AnalyticsRouteMetadata = {
+  variant: AnalyticsRouteVariant;
+  path: string;
+};
 
 export interface UseTrackAnalyticsReturn {
   trackEvent: (event: Omit<AnalyticsEvent, 'timestamp' | 'page'>) => void;
@@ -72,13 +81,23 @@ export interface UseTrackAnalyticsReturn {
  * Always creates new analytics records with session-based duplicate prevention
  */
 export const useTrackAnalytics = (options: UseTrackAnalyticsOptions): UseTrackAnalyticsReturn => {
-  const { accountId, locationId, recommendationId, pageName, pageUsername, autoTrackView = true, waitForLocation = false, cityName } = options;
+  const {
+    accountId,
+    locationId,
+    recommendationId,
+    pageName,
+    pageUsername,
+    autoTrackView = true,
+    waitForLocation = false,
+    cityName,
+    routeVariant,
+    routePath,
+  } = options;
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasTrackedView, setHasTrackedView] = useState(false);
-  const [trackingInProgress, setTrackingInProgress] = useState<Set<string>>(new Set());
-  const lastCallTime = useRef<Map<string, number>>(new Map());
+  const trackingInProgress = useRef<Set<string>>(new Set());
 
   // Get authentication state and current user
   const { isAuthenticated, user } = useAuthStore();
@@ -121,8 +140,24 @@ export const useTrackAnalytics = (options: UseTrackAnalyticsOptions): UseTrackAn
       return `analytics_${pageName}_${eventType}_${accountId}`;
     }
     // For other pages, include locationId and recommendationId
-    return `analytics_${pageName}_${eventType}_${accountId}_${locationId || 'null'}_${recommendationId || 'null'}`;
-  }, [pageName, accountId, locationId, recommendationId]);
+    return `analytics_${pageName}_${routeVariant || 'route'}_${routePath || 'path'}_${eventType}_${accountId}_${locationId || 'null'}_${recommendationId || 'null'}`;
+  }, [pageName, routeVariant, routePath, accountId, locationId, recommendationId]);
+
+  const getEventTypeToCheck = useCallback((event: Omit<AnalyticsEvent, 'timestamp' | 'page'>) => {
+    if (event.type !== 'click' || !event.element) return event.type;
+
+    const stableIdentifier =
+      event.metadata?.id ??
+      event.metadata?.recommendationDocumentId ??
+      event.metadata?.recommendationId ??
+      event.metadata?.platform ??
+      event.metadata?.index ??
+      event.metadata?.cityId;
+
+    return stableIdentifier === undefined
+      ? `click-${event.element}`
+      : `click-${event.element}-${String(stableIdentifier)}`;
+  }, []);
 
   /**
    * Check if event already exists in session storage
@@ -154,51 +189,19 @@ export const useTrackAnalytics = (options: UseTrackAnalyticsOptions): UseTrackAn
       return;
     }
 
-    // Create unique event key for tracking in progress and debouncing
-    // For place-card events (both click and view), include the ID to make each unique
-    let eventKey: string;
-    if (event.element?.includes('place-card')) {
-      eventKey = `${pageName}_${event.type}_${event.element}`;
-    } else {
-      eventKey = `${pageName}_${event.type}`;
-    }
-    
-    const now = Date.now();
-    const DEBOUNCE_TIME = 1000; // 1 second debounce
-
-    // Check if this event type has already been tracked in this session
-    // For place-card events (both click and view), use the full element identifier
-    // For click events with a specific element, use the element identifier to allow
-    // tracking multiple different items (e.g. different movie cards) per session
-    let eventTypeToCheck: string;
-    if (event.element?.includes('place-card')) {
-      eventTypeToCheck = `${event.type}-${event.element}`;
-    } else if (event.type === 'click' && event.element) {
-      // Each unique element (e.g. game-card-abc123) gets its own session check
-      eventTypeToCheck = `click-${event.element}`;
-    } else {
-      eventTypeToCheck = event.type;
-    }
+    const eventTypeToCheck = getEventTypeToCheck(event);
+    const eventKey = getSessionKey(eventTypeToCheck);
     if (isEventTrackedInSession(eventTypeToCheck)) {
       return;
     }
 
     // Check if this event type is currently being tracked (prevent concurrent calls)
-    if (trackingInProgress.has(eventKey)) {
+    if (trackingInProgress.current.has(eventKey)) {
       return;
     }
-
-    // Check debounce - prevent rapid successive calls
-    const lastCall = lastCallTime.current.get(eventKey);
-    if (lastCall && (now - lastCall) < DEBOUNCE_TIME) {
-      return;
-    }
-
-    // Update last call time
-    lastCallTime.current.set(eventKey, now);
 
     // Mark this event as being tracked
-    setTrackingInProgress(prev => new Set(prev).add(eventKey));
+    trackingInProgress.current.add(eventKey);
     setLoading(true);
     setError(null);
 
@@ -211,17 +214,21 @@ export const useTrackAnalytics = (options: UseTrackAnalyticsOptions): UseTrackAn
       page: pageName,
       utmParams: Object.keys(utmParams).length > 0 ? utmParams : undefined, // Only include if UTM params exist
       metadata: {
-        ...event.metadata
+        ...event.metadata,
+        routeVariant,
+        routePath: routePath || window.location.pathname,
       }
     };
 
 
     try {
       // For place-card events (both click and view), use the placeId/recommendationId from metadata as Recommendation_Id
-      const dynamicRecommendationId = 
-        event.element?.includes('place-card')
-          ? analyticsEvent.metadata?.placeId || analyticsEvent.metadata?.recommendationId || recommendationId
-        : recommendationId;
+      const dynamicRecommendationId =
+        analyticsEvent.metadata?.recommendationDocumentId ||
+        analyticsEvent.metadata?.recommendationId ||
+        (event.element?.includes('-card')
+          ? analyticsEvent.metadata?.id || analyticsEvent.metadata?.placeId || recommendationId
+          : recommendationId);
 
       // Always create new record with current locationId and recommendationId
       // But use consistent session key for public-home page
@@ -231,12 +238,6 @@ export const useTrackAnalytics = (options: UseTrackAnalyticsOptions): UseTrackAn
         Recommendation_Id: dynamicRecommendationId,
         Stats: [analyticsEvent]
       };
-
-      console.log('Creating analytics record:', {
-        eventType: event.type,
-        element: event.element,
-        dataToSend
-      });
 
       const result = await createAnalytic({
         variables: {
@@ -254,13 +255,21 @@ export const useTrackAnalytics = (options: UseTrackAnalyticsOptions): UseTrackAn
     } finally {
       setLoading(false);
       // Remove from tracking in progress
-      setTrackingInProgress(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(eventKey);
-        return newSet;
-      });
+      trackingInProgress.current.delete(eventKey);
     }
-  }, [accountId, locationId, recommendationId, pageName, createAnalytic, isAuthenticated, isEventTrackedInSession, markEventAsTracked, trackingInProgress]);
+  }, [
+    accountId,
+    locationId,
+    recommendationId,
+    createAnalytic,
+    getEventTypeToCheck,
+    getSessionKey,
+    isEventTrackedInSession,
+    markEventAsTracked,
+    routePath,
+    routeVariant,
+    shouldSkipTracking,
+  ]);
 
   /**
    * Track page view event
@@ -292,7 +301,7 @@ export const useTrackAnalytics = (options: UseTrackAnalyticsOptions): UseTrackAn
       type: 'view',
       metadata: viewMetadata
     });
-  }, [trackEvent, hasTrackedView, isAuthenticated, isEventTrackedInSession, pageName, cityName]);
+  }, [trackEvent, hasTrackedView, isEventTrackedInSession, pageName, cityName, shouldSkipTracking]);
 
   /**
    * Track click event
@@ -303,45 +312,16 @@ export const useTrackAnalytics = (options: UseTrackAnalyticsOptions): UseTrackAn
       return;
     }
 
-    // Create a unique click identifier based on element and context
-    let clickIdentifier = element;
-    
-    // For social media links, use platform
-    if (metadata?.platform) {
-      clickIdentifier = `${element}-${metadata.platform}`;
-    }
-    // For gallery items, use index to make each click unique
-    else if (metadata?.index !== undefined) {
-      clickIdentifier = `${element}-${metadata.index}`;
-    }
-    // For city selection, use cityId
-    else if (metadata?.cityId) {
-      clickIdentifier = `${element}-${metadata.cityId}`;
-    }
-    // For other elements, use any unique identifier in metadata
-    else if (metadata?.id) {
-      clickIdentifier = `${element}-${metadata.id}`;
-    }
-    // Fallback to element name
-    else {
-      clickIdentifier = element;
-    }
-    
-    // Check if this specific click type has been tracked for this page in this session
-    if (isEventTrackedInSession(`click-${clickIdentifier}`)) {
-      return;
-    }
-
     trackEvent({
       type: 'click',
-      element: clickIdentifier, // Use the unique identifier as element
+      element,
       metadata: {
         ...metadata,
         url: window.location.href,
-        originalElement: element // Keep original element for reference
+        originalElement: element,
       }
     });
-  }, [trackEvent, isAuthenticated, isEventTrackedInSession]);
+  }, [shouldSkipTracking, trackEvent]);
 
   /**
    * Track interaction event (hover, scroll, etc.)
@@ -365,7 +345,7 @@ export const useTrackAnalytics = (options: UseTrackAnalyticsOptions): UseTrackAn
         url: window.location.href
       }
     });
-  }, [trackEvent, isAuthenticated, isEventTrackedInSession]);
+  }, [trackEvent, isEventTrackedInSession, shouldSkipTracking]);
 
 
   return {
@@ -392,6 +372,25 @@ export const getAccountIdFromUsername = async (username: string): Promise<string
     return null;
   }
 };
+
+const createCollectionAnalyticsOptions = (
+  accountDocumentId: string,
+  pageUsername: string | undefined,
+  pageName: string,
+  pathSegment: string,
+  locationDocumentId?: string,
+  recommendationDocumentId?: string,
+  route?: AnalyticsRouteMetadata,
+): UseTrackAnalyticsOptions => ({
+  accountId: accountDocumentId,
+  locationId: locationDocumentId || null,
+  recommendationId: recommendationDocumentId || null,
+  pageName,
+  pageUsername,
+  autoTrackView: true,
+  routeVariant: route?.variant || (locationDocumentId ? 'list' : 'index'),
+  routePath: route?.path || `/${pageUsername || ''}/${pathSegment}`.replace('//', '/'),
+});
 
 /**
  * Utility function to create analytics options for different page types
@@ -446,38 +445,124 @@ export const createAnalyticsOptions = {
   /**
    * For public movies/shows pages
    */
-  movies: (accountDocumentId: string, pageUsername?: string, listDocumentId?: string, movieDocumentId?: string): UseTrackAnalyticsOptions => ({
-    accountId: accountDocumentId,
-    locationId: listDocumentId || null,
-    recommendationId: movieDocumentId || null,
-    pageName: 'public-movies',
+  movies: (
+    accountDocumentId: string,
+    pageUsername?: string,
+    listDocumentId?: string,
+    movieDocumentId?: string,
+    route?: AnalyticsRouteMetadata,
+  ): UseTrackAnalyticsOptions => createCollectionAnalyticsOptions(
+    accountDocumentId,
     pageUsername,
-    autoTrackView: true
-  }),
+    'public-movies',
+    'movies',
+    listDocumentId,
+    movieDocumentId,
+    route,
+  ),
 
   /**
    * For public books pages
    */
-  books: (accountDocumentId: string, pageUsername?: string, listDocumentId?: string, bookDocumentId?: string): UseTrackAnalyticsOptions => ({
-    accountId: accountDocumentId,
-    locationId: listDocumentId || null,
-    recommendationId: bookDocumentId || null,
-    pageName: 'public-books',
+  books: (
+    accountDocumentId: string,
+    pageUsername?: string,
+    listDocumentId?: string,
+    bookDocumentId?: string,
+    route?: AnalyticsRouteMetadata,
+  ): UseTrackAnalyticsOptions => createCollectionAnalyticsOptions(
+    accountDocumentId,
     pageUsername,
-    autoTrackView: true
-  }),
+    'public-books',
+    'books',
+    listDocumentId,
+    bookDocumentId,
+    route,
+  ),
 
   /**
    * For public games pages
    */
-  games: (accountDocumentId: string, pageUsername?: string, listDocumentId?: string, gameDocumentId?: string): UseTrackAnalyticsOptions => ({
-    accountId: accountDocumentId,
-    locationId: listDocumentId || null,
-    recommendationId: gameDocumentId || null,
-    pageName: 'public-games',
+  games: (
+    accountDocumentId: string,
+    pageUsername?: string,
+    listDocumentId?: string,
+    gameDocumentId?: string,
+    route?: AnalyticsRouteMetadata,
+  ): UseTrackAnalyticsOptions => createCollectionAnalyticsOptions(
+    accountDocumentId,
     pageUsername,
-    autoTrackView: true
-  })
+    'public-games',
+    'games',
+    listDocumentId,
+    gameDocumentId,
+    route,
+  ),
+
+  guides: (
+    accountDocumentId: string,
+    pageUsername?: string,
+    guideDocumentId?: string,
+    route?: AnalyticsRouteMetadata,
+  ): UseTrackAnalyticsOptions => createCollectionAnalyticsOptions(
+    accountDocumentId,
+    pageUsername,
+    'public-guides',
+    'guides',
+    undefined,
+    guideDocumentId,
+    route || (guideDocumentId && pageUsername
+      ? { variant: 'detail', path: `/${pageUsername}/guides/${guideDocumentId}` }
+      : undefined),
+  ),
+
+  apps: (
+    accountDocumentId: string,
+    pageUsername?: string,
+    listDocumentId?: string,
+    appDocumentId?: string,
+    route?: AnalyticsRouteMetadata,
+  ): UseTrackAnalyticsOptions => createCollectionAnalyticsOptions(
+    accountDocumentId,
+    pageUsername,
+    'public-apps',
+    'apps',
+    listDocumentId,
+    appDocumentId,
+    route,
+  ),
+
+  products: (
+    accountDocumentId: string,
+    pageUsername?: string,
+    listDocumentId?: string,
+    productDocumentId?: string,
+    route?: AnalyticsRouteMetadata,
+  ): UseTrackAnalyticsOptions => createCollectionAnalyticsOptions(
+    accountDocumentId,
+    pageUsername,
+    'public-products',
+    'products',
+    listDocumentId,
+    productDocumentId,
+    route,
+  ),
+
+  people: (
+    accountDocumentId: string,
+    pageUsername?: string,
+    listOrSectorDocumentId?: string,
+    personDocumentId?: string,
+    route?: AnalyticsRouteMetadata,
+  ): UseTrackAnalyticsOptions => createCollectionAnalyticsOptions(
+    accountDocumentId,
+    pageUsername,
+    'public-people',
+    'people',
+    listOrSectorDocumentId,
+    personDocumentId,
+    route,
+  ),
 };
 
 export default useTrackAnalytics;

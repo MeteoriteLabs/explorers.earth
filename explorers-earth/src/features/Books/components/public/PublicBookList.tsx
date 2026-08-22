@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { ArrowLeft, Star, Share2 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -24,9 +24,11 @@ import {
   publicLeafQueryContext,
   usePublicLeafRequestGeneration,
 } from "../../../../layouts/PublicRouteReadinessContext";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
 
 const PublicBookList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
+  const location = useLocation();
   const [modalState, setModalState] = useState<{ open: boolean; book: RecommendedBook | null }>({
     open: false,
     book: null,
@@ -47,6 +49,7 @@ const PublicBookList = () => {
   });
 
   const handleShare = async () => {
+    analytics.trackClick("share-button", { context: "books-list", listId: rawList?.documentId });
     const url = window.location.href;
     if (navigator.share) {
       try { await navigator.share({ title: rawList?.List_Name || "Book List", url }); } catch { /* ignore */ }
@@ -64,6 +67,13 @@ const PublicBookList = () => {
   const books: RecommendedBook[] = deduplicateBooks(
     data?.recommendedBooks_connection?.nodes,
   );
+  const analytics = useTrackAnalytics(createAnalyticsOptions.books(
+    rawList ? accountDocumentId : "",
+    username,
+    rawList?.documentId,
+    undefined,
+    { variant: "list", path: location.pathname },
+  ));
   const childState = resolvePublicChildState({
     loading,
     error,
@@ -104,8 +114,15 @@ const PublicBookList = () => {
   });
 
   const handleBookClick = useCallback((book: RecommendedBook) => {
+    analytics.trackClick("book-card", {
+      id: book.documentId,
+      title: book.title,
+      authors: book.authors?.join(", "),
+      listId: rawList?.documentId,
+      listName: rawList?.List_Name,
+    });
     setModalState({ open: true, book });
-  }, []);
+  }, [analytics, rawList?.List_Name, rawList?.documentId]);
 
   const pinnedBooks = books.filter((b) => b.is_pinned);
   const restBooks = books.filter((b) => !b.is_pinned);

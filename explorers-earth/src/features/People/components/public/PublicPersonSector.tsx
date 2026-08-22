@@ -28,6 +28,7 @@ import {
   usePublicLeafRequestGeneration,
 } from "../../../../layouts/PublicRouteReadinessContext";
 import { publicTaxonomyLegacyLookupName, publicTaxonomyPath } from "../../../../routes/publicTaxonomyRoute";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
 
 const PublicPersonSector = () => {
   const { username, sectorSlug } = useParams<{ username: string; sectorSlug: string }>();
@@ -70,6 +71,13 @@ const PublicPersonSector = () => {
   const sectorPeople = deduplicatePeople<RecommendedPerson>(
     data?.recommendedPeople_connection?.nodes ?? [],
   );
+  const analytics = useTrackAnalytics(createAnalyticsOptions.people(
+    sector ? accountDocumentId : "",
+    username,
+    sector?.documentId,
+    undefined,
+    { variant: "filter", path: location.pathname },
+  ));
   const childState = resolvePublicChildState({
     loading,
     error,
@@ -110,10 +118,18 @@ const PublicPersonSector = () => {
   });
 
   const handlePersonClick = useCallback((person: RecommendedPerson) => {
+    analytics.trackClick("person-card", {
+      id: person.documentId,
+      name: person.full_name,
+      headline: person.headline,
+      filterId: sector?.documentId,
+      filterName: sectorName,
+    });
     setSelectedPerson(person);
-  }, []);
+  }, [analytics, sector?.documentId, sectorName]);
 
   const handleShare = async () => {
+    analytics.trackClick("share-button", { context: "people-sector", filterId: sector?.documentId });
     const url = window.location.href;
     if (navigator.share) {
       try {

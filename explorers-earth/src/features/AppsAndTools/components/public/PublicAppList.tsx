@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useLocation, useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { Smartphone, Share2, ArrowLeft } from "lucide-react";
 import { APP_LIST_BY_SLUG } from "../../api/query";
@@ -22,10 +22,12 @@ import {
   publicLeafQueryContext,
   usePublicLeafRequestGeneration,
 } from "../../../../layouts/PublicRouteReadinessContext";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
 
 const PublicAppList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [selectedApp, setSelectedApp] = useState<RecommendedApp | null>(null);
 
   const account = usePublicProfileBootstrapAccount();
@@ -48,6 +50,13 @@ const PublicAppList = () => {
     data?.recommendedApps_connection?.nodes ?? [],
   );
   const creatorName = account.Account_Name || username;
+  const analytics = useTrackAnalytics(createAnalyticsOptions.apps(
+    list ? account.documentId : "",
+    username,
+    list?.documentId,
+    undefined,
+    { variant: "list", path: location.pathname },
+  ));
   const childState = resolvePublicChildState({
     loading,
     error,
@@ -88,10 +97,18 @@ const PublicAppList = () => {
   });
 
   const handleAppClick = useCallback((app: RecommendedApp) => {
+    analytics.trackClick("app-card", {
+      id: app.documentId,
+      title: app.title,
+      developer: app.developer,
+      listId: list?.documentId,
+      listName: list?.List_Name,
+    });
     setSelectedApp(app);
-  }, []);
+  }, [analytics, list?.List_Name, list?.documentId]);
 
   const handleShare = async () => {
+    analytics.trackClick("share-button", { context: "apps-list", listId: list?.documentId });
     const url = window.location.href;
     if (navigator.share) {
       try { await navigator.share({ title: list?.List_Name, url }); } catch { /* ignore */ }

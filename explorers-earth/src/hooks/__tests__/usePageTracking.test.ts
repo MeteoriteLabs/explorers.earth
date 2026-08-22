@@ -29,4 +29,25 @@ describe('usePageTracking hook', () => {
 
     expect(() => renderHook(() => usePageTracking())).not.toThrow();
   });
+
+  it('tracks each pathname transition once and ignores query/hash-only changes', () => {
+    mockUseLocation.mockReturnValue({ pathname: '/alice', search: '', hash: '' });
+    const { rerender } = renderHook(() => usePageTracking());
+
+    mockUseLocation.mockReturnValue({ pathname: '/alice/apps', search: '', hash: '' });
+    rerender();
+    mockUseLocation.mockReturnValue({ pathname: '/alice/products/list-a', search: '', hash: '' });
+    rerender();
+    mockUseLocation.mockReturnValue({
+      pathname: '/alice/products/list-a',
+      search: '?utm_source=qa',
+      hash: '#details',
+    });
+    rerender();
+
+    expect(window.gtag).toHaveBeenCalledTimes(3);
+    expect(window.gtag).toHaveBeenNthCalledWith(1, 'config', 'G-C3QBWP3ZSK', { page_path: '/alice' });
+    expect(window.gtag).toHaveBeenNthCalledWith(2, 'config', 'G-C3QBWP3ZSK', { page_path: '/alice/apps' });
+    expect(window.gtag).toHaveBeenNthCalledWith(3, 'config', 'G-C3QBWP3ZSK', { page_path: '/alice/products/list-a' });
+  });
 });

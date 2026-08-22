@@ -1,6 +1,6 @@
 import { memo, useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@apollo/client";
-import { useParams, useNavigate } from "react-router-dom";
+import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePublicRouteLifecycle } from "../../../layouts/usePublicRouteLifecycle";
 import { GET_PUBLIC_GUIDE_BY_SLUG_QUERY } from "../../Guides/api/queries";
@@ -36,10 +36,12 @@ import {
   publicLeafQueryContext,
   usePublicLeafRequestGeneration,
 } from "../../../layouts/PublicRouteReadinessContext";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../services/analyticsService";
 
 const PublicGuideDetailPage = memo(() => {
   const { username, guideSlug } = useParams<{ username: string; guideSlug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState("journey");
   const [selectedDay, setSelectedDay] = useState<string>("overview");
   const [isMapView, setIsMapView] = useState(false);
@@ -87,6 +89,12 @@ const PublicGuideDetailPage = memo(() => {
     ...guideRecord,
     guide_sections: data?.guideSections_connection?.nodes ?? [],
   }) : undefined, [data?.guideSections_connection?.nodes, guideRecord]);
+  const analytics = useTrackAnalytics(createAnalyticsOptions.guides(
+    guide ? accountDocumentId : "",
+    username,
+    guide?.documentId,
+    { variant: "detail", path: location.pathname },
+  ));
   const childState = resolvePublicChildState({
     loading,
     error,
@@ -703,6 +711,7 @@ const PublicGuideDetailPage = memo(() => {
             <div className="flex gap-2">
               <button
                 onClick={async () => {
+                  analytics.trackClick("share-button", { context: "guides-detail", guideId: guide.documentId });
                   const shareUrl = `${window.location.origin}/${username}/guides/${guideSlug}`;
                   if (navigator.share) {
                     navigator.share({

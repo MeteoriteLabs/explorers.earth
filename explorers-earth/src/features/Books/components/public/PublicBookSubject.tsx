@@ -24,6 +24,7 @@ import {
   usePublicLeafRequestGeneration,
 } from "../../../../layouts/PublicRouteReadinessContext";
 import { publicTaxonomyLegacyLookupName, publicTaxonomyPath } from "../../../../routes/publicTaxonomyRoute";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
 
 const PublicBookSubject = () => {
   const { username, subjectSlug } = useParams<{ username: string; subjectSlug: string }>();
@@ -55,6 +56,13 @@ const PublicBookSubject = () => {
 
   const subject = data?.bookCategories?.[0];
   const subjectName = subject?.subject_name ?? legacySubjectName;
+  const analytics = useTrackAnalytics(createAnalyticsOptions.books(
+    subject ? accountDocumentId : "",
+    username,
+    subject?.documentId,
+    undefined,
+    { variant: "filter", path: location.pathname },
+  ));
   useEffect(() => {
     if (subject?.documentId && subjectSlug !== subject.documentId) {
       navigate({
@@ -66,6 +74,7 @@ const PublicBookSubject = () => {
   }, [location.hash, location.search, navigate, subject?.documentId, subjectSlug, username]);
 
   const handleShare = async () => {
+    analytics.trackClick("share-button", { context: "books-filter", filterId: subject?.documentId });
     const url = window.location.href;
     if (navigator.share) {
       try { await navigator.share({ title: `${subjectName} Books`, url }); } catch { /* ignore */ }
@@ -122,8 +131,15 @@ const PublicBookSubject = () => {
   });
 
   const handleBookClick = useCallback((book: RecommendedBook) => {
+    analytics.trackClick("book-card", {
+      id: book.documentId,
+      title: book.title,
+      authors: book.authors?.join(", "),
+      filterId: subject?.documentId,
+      filterName: subjectName,
+    });
     setModalState({ open: true, book });
-  }, []);
+  }, [analytics, subject?.documentId, subjectName]);
 
   const pageTitle = `${subjectName} Books | ${username}'s Book List | explorers`;
   const metaDescription = `Explore ${subjectBooks.length} book${subjectBooks.length !== 1 ? "s" : ""} on ${subjectName} recommended by ${username} on explorers.`;

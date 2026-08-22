@@ -1,8 +1,14 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const queryState = vi.hoisted(() => ({ data: undefined as any }));
+const analyticsHarness = vi.hoisted(() => {
+	const trackClick = vi.fn();
+	const useTrackAnalytics = vi.fn(() => ({ trackClick }));
+	const games = vi.fn((accountId, pageUsername, locationId, recommendationId, route) => ({ accountId, pageUsername, locationId, recommendationId, routeVariant: route?.variant, routePath: route?.path }));
+	return { games, trackClick, useTrackAnalytics };
+});
 
 vi.mock("@apollo/client", async (importOriginal) => ({
 	...(await importOriginal<typeof import("@apollo/client")>()),
@@ -10,6 +16,9 @@ vi.mock("@apollo/client", async (importOriginal) => ({
 }));
 vi.mock("../../../../layouts/PublicProfileBootstrapContext", () => ({ usePublicProfileBootstrapAccount: () => ({ documentId: "account-1" }) }));
 vi.mock("../../../../components/SEO", () => ({ default: () => null }));
+vi.mock("../../../../services/analyticsService", () => ({ createAnalyticsOptions: { games: analyticsHarness.games }, useTrackAnalytics: analyticsHarness.useTrackAnalytics }));
+vi.mock("./GameCoverCard", () => ({ default: ({ title, onClick }: any) => <button type="button" onClick={onClick}>{title}</button> }));
+vi.mock("./GameDetailModal", () => ({ default: () => null }));
 
 import PublicGamesGenre from "./PublicGamesGenre";
 import PublicGamesList from "./PublicGamesList";
@@ -18,7 +27,7 @@ const connection = { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1
 
 function renderGenre() {
 	return render(
-		<MemoryRouter initialEntries={["/alice/games/genre/comedy"]}>
+		<MemoryRouter initialEntries={["/alice/games/genre/genre-1"]}>
 			<Routes>
 				<Route path="/:username/games/genre/:genreSlug" element={<PublicGamesGenre />} />
 				<Route path="/:username" element={<div>Profile fallback</div>} />
@@ -39,7 +48,14 @@ function renderList() {
 }
 
 describe("PublicGamesGenre", () => {
-	beforeEach(() => { queryState.data = undefined; });
+	beforeEach(() => {
+		queryState.data = undefined;
+		analyticsHarness.games.mockClear();
+		analyticsHarness.trackClick.mockClear();
+		analyticsHarness.useTrackAnalytics.mockClear();
+		Object.defineProperty(navigator, "share", { configurable: true, value: undefined });
+		Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } });
+	});
 
 	it("keeps a published empty genre on its URL", () => {
 		queryState.data = {
@@ -72,5 +88,31 @@ describe("PublicGamesGenre", () => {
 		queryState.data = { gameLists: [], recommendedGames_connection: connection };
 		renderList();
 		expect(await screen.findByText("Profile fallback")).toBeInTheDocument();
+	});
+
+	it("tracks list views, stable game cards, and share with document IDs", async () => {
+		queryState.data = {
+			gameLists: [{ documentId: "game-list-1", List_Name: "Favorites", slug: "favorites" }],
+			recommendedGames_connection: { ...connection, nodes: [{ documentId: "game-doc-1", title: "Journey", is_pinned: false }] },
+		};
+		renderList();
+
+		expect(analyticsHarness.games).toHaveBeenCalledWith("account-1", "alice", "game-list-1", undefined, { variant: "list", path: "/alice/games/favorites" });
+		fireEvent.click(screen.getByRole("button", { name: "Journey" }));
+		expect(analyticsHarness.trackClick).toHaveBeenCalledWith("game-card", expect.objectContaining({ id: "game-doc-1", listId: "game-list-1" }));
+		fireEvent.click(screen.getByRole("button", { name: "Share" }));
+		await waitFor(() => expect(analyticsHarness.trackClick).toHaveBeenCalledWith("share-button", expect.objectContaining({ context: "games-list" })));
+	});
+
+	it("tracks genre views and cards with the stable taxonomy document ID", () => {
+		queryState.data = {
+			gameCategories: [{ documentId: "genre-1", genre_name: "Comedy" }],
+			recommendedGames_connection: { ...connection, nodes: [{ documentId: "game-doc-2", title: "Untitled Goose Game", is_pinned: false }] },
+		};
+		renderGenre();
+
+		expect(analyticsHarness.games).toHaveBeenCalledWith("account-1", "alice", "genre-1", undefined, { variant: "filter", path: "/alice/games/genre/genre-1" });
+		fireEvent.click(screen.getByRole("button", { name: "Untitled Goose Game" }));
+		expect(analyticsHarness.trackClick).toHaveBeenCalledWith("game-card", expect.objectContaining({ id: "game-doc-2", filterId: "genre-1" }));
 	});
 });

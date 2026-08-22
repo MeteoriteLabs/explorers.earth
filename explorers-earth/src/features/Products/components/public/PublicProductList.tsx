@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useLocation, useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { ShoppingBag, Share2, ArrowLeft } from "lucide-react";
 import { PRODUCT_LIST_BY_SLUG } from "../../api/query";
@@ -22,10 +22,12 @@ import {
   publicLeafQueryContext,
   usePublicLeafRequestGeneration,
 } from "../../../../layouts/PublicRouteReadinessContext";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
 
 const PublicProductList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [selectedProduct, setSelectedProduct] = useState<RecommendedProduct | null>(null);
 
   const account = usePublicProfileBootstrapAccount();
@@ -48,6 +50,13 @@ const PublicProductList = () => {
     data?.recommendedProducts_connection?.nodes ?? [],
   );
   const creatorName = account.Account_Name || username;
+  const analytics = useTrackAnalytics(createAnalyticsOptions.products(
+    list ? account.documentId : "",
+    username,
+    list?.documentId,
+    undefined,
+    { variant: "list", path: location.pathname },
+  ));
   const childState = resolvePublicChildState({
     loading,
     error,
@@ -88,10 +97,18 @@ const PublicProductList = () => {
   });
 
   const handleProductClick = useCallback((product: RecommendedProduct) => {
+    analytics.trackClick("product-card", {
+      id: product.documentId,
+      title: product.title,
+      brand: product.brand,
+      listId: list?.documentId,
+      listName: list?.List_Name,
+    });
     setSelectedProduct(product);
-  }, []);
+  }, [analytics, list?.List_Name, list?.documentId]);
 
   const handleShare = async () => {
+    analytics.trackClick("share-button", { context: "products-list", listId: list?.documentId });
     const url = window.location.href;
     if (navigator.share) {
       try { await navigator.share({ title: list?.List_Name, url }); } catch { /* ignore */ }

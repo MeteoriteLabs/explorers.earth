@@ -5,7 +5,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PublicRouteReadinessContext } from "../../layouts/PublicRouteReadinessContext";
-import { publicRouteContract, publicRoutePath } from "../publicRouteContract";
+import {
+  publicRouteContract,
+  publicRoutePath,
+  type PublicRouteAnalytics,
+  type PublicRouteId,
+} from "../publicRouteContract";
 
 const publicRouteSources = import.meta.glob(
   [
@@ -425,6 +430,45 @@ describe("PublicRoutes orchestration and readiness", () => {
     expect(route.skeleton).toBeDefined();
     expect(route.marker).toBeTruthy();
     expect(route.analytics).toBeDefined();
+  });
+
+  it("classifies every public route with an exhaustive custom-or-GA analytics policy", () => {
+    const expected = {
+      profile: "custom-page-view-and-interactions",
+      music: "custom-page-view-and-interactions",
+      "places-index": "custom-page-view-and-interactions",
+      "places-detail": "custom-page-view-and-interactions",
+      "places-map": "ga-pathname-only",
+      "places-detail-map": "ga-pathname-only",
+      "places-map-detail": "ga-pathname-only",
+      "guides-index": "custom-page-view-and-interactions",
+      "guides-detail": "custom-page-view-and-interactions",
+      community: "ga-pathname-only",
+      "movies-index": "custom-page-view-and-interactions",
+      "movies-genre": "custom-page-view-and-interactions",
+      "movies-list": "custom-page-view-and-interactions",
+      "books-index": "custom-page-view-and-interactions",
+      "books-subject": "custom-page-view-and-interactions",
+      "books-list": "custom-page-view-and-interactions",
+      "games-index": "custom-page-view-and-interactions",
+      "games-genre": "custom-page-view-and-interactions",
+      "games-list": "custom-page-view-and-interactions",
+      "apps-index": "custom-page-view-and-interactions",
+      "apps-list": "custom-page-view-and-interactions",
+      "products-index": "custom-page-view-and-interactions",
+      "products-list": "custom-page-view-and-interactions",
+      "people-index": "custom-page-view-and-interactions",
+      "people-sector": "custom-page-view-and-interactions",
+      "people-list": "custom-page-view-and-interactions",
+    } satisfies Record<PublicRouteId, PublicRouteAnalytics>;
+
+    expect(Object.fromEntries(publicRouteContract.map((route) => [route.id, route.analytics]))).toEqual(expected);
+    expect(publicRouteContract.filter((route) => route.analytics === "ga-pathname-only").map((route) => route.id)).toEqual([
+      "places-map",
+      "places-detail-map",
+      "places-map-detail",
+      "community",
+    ]);
   });
 
   it.each([

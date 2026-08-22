@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { Smartphone, Share2 } from "lucide-react";
 import { PUBLIC_APP_DATA } from "../../api/query";
@@ -14,10 +14,12 @@ import AppTopPicksHero from "./AppTopPicksHero";
 import AppTopPicksMobileHero from "./AppTopPicksMobileHero";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
 
 const PublicApps = () => {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [modalState, setModalState] = useState<{ open: boolean; app: RecommendedApp | null }>({
     open: false,
     app: null,
@@ -26,6 +28,13 @@ const PublicApps = () => {
   const account = usePublicProfileBootstrapAccount();
   const accountDocumentId = account.documentId;
   const creatorName = account.Account_Name || username;
+  const analytics = useTrackAnalytics(createAnalyticsOptions.apps(
+    accountDocumentId || "",
+    username,
+    undefined,
+    undefined,
+    { variant: "index", path: location.pathname },
+  ));
 
   const { data, loading: appsLoading, error: appsError, refetch: refetchApps } = useQuery(PUBLIC_APP_DATA, {
     variables: { accountDocumentId },
@@ -64,10 +73,18 @@ const PublicApps = () => {
   // }, [allApps]);
 
   const handleAppClick = useCallback((app: RecommendedApp) => {
+    analytics.trackClick("app-card", {
+      id: app.documentId,
+      title: app.title,
+      developer: app.developer,
+      listId: app.app_list?.documentId,
+      listName: app.app_list?.List_Name,
+    });
     setModalState({ open: true, app });
-  }, []);
+  }, [analytics]);
 
   const handleShare = async () => {
+    analytics.trackClick("share-button", { context: "apps-index" });
     const url = window.location.href;
     if (navigator.share) {
       try { await navigator.share({ title: `${creatorName}'s Apps`, url }); } catch { /* ignore */ }

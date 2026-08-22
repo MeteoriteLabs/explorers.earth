@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { ArrowLeft, Star, Share2 } from "lucide-react";
 import { toast } from "sonner";
@@ -23,10 +23,12 @@ import {
   publicLeafQueryContext,
   usePublicLeafRequestGeneration,
 } from "../../../../layouts/PublicRouteReadinessContext";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
 
 const PublicGamesList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [modalState, setModalState] = useState<{ open: boolean; game: RecommendedGame | null }>({
     open: false,
     game: null,
@@ -55,6 +57,13 @@ const PublicGamesList = () => {
         ),
       }
     : null;
+  const analytics = useTrackAnalytics(createAnalyticsOptions.games(
+    list ? accountDocumentId : "",
+    username,
+    list?.documentId,
+    undefined,
+    { variant: "list", path: location.pathname },
+  ));
   const childState = resolvePublicChildState({
     loading,
     error,
@@ -95,6 +104,7 @@ const PublicGamesList = () => {
   });
 
   const handleShare = async () => {
+    analytics.trackClick("share-button", { context: "games-list", listId: list?.documentId });
     const url = window.location.href;
     if (navigator.share) {
       try { await navigator.share({ title: list?.List_Name || "Game List", url }); } catch { /* ignore */ }
@@ -109,8 +119,15 @@ const PublicGamesList = () => {
   };
 
   const handleGameClick = useCallback((game: RecommendedGame) => {
+    analytics.trackClick("game-card", {
+      id: game.documentId,
+      title: game.title,
+      genres: game.genres?.join(", "),
+      listId: list?.documentId,
+      listName: list?.List_Name,
+    });
     setModalState({ open: true, game });
-  }, []);
+  }, [analytics, list?.List_Name, list?.documentId]);
 
   if (!data) return null;
   if (childState === "redirect") return <PublicProfileFallbackRedirect expectedGeneration={requestGeneration} />;

@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { Users, Share2 } from "lucide-react";
 import { PUBLIC_PEOPLE_DATA } from "../../api/query";
@@ -15,10 +15,12 @@ import PersonTopPicksMobileHero from "./PersonTopPicksMobileHero";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
 import { publicTaxonomyPath } from "../../../../routes/publicTaxonomyRoute";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
 
 const PublicPeople = () => {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [modalState, setModalState] = useState<{ open: boolean; person: RecommendedPerson | null }>({
     open: false,
     person: null,
@@ -27,6 +29,13 @@ const PublicPeople = () => {
   const account = usePublicProfileBootstrapAccount();
   const accountDocumentId = account.documentId;
   const creatorName = account.Account_Name || username;
+  const analytics = useTrackAnalytics(createAnalyticsOptions.people(
+    accountDocumentId || "",
+    username,
+    undefined,
+    undefined,
+    { variant: "index", path: location.pathname },
+  ));
 
   const { data, loading: peopleLoading, error: peopleError, refetch: refetchPeople } = useQuery(PUBLIC_PEOPLE_DATA, {
     variables: { accountDocumentId },
@@ -70,10 +79,18 @@ const PublicPeople = () => {
   ).sort((left, right) => left.name.localeCompare(right.name)), [allPeople]);
 
   const handlePersonClick = useCallback((person: RecommendedPerson) => {
+    analytics.trackClick("person-card", {
+      id: person.documentId,
+      name: person.full_name,
+      headline: person.headline,
+      listId: person.person_list?.documentId,
+      listName: person.person_list?.List_Name,
+    });
     setModalState({ open: true, person });
-  }, []);
+  }, [analytics]);
 
   const handleShare = async () => {
+    analytics.trackClick("share-button", { context: "people-index" });
     const url = window.location.href;
     if (navigator.share) {
       try { await navigator.share({ title: `${creatorName}'s People`, url }); } catch { /* ignore */ }

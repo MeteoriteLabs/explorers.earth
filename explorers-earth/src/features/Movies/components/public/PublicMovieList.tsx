@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useLocation, useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { Share2, ArrowLeft } from "lucide-react";
 import { MOVIE_LIST_BY_SLUG } from "../../api/query";
@@ -22,10 +22,12 @@ import {
   publicLeafQueryContext,
   usePublicLeafRequestGeneration,
 } from "../../../../layouts/PublicRouteReadinessContext";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
 
 const PublicMovieList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const accountDocumentId = usePublicProfileBootstrapAccount().documentId;
@@ -55,6 +57,13 @@ const PublicMovieList = () => {
     entityExists: Boolean(list),
     empty: Boolean(list) && movies.length === 0,
   });
+  const analytics = useTrackAnalytics(createAnalyticsOptions.movies(
+    list ? accountDocumentId : "",
+    username,
+    list?.documentId,
+    undefined,
+    { variant: "list", path: location.pathname },
+  ));
 
   usePublicRouteLifecycle({
     loading,
@@ -93,11 +102,19 @@ const PublicMovieList = () => {
   }
 
   const handleMovieClick = (movie: RecommendedMovie) => {
+    analytics.trackClick("movie-card", {
+      id: movie.documentId,
+      title: movie.title,
+      mediaType: movie.media_type || "movie",
+      listId: list?.documentId,
+      listName: list?.List_Name,
+    });
     setSelectedMovie(movie);
     setModalOpen(true);
   };
 
   const handleShare = async () => {
+    analytics.trackClick("share-button", { context: "movies-list", listId: list?.documentId });
     const url = window.location.href;
     if (navigator.share) {
       try { await navigator.share({ title: list?.List_Name, url }); } catch { /* ignore */ }

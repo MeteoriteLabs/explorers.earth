@@ -1,12 +1,12 @@
 import { memo, useCallback, useMemo, useState, useEffect } from "react";
 import { useQuery } from "@apollo/client";
-import { useParams, useNavigate } from "react-router-dom";
+import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { usePublicRouteLifecycle } from "../../../layouts/usePublicRouteLifecycle";
 import PublicGuideCard from "../../Guides/components/PublicGuideCard";
 import { GET_PUBLIC_GUIDES_QUERY } from "../../Guides/api/queries";
 import { usePublicProfileBootstrapAccount } from "../../../layouts/PublicProfileBootstrapContext";
 import type { Guide } from "../../Guides/types";
-import { useTrackAnalytics } from "../../../services/analyticsService";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../services/analyticsService";
 import SEO from "../../../components/SEO";
 import { createCanonicalUrl } from "../../../utils/getCurrentDomain";
 import { createWebPageGEOData } from "../../../utils/geoHelpers";
@@ -27,6 +27,7 @@ interface FilterState {
 const PublicGuides = memo(() => {
   const { username } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [filters, setFilters] = useState<FilterState>({
     guideType: null,
     category: null,
@@ -91,12 +92,12 @@ const PublicGuides = memo(() => {
     empty: !loading && !error && Boolean(guidesData) && allGuides.length === 0,
   });
 
-  const analytics = useTrackAnalytics({
-    accountId: account?.documentId || "",
-    pageName: "public-guides",
-    pageUsername: username,
-    autoTrackView: true,
-  });
+  const analytics = useTrackAnalytics(createAnalyticsOptions.guides(
+    account?.documentId || "",
+    username,
+    undefined,
+    { variant: "index", path: location.pathname },
+  ));
 
   // Helper function to extract location names from Place_Details
   const extractLocationNames = (guide: Guide): string[] => {
