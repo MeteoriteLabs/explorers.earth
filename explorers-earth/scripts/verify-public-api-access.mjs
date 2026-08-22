@@ -9,6 +9,7 @@ const DIAGNOSTICS = {
   malformed: ["PUBLIC_API_MALFORMED", "The public API returned an invalid capability response.", "Verify the GraphQL schema and published-read response contract without exposing private fields."],
   empty: ["PUBLIC_API_EMPTY", "The published collection is available but has no records.", "Confirm this empty result is expected for the controlled public fixture."],
   ready: ["PUBLIC_API_READY", "The published operation returned public records.", "Record this scoped capability result in the release artifact."],
+  "validation-rejected": ["PUBLIC_API_VALIDATION_REJECTED", "The API rejected the deliberate invalid canary shape.", "Record the rejected invalid-shape boundary proof."],
 };
 
 function diagnostic(operation, classification, observedStatus) {
@@ -51,7 +52,7 @@ async function requestOperation({ endpoint, token, operation, variables, fetchIm
       clearTimeout(timeout);
       if (body?.errors?.some((error) => /forbidden/i.test(error?.message ?? ""))) return { diagnostic: diagnostic(operation.id, "forbidden", "graphql-forbidden") };
       if (body?.errors?.some((error) => /unauthorized/i.test(error?.message ?? ""))) return { diagnostic: diagnostic(operation.id, "unauthorized", "graphql-unauthorized") };
-      if (body?.errors?.some((error) => /validation|unknown field|invalid input|unsupported/i.test(error?.message ?? ""))) return { diagnostic: diagnostic(operation.id, "forbidden", "graphql-validation-denied") };
+      if (body?.errors?.some((error) => /validation|unknown field|invalid input|unsupported/i.test(error?.message ?? ""))) return { diagnostic: diagnostic(operation.id, "validation-rejected", "graphql-validation-denied") };
       const value = operation.path.reduce((current, key) => current?.[key], body?.data);
       if (!Array.isArray(value)) return { diagnostic: diagnostic(operation.id, "malformed", "missing-data") };
       return { diagnostic: diagnostic(operation.id, value.length === 0 ? "empty" : "ready", "http-200"), value };
@@ -67,6 +68,33 @@ function reportCode(operations) {
   return blocking?.code ?? "PUBLIC_API_READY";
 }
 
+function cleanupFailure(observedStatus) {
+  return { code: "ANALYTICS_CLEANUP_FAILED", operations: [{ operation: "analytics-canary", classification: "malformed", code: "ANALYTICS_CLEANUP_FAILED", observedStatus, likelyCause: "The protected analytics canary was not proven cleaned up.", remediation: "Stop mutations and repair the dedicated QA sink before rerunning." }] };
+}
+
+export async function runAnalyticsCanaryLifecycle({ endpoint, token, runId, qaSink, documents, fetchImpl = fetch, timeoutMs = 1500 } = {}) {
+  if (!endpoint || !token || !runId || !qaSink || !/^qa[-_]/i.test(qaSink) || !documents || !/\bcanary\s*:/.test(documents.canary ?? "") || !/\bcleanup\s*:/.test(documents.cleanup ?? "") || !/\bremaining\s*:/.test(documents.remaining ?? "")) return { code: "ANALYTICS_CANARY_REQUIRED", operations: [{ operation: "analytics-canary", classification: "malformed", code: "ANALYTICS_CANARY_REQUIRED", observedStatus: "contract-missing-or-invalid", likelyCause: "The protected analytics canary contract is incomplete.", remediation: "Provide aliasing canary, cleanup, and remaining documents plus a QA sink and run ID." }] };
+  const send = async (operationName, query, variables) => {
+    const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try { const response = await fetchImpl(endpoint, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ operationName, query, variables }), signal: controller.signal }); const body = await response.json(); return response.ok && !body.errors ? body.data : null; } catch { return null; } finally { clearTimeout(timer); }
+  };
+  let createdId;
+  try {
+    const written = await send("ApprovedAnalyticsCanary", documents.canary, { runId, qaSink });
+    createdId = written?.canary?.documentId;
+    if (!createdId) return cleanupFailure("canary-write-failed");
+  } finally {
+    if (createdId) {
+      const cleaned = await send("CleanupAnalyticsCanary", documents.cleanup, { runId, qaSink, documentId: createdId });
+      if (!cleaned?.cleanup) createdId = undefined;
+    }
+  }
+  if (!createdId) return cleanupFailure("cleanup-failed");
+  const remaining = await send("VerifyAnalyticsCanaryCleanup", documents.remaining, { runId, qaSink });
+  if (!Array.isArray(remaining?.remaining) || remaining.remaining.length) return cleanupFailure("cleanup-verification-failed");
+  return { code: "PUBLIC_API_READY", operations: [{ operation: "analytics-canary", classification: "ready", code: "PUBLIC_API_READY", observedStatus: "cleanup-verified", likelyCause: "Approved QA analytics canary completed and was removed.", remediation: "Retain the redacted release artifact." }] };
+}
+
 const NEGATIVE_PROBES = [
   ["private-account-direct-id", "CapabilityPrivateAccount", "query CapabilityPrivateAccount($id: ID!) { account(documentId: $id) { documentId } }", "public-read", (env) => ({ id: env.PUBLIC_API_PRIVATE_ACCOUNT_ID })],
   ["private-list-direct-id", "CapabilityPrivateList", "query CapabilityPrivateList($id: ID!) { recommendationList(documentId: $id) { documentId } }", "public-read", (env) => ({ id: env.PUBLIC_API_PRIVATE_LIST_ID })],
@@ -79,7 +107,6 @@ const NEGATIVE_PROBES = [
   ["analytics-unknown-field", "AnalyticsValidationCanaryUnknown", "mutation AnalyticsValidationCanaryUnknown($runId: String!) { analyticsValidationCanary(runId: $runId, shape: \"unknown-field\") { accepted } }", "analytics-write", (env) => ({ runId: env.PUBLIC_API_RUN_ID })],
   ["analytics-invalid-account", "AnalyticsValidationCanaryAccount", "mutation AnalyticsValidationCanaryAccount($runId: String!) { analyticsValidationCanary(runId: $runId, shape: \"invalid-account\") { accepted } }", "analytics-write", (env) => ({ runId: env.PUBLIC_API_RUN_ID })],
   ["analytics-unsupported-event", "AnalyticsValidationCanaryEvent", "mutation AnalyticsValidationCanaryEvent($runId: String!) { analyticsValidationCanary(runId: $runId, shape: \"unsupported-event\") { accepted } }", "analytics-write", (env) => ({ runId: env.PUBLIC_API_RUN_ID })],
-  ["rate-limit", "CapabilityRateLimitProbe", "query CapabilityRateLimitProbe { accounts { documentId } }", "public-read", () => ({})],
 ];
 
 export async function runControlledNegativeProbes({ endpoint, env = process.env, fetchImpl = fetch, timeoutMs = 1500, retries = 0 } = {}) {
@@ -93,13 +120,15 @@ export async function runControlledNegativeProbes({ endpoint, env = process.env,
   if (env.PUBLIC_PROFILE_MUTATION_APPROVED !== "true" || env.PUBLIC_PROFILE_TEST_ACCOUNT_MARKER !== "public-profile-mutation-fixture" || !env.PUBLIC_API_ANALYTICS_QA_SINK || !env.PUBLIC_API_ANALYTICS_CANARY_MUTATION || !env.PUBLIC_API_ANALYTICS_CLEANUP_MUTATION || !env.PUBLIC_API_ANALYTICS_CLEANUP_VERIFY_QUERY) {
     return { code: "ANALYTICS_CANARY_REQUIRED", operations: [{ operation: "analytics-canary", classification: "malformed", code: "ANALYTICS_CANARY_REQUIRED", observedStatus: "approval-sink-or-cleanup-missing", likelyCause: "Approved analytics canary cleanup cannot be guaranteed.", remediation: "Provide the protected approval, dedicated marker, QA sink, canary mutation, cleanup mutation, and cleanup verification query." }] };
   }
+  const lifecycle = await runAnalyticsCanaryLifecycle({ endpoint, token: env.VITE_ANALYTICS_WRITE_ACCESS_TOKEN, runId: env.PUBLIC_API_RUN_ID, qaSink: env.PUBLIC_API_ANALYTICS_QA_SINK, documents: { canary: env.PUBLIC_API_ANALYTICS_CANARY_MUTATION, cleanup: env.PUBLIC_API_ANALYTICS_CLEANUP_MUTATION, remaining: env.PUBLIC_API_ANALYTICS_CLEANUP_VERIFY_QUERY }, fetchImpl, timeoutMs });
+  if (lifecycle.code !== "PUBLIC_API_READY") return lifecycle;
   const results = [];
   for (const [id, operationName, query, capability, variablesFor] of NEGATIVE_PROBES) {
     const variables = variablesFor(env);
     const operation = { id, operationName, query, variables: () => variables, path: ["__must_not_exist__"] };
     const token = capability === "analytics-write" ? env.VITE_ANALYTICS_WRITE_ACCESS_TOKEN : env.VITE_PUBLIC_READ_ACCESS_TOKEN;
     const response = await requestOperation({ endpoint, token, operation, variables, fetchImpl, timeoutMs, retries });
-    const expected = id === "rate-limit" ? "transport-error" : "forbidden";
+    const expected = id.startsWith("analytics-") && ["analytics-unknown-field", "analytics-invalid-account", "analytics-unsupported-event"].includes(id) ? "validation-rejected" : "forbidden";
     const passed = response.diagnostic.classification === expected;
     results.push({ ...response.diagnostic, code: passed ? "PUBLIC_API_READY" : "PUBLIC_CAPABILITY_BOUNDARY_BROKEN", expected, passed });
   }

@@ -1,7 +1,27 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { runControlledNegativeProbes, runPublicApiPreflight } from "../verify-public-api-access.mjs";
+import { runAnalyticsCanaryLifecycle, runControlledNegativeProbes, runPublicApiPreflight } from "../verify-public-api-access.mjs";
+
+test("analytics canary writes, cleans up, and verifies an empty QA sink", async () => {
+  const operations = [];
+  const result = await runAnalyticsCanaryLifecycle({
+    endpoint: "https://fixture.invalid/graphql", token: "analytics-write-token", runId: "run-1", qaSink: "qa-sink",
+    documents: {
+      canary: "mutation { canary: createAnalyticsCanary { documentId } }",
+      cleanup: "mutation { cleanup: deleteAnalyticsCanary { documentId } }",
+      remaining: "query { remaining: analyticsCanaries { documentId } }",
+    },
+    fetchImpl: async (_url, options) => {
+      const operationName = JSON.parse(options.body).operationName;
+      operations.push(operationName);
+      assert.equal(options.headers.authorization, "Bearer analytics-write-token");
+      return Response.json(operationName === "ApprovedAnalyticsCanary" ? { data: { canary: { documentId: "created-id" } } } : operationName === "CleanupAnalyticsCanary" ? { data: { cleanup: { documentId: "created-id" } } } : { data: { remaining: [] } });
+    },
+  });
+  assert.equal(result.code, "PUBLIC_API_READY");
+  assert.deepEqual(operations, ["ApprovedAnalyticsCanary", "CleanupAnalyticsCanary", "VerifyAnalyticsCanaryCleanup"]);
+});
 
 test("stops after an unauthorized account bootstrap and emits a redacted stable result", async () => {
   let calls = 0;
