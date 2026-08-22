@@ -1,5 +1,5 @@
 import { useEffect, useContext } from "react";
-import { useParams, useLocation, Outlet } from "react-router-dom";
+import { useParams, Outlet } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { gql } from "@apollo/client";
 import { PublicRouteReadinessContext } from "../../layouts/PublicRouteReadinessContext";
@@ -16,7 +16,6 @@ export const checkUsernameQuery = gql`
 
 export const UsernameValidator = () => {
   const { username } = useParams();
-  const location = useLocation();
   const readinessCtx = useContext(PublicRouteReadinessContext);
   const generation = readinessCtx?.generation || "";
   const markLoading = readinessCtx?.markLoading;
@@ -47,50 +46,9 @@ export const UsernameValidator = () => {
         return;
       }
 
-      // Normalize the path to handle trailing slashes
-      const normalizedPath = location.pathname.replace(/\/$/, "");
-      const pathSegments = normalizedPath.split("/");
-
-      // If we have more than 2 segments, validate the nested route
-      if (pathSegments.length > 2) {
-        const validRoutes = [
-          "places",
-          "community",
-          "music",
-          "guides",
-          "movies",
-          "books",
-          "games",
-          "apps",
-          "products",
-          "people",
-        ];
-        const currentRoute = pathSegments[2];
-
-        // Check if the current route is valid
-        if (!validRoutes.includes(currentRoute)) {
-          markNotFound?.(generation);
-          return;
-        }
-
-        // Additional validation for places sub-routes
-        if (currentRoute === "places" && pathSegments.length > 3) {
-          const validPlacesSubRoutes = ["map"];
-          const placesSubRoute = pathSegments[3];
-
-          if (
-            !validPlacesSubRoutes.includes(placesSubRoute) &&
-            !/^[a-zA-Z0-9-_]+$/.test(placesSubRoute)
-          ) {
-            markNotFound?.(generation);
-            return;
-          }
-        }
-      }
-
       markLoading?.(generation);
     }
-  }, [data, loading, error, username, location.pathname, generation, markLoading, markError, markNotFound, refetch]);
+  }, [data, loading, error, generation, markLoading, markError, markNotFound, refetch]);
 
   if (loading || error || !data || !data.accounts?.[0]) {
     return null;

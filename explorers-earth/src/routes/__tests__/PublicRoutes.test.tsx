@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PublicRouteReadinessContext } from "../../layouts/PublicRouteReadinessContext";
+import { publicRouteContract, publicRoutePath } from "../publicRouteContract";
 
 // 1. Hoisted state MUST be defined before vi.mock calls that reference it
 const { profileMock, readyLeaf, dummyFeature, queryState, defaultEmptyQueryResult, defaultRefetch } = vi.hoisted(() => {
@@ -258,6 +259,23 @@ describe("PublicRoutes orchestration and readiness", () => {
     });
   });
 
+  it("keeps an unknown username on Not Found instead of redirecting its child URL", async () => {
+    queryState.username = { data: { accounts: [] }, loading: false, error: undefined, refetch: defaultRefetch };
+    queryState.profile = defaultEmptyQueryResult;
+
+    const router = createMemoryRouter(createRoutesFromElements(PublicRoutes), {
+      initialEntries: ["/nonexistent/unsupported-child"],
+    });
+
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Page Not Found")).toBeInTheDocument();
+    });
+
+    expect(router.state.location.pathname).toBe("/nonexistent/unsupported-child");
+  });
+
   it("renders localized error feedback on username query failure and handles retry success", async () => {
     const mockRefetch = vi.fn();
     queryState.username = { data: undefined, loading: false, error: new Error("Network Error"), refetch: mockRefetch };
@@ -275,6 +293,23 @@ describe("PublicRoutes orchestration and readiness", () => {
     });
 
     expect(mockRefetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps an unsupported child URL when username lookup fails", async () => {
+    queryState.username = { data: undefined, loading: false, error: new Error("Network Error"), refetch: defaultRefetch };
+    queryState.profile = defaultEmptyQueryResult;
+
+    const router = createMemoryRouter(createRoutesFromElements(PublicRoutes), {
+      initialEntries: ["/alice/unsupported-child"],
+    });
+
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Couldn’t verify this profile")).toBeInTheDocument();
+    });
+
+    expect(router.state.location.pathname).toBe("/alice/unsupported-child");
   });
 
   it("renders localized error feedback on profile query failure and handles single-flight retry", async () => {
@@ -307,22 +342,129 @@ describe("PublicRoutes orchestration and readiness", () => {
   it("renders direct public-route leaves seamlessly", async () => {
     queryState.username = stateSuccessUsername;
     queryState.profile = defaultEmptyQueryResult;
+    const mapRoute = publicRouteContract.find((route) => route.id === "places-map");
 
-    render(<PublicRouteRunner initialEntries={["/alice/places/map"]} />);
+    if (!mapRoute) throw new Error("places-map route missing from public route contract");
+
+    render(<PublicRouteRunner initialEntries={[publicRoutePath(mapRoute, { username: "alice" })]} />);
 
     await waitFor(() => {
       expect(screen.queryByTestId("public-profile-shell")).toBeNull();
     });
   });
 
-  it("renders Not Found for an unsupported public child route", async () => {
+  it.each(publicRouteContract)("matches the declared $id route without a fallback", async (route) => {
     queryState.username = stateSuccessUsername;
+    queryState.profile = defaultEmptyQueryResult;
 
-    render(<PublicRouteRunner initialEntries={["/alice/spaces"]} />);
+    const queryClient = createTestQueryClient();
+    const router = createMemoryRouter(createRoutesFromElements(PublicRoutes), {
+      initialEntries: [publicRoutePath(route, { username: "alice" })],
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
 
     await waitFor(() => {
-      expect(screen.getByText("Page Not Found")).toBeInTheDocument();
+      expect(router.state.matches.at(-1)?.route.id).toBe(route.id);
     });
+
+    expect(route.requiredOperations.length).toBeGreaterThan(0);
+    expect(route.conditionalOperations).toBeDefined();
+    expect(route.shell).toBeDefined();
+    expect(route.skeleton).toBeDefined();
+    expect(route.marker).toBeTruthy();
+    expect(route.analytics).toBeDefined();
+  });
+
+  it("does not redirect a canonical profile-root entry", async () => {
+    queryState.username = stateSuccessUsername;
+    queryState.profile = defaultEmptyQueryResult;
+
+    const router = createMemoryRouter(createRoutesFromElements(PublicRoutes), {
+      initialEntries: ["/alice"],
+    });
+
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() => {
+      expect(router.state.matches.at(-1)?.route.id).toBe("profile");
+    });
+
+    expect(router.state.location.pathname).toBe("/alice");
+    expect(router.state.historyAction).toBe("POP");
+    expect(router.state.location.state).toBeNull();
+  });
+
+  it("matches a trailing-slash profile URL as the root route", async () => {
+    queryState.username = stateSuccessUsername;
+    queryState.profile = defaultEmptyQueryResult;
+
+    const router = createMemoryRouter(createRoutesFromElements(PublicRoutes), {
+      initialEntries: ["/alice/"],
+    });
+
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() => {
+      expect(router.state.matches.at(-1)?.route.id).toBe("profile");
+    });
+
+    expect(router.state.location.pathname).toBe("/alice/");
+    expect(router.state.historyAction).toBe("POP");
+  });
+
+  it.each([
+    "/alice/unsupported-child",
+    "/alice/not-a-category",
+    "/alice/apps/list/extra-segment",
+  ])("replace-redirects an unsupported child route %s to the profile root", async (entry) => {
+    queryState.username = stateSuccessUsername;
+
+    const queryClient = createTestQueryClient();
+    const router = createMemoryRouter(createRoutesFromElements(PublicRoutes), {
+      initialEntries: [`${entry}?utm_source=qa#profile`],
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe("/alice");
+    });
+
+    expect(router.state.location.search).toBe("?utm_source=qa");
+    expect(router.state.location.hash).toBe("#profile");
+    expect(router.state.historyAction).toBe("REPLACE");
+  });
+
+  it("removes an invalid direct entry from Back history", async () => {
+    queryState.username = stateSuccessUsername;
+    queryState.profile = defaultEmptyQueryResult;
+
+    const router = createMemoryRouter(createRoutesFromElements(PublicRoutes), {
+      initialEntries: ["/before?source=history", "/alice/unsupported-child"],
+      initialIndex: 1,
+    });
+
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe("/alice");
+    });
+
+    await act(async () => {
+      await router.navigate(-1);
+    });
+
+    expect(router.state.location.pathname).toBe("/before");
+    expect(router.state.location.search).toBe("?source=history");
   });
 
   it("resets to Earth bootstrap when switching to an unresolved username", async () => {
