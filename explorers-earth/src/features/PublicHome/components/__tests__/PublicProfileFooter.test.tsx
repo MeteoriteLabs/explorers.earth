@@ -17,6 +17,8 @@ describe('PublicProfileFooter', () => {
     const brandLink = screen.getByRole("link", { name: "explorers.earth" });
     expect(brandLink.className).toContain("min-w-[44px]");
     expect(brandLink.className).toContain("min-h-[44px]");
+    expect(brandLink).toHaveAttribute("data-theme-invariant", "true");
+    expect(screen.getByRole("img", { name: "explorers.earth" })).toHaveClass("h-9");
   });
 
   it('renders footer navigation links with proper aria-label and no hard-coded text-white when enabled', () => {
@@ -32,11 +34,11 @@ describe('PublicProfileFooter', () => {
     // Should have brand link + 3 footer links (Create your profile, Report, Privacy)
     expect(links.length).toBe(4);
 
-    // Assert footer links meet minimum 44px target size requirements and contain no hard-coded text-white
+    // The footer is a stable branded surface, independent from profile theme tokens.
     links.forEach((link) => {
       expect(link.className).toContain("min-h-[44px]");
-      expect(link.className).not.toContain("text-white");
-      expect(link.className).not.toContain("hover:text-white");
+      expect(link.className).not.toContain("var(--text-primary)");
+      expect(link.className).not.toContain("var(--text-secondary)");
     });
 
     // Check separators have aria-hidden
