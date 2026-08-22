@@ -1,4 +1,3 @@
-import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
@@ -42,14 +41,20 @@ describe("Tunes workflow provenance and input boundary", () => {
     const fixture = read("tunes/deployment/music-deploy-fixture.sh");
     const engine = read("tunes/deployment/music-deploy-engine.sh");
     const rehearsal = read("tunes/scripts/music-docker-release-rehearsal.ts");
+    const authority = read("tunes/scripts/music-docker-release-authority.ts");
     expect(production).toContain('"${MUSIC_DEPLOY_MODE:-production}" == production');
     expect(production).toContain("^ghcr\\.io/");
     expect(production).toContain("fixture deployment settings are forbidden in production mode");
-    expect(fixture).toContain("C10_LOCAL_REGISTRY_DISPOSABLE_ONLY");
-    expect(fixture).toContain("^127\\.0\\.0\\.1:");
-    expect(fixture).toContain("com.explorers.fixture.scope=music-c10-release");
-    expect(fixture).not.toContain("docker push");
+    expect(fixture).toContain("direct fixture deployment authority is forbidden");
+    expect(fixture).not.toContain("MUSIC_DEPLOY_ROOT");
+    expect(fixture).not.toContain("MUSIC_DEPLOY_HMAC_KEY_FILE");
+    expect(fixture).not.toMatch(/^\s*(?:command\s+)?docker(?:\.exe)?\b/m);
     expect(engine).toContain("deployment engine must be sourced by an authorized policy wrapper");
+    expect(authority).toContain("executing rehearsal script must be tracked");
+    expect(authority).toContain("tracked source checkout must be clean");
+    expect(authority).toContain('["archive", "--format=tar", `${commit}:tunes`]');
+    expect(authority).toContain("external fixture deployment authority is forbidden");
+    expect(authority).toContain("fixture candidate is not an internally built registry digest");
     expect(rehearsal).toContain('const repository = `127.0.0.1:${registryPort}/explorers-tunes`');
     expect(rehearsal).toContain("loopback transfer");
     expect(rehearsal).toContain('["push", tag]');
@@ -59,29 +64,24 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(rehearsal.match(/"build", "--pull=false"/g)).toHaveLength(2);
     expect(rehearsal).toContain('["--host", dockerEndpoint, ...args]');
     expect(rehearsal).not.toContain("DOCKER_HOST: dockerEndpoint");
-    expect(fixture).toContain('docker_endpoint="$(command docker context inspect');
-    expect(fixture).toContain('command docker --host "$docker_endpoint" "$@"');
-    expect(fixture).toContain('[[ -z "${DOCKER_HOST:-}" && -z "${DOCKER_CONTEXT:-}" ]]');
+    expect(rehearsal).toContain("assertNoExternalFixtureAuthority(process.env)");
+    expect(rehearsal).toContain("captureTrustedFixtureSource(fileURLToPath(import.meta.url))");
+    expect(rehearsal).toContain("privateTemporaryDirectory(join(dirname(repoRoot)");
+    expect(rehearsal).not.toContain("tmpdir()");
+    expect(rehearsal).toContain('method: "HEAD"');
+    expect(rehearsal).toContain("application/vnd.oci.image.index.v1+json");
+    expect(rehearsal).toContain("application/vnd.docker.distribution.manifest.list.v2+json");
+    expect(rehearsal).toContain('response.headers.get("docker-content-digest")');
+    expect(rehearsal.indexOf("await registryDigest(repositoryName"))
+      .toBeLessThan(rehearsal.indexOf("immutable registry pull"));
+    expect(rehearsal.indexOf("immutable registry pull"))
+      .toBeLessThan(rehearsal.indexOf("immutable local inspection"));
+    expect(rehearsal).toContain("trustedSource.tunesArchive");
+    expect(rehearsal).toContain("assertPrivateFixtureFileUnchanged(authority)");
+    expect(rehearsal).toContain('process.env.DOCKER_HOST === undefined && process.env.DOCKER_CONTEXT === undefined');
     expect(rehearsal).not.toContain("ghcr.io");
     expect(rehearsal).not.toContain("GATE_PROD");
     expect(rehearsal).not.toContain("--api.insecure=true");
-  });
-
-  it.each([
-    ["DOCKER_HOST", "tcp://127.0.0.1:1"],
-    ["DOCKER_CONTEXT", "music-c10-forbidden-remote"],
-  ])("refuses ambient %s authority before the local rehearsal can reach Docker", (name, value) => {
-    const env = { ...process.env };
-    delete env.DOCKER_HOST;
-    delete env.DOCKER_CONTEXT;
-    env[name] = value;
-    const result = spawnSync(
-      process.execPath,
-      [resolve(repoRoot, "tunes/node_modules/tsx/dist/cli.mjs"), resolve(repoRoot, "tunes/scripts/music-docker-release-rehearsal.ts")],
-      { cwd: repoRoot, env, encoding: "utf8", timeout: 15_000, windowsHide: true },
-    );
-    expect(result.status).not.toBe(0);
-    expect(`${result.stdout}\n${result.stderr}`).toContain("ambient Docker endpoint overrides are forbidden");
   });
 
   it("transmits only an encoded fixed-schema bundle and runs the checked-in executable", () => {

@@ -590,17 +590,35 @@ refuses direct execution. Production continues to invoke only
 the read-packages-only credential, and delegates to the shared engine only after
 the existing request, source, user, and secure-file policy has passed.
 
-Task C10 release qualification invokes the separate
-`tunes/deployment/music-deploy-fixture.sh` entrypoint through
-`tunes/scripts/music-docker-release-rehearsal.ts`. The fixture entrypoint is
-unavailable in default/production mode. It additionally requires test mode, the
-exact `C10_LOCAL_REGISTRY_DISPOSABLE_ONLY` acknowledgement, a
-`127.0.0.1:<port>` registry, a `music-c10-release-*` Compose project, a private
-root marker bound to both values, and matching disposable labels on every
-deployment service. It rejects production authority variables and has no
-ambient registry fallback. The rehearsal pushes only to its loopback registry;
-it does not invoke the production workflow, a remote registry, `GATE_PROD`, or
-any production endpoint.
+Task C10 release qualification has one no-input entrypoint:
+`tunes/scripts/music-docker-release-rehearsal.ts`. The old
+`tunes/deployment/music-deploy-fixture.sh` path is retired and always refuses
+direct invocation. In particular, a caller cannot provide its root, Compose
+model, expected-image map, HMAC key, source checkout, registry, or request.
+
+The rehearsal derives the canonical repository from its executing tracked
+script, requires a clean checkout with no hidden tracked-index flags, and
+verifies the loaded script against the exact 40-character `HEAD`. It obtains
+the Tunes build context and shared deployment-engine files from that commit's
+Git objects, not from mutable working-tree paths. Only after those checks and
+local Docker endpoint validation does it create an unpredictable private root.
+Internally generated Compose, environment, request, HMAC, and copied engine
+files are bound to native file identity and exact bytes across every use.
+Git, Docker, and curl are resolved only from fixed system installation paths;
+the rehearsal verifies that their native files are protected by the host OS
+ownership/ACL boundary and never selects them from the caller's `PATH`. This
+existing host-tool boundary is outside the disposable root, is not
+caller-selectable, works on the supported Windows/macOS/Linux paths, and never
+reads or changes the active source `.env.music.test`.
+
+The same process starts a disposable loopback registry, builds the exact Tunes
+source twice, pushes both candidates, and accepts only immutable digests
+returned by the registry API. It generates a private in-memory policy adapter
+whose image allowlist contains only those captured digests, then delegates to
+the shared deployment engine. The adapter is never written as a caller-editable
+policy file. The rehearsal does not invoke the production wrapper or workflow,
+a remote registry, `GATE_PROD`, a production endpoint, or the active source
+`.env.music.test`. Matching disposable labels remain mandatory for cleanup.
 
 Run the bounded local proof with:
 

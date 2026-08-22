@@ -347,6 +347,7 @@ describe("portable Music qualification lanes", () => {
       "music-deployment-files.test.ts",
       "music-deployment.test.ts",
       "music-health-routes.test.ts",
+      "music-docker-release-authority.test.ts",
       "music-production-policy.test.ts",
       "music-publication-authority-verifier.test.ts",
       "music-readiness.test.ts",
@@ -363,12 +364,12 @@ describe("portable Music qualification lanes", () => {
     }).qualificationTaskOutputFailure;
     expect(outputFailure?.(
       "release-rehearsal",
-      "Test Files  10 passed | 1 skipped (11)\nTests 172 passed | 3 skipped (175)",
+      "Test Files  11 passed | 1 skipped (12)\nTests 172 passed | 3 skipped (175)",
       "",
-    )).toContain("all 11 deployment test files");
+    )).toContain("all 12 deployment test files");
     expect(outputFailure?.(
       "release-rehearsal",
-      "Test Files  11 passed (11)\nTests 175 passed (175)",
+      "Test Files  12 passed (12)\nTests 175 passed (175)",
       "",
     )).toBeUndefined();
     expect(MUSIC_QUALIFICATION_TASKS["isolated-cli-contract"].npmArgs)

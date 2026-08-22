@@ -111,8 +111,8 @@ export function qualificationTaskOutputFailure(taskId: string, stdout: string, s
   if (taskId !== "release-rehearsal") return undefined;
   const output = `${stdout}\n${stderr}`.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, "");
   const summary = output.match(/Test Files\s+(\d+) passed(?:\s*\|\s*(\d+) skipped)?\s*\((\d+)\)/);
-  if (!summary || Number(summary[1]) !== 11 || Number(summary[2] ?? 0) !== 0 || Number(summary[3]) !== 11) {
-    return "release rehearsal must execute all 11 deployment test files without a file-level skip";
+  if (!summary || Number(summary[1]) !== 12 || Number(summary[2] ?? 0) !== 0 || Number(summary[3]) !== 12) {
+    return "release rehearsal must execute all 12 deployment test files without a file-level skip";
   }
   return undefined;
 }
@@ -239,6 +239,7 @@ export const MUSIC_QUALIFICATION_TASKS = {
     "server/test/deployment/music-deployment-files.test.ts",
     "server/test/deployment/music-deployment.test.ts",
     "server/test/deployment/music-health-routes.test.ts",
+    "server/test/deployment/music-docker-release-authority.test.ts",
     "server/test/deployment/music-production-policy.test.ts",
     "server/test/deployment/music-publication-authority-verifier.test.ts",
     "server/test/deployment/music-readiness.test.ts",

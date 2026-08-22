@@ -66,6 +66,7 @@ interface RunOptions {
   publicReadinessStaleResponses?: number;
   fixtureEnvironment?: Record<string, string>;
   fixtureImageAuthorityMode?: "missing" | "invalid-mac";
+  coherentFixtureAuthoritySubstitution?: boolean;
   fixtureRootOverride?: string;
 }
 
@@ -394,6 +395,37 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     });
     if (fixturePolicy) {
       const fixtureImageAuthority = join(root, ".music-c10-fixture-images");
+      if (options.coherentFixtureAuthoritySubstitution) {
+        const callerKey = "caller-selected-state-hmac-key-at-least-thirty-two-bytes";
+        const callerTunesImage = `127.0.0.1:5001/explorers-tunes@${digest("e")}`;
+        const callerPostgresImage = `127.0.0.1:5001/fixture-postgres@${digest("f")}`;
+        const callerTraefikImage = `127.0.0.1:5001/fixture-traefik@${digest("b")}`;
+        writeFileSync(keyFile, callerKey, { mode: 0o600 });
+        const modelPath = join(sandbox, "compose-model.json");
+        const model = JSON.parse(readFileSync(modelPath, "utf8"));
+        model.services.db.image = callerPostgresImage;
+        model.services.traefik.image = callerTraefikImage;
+        for (const name of ["legacy-tunes", "tunes-blue", "tunes-green", "tunes-gate", "tunes-register-compat"]) {
+          model.services[name].image = callerTunesImage;
+        }
+        for (const name of ["tunes-blue", "tunes-green", "tunes-gate"]) {
+          model.services[name].environment.MUSIC_IMAGE_DIGEST = digest("e");
+          model.services[name].environment.MUSIC_GATE_ATTESTATION_PATH = `/deployment-gates/${digest("e")}.json`;
+        }
+        writeFileSync(modelPath, JSON.stringify(model));
+        const callerPayload = [
+          "music-c10-fixture-images-v1",
+          `tunes=${callerTunesImage}`,
+          `postgres=${callerPostgresImage}`,
+          `traefik=${callerTraefikImage}`,
+          `commit=${commit("a")}`,
+          "migration=0013_publication_operation_database_clock",
+          "proxy_ip=172.18.0.2",
+        ].join("\n");
+        writeFileSync(fixtureImageAuthority, `${callerPayload}\nmac=${
+          createHmac("sha256", callerKey).update(callerPayload).digest("hex")
+        }\n`, { mode: 0o600 });
+      }
       if (options.fixtureImageAuthorityMode === "missing") rmSync(fixtureImageAuthority);
       if (options.fixtureImageAuthorityMode === "invalid-mac") {
         writeFileSync(fixtureImageAuthority, readFileSync(fixtureImageAuthority, "utf8").replace(/mac=[a-f0-9]{64}/, `mac=${"0".repeat(64)}`));
@@ -899,9 +931,9 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(existsSync(join(sandbox, "touch-pwned"))).toBe(false);
   });
 
-  it("keeps the production entrypoint GHCR-only while the explicit fixture entrypoint admits the loopback exact image", () => {
+  it("keeps the production entrypoint GHCR-only and refuses direct fixture authority", () => {
     // Production break caught: a local/attacker registry can bypass GHCR policy,
-    // or the fixture path cannot exercise the shared immutable engine.
+    // or a caller can directly invoke the retired fixture authority.
     const localRepository = "127.0.0.1:5001/explorers-tunes";
     const production = run("bootstrap", digest("a"), commit("a"), { repositoryOverride: localRepository });
     expect(production.status).not.toBe(0);
@@ -909,153 +941,21 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(existsSync(eventLog)).toBe(false);
 
     const fixture = run("bootstrap", digest("a"), commit("a"), { policy: "fixture" });
-    expect(fixture.status, fixture.stderr).toBe(0);
-    expect(readFileSync(eventLog, "utf8")).toContain(`pull ${localRepository}@${digest("a")}`);
-    expect(readFileSync(eventLog, "utf8")).toContain("restart traefik");
-    expect(readFileSync(join(root, "deployment-routing/music-router.yml"), "utf8")).not.toContain("certResolver");
-  }, deploymentProcessRecoveryTimeoutMs);
+    expect(fixture.status).not.toBe(0);
+    expect(fixture.stderr).toContain("direct fixture deployment authority is forbidden");
+    expect(existsSync(eventLog)).toBe(false);
+  });
 
-  it("fails the fixture entrypoint closed without its independent acknowledgement", () => {
-    // Production break caught: setting one ambient mode variable is enough to
-    // unlock the local-registry deployment authority.
-    const result = run("bootstrap", digest("a"), commit("a"), {
+  it("rejects a coherent caller-owned image map, Compose model, HMAC key, and MAC before Docker", () => {
+    // Production break caught: the direct fixture wrapper treats a caller's
+    // replacement key as the trust anchor for that same caller's image map.
+    const result = run("bootstrap", digest("e"), commit("a"), {
       policy: "fixture",
-      omitFixtureAcknowledgement: true,
+      coherentFixtureAuthoritySubstitution: true,
     });
     expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain("fixture deployment acknowledgement is invalid");
+    expect(result.stderr).toContain("direct fixture deployment authority is forbidden");
     expect(existsSync(eventLog)).toBe(false);
-  });
-
-  it.each([
-    ["missing", "secure regular file required"],
-    ["invalid-mac", "fixture image authority authentication failed"],
-  ] as const)("rejects %s authenticated fixture image authority before Docker inspection", (fixtureImageAuthorityMode, message) => {
-    const result = run("bootstrap", digest("a"), commit("a"), { policy: "fixture", fixtureImageAuthorityMode });
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain(message);
-    expect(existsSync(eventLog)).toBe(false);
-  });
-
-  it.each([
-    ["DOCKER_HOST", { DOCKER_HOST: "tcp://remote.example.invalid:2375" }, "ambient Docker endpoint overrides are forbidden"],
-    ["DOCKER_CONTEXT", { DOCKER_CONTEXT: "production" }, "ambient Docker endpoint overrides are forbidden"],
-    ["GATE_PROD", { GATE_PROD: "open" }, "production and GATE authority is forbidden in fixture mode"],
-    ["production alias", { MUSIC_DEPLOY_PRODUCTION: "1" }, "production and GATE authority is forbidden in fixture mode"],
-    ["credential cleanup escape", { MUSIC_DEPLOY_EPHEMERAL_CREDENTIAL_FILES: "1" }, "fixture credential cleanup overrides are forbidden"],
-  ])("rejects hostile direct fixture invocation through %s before Docker inspection", (_name, fixtureEnvironment, message) => {
-    const result = run("bootstrap", digest("a"), commit("a"), { policy: "fixture", fixtureEnvironment });
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain(message);
-    expect(existsSync(eventLog)).toBe(false);
-  });
-
-  it("rejects a remote effective Docker context before the first mutating command", () => {
-    const result = run("bootstrap", digest("a"), commit("a"), {
-      policy: "fixture",
-      fixtureEnvironment: { MUSIC_DEPLOY_TEST_DOCKER_ENDPOINT: "tcp://remote.example.invalid:2375" },
-    });
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain("effective Docker endpoint must be a local named pipe or Unix socket");
-    expect(existsSync(eventLog)).toBe(false);
-  });
-
-  it("rejects non-canonical fixture roots before Docker inspection", () => {
-    const aliased = run("bootstrap", digest("a"), commit("a"), {
-      policy: "fixture",
-      fixtureRootOverride: `${shellPath(root)}/.`,
-    });
-    expect(aliased.status).not.toBe(0);
-    expect(aliased.stderr).toContain("fixture deployment root must be canonical");
-    expect(existsSync(eventLog)).toBe(false);
-
-  });
-
-  it.runIf(process.platform !== "win32")("rejects a non-private fixture root before Docker inspection", () => {
-    chmodSync(root, 0o755);
-    const result = run("bootstrap", digest("a"), commit("a"), { policy: "fixture" });
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain("fixture deployment root must be private and owned");
-    expect(existsSync(eventLog)).toBe(false);
-  });
-
-  it.runIf(process.platform === "win32")("rejects an actual broad Windows fixture-root write ACL before Docker inspection", () => {
-    const granted = spawnSync("icacls.exe", [root, "/grant", "*S-1-1-0:(OI)(CI)(W)"], {
-      encoding: "utf8",
-      windowsHide: true,
-    });
-    expect(granted.status).toBe(0);
-    const result = run("bootstrap", digest("a"), commit("a"), { policy: "fixture" });
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain("fixture deployment root must be private and owned");
-    expect(existsSync(eventLog)).toBe(false);
-  });
-
-  it.each([
-    ["extra service", (model: any) => { model.services.attacker = { image: `registry.example.invalid/escape@${digest("e")}`, pull_policy: "always", labels: model.services.traefik.labels, networks: ["proxy"] }; }],
-    ["mutable image", (model: any) => { model.services.db.image = "postgres:15-alpine"; }],
-    ["wrong PostgreSQL digest", (model: any) => { model.services.db.image = `127.0.0.1:5001/fixture-postgres@${digest("e")}`; }],
-    ["wrong Traefik digest", (model: any) => { model.services.traefik.image = `127.0.0.1:5001/fixture-traefik@${digest("e")}`; }],
-    ["wrong service repository", (model: any) => { model.services["legacy-tunes"].image = `127.0.0.1:5001/attacker@${digest("a")}`; }],
-    ["wrong legacy Tunes digest", (model: any) => { model.services["legacy-tunes"].image = `127.0.0.1:5001/explorers-tunes@${digest("e")}`; }],
-    ["wrong blue Tunes digest", (model: any) => { model.services["tunes-blue"].image = `127.0.0.1:5001/explorers-tunes@${digest("e")}`; }],
-    ["wrong green Tunes digest", (model: any) => { model.services["tunes-green"].image = `127.0.0.1:5001/explorers-tunes@${digest("e")}`; }],
-    ["wrong gate Tunes digest", (model: any) => { model.services["tunes-gate"].image = `127.0.0.1:5001/explorers-tunes@${digest("e")}`; }],
-    ["wrong compatibility Tunes digest", (model: any) => { model.services["tunes-register-compat"].image = `127.0.0.1:5001/explorers-tunes@${digest("e")}`; }],
-    ["coherent untrusted Tunes digest", (model: any) => {
-      const hostileImage = `127.0.0.1:5001/explorers-tunes@${digest("e")}`;
-      for (const name of ["legacy-tunes", "tunes-blue", "tunes-green", "tunes-gate", "tunes-register-compat"]) {
-        model.services[name].image = hostileImage;
-      }
-      for (const name of ["tunes-blue", "tunes-green", "tunes-gate"]) {
-        model.services[name].environment.MUSIC_IMAGE_DIGEST = digest("e");
-        model.services[name].environment.MUSIC_GATE_ATTESTATION_PATH = `/deployment-gates/${digest("e")}.json`;
-      }
-    }],
-    ["disabled new-entry kill switch", (model: any) => { model.services["tunes-blue"].environment.MUSIC_NEW_ENTRY_KILL_SWITCH = "false"; }],
-    ["enabled cohort", (model: any) => { model.services["tunes-blue"].environment.MUSIC_COHORT_ENABLED = "true"; }],
-    ["wildcard public origin", (model: any) => { model.services["tunes-blue"].environment.ALLOWED_ORIGINS = "*"; }],
-    ["allowed-looking public origin", (model: any) => { model.services["tunes-blue"].environment.ALLOWED_ORIGINS = "https://localtunes.earth.evil"; }],
-    ["wildcard Strapi origin", (model: any) => { model.services["tunes-blue"].environment.MUSIC_STRAPI_ALLOWED_ORIGINS = "*"; }],
-    ["altered trusted proxy", (model: any) => { model.services["tunes-blue"].environment.MUSIC_TRUSTED_PROXY_IP = "127.0.0.1"; }],
-    ["altered proxy hop count", (model: any) => { model.services["tunes-blue"].environment.TRUST_PROXY_HOPS = "2"; }],
-    ["altered token lifetime", (model: any) => { model.services["tunes-blue"].environment.MUSIC_TOKEN_LIFETIME_SECONDS = "601"; }],
-    ["altered token clock skew", (model: any) => { model.services["tunes-blue"].environment.MUSIC_TOKEN_CLOCK_SKEW_SECONDS = "16"; }],
-    ["disabled deployment health", (model: any) => { model.services["tunes-blue"].environment.MUSIC_DEPLOYMENT_HEALTH_ENABLED = "false"; }],
-    ["altered publication key target", (model: any) => { model.services["tunes-blue"].environment.MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE = "/tmp/current"; }],
-    ["extra Tunes environment entry", (model: any) => { model.services["tunes-blue"].environment.MUSIC_ALLOWED_ORIGIN = "https://localtunes.earth"; }],
-    ["duplicate Tunes environment entries", (model: any) => {
-      model.services["tunes-blue"].environment = ["NODE_ENV=production", "NODE_ENV=development"];
-    }],
-    ["ambient pull", (model: any) => { model.services.traefik.pull_policy = "missing"; }],
-    ["external network", (model: any) => { model.networks.proxy = { external: true, name: "production" }; }],
-    ["unbounded volume", (model: any) => { model.services.db.volumes.push("/opt/explorers:/production"); }],
-    ["empty database mounts", (model: any) => { model.services.db.volumes = []; }],
-    ["empty migration-gate mounts", (model: any) => { model.services["tunes-gate"].volumes = []; }],
-    ["raw root bind mount", (model: any) => { model.services.db.volumes.push(`${shellPath(root)}/secrets:/run/escape:ro`); }],
-    ["added SYS_ADMIN capability", (model: any) => { model.services["legacy-tunes"].cap_add = ["SYS_ADMIN"]; }],
-    ["capability-drop deviation", (model: any) => { model.services["legacy-tunes"].cap_drop = ["ALL"]; }],
-    ["security option", (model: any) => { model.services["legacy-tunes"].security_opt = ["seccomp=unconfined"]; }],
-    ["sysctl", (model: any) => { model.services["legacy-tunes"].sysctls = { "net.ipv4.ip_forward": "1" }; }],
-    ["extra host", (model: any) => { model.services["legacy-tunes"].extra_hosts = ["host.docker.internal:host-gateway"]; }],
-    ["environment file", (model: any) => { model.services["legacy-tunes"].env_file = ["production.env"]; }],
-    ["user namespace", (model: any) => { model.services["legacy-tunes"].userns_mode = "host"; }],
-    ["host user", (model: any) => { model.services["legacy-tunes"].user = "0:0"; }],
-    ["entrypoint deviation", (model: any) => { model.services["legacy-tunes"].entrypoint = ["sh"]; }],
-    ["command deviation", (model: any) => { model.services["legacy-tunes"].command = ["sleep", "infinity"]; }],
-    ["healthcheck deviation", (model: any) => { model.services.db.healthcheck = { test: ["NONE"] }; }],
-    ["dependency deviation", (model: any) => { model.services["tunes-gate"].depends_on = {}; }],
-  ])("rejects a fixture Compose model with %s before image materialization", (_name, mutate) => {
-    const modelFile = join(sandbox, "compose-model.json");
-    const model = JSON.parse(readFileSync(modelFile, "utf8"));
-    mutate(model);
-    writeFileSync(modelFile, JSON.stringify(model));
-    const result = run("bootstrap", digest("a"), commit("a"), { policy: "fixture" });
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain("fixture Compose authority is invalid");
-    const events = existsSync(eventLog) ? readFileSync(eventLog, "utf8") : "";
-    expect(events).not.toContain(" pull ");
-    expect(events).not.toContain(" up ");
   });
 
   it("refuses direct execution of the registry-agnostic engine", () => {
@@ -1065,25 +965,6 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     });
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("deployment engine must be sourced by an authorized policy wrapper");
-    expect(existsSync(eventLog)).toBe(false);
-  });
-
-  it("refuses a non-loopback registry before the fixture can inspect Docker", () => {
-    const environment = { ...process.env };
-    for (const name of Object.keys(environment)) if (name.startsWith("MUSIC_DEPLOY_")) delete environment[name];
-    Object.assign(environment, {
-      MUSIC_DEPLOY_MODE: "fixture",
-      MUSIC_DEPLOY_TEST_MODE: "1",
-      MUSIC_DEPLOY_FIXTURE_ACK: "C10_LOCAL_REGISTRY_DISPOSABLE_ONLY",
-      MUSIC_DEPLOY_FIXTURE_REGISTRY: "registry.example.invalid:5000",
-      MUSIC_DEPLOY_FIXTURE_COMPOSE_PROJECT: "music-c10-release-unit",
-    });
-    const result = spawnSync(bash, ["--noprofile", "--norc", shellPath(fixtureDeployScript)], {
-      encoding: "utf8",
-      env: environment,
-    });
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain("fixture registry must be an explicit loopback endpoint");
     expect(existsSync(eventLog)).toBe(false);
   });
 
