@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useState, useCallback, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { ArrowLeft, Share2 } from "lucide-react";
 import { toast } from "sonner";
@@ -19,12 +19,15 @@ import {
   usePublicConnectionPagination,
 } from "../../../../hooks/usePublicConnectionPagination";
 import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
+import { usePublicLeafRequestGeneration } from "../../../../layouts/PublicRouteReadinessContext";
 
 const PublicBookSubject = () => {
   const { username, subjectSlug } = useParams<{ username: string; subjectSlug: string }>();
-  const subjectName = slugToSubjectName(subjectSlug ?? "");
+  const navigate = useNavigate();
+  const legacySubjectName = slugToSubjectName(subjectSlug ?? "");
 
   const accountDocumentId = usePublicProfileBootstrapAccount().documentId;
+  const requestGeneration = usePublicLeafRequestGeneration(`${accountDocumentId}:${subjectSlug}`);
 
   const [modalState, setModalState] = useState<{ open: boolean; book: RecommendedBook | null }>({
     open: false,
@@ -34,7 +37,8 @@ const PublicBookSubject = () => {
   const { data, loading, error, refetch, fetchMore } = useQuery(BOOKS_BY_SUBJECT, {
     variables: {
       accountDocumentId,
-      subjectName,
+      taxonomyDocumentId: subjectSlug,
+      legacySubjectName,
       pagination: { page: 1, pageSize: 200 },
     },
     skip: !accountDocumentId || !subjectSlug,
@@ -43,6 +47,12 @@ const PublicBookSubject = () => {
   });
 
   const subject = data?.bookCategories?.[0];
+  const subjectName = subject?.subject_name ?? legacySubjectName;
+  useEffect(() => {
+    if (subject?.documentId && subjectSlug !== subject.documentId) {
+      navigate(`/${username}/books/subject/${encodeURIComponent(subject.documentId)}`, { replace: true });
+    }
+  }, [navigate, subject?.documentId, subjectSlug, username]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -78,10 +88,11 @@ const PublicBookSubject = () => {
     empty: childState === "empty",
   });
 
-  const loadPage = useCallback(async (page: number) => {
+  const loadPage = useCallback(async (page: number, request: { isCurrent: () => boolean }) => {
     await fetchMore({
       variables: { pagination: { page, pageSize: 200 } },
       updateQuery: (previous, { fetchMoreResult }) => {
+        if (!request.isCurrent()) return previous;
         if (!previous.recommendedBooks_connection || !fetchMoreResult?.recommendedBooks_connection) return previous;
         return {
           ...previous,
@@ -107,7 +118,7 @@ const PublicBookSubject = () => {
   const metaDescription = `Explore ${subjectBooks.length} book${subjectBooks.length !== 1 ? "s" : ""} on ${subjectName} recommended by ${username} on explorers.`;
   const seoKeywords = [subjectName, "books", `${username} books`, "explorers"];
 
-  if (childState === "redirect") return <PublicProfileFallbackRedirect />;
+  if (childState === "redirect") return <PublicProfileFallbackRedirect expectedGeneration={requestGeneration} />;
   if (!data) return null;
 
   return (

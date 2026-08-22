@@ -263,12 +263,16 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
         slug: "paris",
         Visibility: true,
         is_pinned: false,
-        recommended_places: [],
-        person_lists: [],
-        product_lists: [],
       }],
+      recommendedPeople_connection: { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } },
+      recommendedProducts_connection: { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } },
     },
     staleText: "Paris",
+    supportingStates: {
+      PublicRecommendedPlacesConnection: {
+        recommendedPlaces_connection: { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } },
+      },
+    },
   },
   {
     label: "Guides index",

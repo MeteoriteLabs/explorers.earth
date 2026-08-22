@@ -18,7 +18,8 @@ describe("public game child queries", () => {
 
 	it("filters the taxonomy entity and its games by the requested genre", () => {
 		const source = print(GAMES_BY_GENRE);
-		expect(source).toContain("genre_name: {eq: $genreName}");
+		expect(source).toContain("documentId: {eq: $taxonomyDocumentId}");
+		expect(source).toContain("genre_name: {eq: $legacyGenreName}");
 		expect(source).toContain("pagination: {limit: 1}");
 	});
 });

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { Users, Share2, ArrowLeft } from "lucide-react";
@@ -23,22 +23,25 @@ import {
   usePublicConnectionPagination,
 } from "../../../../hooks/usePublicConnectionPagination";
 import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
+import { usePublicLeafRequestGeneration } from "../../../../layouts/PublicRouteReadinessContext";
 
 const PublicPersonSector = () => {
   const { username, sectorSlug } = useParams<{ username: string; sectorSlug: string }>();
   const navigate = useNavigate();
-  const sectorName = slugToCategoryName(sectorSlug ?? "");
+  const legacySectorName = slugToCategoryName(sectorSlug ?? "");
 
   const [selectedPerson, setSelectedPerson] = useState<RecommendedPerson | null>(null);
 
   const account = usePublicProfileBootstrapAccount();
+  const requestGeneration = usePublicLeafRequestGeneration(`${account.documentId}:${sectorSlug}`);
   const accountDocumentId = account.documentId;
   const creatorName = account.Account_Name || username;
 
   const { data, loading, error, refetch, fetchMore } = useQuery(PEOPLE_BY_SECTOR, {
     variables: {
       accountDocumentId,
-      sectorName,
+      taxonomyDocumentId: sectorSlug,
+      legacySectorName,
       pagination: { page: 1, pageSize: 200 },
     },
     skip: !accountDocumentId || !sectorSlug,
@@ -47,6 +50,12 @@ const PublicPersonSector = () => {
   });
 
   const sector = data?.peopleCategories?.[0];
+  const sectorName = sector?.Category_name ?? legacySectorName;
+  useEffect(() => {
+    if (sector?.documentId && sectorSlug !== sector.documentId) {
+      navigate(`/${username}/people/sector/${encodeURIComponent(sector.documentId)}`, { replace: true });
+    }
+  }, [navigate, sector?.documentId, sectorSlug, username]);
   const sectorPeople = deduplicatePeople<RecommendedPerson>(
     data?.recommendedPeople_connection?.nodes ?? [],
   );
@@ -67,10 +76,11 @@ const PublicPersonSector = () => {
     empty: childState === "empty",
   });
 
-  const loadPage = useCallback(async (page: number) => {
+  const loadPage = useCallback(async (page: number, request: { isCurrent: () => boolean }) => {
     await fetchMore({
       variables: { pagination: { page, pageSize: 200 } },
       updateQuery: (previous, { fetchMoreResult }) => {
+        if (!request.isCurrent()) return previous;
         if (!previous.recommendedPeople_connection || !fetchMoreResult?.recommendedPeople_connection) return previous;
         return {
           ...previous,
@@ -110,7 +120,7 @@ const PublicPersonSector = () => {
   const metaDescription = `Explore ${sectorPeople.length} people in ${sectorName} recommended by ${creatorName} on explorers.`;
   const seoKeywords = [sectorName, `${creatorName} people`, "people list", "explorers"];
 
-  if (childState === "redirect") return <PublicProfileFallbackRedirect />;
+  if (childState === "redirect") return <PublicProfileFallbackRedirect expectedGeneration={requestGeneration} />;
   if (!data) return null;
 
   return (

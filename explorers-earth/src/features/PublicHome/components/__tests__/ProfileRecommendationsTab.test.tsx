@@ -147,6 +147,45 @@ describe("ProfileRecommendationsTab", () => {
     ).toEqual(["Books", "Places"]);
   });
 
+  it("uses document ids for Places and Guide links when no stored slug exists", () => {
+    apolloResults.set("GetPlacesLists", {
+      data: {
+        recommendationLists: [{
+          ...placesData.recommendationLists[0],
+          documentId: "place-document-id",
+          List_Name: "Punctuation & Places",
+          slug: null,
+        }],
+      },
+      loading: false,
+      error: null,
+      refetch: retryPlaces,
+    });
+    apolloResults.set("GetGuidesLists", {
+      data: { guides: [{
+        documentId: "guide-document-id",
+        Title: "Guide: 日本 & Beyond",
+        slug: null,
+        Visibility: true,
+        Guide_Media: [],
+      }] },
+      loading: false,
+      error: null,
+      refetch: vi.fn().mockResolvedValue(undefined),
+    });
+    renderTab({
+      accountData: {
+        ...visibleAccount,
+        public_guides: "Yes",
+      },
+    });
+
+    const hrefs = screen.getAllByRole("link").map((link) => link.getAttribute("href"));
+    expect(hrefs).toContain("/alice/places/place-document-id");
+    expect(hrefs).toContain("/alice/guides/guide-document-id");
+    expect(hrefs).not.toContain("/alice/places/punctuation-places");
+  });
+
   it("promotes the preferred category without hiding its peers", () => {
     renderTab({
       presentation: { layout: "grid", categoryOrder: ["books", "places"] },

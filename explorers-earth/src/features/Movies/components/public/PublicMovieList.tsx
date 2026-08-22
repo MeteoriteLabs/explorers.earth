@@ -18,6 +18,7 @@ import {
   usePublicConnectionPagination,
 } from "../../../../hooks/usePublicConnectionPagination";
 import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
+import { usePublicLeafRequestGeneration } from "../../../../layouts/PublicRouteReadinessContext";
 
 const PublicMovieList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
@@ -25,6 +26,7 @@ const PublicMovieList = () => {
   const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const accountDocumentId = usePublicProfileBootstrapAccount().documentId;
+  const requestGeneration = usePublicLeafRequestGeneration(`${accountDocumentId}:${listSlug}`);
 
   const { data, loading, error, refetch, fetchMore } = useQuery(MOVIE_LIST_BY_SLUG, {
     variables: {
@@ -58,10 +60,11 @@ const PublicMovieList = () => {
     empty: childState === "empty",
   });
 
-  const loadPage = useCallback(async (page: number) => {
+  const loadPage = useCallback(async (page: number, request: { isCurrent: () => boolean }) => {
     await fetchMore({
       variables: { pagination: { page, pageSize: 200 } },
       updateQuery: (previous, { fetchMoreResult }) => {
+        if (!request.isCurrent()) return previous;
         if (!previous.recommendedMovies_connection || !fetchMoreResult?.recommendedMovies_connection) {
           return previous;
         }
@@ -82,7 +85,7 @@ const PublicMovieList = () => {
   });
 
   if (childState === "redirect") {
-    return <PublicProfileFallbackRedirect />;
+    return <PublicProfileFallbackRedirect expectedGeneration={requestGeneration} />;
   }
 
   const handleMovieClick = (movie: RecommendedMovie) => {

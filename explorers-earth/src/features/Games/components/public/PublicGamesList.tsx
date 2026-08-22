@@ -19,6 +19,7 @@ import {
   usePublicConnectionPagination,
 } from "../../../../hooks/usePublicConnectionPagination";
 import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
+import { usePublicLeafRequestGeneration } from "../../../../layouts/PublicRouteReadinessContext";
 
 const PublicGamesList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
@@ -28,6 +29,7 @@ const PublicGamesList = () => {
     game: null,
   });
   const accountDocumentId = usePublicProfileBootstrapAccount().documentId;
+  const requestGeneration = usePublicLeafRequestGeneration(`${accountDocumentId}:${listSlug}`);
 
   const { data, loading, error, refetch, fetchMore } = useQuery(GAME_LIST_BY_SLUG, {
     variables: {
@@ -66,10 +68,11 @@ const PublicGamesList = () => {
     empty: childState === "empty",
   });
 
-  const loadPage = useCallback(async (page: number) => {
+  const loadPage = useCallback(async (page: number, request: { isCurrent: () => boolean }) => {
     await fetchMore({
       variables: { pagination: { page, pageSize: 200 } },
       updateQuery: (previous, { fetchMoreResult }) => {
+        if (!request.isCurrent()) return previous;
         if (!previous.recommendedGames_connection || !fetchMoreResult?.recommendedGames_connection) return previous;
         return {
           ...previous,
@@ -106,7 +109,7 @@ const PublicGamesList = () => {
   }, []);
 
   if (!data) return null;
-  if (childState === "redirect") return <PublicProfileFallbackRedirect />;
+  if (childState === "redirect") return <PublicProfileFallbackRedirect expectedGeneration={requestGeneration} />;
   if (!list) return null;
 
   const coverUrl = buildCoverUrl(list.cover_image?.url);

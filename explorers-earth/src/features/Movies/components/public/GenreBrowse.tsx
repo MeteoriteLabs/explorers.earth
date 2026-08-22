@@ -2,8 +2,9 @@ import { useRef, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ChevronRight, ChevronLeft } from "lucide-react";
-import { genreToSlug, extractUniqueGenres } from "../../utils/movieHelpers";
+import { extractUniqueGenres } from "../../utils/movieHelpers";
 import type { RecommendedMovie } from "../../types";
+import { publicTaxonomyPath } from "../../../../routes/publicTaxonomyRoute";
 
 interface GenreBrowseProps {
   movies: RecommendedMovie[];
@@ -49,6 +50,12 @@ const GenreBrowse = ({ movies, username }: GenreBrowseProps) => {
   };
   const allGenreArrays = movies.map(m => m.genres);
   const genres = extractUniqueGenres(allGenreArrays);
+  const genreDocumentIds = new Map<string, string>();
+  for (const movie of movies) {
+    for (const category of movie.movie_categories ?? []) {
+      genreDocumentIds.set(category.genre_name, category.documentId);
+    }
+  }
 
   // Count movies per genre
   const genreCount: Record<string, number> = {};
@@ -62,7 +69,7 @@ const GenreBrowse = ({ movies, username }: GenreBrowseProps) => {
   }
 
   // Only show genres with at least 1 movie
-  const visibleGenres = genres.filter(g => genreCount[g] > 0);
+  const visibleGenres = genres.filter(g => genreCount[g] > 0 && genreDocumentIds.has(g));
 
   if (visibleGenres.length === 0) return null;
 
@@ -107,7 +114,7 @@ const GenreBrowse = ({ movies, username }: GenreBrowseProps) => {
               transition={{ type: "spring", stiffness: 300 }}
             >
               <Link
-                to={`/${username}/movies/genre/${genreToSlug(genre)}`}
+                to={publicTaxonomyPath(username, "movies", "genre", genreDocumentIds.get(genre)!)}
                 className="relative flex flex-col justify-between h-24 rounded-xl overflow-hidden p-3 border border-white/10 hover:border-blue-500/40 transition-all group"
                 style={{
                   background: `linear-gradient(135deg, ${gradient[0]}, ${gradient[1]})`,

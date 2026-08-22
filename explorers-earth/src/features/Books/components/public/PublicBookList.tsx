@@ -20,6 +20,7 @@ import {
   usePublicConnectionPagination,
 } from "../../../../hooks/usePublicConnectionPagination";
 import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
+import { usePublicLeafRequestGeneration } from "../../../../layouts/PublicRouteReadinessContext";
 
 const PublicBookList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
@@ -28,6 +29,7 @@ const PublicBookList = () => {
     book: null,
   });
   const accountDocumentId = usePublicProfileBootstrapAccount().documentId;
+  const requestGeneration = usePublicLeafRequestGeneration(`${accountDocumentId}:${listSlug}`);
 
   const { data, loading, error, refetch, fetchMore } = useQuery(BOOK_LIST_BY_SLUG, {
     variables: {
@@ -75,10 +77,11 @@ const PublicBookList = () => {
     empty: childState === "empty",
   });
 
-  const loadPage = useCallback(async (page: number) => {
+  const loadPage = useCallback(async (page: number, request: { isCurrent: () => boolean }) => {
     await fetchMore({
       variables: { pagination: { page, pageSize: 200 } },
       updateQuery: (previous, { fetchMoreResult }) => {
+        if (!request.isCurrent()) return previous;
         if (!previous.recommendedBooks_connection || !fetchMoreResult?.recommendedBooks_connection) return previous;
         return {
           ...previous,
@@ -116,7 +119,7 @@ const PublicBookList = () => {
 
   const listImage = rawList?.cover_image?.url || (books[0]?.cover_url ? books[0].cover_url : undefined);
 
-  if (childState === "redirect") return <PublicProfileFallbackRedirect />;
+  if (childState === "redirect") return <PublicProfileFallbackRedirect expectedGeneration={requestGeneration} />;
   if (!data) return null;
 
   return (

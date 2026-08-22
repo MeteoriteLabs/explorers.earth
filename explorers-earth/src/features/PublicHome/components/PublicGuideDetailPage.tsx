@@ -27,6 +27,12 @@ import { Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { PublicProfileFallbackRedirect } from "../../../routes/PublicProfileFallbackRedirect";
 import { resolvePublicChildState } from "../../../routes/resolvePublicChildState";
+import {
+  mergePublicConnectionPage,
+  usePublicConnectionPagination,
+} from "../../../hooks/usePublicConnectionPagination";
+import { PublicConnectionPaginationControl } from "../../../components/PublicConnectionPaginationControl";
+import { usePublicLeafRequestGeneration } from "../../../layouts/PublicRouteReadinessContext";
 
 const PublicGuideDetailPage = memo(() => {
   const { username, guideSlug } = useParams<{ username: string; guideSlug: string }>();
@@ -52,23 +58,31 @@ const PublicGuideDetailPage = memo(() => {
 
 
   const accountDocumentId = usePublicProfileBootstrapAccount().documentId;
+  const requestGeneration = usePublicLeafRequestGeneration(`${accountDocumentId}:${guideSlug}`);
 
   const {
     data,
     loading,
     error,
     refetch,
+    fetchMore,
   } = useQuery(GET_PUBLIC_GUIDE_BY_SLUG_QUERY, {
     variables: {
       accountDocumentId,
       slug: guideSlug,
+      documentId: guideSlug,
+      sectionPagination: { page: 1, pageSize: 200 },
     },
     skip: !accountDocumentId || !guideSlug,
     fetchPolicy: "cache-and-network",
     notifyOnNetworkStatusChange: true,
   });
 
-  const guide = data?.guides?.[0];
+  const guideRecord = data?.guides?.[0];
+  const guide = useMemo(() => guideRecord ? ({
+    ...guideRecord,
+    guide_sections: data?.guideSections_connection?.nodes ?? [],
+  }) : undefined, [data?.guideSections_connection?.nodes, guideRecord]);
   const childState = resolvePublicChildState({
     loading,
     error,
@@ -84,6 +98,33 @@ const PublicGuideDetailPage = memo(() => {
     retry: refetch,
     hasUsableData: Boolean(guide),
     empty: childState === "empty",
+  });
+
+  const loadSectionPage = useCallback(async (
+    page: number,
+    request: { isCurrent: () => boolean },
+  ) => {
+    await fetchMore({
+      variables: { sectionPagination: { page, pageSize: 200 } },
+      updateQuery: (previous, { fetchMoreResult }) => {
+        if (!request.isCurrent()) return previous;
+        const previousConnection = previous.guideSections_connection;
+        const nextConnection = fetchMoreResult?.guideSections_connection;
+        if (!previousConnection || !nextConnection) return previous;
+        return {
+          ...previous,
+          guideSections_connection: mergePublicConnectionPage(
+            previousConnection,
+            nextConnection,
+          ),
+        };
+      },
+    });
+  }, [fetchMore]);
+  const sectionPagination = usePublicConnectionPagination({
+    pageInfo: data?.guideSections_connection?.pageInfo,
+    loadPage: loadSectionPage,
+    resetKey: `${accountDocumentId}:${guideSlug}`,
   });
 
   // Scroll detection for sticky tabs and header visibility
@@ -611,7 +652,7 @@ const PublicGuideDetailPage = memo(() => {
     });
   }, [guide, locationNames, username, sections, seoDescription, guideCoords]);
 
-  if (childState === "redirect") return <PublicProfileFallbackRedirect />;
+  if (childState === "redirect") return <PublicProfileFallbackRedirect expectedGeneration={requestGeneration} />;
 
   if (!guide) return null;
 
@@ -1132,6 +1173,16 @@ const PublicGuideDetailPage = memo(() => {
                   </motion.div>
                 )}
               </AnimatePresence>
+              <div className="flex justify-center pb-8">
+                <PublicConnectionPaginationControl
+                  hasNextPage={sectionPagination.hasNextPage}
+                  isLoading={sectionPagination.isLoadingNextPage}
+                  error={sectionPagination.nextPageError}
+                  onLoadMore={() => void sectionPagination.loadNextPage()}
+                  onRetry={() => void sectionPagination.retryNextPage()}
+                  label="guide days"
+                />
+              </div>
             </div>
           </div>
         </div>

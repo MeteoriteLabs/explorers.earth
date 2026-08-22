@@ -18,6 +18,7 @@ import {
   usePublicConnectionPagination,
 } from "../../../../hooks/usePublicConnectionPagination";
 import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
+import { usePublicLeafRequestGeneration } from "../../../../layouts/PublicRouteReadinessContext";
 
 const PublicAppList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
@@ -25,6 +26,7 @@ const PublicAppList = () => {
   const [selectedApp, setSelectedApp] = useState<RecommendedApp | null>(null);
 
   const account = usePublicProfileBootstrapAccount();
+  const requestGeneration = usePublicLeafRequestGeneration(`${account.documentId}:${listSlug}`);
 
   const { data, loading, error, refetch, fetchMore } = useQuery(APP_LIST_BY_SLUG, {
     variables: {
@@ -59,10 +61,11 @@ const PublicAppList = () => {
     empty: childState === "empty",
   });
 
-  const loadPage = useCallback(async (page: number) => {
+  const loadPage = useCallback(async (page: number, request: { isCurrent: () => boolean }) => {
     await fetchMore({
       variables: { pagination: { page, pageSize: 200 } },
       updateQuery: (previous, { fetchMoreResult }) => {
+        if (!request.isCurrent()) return previous;
         if (!previous.recommendedApps_connection || !fetchMoreResult?.recommendedApps_connection) return previous;
         return {
           ...previous,
@@ -107,7 +110,7 @@ const PublicAppList = () => {
 
   const listImage = list?.cover_image?.url || (apps[0]?.logo_url ? buildLogoUrl(apps[0].logo_url) : undefined);
 
-  if (childState === "redirect") return <PublicProfileFallbackRedirect />;
+  if (childState === "redirect") return <PublicProfileFallbackRedirect expectedGeneration={requestGeneration} />;
   if (!data) return null;
 
   return (

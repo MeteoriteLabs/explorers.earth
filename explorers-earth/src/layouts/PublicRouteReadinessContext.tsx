@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, useRef } from "react";
 import type {
   PublicRouteErrorSource,
   PublicRouteReadinessState,
@@ -30,4 +30,13 @@ export function usePublicRouteReadiness(): PublicRouteReadinessContextValue {
     throw new Error("usePublicRouteReadiness must be used within a PublicRouteReadinessContext.Provider");
   }
   return context;
+}
+
+export function usePublicLeafRequestGeneration(requestKey: string): string | undefined {
+  const context = useContext(PublicRouteReadinessContext);
+  const request = useRef<{ key: string; generation: string | undefined } | undefined>(undefined);
+  if (!request.current || request.current.key !== requestKey) {
+    request.current = { key: requestKey, generation: context?.generation };
+  }
+  return request.current.generation;
 }

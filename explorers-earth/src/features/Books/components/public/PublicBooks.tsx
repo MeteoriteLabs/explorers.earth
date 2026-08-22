@@ -89,8 +89,15 @@ const PublicBooks = () => {
 
   // Subjects for browse (aggregate across all books)
   const allSubjects = Array.from(
-    new Set(allBooks.flatMap((b) => b.subjects ?? []).filter(Boolean))
-  ).sort() as string[];
+    new Map(
+      allBooks.flatMap((book) =>
+        (book.book_categories ?? []).map((category) => [
+          category.documentId,
+          { documentId: category.documentId, name: category.subject_name },
+        ] as const),
+      ),
+    ).values(),
+  ).sort((left, right) => left.name.localeCompare(right.name));
 
   const hasContent = lists.length > 0;
 

@@ -217,11 +217,17 @@ export const PINNED_MOVIES = gql`
 export const MOVIES_BY_GENRE = gql`
   query MoviesByGenre(
     $accountDocumentId: ID!
-    $genreName: String!
+    $taxonomyDocumentId: ID!
+    $legacyGenreName: String!
     $pagination: PaginationArg!
   ) {
     movieCategories(
-      filters: { genre_name: { eq: $genreName } }
+      filters: {
+        or: [
+          { documentId: { eq: $taxonomyDocumentId } }
+          { genre_name: { eq: $legacyGenreName } }
+        ]
+      }
       pagination: { limit: 1 }
     ) {
       documentId
@@ -229,7 +235,12 @@ export const MOVIES_BY_GENRE = gql`
     }
     recommendedMovies_connection(
       filters: {
-        movie_categories: { genre_name: { eq: $genreName } }
+        movie_categories: {
+          or: [
+            { documentId: { eq: $taxonomyDocumentId } }
+            { genre_name: { eq: $legacyGenreName } }
+          ]
+        }
         movie_list: {
           account: { documentId: { eq: $accountDocumentId } }
           Visibility: { eq: true }

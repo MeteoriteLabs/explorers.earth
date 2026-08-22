@@ -66,8 +66,44 @@ describe("usePublicConnectionPagination", () => {
 		expect(result.current.hasNextPage).toBe(true);
 
 		await act(() => result.current.retryNextPage());
-		expect(loadPage).toHaveBeenNthCalledWith(1, 2);
-		expect(loadPage).toHaveBeenNthCalledWith(2, 2);
+		expect(loadPage).toHaveBeenNthCalledWith(1, 2, expect.any(Object));
+		expect(loadPage).toHaveBeenNthCalledWith(2, 2, expect.any(Object));
 		expect(result.current.nextPageError).toBeUndefined();
+	});
+
+	it("invalidates an old-key page request before its Apollo merge callback runs", async () => {
+		let request:
+			| { resetKey: string; isCurrent: () => boolean }
+			| undefined;
+		let release!: () => void;
+		const pending = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const loadPage = vi.fn(async (_page: number, nextRequest: NonNullable<typeof request>) => {
+			request = nextRequest;
+			await pending;
+		});
+		const { result, rerender } = renderHook(
+			({ resetKey }) =>
+				usePublicConnectionPagination({
+					pageInfo: { page: 1, pageSize: 200, pageCount: 2, total: 201 },
+					loadPage,
+					resetKey,
+				}),
+			{ initialProps: { resetKey: "account:old-list" } },
+		);
+
+		let loading!: Promise<void>;
+		act(() => {
+			loading = result.current.loadNextPage();
+		});
+		expect(request?.isCurrent()).toBe(true);
+
+		rerender({ resetKey: "account:new-list" });
+		expect(request?.resetKey).toBe("account:old-list");
+		expect(request?.isCurrent()).toBe(false);
+
+		release();
+		await act(() => loading);
 	});
 });

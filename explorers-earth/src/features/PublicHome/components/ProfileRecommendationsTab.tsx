@@ -13,9 +13,9 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toUrlSlug } from "../../../utils/formatAddress";
 import { apiRequest } from "../../../lib/queryClient";
 import type { PlaylistResponse } from "../../../types/music";
-import { toUrlSlug } from "../../../utils/formatAddress";
 import { extractGuestUrlFromLocalTunesLink } from "../../../utils/localTunesUtils";
 import {
   isRecommendationCategoryVisible,
@@ -478,7 +478,7 @@ const ProfileRecommendationsTab = ({
           ),
         ),
         subtitle: formatCount(count, "Place", "Places"),
-        href: `/${username}/places/${list.slug || toUrlSlug(list.List_Name || "")}`,
+        href: `/${username}/places/${list.slug || list.documentId}`,
       };
     });
 
@@ -610,7 +610,7 @@ const ProfileRecommendationsTab = ({
       title: guide.Title || "",
       image: resolveCoverUrl(guide.Guide_Media?.[0]?.url, "guide"),
       previewImages: [],
-      href: `/${username}/guides/${guide.slug || toUrlSlug(guide.Title || "") || guide.documentId}`,
+      href: `/${username}/guides/${guide.slug || guide.documentId}`,
     }));
 
   const musicRaw = musicQuery.data?.playlists || [];

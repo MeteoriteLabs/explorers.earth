@@ -163,11 +163,17 @@ export const publicPlacesListsQuery = gql`
 // A place child is resolved by its published account-owned list directly. This
 // avoids classifying a slug from an arbitrarily capped collection response.
 export const publicPlaceListBySlugQuery = gql`
-  query PublicPlaceListBySlug($accountDocumentId: ID!, $slug: String!) {
+  query PublicPlaceListBySlug(
+    $accountDocumentId: ID!
+    $slug: String!
+    $documentId: ID!
+    $peoplePagination: PaginationArg!
+    $productPagination: PaginationArg!
+  ) {
     recommendationLists(
       filters: {
         account: { documentId: { eq: $accountDocumentId } }
-        slug: { eq: $slug }
+        or: [{ slug: { eq: $slug } }, { documentId: { eq: $documentId } }]
         Visibility: { eq: true }
       }
       pagination: { limit: 1 }
@@ -180,72 +186,101 @@ export const publicPlaceListBySlugQuery = gql`
       pin_order
       display_order
       List_Name_Details
-      recommended_places(pagination: { limit: 100 }) {
-        recommendation_category {
-          Category_Name
+    }
+    recommendedPeople_connection(
+      filters: {
+        person_list: {
+          account: { documentId: { eq: $accountDocumentId } }
+          Visibility: { eq: true }
+          recommendation_lists: {
+            account: { documentId: { eq: $accountDocumentId } }
+            Visibility: { eq: true }
+            or: [{ slug: { eq: $slug } }, { documentId: { eq: $documentId } }]
+          }
         }
-        documentId
-        Media {
-          url
-        }
-        Place_Details
-        Recommendation_Type
-        Contact_Name
-        media_details
       }
-      person_lists(sort: ["display_order:asc"], pagination: { limit: 50 }) {
+      pagination: $peoplePagination
+      sort: ["display_order:asc", "documentId:asc"]
+    ) {
+      nodes {
         documentId
-        List_Name
-        slug
-        Visibility
-        recommended_people(sort: ["display_order:asc"], pagination: { limit: 200 }) {
+        name
+        username_handle
+        headline
+        location
+        avatar_path
+        media_details
+        primary_platform
+        social_urls
+        skills_tags
+        user_recommendation_note
+        user_rating
+        is_pinned
+        display_order
+        people_category {
+          documentId
+          Category_name
+        }
+        person_list {
+          documentId
+          List_Name
+          slug
+        }
+      }
+      pageInfo {
+        page
+        pageSize
+        pageCount
+        total
+      }
+    }
+    recommendedProducts_connection(
+      filters: {
+        product_list: {
+          account: { documentId: { eq: $accountDocumentId } }
+          Visibility: { eq: true }
+          recommendation_lists: {
+            account: { documentId: { eq: $accountDocumentId } }
+            Visibility: { eq: true }
+            or: [{ slug: { eq: $slug } }, { documentId: { eq: $documentId } }]
+          }
+        }
+      }
+      pagination: $productPagination
+      sort: ["display_order:asc", "documentId:asc"]
+    ) {
+      nodes {
+        documentId
+        product_url
+        title
+        brand
+        price
+        currency
+        buy_url
+        logo_url
+        description
+        specifications
+        user_recommendation_note
+        user_rating
+        is_pinned
+        display_order
+        images
+        product_category {
           documentId
           name
-          username_handle
-          headline
-          location
-          avatar_path
-          media_details
-          primary_platform
-          social_urls
-          skills_tags
-          user_recommendation_note
-          user_rating
-          is_pinned
-          display_order
-          people_category {
-            documentId
-            Category_name
-          }
+          slug
+        }
+        product_list {
+          documentId
+          List_Name
+          slug
         }
       }
-      product_lists(sort: ["display_order:asc"], pagination: { limit: 50 }) {
-        documentId
-        List_Name
-        slug
-        Visibility
-        recommended_products(sort: ["display_order:asc"], pagination: { limit: 200 }) {
-          documentId
-          product_url
-          title
-          brand
-          price
-          currency
-          buy_url
-          logo_url
-          description
-          specifications
-          user_recommendation_note
-          user_rating
-          is_pinned
-          display_order
-          images
-          product_category {
-            documentId
-            name
-            slug
-          }
-        }
+      pageInfo {
+        page
+        pageSize
+        pageCount
+        total
       }
     }
   }

@@ -18,7 +18,8 @@ describe("public book child queries", () => {
 
 	it("filters the taxonomy entity and its books by the requested subject", () => {
 		const source = print(BOOKS_BY_SUBJECT);
-		expect(source).toContain("subject_name: {eq: $subjectName}");
+		expect(source).toContain("documentId: {eq: $taxonomyDocumentId}");
+		expect(source).toContain("subject_name: {eq: $legacySubjectName}");
 		expect(source).toContain("pagination: {limit: 1}");
 	});
 });

@@ -240,11 +240,17 @@ export const PINNED_GAMES = gql`
 export const GAMES_BY_GENRE = gql`
   query GamesByGenre(
     $accountDocumentId: ID!
-    $genreName: String!
+    $taxonomyDocumentId: ID!
+    $legacyGenreName: String!
     $pagination: PaginationArg!
   ) {
     gameCategories(
-      filters: { genre_name: { eq: $genreName } }
+      filters: {
+        or: [
+          { documentId: { eq: $taxonomyDocumentId } }
+          { genre_name: { eq: $legacyGenreName } }
+        ]
+      }
       pagination: { limit: 1 }
     ) {
       documentId
@@ -252,7 +258,12 @@ export const GAMES_BY_GENRE = gql`
     }
     recommendedGames_connection(
       filters: {
-        game_categories: { genre_name: { eq: $genreName } }
+        game_categories: {
+          or: [
+            { documentId: { eq: $taxonomyDocumentId } }
+            { genre_name: { eq: $legacyGenreName } }
+          ]
+        }
         game_list: {
           account: { documentId: { eq: $accountDocumentId } }
           Visibility: { eq: true }

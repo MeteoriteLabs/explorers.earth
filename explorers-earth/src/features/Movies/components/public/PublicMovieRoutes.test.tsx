@@ -20,6 +20,7 @@ vi.mock("../../../../layouts/PublicProfileBootstrapContext", () => ({
 vi.mock("../../../../components/SEO", () => ({ default: () => null }));
 
 import PublicMovieGenre from "./PublicMovieGenre";
+import PublicMovieList from "./PublicMovieList";
 
 const connection = {
 	nodes: [],
@@ -31,6 +32,17 @@ function renderGenre() {
 		<MemoryRouter initialEntries={["/alice/movies/genre/comedy"]}>
 			<Routes>
 				<Route path="/:username/movies/genre/:genreSlug" element={<PublicMovieGenre />} />
+				<Route path="/:username" element={<div>Profile fallback</div>} />
+			</Routes>
+		</MemoryRouter>,
+	);
+}
+
+function renderList() {
+	return render(
+		<MemoryRouter initialEntries={["/alice/movies/favorites"]}>
+			<Routes>
+				<Route path="/:username/movies/:listSlug" element={<PublicMovieList />} />
 				<Route path="/:username" element={<div>Profile fallback</div>} />
 			</Routes>
 		</MemoryRouter>,
@@ -54,6 +66,22 @@ describe("PublicMovieGenre", () => {
 	it("redirects a settled missing genre", async () => {
 		queryState.data = { movieCategories: [], recommendedMovies_connection: connection };
 		renderGenre();
+		expect(await screen.findByText("Profile fallback")).toBeInTheDocument();
+	});
+
+	it("keeps a published empty movie list on its URL", () => {
+		queryState.data = {
+			movieLists: [{ documentId: "movie-list-1", List_Name: "Favorites", slug: "favorites" }],
+			recommendedMovies_connection: connection,
+		};
+		renderList();
+		expect(screen.getByRole("heading", { name: "Favorites" })).toBeInTheDocument();
+		expect(screen.queryByText("Profile fallback")).toBeNull();
+	});
+
+	it("redirects a settled missing movie list", async () => {
+		queryState.data = { movieLists: [], recommendedMovies_connection: connection };
+		renderList();
 		expect(await screen.findByText("Profile fallback")).toBeInTheDocument();
 	});
 });

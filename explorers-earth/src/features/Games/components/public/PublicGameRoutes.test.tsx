@@ -12,6 +12,7 @@ vi.mock("../../../../layouts/PublicProfileBootstrapContext", () => ({ usePublicP
 vi.mock("../../../../components/SEO", () => ({ default: () => null }));
 
 import PublicGamesGenre from "./PublicGamesGenre";
+import PublicGamesList from "./PublicGamesList";
 
 const connection = { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } };
 
@@ -20,6 +21,17 @@ function renderGenre() {
 		<MemoryRouter initialEntries={["/alice/games/genre/comedy"]}>
 			<Routes>
 				<Route path="/:username/games/genre/:genreSlug" element={<PublicGamesGenre />} />
+				<Route path="/:username" element={<div>Profile fallback</div>} />
+			</Routes>
+		</MemoryRouter>,
+	);
+}
+
+function renderList() {
+	return render(
+		<MemoryRouter initialEntries={["/alice/games/favorites"]}>
+			<Routes>
+				<Route path="/:username/games/:listSlug" element={<PublicGamesList />} />
 				<Route path="/:username" element={<div>Profile fallback</div>} />
 			</Routes>
 		</MemoryRouter>,
@@ -43,6 +55,22 @@ describe("PublicGamesGenre", () => {
 	it("redirects a settled missing genre", async () => {
 		queryState.data = { gameCategories: [], recommendedGames_connection: connection };
 		renderGenre();
+		expect(await screen.findByText("Profile fallback")).toBeInTheDocument();
+	});
+
+	it("keeps a published empty game list on its URL", () => {
+		queryState.data = {
+			gameLists: [{ documentId: "game-list-1", List_Name: "Favorites", slug: "favorites" }],
+			recommendedGames_connection: connection,
+		};
+		renderList();
+		expect(screen.getByRole("heading", { name: "Favorites" })).toBeInTheDocument();
+		expect(screen.queryByText("Profile fallback")).toBeNull();
+	});
+
+	it("redirects a settled missing game list", async () => {
+		queryState.data = { gameLists: [], recommendedGames_connection: connection };
+		renderList();
 		expect(await screen.findByText("Profile fallback")).toBeInTheDocument();
 	});
 });

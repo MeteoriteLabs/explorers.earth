@@ -1,10 +1,10 @@
 import { memo } from "react";
 import { Link } from "react-router-dom";
 import { BookOpen } from "lucide-react";
-import { subjectToSlug } from "../../utils/bookHelpers";
+import { publicTaxonomyPath } from "../../../../routes/publicTaxonomyRoute";
 
 interface SubjectBrowseProps {
-  subjects: string[];
+  subjects: Array<{ documentId: string; name: string }>;
   username: string;
 }
 
@@ -22,11 +22,11 @@ const SubjectBrowse = memo(({ subjects, username }: SubjectBrowseProps) => {
       <div className="flex flex-wrap gap-2">
         {subjects.slice(0, 30).map((subject) => (
           <Link
-            key={subject}
-            to={`/${username}/books/subject/${subjectToSlug(subject)}`}
+            key={subject.documentId}
+            to={publicTaxonomyPath(username, "books", "subject", subject.documentId)}
             className="px-3 py-1.5 rounded-full text-xs font-medium bg-white/8 text-white/70 hover:bg-amber-400/20 hover:text-amber-300 border border-white/10 hover:border-amber-400/30 transition-all"
           >
-            {subject}
+            {subject.name}
           </Link>
         ))}
       </div>

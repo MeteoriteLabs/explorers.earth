@@ -1,0 +1,109 @@
+scalar JSON
+scalar DateTime
+
+type Query {
+  guides(filters: GuideFiltersInput, pagination: PaginationArg): [Guide!]!
+  guideSections_connection(
+    filters: GuideSectionFiltersInput
+    pagination: PaginationArg
+    sort: [String!]
+  ): GuideSectionEntityResponseCollection!
+}
+
+input PaginationArg {
+  page: Int
+  pageSize: Int
+  limit: Int
+  start: Int
+}
+
+input IDFilterInput {
+  eq: ID
+}
+
+input StringFilterInput {
+  eq: String
+}
+
+input BooleanFilterInput {
+  eq: Boolean
+}
+
+input AccountRelationFiltersInput {
+  documentId: IDFilterInput
+}
+
+input GuideFiltersInput {
+  account: AccountRelationFiltersInput
+  Visibility: BooleanFilterInput
+  slug: StringFilterInput
+  documentId: IDFilterInput
+  or: [GuideFiltersInput!]
+}
+
+input GuideRelationFiltersInput {
+  account: AccountRelationFiltersInput
+  Visibility: BooleanFilterInput
+  slug: StringFilterInput
+  documentId: IDFilterInput
+  or: [GuideRelationFiltersInput!]
+}
+
+input GuideSectionFiltersInput {
+  guide: GuideRelationFiltersInput
+}
+
+type UploadFile {
+  url: String
+  name: String
+}
+
+type GuideSection {
+  documentId: ID!
+  Title: String
+  Sequence: Int
+  Description: String
+  Timeline: JSON
+  Transport: JSON
+  Stay: JSON
+  Recommendation_Activity: JSON
+  Map_Details: JSON
+  Packing_List: JSON
+  Pre_Tasks: JSON
+  Section_tags: JSON
+  Budget: JSON
+}
+
+type Pagination {
+  page: Int!
+  pageSize: Int!
+  pageCount: Int!
+  total: Int!
+}
+
+type GuideSectionEntityResponseCollection {
+  nodes: [GuideSection!]!
+  pageInfo: Pagination!
+}
+
+type Guide {
+  documentId: ID!
+  Title: String
+  Description: String
+  Guide_Type: String
+  Visibility: Boolean
+  Estimated_Budget: Float
+  Number_Of_Days: Int
+  slug: String
+  Guide_Media: [UploadFile!]
+  Place_Details: JSON
+  Tips_Notes: JSON
+  Guide_Section_Details: JSON
+  Guide_Tags: JSON
+  guide_sections(pagination: PaginationArg, sort: [String!]): [GuideSection!]!
+  is_pinned: Boolean
+  pin_order: Int
+  display_order: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}

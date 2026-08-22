@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { Users, Share2 } from "lucide-react";
 import { PUBLIC_PEOPLE_DATA } from "../../api/query";
-import { deduplicatePeople, extractUniqueCategories } from "../../utils/personHelpers";
+import { deduplicatePeople } from "../../utils/personHelpers";
 import { toast } from "sonner";
 import type { RecommendedPerson, PersonList } from "../../types";
 import PersonCarouselRow from "./PersonCarouselRow";
@@ -14,6 +14,7 @@ import PersonTopPicksHero from "./PersonTopPicksHero";
 import PersonTopPicksMobileHero from "./PersonTopPicksMobileHero";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
+import { publicTaxonomyPath } from "../../../../routes/publicTaxonomyRoute";
 
 const PublicPeople = () => {
   const { username } = useParams<{ username: string }>();
@@ -59,9 +60,14 @@ const PublicPeople = () => {
       .sort((a, b) => (a.pin_order ?? 999) - (b.pin_order ?? 999));
   }, [allPeople]);
 
-  const allCategories = useMemo(() => {
-    return extractUniqueCategories(allPeople.map((p) => p.people_category?.Category_name ? [p.people_category.Category_name] : []));
-  }, [allPeople]);
+  const allCategories = useMemo(() => Array.from(
+    new Map(
+      allPeople.flatMap((person) => person.people_category ? [[
+        person.people_category.documentId,
+        { documentId: person.people_category.documentId, name: person.people_category.Category_name },
+      ] as const] : []),
+    ).values(),
+  ).sort((left, right) => left.name.localeCompare(right.name)), [allPeople]);
 
   const handlePersonClick = useCallback((person: RecommendedPerson) => {
     setModalState({ open: true, person });
@@ -181,8 +187,8 @@ const PublicPeople = () => {
                       <div className="flex flex-wrap gap-2">
                         {allCategories.map((cat) => (
                           <button
-                            key={cat.slug}
-                            onClick={() => navigate(`/${username}/people/sector/${cat.slug}`)}
+                            key={cat.documentId}
+                            onClick={() => navigate(publicTaxonomyPath(username!, "people", "sector", cat.documentId))}
                             className="text-xs text-violet-400/80 bg-violet-900/20 hover:bg-violet-900/40 border border-violet-800/20 px-3 py-1.5 rounded-full transition-all"
                           >
                             {cat.name}

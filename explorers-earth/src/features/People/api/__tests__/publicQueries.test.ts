@@ -18,7 +18,8 @@ describe("public people child queries", () => {
 
 	it("filters the sector entity and people by the requested category", () => {
 		const source = print(PEOPLE_BY_SECTOR);
-		expect(source).toContain("Category_name: {eq: $sectorName}");
+		expect(source).toContain("documentId: {eq: $taxonomyDocumentId}");
+		expect(source).toContain("Category_name: {eq: $legacySectorName}");
 		expect(source).toContain("pagination: {limit: 1}");
 	});
 });

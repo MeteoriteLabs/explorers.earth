@@ -269,11 +269,17 @@ export const PERSON_LIST_BY_SLUG = gql`
 export const PEOPLE_BY_SECTOR = gql`
   query PeopleBySector(
     $accountDocumentId: ID!
-    $sectorName: String!
+    $taxonomyDocumentId: ID!
+    $legacySectorName: String!
     $pagination: PaginationArg!
   ) {
     peopleCategories(
-      filters: { Category_name: { eq: $sectorName } }
+      filters: {
+        or: [
+          { documentId: { eq: $taxonomyDocumentId } }
+          { Category_name: { eq: $legacySectorName } }
+        ]
+      }
       pagination: { limit: 1 }
     ) {
       documentId
@@ -281,7 +287,12 @@ export const PEOPLE_BY_SECTOR = gql`
     }
     recommendedPeople_connection(
       filters: {
-        people_category: { Category_name: { eq: $sectorName } }
+        people_category: {
+          or: [
+            { documentId: { eq: $taxonomyDocumentId } }
+            { Category_name: { eq: $legacySectorName } }
+          ]
+        }
         person_list: {
           account: { documentId: { eq: $accountDocumentId } }
           Visibility: { eq: true }

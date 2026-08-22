@@ -220,12 +220,17 @@ export const GET_PUBLIC_GUIDE_BY_ID_QUERY = gql`
 
 // Resolve a public guide leaf in one account-scoped, visibility-scoped lookup.
 export const GET_PUBLIC_GUIDE_BY_SLUG_QUERY = gql`
-  query GetPublicGuideBySlug($accountDocumentId: ID!, $slug: String!) {
+  query GetPublicGuideBySlug(
+    $accountDocumentId: ID!
+    $slug: String!
+    $documentId: ID!
+    $sectionPagination: PaginationArg!
+  ) {
     guides(
       filters: {
         account: { documentId: { eq: $accountDocumentId } }
         Visibility: { eq: true }
-        or: [{ slug: { eq: $slug } }, { documentId: { eq: $slug } }]
+        or: [{ slug: { eq: $slug } }, { documentId: { eq: $documentId } }]
       }
       pagination: { limit: 1 }
     ) {
@@ -245,7 +250,24 @@ export const GET_PUBLIC_GUIDE_BY_SLUG_QUERY = gql`
       Tips_Notes
       Guide_Section_Details
       Guide_Tags
-      guide_sections(pagination: { limit: 100 }, sort: ["Sequence:asc"]) {
+      is_pinned
+      pin_order
+      display_order
+      createdAt
+      updatedAt
+    }
+    guideSections_connection(
+      filters: {
+        guide: {
+          account: { documentId: { eq: $accountDocumentId } }
+          Visibility: { eq: true }
+          or: [{ slug: { eq: $slug } }, { documentId: { eq: $documentId } }]
+        }
+      }
+      pagination: $sectionPagination
+      sort: ["Sequence:asc", "documentId:asc"]
+    ) {
+      nodes {
         documentId
         Title
         Sequence
@@ -260,11 +282,12 @@ export const GET_PUBLIC_GUIDE_BY_SLUG_QUERY = gql`
         Section_tags
         Budget
       }
-      is_pinned
-      pin_order
-      display_order
-      createdAt
-      updatedAt
+      pageInfo {
+        page
+        pageSize
+        pageCount
+        total
+      }
     }
   }
 `;

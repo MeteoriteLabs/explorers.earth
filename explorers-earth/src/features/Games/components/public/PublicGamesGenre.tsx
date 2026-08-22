@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { Share2, ArrowLeft } from "lucide-react";
@@ -19,6 +19,7 @@ import {
   usePublicConnectionPagination,
 } from "../../../../hooks/usePublicConnectionPagination";
 import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
+import { usePublicLeafRequestGeneration } from "../../../../layouts/PublicRouteReadinessContext";
 
 const PublicGamesGenre = () => {
   const { username, genreSlug } = useParams<{ username: string; genreSlug: string }>();
@@ -26,14 +27,16 @@ const PublicGamesGenre = () => {
   const [selectedGame, setSelectedGame] = useState<RecommendedGame | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  const genreName = slugToGenreName(genreSlug ?? "");
+  const legacyGenreName = slugToGenreName(genreSlug ?? "");
 
   const accountDocumentId = usePublicProfileBootstrapAccount().documentId;
+  const requestGeneration = usePublicLeafRequestGeneration(`${accountDocumentId}:${genreSlug}`);
 
   const { data, loading, error, refetch, fetchMore } = useQuery(GAMES_BY_GENRE, {
     variables: {
       accountDocumentId,
-      genreName,
+      taxonomyDocumentId: genreSlug,
+      legacyGenreName,
       pagination: { page: 1, pageSize: 200 },
     },
     skip: !accountDocumentId || !genreSlug,
@@ -42,6 +45,12 @@ const PublicGamesGenre = () => {
   });
 
   const genre = data?.gameCategories?.[0];
+  const genreName = genre?.genre_name ?? legacyGenreName;
+  useEffect(() => {
+    if (genre?.documentId && genreSlug !== genre.documentId) {
+      navigate(`/${username}/games/genre/${encodeURIComponent(genre.documentId)}`, { replace: true });
+    }
+  }, [genre?.documentId, genreSlug, navigate, username]);
   const filteredGames: RecommendedGame[] = deduplicateGames(
     data?.recommendedGames_connection?.nodes,
   );
@@ -62,10 +71,11 @@ const PublicGamesGenre = () => {
     empty: childState === "empty",
   });
 
-  const loadPage = useCallback(async (page: number) => {
+  const loadPage = useCallback(async (page: number, request: { isCurrent: () => boolean }) => {
     await fetchMore({
       variables: { pagination: { page, pageSize: 200 } },
       updateQuery: (previous, { fetchMoreResult }) => {
+        if (!request.isCurrent()) return previous;
         if (!previous.recommendedGames_connection || !fetchMoreResult?.recommendedGames_connection) return previous;
         return {
           ...previous,
@@ -84,7 +94,7 @@ const PublicGamesGenre = () => {
   });
 
   if (childState === "redirect") {
-    return <PublicProfileFallbackRedirect />;
+    return <PublicProfileFallbackRedirect expectedGeneration={requestGeneration} />;
   }
 
   const handleGameClick = (game: RecommendedGame) => {

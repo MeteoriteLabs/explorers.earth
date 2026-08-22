@@ -1,0 +1,127 @@
+scalar JSON
+
+type Query {
+  recommendationLists(filters: RecommendationListFiltersInput, pagination: PaginationArg): [RecommendationList!]!
+  recommendedPeople_connection(filters: RecommendedPersonFiltersInput, pagination: PaginationArg, sort: [String!]): RecommendedPersonConnection!
+  recommendedProducts_connection(filters: RecommendedProductFiltersInput, pagination: PaginationArg, sort: [String!]): RecommendedProductConnection!
+}
+
+input PaginationArg { limit: Int, page: Int, pageSize: Int }
+input IDFilterInput { eq: ID }
+input StringFilterInput { eq: String }
+input BooleanFilterInput { eq: Boolean }
+input AccountFiltersInput { documentId: IDFilterInput }
+input RecommendationListFiltersInput {
+  account: AccountFiltersInput
+  slug: StringFilterInput
+  documentId: IDFilterInput
+  Visibility: BooleanFilterInput
+  or: [RecommendationListFiltersInput!]
+}
+input RecommendationListRelationFiltersInput {
+  account: AccountFiltersInput
+  Visibility: BooleanFilterInput
+}
+input RecommendedPlaceFiltersInput { recommendation_list: RecommendationListRelationFiltersInput }
+input PersonListFiltersInput { account: AccountFiltersInput, Visibility: BooleanFilterInput }
+input PersonListRelationFiltersInput {
+  account: AccountFiltersInput
+  Visibility: BooleanFilterInput
+  recommendation_lists: RecommendationListFiltersInput
+}
+input RecommendedPersonFiltersInput { person_list: PersonListRelationFiltersInput }
+input ProductListFiltersInput { account: AccountFiltersInput, Visibility: BooleanFilterInput }
+input ProductListRelationFiltersInput {
+  account: AccountFiltersInput
+  Visibility: BooleanFilterInput
+  recommendation_lists: RecommendationListFiltersInput
+}
+input RecommendedProductFiltersInput { product_list: ProductListRelationFiltersInput }
+
+type Media { url: String }
+type RecommendationCategory { Category_Name: String }
+type PeopleCategory { documentId: ID!, Category_name: String }
+type ProductCategory { documentId: ID!, name: String, slug: String }
+
+type RecommendedPlace {
+  documentId: ID!
+  recommendation_category: RecommendationCategory
+  Media: [Media!]
+  Place_Details: JSON
+  Recommendation_Type: String
+  Contact_Name: String
+  media_details: JSON
+}
+
+type RecommendedPerson {
+  documentId: ID!
+  name: String
+  username_handle: String
+  headline: String
+  location: String
+  avatar_path: String
+  media_details: JSON
+  primary_platform: String
+  social_urls: JSON
+  skills_tags: JSON
+  user_recommendation_note: JSON
+  user_rating: Float
+  is_pinned: Boolean
+  display_order: Int
+  people_category: PeopleCategory
+  person_list: PersonList
+}
+
+type RecommendedProduct {
+  documentId: ID!
+  product_url: String
+  title: String
+  brand: String
+  price: Float
+  currency: String
+  buy_url: String
+  logo_url: String
+  description: String
+  specifications: JSON
+  user_recommendation_note: JSON
+  user_rating: Float
+  is_pinned: Boolean
+  display_order: Int
+  images: JSON
+  product_category: ProductCategory
+  product_list: ProductList
+}
+
+type PageInfo { page: Int!, pageSize: Int!, pageCount: Int!, total: Int! }
+type RecommendedPersonConnection { nodes: [RecommendedPerson!]!, pageInfo: PageInfo! }
+type RecommendedProductConnection { nodes: [RecommendedProduct!]!, pageInfo: PageInfo! }
+
+type PersonList {
+  documentId: ID!
+  List_Name: String
+  slug: String
+  Visibility: Boolean
+  recommended_people(filters: RecommendedPersonFiltersInput, sort: [String!], pagination: PaginationArg): [RecommendedPerson!]!
+}
+
+type ProductList {
+  documentId: ID!
+  List_Name: String
+  slug: String
+  Visibility: Boolean
+  recommended_products(filters: RecommendedProductFiltersInput, sort: [String!], pagination: PaginationArg): [RecommendedProduct!]!
+}
+
+type RecommendationList {
+  documentId: ID!
+  List_Name: String
+  slug: String
+  Visibility: Boolean
+  is_pinned: Boolean
+  pin_order: Int
+  display_order: Int
+  List_Name_Details: JSON
+  recommended_places(filters: RecommendedPlaceFiltersInput, pagination: PaginationArg): [RecommendedPlace!]!
+  person_lists(filters: PersonListFiltersInput, sort: [String!], pagination: PaginationArg): [PersonList!]!
+  product_lists(filters: ProductListFiltersInput, sort: [String!], pagination: PaginationArg): [ProductList!]!
+}

@@ -2,8 +2,9 @@ import { useRef, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ChevronRight, ChevronLeft } from "lucide-react";
-import { genreToSlug, extractUniqueGenres } from "../../utils/gameHelpers";
+import { extractUniqueGenres } from "../../utils/gameHelpers";
 import type { RecommendedGame } from "../../types";
+import { publicTaxonomyPath } from "../../../../routes/publicTaxonomyRoute";
 
 interface GenreBrowseProps {
   games: RecommendedGame[];
@@ -49,6 +50,12 @@ const GenreBrowse = ({ games, username }: GenreBrowseProps) => {
   };
 
   const genres = extractUniqueGenres(games.map(g => g.genres));
+  const genreDocumentIds = new Map<string, string>();
+  for (const game of games) {
+    for (const category of game.game_categories ?? []) {
+      genreDocumentIds.set(category.genre_name, category.documentId);
+    }
+  }
 
   // Count games per genre
   const genreCount: Record<string, number> = {};
@@ -57,7 +64,7 @@ const GenreBrowse = ({ games, username }: GenreBrowseProps) => {
   }
 
   // Only show genres with at least 1 game
-  const visibleGenres = genres.filter(g => genreCount[g] > 0);
+  const visibleGenres = genres.filter(g => genreCount[g] > 0 && genreDocumentIds.has(g));
 
   if (visibleGenres.length === 0) return null;
 
@@ -102,7 +109,7 @@ const GenreBrowse = ({ games, username }: GenreBrowseProps) => {
               transition={{ type: "spring", stiffness: 300 }}
             >
               <Link
-                to={`/${username}/games/genre/${genreToSlug(genre)}`}
+                to={publicTaxonomyPath(username, "games", "genre", genreDocumentIds.get(genre)!)}
                 className="relative flex flex-col justify-between h-24 rounded-xl overflow-hidden p-3 border border-white/10 hover:border-dashboard-accent/40 transition-all group"
                 style={{
                   background: `linear-gradient(135deg, ${gradient[0]}, ${gradient[1]})`,

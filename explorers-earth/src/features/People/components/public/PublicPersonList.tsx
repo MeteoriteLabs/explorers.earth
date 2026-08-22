@@ -19,6 +19,7 @@ import {
   usePublicConnectionPagination,
 } from "../../../../hooks/usePublicConnectionPagination";
 import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
+import { usePublicLeafRequestGeneration } from "../../../../layouts/PublicRouteReadinessContext";
 
 const PublicPersonList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
@@ -26,6 +27,7 @@ const PublicPersonList = () => {
   const [selectedPerson, setSelectedPerson] = useState<RecommendedPerson | null>(null);
 
   const account = usePublicProfileBootstrapAccount();
+  const requestGeneration = usePublicLeafRequestGeneration(`${account.documentId}:${listSlug}`);
 
   const { data, loading, error, refetch, fetchMore } = useQuery(PERSON_LIST_BY_SLUG, {
     variables: {
@@ -60,10 +62,11 @@ const PublicPersonList = () => {
     empty: childState === "empty",
   });
 
-  const loadPage = useCallback(async (page: number) => {
+  const loadPage = useCallback(async (page: number, request: { isCurrent: () => boolean }) => {
     await fetchMore({
       variables: { pagination: { page, pageSize: 200 } },
       updateQuery: (previous, { fetchMoreResult }) => {
+        if (!request.isCurrent()) return previous;
         if (!previous.recommendedPeople_connection || !fetchMoreResult?.recommendedPeople_connection) return previous;
         return {
           ...previous,
@@ -106,7 +109,7 @@ const PublicPersonList = () => {
     ? [`${list.List_Name}`, `${creatorName} people`, `${list.slug}`, "people list", "explorers"]
     : ["people list", "explorers"];
 
-  if (childState === "redirect") return <PublicProfileFallbackRedirect />;
+  if (childState === "redirect") return <PublicProfileFallbackRedirect expectedGeneration={requestGeneration} />;
   if (!data) return null;
 
   return (

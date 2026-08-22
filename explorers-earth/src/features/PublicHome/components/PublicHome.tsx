@@ -20,6 +20,8 @@ import {
   mergePublicConnectionPage,
   usePublicConnectionPagination,
 } from "../../../hooks/usePublicConnectionPagination";
+import { PublicConnectionPaginationControl } from "../../../components/PublicConnectionPaginationControl";
+import { usePublicLeafRequestGeneration } from "../../../layouts/PublicRouteReadinessContext";
 
 import { getCurrentDomain } from "../../../utils/getCurrentDomain";
 import PlaceOverview from "./PlaceDetails/PlaceOverview";
@@ -101,7 +103,7 @@ interface City {
 }
 
 const getCityRouteSlug = (city: City): string =>
-  city.slug || toUrlSlug(city.List_Name || "");
+  city.slug || city.documentId || "";
 
 // Helper function to get person image with avatar fallback
 const getPersonImageUrl = (data: CardDataItem): string => {
@@ -158,6 +160,7 @@ const PublicHome = memo(() => {
   // local state for handle catgeories
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const bootstrapAccount = usePublicProfileBootstrapAccount();
+  const requestGeneration = usePublicLeafRequestGeneration(`${bootstrapAccount.documentId}:${placeSlug}`);
   const collectionQuery = useQuery(publicPlacesListsQuery, {
     variables: {
       accountDocumentId: bootstrapAccount.documentId,
@@ -170,6 +173,9 @@ const PublicHome = memo(() => {
     variables: {
       accountDocumentId: bootstrapAccount.documentId,
       slug: placeSlug,
+      documentId: placeSlug,
+      peoplePagination: { page: 1, pageSize: 200 },
+      productPagination: { page: 1, pageSize: 200 },
     },
     skip: !placeSlug,
     fetchPolicy: "cache-and-network",
@@ -178,9 +184,10 @@ const PublicHome = memo(() => {
   const activePlacesQuery = placeSlug ? childQuery : collectionQuery;
   const {
     data,
-    loading,
-    error,
+    loading: parentQueryLoading,
+    error: parentQueryError,
     refetch,
+    fetchMore: fetchMoreLinked,
   } = activePlacesQuery;
 
   const [showQR, setShowQR] = useState(false);
@@ -194,24 +201,6 @@ const PublicHome = memo(() => {
     [bootstrapAccount, data?.recommendationLists],
   );
   const resolvedPlaceList = placeSlug ? data?.recommendationLists?.[0] : undefined;
-  const childState = resolvePublicChildState({
-    loading,
-    error,
-    bootstrapReady: Boolean(bootstrapAccount.documentId),
-    resourceKind: placeSlug ? "child" : "collection",
-    entityExists: placeSlug ? Boolean(resolvedPlaceList) : true,
-    empty: placeSlug
-      ? Boolean(resolvedPlaceList) &&
-        (resolvedPlaceList.recommended_places?.length ?? 0) === 0
-      : Boolean(data) && data.recommendationLists.length === 0,
-  });
-  usePublicRouteLifecycle({
-    loading,
-    error,
-    retry: refetch,
-    hasUsableData: Boolean(data),
-    empty: childState === "empty",
-  });
 
   const [selectedCity, setSelectedCity] = useState<City | undefined>(undefined);
   const [activeTab, setActiveTab] = useState<"places" | "people" | "products">("places");
@@ -221,38 +210,25 @@ const PublicHome = memo(() => {
     setActiveTab("places");
   }, [selectedCity?.documentId]);
 
-  // Linked person and product lists for the selected city
-  const linkedPersonLists = useMemo(() => {
-    return (selectedCity?.person_lists || []).filter((l: any) => l.Visibility === true);
-  }, [selectedCity]);
-
-  const linkedProductLists = useMemo(() => {
-    return (selectedCity?.product_lists || []).filter((l: any) => l.Visibility === true);
-  }, [selectedCity]);
-
   const linkedPeople = useMemo(() => {
-    const raw = linkedPersonLists.flatMap((l: any) =>
-      (l.recommended_people || []).map((p: any) => ({
-        ...p,
-        _listName: l.List_Name,
-        _listId: l.documentId,
-        _listSlug: l.slug,
-      }))
-    );
+    const raw = (data?.recommendedPeople_connection?.nodes ?? []).map((person: any) => ({
+      ...person,
+      _listName: person.person_list?.List_Name,
+      _listId: person.person_list?.documentId,
+      _listSlug: person.person_list?.slug,
+    }));
     return deduplicatePeople(raw);
-  }, [linkedPersonLists]);
+  }, [data?.recommendedPeople_connection?.nodes]);
 
   const linkedProducts = useMemo(() => {
-    const raw = linkedProductLists.flatMap((l: any) =>
-      (l.recommended_products || []).map((p: any) => ({
-        ...p,
-        _listName: l.List_Name,
-        _listId: l.documentId,
-        _listSlug: l.slug,
-      }))
-    );
+    const raw = (data?.recommendedProducts_connection?.nodes ?? []).map((product: any) => ({
+      ...product,
+      _listName: product.product_list?.List_Name,
+      _listId: product.product_list?.documentId,
+      _listSlug: product.product_list?.slug,
+    }));
     return deduplicateProducts(raw);
-  }, [linkedProductLists]);
+  }, [data?.recommendedProducts_connection?.nodes]);
 
   // local state for inline details modals
   const [isExpanded, setIsExpanded] = useState<{
@@ -316,6 +292,8 @@ const PublicHome = memo(() => {
   const {
     data: placesData,
     loading: placesQueryLoading,
+    error: placesQueryError,
+    refetch: refetchPlaces,
     fetchMore,
   } = useQuery(publicRecommendedPlacesConnectionQuery, {
     variables: {
@@ -326,16 +304,113 @@ const PublicHome = memo(() => {
       filters: {
         recommendation_list: {
           documentId: {
-            eq: selectedCity?.documentId,
+            eq: (placeSlug ? resolvedPlaceList : selectedCity)?.documentId,
           },
         },
+        ...(selectedCategory ? {
+          recommendation_category: {
+            Category_Name: { eq: selectedCategory },
+          },
+        } : {}),
       },
     },
     fetchPolicy: "cache-and-network",
     notifyOnNetworkStatusChange: true,
     // Skip query if no selectedCity, no documentId, or city is not published
-    skip: !selectedCity?.documentId || selectedCity?.Visibility !== true,
+    skip:
+      !(placeSlug ? resolvedPlaceList : selectedCity)?.documentId ||
+      (placeSlug ? resolvedPlaceList : selectedCity)?.Visibility !== true,
   });
+  const activePlaceList = placeSlug ? resolvedPlaceList : selectedCity;
+  const placesConnectionExpected = Boolean(
+    activePlaceList?.documentId && activePlaceList.Visibility === true,
+  );
+  const placesHaveUsableData = Boolean(
+    placesData?.recommendedPlaces_connection,
+  );
+  const loading =
+    parentQueryLoading ||
+    (placesConnectionExpected && placesQueryLoading && !placesHaveUsableData);
+  const error = parentQueryError ?? placesQueryError;
+  const childState = resolvePublicChildState({
+    loading,
+    error,
+    bootstrapReady: Boolean(bootstrapAccount.documentId),
+    resourceKind: placeSlug ? "child" : "collection",
+    entityExists: placeSlug ? Boolean(resolvedPlaceList) : true,
+    empty: placeSlug
+      ? Boolean(resolvedPlaceList) &&
+        !selectedCategory &&
+        placesHaveUsableData &&
+        (placesData?.recommendedPlaces_connection?.nodes.length ?? 0) === 0
+      : Boolean(data) && data.recommendationLists.length === 0,
+  });
+  const retryPlacesRoute = useCallback(async () => {
+    const retries: Promise<unknown>[] = [refetch()];
+    if (placesConnectionExpected) retries.push(refetchPlaces());
+    await Promise.all(retries);
+  }, [placesConnectionExpected, refetch, refetchPlaces]);
+  usePublicRouteLifecycle({
+    loading: parentQueryLoading || (placesConnectionExpected && placesQueryLoading),
+    error,
+    retry: retryPlacesRoute,
+    hasUsableData: Boolean(data) && (!placesConnectionExpected || placesHaveUsableData),
+    empty: childState === "empty",
+  });
+  const loadPeoplePage = useCallback(async (
+    page: number,
+    request: { isCurrent: () => boolean },
+  ) => {
+    await fetchMoreLinked({
+      variables: { peoplePagination: { page, pageSize: 200 } },
+      updateQuery: (previous, { fetchMoreResult }) => {
+        if (!request.isCurrent()) return previous;
+        const previousConnection = previous.recommendedPeople_connection;
+        const nextConnection = fetchMoreResult?.recommendedPeople_connection;
+        if (!previousConnection || !nextConnection) return previous;
+        return {
+          ...previous,
+          recommendedPeople_connection: mergePublicConnectionPage(previousConnection, nextConnection),
+        };
+      },
+    });
+  }, [fetchMoreLinked]);
+  const peoplePagination = usePublicConnectionPagination({
+    pageInfo: data?.recommendedPeople_connection?.pageInfo,
+    loadPage: loadPeoplePage,
+    resetKey: `${bootstrapAccount.documentId}:${placeSlug}:people`,
+  });
+  const loadProductPage = useCallback(async (
+    page: number,
+    request: { isCurrent: () => boolean },
+  ) => {
+    await fetchMoreLinked({
+      variables: { productPagination: { page, pageSize: 200 } },
+      updateQuery: (previous, { fetchMoreResult }) => {
+        if (!request.isCurrent()) return previous;
+        const previousConnection = previous.recommendedProducts_connection;
+        const nextConnection = fetchMoreResult?.recommendedProducts_connection;
+        if (!previousConnection || !nextConnection) return previous;
+        return {
+          ...previous,
+          recommendedProducts_connection: mergePublicConnectionPage(previousConnection, nextConnection),
+        };
+      },
+    });
+  }, [fetchMoreLinked]);
+  const productPagination = usePublicConnectionPagination({
+    pageInfo: data?.recommendedProducts_connection?.pageInfo,
+    loadPage: loadProductPage,
+    resetKey: `${bootstrapAccount.documentId}:${placeSlug}:products`,
+  });
+  useEffect(() => {
+    if (selectedCategory || !activePlaceList?.documentId || !placesHaveUsableData) return;
+    const connectionPlaces = placesData?.recommendedPlaces_connection?.nodes ?? [];
+    setSelectedCity((current) => {
+      if (!current || current.documentId !== activePlaceList.documentId) return current;
+      return { ...current, recommended_places: connectionPlaces };
+    });
+  }, [activePlaceList?.documentId, placesData?.recommendedPlaces_connection?.nodes, placesHaveUsableData, selectedCategory]);
   const [showShareModal, setShowShareModal] = useState<boolean>(false);
 
   // Track recommendation engagement views when card is opened
@@ -425,18 +500,24 @@ const PublicHome = memo(() => {
   }, [selectedCity, PublishedCities, username, navigate]);
 
   const loadPlacesPage = useCallback(
-    async (page: number) => {
-      if (!selectedCity?.documentId) return;
+    async (page: number, request: { isCurrent: () => boolean }) => {
+      if (!activePlaceList?.documentId) return;
       await fetchMore({
         variables: {
           pagination: { page, pageSize: 200 },
           filters: {
             recommendation_list: {
-              documentId: { eq: selectedCity.documentId },
+              documentId: { eq: activePlaceList.documentId },
             },
+            ...(selectedCategory ? {
+              recommendation_category: {
+                Category_Name: { eq: selectedCategory },
+              },
+            } : {}),
           },
         },
         updateQuery: (previous, { fetchMoreResult }) => {
+          if (!request.isCurrent()) return previous;
           const previousConnection = previous.recommendedPlaces_connection;
           const nextConnection = fetchMoreResult?.recommendedPlaces_connection;
           if (!previousConnection || !nextConnection) return previous;
@@ -450,7 +531,7 @@ const PublicHome = memo(() => {
         },
       });
     },
-    [fetchMore, selectedCity?.documentId],
+    [activePlaceList?.documentId, fetchMore, selectedCategory],
   );
   const {
     hasNextPage,
@@ -461,7 +542,7 @@ const PublicHome = memo(() => {
   } = usePublicConnectionPagination({
     pageInfo: placesData?.recommendedPlaces_connection?.pageInfo,
     loadPage: loadPlacesPage,
-    resetKey: selectedCity?.documentId ?? "no-place-list",
+    resetKey: `${activePlaceList?.documentId ?? "no-place-list"}:${selectedCategory}`,
   });
 
   // Set up intersection observer for infinite scroll.
@@ -732,10 +813,13 @@ const PublicHome = memo(() => {
   ];
 
   // Use paginated places data instead of nested data from accountsDetailQuery
-  const currentPlaces = placesData?.recommendedPlaces_connection?.nodes || [];
+  const currentPlaces = useMemo(
+    () => placesData?.recommendedPlaces_connection?.nodes ?? [],
+    [placesData?.recommendedPlaces_connection?.nodes],
+  );
 
   // fetching categories for the recommendation list
-  const categories: string[] = useMemo(() => {
+  const currentPageCategories: string[] = useMemo(() => {
     return Array.from(
       new Set(
         currentPlaces?.map(
@@ -745,15 +829,26 @@ const PublicHome = memo(() => {
     );
   }, [currentPlaces]);
 
+  const [categories, setCategories] = useState<string[]>([]);
+  useEffect(() => {
+    setCategories([]);
+    setSelectedCategory("");
+  }, [activePlaceList?.documentId]);
+  useEffect(() => {
+    if (selectedCategory) return;
+    setCategories((previous) => {
+      const next = Array.from(new Set([
+        ...previous,
+        ...currentPageCategories.filter(Boolean),
+      ]));
+      return next.length === previous.length && next.every((value, index) => value === previous[index])
+        ? previous
+        : next;
+    });
+  }, [currentPageCategories, selectedCategory]);
+
   // Filter the recommended places by the selected category
-  const filteredPlaces = useMemo(() => {
-    return selectedCategory
-      ? currentPlaces?.filter(
-        (place: CardDataItem) =>
-          place?.recommendation_category?.Category_Name === selectedCategory
-      )
-      : currentPlaces;
-  }, [selectedCategory, currentPlaces]);
+  const filteredPlaces = currentPlaces;
 
   // Dynamic SEO data preparation
   const profileName = accountData?.Account_Name || username || "User";
@@ -1034,7 +1129,7 @@ const PublicHome = memo(() => {
   if (!data) return null;
 
   if (childState === "redirect") {
-    return <PublicProfileFallbackRedirect />;
+    return <PublicProfileFallbackRedirect expectedGeneration={requestGeneration} />;
   }
 
   return (
@@ -1775,6 +1870,16 @@ const PublicHome = memo(() => {
                               );
                             })
                           )}
+                          <div className="col-span-full flex justify-center">
+                            <PublicConnectionPaginationControl
+                              hasNextPage={peoplePagination.hasNextPage}
+                              isLoading={peoplePagination.isLoadingNextPage}
+                              error={peoplePagination.nextPageError}
+                              onLoadMore={() => void peoplePagination.loadNextPage()}
+                              onRetry={() => void peoplePagination.retryNextPage()}
+                              label="people"
+                            />
+                          </div>
                         </div>
                       )}
 
@@ -1810,6 +1915,16 @@ const PublicHome = memo(() => {
                               </div>
                             ))
                           )}
+                          <div className="col-span-full flex justify-center">
+                            <PublicConnectionPaginationControl
+                              hasNextPage={productPagination.hasNextPage}
+                              isLoading={productPagination.isLoadingNextPage}
+                              error={productPagination.nextPageError}
+                              onLoadMore={() => void productPagination.loadNextPage()}
+                              onRetry={() => void productPagination.retryNextPage()}
+                              label="products"
+                            />
+                          </div>
                         </div>
                       )}
                     </div>

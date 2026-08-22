@@ -33,9 +33,14 @@ export function mergePublicConnectionPage<TNode extends PublicConnectionNode>(
 	};
 }
 
+export interface PublicPageRequest {
+	resetKey: string;
+	isCurrent: () => boolean;
+}
+
 interface UsePublicConnectionPaginationInput {
 	pageInfo: PublicPageInfo | undefined;
-	loadPage: (page: number) => Promise<unknown>;
+	loadPage: (page: number, request: PublicPageRequest) => Promise<unknown>;
 	resetKey: string;
 }
 
@@ -56,6 +61,8 @@ export function usePublicConnectionPagination({
 	const [nextPageError, setNextPageError] = useState<unknown>();
 	const requestInFlight = useRef(false);
 	const generation = useRef(0);
+	const currentResetKey = useRef(resetKey);
+	currentResetKey.current = resetKey;
 
 	useEffect(() => {
 		generation.current += 1;
@@ -74,12 +81,17 @@ export function usePublicConnectionPagination({
 		}
 
 		const requestGeneration = generation.current;
+		const requestResetKey = resetKey;
+		const request: PublicPageRequest = {
+			resetKey: requestResetKey,
+			isCurrent: () => currentResetKey.current === requestResetKey,
+		};
 		requestInFlight.current = true;
 		setIsLoadingNextPage(true);
 		setNextPageError(undefined);
 
 		try {
-			await loadPage(pageInfo.page + 1);
+			await loadPage(pageInfo.page + 1, request);
 		} catch (error) {
 			if (requestGeneration === generation.current) {
 				setNextPageError(error);
@@ -90,7 +102,7 @@ export function usePublicConnectionPagination({
 				setIsLoadingNextPage(false);
 			}
 		}
-	}, [loadPage, pageInfo]);
+	}, [loadPage, pageInfo, resetKey]);
 
 	return {
 		hasNextPage,

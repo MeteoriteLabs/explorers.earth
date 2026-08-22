@@ -14,6 +14,7 @@ vi.mock("../../../../layouts/PublicProfileBootstrapContext", () => ({
 vi.mock("../../../../components/SEO", () => ({ default: () => null }));
 
 import PublicPersonSector from "./PublicPersonSector";
+import PublicPersonList from "./PublicPersonList";
 
 const connection = { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } };
 
@@ -22,6 +23,17 @@ function renderSector() {
 		<MemoryRouter initialEntries={["/alice/people/sector/creators"]}>
 			<Routes>
 				<Route path="/:username/people/sector/:sectorSlug" element={<PublicPersonSector />} />
+				<Route path="/:username" element={<div>Profile fallback</div>} />
+			</Routes>
+		</MemoryRouter>,
+	);
+}
+
+function renderList() {
+	return render(
+		<MemoryRouter initialEntries={["/alice/people/favorites"]}>
+			<Routes>
+				<Route path="/:username/people/:listSlug" element={<PublicPersonList />} />
 				<Route path="/:username" element={<div>Profile fallback</div>} />
 			</Routes>
 		</MemoryRouter>,
@@ -45,6 +57,22 @@ describe("PublicPersonSector", () => {
 	it("redirects a settled missing sector", async () => {
 		queryState.data = { peopleCategories: [], recommendedPeople_connection: connection };
 		renderSector();
+		expect(await screen.findByText("Profile fallback")).toBeInTheDocument();
+	});
+
+	it("keeps a published empty person list on its URL", () => {
+		queryState.data = {
+			personLists: [{ documentId: "person-list-1", List_Name: "Favorites", slug: "favorites" }],
+			recommendedPeople_connection: connection,
+		};
+		renderList();
+		expect(screen.getByRole("heading", { name: "Favorites" })).toBeInTheDocument();
+		expect(screen.queryByText("Profile fallback")).toBeNull();
+	});
+
+	it("redirects a settled missing person list", async () => {
+		queryState.data = { personLists: [], recommendedPeople_connection: connection };
+		renderList();
 		expect(await screen.findByText("Profile fallback")).toBeInTheDocument();
 	});
 });

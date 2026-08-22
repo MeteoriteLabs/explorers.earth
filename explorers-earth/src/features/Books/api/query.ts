@@ -223,11 +223,17 @@ export const PINNED_BOOKS = gql`
 export const BOOKS_BY_SUBJECT = gql`
   query BooksBySubject(
     $accountDocumentId: ID!
-    $subjectName: String!
+    $taxonomyDocumentId: ID!
+    $legacySubjectName: String!
     $pagination: PaginationArg!
   ) {
     bookCategories(
-      filters: { subject_name: { eq: $subjectName } }
+      filters: {
+        or: [
+          { documentId: { eq: $taxonomyDocumentId } }
+          { subject_name: { eq: $legacySubjectName } }
+        ]
+      }
       pagination: { limit: 1 }
     ) {
       documentId
@@ -235,7 +241,12 @@ export const BOOKS_BY_SUBJECT = gql`
     }
     recommendedBooks_connection(
       filters: {
-        book_categories: { subject_name: { eq: $subjectName } }
+        book_categories: {
+          or: [
+            { documentId: { eq: $taxonomyDocumentId } }
+            { subject_name: { eq: $legacySubjectName } }
+          ]
+        }
         book_list: {
           account: { documentId: { eq: $accountDocumentId } }
           visibility: { eq: true }
