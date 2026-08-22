@@ -23,7 +23,10 @@ import {
   usePublicConnectionPagination,
 } from "../../../../hooks/usePublicConnectionPagination";
 import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
-import { usePublicLeafRequestGeneration } from "../../../../layouts/PublicRouteReadinessContext";
+import {
+  publicLeafQueryContext,
+  usePublicLeafRequestGeneration,
+} from "../../../../layouts/PublicRouteReadinessContext";
 import { publicTaxonomyLegacyLookupName, publicTaxonomyPath } from "../../../../routes/publicTaxonomyRoute";
 
 const PublicPersonSector = () => {
@@ -41,6 +44,7 @@ const PublicPersonSector = () => {
   const creatorName = account.Account_Name || username;
 
   const { data, loading, error, refetch, fetchMore } = useQuery(PEOPLE_BY_SECTOR, {
+    context: publicLeafQueryContext,
     variables: {
       accountDocumentId,
       taxonomyDocumentId: sectorSlug,

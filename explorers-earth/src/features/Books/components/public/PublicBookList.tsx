@@ -20,7 +20,10 @@ import {
   usePublicConnectionPagination,
 } from "../../../../hooks/usePublicConnectionPagination";
 import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
-import { usePublicLeafRequestGeneration } from "../../../../layouts/PublicRouteReadinessContext";
+import {
+  publicLeafQueryContext,
+  usePublicLeafRequestGeneration,
+} from "../../../../layouts/PublicRouteReadinessContext";
 
 const PublicBookList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
@@ -32,6 +35,7 @@ const PublicBookList = () => {
   const requestGeneration = usePublicLeafRequestGeneration(`${accountDocumentId}:${listSlug}`);
 
   const { data, loading, error, refetch, fetchMore } = useQuery(BOOK_LIST_BY_SLUG, {
+    context: publicLeafQueryContext,
     variables: {
       slug: listSlug,
       accountDocumentId,

@@ -40,10 +40,30 @@ function renderRoute(
 	link: ApolloLink,
 	readiness: PublicRouteReadinessContextValue,
 	entry = "/alice/places/empty-places",
+	intersectionObservers?: Array<{
+		callback: IntersectionObserverCallback;
+		observed: Element[];
+		disconnected: boolean;
+	}>,
 ) {
 	Object.defineProperty(globalThis, "IntersectionObserver", {
 		configurable: true,
-		value: class { observe() {} unobserve() {} disconnect() {} },
+		value: class {
+			private readonly record: {
+				callback: IntersectionObserverCallback;
+				observed: Element[];
+				disconnected: boolean;
+			};
+
+			constructor(callback: IntersectionObserverCallback) {
+				this.record = { callback, observed: [], disconnected: false };
+				intersectionObservers?.push(this.record);
+			}
+
+			observe(element: Element) { this.record.observed.push(element); }
+			unobserve() {}
+			disconnect() { this.record.disconnected = true; }
+		},
 	});
 	const client = new ApolloClient({ cache: new InMemoryCache(), link, queryDeduplication: false });
 	const view = render(
@@ -116,6 +136,95 @@ describe("PublicHome connection lifecycle with real Apollo", () => {
 				},
 			},
 		});
+	});
+
+	it("does not auto-retry a failed observer page until Retry is activated", async () => {
+		const intersectionObservers: Array<{
+			callback: IntersectionObserverCallback;
+			observed: Element[];
+			disconnected: boolean;
+		}> = [];
+		let pageTwoAttempts = 0;
+		const place = {
+			__typename: "RecommendedPlace", documentId: "place-1",
+			Place_Details: { Title: "First Place", Photos: [] }, media_details: null,
+			Recommendation_Type: "place", Contact_Name: null, Media: [], recommendation_category: null,
+			recommendation_list: { __typename: "RecommendationList", documentId: "place-list-1" },
+			user_rating: null, google_rating: null,
+		};
+		const link = new ApolloLink((operation: Operation) => new Observable((observer) => {
+			queueMicrotask(() => {
+				if (operation.operationName === "PublicPlaceListBySlug") {
+					observer.next(parentResponse()); observer.complete(); return;
+				}
+				const page = (operation.variables.pagination as { page: number }).page;
+				if (page === 2) {
+					pageTwoAttempts += 1;
+					if (pageTwoAttempts === 1) { observer.error(new Error("page two failed")); return; }
+				}
+				observer.next({ data: { recommendedPlaces_connection: {
+					__typename: "Connection",
+					nodes: page === 1 ? [place] : [{ ...place, documentId: "place-2", Place_Details: { Title: "Second Place", Photos: [] } }],
+					pageInfo: { __typename: "Pagination", page, pageSize: 200, pageCount: 2, total: 2 },
+				} } });
+				observer.complete();
+			});
+		}));
+		renderRoute(link, readinessSpies(), "/alice/places/empty-places", intersectionObservers);
+		await screen.findByText("First Place");
+		const sentinelObserver = await waitFor(() => {
+			const found = intersectionObservers.find(({ observed }) => observed.length > 0);
+			expect(found).toBeDefined();
+			return found!;
+		});
+
+		act(() => sentinelObserver.callback(
+			[{ isIntersecting: true } as IntersectionObserverEntry],
+			{} as IntersectionObserver,
+		));
+		await screen.findByRole("button", { name: "common.retryLoadingMore" });
+		expect(pageTwoAttempts).toBe(1);
+
+		act(() => {
+			sentinelObserver.callback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
+			sentinelObserver.callback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
+		});
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(pageTwoAttempts).toBe(1);
+
+		fireEvent.click(screen.getByRole("button", { name: "common.retryLoadingMore" }));
+		await screen.findByText("Second Place");
+		expect(pageTwoAttempts).toBe(2);
+	});
+
+	it("retries a detail child query once when Apollo request deduplication is disabled", async () => {
+		let childAttempts = 0;
+		let placesAttempts = 0;
+		const link = new ApolloLink((operation: Operation) => new Observable((observer) => {
+			queueMicrotask(() => {
+				if (operation.operationName === "PublicPlaceListBySlug") {
+					childAttempts += 1;
+					if (childAttempts === 2) { observer.error(new Error("detail refresh failed")); return; }
+					observer.next(parentResponse()); observer.complete(); return;
+				}
+				placesAttempts += 1;
+				observer.next({ data: { recommendedPlaces_connection: emptyConnection } });
+				observer.complete();
+			});
+		}));
+		const readiness = readinessSpies();
+		const { client } = renderRoute(link, readiness);
+		await waitFor(() => expect(readiness.markEmpty).toHaveBeenCalledWith("places-generation"));
+
+		void client.refetchQueries({ include: ["PublicPlaceListBySlug"] }).catch(() => undefined);
+		await waitFor(() => expect(readiness.markError).toHaveBeenCalledWith(
+			"places-generation", "route", expect.any(Function), true,
+		));
+		const retry = vi.mocked(readiness.markError).mock.calls.at(-1)![2];
+		await act(() => retry());
+
+		expect(childAttempts).toBe(3);
+		expect(placesAttempts).toBe(2);
 	});
 
 	it("waits for the selected root collection's secure linked connections before settling", async () => {

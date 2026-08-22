@@ -18,7 +18,10 @@ import {
   usePublicConnectionPagination,
 } from "../../../../hooks/usePublicConnectionPagination";
 import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
-import { usePublicLeafRequestGeneration } from "../../../../layouts/PublicRouteReadinessContext";
+import {
+  publicLeafQueryContext,
+  usePublicLeafRequestGeneration,
+} from "../../../../layouts/PublicRouteReadinessContext";
 
 const PublicMovieList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
@@ -29,6 +32,7 @@ const PublicMovieList = () => {
   const requestGeneration = usePublicLeafRequestGeneration(`${accountDocumentId}:${listSlug}`);
 
   const { data, loading, error, refetch, fetchMore } = useQuery(MOVIE_LIST_BY_SLUG, {
+    context: publicLeafQueryContext,
     variables: {
       slug: listSlug,
       accountDocumentId,

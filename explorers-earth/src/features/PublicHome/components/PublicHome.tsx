@@ -22,7 +22,10 @@ import {
   usePublicConnectionPagination,
 } from "../../../hooks/usePublicConnectionPagination";
 import { PublicConnectionPaginationControl } from "../../../components/PublicConnectionPaginationControl";
-import { usePublicLeafRequestGeneration } from "../../../layouts/PublicRouteReadinessContext";
+import {
+  publicLeafQueryContext,
+  usePublicLeafRequestGeneration,
+} from "../../../layouts/PublicRouteReadinessContext";
 
 import { getCurrentDomain } from "../../../utils/getCurrentDomain";
 import PlaceOverview from "./PlaceDetails/PlaceOverview";
@@ -163,6 +166,7 @@ const PublicHome = memo(() => {
   const bootstrapAccount = usePublicProfileBootstrapAccount();
   const requestGeneration = usePublicLeafRequestGeneration(`${bootstrapAccount.documentId}:${placeSlug}`);
   const collectionQuery = useQuery(publicPlacesListsQuery, {
+    context: publicLeafQueryContext,
     variables: {
       accountDocumentId: bootstrapAccount.documentId,
     },
@@ -171,6 +175,7 @@ const PublicHome = memo(() => {
     notifyOnNetworkStatusChange: true,
   });
   const childQuery = useQuery(publicPlaceListBySlugQuery, {
+    context: publicLeafQueryContext,
     variables: {
       accountDocumentId: bootstrapAccount.documentId,
       slug: placeSlug,
@@ -206,6 +211,7 @@ const PublicHome = memo(() => {
   const [activeTab, setActiveTab] = useState<"places" | "people" | "products">("places");
   const activePlaceList = placeSlug ? resolvedPlaceList : selectedCity;
   const rootLinkedQuery = useQuery(publicPlaceListBySlugQuery, {
+    context: publicLeafQueryContext,
     variables: {
       accountDocumentId: bootstrapAccount.documentId,
       slug: selectedCity?.slug ?? selectedCity?.documentId ?? "",
@@ -317,6 +323,7 @@ const PublicHome = memo(() => {
     refetch: refetchPlaces,
     fetchMore,
   } = useQuery(publicRecommendedPlacesConnectionQuery, {
+    context: publicLeafQueryContext,
     variables: {
       pagination: {
         page: 1,
@@ -378,9 +385,9 @@ const PublicHome = memo(() => {
   const retryPlacesRoute = useCallback(async () => {
     const retries: Promise<unknown>[] = [refetch()];
     if (placesConnectionExpected) retries.push(refetchPlaces());
-    if (linkedConnectionsExpected) retries.push(refetchLinked());
+    if (!placeSlug && linkedConnectionsExpected) retries.push(refetchLinked());
     await Promise.all(retries);
-  }, [linkedConnectionsExpected, placesConnectionExpected, refetch, refetchLinked, refetchPlaces]);
+  }, [linkedConnectionsExpected, placeSlug, placesConnectionExpected, refetch, refetchLinked, refetchPlaces]);
   usePublicRouteLifecycle({
     loading:
       parentQueryLoading ||
@@ -579,6 +586,8 @@ const PublicHome = memo(() => {
     loadPage: loadPlacesPage,
     resetKey: `${activePlaceList?.documentId ?? "no-place-list"}:${selectedCategory}`,
   });
+  const nextPageErrorRef = useRef(nextPageError);
+  nextPageErrorRef.current = nextPageError;
 
   // Set up intersection observer for infinite scroll.
   useEffect(() => {
@@ -588,6 +597,7 @@ const PublicHome = memo(() => {
           entries[0].isIntersecting &&
           !placesQueryLoading &&
           !isLoadingNextPage &&
+          !nextPageErrorRef.current &&
           hasNextPage &&
           (placesData?.recommendedPlaces_connection?.nodes.length ?? 0) > 0
         ) {

@@ -82,7 +82,7 @@ function ReadinessProvider({ generation, children }: { generation: string; child
 }
 
 describe("usePublicLeafRequestGeneration", () => {
-  it("advances when the readiness provider begins the route after params render", () => {
+  it("does not relabel a mounted query execution when the provider generation advances", () => {
     const view = render(
       <ReadinessProvider generation="alice:key-before-begin-route">
         <LeafGenerationProbe requestKey="account-1:same-list" />
@@ -96,18 +96,18 @@ describe("usePublicLeafRequestGeneration", () => {
       </ReadinessProvider>,
     );
 
-    expect(screen.getByLabelText("leaf request generation")).toHaveTextContent("alice:key-after-begin-route");
+    expect(screen.getByLabelText("leaf request generation")).toHaveTextContent("alice:key-before-begin-route");
   });
 
-  it("advances for the same resource when only the location-key generation changes", () => {
+  it("captures the advanced generation when the same resource starts a new query execution", () => {
     const view = render(
       <ReadinessProvider generation="alice:location-key-a">
-        <LeafGenerationProbe requestKey="account-1:same-list" />
+        <LeafGenerationProbe key="execution-a" requestKey="account-1:same-list" />
       </ReadinessProvider>,
     );
     view.rerender(
       <ReadinessProvider generation="alice:location-key-b">
-        <LeafGenerationProbe requestKey="account-1:same-list" />
+        <LeafGenerationProbe key="execution-b" requestKey="account-1:same-list" />
       </ReadinessProvider>,
     );
 

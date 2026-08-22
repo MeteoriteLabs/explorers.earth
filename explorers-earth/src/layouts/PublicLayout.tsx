@@ -297,7 +297,7 @@ function PublicLayoutContent() {
             className={showContent ? undefined : "hidden"}
             aria-hidden={showContent ? undefined : true}
           >
-            <Outlet />
+            <Outlet key={generation} />
           </div>
 
           {refreshFailed && (

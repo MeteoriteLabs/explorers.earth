@@ -9,6 +9,9 @@ type PaginationMessages = {
 	loadMore: string;
 	loadingMore: string;
 	retryLoadingMore: string;
+	paginationLabels: {
+		guideDays: string;
+	};
 };
 
 type LocaleResource = {
@@ -33,6 +36,10 @@ describe("public pagination translations", () => {
 				expect(resource.common[key], `${locale}.${key} must be localized`).not.toBe(english.common[key]);
 				expect(placeholders(resource.common[key]), `${locale}.${key} placeholders`).toEqual(placeholders(english.common[key]));
 			}
+			expect(
+				resource.common.paginationLabels.guideDays,
+				`${locale}.paginationLabels.guideDays must be localized`,
+			).not.toBe(english.common.paginationLabels.guideDays);
 			for (const index of [0, 1, 2, 3, 4, 6, 7]) {
 				expect(
 					resource.sections.productCategories.categories[index]?.label,

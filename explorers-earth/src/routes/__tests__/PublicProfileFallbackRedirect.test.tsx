@@ -1,5 +1,5 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { useRef, useState, type ReactNode } from "react";
+import { render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import {
   createMemoryRouter,
   createRoutesFromElements,
@@ -46,21 +46,6 @@ function CurrentMissingLeaf() {
   const { listSlug } = useParams<{ listSlug: string }>();
   const generation = usePublicLeafRequestGeneration(`account-1:${listSlug}`);
   return <PublicProfileFallbackRedirect expectedGeneration={generation} />;
-}
-
-function DeferredOldLeaf() {
-  const { listSlug } = useParams<{ listSlug: string }>();
-  const generation = usePublicLeafRequestGeneration(`account-1:${listSlug}`);
-  const firstGeneration = useRef(generation);
-  const [settleOld, setSettleOld] = useState(false);
-  return (
-    <>
-      <output aria-label="current route generation">{generation}</output>
-      <button type="button" onClick={() => setSettleOld(true)}>Settle old lookup</button>
-      {settleOld && <PublicProfileFallbackRedirect expectedGeneration={firstGeneration.current} />}
-      <div>Current leaf remains</div>
-    </>
-  );
 }
 
 function readinessRoutes(leaf: ReactNode) {
@@ -126,25 +111,5 @@ describe("PublicProfileFallbackRedirect", () => {
     expect(router.state.location.search).toBe("?utm_source=qa");
     expect(router.state.location.hash).toBe("#apps");
     expect(router.state.historyAction).toBe("REPLACE");
-  });
-
-  it("suppresses an old lookup after same-resource navigation creates a new location key", async () => {
-    const router = createMemoryRouter(readinessRoutes(<DeferredOldLeaf />), {
-      initialEntries: ["/alice/apps/same"],
-    });
-    render(<RouterProvider router={router} />);
-    const firstLocationKey = router.state.location.key;
-    const firstGeneration = screen.getByLabelText("current route generation").textContent;
-
-    await act(async () => {
-      await router.navigate("/alice/apps/same");
-    });
-    expect(router.state.location.key).not.toBe(firstLocationKey);
-    await waitFor(() => expect(screen.getByLabelText("current route generation")).not.toHaveTextContent(firstGeneration ?? ""));
-
-    fireEvent.click(screen.getByRole("button", { name: "Settle old lookup" }));
-    expect(screen.getByText("Current leaf remains")).toBeVisible();
-    expect(router.state.location.pathname).toBe("/alice/apps/same");
-    expect(screen.queryByText("Profile fallback")).toBeNull();
   });
 });

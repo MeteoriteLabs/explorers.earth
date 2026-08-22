@@ -24,6 +24,10 @@ export interface PublicRouteReadinessContextValue {
 
 export const PublicRouteReadinessContext = createContext<PublicRouteReadinessContextValue | null>(null);
 
+export const publicLeafQueryContext = Object.freeze({
+  queryDeduplication: false,
+});
+
 export function usePublicRouteReadiness(): PublicRouteReadinessContextValue {
   const context = useContext(PublicRouteReadinessContext);
   if (!context) {
@@ -37,8 +41,7 @@ export function usePublicLeafRequestGeneration(requestKey: string): string | und
   const request = useRef<{ key: string; generation: string | undefined } | undefined>(undefined);
   if (
     !request.current ||
-    request.current.key !== requestKey ||
-    request.current.generation !== context?.generation
+    request.current.key !== requestKey
   ) {
     request.current = { key: requestKey, generation: context?.generation };
   }

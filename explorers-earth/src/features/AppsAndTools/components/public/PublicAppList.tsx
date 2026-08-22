@@ -18,7 +18,10 @@ import {
   usePublicConnectionPagination,
 } from "../../../../hooks/usePublicConnectionPagination";
 import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
-import { usePublicLeafRequestGeneration } from "../../../../layouts/PublicRouteReadinessContext";
+import {
+  publicLeafQueryContext,
+  usePublicLeafRequestGeneration,
+} from "../../../../layouts/PublicRouteReadinessContext";
 
 const PublicAppList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
@@ -29,6 +32,7 @@ const PublicAppList = () => {
   const requestGeneration = usePublicLeafRequestGeneration(`${account.documentId}:${listSlug}`);
 
   const { data, loading, error, refetch, fetchMore } = useQuery(APP_LIST_BY_SLUG, {
+    context: publicLeafQueryContext,
     variables: {
       slug: listSlug,
       accountDocumentId: account.documentId,

@@ -19,7 +19,10 @@ import {
   usePublicConnectionPagination,
 } from "../../../../hooks/usePublicConnectionPagination";
 import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
-import { usePublicLeafRequestGeneration } from "../../../../layouts/PublicRouteReadinessContext";
+import {
+  publicLeafQueryContext,
+  usePublicLeafRequestGeneration,
+} from "../../../../layouts/PublicRouteReadinessContext";
 import { publicTaxonomyLegacyLookupName, publicTaxonomyPath } from "../../../../routes/publicTaxonomyRoute";
 
 const PublicGamesGenre = () => {
@@ -36,6 +39,7 @@ const PublicGamesGenre = () => {
   const requestGeneration = usePublicLeafRequestGeneration(`${accountDocumentId}:${genreSlug}`);
 
   const { data, loading, error, refetch, fetchMore } = useQuery(GAMES_BY_GENRE, {
+    context: publicLeafQueryContext,
     variables: {
       accountDocumentId,
       taxonomyDocumentId: genreSlug,

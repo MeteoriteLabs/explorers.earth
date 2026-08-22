@@ -19,7 +19,10 @@ import {
   usePublicConnectionPagination,
 } from "../../../../hooks/usePublicConnectionPagination";
 import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
-import { usePublicLeafRequestGeneration } from "../../../../layouts/PublicRouteReadinessContext";
+import {
+  publicLeafQueryContext,
+  usePublicLeafRequestGeneration,
+} from "../../../../layouts/PublicRouteReadinessContext";
 import { publicTaxonomyLegacyLookupName, publicTaxonomyPath } from "../../../../routes/publicTaxonomyRoute";
 
 const PublicBookSubject = () => {
@@ -38,6 +41,7 @@ const PublicBookSubject = () => {
   });
 
   const { data, loading, error, refetch, fetchMore } = useQuery(BOOKS_BY_SUBJECT, {
+    context: publicLeafQueryContext,
     variables: {
       accountDocumentId,
       taxonomyDocumentId: subjectSlug,

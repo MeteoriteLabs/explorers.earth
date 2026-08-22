@@ -32,7 +32,10 @@ import {
   usePublicConnectionPagination,
 } from "../../../hooks/usePublicConnectionPagination";
 import { PublicConnectionPaginationControl } from "../../../components/PublicConnectionPaginationControl";
-import { usePublicLeafRequestGeneration } from "../../../layouts/PublicRouteReadinessContext";
+import {
+  publicLeafQueryContext,
+  usePublicLeafRequestGeneration,
+} from "../../../layouts/PublicRouteReadinessContext";
 
 const PublicGuideDetailPage = memo(() => {
   const { username, guideSlug } = useParams<{ username: string; guideSlug: string }>();
@@ -67,6 +70,7 @@ const PublicGuideDetailPage = memo(() => {
     refetch,
     fetchMore,
   } = useQuery(GET_PUBLIC_GUIDE_BY_SLUG_QUERY, {
+    context: publicLeafQueryContext,
     variables: {
       accountDocumentId,
       slug: guideSlug,
