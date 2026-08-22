@@ -1,19 +1,20 @@
 import { createContext, useContext } from "react";
+import type {
+  PublicRouteErrorSource,
+  PublicRouteReadinessState,
+} from "./publicRouteReadiness";
 
-export type PublicRouteReadiness =
-  | { status: "validating-username" }
-  | { status: "loading-route" }
-  | { status: "ready" }
-  | { status: "not-found" }
-  | { status: "route-error"; source: "username" | "profile"; retrying: boolean; retry: () => Promise<void> };
+export type PublicRouteReadiness = PublicRouteReadinessState;
 
 export interface PublicRouteReadinessContextValue {
   generation: string;
   readiness: PublicRouteReadiness;
   markLoading: (generation: string) => void;
   markReady: (generation: string) => void;
+  markRefreshing: (generation: string) => void;
+  markEmpty: (generation: string) => void;
   markNotFound: (generation: string) => void;
-  markError: (generation: string, source: "username" | "profile", retry: () => Promise<unknown>) => void;
+  markError: (generation: string, source: PublicRouteErrorSource, retry: () => Promise<unknown>) => void;
   setIsPageLoaded: (loaded: boolean) => void;
 }
 

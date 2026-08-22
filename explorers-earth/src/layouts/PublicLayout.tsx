@@ -1,14 +1,20 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useEffect, useCallback, useRef, useMemo, useReducer } from "react";
 import { Outlet, useLocation, useParams } from "react-router-dom";
 import PublicNav from "../components/PublicNav";
 import NotFound from "../pages/NotFound";
 import PublicProfileSkeleton from "../features/PublicHome/components/PublicProfileSkeleton";
 import PublicProfileFeedback from "../features/PublicHome/components/PublicProfileFeedback";
+import { EarthLoader } from "../components/EarthLoader";
 import {
   PublicRouteReadinessContext,
-  type PublicRouteReadiness,
   type PublicRouteReadinessContextValue,
 } from "./PublicRouteReadinessContext";
+import {
+  createGenerationBoundRouteActions,
+  createInitialPublicRouteState,
+  publicRouteReadinessReducer,
+  type PublicRouteErrorSource,
+} from "./publicRouteReadiness";
 import { useTranslation } from "react-i18next";
 
 const PublicLayout = () => {
@@ -19,78 +25,71 @@ const PublicLayout = () => {
   const generation = useMemo(() => `${username || ""}:${location.key}`, [username, location.key]);
   const generationRef = useRef(generation);
   generationRef.current = generation;
+  const resetGenerationRef = useRef(generation);
 
-  const [readiness, setReadiness] = useState<PublicRouteReadiness>({ status: "validating-username" });
-  const retryingRef = useRef(false);
+  const [readiness, dispatch] = useReducer(
+    publicRouteReadinessReducer,
+    generation,
+    createInitialPublicRouteState,
+  );
+  const retryRef = useRef<(() => Promise<unknown>) | null>(null);
 
   // Reset state on generation change
   useEffect(() => {
-    setReadiness({ status: "validating-username" });
-    retryingRef.current = false;
+    if (resetGenerationRef.current === generation) return;
+    resetGenerationRef.current = generation;
+    retryRef.current = null;
+    dispatch({ type: "begin-bootstrap", generation });
   }, [generation]);
 
+  const actions = useMemo(
+    () =>
+      createGenerationBoundRouteActions({
+        generation,
+        isCurrent: () => generationRef.current === generation,
+        dispatch,
+      }),
+    [generation],
+  );
+
   const markLoading = useCallback((gen: string) => {
-    if (gen !== generationRef.current) return;
-    setReadiness((prev) => {
-      if (prev.status === "validating-username") {
-        return { status: "loading-route" };
-      }
-      return prev;
-    });
+    dispatch({ type: "begin-route", generation: gen });
   }, []);
 
   const markReady = useCallback((gen: string) => {
-    if (gen !== generationRef.current) return;
-    setReadiness({ status: "ready" });
+    dispatch({ type: "ready", generation: gen });
+  }, []);
+
+  const markRefreshing = useCallback((gen: string) => {
+    dispatch({ type: "refreshing", generation: gen });
+  }, []);
+
+  const markEmpty = useCallback((gen: string) => {
+    dispatch({ type: "empty", generation: gen });
   }, []);
 
   const markNotFound = useCallback((gen: string) => {
-    if (gen !== generationRef.current) return;
-    setReadiness({ status: "not-found" });
+    dispatch({ type: "not-found", generation: gen });
   }, []);
 
   const markError = useCallback(
-    (gen: string, source: "username" | "profile", retryFn: () => Promise<unknown>) => {
+    (gen: string, source: PublicRouteErrorSource, retryFn: () => Promise<unknown>) => {
       if (gen !== generationRef.current) return;
-
-      const retry = async () => {
-        const currentGen = generationRef.current;
-        if (currentGen !== gen || retryingRef.current) return;
-
-        retryingRef.current = true;
-        setReadiness({ status: "route-error", source, retrying: true, retry });
-
-        try {
-          await retryFn();
-        } catch {
-          if (generationRef.current === currentGen) {
-            setReadiness({ status: "route-error", source, retrying: false, retry });
-          }
-        } finally {
-          retryingRef.current = false;
-        }
-      };
-
-      setReadiness({
-        status: "route-error",
-        source,
-        retrying: false,
-        retry,
-      });
+      retryRef.current = retryFn;
+      dispatch({ type: "failed", generation: gen, source });
     },
     []
   );
 
   const setIsPageLoaded = useCallback(
     (loaded: boolean) => {
-      const currentGen = generationRef.current;
       if (loaded) {
-        markReady(currentGen);
+        actions.ready();
       } else {
-        markLoading(currentGen);
+        actions.initialLoading();
       }
     },
-    [markReady, markLoading]
+    [actions]
   );
 
   const contextValue = useMemo<PublicRouteReadinessContextValue>(
@@ -99,16 +98,18 @@ const PublicLayout = () => {
       readiness,
       markLoading,
       markReady,
+      markRefreshing,
+      markEmpty,
       markNotFound,
       markError,
       setIsPageLoaded,
     }),
-    [generation, readiness, markLoading, markReady, markNotFound, markError, setIsPageLoaded]
+    [generation, readiness, markLoading, markReady, markRefreshing, markEmpty, markNotFound, markError, setIsPageLoaded]
   );
 
   // Check if current route is a map route
   const isMapRoute = location.pathname.includes("/map") || location.pathname.includes("/placesmap");
-  const isPageLoaded = readiness.status === "ready";
+  const isPageLoaded = readiness.status === "ready" || readiness.status === "empty" || readiness.status === "refreshing";
 
   const outletContext = useMemo(
     () => ({ isPageLoaded, setIsPageLoaded }),
@@ -119,7 +120,14 @@ const PublicLayout = () => {
     <PublicRouteReadinessContext.Provider value={contextValue}>
       {readiness.status === "not-found" ? (
         <NotFound />
-      ) : readiness.status === "ready" ? (
+      ) : readiness.status === "validating-bootstrap" ? (
+        <div className="min-h-screen bg-black flex items-center justify-center">
+          <EarthLoader context="general" size="default" />
+          <div className="hidden" aria-hidden="true">
+            <Outlet context={outletContext} />
+          </div>
+        </div>
+      ) : isPageLoaded ? (
         <>
           {isPageLoaded && !isMapRoute && <PublicNav />}
           <main>
@@ -129,7 +137,7 @@ const PublicLayout = () => {
       ) : (
         <>
           <PublicProfileSkeleton />
-          {readiness.status === "route-error" && (
+          {readiness.status === "error" && (
             <PublicProfileFeedback
               kind="all-error"
               title={
@@ -139,7 +147,10 @@ const PublicLayout = () => {
               }
               description={t("publicProfile.error.description", "Please check your connection and try again.")}
               retrying={readiness.retrying}
-              onRetry={readiness.retry}
+              onRetry={() => {
+                const retry = retryRef.current;
+                if (retry) void actions.retry(retry).catch(() => undefined);
+              }}
             />
           )}
           <div className="hidden" aria-hidden="true">

@@ -45,18 +45,27 @@ export function publicRouteReadinessReducer(
 
   switch (event.type) {
     case "begin-route":
-      return state.status === "ready" || state.status === "refreshing"
-        ? state
-        : { generation: event.generation, status: "initial-loading" };
+      return state.status === "validating-bootstrap"
+        ? { generation: event.generation, status: "initial-loading" }
+        : state;
     case "ready":
-      return { generation: event.generation, status: "ready" };
+      return state.status === "ready"
+        ? state
+        : { generation: event.generation, status: "ready" };
     case "empty":
-      return { generation: event.generation, status: "empty" };
+      return state.status === "empty"
+        ? state
+        : { generation: event.generation, status: "empty" };
     case "refreshing":
-      return { generation: event.generation, status: "refreshing", hasUsableContent: true };
+      return state.status === "refreshing"
+        ? state
+        : { generation: event.generation, status: "refreshing", hasUsableContent: true };
     case "not-found":
-      return { generation: event.generation, status: "not-found" };
+      return state.status === "not-found"
+        ? state
+        : { generation: event.generation, status: "not-found" };
     case "failed":
+      if (state.status === "error" && state.source === event.source) return state;
       return {
         generation: event.generation,
         status: "error",

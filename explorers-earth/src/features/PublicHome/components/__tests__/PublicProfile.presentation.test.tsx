@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { state, recommendationProps, seoProps } = vi.hoisted(() => ({
   state: {
     account: null as Record<string, any> | null,
+    loading: false,
   },
   recommendationProps: [] as Array<Record<string, any>>,
   seoProps: [] as Array<Record<string, any>>,
@@ -22,7 +23,7 @@ vi.mock("@apollo/client", async (importOriginal) => {
       if (operation === "PublicProfileData") {
         return {
           data: { accounts: state.account ? [state.account] : [] },
-          loading: false,
+          loading: state.loading,
         };
       }
 
@@ -141,7 +142,26 @@ describe("PublicProfile recommendation presentation", () => {
     recommendationProps.length = 0;
     seoProps.length = 0;
     state.account = makeAccount();
+    state.loading = false;
     (window as any).__publicProfileLoaded = false;
+  });
+
+  it("delegates initial loading to the shared route shell", () => {
+    state.loading = true;
+    (window as any).__publicProfileLoaded = true;
+
+    const { container } = renderProfile();
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("does not coordinate readiness through a window global", async () => {
+    renderProfile();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Alice" })).toBeInTheDocument();
+    });
+    expect((window as any).__publicProfileLoaded).toBe(false);
   });
 
   it("sanitizes API rich text at the public render boundary and rejects an unsafe business website", () => {
@@ -290,7 +310,7 @@ describe("PublicProfile recommendation presentation", () => {
 
     renderProfile();
 
-    let fullImg = screen.getByTestId("full-wallpaper-image");
+    const fullImg = screen.getByTestId("full-wallpaper-image");
     expect(fullImg).toHaveAttribute("src", "https://example.com/broken-full-wallpaper.jpg");
 
     // First image error -> falls back to default background image

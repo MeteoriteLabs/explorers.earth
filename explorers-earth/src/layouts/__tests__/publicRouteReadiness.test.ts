@@ -68,6 +68,49 @@ describe("publicRouteReadinessReducer", () => {
       }),
     ).toEqual(ready);
   });
+
+  it("does not replace a route error when bootstrap completion arrives afterward", () => {
+    const failed = publicRouteReadinessReducer(
+      createInitialPublicRouteState("alice:key-a"),
+      { type: "failed", generation: "alice:key-a", source: "profile" },
+    );
+
+    expect(
+      publicRouteReadinessReducer(failed, {
+        type: "begin-route",
+        generation: "alice:key-a",
+      }),
+    ).toBe(failed);
+  });
+
+  it("keeps repeated initial-loading signals referentially stable", () => {
+    const loading = publicRouteReadinessReducer(
+      createInitialPublicRouteState("alice:key-a"),
+      { type: "begin-route", generation: "alice:key-a" },
+    );
+
+    expect(
+      publicRouteReadinessReducer(loading, {
+        type: "begin-route",
+        generation: "alice:key-a",
+      }),
+    ).toBe(loading);
+  });
+
+  it.each([
+    [{ type: "ready", generation: "alice:key-a" } as const],
+    [{ type: "empty", generation: "alice:key-a" } as const],
+    [{ type: "refreshing", generation: "alice:key-a" } as const],
+    [{ type: "not-found", generation: "alice:key-a" } as const],
+    [{ type: "failed", generation: "alice:key-a", source: "profile" } as const],
+  ])("keeps a repeated %s signal referentially stable", (event) => {
+    const current = publicRouteReadinessReducer(
+      createInitialPublicRouteState("alice:key-a"),
+      event,
+    );
+
+    expect(publicRouteReadinessReducer(current, event)).toBe(current);
+  });
 });
 
 describe("createGenerationBoundRouteActions", () => {

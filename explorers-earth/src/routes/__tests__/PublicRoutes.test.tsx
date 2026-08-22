@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState, useContext, useEffect } from "react";
 import { createMemoryRouter, createRoutesFromElements, RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -15,26 +15,29 @@ const { profileMock, dummyFeature, queryState, defaultEmptyQueryResult, defaultR
     profile: emptyResult,
   };
 
-  const profileMockComponent = () => {
+  const ProfileMockComponent = () => {
     const readinessCtx = useContext(PublicRouteReadinessContext);
     const generation = readinessCtx?.generation || "";
+    const markLoading = readinessCtx?.markLoading;
+    const markError = readinessCtx?.markError;
+    const markNotFound = readinessCtx?.markNotFound;
+    const markReady = readinessCtx?.markReady;
     const profileState = state.profile;
 
     useEffect(() => {
       if (profileState.loading) {
-        readinessCtx?.markLoading(generation);
+        markLoading?.(generation);
       } else if (profileState.error) {
-        readinessCtx?.markError(generation, "profile", profileState.refetch);
+        markError?.(generation, "profile", profileState.refetch);
       } else if (profileState.data) {
         if (!profileState.data.accounts?.[0]) {
-          readinessCtx?.markNotFound(generation);
+          markNotFound?.(generation);
         } else {
           (window as any).__publicProfileLoaded = true;
-          readinessCtx?.markReady(generation);
+          markReady?.(generation);
         }
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [profileState, generation, readinessCtx]);
+    }, [profileState, generation, markLoading, markError, markNotFound, markReady]);
 
     return <div data-testid="public-profile-stub">Public Profile Content</div>;
   };
@@ -42,7 +45,7 @@ const { profileMock, dummyFeature, queryState, defaultEmptyQueryResult, defaultR
   const dummy = { default: () => null, PublicMovies: () => null, PublicMovieList: () => null, PublicMovieGenre: () => null, PublicBooks: () => null, PublicBookList: () => null, PublicBookSubject: () => null, PublicGames: () => null, PublicGamesList: () => null, PublicGamesGenre: () => null, PublicApps: () => null, PublicAppList: () => null, PublicProducts: () => null, PublicProductList: () => null, PublicPeople: () => null, PublicPersonList: () => null, PublicPersonSector: () => null };
 
   return {
-    profileMock: profileMockComponent,
+    profileMock: ProfileMockComponent,
     dummyFeature: dummy,
     defaultRefetch: refetch,
     defaultEmptyQueryResult: emptyResult,
@@ -109,6 +112,10 @@ vi.mock("react-i18next", () => ({
     t: (key: string, defaultValue?: string | Record<string, any>) =>
       typeof defaultValue === "string" ? defaultValue : key,
   }),
+}));
+
+vi.mock("../../components/EarthLoader", () => ({
+  EarthLoader: () => <div role="status" aria-label="Loading public profile" />,
 }));
 
 // Complete mock for @apollo/client
@@ -196,14 +203,26 @@ describe("PublicRoutes orchestration and readiness", () => {
     vi.clearAllMocks();
   });
 
-  it("shows public-route shell skeleton during validation and profile loading", async () => {
+  it("shows Earth during username bootstrap without also showing the route skeleton", async () => {
     queryState.username = stateLoadingUsername;
     queryState.profile = stateLoadingProfile;
 
     render(<PublicRouteRunner initialEntries={["/alice"]} />);
 
-    // Shell visible while validating
-    expect(screen.getAllByTestId("public-profile-shell")).toHaveLength(1);
+    expect(screen.getByRole("status", { name: "Loading public profile" })).toBeInTheDocument();
+    expect(screen.queryByTestId("public-profile-shell")).toBeNull();
+  });
+
+  it("replaces Earth with one route skeleton after username bootstrap succeeds", async () => {
+    queryState.username = stateSuccessUsername;
+    queryState.profile = stateLoadingProfile;
+
+    render(<PublicRouteRunner initialEntries={["/alice"]} />);
+
+    await waitFor(() => {
+      expect(screen.queryByRole("status", { name: "Loading public profile" })).toBeNull();
+      expect(screen.getAllByTestId("public-profile-shell")).toHaveLength(1);
+    });
   });
 
   it("removes public-route shell once profile query completes successfully", async () => {
@@ -240,13 +259,20 @@ describe("PublicRoutes orchestration and readiness", () => {
     });
 
     const retryBtn = screen.getByRole("button", { name: "Retry" });
-    fireEvent.click(retryBtn);
+    await act(async () => {
+      fireEvent.click(retryBtn);
+    });
 
     expect(mockRefetch).toHaveBeenCalledTimes(1);
   });
 
   it("renders localized error feedback on profile query failure and handles single-flight retry", async () => {
-    const mockRefetch = vi.fn().mockImplementation(() => new Promise(() => {})); // Never resolves
+    let resolveRefetch: (() => void) | undefined;
+    const mockRefetch = vi.fn().mockImplementation(
+      () => new Promise<void>((resolve) => {
+        resolveRefetch = resolve;
+      }),
+    );
     queryState.username = stateSuccessUsername;
     queryState.profile = { data: undefined, loading: false, error: new Error("GraphQL Error"), refetch: mockRefetch };
 
@@ -261,6 +287,10 @@ describe("PublicRoutes orchestration and readiness", () => {
     fireEvent.click(retryBtn); // double click should be ignored
 
     expect(mockRefetch).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveRefetch?.();
+    });
   });
 
   it("renders direct public-route leaves seamlessly", async () => {
@@ -274,7 +304,7 @@ describe("PublicRoutes orchestration and readiness", () => {
     });
   });
 
-  it("resets state and ignores stale completion when switching usernames", async () => {
+  it("resets to Earth bootstrap when switching to an unresolved username", async () => {
     queryState.username = stateSuccessUsername;
     queryState.profile = stateLoadingProfile;
 
@@ -290,6 +320,6 @@ describe("PublicRoutes orchestration and readiness", () => {
     queryState.profile = stateLoadingProfile;
     render(<PublicRouteRunner initialEntries={["/bob"]} />);
 
-    expect(screen.getAllByTestId("public-profile-shell")).toHaveLength(1);
+    expect(screen.getByRole("status", { name: "Loading public profile" })).toBeInTheDocument();
   });
 });

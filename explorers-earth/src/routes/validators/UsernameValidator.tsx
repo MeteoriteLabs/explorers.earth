@@ -31,7 +31,6 @@ export const UsernameValidator = () => {
 
   useEffect(() => {
     if (loading) {
-      markLoading?.(generation);
       return;
     }
 
@@ -90,9 +89,9 @@ export const UsernameValidator = () => {
         }
       }
 
-      readinessCtx?.markLoading(generation);
+      markLoading?.(generation);
     }
-  }, [data, loading, error, username, navigate, location.pathname, generation, readinessCtx, refetch]);
+  }, [data, loading, error, username, navigate, location.pathname, generation, markLoading, markError, markNotFound, refetch]);
 
   if (loading || error || !data || !data.accounts?.[0]) {
     return null;

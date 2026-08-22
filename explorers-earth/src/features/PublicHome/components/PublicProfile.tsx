@@ -10,7 +10,7 @@ import { RECOMMENDATION_CATEGORY_IDS } from "../../Profile/types/themeTypes";
 import PublicProfileFooter from "./PublicProfileFooter";
 import { useQuery } from "@apollo/client";
 import { memo, useEffect, useState, useMemo, useContext } from "react";
-import { useParams, useNavigate, useOutletContext } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { PublicRouteReadinessContext } from "../../../layouts/PublicRouteReadinessContext";
 import { getPublicProfileDataQuery, getUserMobileNumberQuery } from "../api/query";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../services/analyticsService";
@@ -143,48 +143,10 @@ const parseBusinessLocationData = (value: unknown): Record<string, any> | null =
   }
 };
 
-const ProfileSkeleton = memo(() => {
-  return (
-    <div className="min-h-screen bg-black text-white pb-20">
-      {/* Cover Photo Shimmer */}
-      <div className="relative h-[380px] md:h-[420px] bg-white/5 skeleton-shimmer w-full rounded-b-[2rem] md:rounded-none overflow-hidden" />
-      
-      {/* Profile Pic, Name, Bio Skeletons */}
-      <div className="relative z-10 -mt-20 text-center px-4">
-        {/* Avatar Circle */}
-        <div className="w-[7.5rem] h-[7.5rem] mx-auto rounded-full border-4 border-gray-800 bg-white/10 skeleton-shimmer overflow-hidden shadow-xl" />
-        
-        {/* Name */}
-        <div className="mt-4 h-6 w-48 bg-white/10 skeleton-shimmer rounded mx-auto" />
-        
-        {/* Location */}
-        <div className="mt-2 h-4 w-32 bg-white/5 skeleton-shimmer rounded mx-auto" />
-        
-        {/* Social Icons */}
-        <div className="flex justify-center gap-4 mt-6">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="w-8 h-8 rounded-full bg-white/5 skeleton-shimmer" />
-          ))}
-        </div>
-        
-        {/* Bio */}
-        <div className="max-w-md mx-auto mt-8 px-6 space-y-2">
-          <div className="h-3 w-full bg-white/5 skeleton-shimmer rounded" />
-          <div className="h-3 w-5/6 bg-white/5 skeleton-shimmer rounded mx-auto" />
-          <div className="h-3 w-2/3 bg-white/5 skeleton-shimmer rounded mx-auto" />
-        </div>
-      </div>
-    </div>
-  );
-});
-
-ProfileSkeleton.displayName = "ProfileSkeleton";
-
 const PublicProfile = memo(() => {
   const { username } = useParams();
   const navigate = useNavigate();
   const [showQR, setShowQR] = useState(false);
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
 
   // Extract UTM parameters from current URL for QR codes only
   // Only use QR code UTM params if they already exist in the URL (user came from QR scan)
@@ -246,12 +208,10 @@ const PublicProfile = memo(() => {
       if (!data.accounts?.[0]) {
         markNotFound?.(generation);
       } else {
-        (window as any).__publicProfileLoaded = true;
         markReady?.(generation);
-        outletContext?.setIsPageLoaded?.(true);
       }
     }
-  }, [loading, error, data, refetch, generation, markLoading, markError, markNotFound, markReady, outletContext]);
+  }, [loading, error, data, refetch, generation, markLoading, markError, markNotFound, markReady]);
 
   // Fetch mobile number ONLY when visibility is explicitly enabled
   // This prevents the mobile number from ever being in the response unless visibility is set
@@ -671,9 +631,6 @@ const PublicProfile = memo(() => {
   );
 
   if (loading) {
-    if ((window as any).__publicProfileLoaded) {
-      return <ProfileSkeleton />;
-    }
     return null;
   }
 
