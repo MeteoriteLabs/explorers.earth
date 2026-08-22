@@ -4,7 +4,12 @@ import {
 } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
-import { getOperationAST, type DocumentNode } from "graphql";
+import {
+  Kind,
+  OperationTypeNode,
+  type DocumentNode,
+  type OperationDefinitionNode,
+} from "graphql";
 
 export type ApolloOperationCapability =
   | "auth"
@@ -42,12 +47,15 @@ interface TransportOperationState {
   anonymousRetryAttempted: boolean;
 }
 
-const AUTHENTICATION_OPERATIONS = new Set([
-  "login",
-  "register",
-  "forgotPassword",
-  "resetPassword",
-  "CheckUsernameAvailability",
+const AUTHENTICATION_OPERATIONS = new Map<string, {
+  kind: OperationTypeNode;
+  rootField: string;
+}>([
+  ["login", { kind: OperationTypeNode.MUTATION, rootField: "login" }],
+  ["register", { kind: OperationTypeNode.MUTATION, rootField: "register" }],
+  ["forgotPassword", { kind: OperationTypeNode.MUTATION, rootField: "forgotPassword" }],
+  ["resetPassword", { kind: OperationTypeNode.MUTATION, rootField: "resetPassword" }],
+  ["CheckUsernameAvailability", { kind: OperationTypeNode.QUERY, rootField: "accounts" }],
 ]);
 
 const ANALYTICS_MUTATIONS = new Map([
@@ -66,21 +74,50 @@ function withoutAuthorization(headers: Record<string, string> = {}): Record<stri
   );
 }
 
+function selectOperationDefinition(
+  document: DocumentNode,
+  operationName?: string,
+): OperationDefinitionNode | undefined {
+  const operations = document.definitions.filter(
+    (definition): definition is OperationDefinitionNode => (
+      definition.kind === Kind.OPERATION_DEFINITION
+    ),
+  );
+  const matchingOperations = operationName
+    ? operations.filter((definition) => definition.name?.value === operationName)
+    : operations;
+
+  return matchingOperations.length === 1 ? matchingOperations[0] : undefined;
+}
+
+function soleDirectRootField(
+  definition: OperationDefinitionNode,
+): string | undefined {
+  const selections = definition.selectionSet.selections;
+  if (selections.length !== 1 || selections[0]?.kind !== Kind.FIELD) return undefined;
+  return selections[0].name.value;
+}
+
 export function classifyApolloOperation(
   operation: { operationName?: string; query: DocumentNode },
 ): ApolloOperationCapability {
-  const operationName = operation.operationName ?? "";
-  if (AUTHENTICATION_OPERATIONS.has(operationName)) return "auth";
+  const definition = selectOperationDefinition(operation.query, operation.operationName);
+  if (!definition) return "session-only";
 
-  const definition = getOperationAST(operation.query, operationName || undefined);
+  const operationName = definition.name?.value ?? "";
+  const authContract = AUTHENTICATION_OPERATIONS.get(operationName);
+  if (authContract) {
+    return definition.operation === authContract.kind
+      && soleDirectRootField(definition) === authContract.rootField
+      ? "auth"
+      : "session-only";
+  }
+
   if (definition?.operation === "query") return "public-read";
   if (definition?.operation !== "mutation") return "session-only";
 
   const approvedRootField = ANALYTICS_MUTATIONS.get(operationName);
-  const rootFields = definition.selectionSet.selections.flatMap((selection) => (
-    selection.kind === "Field" ? [selection.name.value] : []
-  ));
-  return approvedRootField && rootFields.length === 1 && rootFields[0] === approvedRootField
+  return approvedRootField && soleDirectRootField(definition) === approvedRootField
     ? "analytics-write"
     : "session-only";
 }

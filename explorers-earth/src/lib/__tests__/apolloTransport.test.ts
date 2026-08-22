@@ -7,7 +7,13 @@ import {
 } from "@apollo/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getOperationAST } from "graphql";
-import { resetPasswordMutation } from "../../features/Authentication/api/mutation";
+import {
+  forgotPasswordMutation,
+  loginQuery,
+  registerQuery,
+  resetPasswordMutation,
+} from "../../features/Authentication/api/mutation";
+import { CHECK_USERNAME_AVAILABILITY } from "../../utils/usernameAPI";
 import {
   classifyApolloOperation,
   createApolloTransport,
@@ -118,11 +124,130 @@ describe("classifyApolloOperation", () => {
     expect(classifyApolloOperation(operation(operationName, query))).toBe(expected);
   });
 
-  it("classifies the shipped reset-password document through the auth allowlist", () => {
-    const operationName = getOperationAST(resetPasswordMutation)?.name?.value;
+  it.each([
+    ["login", loginQuery],
+    ["register", registerQuery],
+    ["forgotPassword", forgotPasswordMutation],
+    ["resetPassword", resetPasswordMutation],
+    ["CheckUsernameAvailability", CHECK_USERNAME_AVAILABILITY],
+  ] as const)("classifies the shipped %s document through the exact auth contract", (_name, document) => {
+    const operationName = getOperationAST(document)?.name?.value;
 
     expect(operationName).toBeDefined();
-    expect(classifyApolloOperation(operation(operationName!, resetPasswordMutation))).toBe("auth");
+    expect(classifyApolloOperation(operation(operationName!, document))).toBe("auth");
+  });
+
+  it.each([
+    {
+      caseName: "wrong operation kind",
+      query: gql`query login { login { jwt } }`,
+    },
+    {
+      caseName: "wrong root field",
+      query: gql`mutation login { updateAccount(data: {}) { documentId } }`,
+    },
+    {
+      caseName: "multiple direct root fields",
+      query: gql`mutation login { login(input: {}) { jwt } updateAccount(data: {}) { documentId } }`,
+    },
+    {
+      caseName: "hidden named-fragment root",
+      query: gql`
+        mutation login { login(input: {}) { jwt } ...HiddenAuthRoot }
+        fragment HiddenAuthRoot on Mutation { updateAccount(data: {}) { documentId } }
+      `,
+    },
+    {
+      caseName: "hidden inline-fragment root",
+      query: gql`
+        mutation login { login(input: {}) { jwt } ... on Mutation { updateAccount(data: {}) { documentId } } }
+      `,
+    },
+    {
+      caseName: "operation-name mismatch",
+      query: gql`mutation register { register(input: {}) { jwt } }`,
+    },
+    {
+      caseName: "duplicate selected operation names",
+      query: gql`
+        mutation login { login(input: {}) { jwt } }
+        mutation login { login(input: {}) { jwt } }
+      `,
+    },
+  ])("fails the auth contract closed for $caseName", ({ query }) => {
+    expect(classifyApolloOperation(operation("login", query))).toBe("session-only");
+  });
+
+  it("allows an alias only when the underlying auth root field matches", () => {
+    const aliasedLogin = gql`
+      mutation login { authenticate: login(input: {}) { jwt } }
+    `;
+
+    expect(classifyApolloOperation(operation("login", aliasedLogin))).toBe("auth");
+  });
+
+  it.each([
+    {
+      caseName: "mixed direct roots",
+      query: gql`
+        mutation CreatePublicPageAnalytic {
+          createPublicPageAnalytic(data: {}) { documentId }
+          updateAccount(data: {}) { documentId }
+        }
+      `,
+    },
+    {
+      caseName: "named fragment hiding an arbitrary mutation",
+      query: gql`
+        mutation CreatePublicPageAnalytic {
+          createPublicPageAnalytic(data: {}) { documentId }
+          ...HiddenAnalyticsRoot
+        }
+        fragment HiddenAnalyticsRoot on Mutation { updateAccount(data: {}) { documentId } }
+      `,
+    },
+    {
+      caseName: "inline fragment hiding an arbitrary mutation",
+      query: gql`
+        mutation CreatePublicPageAnalytic {
+          createPublicPageAnalytic(data: {}) { documentId }
+          ... on Mutation { updateAccount(data: {}) { documentId } }
+        }
+      `,
+    },
+    {
+      caseName: "approved root supplied only through a named fragment",
+      query: gql`
+        mutation CreatePublicPageAnalytic { ...AnalyticsRoot }
+        fragment AnalyticsRoot on Mutation { createPublicPageAnalytic(data: {}) { documentId } }
+      `,
+    },
+    {
+      caseName: "missing fragment",
+      query: gql`mutation CreatePublicPageAnalytic { ...MissingAnalyticsRoot }`,
+    },
+    {
+      caseName: "fragment cycle",
+      query: gql`
+        mutation CreatePublicPageAnalytic { ...AnalyticsRootA }
+        fragment AnalyticsRootA on Mutation { ...AnalyticsRootB }
+        fragment AnalyticsRootB on Mutation { ...AnalyticsRootA }
+      `,
+    },
+  ])("fails the analytics contract closed for $caseName", ({ query }) => {
+    expect(classifyApolloOperation(operation("CreatePublicPageAnalytic", query)))
+      .toBe("session-only");
+  });
+
+  it("allows an alias only when the underlying analytics root field matches", () => {
+    const aliasedAnalytics = gql`
+      mutation CreatePublicPageAnalytic {
+        record: createPublicPageAnalytic(data: {}) { documentId }
+      }
+    `;
+
+    expect(classifyApolloOperation(operation("CreatePublicPageAnalytic", aliasedAnalytics)))
+      .toBe("analytics-write");
   });
 });
 
