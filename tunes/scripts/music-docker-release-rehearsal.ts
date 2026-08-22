@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 import {
   chmodSync,
   existsSync,
@@ -389,7 +389,8 @@ async function main(): Promise<void> {
   privateFile(secretPaths.migratorPassword, migratorPassword);
   privateFile(secretPaths.lifecycle, lifecycleSecret);
   privateFile(secretPaths.reconciliation, secret());
-  privateFile(hmacFile, secret());
+  const hmacSecret = secret();
+  privateFile(hmacFile, hmacSecret);
   privateFile(join(root, ".music-c10-fixture-root"), [
     "music-c10-fixture-root-v1",
     `compose_project=${project}`,
@@ -650,6 +651,18 @@ exec curl --header "Host: localtunes.earth" "\${mapped[@]}"
     .find(([name]) => name.endsWith("_proxy"))?.[1].IPAddress;
   assert(traefikProxyIp && /^(?:\d{1,3}\.){3}\d{1,3}$/.test(traefikProxyIp), "fixture Traefik proxy address is invalid");
   privateFile(environmentFile, `${readFileSync(environmentFile, "utf8")}TRAEFIK_PROXY_IP=${traefikProxyIp}\n`);
+  const imageAuthorityPayload = [
+    "music-c10-fixture-images-v1",
+    `tunes=${repository}@${digestA}`,
+    `postgres=${postgresImage}`,
+    `traefik=${traefikImage}`,
+    `commit=${commit}`,
+    `migration=${marker}`,
+    `proxy_ip=${traefikProxyIp}`,
+  ].join("\n");
+  privateFile(join(root, ".music-c10-fixture-images"), `${imageAuthorityPayload}\nmac=${
+    createHmac("sha256", hmacSecret).update(imageAuthorityPayload).digest("hex")
+  }\n`);
 
   writeContainerSecrets(secret());
   writeRequest("bootstrap", digestA, commit, legacyService);

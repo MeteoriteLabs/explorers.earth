@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -40,6 +41,47 @@ import {
 } from "../../../scripts/music-qualification";
 
 describe("portable Music qualification lanes", () => {
+  it("creates and verifies the documented canonical evidence manifest bytes", () => {
+    // Production break caught: copied evidence has only an unverifiable digest,
+    // or a platform-specific path/order/newline encoding changes its identity.
+    const sandbox = mkdtempSync(join(tmpdir(), "music-evidence-manifest-"));
+    try {
+      const evidenceRoot = join(sandbox, "music-runs");
+      const manifest = join(sandbox, "music-runs.manifest.tsv");
+      mkdirSync(join(evidenceRoot, "nested"), { recursive: true });
+      writeFileSync(join(evidenceRoot, "a.txt"), "abc");
+      writeFileSync(join(evidenceRoot, "nested", "z.txt"), "");
+      const tunesRoot = resolve(import.meta.dirname, "../../..");
+      const manifestCli = resolve(tunesRoot, "scripts/music-evidence-manifest.ts");
+      const tsxCli = resolve(tunesRoot, "node_modules/tsx/dist/cli.mjs");
+      const invoke = (operation: "create" | "verify") => spawnSync(
+        process.execPath, [tsxCli, manifestCli, operation, evidenceRoot, manifest], {
+        cwd: tunesRoot,
+        encoding: "utf8",
+        windowsHide: true,
+      });
+      const create = invoke("create");
+      expect(create.status, create.stderr).toBe(0);
+      const canonical = [
+        "a.txt\t3\tba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+        "nested/z.txt\t0\te3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      ].join("\n");
+      expect(readFileSync(manifest, "utf8")).toBe(canonical);
+      expect(create.stdout).toContain("7e73a630d4cb0a852d44e3d2664a5402803d6e64d417f5daba16474916bcd7b9");
+
+      const verify = invoke("verify");
+      expect(verify.status, verify.stderr).toBe(0);
+      expect(verify.stdout).toContain("7e73a630d4cb0a852d44e3d2664a5402803d6e64d417f5daba16474916bcd7b9");
+
+      writeFileSync(join(evidenceRoot, "a.txt"), "abd");
+      const hostile = invoke("verify");
+      expect(hostile.status).not.toBe(0);
+      expect(hostile.stderr).toContain("evidence manifest verification failed");
+    } finally {
+      rmSync(sandbox, { recursive: true, force: true });
+    }
+  });
+
   it("injects disposable fixture authority only into tasks that cross the real fixture boundary", () => {
     expect([
       "postgres-integration",
@@ -335,7 +377,7 @@ describe("portable Music qualification lanes", () => {
       .toContain("isolated-cli-contract");
   });
 
-  it("gives only multi-process deployment recovery checks bounded Windows scheduling headroom", () => {
+  it("gives every deployment process check bounded Windows scheduling headroom", () => {
     const source = readFileSync(resolve(
       import.meta.dirname,
       "../deployment/music-deploy-executable.test.ts",
@@ -343,7 +385,19 @@ describe("portable Music qualification lanes", () => {
     expect(source).toContain(
       'const deploymentProcessRecoveryTimeoutMs = process.platform === "win32" ? 30_000 : 20_000;',
     );
-    expect(source.match(/deploymentProcessRecoveryTimeoutMs/g)).toHaveLength(3);
+    expect(source).not.toMatch(/\}, 20_000\);/);
+    expect(source.match(/deploymentProcessRecoveryTimeoutMs/g)?.length).toBeGreaterThan(20);
+  });
+
+  it("gives the Windows checkpoint filesystem proof bounded scheduling headroom", () => {
+    const source = readFileSync(resolve(
+      import.meta.dirname,
+      "../reconcileMusicIdentitiesCommand.test.ts",
+    ), "utf8");
+    expect(source).toContain(
+      'const checkpointFilesystemTimeoutMs = process.platform === "win32" ? 10_000 : 5_000;',
+    );
+    expect(source).toMatch(/writes atomically with owner-only permissions and contains no identity rows[\s\S]*checkpointFilesystemTimeoutMs\);/);
   });
 
   it("adds real five-service browser and Docker evidence to nightly and release", () => {

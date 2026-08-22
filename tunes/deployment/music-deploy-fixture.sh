@@ -98,6 +98,59 @@ mapfile -t marker_lines < "$marker_file"
   && "${marker_lines[3]}" == resource_label=com.explorers.fixture.scope=music-c10-release ]] \
   || fail "fixture deployment root authority is invalid"
 
+image_authority_file="$root/.music-c10-fixture-images"
+require_regular_file "$image_authority_file"
+canonical_image_authority="$(realpath -e -- "$image_authority_file")" \
+  || fail "fixture image authority path is invalid"
+[[ "$canonical_image_authority" == "$image_authority_file" && "$canonical_image_authority" == "$canonical_root"/* ]] \
+  || fail "fixture image authority path must remain inside the disposable root"
+mapfile -t image_authority_lines < "$image_authority_file"
+[[ ${#image_authority_lines[@]} -eq 8 \
+  && "${image_authority_lines[0]}" == music-c10-fixture-images-v1 \
+  && "${image_authority_lines[1]}" == tunes=* \
+  && "${image_authority_lines[2]}" == postgres=* \
+  && "${image_authority_lines[3]}" == traefik=* \
+  && "${image_authority_lines[4]}" == commit=* \
+  && "${image_authority_lines[5]}" == migration=* \
+  && "${image_authority_lines[6]}" == proxy_ip=* \
+  && "${image_authority_lines[7]}" == mac=* ]] \
+  || fail "fixture image authority is invalid"
+expected_tunes_image="${image_authority_lines[1]#tunes=}"
+expected_postgres_image="${image_authority_lines[2]#postgres=}"
+expected_traefik_image="${image_authority_lines[3]#traefik=}"
+expected_tunes_commit="${image_authority_lines[4]#commit=}"
+expected_migration="${image_authority_lines[5]#migration=}"
+expected_proxy_ip="${image_authority_lines[6]#proxy_ip=}"
+image_authority_mac="${image_authority_lines[7]#mac=}"
+[[ "$expected_tunes_image" == "$registry/explorers-tunes"@sha256:[a-f0-9][a-f0-9]* \
+  && "$expected_postgres_image" == "$registry/fixture-postgres"@sha256:[a-f0-9][a-f0-9]* \
+  && "$expected_traefik_image" == "$registry/fixture-traefik"@sha256:[a-f0-9][a-f0-9]* \
+  && "${expected_tunes_image##*@}" =~ ^sha256:[a-f0-9]{64}$ \
+  && "${expected_postgres_image##*@}" =~ ^sha256:[a-f0-9]{64}$ \
+  && "${expected_traefik_image##*@}" =~ ^sha256:[a-f0-9]{64}$ \
+  && "$expected_tunes_commit" =~ ^[a-f0-9]{40}$ \
+  && "$expected_migration" == 0013_publication_operation_database_clock \
+  && "$expected_proxy_ip" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ \
+  && "$image_authority_mac" =~ ^[a-f0-9]{64}$ ]] \
+  || fail "fixture image authority is invalid"
+image_authority_payload="$(printf '%s\n%s\n%s\n%s\n%s\n%s\n%s' \
+  "${image_authority_lines[0]}" "${image_authority_lines[1]}" "${image_authority_lines[2]}" \
+  "${image_authority_lines[3]}" "${image_authority_lines[4]}" "${image_authority_lines[5]}" \
+  "${image_authority_lines[6]}")"
+expected_image_authority_mac="$(printf '%s' "$image_authority_payload" \
+  | node "$script_dir/music-hmac.mjs" "$MUSIC_DEPLOY_HMAC_KEY_FILE")" \
+  || fail "fixture image authority authentication failed"
+[[ "$image_authority_mac" == "$expected_image_authority_mac" ]] \
+  || fail "fixture image authority authentication failed"
+readonly expected_tunes_image expected_postgres_image expected_traefik_image \
+  expected_tunes_commit expected_migration expected_proxy_ip
+export MUSIC_DEPLOY_FIXTURE_EXPECTED_TUNES_IMAGE="$expected_tunes_image"
+export MUSIC_DEPLOY_FIXTURE_EXPECTED_POSTGRES_IMAGE="$expected_postgres_image"
+export MUSIC_DEPLOY_FIXTURE_EXPECTED_TRAEFIK_IMAGE="$expected_traefik_image"
+export MUSIC_DEPLOY_FIXTURE_EXPECTED_TUNES_COMMIT="$expected_tunes_commit"
+export MUSIC_DEPLOY_FIXTURE_EXPECTED_MIGRATION="$expected_migration"
+export MUSIC_DEPLOY_FIXTURE_EXPECTED_PROXY_IP="$expected_proxy_ip"
+
 command -v docker >/dev/null 2>&1 || fail "required command missing: docker"
 
 docker_context="$(command docker context show)" || fail "effective Docker context is invalid"
@@ -125,6 +178,7 @@ compose_json="$(docker compose -p "$compose_project" --project-directory "$root"
   --env-file "$root/production.env" -f "$root/docker-compose.yml" --profile deployment config --format json)" \
   || fail "fixture Compose authority could not be rendered"
 printf '%s' "$compose_json" | node -e '
+const { readFileSync } = require("node:fs");
 let body="";
 process.stdin.on("data", chunk => body += chunk).on("end", () => {
   const project = process.env.MUSIC_DEPLOY_FIXTURE_COMPOSE_PROJECT;
@@ -196,14 +250,16 @@ process.stdin.on("data", chunk => body += chunk).on("end", () => {
     "tunes-gate": ["command", "depends_on", "entrypoint", "environment", "image", "labels", "networks", "profiles", "pull_policy", "restart", "volumes"],
     "tunes-register-compat": ["command", "entrypoint", "environment", "image", "labels", "networks", "profiles", "pull_policy", "restart"],
   };
-  const expectedRepositories = {
-    traefik: "fixture-traefik", db: "fixture-postgres", "legacy-tunes": "explorers-tunes",
-    "tunes-blue": "explorers-tunes", "tunes-green": "explorers-tunes", "tunes-gate": "explorers-tunes",
-    "tunes-register-compat": "explorers-tunes",
+  const expectedImages = {
+    traefik: process.env.MUSIC_DEPLOY_FIXTURE_EXPECTED_TRAEFIK_IMAGE,
+    db: process.env.MUSIC_DEPLOY_FIXTURE_EXPECTED_POSTGRES_IMAGE,
+    "legacy-tunes": process.env.MUSIC_DEPLOY_FIXTURE_EXPECTED_TUNES_IMAGE,
+    "tunes-blue": process.env.MUSIC_DEPLOY_FIXTURE_EXPECTED_TUNES_IMAGE,
+    "tunes-green": process.env.MUSIC_DEPLOY_FIXTURE_EXPECTED_TUNES_IMAGE,
+    "tunes-gate": process.env.MUSIC_DEPLOY_FIXTURE_EXPECTED_TUNES_IMAGE,
+    "tunes-register-compat": process.env.MUSIC_DEPLOY_FIXTURE_EXPECTED_TUNES_IMAGE,
   };
-  const exactImage = (name, image) => typeof image === "string"
-    && image.startsWith(`${registry}/${expectedRepositories[name]}@`)
-    && /^sha256:[a-f0-9]{64}$/.test(image.slice(image.lastIndexOf("@") + 1));
+  const exactImage = (name, image) => image === expectedImages[name];
   const exactLabels = (labels) => exactKeys(labels, ["com.explorers.fixture.scope", "com.explorers.fixture.project"])
     && labels["com.explorers.fixture.scope"] === "music-c10-release"
     && labels["com.explorers.fixture.project"] === project;
@@ -234,35 +290,77 @@ process.stdin.on("data", chunk => body += chunk).on("end", () => {
     "MUSIC_TOKEN_CLOCK_SKEW_SECONDS", "MUSIC_TOKEN_CURRENT_KID", "MUSIC_TOKEN_CURRENT_SECRET_FILE", "MUSIC_TOKEN_LIFETIME_SECONDS",
     "MUSIC_TRUSTED_PROXY_IP", "NODE_ENV", "PORT", "SESSION_SECRET", "STRAPI_ACCESS_TOKEN", "STRAPI_JWT_SECRET",
     "STRAPI_LIFECYCLE_PROOF_TOKEN_FILE", "STRAPI_URL", "TRUST_PROXY_HOPS"];
+  const productionEnvironment = {};
+  try {
+    for (const line of readFileSync(`${process.env.MUSIC_DEPLOY_ROOT}/production.env`, "utf8").split(/\r?\n/)) {
+      if (!line || line.startsWith("#")) continue;
+      const separator = line.indexOf("=");
+      if (separator <= 0) process.exit(1);
+      const key = line.slice(0, separator);
+      if (!/^[A-Z][A-Z0-9_]*$/.test(key) || Object.hasOwn(productionEnvironment, key)) process.exit(1);
+      productionEnvironment[key] = line.slice(separator + 1);
+    }
+  } catch { process.exit(1); }
+  const expectedTunesDigest = process.env.MUSIC_DEPLOY_FIXTURE_EXPECTED_TUNES_IMAGE.slice(
+    process.env.MUSIC_DEPLOY_FIXTURE_EXPECTED_TUNES_IMAGE.lastIndexOf("@") + 1);
+  const expectedTunesEnvironment = {
+    ALLOWED_ORIGINS: "https://localtunes.earth",
+    COOKIE_SECRET: productionEnvironment.COOKIE_SECRET,
+    MUSIC_COHORT_ENABLED: "false",
+    MUSIC_DATABASE_HOST: "db",
+    MUSIC_DATABASE_MIGRATOR_USER: "music_migrator",
+    MUSIC_DATABASE_NAME: "music_release_fixture",
+    MUSIC_DATABASE_PASSWORD_FILE: "/run/music-secrets/database-runtime",
+    MUSIC_DATABASE_PORT: "5432",
+    MUSIC_DATABASE_USER: "music_runtime_login",
+    MUSIC_DEPLOYMENT_HEALTH_ENABLED: "true",
+    MUSIC_GATE_ATTESTATION_KEY: productionEnvironment.MUSIC_GATE_ATTESTATION_KEY,
+    MUSIC_GATE_ATTESTATION_PATH: `/deployment-gates/${expectedTunesDigest}.json`,
+    MUSIC_IMAGE_COMMIT: process.env.MUSIC_DEPLOY_FIXTURE_EXPECTED_TUNES_COMMIT,
+    MUSIC_IMAGE_DIGEST: expectedTunesDigest,
+    MUSIC_MIGRATION_MARKER: process.env.MUSIC_DEPLOY_FIXTURE_EXPECTED_MIGRATION,
+    MUSIC_MODE: "live",
+    MUSIC_NEW_ENTRY_KILL_SWITCH: "true",
+    MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: "/run/music-secrets/music-publication-response/current",
+    MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "fixture-publication-current-v1",
+    MUSIC_STRAPI_ALLOWED_ORIGINS: "https://8.8.8.8",
+    MUSIC_TOKEN_CLOCK_SKEW_SECONDS: "15",
+    MUSIC_TOKEN_CURRENT_KID: "fixture-token-current-v1",
+    MUSIC_TOKEN_CURRENT_SECRET_FILE: "/run/music-secrets/music-token/current",
+    MUSIC_TOKEN_LIFETIME_SECONDS: "600",
+    MUSIC_TRUSTED_PROXY_IP: process.env.MUSIC_DEPLOY_FIXTURE_EXPECTED_PROXY_IP,
+    NODE_ENV: "production",
+    PORT: "5000",
+    SESSION_SECRET: productionEnvironment.SESSION_SECRET,
+    STRAPI_ACCESS_TOKEN: productionEnvironment.STRAPI_ACCESS_TOKEN,
+    STRAPI_JWT_SECRET: productionEnvironment.STRAPI_JWT_SECRET,
+    STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: "/run/music-secrets/strapi-lifecycle",
+    STRAPI_URL: productionEnvironment.STRAPI_URL,
+    TRUST_PROXY_HOPS: "1",
+  };
   const exactTunesEnvironment = (environment) => exactKeys(environment, tunesEnvironmentKeys)
-    && environment.NODE_ENV === "production" && environment.PORT === "5000" && environment.MUSIC_MODE === "live"
-    && environment.MUSIC_DATABASE_HOST === "db" && environment.MUSIC_DATABASE_PORT === "5432"
-    && environment.MUSIC_DATABASE_NAME === "music_release_fixture" && environment.MUSIC_DATABASE_USER === "music_runtime_login"
-    && environment.MUSIC_DATABASE_MIGRATOR_USER === "music_migrator"
-    && environment.MUSIC_DATABASE_PASSWORD_FILE === "/run/music-secrets/database-runtime"
-    && environment.STRAPI_LIFECYCLE_PROOF_TOKEN_FILE === "/run/music-secrets/strapi-lifecycle"
-    && environment.MUSIC_TOKEN_CURRENT_SECRET_FILE === "/run/music-secrets/music-token/current"
-    && environment.MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE === "/run/music-secrets/music-publication-response/current"
-    && environment.MUSIC_GATE_ATTESTATION_PATH === `/deployment-gates/${environment.MUSIC_IMAGE_DIGEST}.json`
-    && /^sha256:[a-f0-9]{64}$/.test(environment.MUSIC_IMAGE_DIGEST)
-    && /^[a-f0-9]{40}$/.test(environment.MUSIC_IMAGE_COMMIT)
-    && /^0013_publication_operation_database_clock$/.test(environment.MUSIC_MIGRATION_MARKER)
-    && ["http://8.8.8.8", "https://8.8.8.8"].includes(environment.STRAPI_URL)
-    && ["SESSION_SECRET", "COOKIE_SECRET", "STRAPI_ACCESS_TOKEN", "STRAPI_JWT_SECRET", "MUSIC_GATE_ATTESTATION_KEY"]
-      .every(key => typeof environment[key] === "string" && environment[key].length >= 8);
+    && ["http://8.8.8.8", "https://8.8.8.8"].includes(productionEnvironment.STRAPI_URL)
+    && Object.entries(expectedTunesEnvironment).every(([key, value]) => typeof value === "string" && environment[key] === value);
+  const expectedGateEnvironment = {
+    MUSIC_DATABASE_HOST: "db",
+    MUSIC_DATABASE_NAME: "music_release_fixture",
+    MUSIC_DATABASE_PASSWORD_FILE: "/run/music-secrets/database-migrator",
+    MUSIC_DATABASE_PORT: "5432",
+    MUSIC_DATABASE_USER: "music_migrator",
+    MUSIC_GATE_ATTESTATION_KEY: productionEnvironment.MUSIC_GATE_ATTESTATION_KEY,
+    MUSIC_GATE_ATTESTATION_PATH: `/deployment-gates/${expectedTunesDigest}.json`,
+    MUSIC_IMAGE_COMMIT: process.env.MUSIC_DEPLOY_FIXTURE_EXPECTED_TUNES_COMMIT,
+    MUSIC_IMAGE_DIGEST: expectedTunesDigest,
+    MUSIC_MIGRATION_MARKER: process.env.MUSIC_DEPLOY_FIXTURE_EXPECTED_MIGRATION,
+    MUSIC_MODE: "live",
+    MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: "/run/music-secrets/database-runtime",
+    MUSIC_RUNTIME_DATABASE_USER: "music_runtime_login",
+  };
   const exactGateEnvironment = (environment) => exactKeys(environment, ["MUSIC_DATABASE_HOST", "MUSIC_DATABASE_NAME",
     "MUSIC_DATABASE_PASSWORD_FILE", "MUSIC_DATABASE_PORT", "MUSIC_DATABASE_USER", "MUSIC_GATE_ATTESTATION_KEY",
     "MUSIC_GATE_ATTESTATION_PATH", "MUSIC_IMAGE_COMMIT", "MUSIC_IMAGE_DIGEST", "MUSIC_MIGRATION_MARKER", "MUSIC_MODE",
     "MUSIC_RUNTIME_DATABASE_PASSWORD_FILE", "MUSIC_RUNTIME_DATABASE_USER"])
-    && environment.MUSIC_MODE === "live" && environment.MUSIC_DATABASE_HOST === "db" && environment.MUSIC_DATABASE_PORT === "5432"
-    && environment.MUSIC_DATABASE_NAME === "music_release_fixture" && environment.MUSIC_DATABASE_USER === "music_migrator"
-    && environment.MUSIC_DATABASE_PASSWORD_FILE === "/run/music-secrets/database-migrator"
-    && environment.MUSIC_RUNTIME_DATABASE_USER === "music_runtime_login"
-    && environment.MUSIC_RUNTIME_DATABASE_PASSWORD_FILE === "/run/music-secrets/database-runtime"
-    && /^sha256:[a-f0-9]{64}$/.test(environment.MUSIC_IMAGE_DIGEST)
-    && /^[a-f0-9]{40}$/.test(environment.MUSIC_IMAGE_COMMIT)
-    && environment.MUSIC_GATE_ATTESTATION_PATH === `/deployment-gates/${environment.MUSIC_IMAGE_DIGEST}.json`
-    && typeof environment.MUSIC_GATE_ATTESTATION_KEY === "string" && environment.MUSIC_GATE_ATTESTATION_KEY.length >= 8;
+    && Object.entries(expectedGateEnvironment).every(([key, value]) => typeof value === "string" && environment[key] === value);
   try {
     const model = JSON.parse(body);
     const services = model.services ?? {};

@@ -20,6 +20,9 @@ const hmacSentinel = "state-hmac-key-with-at-least-thirty-two-bytes";
 const publicationAuthority = Buffer.alloc(32, 0x70).toString("base64url");
 const publicResponseSentinel = "UNTRUSTED_PUBLIC_RESPONSE_SENTINEL";
 const deploymentProcessRecoveryTimeoutMs = process.platform === "win32" ? 30_000 : 20_000;
+const fixtureTunesImage = `127.0.0.1:5001/explorers-tunes@${digest("a")}`;
+const fixtureTraefikImage = `127.0.0.1:5001/fixture-traefik@${digest("c")}`;
+const fixturePostgresImage = `127.0.0.1:5001/fixture-postgres@${digest("d")}`;
 
 function shellPath(path: string): string {
   const normalized = path.replaceAll("\\", "/");
@@ -62,6 +65,7 @@ interface RunOptions {
   registrationStaleResponses?: number;
   publicReadinessStaleResponses?: number;
   fixtureEnvironment?: Record<string, string>;
+  fixtureImageAuthorityMode?: "missing" | "invalid-mac";
   fixtureRootOverride?: string;
 }
 
@@ -124,15 +128,29 @@ describe("checked-in production Music deploy executable", () => {
       "STRAPI_ACCESS_TOKEN=dedicated-strapi-access-authority",
       "STRAPI_JWT_SECRET=dedicated-strapi-jwt-authority",
       "MUSIC_GATE_ATTESTATION_KEY=dedicated-gate-attestation-authority",
+      "STRAPI_URL=https://8.8.8.8",
+      "TRAEFIK_PROXY_IP=172.18.0.2",
       "",
     ].join("\n"));
     writeFileSync(keyFile, hmacSentinel);
     writeFileSync(tokenFile, "read-only-ghcr-test-token");
     chmodSync(keyFile, 0o600);
     chmodSync(tokenFile, 0o600);
+    const imageAuthorityPayload = [
+      "music-c10-fixture-images-v1",
+      `tunes=${fixtureTunesImage}`,
+      `postgres=${fixturePostgresImage}`,
+      `traefik=${fixtureTraefikImage}`,
+      `commit=${commit("a")}`,
+      "migration=0013_publication_operation_database_clock",
+      "proxy_ip=172.18.0.2",
+    ].join("\n");
+    writeFileSync(join(root, ".music-c10-fixture-images"), `${imageAuthorityPayload}\nmac=${
+      createHmac("sha256", hmacSentinel).update(imageAuthorityPayload).digest("hex")
+    }\n`, { mode: 0o600 });
 
     const composeModelFile = join(sandbox, "compose-model.json");
-    const fixtureImage = `127.0.0.1:5001/explorers-tunes@${digest("a")}`;
+    const fixtureImage = fixtureTunesImage;
     const fixtureLabels = {
       "com.explorers.fixture.scope": "music-c10-release",
       "com.explorers.fixture.project": "music-c10-release-unit",
@@ -183,13 +201,13 @@ describe("checked-in production Music deploy executable", () => {
       name: "music-c10-release-unit",
       services: {
         traefik: {
-          ...fixtureService(`127.0.0.1:5001/fixture-traefik@${digest("c")}`, ["proxy"]),
+          ...fixtureService(fixtureTraefikImage, ["proxy"]),
           command: ["--api.dashboard=false", "--providers.docker=false", "--providers.file.directory=/deployment-routing", "--providers.file.watch=true", "--entrypoints.websecure.address=:443"],
           ports: ["127.0.0.1:54443:443"],
           volumes: [`${shellPath(root)}/deployment-routing:/deployment-routing:ro`],
         },
         db: {
-          ...fixtureService(`127.0.0.1:5001/fixture-postgres@${digest("d")}`),
+          ...fixtureService(fixturePostgresImage),
           environment: { POSTGRES_USER: "music_migrator", POSTGRES_PASSWORD_FILE: "/run/music-secrets/database-migrator", POSTGRES_DB: "music_release_fixture" },
           volumes: ["postgres-data:/var/lib/postgresql/data", "fixture-secrets:/run/music-secrets:ro"],
           healthcheck: { test: ["CMD-SHELL", "pg_isready -U music_migrator -d music_release_fixture"], interval: "2s", timeout: "2s", retries: 30 },
@@ -375,6 +393,11 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
         MUSIC_DEPLOY_FAILPOINT: options.failpoint ?? "",
     });
     if (fixturePolicy) {
+      const fixtureImageAuthority = join(root, ".music-c10-fixture-images");
+      if (options.fixtureImageAuthorityMode === "missing") rmSync(fixtureImageAuthority);
+      if (options.fixtureImageAuthorityMode === "invalid-mac") {
+        writeFileSync(fixtureImageAuthority, readFileSync(fixtureImageAuthority, "utf8").replace(/mac=[a-f0-9]{64}/, `mac=${"0".repeat(64)}`));
+      }
       writeFileSync(join(root, ".music-c10-fixture-root"), [
         "music-c10-fixture-root-v1",
         "compose_project=music-c10-release-unit",
@@ -548,7 +571,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
       .toContain("\t0005_resource_bound_deletion_history\tcurrent\t");
     expect(readFileSync(join(root, "deployment-transactions/schema-epoch.tsv"), "utf8"))
       .toContain("\t0005_resource_bound_deletion_history\tcurrent\t");
-  }, 20_000);
+  }, deploymentProcessRecoveryTimeoutMs);
 
   it.each([
     "containment-no-schema-change",
@@ -604,7 +627,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(result.status).not.toBe(0);
     expect(result.stderr).toMatch(/schema compatibility floor (missing|malformed)/i);
     expect(readFileSync(eventLog, "utf8")).toBe("");
-  }, 20_000);
+  }, deploymentProcessRecoveryTimeoutMs);
 
   it("does not adopt a valid v1 floor until signed state and ledger validate", () => {
     seedHistoricalAuthority("0003_identity_lifecycle_hardening");
@@ -619,7 +642,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(result.stderr).toMatch(/deployment state (HMAC mismatch|malformed)/);
     expect(existsSync(join(root, "deployment-transactions/schema-epoch.tsv"))).toBe(false);
     expect(readFileSync(eventLog, "utf8")).toBe("");
-  }, 20_000);
+  }, deploymentProcessRecoveryTimeoutMs);
 
   it.each([
     ["v2 0004", "v2-0004", "deploy"],
@@ -636,7 +659,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(result.stderr).toMatch(/schema compatibility floor.*secure ledger/i);
     expect(readFileSync(eventLog, "utf8")).toBe("");
     expectAuthorityUnchanged(authority);
-  }, 20_000);
+  }, deploymentProcessRecoveryTimeoutMs);
 
   it("accepts a legitimate pending schema floor ahead of promoted ledger history", () => {
     seedVersionedAuthority("0004_identity_delete_saga");
@@ -656,7 +679,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
       .toContain("\t0013_publication_operation_database_clock\tcurrent\t");
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8"))
       .toContain(`\t${digest("b")}\t${commit("b")}\t0013_publication_operation_database_clock\t`);
-  }, 20_000);
+  }, deploymentProcessRecoveryTimeoutMs);
 
   it.each([
     ["before pending", { failpoint: "before_epoch" }, false],
@@ -740,7 +763,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(reordered.status).not.toBe(0);
     expect(reordered.stderr).toMatch(/ledger malformed or reordered/i);
     expect(readFileSync(eventLog, "utf8")).toBe("");
-  }, 20_000);
+  }, deploymentProcessRecoveryTimeoutMs);
 
   it("bootstraps through the exact executable with one visible route and signed state", () => {
     // Production break caught: the runbook diverges from production transaction behavior.
@@ -753,7 +776,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const events = readFileSync(eventLog, "utf8");
     expect(events).toContain("curl --fail --silent --show-error --max-time 5 https://localtunes.earth/ | route=http://legacy-tunes:5000");
     expect(events).toContain(` pull ${repository}@${digest("a")}`);
-  }, 20_000);
+  }, deploymentProcessRecoveryTimeoutMs);
 
   it("keeps legacy traffic serving but permanently rejects C2 rollback after the C3 schema gate", () => {
     seedLegacyAuthority();
@@ -826,7 +849,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(forged).toBeGreaterThan(omitted);
     expect(gate).toBeGreaterThan(forged);
     expect(events).not.toContain("database insert");
-  }, 20_000);
+  }, deploymentProcessRecoveryTimeoutMs);
 
   it.each([
     ["before_epoch", false],
@@ -848,7 +871,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
       expect(rollback.stderr).toMatch(/schema compatibility/i);
       expect(readFileSync(eventLog, "utf8")).toBe("");
     }
-  }, 20_000);
+  }, deploymentProcessRecoveryTimeoutMs);
 
   it("refuses legacy rollback after the DB commits even when the gate process dies before returning", () => {
     seedLegacyAuthority();
@@ -861,7 +884,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(rollback.status).not.toBe(0);
     expect(rollback.stderr).toMatch(/schema compatibility/i);
     expect(readFileSync(eventLog, "utf8")).toBe("");
-  }, 20_000);
+  }, deploymentProcessRecoveryTimeoutMs);
 
   it.each([
     ["digest metacharacter", `${digest("b")};touch-pwned`, commit("b"), []],
@@ -890,7 +913,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(readFileSync(eventLog, "utf8")).toContain(`pull ${localRepository}@${digest("a")}`);
     expect(readFileSync(eventLog, "utf8")).toContain("restart traefik");
     expect(readFileSync(join(root, "deployment-routing/music-router.yml"), "utf8")).not.toContain("certResolver");
-  }, 20_000);
+  }, deploymentProcessRecoveryTimeoutMs);
 
   it("fails the fixture entrypoint closed without its independent acknowledgement", () => {
     // Production break caught: setting one ambient mode variable is enough to
@@ -901,6 +924,16 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     });
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("fixture deployment acknowledgement is invalid");
+    expect(existsSync(eventLog)).toBe(false);
+  });
+
+  it.each([
+    ["missing", "secure regular file required"],
+    ["invalid-mac", "fixture image authority authentication failed"],
+  ] as const)("rejects %s authenticated fixture image authority before Docker inspection", (fixtureImageAuthorityMode, message) => {
+    const result = run("bootstrap", digest("a"), commit("a"), { policy: "fixture", fixtureImageAuthorityMode });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain(message);
     expect(existsSync(eventLog)).toBe(false);
   });
 
@@ -961,8 +994,39 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
   it.each([
     ["extra service", (model: any) => { model.services.attacker = { image: `registry.example.invalid/escape@${digest("e")}`, pull_policy: "always", labels: model.services.traefik.labels, networks: ["proxy"] }; }],
     ["mutable image", (model: any) => { model.services.db.image = "postgres:15-alpine"; }],
+    ["wrong PostgreSQL digest", (model: any) => { model.services.db.image = `127.0.0.1:5001/fixture-postgres@${digest("e")}`; }],
+    ["wrong Traefik digest", (model: any) => { model.services.traefik.image = `127.0.0.1:5001/fixture-traefik@${digest("e")}`; }],
     ["wrong service repository", (model: any) => { model.services["legacy-tunes"].image = `127.0.0.1:5001/attacker@${digest("a")}`; }],
-    ["wrong service digest", (model: any) => { model.services["legacy-tunes"].image = `127.0.0.1:5001/explorers-tunes@${digest("e")}`; }],
+    ["wrong legacy Tunes digest", (model: any) => { model.services["legacy-tunes"].image = `127.0.0.1:5001/explorers-tunes@${digest("e")}`; }],
+    ["wrong blue Tunes digest", (model: any) => { model.services["tunes-blue"].image = `127.0.0.1:5001/explorers-tunes@${digest("e")}`; }],
+    ["wrong green Tunes digest", (model: any) => { model.services["tunes-green"].image = `127.0.0.1:5001/explorers-tunes@${digest("e")}`; }],
+    ["wrong gate Tunes digest", (model: any) => { model.services["tunes-gate"].image = `127.0.0.1:5001/explorers-tunes@${digest("e")}`; }],
+    ["wrong compatibility Tunes digest", (model: any) => { model.services["tunes-register-compat"].image = `127.0.0.1:5001/explorers-tunes@${digest("e")}`; }],
+    ["coherent untrusted Tunes digest", (model: any) => {
+      const hostileImage = `127.0.0.1:5001/explorers-tunes@${digest("e")}`;
+      for (const name of ["legacy-tunes", "tunes-blue", "tunes-green", "tunes-gate", "tunes-register-compat"]) {
+        model.services[name].image = hostileImage;
+      }
+      for (const name of ["tunes-blue", "tunes-green", "tunes-gate"]) {
+        model.services[name].environment.MUSIC_IMAGE_DIGEST = digest("e");
+        model.services[name].environment.MUSIC_GATE_ATTESTATION_PATH = `/deployment-gates/${digest("e")}.json`;
+      }
+    }],
+    ["disabled new-entry kill switch", (model: any) => { model.services["tunes-blue"].environment.MUSIC_NEW_ENTRY_KILL_SWITCH = "false"; }],
+    ["enabled cohort", (model: any) => { model.services["tunes-blue"].environment.MUSIC_COHORT_ENABLED = "true"; }],
+    ["wildcard public origin", (model: any) => { model.services["tunes-blue"].environment.ALLOWED_ORIGINS = "*"; }],
+    ["allowed-looking public origin", (model: any) => { model.services["tunes-blue"].environment.ALLOWED_ORIGINS = "https://localtunes.earth.evil"; }],
+    ["wildcard Strapi origin", (model: any) => { model.services["tunes-blue"].environment.MUSIC_STRAPI_ALLOWED_ORIGINS = "*"; }],
+    ["altered trusted proxy", (model: any) => { model.services["tunes-blue"].environment.MUSIC_TRUSTED_PROXY_IP = "127.0.0.1"; }],
+    ["altered proxy hop count", (model: any) => { model.services["tunes-blue"].environment.TRUST_PROXY_HOPS = "2"; }],
+    ["altered token lifetime", (model: any) => { model.services["tunes-blue"].environment.MUSIC_TOKEN_LIFETIME_SECONDS = "601"; }],
+    ["altered token clock skew", (model: any) => { model.services["tunes-blue"].environment.MUSIC_TOKEN_CLOCK_SKEW_SECONDS = "16"; }],
+    ["disabled deployment health", (model: any) => { model.services["tunes-blue"].environment.MUSIC_DEPLOYMENT_HEALTH_ENABLED = "false"; }],
+    ["altered publication key target", (model: any) => { model.services["tunes-blue"].environment.MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE = "/tmp/current"; }],
+    ["extra Tunes environment entry", (model: any) => { model.services["tunes-blue"].environment.MUSIC_ALLOWED_ORIGIN = "https://localtunes.earth"; }],
+    ["duplicate Tunes environment entries", (model: any) => {
+      model.services["tunes-blue"].environment = ["NODE_ENV=production", "NODE_ENV=development"];
+    }],
     ["ambient pull", (model: any) => { model.services.traefik.pull_policy = "missing"; }],
     ["external network", (model: any) => { model.networks.proxy = { external: true, name: "production" }; }],
     ["unbounded volume", (model: any) => { model.services.db.volumes.push("/opt/explorers:/production"); }],
@@ -1030,7 +1094,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(result.status, result.stderr).toBe(0);
     expect(readFileSync(join(sandbox, "registration-stale-count"), "utf8")).toBe("1");
     expect(readFileSync(eventLog, "utf8").match(/\/api\/register/g)?.length).toBeGreaterThanOrEqual(3);
-  }, 20_000);
+  }, deploymentProcessRecoveryTimeoutMs);
 
   it("reports only the bounded terminal status when compatibility routing never converges", () => {
     // Telemetry break caught: troubleshooting either has no useful status or
@@ -1039,7 +1103,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("registration compatibility route status mismatch: status=200");
     expect(result.stderr).not.toContain("legacy");
-  }, 20_000);
+  }, deploymentProcessRecoveryTimeoutMs);
 
   it("waits for the exact public readiness authority to converge after route commit", () => {
     const result = run("bootstrap", digest("a"), commit("a"), { publicReadinessStaleResponses: 1 });
@@ -1048,7 +1112,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const publicProbes = readFileSync(eventLog, "utf8").split(/\r?\n/)
       .filter((line) => line.startsWith("curl ") && line.includes("/health/ready"));
     expect(publicProbes).toHaveLength(2);
-  }, 20_000);
+  }, deploymentProcessRecoveryTimeoutMs);
 
   it.each([
     ["revision", { ociCommit: commit("c") }],
@@ -1099,7 +1163,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(events[0]).toContain("route=http://tunes-green:5000");
     expect(readFileSync(join(root, "deployment-routing/music-router.yml"), "utf8")).toContain("http://tunes-blue:5000");
     expect(existsSync(join(root, "deployment-transactions/current"))).toBe(false);
-  }, 20_000);
+  }, deploymentProcessRecoveryTimeoutMs);
 
   it.each(["nonzero", "invalid-json"] as const)("restores every prior authority and stops the candidate on public %s failure", (publicResponseMode) => {
     // Production break caught: set -e exits on curl transport/HTTP failure after
@@ -1143,7 +1207,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(argv).not.toContain(hmacSentinel);
     expect(environment).not.toContain(hmacSentinel);
     expect(deployed.stderr).not.toContain(hmacSentinel);
-  }, 20_000);
+  }, deploymentProcessRecoveryTimeoutMs);
 
   it("rejects publication authority reuse before candidate Docker actions without exposing material", () => {
     bootstrap();
@@ -1157,7 +1221,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(result.stderr).toMatch(/publication authority separation failed/i);
     expect(result.stderr).not.toContain(publicationAuthority);
     expect(readFileSync(eventLog, "utf8")).toBe("");
-  }, 20_000);
+  }, deploymentProcessRecoveryTimeoutMs);
 
   it("rejects a privileged alias at the exact configured custom previous path before candidate Docker actions", () => {
     bootstrap();
@@ -1182,7 +1246,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(result.stderr).toMatch(/publication authority separation failed/i);
     expect(result.stderr).not.toContain(alias);
     expect(readFileSync(eventLog, "utf8")).toBe("");
-  }, 20_000);
+  }, deploymentProcessRecoveryTimeoutMs);
 
   it.each([
     ["a duplicate previous publication KID", "publication-current-v1", () => new Date(Date.now() + 3_600_000).toISOString()],
@@ -1204,7 +1268,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(result.status).not.toBe(0);
     expect(result.stderr).toMatch(/publication authority separation failed/i);
     expect(readFileSync(eventLog, "utf8")).toBe("");
-  }, 20_000);
+  }, deploymentProcessRecoveryTimeoutMs);
 
   it("fails closed on a tampered incomplete journal before Docker or slot selection", () => {
     // Production break caught: recovery trusts attacker-edited backup metadata.
@@ -1219,7 +1283,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("transaction journal HMAC mismatch");
     expect(readFileSync(eventLog, "utf8")).toBe("");
-  }, 20_000);
+  }, deploymentProcessRecoveryTimeoutMs);
 
   it.each(["state", "floor", "schema-floor", "schema-epoch"])("rejects %s authority tamper before Docker", (authority) => {
     // Production break caught: mutable host state changes the active slot or permanent rollback floor.
@@ -1238,7 +1302,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
         : authority === "schema-epoch" ? /schema epoch (journal )?(HMAC mismatch|malformed)/
           : /schema compatibility floor (HMAC mismatch|malformed)/);
     expect(readFileSync(eventLog, "utf8")).toBe("");
-  }, 20_000);
+  }, deploymentProcessRecoveryTimeoutMs);
 
   it.each(["duplicate", "malformed", "truncated", "reordered"])(
     "rejects a %s secure ledger before Docker",
@@ -1263,6 +1327,6 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
       expect(result.stderr).toContain("secure ledger");
       expect(readFileSync(eventLog, "utf8")).toBe("");
     },
-    20_000,
+    deploymentProcessRecoveryTimeoutMs,
   );
 });

@@ -22,6 +22,8 @@ import {
   type ReconciliationSourceMetadata,
 } from "../services/musicReconciler";
 
+const checkpointFilesystemTimeoutMs = process.platform === "win32" ? 10_000 : 5_000;
+
 const windowsUntrustedWriterSid = process.platform === "win32"
   ? execFileSync("whoami.exe", ["/groups", "/fo", "csv", "/nh"], { encoding: "utf8", windowsHide: true })
     .split(/\r?\n/)
@@ -218,7 +220,7 @@ describe("music reconciliation checkpoints", () => {
     expect(contents).not.toContain("identities");
     expect(contents).not.toContain("email");
     if (process.platform !== "win32") expect((await stat(path)).mode & 0o777).toBe(0o600);
-  });
+  }, checkpointFilesystemTimeoutMs);
 
   it("creates a missing owner-only checkpoint directory without following links", async () => {
     const root = await mkdtemp(join(tmpdir(), "music-reconciliation-checkpoint-create-"));
